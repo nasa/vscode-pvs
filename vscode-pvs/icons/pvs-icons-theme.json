@@ -1,0 +1,16 @@
+{
+	"iconDefinitions": {
+		"_pvs_file": {
+			"iconPath": "pvs-file.svg"
+		},
+		"_pvs_icon": {
+			"iconPath": "pvs-icon.png"
+		}
+	},
+	"fileExtensions": {
+		"pvs": "_pvs_icon"
+	},
+	"languageIds": {
+		"pvs": "_pvs_icon"
+	}
+}

@@ -1,0 +1,21 @@
+{
+	"name": "pvs",
+	"scopeName": "source.pvs",
+	"fileTypes": ["pvs"],
+	"patterns": [
+		{
+            "match": "%.*",
+            "name": "comment.line.percentage"
+		},
+		{
+            "begin": "\"",
+            "end": "\"",
+            "name": "string.quoted.double"
+		},
+		{
+            "match": "(?:[+-]?)\\b(\\d+\/\\d+)|(?:[+-]?)\\b(?:\\d+(?:\\.\\d+)?)",
+            "name": "constant.numeric"
+		}
+	]
+}
+  

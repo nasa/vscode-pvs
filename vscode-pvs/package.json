@@ -1,0 +1,319 @@
+{
+	"name": "vscode-pvs",
+	"displayName": "PVS",
+	"description": "Prototype Verification System: combining formal specification, proof checking, and model animation",
+	"icon": "icons/pvs-icon.png",
+	"author": "Paolo Masci",
+	"license": "NASA OPEN SOURCE AGREEMENT",
+	"version": "1.0.4",
+	"repository": {
+		"type": "git",
+		"url": "xxx"
+	},
+	"publisher": "paolomasci",
+	"categories": [],
+	"keywords": [
+		"multi-root ready"
+	],
+	"engines": {
+		"vscode": "^1.26.0"
+	},
+	"activationEvents": [
+		"onLanguage:pvs",
+		"onCommand:cmd.runit",
+		"onCommand:cmd.proveit"
+	],
+	"main": "./client/out/pvsLanguageClient",
+	"contributes": {
+		"configuration": [
+			{
+				"type": "object",
+				"title": "Prototype Verification System (PVS)",
+				"properties": {
+					"pvs.path": {
+						"type": "string",
+						"default": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
+						"description": "Path to the PVS executable"
+					}
+				}
+			}
+		],
+		"iconThemes": [
+			{
+				"id": "pvs",
+				"label": "PVS",
+				"path": "./icons/pvs-icons-theme.json"
+			}
+		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "pvs-commands-palette",
+					"title": "PVS Commands Palette",
+					"icon": "icons/pvs.svg"
+				}
+			]
+		},
+		"views": {
+			"explorer": [
+				{
+					"id": "pvs-explorer-view",
+					"name": "PVS Theories",
+					"when": "resourceExtname == .pvs"
+				}
+			]
+		},
+		"snippets": [
+			{
+				"language": "pvs",
+				"path": "./snippets.json"
+			}
+		],
+		"languageServerExample.trace.server": {
+			"scope": "window",
+			"anyOf": [
+				{
+					"type": "string",
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
+					"default": "off"
+				},
+				{
+					"type": "object",
+					"properties": {
+						"verbosity": {
+							"type": "string",
+							"enum": [
+								"off",
+								"messages",
+								"verbose"
+							],
+							"default": "off"
+						},
+						"format": {
+							"type": "string",
+							"enum": [
+								"text",
+								"json"
+							],
+							"default": "text"
+						}
+					}
+				}
+			],
+			"default": "off",
+			"description": "Traces the communication between VS Code and the language server."
+		},
+		"commands": [
+			{
+				"command": "cmd.runit",
+				"title": "Animate expression"
+			},
+			{
+				"command": "cmd.proveit",
+				"title": "Prove formula"
+			},
+			{
+				"command": "cmd.typecheck-file",
+				"title": "typecheck-file"
+			},
+			{
+				"command": "cmd.typecheck-theory",
+				"title": "TYPECHECK"
+			},
+			{
+				"command": "cmd.typecheck-all",
+				"title": "typecheck-all"
+			},
+			{
+				"command": "cmd.tcp",
+				"title": "PROVE TCCs"
+			},
+			{
+				"command": "cmd.prove-tcc",
+				"title": "PROVE"
+			}
+		],
+		"menus": {
+			"editor/context": [
+				{
+					"command": "cmd.typecheck-file",
+					"when": "resourceExtname == .pvs"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "cmd.typecheck-file",
+					"when": "resourceExtname == .pvs"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "cmd.tcp",
+					"when": "view == pvs-explorer-view && viewItem == TCCs",
+					"group": "inline"
+				},
+				{
+					"command": "cmd.typecheck-theory",
+					"when": "view == pvs-explorer-view && viewItem == theory",
+					"group": "inline"
+				}
+			],
+			"editor/title/context": [
+				{
+					"command": "cmd.typecheck-file",
+					"when": "resourceExtname == .pvs"
+				}
+			],
+			"view/title": [
+				{
+					"command": "cmd.typecheck-all",
+					"when": "view == pvs-explorer-view",
+					"group": "pvs"
+				}
+			]
+		},
+		"keybindings": [
+			{
+				"key": "alt+x",
+				"mac": "cmd+x",
+				"command": "pvsemacs.M-x"
+			},
+			{
+				"key": "ctrl+t",
+				"command": "cmd.typecheck-file",
+				"when": "resourceExtname == .pvs"
+			}
+		],
+		"languages": [
+			{
+				"id": "pvs",
+				"extensions": [
+					".pvs"
+				],
+				"aliases": [
+					"pvs",
+					"PVS"
+				],
+				"configuration": "./pvs-language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "pvs",
+				"scopeName": "source.pvs",
+				"path": "./syntax/pvs-language.json"
+			}
+		],
+		"colors": [
+			{
+				"id": "pvs.keywords.color",
+				"description": "Decoration color for reserved keywords",
+				"defaults": {
+					"dark": "#3fa9ff",
+					"light": "#4627ce55",
+					"highContrast": "#2450af55"
+				}
+			},
+			{
+				"id": "pvs.operators.color",
+				"description": "Decoration color for operators",
+				"defaults": {
+					"dark": "#3fa9ff",
+					"light": "#4627ce55",
+					"highContrast": "#2450af55"
+				}
+			},
+			{
+				"id": "pvs.builtinTypes.color",
+				"description": "Decoration color for basic types",
+				"defaults": {
+					"dark": "#31d18e",
+					"light": "#27975fd3",
+					"highContrast": "#27975fd3"
+				}
+			},
+			{
+				"id": "pvs.functions.color",
+				"description": "Decoration color for library functions",
+				"defaults": {
+					"dark": "#31d18e",
+					"light": "#27975fd3",
+					"highContrast": "#27975fd3"
+				}
+			},
+			{
+				"id": "pvs.comments.color",
+				"description": "Decoration color for basic types",
+				"defaults": {
+					"dark": "#29a385e7",
+					"light": "#174b40a8",
+					"highContrast": "#1d4b17a8"
+				}
+			},
+			{
+				"id": "pvs.numbers.color",
+				"description": "Decoration color for numbers",
+				"defaults": {
+					"dark": "#e0f584",
+					"light": "#7d8a43f8",
+					"highContrast": "#7d8a43f8"
+				}
+			},
+			{
+				"id": "constant.numeric",
+				"description": "Decoration color for numbers",
+				"defaults": {
+					"dark": "#e0f584",
+					"light": "#7d8a43f8",
+					"highContrast": "#7d8a43f8"
+				}
+			},
+			{
+				"id": "pvs.strings.color",
+				"description": "Decoration color for numbers",
+				"defaults": {
+					"dark": "#f5c484",
+					"light": "#8a7443f8",
+					"highContrast": "#8a7443f8"
+				}
+			},
+			{
+				"id": "pvs.constants.color",
+				"description": "Decoration color for constants",
+				"defaults": {
+					"dark": "#3fa9ff",
+					"light": "#4627ce55",
+					"highContrast": "#2450af55"
+				}
+			},
+			{
+				"id": "pvs.error.syntax",
+				"description": "Decoration color for syntax errors",
+				"defaults": {
+					"dark": "#ff3fc5d2",
+					"light": "#ce279c4b",
+					"highContrast": "#af248155"
+				}
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "cd client && npm run update-vscode && cd .. && npm run compile",
+		"compile": "tsc -b",
+		"watch": "tsc -b -w",
+		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+		"test": "sh ./scripts/e2e.sh"
+	},
+	"devDependencies": {
+		"vsce": "1.57.1",
+		"@types/mocha": "^5.2.0",
+		"@types/node": "^8.9.1",
+		"tslint": "^5.11.0",
+		"typescript": "^3.1.3",
+		"vscode": "^1.1.22"
+	}
+}

@@ -1,0 +1,29 @@
+{
+	"name": "vscode-pvs-client",
+	"description": "PVS client for Visual Studio Code",
+	"author": "Paolo Masci",
+	"license": "NASA OPEN SOURCE AGREEMENT",
+	"version": "1.0.0",
+	"publisher": "paolomasci",
+	"repository": {
+		"type": "git",
+		"url": "xxx"
+	},
+	"engines": {
+		"vscode": "^1.26.0"
+	},
+	"scripts": {
+		"update-vscode": "vscode-install",
+		"postinstall": "vscode-install"
+	},
+	"dependencies": {
+		"vscode-languageclient": "^4.1.4",
+		"handlebars": "^4.1.0",
+		"bootstrap": "4.3.0",
+		"mkdirp": "^0.5.1",
+		"rimraf": "^2.6.2"
+	},
+	"devDependencies": {
+		"vscode": "^1.1.21"
+	}
+}
