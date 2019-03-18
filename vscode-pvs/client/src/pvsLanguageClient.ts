@@ -9,6 +9,7 @@ import { VSCodePvsHoverProvider } from './providers/vscodePvsHoverProvider';
 import { MultiStepInput } from './theoryExplorer/multiStepInput';
 import { VSCodePvsExplorer } from './views/vscodePvsExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
+import { VSCodePVSioTerminal } from './views/vscodePvsioTerminal'; 
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 1000; //ms
@@ -33,6 +34,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// data provider for the tree views
 	private theoriesDataProvider: VSCodePvsExplorer;
+
+	// integrated terminals for PVSio
+	private pvsioTerminal: VSCodePVSioTerminal;
 
 	// autosave pvs files with frequency AUTOSAVE_INTERVAL
 	private autosave (document: TextDocument) {
@@ -225,6 +229,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.hoverProvider.activate(this.context);
 		this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client);
 		this.emacsBindingsProvider.activate(this.context);
+
+		this.pvsioTerminal = new VSCodePVSioTerminal();
+		this.pvsioTerminal.activate(this.context);
 
 		this.inputManager = new MultiStepInput(this.client);
 		this.theoriesDataProvider = new VSCodePvsExplorer(this.client, 'pvs-explorer-view');

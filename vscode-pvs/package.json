@@ -135,6 +135,10 @@
 			{
 				"command": "cmd.prove-tcc",
 				"title": "PROVE"
+			},
+			{
+				"command": "terminal.PVSio",
+				"title": "PVSio terminal"
 			}
 		],
 		"menus": {

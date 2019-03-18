@@ -16,9 +16,9 @@ export const RECORD: { [key: string]: RegExp } = {
  * @returns { string | null } The theory name if any is found, null otherwise
  */
 export function findTheoryName(txt: string, line: number): string | null {
-	let text: string = txt.split("\n").slice(0, line).join("\n");
+	let text: string = txt.split("\n").slice(0, line + 1).join("\n");
 	let candidates: string[] = [];
-	let regexp: RegExp = new RegExp(/(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*theory\s/gi);
+	let regexp: RegExp = new RegExp(/(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*theory\b/gi);
 	let match: RegExpMatchArray = null;
 	while(match = regexp.exec(text)) {
 		// the last match will be the closest to the current line number

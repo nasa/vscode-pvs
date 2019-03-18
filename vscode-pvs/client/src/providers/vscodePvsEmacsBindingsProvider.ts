@@ -29,6 +29,10 @@ export class VSCodePvsEmacsBindingsProvider {
 							});
 							break;
 						}
+						case "pvsio": {
+							// open pvsio terminal
+							commands.executeCommand("terminal.PVSio");
+						}
 					}
 				}
 			});
