@@ -5,7 +5,6 @@ import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } f
 import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
 import { log } from './utils/logger';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
-import { VSCodePvsDefinitionProvider } from './providers/vscodePvsDefinitionProvider';
 import { VSCodePvsHoverProvider } from './providers/vscodePvsHoverProvider';
 import { MultiStepInput } from './theoryExplorer/multiStepInput';
 import { VSCodePvsExplorer } from './views/vscodePvsExplorer';
@@ -29,7 +28,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// data providers for the text editor
 	private hoverProvider: VSCodePvsHoverProvider;
-	private definitionProvider: VSCodePvsDefinitionProvider;
 	private decorationProvider: VSCodePvsDecorationProvider;
 	private emacsBindingsProvider: VSCodePvsEmacsBindingsProvider;
 
@@ -223,8 +221,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		
 		// initialise service providers defined on the client-side
 		this.decorationProvider = new VSCodePvsDecorationProvider();
-		this.definitionProvider = new VSCodePvsDefinitionProvider(this.client);
-		this.hoverProvider = new VSCodePvsHoverProvider(this.definitionProvider);
+		this.hoverProvider = new VSCodePvsHoverProvider(this.client);
 		this.hoverProvider.activate(this.context);
 		this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client);
 		this.emacsBindingsProvider.activate(this.context);

@@ -1,0 +1,5 @@
+# exclude node_modules, client/out, server/out
+node_modules
+client/out
+server/out
+.DS_Store
