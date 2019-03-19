@@ -43,8 +43,9 @@
 import { PvsDeclarationDescriptor, PvsFindDeclarationResponse, PvsDeclarationType, PRELUDE_FILE, PvsResponseType } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
 import { Connection, TextDocument, Position, Range, CancellationToken } from 'vscode-languageserver';
-import { PvsFindDeclarationInterface, PvsShowImportChain, PvsProcess } from '../pvsProcess';
+import { PvsProcess } from '../pvsProcess';
 import { findTheoryName, getWordRange } from '../common/languageUtils';
+import { PvsFindDeclarationInterface, PvsShowImportChain } from '../pvsLisp';
 
 export class PvsDefinitionProvider {
 	connection: Connection;

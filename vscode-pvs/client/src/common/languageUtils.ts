@@ -12,13 +12,35 @@ export const RECORD: { [key: string]: RegExp } = {
  * @function findTheoryName
  * @description Utility function, finds the name of the theory that immediately preceeds a given line
  * @param txt The text where the theory should be searched 
- * @param line The line in the document whose parent theory should be searched
+ * @param line The line in the document where search should end
  * @returns { string | null } The theory name if any is found, null otherwise
  */
 export function findTheoryName(txt: string, line: number): string | null {
 	let text: string = txt.split("\n").slice(0, line + 1).join("\n");
 	let candidates: string[] = [];
 	let regexp: RegExp = new RegExp(/(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*theory\b/gi);
+	let match: RegExpMatchArray = null;
+	while(match = regexp.exec(text)) {
+		// the last match will be the closest to the current line number
+		candidates.push(match[1]);
+	}
+	if (candidates.length > 0) {
+		return candidates[candidates.length - 1];
+	}
+	return null;
+};
+
+/**
+ * @function findTheorem
+ * @description Utility function, finds the name of a theorem that immediately preceeds a given line
+ * @param txt The text where the theory should be searched 
+ * @param line The line in the document where search should end
+ * @returns { string | null } The theory name if any is found, null otherwise
+ */
+export function findTheorem(txt: string, line: number): string | null {
+	let text: string = txt.split("\n").slice(0, line + 1).join("\n");
+	let candidates: string[] = [];
+	let regexp: RegExp = new RegExp(/(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*(theorem|lemma|conjecture)\b/gi);
 	let match: RegExpMatchArray = null;
 	while(match = regexp.exec(text)) {
 		// the last match will be the closest to the current line number

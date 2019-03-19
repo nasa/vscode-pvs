@@ -5,7 +5,7 @@
 	"icon": "icons/pvs-icon.png",
 	"author": "Paolo Masci",
 	"license": "NASA OPEN SOURCE AGREEMENT",
-	"version": "1.0.4",
+	"version": "1.0.5",
 	"repository": {
 		"type": "git",
 		"url": "xxx"
@@ -33,6 +33,8 @@
 					"pvs.path": {
 						"type": "string",
 						"default": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
+						"pvs7": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
+						"pvs6": "/Users/pmasci/Work/pvs-snapshots/PVS-6",
 						"description": "Path to the PVS executable"
 					}
 				}
@@ -45,14 +47,16 @@
 				"path": "./icons/pvs-icons-theme.json"
 			}
 		],
-		"viewsContainers": {
-			"activitybar": [
-				{
-					"id": "pvs-commands-palette",
-					"title": "PVS Commands Palette",
-					"icon": "icons/pvs.svg"
-				}
-			]
+		"todo": {
+			"viewsContainers": {
+				"activitybar": [
+					{
+						"id": "pvs-commands-palette",
+						"title": "PVS Commands Palette",
+						"icon": "icons/pvs.svg"
+					}
+				]
+			}
 		},
 		"views": {
 			"explorer": [
@@ -139,6 +143,10 @@
 			{
 				"command": "terminal.PVSio",
 				"title": "PVSio terminal"
+			},
+			{
+				"command": "pvs.terminal.prove",
+				"title": "PVS theorem prover (terminal)"
 			}
 		],
 		"menus": {
@@ -183,8 +191,8 @@
 		"keybindings": [
 			{
 				"key": "alt+x",
-				"mac": "cmd+x",
-				"command": "pvsemacs.M-x"
+				"command": "pvsemacs.M-x",
+				"when": "resourceExtname == .pvs"
 			},
 			{
 				"key": "ctrl+t",
@@ -310,7 +318,7 @@
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-		"test": "sh ./scripts/e2e.sh"
+		"debugTerminal": "node --inspect /Users/pmasci/Work/gitlab/pvsui/vscode-pvs/server/out/pvsCmd.js /Users/pmasci/Work/pvs-snapshots/pvs-7.0-851/pvs"
 	},
 	"devDependencies": {
 		"vsce": "1.57.1",

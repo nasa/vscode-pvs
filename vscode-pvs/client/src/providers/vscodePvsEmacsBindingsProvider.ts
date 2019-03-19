@@ -20,18 +20,27 @@ export class VSCodePvsEmacsBindingsProvider {
 			}).then((userInput: string) => {
 				if (userInput) {
 					userInput = userInput.toLowerCase();
-					const document: TextDocument = window.activeTextEditor.document;
+					// const document: TextDocument = window.activeTextEditor.document;
 					switch (userInput) {
-						case "tc": {
+						case "tc": 
+						case "typecheck": {
 							// typecheck current file
-							this.client.sendRequest('pvs.typecheck-file', {
-								fileName: document.fileName
-							});
+							commands.executeCommand("pvs.terminal.typecheck");
+							// this.client.sendRequest('pvs.typecheck-file', {
+							// 	fileName: document.fileName
+							// });
 							break;
 						}
 						case "pvsio": {
 							// open pvsio terminal
 							commands.executeCommand("terminal.PVSio");
+							break;
+						}
+						case "pr":
+						case "prove": {
+							// open pvs terminal
+							commands.executeCommand("pvs.terminal.prove");
+							break;
 						}
 					}
 				}

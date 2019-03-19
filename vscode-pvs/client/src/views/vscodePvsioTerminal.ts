@@ -10,12 +10,10 @@ class PVSioTerminal {
         this.pvsioExecutable = path.join(vscode.workspace.getConfiguration().get("pvs.path"), "pvsio");
         const args: string[] = [ this.pvsioExecutable, fileName + "@" + theoryName ];
         this.terminal = vscode.window.createTerminal(tname, '/bin/bash', args);
+        this.terminal.show();
     }
     printMessage(msg: string) {
         this.terminal.sendText("echo '" + msg + "'");
-    }
-    show () {
-        this.terminal.show();
     }
 }
 
@@ -31,7 +29,6 @@ export class VSCodePVSioTerminal {
                 const line: number = vscode.window.activeTextEditor.selection.active.line;
                 const theoryName: string = findTheoryName(text, line);
                 const terminal: PVSioTerminal = new PVSioTerminal(fileName, theoryName);
-                terminal.show(); // show terminal
             }
         }));
     }

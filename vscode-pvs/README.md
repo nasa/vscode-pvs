@@ -12,10 +12,14 @@ The Language Server works for .pvs files, and provides the following language fe
 
 
 ## ChangeLog
-## 1.0.4
+### 1.0.5 (2019.03.19)
+- Integrated terminals for PVSio and PVS Prover
+- Shortcuts M-x tc, M-x pr
+
+### 1.0.4 (2019.03.08)
 - Improved navigation of pvs theories in explorer view
 
-## 1.0.3
+### 1.0.3 (2019.03.01)
 - Shortcut C-t for typechecking files
 - Overview of tccs shown in explorer view
 - Bugfix (Language server not responsive when pvs file contains syntax errors)

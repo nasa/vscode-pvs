@@ -306,7 +306,7 @@ class PvsLanguageServer {
 				this.connection.sendRequest('server.status.update', "Initialising PVS...");
 				try {
 					const versionInfo: PvsVersionDescriptor = await this.pvsInit(pvsExecutionContext);
-					this.readyString = versionInfo.pvsVersion + " " + versionInfo.lispVersion + " ready!"
+					this.readyString = versionInfo.pvsVersion + " " + versionInfo.lispVersion ;
 					this.connection.sendRequest('server.status.update', this.readyString);
 				} catch (err) {
 					this.connection.sendRequest('server.status.update', err);
