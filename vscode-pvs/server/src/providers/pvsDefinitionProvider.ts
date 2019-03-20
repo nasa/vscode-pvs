@@ -97,12 +97,12 @@ export class PvsDefinitionProvider {
 	 * @param character Optional argument, character (i.e., column) where the symbol is used, helps to narrow down the list of potential definitions in the case of symbol overloading
 	 */
 	async findSymbolDefinition (document: TextDocument, symbolName: string, position?: Position): Promise<PvsFindDeclarationResponse> {
-		const currentTheory: string = findTheoryName(document.getText(), position.line);
+		const currentTheory: string = position ? findTheoryName(document.getText(), position.line) : null;
 		let response: PvsFindDeclarationResponse = {
 			file: document.uri,
 			theory: currentTheory,
-			line: position.line,
-			character: position.character,
+			line: (position) ? position.line : null,
+			character: (position) ? position.character : null,
 			symbolName: symbolName,
 			symbolTheory: null,
 			symbolDeclaration: null,
@@ -143,8 +143,8 @@ export class PvsDefinitionProvider {
 							const info: PvsDeclarationType = allDeclarations[key];
 							const ans: PvsDeclarationDescriptor = {
 								theory: currentTheory,
-								line: position.line,
-								character: position.character,
+								line: (position) ? position.line : null,
+								character: (position) ? position.character : null,
 								file: document.uri,
 								symbolName: symbolName,
 								symbolTheory: info.symbolTheory,

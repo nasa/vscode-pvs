@@ -48,11 +48,13 @@ import * as languageUtils from "../common/languageUtils";
 import { PvsFindDeclarationResponse } from '../common/serverInterface';
 
 interface IntellisenseTriggers {
-	recordExpression: RegExp
+	recordExpression: RegExp,
+	recordAccessor: RegExp
 };
 
 const isense: IntellisenseTriggers = {
-	recordExpression: /(\w+)`$/g
+	recordExpression: /(\w+)\s*=\s*\(\#/g, // rc1: Rec1 = (#... 
+	recordAccessor: /(\w+)`/g // rc1`...
 };
 
 export class PvsCompletionProvider {
@@ -113,8 +115,9 @@ export class PvsCompletionProvider {
 				let localSymbols: PvsDeclarationDescriptor[] = []; // TODO
 
 				let match: RegExpExecArray = null;
-				if (match = isense.recordExpression.exec(currentInput)) {
-					isense.recordExpression.lastIndex = 0; // RegExp objects are stateful, we need to reset them every time
+				if (match = (isense.recordExpression.exec(currentInput) || isense.recordAccessor.exec(currentInput))) {
+					// RegExp objects are stateful, we need to reset them every time
+					isense.recordExpression.lastIndex = isense.recordAccessor.lastIndex = 0; 
 					const symbolName: string = match[1];
 					let decl: PvsFindDeclarationResponse = await this.definitionProvider.findSymbolDefinition(document, symbolName, position);
 					if (decl.symbolDeclaration) {
