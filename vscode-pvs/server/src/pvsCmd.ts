@@ -242,6 +242,7 @@ class PvsProcess {
 					if (ready) {
 						this.pvsProcess.stdout.removeListener("data", waitPvsReadyPrompt); // remove listener otherwise this will capture the output of other commands
 						this.pvsProcessBusy = false;
+						this.disableGcPrintout();
 						resolve();
 					}
 				};
@@ -284,7 +285,7 @@ class PvsProcess {
 	/**
 	 * Disables garbage collector messages
 	 */
-	async disableGcPrintout(): Promise<string> {
+	private async disableGcPrintout(): Promise<string> {
 		const cmd: string = '(setq *disable-gc-printout* t)';
 		return await this.exec(cmd);
 	}
@@ -335,7 +336,6 @@ class PvsProcess {
 async function start(pvsExecutable: string): Promise<PvsProcess> {
 	const pvsProcess: PvsProcess = new PvsProcess(pvsExecutable);
 	await pvsProcess.start();
-	await pvsProcess.disableGcPrintout();
 	// await pvsProcess.emacsInterface(); --- NB: do not enable emacs interface, it will lock up the theorem prover
 	process.stdin.on("data", (data: Buffer) => {
 		try {
@@ -351,23 +351,6 @@ async function start(pvsExecutable: string): Promise<PvsProcess> {
 if (process.argv.length > 2) {
 	start(process.argv[2]);
 }
-
-// class PVSWrapper {
-// 	pvsProcess: PvsProcess;
-// 	constructor () {
-// 		this.pvsProcess = new PvsProcess();
-// 	}
-// 	async init () {
-// 		await this.pvsProcess.pvs();
-// 		await this.pvsProcess.disableGcPrintout();
-// 		await this.pvsProcess.emacsInterface();
-// 	}
-// }
-
-// const wrapper = new PVSWrapper();
-// wrapper.init();
-
-// await this.pvsProcess.changeContext(pvsExecutionContext.pvsContextPath);
 
 
 

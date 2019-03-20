@@ -307,11 +307,10 @@ class PvsLanguageServer {
 				try {
 					const versionInfo: PvsVersionDescriptor = await this.pvsInit(pvsExecutionContext);
 					this.readyString = versionInfo.pvsVersion + " " + versionInfo.lispVersion ;
-					this.connection.sendRequest('server.status.update', this.readyString);
+					this.connection.sendRequest('server.response.pvs.init', this.readyString);
 				} catch (err) {
 					this.connection.sendRequest('server.status.update', err);
 				}
-				// this.connection.sendRequest('server.response.pvs.init', versionInfo);
 			});
 			this.connection.onRequest('pvs.language.regexp', () => {
 				const desc: PvsSymbolKind<string>  = this.getLanguageRegExp();

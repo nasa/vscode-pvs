@@ -25,6 +25,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	// context variables
 	private context: ExtensionContext;
 	private pvsContextPath: string;
+	private pvsVersionInfo: string;
 
 	private timers: {[key: string]: NodeJS.Timer } = {};
 
@@ -63,13 +64,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.client.onRequest("server.status.update", (msg: string) => {
 			window.setStatusBarMessage(msg);
 		})
-		// this.client.onRequest("server.response.pvs.init", (ans: comm.PvsVersionDescriptor) => {
-		// 	const msg = ans.pvsVersion + " " + ans.lispVersion + " ready!"
-		// 	window.setStatusBarMessage(msg);
-		// 	if (window.activeTextEditor) {
-		// 		// TODO: create command pvs.file-diagnostics to request diagnostics for the file in the current editor window
-		// 	}
-		// });
+		this.client.onRequest("server.response.pvs.init", (pvsVersionInfo: string) => {
+			this.pvsVersionInfo = pvsVersionInfo;
+			window.setStatusBarMessage(pvsVersionInfo);
+		});
 		this.client.onRequest("server.response.runit", function (ans: comm.EvaluationResult) {
 			// vscode.workspace.openTextDocument(vscode.Uri.parse("untitled:animation.result")).then(function (document) {
 			// 	vscode.window.showTextDocument(document, vscode.window.activeTextEditor.viewColumn + 1, true);
@@ -232,7 +230,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client);
 		this.emacsBindingsProvider.activate(this.context);
 
-		this.pvsioTerminal = new VSCodePVSioTerminal();
+		this.pvsioTerminal = new VSCodePVSioTerminal(this.pvsVersionInfo);
 		this.pvsioTerminal.activate(this.context);
 
 		this.pvsTerminal = new VSCodePvsTerminal();

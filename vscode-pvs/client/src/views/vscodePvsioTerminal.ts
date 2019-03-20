@@ -18,6 +18,10 @@ class PVSioTerminal {
 }
 
 export class VSCodePVSioTerminal {
+    private pvsVersionInfo: string;
+    constructor (pvsVersionInfo?: string) {
+        this.pvsVersionInfo = pvsVersionInfo || "PVS";
+    }
     activate (context: vscode.ExtensionContext) {
         context.subscriptions.push(vscode.commands.registerCommand('terminal.PVSio', () => {
             // the file extension needs to be removed from the filename

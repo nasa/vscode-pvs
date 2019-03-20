@@ -195,6 +195,11 @@
 				"when": "resourceExtname == .pvs"
 			},
 			{
+				"key": "shift+alt+x",
+				"command": "pvsemacs.M-x",
+				"when": "resourceExtname == .pvs"
+			},
+			{
 				"key": "ctrl+t",
 				"command": "cmd.typecheck-file",
 				"when": "resourceExtname == .pvs"
@@ -321,7 +326,7 @@
 		"debugTerminal": "node --inspect /Users/pmasci/Work/gitlab/pvsui/vscode-pvs/server/out/pvsCmd.js /Users/pmasci/Work/pvs-snapshots/pvs-7.0-851/pvs"
 	},
 	"devDependencies": {
-		"vsce": "1.57.1",
+		"vsce": "1.58.0",
 		"@types/mocha": "^5.2.0",
 		"@types/node": "^8.9.1",
 		"tslint": "^5.11.0",
