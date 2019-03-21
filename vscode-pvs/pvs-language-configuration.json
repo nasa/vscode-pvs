@@ -29,7 +29,8 @@
 		}
 	},
 	"indentationRules": {
-		"increaseIndentPattern": "",
-		"decreaseIndentPattern": ""
+		"increaseIndentPattern": "^((?!\\%).)*(\\bTHEORY\\b|\\bBEGIN\\b)",
+		"decreaseIndentPattern": "^((?!.*?\\%).*)?\\s*END\\b",
+		"unIndentedLinePattern": "\\s*$"
 	}
 }
