@@ -60,11 +60,14 @@ export const PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE: string = BRACKETS_REGEXP + "|
 // 										+ "|\\[#|#\\]|[(]#|#[)]";
 
 export const PVS_BUILTIN_TYPES: string[] = [ "bool", "boolean", "nat", "natural", "int", "integer", "real", "string",
-												"void", "posreal", "nonneg_real", "nnreal", "nzreal", "list", "set" ];
+												"void", "posreal", "nonneg_real", "nnreal", "nzreal", "list", "set",
+												"negreal", "nonzero_real", "nonpos_real", "nonzero_integer", "nonneg_rat",
+												"posnat", "nzint", "rat" ];
 export const PVS_BUILTIN_TYPE_REGEXP_SOURCE: string = regExpSource(PVS_BUILTIN_TYPES);
 // export const PVS_BUILTIN_TYPES_REGEXP = new RegExp(PVS_BUILTIN_TYPES_REGEXP_SOURCE, "gi");
 
-export const PVS_LIBRARY_FUNCTIONS: string[] = [ "cons", "car", "cdr", "str2pvs", "pvs2str", "abs", "nth", "length", "reverse" ];
+export const PVS_LIBRARY_FUNCTIONS: string[] = [ "cons", "car", "cdr", "str2pvs", "pvs2str", "abs", "nth", "length", "reverse",
+												 "ceiling", "floor", "fractional", "expt" ];
 export const PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE: string = regExpSource(PVS_LIBRARY_FUNCTIONS);
 
 export const PVS_NUMBER_REGEXP_SOURCE: string = "([+-]?)\\b(\\d+\/\\d+)|([+-]?)\\b(\\d+(?:\\.\\d+)?)"; // the first two capturing groups are sign and value for rationals (e.g., -1/12); the second two groups are sign and value for integers (e.g., +1) and reals (e.g., +0.12)
