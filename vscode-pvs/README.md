@@ -1,24 +1,29 @@
-# PVS Language Server
-Language Server for the PVS theorem proving system.
+# vscode-pvs: PVS extension for Visual Studio Code
+PVS language server & PVS language client for Visual Studio Code.
 
 
 ## Functionalities
-The Language Server works for .pvs files, and provides the following language features:
-- Auto-Completion for language keywords and symbol names
-- Hover information for symbols
-- GoTo definition for symbols
+The plugin provides the following language features:
+- PVS Syntax highlighting
+- Code folding
+- Auto-Completion for language keywords and identifiers
+- Hover information for keywords and identifiers
+- Goto/Peek definition for identifier
 - Diagnostics for syntax errors
-- Code Lenses for animating executable expressions and prove theorems
-
+- Literate programming using code lenses
+- Integrated terminals for PVSio and PVS-prover
+- PVS Linter (TODO)
+- Signature help (TODO)
+- Refactoring (TODO)
 
 ## ChangeLog
 ### 1.0.5 (2019.03.19)
 - Integrated terminals for PVSio and PVS Prover
 - Shortcuts M-x tc, M-x pr
-- Introduced code folding for begin-end, if-endif, cond-endcond
+- Code folding for begin-end, if-endif, cond-endcond
 
 ### 1.0.4 (2019.03.08)
-- Improved navigation of pvs theories in explorer view
+- Navigation and typechecking of pvs theories in explorer view
 
 ### 1.0.3 (2019.03.01)
 - Shortcut C-t for typechecking files
@@ -26,9 +31,7 @@ The Language Server works for .pvs files, and provides the following language fe
 - Bugfix (Language server not responsive when pvs file contains syntax errors)
 
 ### 1.0.2 (2019.02.24)
-- M-x binding for typechecking
-- PVS Snippets for theory declaration, if-then-else, record type, enum type, cond-endcond, begin-end
-- Initial version of PVS Explorer
+- Snippets for pvs language (theory declaration, if-then-else, cond-endcond)
 
 ### 1.0.1 (2019.02.22)
 - Improved Language Server (buffered input)
