@@ -8,21 +8,23 @@
 		["(", ")"]
 	],
 	"autoClosingPairs": [
-		{ "open": "(#", "close": "#)" },
-		{ "open": "'", "close": "'", "notIn": ["string", "comment"] }
+		{ "open": "(#", "close": " #)" },
+		{ "open": "[#", "close": " #]" },
+		{ "open": "{", "close": " }" },
+		{ "open": "'", "close": "'", "notIn": ["string", "comment"] },
+		{ "open": "\"", "close": "\"", "notIn": ["string", "comment"] }
 	],
 	"surroundingPairs": [
 		["{", "}"],
 		["[", "]"],
 		["(", ")"],
-		["[#", "#]"],
-		["(#", "#)"],
-		["\"", "\""],
+		["#", "#"],
+		["\"", "\""]
 	],
 	"folding": {
 		"markers": {
-			"start": "^\\s*//\\s*#?region\\b",
-			"end": "^\\s*//\\s*#?endregion\\b"
+			"start": "\\bBEGIN\\b|\\bbegin\\b|\\bCOND\\b|\\bcond\\b|\\bIF\\b|\\bif\\b",
+			"end": "\\bEND\\b|\\bend\\b|\\bENDCOND\\b|\\bendcond\\b|\\bENDIF\\b|\\bendif\\b"
 		}
 	},
 	"indentationRules": {

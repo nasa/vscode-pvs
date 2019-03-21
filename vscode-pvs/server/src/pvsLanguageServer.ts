@@ -264,7 +264,7 @@ class PvsLanguageServer {
 					// The completion provider returns a list of completion items to the editor.
 					completionProvider: {
 						resolveProvider: true, // code completion
-						triggerCharacters: [ '`', '#' ] // ` and # are for records
+						triggerCharacters: [ '`', '#' ] //  ` and # are for records
 					},
 					// Hover provider is disabled in the server, so vscode can use the client-side implementation that includes a link in the hover
 					hoverProvider: !HOVER_PROVIDER_DISABLED,

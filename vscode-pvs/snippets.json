@@ -1,5 +1,5 @@
 [{
-	"description": "Inserts theory block",
+	"description": "Autocomplete theory block",
 	"prefix": "theory",
 	"scope": "pvs",
 	"body": [
@@ -9,40 +9,15 @@
 	],
 	"notes": "the regexp is in the form (\\w+):(\\s*\\w) -- the first group captures the theory name, the second group captures the incomplete input :theory"
 }, {
-	"description": "Inserts record type declaration [# ac1: type1, ac2: type2, ... #]",
-	"prefix": "type:record",
-	"scope": "pvs",
-	"body": [
-		"TYPE = [#",
-		"  ${1:accessor}: ${2:type}",
-		"#]"
-	]
-}, {
-	"description": "Inserts enum type declaration { en1, en2, ... }",
-	"prefix": "type:enum",
-	"scope": "pvs",
-	"body": [
-		"TYPE = { ${1:id1}, ${2:id2} }"
-	]
-}, {
-	"description": "Inserts record expression (# ac1: type1, ac2: type2, ... #)",
-	"prefix": "expr:record",
-	"scope": "pvs",
-	"body": [
-		"(#",
-		"  ${1:accessor}: ${2:type}",
-		"#)"
-	]
-}, {
-	"description": "Inserts if-then-else block",
+	"description": "Insert if-then-else block",
 	"prefix": "if-then-else",
 	"scope": "pvs",
 	"body": [
 		"IF ${1:cond} THEN ${2:expr1} ELSE ${3:expr2} ENDIF"
 	]
 }, {
-	"description": "Inserts COND block",
-	"prefix": "cond",
+	"description": "Insert COND block",
+	"prefix": "cond-endcond",
 	"scope": "pvs",
 	"body": [
 		"COND",
@@ -51,8 +26,8 @@
 		"ENDCOND"
 	]
 }, {
-	"description": "Inserts BEGIN-END block",
-	"prefix": "begin",
+	"description": "Insert BEGIN-END block",
+	"prefix": "begin-end",
 	"scope": "pvs",
 	"body": [
 		"BEGIN",

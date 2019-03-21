@@ -15,6 +15,7 @@ The Language Server works for .pvs files, and provides the following language fe
 ### 1.0.5 (2019.03.19)
 - Integrated terminals for PVSio and PVS Prover
 - Shortcuts M-x tc, M-x pr
+- Introduced code folding for begin-end, if-endif, cond-endcond
 
 ### 1.0.4 (2019.03.08)
 - Improved navigation of pvs theories in explorer view
