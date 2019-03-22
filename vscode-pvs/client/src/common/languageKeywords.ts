@@ -7,7 +7,7 @@ export function regExpSource(v: Array<string>) {
 // from pvs-prover-helps.el
 // export const PVS_RESERVED_WORDS = [ "assuming", "axiom", "accept", "changes", "all", "and", "array", "begin", "by", "case", "cond", "endcond", "declare", "definition", "else", "elsif", "endif", "endassuming", "endcase", "end", "exists", "exporting", "exit", "forall", "function", "formula", "from", "if", "iff", "implies", "importing", "in", "is", "lambda", "lemma", "loop", "mapping", "measure", "module", "not", "nothing", "of", "onto", "obligation", "opspec", "or", "proof", "prove", "recursive", "result", "theorem", "theory", "using", "var", "variable", "record", "verify", "where", "then", "type", "when", "while", "with", "let", "setvariable" ];
 
-export const PVS_COMMENT_REGEXP_SOURCE: string = "%[^\n\r]+"; // line starting with %
+export const PVS_COMMENT_REGEXP_SOURCE: string = "%[^\\n\\r]+"; // line starting with %
 
 // from pvs-mode.el
 // const PVS_OPERATORS = [ "#", "##", "\\$", "\\$\\$", "&", "&&", "\\*", "\\*\\*", "\\+", "\\+\\+", "-", "/",

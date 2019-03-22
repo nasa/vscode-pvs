@@ -58,6 +58,7 @@ import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
 import { PvsHoverProvider } from './providers/pvsHoverProvider';
 import { PvsCodeLensProvider } from './providers/pvsCodeLensProvider';
+import { PvsLinter } from './providers/pvsLinter';
 import { getErrorRange, findTheories, FileList, TheoryMap, TheoryList, TccList } from './common/languageUtils';
 import * as fs from './common/fsUtils';
 import * as path from 'path';
@@ -107,6 +108,7 @@ class PvsLanguageServer {
 	private definitionProvider: PvsDefinitionProvider;
 	private hoverProvider: PvsHoverProvider;
 	private codeLensProvider: PvsCodeLensProvider;
+	private linter: PvsLinter;
 	/**
 	 * @constructor
 	 */
@@ -144,13 +146,15 @@ class PvsLanguageServer {
 			if (this.pvsProcess) {
 				// parse importchain
 				this.pvsProcess.parseAll();
+				// TODO: send diagnostics
 			}
 		});
 
 		// This event fires when a document is saved
 		this.documents.onDidSave(save => {
 			if (this.pvsProcess) {
-				this.provideDiagnostics(save.document).then(function (diagnostics: Diagnostic[]) {
+				this.provideDiagnostics(save.document).then((diagnostics: Diagnostic[]) => {
+					diagnostics = diagnostics.concat(this.linter.provideDiagnostics(save.document))
 					// Send the computed diagnostics to VS Code. This will trigger the visualization of red wavy lines under the error.
 					connection.sendDiagnostics({ uri: save.document.uri, diagnostics });
 				});
@@ -200,6 +204,7 @@ class PvsLanguageServer {
 		if (!HOVER_PROVIDER_DISABLED) {
 			this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
 		}
+		this.linter = new PvsLinter();
 
 		// parse all files in the current context
 		this.pvsProcess.parseAll();
