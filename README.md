@@ -5,7 +5,7 @@ Requirements
 Installation
 ==
 * In visual studio, go to Preferences/Extensions and select "Install from VSIX".
-In the file finder window, browse for the file releases/vscode-pvs-1.0.5.vsix
+In the file finder window, browse for the file releases/vscode-pvs-x.x.x.vsix
 
 Contact:
 * Paolo Masci (NIA) (paolo.m.masci@nasa.gov)
