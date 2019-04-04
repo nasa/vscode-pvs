@@ -18,7 +18,7 @@ $./install-sh
 * Clone the pvslib repository and checkout the branch pvs7.0
 ```
 $ git clone git@gitlab.larc.nasa.gov:larc-nia-fm/pvslib.git nasalib
-$ git checkout pvs7.0`
+$ git checkout pvs7.0
 ```
 
 Contact:
