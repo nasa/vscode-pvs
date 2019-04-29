@@ -1,5 +1,5 @@
 export interface PvsExecutionContext {
 	pvsPath: string,
-	pvsContextPath: string,
+	pvsContextFolder: string,
 	pvsServerPath: string
 }

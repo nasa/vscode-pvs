@@ -1,0 +1,36 @@
+{
+	"comments": {
+		"lineComment": "%"
+	},
+	"brackets": [
+		["{", "}"],
+		["[", "]"],
+		["(", ")"]
+	],
+	"autoClosingPairs": [
+		{ "open": "(", "close": ")" },
+		{ "open": "[", "close": "]" },
+		{ "open": "{", "close": "}" },
+		{ "open": "#", "close": " #" },
+		{ "open": "'", "close": "'", "notIn": ["string", "comment"] },
+		{ "open": "\"", "close": "\"", "notIn": ["string", "comment"] }
+	],
+	"surroundingPairs": [
+		["{", "}"],
+		["[", "]"],
+		["(", ")"],
+		["#", "#"],
+		["\"", "\""]
+	],
+	"folding": {
+		"markers": {
+			"start": "\\bBEGIN\\b|\\bbegin\\b|\\bCOND\\b|\\bcond\\b|\\bIF\\b|\\bif\\b|%%$",
+			"end": "\\bEND\\b|\\bend\\b|\\bENDCOND\\b|\\bendcond\\b|\\bENDIF\\b|\\bendif\\b|%\\s*$"
+		}
+	},
+	"indentationRules": {
+		"increaseIndentPattern": "^((?!\\%).)*(\\bTHEORY\\b|\\bBEGIN\\b)",
+		"decreaseIndentPattern": "^((?!.*?\\%).*)?\\s*END\\b",
+		"unIndentedLinePattern": "\\s*$"
+	}
+}

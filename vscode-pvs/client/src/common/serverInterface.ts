@@ -55,7 +55,7 @@ export interface PvsFindDeclarationRequest {
 	line?: number;
 	character?: number;
 }
-export interface PvsFindDeclarationResponse {
+export interface PvsDefinition {
 	file?: string;
 	theory?: string;
 	line?: number;
@@ -97,7 +97,8 @@ export interface PvsErrorType {
 };
 export interface PvsResponseType {
 	error: PvsErrorType,
-	res: any
+	res: any, // json object -- TODO: define the different types of objects, include a field "type" in each object
+	raw: string // raw output of pvs-lisp
 };
 
 export const PRELUDE_FILE: string = "*prelude*";
@@ -110,12 +111,14 @@ export const PVS_LIBRARY_FILES: { [ key: string ] : string } = {
 	"union_adt": "union_adt.pvs"
 };
 
-export function getFilename(path: string, opt?: { removeFileExtension?: boolean }) {
+export function getFilename(fileName: string, opt?: { removeFileExtension?: boolean }) {
 	opt = opt || {};
-	const pathlessFileName = path.split("/").slice(-1)[0];
-	return (opt.removeFileExtension && pathlessFileName.endsWith(".pvs")) ?
-				pathlessFileName.substr(0, pathlessFileName.length - 4)
-					: pathlessFileName;
+	const pathlessFileName = fileName.includes("/") ? fileName.split("/").slice(-1)[0] : fileName;
+	if (opt.removeFileExtension &&
+			(pathlessFileName.endsWith(".pvs") || pathlessFileName.endsWith(".tccs"))) {
+		return pathlessFileName.split(".").slice(0, -1).join(".");
+	}
+	return pathlessFileName;
 }
 export function getPathname(path: string) {
 	return path.split("/").slice(0, -1).join("/");
@@ -141,16 +144,17 @@ export interface TccDescriptor {
 	character: number; // position (character) of the symbol in the pvs file
 	msg: string; // tcc message
 	status: string; // tcc status
+	content: string; // this is the textual version of the tcc, including comments and proof obligation
 }
 
 export interface TccDescriptorArray {
 	theoryName: string; // theory name
-	fileName: string; // file where the theory is defined
-	tccs: TccDescriptor[]; // list of tccs
+	fileName: string; // pvs file containing the theory
+	tccs: TccDescriptor[]; // structured view of the list of tccs generated for the theory
 }
 
-export function hasPvsExtension(fileName: string) {
-	return fileName.endsWith('.pvs');
+export function isPvsFile(fileName: string) {
+	return fileName.endsWith('.pvs') || fileName.endsWith('.tccs');
 }
 
 export interface PvsSymbolKind<type> {
@@ -180,7 +184,7 @@ export interface EvaluationResult {
 export interface FormulaDescriptor {
 	fileName: string,
 	theoryName: string,
-	formula: string,
+	formulaName: string,
 	line: number
 };
 

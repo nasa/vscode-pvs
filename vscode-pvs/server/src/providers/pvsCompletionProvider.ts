@@ -45,7 +45,7 @@ import { PVS_BUILTIN_TYPES, PVS_KEYWORDS, PVS_TRUE_FALSE, PVS_LIBRARY_FUNCTIONS 
 import { PvsDeclarationDescriptor } from '../common/serverInterface';
 import { PvsDefinitionProvider } from './pvsDefinitionProvider';
 import * as languageUtils from "../common/languageUtils";
-import { PvsFindDeclarationResponse } from '../common/serverInterface';
+import { PvsDefinition } from '../common/serverInterface';
 
 interface IntellisenseTriggers {
 	recordExpression: RegExp,
@@ -53,9 +53,10 @@ interface IntellisenseTriggers {
 };
 
 const isense: IntellisenseTriggers = {
-	recordExpression: /(\w+)\s*=\s*\(\#/g, // rc1: Rec1 = (#... 
+	recordExpression: /(\w+)\s*=\s*\(\#(?:\s*(?:\w+)\s*:=(?:.*,)?)*/g, // /(\w+)\s*=\s*\(\#/g, // rc1: Rec1 = (#... 
 	recordAccessor: /(\w+)`/g // rc1`...
 };
+
 
 export class PvsCompletionProvider {
 	private definitionProvider: PvsDefinitionProvider;
@@ -66,7 +67,7 @@ export class PvsCompletionProvider {
 	 */
 	constructor (declarationProvider: PvsDefinitionProvider) {
 		this.definitionProvider = declarationProvider;
-		const types: CompletionItem[] = PVS_BUILTIN_TYPES.map(function (tp) {
+		const types: CompletionItem[] = PVS_BUILTIN_TYPES.map((tp) => {
 			return {
 				label: tp,
 				insertText: tp,
@@ -74,7 +75,7 @@ export class PvsCompletionProvider {
 				kind: CompletionItemKind.Constant
 			}
 		});
-		const keywords: CompletionItem[] = PVS_KEYWORDS.map(function (keyword) {
+		const keywords: CompletionItem[] = PVS_KEYWORDS.map((keyword) => {
 			return {
 				label: (keyword !== 'o') ? keyword.toUpperCase() : keyword, // make all uppercase, except operator o
 				insertText: (keyword !== 'o') ? keyword.toUpperCase() : keyword,
@@ -82,7 +83,7 @@ export class PvsCompletionProvider {
 				kind: CompletionItemKind.Keyword
 			}
 		});
-		const truefalse: CompletionItem[] = PVS_TRUE_FALSE.map(function (x) {
+		const truefalse: CompletionItem[] = PVS_TRUE_FALSE.map((x) => {
 			return {
 				label: x.toUpperCase(),
 				insertText: x.toUpperCase(),
@@ -90,7 +91,7 @@ export class PvsCompletionProvider {
 				kind: CompletionItemKind.Constant
 			}
 		});
-		const functions: CompletionItem[] = PVS_LIBRARY_FUNCTIONS.map(function (x) {
+		const functions: CompletionItem[] = PVS_LIBRARY_FUNCTIONS.map((x) => {
 			return {
 				label: x,
 				insertText: x,
@@ -107,45 +108,59 @@ export class PvsCompletionProvider {
 	 * @param token Cancellation token
 	 */
 	async provideCompletionItems(document: TextDocument, position: Position): Promise<CompletionItem[]> {
-		if (document && this.definitionProvider) {
-			const lines: string[] = document.getText().split("\n");
-			if (lines && lines.length > position.line) {
-				const lineText: string = lines[position.line];
-				const currentInput: string = lineText.substr(0, position.character).trim();
-				let localSymbols: PvsDeclarationDescriptor[] = []; // TODO
+		if (document) {
+			const lastCharacter: string = document.getText({
+				start: { line: position.line, character: (position.character > 0) ? position.character - 1 : 0 },
+				end: position
+			});
+			if (lastCharacter === "\\") {
+				// math mode, implemented using snippets
+				return Promise.resolve([]);
+			}
+			if (this.definitionProvider) {
+				const lines: string[] = document.getText().split("\n");
+				if (lines && lines.length > position.line) {
+					const lineText: string = lines[position.line];
+					const currentInput: string = lineText.substr(0, position.character).trim();
+					let localSymbols: PvsDeclarationDescriptor[] = []; // TODO
 
-				let match: RegExpExecArray = null;
-				if (match = (isense.recordExpression.exec(currentInput) || isense.recordAccessor.exec(currentInput))) {
-					// RegExp objects are stateful, we need to reset them every time
-					isense.recordExpression.lastIndex = isense.recordAccessor.lastIndex = 0; 
-					const symbolName: string = match[1];
-					let decl: PvsFindDeclarationResponse = await this.definitionProvider.findSymbolDefinition(document, symbolName, position);
-					if (decl.symbolDeclaration) {
-						let tmp: RegExpExecArray = languageUtils.RECORD.declaration.exec(decl.symbolDeclaration);
-						languageUtils.RECORD.declaration.lastIndex = 0;
-						// const id: string = tmp[1];
-						const isTypeDeclaration: boolean = tmp[2].toUpperCase() === "TYPE";
-						// const isUninterpreted: boolean = !tmp[3];
-						if (!isTypeDeclaration) {
-							const typeName: string = tmp[2];
-							decl = await this.definitionProvider.findSymbolDefinition(document, typeName);
+					let match: RegExpMatchArray = null;
+					if (match = (isense.recordExpression.exec(currentInput) || isense.recordAccessor.exec(currentInput))) {
+						// RegExp objects are stateful, we need to reset them every time
+						isense.recordExpression.lastIndex = isense.recordAccessor.lastIndex = 0; 
+						const symbolName: string = match[1];
+						let declarations: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document, symbolName, position);
+						if (declarations && declarations.length === 1 && declarations[0].symbolDeclaration) {
+							let decl: PvsDefinition = declarations[0];
+							let tmp: RegExpExecArray = languageUtils.RECORD.declaration.exec(decl.symbolDeclaration);
+							languageUtils.RECORD.declaration.lastIndex = 0;
+							// const id: string = tmp[1];
+							const isTypeDeclaration: boolean = tmp[2].toUpperCase() === "TYPE";
+							// const isUninterpreted: boolean = !tmp[3];
+							if (!isTypeDeclaration) {
+								const typeName: string = tmp[2];
+								let definitions: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document, typeName);
+								decl = (definitions && definitions.length === 1) ? definitions[0] : null;
+							}
+							if (decl) {
+								tmp = languageUtils.RECORD.accessors.exec(decl.symbolDeclaration);
+								languageUtils.RECORD.accessors.lastIndex = 0;
+								if (tmp && tmp.length > 1) {
+									const recordFields: string = tmp[1];
+									const fieldNames: CompletionItem[] = recordFields.split(",").map(function (decl) {
+										const insertText: string = decl.split(":")[0].trim();
+										return {
+											label: decl.trim(),
+											insertText: insertText,
+											kind: CompletionItemKind.Field
+										};
+									});
+									return Promise.resolve(fieldNames);
+								}
+							}
 						}
-						tmp = languageUtils.RECORD.accessors.exec(decl.symbolDeclaration);
-						languageUtils.RECORD.accessors.lastIndex = 0;
-						if (tmp && tmp.length > 1) {
-							const recordFields: string = tmp[1];
-							const fieldNames: CompletionItem[] = recordFields.split(",").map(function (decl) {
-								const insertText: string = decl.split(":")[0].trim();
-								return {
-									label: decl.trim(),
-									insertText: insertText,
-									kind: CompletionItemKind.Field
-								};
-							});
-							return Promise.resolve(fieldNames);
-						}
+						return Promise.resolve([]);
 					}
-					return Promise.resolve([]);
 				}
 			}
 		}

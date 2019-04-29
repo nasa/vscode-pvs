@@ -1,8 +1,5 @@
 {
 	"iconDefinitions": {
-		"_pvs_file": {
-			"iconPath": "pvs-file.svg"
-		},
 		"_pvs_icon": {
 			"iconPath": "pvs-icon.png"
 		}

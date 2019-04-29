@@ -40,15 +40,16 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { PvsFindDeclarationResponse } from '../common/serverInterface';
-import { TextDocument, Position, CancellationToken, Hover } from 'vscode-languageserver';
+import { PvsDefinition } from '../common/serverInterface';
+import { TextDocument, Position, CancellationToken, Hover, Range } from 'vscode-languageserver';
 import { MarkedString } from 'vscode-languageserver-types';
 import { PvsDefinitionProvider } from "./pvsDefinitionProvider";
-import { PVS_LIBRARY_FILES, getPathname } from '../common/serverInterface';
+import { PVS_LIBRARY_FILES, getPathname, isPvsFile } from '../common/serverInterface';
+import * as language from "../common/languageKeywords";
 import * as path from 'path';
 
 export class PvsHoverProvider {
-	/**
+	/**`
 	 * Pointer to the definition provider
 	 */
 	private definitionProvider: PvsDefinitionProvider;
@@ -73,39 +74,59 @@ export class PvsHoverProvider {
 	 * @param token Cancellation token (optional).
 	 */
 	async provideHover (document: TextDocument, position: Position, token?: CancellationToken): Promise<Hover> {
-		if (document.uri.endsWith(".pvs")) {
-			let desc: PvsFindDeclarationResponse = await this.definitionProvider.provideDefinition(document, position, null);
-			if (desc) {
-				let contents: MarkedString[] = [];
-				if (desc.symbolTheory && desc.symbolDeclaration) {
-					if (desc.symbolDeclarationRange && desc.symbolDeclarationFile) {
-						const folder = (PVS_LIBRARY_FILES[desc.symbolDeclarationFile]) ?
-										this.definitionProvider.getLibrariesPath()
-											: this.definitionProvider.getContextPath();
-						const fileName = PVS_LIBRARY_FILES[desc.symbolDeclarationFile] || (desc.symbolDeclarationFile + ".pvs");
-						const link: MarkedString = // encoded as a markdown string
-							"[" + desc.symbolDeclarationFile + ".pvs "
-								+ "(Ln " + desc.symbolDeclarationRange.start.line 
-								+ ", Col " + desc.symbolDeclarationRange.start.character + ")]"
-							+ "(file://" + path.join(folder, fileName)
-							+ "#L" + desc.symbolDeclarationRange.start.line	+ ")";
-							// + ", Col " + desc.symbolDeclarationRange.start.character + ")";
-						contents.push(link);
+		if (isPvsFile(document.uri)) {
+			// load the text preceeding the current position and check if this is a comment
+			const line: string = document.getText({
+				start: { line: position.line, character: 0 },
+				end: { line: position.line, character: position.character }
+			});
+			// check if the cursor is over a comment -- if that's the case, do nothing
+			const commentRegex: RegExp = new RegExp(language.PVS_COMMENT_REGEXP_SOURCE, "gi");
+			const isComment: boolean = commentRegex.test(line);
+			if (isComment) { return null; }
+			// else, not a comment
+			let definitions: PvsDefinition[] = await this.definitionProvider.provideDefinition(document, position, null);
+			if (definitions) {
+				if (definitions.length === 1) {
+					const desc: PvsDefinition = definitions[0];
+					let contents: MarkedString[] = [];
+					if (desc.error) {
+						// errors are shown alone in the hover to avoid cluttering
+						contents.push(desc.error.msg);
+					} else {
+						if (desc.comment) {
+							contents.push({
+								value: desc.comment,
+								language: "pvs"
+							});
+						}
+						if (desc.symbolTheory && desc.symbolDeclaration) {
+							if (desc.symbolDeclarationRange && desc.symbolDeclarationFile) {
+								const folder = (PVS_LIBRARY_FILES[desc.symbolDeclarationFile]) ?
+												this.definitionProvider.getLibrariesPath()
+													: this.definitionProvider.getContextPath();
+								const fileName = PVS_LIBRARY_FILES[desc.symbolDeclarationFile] || (desc.symbolDeclarationFile + ".pvs");
+								const link: MarkedString = // encoded as a markdown string
+									"[" + desc.symbolDeclarationFile + ".pvs "
+										+ "(Ln " + desc.symbolDeclarationRange.start.line 
+										+ ", Col " + desc.symbolDeclarationRange.start.character + ")]"
+									+ "(file://" + path.join(folder, fileName)
+									+ "#L" + desc.symbolDeclarationRange.start.line	+ ")";
+									// + ", Col " + desc.symbolDeclarationRange.start.character + ")";
+								contents.push(link);
+							}
+							const content: MarkedString = {
+								value: desc.symbolDeclaration,
+								language: "pvs"
+							};
+							contents.push(content);
+						}
 					}
-					const content: MarkedString = {
-						value: desc.symbolDeclaration,
-						language: "pvs"
+					return {
+						contents: contents,
+						range: { start: position, end: position } // the hover is located at the mouse position
 					};
-					contents.push(content);
-				} else if (desc.comment) {
-					contents.push(desc.comment);
-				} else if (desc.error) {
-					contents.push(desc.error.msg);
 				}
-				return {
-					contents: contents,
-					range: { start: position, end: position } // the hover is located at the mouse position
-				};
 			}
 		}
 		return null;

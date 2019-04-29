@@ -1,21 +1,37 @@
 {
 	"name": "pvs",
 	"scopeName": "source.pvs",
-	"fileTypes": ["pvs"],
+	"fileTypes": ["pvs", "ppe", "tccs", "prf"],
+	"description": "see https://macromates.com/manual/en/language_grammars for the complete list of patterns/names",
 	"patterns": [
 		{
-            "match": "%.*",
-            "name": "comment.line.percentage"
+			"match": "%.*",
+			"name": "comment.line.percentage"
 		},
 		{
-            "begin": "\"",
-            "end": "\"",
-            "name": "string.quoted.double"
+			"begin": "\"",
+			"end": "\"",
+			"name": "string.quoted.double"
 		},
 		{
-            "match": "(?:[+-]?)\\b(\\d+\/\\d+)|(?:[+-]?)\\b(?:\\d+(?:\\.\\d+)?)",
-            "name": "constant.numeric"
+			"match": "([+-]?)\\b(\\d+\/\\d+)|([+-]?)\\b(\\d+(?:\\.\\d+)?)",
+			"name": "constant.numeric"
+		},
+		{
+			"match": "\\bbool\\b|\\bboolean\\b|\\bnat\\b|\\bnatural\\b|\\bint\\b|\\binteger\\b|\\breal\\b|\\brational\\b|\\bnumber\\b|\\bstring\\b|\\bvoid\\b|\\bposreal\\b|\\bnonneg_real\\b|\\bnnreal\\b|\\bnzreal\\b|\\blist\\b|\\bset\\b|\\bnegreal\\b|\\bnonzero_real\\b|\\bnonpos_real\\b|\\bnonzero_integer\\b|\\bnonneg_rat\\b|\\bposnat\\b|\\bnzint\\b|\\brat\\b|\\bnpreal\\b|\\bnonpos_rat\\b|\\bposrat\\b|\\bnegrat\\b|\\bnzrat\\b|\\bnnrat\\b|\\bnprat\\b|\\beven_int\\b|\\bodd_int\\b|\\bnonneg_int\\b|\\bnonpos_int\\b|\\bposint\\b|\\bnegint\\b|\\bbit\\b|\\bnbit\\b",
+			"name": "support.type"
+		},
+		{
+			"match": "\\bAND\\b|\\bANDTHEN\\b|\\bARRAY\\b|\\bAS\\b|\\bASSUMING\\b|\\bASSUMPTION\\b|\\b(?!AUTO_REWRITE[\\+\\-])AUTO_REWRITE\\b|\\bAUTO_REWRITE[\\+\\-]|\\bAXIOM\\b|\\bBEGIN\\b|\\bBUT\\b|\\bBY\\b|\\bCASES\\b|\\bCHALLENGE\\b|\\bCLAIM\\b|\\bCLOSURE\\b|\\bCODATATYPE\\b|\\bCOINDUCTIVE\\b|\\bCOND\\b|\\bCONJECTURE\\b|\\bCONTAINING\\b|\\bCONVERSION[\\+\\-]?|\\bCOROLLARY\\b|\\bDATATYPE\\b|\\bELSE\\b|\\bELSIF\\b|\\bEND\\b|\\bENDASSUMING\\b|\\bENDCASES\\b|\\bENDCOND\\b|\\bENDIF\\b|\\bENDTABLE\\b|\\bEXISTS\\b|\\bEXPORTING\\b|\\bFACT\\b|\\bFORALL\\b|\\bFORMULA\\b|\\bFROM\\b|\\bFUNCTION\\b|\\bHAS_TYPE\\b|\\bIF\\b|\\bIFF\\b|\\bIMPLIES\\b|\\bIMPORTING\\b|\\bIN\\b|\\bINDUCTIVE\\b|\\bJUDGEMENT\\b|\\bLAMBDA\\b|\\bLAW\\b|\\bLEMMA\\b|\\bLET\\b|\\bLIBRARY\\b|\\bMACRO\\b|\\bMEASURE\\b|\\bNONEMPTY_TYPE\\b|\\bNOT\\b|\\bO\\b|\\bOBLIGATION\\b|\\bOF\\b|\\bOR\\b|\\bORELSE\\b|\\bPOSTULATE\\b|\\bPROPOSITION\\b|\\bRECURSIVE\\b|\\bSUBLEMMA\\b|\\bSUBTYPES\\b|\\bSUBTYPE_OF\\b|\\bTABLE\\b|\\bTHEN\\b|\\bTHEOREM\\b|\\bTHEORY\\b|\\b(?!TYPE\\+)TYPE\\b|\\TYPE\\+|\\bVAR\\b|\\bWHEN\\b|\\bWHERE\\b|\\bWITH\\b|\\bXOR\\b|\\(\\:|\\:\\)|\\(\\#|\\#\\)|\\[\\#|\\#\\]|\\:\\=|\\/\\=|\\<?\\=\\>",
+			"name": "keyword"
+		},
+		{
+			"match": "\\btrue\\b|\\bfalse\\b|\\bTRUE\\b|\\bFALSE\\b",
+			"name": "constant.language"
+		},
+		{
+			"match": "\\bcons\\b|\\bcar\\b|\\bcdr\\b|\\bstr2pvs\\b|\\bpvs2str\\b|\\babs\\b|\\bnth\\b|\\blength\\b|\\breverse\\b|\\bceiling\\b|\\bfloor\\b|\\bfractional\\b|\\bexpt\\b|\\bpred\\b|\\bPRED\\b|\\bpredicate\\b|\\bPREDICATE\\b|\\bsetof\\b|\\bSETOF\\b|\\bunique\\?$|\\binjective\\?$|\\bsurjective\\?$|\\binverse\\?$|\\bbijective\\?$|\\bupto\\b|\\bbelow\\b|\\bupfrom\\b|\\babove\\b|\\bsubrange\\b|\\bmember\\b|\\bempty\\?$|\\bemptyset\\b|\\bnonempty\\?$|\\bfull\\?$|\\bfullset\\b|\\bnontrivial\\?$|\\bsubset\\?$|\\bstrict_subset\\?$|\\bunion\\b|\\bintersection\\b|\\bdisjoint\\?$|\\bcomplement\\b|\\bdifference\\b|\\bsymmetric_difference\\b|\\bevery\\b|\\bsome\\b|\\bsingleton\\?$|\\bsingleton\\b|\\badd\\b|\\bremove\\b|\\bchoose\\b|\\bthe\\b|\\brest\\b|\\bpowerset\\b|\\bUnion\\b|\\bIntersection\\b|\\beven\\?$|\\bodd\\?$",
+			"name": "support.function"
 		}
 	]
 }
-  

@@ -5,12 +5,13 @@ import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } f
 import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
 import { log } from './utils/logger';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
-import { VSCodePvsHoverProvider } from './providers/vscodePvsHoverProvider';
-import { MultiStepInput } from './theoryExplorer/multiStepInput';
+// import { VSCodePvsHoverProvider } from './providers/vscodePvsHoverProvider-obsolete';
+// import { MultiStepInput } from './theoryExplorer/multiStepInput';
 import { VSCodePvsExplorer } from './views/vscodePvsExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
 import { VSCodePVSioTerminal } from './views/vscodePVSioTerminal'; 
 import { VSCodePvsTerminal } from './views/vscodePvsTerminal';
+import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 1000; //ms
@@ -20,22 +21,23 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	private client: LanguageClient;
 
 	// input manager
-	private inputManager: MultiStepInput;
+	// private inputManager: MultiStepInput;
 
 	// context variables
 	private context: ExtensionContext;
-	private pvsContextPath: string;
+	private pvsContextFolder: string;
 	private pvsVersionInfo: string;
 
 	private timers: {[key: string]: NodeJS.Timer } = {};
 
 	// data providers for the text editor
-	private hoverProvider: VSCodePvsHoverProvider;
+	// private hoverProvider: VSCodePvsHoverProvider;
 	private decorationProvider: VSCodePvsDecorationProvider;
 	private emacsBindingsProvider: VSCodePvsEmacsBindingsProvider;
 
 	// data provider for the tree views
 	private theoriesDataProvider: VSCodePvsExplorer;
+	private proofDataProvider: VSCodePvsProofExplorer;
 
 	// integrated terminals for PVSio
 	private pvsioTerminal: VSCodePVSioTerminal;
@@ -63,7 +65,13 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		});
 		this.client.onRequest("server.status.update", (msg: string) => {
 			window.setStatusBarMessage(msg);
-		})
+		});
+		this.client.onRequest("server.status.info", (msg: string) => {
+			window.showInformationMessage(msg);
+		});
+		this.client.onRequest("server.status.error", (msg: string) => {
+			window.showErrorMessage(msg);
+		});
 		this.client.onRequest("server.response.pvs.init", (pvsVersionInfo: string) => {
 			this.pvsVersionInfo = pvsVersionInfo;
 			window.setStatusBarMessage(pvsVersionInfo);
@@ -73,24 +81,23 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			// 	vscode.window.showTextDocument(document, vscode.window.activeTextEditor.viewColumn + 1, true);
 			// });
 			let content: string = ans.msg + "\n" + ans.result;
-			workspace.openTextDocument({ language: 'pvs', content: content }).then(function (document) {
+			workspace.openTextDocument({ language: 'pvs', content: content }).then((document: TextDocument) => {
 				window.showTextDocument(document, window.activeTextEditor.viewColumn + 1, true);
 			});
 		});
-		this.client.onRequest("server.response.proveit", async function (ans: comm.ProofResult) {
+		this.client.onRequest("server.response.proveit", async (ans: comm.ProofResult) => {
 			// vscode.workspace.openTextDocument(vscode.Uri.parse("untitled:animation.result")).then(function (document) {
 			// 	vscode.window.showTextDocument(document, vscode.window.activeTextEditor.viewColumn + 1, true);
 			// });
 			let content: string = ans.result;
-			workspace.openTextDocument({ language: 'sequent', content: content }).then(function (document) {
+			workspace.openTextDocument({ language: 'sequent', content: content }).then((document: TextDocument) => {
 				window.showTextDocument(document, window.activeTextEditor.viewColumn + 1, true);
 			});
 			// // Create and show panel
 			// const panel = new SequentView();
 			// panel.showSequents(content);
 
-
-			let res = await _this.inputManager.createInputBox();
+			// let res = await _this.inputManager.createInputBox();
 
 			// const terminal = vscode.window.createTerminal("Ext Terminal #1");
 			// terminal.sendText(content);
@@ -108,7 +115,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		});
 		window.onDidChangeActiveTextEditor(editor => {
 			// event emitted when the active editor focuses on a new document
-			if (editor.document && editor.document.fileName.endsWith(".pvs")) {
+			if (editor.document && comm.isPvsFile(editor.document.fileName)) {
 				// update decorations
 				this.decorationProvider.updateDecorations(editor);
 				// trigger file parsing to get syntax diagnostics
@@ -118,7 +125,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		}, null, _this.context.subscriptions);
 		workspace.onDidChangeTextDocument(event => {
 			// event emitted when the document changes
-			if (event.document.fileName.endsWith(".pvs")) {
+			if (comm.isPvsFile(event.document.fileName)) {
 				this.decorationProvider.updateDecorations(window.activeTextEditor);
 				this.autosave(event.document); // this will trigger diagnostics (parsefile updates diagnostics every time the file is saved on disk)
 				// this.theoriesDataProvider.showTheories(window.activeTextEditor.document.fileName);
@@ -135,19 +142,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.client.sendRequest('pvs.proveit', resource);
 		});
 		context.subscriptions.push(cmd);
-		cmd = commands.registerCommand('cmd.typecheck-file', (explorerResource) => {
-			if (explorerResource) {
-				// FIXME: rename cmd.typecheck-file to explorer.typecheck-file and move the command definition to VSCodePvsExplorer
-				this.client.sendRequest('pvs.typecheck-file', {
-					fileName: explorerResource.path
-				});
-			} else {
-				// ExplorerResource is null when using shortcut C-t.
-				// In this case, the file name is given by the file opened in the active editor
-				this.client.sendRequest('pvs.typecheck-file', {
-					fileName: window.activeTextEditor.document.fileName
-				});
-			}
+		cmd = commands.registerCommand('editor.typecheck-file', () => {
+			// typechecking: shortcut C-t
+			// The file name is given by the file opened in the active editor
+			this.client.sendRequest('pvs.typecheck-file-and-show-tccs', window.activeTextEditor.document.fileName);
 		});
 		context.subscriptions.push(cmd);
 
@@ -213,36 +211,42 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		await this.client.start(); // this will start also the server
 		await this.client.onReady();
 		this._registerHandlers();
-		this.pvsContextPath = comm.getPathname(window.activeTextEditor.document.fileName);
+		this.pvsContextFolder = comm.getPathname(window.activeTextEditor.document.fileName);
 
 		// request initialisation of pvs
 		let pvsExecutionContext: PvsExecutionContext = {
 			pvsPath: workspace.getConfiguration().get("pvs.path"),
-			pvsContextPath: this.pvsContextPath, // document.fileName include the path name
+			pvsContextFolder: this.pvsContextFolder, // document.fileName include the path name
 			pvsServerPath: this.context.asAbsolutePath(server_path)
 		};
-		await this.client.sendRequest('pvs.init', pvsExecutionContext);
-		
-		// initialise service providers defined on the client-side
-		this.decorationProvider = new VSCodePvsDecorationProvider();
-		this.hoverProvider = new VSCodePvsHoverProvider(this.client);
-		this.hoverProvider.activate(this.context);
-		this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client);
-		this.emacsBindingsProvider.activate(this.context);
 
-		this.pvsioTerminal = new VSCodePVSioTerminal(this.pvsVersionInfo);
-		this.pvsioTerminal.activate(this.context);
+		setTimeout(async () => {
+			await this.client.sendRequest('pvs.init', pvsExecutionContext);
+			
+			// initialise service providers defined on the client-side
+			this.decorationProvider = new VSCodePvsDecorationProvider();
+			// this.hoverProvider = new VSCodePvsHoverProvider(this.client);
+			// this.hoverProvider.activate(this.context);
+			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client);
+			this.emacsBindingsProvider.activate(this.context);
 
-		this.pvsTerminal = new VSCodePvsTerminal();
-		this.pvsTerminal.activate(this.context);
+			this.pvsioTerminal = new VSCodePVSioTerminal(this.pvsVersionInfo);
+			this.pvsioTerminal.activate(this.context);
 
-		this.inputManager = new MultiStepInput(this.client);
-		this.theoriesDataProvider = new VSCodePvsExplorer(this.client, 'pvs-explorer-view');
-		this.theoriesDataProvider.activate(this.context);
+			// this.inputManager = new MultiStepInput(this.client);
+			this.theoriesDataProvider = new VSCodePvsExplorer(this.client, 'theory-explorer-view');
+			this.theoriesDataProvider.activate(this.context);
 
-		if (window.activeTextEditor && window.activeTextEditor.document.fileName.endsWith(".pvs")) {
-			this.decorationProvider.updateDecorations(window.activeTextEditor);
-		}
+			this.proofDataProvider = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
+			this.proofDataProvider.activate(this.context);
+
+			this.pvsTerminal = new VSCodePvsTerminal(this.theoriesDataProvider);
+			this.pvsTerminal.activate(this.context);
+
+			if (window.activeTextEditor && comm.isPvsFile(window.activeTextEditor.document.fileName)) {
+				this.decorationProvider.updateDecorations(window.activeTextEditor);
+			}
+		}, 2000);
 	}
 	stop () {
 		if (this.client) {
@@ -251,7 +255,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		return Promise.resolve();
 	}
 }
-
 
 
 const pvsLanguageClient = new PvsLanguageClient();

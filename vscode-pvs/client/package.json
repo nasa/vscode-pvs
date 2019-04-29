@@ -10,20 +10,16 @@
 		"url": "xxx"
 	},
 	"engines": {
-		"vscode": "^1.26.0"
-	},
-	"scripts": {
-		"update-vscode": "vscode-install",
-		"postinstall": "vscode-install"
+		"vscode": "^1.33.1"
 	},
 	"dependencies": {
-		"vscode-languageclient": "^4.1.4",
-		"handlebars": "^4.1.0",
-		"bootstrap": "4.3.0",
-		"mkdirp": "^0.5.1",
-		"rimraf": "^2.6.2"
+		"vscode-languageclient": "^5.2.1"
 	},
 	"devDependencies": {
-		"vscode": "^1.1.30"
+		"vscode": "^1.1.33"
+	},
+	"dependencies?": {
+		"mkdirp": "^0.5.1",
+		"rimraf": "^2.6.2"
 	}
 }

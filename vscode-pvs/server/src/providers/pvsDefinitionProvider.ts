@@ -40,20 +40,22 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { PvsDeclarationDescriptor, PvsFindDeclarationResponse, PvsDeclarationType, PRELUDE_FILE, PvsResponseType } from '../common/serverInterface';
+import { PvsDeclarationDescriptor, PvsDefinition, PvsDeclarationType, PRELUDE_FILE, PvsResponseType, getFilename } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
-import { Connection, TextDocument, Position, Range, CancellationToken } from 'vscode-languageserver';
+import { Connection, TextDocument, Position, Range, CancellationToken, TextDocuments } from 'vscode-languageserver';
 import { PvsProcess } from '../pvsProcess';
-import { findTheoryName, getWordRange } from '../common/languageUtils';
+import { findTheoryName, getWordRange, getText } from '../common/languageUtils';
 import { PvsFindDeclarationInterface, PvsShowImportChain } from '../pvsLisp';
 
 export class PvsDefinitionProvider {
 	connection: Connection;
 	private pvsProcess: PvsProcess;
+	private documents: TextDocuments;
 	// private isenseSymbols: { [key: string]: PvsDeclarationDescriptor } = {};
 
-	constructor(pvsProcess: PvsProcess) {
+	constructor(pvsProcess: PvsProcess, documents: TextDocuments) {
 		this.pvsProcess = pvsProcess;
+		this.documents = documents;
 	}
 
 	/**
@@ -79,7 +81,7 @@ export class PvsDefinitionProvider {
 	 * Returns the current pvs context path
 	 */
 	public getContextPath () {
-		return this.pvsProcess.getContextPath();
+		return this.pvsProcess.getContextFolder();
 	}
 
 	/**
@@ -96,9 +98,15 @@ export class PvsDefinitionProvider {
 	 * @param line Optional argument, line where the symbol is used, helps to narrow down the list of potential definitions in the case of symbol overloading
 	 * @param character Optional argument, character (i.e., column) where the symbol is used, helps to narrow down the list of potential definitions in the case of symbol overloading
 	 */
-	async findSymbolDefinition (document: TextDocument, symbolName: string, position?: Position): Promise<PvsFindDeclarationResponse> {
-		const currentTheory: string = position ? findTheoryName(document.getText(), position.line) : null;
-		let response: PvsFindDeclarationResponse = {
+	async findSymbolDefinition (document: TextDocument, symbolName: string, position?: Position): Promise<PvsDefinition[]> {
+		let currentTheory: string = null;
+		if (document.uri.endsWith(".tccs") && position) {
+			currentTheory = getFilename(document.uri, { removeFileExtension: true });
+		} else {
+			// .pvs file
+			currentTheory = (position) ? findTheoryName(document.getText(), position.line) : null;
+		}
+		let response: PvsDefinition = {
 			file: document.uri,
 			theory: currentTheory,
 			line: (position) ? position.line : null,
@@ -112,87 +120,80 @@ export class PvsDefinitionProvider {
 			comment: null,
 			error: null
 		};
-		let isNumber: boolean = new RegExp(language.PVS_NUMBER_REGEXP_SOURCE).test(symbolName);
-		let isString: boolean = new RegExp(language.PVS_STRING_REGEXP_SOURCE).test(symbolName);
-		let isKeyword: boolean = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi").test(symbolName);
+		const isNumber: boolean = new RegExp(language.PVS_NUMBER_REGEXP_SOURCE).test(symbolName);
 		if (isNumber) {
 			this.printInfo("Number " + symbolName);
-			response.comment = "Number  " + symbolName;
-		} else if (isString) {
+			// response.comment = "Number  " + symbolName;
+			return [ response ];
+		}
+		const isString: boolean = new RegExp(language.PVS_STRING_REGEXP_SOURCE).test(symbolName);
+		if (isString) {
 			this.printInfo("String " + symbolName);
-			response.comment = "String  " + symbolName;
-		} else if (isKeyword) {
+			response.comment = "String " + symbolName;
+			return [ response ];
+		}
+		const isKeyword: boolean = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi").test(symbolName);
+		if (isKeyword) {
 			this.printInfo("Keyword " + symbolName);
-			response.comment = "Keyword  " + symbolName;
-		} else {
-			const path = document.uri.trim().split("/");
-			const fileName = path[path.length - 1].split(".pvs")[0];
-			if (fileName !== PRELUDE_FILE) {
-				// find-declaration works even if a pvs file does not parse correctly 
-				let ans: PvsResponseType = await this.pvsProcess.findDeclaration(symbolName);
+			response.comment = "Keyword " + symbolName.toUpperCase();
+			return [ response ];
+		} 
+		// else
+		const path = document.uri.trim().split("/");
+		const fileName = path[path.length - 1].split(".pvs")[0];
+		if (fileName !== PRELUDE_FILE) {
+			// find-declaration works even if a pvs file does not parse correctly 
+			let ans: PvsResponseType = await this.pvsProcess.findDeclaration(symbolName);
+			// find-declaration may return more than one result -- the file is not typechecked
+			// we can narrow down the results by traversing the importchain
+			// part of this extra logic can be removed when Sam completes the implementation of find-object
+			if (ans.res && ans.res !== {}) {
 				const allDeclarations: PvsFindDeclarationInterface = ans.res;
-				// find-declaration may return more than one result -- the file is not typechecked
-				// we can narrow down the results by traversing the importchain
-				if (ans.res && ans.res !== {}) {
-					// first, check if the symbol is defined in the current theory
-					if (currentTheory && allDeclarations[currentTheory + "." + symbolName]) {
-						response = allDeclarations[currentTheory + "." + symbolName];
-					} else {
-						// otherwise check the importchain
-						const candidates: PvsDeclarationDescriptor[] = Object.keys(allDeclarations).map(function (key) {
-							const info: PvsDeclarationType = allDeclarations[key];
-							const ans: PvsDeclarationDescriptor = {
-								theory: currentTheory,
-								line: (position) ? position.line : null,
-								character: (position) ? position.character : null,
-								file: document.uri,
-								symbolName: symbolName,
-								symbolTheory: info.symbolTheory,
-								symbolDeclaration: (info) ? info.symbolDeclaration : null,
-								symbolDeclarationRange: (info) ? info.symbolDeclarationRange : null,
-								symbolDeclarationFile: (info) ? info.symbolDeclarationFile : null,
-								symbolDoc: null,
-								comment: null,
-								error: null
-							}
-							return ans;
-						});
-						if (candidates.length === 0) {
-							this.printWarning("Could not find declaration :/");
-						} else if (candidates.length === 1) {
-							response = candidates[0];
-						} else {
-							const filteredResults: PvsDeclarationDescriptor[] = candidates.filter(function (desc) {
-								return !(desc.symbolDeclarationFile == PRELUDE_FILE && 
-											/^\w+\s*:\s*VAR\s+\w+/gi.test(desc.symbolDeclaration)); // VAR declarations from the prelude
-							});
-							const withoutObsoletePrelude: PvsDeclarationDescriptor[] = filteredResults.filter(function (desc) {
-								return !(desc.symbolDeclarationFile == PRELUDE_FILE && 
-											new RegExp(language.PVS_PRELUDE_OBSOLETE_THEORIES_REGEXP_SOURCE, "g").test(desc.symbolTheory));
-							});
-							let fromImportChain: PvsDeclarationDescriptor[] = [];
-							const resp: PvsResponseType = await this.pvsProcess.showImportChain(currentTheory);
-							const importChain: PvsShowImportChain = resp.res;
-							if (importChain.theories.length > 0) {
-								fromImportChain = filteredResults.filter(function (desc) {
-									return importChain.theories.indexOf(desc.symbolTheory) >= 0;
-								});
-							}
-							if (filteredResults.length === 1) {
-								response = filteredResults[0];
-							} else if (fromImportChain.length >= 1) {
-								response = fromImportChain[0];
-							} else if (withoutObsoletePrelude.length === 1) {
-								response = withoutObsoletePrelude[0];
-							} else {
-								this.printWarning("Found several candidate declarations :/");
-							}
-						}
+				let candidates: PvsDefinition[] = Object.keys(allDeclarations).map(key => {
+					const info: PvsDeclarationType = allDeclarations[key];
+					const ans: PvsDefinition = {
+						theory: currentTheory,
+						line: (position) ? position.line : null,
+						character: (position) ? position.character : null,
+						file: document.uri,
+						symbolName: symbolName,
+						symbolTheory: info.symbolTheory,
+						symbolDeclaration: (info) ? info.symbolDeclaration : null,
+						symbolDeclarationRange: (info) ? info.symbolDeclarationRange : null,
+						symbolDeclarationFile: (info) ? info.symbolDeclarationFile : null,
+						symbolDoc: null,
+						comment: null,
+						error: null
 					}
+					return ans;
+				});
+				// remove VAR from prelude
+				candidates = candidates.filter(desc => {
+					return !(desc.symbolDeclarationFile == PRELUDE_FILE && 
+								/^\w+\s*:\s*VAR\s+\w+/gi.test(desc.symbolDeclaration)); // VAR declarations from the prelude
+				});
+				// remove obsolete prelude theories
+				candidates = candidates.filter(desc => {
+					return !(desc.symbolDeclarationFile == PRELUDE_FILE && 
+								new RegExp(language.PVS_PRELUDE_OBSOLETE_THEORIES_REGEXP_SOURCE, "g").test(desc.symbolTheory));
+				});
+				if (candidates.length === 0) {
+					this.printWarning("Could not find declaration :/");
+					return null;
 				}
+				if (candidates.length === 1) {
+					response = candidates[0];
+					const isBuiltinType: boolean = new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g").test(symbolName);
+					if (isBuiltinType) {
+						response.comment = 'Builtin type ' + symbolName;
+					}
+					return [ response ];
+				} 
+				// else
+				return candidates;
 			}
 		}
-		return response;
+		return null;
 	}
 
 	/**
@@ -201,13 +202,19 @@ export class PvsDefinitionProvider {
 	 * @param position Current cursor position
 	 * @param token Cancellation token (optional)
 	 */
-	async provideDefinition(document: TextDocument, position: Position, token?: CancellationToken): Promise<PvsFindDeclarationResponse> {
-		const symbolRange: Range = getWordRange(document.getText(), position); 
-		const symbolName: string = document.getText(symbolRange);
-		const line: number = symbolRange.start.line + 1; // vscode starts lines from 0, we want to start from 1 (as in pvs)
-		const character: number = symbolRange.start.character;
-		// const fileName: string = document.uri;
-		// const theoryName: string = this.findTheory(document, line);
-		return this.findSymbolDefinition(document, symbolName, { line: line, character: character });
+	async provideDefinition(document: TextDocument, position: Position, token?: CancellationToken): Promise<PvsDefinition[]> {
+		const txt: string = document.getText();
+		const symbolRange: Range = getWordRange(txt, position);
+		// sanity check
+		if (symbolRange.end.character > position.character) {
+			const symbolName: string = document.getText(symbolRange);
+			const line: number = symbolRange.start.line + 1; // vscode starts lines from 0, we want to start from 1 (as in pvs)
+			const character: number = symbolRange.start.character;
+			// const fileName: string = document.uri;
+			// const theoryName: string = this.findTheory(document, line);
+			const definitions: PvsDefinition[] = await this.findSymbolDefinition(document, symbolName, { line: line, character: character });
+			return definitions;
+		}
+		return Promise.resolve(null);
 	}
 }

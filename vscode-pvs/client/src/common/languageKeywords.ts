@@ -1,7 +1,27 @@
 "use strict";
 
 export function regExpSource(v: Array<string>) {
-	return "\\b" + v.join("\\b|\\b") + "\\b";
+	v = v.filter((elem:string) => {
+		return elem !== "auto_rewrite+" && elem !== "auto_rewrite-" && elem !== "type+";
+	}).map((elem: string) => {
+		// keywords ending with +/- need negative lookahead
+		// regex /\btype\+?/ is not good enough because it does not check the keyword boundary (e.g., types would be captured)
+		// regexp /\btype\+?\b/ does not work either, because \b is designed to work with words, not \+ symbols
+		if (elem === "type") {
+			return "\\b(?!" + elem + "\\+)"
+					+ elem + "\\b|\\b" + elem + "\\+";
+		} else if (elem === "auto_rewrite") {
+			return "\\b(?!" + elem + "[\\+\\-])"
+					+ elem + "\\b|\\b" + elem + "[\\+\\-]";
+		}
+		const op: string = elem.includes("?") ? "?"
+							: elem.includes("+") ? "+" 
+							: elem.includes("!") ? "!" : null;
+		return (op) ? "\\b" + elem.replace(op, "\\" + op)
+					: "\\b" + elem + "\\b";
+	});
+	let ans: string = v.join("|");
+	return ans;
 }
 
 // from pvs-prover-helps.el
@@ -59,15 +79,18 @@ export const PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE: string = BRACKETS_REGEXP + "|
 // 										+ "|\\bwhere\\b|\\bthen\\b|\\btype\\b|\\bwhen\\b|\\bwhile\\b|\\bwith\\b|\\blet\\b|\\bsetvariable\\b"
 // 										+ "|\\[#|#\\]|[(]#|#[)]";
 
+// todo: make the list of builtin types consistent with that in pvs-language.json 
 export const PVS_BUILTIN_TYPES: string[] = [ "bool", "boolean", "nat", "natural", "int", "integer", "real", "string",
 												"void", "posreal", "nonneg_real", "nnreal", "nzreal", "list", "set",
 												"negreal", "nonzero_real", "nonpos_real", "nonzero_integer", "nonneg_rat",
-												"posnat", "nzint", "rat" ];
+												"posnat", "nzint", "rat", "npreal", "nonpos_rat", "posrat", "negrat", "nzrat",
+											 	"nnrat", "nonneg_int", "nonpos_int", "posint", "negint" ];
 export const PVS_BUILTIN_TYPE_REGEXP_SOURCE: string = regExpSource(PVS_BUILTIN_TYPES);
 // export const PVS_BUILTIN_TYPES_REGEXP = new RegExp(PVS_BUILTIN_TYPES_REGEXP_SOURCE, "gi");
 
 export const PVS_LIBRARY_FUNCTIONS: string[] = [ "cons", "car", "cdr", "str2pvs", "pvs2str", "abs", "nth", "length", "reverse",
-												 "ceiling", "floor", "fractional", "expt" ];
+												 "ceiling", "floor", "fractional", "expt", "pred", "PRED", "predicate", "PREDICATE", "setof", "SETOF",
+												 "unique?", "injective?", "surjective?", "bijective?", "upto", "below", "upfrom", "above", "subrange" ];
 export const PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE: string = regExpSource(PVS_LIBRARY_FUNCTIONS);
 
 export const PVS_NUMBER_REGEXP_SOURCE: string = "([+-]?)\\b(\\d+\/\\d+)|([+-]?)\\b(\\d+(?:\\.\\d+)?)"; // the first two capturing groups are sign and value for rationals (e.g., -1/12); the second two groups are sign and value for integers (e.g., +1) and reals (e.g., +0.12)
@@ -76,3 +99,17 @@ const PVS_PRELUDE_OBSOLETE_THEORIES: string[] = [ "int_types", "nat_types" ];
 export const PVS_PRELUDE_OBSOLETE_THEORIES_REGEXP_SOURCE: string = regExpSource(PVS_PRELUDE_OBSOLETE_THEORIES);
 
 export const PVS_STRING_REGEXP_SOURCE: string = '\"[^\"]*\"';
+
+export const PVS_IDENTIFIER_REGEXP_SOURCE: string = "\\w+|^|<|>|<=|=>"
+
+export interface SnippetType {
+	description: string,
+	prefix: string,
+	scope: string,
+	body: string[]
+};
+
+export function regexpOr(regexpSourceV: string[], mod?: string): RegExp {
+	mod = mod || "g";
+	return new RegExp(regexpSourceV.join("|"), mod);
+}

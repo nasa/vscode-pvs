@@ -94,31 +94,31 @@ export class PvsCodeLensProvider {
                 }
             }
             // proveit
-            else if (/\s*%\s*@\s*proveit\b/gi.test(lines[i])) {
-                let txt: string = lines.slice(i).join("\n");
-                let match: RegExpMatchArray = /\s*%\s*@\s*proveit\b\s*(?:(?:\s*%[^\n]*\s*)*)(\w+)/gi.exec(txt);
-                if (match[1]) {
-					let theoryName: string = findTheoryName(doc, i);
-                    let range: Range = {
-						start: { line: i + 1, character: 0 },
-						end: { line: i + 1, character: 10 }
-					};
-                    let req: FormulaDescriptor = {
-                        fileName: fileName,
-                        theoryName: theoryName,
-                        formula: match[1],
-                        line: range.start.line
-                    };
-                    codeLens.push({
-						range: range,
-						command: {
-							title: "prove " + match[1],
-							command: "cmd.proveit",
-							arguments: [ req ]
-						}
-					});
-                }
-            }
+            // else if (/\s*%\s*@\s*proveit\b/gi.test(lines[i])) {
+            //     let txt: string = lines.slice(i).join("\n");
+            //     let match: RegExpMatchArray = /\s*%\s*@\s*proveit\b\s*(?:(?:\s*%[^\n]*\s*)*)(\w+)/gi.exec(txt);
+            //     if (match[1]) {
+			// 		let theoryName: string = findTheoryName(doc, i);
+            //         let range: Range = {
+			// 			start: { line: i + 1, character: 0 },
+			// 			end: { line: i + 1, character: 10 }
+			// 		};
+            //         let req: FormulaDescriptor = {
+            //             fileName: fileName,
+            //             theoryName: theoryName,
+            //             formulaName: match[1],
+            //             line: range.start.line
+            //         };
+            //         codeLens.push({
+			// 			range: range,
+			// 			command: {
+			// 				title: "prove " + match[1],
+			// 				command: "cmd.proveit",
+			// 				arguments: [ req ]
+			// 			}
+			// 		});
+            //     }
+            // }
         }
         return codeLens;
     }

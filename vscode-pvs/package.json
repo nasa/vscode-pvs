@@ -1,11 +1,11 @@
 {
 	"name": "vscode-pvs",
 	"displayName": "PVS",
-	"description": "Prototype Verification System: combining formal specification, proof checking, and model animation",
+	"description": "Integrates the PVS theorem prover into Visual Studio Code",
 	"icon": "icons/pvs-icon.png",
 	"author": "Paolo Masci",
 	"license": "NASA OPEN SOURCE AGREEMENT",
-	"version": "1.0.5",
+	"version": "1.0.9",
 	"repository": {
 		"type": "git",
 		"url": "xxx"
@@ -16,7 +16,7 @@
 		"multi-root ready"
 	],
 	"engines": {
-		"vscode": "^1.26.0"
+		"vscode": "^1.33.1"
 	},
 	"activationEvents": [
 		"onLanguage:pvs",
@@ -25,17 +25,40 @@
 	],
 	"main": "./client/out/pvsLanguageClient",
 	"contributes": {
+		"notes": {
+			"description": "These contributed settings can be read using vscode.workspace.getConfiguration('pvs')"
+		},
 		"configuration": [
 			{
 				"type": "object",
-				"title": "Prototype Verification System (PVS)",
+				"title": "PVS: Prototype Verification System",
 				"properties": {
 					"pvs.path": {
 						"type": "string",
-						"default": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
+						"default": "/home/nia/github/PVS/pvs-7.0-851",
 						"pvs7": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
 						"pvs6": "/Users/pmasci/Work/pvs-snapshots/PVS-6",
-						"description": "Path to the PVS executable"
+						"description": "PVS installation folder"
+					},
+					"pvs.settings.completionProvider": {
+						"type": "boolean",
+						"default": true,
+						"description": "Enable completion provider."
+					},
+					"pvs.settings.definitionProvider": {
+						"type": "boolean",
+						"default": true,
+						"description": "Enable definition provider."
+					},
+					"pvs.settings.hoverProvider": {
+						"type": "boolean",
+						"default": true,
+						"description": "Enable hover provider."
+					},
+					"pvs.settings.codelensProvider": {
+						"type": "boolean",
+						"default": true,
+						"description": "Enable codelens provider for literate programming."
 					}
 				}
 			}
@@ -61,8 +84,13 @@
 		"views": {
 			"explorer": [
 				{
-					"id": "pvs-explorer-view",
+					"id": "theory-explorer-view",
 					"name": "PVS Theories",
+					"when": "resourceExtname == .pvs"
+				},
+				{
+					"id": "proof-explorer-view",
+					"name": "Proof Explorer",
 					"when": "resourceExtname == .pvs"
 				}
 			]
@@ -71,6 +99,10 @@
 			{
 				"language": "pvs",
 				"path": "./snippets.json"
+			},
+			{
+				"language": "pvs",
+				"path": "./symbols.json"
 			}
 		],
 		"languageServerExample.trace.server": {
@@ -121,69 +153,149 @@
 				"title": "Prove formula"
 			},
 			{
-				"command": "cmd.typecheck-file",
-				"title": "typecheck-file"
+				"command": "editor.typecheck-file",
+				"title": "Typecheck"
 			},
 			{
-				"command": "cmd.typecheck-theory",
+				"command": "explorer.typecheck-file-and-show-tccs",
 				"title": "TYPECHECK"
 			},
 			{
-				"command": "cmd.typecheck-all",
+				"command": "explorer.typecheck-all",
 				"title": "typecheck-all"
 			},
 			{
-				"command": "cmd.tcp",
-				"title": "PROVE TCCs"
+				"command": "explorer.typecheck-prove",
+				"title": "PROVE-ALL"
 			},
 			{
-				"command": "cmd.prove-tcc",
+				"command": "explorer.prove-tcc",
 				"title": "PROVE"
 			},
 			{
-				"command": "terminal.PVSio",
+				"command": "terminal.pvsio",
 				"title": "PVSio terminal"
 			},
 			{
-				"command": "pvs.terminal.prove",
+				"command": "terminal.pvs.prove",
 				"title": "PVS theorem prover (terminal)"
+			},
+			{
+				"command": "proof-explorer.grind",
+				"title": "grind"
+			},
+			{
+				"command": "proof-explorer.assert",
+				"title": "assert"
+			},
+			{
+				"command": "proof-explorer.skosimp*",
+				"title": "skosimp*"
+			},
+			{
+				"command": "proof-explorer.inst?",
+				"title": "inst?"
+			},
+			{
+				"command": "proof-explorer.flatten",
+				"title": "flatten"
+			},
+			{
+				"command": "proof-explorer.lift-if",
+				"title": "lift-if"
+			},
+			{
+				"command": "proof-explorer.split",
+				"title": "split"
+			},
+			{
+				"command": "proof-explorer.postpone",
+				"title": "postpone"
+			},
+			{
+				"command": "proof-explorer.undo",
+				"title": "undo"
 			}
 		],
 		"menus": {
-			"editor/context": [
-				{
-					"command": "cmd.typecheck-file",
-					"when": "resourceExtname == .pvs"
-				}
-			],
 			"explorer/context": [
 				{
-					"command": "cmd.typecheck-file",
+					"command": "explorer.typecheck-file-and-show-tccs",
 					"when": "resourceExtname == .pvs"
 				}
 			],
 			"view/item/context": [
 				{
-					"command": "cmd.tcp",
-					"when": "view == pvs-explorer-view && viewItem == TCCs",
+					"command": "explorer.typecheck-prove",
+					"when": "view == theory-explorer-view && viewItem == TCCs",
 					"group": "inline"
 				},
 				{
-					"command": "cmd.typecheck-theory",
-					"when": "view == pvs-explorer-view && viewItem == theory",
+					"command": "explorer.typecheck-file-and-show-tccs",
+					"when": "view == theory-explorer-view && viewItem == theory",
+					"group": "inline"
+				},
+				{
+					"command": "proof-explorer.grind",
+					"when": "view == proof-explorer-view && viewItem == vdash",
+					"group": "inline"
+				},
+				{
+					"command": "proof-explorer.grind",
+					"when": "view == proof-explorer-view && viewItem == vdash",
+					"group": "simplificationRule"
+				},
+				{
+					"command": "proof-explorer.assert",
+					"when": "view == proof-explorer-view && viewItem == vdash",
+					"group": "simplificationRule"
+				},
+				{
+					"command": "proof-explorer.skosimp*",
+					"when": "view == proof-explorer-view && viewItem == vdash",
+					"group": "quantifierRule"
+				},
+				{
+					"command": "proof-explorer.inst?",
+					"when": "view == proof-explorer-view && viewItem == vdash",
+					"group": "quantifierRule"
+				},
+				{
+					"command": "proof-explorer.flatten",
+					"when": "view == proof-explorer-view && viewItem == vdash",
+					"group": "propositionalRule"
+				},
+				{
+					"command": "proof-explorer.lift-if",
+					"when": "view == proof-explorer-view && viewItem == vdash",
+					"group": "propositionalRule"
+				},
+				{
+					"command": "proof-explorer.split",
+					"when": "view == proof-explorer-view && viewItem == vdash",
+					"group": "propositionalRule"
+				},
+				{
+					"command": "proof-explorer.postpone",
+					"when": "view == proof-explorer-view && viewItem == vdash",
+					"group": "controlRule"
+				},
+				{
+					"command": "proof-explorer.undo",
+					"when": "view == proof-explorer-view && viewItem == proofCommand",
 					"group": "inline"
 				}
 			],
 			"editor/title/context": [
 				{
-					"command": "cmd.typecheck-file",
+					"command": "editor.typecheck-file",
 					"when": "resourceExtname == .pvs"
 				}
 			],
 			"view/title": [
 				{
-					"command": "cmd.typecheck-all",
-					"when": "view == pvs-explorer-view",
+					"command": "explorer.typecheck-all",
+					"when": "view == theory-explorer-view",
 					"group": "pvs"
 				}
 			]
@@ -200,22 +312,36 @@
 				"when": "resourceExtname == .pvs"
 			},
 			{
+				"key": "alt+x",
+				"command": "pvsemacs.M-x",
+				"when": "resourceExtname == .tccs"
+			},
+			{
+				"key": "shift+alt+x",
+				"command": "pvsemacs.M-x",
+				"when": "resourceExtname == .tccs"
+			},
+			{
 				"key": "ctrl+t",
-				"command": "cmd.typecheck-file",
+				"command": "editor.typecheck-file",
 				"when": "resourceExtname == .pvs"
+			},
+			{
+				"key": "ctrl+alt+g",
+				"command": "proof-explorer.grind",
+				"when": "resourceLangId == pvs"
 			}
 		],
 		"languages": [
 			{
 				"id": "pvs",
 				"extensions": [
-					".pvs"
+					".pvs",
+					".tccs",
+					".ppe",
+					".prf"
 				],
-				"aliases": [
-					"pvs",
-					"PVS"
-				],
-				"configuration": "./pvs-language-configuration.json"
+				"configuration": "./syntax/pvs-language-configuration.json"
 			}
 		],
 		"grammars": [
@@ -281,15 +407,6 @@
 				}
 			},
 			{
-				"id": "constant.numeric",
-				"description": "Decoration color for numbers",
-				"defaults": {
-					"dark": "#e0f584",
-					"light": "#7d8a43f8",
-					"highContrast": "#7d8a43f8"
-				}
-			},
-			{
 				"id": "pvs.strings.color",
 				"description": "Decoration color for numbers",
 				"defaults": {
@@ -319,18 +436,22 @@
 		]
 	},
 	"scripts": {
-		"vscode:prepublish": "cd client && npm run update-vscode && cd .. && npm run compile",
+		"vscode:prepublish": "cd client && cd .. && npm run compile",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
-		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-		"debugTerminal": "node --inspect /Users/pmasci/Work/gitlab/pvsui/vscode-pvs/server/out/pvsCmd.js /Users/pmasci/Work/pvs-snapshots/pvs-7.0-851/pvs"
+		"postinstall": "cd client && npm install && cd ../server && npm install && cd .."
+	},
+	"dependencies": {
+		"vsce": "^1.59.0",
+		"@types/node": "^8.9.1",
+		"typescript": "^3.4.3"
 	},
 	"devDependencies": {
-		"vsce": "1.58.0",
-		"@types/mocha": "^5.2.0",
-		"@types/node": "^8.9.1",
+		"vscode": "^1.1.33",
 		"tslint": "^5.11.0",
-		"typescript": "^3.1.3",
-		"vscode": "^1.1.22"
+		"jasmine": "^3.4.0"
+	},
+	"devDependencies?": {
+		"@types/mocha": "^5.2.6"
 	}
 }

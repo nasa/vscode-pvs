@@ -88,22 +88,9 @@ Installing rewrite rule sets.singleton_rew (all instances)
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-
 import { spawn, ChildProcess } from 'child_process';
-import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
-import * as language from "./common/languageKeywords";
-import { 
-	PvsResponseType, PvsParserResponse, getFilename, PvsDeclarationDescriptor, getPathname,
-	PRELUDE_FILE, PvsDeclarationType, FormulaDescriptor, ProofResult, PrettyPrintRegionRequest,
-	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
-	PvsFindDeclarationRequest, PvsFindDeclarationResponse, PvsTheoryListDescriptor,
-	TccDescriptorArray, TccDescriptor, PvsFileListDescriptor, PvsTypecheckerResponse
-} from './common/serverInterface'
+import { getFilename } from './common/serverInterface'
 import { Connection, TextDocument } from 'vscode-languageserver';
-import * as path from 'path';
-import { PVS_TRUE_FALSE_REGEXP_SOURCE, PVS_STRING_REGEXP_SOURCE } from "./common/languageKeywords";
-import * as fs from './common/fsUtils';
-import { PvsLisp } from './pvsLisp';
 
 class Console {
 	connection: Connection;
@@ -149,7 +136,7 @@ class PvsProcess {
 	private pvsCmdQueue: Promise<string> = Promise.resolve("");
 	private pvsExecutable: string;
 	private pvsPath: string;
-	private pvsContextPath: string;
+	private pvsContextFolder: string;
 	private console: Console;
 	private pvsCommands: { [key: string]: RegExp } = {
 		"change-context": /\(change-context (.*)\)/g,
@@ -164,7 +151,7 @@ class PvsProcess {
 	constructor (pvsExecutable: string, connection?: Connection) {
 		this.pvsExecutable = pvsExecutable;
 		this.pvsPath = pvsExecutable.split("/").slice(0, -1).join("/");
-		this.pvsContextPath = __dirname;
+		this.pvsContextFolder = __dirname;
 		this.console = new Console(connection);
 	}
 	/**
@@ -257,11 +244,11 @@ class PvsProcess {
 
 	/**
 	 * Changes the current context. When the context is changed, all symbol information are erased and the parser/typechecker needs to be re-run.
-	 * @param contextPath Path of the new context 
+	 * @param contextFolder Path to the pvs working directory 
 	 */
-	async changeContext(contextPath: string): Promise<string> {
-		this.pvsContextPath = contextPath;
-		const cmd: string = '(change-context "' + contextPath + '" t)';
+	async changeContext(contextFolder: string): Promise<string> {
+		this.pvsContextFolder = contextFolder;
+		const cmd: string = '(change-context "' + contextFolder + '" t)';
 		return await this.exec(cmd);
 	}
 	/**

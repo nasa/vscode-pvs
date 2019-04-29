@@ -23,7 +23,7 @@ export class VSCodePVSioTerminal {
         this.pvsVersionInfo = pvsVersionInfo || "PVS";
     }
     activate (context: vscode.ExtensionContext) {
-        context.subscriptions.push(vscode.commands.registerCommand('terminal.PVSio', () => {
+        context.subscriptions.push(vscode.commands.registerCommand('terminal.pvsio', () => {
             // the file extension needs to be removed from the filename
             let activeEditor: vscode.TextEditor = vscode.window.activeTextEditor;
             if (activeEditor) {
