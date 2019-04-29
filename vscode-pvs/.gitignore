@@ -3,5 +3,7 @@ node_modules
 client/out
 server/out
 .DS_Store
+client/.DS_Store
+server/.DS_Store
 *.zip
 *.vsix
