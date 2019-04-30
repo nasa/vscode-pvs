@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { findTheoryName, findTheorem } from '../common/languageUtils';
-import { getPathname, getFilename, isPvsFile } from '../common/serverInterface';
+import * as fs from '../common/fsUtils';
 import { TextDocument } from 'vscode-languageclient';
-import { VSCodePvsExplorer, TheoryDescriptor } from './vscodePvsExplorer';
+import { VSCodePvsExplorer, TheoryDescriptor } from '../views/vscodePvsExplorer';
 
 class ProverTerminal {
     pvsExecutable: string;
@@ -13,7 +13,7 @@ class ProverTerminal {
     constructor (pvsInterpreter: string) {
         this.pvsInterpreter = pvsInterpreter;
         this.pvsExecutable = path.join(vscode.workspace.getConfiguration().get("pvs.path"), "pvs");
-        this.pvsContextFolder = getPathname(vscode.window.activeTextEditor.document.fileName);
+        this.pvsContextFolder = fs.getPathname(vscode.window.activeTextEditor.document.fileName);
         // (<any>this.terminal).onDidWriteData((data: string) => {
         //     console.log(data);
         // });
@@ -100,7 +100,7 @@ export class VSCodePvsTerminal {
         const pvsInterpreter: string = context.asAbsolutePath(path.join('server', 'out', 'pvsCmd'));
         // register handlers
         context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.prove', async () => {
-            if (vscode.window.activeTextEditor && isPvsFile(vscode.window.activeTextEditor.document.fileName)) {
+            if (vscode.window.activeTextEditor && fs.isPvsFile(vscode.window.activeTextEditor.document.fileName)) {
                 const document = vscode.window.activeTextEditor.document;
                 let fileName: string = document.fileName;
                 const text: string = document.getText();
@@ -108,7 +108,7 @@ export class VSCodePvsTerminal {
                 let currentTheory: string = null;
                 if (fileName.endsWith(".tccs")) {
                     // .tccs file
-                    currentTheory = getFilename(document.fileName, { removeFileExtension: true });
+                    currentTheory = fs.getFilename(document.fileName, { removeFileExtension: true });
                     const desc: TheoryDescriptor = this.theoryExplorer.getTheoryDescriptor(currentTheory);
                     if (desc) {
                         fileName = desc.fileName;

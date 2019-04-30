@@ -15,11 +15,15 @@
 	"dependencies": {
 		"vscode-languageclient": "^5.2.1"
 	},
+	"dependencies?": {
+		"rimraf": "^2.6.3"
+	},
 	"devDependencies": {
 		"vscode": "^1.1.33"
 	},
-	"dependencies?": {
-		"mkdirp": "^0.5.1",
-		"rimraf": "^2.6.2"
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -b",
+		"watch": "tsc -b -w"
 	}
 }

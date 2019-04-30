@@ -44,9 +44,10 @@ import { PvsDefinition } from '../common/serverInterface';
 import { TextDocument, Position, CancellationToken, Hover, Range } from 'vscode-languageserver';
 import { MarkedString } from 'vscode-languageserver-types';
 import { PvsDefinitionProvider } from "./pvsDefinitionProvider";
-import { PVS_LIBRARY_FILES, getPathname, isPvsFile } from '../common/serverInterface';
+import { PVS_LIBRARY_FILES } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
 import * as path from 'path';
+import * as fs from '../common/fsUtils';
 
 export class PvsHoverProvider {
 	/**`
@@ -74,7 +75,7 @@ export class PvsHoverProvider {
 	 * @param token Cancellation token (optional).
 	 */
 	async provideHover (document: TextDocument, position: Position, token?: CancellationToken): Promise<Hover> {
-		if (isPvsFile(document.uri)) {
+		if (fs.isPvsFile(document.uri)) {
 			// load the text preceeding the current position and check if this is a comment
 			const line: string = document.getText({
 				start: { line: position.line, character: 0 },

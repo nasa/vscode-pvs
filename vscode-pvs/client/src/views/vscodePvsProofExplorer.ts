@@ -2,11 +2,6 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window, TextDocum
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, MarkdownString, TreeView, Disposable } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { TccDescriptorArray, TccDescriptor, PeekDefinitionCommand, PVS_LIBRARY_FILES, getPathname } from '../common/serverInterface';
-import { TheoryMap, FileList, TheoryList, TccList } from '../common/languageUtils';
-import * as comm from '../common/serverInterface';
-import * as path from 'path';
-import { log } from '../utils/logger';
 
 /**
  * Definition of tree items

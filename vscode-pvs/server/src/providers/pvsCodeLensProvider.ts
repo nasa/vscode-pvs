@@ -43,9 +43,10 @@
  **/
 
 import { TextDocument, CancellationToken, CodeLens, Range } from 'vscode-languageserver';
-import { getFilename, ExpressionDescriptor, FormulaDescriptor } from '../common/serverInterface';
+import { ExpressionDescriptor } from '../common/serverInterface';
 import { PvsDefinitionProvider } from './pvsDefinitionProvider';
 import { findTheoryName } from '../common/languageUtils';
+import * as fs from '../common/fsUtils';
 
 export class PvsCodeLensProvider {
 	private definitionProvider: PvsDefinitionProvider;
@@ -63,7 +64,7 @@ export class PvsCodeLensProvider {
 	 * @param token Cancellation token
 	 */
 	provideCodeLens(document: TextDocument, token?: CancellationToken): CodeLens[] {
-        let fileName: string = getFilename(document.uri);
+        let fileName: string = fs.getFilename(document.uri);
         let codeLens: CodeLens[] = [];
         let doc: string = document.getText();
         let lines: string[] = doc.split("\n");

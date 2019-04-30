@@ -1,6 +1,6 @@
 import { TextEditorDecorationType } from "vscode";
 import * as language from "../common/languageKeywords";
-import { PvsSymbolKind, isPvsFile } from '../common/serverInterface';
+import * as fs from '../common/fsUtils';
 import { window, TextEditor, TextDocument, DecorationOptions, Position, Range } from 'vscode';
 
 const regexp = {
@@ -15,7 +15,7 @@ const keywordsDecorator: TextEditorDecorationType = window.createTextEditorDecor
 
 export class VSCodePvsDecorationProvider {
 	updateDecorations(editor: TextEditor) {
-		if (editor && isPvsFile(editor.document.fileName)) {
+		if (editor && fs.isPvsFile(editor.document.fileName)) {
 			const document: TextDocument = editor.document;
 			const text: string = document.getText();
 			let keywordsDecorations: DecorationOptions[] = [];

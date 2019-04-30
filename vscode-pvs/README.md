@@ -45,8 +45,10 @@ The extension provides the following language features:
 
 
 ## ChangeLog
-### 1.0.9 (2019.04.xx)
+### 1.0.9 (2019.04.29)
 - Performance improvement (parallel typechecking)
+- Added support for automatic context change
+- Code cleanup
 
 ### 1.0.8 (2019.04.16)
 - Improved code navigation (peek definitions)

@@ -43,8 +43,9 @@
 import { spawn, ChildProcess } from 'child_process';
 import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
 import * as language from "./common/languageKeywords";
+// note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import { 
-	PvsResponseType, PvsParserResponse, getFilename, PvsDeclarationDescriptor, getPathname,
+	PvsResponseType, PvsParserResponse, PvsDeclarationDescriptor,
 	PRELUDE_FILE, PvsDeclarationType, FormulaDescriptor, ProofResult, PrettyPrintRegionRequest,
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsFindDeclarationRequest, PvsDefinition, PvsTheoryListDescriptor,
@@ -55,8 +56,12 @@ import * as path from 'path';
 import { PVS_TRUE_FALSE_REGEXP_SOURCE, PVS_STRING_REGEXP_SOURCE } from "./common/languageKeywords";
 import * as fs from './common/fsUtils';
 import { PvsFindDeclarationInterface, PvsLispReader } from './pvsLisp';
-import * as http from 'http';
 // import * as xmlrpcProvider from './common/xmlrpcProvider';
+
+
+export interface ContextDiagnostics {
+	[fileName: string]: PvsParserResponse
+};
 
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
@@ -132,23 +137,23 @@ export class PvsProcess {
 			const msg: string = "PVS busy, cannot execute " + cmd + " :/";
 			return this.cannotExecute(msg);
 		}
-		const _this: PvsProcess = this;
 		const pvsLispReader: PvsLispReader = new PvsLispReader(this.connection);
 		const match: RegExpMatchArray = /\(\b([\w-]+)\b.*\)/.exec(cmd);
 		if (match && match[1]) {
 			const commandId: string = match[1];
+			if (this.connection) { this.connection.console.log(cmd); }
 			return new Promise((resolve, reject) => {
-				const listener = function (data: string) {
-					if (_this.connection) { _this.connection.console.log(data); }// this is the crude pvs lisp output, useful for debugging
+				const listener = (data: string) => {
+					if (this.connection) { this.connection.console.log(data); }// this is the crude pvs lisp output, useful for debugging
 					pvsLispReader.read(data, async (pvsOut: string) => {					
-						_this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-						_this.pvsProcessBusy = false;
+						this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
+						this.pvsProcessBusy = false;
 						const ans: PvsResponseType = pvsLispReader.parse(commandId, pvsOut);
 						resolve(ans);
 					});
 				};
-				_this.pvsProcess.stdout.on("data", listener);
-				_this.pvsProcess.stdin.write(cmd + "\n");
+				this.pvsProcess.stdout.on("data", listener);
+				this.pvsProcess.stdin.write(cmd + "\n");
 			});
 		}
 		if (this.connection) { this.connection.console.error("Unrecognised command " + cmd); }
@@ -289,34 +294,39 @@ export class PvsProcess {
 	// 	});
 	// }
 
-	async pvs(): Promise<{}> {
+	async pvs(): Promise<boolean> {
 		if (!this.pvsProcessBusy) {
 			this.pvsProcessBusy = true;
 			// const pvslispParser = new PvsLisp("pvs-init", this.connection);
 			const pvsLispReader = new PvsLispReader(this.connection);
-			let cmd: string = path.join(this.pvsPath, "pvs");
+			let pvs: string = path.join(this.pvsPath, "pvs");
 			const args: string[] = [ "-raw"];//, "-port", "22334" ];
-			if (this.connection) { this.connection.console.info("Spawning pvs process " + cmd + " " + args.join(" ")); }
-			return new Promise((resolve, reject) => {
-				this.pvsProcess = spawn(cmd, args);
-				this.pvsProcess.stdout.setEncoding("utf8");
-				this.pvsProcess.stderr.setEncoding("utf8");
-				const _this = this;
-				let listener = function (data: string) {
-					if (_this.connection) { _this.connection.console.log(data); } // this is the crude pvs lisp output, useful for debugging
-					// pvslispParser.parse(data, (res: string) => {
-					pvsLispReader.read(data, (res: string) => {
-						// connection.console.info(res);
-						_this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-						_this.pvsProcessBusy = false;
-						resolve();
+			if (this.connection) { this.connection.console.info(`Spawning pvs process ${pvs} ${args.join(" ")}`); }
+			return new Promise(async (resolve, reject) => {
+				const fileExists: boolean = await fs.fileExists(pvs);
+				if (fileExists) {
+					this.pvsProcess = spawn(pvs, args);
+					this.pvsProcess.stdout.setEncoding("utf8");
+					this.pvsProcess.stderr.setEncoding("utf8");
+					let listener = (data: string) => {
+						if (this.connection) { this.connection.console.log(data); } // this is the crude pvs lisp output, useful for debugging
+						// pvslispParser.parse(data, (res: string) => {
+						pvsLispReader.read(data, (res: string) => {
+							// connection.console.info(res);
+							this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
+							this.pvsProcessBusy = false;
+							resolve(true);
+						});
+					};
+					this.pvsProcess.stdout.on("data", listener);
+					this.pvsProcess.stderr.on("data", (data: string) => {
+						if (this.connection) { this.connection.console.log(data); }
 					});
-				};
-				this.pvsProcess.stdout.on("data", listener);
-				this.pvsProcess.stderr.on("data", (data: string) => {
-					if (this.connection) { this.connection.console.log(data); }
-				});
-				if (this.connection) { this.connection.console.info("PVS process ready!"); }
+					if (this.connection) { this.connection.console.info("PVS process ready!"); }
+				} else {
+					console.error(`\n>>> PVS executable not found at ${pvs} <<<\n`);
+					resolve(false)
+				}
 			});
 		}
 	}
@@ -420,9 +430,28 @@ export class PvsProcess {
 	 */
 	async changeContext(contextFolder: string): Promise<PvsResponseType> {
 		// await this.serverProxy.changeContext(contextFolder);
-		const cmd: string = '(change-context "' + contextFolder + '" t)';
-		this.pvsContextFolder = contextFolder;
-		return await this.pvsExec(cmd);
+		const folderExists: boolean = await fs.dirExists(contextFolder);
+		if (folderExists) {
+			// clearing the context is necessary at the moment because the binary files generated by pvs are broken
+			// await this.clearContext();
+			if (contextFolder !== this.pvsContextFolder) {
+				const cmd: string = '(change-context "' + contextFolder + '" nil)';
+				this.pvsContextFolder = contextFolder;
+				return await this.pvsExec(cmd);
+			}
+			return {
+				res: { context: contextFolder },
+				error: null,
+				raw: `Context folder unchanged: ${contextFolder}`
+			};
+		}
+		return {
+			res: null,
+			error: {
+				msg: `Error: Could not change context to ${contextFolder} (folder does not exist or cannot be read).`
+			},
+			raw: null
+		};
 	}
 	/**
 	 * Returns the current context
@@ -584,18 +613,18 @@ export class PvsProcess {
 	}
 	/**
 	 * Parse a file
-	 * @param uri File to be parsed, must be in the current pvs context
+	 * @param fileName File to be parsed, must be in the current pvs context
 	 * @returns Parser result, can be either a message (parse successful), or list of syntax errors
 	 */
-	async parseFile (uri: string): Promise<PvsParserResponse> {
-		const fileName: string = getFilename(uri, { removeFileExtension: true });
-		const filePath: string = getPathname(uri);
+	async parseFile (fileName: string): Promise<PvsParserResponse> {
+		fileName = fs.getFilename(fileName, { removeFileExtension: true });
+		// const filePath: string = getPathname(uri);
 		let response: PvsParserResponse = {
 			fileName: fileName,
 			res: null,
 			error: null
 		};
-		if (!filePath.startsWith(this.pvsPath)) {
+		if (!this.pvsContextFolder.startsWith(this.pvsPath)) {
 			// await _this.pvsProcess.changeContext(filePath);
 			const parserInfo: PvsResponseType = await this._parseFile(fileName);
 			if (parserInfo.error) {
@@ -615,11 +644,15 @@ export class PvsProcess {
 	 * Parse all files in the current context
 	 * @returns Parser result for each file, can be either a message (parse successful), or list of syntax errors
 	 */
-	async parseAll (): Promise<{ [fileName: string]: PvsParserResponse }> {
-		let result: { [ fileName: string ] : PvsParserResponse } = {};
-		let contextFiles: PvsFileListDescriptor = await this.listPvsFiles();
+	async parseCurrentContext (): Promise<ContextDiagnostics> {
+		const result: { [ fileName: string ] : PvsParserResponse } = {};
+		const contextFiles: PvsFileListDescriptor = await this.listPvsFiles();
 		if (contextFiles && contextFiles.fileNames) {
-			for (let i in contextFiles.fileNames) {
+			const context: string = contextFiles.folder;
+			if (this.pvsContextFolder !== context) {
+				await this.changeContext(context);
+			}
+			for (const i in contextFiles.fileNames) {
 				result[contextFiles.fileNames[i]] = await this.parseFile(contextFiles.fileNames[i]);
 			}
 		}
@@ -687,7 +720,7 @@ export class PvsProcess {
 		cmd = '(change-context "' + this.pvsContextFolder + '" t)';
 		await this.pvsioExec("change-context");
 		// typecheck
-		let fileName = getFilename(desc.fileName, { removeFileExtension: true });
+		let fileName = fs.getFilename(desc.fileName, { removeFileExtension: true });
 		cmd = '(typecheck-file "' + fileName + '" nil nil nil)';
 		await this.pvsioExec("typecheck-file");
 		// load semantic attachments
@@ -780,7 +813,7 @@ export class PvsProcess {
 	 * @param tcpFlag Optional flag, triggers automatic proof of tccs
 	 */
 	private async _typecheckFile(uri: string, tcpFlag?: boolean): Promise<PvsResponseType> {
-		let fileName: string = getFilename(uri, { removeFileExtension: true });
+		let fileName: string = fs.getFilename(uri, { removeFileExtension: true });
 
 		// await this.serverProxy.changeContext(this.pvsContextFolder);
 		// await this.serverProxy.typecheck(fileName);
@@ -800,8 +833,8 @@ export class PvsProcess {
 	 * @param tcp Tries to discharge tccs
 	 */
 	async typecheckFile (uri: string, tcp?: boolean): Promise<PvsTypecheckerResponse> {
-		const fileName: string = getFilename(uri, { removeFileExtension: true });
-		const filePath: string = getPathname(uri);
+		const fileName: string = fs.getFilename(uri, { removeFileExtension: true });
+		const filePath: string = fs.getPathname(uri);
 		let response: PvsTypecheckerResponse = {
 			fileName: fileName,
 			res: null,
@@ -813,7 +846,8 @@ export class PvsProcess {
 			if (info.error) {
 				response.error = info.error.parserError;
 			} else {
-				response.res = info.res
+				response.res = info.res;
+				await this.saveContext();
 			}
 		} else {
 			if (this.connection) {
@@ -829,6 +863,35 @@ export class PvsProcess {
 	async typecheckProve (uri: string): Promise<PvsTypecheckerResponse> {
 		return this.typecheckFile(uri, true)
 	}
+
+	private async saveContext(): Promise<PvsResponseType> {
+		const cmd: string = '(save-context)';
+		return await this.pvsExec(cmd);
+	}
+
+	// private async clearContext(): Promise<PvsResponseType> {
+	// 	if (this.pvsContextFolder.startsWith(this.pvsPath)) {
+	// 		const msg: string = `Library files - no need to clear context cache`;
+	// 		if (this.connection) { this.connection.console.info(msg); }
+	// 		return Promise.resolve({
+	// 			error: null,
+	// 			res: null,
+	// 			raw: msg
+	// 		});	
+	// 	} else {
+	// 		const binFolder: string = path.join(this.pvsContextFolder, "pvsbin");
+	// 		const folderExists: boolean = fs.dirExists(binFolder);
+	// 		if (folderExists) {
+	// 			await fs.rmDir(binFolder);
+	// 		}
+	// 		const msg: string = `Context cache ${binFolder} cleared`;
+	// 		return Promise.resolve({
+	// 			error: null,
+	// 			res: null,
+	// 			raw: msg
+	// 		});
+	// 	}
+	// }
 
 	/**
 	 * Typechecks a theory

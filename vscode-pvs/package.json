@@ -35,9 +35,10 @@
 				"properties": {
 					"pvs.path": {
 						"type": "string",
-						"default": "/home/nia/github/PVS/pvs-7.0-851",
-						"pvs7": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
-						"pvs6": "/Users/pmasci/Work/pvs-snapshots/PVS-6",
+						"default": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
+						"pvs7-mac": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
+						"pvs7-linux": "/home/nia/github/PVS/pvs-7.0-851",
+						"pvs6-linux": "...",
 						"description": "PVS installation folder"
 					},
 					"pvs.settings.completionProvider": {
@@ -292,6 +293,12 @@
 					"when": "resourceExtname == .pvs"
 				}
 			],
+			"editor/context": [
+				{
+					"command": "editor.typecheck-file",
+					"when": "resourceExtname == .pvs"
+				}
+			],
 			"view/title": [
 				{
 					"command": "explorer.typecheck-all",
@@ -436,17 +443,16 @@
 		]
 	},
 	"scripts": {
-		"vscode:prepublish": "cd client && cd .. && npm run compile",
+		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd .."
 	},
-	"dependencies": {
+	"dependencies": {},
+	"devDependencies": {
 		"vsce": "^1.59.0",
 		"@types/node": "^8.9.1",
-		"typescript": "^3.4.3"
-	},
-	"devDependencies": {
+		"typescript": "^3.4.3",
 		"vscode": "^1.1.33",
 		"tslint": "^5.11.0",
 		"jasmine": "^3.4.0"

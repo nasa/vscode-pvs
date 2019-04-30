@@ -89,7 +89,7 @@ Installing rewrite rule sets.singleton_rew (all instances)
  * TERMINATION OF THIS AGREEMENT.
  **/
 import { spawn, ChildProcess } from 'child_process';
-import { getFilename } from './common/serverInterface'
+import * as fs from './common/fsUtils';
 import { Connection, TextDocument } from 'vscode-languageserver';
 
 class Console {
@@ -310,7 +310,7 @@ class PvsProcess {
 	 * @param tcpFlag Optional flag, triggers automatic proof of tccs
 	 */
 	async typecheckFile(uri: string, tcpFlag?: boolean): Promise<string> {
-		let fileName: string = getFilename(uri, { removeFileExtension: true });
+		let fileName: string = fs.getFilename(uri, { removeFileExtension: true });
 		const cmd: string = (tcpFlag) ? 
 			'(typecheck-file "' + fileName + '" nil t nil)'
 				: '(typecheck-file "' + fileName + '" nil nil nil)';

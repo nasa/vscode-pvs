@@ -9,9 +9,10 @@ import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProv
 // import { MultiStepInput } from './theoryExplorer/multiStepInput';
 import { VSCodePvsExplorer } from './views/vscodePvsExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
-import { VSCodePVSioTerminal } from './views/vscodePVSioTerminal'; 
-import { VSCodePvsTerminal } from './views/vscodePvsTerminal';
+import { VSCodePVSioTerminal } from './terminals/vscodePVSioTerminal'; 
+import { VSCodePvsTerminal } from './terminals/vscodePvsTerminal';
 import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
+import * as fs from './common/fsUtils';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 1000; //ms
@@ -110,22 +111,23 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			// window.setStatusBarMessage("M-x " + ans.res, 3200);
 			// do nothing for now.
 		});
-		this.client.onRequest("server.response.parse-importchain", function (ans: comm.PvsParserResponse) {
+		this.client.onRequest("server.response.change-context-and-parse-files", function (ans: comm.PvsParserResponse) {
 			// do nothing for now.
 		});
 		window.onDidChangeActiveTextEditor(editor => {
 			// event emitted when the active editor focuses on a new document
-			if (editor.document && comm.isPvsFile(editor.document.fileName)) {
+			if (editor.document && fs.isPvsFile(editor.document.fileName)) {
 				// update decorations
 				this.decorationProvider.updateDecorations(editor);
 				// trigger file parsing to get syntax diagnostics
-				this.client.sendRequest('pvs.parse-importchain', window.activeTextEditor.document.fileName);
+				const context: string = fs.getPathname(window.activeTextEditor.document.fileName);
+				this.client.sendRequest('pvs.change-context-and-parse-files', context);
 				// this.theoriesDataProvider.showTheories(window.activeTextEditor.document.fileName);
 			}
 		}, null, _this.context.subscriptions);
 		workspace.onDidChangeTextDocument(event => {
 			// event emitted when the document changes
-			if (comm.isPvsFile(event.document.fileName)) {
+			if (fs.isPvsFile(event.document.fileName)) {
 				this.decorationProvider.updateDecorations(window.activeTextEditor);
 				this.autosave(event.document); // this will trigger diagnostics (parsefile updates diagnostics every time the file is saved on disk)
 				// this.theoriesDataProvider.showTheories(window.activeTextEditor.document.fileName);
@@ -211,7 +213,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		await this.client.start(); // this will start also the server
 		await this.client.onReady();
 		this._registerHandlers();
-		this.pvsContextFolder = comm.getPathname(window.activeTextEditor.document.fileName);
+		this.pvsContextFolder = fs.getPathname(window.activeTextEditor.document.fileName);
 
 		// request initialisation of pvs
 		let pvsExecutionContext: PvsExecutionContext = {
@@ -243,7 +245,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.pvsTerminal = new VSCodePvsTerminal(this.theoriesDataProvider);
 			this.pvsTerminal.activate(this.context);
 
-			if (window.activeTextEditor && comm.isPvsFile(window.activeTextEditor.document.fileName)) {
+			if (window.activeTextEditor && fs.isPvsFile(window.activeTextEditor.document.fileName)) {
 				this.decorationProvider.updateDecorations(window.activeTextEditor);
 			}
 		}, 2000);

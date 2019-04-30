@@ -44,25 +44,9 @@ import { spawn, ChildProcess } from 'child_process';
 import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
 import * as language from "./common/languageKeywords";
 import { 
-	PvsResponseType, PvsParserResponse, getFilename, PvsDeclarationDescriptor, getPathname,
-	PRELUDE_FILE, PvsDeclarationType, FormulaDescriptor, ProofResult, PrettyPrintRegionRequest,
-	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
-	PvsFindDeclarationRequest, PvsDefinition, PvsTheoryListDescriptor,
-	TccDescriptorArray, TccDescriptor, PvsFileListDescriptor, PvsTypecheckerResponse
+	PvsResponseType, PRELUDE_FILE, PvsDeclarationType, PvsTheoryListDescriptor, TccDescriptor
 } from './common/serverInterface'
-import { Connection, TextDocument } from 'vscode-languageserver';
-import * as path from 'path';
-import { PVS_TRUE_FALSE_REGEXP_SOURCE, PVS_STRING_REGEXP_SOURCE } from "./common/languageKeywords";
-import * as fs from './common/fsUtils';
 
-interface ParseExpressionDescriptor {
-	kind: string
-};
-interface PvsShowDeclarationInterface {
-	theoryName: string,
-	declaration: string,
-	comment: string
-}
 export interface PvsFindDeclarationInterface {
     [ key: string ] : PvsDeclarationType;
 }
@@ -174,11 +158,14 @@ export class PvsLispReader {
 					const PVS_PARSE_FILE_ERROR_REGEXP = /Parsing (.*)([\w\W\n]+)In file (\w*)\s*\(line (\d+), col (\d+)\)/gim;
 					const matchParserError: RegExpMatchArray = PVS_PARSE_FILE_ERROR_REGEXP.exec(data);
 					if (matchParserError && matchParserError.length === 6) {
-						ans.error.parserError = {
-							msg: matchParserError[2],
-							fileName: matchParserError[3],
-							line: +matchParserError[4],
-							character: +matchParserError[5]
+						ans.error = {
+							msg: `Error while parsing ${matchParserError[1]}`,
+							parserError: {
+								msg: matchParserError[2],
+								fileName: matchParserError[3],
+								line: +matchParserError[4],
+								character: +matchParserError[5]
+							}
 						};
 					} else {
 						if (this.connection) { this.connection.console.error("Unexpected parser error\n" + data); }
@@ -188,7 +175,7 @@ export class PvsLispReader {
 					ans.error = {
 						msg: match[0],
 						parserError: {
-							msg: match[0],
+							msg: `PVS file ${match[0]} is not in the current context`,
 							fileName: (match.length > 2) ? match[2] : "",
 							line: 0,
 							character: 0

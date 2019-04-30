@@ -40,12 +40,13 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { PvsDeclarationDescriptor, PvsDefinition, PvsDeclarationType, PRELUDE_FILE, PvsResponseType, getFilename } from '../common/serverInterface';
+import { PvsDeclarationDescriptor, PvsDefinition, PvsDeclarationType, PRELUDE_FILE, PvsResponseType } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
 import { Connection, TextDocument, Position, Range, CancellationToken, TextDocuments } from 'vscode-languageserver';
 import { PvsProcess } from '../pvsProcess';
 import { findTheoryName, getWordRange, getText } from '../common/languageUtils';
 import { PvsFindDeclarationInterface, PvsShowImportChain } from '../pvsLisp';
+import * as fs from '../common/fsUtils';
 
 export class PvsDefinitionProvider {
 	connection: Connection;
@@ -101,7 +102,7 @@ export class PvsDefinitionProvider {
 	async findSymbolDefinition (document: TextDocument, symbolName: string, position?: Position): Promise<PvsDefinition[]> {
 		let currentTheory: string = null;
 		if (document.uri.endsWith(".tccs") && position) {
-			currentTheory = getFilename(document.uri, { removeFileExtension: true });
+			currentTheory = fs.getFilename(document.uri, { removeFileExtension: true });
 		} else {
 			// .pvs file
 			currentTheory = (position) ? findTheoryName(document.getText(), position.line) : null;

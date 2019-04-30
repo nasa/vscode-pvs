@@ -2,7 +2,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window, TextDocum
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, MarkdownString, TreeView } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { TccDescriptorArray, TccDescriptor, PeekDefinitionCommand, PVS_LIBRARY_FILES, getPathname } from '../common/serverInterface';
+import { TccDescriptorArray, TccDescriptor, PeekDefinitionCommand, PVS_LIBRARY_FILES } from '../common/serverInterface';
 import { TheoryMap, FileList, TheoryList, TccList } from '../common/languageUtils';
 import * as comm from '../common/serverInterface';
 import * as path from 'path';
@@ -284,7 +284,9 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	 * Handlers for messages received from the server
 	 */
 	private installHandlers() {
+		// server.response.list-all-theories events are automatically sent by the server when the context folder changes
 		this.client.onRequest("server.response.list-all-theories", (ans: TheoryList) => {
+			this.resetView();
 			if (ans && ans.theories) {
 				let theories: TheoryItem[] = Object.keys(ans.theories).map((key: string) => {
 					let position: Position = new Position(ans.theories[key].position.line, ans.theories[key].position.character);
