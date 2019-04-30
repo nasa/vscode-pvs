@@ -329,6 +329,9 @@ class PvsLanguageServer {
 	private async typecheckFileAndShowTccs (fileName: string, proc?: PvsProcess): Promise<TccList> {
 		const txt: string = await this.readFile(fileName); // it is necessary to use the readFile function because some pvs files may not be loaded yet in the context 
 		if (txt) {
+			// const pvsContextFolder: string = this.pvsTypeChecker.getContextFolder();
+			const context: string = fs.getPathname(fileName);
+			this.pvsTypeChecker.changeContext(context);
 			const theoryNames: string[] = listTheoryNames(txt);
 			let tccs: TccMap = {};
 			for (const i in theoryNames) {
@@ -344,9 +347,9 @@ class PvsLanguageServer {
 					tccs: tccArray
 				};
 			}
-			const pvsContextFolder: string = this.pvsTypeChecker.getContextFolder();
+			
 			const response: TccList = {
-				pvsContextFolder: pvsContextFolder,
+				pvsContextFolder: context,
 				tccs: tccs
 			};
 			return Promise.resolve(response);
