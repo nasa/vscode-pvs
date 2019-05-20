@@ -931,4 +931,505 @@ export class PvsProcess {
 	// 	return ans;
 	// }
 
+	async stepProof(data: { fileName: string, formulaName: string, line: number }): Promise<PvsResponseType> {
+		// const tactics = await PvsProcess.test();
+		// const res = await PvsProcess.prf2json(tactics[1], "test");
+		// return {
+		// 	res: JSON.stringify(res),
+		// 	raw: null,
+		// 	error: null
+		// };
+		const cmd: string = `(edit-proof-at "${data.fileName}" nil ${data.line} "pvs" "${data.fileName}.pvs" 0 nil)`;
+		const response: PvsResponseType = await this.pvsExec(cmd);
+		if (response && response.res) {
+			response.res = JSON.stringify(PvsProcess.prf2json(response.res, data.formulaName));
+		}
+		return response;
+	}
+
+	//--- utility functions
+	static getExpression(prf: string): string {
+		let par: number = 0;
+		let match: RegExpMatchArray = null;
+		const regexp: RegExp = new RegExp(/([\(\)])/g);
+		while(match = regexp.exec(prf)) {
+			switch (match[1]) {
+				case "(": { par++; break; }
+				case ")": { par--; break; }
+				default: {}
+			}
+			if (par === 0) {
+				return prf.substr(0, match.index + 1);
+			}
+		}
+		return "";
+	}
+	// static prf2json(prf: string, prefix?: string): { [key: string]: any } {
+	// 	if (prf) {
+	// 		prf = prf.trim();
+	// 		const res: { [key: string]: any } = {};
+	// 		let counter: number = 1;
+	// 		while (prf && prf.length) {
+	// 			if (prf.startsWith(`(""`)) {
+	// 				// proof start
+	// 				const match: RegExpMatchArray = /\(\"\"([\w\W\s]+)\s*\)/.exec(prf);
+	// 				prf = match[1].trim();
+	// 			} else {
+	// 				// series of proof branches or a proof commands
+	// 				const expr: string = PvsProcess.getExpression(prf);
+	// 				if (expr && expr.length) {
+	// 					if (expr.startsWith("((")) {
+	// 						// series of proof branches
+	// 						// remove a pair of parentheses and iterate
+	// 						const match: RegExpMatchArray = /\(([\w\W\s]+)\s*\)/.exec(prf);
+	// 						const subexpr: string = match[1];
+	// 						res[counter++] = PvsProcess.prf2json(subexpr);
+	// 					} else if (expr.startsWith(`("`)) {
+	// 						// proof command from a labelled branch -- remove the label and iterate
+	// 						const match: RegExpMatchArray = /\(\"\d+\"\s*([\w\W\s]+)/.exec(expr);
+	// 						const subexpr: string = match[1].replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
+	// 						res[counter++] = PvsProcess.prf2json(subexpr);
+	// 					} else {
+	// 						res[counter++] = expr.replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
+	// 					}
+	// 					prf = prf.substr(expr.length).trim();
+	// 				} else {
+	// 					// ) parentheses comes before (, from parsing labelled branches, just ignore them and iterate
+	// 					const match: RegExpMatchArray = /\)+([\w\W\s]*)/.exec(prf);
+	// 					prf = match[1].trim(); // remove all \n introduced by pvs in the expression
+	// 					if (prf && prf.length) {
+	// 						PvsProcess.prf2json(prf);
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 		return res;
+	// 	}
+	// 	return null;
+	// }
+
+	static prf2json(prf: string, formulaName: string, parent?: { id: string, children: any[]}): { [key: string]: any } {
+		if (prf) {
+			prf = prf.trim();
+			const res: { [key: string]: any } = {};
+			while (prf && prf.length) {
+				if (prf.startsWith(`(""`)) {
+					// root node
+					const match: RegExpMatchArray = /\(\"\"([\w\W\s]+)\s*\)/.exec(prf);
+					prf = match[1].trim();
+					res["proof"] = {
+						id: formulaName,
+						children: []
+					};
+					parent = res["proof"];
+				} else {
+					// series of proof branches or a proof commands
+					const expr: string = PvsProcess.getExpression(prf);
+					if (expr && expr.length) {
+						if (expr.startsWith("((")) {
+							// series of proof branches
+							// remove a pair of parentheses and iterate
+							const match: RegExpMatchArray = /\(([\w\W\s]+)\s*\)/.exec(prf);
+							const subexpr: string = match[1];
+							const currentParent: { id: string, children: any[] } = parent.children[parent.children.length - 1];
+							PvsProcess.prf2json(subexpr, formulaName, currentParent);
+						} else if (expr.startsWith(`("`)) {
+							// proof command from a labelled branch -- remove the label and iterate
+							const match: RegExpMatchArray = /\(\"(\d+)\"\s*([\w\W\s]+)/.exec(expr);
+							const subexpr: string = match[2].replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
+							const currentBranch: { id: string, children: any[] } = { id: match[1], children: [] };
+							parent.children.push(currentBranch);
+							PvsProcess.prf2json(subexpr, formulaName, currentBranch);
+						} else {
+							// proof command
+							parent.children.push({
+								id: expr.replace(/\n/g, ""), // remove all \n introduced by pvs in the expression
+								children: []
+							});
+						}
+						prf = prf.substr(expr.length).trim();
+					} else {
+						// ) parentheses comes before (, from parsing a series labelled branches, just ignore them and iterate
+						const match: RegExpMatchArray = /\)+([\w\W\s]*)/.exec(prf);
+						prf = match[1].trim(); // remove all \n introduced by pvs in the expression
+						if (prf && prf.length) {
+							PvsProcess.prf2json(prf, formulaName, parent);
+						}
+					}
+				}
+			}
+			return res;
+		}
+		return null;
+	}
+
+	static test(): string[] {
+		const tactics: string[] = [
+			`(""
+			(skeep)
+			(lemma "sin2_cos2")
+			(inst?)
+			(both-sides-f 1 "sq")
+			(("1"
+			  (both-sides "-" "sq(cos(acos(sig)))" -1)
+			  (("1"
+				(assert)
+				(replaces -1)
+				(rewrite "cos_acos")
+				(rewrite "sq_sqrt"))
+			   ("2" (iff) (ground))))
+			 ("2"
+			  (case "FORALL (zz,qq:nnreal): sq(zz) = sq(qq) IMPLIES zz=qq")
+			  (("1"
+				(invoke (inst - "%1" "%2") (! 1 1) (! 1 2))
+				(("1" (assert) (assert)) ("2" (assert))
+				 ("3" (assert) (lemma "sin_ge_0") (inst?) (assert))))
+			   ("2"
+				(hide-all-but 1)
+				(skeep)
+				(case "sqrt(sq(zz)) = sqrt(sq(qq))")
+				(("1" (assert)) ("2" (replaces -1))))))))`,
+
+			`(""
+			(case "FORALL (zz,qq:nnreal): sq(zz) = sq(qq) IMPLIES zz=qq")
+			(("1"
+			  (label "igz" -1)
+			  (hide "igz")
+			  (skeep)
+			  (skoletin :var "AA")
+			  (assert)
+			  (expand "xyz2spherical")
+			  (assert)
+			  (lift-if)
+			  (split -)
+			  (("1"
+				(flatten)
+				(assert)
+				(case "x = 0 AND y=0")
+				(("1"
+				  (flatten)
+				  (assert)
+				  (flatten)
+				  (replaces -5)
+				  (assert)
+				  (replace -1)
+				  (replace -2)
+				  (assert)
+				  (expand "^" + 1)
+				  (expand "expt")
+				  (assert)
+				  (lemma "sqrt_sq")
+				  (inst - "z")
+				  (split -)
+				  (("1"
+					(expand "expt")
+					(expand "expt")
+					(expand "sq")
+					(replaces -1)
+					(assert)
+					(expand "spherical2xyz")
+					(assert)
+					(rewrite "cos_pi")
+					(rewrite "sin_0")
+					(rewrite "sin_pi")
+					(rewrite "cos_0")
+					(assert))
+				   ("2" (propax))))
+				 ("2"
+				  (hide-all-but (-1 1))
+				  (case "NOT x^2+y^2=0")
+				  (("1" (assert))
+				   ("2"
+					(case "NOT sq(x)+sq(y)=0")
+					(("1" (grind))
+					 ("2"
+					  (lemma "sq_eq_0")
+					  (inst-cp - "x")
+					  (inst - "y")
+					  (grind))))))))
+			   ("2"
+				(flatten)
+				(split -1)
+				(("1"
+				  (flatten)
+				  (assert)
+				  (hide -3)
+				  (lift-if)
+				  (split -)
+				  (("1" (ground))
+				   ("2"
+					(flatten)
+					(hide 1)
+					(replaces -1)
+					(assert)
+					(case "x = 0 AND y = 0")
+					(("1"
+					  (flatten)
+					  (replaces -1)
+					  (replaces -1)
+					  (assert)
+					  (case-replace "sqrt(z^2) = -z")
+					  (("1"
+						(expand "spherical2xyz")
+						(rewrite "cos_pi")
+						(assert)
+						(rewrite "sin_pi")
+						(assert))
+					   ("2"
+						(hide-all-but (1 2))
+						(rewrite "expt_x2")
+						(rewrite "sq" :dir rl)
+						(assert))
+					   ("3" (hide-all-but 1) (grind))))
+					 ("2"
+					  (hide (2 3))
+					  (case "NOT x^2+y^2=0")
+					  (("1" (assert))
+					   ("2"
+						(case "NOT sq(x)+sq(y)=0")
+						(("1" (grind))
+						 ("2"
+						  (lemma "sq_eq_0")
+						  (inst-cp - "x")
+						  (inst - "y")
+						  (ground))))))))))
+				 ("2"
+				  (flatten)
+				  (hide 2)
+				  (assert)
+				  (replaces -1)
+				  (assert)
+				  (expand "spherical2xyz")
+				  (name "R" "sqrt(x^2+y^2+z^2)")
+				  (("1"
+					(replace -1)
+					(case "R > 0")
+					(("1"
+					  (case "x/=0 OR y/=0")
+					  (("1"
+						(hide -4)
+						(assert)
+						(split +)
+						(("1"
+						  (rewrite "cos_atan2")
+						  (assert)
+						  (lift-if)
+						  (assert)
+						  (split +)
+						  (("1" (propax))
+						   ("2"
+							(flatten)
+							(rewrite "sin_acos_ecef")
+							(("1"
+							  (case "sqrt(1 - sq(z / R)) * (1 / sqrt(1 + sq(y / x))) * R = abs(x)")
+							  (("1"
+								(split +)
+								(("1"
+								  (flatten)
+								  (expand "abs")
+								  (expand "sq")
+								  (lift-if)
+								  (ground))
+								 ("2"
+								  (flatten)
+								  (expand "abs")
+								  (expand "sq")
+								  (lift-if)
+								  (ground))))
+							   ("2"
+								(hide 3)
+								(reveal "igz")
+								(invoke (inst - "%1" "%2") (! 1 1) (! 1 2))
+								(assert)
+								(hide 2)
+								(rewrite "sq_times")
+								(rewrite "sq_times")
+								(rewrite "sq_div")
+								(rewrite "sq_div")
+								(("1"
+								  (rewrite "sq_div")
+								  (rewrite "sq_sqrt")
+								  (("1"
+									(field)
+									(replaces -2 1 :dir rl)
+									(rewrite "sq_sqrt")
+									(("1" (grind))
+									 ("2"
+									  (typepred "sq(x)+sq(y)+sq(z)")
+									  (grind))))
+								   ("2"
+									(assert)
+									(lemma "nnreal_div_posreal_is_nnreal")
+									(inst?)
+									(("1" (assert))
+									 ("2" (lemma "sq_eq_0") (inst?) (assert))))))
+								 ("2"
+								  (flatten)
+								  (lemma "sqrt_eq_0")
+								  (inst - "1+sq(y)/sq(x)")
+								  (assert))
+								 ("3"
+								  (lemma "nnreal_div_posreal_is_nnreal")
+								  (inst?)
+								  (("1" (assert))
+								   ("2" (lemma "sq_eq_0") (inst?) (assert))))))
+							   ("3" (assert))))
+							 ("2"
+							  (rewrite "abs_div")
+							  (expand "abs" + 2)
+							  (cross-mult 1)
+							  (lemma "sq_le")
+							  (inst?)
+							  (assert)
+							  (hide 2)
+							  (case "FORALL (rr:real): 1*rr = rr")
+							  (("1"
+								(rewrite -1)
+								(hide -1)
+								(replaces -2 :dir rl)
+								(rewrite "sq_sqrt")
+								(("1" (typepred "sq(x)+sq(y)") (grind))
+								 ("2" (typepred "sq(x)+sq(y)+sq(z)") (grind))))
+							   ("2" (assert))))))))
+						 ("2"
+						  (rewrite "sin_acos_ecef")
+						  (("1"
+							(rewrite "sin_atan2")
+							(lift-if)
+							(assert)
+							(split +)
+							(("1"
+							  (flatten)
+							  (assert)
+							  (case "sqrt(1 - sq(z / R)) * R = abs(y)")
+							  (("1" (expand "abs") (lift-if) (ground))
+							   ("2"
+								(hide 2)
+								(reveal "igz")
+								(invoke (inst - "%1" "%2") (! 1 1) (! 1 2))
+								(assert)
+								(hide 2)
+								(delabel "igz")
+								(rewrite "sq_times")
+								(rewrite "sq_div")
+								(replace -1)
+								(assert)
+								(field)
+								(replaces -4 1 :dir rl)
+								(rewrite "sq_sqrt")
+								(("1" (assert) (grind))
+								 ("2" (typepred "sq(y)+sq(z)") (grind))))))
+							 ("2"
+							  (flatten)
+							  (case "sqrt(1 - sq(z / R)) * (y / abs(x) / sqrt(1 + sq(y / x))) * R = y")
+							  (("1"
+								(split +)
+								(("1" (flatten) (expand "abs") (lift-if) (assert))
+								 ("2" (flatten) (expand "abs") (assert))))
+							   ("2"
+								(hide 3)
+								(reveal "igz")
+								(case "sqrt(1 - sq(z / R)) * (abs(y) / abs(x) / sqrt(1 + sq(y / x))) * R = abs(y)")
+								(("1"
+								  (name "d" "abs(y)")
+								  (replace -1)
+								  (expand "abs" -1)
+								  (replaces -1 :dir rl)
+								  (lift-if)
+								  (ground))
+								 ("2"
+								  (hide 2)
+								  (invoke (inst - "%1" "%2") (! 1 1) (! 1 2))
+								  (("1"
+									(assert)
+									(hide 1)
+									(delabel "igz")
+									(rewrite "sq_times")
+									(rewrite "sq_div")
+									(rewrite "sq_times")
+									(rewrite "sq_div")
+									(rewrite "sq_div")
+									(("1"
+									  (rewrite "sq_div")
+									  (rewrite "sq_sqrt")
+									  (rewrite "sq_sqrt")
+									  (("1"
+										(field)
+										(case "sq(R) = sq(x)+sq(y)+sq(z)")
+										(("1" (replaces -1) (grind))
+										 ("2"
+										  (replace -2 1 :dir rl)
+										  (rewrite "sq_sqrt")
+										  (("1" (grind))
+										   ("2"
+											(typepred "sq(x)+sq(y)+sq(z)")
+											(grind))))))
+									   ("2"
+										(lemma "nnreal_div_posreal_is_nnreal")
+										(inst?)
+										(("1" (assert))
+										 ("2"
+										  (lemma "sq_eq_0")
+										  (inst?)
+										  (assert))))))
+									 ("2"
+									  (flatten)
+									  (lemma "sqrt_eq_0")
+									  (inst - "1+sq(y)/sq(x)")
+									  (assert))
+									 ("3"
+									  (lemma "nnreal_div_posreal_is_nnreal")
+									  (inst?)
+									  (("1" (assert))
+									   ("2"
+										(lemma "sq_eq_0")
+										(inst?)
+										(assert))))))
+								   ("2"
+									(rewrite "nnreal_times_nnreal_is_nnreal")
+									(rewrite "nnreal_times_nnreal_is_nnreal")
+									(cross-mult 1))))))
+							   ("3" (assert)) ("4" (assert))))))
+						   ("2"
+							(rewrite "abs_div")
+							(cross-mult 1)
+							(expand "abs" 1 2)
+							(assert)
+							(lemma "sq_le")
+							(inst?)
+							(assert)
+							(replace -3 1 :dir rl)
+							(rewrite "sq_sqrt")
+							(("1" (typepred "sq(x)+sq(y)") (grind))
+							 ("2" (typepred "sq(x)+sq(y)+sq(z)") (grind))))))
+						 ("3" (rewrite "cos_acos") (assert))))
+					   ("2"
+						(flatten)
+						(assert)
+						(replace -1)
+						(replace -2)
+						(assert))))
+					 ("2"
+					  (assert)
+					  (lemma "sqrt_pos")
+					  (assert)
+					  (lemma "sq_eq_0")
+					  (typepred "sq(x)")
+					  (typepred "sq(y)")
+					  (typepred "sq(z)")
+					  (split -)
+					  (("1" (flatten) (inst - "x") (grind))
+					   ("2" (inst - "y") (grind)) ("3" (inst - "z") (grind))))))
+				   ("2" (hide 3) (typepred "sq(x)+sq(y)+sq(z)") (grind))))))))
+			 ("2" (hide 2) (skeep) (both-sides-f -1 "sqrt") (replaces -1))))`
+		];
+		// tactics.forEach(tactic => {
+		// 	const res = PvsProcess.prf2json(tactic, "test");
+		// 	console.log(res);
+		// });
+		return tactics;
+	}
+
+
+
 }

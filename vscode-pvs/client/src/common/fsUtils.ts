@@ -31,7 +31,7 @@ export async function fileExists(path: string): Promise<boolean> {
 	return await fs.existsSync(path);
 }
 
-export function getFilename(fileName: string, opt?: { removeFileExtension?: boolean }) {
+export function getFilename(fileName: string, opt?: { removeFileExtension?: boolean }): string {
 	opt = opt || {};
 	const pathlessFileName = fileName.includes("/") ? fileName.split("/").slice(-1)[0] : fileName;
 	if (opt.removeFileExtension &&
@@ -40,10 +40,16 @@ export function getFilename(fileName: string, opt?: { removeFileExtension?: bool
 	}
 	return pathlessFileName;
 }
-export function getPathname(path: string) {
+export function removeFileExtension(fileName: string): string {
+	return fileName.split(".").slice(0, -1).join(".");
+}
+export function getFileExtension(fileName: string): string {
+	return `.${fileName.split(".").slice(-1).join(".")}`;
+}
+export function getPathname(path: string): string {
 	return path.split("/").slice(0, -1).join("/").replace("file://", "");
 }
-export function isPvsFile(fileName: string) {
+export function isPvsFile(fileName: string): boolean {
 	return fileName.endsWith('.pvs') || fileName.endsWith('.tccs');
 }
 // export function rmDir(path: string) {

@@ -47,6 +47,7 @@ import { ExpressionDescriptor } from '../common/serverInterface';
 import { PvsDefinitionProvider } from './pvsDefinitionProvider';
 import { findTheoryName } from '../common/languageUtils';
 import * as fs from '../common/fsUtils';
+import * as utils from '../common/languageUtils';
 
 export class PvsCodeLensProvider {
 	private definitionProvider: PvsDefinitionProvider;
@@ -64,22 +65,23 @@ export class PvsCodeLensProvider {
 	 * @param token Cancellation token
 	 */
 	provideCodeLens(document: TextDocument, token?: CancellationToken): CodeLens[] {
-        let fileName: string = fs.getFilename(document.uri);
-        let codeLens: CodeLens[] = [];
-        let doc: string = document.getText();
-        let lines: string[] = doc.split("\n");
+        const fileName: string = fs.getFilename(document.uri);
+        const fileExtension: string = fs.getFileExtension(document.uri);
+        const codeLens: CodeLens[] = [];
+        const doc: string = document.getText();
+        const lines: string[] = doc.split("\n");
         for (let i = 0; i < document.lineCount; i++) {
             // runit
             if (/\s*%\s*@\s*runit\b/gi.test(lines[i])) {
-                let txt: string = lines.slice(i).join("\n");
-                let match: RegExpMatchArray = /\s*%\s*@\s*runit\b\s*(?:(?:\s*%[^\n]*\s*)*)(\w+)/gi.exec(txt);
-                if (match[1]) {
-                    let theoryName: string = findTheoryName(doc, i);
-                    let range: Range = {
+                const txt: string = lines.slice(i).join("\n");
+                const match: RegExpMatchArray = /\s*%\s*@\s*runit\b\s*(?:(?:\s*%[^\n]*\s*)*)(\w+)/gi.exec(txt);
+                if (match && match[1]) {
+                    const theoryName: string = findTheoryName(doc, i);
+                    const range: Range = {
 						start: { line: i + 1, character: 0 },
 						end: { line: i + 1, character: 10 }
 					};
-                    let req: ExpressionDescriptor = {
+                    const req: ExpressionDescriptor = {
                         fileName: fileName,
                         theoryName: theoryName,
                         expression: match[1]
@@ -92,6 +94,47 @@ export class PvsCodeLensProvider {
 							arguments: [ req ]
 						}
 					});
+                }
+            }
+            // step proof
+            if (/(\w+)\s*:\s*THEOREM/gi.test(lines[i])) {
+                const match: RegExpMatchArray = /(\w+)\s*:\s*THEOREM/gi.exec(lines[i]);
+                if (match && match[1]) {
+                    const formulaName: string = match[1];
+                    const theoryName: string = utils.findTheoryName(doc,i);
+                    codeLens.push({
+                        range: {
+                            start: { line: i, character: match.index },
+                            end: { line: i, character: match.index + formulaName.length }
+                        },
+                        command: {
+                            title: `prove`,
+                            command: "codelense.pvs.prove",
+                            arguments: [ { fileName, theoryName, formulaName, line: i, fileExtension } ]
+                        }
+                    });
+                    codeLens.push({
+                        range: {
+                            start: { line: i, character: match.index },
+                            end: { line: i, character: match.index + formulaName.length }
+                        },
+                        command: {
+                            title: `show proof`,
+                            command: "codelense.pvs.show-proof", // todo
+                            arguments: [ { fileName, theoryName, formulaName, line: i, fileExtension } ]
+                        }
+                    });
+                    codeLens.push({
+                        range: {
+                            start: { line: i, character: match.index },
+                            end: { line: i, character: match.index + formulaName.length }
+                        },
+                        command: {
+                            title: `step proof`,
+                            command: "codelense.pvs.step-proof",
+                            arguments: [ { fileName, theoryName, formulaName, line: i, fileExtension } ]
+                        }
+                    });
                 }
             }
             // proveit

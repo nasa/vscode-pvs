@@ -155,7 +155,7 @@ export class PvsLispReader {
 			case "json-typecheck-file":
 			case "typecheck-file": {
 				if (data.includes(PVS_LISP_ERROR_RETURN_TO_TOP_LEVEL)) {
-					const PVS_PARSE_FILE_ERROR_REGEXP = /Parsing (.*)([\w\W\n]+)In file (\w*)\s*\(line (\d+), col (\d+)\)/gim;
+					const PVS_PARSE_FILE_ERROR_REGEXP = /Parsing (.*)([\w\W\n]+)In file (\w*)\s*\(line (\d+), col (\d+)\)\s+Error: parse error/gim;
 					const matchParserError: RegExpMatchArray = PVS_PARSE_FILE_ERROR_REGEXP.exec(data);
 					if (matchParserError && matchParserError.length === 6) {
 						ans.error = {
@@ -168,8 +168,22 @@ export class PvsLispReader {
 							}
 						};
 					} else {
-						if (this.connection) { this.connection.console.error("Unexpected parser error\n" + data); }
-					}
+						const PVS_TYPECHECK_ERROR_REGEXP = /(?:[\w\W\n]*)<pvserror .*>\s+"([\w\W\n]+)In file (\w*)\s*\(line (\d+), col (\d+)\)(?:[\w\W\n]+)<\/pvserror>/gim;
+						const matchTypecheckError: RegExpMatchArray = PVS_TYPECHECK_ERROR_REGEXP.exec(data);
+						if (matchTypecheckError && matchTypecheckError.length === 5) {
+							ans.error = {
+								msg: `Error while typechecking ${matchTypecheckError[1]}`,
+								parserError: {
+									msg: matchTypecheckError[1].split("\\n").join("\n"),
+									fileName: matchTypecheckError[2],
+									line: +matchTypecheckError[3],
+									character: +matchTypecheckError[4]
+								}
+							};
+						} else {
+							if (this.connection) { this.connection.console.error("Unexpected parser error\n" + data); }
+						}
+						}
 				} else if (/PVS file .+ is not in the current context/gim.test(data)) {
 					const match: RegExpMatchArray = /(PVS file (.+) is not in the current context)/gim.exec(data);
 					ans.error = {
@@ -318,13 +332,30 @@ export class PvsLispReader {
 			case "change-context": {
 				const regexp: RegExp = /Context changed to (.*)\s*\".*\"/;
 				const match: RegExpMatchArray = regexp.exec(data);
-				if (match[1]) {
+				if (match && match[1]) {
 					ans.res = {
 						context: match[1]
 					}
 				}
 				break;
 			}
+			case "step-proof":
+			case "edit-proof-at": {
+				const regexp: RegExp = /[\s\w\W]*;;;\s*Proof .+ for formula .*\s;;;.*\s([\s\w\W]*)/gim;
+				const match: RegExpMatchArray = regexp.exec(data);
+				if (match && match[1]) {
+					const innerMatch = /([\s\w\W]*)\snil/gim.exec(match[1]);
+					if (innerMatch && innerMatch[1]) {
+						ans.res = innerMatch[1].trim();
+					} else {
+						ans.error = {
+							msg: "Error: Unable to parse output provided by step-proof"
+						};
+					}
+				}
+				break;
+			}
+			case "collect-strategy-names":
 			case "current-context":
 			case "disable-gc-printout":
 			case "emacs-interface":
@@ -332,7 +363,6 @@ export class PvsLispReader {
 			case "load-pvs-attachments":
 			case "evaluation-mode-pvsio":
 			case "install-prooflite-scripts":
-			case "edit-proof-at":
 			case "install-proof":
 			case "prove-formula":
 			default: {

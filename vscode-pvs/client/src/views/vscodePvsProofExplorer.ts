@@ -2,6 +2,8 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window, TextDocum
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, MarkdownString, TreeView, Disposable } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
+import { stringify } from 'querystring';
+import { timingSafeEqual } from 'crypto';
 
 /**
  * Definition of tree items
@@ -29,6 +31,10 @@ class ProofItem extends TreeItem {
 	}
 	setChildren (children: TreeItem[]) {
 		this.children = children;
+	}
+	appendChild (child: TreeItem) {
+		this.children = this.children || [];
+		this.children.push(child);
 	}
 	getChildren (): TreeItem[] {
 		return this.children;
@@ -83,6 +89,48 @@ class VDashItem extends ProofItem {
 		}
 	}
 }
+class ProofCommand extends TreeItem {
+	static uid: number = 0;
+	contextValue: string = "proofCommand";
+	cmd: string; // prover command
+	command: Command; // vscode action
+	children: TreeItem[];
+	constructor (cmd: string, collapsibleState?: TreeItemCollapsibleState) {
+		super("proofCommand", (collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : collapsibleState);
+		this.id = (ProofCommand.uid++).toString();
+		this.cmd = cmd;
+		this.notVisited();
+		// this.tooltip = "Click to run " + this.contextValue;
+		this.command = {
+			title: this.contextValue,
+			command: "explorer.didClickOnStrategy",
+			arguments: [ this.contextValue ]
+		};
+	}
+	notVisited () {
+		this.tooltip = this.cmd;
+		this.label = this.cmd;
+	}
+	visited () {
+		this.tooltip = "executed";
+		this.label = `🔹${this.cmd}`;
+	}
+	active () {
+		this.tooltip = "ready to execute";
+		this.label = `💠${this.cmd}`;
+	}
+	setChildren (children: TreeItem[]) {
+		this.children = children;
+	}
+	appendChild (child: TreeItem) {
+		this.children = this.children || [];
+		this.children.push(child);
+	}
+	getChildren (): TreeItem[] {
+		return this.children;
+	}
+}
+
 // class Proved extends ProofItem {
 // 	constructor (id: string) {
 // 		super("✔", id, TreeItemCollapsibleState.None)
@@ -93,6 +141,9 @@ class VDashItem extends ProofItem {
 // 		super("❌", id, TreeItemCollapsibleState.None)
 // 	}
 // }
+
+// https://emojipedia.org/symbols/
+//  🔵 ⚫ ⚪ 🔴 🔽 🔼 ⏯ ⏩ ⏪ ⏫ ⏬ ⧐ ▶️ ◀️ ⭕ 🔹🔸💠🔷🔶
 
 class ProverCommands {
 	activate (context: ExtensionContext) {
@@ -127,7 +178,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 	private view: TreeView<TreeItem>
 
-	private nodes: Map<string, TreeItem>;
+	private root;
 
 	/**
 	 * @constructor
@@ -141,7 +192,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
-		this.nodes = new Map();
 		this.proverCommands = new ProverCommands();
 	}
 
@@ -158,11 +208,45 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	private resetView () {
 	}
 
+	private fromJSON (json: { [key: string]: { id: string, children: any[] } }) {
+		function makeTree(elem: { id: string, children: any[] }, parent: ProofCommand) {
+			const cmd: ProofCommand = new ProofCommand(elem.id);
+			parent.appendChild(cmd);
+			if (elem.children && elem.children.length) {
+				elem.children.forEach(child => {
+					makeTree(child, cmd);
+				});
+			} else {
+				cmd.collapsibleState = TreeItemCollapsibleState.None;
+			}
+		}
+		Object.keys(json).forEach(key => {
+			const elem: { id: string, children: any[] } = json[key];
+			const cmd: ProofCommand = new ProofCommand(elem.id);
+			this.root = cmd;
+			if (elem.children && elem.children.length) {
+				elem.children.forEach(child => {
+					makeTree(child, cmd);
+				});
+			} else {
+				cmd.collapsibleState = TreeItemCollapsibleState.None;
+			}
+		});
+		// update front-end
+		this.refreshView();
+	}
+
 
 	/**
 	 * Handlers for messages received from the server
 	 */
 	private installHandlers(context: ExtensionContext) {
+		this.client.onRequest('server.response.step-proof', (ans: string) => {
+			// let root: ProofItem = new VDashItem("root", TreeItemCollapsibleState.Expanded);
+			// this.nodes.set("root", root);
+			this.fromJSON(JSON.parse(ans));
+		});
+
 		this.client.onRequest("server.response.prover", (ans) => {
 		});
 	}
@@ -176,36 +260,38 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.installHandlers(context);
 		this.proverCommands.activate(context);
 
+
+
 		// create sample proof tree
-		let root: ProofItem = new VDashItem("root");
-		let node1: ProofItem = new SkosimpStar("node1");
-		let node2: ProofItem = new VDashItem("node2");
-		let node3: ProofItem = new Expand("node3", "per_release_fup");
-		let node4: ProofItem = new VDashItem("node4");
-		let node5: ProofItem = new Split("node5");
-		let node5_1: ProofItem = new VDashItem("node5.1");
-		let node5_2: ProofItem = new VDashItem("node5.2");
-		let node5_3: ProofItem = new VDashItem("node5.3");
-		let node5_4: ProofItem = new VDashItem("node5.4");
-		let node5_1_1: ProofItem = new Grind("node5.1.1");
-		let node5_2_1: ProofItem = new Grind("node5.2.1");
-		let node5_3_1: ProofItem = new Grind("node5.3.1");
-		let node5_4_1: ProofItem = new Grind("node5.4.1");
-		root.setChildren([ node1 ]);
-		node1.setChildren([ node2 ]);
-		node2.setChildren([ node3 ]);
-		node3.setChildren([ node4 ]);
-		node4.setChildren([ node5 ]);
-		node5.setChildren([ node5_1, node5_2, node5_3, node5_4 ]);
-		node5_1.setChildren([ node5_1_1 ]);
-		node5_2.setChildren([ node5_2_1 ]);
-		node5_3.setChildren([ node5_3_1 ]);
-		// node5_4.setChildren([ node5_4_1 ]);
-		node5_1_1.proved();
-		node5_2_1.failed();
-		node5_3_1.proved();
-		// node5_4_1.proved();
-		this.nodes.set("root", root);
+		// let root: ProofItem = new VDashItem("root");
+		// let node1: ProofItem = new SkosimpStar("node1");
+		// let node2: ProofItem = new VDashItem("node2");
+		// let node3: ProofItem = new Expand("node3", "per_release_fup");
+		// let node4: ProofItem = new VDashItem("node4");
+		// let node5: ProofItem = new Split("node5");
+		// let node5_1: ProofItem = new VDashItem("node5.1");
+		// let node5_2: ProofItem = new VDashItem("node5.2");
+		// let node5_3: ProofItem = new VDashItem("node5.3");
+		// let node5_4: ProofItem = new VDashItem("node5.4");
+		// let node5_1_1: ProofItem = new Grind("node5.1.1");
+		// let node5_2_1: ProofItem = new Grind("node5.2.1");
+		// let node5_3_1: ProofItem = new Grind("node5.3.1");
+		// let node5_4_1: ProofItem = new Grind("node5.4.1");
+		// root.setChildren([ node1 ]);
+		// node1.setChildren([ node2 ]);
+		// node2.setChildren([ node3 ]);
+		// node3.setChildren([ node4 ]);
+		// node4.setChildren([ node5 ]);
+		// node5.setChildren([ node5_1, node5_2, node5_3, node5_4 ]);
+		// node5_1.setChildren([ node5_1_1 ]);
+		// node5_2.setChildren([ node5_2_1 ]);
+		// node5_3.setChildren([ node5_3_1 ]);
+		// // node5_4.setChildren([ node5_4_1 ]);
+		// node5_1_1.proved();
+		// node5_2_1.failed();
+		// node5_3_1.proved();
+		// // node5_4_1.proved();
+		// this.nodes.set("root", root);
 	}
 
 	/**
@@ -218,7 +304,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			return Promise.resolve(children);
 		}
 		// root node: show the list of theories from the selected file
-		return Promise.resolve([ this.nodes.get("root") ]);
+		return Promise.resolve([ this.root ]);
 	}
 
 	getTreeItem(element: TreeItem): TreeItem {

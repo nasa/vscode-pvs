@@ -17,7 +17,8 @@ const cmds: string[] = [
 	//"pr", 
 	"prove",
 	"show-tccs",
-	"pvsio" 
+	"pvsio",
+	"step-proof"
 ];
 
 export class VSCodePvsEmacsBindingsProvider {
@@ -83,6 +84,12 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand("terminal.pvsio");
 					break;
 				}
+				case "step-proof": {
+					// open pvs terminal
+					commands.executeCommand("terminal.pvs.step-proof");
+					break;
+				}
+				default: {}
 			}
 		}
 	}

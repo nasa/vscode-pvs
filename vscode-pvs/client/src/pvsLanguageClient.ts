@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, Position, Disposable, commands, Uri, Range, TreeItem } from 'vscode';
+import { TextDocument, window, workspace, ExtensionContext, Position, Disposable, commands } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
 import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
 import { log } from './utils/logger';
@@ -13,6 +13,7 @@ import { VSCodePVSioTerminal } from './terminals/vscodePVSioTerminal';
 import { VSCodePvsTerminal } from './terminals/vscodePvsTerminal';
 import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 import * as fs from './common/fsUtils';
+import { VSCodePvsStatusBar } from './views/vscodePvsStatusBar';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 1000; //ms
@@ -27,7 +28,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	// context variables
 	private context: ExtensionContext;
 	private pvsContextFolder: string;
-	private pvsVersionInfo: string;
 
 	private timers: {[key: string]: NodeJS.Timer } = {};
 
@@ -43,6 +43,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	// integrated terminals for PVSio
 	private pvsioTerminal: VSCodePVSioTerminal;
 	private pvsTerminal: VSCodePvsTerminal;
+
+	// status bar
+	private pvsStatusBar: VSCodePvsStatusBar;
 
 	// autosave pvs files with frequency AUTOSAVE_INTERVAL
 	private autosave (document: TextDocument) {
@@ -63,19 +66,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.client.onRequest("pvs.lisp", function (ans: string) {
 			log("received answer for pvs.lisp");
 			log(ans);
-		});
-		this.client.onRequest("server.status.update", (msg: string) => {
-			window.setStatusBarMessage(msg);
-		});
-		this.client.onRequest("server.status.info", (msg: string) => {
-			window.showInformationMessage(msg);
-		});
-		this.client.onRequest("server.status.error", (msg: string) => {
-			window.showErrorMessage(msg);
-		});
-		this.client.onRequest("server.response.pvs.init", (pvsVersionInfo: string) => {
-			this.pvsVersionInfo = pvsVersionInfo;
-			window.setStatusBarMessage(pvsVersionInfo);
 		});
 		this.client.onRequest("server.response.runit", function (ans: comm.EvaluationResult) {
 			// vscode.workspace.openTextDocument(vscode.Uri.parse("untitled:animation.result")).then(function (document) {
@@ -104,14 +94,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			// terminal.sendText(content);
 
 		});
-		this.client.onRequest("server.response.parse-file", function (ans: comm.PvsParserResponse) {
+		this.client.onRequest("server.response.parse-file", (ans: comm.PvsParserResponse) => {
 			// do nothing for now.
 		});
-		this.client.onRequest("server.response.typecheck-file", function (ans: comm.PvsParserResponse) {
+		this.client.onRequest("server.response.typecheck-file", (ans: comm.PvsParserResponse) => {
 			// window.setStatusBarMessage("M-x " + ans.res, 3200);
 			// do nothing for now.
 		});
-		this.client.onRequest("server.response.change-context-and-parse-files", function (ans: comm.PvsParserResponse) {
+		this.client.onRequest("server.response.change-context-and-parse-files", (ans: comm.PvsParserResponse) => {
 			// do nothing for now.
 		});
 		window.onDidChangeActiveTextEditor(editor => {
@@ -223,6 +213,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		};
 
 		setTimeout(async () => {
+			// create status bar
+			this.pvsStatusBar = new VSCodePvsStatusBar(this.client);
+			this.pvsStatusBar.activate(this.context);
+
+			// initialise pvs
 			await this.client.sendRequest('pvs.init', pvsExecutionContext);
 			
 			// initialise service providers defined on the client-side
@@ -232,7 +227,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client);
 			this.emacsBindingsProvider.activate(this.context);
 
-			this.pvsioTerminal = new VSCodePVSioTerminal(this.pvsVersionInfo);
+			this.pvsioTerminal = new VSCodePVSioTerminal(this.pvsStatusBar.getVersionInfo());
 			this.pvsioTerminal.activate(this.context);
 
 			// this.inputManager = new MultiStepInput(this.client);
@@ -242,7 +237,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.proofDataProvider = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
 			this.proofDataProvider.activate(this.context);
 
-			this.pvsTerminal = new VSCodePvsTerminal(this.theoriesDataProvider);
+			this.pvsTerminal = new VSCodePvsTerminal(this.client, this.theoriesDataProvider, this.pvsStatusBar);
 			this.pvsTerminal.activate(this.context);
 
 			if (window.activeTextEditor && fs.isPvsFile(window.activeTextEditor.document.fileName)) {

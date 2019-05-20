@@ -5,7 +5,7 @@
 	"icon": "icons/pvs-icon.png",
 	"author": "Paolo Masci",
 	"license": "NASA OPEN SOURCE AGREEMENT",
-	"version": "1.0.9",
+	"version": "1.1.0",
 	"repository": {
 		"type": "git",
 		"url": "xxx"
@@ -216,6 +216,10 @@
 			{
 				"command": "proof-explorer.undo",
 				"title": "undo"
+			},
+			{
+				"command": "proof-explorer.step",
+				"title": "️️step"
 			}
 		],
 		"menus": {
@@ -280,11 +284,6 @@
 					"command": "proof-explorer.postpone",
 					"when": "view == proof-explorer-view && viewItem == vdash",
 					"group": "controlRule"
-				},
-				{
-					"command": "proof-explorer.undo",
-					"when": "view == proof-explorer-view && viewItem == proofCommand",
-					"group": "inline"
 				}
 			],
 			"editor/title/context": [
@@ -303,6 +302,16 @@
 				{
 					"command": "explorer.typecheck-all",
 					"when": "view == theory-explorer-view",
+					"group": "pvs"
+				},
+				{
+					"command": "proof-explorer.step",
+					"when": "view == proof-explorer-view",
+					"group": "navigation"
+				},
+				{
+					"command": "proof-explorer.undo",
+					"when": "view == proof-explorer-view",
 					"group": "pvs"
 				}
 			]
@@ -337,6 +346,26 @@
 				"key": "ctrl+alt+g",
 				"command": "proof-explorer.grind",
 				"when": "resourceLangId == pvs"
+			},
+			{
+				"key": "ctrl+c",
+				"command": "workbench.action.terminal.sendSequence",
+				"args": {
+					"text": ""
+				},
+				"note": "overriding default vscode command, which kills the terminal",
+				"mnemonic": "TODO: redirect to ctrl+shift+c",
+				"when": "terminalFocus"
+			},
+			{
+				"key": "ctrl+v",
+				"command": "workbench.action.terminal.sendSequence",
+				"args": {
+					"text": ""
+				},
+				"note": "overriding default vscode command, which sends the string ^v to the terminal rather than pasting the content of the clipboard",
+				"mnemonic": "TODO: redirect to ctrl+shift+v",
+				"when": "terminalFocus"
 			}
 		],
 		"languages": [

@@ -91,6 +91,7 @@ Installing rewrite rule sets.singleton_rew (all instances)
 import { spawn, ChildProcess } from 'child_process';
 import * as fs from './common/fsUtils';
 import { Connection, TextDocument } from 'vscode-languageserver';
+import { timingSafeEqual } from 'crypto';
 
 class Console {
 	connection: Connection;
@@ -125,6 +126,13 @@ class Console {
 			console.warn(str);
 		}
 	}
+	sendRequest (type: string, data: any) {
+		if (this.connection) {
+			this.connection.sendRequest(type, data);
+		} else {
+			console.error("Error: Unable to send response to the client :/")
+		}
+	}
 }
 
 /**
@@ -142,6 +150,10 @@ class PvsProcess {
 		"change-context": /\(change-context (.*)\)/g,
 		"typecheck-file": /\(typecheck-file (.*)\)/g
 	};
+
+	sendRequest (type: string, data: any) {
+		this.console.sendRequest(type, data);
+	}
 
 	/**
 	 * @constructor
@@ -324,10 +336,11 @@ async function start(pvsExecutable: string): Promise<PvsProcess> {
 	const pvsProcess: PvsProcess = new PvsProcess(pvsExecutable);
 	await pvsProcess.start();
 	// await pvsProcess.emacsInterface(); --- NB: do not enable emacs interface, it will lock up the theorem prover
-	process.stdin.on("data", (data: Buffer) => {
+	process.stdin.on("data", async (data: Buffer) => {
 		try {
 			const cmd: string = data.toLocaleString();
-			pvsProcess.exec(cmd);
+			// console.log(`received command from keyboard: ${cmd}`);
+			const res: string = await pvsProcess.exec(cmd);
 		} catch (err) {
 			console.error(err);
 		}
@@ -336,6 +349,7 @@ async function start(pvsExecutable: string): Promise<PvsProcess> {
 }
 
 if (process.argv.length > 2) {
+	console.log(`args: ${JSON.stringify(process.argv)}`)
 	start(process.argv[2]);
 }
 

@@ -50,7 +50,7 @@ import {
 	PvsParserResponse, PvsSymbolKind, PvsVersionDescriptor, PvsResponseType,
 	PvsFindDeclarationRequest, PvsDefinition, PRELUDE_FILE, PvsDeclarationDescriptor, PvsDeclarationType,
 	PvsListDeclarationsRequest, ExpressionDescriptor, EvaluationResult, ProofResult, FormulaDescriptor,
-	PvsTheoryListDescriptor, TccDescriptor
+	PvsTheoryListDescriptor, TccDescriptor, PvsTypecheckerResponse
 } from './common/serverInterface'
 import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
 import { PvsProcess } from './pvsProcess';
@@ -82,7 +82,8 @@ const SERVER_COMMANDS = [
 	"pvs.typecheck-file", // typecheck file
 	"pvs.typecheck-prove", // typecheck file and discharge tccs for that file
 	"pvs.show-tccs", // show tccs for the current theory
-	"pvs.runit" // evaluate an expression in pvsio (literate programming)
+	"pvs.runit", // evaluate an expression in pvsio (literate programming)
+	"pvs.edit-proof-at" // step proof
 ];
 
 // Example server settings, this is not used at the moment
@@ -331,13 +332,28 @@ class PvsLanguageServer {
 		if (txt) {
 			// const pvsContextFolder: string = this.pvsTypeChecker.getContextFolder();
 			const context: string = fs.getPathname(fileName);
-			this.pvsTypeChecker.changeContext(context);
+			const typechecker: PvsProcess = proc || this.pvsTypeChecker;
+			typechecker.changeContext(context);
+			
+			const typecheckerResponse: PvsTypecheckerResponse = await typechecker.typecheckFile(fileName);
+			// TODO: create a separate function for diagnostics with typechecker
+			if (typecheckerResponse && typecheckerResponse.error) {
+				const txt: string = await fs.readFile(fileName);
+				const errorPosition: Position = { line: typecheckerResponse.error.line - 1, character: typecheckerResponse.error.character };
+				const errorRange: Range = getErrorRange(txt, errorPosition);
+				const diag: Diagnostic = {
+					severity: DiagnosticSeverity.Error,
+					range: errorRange,
+					message: typecheckerResponse.error.msg,
+					source: "Typecheck error"
+				};
+				this.connection.sendDiagnostics({ uri: "file://" + fileName, diagnostics: [ diag ] });
+			}
+
 			const theoryNames: string[] = listTheoryNames(txt);
 			let tccs: TccMap = {};
 			for (const i in theoryNames) {
-				const typechecker: PvsProcess = proc || this.pvsTypeChecker;
 				const theoryName: string = theoryNames[i];
-				await typechecker.typecheckFile(fileName);
 				// note: showTccs automatically trigger typechecking. However, we are still calling typecheckFile because we want to save the binary files
 				const pvsResponse: PvsResponseType = await typechecker.showTccs(fileName, theoryName);
 				const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
@@ -379,17 +395,17 @@ class PvsLanguageServer {
 		}
 		// parallel typechecking
 		await Promise.all(promises);
-		this.connection.sendRequest('server.status.info', "Typechecking complete!");
-		this.connection.sendRequest('server.status.update', this.readyString);
+		this.connection.sendNotification('server.status.info', "Typechecking complete!");
+		this.connection.sendNotification('server.status.update', this.readyString);
 	}
 	private async serialTypeCheckAllAndShowTccs(): Promise<void> {
 		const pvsContextFolder: string = this.pvsParser.getContextFolder();
 		const pvsFiles: FileList = await this.listPvsFiles(pvsContextFolder);
 		for (const i in pvsFiles.fileNames) {
 			let fileName: string = pvsFiles.fileNames[i];
-			this.connection.sendRequest('server.status.info', "Typechecking " + fileName);
+			this.connection.sendNotification('server.status.info', "Typechecking " + fileName);
 			fileName = this.normaliseFileName(fileName);
-			this.connection.sendRequest('server.status.update', "Typechecking " + fileName);
+			this.connection.sendNotification('server.status.update', "Typechecking " + fileName);
 
 			const proc: PvsProcess = await this.createPvsProcess();
 			if (proc) {
@@ -398,8 +414,8 @@ class PvsLanguageServer {
 				this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
 			}
 		}
-		this.connection.sendRequest('server.status.info', "Typechecking complete!");
-		this.connection.sendRequest('server.status.update', this.readyString);
+		this.connection.sendNotification('server.status.info', "Typechecking complete!");
+		this.connection.sendNotification('server.status.update', this.readyString);
 	}
 
 	private async serialTCP(fileName: string, theoryNames: string[]): Promise<TccList> {
@@ -533,14 +549,15 @@ class PvsLanguageServer {
 			}
 			// TODO: perhaps PVS should be initialised automatically, when the client connects?
 			this.connection.onRequest('pvs.init', async (pvsExecutionContext: PvsExecutionContext) => {
-				this.connection.sendRequest('server.status.update', "Initialising PVS...");
+				this.connection.sendNotification('server.status.update', "Initialising PVS...");
 				try {
 					const versionInfo: PvsVersionDescriptor = await this.initServiceProviders(pvsExecutionContext);
 					this.readyString = versionInfo.pvsVersion + " " + versionInfo.lispVersion ;
-					this.connection.sendRequest('server.response.pvs.init', this.readyString);
+					// this.connection.sendRequest('server.response.pvs.init', this.readyString);
+					this.connection.sendNotification('pvs-ready', this.readyString);
 				} catch (err) {
-					this.connection.sendRequest('server.status.update', err);
-					this.connection.sendRequest('server.status.error', err);
+					this.connection.sendNotification('server.status.update', err);
+					this.connection.sendNotification('server.status.error', err);
 				}
 			});
 			this.connection.onRequest('pvs.change-context', async (contextPath) => {
@@ -553,41 +570,41 @@ class PvsLanguageServer {
 			});
 			this.connection.onRequest('pvs.parse-file', async (fileName: string) => {
 				fileName = this.normaliseFileName(fileName);
-				this.connection.sendRequest('server.status.update', "Parsing " + fileName);
-				// this.connection.sendRequest('server.status.info', "Parsing " + fileName);
+				this.connection.sendNotification('server.status.update', "Parsing " + fileName);
+				// this.connection.sendNotification('server.status.info', "Parsing " + fileName);
 				const response: PvsParserResponse = await this.pvsParser.parseFile(fileName);
 				this.connection.sendRequest("server.response.parse-file", response);
-				// this.connection.sendRequest('server.status.info', "Parsing complete!");
-				this.connection.sendRequest('server.status.update', this.readyString);
+				// this.connection.sendNotification('server.status.info', "Parsing complete!");
+				this.connection.sendNotification('server.status.update', this.readyString);
 			});
 			this.connection.onRequest('pvs.typecheck-file', async (fileName: string) => {
-				this.connection.sendRequest('server.status.info', "Typechecking " + fileName);
+				this.connection.sendNotification('server.status.info', "Typechecking " + fileName);
 				fileName = this.normaliseFileName(fileName);
-				this.connection.sendRequest('server.status.update', "Typechecking " + fileName);
+				this.connection.sendNotification('server.status.update', "Typechecking " + fileName);
 
 				const response: PvsParserResponse = await this.pvsTypeChecker.typecheckFile(fileName, false);
 				this.connection.sendRequest("server.response.typecheck-file", response);
 
-				this.connection.sendRequest('server.status.info', "Typechecking complete!");
-				this.connection.sendRequest('server.status.update', this.readyString);
+				this.connection.sendNotification('server.status.info', "Typechecking complete!");
+				this.connection.sendNotification('server.status.update', this.readyString);
 			});
 			this.connection.onRequest('pvs.typecheck-prove', async (fileName: string) => {
-				this.connection.sendRequest('server.status.info', "Typechecking " + fileName);
+				this.connection.sendNotification('server.status.info', "Typechecking " + fileName);
 				fileName = this.normaliseFileName(fileName);
-				this.connection.sendRequest('server.status.update', "Typechecking " + fileName);
+				this.connection.sendNotification('server.status.update', "Typechecking " + fileName);
 
 				const response: PvsParserResponse = await this.pvsTypeChecker.typecheckFile(fileName, true);
 				this.connection.sendRequest("server.response.typecheck-file", response);
 
-				this.connection.sendRequest('server.status.info', "Typechecking complete!");
-				this.connection.sendRequest('server.status.update', this.readyString);
+				this.connection.sendNotification('server.status.info', "Typechecking complete!");
+				this.connection.sendNotification('server.status.update', this.readyString);
 			});
 			this.connection.onRequest('pvs.change-context-and-parse-files', async (context: string) => {
-				this.connection.sendRequest('server.status.update', `Parsing files in context ${context}`);
+				this.connection.sendNotification('server.status.update', `Parsing files in context ${context}`);
 				const response: ContextDiagnostics = await this.changeContextAndParseFiles(context);
 				// this.connection.sendRequest("server.response.change-context-and-parse-files", response);
-				// this.connection.sendRequest('server.status.info', "Parsing complete!");
-				this.connection.sendRequest('server.status.update', this.readyString);
+				// this.connection.sendNotification('server.status.info', "Parsing complete!");
+				this.connection.sendNotification('server.status.update', this.readyString);
 			});
 			this.connection.onRequest("pvs.list-declarations", async (desc: PvsListDeclarationsRequest) => {
 				const response: PvsDeclarationDescriptor[] = await this.pvsParser.listDeclarations(desc);
@@ -651,8 +668,8 @@ class PvsLanguageServer {
 			});
 			this.connection.onRequest("pvs.show-tccs", async (fileName: string, theoryName: string) => {
 				if (theoryName) {
-					this.connection.sendRequest('server.status.update', "Generating proof obligations for " + theoryName);
-					this.connection.sendRequest('server.status.info', "Generating proof obligations for " + theoryName);
+					this.connection.sendNotification('server.status.update', "Generating proof obligations for " + theoryName);
+					this.connection.sendNotification('server.status.info', "Generating proof obligations for " + theoryName);
 
 					const pvsResponse: PvsResponseType = await this.pvsParser.showTccs(fileName, theoryName);
 					const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
@@ -670,34 +687,34 @@ class PvsLanguageServer {
 					this.connection.sendRequest("server.response.show-tccs", response);
 
 					const len: number = (tccArray && tccArray.length > 0) ? tccArray.length : 0; 
-					this.connection.sendRequest('server.status.info', len + " proof obligations generated.");
-					this.connection.sendRequest('server.status.update', this.readyString);
+					this.connection.sendNotification('server.status.info', len + " proof obligations generated.");
+					this.connection.sendNotification('server.status.update', this.readyString);
 				} else {
-					this.connection.sendRequest('server.status.error', "Malformed pvs.typecheck-theory-and-show-tccs request received by the server (fileName is null)");
+					this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-theory-and-show-tccs request received by the server (fileName is null)");
 				}
 			});
 			this.connection.onRequest("pvs.typecheck-file-and-show-tccs", async (fileName: string) => {
 				if (fileName) {
 					const shortFileName: string = fs.getFilename(fileName, { removeFileExtension: true });
-					this.connection.sendRequest('server.status.info', "Typechecking " + shortFileName);
+					this.connection.sendNotification('server.status.info', "Typechecking " + shortFileName);
 					fileName = this.normaliseFileName(fileName);
-					this.connection.sendRequest('server.status.update', "Typechecking " + fileName);
+					this.connection.sendNotification('server.status.update', "Typechecking " + fileName);
 
 					const response: TccList = await this.typecheckFileAndShowTccs(fileName);
 					this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
 
-					this.connection.sendRequest('server.status.info', "Typechecking complete!");
-					this.connection.sendRequest('server.status.update', this.readyString);
+					this.connection.sendNotification('server.status.info', "Typechecking complete!");
+					this.connection.sendNotification('server.status.update', this.readyString);
 				} else {
-					this.connection.sendRequest('server.status.error', "Malformed pvs.typecheck-file-and-show-tccs request received by the server (fileName is null)");
+					this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-file-and-show-tccs request received by the server (fileName is null)");
 				}
 			});
 			this.connection.onRequest('pvs.typecheck-prove-and-show-tccs', async (fileName: string) => {
 				if (fileName) {
 					const shortFileName: string = fs.getFilename(fileName, { removeFileExtension: true });
-					this.connection.sendRequest('server.status.info', "Discharging proof obligations for " + shortFileName);
+					this.connection.sendNotification('server.status.info', "Discharging proof obligations for " + shortFileName);
 					fileName = this.normaliseFileName(fileName);
-					this.connection.sendRequest('server.status.update', "Discharging proof obligations for " + fileName);
+					this.connection.sendNotification('server.status.update', "Discharging proof obligations for " + fileName);
 
 					// execute tcp
 					// TODO: run tcp in parallel -- to do this, create n processes, each proving one tcc (tcp can only perform sequential execution)
@@ -710,10 +727,25 @@ class PvsLanguageServer {
 						// const response: TccList = await this.parallelTCP(fileName, theoryNames);
 						this.connection.sendRequest("server.response.typecheck-prove-and-show-tccs", response);
 					}
-					this.connection.sendRequest('server.status.info', "Proof complete!");
-					this.connection.sendRequest('server.status.update', this.readyString);
+					this.connection.sendNotification('server.status.info', "Proof complete!");
+					this.connection.sendNotification('server.status.update', this.readyString);
 				} else {
-					this.connection.sendRequest('server.status.error', "Malformed pvs.typecheck-prove-and-show-tccs request received by the server (fileName is null)");
+					this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-prove-and-show-tccs request received by the server (fileName is null)");
+				}
+			});
+			this.connection.onRequest('pvs.step-proof', async (data: { fileName: string, formulaName: string, line: number }) => {
+				if (data) {
+					const proc: PvsProcess = await this.createPvsProcess();
+					if (proc) {
+						const response: PvsResponseType = await proc.stepProof(data);
+						if (response && response.res) {
+							this.connection.sendRequest("server.response.step-proof", response.res);
+						} else {
+							this.connection.sendNotification('server.status.error', `Error while executing step-proof: ${JSON.stringify(response)}`);
+						}
+					}
+				} else {
+					this.connection.sendNotification('server.status.error', `Malformed pvs.step-proof request received by the server: ${JSON.stringify(data)}`);
 				}
 			});
 			/**

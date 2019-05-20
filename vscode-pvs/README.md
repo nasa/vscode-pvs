@@ -10,7 +10,7 @@ The extension provides the following language features:
 - Hover information
 - Goto/Peek definitions
 - Live diagnostics for syntax errors
-- Literate programming using code lenses
+- Literate programming for evaluating expressions
 - Integrated terminals for PVSio and PVS-prover
 
 
@@ -45,6 +45,9 @@ The extension provides the following language features:
 
 
 ## ChangeLog
+### 1.1.0 (2019.05.xx)
+- Added support for view-proof and step-proof commands
+
 ### 1.0.9 (2019.04.29)
 - Performance improvement (parallel typechecking)
 - Added support for automatic context change
