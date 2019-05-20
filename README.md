@@ -1,3 +1,5 @@
+![](vscode-pvs/icons/pvs-icon.png "")
+
 Requirements
 ==
 * [Node.js](https://nodejs.org)
@@ -5,7 +7,7 @@ Requirements
 
 Installation
 ==
-* In visual studio, go to Preferences/Extensions and select "Install from VSIX".
+* In Visual Studio Code, go to Preferences/Extensions and select "Install from VSIX".
 In the file finder window, browse for the file releases/vscode-pvs-x.x.x.vsix
 
 PVS 7.0
