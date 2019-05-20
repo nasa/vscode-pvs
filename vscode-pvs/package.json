@@ -87,12 +87,12 @@
 				{
 					"id": "theory-explorer-view",
 					"name": "PVS Theories",
-					"when": "resourceExtname == .pvs"
+					"when": "resourceLangId == pvs"
 				},
 				{
 					"id": "proof-explorer-view",
 					"name": "Proof Explorer",
-					"when": "resourceExtname == .pvs"
+					"when": "resourceLangId == pvs"
 				}
 			]
 		},
@@ -219,7 +219,7 @@
 			},
 			{
 				"command": "proof-explorer.step",
-				"title": "️️step"
+				"title": "️️step-proof"
 			}
 		],
 		"menus": {
@@ -377,7 +377,10 @@
 					".ppe",
 					".prf"
 				],
-				"configuration": "./syntax/pvs-language-configuration.json"
+				"configuration": "./syntax/pvs-language-configuration.json",
+				"aliases": [
+					"PVS"
+				]
 			}
 		],
 		"grammars": [
@@ -479,7 +482,7 @@
 	},
 	"dependencies": {},
 	"devDependencies": {
-		"vsce": "^1.59.0",
+		"vsce": "^1.61.0",
 		"@types/node": "^8.9.1",
 		"typescript": "^3.4.3",
 		"vscode": "^1.1.33",
