@@ -19,7 +19,7 @@ export class VSCodePvsStatusBar {
         this.client = client;
         // register notification handlers
         this.client.onNotification("pvs-ready", (pvsVersionInfo: string) => {
-            this.statusBar.text = this.pvsVersionInfo = pvsVersionInfo;
+            this.statusBar.text = this.pvsVersionInfo = `${pvsVersionInfo} ready!`;
         });
         this.client.onNotification("server.status.update", (msg: string) => {
 			this.statusBar.text = msg;

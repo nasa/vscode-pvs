@@ -212,38 +212,38 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			pvsServerPath: this.context.asAbsolutePath(server_path)
 		};
 
-		setTimeout(async () => {
-			// create status bar
-			this.pvsStatusBar = new VSCodePvsStatusBar(this.client);
-			this.pvsStatusBar.activate(this.context);
+		// setTimeout(async () => {
+		// create status bar
+		this.pvsStatusBar = new VSCodePvsStatusBar(this.client);
+		this.pvsStatusBar.activate(this.context);
 
-			// initialise pvs
-			await this.client.sendRequest('pvs.init', pvsExecutionContext);
-			
-			// initialise service providers defined on the client-side
-			this.decorationProvider = new VSCodePvsDecorationProvider();
-			// this.hoverProvider = new VSCodePvsHoverProvider(this.client);
-			// this.hoverProvider.activate(this.context);
-			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client);
-			this.emacsBindingsProvider.activate(this.context);
+		// initialise pvs
+		await this.client.sendRequest('pvs.init', pvsExecutionContext);
+		
+		// initialise service providers defined on the client-side
+		this.decorationProvider = new VSCodePvsDecorationProvider();
+		// this.hoverProvider = new VSCodePvsHoverProvider(this.client);
+		// this.hoverProvider.activate(this.context);
+		this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client);
+		this.emacsBindingsProvider.activate(this.context);
 
-			this.pvsioTerminal = new VSCodePVSioTerminal(this.pvsStatusBar.getVersionInfo());
-			this.pvsioTerminal.activate(this.context);
+		this.pvsioTerminal = new VSCodePVSioTerminal(this.pvsStatusBar.getVersionInfo());
+		this.pvsioTerminal.activate(this.context);
 
-			// this.inputManager = new MultiStepInput(this.client);
-			this.theoriesDataProvider = new VSCodePvsExplorer(this.client, 'theory-explorer-view');
-			this.theoriesDataProvider.activate(this.context);
+		// this.inputManager = new MultiStepInput(this.client);
+		this.theoriesDataProvider = new VSCodePvsExplorer(this.client, 'theory-explorer-view');
+		this.theoriesDataProvider.activate(this.context);
 
-			this.proofDataProvider = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
-			this.proofDataProvider.activate(this.context);
+		this.proofDataProvider = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
+		this.proofDataProvider.activate(this.context);
 
-			this.pvsTerminal = new VSCodePvsTerminal(this.client, this.theoriesDataProvider, this.pvsStatusBar);
-			this.pvsTerminal.activate(this.context);
+		this.pvsTerminal = new VSCodePvsTerminal(this.client, this.theoriesDataProvider, this.pvsStatusBar);
+		this.pvsTerminal.activate(this.context);
 
-			if (window.activeTextEditor && fs.isPvsFile(window.activeTextEditor.document.fileName)) {
-				this.decorationProvider.updateDecorations(window.activeTextEditor);
-			}
-		}, 2000);
+		if (window.activeTextEditor && fs.isPvsFile(window.activeTextEditor.document.fileName)) {
+			this.decorationProvider.updateDecorations(window.activeTextEditor);
+		}
+		// }, 2000);
 	}
 	stop () {
 		if (this.client) {

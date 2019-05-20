@@ -86,6 +86,25 @@ export class PvsProcess {
 	private pvsServerPath: string = null;
 
 	private connection: Connection;
+	private enableNotifications: boolean;
+	private readyString: string = "PVS ready!";
+	// utility functions for showing notifications on the status bar
+	private info(msg: string) {
+		if (this.enableNotifications && this.connection && msg && msg.length > 10 && !msg.startsWith(";;;")) {
+			this.connection.sendNotification('server.status.update', msg.trim());
+		}
+	}
+	private ready() {
+		if (this.enableNotifications) {
+			this.connection.sendNotification('pvs-ready', this.readyString);
+		}
+	}
+	private error(msg: string) {
+		if (this.enableNotifications) {
+			this.connection.sendNotification('pvs-error', msg);
+		}
+	}
+
 
 	/**
 	 * @returns The current pvs context path
@@ -144,8 +163,11 @@ export class PvsProcess {
 			if (this.connection) { this.connection.console.log(cmd); }
 			return new Promise((resolve, reject) => {
 				const listener = (data: string) => {
-					if (this.connection) { this.connection.console.log(data); }// this is the crude pvs lisp output, useful for debugging
-					pvsLispReader.read(data, async (pvsOut: string) => {					
+					if (this.connection) {
+						this.connection.console.log(data); // this is the crude pvs lisp output, useful for debugging
+						this.info(data);
+					}
+					pvsLispReader.read(data, async (pvsOut: string) => {
 						this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
 						this.pvsProcessBusy = false;
 						const ans: PvsResponseType = pvsLispReader.parse(commandId, pvsOut);
@@ -294,7 +316,11 @@ export class PvsProcess {
 	// 	});
 	// }
 
-	async pvs(): Promise<boolean> {
+	async pvs(opt?: {
+		enableNotifications?: boolean
+	}): Promise<boolean> {
+		opt = opt || {};
+		this.enableNotifications = opt.enableNotifications;
 		if (!this.pvsProcessBusy) {
 			this.pvsProcessBusy = true;
 			// const pvslispParser = new PvsLisp("pvs-init", this.connection);
@@ -322,7 +348,9 @@ export class PvsProcess {
 					this.pvsProcess.stderr.on("data", (data: string) => {
 						if (this.connection) { this.connection.console.log(data); }
 					});
-					if (this.connection) { this.connection.console.info("PVS process ready!"); }
+					if (this.connection) {
+						this.connection.console.info("PVS process ready!");
+					}
 				} else {
 					console.error(`\n>>> PVS executable not found at ${pvs} <<<\n`);
 					resolve(false)
