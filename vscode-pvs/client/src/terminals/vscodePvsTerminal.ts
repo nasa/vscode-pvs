@@ -305,7 +305,7 @@ export class VSCodePvsTerminal {
                     pvsTerminal.stepProof(data.fileName, data.theoryName, data.formulaName, data.line);
                     pvsTerminal.proveFormula(data.fileName, data.theoryName, data.formulaName, data.line);
                 }
-                this.info(`Executing step ${data.cmd}`);
+                // this.info(`Executing step ${data.cmd}`);
                 await this.activeTerminals[tname].stepCommand(data.cmd);
                 this.ready();
             }

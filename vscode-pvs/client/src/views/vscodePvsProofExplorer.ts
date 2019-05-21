@@ -26,11 +26,11 @@ class ProofItem extends TreeItem {
 	}
 	visited () {
 		this.tooltip = "executed";
-		this.label = `🔹${this.name}`;
+		this.label = `${this.name}`;
 	}
 	active () {
 		this.tooltip = "ready to execute";
-		this.label = `🔸${this.name}`;
+		this.label = `🔹${this.name}`;
 	}
 	setChildren (children: ProofItem[]) {
 		this.children = children;
@@ -87,7 +87,7 @@ class RootNode extends ProofItem {
 }
 
 // https://emojipedia.org/symbols/
-//  ❌ 🔵 ⚫ ⚪ 🔴 🔽 🔼 ⏯ ⏩ ⏪ ⏫ ⏬ ⧐ ▶️ ◀️ ⭕ 🔹🔸💠🔷🔶
+//  ❌ 🔵 ⚫ ⚪ 🔴 🔽 🔼 ⏯ ⏩ ⏪ ⏫ ⏬ ▶️ ◀️ ⭕ 🔹🔸💠🔷🔶
 
 
 /**
@@ -114,22 +114,29 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	private view: TreeView<TreeItem>
 	private root: ProofItem;
 	private desc: ProofDescriptor;
-	private index: { [ key: string ]: {
-		nextCommand?: ProofItem;
-	}} = {};
 
-	private activeCommand: ProofCommand;
+	private nodes: ProofItem[] = [];
+	private activeIndex: number = 0;
 
-	private getActiveCommand (): ProofCommand {
-		if (!this.activeCommand) {
-			this.activeCommand = (this.root && this.root.children && this.root.children.length > 0) ? <ProofCommand> this.root.children[0] : null;
-		}
-		return this.activeCommand;
+	startProof () {
+		this.activeIndex = 0;
+		this.nodes[this.activeIndex].active();
 	}
-
-	private getFirstCommand (): ProofCommand {
-		this.activeCommand = (this.root && this.root.children && this.root.children.length > 0) ? <ProofCommand> this.root.children[0] : null;
-		return this.activeCommand;
+	getActiveCommand () {
+		return this.nodes[this.activeIndex];
+	}
+	nextCommand () {
+		if (this.activeIndex < this.nodes.length) {
+			this.nodes[this.activeIndex].visited();
+			this.activeIndex++;
+			this.nodes[this.activeIndex].active();
+			if (this.nodes[this.activeIndex].contextValue === "proof-branch"
+				&& this.activeIndex < this.nodes.length) {
+					this.nodes[this.activeIndex].visited();
+				this.activeIndex++;
+				this.nodes[this.activeIndex].active();	
+			}
+		}
 	}
 
 	// private getNextCommand (): ProofCommand {
@@ -159,17 +166,16 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	}
 
 	/**
-	 * Resets the tree view
+	 * Utility function, loads a proof tree into proof-explorer
+	 * @param json The proof to be loaded, in JSON format
 	 */
-	private resetView () {
-	}
-
 	private fromJSON (json: ProofStructure) {
-		function makeTree(elem: { id: string, children: any[], type: string }, parent: ProofCommand) {
+		const makeTree = (elem: { id: string, children: any[], type: string }, parent: ProofCommand) => {
 			const node: ProofItem = (elem.type === "proof-command") ? new ProofCommand(elem.id) : 
 										(elem.type === "proof-branch") ? new ProofBranch(elem.id)
 										: new RootNode(elem.id);
 			parent.appendChild(node);
+			this.nodes.push(node);
 			if (elem.children && elem.children.length) {
 				elem.children.forEach(child => {
 					makeTree(child, node);
@@ -178,6 +184,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				node.collapsibleState = TreeItemCollapsibleState.None;
 			}
 		}
+		this.nodes = [];
 		if (json && json.proof && json.desc) {
 			const cmd: ProofCommand = new ProofCommand(json.proof.id);
 			this.root = cmd; // this is the proof name
@@ -189,11 +196,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				cmd.collapsibleState = TreeItemCollapsibleState.None;
 			}
 			this.desc = json.desc;
+			this.activeIndex = 0;
 		}
 		// update front-end
 		this.refreshView();
 	}
-
 
 	/**
 	 * Handlers for messages received from the server
@@ -208,7 +215,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.client.onRequest("server.response.prover", (ans) => {
 		});
 	}
-
 	
 	/**
 	 * Handler activation function
@@ -216,60 +222,25 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	activate(context: ExtensionContext) {
 		this.installHandlers(context);
-		// this.proverCommands.activate(context);
-
 		let cmd: Disposable = commands.registerCommand("proof-explorer.step", () => {
 			const activeCommand: ProofCommand = this.getActiveCommand();
 			const cmd: string = activeCommand.name;
 			commands.executeCommand("terminal.pvs.send-proof-command", {
 				fileName: this.desc.fileName, theoryName: this.desc.theoryName, formulaName: this.desc.formulaName, line: this.desc.line, cmd
 			});
+			this.refreshView();
 		});
 		context.subscriptions.push(cmd);
 		cmd = commands.registerCommand("terminal.pvs.response.step-executed", () => {
-			const activeCommand: ProofCommand = this.getActiveCommand();
-			activeCommand.visited();
+			this.nextCommand();
 			this.refreshView();
 		});
 		context.subscriptions.push(cmd);
 		cmd = commands.registerCommand("terminal.pvs.response.step-proof-ready", () => {
-			const activeCommand: ProofCommand = this.getFirstCommand();
-			activeCommand.active();
+			this.startProof();
 			this.refreshView();
 		});
 		context.subscriptions.push(cmd);
-
-
-		// create sample proof tree
-		// let root: ProofItem = new VDashItem("root");
-		// let node1: ProofItem = new SkosimpStar("node1");
-		// let node2: ProofItem = new VDashItem("node2");
-		// let node3: ProofItem = new Expand("node3", "per_release_fup");
-		// let node4: ProofItem = new VDashItem("node4");
-		// let node5: ProofItem = new Split("node5");
-		// let node5_1: ProofItem = new VDashItem("node5.1");
-		// let node5_2: ProofItem = new VDashItem("node5.2");
-		// let node5_3: ProofItem = new VDashItem("node5.3");
-		// let node5_4: ProofItem = new VDashItem("node5.4");
-		// let node5_1_1: ProofItem = new Grind("node5.1.1");
-		// let node5_2_1: ProofItem = new Grind("node5.2.1");
-		// let node5_3_1: ProofItem = new Grind("node5.3.1");
-		// let node5_4_1: ProofItem = new Grind("node5.4.1");
-		// root.setChildren([ node1 ]);
-		// node1.setChildren([ node2 ]);
-		// node2.setChildren([ node3 ]);
-		// node3.setChildren([ node4 ]);
-		// node4.setChildren([ node5 ]);
-		// node5.setChildren([ node5_1, node5_2, node5_3, node5_4 ]);
-		// node5_1.setChildren([ node5_1_1 ]);
-		// node5_2.setChildren([ node5_2_1 ]);
-		// node5_3.setChildren([ node5_3_1 ]);
-		// // node5_4.setChildren([ node5_4_1 ]);
-		// node5_1_1.proved();
-		// node5_2_1.failed();
-		// node5_3_1.proved();
-		// // node5_4_1.proved();
-		// this.nodes.set("root", root);
 	}
 
 	/**
@@ -281,7 +252,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			let children: TreeItem[] = (<ProofItem> element).getChildren();
 			return Promise.resolve(children);
 		}
-		// root node: show the list of theories from the selected file
+		// root node
 		return Promise.resolve([ this.root ]);
 	}
 
