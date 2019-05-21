@@ -209,11 +209,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	private installHandlers(context: ExtensionContext) {
 		this.client.onRequest('server.response.step-proof', (ans: string) => {
-			// let root: ProofItem = new VDashItem("root", TreeItemCollapsibleState.Expanded);
-			// this.nodes.set("root", root);
 			this.fromJSON(JSON.parse(ans));
 		});
-
+		this.client.onRequest('server.response.step-tcc', (ans: string) => {
+			this.fromJSON(JSON.parse(ans));
+		});
 		this.client.onRequest("server.response.prover", (ans) => {
 		});
 	}

@@ -747,11 +747,33 @@ class PvsLanguageServer {
 					});
 					if (proc) {
 						this.info("Initialising step-proof...");
+						await proc.typecheckFile(data.fileName);
 						const response: PvsResponseType = await proc.stepProof(data);
 						if (response && response.res) {
 							this.connection.sendRequest("server.response.step-proof", response.res);
 						} else {
 							this.connection.sendNotification('server.status.error', `Error while executing step-proof: ${JSON.stringify(response)}`);
+						}
+						this.ready();
+					}
+				} else {
+					this.connection.sendNotification('server.status.error', `Malformed pvs.step-proof request received by the server: ${JSON.stringify(data)}`);
+				}
+			});
+			this.connection.onRequest('pvs.step-tcc', async (data: ProofDescriptor) => {
+				if (data) {
+					const proc: PvsProcess = await this.createPvsProcess({
+						enableNotifications: true
+					});
+					if (proc) {
+						this.info("Initialising step-proof for tcc...");
+						await proc.typecheckFile(data.fileName);
+						await proc.showTccs(data.fileName, data.theoryName);
+						const response: PvsResponseType = await proc.stepTcc(data);
+						if (response && response.res) {
+							this.connection.sendRequest("server.response.step-tcc", response.res);
+						} else {
+							this.connection.sendNotification('server.status.error', `Error while executing step-tcc: ${JSON.stringify(response)}`);
 						}
 						this.ready();
 					}
@@ -795,7 +817,7 @@ class PvsLanguageServer {
 		});
 		this.connection.onCodeLens(async (tpp: CodeLensParams): Promise<CodeLens[]> => {
 			// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.codelensProvider;
-			if (tpp.textDocument.uri.endsWith(".pvs") && this.codeLensProvider) {
+			if ((tpp.textDocument.uri.endsWith(".pvs") || tpp.textDocument.uri.endsWith(".tccs")) && this.codeLensProvider) {
 				const document: TextDocument = this.documents.get(tpp.textDocument.uri);
 				let codelens: CodeLens[] = await this.codeLensProvider.provideCodeLens(document);
 				return codelens;

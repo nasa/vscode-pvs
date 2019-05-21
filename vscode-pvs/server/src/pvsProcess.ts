@@ -836,6 +836,16 @@ export class PvsProcess {
 		}
 		return response;
 	}
+	async stepTcc(data: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<PvsResponseType> {
+		const cmd: string = `(edit-proof-at "${data.theoryName}" nil ${data.line} "tccs" "${data.theoryName}.tccs" 0 nil)`;
+		const response: PvsResponseType = await this.pvsExec(cmd);
+		if (response && response.res) {
+			const proof: { [key: string]: any } = PvsProcess.prf2json(response.res, data.formulaName);
+			proof['desc'] = data; // append descriptor that identifies file, formula, and line
+			response.res = JSON.stringify(proof);
+		}
+		return response;
+	}
 
 	//--- utility functions
 	static getExpression(prf: string): string {

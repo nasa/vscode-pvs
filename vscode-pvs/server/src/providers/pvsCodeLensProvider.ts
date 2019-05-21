@@ -97,7 +97,7 @@ export class PvsCodeLensProvider {
                 }
             }
             // step proof
-            const theoremRegexp: RegExp = /(\w+)\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM)\b/gi;
+            const theoremRegexp: RegExp = /(\w+)\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
             let match: RegExpMatchArray = null;
             if (match = theoremRegexp.exec(lines[i])) {
                 if (match && match[1]) {

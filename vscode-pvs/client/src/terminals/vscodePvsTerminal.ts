@@ -30,24 +30,14 @@ class ProverTerminal {
         this.terminal.sendText('(save-context)');
     }
     private pvsLispProveFormula(theoryName: string, formula: string) {
-        // vscode.window.setStatusBarMessage("Proving formula " + formula);
         this.terminal.sendText('(prove-formula "' + theoryName + '" "' + formula +'" nil)');
         // this.terminal.sendText('(rewrite-msg-off)');
     }
     private pvsLispProveTcc(theoryName: string, formula: string) {
-        // (rerun-proof-at? "alaris_th" nil 12 "tccs" nil nil)
         this.terminal.sendText('(prove-formula "' + theoryName + '" "' + formula +'" t)');
     }
     private pvsLispShowTccs(theoryName: string) {
         this.terminal.sendText('(show-tccs "' + theoryName + '" nil)');
-    }
-    private pvsLispStepProof(fileName: string, theoryName: string, formulaName: string, line: number) {
-        // (edit-proof-at "alaris2lnewmodes" nil 1967 "pvs" "alaris2lnewmodes.pvs" 0 nil)
-        // this.terminal.sendText(`(edit-proof-at "${fileName}" nil ${line} "pvs" "${fileName}.pvs" 0 nil)`);
-        // this.client.onRequest('server.response.step-proof', (ans: string) => {
-		// 	console.log(ans);
-		// });
-        this.client.sendRequest('pvs.step-proof', { fileName, theoryName, formulaName, line });
     }
     stepCommand (cmd: string) {
         // TODO: place a semaphore
@@ -78,6 +68,7 @@ class ProverTerminal {
         this.terminal = this.createPvsTerminal(terminalName, args);
         this.interactiveMode = "step-proof-ready";
         this.pvsLispTypecheckFile(fileName);
+
         this.pvsLispProveFormula(theoryName, formula);
         return this;
     }
@@ -88,7 +79,9 @@ class ProverTerminal {
         const terminalName: string = `prove ${formula}`;
         const args: string[] = [ this.pvsInterpreter, this.pvsExecutable];
         this.terminal = this.createPvsTerminal(terminalName, args);
+        this.interactiveMode = "step-proof-ready";
         this.pvsLispTypecheckFile(fileName);
+
         this.pvsLispProveTcc(theoryName, formula);
         return this;
     }
@@ -130,18 +123,18 @@ class ProverTerminal {
         this.terminal.sendText("echo '" + msg + "'");
         return this;
     }
-    async stepProof(fileName: string, theoryName: string, formula: string, line: number) {
-        if (fileName.endsWith(".pvs") || fileName.endsWith(".tccs")) {
+    async stepProof(fileName: string, theoryName: string, formulaName: string, line: number) {
+        if (fileName.endsWith(".pvs")) {
             fileName = utils.removeFileExtension(fileName);
         }
-        const terminalName: string = `step-proof ${formula}`;
-        const args: string[] = [ this.pvsInterpreter, this.pvsExecutable];
-        // this.terminal = this.createPvsTerminal(terminalName, args);
-        // this.pvsLispTypecheckFile(fileName);
-        console.log("step proof");
-        this.pvsLispStepProof(fileName, theoryName, formula, line);
-        // (edit-proof-at "alaris2lnewmodes" nil 1967 "pvs" "alaris2lnewmodes.pvs" 0 nil)
-        // this.pvsLispProveFormula(theoryName, formula);
+        this.client.sendRequest('pvs.step-proof', { fileName, theoryName, formulaName, line });
+        return this;
+    }
+    async stepTcc(fileName: string, theoryName: string, formulaName: string, line: number) {
+        if (fileName.endsWith(".tccs")) {
+            fileName = utils.removeFileExtension(fileName);
+        }
+        this.client.sendRequest('pvs.step-tcc', { fileName, theoryName, formulaName, line });
         return this;
     }
 }
@@ -154,7 +147,7 @@ export class VSCodePvsTerminal {
         this.theoryExplorer = theoryExplorer;
         this.client = client;
     }
-    private findSelectedFormula(): { fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string } {
+    private findSelectedFormula(codelensLine?: number): { fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string } {
         const document = vscode.window.activeTextEditor.document;
         let fileName: string = document.fileName;
         const fileExtension: string = (document.fileName.endsWith(".pvs"))? ".pvs"
@@ -165,7 +158,7 @@ export class VSCodePvsTerminal {
             return null;
         }
         const text: string = document.getText();
-        const line: number = vscode.window.activeTextEditor.selection.active.line;
+        const line: number = (codelensLine !== undefined && codelensLine !== null) ? (codelensLine + 1) : vscode.window.activeTextEditor.selection.active.line;
         let theoryName: string = null;
         let formulaName: string = null;
         if (fileName.endsWith(".tccs")) {
@@ -241,6 +234,8 @@ export class VSCodePvsTerminal {
             fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
         }) => {
             if (data) {
+                // adjust data for codelense, and find formula name in the case of .tccs files
+                data = this.findSelectedFormula(data.line);
                 this.info(`Starting new prover session for ${data.formulaName}`);
                 const pvsTerminal: ProverTerminal = new ProverTerminal(this.client, pvsInterpreter);
                 if (data.fileExtension === ".pvs") {
@@ -266,8 +261,8 @@ export class VSCodePvsTerminal {
                         pvsTerminal.stepProof(data.fileName, data.theoryName, data.formulaName, data.line);
                         pvsTerminal.proveFormula(data.fileName, data.theoryName, data.formulaName, data.line);
                     } else if (data.fileExtension === ".tccs") {
-                        //pvsTerminal.proveTcc(fileName, currentTheory, formula, line);
-                        this.error('Support for .tccs files is not implemented yet :\ ');
+                        pvsTerminal.stepTcc(data.fileName, data.theoryName, data.formulaName, data.line);
+                        pvsTerminal.proveTcc(data.fileName, data.theoryName, data.formulaName, data.line);
                     }
                     this.ready();
                 }
@@ -277,24 +272,25 @@ export class VSCodePvsTerminal {
             fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
         }) => {
             if (data) {
+                // adjust data for codelense, and find formula name in the case of .tccs files
+                data = this.findSelectedFormula(data.line);
                 this.info(`Starting new prover session for ${data.formulaName}`);
                 const pvsTerminal: ProverTerminal = new ProverTerminal(this.client, pvsInterpreter);
                 const terminalID: string = this.getTerminalID("step-proof", data);
                 this.activeTerminals[terminalID] = pvsTerminal;
                 if (data.fileExtension === ".pvs") {
-
                     pvsTerminal.stepProof(data.fileName, data.theoryName, data.formulaName, data.line);
                     pvsTerminal.proveFormula(data.fileName, data.theoryName, data.formulaName, data.line);
                 } else if (data.fileExtension === ".tccs") {
-                    //pvsTerminal.proveTcc(fileName, currentTheory, formula, line);
-                    this.error('Support for .tccs files is not implemented yet :\ ');
+                    pvsTerminal.stepProof(data.fileName, data.theoryName, data.formulaName, data.line);
+                    pvsTerminal.proveTcc(data.fileName, data.theoryName, data.formulaName, data.line);
                 }
                 this.ready();
             }
         }));
 
         context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.send-proof-command', async (data: {
-            fileName: string, theoryName: string, formulaName: string, line: number, cmd: string
+            fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string, cmd: string
         }) => {
             if (data && data.cmd && vscode.window.activeTextEditor && fs.isPvsFile(vscode.window.activeTextEditor.document.fileName)) {
                 const tname: string = this.getTerminalID("step-proof", data);
@@ -302,10 +298,15 @@ export class VSCodePvsTerminal {
                     const pvsTerminal: ProverTerminal = new ProverTerminal(this.client, pvsInterpreter);
                     const terminalID: string = this.getTerminalID("step-proof", data);
                     this.activeTerminals[terminalID] = pvsTerminal;
-                    pvsTerminal.stepProof(data.fileName, data.theoryName, data.formulaName, data.line);
-                    pvsTerminal.proveFormula(data.fileName, data.theoryName, data.formulaName, data.line);
+                    if (data.fileExtension === ".pvs") {
+                        pvsTerminal.stepProof(data.fileName, data.theoryName, data.formulaName, data.line);
+                        pvsTerminal.proveFormula(data.fileName, data.theoryName, data.formulaName, data.line);
+                    } else if (data.fileExtension === ".tccs") {
+                        pvsTerminal.stepProof(data.fileName, data.theoryName, data.formulaName, data.line);
+                        pvsTerminal.proveTcc(data.fileName, data.theoryName, data.formulaName, data.line);
+                    }
                 }
-                // this.info(`Executing step ${data.cmd}`);
+                this.info(`Executing step ${data.cmd}`);
                 await this.activeTerminals[tname].stepCommand(data.cmd);
                 this.ready();
             }
@@ -321,12 +322,12 @@ export class VSCodePvsTerminal {
                     const pvsTerminal: ProverTerminal = new ProverTerminal(this.client, pvsInterpreter);
                     const terminalID: string = this.getTerminalID("show-proof", data);
                     this.activeTerminals[terminalID] = pvsTerminal;
-                    if (data.fileExtension === ".pvs") {
+                    // if (data.fileExtension === ".pvs") {
                         pvsTerminal.stepProof(data.fileName, data.theoryName, data.formulaName, data.line);
-                    } else if (data.fileExtension === ".tccs") {
+                    // } else if (data.fileExtension === ".tccs") {
                         //pvsTerminal.proveTcc(fileName, currentTheory, formula, line);
-                        this.error('Support for .tccs files is not implemented yet :\ ');
-                    }
+                        // this.error('Support for .tccs files is not implemented yet :\ ');
+                    // }
                     this.ready();
                 }
             }
@@ -335,6 +336,8 @@ export class VSCodePvsTerminal {
             fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
         }) => {
             if (data) {
+                // adjust data for codelense, and find formula name in the case of .tccs files
+                data = this.findSelectedFormula(data.line);
                 this.info(`Fetching proof tree for ${data.formulaName}`);
                 const pvsTerminal: ProverTerminal = new ProverTerminal(this.client, pvsInterpreter);
                 const terminalID: string = this.getTerminalID("show-proof", data);
@@ -342,8 +345,7 @@ export class VSCodePvsTerminal {
                 if (data.fileExtension === ".pvs") {
                     pvsTerminal.stepProof(data.fileName, data.theoryName, data.formulaName, data.line);
                 } else if (data.fileExtension === ".tccs") {
-                    //pvsTerminal.proveTcc(fileName, currentTheory, formula, line);
-                    this.error('Support for .tccs files is not implemented yet :\ ');
+                    pvsTerminal.stepTcc(data.fileName, data.theoryName, data.formulaName, data.line);
                 }
                 this.ready();
             }
