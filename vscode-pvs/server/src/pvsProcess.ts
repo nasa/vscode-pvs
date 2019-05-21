@@ -186,45 +186,6 @@ export class PvsProcess {
 		});
 	}
 
-	// /**
-	//  * Executes a pvs lisp command using the pvs process
-	//  * @param commandId Command name (e.g,. parse-file), see list of commands in PvsLisp
-	//  * @param cmd The pvs lisp command, e.g., (parse-file "main" nil nil)
-	//  */
-	// private __pvsExecAux(commandId: string, cmd: string): Promise<PvsResponseType> {
-	// 	const _this = this;
-	// 	// utility function, automatically responds to lisp interactive commands, such as when pvs crashes into lisp
-	// 	async function getResult(pvsLispResponse: string): Promise<PvsResponseType> {
-	// 		const ans: PvsResponseType = JSON.parse(pvsLispResponse);
-	// 		// the following :continue creates problems with the parser -- sometimes the entire process quits
-	// 		// if (ans.error) {
-	// 		// 	let option: number = +ans.error.restartOption;
-	// 		// 	_this.continueLisp(option);
-	// 		// }
-	// 		return ans; 
-	// 	}
-	// 	if (this.pvsProcessBusy) {
-	// 		const msg: string = "PVS busy, cannot execute " + cmd + " :/";
-	// 		return this.cannotExecute(msg);
-	// 	}	
-	// 	this.pvsProcessBusy = true;
-	// 	const pvslispParser = new PvsLisp(commandId, this.connection);
-	// 	// connection.console.info("Executing command " + cmd);
-	// 	if (this.connection) { this.connection.console.log(cmd); }
-	// 	return new Promise(async function (resolve, reject) {
-	// 		const listener = function (data: string) {
-	// 			if (_this.connection) { _this.connection.console.log(data); }// this is the crude pvs lisp output, useful for debugging
-	// 			pvslispParser.parse(data, async (res: string) => {
-	// 				_this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-	// 				const ans: PvsResponseType = await getResult(res);
-	// 				_this.pvsProcessBusy = false;
-	// 				resolve(ans);
-	// 			});
-	// 		};
-	// 		_this.pvsProcess.stdout.on("data", listener);
-	// 		_this.pvsProcess.stdin.write(cmd + "\n");
-	// 	});
-	// }
 	private pvsExec(cmd: string): Promise<PvsResponseType> {
 		this.pvsCmdQueue = new Promise((resolve, reject) => {
 			this.pvsCmdQueue.then(() => {
@@ -247,7 +208,6 @@ export class PvsProcess {
 	 * @param cmd The pvs lisp command, e.g., (parse-file "main" nil nil)
 	 */
 	private pvsioExec(cmd: string): Promise<PvsResponseType> {
-		const _this = this;
 		// utility function, automatically responds to lisp interactive commands, such as when pvs crashes into lisp
 		function getResult(pvsLispResponse: string): PvsResponseType {
 			const ans: PvsResponseType = JSON.parse(pvsLispResponse);
@@ -265,56 +225,20 @@ export class PvsProcess {
 		const pvsLispReader: PvsLispReader = new PvsLispReader(this.connection);
 		// const pvslispParser = new PvsLisp(commandId, this.connection);
 		// if (this.connection) { this.connection.console.log(cmd); }
-		return new Promise(function (resolve, reject) {
-			let listener = function (data: string) {
-				if (_this.connection) { _this.connection.console.log(data); }// this is the crude pvs lisp output, useful for debugging
+		return new Promise((resolve, reject) => {
+			const listener = (data: string) => {
+				if (this.connection) { this.connection.console.log(data); }// this is the crude pvs lisp output, useful for debugging
 				pvsLispReader.read(data, async (res: string) => {
-					_this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-					_this.pvsioProcessBusy = false;
+					this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
+					this.pvsioProcessBusy = false;
 					resolve(getResult(res));
 				});
 			};
-			_this.pvsioProcess.stdout.on("data", listener);
-			_this.pvsioProcess.stdin.write(cmd + "\n");
+			this.pvsioProcess.stdout.on("data", listener);
+			this.pvsioProcess.stdin.write(cmd + "\n");
 		});
 	}
-	// /**
-	//  * Executes a pvs lisp command using the prover process
-	//  * @param commandId Command name (e.g,. parse-file), see list of commands in PvsLisp
-	//  * @param cmd The pvs lisp command, e.g., (parse-file "main" nil nil)
-	//  */
-	// private proverExec(commandId: string, cmd: string): Promise<PvsResponseType> {
-	// 	const _this = this;
-	// 	// utility function, automatically responds to lisp interactive commands, such as when pvs crashes into lisp
-	// 	async function getResult(pvsLispResponse: string): Promise<PvsResponseType> {
-	// 		const ans: PvsResponseType = JSON.parse(pvsLispResponse);
-	// 		if (ans.error) {
-	// 			let option: number = +ans.error.restartOption;
-	// 			_this.continueLisp(option);
-	// 		}
-	// 		return ans; 
-	// 	}
-	// 	if (this.proverProcessBusy) {
-	// 		const msg: string = "Prover busy, cannot execute " + cmd + ":/";
-	// 		return this.cannotExecute(msg);
-	// 	}	
-	// 	this.proverProcessBusy = true;
-	// 	const pvslispParser = new PvsLisp(commandId, this.connection);
-	// 	// connection.console.info("Executing command " + cmd);
-	// 	if (this.connection) { this.connection.console.log(cmd); }
-	// 	return new Promise(async (resolve, reject) => {
-	// 		let listener = function (data: string) {
-	// 			if (_this.connection) { _this.connection.console.log(data); }// this is the crude pvs lisp output, useful for debugging
-	// 			pvslispParser.parse(data, async (res: string) => {
-	// 				_this.proverProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-	// 				_this.proverProcessBusy = false;
-	// 				resolve(await getResult(res));
-	// 			});
-	// 		};
-	// 		_this.proverProcess.stdout.on("data", listener);
-	// 		_this.proverProcess.stdin.write(cmd + "\n");
-	// 	});
-	// }
+
 
 	async pvs(opt?: {
 		enableNotifications?: boolean
@@ -359,37 +283,6 @@ export class PvsProcess {
 		}
 	}
 
-	// /**
-	//  * Starts the pvs process
-	//  */
-	// async __pvs (): Promise<{}> {
-	// 	if (!this.pvsProcessBusy) {
-	// 		this.pvsProcessBusy = true;
-	// 		const pvslispParser = new PvsLisp("pvs-init", this.connection);	
-	// 		let cmd: string = path.join(this.pvsPath, "pvs");
-	// 		if (this.connection) { this.connection.console.info("Spawning pvs process " + cmd); }
-	// 		return new Promise((resolve, reject) => {
-	// 			this.pvsProcess = spawn(cmd, ["-raw"]);
-	// 			this.pvsProcess.stdout.setEncoding("utf8");
-	// 			this.pvsProcess.stderr.setEncoding("utf8");
-	// 			const _this = this;
-	// 			let listener = function (data: string) {
-	// 				if (_this.connection) { _this.connection.console.log(data); } // this is the crude pvs lisp output, useful for debugging
-	// 				pvslispParser.parse(data, (res: string) => {
-	// 					// connection.console.info(res);
-	// 					_this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-	// 					_this.pvsProcessBusy = false;
-	// 					resolve();
-	// 				});
-	// 			};
-	// 			this.pvsProcess.stdout.on("data", listener);
-	// 			this.pvsProcess.stderr.on("data", (data: string) => {
-	// 				if (this.connection) { this.connection.console.log(data); }
-	// 			});
-	// 			if (this.connection) { this.connection.console.info("PVS process ready!"); }
-	// 		});
-	// 	}
-	// }
 	/**
 	 * Starts the pvsio process
 	 */
@@ -400,57 +293,26 @@ export class PvsProcess {
 			const pvsLispReader = new PvsLispReader(this.connection);
 			let cmd: string = path.join(this.pvsPath, "pvs");
 			if (this.connection) { this.connection.console.info("Spawning pvsio process " + cmd); }
-			const _this = this;
-			return new Promise(function (resolve, reject) {
-				_this.pvsioProcess = spawn(cmd, ["-raw"]);
-				_this.pvsioProcess.stdout.setEncoding("utf8");
-				_this.pvsioProcess.stderr.setEncoding("utf8");
-				let listener = function (data: string) {
+			return new Promise((resolve, reject) => {
+				this.pvsioProcess = spawn(cmd, ["-raw"]);
+				this.pvsioProcess.stdout.setEncoding("utf8");
+				this.pvsioProcess.stderr.setEncoding("utf8");
+				const listener = (data: string) => {
 					if (this.connection) { this.connection.console.log(data); } // this is the crude pvs lisp output, useful for debugging
 					pvsLispReader.read(data, (res: string) => {
 						// connection.console.info(res);
-						_this.pvsioProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-						_this.pvsioProcessBusy = false;
+						this.pvsioProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
+						this.pvsioProcessBusy = false;
 						resolve();
 					});
 				};
-				_this.pvsioProcess.stdout.on("data", listener);
-				_this.pvsioProcess.stderr.on("data", function (data: string) {
-					if (_this.connection) { _this.connection.console.log(data); }
+				this.pvsioProcess.stdout.on("data", listener);
+				this.pvsioProcess.stderr.on("data", function (data: string) {
+					if (this.connection) { this.connection.console.log(data); }
 				});
 			});
 		}
 	}
-	// /**
-	//  * Starts the prover process
-	//  */
-	// private async prover (): Promise<{}> {
-	// 	if (!this.proverProcessBusy) {
-	// 		this.proverProcessBusy = true;
-	// 		const pvslispParser = new PvsLisp("pvs-init", this.connection);	
-	// 		let cmd: string = path.join(this.pvsPath, "pvs");
-	// 		if (this.connection) { this.connection.console.info("Spawning prover process " + cmd); }
-	// 		const _this = this;
-	// 		return new Promise(function (resolve, reject) {
-	// 			_this.proverProcess = spawn(cmd, ["-raw"]);
-	// 			_this.proverProcess.stdout.setEncoding("utf8");
-	// 			_this.proverProcess.stderr.setEncoding("utf8");
-	// 			let listener = function (data: string) {
-	// 				if (this.connection) { this.connection.console.log(data); } // this is the crude pvs lisp output, useful for debugging
-	// 				pvslispParser.parse(data, function (res: string) {
-	// 					// connection.console.info(res);
-	// 					_this.proverProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-	// 					_this.proverProcessBusy = false;
-	// 					resolve();
-	// 				});
-	// 			};
-	// 			_this.proverProcess.stdout.on("data", listener);
-	// 			_this.proverProcess.stderr.on("data", function (data: string) {
-	// 				if (_this.connection) { _this.connection.console.log(data); }
-	// 			});
-	// 		});
-	// 	}
-	// }
 
 	/**
 	 * Changes the current context. When the context is changed, all symbol information are erased and the parser/typechecker needs to be re-run.
@@ -653,7 +515,6 @@ export class PvsProcess {
 			error: null
 		};
 		if (!this.pvsContextFolder.startsWith(this.pvsPath)) {
-			// await _this.pvsProcess.changeContext(filePath);
 			const parserInfo: PvsResponseType = await this._parseFile(fileName);
 			if (parserInfo.error) {
 				response.error = parserInfo.error.parserError;
@@ -869,7 +730,6 @@ export class PvsProcess {
 			error: null
 		};
 		if (filePath !== this.pvsPath && filePath !== path.join(this.pvsPath, "lib")) {
-			// await _this.pvsProcess.changeContext(filePath);
 			const info: PvsResponseType = await this._typecheckFile(fileName, tcp);
 			if (info.error) {
 				response.error = info.error.parserError;
@@ -959,7 +819,7 @@ export class PvsProcess {
 	// 	return ans;
 	// }
 
-	async stepProof(data: { fileName: string, formulaName: string, line: number }): Promise<PvsResponseType> {
+	async stepProof(data: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<PvsResponseType> {
 		// const tactics = await PvsProcess.test();
 		// const res = await PvsProcess.prf2json(tactics[1], "test");
 		// return {
@@ -970,7 +830,9 @@ export class PvsProcess {
 		const cmd: string = `(edit-proof-at "${data.fileName}" nil ${data.line} "pvs" "${data.fileName}.pvs" 0 nil)`;
 		const response: PvsResponseType = await this.pvsExec(cmd);
 		if (response && response.res) {
-			response.res = JSON.stringify(PvsProcess.prf2json(response.res, data.formulaName));
+			const proof: { [key: string]: any } = PvsProcess.prf2json(response.res, data.formulaName);
+			proof['desc'] = data; // append descriptor that identifies file, formula, and line
+			response.res = JSON.stringify(proof);
 		}
 		return response;
 	}
@@ -992,51 +854,8 @@ export class PvsProcess {
 		}
 		return "";
 	}
-	// static prf2json(prf: string, prefix?: string): { [key: string]: any } {
-	// 	if (prf) {
-	// 		prf = prf.trim();
-	// 		const res: { [key: string]: any } = {};
-	// 		let counter: number = 1;
-	// 		while (prf && prf.length) {
-	// 			if (prf.startsWith(`(""`)) {
-	// 				// proof start
-	// 				const match: RegExpMatchArray = /\(\"\"([\w\W\s]+)\s*\)/.exec(prf);
-	// 				prf = match[1].trim();
-	// 			} else {
-	// 				// series of proof branches or a proof commands
-	// 				const expr: string = PvsProcess.getExpression(prf);
-	// 				if (expr && expr.length) {
-	// 					if (expr.startsWith("((")) {
-	// 						// series of proof branches
-	// 						// remove a pair of parentheses and iterate
-	// 						const match: RegExpMatchArray = /\(([\w\W\s]+)\s*\)/.exec(prf);
-	// 						const subexpr: string = match[1];
-	// 						res[counter++] = PvsProcess.prf2json(subexpr);
-	// 					} else if (expr.startsWith(`("`)) {
-	// 						// proof command from a labelled branch -- remove the label and iterate
-	// 						const match: RegExpMatchArray = /\(\"\d+\"\s*([\w\W\s]+)/.exec(expr);
-	// 						const subexpr: string = match[1].replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
-	// 						res[counter++] = PvsProcess.prf2json(subexpr);
-	// 					} else {
-	// 						res[counter++] = expr.replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
-	// 					}
-	// 					prf = prf.substr(expr.length).trim();
-	// 				} else {
-	// 					// ) parentheses comes before (, from parsing labelled branches, just ignore them and iterate
-	// 					const match: RegExpMatchArray = /\)+([\w\W\s]*)/.exec(prf);
-	// 					prf = match[1].trim(); // remove all \n introduced by pvs in the expression
-	// 					if (prf && prf.length) {
-	// 						PvsProcess.prf2json(prf);
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-	// 		return res;
-	// 	}
-	// 	return null;
-	// }
 
-	static prf2json(prf: string, formulaName: string, parent?: { id: string, children: any[]}): { [key: string]: any } {
+	static prf2json(prf: string, formulaName: string, parent?: { id: string, children: any[], type: string }): { [key: string]: any } {
 		if (prf) {
 			prf = prf.trim();
 			const res: { [key: string]: any } = {};
@@ -1047,7 +866,8 @@ export class PvsProcess {
 					prf = match[1].trim();
 					res["proof"] = {
 						id: formulaName,
-						children: []
+						children: [],
+						type: "root"
 					};
 					parent = res["proof"];
 				} else {
@@ -1059,20 +879,21 @@ export class PvsProcess {
 							// remove a pair of parentheses and iterate
 							const match: RegExpMatchArray = /\(([\w\W\s]+)\s*\)/.exec(prf);
 							const subexpr: string = match[1];
-							const currentParent: { id: string, children: any[] } = parent.children[parent.children.length - 1];
+							const currentParent: { id: string, children: any[], type: string } = parent.children[parent.children.length - 1];
 							PvsProcess.prf2json(subexpr, formulaName, currentParent);
 						} else if (expr.startsWith(`("`)) {
 							// proof command from a labelled branch -- remove the label and iterate
 							const match: RegExpMatchArray = /\(\"(\d+)\"\s*([\w\W\s]+)/.exec(expr);
 							const subexpr: string = match[2].replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
-							const currentBranch: { id: string, children: any[] } = { id: match[1], children: [] };
+							const currentBranch: { id: string, children: any[], type: string } = { id: match[1], children:[], type: "proof-branch" };
 							parent.children.push(currentBranch);
 							PvsProcess.prf2json(subexpr, formulaName, currentBranch);
 						} else {
 							// proof command
 							parent.children.push({
 								id: expr.replace(/\n/g, ""), // remove all \n introduced by pvs in the expression
-								children: []
+								children: [],
+								type: "proof-command"
 							});
 						}
 						prf = prf.substr(expr.length).trim();

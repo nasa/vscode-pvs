@@ -1,36 +1,72 @@
 Unicode character	UTF-8(hex.)	name
-U+0000	 	00	<control>
-U+0001	 	01	<control>
-U+0002	 	02	<control>
-U+0003	 	03	<control>
-U+0004	 	04	<control>
-U+0005	 	05	<control>
-U+0006	 	06	<control>
-U+0007	 	07	<control>
-U+0008	 	08	<control>
-U+0009	 	09	<control>
-U+000A	 	0a	<control>
-U+000B	 	0b	<control>
-U+000C	 	0c	<control>
-U+000D	 	0d	<control>
-U+000E	 	0e	<control>
-U+000F	 	0f	<control>
-U+0010	 	10	<control>
-U+0011	 	11	<control>
-U+0012	 	12	<control>
-U+0013	 	13	<control>
-U+0014	 	14	<control>
-U+0015	 	15	<control>
-U+0016	 	16	<control>
-U+0017	 	17	<control>
-U+0018	 	18	<control>
-U+0019	 	19	<control>
-U+001A	 	1a	<control>
-U+001B	 	1b	<control>
-U+001C	 	1c	<control>
-U+001D	 	1d	<control>
-U+001E	 	1e	<control>
-U+001F	 	1f	<control>
+U+0000	0	Null character	NUL
+U+0001	1	Start of Heading	SOH
+U+0002	2	Start of Text	STX
+U+0003	3	End-of-text character	ETX
+U+0004	4	End-of-transmission character	EOT
+U+0005	5	Enquiry character	ENQ
+U+0006	6	Acknowledge character	ACK
+U+0007	7	Bell character	BEL
+U+0008	8	Backspace	BS
+U+0009	9	Horizontal tab	HT
+U+000A	10	Line feed	LF
+U+000B	11	Vertical tab	VT
+U+000C	12	Form feed	FF
+U+000D	13	Carriage return	CR
+U+000E	14	Shift Out	SO
+U+000F	15	Shift In	SI
+U+0010	16	Data Link Escape	DLE
+U+0011	17	Device Control 1	DC1
+U+0012	18	Device Control 2	DC2
+U+0013	19	Device Control 3	DC3
+U+0014	20	Device Control 4	DC4
+U+0015	21	Negative-acknowledge character	NAK
+U+0016	22	Synchronous Idle	SYN
+U+0017	23	End of Transmission Block	ETB
+U+0018	24	Cancel character	CAN
+U+0019	25	End of Medium	EM
+U+001A	26	Substitute character	SUB
+U+001B	27	Escape character	ESC
+U+001C	28	File Separator	FS
+U+001D	29	Group Separator	GS
+U+001E	30	Record Separator	RS
+U+001F	31	Unit Separator	US
+U+0020	32	Space	SP
+\u0025  37  Arrow LEFT
+\u0027  39  Arrow RIGHT
+U+007F	127	Delete	DEL
+U+0080	128	Padding Character	PAD
+U+0081	129	High Octet Preset	HOP
+U+0082	130	Break Permitted Here	BPH
+U+0083	131	No Break Here	NBH
+U+0084	132	Index	IND
+U+0085	133	Next Line	NEL
+U+0086	134	Start of Selected Area	SSA
+U+0087	135	End of Selected Area	ESA
+U+0088	136	Character Tabulation Set	HTS
+U+0089	137	Character Tabulation with Justification	HTJ
+U+008A	138	Line Tabulation Set	VTS
+U+008B	139	Partial Line Forward	PLD
+U+008C	140	Partial Line Backward	PLU
+U+008D	141	Reverse Line Feed	RI
+U+008E	142	Single-Shift Two	SS2
+U+008F	143	Single-Shift Three	SS3
+U+0090	144	Device Control String	DCS
+U+0091	145	Private Use 1	PU1
+U+0092	146	Private Use 2	PU2
+U+0093	147	Set Transmit State	STS
+U+0094	148	Cancel character	CCH
+U+0095	149	Message Waiting	MW
+U+0096	150	Start of Protected Area	SPA
+U+0097	151	End of Protected Area	EPA
+U+0098	152	Start of String	SOS
+U+0099	153	Single Graphic Character Introducer	SGCI
+U+009A	154	Single Character Intro Introducer	SCI
+U+009B	155	Control Sequence Introducer	CSI
+U+009C	156	String Terminator	ST
+U+009D	157	Operating System Command	OSC
+U+009E	158	Private Message	PM
+U+009F	159	Application Program Command	APC
 U+0020		20	SPACE
 U+0021	!	21	EXCLAMATION MARK
 U+0022	"	22	QUOTATION MARK

@@ -2,103 +2,52 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window, TextDocum
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, MarkdownString, TreeView, Disposable } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { stringify } from 'querystring';
-import { timingSafeEqual } from 'crypto';
+import { ProofDescriptor, ProofStructure } from '../common/serverInterface';
 
 /**
  * Definition of tree items
  */
 class ProofItem extends TreeItem {
+	static uid: number = 0;
 	contextValue: string = "proofItem";
-	status: string = "";
-	command: Command;
-	args: string;
-	children: TreeItem[];
-	constructor (contextValue: string, label: string, id: string, collapsibleState?: TreeItemCollapsibleState) {
-		super(contextValue, (collapsibleState === undefined) ? 
-								(contextValue === "proofCommand") ? TreeItemCollapsibleState.Collapsed
-										: TreeItemCollapsibleState.None 
-									: collapsibleState);
-		this.id = id;
-		this.contextValue = contextValue;
-		this.label = label;
-		// this.tooltip = "Click to run " + this.contextValue;
-		this.command = {
-			title: this.contextValue,
-			command: "explorer.didClickOnStrategy",
-			arguments: [ this.contextValue ]
-		};
+	name: string; // prover command
+	command: Command; // vscode action
+	children: ProofItem[];
+	constructor (type: string, name: string, collapsibleState?: TreeItemCollapsibleState) {
+		super(type, (collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : collapsibleState);
+		this.contextValue = type;
+		this.id = (ProofCommand.uid++).toString();
+		this.name = name;
+		this.notVisited();
 	}
-	setChildren (children: TreeItem[]) {
+	notVisited () {
+		this.tooltip = `${this.contextValue} ${this.name}`;
+		this.label = this.name;
+	}
+	visited () {
+		this.tooltip = "executed";
+		this.label = `🔹${this.name}`;
+	}
+	active () {
+		this.tooltip = "ready to execute";
+		this.label = `🔸${this.name}`;
+	}
+	setChildren (children: ProofItem[]) {
 		this.children = children;
 	}
-	appendChild (child: TreeItem) {
+	appendChild (child: ProofItem) {
 		this.children = this.children || [];
 		this.children.push(child);
 	}
-	getChildren (): TreeItem[] {
+	getChildren (): ProofItem[] {
 		return this.children;
 	}
-	proved () {
-		this.status = "proved";
-		this.tooltip = "proved ✔";
-		this.label += " ✔";
-		this.collapsibleState = TreeItemCollapsibleState.None;
-	}
-	failed () {
-		this.status = "failed";
-		this.tooltip = "failed X";
-		this.label += " ❌";
-		this.collapsibleState = TreeItemCollapsibleState.None;
-	}
 }
-class Grind extends ProofItem {
-	constructor (id: string, collapsibleState?: TreeItemCollapsibleState) {
-		super("proofCommand", "grind", id, collapsibleState);
-	}
-}
-class Split extends ProofItem {
-	constructor (id: string, collapsibleState?: TreeItemCollapsibleState) {
-		super("proofCommand", "split", id, collapsibleState);
-	}
-}
-class Expand extends ProofItem {
-	constructor (id: string, args: string, collapsibleState?: TreeItemCollapsibleState) {
-		super("proofCommand", 'expand "' + args + '"', id, collapsibleState);
-		this.args = args;
-	}
-}
-class SkosimpStar extends ProofItem {
-	constructor (id: string, collapsibleState?: TreeItemCollapsibleState) {
-		super("proofCommand", "skosimp*", id, collapsibleState);
-	}
-}
-class VDashItem extends ProofItem {
-	constructor (id: string, collapsibleState?: TreeItemCollapsibleState) {
-		super("vdash", "⊢", id, collapsibleState);
-		// this.tooltip = "Click to view sequents";
-	}
-	setChildren (children: TreeItem[]) {
-		super.setChildren(children);
-		if (this.children && this.children.length > 0) {
-			this.contextValue = "vdash-with-children";
-			this.collapsibleState = TreeItemCollapsibleState.Collapsed;
-		} else {
-			this.contextValue = "vdash";
-			this.collapsibleState = TreeItemCollapsibleState.None;
-		}
-	}
-}
-class ProofCommand extends TreeItem {
-	static uid: number = 0;
-	contextValue: string = "proofCommand";
-	cmd: string; // prover command
-	command: Command; // vscode action
-	children: TreeItem[];
+class ProofCommand extends ProofItem {
 	constructor (cmd: string, collapsibleState?: TreeItemCollapsibleState) {
-		super("proofCommand", (collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : collapsibleState);
+		super("proof-command", cmd);
 		this.id = (ProofCommand.uid++).toString();
-		this.cmd = cmd;
+		this.name = cmd;
 		this.notVisited();
 		// this.tooltip = "Click to run " + this.contextValue;
 		this.command = {
@@ -107,52 +56,39 @@ class ProofCommand extends TreeItem {
 			arguments: [ this.contextValue ]
 		};
 	}
-	notVisited () {
-		this.tooltip = this.cmd;
-		this.label = this.cmd;
-	}
-	visited () {
-		this.tooltip = "executed";
-		this.label = `🔹${this.cmd}`;
-	}
-	active () {
-		this.tooltip = "ready to execute";
-		this.label = `💠${this.cmd}`;
-	}
-	setChildren (children: TreeItem[]) {
-		this.children = children;
-	}
-	appendChild (child: TreeItem) {
-		this.children = this.children || [];
-		this.children.push(child);
-	}
-	getChildren (): TreeItem[] {
-		return this.children;
+}
+class ProofBranch extends ProofItem {
+	constructor (cmd: string, collapsibleState?: TreeItemCollapsibleState) {
+		super("proof-branch", cmd);
+		this.id = (ProofCommand.uid++).toString();
+		this.name = cmd;
+		this.notVisited();
+		// this.tooltip = "Click to run " + this.contextValue;
+		this.command = {
+			title: this.contextValue,
+			command: "explorer.didClickOnStrategy",
+			arguments: [ this.contextValue ]
+		};
 	}
 }
-
-// class Proved extends ProofItem {
-// 	constructor (id: string) {
-// 		super("✔", id, TreeItemCollapsibleState.None)
-// 	}
-// }
-// class Failed extends ProofItem {
-// 	constructor (id: string) {
-// 		super("❌", id, TreeItemCollapsibleState.None)
-// 	}
-// }
+class RootNode extends ProofItem {
+	constructor (cmd: string, collapsibleState?: TreeItemCollapsibleState) {
+		super("root", cmd);
+		this.id = (ProofCommand.uid++).toString();
+		this.name = cmd;
+		this.notVisited();
+		// this.tooltip = "Click to run " + this.contextValue;
+		this.command = {
+			title: this.contextValue,
+			command: "explorer.didClickOnStrategy",
+			arguments: [ this.contextValue ]
+		};
+	}
+}
 
 // https://emojipedia.org/symbols/
-//  🔵 ⚫ ⚪ 🔴 🔽 🔼 ⏯ ⏩ ⏪ ⏫ ⏬ ⧐ ▶️ ◀️ ⭕ 🔹🔸💠🔷🔶
+//  ❌ 🔵 ⚫ ⚪ 🔴 🔽 🔼 ⏯ ⏩ ⏪ ⏫ ⏬ ⧐ ▶️ ◀️ ⭕ 🔹🔸💠🔷🔶
 
-class ProverCommands {
-	activate (context: ExtensionContext) {
-		let cmd: Disposable = commands.registerCommand("proof-explorer.grind", () => {
-			window.showInformationMessage("grind");
-		});
-		context.subscriptions.push(cmd);
-	}
-}
 
 /**
  * Data provider for PVS Proof Explorer view
@@ -164,7 +100,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	private _onDidChangeTreeData: EventEmitter<TreeItem> = new EventEmitter<TreeItem>();
 	readonly onDidChangeTreeData: Event<TreeItem> = this._onDidChangeTreeData.event;
 
-	private proverCommands: ProverCommands;
+	// private proverCommands: ProverCommands;
 
 	/**
 	 * Language client for communicating with the server
@@ -175,10 +111,30 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Name of the view associated with the data provider
 	 */
 	private providerView: string;
-
 	private view: TreeView<TreeItem>
+	private root: ProofItem;
+	private desc: ProofDescriptor;
+	private index: { [ key: string ]: {
+		nextCommand?: ProofItem;
+	}} = {};
 
-	private root;
+	private activeCommand: ProofCommand;
+
+	private getActiveCommand (): ProofCommand {
+		if (!this.activeCommand) {
+			this.activeCommand = (this.root && this.root.children && this.root.children.length > 0) ? <ProofCommand> this.root.children[0] : null;
+		}
+		return this.activeCommand;
+	}
+
+	private getFirstCommand (): ProofCommand {
+		this.activeCommand = (this.root && this.root.children && this.root.children.length > 0) ? <ProofCommand> this.root.children[0] : null;
+		return this.activeCommand;
+	}
+
+	// private getNextCommand (): ProofCommand {
+	// 	// TODO
+	// }
 
 	/**
 	 * @constructor
@@ -192,7 +148,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
-		this.proverCommands = new ProverCommands();
+		// this.proverCommands = new ProverCommands();
 	}
 
 	/**
@@ -208,30 +164,32 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	private resetView () {
 	}
 
-	private fromJSON (json: { [key: string]: { id: string, children: any[] } }) {
-		function makeTree(elem: { id: string, children: any[] }, parent: ProofCommand) {
-			const cmd: ProofCommand = new ProofCommand(elem.id);
-			parent.appendChild(cmd);
+	private fromJSON (json: ProofStructure) {
+		function makeTree(elem: { id: string, children: any[], type: string }, parent: ProofCommand) {
+			const node: ProofItem = (elem.type === "proof-command") ? new ProofCommand(elem.id) : 
+										(elem.type === "proof-branch") ? new ProofBranch(elem.id)
+										: new RootNode(elem.id);
+			parent.appendChild(node);
 			if (elem.children && elem.children.length) {
 				elem.children.forEach(child => {
-					makeTree(child, cmd);
+					makeTree(child, node);
 				});
 			} else {
-				cmd.collapsibleState = TreeItemCollapsibleState.None;
+				node.collapsibleState = TreeItemCollapsibleState.None;
 			}
 		}
-		Object.keys(json).forEach(key => {
-			const elem: { id: string, children: any[] } = json[key];
-			const cmd: ProofCommand = new ProofCommand(elem.id);
-			this.root = cmd;
-			if (elem.children && elem.children.length) {
-				elem.children.forEach(child => {
+		if (json && json.proof && json.desc) {
+			const cmd: ProofCommand = new ProofCommand(json.proof.id);
+			this.root = cmd; // this is the proof name
+			if (json.proof.children && json.proof.children.length) {
+				json.proof.children.forEach(child => {
 					makeTree(child, cmd);
 				});
 			} else {
 				cmd.collapsibleState = TreeItemCollapsibleState.None;
 			}
-		});
+			this.desc = json.desc;
+		}
 		// update front-end
 		this.refreshView();
 	}
@@ -258,8 +216,28 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	activate(context: ExtensionContext) {
 		this.installHandlers(context);
-		this.proverCommands.activate(context);
+		// this.proverCommands.activate(context);
 
+		let cmd: Disposable = commands.registerCommand("proof-explorer.step", () => {
+			const activeCommand: ProofCommand = this.getActiveCommand();
+			const cmd: string = activeCommand.name;
+			commands.executeCommand("terminal.pvs.send-proof-command", {
+				fileName: this.desc.fileName, theoryName: this.desc.theoryName, formulaName: this.desc.formulaName, line: this.desc.line, cmd
+			});
+		});
+		context.subscriptions.push(cmd);
+		cmd = commands.registerCommand("terminal.pvs.response.step-executed", () => {
+			const activeCommand: ProofCommand = this.getActiveCommand();
+			activeCommand.visited();
+			this.refreshView();
+		});
+		context.subscriptions.push(cmd);
+		cmd = commands.registerCommand("terminal.pvs.response.step-proof-ready", () => {
+			const activeCommand: ProofCommand = this.getFirstCommand();
+			activeCommand.active();
+			this.refreshView();
+		});
+		context.subscriptions.push(cmd);
 
 
 		// create sample proof tree

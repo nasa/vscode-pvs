@@ -200,3 +200,14 @@ export interface PvsFileListDescriptor {
 	fileNames: string[] // pvs files
 }
 
+export interface ProofDescriptor {
+	fileName: string;
+	formulaName: string;
+	theoryName: string;
+	line: number
+}
+
+export interface ProofStructure {
+	desc: ProofDescriptor,
+	proof: { id: string, children: any[] }
+}

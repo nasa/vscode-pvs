@@ -215,7 +215,7 @@
 			},
 			{
 				"command": "proof-explorer.undo",
-				"title": "undo"
+				"title": "undo-step"
 			},
 			{
 				"command": "proof-explorer.step",

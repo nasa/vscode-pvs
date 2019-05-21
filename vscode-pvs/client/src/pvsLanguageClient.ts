@@ -237,7 +237,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.proofDataProvider = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
 		this.proofDataProvider.activate(this.context);
 
-		this.pvsTerminal = new VSCodePvsTerminal(this.client, this.theoriesDataProvider, this.pvsStatusBar);
+		this.pvsTerminal = new VSCodePvsTerminal(this.client, this.theoriesDataProvider);
 		this.pvsTerminal.activate(this.context);
 
 		if (window.activeTextEditor && fs.isPvsFile(window.activeTextEditor.document.fileName)) {

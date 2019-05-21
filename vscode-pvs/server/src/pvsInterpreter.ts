@@ -1,5 +1,5 @@
 /**
- * @module pvsCmd
+ * @module pvsInterpreter
  * @version 2019.03.14
  * Command line version of the pvs theorem prover.
  * BUG: unable to start the theorem prover, need to understand why.
@@ -126,19 +126,12 @@ class Console {
 			console.warn(str);
 		}
 	}
-	sendRequest (type: string, data: any) {
-		if (this.connection) {
-			this.connection.sendRequest(type, data);
-		} else {
-			console.error("Error: Unable to send response to the client :/")
-		}
-	}
 }
 
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
  */
-class PvsProcess {
+class PvsInterpreter {
 	private pvsProcess: ChildProcess;
 	private pvsProcessBusy: boolean = false;
 	private pvsCmdQueue: Promise<string> = Promise.resolve("");
@@ -150,10 +143,6 @@ class PvsProcess {
 		"change-context": /\(change-context (.*)\)/g,
 		"typecheck-file": /\(typecheck-file (.*)\)/g
 	};
-
-	sendRequest (type: string, data: any) {
-		this.console.sendRequest(type, data);
-	}
 
 	/**
 	 * @constructor
@@ -187,7 +176,7 @@ class PvsProcess {
 				const PVS_COMINT_PROMPT_REGEXP: RegExp = /\s*pvs\(\d+\):|([\w\W\s]*)\spvs\(\d+\):/g;
 				const PROVER_PROMPT: RegExp = /\bRule\?/g;
 				const QUERY_YES_NO: RegExp = /\?\s*\(Y or N\)|\?\s*\(Yes or No\)/gi;
-				let ready: boolean = PVS_COMINT_PROMPT_REGEXP.test(data)
+				const ready: boolean = PVS_COMINT_PROMPT_REGEXP.test(data)
 										|| PROVER_PROMPT.test(data)
 										|| QUERY_YES_NO.test(data);
 				if (ready) {
@@ -228,16 +217,16 @@ class PvsProcess {
 		if (!this.pvsProcessBusy) {
 			this.pvsProcessBusy = true;
 			// const pvslispParser = new PvsLisp("pvs-init", { console: this.console });	
-			let cmd: string = this.pvsExecutable;
+			const cmd: string = this.pvsExecutable;
 			this.console.info("Spawning pvs process " + cmd);
 			return new Promise((resolve, reject) => {
 				this.pvsProcess = spawn(cmd, ["-raw"]);
 				this.pvsProcess.stdout.setEncoding("utf8");
 				this.pvsProcess.stderr.setEncoding("utf8");
-				let waitPvsReadyPrompt = (data: string) => {
+				const waitPvsReadyPrompt = (data: string) => {
 					this.console.log(data); // this is the crude output of pvs lisp
-					const PVS_COMINT_PROMPT_REGEXP: RegExp = /\s*pvs\(\d+\):|([\w\W\s]*)\spvs\(\d+\):/g;
-					let ready: boolean = PVS_COMINT_PROMPT_REGEXP.test(data);
+					const PVS_COMINT_PROMPT_REGEXP: RegExp = /\bpvs\(\d+\):|([\w\W\s]*)\spvs\(\d+\):/g;
+					const ready: boolean = PVS_COMINT_PROMPT_REGEXP.test(data);
 					if (ready) {
 						this.pvsProcess.stdout.removeListener("data", waitPvsReadyPrompt); // remove listener otherwise this will capture the output of other commands
 						this.pvsProcessBusy = false;
@@ -273,46 +262,10 @@ class PvsProcess {
 	}
 
 	/**
-	 * Utility function, restores the pvs prompt if pvs crashes into lisp
-	 * @param option The restart option for restoring the pvs prompt
-	 * @private 
-	 */
-	private async continueLisp(option: number): Promise<string> {
-		const cmd = ':continue ' + option + "\n";
-		return this.exec(cmd);
-	}
-	/**
 	 * Disables garbage collector messages
 	 */
 	private async disableGcPrintout(): Promise<string> {
 		const cmd: string = '(setq *disable-gc-printout* t)';
-		return await this.exec(cmd);
-	}
-	/**
-	 * Enables the pvs emacs interface.
-	 * This is used to overcome a limitation of the raw mode, which does not provide detailed info for errors.
-
-	 * pvs output in raw mode:
-	 * pvs(7): (typecheck-file "test" nil nil nil)
-	 * Parsing test
-	 * <pvserror msg="Parser error">
-	 * "Found '-' when expecting 'END'"
-	 * </pvserror>
-	 * 
-	 * pvs output in emacs mode
-	 * pvs(8): (setq *pvs-emacs-interface* t)
-	 * pvs(9): (typecheck-file "test" nil nil nil)
-	 * Parsing test
-	 * Found '-' when expecting 'END'
-	 * In file test (line 11, col 9)
-	 * Error: Parse error
-	 * Restart actions (select using :continue):
-	 * 0: Return to Top Level (an "abort" restart).
-	 * 1: Abort entirely from this (lisp) process.
-	 * pvs(10):
-	 */
-	async emacsInterface(): Promise<string> {
-		const cmd: string = '(setq *pvs-emacs-interface* t)';
 		return await this.exec(cmd);
 	}
 
@@ -332,20 +285,20 @@ class PvsProcess {
 }
 
 // console.log(process.argv[2]);
-async function start(pvsExecutable: string): Promise<PvsProcess> {
-	const pvsProcess: PvsProcess = new PvsProcess(pvsExecutable);
-	await pvsProcess.start();
+async function start(pvsExecutable: string): Promise<PvsInterpreter> {
+	const pvsInterpreter: PvsInterpreter = new PvsInterpreter(pvsExecutable);
+	await pvsInterpreter.start();
 	// await pvsProcess.emacsInterface(); --- NB: do not enable emacs interface, it will lock up the theorem prover
 	process.stdin.on("data", async (data: Buffer) => {
 		try {
 			const cmd: string = data.toLocaleString();
 			// console.log(`received command from keyboard: ${cmd}`);
-			const res: string = await pvsProcess.exec(cmd);
+			const res: string = await pvsInterpreter.exec(cmd);
 		} catch (err) {
 			console.error(err);
 		}
 	});
-	return pvsProcess;
+	return pvsInterpreter;
 }
 
 if (process.argv.length > 2) {

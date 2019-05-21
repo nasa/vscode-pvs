@@ -63,6 +63,7 @@ import { getErrorRange, findTheories, FileList, TheoryMap, TheoryList, TccList, 
 import * as fs from './common/fsUtils';
 import * as path from 'path';
 import { ContextDiagnostics } from './pvsProcess';
+import { ProofDescriptor } from './common/serverInterface';
 
 
 const SERVER_COMMANDS = [
@@ -739,7 +740,7 @@ class PvsLanguageServer {
 					this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-prove-and-show-tccs request received by the server (fileName is null)");
 				}
 			});
-			this.connection.onRequest('pvs.step-proof', async (data: { fileName: string, formulaName: string, line: number }) => {
+			this.connection.onRequest('pvs.step-proof', async (data: ProofDescriptor) => {
 				if (data) {
 					const proc: PvsProcess = await this.createPvsProcess({
 						enableNotifications: true
