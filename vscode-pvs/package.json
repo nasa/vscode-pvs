@@ -218,6 +218,10 @@
 				"title": "goto"
 			},
 			{
+				"command": "proof-explorer.fast-forward",
+				"title": "fast-forward"
+			},
+			{
 				"command": "proof-explorer.step",
 				"title": "️️step-proof"
 			}
@@ -242,6 +246,11 @@
 				},
 				{
 					"command": "proof-explorer.goto",
+					"when": "view == proof-explorer-view && viewItem == proof-command",
+					"group": "inline"
+				},
+				{
+					"command": "proof-explorer.fast-forward",
 					"when": "view == proof-explorer-view && viewItem == proof-command",
 					"group": "inline"
 				},

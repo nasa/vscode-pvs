@@ -682,7 +682,7 @@ class PvsLanguageServer {
 			this.connection.onRequest("pvs.list-all-theories", async (uri: string) => {
 				// this.connection.console.info("list-all-theories, file " + uri);
 				// const pvsContextFolder: string = this.pvsParser.getContextFolder();
-				this.info(`Fetching list of theories for context ${this.pvsParser.getContextFolder()}`);
+				this.info(`Loading list of theories for context ${this.pvsParser.getContextFolder()}`);
 				let response: TheoryList = await this.listAllTheories();
 				this.connection.sendRequest("server.response.list-all-theories", response);
 				this.ready();

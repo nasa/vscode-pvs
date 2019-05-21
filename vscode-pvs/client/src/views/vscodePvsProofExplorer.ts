@@ -1,8 +1,9 @@
 import { ExtensionContext, TreeItemCollapsibleState, commands, window, TextDocument, 
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
-			TreeDataProvider, workspace, MarkdownString, TreeView, Disposable } from 'vscode';
+			TreeDataProvider, workspace, MarkdownString, TreeView, Disposable, Terminal } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import { ProofDescriptor, ProofStructure } from '../common/serverInterface';
+import { VSCodePvsTerminal } from '../terminals/vscodePvsTerminal';
 
 /**
  * Definition of tree items
@@ -120,28 +121,86 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 	startProof (): void {
 		this.activeIndex = 0;
-		this.nodes[this.activeIndex].node.active();
+		if (this.nodes && this.activeIndex < this.nodes.length) {
+			this.nodes[this.activeIndex].node.active();
+		} else {
+			console.error("Error: unable to render proof tree");
+		}
+		this.refreshView();
 	}
 	getActiveCommand (): ProofItem {
-		return this.nodes[this.activeIndex].node;
+		if (this.nodes && this.activeIndex < this.nodes.length) {
+			return this.nodes[this.activeIndex].node;
+		}
+		return null;
 	}
-	nextCommand (): void {
+	getNextCommand (): ProofItem {
+		if (this.activeIndex + 1 < this.nodes.length) {
+			if (this.nodes[this.activeIndex + 1].node.contextValue === "proof-branch"
+				&& this.activeIndex + 2 < this.nodes.length) {
+				return this.nodes[this.activeIndex + 2].node
+			}
+			return this.nodes[this.activeIndex + 1].node;
+		}
+		return null;
+	}
+	private advance (): ProofItem {
+		let nextCommand: ProofItem = null;
 		if (this.activeIndex < this.nodes.length) {
 			this.nodes[this.activeIndex].node.visited();
 			this.activeIndex++;
-			this.nodes[this.activeIndex].node.active();
-			if (this.nodes[this.activeIndex].node.contextValue === "proof-branch"
-				&& this.activeIndex < this.nodes.length) {
-					this.nodes[this.activeIndex].node.visited();
-				this.activeIndex++;
-				this.nodes[this.activeIndex].node.active();	
+			if (this.activeIndex < this.nodes.length) {
+				this.nodes[this.activeIndex].node.active();
+				if (this.nodes[this.activeIndex].node.contextValue === "proof-branch"
+					&& this.activeIndex < this.nodes.length) {
+						this.nodes[this.activeIndex].node.visited();
+					this.activeIndex++;
+					this.nodes[this.activeIndex].node.active();	
+				}
+				nextCommand = this.nodes[this.activeIndex].node;
 			}
 		}
+		return nextCommand;
 	}
-
-	// private getNextCommand (): ProofCommand {
-	// 	// TODO
-	// }
+	execActiveCommand(cmd?: string): ProofCommand {
+		const activeCommand: ProofCommand = this.getActiveCommand();
+		if (activeCommand) {
+			cmd = cmd || activeCommand.name;
+			const data: {
+				fileName: string, theoryName: string, formulaName: string, line: number, cmd: string
+			} = { fileName: this.desc.fileName, theoryName: this.desc.theoryName, formulaName: this.desc.formulaName, line: this.desc.line, cmd };
+			commands.executeCommand("terminal.pvs.send-proof-command", data);
+		}
+		return activeCommand;
+	}
+	step(): void {
+		this.execActiveCommand();
+		this.advance();
+		this.refreshView();
+	}
+	private fastForward (id: number): void {
+		const commands: string[] = [];
+		for (let i = this.activeIndex; i < this.nodes.length && +this.nodes[i].node.id !== id; i++) {
+			if (this.nodes[i].node.contextValue === "proof-command") {
+				commands.push(this.nodes[i].node.name);
+			}
+		}
+		this.execActiveCommand(commands.join("\n"));
+		this.jumpTo(id);
+	}
+	jumpTo (id: number): void {
+		const targetNodes: { index: number, node: ProofItem }[] = this.nodes.filter((elem: { index: number, node: ProofItem }) => {
+			return +elem.node.id === id;
+		});
+		if (targetNodes && targetNodes.length === 1) {
+			if (this.nodes && this.activeIndex < this.nodes.length) {
+				this.nodes[this.activeIndex].node.visited();
+			}
+			this.activeIndex = targetNodes[0].index;
+			this.nodes[this.activeIndex].node.active();
+		}
+		this.refreshView();
+	}
 
 	/**
 	 * @constructor
@@ -165,6 +224,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this._onDidChangeTreeData.fire();
 	}
 
+	private resetView(): void {
+		this.nodes = [];
+		this.root = null;
+		this.refreshView();
+	}
+
 	/**
 	 * Utility function, loads a proof tree into proof-explorer
 	 * @param json The proof to be loaded, in JSON format
@@ -172,9 +237,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	private fromJSON (json: ProofStructure) {
 		let index: number = 0;
 		const makeTree = (elem: { id: string, children: any[], type: string }, parent: ProofCommand) => {
-			const node: ProofItem = (elem.type === "proof-command") ? new ProofCommand(elem.id) : 
-										(elem.type === "proof-branch") ? new ProofBranch(elem.id)
-										: new RootNode(elem.id);
+			const node: ProofItem = (elem.type === "proof-command") ? new ProofCommand(elem.id) : new ProofBranch(elem.id);
 			parent.appendChild(node);
 			this.nodes.push({ index, node });
 			index++;
@@ -186,9 +249,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				node.collapsibleState = TreeItemCollapsibleState.None;
 			}
 		}
+		this.resetView();
 		this.nodes = [];
 		if (json && json.proof && json.desc) {
-			const cmd: ProofCommand = new ProofCommand(json.proof.id);
+			const cmd: ProofCommand = new RootNode(json.proof.id);
 			this.root = cmd; // this is the proof name
 			if (json.proof.children && json.proof.children.length) {
 				json.proof.children.forEach(child => {
@@ -200,6 +264,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.desc = json.desc;
 			this.activeIndex = 0;
 		}
+		// register handler for terminal closed events
+		window.onDidCloseTerminal((e: Terminal) => {
+			if (e && e.name && e.name.endsWith(` ${json.proof.id}`)) {
+				this.resetView();
+			}
+		});
 		// update front-end
 		this.refreshView();
 	}
@@ -225,37 +295,31 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	activate(context: ExtensionContext) {
 		this.installHandlers(context);
 		let cmd: Disposable = commands.registerCommand("proof-explorer.step", () => {
-			const activeCommand: ProofCommand = this.getActiveCommand();
-			const cmd: string = activeCommand.name;
-			commands.executeCommand("terminal.pvs.send-proof-command", {
-				fileName: this.desc.fileName, theoryName: this.desc.theoryName, formulaName: this.desc.formulaName, line: this.desc.line, cmd
-			});
-			this.refreshView();
+			this.step();
 		});
 		context.subscriptions.push(cmd);
 		cmd = commands.registerCommand("terminal.pvs.response.step-executed", () => {
-			this.nextCommand();
-			this.refreshView();
+			// this.refreshView();
 		});
 		context.subscriptions.push(cmd);
 		cmd = commands.registerCommand("terminal.pvs.response.step-proof-ready", () => {
 			this.startProof();
-			this.refreshView();
 		});
 		context.subscriptions.push(cmd);
 		cmd = commands.registerCommand("proof-explorer.goto", (resource: ProofItem) => {
-			if (resource) {
-				const targetNodes: { index: number, node: ProofItem }[] = this.nodes.filter((elem: { index: number, node: ProofItem }) => {
-					return elem.node.id === resource.id;
-				});
-				if (targetNodes && targetNodes.length === 1) {
-					this.nodes[this.activeIndex].node.visited()
-					this.activeIndex = targetNodes[0].index;
-					this.nodes[this.activeIndex].node.active()
-				}
-				this.refreshView();
+			if (resource && this.nodes) {
+				this.jumpTo(+resource.id);
 			} else {
 				window.showErrorMessage(`Error while trying to move to command ${resource.name}`);
+			}
+		});
+		context.subscriptions.push(cmd);
+		cmd = commands.registerCommand("proof-explorer.fast-forward", (resource: ProofItem) => {
+			if (resource && this.nodes) {
+				this.fastForward(+resource.id);
+				this.refreshView();
+			} else {
+				window.showErrorMessage(`Error while trying to fast-forward to ${resource.name}`);
 			}
 		});
 		context.subscriptions.push(cmd);
