@@ -97,8 +97,8 @@ export class PvsCodeLensProvider {
                 }
             }
             // step proof
-            if (/(\w+)\s*:\s*THEOREM/gi.test(lines[i])) {
-                const match: RegExpMatchArray = /(\w+)\s*:\s*THEOREM/gi.exec(lines[i]);
+            if (/(\w+)\s*:\s*(?:THEOREM)\b/gi.test(lines[i])) {
+                const match: RegExpMatchArray = /(\w+)\s*:\s*(?:THEOREM)\b/gi.exec(lines[i]);
                 if (match && match[1]) {
                     const formulaName: string = match[1];
                     const theoryName: string = utils.findTheoryName(doc,i);

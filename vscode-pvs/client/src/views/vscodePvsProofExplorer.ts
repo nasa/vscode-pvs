@@ -115,26 +115,26 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	private root: ProofItem;
 	private desc: ProofDescriptor;
 
-	private nodes: ProofItem[] = [];
+	private nodes: { index: number, node: ProofItem }[] = [];
 	private activeIndex: number = 0;
 
-	startProof () {
+	startProof (): void {
 		this.activeIndex = 0;
-		this.nodes[this.activeIndex].active();
+		this.nodes[this.activeIndex].node.active();
 	}
-	getActiveCommand () {
-		return this.nodes[this.activeIndex];
+	getActiveCommand (): ProofItem {
+		return this.nodes[this.activeIndex].node;
 	}
-	nextCommand () {
+	nextCommand (): void {
 		if (this.activeIndex < this.nodes.length) {
-			this.nodes[this.activeIndex].visited();
+			this.nodes[this.activeIndex].node.visited();
 			this.activeIndex++;
-			this.nodes[this.activeIndex].active();
-			if (this.nodes[this.activeIndex].contextValue === "proof-branch"
+			this.nodes[this.activeIndex].node.active();
+			if (this.nodes[this.activeIndex].node.contextValue === "proof-branch"
 				&& this.activeIndex < this.nodes.length) {
-					this.nodes[this.activeIndex].visited();
+					this.nodes[this.activeIndex].node.visited();
 				this.activeIndex++;
-				this.nodes[this.activeIndex].active();	
+				this.nodes[this.activeIndex].node.active();	
 			}
 		}
 	}
@@ -170,12 +170,14 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param json The proof to be loaded, in JSON format
 	 */
 	private fromJSON (json: ProofStructure) {
+		let index: number = 0;
 		const makeTree = (elem: { id: string, children: any[], type: string }, parent: ProofCommand) => {
 			const node: ProofItem = (elem.type === "proof-command") ? new ProofCommand(elem.id) : 
 										(elem.type === "proof-branch") ? new ProofBranch(elem.id)
 										: new RootNode(elem.id);
 			parent.appendChild(node);
-			this.nodes.push(node);
+			this.nodes.push({ index, node });
+			index++;
 			if (elem.children && elem.children.length) {
 				elem.children.forEach(child => {
 					makeTree(child, node);
@@ -239,6 +241,22 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		cmd = commands.registerCommand("terminal.pvs.response.step-proof-ready", () => {
 			this.startProof();
 			this.refreshView();
+		});
+		context.subscriptions.push(cmd);
+		cmd = commands.registerCommand("proof-explorer.goto", (resource: ProofItem) => {
+			if (resource) {
+				const targetNodes: { index: number, node: ProofItem }[] = this.nodes.filter((elem: { index: number, node: ProofItem }) => {
+					return elem.node.id === resource.id;
+				});
+				if (targetNodes && targetNodes.length === 1) {
+					this.nodes[this.activeIndex].node.visited()
+					this.activeIndex = targetNodes[0].index;
+					this.nodes[this.activeIndex].node.active()
+				}
+				this.refreshView();
+			} else {
+				window.showErrorMessage(`Error while trying to move to command ${resource.name}`);
+			}
 		});
 		context.subscriptions.push(cmd);
 	}

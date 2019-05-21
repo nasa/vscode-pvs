@@ -214,8 +214,8 @@
 				"title": "postpone"
 			},
 			{
-				"command": "proof-explorer.undo",
-				"title": "undo-step"
+				"command": "proof-explorer.goto",
+				"title": "goto"
 			},
 			{
 				"command": "proof-explorer.step",
@@ -241,8 +241,8 @@
 					"group": "inline"
 				},
 				{
-					"command": "proof-explorer.grind",
-					"when": "view == proof-explorer-view && viewItem == vdash",
+					"command": "proof-explorer.goto",
+					"when": "view == proof-explorer-view && viewItem == proof-command",
 					"group": "inline"
 				},
 				{
@@ -308,11 +308,6 @@
 					"command": "proof-explorer.step",
 					"when": "view == proof-explorer-view",
 					"group": "navigation"
-				},
-				{
-					"command": "proof-explorer.undo",
-					"when": "view == proof-explorer-view",
-					"group": "pvs"
 				}
 			]
 		},
