@@ -27,7 +27,7 @@ class ProofItem extends TreeItem {
 	}
 	visited () {
 		this.tooltip = "executed";
-		this.label = `${this.name}`;
+		this.label = ` ${this.name}`;
 	}
 	active () {
 		this.tooltip = "ready to execute";
@@ -306,7 +306,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.startProof();
 		});
 		context.subscriptions.push(cmd);
-		cmd = commands.registerCommand("proof-explorer.goto", (resource: ProofItem) => {
+		cmd = commands.registerCommand("proof-explorer.jump-to", (resource: ProofItem) => {
 			if (resource && this.nodes) {
 				this.jumpTo(+resource.id);
 			} else {

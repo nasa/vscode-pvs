@@ -214,8 +214,8 @@
 				"title": "postpone"
 			},
 			{
-				"command": "proof-explorer.goto",
-				"title": "goto"
+				"command": "proof-explorer.jump-to",
+				"title": "jump-to"
 			},
 			{
 				"command": "proof-explorer.fast-forward",
@@ -245,7 +245,7 @@
 					"group": "inline"
 				},
 				{
-					"command": "proof-explorer.goto",
+					"command": "proof-explorer.jump-to",
 					"when": "view == proof-explorer-view && viewItem == proof-command",
 					"group": "inline"
 				},
