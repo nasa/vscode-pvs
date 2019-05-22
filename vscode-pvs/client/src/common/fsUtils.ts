@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-// import * as rimraf from 'rimraf';
+import * as path from 'path';
 
 export async function stat(file: string): Promise<fs.Stats> {
 	return new Promise<fs.Stats>((resolve, reject) => {
@@ -21,6 +21,18 @@ export async function readDir(pvsContextFolder: string): Promise<string[]> {
 
 export async function readFile(path: string): Promise<string> {
 	return await fs.readFileSync(path).toString('utf8');
+}
+export async function deletePvsCache(contextFolder: string): Promise<boolean> {
+	try {
+		const cacheFolder: string = path.join(contextFolder, "pvsbin");
+		const fileList: string[] = await fs.readdirSync(cacheFolder);
+		fileList.forEach(file => {
+			fs.unlinkSync(path.join(cacheFolder, file));
+		});
+	} catch (deleteError) {
+		return false;
+	}
+	return true;
 }
 
 export async function writeFileSync(path: string, content: string): Promise<void> {

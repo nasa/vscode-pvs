@@ -144,6 +144,13 @@ class PvsInterpreter {
 		"typecheck-file": /\(typecheck-file (.*)\)/g
 	};
 
+	private async clearContext (): Promise<void> {
+		const currentContext: string = this.pvsContextFolder;
+		if (currentContext) {
+			await fs.deletePvsCache(currentContext);
+		}
+	}
+
 	/**
 	 * @constructor
 	 * @param pvsExecutionContext PVS context 
@@ -286,6 +293,7 @@ class PvsInterpreter {
 
 // console.log(process.argv[2]);
 async function start(pvsExecutable: string): Promise<PvsInterpreter> {
+	await this.clearContext();
 	const pvsInterpreter: PvsInterpreter = new PvsInterpreter(pvsExecutable);
 	await pvsInterpreter.start();
 	// await pvsProcess.emacsInterface(); --- NB: do not enable emacs interface, it will lock up the theorem prover

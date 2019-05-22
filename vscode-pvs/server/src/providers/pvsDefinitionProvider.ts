@@ -216,6 +216,6 @@ export class PvsDefinitionProvider {
 			const definitions: PvsDefinition[] = await this.findSymbolDefinition(document, symbolName, { line: line, character: character });
 			return definitions;
 		}
-		return Promise.resolve(null);
+		return null;
 	}
 }

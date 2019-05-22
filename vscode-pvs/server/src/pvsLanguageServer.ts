@@ -824,8 +824,9 @@ class PvsLanguageServer {
 			}
 			return null;
 		});
+		// this provider enables peek definition in the editor
 		this.connection.onDefinition(async (tpp: TextDocumentPositionParams): Promise<Definition> => {
-			if (tpp.textDocument.uri.endsWith(".pvs") && this.definitionProvider) {
+			if (fs.isPvsFile(tpp.textDocument.uri) && this.definitionProvider) {
 				// const pvsFolder = (await this.connection.workspace.getConfiguration("pvs")).path;
 				// const filePath = tpp.textDocument.uri.trim().split("/");
 				// const fileName = filePath[filePath.length - 1].split(".pvs")[0];
