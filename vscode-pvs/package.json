@@ -38,6 +38,7 @@
 						"default": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
 						"pvs7-mac": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
 						"pvs7-linux": "/home/nia/github/PVS/pvs-7.0-851",
+						"pvs6-mac": "/Users/pmasci/Work/pvs-snapshots/PVS-6",
 						"pvs6-linux": "...",
 						"description": "PVS installation folder"
 					},
@@ -59,7 +60,27 @@
 					"pvs.settings.codelensProvider": {
 						"type": "boolean",
 						"default": true,
-						"description": "Enable codelens provider for literate programming."
+						"description": "Enable literate programming."
+					},
+					"pvs.zen-mode": {
+						"type": "string",
+						"enum": [
+							"off",
+							"pvs-6",
+							"pvs-7"
+						],
+						"default": "off",
+						"description": "Rapid switch between PVS versions (this setting overrides pvs.path)"
+					},
+					"pvs.zen-mode:pvs-7-path": {
+						"type": "string",
+						"default": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
+						"description": "PVS installation folder (zen-mode)"
+					},
+					"pvs.zen-mode:pvs-6-path": {
+						"type": "string",
+						"default": "/Users/pmasci/Work/pvs-snapshots/PVS-6",
+						"description": "PVS installation folder (zen-mode)"
 					}
 				}
 			}

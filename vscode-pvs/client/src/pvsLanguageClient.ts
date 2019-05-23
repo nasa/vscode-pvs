@@ -24,6 +24,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// input manager
 	// private inputManager: MultiStepInput;
+	private pvsPath: string;
 
 	// context variables
 	private context: ExtensionContext;
@@ -204,13 +205,39 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		await this.client.onReady();
 		this._registerHandlers();
 		this.pvsContextFolder = fs.getPathname(window.activeTextEditor.document.fileName);
+		this.pvsPath = workspace.getConfiguration().get("pvs.path");
 
 		// request initialisation of pvs
-		let pvsExecutionContext: PvsExecutionContext = {
-			pvsPath: workspace.getConfiguration().get("pvs.path"),
+		const pvsExecutionContext: PvsExecutionContext = {
+			pvsPath: this.pvsPath,
 			pvsContextFolder: this.pvsContextFolder, // document.fileName include the path name
 			pvsServerPath: this.context.asAbsolutePath(server_path)
 		};
+
+		workspace.onDidChangeConfiguration(async  () => {
+			// re-initialise pvs if the executable is different
+			const restartPvs = async (pvsPath: string) => {
+				if (pvsPath !== this.pvsPath) {
+					window.showInformationMessage(`Restarting PVS (pvs path changed to ${pvsPath})`);
+					this.pvsPath = pvsPath;
+					const pvsExecutionContext: PvsExecutionContext = {
+						pvsPath: this.pvsPath,
+						pvsContextFolder: this.pvsContextFolder, // document.fileName include the path name
+						pvsServerPath: this.context.asAbsolutePath(server_path)
+					};
+					await this.client.sendRequest('pvs.init', pvsExecutionContext);	
+				}	
+			};
+			
+			const mode: string = await workspace.getConfiguration().get("pvs.zen-mode");
+			if (mode === "pvs-6" || mode === "pvs-7") {
+				const pvsPath: string = await workspace.getConfiguration().get(`pvs.zen-mode:${mode}-path`);
+				restartPvs(pvsPath);
+			} else {
+				const pvsPath: string = await workspace.getConfiguration().get("pvs.path");
+				restartPvs(pvsPath);
+			}
+		});
 
 		// setTimeout(async () => {
 		// create status bar
