@@ -222,6 +222,7 @@ class PvsInterpreter {
 	 */
 	async start (): Promise<{}> {
 		if (!this.pvsProcessBusy) {
+			await this.clearContext();
 			this.pvsProcessBusy = true;
 			// const pvslispParser = new PvsLisp("pvs-init", { console: this.console });	
 			const cmd: string = this.pvsExecutable;
@@ -293,15 +294,16 @@ class PvsInterpreter {
 
 // console.log(process.argv[2]);
 async function start(pvsExecutable: string): Promise<PvsInterpreter> {
-	await this.clearContext();
 	const pvsInterpreter: PvsInterpreter = new PvsInterpreter(pvsExecutable);
 	await pvsInterpreter.start();
 	// await pvsProcess.emacsInterface(); --- NB: do not enable emacs interface, it will lock up the theorem prover
 	process.stdin.on("data", async (data: Buffer) => {
 		try {
-			const cmd: string = data.toLocaleString();
+			let cmd: string = data.toLocaleString();
 			// console.log(`received command from keyboard: ${cmd}`);
-			const res: string = await pvsInterpreter.exec(cmd);
+			// surrounding parentheses are automatically added, if they are not provided
+			if (!cmd.startsWith("(")) { cmd = `(${cmd})`; }
+			await pvsInterpreter.exec(cmd);
 		} catch (err) {
 			console.error(err);
 		}

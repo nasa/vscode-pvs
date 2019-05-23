@@ -6,7 +6,7 @@ import { TccDescriptorArray, TccDescriptor, PeekDefinitionCommand, PVS_LIBRARY_F
 import { TheoryMap, FileList, TheoryList, TccList } from '../common/languageUtils';
 import * as comm from '../common/serverInterface';
 import * as path from 'path';
-import { log } from '../utils/logger';
+import { log } from '../utils/vscode-utils';
 
 /**
  * Definition of tree items

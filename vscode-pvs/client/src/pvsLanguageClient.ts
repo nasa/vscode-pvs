@@ -3,7 +3,7 @@ import * as comm from './common/serverInterface';
 import { TextDocument, window, workspace, ExtensionContext, Position, Disposable, commands } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
 import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
-import { log } from './utils/logger';
+import { log } from './utils/vscode-utils';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 // import { VSCodePvsHoverProvider } from './providers/vscodePvsHoverProvider-obsolete';
 // import { MultiStepInput } from './theoryExplorer/multiStepInput';
