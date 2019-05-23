@@ -89,9 +89,10 @@ Installing rewrite rule sets.singleton_rew (all instances)
  * TERMINATION OF THIS AGREEMENT.
  **/
 import { spawn, ChildProcess } from 'child_process';
-import * as fs from './common/fsUtils';
+import * as fsUtils from './common/fsUtils';
 import { Connection, TextDocument } from 'vscode-languageserver';
-import { timingSafeEqual } from 'crypto';
+import * as utils from './common/languageUtils';
+import * as readline from 'readline';
 
 class Console {
 	connection: Connection;
@@ -144,10 +145,12 @@ class PvsInterpreter {
 		"typecheck-file": /\(typecheck-file (.*)\)/g
 	};
 
+	private rl: readline.ReadLine;
+
 	private async clearContext (): Promise<void> {
 		const currentContext: string = this.pvsContextFolder;
 		if (currentContext) {
-			await fs.deletePvsCache(currentContext);
+			await fsUtils.deletePvsCache(currentContext);
 		}
 	}
 
@@ -247,6 +250,10 @@ class PvsInterpreter {
 					this.console.error(data);
 				});
 				this.console.info("PVS process ready!");
+				// this.rl = readline.createInterface({
+				// 	input: this.pvsProcess.stdin,
+				// 	output: this.pvsProcess.stdout
+				// });
 			});
 		}
 	}
@@ -283,7 +290,7 @@ class PvsInterpreter {
 	 * @param tcpFlag Optional flag, triggers automatic proof of tccs
 	 */
 	async typecheckFile(uri: string, tcpFlag?: boolean): Promise<string> {
-		let fileName: string = fs.getFilename(uri, { removeFileExtension: true });
+		let fileName: string = fsUtils.getFilename(uri, { removeFileExtension: true });
 		const cmd: string = (tcpFlag) ? 
 			'(typecheck-file "' + fileName + '" nil t nil)'
 				: '(typecheck-file "' + fileName + '" nil nil nil)';
@@ -303,10 +310,14 @@ async function start(pvsExecutable: string): Promise<PvsInterpreter> {
 			// console.log(`received command from keyboard: ${cmd}`);
 			// surrounding parentheses are automatically added, if they are not provided
 			// NB: need to handle response to questions like "are you sure Y N". These responses also need a carriage return at the end.
+			// same applies for quit
 			if (!cmd.startsWith("(")
 					&& cmd.trim().toLocaleLowerCase() !== "y" && cmd.trim().toLocaleLowerCase() !== "n"
-					&& cmd.trim().toLocaleLowerCase() !== "yes" && cmd.trim().toLocaleLowerCase() !== "no") { cmd = `(${cmd.trim()})`; }
-			console.log(`prover command: ${cmd}`);
+					&& cmd.trim().toLocaleLowerCase() !== "yes" && cmd.trim().toLocaleLowerCase() !== "no"
+					&& cmd.trim().toLocaleLowerCase() !== "quit" && cmd.trim().toLocaleLowerCase() !== "quit;") { cmd = `(${cmd.trim()})`; }
+			// console.log allow to write text in the terminal, readline allow to change stdout
+			// readline.clearLine(process.stdout, 0);
+			console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
 			await pvsInterpreter.exec(cmd);
 		} catch (err) {
 			console.error(err);

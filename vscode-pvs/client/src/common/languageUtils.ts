@@ -228,3 +228,19 @@ export function getErrorRange(txt: string, position: Position): Range {
 		end: { line: position.line, character: character + len }
 	};
 }
+
+export const textColor: { [ key: string ]: number } = {
+    blue: 32
+}
+
+export function colorText(text: string, colorCode: number): string {
+    // \x1b[0m resets all attributes
+	return `\x1b[38;5;${colorCode}m${text}\x1b[0m`;
+}
+
+export function backspaceDelete(text: string): string {
+	if (text) {
+		return "\u0008".repeat(text.length);
+	}
+	return "";
+}
