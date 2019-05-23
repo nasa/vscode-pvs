@@ -302,7 +302,11 @@ async function start(pvsExecutable: string): Promise<PvsInterpreter> {
 			let cmd: string = data.toLocaleString();
 			// console.log(`received command from keyboard: ${cmd}`);
 			// surrounding parentheses are automatically added, if they are not provided
-			if (!cmd.startsWith("(")) { cmd = `(${cmd})`; }
+			// NB: need to handle response to questions like "are you sure Y N". These responses also need a carriage return at the end.
+			if (!cmd.startsWith("(")
+					&& cmd.trim().toLocaleLowerCase() !== "y" && cmd.trim().toLocaleLowerCase() !== "n"
+					&& cmd.trim().toLocaleLowerCase() !== "yes" && cmd.trim().toLocaleLowerCase() !== "no") { cmd = `(${cmd.trim()})`; }
+			console.log(`prover command: ${cmd}`);
 			await pvsInterpreter.exec(cmd);
 		} catch (err) {
 			console.error(err);

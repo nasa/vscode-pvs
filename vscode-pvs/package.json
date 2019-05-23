@@ -19,9 +19,7 @@
 		"vscode": "^1.33.1"
 	},
 	"activationEvents": [
-		"onLanguage:pvs",
-		"onCommand:cmd.runit",
-		"onCommand:cmd.proveit"
+		"onLanguage:pvs"
 	],
 	"main": "./client/out/pvsLanguageClient",
 	"contributes": {
@@ -70,17 +68,20 @@
 							"pvs-7"
 						],
 						"default": "off",
-						"description": "Rapid switch between PVS versions (this setting overrides pvs.path)"
+						"description": "Rapid switch between PVS versions (this setting overrides pvs.path)",
+						"scope": "window"
 					},
 					"pvs.zen-mode:pvs-7-path": {
 						"type": "string",
 						"default": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
-						"description": "PVS installation folder (zen-mode)"
+						"description": "PVS installation folder (zen-mode)",
+						"scope": "window"
 					},
 					"pvs.zen-mode:pvs-6-path": {
 						"type": "string",
 						"default": "/Users/pmasci/Work/pvs-snapshots/PVS-6",
-						"description": "PVS installation folder (zen-mode)"
+						"description": "PVS installation folder (zen-mode)",
+						"scope": "window"
 					}
 				}
 			}
