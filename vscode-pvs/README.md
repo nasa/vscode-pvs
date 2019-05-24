@@ -45,8 +45,9 @@ The extension provides the following language features:
 
 
 ## ChangeLog
-### 1.1.0 (2019.05.xx)
+### 1.1.0 (2019.05.24)
 - Added support for view-proof and step-proof commands
+- Improved feedback on status bar
 
 ### 1.0.9 (2019.04.29)
 - Performance improvement (parallel typechecking)
