@@ -45,6 +45,9 @@ The extension provides the following language features:
 
 
 ## ChangeLog
+### 1.1.1 (2019.05.29)
+- Improved Theory Explorer
+
 ### 1.1.0 (2019.05.24)
 - Added support for view-proof and step-proof commands
 - Improved feedback on status bar

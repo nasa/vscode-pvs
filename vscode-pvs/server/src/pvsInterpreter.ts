@@ -311,10 +311,10 @@ async function start(pvsExecutable: string): Promise<PvsInterpreter> {
 			// surrounding parentheses are automatically added, if they are not provided
 			// NB: need to handle response to questions like "are you sure Y N". These responses also need a carriage return at the end.
 			// same applies for quit
-			if (!cmd.startsWith("(")
-					&& cmd.trim().toLocaleLowerCase() !== "y" && cmd.trim().toLocaleLowerCase() !== "n"
-					&& cmd.trim().toLocaleLowerCase() !== "yes" && cmd.trim().toLocaleLowerCase() !== "no"
-					&& cmd.trim().toLocaleLowerCase() !== "quit" && cmd.trim().toLocaleLowerCase() !== "quit;") { cmd = `(${cmd.trim()})`; }
+			// if (!cmd.startsWith("(")
+			// 		&& cmd.trim().toLocaleLowerCase() !== "y" && cmd.trim().toLocaleLowerCase() !== "n"
+			// 		&& cmd.trim().toLocaleLowerCase() !== "yes" && cmd.trim().toLocaleLowerCase() !== "no"
+			// 		&& cmd.trim().toLocaleLowerCase() !== "quit" && cmd.trim().toLocaleLowerCase() !== "quit;") { cmd = `(${cmd.trim()})`; }
 			// console.log allow to write text in the terminal, readline allow to change stdout
 			// readline.clearLine(process.stdout, 0);
 			console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses

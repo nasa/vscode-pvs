@@ -132,6 +132,7 @@ export interface TccDescriptor {
 	msg: string; // tcc message
 	status: string; // tcc status
 	content: string; // this is the textual version of the tcc, including comments and proof obligation
+	position: number; // position of the formula in the .tccs file
 }
 
 export interface TccDescriptorArray {

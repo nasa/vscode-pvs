@@ -94,6 +94,29 @@ class SymbolItem extends TreeItem {
 		};
 	}
 }
+class TccFormulaItem extends TreeItem {
+	contextValue: string = "tcc.formula";
+	private msg: string;
+	private formulaName: string;
+	private uri: Uri;
+	private line: number;
+	constructor (msg: string, formulaName: string, uri: Uri, line: number) {
+		super(msg, TreeItemCollapsibleState.None);
+		this.msg = msg;
+		this.formulaName = formulaName;
+		this.uri = uri;
+		this.line = line;
+		const range: Range = new Range (
+			new Position(line - 1, 0),
+			new Position(line - 1, formulaName.length)
+		);
+		this.command = {
+			title: "Tcc formula selected",
+			command: "explorer.didSelectTccFormula",
+			arguments: [ this.uri, range ]
+		};
+	}
+}
 class TccsOverviewItem extends TreeItem {
 	contextValue: string = "TCCs";
 	theoryName: string; // theory that is associated to this tcc list
@@ -377,6 +400,23 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 		});
 		context.subscriptions.push(cmd);
 
+		// click on prove tccs to trigger tcp
+		cmd = commands.registerCommand('explorer.prove-tcc', (resource: TccItem) => {
+			if (resource && resource.contextValue === "tcc") {
+				const data = {
+					fileName: resource.fileName,
+					formulaName: resource.tcc.id,
+					theoryName: resource.theoryName,
+					line: resource.tcc.line,
+					fileExtension: ".tccs"
+				};
+				commands.executeCommand("terminal.pvs.step-proof", data);
+			} else {
+				window.showErrorMessage("Error while trying to execute explorer.prove-tcc: resource is null");
+			}
+		});
+		context.subscriptions.push(cmd);
+
 		// typecheck-all command from explorer menu
 		cmd = commands.registerCommand('explorer.typecheck-all', () => {
 			this.client.sendRequest('pvs.typecheck-all-and-show-tccs');
@@ -386,6 +426,15 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 		// click on a tcc to open the file and highlight the tcc name in the theory
 		cmd = commands.registerCommand('explorer.didSelectTccSymbol', async (uri: Uri, range: Range) => {
 			// window.showInformationMessage("theory selected: " + theoryName + " " + fileName + "(" + position.line + ", " + position.character + ")");
+			commands.executeCommand('vscode.open', uri, {
+				viewColumn: window.activeTextEditor.viewColumn, // do not open new tabs
+				selection: range
+			});
+		});
+		context.subscriptions.push(cmd);
+
+		// click on a tcc formula to open the .tccs file
+		cmd = commands.registerCommand('explorer.didSelectTccFormula', async (uri: Uri, range: Range) => {
 			commands.executeCommand('vscode.open', uri, {
 				viewColumn: window.activeTextEditor.viewColumn, // do not open new tabs
 				selection: range
@@ -432,10 +481,11 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 				const tcc: TccDescriptor = desc.tcc;
 				const fileName: string = desc.fileName;
 				const pvsContextFolder: string = desc.pvsContextFolder;
-				const uri: Uri = Uri.file(pvsContextFolder + "/" + fileName + ".pvs");
+				const uri: Uri = Uri.file(`${pvsContextFolder}/${fileName}.pvs`);
+				const tccFile: Uri = Uri.file(`${pvsContextFolder}/${desc.theoryName}.tccs`);
 				children = [
 					new SymbolItem(tcc.symbol, uri, tcc.line, tcc.character),
-					new TreeItem(tcc.msg, TreeItemCollapsibleState.None)
+					new TccFormulaItem(tcc.msg, tcc.id, tccFile, tcc.position)
 				];
 			}
 			return Promise.resolve(children);

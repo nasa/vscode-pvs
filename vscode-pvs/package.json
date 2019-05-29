@@ -5,7 +5,7 @@
 	"icon": "icons/pvs-icon.png",
 	"author": "Paolo Masci",
 	"license": "NASA OPEN SOURCE AGREEMENT",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"repository": {
 		"type": "git",
 		"url": "xxx"
@@ -262,6 +262,11 @@
 					"group": "inline"
 				},
 				{
+					"command": "explorer.prove-tcc",
+					"when": "view == theory-explorer-view && viewItem == tcc",
+					"group": "inline"
+				},
+				{
 					"command": "explorer.typecheck-file-and-show-tccs",
 					"when": "view == theory-explorer-view && viewItem == theory",
 					"group": "inline"
@@ -508,7 +513,7 @@
 	},
 	"dependencies": {},
 	"devDependencies": {
-		"vsce": "^1.61.0",
+		"vsce": "^1.62.0",
 		"@types/node": "^8.9.1",
 		"typescript": "^3.4.3",
 		"vscode": "^1.1.33",

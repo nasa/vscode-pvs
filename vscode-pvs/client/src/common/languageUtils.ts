@@ -20,7 +20,9 @@ export const RECORD: { [key: string]: RegExp } = {
 export function findTheoryName(txt: string, line: number): string | null {
 	// theory file
 	const text: string = txt.split("\n").slice(0, line + 1).join("\n");
-	const regexp: RegExp = new RegExp(/(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*theory\b/gi);
+	// const regexp: RegExp = new RegExp(/(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*theory\b/gi);
+	// (?:\%.*\s)* removes comments
+	const regexp: RegExp = new RegExp(/(\w+)\s*(?:\%.*\s)*(?:\[.+\])?\s*:\s*(?:\%.*\s)*\s*theory\b/gi);
 	let candidates: string[] = [];
 	let match: RegExpMatchArray = null;
 	while(match = regexp.exec(text)) {

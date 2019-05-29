@@ -314,6 +314,15 @@ export class PvsLispReader {
 				let match: RegExpMatchArray = null;
 				while (match = regexp.exec(data)) {
 					if (match[3] && match[4]) {
+						const formulaName: string = match[8];
+						const lines = data.split("\n");
+						let position: number = 0;
+						for (let i = 0; i < lines.length; i++) {
+							if (lines[i].startsWith(formulaName)) {
+								position = i;
+								break;
+							}
+						}
 						res.push({
 							line: +match[3],
 							character: +match[4],
@@ -322,7 +331,8 @@ export class PvsLispReader {
 							status: match[7],
 							id: match[8],
 							formula: match[9],
-							content: match[0]
+							content: match[0],
+							position // position of the formula in the tccs file
 						});
 					}
 				}
