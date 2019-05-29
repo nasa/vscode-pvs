@@ -281,7 +281,7 @@ class PvsLanguageServer {
 		const fileList: FileList = {
 			pvsContextFolder: folder,
 			fileNames: children.filter(function (fileName) {
-				return fileName.endsWith(".pvs");
+				return fileName.endsWith(".pvs") && !fileName.startsWith(".");
 			})
 		};
 		return fileList;

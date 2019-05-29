@@ -371,7 +371,7 @@ export class PvsProcess {
 	async listPvsFiles(): Promise<PvsFileListDescriptor> {
 		let files: string[] = await fs.readDir(this.pvsContextFolder);
 		let pvsFiles: string[] = files.filter(fileName => {
-			return fileName.endsWith(".pvs");
+			return fileName.endsWith(".pvs") && !fileName.startsWith(".");
 		});
 		return {
 			fileNames: pvsFiles,
