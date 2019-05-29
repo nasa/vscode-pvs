@@ -220,6 +220,7 @@ class PvsInterpreter {
 		return this.pvsCmdQueue;
 	}
 
+
 	/**
 	 * Starts the pvs process
 	 */
@@ -299,6 +300,29 @@ class PvsInterpreter {
 
 }
 
+
+// utility function, ensures open brackets match closed brackets for commands
+function parMatch(cmd: string): string {
+	const openRegex: RegExp = new RegExp(/\(/g);
+	const closeRegex: RegExp = new RegExp(/\)/g);
+	let par: number = 0;
+	while (openRegex.exec(cmd)) {
+		par++;
+	}
+	while (closeRegex.exec(cmd)) {
+		par--;
+	}
+	if (par > 0) {
+		// missing closed brackets
+		cmd = cmd.trimRight() + ')'.repeat(par);
+		console.log(`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
+	} else if (par < 0) {
+		cmd = '('.repeat(-par) + cmd;
+		console.log(`Mismatching parentheses automatically fixed: ${par} closed brackets did not match any other open bracket.`)
+	}
+	return cmd;
+}
+
 // console.log(process.argv[2]);
 async function start(pvsExecutable: string): Promise<PvsInterpreter> {
 	const pvsInterpreter: PvsInterpreter = new PvsInterpreter(pvsExecutable);
@@ -317,6 +341,7 @@ async function start(pvsExecutable: string): Promise<PvsInterpreter> {
 			// 		&& cmd.trim().toLocaleLowerCase() !== "quit" && cmd.trim().toLocaleLowerCase() !== "quit;") { cmd = `(${cmd.trim()})`; }
 			// console.log allow to write text in the terminal, readline allow to change stdout
 			// readline.clearLine(process.stdout, 0);
+			cmd = parMatch(cmd);
 			console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
 			await pvsInterpreter.exec(cmd);
 		} catch (err) {

@@ -96,48 +96,30 @@ export class PvsCodeLensProvider {
 					});
                 }
             }
-            // step proof
-            const theoremRegexp: RegExp = /(\w+)\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
-            let match: RegExpMatchArray = null;
-            if (match = theoremRegexp.exec(lines[i])) {
-                if (match && match[1]) {
-                    const formulaName: string = match[1];
-                    const theoryName: string = utils.findTheoryName(doc,i);
-                    codeLens.push({
-                        range: {
-                            start: { line: i, character: match.index },
-                            end: { line: i, character: match.index + formulaName.length }
-                        },
-                        command: {
-                            title: `prove`,
-                            command: "codelense.pvs.prove",
-                            arguments: [ { fileName, theoryName, formulaName, line: i, fileExtension } ]
-                        }
-                    });
-                    codeLens.push({
-                        range: {
-                            start: { line: i, character: match.index },
-                            end: { line: i, character: match.index + formulaName.length }
-                        },
-                        command: {
-                            title: `show proof`,
-                            command: "codelense.pvs.show-proof", // todo
-                            arguments: [ { fileName, theoryName, formulaName, line: i, fileExtension } ]
-                        }
-                    });
-                    codeLens.push({
-                        range: {
-                            start: { line: i, character: match.index },
-                            end: { line: i, character: match.index + formulaName.length }
-                        },
-                        command: {
-                            title: `step proof`,
-                            command: "codelense.pvs.step-proof",
-                            arguments: [ { fileName, theoryName, formulaName, line: i, fileExtension } ]
-                        }
-                    });
-                }
+        }
+        // step proof
+        // (?:\%.*\s)* is for comments
+        const theoremRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\s)*\s*)*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
+        let match: RegExpMatchArray = null;
+        while (match = theoremRegexp.exec(doc)) {
+            if (match && match[1]) {
+                const formulaName: string = match[1];
+                const docUp: string = doc.slice(0, match.index + match[1].length);
+                const i: number = docUp.split("\n").length - 1;
+                const theoryName: string = utils.findTheoryName(doc,i);
+                codeLens.push({
+                    range: {
+                        start: { line: i, character: match.index },
+                        end: { line: i, character: match.index + formulaName.length }
+                    },
+                    command: {
+                        title: `prove`,
+                        command: "codelense.pvs.prove",
+                        arguments: [ { fileName, theoryName, formulaName, line: i, fileExtension } ]
+                    }
+                });
             }
+        }
             // proveit
             // else if (/\s*%\s*@\s*proveit\b/gi.test(lines[i])) {
             //     let txt: string = lines.slice(i).join("\n");
@@ -164,7 +146,6 @@ export class PvsCodeLensProvider {
 			// 		});
             //     }
             // }
-        }
         return codeLens;
     }
 }

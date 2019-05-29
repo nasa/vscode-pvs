@@ -205,7 +205,7 @@ export interface ProofDescriptor {
 	fileName: string;
 	formulaName: string;
 	theoryName: string;
-	line: number
+	line: number;
 }
 
 export interface ProofStructure {
