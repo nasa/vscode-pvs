@@ -123,6 +123,7 @@ export interface TheoryDescriptor {
  */
 export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	private pvsLibrariesPath: string = null;
+	private currentContext: string = null;
 
 	/**
 	 * Events for updating the tree structure
@@ -286,18 +287,21 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	private installHandlers() {
 		// server.response.list-all-theories events are automatically sent by the server when the context folder changes
 		this.client.onRequest("server.response.list-all-theories", (ans: TheoryList) => {
-			this.resetView();
-			if (ans && ans.theories) {
-				let theories: TheoryItem[] = Object.keys(ans.theories).map((key: string) => {
-					let position: Position = new Position(ans.theories[key].position.line, ans.theories[key].position.character);
-					let fileName: string = ans.theories[key].fileName;
-					let theoryName: string = ans.theories[key].theoryName;
-					let pvsContextFolder: string = ans.pvsContextFolder;
-					return new TheoryItem(theoryName, fileName, position, pvsContextFolder, TreeItemCollapsibleState.None);
-				});
-				this.theories = this.theories.concat(theories);
+			if (ans && ans.pvsContextFolder !== this.currentContext) {
+				this.currentContext = ans.pvsContextFolder;
+				this.resetView();
+				if (ans && ans.theories) {
+					let theories: TheoryItem[] = Object.keys(ans.theories).map((key: string) => {
+						let position: Position = new Position(ans.theories[key].position.line, ans.theories[key].position.character);
+						let fileName: string = ans.theories[key].fileName;
+						let theoryName: string = ans.theories[key].theoryName;
+						let pvsContextFolder: string = ans.pvsContextFolder;
+						return new TheoryItem(theoryName, fileName, position, pvsContextFolder, TreeItemCollapsibleState.None);
+					});
+					this.theories = this.theories.concat(theories);
+				}
+				this.refreshView();
 			}
-			this.refreshView();
 		});
 		this.client.onRequest("server.response.show-tccs", async (ans: TccList) => {
 			this.updateTccs(ans);
