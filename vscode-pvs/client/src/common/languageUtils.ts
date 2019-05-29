@@ -34,6 +34,46 @@ export function findTheoryName(txt: string, line: number): string | null {
 	}
 	return null;
 };
+export function findTheories(fileName: string, fileContent: string): TheoryMap {
+	// TODO: return an array rather than a map
+	let ans: TheoryMap = {};
+	// let regexp: RegExp = new RegExp(/(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*theory\s/gi);
+	// (?:\%.*\s)* removes comments
+	const regexp: RegExp = new RegExp(/(\w+)\s*(?:\%.*\s)*(?:\[.+\])?\s*:\s*(?:\%.*\s)*\s*theory\b/gi);
+	let match: RegExpMatchArray = null;
+	let lines: string[] = fileContent.split("\n");
+	while(match = regexp.exec(fileContent)) {
+		let line: number = 0;
+		let character: number = 0;
+		let theoryName: string = null;
+		for (let i = 0; i < lines.length; i++) {
+			if (lines[i].includes(" " + match[1] + " ")
+				|| lines[i].includes(" " + match[1] + ":")
+				|| lines[i].includes(" " + match[1] + "[")
+				|| lines[i].includes(" " + match[1] + "%")
+				|| lines[i].startsWith(match[1] + " ")
+				|| lines[i].startsWith(match[1] + ":")
+				|| lines[i].startsWith(match[1] + "[")
+				|| lines[i].startsWith(match[1] + "%")
+				) {
+				// the first match is the theory declaration -- in pvs, theories cannot be imported if they have not been declared first
+				line = i;
+				character = lines[i].split(match[1])[0].length;
+				theoryName = match[1];
+				ans[theoryName] = {
+					position: {
+						line: line,
+						character: character
+					},
+					theoryName: theoryName,
+					fileName: fileName
+				};
+				break;
+			}
+		}
+	}
+	return ans;
+}
 
 /**
  * @function listTheoryNames
@@ -42,7 +82,7 @@ export function findTheoryName(txt: string, line: number): string | null {
  * @returns string[]
  */
 export function listTheoryNames(txt: string): string [] {
-	const regexp: RegExp = /(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*theory\b/gi;
+	const regexp: RegExp = /(\w+)\s*(?:\%.*\s)*(?:\[.+\])?\s*:\s*(?:\%.*\s)*\s*theory\b/gi;
 	let ans: string[] = [];
 	let match: RegExpMatchArray = null;
 	while(match = regexp.exec(txt)) {
@@ -62,6 +102,7 @@ export function listTheoryNames(txt: string): string [] {
 export function findTheorem(txt: string, line: number): string | null {
 	let text: string = txt.split("\n").slice(0, line + 1).join("\n");
 	let candidates: string[] = [];
+	// (?:\%.*\s)* removes comments
 	let regexp: RegExp = /(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*(theorem|lemma|conjecture|obligation)\b/gi;
 	let match: RegExpMatchArray = null;
 	while(match = regexp.exec(text)) {
@@ -130,44 +171,7 @@ export interface TheoryMap {
 	}
 }
 
-export function findTheories(fileName: string, fileContent: string): TheoryMap {
-	// TODO: return an array rather than a map
-	let ans: TheoryMap = {};
-	let regexp: RegExp = new RegExp(/(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*theory\s/gi);
-	let match: RegExpMatchArray = null;
-	let lines: string[] = fileContent.split("\n");
-	while(match = regexp.exec(fileContent)) {
-		let line: number = 0;
-		let character: number = 0;
-		let theoryName: string = null;
-		for (let i = 0; i < lines.length; i++) {
-			if (lines[i].includes(" " + match[1] + " ")
-				|| lines[i].includes(" " + match[1] + ":")
-				|| lines[i].includes(" " + match[1] + "[")
-				|| lines[i].includes(" " + match[1] + "%")
-				|| lines[i].startsWith(match[1] + " ")
-				|| lines[i].startsWith(match[1] + ":")
-				|| lines[i].startsWith(match[1] + "[")
-				|| lines[i].startsWith(match[1] + "%")
-				) {
-				// the first match is the theory declaration -- in pvs, theories cannot be imported if they have not been declared first
-				line = i;
-				character = lines[i].split(match[1])[0].length;
-				theoryName = match[1];
-				ans[theoryName] = {
-					position: {
-						line: line,
-						character: character
-					},
-					theoryName: theoryName,
-					fileName: fileName
-				};
-				break;
-			}
-		}
-	}
-	return ans;
-}
+
 
 
 /**

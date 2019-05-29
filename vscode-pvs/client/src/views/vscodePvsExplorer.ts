@@ -167,6 +167,10 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	private view: TreeView<TreeItem>
 
 	private theories: TheoryItem[] = [];
+	private theoryMap: { [ theoryName: string ]: {
+		theorems: string[],
+		axioms: string[]
+	 } } = {};
 	private tccsOverview: { [ theoryName: string ]: TccsOverviewItem } = {};
 	private tccs: { [ theoryName: string ]: (TccItem | NoTccItem)[] } = {};
 
@@ -313,18 +317,40 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 			if (ans && ans.pvsContextFolder !== this.currentContext) {
 				this.currentContext = ans.pvsContextFolder;
 				this.resetView();
-				if (ans && ans.theories) {
-					let theories: TheoryItem[] = Object.keys(ans.theories).map((key: string) => {
-						let position: Position = new Position(ans.theories[key].position.line, ans.theories[key].position.character);
-						let fileName: string = ans.theories[key].fileName;
-						let theoryName: string = ans.theories[key].theoryName;
-						let pvsContextFolder: string = ans.pvsContextFolder;
-						return new TheoryItem(theoryName, fileName, position, pvsContextFolder, TreeItemCollapsibleState.None);
-					});
-					this.theories = this.theories.concat(theories);
-				}
-				this.refreshView();
 			}
+			if (ans && ans.theories) {
+				let theoryNames: string[] = Object.keys(ans.theories);
+				let theoryItems: TheoryItem[] = [];
+				let theoryMap: { [ theoryName: string ]: {
+					theorems: string[],
+					axioms: string[]
+				} } = {}
+				for (const i in theoryNames) {
+					const theoryName: string = theoryNames[i];
+					// check if theoryName was added to the file
+					if (this.theoryMap[theoryName]) {
+						// keep current entry
+						const item: TheoryItem = this.getTheoryItem(theoryName);
+						theoryItems.push(item);
+						theoryMap[theoryName] = this.theoryMap[theoryName];
+					} else {
+						// add new entry
+						let position: Position = new Position(ans.theories[theoryName].position.line, ans.theories[theoryName].position.character);
+						let fileName: string = ans.theories[theoryName].fileName;
+						let pvsContextFolder: string = ans.pvsContextFolder;
+						theoryMap[theoryName] = {
+							theorems: [],
+							axioms: []
+						}; // TODO: list theorems & axioms
+						const theoryItem: TheoryItem = new TheoryItem(theoryName, fileName, position, pvsContextFolder, TreeItemCollapsibleState.None);
+						theoryItems.push(theoryItem);
+					}
+				}
+				this.theories = theoryItems;
+				this.theoryMap = theoryMap;
+			}
+			this.refreshView();
+			
 		});
 		this.client.onRequest("server.response.show-tccs", async (ans: TccList) => {
 			this.updateTccs(ans);

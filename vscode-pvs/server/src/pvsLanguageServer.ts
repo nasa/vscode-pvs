@@ -194,7 +194,11 @@ class PvsLanguageServer {
 					connection.sendDiagnostics({ uri: save.document.uri, diagnostics });
 				});
 			}
-		})
+			// send updated version of theories to the client
+			this.listAllTheories().then((theories: TheoryList) => {
+				this.connection.sendRequest("server.response.list-all-theories", theories);
+			});
+		});
 
 		// Listen to document events triggered by the editor
 		this.documents.listen(connection);
