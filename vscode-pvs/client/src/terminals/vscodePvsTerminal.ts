@@ -250,7 +250,10 @@ export class VSCodePvsTerminal {
     async stepProof (data: { 
         fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
     }) {
-        data = data || this.findSelectedFormula();
+        data = (data) ? 
+                (data.fileExtension === ".tccs") ?
+                    this.findSelectedFormula(data.line) : data
+                : this.findSelectedFormula();
         if (data) {
             const terminalID: string = VSCodePvsTerminal.getTerminalID(data);
             const pvsInterpreter: string = this.context.asAbsolutePath(path.join('server', 'out', 'pvsInterpreter'));
