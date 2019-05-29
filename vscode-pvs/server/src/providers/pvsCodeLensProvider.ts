@@ -113,8 +113,8 @@ export class PvsCodeLensProvider {
                         end: { line: i, character: match.index + formulaName.length }
                     },
                     command: {
-                        title: `prove`,
-                        command: "codelense.pvs.prove",
+                        title: `step-proof`,
+                        command: "codelense.pvs.step-proof",
                         arguments: [ { fileName, theoryName, formulaName, line: i, fileExtension } ]
                     }
                 });

@@ -284,19 +284,6 @@ export class VSCodePvsTerminal {
         context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.prove', async (data: {
             fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string
         }) => {
-            data = data || this.findSelectedFormula();
-            this.stepProof(data);
-        }));
-        context.subscriptions.push(vscode.commands.registerCommand('codelense.pvs.prove', async (data: { 
-            fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
-        }) => {
-            this.stepProof(data);
-        }));
-
-        context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.step-proof', async (data: { 
-            fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
-        }) => {
-            data = data || this.findSelectedFormula();
             this.stepProof(data);
         }));
         context.subscriptions.push(vscode.commands.registerCommand('codelense.pvs.step-proof', async (data: { 
@@ -305,17 +292,29 @@ export class VSCodePvsTerminal {
             this.stepProof(data);
         }));
 
-        context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.show-proof', async () => {
-            const data: { 
-                fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
-            } = this.findSelectedFormula();
-            this.stepProof(data);
-        }));
-        context.subscriptions.push(vscode.commands.registerCommand('codelense.pvs.show-proof', async (data: { 
-            fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
-        }) => {
-            this.stepProof(data);
-        }));
+        // context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.step-proof', async (data: { 
+        //     fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
+        // }) => {
+        //     data = data || this.findSelectedFormula();
+        //     this.stepProof(data);
+        // }));
+        // context.subscriptions.push(vscode.commands.registerCommand('codelense.pvs.step-proof', async (data: { 
+        //     fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
+        // }) => {
+        //     this.stepProof(data);
+        // }));
+
+        // context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.show-proof', async () => {
+        //     const data: { 
+        //         fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
+        //     } = this.findSelectedFormula();
+        //     this.stepProof(data);
+        // }));
+        // context.subscriptions.push(vscode.commands.registerCommand('codelense.pvs.show-proof', async (data: { 
+        //     fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
+        // }) => {
+        //     this.stepProof(data);
+        // }));
 
         context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.send-proof-command', async (data: {
             fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string, cmd: string
