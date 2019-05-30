@@ -145,8 +145,6 @@ class PvsInterpreter {
 		"typecheck-file": /\(typecheck-file (.*)\)/g
 	};
 
-	private rl: readline.ReadLine;
-
 	private async clearContext (): Promise<void> {
 		const currentContext: string = this.pvsContextFolder;
 		if (currentContext) {
@@ -220,7 +218,9 @@ class PvsInterpreter {
 		return this.pvsCmdQueue;
 	}
 
-
+	execCmd(cmd: string): void {
+		this.pvsProcess.stdin.write(cmd);
+	}
 	/**
 	 * Starts the pvs process
 	 */
@@ -243,6 +243,11 @@ class PvsInterpreter {
 						this.pvsProcess.stdout.removeListener("data", waitPvsReadyPrompt); // remove listener otherwise this will capture the output of other commands
 						this.pvsProcessBusy = false;
 						this.disableGcPrintout();
+
+						this.pvsProcess.stdout.on("data", (data: string) => {
+							this.console.log(data);
+						});
+
 						resolve();
 					}
 				};
@@ -318,7 +323,22 @@ function parMatch(cmd: string): string {
 		console.log(`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
 	} else if (par < 0) {
 		cmd = '('.repeat(-par) + cmd;
-		console.log(`Mismatching parentheses automatically fixed: ${par} closed brackets did not match any other open bracket.`)
+		console.log(`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
+	}
+	return cmd;
+}
+
+// utility function, ensures open brackets match closed brackets for commands
+function quotesMatch(cmd: string): string {
+	const quotesRegex: RegExp = new RegExp(/\"/g);
+	let nQuotes: number = 0;
+	while (quotesRegex.exec(cmd)) {
+		nQuotes++;
+	}
+	if (nQuotes % 2) {
+		// mismatching number of quotes
+		cmd = cmd.trimRight() + '"';
+		console.log(`Mismatching double quotes, please check your expression.`)
 	}
 	return cmd;
 }
@@ -332,18 +352,10 @@ async function start(pvsExecutable: string): Promise<PvsInterpreter> {
 		try {
 			let cmd: string = data.toLocaleString();
 			// console.log(`received command from keyboard: ${cmd}`);
-			// surrounding parentheses are automatically added, if they are not provided
-			// NB: need to handle response to questions like "are you sure Y N". These responses also need a carriage return at the end.
-			// same applies for quit
-			// if (!cmd.startsWith("(")
-			// 		&& cmd.trim().toLocaleLowerCase() !== "y" && cmd.trim().toLocaleLowerCase() !== "n"
-			// 		&& cmd.trim().toLocaleLowerCase() !== "yes" && cmd.trim().toLocaleLowerCase() !== "no"
-			// 		&& cmd.trim().toLocaleLowerCase() !== "quit" && cmd.trim().toLocaleLowerCase() !== "quit;") { cmd = `(${cmd.trim()})`; }
-			// console.log allow to write text in the terminal, readline allow to change stdout
-			// readline.clearLine(process.stdout, 0);
+			cmd = quotesMatch(cmd);
 			cmd = parMatch(cmd);
 			console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
-			await pvsInterpreter.exec(cmd);
+			await pvsInterpreter.execCmd(cmd);
 		} catch (err) {
 			console.error(err);
 		}

@@ -3,7 +3,7 @@ import * as path from 'path';
 import { findTheoryName, findTheorem } from '../common/languageUtils';
 import * as fs from '../common/fsUtils';
 import { TextDocument, LanguageClient } from 'vscode-languageclient';
-import { VSCodePvsExplorer, TheoryDescriptor } from '../views/vscodePvsExplorer';
+import { VSCodePvsExplorer, TheoryDescriptor } from '../views/vscodePvsTheoryExplorer';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../utils/vscode-utils';
 

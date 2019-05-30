@@ -166,8 +166,8 @@ class PvsLanguageServer {
 				if (this.pvsParser.getContextFolder() !== context) {
 					this.pvsParser.changeContext(context);
 					this.listPvsFiles(context).then((pvsFiles: FileList) => {
-						this.listAllTheories().then((theories: TheoryList) => {
-							this.connection.sendRequest("server.response.list-all-theories", theories);
+						this.listTheories().then((theories: TheoryList) => {
+							this.connection.sendRequest("server.response.list-theories", theories);
 						});	
 						// this.connection.sendRequest("server.response.list-files", pvsFiles);
 					});
@@ -195,8 +195,8 @@ class PvsLanguageServer {
 				});
 			}
 			// send updated version of theories to the client
-			this.listAllTheories().then((theories: TheoryList) => {
-				this.connection.sendRequest("server.response.list-all-theories", theories);
+			this.listTheories().then((theories: TheoryList) => {
+				this.connection.sendRequest("server.response.list-theories", theories);
 			});
 		});
 
@@ -289,18 +289,6 @@ class PvsLanguageServer {
 			})
 		};
 		return fileList;
-	}
-	/**
-	 * Utility function, returns the list of theories defined in a given pvs file
-	 * @param uri Path to a pvs file
-	 */
-	async listTheories (uri: string): Promise<TheoryMap> {
-		let response: TheoryMap = {};
-		const fileName: string = fs.getFilename(uri, { removeFileExtension: true });
-		const txt: string = await fs.readFile(uri);
-		// const doc: TextDocument = this.documents.get("file://" + uri);
-		response = findTheories(fileName, txt);
-		return response;
 	}
 	/**
 	 * Utility function, normalises the structure of a file name in the form /path/to/the/context/folder/filename.pvs
@@ -463,9 +451,22 @@ class PvsLanguageServer {
     }
 
 	/**
+	 * Utility function, returns the list of theories defined in a given pvs file
+	 * @param uri Path to a pvs file
+	 */
+	async listTheoriesInFile (uri: string): Promise<TheoryMap> {
+		let response: TheoryMap = {};
+		const fileName: string = fs.getFilename(uri, { removeFileExtension: true });
+		const txt: string = await fs.readFile(uri);
+		// const doc: TextDocument = this.documents.get("file://" + uri);
+		response = findTheories(fileName, txt);
+		return response;
+	}
+
+	/**
 	 * Lists all theories available in the current context
 	 */
-	private async listAllTheories (): Promise<TheoryList> {
+	private async listTheories (): Promise<TheoryList> {
 		// this.connection.console.info("list-all-theories, file " + uri);
 		const pvsContextFolder: string = this.pvsParser.getContextFolder();
 		let response: TheoryList = {
@@ -476,7 +477,7 @@ class PvsLanguageServer {
 		const fileList: FileList = await this.listPvsFiles(pvsContextFolder);
 		for (let i in fileList.fileNames) {
 			let uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
-			let theories: TheoryMap = await this.listTheories(uri);
+			let theories: TheoryMap = await this.listTheoriesInFile(uri);
 			let theoryNames: string[] = Object.keys(theories);
 			for (let i in theoryNames) {
 				let theoryName: string = theoryNames[i];
@@ -503,8 +504,8 @@ class PvsLanguageServer {
 		const res: ContextDiagnostics = await this.pvsParser.parseCurrentContext();
 		this.listPvsFiles(context).then((pvsFiles: FileList) => {
 			this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
-			this.listAllTheories().then((theories: TheoryList) => {
-				this.connection.sendRequest("server.response.list-all-theories", theories);
+			this.listTheories().then((theories: TheoryList) => {
+				this.connection.sendRequest("server.response.list-theories", theories);
 			});
 		});
 		return Promise.resolve(res);
@@ -644,51 +645,11 @@ class PvsLanguageServer {
 				// this.serialTypeCheckAllAndShowTccs();
 			});
 			this.connection.onRequest("pvs.list-theories", async (uri: string) => {
-				// this.connection.console.info("list-theories, file " + uri);
-				let response: TheoryMap = await this.listTheories(uri);
-				this.connection.sendRequest("server.response.list-theories", response);
-			});
-			// this.connection.onRequest("pvs.list-all-theories-and-declarations", async (uri: string) => {
-			// 	const pvsContextFolder: string = this.pvsProcess.getContextPath();
-			// 	let response: TheoryList = {
-			// 		pvsContextFolder: pvsContextFolder,
-			// 		theories: {},
-			// 		declarations: {}
-			// 	};
-			// 	const fileList: FileList = await this.listPvsFiles(pvsContextFolder);
-			// 	for (let i in fileList.fileNames) {
-			// 		const fileName: string = fileList.fileNames[i];
-			// 		const uri: string = path.join(pvsContextFolder, fileName);
-			// 		const theories: TheoryMap = await this.listTheories(uri);
-			// 		let theoryNames: string[] = Object.keys(theories);
-			// 		for (let i in theoryNames) {
-			// 			let theoryName: string = theoryNames[i];
-			// 			const declarations: PvsDeclarationDescriptor[] = await this.pvsProcess.listDeclarations({
-			// 				file: fileName,
-			// 				theoryName: theoryName
-			// 			});
-			// 			response.theories[theoryName] = theories[theoryName];
-			// 			// Object.keys(declarations).forEach((key) => {
-			// 			// // 	response.declarations[theoryName][key] = {
-			// 			// // 		theoryName: theoryName,
-			// 			// // 		symbolName: declarations[key].symbolName,
-			// 			// // 		symbolDeclaration: declarations[key].symbolDeclaration,
-			// 			// // 		symbolDeclarationRange: declarations[key].symbolDeclarationRange,
-			// 			// // 		symbolDeclarationFile: declarations[key].symbolDeclarationFile,
-			// 			// // 		symbolDoc: declarations[key].symbolDoc,
-			// 			// // 		comment: declarations[key].comment
-			// 			// // 	};
-			// 			// });
-			// 		}
-			// 	}
-			// 	this.connection.sendRequest("server.response.list-all-theories", response);
-			// });
-			this.connection.onRequest("pvs.list-all-theories", async (uri: string) => {
 				// this.connection.console.info("list-all-theories, file " + uri);
 				// const pvsContextFolder: string = this.pvsParser.getContextFolder();
 				this.info(`Loading list of theories for context ${this.pvsParser.getContextFolder()}`);
-				let response: TheoryList = await this.listAllTheories();
-				this.connection.sendRequest("server.response.list-all-theories", response);
+				let response: TheoryList = await this.listTheories();
+				this.connection.sendRequest("server.response.list-theories", response);
 				this.ready();
 			});
 			this.connection.onRequest("pvs.show-tccs", async (fileName: string, theoryName: string) => {

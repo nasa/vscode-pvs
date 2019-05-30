@@ -10,6 +10,9 @@ export const RECORD: { [key: string]: RegExp } = {
 	typeName: /\w+\s*:\s*(\w+)/g
 }
 
+// (?:\%.*\s)* removes comments
+export const theoryRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*(?:\[.+\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
+
 /**
  * @function findTheoryName
  * @description Utility function, finds the name of the theory that immediately preceeds a given line
@@ -18,11 +21,8 @@ export const RECORD: { [key: string]: RegExp } = {
  * @returns { string | null } The theory name if any is found, null otherwise
  */
 export function findTheoryName(txt: string, line: number): string | null {
-	// theory file
 	const text: string = txt.split("\n").slice(0, line + 1).join("\n");
-	// const regexp: RegExp = new RegExp(/(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*theory\b/gi);
-	// (?:\%.*\s)* removes comments
-	const regexp: RegExp = new RegExp(/(\w+)\s*(?:\%.*\s)*(?:\[.+\])?\s*:\s*(?:\%.*\s)*\s*theory\b/gi);
+	const regexp: RegExp = new RegExp(theoryRegexp);
 	let candidates: string[] = [];
 	let match: RegExpMatchArray = null;
 	while(match = regexp.exec(text)) {
@@ -34,12 +34,15 @@ export function findTheoryName(txt: string, line: number): string | null {
 	}
 	return null;
 };
+/**
+ * Utility function, finds all theories in a given file
+ * @param fileName 
+ * @param fileContent 
+ */
 export function findTheories(fileName: string, fileContent: string): TheoryMap {
-	// TODO: return an array rather than a map
+	// TODO: return an array rather than a map? open the file directly in the function?
 	let ans: TheoryMap = {};
-	// let regexp: RegExp = new RegExp(/(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*theory\s/gi);
-	// (?:\%.*\s)* removes comments
-	const regexp: RegExp = new RegExp(/(\w+)\s*(?:\%.*\s)*(?:\[.+\])?\s*:\s*(?:\%.*\s)*\s*theory\b/gi);
+	const regexp: RegExp = new RegExp(theoryRegexp);
 	let match: RegExpMatchArray = null;
 	let lines: string[] = fileContent.split("\n");
 	while(match = regexp.exec(fileContent)) {
@@ -47,14 +50,14 @@ export function findTheories(fileName: string, fileContent: string): TheoryMap {
 		let character: number = 0;
 		let theoryName: string = null;
 		for (let i = 0; i < lines.length; i++) {
-			if (lines[i].includes(" " + match[1] + " ")
-				|| lines[i].includes(" " + match[1] + ":")
-				|| lines[i].includes(" " + match[1] + "[")
-				|| lines[i].includes(" " + match[1] + "%")
-				|| lines[i].startsWith(match[1] + " ")
-				|| lines[i].startsWith(match[1] + ":")
-				|| lines[i].startsWith(match[1] + "[")
-				|| lines[i].startsWith(match[1] + "%")
+			if (lines[i].includes(` ${match[1]} `)
+				|| lines[i].includes(` ${match[1]}:`)
+				|| lines[i].includes(` ${match[1]}[`)
+				|| lines[i].includes(` ${match[1]}%`)
+				|| lines[i].startsWith(`${match[1]} `)
+				|| lines[i].startsWith(`${match[1]}:`)
+				|| lines[i].startsWith(`${match[1]}[`)
+				|| lines[i].startsWith(`${match[1]}%`)
 				) {
 				// the first match is the theory declaration -- in pvs, theories cannot be imported if they have not been declared first
 				line = i;
@@ -81,16 +84,33 @@ export function findTheories(fileName: string, fileContent: string): TheoryMap {
  * @param txt The text where the theory should be searched 
  * @returns string[]
  */
-export function listTheoryNames(txt: string): string [] {
-	const regexp: RegExp = /(\w+)\s*(?:\%.*\s)*(?:\[.+\])?\s*:\s*(?:\%.*\s)*\s*theory\b/gi;
-	let ans: string[] = [];
+// TODO: check if we can use listTheoryNames in place of findTheories
+export function listTheoryNames (txt: string): string[] {
+	const ans: string[] = [];
 	let match: RegExpMatchArray = null;
-	while(match = regexp.exec(txt)) {
-		// the last match will be the closest to the current line number
-		ans.push(match[1]);
+	const regexp: RegExp = new RegExp(theoryRegexp);
+	while (match = regexp.exec(txt)) {
+		if (match && match.length > 1 && match[1]) {
+			ans.push(match[1]);
+		}
 	}
 	return ans;
 };
+
+export const theoremRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\s)*\s*)*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
+
+export function listTheorems (txt: string): string[] {
+	const ans: string[] = [];
+	let match: RegExpMatchArray = null;
+	const regexp: RegExp = new RegExp(theoremRegexp);
+	while (match = regexp.exec(txt)) {
+		if (match && match.length > 1 && match[1]) {
+			ans.push(match[1]);
+		}
+	}
+	return ans;
+}
+
 
 /**
  * @function findTheorem
@@ -103,7 +123,7 @@ export function findTheorem(txt: string, line: number): string | null {
 	let text: string = txt.split("\n").slice(0, line + 1).join("\n");
 	let candidates: string[] = [];
 	// (?:\%.*\s)* removes comments
-	let regexp: RegExp = /(\w+)\s*(?:\[\s*[^\]]+\]\s*)?:\s*(theorem|lemma|conjecture|obligation)\b/gi;
+	const regexp: RegExp = new RegExp(theoremRegexp);
 	let match: RegExpMatchArray = null;
 	while(match = regexp.exec(text)) {
 		// the last match will be the closest to the current line number
@@ -114,6 +134,8 @@ export function findTheorem(txt: string, line: number): string | null {
 	}
 	return null;
 };
+
+
 
 interface Position {
 	line: number;

@@ -7,7 +7,7 @@ import { log } from './utils/vscode-utils';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 // import { VSCodePvsHoverProvider } from './providers/vscodePvsHoverProvider-obsolete';
 // import { MultiStepInput } from './theoryExplorer/multiStepInput';
-import { VSCodePvsExplorer } from './views/vscodePvsExplorer';
+import { VSCodePvsExplorer } from './views/vscodePvsTheoryExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
 import { VSCodePVSioTerminal } from './terminals/vscodePVSioTerminal'; 
 import { VSCodePvsTerminal } from './terminals/vscodePvsTerminal';

@@ -99,9 +99,10 @@ export class PvsCodeLensProvider {
         }
         // step proof
         // (?:\%.*\s)* is for comments
-        const theoremRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\s)*\s*)*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
+        //const theoremRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\s)*\s*)*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
+        const regexp: RegExp = new RegExp(utils.theoremRegexp);
         let match: RegExpMatchArray = null;
-        while (match = theoremRegexp.exec(doc)) {
+        while (match = regexp.exec(doc)) {
             if (match && match[1]) {
                 const formulaName: string = match[1];
                 const docUp: string = doc.slice(0, match.index + match[1].length);
