@@ -329,18 +329,13 @@ function parMatch(cmd: string): string {
 }
 
 // utility function, ensures open brackets match closed brackets for commands
-function quotesMatch(cmd: string): string {
+function quotesMatch(cmd: string): boolean {
 	const quotesRegex: RegExp = new RegExp(/\"/g);
 	let nQuotes: number = 0;
 	while (quotesRegex.exec(cmd)) {
 		nQuotes++;
 	}
-	if (nQuotes % 2) {
-		// mismatching number of quotes
-		cmd = cmd.trimRight() + '"';
-		console.log(`Mismatching double quotes, please check your expression.`)
-	}
-	return cmd;
+	return nQuotes % 2 === 0;
 }
 
 // console.log(process.argv[2]);
@@ -352,10 +347,14 @@ async function start(pvsExecutable: string): Promise<PvsInterpreter> {
 		try {
 			let cmd: string = data.toLocaleString();
 			// console.log(`received command from keyboard: ${cmd}`);
-			cmd = quotesMatch(cmd);
-			cmd = parMatch(cmd);
-			console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
-			await pvsInterpreter.execCmd(cmd);
+			if (quotesMatch(cmd)) {
+				cmd = parMatch(cmd);
+				console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
+				await pvsInterpreter.execCmd(cmd);
+			} else {
+				console.log("Mismatching double quotes, please check your expression");
+				await pvsInterpreter.execCmd("()\n");
+			}
 		} catch (err) {
 			console.error(err);
 		}

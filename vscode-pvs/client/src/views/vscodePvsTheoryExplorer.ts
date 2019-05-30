@@ -8,9 +8,7 @@ import * as comm from '../common/serverInterface';
 import * as path from 'path';
 import { log } from '../utils/vscode-utils';
 
-/**
- * Definition of tree items
- */
+//-- theories
 class TheoryItem extends TreeItem {
 	contextValue: string = "theory";
 	theoryName: string;
@@ -39,19 +37,8 @@ class TheoryItem extends TreeItem {
 									: TreeItemCollapsibleState.None;
 	}
 }
-// class ShowTccsCommand extends TreeItem {
-// 	contextValue: string = "cmd.show-tccs";
-// 	command: Command;
 
-// 	constructor (theoryName?: string) { 
-// 		super("🔄 load tccs", TreeItemCollapsibleState.None);
-// 		this.command = {
-// 			title: "Show TCCs",
-// 			command: "cmd.show-tccs",
-// 			arguments: [ ]			
-// 		};
-// 	}
-// }
+//-- tccs
 class TccItem extends TreeItem {
 	contextValue: string = "tcc";
 	pvsContextFolder: string;
@@ -135,6 +122,20 @@ class TccsOverviewItem extends TreeItem {
 	}
 }
 
+//-- theorems
+class TheoremItem extends TreeItem {
+	contextValue: string = "theorem";
+	fileName: string; // file that contains the theorem
+	theoryName: string; // theory that is associated to this theorem
+	formulaName: string; // name of the theorem
+	constructor(formulaName: string, theoryName: string, fileName: string) {
+		super("theorem", TreeItemCollapsibleState.None);
+		this.formulaName = formulaName;
+		this.theoryName = theoryName;
+		this.fileName = fileName;
+	}
+}
+
 export interface TheoryDescriptor {
 	theoryName: string,
 	fileName: string,
@@ -167,6 +168,7 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	private view: TreeView<TreeItem>
 
 	private theories: TheoryItem[] = [];
+	private theorems: TheoremItem[] = [];
 	private theoryMap: { [ theoryName: string ]: {
 		theorems: string[],
 		axioms: string[]
@@ -312,8 +314,8 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	 * Handlers for messages received from the server
 	 */
 	private installHandlers() {
-		// server.response.list-all-theories events are automatically sent by the server when the context folder changes
-		this.client.onRequest("server.response.list-all-theories", (ans: TheoryList) => {
+		// server.response.list-theories events are automatically sent by the server when the context folder changes
+		this.client.onRequest("server.response.list-theories", (ans: TheoryList) => {
 			if (ans && ans.pvsContextFolder !== this.currentContext) {
 				this.currentContext = ans.pvsContextFolder;
 				this.resetView();
@@ -381,12 +383,8 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	private async showTheories (): Promise<void> {
 		this.resetView();
-		// this.client.sendRequest("pvs.list-theories", uri);
 		await this.loadPvsFiles();
-		this.client.sendRequest("pvs.list-all-theories");
-		// setTimeout(() => {
-		// 	this.client.sendRequest("pvs.list-all-theories-and-declarations");
-		// }, 2000);
+		this.client.sendRequest("pvs.list-theories");
 	}
 	
 	/**

@@ -35,8 +35,12 @@ class ProverTerminal {
         this.sendCommand('(typecheck-file "' + fileName + '" ' + args + ')');
         this.sendCommand('(save-context)');
     }
-    private pvsLispProveFormula(theoryName: string, formula: string) {
-        this.sendCommand('(prove-formula "' + theoryName + '" "' + formula +'" nil)');
+    private pvsLispProveFormula(theoryName: string, formulaName: string, line: number) {
+        // prove-formula (formula-decl &optional theory-name proof)
+        //(rerun-proof-at? "toy" nil 15 "pvs" nil nil)
+        //(prove-formula "toy" "polynomialDomMonomCoeffOne" nil)
+        // this.sendCommand('(prove-formula "' + theoryName + '" "' + formula +'" nil)');
+        this.sendCommand(`(prove-file-at "${theoryName}" ${line} nil nil)`);
         // this.terminal.sendText('(rewrite-msg-off)');
     }
     private pvsLispProveTcc(theoryName: string, formula: string) {
@@ -75,7 +79,7 @@ class ProverTerminal {
         this.interactiveMode = "step-proof-ready";
         this.pvsLispTypecheckFile(fileName);
 
-        this.pvsLispProveFormula(theoryName, formula);
+        this.pvsLispProveFormula(theoryName, formula, line);
         return this;
     }
     proveTcc (fileName: string, theoryName: string, formula: string, line: number) {
