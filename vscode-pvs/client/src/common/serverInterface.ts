@@ -1,3 +1,5 @@
+import { TheoremDescriptor } from "./languageUtils";
+
 export interface Position {
 	line: number, // this attribute ranges from 1 to n, while vscode.line ranges from 0 to n-1 
 	character: number
@@ -208,7 +210,7 @@ export interface ProofDescriptor {
 	line: number;
 }
 
-export interface ProofStructure {
+export declare interface ProofStructure {
 	desc: ProofDescriptor,
 	proof: { id: string, children: any[] }
 }

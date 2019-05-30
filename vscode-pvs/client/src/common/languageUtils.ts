@@ -1,4 +1,5 @@
 import * as lang from './languageKeywords';
+import * as fsUtils from './fsUtils';
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -97,18 +98,58 @@ export function listTheoryNames (txt: string): string[] {
 	return ans;
 };
 
-export const theoremRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\s)*\s*)*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
+// match[1] indicates commented section; match[2] is the theorem name
+export const theoremRegexp: RegExp = /(%.*)?(\b\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\s)*\s*)*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
 
 export function listTheorems (txt: string): string[] {
 	const ans: string[] = [];
 	let match: RegExpMatchArray = null;
 	const regexp: RegExp = new RegExp(theoremRegexp);
 	while (match = regexp.exec(txt)) {
-		if (match && match.length > 1 && match[1]) {
-			ans.push(match[1]);
+		if (match && match.length > 2 && match[2] && !match[1]) {
+			ans.push(match[2]);
 		}
 	}
 	return ans;
+}
+
+export async function listTheoremsInFile (uri: string): Promise<TheoremDescriptor[]> {
+	if (uri) {
+		const fileName: string = uri.replace("file://", "");
+		const txt: string = await fsUtils.readFile(fileName);
+		const slices: string[] = txt.split("\n");
+		const theories: TheoryMap = findTheories(fileName, txt);
+		const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories
+		const theoryNames: string[] = Object.keys(theories);
+		for (let i = 0; i < theoryNames.length; i++) {
+			boundaries.push({
+				theoryName: theoryNames[i],
+				from: theories[theoryNames[i]].position.line,
+				to: (i + 1 < theoryNames.length) ? theories[theoryNames[i + 1]].position.line : slices.length
+			});
+		}
+		const theoremsArray: TheoremDescriptor[] = [];
+		for (let i = 0; i < boundaries.length; i++) {
+			const content: string = slices.slice(boundaries[i].from, boundaries[i].to).join("\n");
+			const regex: RegExp = new RegExp(theoremRegexp);
+			let match: RegExpMatchArray = null;
+			while (match = regex.exec(content)) {
+				if (match.length > 2 && match[2] && !match[1]) {
+					const formulaName: string = match[2];
+					const offset: number = content.slice(0, match.index).split("\n").length;
+					const line: number = boundaries[i].from + offset;
+					theoremsArray.push({
+						fileName: fsUtils.getFilename(uri),
+						theoryName: boundaries[i].theoryName,
+						formulaName,
+						position: { line, character: 0 }
+					});
+				}
+			}
+		}
+		return theoremsArray;
+	}
+	return null;
 }
 
 
@@ -126,8 +167,9 @@ export function findTheorem(txt: string, line: number): string | null {
 	const regexp: RegExp = new RegExp(theoremRegexp);
 	let match: RegExpMatchArray = null;
 	while(match = regexp.exec(text)) {
-		// the last match will be the closest to the current line number
-		candidates.push(match[1]);
+		if (match.length > 2 && match[2] && !match[1]) {
+			candidates.push(match[2]);
+		}
 	}
 	if (candidates.length > 0) {
 		return candidates[candidates.length - 1];
@@ -148,13 +190,18 @@ interface Range {
 
 export interface FileList {
 	pvsContextFolder: string;
-	fileNames: string[];
+	fileNames: string[]; // TODO: FileDescriptor[]
 }
 
 export interface TheoryList {
 	pvsContextFolder: string;
-	theories: TheoryMap;
-	declarations: DeclarationMap;
+	theories: TheoryMap; //  TODO TheoryDescriptor[]
+}
+
+export declare interface TheoremList {
+	pvsContextFolder: string;
+	theorems: TheoremDescriptor[];
+	fileName?: string; // when fileName is specified, the theorem list describes the content of a specific file. This is useful for status updates.
 }
 
 export interface DeclarationMap {
@@ -185,7 +232,7 @@ export interface TccMap {
 	};
 }
 
-export interface TheoryMap {
+export declare interface TheoryMap {
 	[ theoryName: string ]: {
 		theoryName: string,
 		fileName: string,
@@ -193,6 +240,16 @@ export interface TheoryMap {
 	}
 }
 
+export declare interface TheoremDescriptor {
+	fileName: string,
+	theoryName: string,
+	formulaName: string,
+	position: Position
+}
+
+export declare interface TheoremsMap {
+	[ theorem: string ]: TheoremDescriptor
+}
 
 
 

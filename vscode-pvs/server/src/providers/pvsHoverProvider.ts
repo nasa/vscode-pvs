@@ -82,7 +82,7 @@ export class PvsHoverProvider {
 				end: { line: position.line, character: position.character }
 			});
 			// check if the cursor is over a comment -- if that's the case, do nothing
-			const commentRegex: RegExp = new RegExp(language.PVS_COMMENT_REGEXP_SOURCE, "gi");
+			const commentRegex: RegExp = new RegExp(language.PVS_COMMENT_REGEXP_SOURCE);
 			const isComment: boolean = commentRegex.test(line);
 			if (isComment) { return null; }
 			// else, not a comment

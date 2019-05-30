@@ -86,7 +86,7 @@ export class VSCodePvsEmacsBindingsProvider {
 				}
 				case "step-proof": {
 					// open pvs terminal
-					commands.executeCommand("terminal.pvs.step-proof");
+					commands.executeCommand("terminal.pvs.prove");
 					break;
 				}
 				default: {}

@@ -50,14 +50,13 @@ const linter = [
     { regexp: /(\%+\s*.+\s+)?(\w+\s*:\s*(?:\bTYPE\b|\bDATATYPE\b))/gi, msg: "Type definitions should be preceeded by proper documentation" }
 ];
 
-const comments: RegExp = new RegExp(language.PVS_COMMENT_REGEXP_SOURCE, "g")
-
 export class PvsLinter {
     provideDiagnostics(document: TextDocument): Diagnostic[] {
         let diag: Diagnostic[] = [];
         let match: RegExpMatchArray = null;
         const text: string = document.getText();
         let commentedSections: Position[] = [];
+        const comments: RegExp = new RegExp(language.PVS_COMMENT_REGEXP_SOURCE);
         while (match = comments.exec(text)) {
             const startPos: Position = document.positionAt(match.index);
             commentedSections.push(startPos);

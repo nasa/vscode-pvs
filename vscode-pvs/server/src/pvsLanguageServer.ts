@@ -59,11 +59,14 @@ import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
 import { PvsHoverProvider } from './providers/pvsHoverProvider';
 import { PvsCodeLensProvider } from './providers/pvsCodeLensProvider';
 import { PvsLinter } from './providers/pvsLinter';
-import { getErrorRange, findTheories, FileList, TheoryMap, TheoryList, TccList, listTheoryNames, TccMap } from './common/languageUtils';
-import * as fs from './common/fsUtils';
+import { getErrorRange, findTheories, FileList, TheoryMap, TheoryList, TccList, listTheoryNames, TccMap,
+	TheoremList, listTheoremsInFile, TheoremDescriptor } from './common/languageUtils';
+import * as utils from './common/languageUtils';
+import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import { ContextDiagnostics } from './pvsProcess';
 import { ProofDescriptor } from './common/serverInterface';
+import { PvsStatusUpdater } from './providers/pvsStatusUpdater';
 
 
 const SERVER_COMMANDS = [
@@ -95,11 +98,11 @@ interface Settings {
 class PvsLanguageServer {
 	// pvs path, context folder, server path
 	pvsExecutionContext: PvsExecutionContext;
+	pvsVersionInfo: PvsVersionDescriptor;
 
 	// array of pvs processes
 	private pvsParser: PvsProcess; 		 // process dedicated to parsing
 	private pvsTypeChecker: PvsProcess;  // process dedicated to typechecking 
-
 
 	private connection: Connection; // connection to the client
 	private documents: TextDocuments; // list of documents opened in the editor
@@ -121,6 +124,7 @@ class PvsLanguageServer {
 	private hoverProvider: PvsHoverProvider;
 	private codeLensProvider: PvsCodeLensProvider;
 	private linter: PvsLinter;
+	private statusUpdater: PvsStatusUpdater;
 	/**
 	 * @constructor
 	 */
@@ -161,8 +165,8 @@ class PvsLanguageServer {
 		// onDidOpen fires when a document is opened on the editor
 		this.documents.onDidOpen(async open => {
 			if (this.pvsParser) {
-				const fileName: string = fs.getFilename(open.document.uri);
-				const context: string = fs.getPathname(open.document.uri);
+				const fileName: string = fsUtils.getFilename(open.document.uri);
+				const context: string = fsUtils.getPathname(open.document.uri);
 				if (this.pvsParser.getContextFolder() !== context) {
 					this.pvsParser.changeContext(context);
 					this.listPvsFiles(context).then((pvsFiles: FileList) => {
@@ -206,7 +210,7 @@ class PvsLanguageServer {
 	/**
 	 * Initialises pvs parser and service providers
 	 */
-	private async initServiceProviders(pvsExecutionContext: PvsExecutionContext) {
+	private async initServiceProviders(pvsExecutionContext: PvsExecutionContext): Promise<void> {
 		this.pvsExecutionContext = pvsExecutionContext;
 		// create pvs process allocated for parsing
 		this.pvsParser = await this.createPvsProcess({ emacsInterface: true });
@@ -225,16 +229,18 @@ class PvsLanguageServer {
 			this.codeLensProvider = new PvsCodeLensProvider(this.definitionProvider);
 			this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
 			this.linter = new PvsLinter();
+			this.statusUpdater = new PvsStatusUpdater(this.connection);
 			// parse all files in the current context. This operation will also send diagnostics to the front-end
 			const context: string = this.pvsParser.getContextFolder();
 			this.changeContextAndParseFiles(context);			
 			// return version info to the caller
-			return versionInfo;
+			this.pvsVersionInfo = versionInfo;
+		} else {
+			this.pvsVersionInfo = {
+				pvsVersion: "Error: could not start PVS, please check PVS path in the Settings menu (File -> Preferences -> Settings -> Extension -> PVS)",
+				lispVersion: ""
+			};
 		}
-		return {
-			pvsVersion: "Error: could not start PVS, please check PVS path in the Settings menu (File -> Preferences -> Settings -> Extension -> PVS)",
-			lispVersion: ""
-		};
 	}
 	/**
 	 * Utility function, creates a new pvs process
@@ -281,12 +287,13 @@ class PvsLanguageServer {
 	 * @param folder Path to a folder
 	 */
 	async listPvsFiles (folder: string): Promise<FileList> {
-		const children: string[] = await fs.readDir(folder);
+		const children: string[] = await fsUtils.readDir(folder);
 		const fileList: FileList = {
-			pvsContextFolder: folder,
-			fileNames: children.filter(function (fileName) {
-				return fileName.endsWith(".pvs") && !fileName.startsWith(".");
-			})
+			fileNames: children.filter((fileName) => {
+				return fileName.endsWith(".pvs") 
+						&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
+			}),
+			pvsContextFolder: folder
 		};
 		return fileList;
 	}
@@ -315,7 +322,7 @@ class PvsLanguageServer {
 		if (doc) {
 			return Promise.resolve(doc.getText());
 		}
-		return fs.readFile(fileName);
+		return fsUtils.readFile(fileName);
 	}
 
 	/**
@@ -327,14 +334,14 @@ class PvsLanguageServer {
 		const txt: string = await this.readFile(fileName); // it is necessary to use the readFile function because some pvs files may not be loaded yet in the context 
 		if (txt) {
 			// const pvsContextFolder: string = this.pvsTypeChecker.getContextFolder();
-			const context: string = fs.getPathname(fileName);
+			const context: string = fsUtils.getPathname(fileName);
 			const typechecker: PvsProcess = proc || this.pvsTypeChecker;
 			typechecker.changeContext(context);
 			
 			const typecheckerResponse: PvsTypecheckerResponse = await typechecker.typecheckFile(fileName);
 			// TODO: create a separate function for diagnostics with typechecker
 			if (typecheckerResponse && typecheckerResponse.error) {
-				const txt: string = await fs.readFile(fileName);
+				const txt: string = await fsUtils.readFile(fileName);
 				const errorPosition: Position = { line: typecheckerResponse.error.line - 1, character: typecheckerResponse.error.character };
 				const errorRange: Range = getErrorRange(txt, errorPosition);
 				const diag: Diagnostic = {
@@ -456,8 +463,8 @@ class PvsLanguageServer {
 	 */
 	async listTheoriesInFile (uri: string): Promise<TheoryMap> {
 		let response: TheoryMap = {};
-		const fileName: string = fs.getFilename(uri, { removeFileExtension: true });
-		const txt: string = await fs.readFile(uri);
+		const fileName: string = fsUtils.getFilename(uri, { removeFileExtension: true });
+		const txt: string = await fsUtils.readFile(uri);
 		// const doc: TextDocument = this.documents.get("file://" + uri);
 		response = findTheories(fileName, txt);
 		return response;
@@ -470,9 +477,8 @@ class PvsLanguageServer {
 		// this.connection.console.info("list-all-theories, file " + uri);
 		const pvsContextFolder: string = this.pvsParser.getContextFolder();
 		let response: TheoryList = {
-			pvsContextFolder: pvsContextFolder,
 			theories: {},
-			declarations: {}
+			pvsContextFolder
 		};
 		const fileList: FileList = await this.listPvsFiles(pvsContextFolder);
 		for (let i in fileList.fileNames) {
@@ -499,16 +505,32 @@ class PvsLanguageServer {
 		return Promise.resolve(response);
 	}
 
+	private async listTheorems (): Promise<TheoremList> {
+		// this.connection.console.info("list-all-theories, file " + uri);
+		const pvsContextFolder: string = this.pvsParser.getContextFolder();
+		let response: TheoremList = {
+			theorems: [],
+			pvsContextFolder
+		};
+		const fileList: FileList = await this.listPvsFiles(pvsContextFolder);
+		for (let i in fileList.fileNames) {
+			let uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
+			let theorems: TheoremDescriptor[] = await listTheoremsInFile(uri);
+			response.theorems = response.theorems.concat(theorems);
+		}
+		return response;
+	}
+
 	async changeContextAndParseFiles(context: string): Promise<ContextDiagnostics> {
 		await this.pvsParser.changeContext(context);
 		const res: ContextDiagnostics = await this.pvsParser.parseCurrentContext();
-		this.listPvsFiles(context).then((pvsFiles: FileList) => {
-			this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
-			this.listTheories().then((theories: TheoryList) => {
-				this.connection.sendRequest("server.response.list-theories", theories);
-			});
-		});
-		return Promise.resolve(res);
+		const pvsFiles: FileList = await this.listPvsFiles(context);
+		this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
+		const theories: TheoryList = await this.listTheories();
+		this.connection.sendRequest("server.response.list-theories", theories);
+		const theorems: TheoremList = await this.listTheorems();
+		this.connection.sendRequest("server.response.list-theorems", theorems);
+		return res;
 	}
 
 	/**
@@ -575,8 +597,9 @@ class PvsLanguageServer {
 			this.connection.onRequest('pvs.init', async (pvsExecutionContext: PvsExecutionContext) => {
 				this.info("Initialising PVS...");
 				try {
-					const versionInfo: PvsVersionDescriptor = await this.initServiceProviders(pvsExecutionContext);
-					this.readyString = versionInfo.pvsVersion + " " + versionInfo.lispVersion ;
+					await this.initServiceProviders(pvsExecutionContext);
+					// TODO: get rid of readystring
+					this.readyString = `${this.pvsVersionInfo.pvsVersion} ${this.pvsVersionInfo.lispVersion}`;
 					// this.connection.sendRequest('server.response.pvs.init', this.readyString);
 					this.ready();
 				} catch (err) {
@@ -599,21 +622,21 @@ class PvsLanguageServer {
 			});
 
 			this.connection.onRequest('pvs.parse-file', async (fileName: string) => {
-				this.info(`Parsing ${fs.getFilename(fileName, { removeFileExtension: true })}`);
+				this.info(`Parsing ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
 				fileName = this.normaliseFileName(fileName);
 				const response: PvsParserResponse = await this.pvsParser.parseFile(fileName);
 				this.connection.sendRequest("server.response.parse-file", response);
 				this.ready();
 			});
 			this.connection.onRequest('pvs.typecheck-file', async (fileName: string) => {
-				this.info(`Typechecking ${fs.getFilename(fileName, { removeFileExtension: true })}`);
+				this.info(`Typechecking ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
 				fileName = this.normaliseFileName(fileName);
 				const response: PvsParserResponse = await this.pvsTypeChecker.typecheckFile(fileName, false);
 				this.connection.sendRequest("server.response.typecheck-file", response);
 				this.ready();
 			});
 			this.connection.onRequest('pvs.typecheck-prove', async (fileName: string) => {
-				this.info(`Typechecking ${fs.getFilename(fileName, { removeFileExtension: true })}`);
+				this.info(`Typechecking ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
 				fileName = this.normaliseFileName(fileName);
 				this.connection.sendNotification('server.status.update', "Typechecking " + fileName);
 
@@ -676,7 +699,7 @@ class PvsLanguageServer {
 			});
 			this.connection.onRequest("pvs.typecheck-file-and-show-tccs", async (fileName: string) => {
 				if (fileName) {
-					this.info(`Typechecking ${fs.getFilename(fileName, { removeFileExtension: true })}`);
+					this.info(`Typechecking ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
 					fileName = this.normaliseFileName(fileName);
 					const response: TccList = await this.typecheckFileAndShowTccs(fileName);
 					this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
@@ -687,7 +710,7 @@ class PvsLanguageServer {
 			});
 			this.connection.onRequest('pvs.typecheck-prove-and-show-tccs', async (fileName: string) => {
 				if (fileName) {
-					this.info(`Discharging proof obligations for ${fs.getFilename(fileName, { removeFileExtension: true })}`);
+					this.info(`Discharging proof obligations for ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
 					fileName = this.normaliseFileName(fileName);
 					// execute tcp
 					// TODO: run tcp in parallel -- to do this, create n processes, each proving one tcc (tcp can only perform sequential execution)
@@ -773,7 +796,7 @@ class PvsLanguageServer {
 		});
 		this.connection.onHover(async (tpp: TextDocumentPositionParams): Promise<Hover> => {
 			// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.hoverProvider;
-			if (fs.isPvsFile(tpp.textDocument.uri) && this.hoverProvider) {
+			if (fsUtils.isPvsFile(tpp.textDocument.uri) && this.hoverProvider) {
 				const document: TextDocument = this.documents.get(tpp.textDocument.uri);
 				let hover: Hover = await this.hoverProvider.provideHover(document, tpp.position);
 				return hover;
@@ -791,7 +814,7 @@ class PvsLanguageServer {
 		});
 		// this provider enables peek definition in the editor
 		this.connection.onDefinition(async (tpp: TextDocumentPositionParams): Promise<Definition> => {
-			if (fs.isPvsFile(tpp.textDocument.uri) && this.definitionProvider) {
+			if (fsUtils.isPvsFile(tpp.textDocument.uri) && this.definitionProvider) {
 				// const pvsFolder = (await this.connection.workspace.getConfiguration("pvs")).path;
 				// const filePath = tpp.textDocument.uri.trim().split("/");
 				// const fileName = filePath[filePath.length - 1].split(".pvs")[0];

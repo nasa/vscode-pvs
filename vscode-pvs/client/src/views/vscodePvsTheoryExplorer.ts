@@ -3,10 +3,11 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window, TextDocum
 			TreeDataProvider, workspace, MarkdownString, TreeView } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import { TccDescriptorArray, TccDescriptor, PeekDefinitionCommand, PVS_LIBRARY_FILES } from '../common/serverInterface';
-import { TheoryMap, FileList, TheoryList, TccList } from '../common/languageUtils';
+import { TheoryMap, FileList, TheoryList, TccList, TheoremList, TheoremDescriptor } from '../common/languageUtils';
 import * as comm from '../common/serverInterface';
 import * as path from 'path';
 import { log } from '../utils/vscode-utils';
+import * as fsUtils from '../common/fsUtils';
 
 //-- theories
 class TheoryItem extends TreeItem {
@@ -15,6 +16,7 @@ class TheoryItem extends TreeItem {
 	command: Command;
 	fileName: string;
 	position: Position;
+	theoremsOverview: TheoremsOverviewItem;
 	pvsContextFolder: string;
 	constructor (theoryName: string, fileName: string, position: Position, pvsContextFolder: string, collapsibleState: TreeItemCollapsibleState) {
 		super(theoryName, collapsibleState);
@@ -28,6 +30,7 @@ class TheoryItem extends TreeItem {
 			command: "explorer.didSelectTheory",
 			arguments: [ theoryName, fileName, position, pvsContextFolder ]
 		};
+		this.theoremsOverview = new TheoremsOverviewItem();
 	}
 	setTccTotal (n: number) {
 		// update label
@@ -123,16 +126,44 @@ class TccsOverviewItem extends TreeItem {
 }
 
 //-- theorems
+class TheoremsOverviewItem extends TreeItem {
+	contextValue: string = "THEOREMS";
+	theorems: TheoremItem[] = [];
+	constructor() {
+		super("THEOREMS", TreeItemCollapsibleState.Expanded);
+		this.label = "theorems";
+	}
+	setTheorems (theorems: TheoremItem[]) {
+		this.theorems = theorems;
+	}
+	listTheorems (): TheoremItem[] {
+		const lst: TheoremItem[] = Object.keys(this.theorems).map(key => {
+			return this.theorems[key];
+		});
+		return lst;
+	}
+}
 class TheoremItem extends TreeItem {
 	contextValue: string = "theorem";
-	fileName: string; // file that contains the theorem
-	theoryName: string; // theory that is associated to this theorem
-	formulaName: string; // name of the theorem
-	constructor(formulaName: string, theoryName: string, fileName: string) {
+	desc: TheoremDescriptor;
+	pvsContextFolder: string;
+	constructor(desc: TheoremDescriptor, pvsContextFolder: string) {
 		super("theorem", TreeItemCollapsibleState.None);
-		this.formulaName = formulaName;
-		this.theoryName = theoryName;
-		this.fileName = fileName;
+		this.desc = desc;
+		this.pvsContextFolder = pvsContextFolder;
+		const range: Range = new Range(
+			new Position(desc.position.line - 1, 0),
+			new Position(desc.position.line, 0)
+		);
+		this.label = this.desc.formulaName;
+		this.command = {
+			title: "Theorem selected",
+			command: "explorer.didSelectTheorem",
+			arguments: [
+				Uri.file(path.join(pvsContextFolder, this.desc.fileName)),
+				range
+			]
+		};
 	}
 }
 
@@ -167,14 +198,15 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 
 	private view: TreeView<TreeItem>
 
+	// TODO: remove theories, theoryMap, tccs and tccsOverview
 	private theories: TheoryItem[] = [];
-	private theorems: TheoremItem[] = [];
 	private theoryMap: { [ theoryName: string ]: {
 		theorems: string[],
 		axioms: string[]
 	 } } = {};
 	private tccsOverview: { [ theoryName: string ]: TccsOverviewItem } = {};
 	private tccs: { [ theoryName: string ]: (TccItem | NoTccItem)[] } = {};
+
 
 	/**
 	 * @constructor
@@ -189,6 +221,26 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
+
+		this.client.onNotification("pvs.context.theorems.update", (theoremList: TheoremList) => {
+			this.setTheorems(theoremList);
+			this.refreshView();
+        });
+	}
+
+	setTheorems (theoremList: TheoremList) {
+		if (theoremList) {
+			const theoryMap: { [ theoryName: string ]: TheoremItem[] } = {};
+			theoremList.theorems.forEach((desc: TheoremDescriptor) => {
+				const theorem: TheoremItem = new TheoremItem(desc, theoremList.pvsContextFolder);
+				theoryMap[desc.theoryName] = theoryMap[desc.theoryName] || [];
+				theoryMap[desc.theoryName].push(theorem);
+			});
+			Object.keys(theoryMap).forEach(theoryName => {
+				const theoryItem: TheoryItem = this.getTheoryItem(theoryName);
+				theoryItem.theoremsOverview.setTheorems(theoryMap[theoryName]);
+			});
+		}
 	}
 
 	/**
@@ -252,7 +304,7 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 				if (ans && ans.fileNames) {
 					let n: number = 0;
 					for (let i in ans.fileNames) {
-						let uri: Uri = Uri.file(ans.pvsContextFolder + "/" + ans.fileNames[i]);
+						let uri: Uri = Uri.file(path.join(ans.pvsContextFolder, ans.fileNames[i]));
 						workspace.openTextDocument(uri).then(() => {
 							n++;
 							if (n === ans.fileNames.length) {
@@ -316,6 +368,7 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	private installHandlers() {
 		// server.response.list-theories events are automatically sent by the server when the context folder changes
 		this.client.onRequest("server.response.list-theories", (ans: TheoryList) => {
+			// add theories
 			if (ans && ans.pvsContextFolder !== this.currentContext) {
 				this.currentContext = ans.pvsContextFolder;
 				this.resetView();
@@ -344,7 +397,7 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 							theorems: [],
 							axioms: []
 						}; // TODO: list theorems & axioms
-						const theoryItem: TheoryItem = new TheoryItem(theoryName, fileName, position, pvsContextFolder, TreeItemCollapsibleState.None);
+						const theoryItem: TheoryItem = new TheoryItem(theoryName, fileName, position, pvsContextFolder, TreeItemCollapsibleState.Collapsed);
 						theoryItems.push(theoryItem);
 					}
 				}
@@ -352,7 +405,15 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 				this.theoryMap = theoryMap;
 			}
 			this.refreshView();
-			
+		});
+		this.client.onRequest("server.response.list-theorems", (theoremList: TheoremList) => {
+			// add theorems
+			if (theoremList && theoremList.pvsContextFolder !== this.currentContext) {
+				this.currentContext = theoremList.pvsContextFolder;
+				this.resetView();
+			}
+			this.setTheorems(theoremList);
+			this.refreshView();
 		});
 		this.client.onRequest("server.response.show-tccs", async (ans: TccList) => {
 			this.updateTccs(ans);
@@ -427,20 +488,39 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 		// click on prove tccs to trigger tcp
 		cmd = commands.registerCommand('explorer.prove-tcc', (resource: TccItem) => {
 			if (resource && resource.contextValue === "tcc") {
+				// TODO: modify server APIs so that extension is included in filename
 				const data = {
-					fileName: resource.fileName,
+					fileName: fsUtils.getFilename(resource.fileName, { removeFileExtension: true }),
 					formulaName: resource.tcc.id,
 					theoryName: resource.theoryName,
 					line: resource.tcc.line,
-					fileExtension: ".tccs"
+					fileExtension: ".pvs"
 				};
-				commands.executeCommand("terminal.pvs.step-proof", data);
+				commands.executeCommand("terminal.pvs.prove", data);
 			} else {
 				window.showErrorMessage("Error while trying to execute explorer.prove-tcc: resource is null");
 			}
 		});
 		context.subscriptions.push(cmd);
 
+		// click on prove tccs to trigger tcp
+		cmd = commands.registerCommand('explorer.prove-theorem', (resource: TreeItem) => {
+			if (resource && resource.contextValue === "theorem") {
+				const theorem: TheoremItem = <TheoremItem> resource;
+				const data = {
+					fileName: theorem.desc.fileName,
+					formulaName: theorem.desc.formulaName,
+					theoryName: theorem.desc.theoryName,
+					line: theorem.desc.position.line,
+					fileExtension: ".pvs"
+				};
+				commands.executeCommand("terminal.pvs.prove", data);
+			} else {
+				window.showErrorMessage("Error while trying to execute explorer.prove-tcc: resource is null");
+			}
+		});
+		context.subscriptions.push(cmd);
+		
 		// typecheck-all command from explorer menu
 		cmd = commands.registerCommand('explorer.typecheck-all', () => {
 			this.client.sendRequest('pvs.typecheck-all-and-show-tccs');
@@ -456,6 +536,16 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 			});
 		});
 		context.subscriptions.push(cmd);
+
+		// click on a theorem to open the file and highlight the theorem in the theory
+		cmd = commands.registerCommand('explorer.didSelectTheorem', async (uri: Uri, range: Range) => {
+			// window.showInformationMessage("theory selected: " + theoryName + " " + fileName + "(" + position.line + ", " + position.character + ")");
+			commands.executeCommand('vscode.open', uri, {
+				viewColumn: window.activeTextEditor.viewColumn, // do not open new tabs
+				selection: range
+			});
+		});
+		context.subscriptions.push(cmd)
 
 		// click on a tcc formula to open the .tccs file
 		cmd = commands.registerCommand('explorer.didSelectTccFormula', async (uri: Uri, range: Range) => {
@@ -494,7 +584,10 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 			if (element.contextValue === "theory") {
 				// pvs theory
 				const desc: TheoryItem = <TheoryItem> element;
-				children = [ this.tccsOverview[desc.theoryName] ];
+				children = [
+					this.tccsOverview[desc.theoryName], // todo: tccs attribute within theoryitem
+					desc.theoremsOverview
+				];
 			} else if (element.contextValue === "TCCs") {
 				// tcc list
 				const desc: TccsOverviewItem = <TccsOverviewItem> element;
@@ -505,12 +598,17 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 				const tcc: TccDescriptor = desc.tcc;
 				const fileName: string = desc.fileName;
 				const pvsContextFolder: string = desc.pvsContextFolder;
-				const uri: Uri = Uri.file(`${pvsContextFolder}/${fileName}.pvs`);
-				const tccFile: Uri = Uri.file(`${pvsContextFolder}/${desc.theoryName}.tccs`);
+				const uri: Uri = Uri.file(path.join(pvsContextFolder, `${fileName}.pvs`));
+				const tccFile: Uri = Uri.file(path.join(pvsContextFolder, `${desc.theoryName}.tccs`));
 				children = [
 					new SymbolItem(tcc.symbol, uri, tcc.line, tcc.character),
 					new TccFormulaItem(tcc.msg, tcc.id, tccFile, tcc.position)
 				];
+			} else if (element.contextValue === "theorem") {
+				console.log('theorem');
+			} else if (element.contextValue === "THEOREMS") {
+				const desc: TheoremsOverviewItem = <TheoremsOverviewItem> element;
+				children = desc.listTheorems();
 			}
 			return Promise.resolve(children);
 		}

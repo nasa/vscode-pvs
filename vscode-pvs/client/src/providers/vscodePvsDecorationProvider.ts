@@ -5,7 +5,7 @@ import { window, TextEditor, TextDocument, DecorationOptions, Position, Range } 
 
 const regexp = {
 	keywords: new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi"),
-	comments: new RegExp(language.PVS_COMMENT_REGEXP_SOURCE, "g")
+	comments: new RegExp(language.PVS_COMMENT_REGEXP_SOURCE)
 };
 const keywordsDecorator: TextEditorDecorationType = window.createTextEditorDecorationType({
 	cursor: 'text',

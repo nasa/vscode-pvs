@@ -103,9 +103,9 @@ export class PvsCodeLensProvider {
         const regexp: RegExp = new RegExp(utils.theoremRegexp);
         let match: RegExpMatchArray = null;
         while (match = regexp.exec(doc)) {
-            if (match && match[1]) {
-                const formulaName: string = match[1];
-                const docUp: string = doc.slice(0, match.index + match[1].length);
+            if (match.length > 2 && match[2] && !match[1]) {
+                const formulaName: string = match[2];
+                const docUp: string = doc.slice(0, match.index + match[2].length);
                 const i: number = docUp.split("\n").length - 1;
                 const theoryName: string = utils.findTheoryName(doc,i);
                 codeLens.push({
@@ -114,7 +114,7 @@ export class PvsCodeLensProvider {
                         end: { line: i, character: match.index + formulaName.length }
                     },
                     command: {
-                        title: `step-proof`,
+                        title: `prove`,
                         command: "codelense.pvs.step-proof",
                         arguments: [ { fileName, theoryName, formulaName, line: i, fileExtension } ]
                     }
