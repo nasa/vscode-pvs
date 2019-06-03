@@ -41,7 +41,7 @@
  **/
 
 import { spawn, ChildProcess } from 'child_process';
-import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
+import { PvsExecutionContext } from './common/serverInterface';
 import * as language from "./common/languageKeywords";
 import { 
 	PvsResponseType, PRELUDE_FILE, PvsDeclarationType, PvsTheoryListDescriptor, TccDescriptor

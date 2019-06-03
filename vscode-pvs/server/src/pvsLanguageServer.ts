@@ -52,7 +52,7 @@ import {
 	PvsListDeclarationsRequest, ExpressionDescriptor, EvaluationResult, ProofResult, FormulaDescriptor,
 	PvsTheoryListDescriptor, TccDescriptor, PvsTypecheckerResponse
 } from './common/serverInterface'
-import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
+import { PvsExecutionContext } from './common/serverInterface';
 import { PvsProcess } from './pvsProcess';
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';

@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as comm from './common/serverInterface';
 import { TextDocument, window, workspace, ExtensionContext, Position, Disposable, commands } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
-import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
+import { PvsExecutionContext } from './common/serverInterface';
 import { log } from './utils/vscode-utils';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 // import { VSCodePvsHoverProvider } from './providers/vscodePvsHoverProvider-obsolete';
@@ -141,8 +141,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					this.pvsPath = pvsPath;
 					const pvsExecutionContext: PvsExecutionContext = {
 						pvsPath: this.pvsPath,
-						pvsContextFolder: this.pvsContextFolder, // document.fileName include the path name
-						pvsServerPath: this.context.asAbsolutePath(server_path)
+						pvsContextFolder: this.pvsContextFolder // document.fileName include the path name
 					};
 					await this.client.sendRequest('pvs.init', pvsExecutionContext);	
 				}	
@@ -237,8 +236,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// request initialisation of pvs
 		const pvsExecutionContext: PvsExecutionContext = {
 			pvsPath: this.pvsPath,
-			pvsContextFolder: this.pvsContextFolder, // document.fileName include the path name
-			pvsServerPath: this.context.asAbsolutePath(server_path)
+			pvsContextFolder: this.pvsContextFolder // document.fileName include the path name
 		};
 
 		// setTimeout(async () => {

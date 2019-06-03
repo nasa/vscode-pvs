@@ -140,10 +140,6 @@ class PvsInterpreter {
 	private pvsPath: string;
 	private pvsContextFolder: string;
 	private console: Console;
-	private pvsCommands: { [key: string]: RegExp } = {
-		"change-context": /\(change-context (.*)\)/g,
-		"typecheck-file": /\(typecheck-file (.*)\)/g
-	};
 
 	private async clearContext (): Promise<void> {
 		const currentContext: string = this.pvsContextFolder;

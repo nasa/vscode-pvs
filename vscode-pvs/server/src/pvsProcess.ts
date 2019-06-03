@@ -41,7 +41,6 @@
  **/
 
 import { spawn, ChildProcess } from 'child_process';
-import { PvsExecutionContext } from './common/pvsExecutionContextInterface';
 import * as language from "./common/languageKeywords";
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import { 
@@ -49,7 +48,8 @@ import {
 	PRELUDE_FILE, PvsDeclarationType, FormulaDescriptor, ProofResult, PrettyPrintRegionRequest,
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsFindDeclarationRequest, PvsDefinition, PvsTheoryListDescriptor,
-	TccDescriptorArray, TccDescriptor, PvsFileListDescriptor, PvsTypecheckerResponse
+	TccDescriptorArray, TccDescriptor, PvsFileListDescriptor, PvsTypecheckerResponse,
+	PvsExecutionContext, SimpleConnection
 } from './common/serverInterface'
 import { Connection, TextDocument } from 'vscode-languageserver';
 import * as path from 'path';
@@ -83,9 +83,8 @@ export class PvsProcess {
 
 	private pvsPath: string = null;
 	private pvsContextFolder: string = null;
-	private pvsServerPath: string = null;
 
-	private connection: Connection;
+	private connection: SimpleConnection;
 	private enableNotifications: boolean;
 	private readyString: string = "PVS ready!";
 	// utility functions for showing notifications on the status bar
@@ -128,7 +127,6 @@ export class PvsProcess {
 	constructor (pvsExecutionContext: PvsExecutionContext, connection?: Connection) {
 		this.pvsPath = pvsExecutionContext.pvsPath || __dirname;
 		this.pvsContextFolder = pvsExecutionContext.pvsContextFolder || __dirname;
-		this.pvsServerPath = pvsExecutionContext.pvsServerPath || __dirname;
 
 		// this.serverProxy = new xmlrpcProvider.XmlRpcProxy();
 
@@ -149,6 +147,10 @@ export class PvsProcess {
 			res: null,
 			raw: null
 		});
+	}
+
+	public setConnection (connection: SimpleConnection) {
+		this.connection = connection;
 	}
 
 	private pvsExecAux(cmd: string): Promise<PvsResponseType> {
@@ -630,71 +632,12 @@ export class PvsProcess {
 		};
 	}
 
-	// /**
-	//  * Proves a formula
-	//  * @param desc Formula descriptor
-	//  */
-	// async proveit (desc: FormulaDescriptor): Promise<ProofResult> {
-	// 	await this.initTypeChecker();
-	// 	let cmd = '(change-context "' + this.pvsContextFolder + '" t)';
-	// 	await this.proverExec("change-context", cmd);
-	// 	// typecheck
-	// 	let fileName = getFilename(desc.fileName, { removeFileExtension: true });
-	// 	cmd = '(typecheck-file "' + fileName + '" nil nil nil)';
-	// 	await this.proverExec("typecheck-file", cmd);
-
-	// 	// // enable proof editing
-	// 	// cmd = '(edit-proof-at "' + fileName + '" nil ' + desc.line + ' "pvs" "' + fileName + '.pvs" 0 nil)';
-	// 	// await this.proverExec("edit-proof-at", cmd);
-	// 	// // edit proof
-	// 	// const strategyFolder: string = path.join(this.pvsServerPath, "strategies");
-	// 	// const grindStrategy: string = path.join(strategyFolder, "grind.lisp");
-	// 	// cmd = '(install-proof `' + grindStrategy + ' "' + fileName + '" "' + desc.formula + '" 1 t "Proof" 0)';
-	// 	// await this.proverExec("install-proof", cmd);
-		
-	// 	cmd = '(prove-formula "' + desc.theoryName + '" "'+ desc.formulaName +'" nil)'; 
-	// 	let ans: string = (await this.proverExec("prove-formula", cmd)).res;
-	// 	// (install-prooflite-scripts "test" "test" 0 t)
-	// 	//'(install-prooflite-scripts "' + desc.fileName + '" "' + desc.theoryName +  '" ' + desc.line + ' t)';
-	// 	return {
-	// 		fileName: desc.fileName,
-	// 		theoryName: desc.theoryName,
-	// 		msg: "%-- proof state for " + desc.formulaName,
-	// 		result: ans
-	// 	};
-	// }
-
-	async proveFormula(theoryName: string, formulaName: string) {
-		// await this.initTypeChecker();
-		const cmd = '(prove-formula "' + theoryName + '" "'+ formulaName +'" t)'; 
-		await this.pvsExec(cmd);
+	async proveFormula(desc: { theoryName: string, formulaName: string }): Promise<void> {
+		if (desc) {
+			await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
+		}
 	}
 
-	// /**
-	//  * Shows the declaration of a symbol. Requires typechecking.
-	//  * @param fileName 
-	//  * @param line 
-	//  * @param character 
-	//  */
-	// async showDeclaration(fileName: string, line: number, character: number): Promise<PvsResponseType> {
-	// 	const cmd: string = '(show-declaration "' + fileName + '" "pvs" ' + "'(" + line + " " + character + ")" + ')';
-	// 	return await this.pvsExec(cmd);
-	// }
-	// /**
-	//  * Identifies the importchain for a given theory.
-	//  * @param theoryName Theory name for which the importchain should be computed
-	//  */
-	// async showImportChain(theoryName: string): Promise<PvsResponseType> {
-	// 	if (theoryName) {
-	// 		const cmd: string = '(show-importchain "' + theoryName + '")';
-	// 		return await this.pvsExec(cmd);
-	// 	}
-	// 	return Promise.resolve({
-	// 		res: { theories: [] },
-	// 		error: null,
-	// 		raw: null
-	// 	});
-	// }
 	/**
 	 * Internal function, typechecks a file
 	 * @param uri The uri of the file to be typechecked
