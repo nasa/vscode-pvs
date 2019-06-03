@@ -10,7 +10,7 @@ import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProv
 import { VSCodePvsExplorer } from './views/vscodePvsTheoryExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
 import { VSCodePVSioTerminal } from './terminals/vscodePVSioTerminal'; 
-import { VSCodePvsTerminal } from './terminals/vscodePvsTerminal';
+import { VSCodePvsTerminal } from './terminals/vscodePvsTerminalCli';
 import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 import * as fs from './common/fsUtils';
 import { VSCodePvsStatusBar } from './views/vscodePvsStatusBar';

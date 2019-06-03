@@ -41,11 +41,12 @@
  **/
 
 import { spawn, ChildProcess } from 'child_process';
-import { PvsExecutionContext } from './common/serverInterface';
 import * as language from "./common/languageKeywords";
 import { 
-	PvsResponseType, PRELUDE_FILE, PvsDeclarationType, PvsTheoryListDescriptor, TccDescriptor
+	PvsResponseType, PRELUDE_FILE, PvsDeclarationType, PvsTheoryListDescriptor, TccDescriptor,
+	StrategyDescriptor
 } from './common/serverInterface'
+import { addListener } from 'cluster';
 
 export interface PvsFindDeclarationInterface {
     [ key: string ] : PvsDeclarationType;
@@ -365,7 +366,20 @@ export class PvsLispReader {
 				}
 				break;
 			}
-			case "collect-strategy-names":
+			case "collect-strategy-names": {
+				const regexp: RegExp = /(?:\s*\"([\w\-\+\?\!\*\@]+)\")/g;
+				let match: RegExpMatchArray = null;
+				const strategies: StrategyDescriptor[] = [];
+				while (match = regexp.exec(data)) {
+					const strat: StrategyDescriptor = {
+						name: match[1],
+						description: ""
+					};
+					strategies.push(strat);
+				}
+				ans.res = strategies;
+				break;
+			}
 			case "current-context":
 			case "disable-gc-printout":
 			case "emacs-interface":

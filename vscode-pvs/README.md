@@ -15,6 +15,7 @@ The extension provides the following language features:
 
 
 ## Installation instructions
+- Download NodeJS from https://nodejs.org/en/download/
 - Download PVS from http://pvs.csl.sri.com/
 - Install vscode-pvs in VSCode: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
 - Set the path to the PVS executable from the Settings menu: Files -> Preferences -> Settings -> Extensions -> PVS -> path
@@ -45,6 +46,9 @@ The extension provides the following language features:
 
 
 ## ChangeLog
+### 1.1.2 (2019.06.03)
+- PVS Command Line Interface, introduces auto-completion (using TAB) and command history (using navigation keys) in the PVS integrated terminal
+
 ### 1.1.1 (2019.05.29)
 - Improved Theory Explorer
 

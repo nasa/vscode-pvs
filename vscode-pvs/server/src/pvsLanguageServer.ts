@@ -95,6 +95,8 @@ interface Settings {
 	maxNumberOfProblems: number;
 }
 
+const DEBUG_MODE: boolean = true;
+
 class PvsLanguageServer {
 	// pvs path, context folder, server path
 	pvsExecutionContext: PvsExecutionContext;
@@ -750,6 +752,9 @@ class PvsLanguageServer {
 			});
 			this.connection.onRequest('pvs.step-tcc', async (data: ProofDescriptor) => {
 				if (data) {
+					if (DEBUG_MODE) {
+						console.log(`[DEBUG] pvs.step-tcc ${data}`)
+					}
 					const proc: PvsProcess = await this.createPvsProcess({
 						enableNotifications: true
 					});

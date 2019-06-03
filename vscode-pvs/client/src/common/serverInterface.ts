@@ -91,6 +91,11 @@ export interface PvsListDeclarationsResponse {
 	error?: ErrorType;
 }[];
 
+export declare interface StrategyDescriptor {
+	name: string,
+	description?: string
+}
+
 
 export interface PvsErrorType {
 	msg: string,
@@ -220,8 +225,10 @@ export interface PvsCliInterface {
 	pvsContextFolder: string,
 	cmd: string,
 	fileName: string,
+	fileExtension: string, // either .pvs or .tccs -- TODO: keep this info directly in fileName
 	theoryName?: string,
-	formulaName?: string
+	formulaName?: string,
+	line?: number
 }
 
 export interface PvsExecutionContext {

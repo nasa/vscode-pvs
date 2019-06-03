@@ -149,9 +149,13 @@ export class PvsProcess {
 		});
 	}
 
-	public setConnection (connection: SimpleConnection) {
-		this.connection = connection;
-	}
+	// public setConnection (connection: SimpleConnection) {
+	// 	this.connection = connection;
+	// }
+
+	// public removeConnection () {
+	// 	this.connection = null;
+	// }
 
 	private pvsExecAux(cmd: string): Promise<PvsResponseType> {
 		if (this.pvsProcessBusy) {
@@ -202,6 +206,18 @@ export class PvsProcess {
 		return this.pvsCmdQueue;
 	}
 
+
+	startCli(listener: (data: string) => void) {
+		this.pvsProcess.stdout.on("data", listener);
+	}
+
+	endCli(listener: (data: string) => void) {
+		this.pvsProcess.stdout.removeListener("data", listener);
+	}
+
+	execCmd(cmd: string): void {
+		this.pvsProcess.stdin.write(cmd);
+	}
 	
 
 	/**
@@ -427,6 +443,10 @@ export class PvsProcess {
 		const cmd: string = '(setq *pvs-emacs-interface* t)';
 		return await this.pvsExec(cmd);
 	}
+
+	async listProofStrategies(): Promise<PvsResponseType> {
+		return await this.pvsExec('(collect-strategy-names)');
+	}
 	/**
 	 * Finds a symbol declaration. Requires parsing. May return a list of results when the symbol is overloaded.
 	 * @param symbolName Name of the symbol
@@ -632,11 +652,26 @@ export class PvsProcess {
 		};
 	}
 
-	async proveFormula(desc: { theoryName: string, formulaName: string }): Promise<void> {
-		if (desc) {
-			await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
+	async proveTheorem(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
+		if (desc) {			
+			// await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
+			await this.pvsExec(`(prove-file-at "${desc.theoryName}" ${desc.line} nil nil)`);
 		}
 	}
+
+	async proveTcc(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
+		if (desc) {			
+			// await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
+			await this.pvsExec(`(prove-file-at "${desc.theoryName}" ${desc.line} nil nil)`);
+		}
+	}
+
+	// async proveFormula(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
+	// 	if (desc) {			
+	// 		// await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
+	// 		await this.pvsExec(`(prove-file-at "${desc.theoryName}" ${desc.line} nil nil)`);
+	// 	}
+	// }
 
 	/**
 	 * Internal function, typechecks a file
@@ -767,6 +802,7 @@ export class PvsProcess {
 	// 	//'(install-prooflite-scripts "' + desc.fileName + '" "' + desc.theoryName +  '" ' + desc.line + ' t)';
 	// 	return ans;
 	// }
+
 
 	async stepProof(data: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<PvsResponseType> {
 		// const tactics = await PvsProcess.test();
