@@ -214,3 +214,31 @@ export declare interface ProofStructure {
 	desc: ProofDescriptor,
 	proof: { id: string, children: any[] }
 }
+
+export interface PvsCliInterface {
+	pvsPath: string,
+	pvsContextFolder: string,
+	cmd: string,
+	fileName: string,
+	theoryName?: string,
+	formulaName?: string
+}
+
+export interface PvsExecutionContext {
+	pvsPath: string,
+	pvsContextFolder: string
+}
+
+export const PVS_CLI_FILE: string = 'PvsCli';
+
+export interface SimpleConsole {
+	log: (str: string) => void,
+	error: (str: string) => void,
+	info: (str: string) => void,
+	warn: (str: string) => void
+}
+
+export interface SimpleConnection {
+    console: SimpleConsole,
+	sendNotification?: (type: string, msg: string) => void;
+}
