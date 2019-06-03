@@ -7,8 +7,17 @@ import { VSCodePvsExplorer, TheoryDescriptor } from '../views/vscodePvsTheoryExp
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../utils/vscode-utils';
 
+function getPvsPath (): string {
+    const mode: string = vscode.workspace.getConfiguration().get("pvs.zen-mode");
+    if (mode === "pvs-6" || mode === "pvs-7") {
+        return vscode.workspace.getConfiguration().get(`pvs.zen-mode:${mode}-path`);
+    }
+    return vscode.workspace.getConfiguration().get("pvs.path");
+}
+
 class ProverTerminal {
     pvsExecutable: string;
+    pvsPath: string;
     pvsInterpreter: string;
     pvsContextFolder: string;
     terminal: vscode.Terminal;
@@ -18,7 +27,8 @@ class ProverTerminal {
     constructor (client: LanguageClient, pvsInterpreter: string, terminalID: string) {
         this.terminalID = terminalID;
         this.pvsInterpreter = pvsInterpreter;
-        this.pvsExecutable = path.join(vscode.workspace.getConfiguration().get("pvs.path"), "pvs");
+        this.pvsPath = getPvsPath();
+        this.pvsExecutable = path.join(this.pvsPath, "pvs");
         this.pvsContextFolder = fs.getPathname(vscode.window.activeTextEditor.document.fileName);
         this.client = client;
     }
@@ -294,6 +304,10 @@ export class VSCodePvsTerminal {
             fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string 
         }) => {
             this.stepProof(data);
+        }));
+        context.subscriptions.push(vscode.commands.registerCommand('terminal.ctrl-c', async () => {
+            // const term: ProverTerminal = this.activeTerminals[0];
+            // term.terminal.sendText(String.fromCharCode('C'.charCodeAt(0) - 64), false)
         }));
 
         // context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.step-proof', async (data: { 

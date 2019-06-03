@@ -2,12 +2,22 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { findTheoryName } from '../common/languageUtils';
 
+function getPvsPath (): string {
+    const mode: string = vscode.workspace.getConfiguration().get("pvs.zen-mode");
+    if (mode === "pvs-6" || mode === "pvs-7") {
+        return vscode.workspace.getConfiguration().get(`pvs.zen-mode:${mode}-path`);
+    }
+    return vscode.workspace.getConfiguration().get("pvs.path");
+}
+
 class PVSioTerminal {
     pvsioExecutable: string;
+    pvsPath: string;
     terminal: vscode.Terminal;
     constructor (fileName: string, theoryName: string) {
         const tname: string = `PVSio ${theoryName}`;
-        this.pvsioExecutable = path.join(vscode.workspace.getConfiguration().get("pvs.path"), "pvsio");
+        this.pvsPath = getPvsPath();
+        this.pvsioExecutable = path.join(this.pvsPath, "pvsio");
         const args: string[] = [ this.pvsioExecutable, fileName + "@" + theoryName ];
         this.terminal = vscode.window.createTerminal(tname, '/bin/bash', args);
         this.terminal.show();

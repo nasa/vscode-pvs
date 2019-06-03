@@ -406,6 +406,12 @@
 				"note": "overriding default vscode command, which sends the string ^v to the terminal rather than pasting the content of the clipboard",
 				"mnemonic": "TODO: redirect to ctrl+shift+v",
 				"when": "terminalFocus"
+			},
+			{
+				"key": "left",
+				"command": "workbench.terminal.navigateLeft",
+				"note": "left key shows ^[[D in the pvs terminal, need to find a way to fix this",
+				"when": "terminalFocus"
 			}
 		],
 		"languages": [

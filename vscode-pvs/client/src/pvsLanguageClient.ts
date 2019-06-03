@@ -48,6 +48,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	// status bar
 	private pvsStatusBar: VSCodePvsStatusBar;
 
+	private getPvsPath (): string {
+		const mode: string = workspace.getConfiguration().get("pvs.zen-mode");
+		if (mode === "pvs-6" || mode === "pvs-7") {
+			return workspace.getConfiguration().get(`pvs.zen-mode:${mode}-path`);
+		}
+		return workspace.getConfiguration().get("pvs.path");
+	}
+
 	// autosave pvs files with frequency AUTOSAVE_INTERVAL
 	private autosave (document: TextDocument) {
 		// cancel any previously scheduled save 
@@ -140,14 +148,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				}	
 			};
 			
-			const mode: string = await workspace.getConfiguration().get("pvs.zen-mode");
-			if (mode === "pvs-6" || mode === "pvs-7") {
-				const pvsPath: string = await workspace.getConfiguration().get(`pvs.zen-mode:${mode}-path`);
-				restartPvs(pvsPath);
-			} else {
-				const pvsPath: string = await workspace.getConfiguration().get("pvs.path");
-				restartPvs(pvsPath);
-			}
+			const pvsPath: string = await this.getPvsPath();
+			restartPvs(pvsPath);
 		});
 	}
 	activate (context: ExtensionContext) {

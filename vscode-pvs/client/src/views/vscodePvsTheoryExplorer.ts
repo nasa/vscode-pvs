@@ -207,6 +207,13 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	private tccsOverview: { [ theoryName: string ]: TccsOverviewItem } = {};
 	private tccs: { [ theoryName: string ]: (TccItem | NoTccItem)[] } = {};
 
+	private getPvsPath (): string {
+		const mode: string = workspace.getConfiguration().get("pvs.zen-mode");
+		if (mode === "pvs-6" || mode === "pvs-7") {
+			return workspace.getConfiguration().get(`pvs.zen-mode:${mode}-path`);
+		}
+		return workspace.getConfiguration().get("pvs.path");
+	}
 
 	/**
 	 * @constructor
@@ -216,7 +223,8 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	constructor(client: LanguageClient, providerView: string) {
 		this.client = client;
 		this.providerView = providerView;
-		this.pvsLibrariesPath = path.join(workspace.getConfiguration().get("pvs.path"), "lib");
+		const pvsPath: string = this.getPvsPath();
+		this.pvsLibrariesPath = path.join(pvsPath, "lib");
 		// register tree view.
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
