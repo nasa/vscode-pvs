@@ -275,12 +275,13 @@ class PvsCli {
 		if (this.fileExtension === ".pvs") {
 			await this.pvsProcess.typecheckFile(this.fileName);
 			await this.pvsProcess.stepProof({ fileName: this.fileName, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
-			await this.pvsProcess.proveTheorem({ fileName: this.fileName, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
+			await this.pvsProcess.proveFormula({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
 		} else {
+			// .tccs file
 			await this.pvsProcess.typecheckFile(this.fileName);
 			await this.pvsProcess.showTccs(this.fileName, this.theoryName);
 			await this.pvsProcess.stepTcc({ fileName: this.fileName, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
-			await this.pvsProcess.proveTcc({ fileName: this.fileName, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
+			await this.pvsProcess.proveFormula({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
 		}
 		this.prompt();
 	}

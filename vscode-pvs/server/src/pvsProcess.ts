@@ -589,17 +589,10 @@ export class PvsProcess {
 	 * @returns An array of TCC descriptors
 	 */
 	async showTccs (fileName: string, theoryName: string): Promise<PvsResponseType> {	
-		const cmd: string = '(show-tccs "' + theoryName + '" nil)';
-		const ans: PvsResponseType = await this.pvsExec(cmd);
-		// const importChain: PvsTheoryListDescriptor = await this.listTheories();
-		// const fileName: string = importChain.theories[theoryName][0]; // this is broken because list-theories is broken -- come files may not have been loaded yet 
-
+		const ans: PvsResponseType = await this.pvsExec(`(show-tccs "${theoryName}" nil)`);
 		// const res = await this.serverProxy.changeContext(this.pvsContextFolder);
-
 		// const res = await this.serverProxy.typecheck(fileName);
-
 		// const res = await this.serverProxy.lisp(cmd);
-
 		// create a new file with the tccs. The file name corresponds to the theory name.
 		if (ans && ans.res) {
 			const tccs: TccDescriptor[] = ans.res;
@@ -609,9 +602,7 @@ export class PvsProcess {
 			});
 			await this.writeFile(theoryName + ".tccs", tccsFileContent);
 		}
-
-		// send results back to the client
-		return Promise.resolve(ans);
+		return ans;
 	}
 
 	/**
@@ -653,52 +644,40 @@ export class PvsProcess {
 		};
 	}
 
-	async proveTheorem(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
+	private async proveTheorem(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
 		if (desc) {			
 			// await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
 			await this.pvsExec(`(prove-file-at "${desc.theoryName}" ${desc.line} nil nil)`);
 		}
 	}
 
-	async proveTcc(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
+	private async proveTcc(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
 		if (desc) {			
 			// await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
 			await this.pvsExec(`(prove-file-at "${desc.theoryName}" ${desc.line} nil nil)`);
 		}
 	}
 
-	// async proveFormula(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
-	// 	if (desc) {			
-	// 		// await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
-	// 		await this.pvsExec(`(prove-file-at "${desc.theoryName}" ${desc.line} nil nil)`);
-	// 	}
-	// }
-
-	/**
-	 * Internal function, typechecks a file
-	 * @param uri The uri of the file to be typechecked
-	 * @param tcpFlag Optional flag, triggers automatic proof of tccs
-	 */
-	private async _typecheckFile(uri: string, tcpFlag?: boolean): Promise<PvsResponseType> {
-		let fileName: string = fs.getFilename(uri, { removeFileExtension: true });
-		// await this.serverProxy.changeContext(this.pvsContextFolder);
-		// await this.serverProxy.typecheck(fileName);
-
-		const cmd: string = (tcpFlag) ? 
-			'(typecheck-file "' + fileName + '" nil t nil)'
-				: '(typecheck-file "' + fileName + '" nil nil nil)';
-		// await this.initTypeChecker();
-		return await this.pvsExec(cmd);
-		// const cmd: string = '(json-typecheck-file "' + fileName + '")'; /// what is the difference between json-xxx and xxx?
-		// return (await this.pvsExec("json-typecheck-file", cmd)).res;
+	async proveFormula(desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
+		if (desc) {
+			if (desc.fileExtension === ".pvs") {
+				return await this.proveTheorem(desc);
+			} else if (desc.fileExtension === ".tccs") {
+				return await this.proveTcc(desc);
+			} else {
+				if (this.connection) {
+					this.connection.console.error(`Could not prove formula ${desc.formulaName} (formula is not in a pvs file).`);
+				}
+			}
+		}
 	}
 
 	/**
 	 * Typechecks a file
 	 * @param uri The uri of the file to be typechecked
-	 * @param tcp Tries to discharge tccs
+	 * @param attemptProof Tries to discharge all tccs (default is no)
 	 */
-	async typecheckFile (uri: string, tcp?: boolean): Promise<PvsTypecheckerResponse> {
+	async typecheckFile (uri: string, attemptProof?: boolean): Promise<PvsTypecheckerResponse> {
 		const fileName: string = fs.getFilename(uri, { removeFileExtension: true });
 		const filePath: string = fs.getPathname(uri);
 		let response: PvsTypecheckerResponse = {
@@ -707,7 +686,10 @@ export class PvsProcess {
 			error: null
 		};
 		if (filePath !== this.pvsPath && filePath !== path.join(this.pvsPath, "lib")) {
-			const info: PvsResponseType = await this._typecheckFile(fileName, tcp);
+			const fileName: string = fs.getFilename(uri, { removeFileExtension: true });
+			const info: PvsResponseType = (attemptProof) ? 
+				await this.pvsExec(`(typecheck-file "${fileName}" nil t nil)`)
+				: await this.pvsExec(`(typecheck-file "${fileName}" nil nil nil)`);
 			if (info.error) {
 				response.error = info.error.parserError;
 			} else {
@@ -730,8 +712,7 @@ export class PvsProcess {
 	}
 
 	private async saveContext(): Promise<PvsResponseType> {
-		const cmd: string = '(save-context)';
-		return await this.pvsExec(cmd);
+		return await this.pvsExec('(save-context)');
 	}
 
 	private async clearContext (): Promise<void> {
@@ -803,6 +784,7 @@ export class PvsProcess {
 	// }
 
 
+	// TODO: make a single function out of stepTcc and stepProof
 	async stepProof(data: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<PvsResponseType> {
 		// const tactics = await PvsProcess.test();
 		// const res = await PvsProcess.prf2json(tactics[1], "test");
