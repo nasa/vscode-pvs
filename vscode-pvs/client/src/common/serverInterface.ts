@@ -122,22 +122,38 @@ export declare interface PvsParserResponse {
 	error: ErrorType
 }
 
+export declare interface FormulaMap {
+	[ formulaName: string ]: {
+		status: string,
+		time: string
+	}
+}
+
+export declare interface TheoryStatus {
+	theoryName: string;
+	theorems: FormulaMap;
+}
+
+export declare interface TheoryStatusMap {
+	[ theoryName: string ]: TheoryStatus
+}
+
 export declare interface PvsTypecheckerResponse {
 	fileName: string,
-	res: string,
+	res: TheoryStatusMap,
 	error: ErrorType
 }
 
 export declare interface TccDescriptor {
-	id: string; // tcc ID
-	formula: string; // Proof obligation
-	symbol: string; // symbol that has triggered the tcc
-	line: number; // position (line) of the symbol in the pvs file
+	formulaName: string; // tcc ID
+	expression: string; // Proof obligation
+	symbolName: string; // symbol that has triggered the tcc
+	symbolLine: number; // position (line) of the symbol in the pvs file
 	character: number; // position (character) of the symbol in the pvs file
 	msg: string; // tcc message
 	status: string; // tcc status
 	content: string; // this is the textual version of the tcc, including comments and proof obligation
-	position: number; // position of the formula in the .tccs file
+	line: number; // position of the formula in the .tccs file
 }
 
 export declare interface TccDescriptorArray {
@@ -303,7 +319,8 @@ export declare interface TccMap {
 	[ theoryName: string ]: {
 		fileName: string,
 		theoryName: string,
-		tccs: TccDescriptor[]
+		tccs: TccDescriptor[],
+		theorems: FormulaMap
 	};
 }
 export declare interface TccList {

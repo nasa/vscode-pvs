@@ -44,9 +44,9 @@ import { spawn, ChildProcess } from 'child_process';
 import * as language from "./common/languageKeywords";
 import { 
 	PvsResponseType, PRELUDE_FILE, PvsDeclarationType, TccDescriptor,
-	StrategyDescriptor
+	StrategyDescriptor, TheoryStatus
 } from './common/serverInterface'
-import { addListener } from 'cluster';
+import * as utils from './common/languageUtils';
 
 export interface PvsFindDeclarationInterface {
     [ key: string ] : PvsDeclarationType;
@@ -54,6 +54,7 @@ export interface PvsFindDeclarationInterface {
 export interface PvsShowImportChain {
 	theories: string[] // list of theories, ordered by import
 }
+
 
 // utility functions and constants
 const PVS_LISP_ERROR_RETURN_TO_TOP_LEVEL: string = 'Return to Top Level (an "abort" restart)';
@@ -184,7 +185,7 @@ export class PvsLispReader {
 						} else {
 							if (this.connection) { this.connection.console.error("Unexpected parser error\n" + data); }
 						}
-						}
+					}
 				} else if (/PVS file .+ is not in the current context/gim.test(data)) {
 					const match: RegExpMatchArray = /(PVS file (.+) is not in the current context)/gim.exec(data);
 					ans.error = {
@@ -276,6 +277,8 @@ export class PvsLispReader {
 				break;
 			}
 			case "show-tccs": {
+				data = /([\w\W\s]*)\bnil\b/.exec(data)[1].trim(); // this removes two trailing lines included in the pvs response (nil + pvs prompt)
+				ans.raw = data;
 				const res: TccDescriptor[] = [];
 				// capture group 1: tcc one-liner message
 				// capture group 2: tcc type
@@ -291,24 +294,17 @@ export class PvsLispReader {
 				while (match = regexp.exec(data)) {
 					if (match[3] && match[4]) {
 						const formulaName: string = match[8];
-						const lines = data.split("\n");
-						let position: number = 0;
-						for (let i = 0; i < lines.length; i++) {
-							if (lines[i].startsWith(formulaName)) {
-								position = i;
-								break;
-							}
-						}
+						const line: number = utils.findProofObligation(formulaName, data);
 						res.push({
-							line: +match[3],
+							symbolLine: +match[3],
 							character: +match[4],
-							symbol: match[5],
+							symbolName: match[5],
 							msg: match[6],
 							status: match[7],
-							id: match[8],
-							formula: match[9],
+							formulaName: match[8],
+							expression: match[9],
 							content: match[0],
-							position // position of the formula in the tccs file
+							line: line // position of the formula in the tccs file
 						});
 					}
 				}
@@ -353,6 +349,31 @@ export class PvsLispReader {
 					strategies.push(strat);
 				}
 				ans.res = strategies;
+				break;
+			}
+			case "prove-tccs-theory": {
+				// match[1] is theoryName, match[2] is the list of theorems, match[3] are time stats
+				const regexp: RegExp = /[\w\W\s]*\bProof summary for theory (\w+)\s*([\w\W\s]*)Theory \w+ totals:\s*([\w\W\s]*)/g;
+				let match: RegExpMatchArray = regexp.exec(data);
+				if (match && match.length > 1 && match[1]) {
+					const theoryStatus: TheoryStatus = {
+						theoryName: match[1],
+						theorems: {}
+					};
+					const details: string = match[2];
+					// match[1] is formulaName, match[2] is status, match[3] is time to prove
+					// NOTE: formula names may include ?, therefore \w+ is not good, and regex needs to be [\w\?]+
+					const regex_t: RegExp = /([\w\?]+)\.*(.*)\s*\[.*\]\((.*)\)/g;
+					while (match = regex_t.exec(details)) {
+						if (match.length > 3) {
+							const formulaName: string = match[1];
+							const status: string = match[2].trim();
+							const time: string = match[3].trim();
+							theoryStatus.theorems[formulaName] = { status, time }
+						}
+					}
+					ans.res = theoryStatus;
+				}
 				break;
 			}
 			case "current-context":

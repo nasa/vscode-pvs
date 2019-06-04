@@ -49,7 +49,7 @@ import {
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsFindDeclarationRequest, PvsDefinition,
 	TccDescriptorArray, TccDescriptor, PvsFileListDescriptor, PvsTypecheckerResponse,
-	PvsExecutionContext, SimpleConnection, TheoryList, FileList
+	PvsExecutionContext, SimpleConnection, TheoryList, FileList, TheoremsMap, TheoryMap, TheoryStatus
 } from './common/serverInterface'
 import { Connection, TextDocument } from 'vscode-languageserver';
 import * as path from 'path';
@@ -164,7 +164,7 @@ export class PvsProcess {
 			return this.cannotExecute(msg);
 		}
 		const pvsLispReader: PvsLispReader = new PvsLispReader(this.connection);
-		const match: RegExpMatchArray = /\(\b([\w-]+)\b.*\)/.exec(cmd);
+		const match: RegExpMatchArray = /\(\b([\w\-]+)\b.*\)/.exec(cmd);
 		if (match && match[1]) {
 			const commandId: string = match[1];
 			if (this.connection) { this.connection.console.log(cmd); }
@@ -185,10 +185,10 @@ export class PvsProcess {
 				this.pvsProcess.stdin.write(cmd + "\n");
 			});
 		}
-		if (this.connection) { this.connection.console.error("Unrecognised command " + cmd); }
+		if (this.connection) { this.connection.console.error(`Unrecognised command ${cmd}`); }
 		Promise.reject({
 			res: null,
-			error: "Unrecognised command " + cmd,
+			error: `Unrecognised command ${cmd}`,
 			raw: null
 		});
 	}
@@ -237,7 +237,7 @@ export class PvsProcess {
 			return ans; 
 		}
 		if (this.pvsioProcessBusy) {
-			const msg: string = "PVSio busy, cannot execute " + cmd + ":/";
+			const msg: string = `PVSio busy, cannot execute ${cmd} :/`;
 			return this.cannotExecute(msg);
 		}	
 		this.pvsioProcessBusy = true;
@@ -312,7 +312,7 @@ export class PvsProcess {
 			// const pvslispParser = new PvsLisp("pvs-init", this.connection);	
 			const pvsLispReader = new PvsLispReader(this.connection);
 			let cmd: string = path.join(this.pvsPath, "pvs");
-			if (this.connection) { this.connection.console.info("Spawning pvsio process " + cmd); }
+			if (this.connection) { this.connection.console.info(`Spawning PVSio process ${cmd}`); }
 			return new Promise((resolve, reject) => {
 				this.pvsioProcess = spawn(cmd, ["-raw"]);
 				this.pvsioProcess.stdout.setEncoding("utf8");
@@ -343,7 +343,7 @@ export class PvsProcess {
 		const folderExists: boolean = await fsUtils.dirExists(contextFolder);
 		if (folderExists) {
 			if (contextFolder !== this.pvsContextFolder) {
-				const cmd: string = '(change-context "' + contextFolder + '" nil)';
+				const cmd: string = `(change-context "${contextFolder}" nil)`;
 				this.pvsContextFolder = contextFolder;
 				return await this.pvsExec(cmd);
 			}
@@ -495,15 +495,7 @@ export class PvsProcess {
 	// 	const cmd: string = '(describe (pc-parse "' + expression + '" `expr))';
 	// 	return await this.pvsExec("parse-expression", cmd);
 	// }
-	/**
-	 * Parse a file. This is the original API provided by PVS Lisp.
-	 * @param fileName File to be parsed, must be in the current pvs context
-	 * @private
-	 */
-	private async _parseFile(fileName: string): Promise<PvsResponseType> {
-		const cmd: string = '(parse-file "' + fileName + '" nil nil)'; // is there a way to force parsing of importchain?
-		return await this.pvsExec(cmd);
-	}
+
 	/**
 	 * Parse a file
 	 * @param fileName File to be parsed, must be in the current pvs context
@@ -511,14 +503,13 @@ export class PvsProcess {
 	 */
 	async parseFile (fileName: string): Promise<PvsParserResponse> {
 		fileName = fsUtils.getFilename(fileName, { removeFileExtension: true });
-		// const filePath: string = getPathname(uri);
 		let response: PvsParserResponse = {
 			fileName: fileName,
 			res: null,
 			error: null
 		};
 		if (!this.pvsContextFolder.startsWith(this.pvsPath)) {
-			const parserInfo: PvsResponseType = await this._parseFile(fileName);
+			const parserInfo: PvsResponseType = await this.pvsExec(`(parse-file "${fileName}" nil nil)`);
 			if (parserInfo.error) {
 				response.error = parserInfo.error.parserError;
 			} else {
@@ -526,12 +517,11 @@ export class PvsProcess {
 			}
 		} else {
 			if (this.connection) {
-				this.connection.console.info("PVS library file " + fileName + " already parsed.");
+				this.connection.console.info(`PVS library file ${fileName} already parsed.`);
 			}
 		}
 		return response;
 	}
-
 	/**
 	 * Parse all files in the current context folder
 	 * @returns Parser result for each file, can be either a message (parse successful), or list of syntax errors
@@ -547,7 +537,6 @@ export class PvsProcess {
 		}
 		return result;
 	}
-
 	/**
 	 * Shows the Type Check Conditions (TCCs) for the selected theory.
 	 * This command triggers typechecking and creates a .tccs file on disk.
@@ -561,11 +550,7 @@ export class PvsProcess {
 		// const res = await this.serverProxy.lisp(cmd);
 		// create a new file with the tccs. The file name corresponds to the theory name.
 		if (ans && ans.res) {
-			const tccs: TccDescriptor[] = ans.res;
-			let tccsFileContent: string = "";
-			tccs.forEach((tcc) => {
-				tccsFileContent += tcc.content;
-			});
+			let tccsFileContent: string = ans.raw;
 			const fileName: string = path.join(this.pvsContextFolder, `${theoryName}.tccs`)
 			await fsUtils.writeFile(fileName, tccsFileContent);
 		}
@@ -586,20 +571,20 @@ export class PvsProcess {
 		// cmd = '(setq *pvs-emacs-interface* t)';
 		// await this.pvsioExec("emacs-interface", cmd);
 		// make sure we are in the correct context
-		cmd = '(change-context "' + this.pvsContextFolder + '" t)';
+		cmd = `(change-context "${this.pvsContextFolder}" t)`;
 		await this.pvsioExec("change-context");
 		// typecheck
 		let fileName = fsUtils.getFilename(desc.fileName, { removeFileExtension: true });
-		cmd = '(typecheck-file "' + fileName + '" nil nil nil)';
+		cmd = `(typecheck-file "${fileName}" nil nil nil)`;
 		await this.pvsioExec("typecheck-file");
 		// load semantic attachments
 		cmd = "(load-pvs-attachments)";
 		await this.pvsioExec("load-pvs-attachments");
 		// enter pvsio mode
-		cmd = '(evaluation-mode-pvsio "' + desc.theoryName + '" nil nil nil)'; // the fourth argument removes the pvsio 	banner
+		cmd = `(evaluation-mode-pvsio "${desc.theoryName}" nil nil nil)`; // the fourth argument removes the pvsio 	banner
 		await this.pvsioExec("evaluation-mode-pvsio");
 		// send expression to be evaluated
-		cmd = desc.expression + ";";
+		cmd = `${desc.expression};`;
 		let ans = await this.pvsioExec("eval-expr");
 		// await this.pvsioExec("quit-pvsio", "quit;");
 		this.pvsioProcess.kill();
@@ -666,15 +651,28 @@ export class PvsProcess {
 			const info: PvsResponseType = (attemptProof) ? 
 				await this.pvsExec(`(typecheck-file "${fileName}" nil t nil)`)
 				: await this.pvsExec(`(typecheck-file "${fileName}" nil nil nil)`);
-			if (info.error) {
+			if (info && info.error) {
 				response.error = info.error.parserError;
 			} else {
-				response.res = info.res;
+				// load status info for each theory
+				const theoryMap: TheoryMap = await utils.listTheoriesInFile(uri);
+				if (theoryMap) {
+					response.res = {};
+					const theoryNames: string[] = Object.keys(theoryMap);
+					for (const i in theoryNames) {
+						const theoryName: string = theoryNames[i];
+						const statusInfo: PvsResponseType = await this.pvsExec(`(prove-tccs-theory "${theoryName}" nil "${fileName}" nil)`);
+						if (statusInfo && statusInfo.res) {
+							const theoryStatus: TheoryStatus = statusInfo.res;
+							response.res[theoryName] = theoryStatus;
+						}							
+					}
+				}
 				await this.saveContext();
 			}
 		} else {
 			if (this.connection) {
-				this.connection.console.info("PVS library file " + fileName + " already typechecked.");
+				this.connection.console.info(`PVS library file ${fileName} already typechecked.`);
 			}
 		}
 		return response;
@@ -686,11 +684,9 @@ export class PvsProcess {
 	async typecheckProve (uri: string): Promise<PvsTypecheckerResponse> {
 		return this.typecheckFile(uri, true)
 	}
-
 	private async saveContext(): Promise<PvsResponseType> {
 		return await this.pvsExec('(save-context)');
 	}
-
 	private async clearContext (): Promise<void> {
 		const currentContext: string = this.pvsContextFolder;
 		if (currentContext) {
@@ -698,30 +694,6 @@ export class PvsProcess {
 		}
 	}
 
-
-	// private async clearContext(): Promise<PvsResponseType> {
-	// 	if (this.pvsContextFolder.startsWith(this.pvsPath)) {
-	// 		const msg: string = `Library files - no need to clear context cache`;
-	// 		if (this.connection) { this.connection.console.info(msg); }
-	// 		return Promise.resolve({
-	// 			error: null,
-	// 			res: null,
-	// 			raw: msg
-	// 		});	
-	// 	} else {
-	// 		const binFolder: string = path.join(this.pvsContextFolder, "pvsbin");
-	// 		const folderExists: boolean = fsUtils.dirExists(binFolder);
-	// 		if (folderExists) {
-	// 			await fsUtils.rmDir(binFolder);
-	// 		}
-	// 		const msg: string = `Context cache ${binFolder} cleared`;
-	// 		return Promise.resolve({
-	// 			error: null,
-	// 			res: null,
-	// 			raw: msg
-	// 		});
-	// 	}
-	// }
 
 	/**
 	 * Typechecks a theory

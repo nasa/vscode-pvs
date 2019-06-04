@@ -181,6 +181,21 @@ export function findTheorem(txt: string, line: number): string | null {
 	return null;
 };
 
+/**
+ * @function findProofObligation
+ * @description Utility function, finds the line of a proof obligation
+ * @param txt The text where the proof obligation should be searched 
+ * @returns { string | null } The theory name if any is found, null otherwise
+ */
+export function findProofObligation(formulaName: string, txt: string): number {
+	const regexp: RegExp = new RegExp(`\\b${formulaName}:\\s*OBLIGATION\\b`, "g");
+	let match: RegExpMatchArray = regexp.exec(txt);
+	if (match) {
+		const trim: string = txt.substr(0, match.index);
+		return trim.split("\n").length;
+	}
+	return -1;
+};
 
 
 interface Position {
@@ -263,19 +278,21 @@ export function colorText(text: string, colorCode: number): string {
 	return `\x1b[38;5;${colorCode}m${text}\x1b[0m`;
 }
 
-
-
 /**
  * Utility function, returns the list of theories defined in a given pvs file
  * @param uri Path to a pvs file
  */
 export async function listTheoriesInFile (fileName: string): Promise<TheoryMap> {
-	let response: TheoryMap = {};
-	const txt: string = await fsUtils.readFile(fileName);
-	fileName = fsUtils.getFilename(fileName, { removeFileExtension: true });
-	// const doc: TextDocument = this.documents.get("file://" + uri);
-	response = findTheories(fileName, txt);
-	return response;
+	if (fileName) {
+		fileName = fileName.startsWith("file://") ? fileName.replace("file://", "") : fileName;
+		let response: TheoryMap = {};
+		const txt: string = await fsUtils.readFile(fileName);
+		fileName = fsUtils.getFilename(fileName, { removeFileExtension: true });
+		// const doc: TextDocument = this.documents.get("file://" + uri);
+		response = findTheories(fileName, txt);
+		return response;
+	}
+	return null;
 }
 
 /**

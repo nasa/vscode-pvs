@@ -106,10 +106,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.client.onRequest("server.response.parse-file", (ans: comm.PvsParserResponse) => {
 			// do nothing for now.
 		});
-		this.client.onRequest("server.response.typecheck-file", (ans: comm.PvsParserResponse) => {
-			// window.setStatusBarMessage("M-x " + ans.res, 3200);
-			// do nothing for now.
-		});
 		this.client.onRequest("server.response.change-context-and-parse-files", (ans: comm.PvsParserResponse) => {
 			// do nothing for now.
 		});
