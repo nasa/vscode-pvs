@@ -686,7 +686,6 @@ export class PvsProcess {
 			error: null
 		};
 		if (filePath !== this.pvsPath && filePath !== path.join(this.pvsPath, "lib")) {
-			const fileName: string = fs.getFilename(uri, { removeFileExtension: true });
 			const info: PvsResponseType = (attemptProof) ? 
 				await this.pvsExec(`(typecheck-file "${fileName}" nil t nil)`)
 				: await this.pvsExec(`(typecheck-file "${fileName}" nil nil nil)`);
@@ -694,7 +693,7 @@ export class PvsProcess {
 				response.error = info.error.parserError;
 			} else {
 				response.res = info.res;
-				// await this.saveContext();
+				await this.saveContext();
 			}
 		} else {
 			if (this.connection) {
