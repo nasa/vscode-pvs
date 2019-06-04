@@ -1,5 +1,6 @@
 import * as lang from './languageKeywords';
 import * as fsUtils from './fsUtils';
+import { TheoryMap, TheoremDescriptor, StrategyDescriptor } from '../common/serverInterface';
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -142,7 +143,8 @@ export async function listTheoremsInFile (uri: string): Promise<TheoremDescripto
 						fileName: fsUtils.getFilename(uri),
 						theoryName: boundaries[i].theoryName,
 						formulaName,
-						position: { line, character: 0 }
+						position: { line, character: 0 },
+						status: "not available"
 					});
 				}
 			}
@@ -187,70 +189,6 @@ interface Range {
 	start: Position,
 	end: Position
 };
-
-export interface FileList {
-	pvsContextFolder: string;
-	fileNames: string[]; // TODO: FileDescriptor[]
-}
-
-export interface TheoryList {
-	pvsContextFolder: string;
-	theories: TheoryMap; //  TODO TheoryDescriptor[]
-}
-
-export declare interface TheoremList {
-	pvsContextFolder: string;
-	theorems: TheoremDescriptor[];
-	fileName?: string; // when fileName is specified, the theorem list describes the content of a specific file. This is useful for status updates.
-}
-
-export interface DeclarationMap {
-	[ theoryName: string ]: {
-		[key: string]: {
-			theoryName: string;
-			symbolName: string;
-			symbolDeclaration: string;
-			symbolDeclarationRange: Range;
-			symbolDeclarationFile: string;
-			symbolDoc?: string;
-			comment?: string;
-		}
-	}
-}
-
-export interface TccList {
-	pvsContextFolder: string;
-	tccs: TccMap;
-}
-
-import { TccDescriptor, StrategyDescriptor } from './serverInterface';
-export interface TccMap {
-	[ theoryName: string ]: {
-		fileName: string,
-		theoryName: string,
-		tccs: TccDescriptor[]
-	};
-}
-
-export declare interface TheoryMap {
-	[ theoryName: string ]: {
-		theoryName: string,
-		fileName: string,
-		position: Position
-	}
-}
-
-export declare interface TheoremDescriptor {
-	fileName: string,
-	theoryName: string,
-	formulaName: string,
-	position: Position
-}
-
-export declare interface TheoremsMap {
-	[ theorem: string ]: TheoremDescriptor
-}
-
 
 
 /**

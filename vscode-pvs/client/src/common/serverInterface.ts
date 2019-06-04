@@ -1,33 +1,31 @@
-import { TheoremDescriptor } from "./languageUtils";
-
-export interface Position {
+export declare interface Position {
 	line: number, // this attribute ranges from 1 to n, while vscode.line ranges from 0 to n-1 
 	character: number
 };
 
-export interface Range {
+export declare interface Range {
 	start: Position,
 	end: Position
 };
 
-export interface PeekDefinitionCommand {
+export declare interface PeekDefinitionCommand {
 	fileName: string,
 	range: Range
 };
 
-export interface PvsVersionDescriptor {
+export declare interface PvsVersionDescriptor {
 	pvsVersion: string,
 	lispVersion: string
 };
 
-export interface ErrorType {
+export declare interface ErrorType {
 	msg: string,
 	fileName: string,
 	line: number,
 	character: number
 };
 
-export interface PvsDeclarationType {
+export declare interface PvsDeclarationType {
 	symbolName: string | null;
 	symbolTheory: string | null;
 	symbolDeclaration: string | null;
@@ -35,7 +33,7 @@ export interface PvsDeclarationType {
 	symbolDeclarationFile: string | null;
 };
 
-export interface PvsDeclarationDescriptor {
+export declare interface PvsDeclarationDescriptor {
 	file?: string;
 	theory?: string;
 	line?: number;
@@ -50,14 +48,14 @@ export interface PvsDeclarationDescriptor {
 	error?: ErrorType | null;
 };
 
-export interface PvsFindDeclarationRequest {
+export declare interface PvsFindDeclarationRequest {
 	symbolName: string;
 	file?: string;
 	theory?: string;
 	line?: number;
 	character?: number;
 }
-export interface PvsDefinition {
+export declare interface PvsDefinition {
 	file?: string;
 	theory?: string;
 	line?: number;
@@ -71,13 +69,13 @@ export interface PvsDefinition {
 	comment?: string;
 	error?: ErrorType;
 };
-export interface PvsListDeclarationsRequest {
+export declare interface PvsListDeclarationsRequest {
 	theoryName: string;
 	file?: string;
 	line?: number;
 	character?: number;
 }
-export interface PvsListDeclarationsResponse {
+export declare interface PvsListDeclarationsResponse {
 	file?: string;
 	line?: number;
 	character?: number;
@@ -97,12 +95,12 @@ export declare interface StrategyDescriptor {
 }
 
 
-export interface PvsErrorType {
+export declare interface PvsErrorType {
 	msg: string,
 	parserError?: ErrorType,
 	restartOption?: number | string
 };
-export interface PvsResponseType {
+export declare interface PvsResponseType {
 	error: PvsErrorType,
 	res: any, // json object -- TODO: define the different types of objects, include a field "type" in each object
 	raw: string // raw output of pvs-lisp
@@ -118,19 +116,19 @@ export const PVS_LIBRARY_FILES: { [ key: string ] : string } = {
 	"union_adt": "union_adt.pvs"
 };
 
-export interface PvsParserResponse {
+export declare interface PvsParserResponse {
 	fileName: string,
 	res: string,
 	error: ErrorType
 }
 
-export interface PvsTypecheckerResponse {
+export declare interface PvsTypecheckerResponse {
 	fileName: string,
 	res: string,
 	error: ErrorType
 }
 
-export interface TccDescriptor {
+export declare interface TccDescriptor {
 	id: string; // tcc ID
 	formula: string; // Proof obligation
 	symbol: string; // symbol that has triggered the tcc
@@ -142,13 +140,13 @@ export interface TccDescriptor {
 	position: number; // position of the formula in the .tccs file
 }
 
-export interface TccDescriptorArray {
+export declare interface TccDescriptorArray {
 	theoryName: string; // theory name
 	fileName: string; // pvs file containing the theory
 	tccs: TccDescriptor[]; // structured view of the list of tccs generated for the theory
 }
 
-export interface PvsSymbolKind<type> {
+export declare interface PvsSymbolKind<type> {
 	keywords: type,
 	numbers: type,
 	strings: type,
@@ -159,56 +157,56 @@ export interface PvsSymbolKind<type> {
 	comments: type
 };
 
-export interface ExpressionDescriptor {
+export declare interface ExpressionDescriptor {
 	fileName: string,
 	theoryName: string,
 	expression: string
 };
 
-export interface EvaluationResult {
+export declare interface EvaluationResult {
 	theoryName: string,
 	fileName: string,
 	msg: string,
 	result: string
 };
 
-export interface FormulaDescriptor {
+export declare interface FormulaDescriptor {
 	fileName: string,
 	theoryName: string,
 	formulaName: string,
 	line: number
 };
 
-export interface ProofResult {
+export declare interface ProofResult {
 	theoryName: string,
 	fileName: string,
 	msg: string,
 	result: string
 };
 
-export interface PrettyPrintRegionRequest {
+export declare interface PrettyPrintRegionRequest {
 	theoryName: string;
 	range: Range
 }
 
-export interface PrettyPrintRegionResult {
+export declare interface PrettyPrintRegionResult {
 	theoryName: string;
 	range: Range;
 	result: string;
 }
 
-export interface PvsTheoryListDescriptor {
+export declare interface PvsTheoryListDescriptor {
 	folder: string, // base path
 	files: { [ fileName: string ] : string[] } // theories grouped by fileName
 	theories: { [ theoryName: string ]: string[] } // files grouped by theoryName
 }
 
-export interface PvsFileListDescriptor {
+export declare interface PvsFileListDescriptor {
 	folder: string, // base path
 	fileNames: string[] // pvs files
 }
 
-export interface ProofDescriptor {
+export declare interface ProofDescriptor {
 	fileName: string;
 	formulaName: string;
 	theoryName: string;
@@ -220,7 +218,7 @@ export declare interface ProofStructure {
 	proof: { id: string, children: any[] }
 }
 
-export interface PvsCliInterface {
+export declare interface PvsCliInterface {
 	pvsPath: string,
 	pvsContextFolder: string,
 	cmd: string,
@@ -231,21 +229,84 @@ export interface PvsCliInterface {
 	line?: number
 }
 
-export interface PvsExecutionContext {
+export declare interface PvsExecutionContext {
 	pvsPath: string,
 	pvsContextFolder: string
 }
 
 export const PVS_CLI_FILE: string = 'PvsCli';
 
-export interface SimpleConsole {
+export declare interface SimpleConsole {
 	log: (str: string) => void,
 	error: (str: string) => void,
 	info: (str: string) => void,
 	warn: (str: string) => void
 }
 
-export interface SimpleConnection {
+export declare interface SimpleConnection {
     console: SimpleConsole,
 	sendNotification?: (type: string, msg: string) => void;
+}
+
+
+export declare interface TheoryMap {
+	[ theoryName: string ]: {
+		theoryName: string,
+		fileName: string,
+		position: Position
+	}
+}
+
+// TODO: check if this is equivalent to FormulaDescriptor
+export declare interface TheoremDescriptor {
+	fileName: string;
+	theoryName: string;
+	formulaName: string;
+	position: Position;
+	status: string; // proof status
+}
+
+export declare interface TheoremsMap {
+	[ theorem: string ]: TheoremDescriptor
+}
+
+export declare interface FileList {
+	pvsContextFolder: string;
+	fileNames: string[]; // TODO: FileDescriptor[]
+}
+
+export declare interface TheoryList {
+	pvsContextFolder: string;
+	theories: TheoryMap; //  TODO TheoryDescriptor[]
+}
+
+export declare interface TheoremList {
+	pvsContextFolder: string;
+	theorems: TheoremDescriptor[];
+	fileName?: string; // when fileName is specified, the theorem list describes the content of a specific file. This is useful for status updates.
+}
+
+export declare interface DeclarationMap {
+	[ theoryName: string ]: {
+		[key: string]: {
+			theoryName: string;
+			symbolName: string;
+			symbolDeclaration: string;
+			symbolDeclarationRange: Range;
+			symbolDeclarationFile: string;
+			symbolDoc?: string;
+			comment?: string;
+		}
+	}
+}
+export declare interface TccMap {
+	[ theoryName: string ]: {
+		fileName: string,
+		theoryName: string,
+		tccs: TccDescriptor[]
+	};
+}
+export declare interface TccList {
+	pvsContextFolder: string;
+	tccs: TccMap;
 }

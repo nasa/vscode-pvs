@@ -50,7 +50,8 @@ import {
 	PvsParserResponse, PvsSymbolKind, PvsVersionDescriptor, PvsResponseType,
 	PvsFindDeclarationRequest, PvsDefinition, PRELUDE_FILE, PvsDeclarationDescriptor, PvsDeclarationType,
 	PvsListDeclarationsRequest, ExpressionDescriptor, EvaluationResult, ProofResult, FormulaDescriptor,
-	PvsTheoryListDescriptor, TccDescriptor, PvsTypecheckerResponse
+	PvsTheoryListDescriptor, TccDescriptor, PvsTypecheckerResponse, FileList, TheoryMap, TheoryList, TccList,
+	TccMap, TheoremList, TheoremDescriptor
 } from './common/serverInterface'
 import { PvsExecutionContext } from './common/serverInterface';
 import { PvsProcess } from './pvsProcess';
@@ -59,8 +60,7 @@ import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
 import { PvsHoverProvider } from './providers/pvsHoverProvider';
 import { PvsCodeLensProvider } from './providers/pvsCodeLensProvider';
 import { PvsLinter } from './providers/pvsLinter';
-import { getErrorRange, findTheories, FileList, TheoryMap, TheoryList, TccList, listTheoryNames, TccMap,
-	TheoremList, listTheoremsInFile, TheoremDescriptor } from './common/languageUtils';
+import { getErrorRange, findTheories,  listTheoryNames, listTheoremsInFile } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';

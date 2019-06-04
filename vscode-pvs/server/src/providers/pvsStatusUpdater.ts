@@ -1,5 +1,6 @@
 import { Connection, TextDocument } from 'vscode-languageserver';
-import { listTheoremsInFile, TheoremDescriptor, TheoremList } from '../common/languageUtils';
+import { listTheoremsInFile } from '../common/languageUtils';
+import { TheoremDescriptor, TheoremList } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
 
 

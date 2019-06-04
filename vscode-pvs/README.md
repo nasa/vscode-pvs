@@ -47,10 +47,10 @@ The extension provides the following language features:
 
 ## ChangeLog
 ### 1.1.2 (2019.06.03)
-- PVS Command Line Interface, introduces auto-completion (using TAB) and command history (using navigation keys) in the PVS integrated terminal
+- PVS Command Line Interface (auto-completion and history navigation for proof commands)
 
 ### 1.1.1 (2019.05.29)
-- Improved Theory Explorer
+- Improved Theory Explorer (navigation of theorems)
 
 ### 1.1.0 (2019.05.24)
 - Added support for view-proof and step-proof commands

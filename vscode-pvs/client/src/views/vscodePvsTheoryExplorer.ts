@@ -2,8 +2,8 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window, TextDocum
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, MarkdownString, TreeView } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { TccDescriptorArray, TccDescriptor, PeekDefinitionCommand, PVS_LIBRARY_FILES } from '../common/serverInterface';
-import { TheoryMap, FileList, TheoryList, TccList, TheoremList, TheoremDescriptor } from '../common/languageUtils';
+import { TccDescriptorArray, TccDescriptor, PeekDefinitionCommand, PVS_LIBRARY_FILES,
+			TheoryMap, FileList, TheoryList, TccList, TheoremList, TheoremDescriptor } from '../common/serverInterface';
 import * as comm from '../common/serverInterface';
 import * as path from 'path';
 import { log } from '../utils/vscode-utils';
