@@ -47,15 +47,16 @@ import {
 	PvsResponseType, PvsParserResponse, PvsDeclarationDescriptor,
 	PRELUDE_FILE, PvsDeclarationType, FormulaDescriptor, ProofResult, PrettyPrintRegionRequest,
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
-	PvsFindDeclarationRequest, PvsDefinition, PvsTheoryListDescriptor,
+	PvsFindDeclarationRequest, PvsDefinition,
 	TccDescriptorArray, TccDescriptor, PvsFileListDescriptor, PvsTypecheckerResponse,
-	PvsExecutionContext, SimpleConnection
+	PvsExecutionContext, SimpleConnection, TheoryList
 } from './common/serverInterface'
 import { Connection, TextDocument } from 'vscode-languageserver';
 import * as path from 'path';
 import { PVS_TRUE_FALSE_REGEXP_SOURCE, PVS_STRING_REGEXP_SOURCE } from "./common/languageKeywords";
 import * as fs from './common/fsUtils';
 import { PvsFindDeclarationInterface, PvsLispReader } from './pvsLisp';
+import * as utils from './common/languageUtils';
 // import * as xmlrpcProvider from './common/xmlrpcProvider';
 
 
@@ -368,19 +369,19 @@ export class PvsProcess {
 		const cmd: string = '(pvs-current-directory)';
 		return await this.pvsExec(cmd);
 	}
-	/**
-	 * FIXME: remove this command in favour of listPvsFiles?
-	 * Identifies the set of theories loaded in the current context
-	 * FIXME: it is not clear when theories are loaded in the context? how to find the importchain??
-	 * @returns A descriptor providing the list of theories in the current context.
-	 * 			The descriptor contains two fields:
-	 * 			- files: list of theories grouped by filename (type: { [fileName: string]: string })
-	 * 			- theories: list of theories ordered by name (type: string[] )
-	 */
-	private async listTheories(): Promise<PvsResponseType> {
-		const cmd: string = '(context-files-and-theories "'+ this.pvsContextFolder +'")';
-		return await this.pvsExec(cmd);
-	}
+	// /**
+	//  * FIXME: remove this command in favour of listPvsFiles?
+	//  * Identifies the set of theories loaded in the current context
+	//  * FIXME: it is not clear when theories are loaded in the context? how to find the importchain??
+	//  * @returns A descriptor providing the list of theories in the current context.
+	//  * 			The descriptor contains two fields:
+	//  * 			- files: list of theories grouped by filename (type: { [fileName: string]: string })
+	//  * 			- theories: list of theories ordered by name (type: string[] )
+	//  */
+	// private async listTheories(): Promise<PvsResponseType> {
+	// 	const cmd: string = '(context-files-and-theories "'+ this.pvsContextFolder +'")';
+	// 	return await this.pvsExec(cmd);
+	// }
 	/**
 	 * Returns the pvs files in the current context, i.e., all pvs files in the current context folder
 	 * TODO: create a separate module for file system operations?
@@ -770,17 +771,15 @@ export class PvsProcess {
 	 * @param theoryName The theory to be typechecked
 	 */
 	async typecheckTheory(theoryName: string): Promise<PvsParserResponse> {
-		const pvsResponse: PvsResponseType = await this.listTheories();
-		if (pvsResponse && pvsResponse.res) {
-			const importChain: PvsTheoryListDescriptor = pvsResponse.res;
-			if (importChain && importChain.theories) {
-				const fileName = importChain.theories[theoryName];
-				const cmd: string = '(typecheck-file "' + fileName + '" nil nil nil)';
-				// await this.initTypeChecker();
-				return (await this.pvsExec(cmd)).res;
+		if (theoryName) {
+			const pvsContextFolder: string = this.getContextFolder();
+			const list: TheoryList = await utils.listTheories(pvsContextFolder);
+			if (list && list.theories && list.theories[theoryName]) {
+				const fileName = list.theories[theoryName].fileName;
+				return (await this.pvsExec(`(typecheck-file "${fileName}" nil nil nil)`)).res;
 			}
 		}
-		return Promise.resolve(null);
+		return null;
 	}
 	/**
 	 * Provides pvs version information

@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { FileList } from '../common/serverInterface';
 
 export async function stat(file: string): Promise<fs.Stats> {
 	return new Promise<fs.Stats>((resolve, reject) => {
@@ -69,4 +70,20 @@ export function isPvsFile(fileName: string): boolean {
 // }
 export function dirExists(path: string) {
 	return fs.existsSync(path);
+}
+
+/**
+ * Utility function, returns the list of pvs files contained in a given folder
+ * @param folder Path to a folder
+ */
+export async function listPvsFiles (folder: string): Promise<FileList> {
+	const children: string[] = await readDir(folder);
+	const fileList: FileList = {
+		fileNames: children.filter((fileName) => {
+			return fileName.endsWith(".pvs") 
+					&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
+		}),
+		pvsContextFolder: folder
+	};
+	return fileList;
 }

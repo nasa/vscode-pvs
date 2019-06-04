@@ -1,6 +1,8 @@
 import * as lang from './languageKeywords';
 import * as fsUtils from './fsUtils';
-import { TheoryMap, TheoremDescriptor, StrategyDescriptor } from '../common/serverInterface';
+import * as path from 'path';
+import { TheoryMap, TheoremDescriptor, StrategyDescriptor,
+			TheoryList, FileList, TheoremList } from '../common/serverInterface';
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -102,17 +104,17 @@ export function listTheoryNames (txt: string): string[] {
 // match[1] indicates commented section; match[2] is the theorem name
 export const theoremRegexp: RegExp = /(%.*)?(\b\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\s)*\s*)*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
 
-export function listTheorems (txt: string): string[] {
-	const ans: string[] = [];
-	let match: RegExpMatchArray = null;
-	const regexp: RegExp = new RegExp(theoremRegexp);
-	while (match = regexp.exec(txt)) {
-		if (match && match.length > 2 && match[2] && !match[1]) {
-			ans.push(match[2]);
-		}
-	}
-	return ans;
-}
+// export function listTheorems (txt: string): string[] {
+// 	const ans: string[] = [];
+// 	let match: RegExpMatchArray = null;
+// 	const regexp: RegExp = new RegExp(theoremRegexp);
+// 	while (match = regexp.exec(txt)) {
+// 		if (match && match.length > 2 && match[2] && !match[1]) {
+// 			ans.push(match[2]);
+// 		}
+// 	}
+// 	return ans;
+// }
 
 export async function listTheoremsInFile (uri: string): Promise<TheoremDescriptor[]> {
 	if (uri) {
@@ -261,11 +263,71 @@ export function colorText(text: string, colorCode: number): string {
 	return `\x1b[38;5;${colorCode}m${text}\x1b[0m`;
 }
 
-export function backspaceDelete(text: string): string {
-	if (text) {
-		return "\u0008".repeat(text.length);
+
+
+/**
+ * Utility function, returns the list of theories defined in a given pvs file
+ * @param uri Path to a pvs file
+ */
+export async function listTheoriesInFile (fileName: string): Promise<TheoryMap> {
+	let response: TheoryMap = {};
+	const txt: string = await fsUtils.readFile(fileName);
+	fileName = fsUtils.getFilename(fileName, { removeFileExtension: true });
+	// const doc: TextDocument = this.documents.get("file://" + uri);
+	response = findTheories(fileName, txt);
+	return response;
+}
+
+/**
+ * Lists all theorems in a given context folder
+ */
+export async function listTheorems (pvsContextFolder: string): Promise<TheoremList> {
+	let response: TheoremList = {
+		theorems: [],
+		pvsContextFolder
+	};
+	const fileList: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
+	for (let i in fileList.fileNames) {
+		let uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
+		let theorems: TheoremDescriptor[] = await listTheoremsInFile(uri);
+		response.theorems = response.theorems.concat(theorems);
 	}
-	return "";
+	return response;
+}
+
+
+
+/**
+ * Lists all theories in a given context foder
+ */
+export async function listTheories (pvsContextFolder: string): Promise<TheoryList> {
+	let response: TheoryList = {
+		theories: {},
+		pvsContextFolder
+	};
+	const fileList: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
+	for (let i in fileList.fileNames) {
+		let uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
+		let theories: TheoryMap = await listTheoriesInFile(uri);
+		let theoryNames: string[] = Object.keys(theories);
+		for (let i in theoryNames) {
+			let theoryName: string = theoryNames[i];
+			response.theories[theoryName] = theories[theoryName];
+			// const declarations: PvsDeclarationDescriptor[] = await this.pvsProcess.listDeclarations({ theoryName: theoryName });
+			// Object.keys(declarations).forEach((key) => {
+			// // 	response.declarations[theoryName][key] = {
+			// // 		theoryName: theoryName,
+			// // 		symbolName: declarations[key].symbolName,
+			// // 		symbolDeclaration: declarations[key].symbolDeclaration,
+			// // 		symbolDeclarationRange: declarations[key].symbolDeclarationRange,
+			// // 		symbolDeclarationFile: declarations[key].symbolDeclarationFile,
+			// // 		symbolDoc: declarations[key].symbolDoc,
+			// // 		comment: declarations[key].comment
+			// // 	};
+			// });
+		}
+	}
+	return Promise.resolve(response);
 }
 
 

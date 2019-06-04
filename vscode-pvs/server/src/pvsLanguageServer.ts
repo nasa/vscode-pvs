@@ -50,7 +50,7 @@ import {
 	PvsParserResponse, PvsSymbolKind, PvsVersionDescriptor, PvsResponseType,
 	PvsFindDeclarationRequest, PvsDefinition, PRELUDE_FILE, PvsDeclarationDescriptor, PvsDeclarationType,
 	PvsListDeclarationsRequest, ExpressionDescriptor, EvaluationResult, ProofResult, FormulaDescriptor,
-	PvsTheoryListDescriptor, TccDescriptor, PvsTypecheckerResponse, FileList, TheoryMap, TheoryList, TccList,
+	TccDescriptor, PvsTypecheckerResponse, FileList, TheoryMap, TheoryList, TccList,
 	TccMap, TheoremList, TheoremDescriptor
 } from './common/serverInterface'
 import { PvsExecutionContext } from './common/serverInterface';
@@ -171,7 +171,7 @@ class PvsLanguageServer {
 				const context: string = fsUtils.getPathname(open.document.uri);
 				if (this.pvsParser.getContextFolder() !== context) {
 					this.pvsParser.changeContext(context);
-					this.listPvsFiles(context).then((pvsFiles: FileList) => {
+					fsUtils.listPvsFiles(context).then((pvsFiles: FileList) => {
 						this.listTheories().then((theories: TheoryList) => {
 							this.connection.sendRequest("server.response.list-theories", theories);
 						});	
@@ -284,21 +284,7 @@ class PvsLanguageServer {
 		}
 		return [];
 	}
-	/**
-	 * Utility function, returns the list of pvs files contained in a given folder
-	 * @param folder Path to a folder
-	 */
-	async listPvsFiles (folder: string): Promise<FileList> {
-		const children: string[] = await fsUtils.readDir(folder);
-		const fileList: FileList = {
-			fileNames: children.filter((fileName) => {
-				return fileName.endsWith(".pvs") 
-						&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
-			}),
-			pvsContextFolder: folder
-		};
-		return fileList;
-	}
+
 	/**
 	 * Utility function, normalises the structure of a file name in the form /path/to/the/context/folder/filename.pvs
 	 * @param fileName Filename to be normalized
@@ -379,7 +365,7 @@ class PvsLanguageServer {
 	}
 	private async parallelTypeCheckAllAndShowTccs(): Promise<void> {
 		const pvsContextFolder: string = this.pvsParser.getContextFolder();
-		const pvsFiles: FileList = await this.listPvsFiles(pvsContextFolder);
+		const pvsFiles: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
 		const promises = [];
 		// TODO: enable parallel typechecking
 		for (const i in pvsFiles.fileNames) {
@@ -407,7 +393,7 @@ class PvsLanguageServer {
 	}
 	private async serialTypeCheckAllAndShowTccs(): Promise<void> {
 		const pvsContextFolder: string = this.pvsParser.getContextFolder();
-		const pvsFiles: FileList = await this.listPvsFiles(pvsContextFolder);
+		const pvsFiles: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
 		for (const i in pvsFiles.fileNames) {
 			let fileName: string = pvsFiles.fileNames[i];
 			this.connection.sendNotification('server.status.info', "Typechecking " + fileName);
@@ -460,73 +446,29 @@ class PvsLanguageServer {
     }
 
 	/**
-	 * Utility function, returns the list of theories defined in a given pvs file
-	 * @param uri Path to a pvs file
-	 */
-	async listTheoriesInFile (uri: string): Promise<TheoryMap> {
-		let response: TheoryMap = {};
-		const fileName: string = fsUtils.getFilename(uri, { removeFileExtension: true });
-		const txt: string = await fsUtils.readFile(uri);
-		// const doc: TextDocument = this.documents.get("file://" + uri);
-		response = findTheories(fileName, txt);
-		return response;
-	}
-
-	/**
-	 * Lists all theories available in the current context
+	 * Lists all theories in the current context folder
 	 */
 	private async listTheories (): Promise<TheoryList> {
 		// this.connection.console.info("list-all-theories, file " + uri);
 		const pvsContextFolder: string = this.pvsParser.getContextFolder();
-		let response: TheoryList = {
-			theories: {},
-			pvsContextFolder
-		};
-		const fileList: FileList = await this.listPvsFiles(pvsContextFolder);
-		for (let i in fileList.fileNames) {
-			let uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
-			let theories: TheoryMap = await this.listTheoriesInFile(uri);
-			let theoryNames: string[] = Object.keys(theories);
-			for (let i in theoryNames) {
-				let theoryName: string = theoryNames[i];
-				response.theories[theoryName] = theories[theoryName];
-				// const declarations: PvsDeclarationDescriptor[] = await this.pvsProcess.listDeclarations({ theoryName: theoryName });
-				// Object.keys(declarations).forEach((key) => {
-				// // 	response.declarations[theoryName][key] = {
-				// // 		theoryName: theoryName,
-				// // 		symbolName: declarations[key].symbolName,
-				// // 		symbolDeclaration: declarations[key].symbolDeclaration,
-				// // 		symbolDeclarationRange: declarations[key].symbolDeclarationRange,
-				// // 		symbolDeclarationFile: declarations[key].symbolDeclarationFile,
-				// // 		symbolDoc: declarations[key].symbolDoc,
-				// // 		comment: declarations[key].comment
-				// // 	};
-				// });
-			}
-		}
-		return Promise.resolve(response);
+		let response: TheoryList = await utils.listTheories(pvsContextFolder);
+		return response;
 	}
 
+	/**
+	 * Lists all theorems in the current context folder
+	 */
 	private async listTheorems (): Promise<TheoremList> {
 		// this.connection.console.info("list-all-theories, file " + uri);
 		const pvsContextFolder: string = this.pvsParser.getContextFolder();
-		let response: TheoremList = {
-			theorems: [],
-			pvsContextFolder
-		};
-		const fileList: FileList = await this.listPvsFiles(pvsContextFolder);
-		for (let i in fileList.fileNames) {
-			let uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
-			let theorems: TheoremDescriptor[] = await listTheoremsInFile(uri);
-			response.theorems = response.theorems.concat(theorems);
-		}
+		let response: TheoremList = await utils.listTheorems(pvsContextFolder);
 		return response;
 	}
 
 	async changeContextAndParseFiles(context: string): Promise<ContextDiagnostics> {
 		await this.pvsParser.changeContext(context);
 		const res: ContextDiagnostics = await this.pvsParser.parseCurrentContext();
-		const pvsFiles: FileList = await this.listPvsFiles(context);
+		const pvsFiles: FileList = await fsUtils.listPvsFiles(context);
 		this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
 		const theories: TheoryList = await this.listTheories();
 		this.connection.sendRequest("server.response.list-theories", theories);
@@ -662,7 +604,7 @@ class PvsLanguageServer {
 			// TODO: add context folder as function argument?
 			this.connection.onRequest("pvs.list-files", async () => {
 				const pvsContextFolder: string = this.pvsParser.getContextFolder();
-				const response: FileList = await this.listPvsFiles(pvsContextFolder);
+				const response: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
 				this.connection.sendRequest("server.response.list-files", response);
 			});
 			this.connection.onRequest("pvs.typecheck-all-and-show-tccs", () => {

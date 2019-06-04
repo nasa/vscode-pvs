@@ -195,11 +195,11 @@ export declare interface PrettyPrintRegionResult {
 	result: string;
 }
 
-export declare interface PvsTheoryListDescriptor {
-	folder: string, // base path
-	files: { [ fileName: string ] : string[] } // theories grouped by fileName
-	theories: { [ theoryName: string ]: string[] } // files grouped by theoryName
-}
+// export declare interface PvsTheoryListDescriptor {
+// 	folder: string, // base path
+// 	files: { [ fileName: string ] : string[] } // theories grouped by fileName
+// 	theories: { [ theoryName: string ]: string[] } // files grouped by theoryName
+// }
 
 export declare interface PvsFileListDescriptor {
 	folder: string, // base path

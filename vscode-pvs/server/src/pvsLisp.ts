@@ -43,7 +43,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import * as language from "./common/languageKeywords";
 import { 
-	PvsResponseType, PRELUDE_FILE, PvsDeclarationType, PvsTheoryListDescriptor, TccDescriptor,
+	PvsResponseType, PRELUDE_FILE, PvsDeclarationType, TccDescriptor,
 	StrategyDescriptor
 } from './common/serverInterface'
 import { addListener } from 'cluster';
@@ -260,31 +260,6 @@ export class PvsLispReader {
 					};
 				}
 				ans.res = declarations;
-				break;
-			}
-			case "list-theories": {
-				// returns the list of theories in the current context
-				// theories are grouped by filename
-				let res: PvsTheoryListDescriptor = {
-					folder: "",
-					files: {},
-					theories: {}
-				};
-				const regexp: RegExp = /\("([^"]+)"\s+"([^"]+)"\)/g; // capture group 1 is theory name, capture group 2 is filename
-				let match: RegExpMatchArray = [];
-				while(match = regexp.exec(data)) {
-					let theoryName: string = match[1];
-					let fileName: string = match[2];
-					if (fileName.endsWith(".pvs")) {
-						fileName = fileName.substr(0, fileName.length - 4);
-					}
-					res.files[fileName] = res.files[fileName] || [];
-					res.files[fileName].push(match[1]);
-					res.theories[theoryName] = res.theories[theoryName] || [];
-					res.theories[theoryName].push(fileName);
-				}
-				// regexp.lastIndex = 0;
-				ans.res = res;
 				break;
 			}
 			case "show-importchain": {
