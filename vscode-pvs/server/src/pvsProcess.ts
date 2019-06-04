@@ -49,7 +49,7 @@ import {
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsFindDeclarationRequest, PvsDefinition,
 	TccDescriptorArray, TccDescriptor, PvsFileListDescriptor, PvsTypecheckerResponse,
-	PvsExecutionContext, SimpleConnection, TheoryList
+	PvsExecutionContext, SimpleConnection, TheoryList, FileList
 } from './common/serverInterface'
 import { Connection, TextDocument } from 'vscode-languageserver';
 import * as path from 'path';
@@ -386,31 +386,21 @@ export class PvsProcess {
 	 * Returns the pvs files in the current context, i.e., all pvs files in the current context folder
 	 * @returns A descriptor providing the list of pvs files and the name of the context folder
 	 */
-	async listPvsFiles(): Promise<PvsFileListDescriptor> {
-		let files: string[] = await fsUtils.readDir(this.pvsContextFolder);
-		let pvsFiles: string[] = files.filter(fileName => {
-			return fileName.endsWith(".pvs") && !fileName.startsWith(".");
-		});
-		return {
-			fileNames: pvsFiles,
-			folder: this.pvsContextFolder
-		};
-	}
-	// /**
-	//  * Utility function, restores the pvs prompt if pvs crashes into lisp
-	//  * @param option The restart option for restoring the pvs prompt
-	//  * @private 
-	//  */
-	// private async continueLisp(option: number): Promise<PvsResponseType> {
-	// 	const cmd = ':continue ' + option + "\n";
-	// 	return this.pvsExec("pvs-continue", cmd);
+	// async listPvsFiles(): Promise<PvsFileListDescriptor> {
+	// 	let files: string[] = await fsUtils.readDir(this.pvsContextFolder);
+	// 	let pvsFiles: string[] = files.filter(fileName => {
+	// 		return fileName.endsWith(".pvs") && !fileName.startsWith(".");
+	// 	});
+	// 	return {
+	// 		fileNames: pvsFiles,
+	// 		folder: this.pvsContextFolder
+	// 	};
 	// }
 	/**
 	 * Disables garbage collector messages
 	 */
 	async disableGcPrintout(): Promise<PvsResponseType> {
-		const cmd: string = '(setq *disable-gc-printout* t)';
-		return await this.pvsExec(cmd);
+		return await this.pvsExec('(setq *disable-gc-printout* t)');
 	}
 	/**
 	 * Enables the pvs emacs interface.
@@ -441,6 +431,9 @@ export class PvsProcess {
 		return await this.pvsExec(cmd);
 	}
 
+	/**
+	 * Returns the list of commands accepted by the theorem prover
+	 */
 	async listProofStrategies(): Promise<PvsResponseType> {
 		return await this.pvsExec('(collect-strategy-names)');
 	}
@@ -453,26 +446,18 @@ export class PvsProcess {
 			// find-declaration is unable to handle boolean constants if they are not spelled with capital letters
 			symbolName = symbolName.toUpperCase();
 		} else if (new RegExp(PVS_STRING_REGEXP_SOURCE).test(symbolName)) {
+			// string constant, nothing to do
 			return Promise.resolve({
 				res: null,
 				error: null,
 				raw: null
 			});
 		}
-		const cmd: string = '(find-declaration "' + symbolName + '")';
-		return await this.pvsExec(cmd);
+		return await this.pvsExec(`(find-declaration "${symbolName}")`);
 	}
 	/**
-	 * List all declaration in a given theory. Requires parsing.
-	 * @param theoryName Name of the theory 
-	 */
-	private async _listDeclarations(theoryName: string): Promise<PvsResponseType> {
-		const cmd: string = '(list-declarations "' + theoryName + '")';
-		return await this.pvsExec(cmd);
-	}
-	/**
-	 * Provides the list of symbols declared in a given theory
-	 * @param desc 
+	 * List all declarations in a given theory. The theory should parse correctly, otherwise the list of declarations cannot be computed.
+	 * @param desc Theory descriptor TODO: use the standard format { fileName, fileExtension, theoryName, line, character }
 	 */
 	async listDeclarations (desc: PvsListDeclarationsRequest): Promise<PvsDeclarationDescriptor[]> {
 		let response: PvsDeclarationDescriptor[] = [];
@@ -480,7 +465,7 @@ export class PvsProcess {
 		const fileName = path[path.length - 1].split(".pvs")[0];
 		if (fileName !== PRELUDE_FILE) {
 			// find-declaration works even if a pvs file does not parse correctly 
-			let ans: PvsResponseType = await this._listDeclarations(desc.theoryName);
+			let ans: PvsResponseType = await this.pvsExec(`(list-declarations "${desc.theoryName}")`);
 			const allDeclarations: PvsFindDeclarationInterface = ans.res;
 			response = Object.keys(allDeclarations).map(function (key) {
 				const info: PvsDeclarationType = allDeclarations[key];
@@ -553,12 +538,9 @@ export class PvsProcess {
 	 */
 	async parseCurrentContext (): Promise<ContextDiagnostics> {
 		const result: { [ fileName: string ] : PvsParserResponse } = {};
-		const contextFiles: PvsFileListDescriptor = await this.listPvsFiles();
+		const contextFolder: string = this.getContextFolder();
+		const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
 		if (contextFiles && contextFiles.fileNames) {
-			const context: string = contextFiles.folder;
-			if (this.pvsContextFolder !== context) {
-				await this.changeContext(context);
-			}
 			for (const i in contextFiles.fileNames) {
 				result[contextFiles.fileNames[i]] = await this.parseFile(contextFiles.fileNames[i]);
 			}
