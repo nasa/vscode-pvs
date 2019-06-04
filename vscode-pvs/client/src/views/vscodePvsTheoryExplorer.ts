@@ -472,11 +472,15 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 		// 	}
 		// });
 		// context.subscriptions.push(cmd);
-		let cmd = commands.registerCommand('explorer.typecheck-file-and-show-tccs', (resource: TreeItem) => {
-			if (resource && resource.contextValue === "theory") {
-				const desc: TheoryItem = <TheoryItem> resource;
-				// TODO: find a way to select the tree item when clicking the button
-				this.client.sendRequest('pvs.typecheck-file-and-show-tccs', desc.fileName);
+		let cmd = commands.registerCommand('explorer.typecheck-file-and-show-tccs', (resource) => {
+			if (resource) {
+				if (resource.fileName) {
+					this.client.sendRequest('pvs.typecheck-file-and-show-tccs', resource.fileName);
+				} else if (resource.path) {
+					this.client.sendRequest('pvs.typecheck-file-and-show-tccs', resource.path);
+				} else {
+					window.showErrorMessage("Error while trying to execute explorer.typecheck-file-and-show-tccs: resource does not provide filename information");
+				}
 			} else {
 				window.showErrorMessage("Error while trying to execute explorer.typecheck-file-and-show-tccs: resource is null");
 			}

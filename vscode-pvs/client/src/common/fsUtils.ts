@@ -35,8 +35,7 @@ export async function deletePvsCache(contextFolder: string): Promise<boolean> {
 	}
 	return true;
 }
-
-export async function writeFileSync(path: string, content: string): Promise<void> {
+export async function writeFile(path: string, content: string): Promise<void> {
 	return await fs.writeFileSync(path, content);
 }
 

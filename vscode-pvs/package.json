@@ -181,7 +181,7 @@
 			},
 			{
 				"command": "explorer.typecheck-file-and-show-tccs",
-				"title": "TYPECHECK"
+				"title": "Typecheck"
 			},
 			{
 				"command": "explorer.typecheck-all",

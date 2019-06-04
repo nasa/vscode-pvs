@@ -54,7 +54,7 @@ import {
 import { Connection, TextDocument } from 'vscode-languageserver';
 import * as path from 'path';
 import { PVS_TRUE_FALSE_REGEXP_SOURCE, PVS_STRING_REGEXP_SOURCE } from "./common/languageKeywords";
-import * as fs from './common/fsUtils';
+import * as fsUtils from './common/fsUtils';
 import { PvsFindDeclarationInterface, PvsLispReader } from './pvsLisp';
 import * as utils from './common/languageUtils';
 // import * as xmlrpcProvider from './common/xmlrpcProvider';
@@ -273,7 +273,7 @@ export class PvsProcess {
 			const args: string[] = [ "-raw"];//, "-port", "22334" ];
 			if (this.connection) { this.connection.console.info(`Spawning pvs process ${pvs} ${args.join(" ")}`); }
 			return new Promise(async (resolve, reject) => {
-				const fileExists: boolean = await fs.fileExists(pvs);
+				const fileExists: boolean = await fsUtils.fileExists(pvs);
 				if (fileExists) {
 					this.pvsProcess = spawn(pvs, args);
 					this.pvsProcess.stdout.setEncoding("utf8");
@@ -340,7 +340,7 @@ export class PvsProcess {
 	 */
 	async changeContext(contextFolder: string): Promise<PvsResponseType> {
 		// await this.serverProxy.changeContext(contextFolder);
-		const folderExists: boolean = await fs.dirExists(contextFolder);
+		const folderExists: boolean = await fsUtils.dirExists(contextFolder);
 		if (folderExists) {
 			if (contextFolder !== this.pvsContextFolder) {
 				const cmd: string = '(change-context "' + contextFolder + '" nil)';
@@ -384,11 +384,10 @@ export class PvsProcess {
 	// }
 	/**
 	 * Returns the pvs files in the current context, i.e., all pvs files in the current context folder
-	 * TODO: create a separate module for file system operations?
 	 * @returns A descriptor providing the list of pvs files and the name of the context folder
 	 */
 	async listPvsFiles(): Promise<PvsFileListDescriptor> {
-		let files: string[] = await fs.readDir(this.pvsContextFolder);
+		let files: string[] = await fsUtils.readDir(this.pvsContextFolder);
 		let pvsFiles: string[] = files.filter(fileName => {
 			return fileName.endsWith(".pvs") && !fileName.startsWith(".");
 		});
@@ -396,9 +395,6 @@ export class PvsProcess {
 			fileNames: pvsFiles,
 			folder: this.pvsContextFolder
 		};
-	}
-	async writeFile(fileName: string, content: string): Promise<void> {
-		await fs.writeFileSync(path.join(this.pvsContextFolder,fileName), content);
 	}
 	// /**
 	//  * Utility function, restores the pvs prompt if pvs crashes into lisp
@@ -529,7 +525,7 @@ export class PvsProcess {
 	 * @returns Parser result, can be either a message (parse successful), or list of syntax errors
 	 */
 	async parseFile (fileName: string): Promise<PvsParserResponse> {
-		fileName = fs.getFilename(fileName, { removeFileExtension: true });
+		fileName = fsUtils.getFilename(fileName, { removeFileExtension: true });
 		// const filePath: string = getPathname(uri);
 		let response: PvsParserResponse = {
 			fileName: fileName,
@@ -552,7 +548,7 @@ export class PvsProcess {
 	}
 
 	/**
-	 * Parse all files in the current context
+	 * Parse all files in the current context folder
 	 * @returns Parser result for each file, can be either a message (parse successful), or list of syntax errors
 	 */
 	async parseCurrentContext (): Promise<ContextDiagnostics> {
@@ -570,23 +566,11 @@ export class PvsProcess {
 		return result;
 	}
 
-	// /**
-	//  * Creates the prover process, if the process has not been created already.
-	//  */
-	// private async initTypeChecker () {
-	// 	if (this.proverProcess === null) {
-	// 		// start prover process
-	// 		await this.prover();
-	// 		let cmd: string = '(setq *disable-gc-printout* t)';
-	// 		// disable garbage collector printout
-	// 		await this.proverExec("disable-gc-printout", cmd);
-	// 	}
-	// } 
-
 	/**
 	 * Shows the Type Check Conditions (TCCs) for the selected theory.
-	 * This command triggers typechecking and creates a .tccs file on disk. The .tccs file name corresponds to the theory name.
-	 * @returns An array of TCC descriptors
+	 * This command triggers typechecking and creates a .tccs file on disk.
+	 * The .tccs file name is the name of the selected theory.
+	 * @returns TODO: change return type to an array of TCC descriptors
 	 */
 	async showTccs (fileName: string, theoryName: string): Promise<PvsResponseType> {	
 		const ans: PvsResponseType = await this.pvsExec(`(show-tccs "${theoryName}" nil)`);
@@ -600,7 +584,8 @@ export class PvsProcess {
 			tccs.forEach((tcc) => {
 				tccsFileContent += tcc.content;
 			});
-			await this.writeFile(theoryName + ".tccs", tccsFileContent);
+			const fileName: string = path.join(this.pvsContextFolder, `${theoryName}.tccs`)
+			await fsUtils.writeFile(fileName, tccsFileContent);
 		}
 		return ans;
 	}
@@ -622,7 +607,7 @@ export class PvsProcess {
 		cmd = '(change-context "' + this.pvsContextFolder + '" t)';
 		await this.pvsioExec("change-context");
 		// typecheck
-		let fileName = fs.getFilename(desc.fileName, { removeFileExtension: true });
+		let fileName = fsUtils.getFilename(desc.fileName, { removeFileExtension: true });
 		cmd = '(typecheck-file "' + fileName + '" nil nil nil)';
 		await this.pvsioExec("typecheck-file");
 		// load semantic attachments
@@ -644,20 +629,30 @@ export class PvsProcess {
 		};
 	}
 
+	/**
+	 * Internal function, proves a theorem stored in a .pvs file
+	 * @param desc Formula descriptor
+	 */
 	private async proveTheorem(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
 		if (desc) {			
 			// await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
 			await this.pvsExec(`(prove-file-at "${desc.theoryName}" ${desc.line} nil nil)`);
 		}
 	}
-
+	/**
+	 * Internal function, proves a theorem stored in a .tccs file
+	 * @param desc Formula descriptor
+	 */
 	private async proveTcc(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
 		if (desc) {			
 			// await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
 			await this.pvsExec(`(prove-file-at "${desc.theoryName}" ${desc.line} nil nil)`);
 		}
 	}
-
+	/**
+	 * Proves a formula
+	 * @param desc Formula descriptor
+	 */
 	async proveFormula(desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
 		if (desc) {
 			if (desc.fileExtension === ".pvs") {
@@ -678,8 +673,8 @@ export class PvsProcess {
 	 * @param attemptProof Tries to discharge all tccs (default is no)
 	 */
 	async typecheckFile (uri: string, attemptProof?: boolean): Promise<PvsTypecheckerResponse> {
-		const fileName: string = fs.getFilename(uri, { removeFileExtension: true });
-		const filePath: string = fs.getPathname(uri);
+		const fileName: string = fsUtils.getFilename(uri, { removeFileExtension: true });
+		const filePath: string = fsUtils.getPathname(uri);
 		let response: PvsTypecheckerResponse = {
 			fileName: fileName,
 			res: null,
@@ -717,7 +712,7 @@ export class PvsProcess {
 	private async clearContext (): Promise<void> {
 		const currentContext: string = this.pvsContextFolder;
 		if (currentContext) {
-			await fs.deletePvsCache(currentContext);
+			await fsUtils.deletePvsCache(currentContext);
 		}
 	}
 
@@ -733,9 +728,9 @@ export class PvsProcess {
 	// 		});	
 	// 	} else {
 	// 		const binFolder: string = path.join(this.pvsContextFolder, "pvsbin");
-	// 		const folderExists: boolean = fs.dirExists(binFolder);
+	// 		const folderExists: boolean = fsUtils.dirExists(binFolder);
 	// 		if (folderExists) {
-	// 			await fs.rmDir(binFolder);
+	// 			await fsUtils.rmDir(binFolder);
 	// 		}
 	// 		const msg: string = `Context cache ${binFolder} cleared`;
 	// 		return Promise.resolve({
