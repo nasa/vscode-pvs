@@ -357,9 +357,11 @@ class PvsLanguageServer {
 						theoryName: theoryName,
 						fileName: fileName,
 						tccs: tccArray,
-						theorems: typecheckerResponse.res[theoryName].theorems
+						theorems: typecheckerResponse.res[theoryName].theorems // this includes the status of theorems and tccs
 					};
 				}
+				// report updated list/status of theorems
+				this.connection.sendNotification('pvs.context.theories-status.update', response.theoriesStatusMap);
 			}
 			return response;
 		}
@@ -384,8 +386,6 @@ class PvsLanguageServer {
 					const response: TheoriesMap = await this.typecheckFileAndShowTccs(fileName, proc);
 					// the list of proof obligations is provided incrementally to the client so feedback can be shown as soon as available
 					this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
-					// report updated list/status of theorems
-					this.connection.sendNotification('pvs.context.theories-status.update', response.theoriesStatusMap);
 				}
 				resolve();	
 			}));

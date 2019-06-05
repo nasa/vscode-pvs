@@ -146,7 +146,7 @@ export async function listTheoremsInFile (uri: string): Promise<TheoremDescripto
 						theoryName: boundaries[i].theoryName,
 						formulaName,
 						position: { line, character: 0 },
-						status: "not available"
+						status: null
 					});
 				}
 			}
@@ -188,13 +188,14 @@ export function findTheorem(txt: string, line: number): string | null {
  * @returns { string | null } The theory name if any is found, null otherwise
  */
 export function findProofObligation(formulaName: string, txt: string): number {
-	const regexp: RegExp = new RegExp(`\\b${formulaName}:\\s*OBLIGATION\\b`, "g");
+	const formula: string = formulaName.replace("?", "\\?");
+	const regexp: RegExp = new RegExp(`\\b${formula}:\\s*OBLIGATION\\b`, "g");
 	let match: RegExpMatchArray = regexp.exec(txt);
 	if (match) {
 		const trim: string = txt.substr(0, match.index);
 		return trim.split("\n").length;
 	}
-	return -1;
+	return 0;
 };
 
 

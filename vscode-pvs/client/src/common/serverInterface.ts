@@ -146,13 +146,8 @@ export declare interface PvsTypecheckerResponse {
 
 export declare interface TccDescriptor {
 	formulaName: string; // tcc ID
-	expression: string; // Proof obligation
-	symbolName: string; // symbol that has triggered the tcc
 	symbolLine: number; // position (line) of the symbol in the pvs file
-	character: number; // position (character) of the symbol in the pvs file
-	msg: string; // tcc message
-	status: string; // tcc status
-	content: string; // this is the textual version of the tcc, including comments and proof obligation
+	symbolCharacter: number; // position (character) of the symbol in the pvs file
 	line: number; // position of the formula in the .tccs file
 }
 

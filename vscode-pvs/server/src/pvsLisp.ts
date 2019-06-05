@@ -277,34 +277,24 @@ export class PvsLispReader {
 				break;
 			}
 			case "show-tccs": {
-				data = /([\w\W\s]*)\bnil\b/.exec(data)[1].trim(); // this removes two trailing lines included in the pvs response (nil + pvs prompt)
+				data = /(%[\w\W\s]*)\bnil\b/.exec(data)[1].trim(); // this removes two trailing lines included in the pvs response (nil + pvs prompt)
 				ans.raw = data;
 				const res: TccDescriptor[] = [];
-				// capture group 1: tcc one-liner message
-				// capture group 2: tcc type
-				// capture group 3: position (line) of the symbol that has triggered the tcc
-				// capture group 4: position (column) of the symbol that has triggered the tcc
-				// capture group 5: symbol that has triggered the tcc
-				// capture group 6: tcc message (e.g., expected type list[int])
-				// capture group 7: tcc status (e.g., unfinished)
-				// capture group 8: tcc ID (name of the pvs theorem to be proved)
-				// capture group 9: tcc formula (body of the pvs theorem to be proved)
-				const regexp: RegExp = new RegExp(/((.+) generated \(at line (\d+), column (\d+)\) for\s+%?(.+))\s+%\s*(.*)\s+%\s*(.*)\s+(\w+):\s*OBLIGATION\s+([^%]+)/gi);
+				// capture group 1: tcc message (Subtype TCC generated at ...)
+				// capture group 2: position (line) of the symbol that has triggered the tcc
+				// capture group 3: position (column) of the symbol that has triggered the tcc
+				// capture group 4: formulaName
+				const regexp: RegExp = new RegExp(/(%\s*(?:.+)(?: generated)?\(at line (\d+), column (\d+)\)).*(?:\s*%.*\s)*([\w\?]+):\s*OBLIGATION/g);
 				let match: RegExpMatchArray = null;
 				while (match = regexp.exec(data)) {
-					if (match[3] && match[4]) {
-						const formulaName: string = match[8];
+					if (match.length > 4 && match[4]) {
+						const formulaName: string = match[4];
 						const line: number = utils.findProofObligation(formulaName, data);
 						res.push({
-							symbolLine: +match[3],
-							character: +match[4],
-							symbolName: match[5],
-							msg: match[6],
-							status: match[7],
-							formulaName: match[8],
-							expression: match[9],
-							content: match[0],
-							line: line // position of the formula in the tccs file
+							formulaName,
+							line: (line > 0) ? line : 1, // position of the formula in the tccs file
+							symbolLine: +match[2],
+							symbolCharacter: +match[3]
 						});
 					}
 				}
@@ -370,7 +360,7 @@ export class PvsLispReader {
 							const status: string = match[2].trim();
 							const time: string = match[3].trim();
 							theoryStatus.theorems[formulaName] = {
-								status: (status === "not available") ? null : status,
+								status,
 								time 
 							}
 						}

@@ -17,6 +17,7 @@ class TheoryItem extends TreeItem {
 	command: Command;
 	fileName: string;
 	position: Position;
+	tccsOverview: TccsOverviewItem;
 	theoremsOverview: TheoremsOverviewItem;
 	pvsContextFolder: string;
 	constructor (theoryName: string, fileName: string, position: Position, pvsContextFolder: string, collapsibleState: TreeItemCollapsibleState) {
@@ -32,6 +33,7 @@ class TheoryItem extends TreeItem {
 			arguments: [ theoryName, fileName, position, pvsContextFolder ]
 		};
 		this.theoremsOverview = new TheoremsOverviewItem();
+		this.tccsOverview = new TccsOverviewItem({ fileName });
 	}
 	setTccTotal (n: number) {
 		// update label
@@ -55,8 +57,10 @@ class TccItem extends TreeItem {
 	range: Range;
 	tcc: TccDescriptor;
 	command: Command;
+	status: string;
 	constructor(tcc: TccDescriptor, theoryName: string, fileName: string, pvsContextFolder: string) {
-		super(tcc.formulaName + " ( " + tcc.status + " )", TreeItemCollapsibleState.Collapsed);
+		super(tcc.formulaName, TreeItemCollapsibleState.Collapsed);
+		// this.label = + " ( " + tcc.status + " )"
 		this.tcc = tcc;
 		this.theoryName = theoryName;
 		this.fileName = fileName;
@@ -72,6 +76,13 @@ class TccItem extends TreeItem {
 			arguments: [ this.uri, this.range ]
 		};
 	}
+	setStatus (status: string) {
+		this.status = status;
+		this.updateLabel();
+	}
+	private updateLabel() {
+		this.label = (this.status) ? `${this.tcc.formulaName} (${this.status})` : this.tcc.formulaName;
+	}
 }
 class NoTccItem extends TreeItem {
 	contextValue: string = "no-tcc";
@@ -79,62 +90,87 @@ class NoTccItem extends TreeItem {
 		super("No TCCs", TreeItemCollapsibleState.None);
 	}
 }
-class SymbolItem extends TreeItem {
-	contextValue: string = "tcc.symbol";
-	symbol: string;
-	range: Range;
-	uri: Uri;
-	constructor(symbol: string, uri: Uri, line: number, character: number) {
-		super("obligation for " + symbol + " ( Ln " + line + ", Col " + character + " )", TreeItemCollapsibleState.None);
-		this.symbol = symbol;
-		this.range = new Range(
-			new Position(line - 1, // in vscode line numbers start from 0, in pvs they start from 1
-						 character), // in vscode column numbers start from 1, in pvs they start from 0
-			new Position(line - 1, character + symbol.length)
-		);
-		this.uri = uri;
-		this.command = {
-			title: "Tcc symbol selected",
-			command: "explorer.didSelectTccSymbol",
-			arguments: [ this.uri, this.range ]
-		};
-	}
-}
-class TccFormulaItem extends TreeItem {
-	contextValue: string = "tcc.formula";
-	private msg: string;
-	private formulaName: string;
-	private uri: Uri;
-	private line: number;
-	constructor (msg: string, formulaName: string, uri: Uri, line: number) {
-		super(msg, TreeItemCollapsibleState.None);
-		this.msg = msg;
-		this.formulaName = formulaName;
-		this.uri = uri;
-		this.line = line;
-		const range: Range = new Range (
-			new Position(line - 1, 0),
-			new Position(line - 1, formulaName.length)
-		);
-		this.command = {
-			title: "Tcc formula selected",
-			command: "explorer.didSelectTccFormula",
-			arguments: [ this.uri, range ]
-		};
-	}
-}
+// class SymbolItem extends TreeItem {
+// 	contextValue: string = "tcc.symbol";
+// 	symbol: string;
+// 	range: Range;
+// 	uri: Uri;
+// 	constructor(symbol: string, uri: Uri, line: number, character: number) {
+// 		super("obligation for " + symbol + " ( Ln " + line + ", Col " + character + " )", TreeItemCollapsibleState.None);
+// 		this.symbol = symbol;
+// 		this.range = new Range(
+// 			new Position(line - 1, // in vscode line numbers start from 0, in pvs they start from 1
+// 						 character), // in vscode column numbers start from 1, in pvs they start from 0
+// 			new Position(line - 1, character + symbol.length)
+// 		);
+// 		this.uri = uri;
+// 		this.command = {
+// 			title: "Tcc symbol selected",
+// 			command: "explorer.didSelectTccSymbol",
+// 			arguments: [ this.uri, this.range ]
+// 		};
+// 	}
+// }
+// class TccFormulaItem extends TreeItem {
+// 	contextValue: string = "tcc.formula";
+// 	private msg: string;
+// 	private formulaName: string;
+// 	private uri: Uri;
+// 	private line: number;
+// 	constructor (msg: string, formulaName: string, uri: Uri, line: number) {
+// 		super(msg, TreeItemCollapsibleState.None);
+// 		this.msg = msg;
+// 		this.formulaName = formulaName;
+// 		this.uri = uri;
+// 		this.line = line;
+// 		const range: Range = new Range (
+// 			new Position(line - 1, 0),
+// 			new Position(line - 1, formulaName.length)
+// 		);
+// 		this.command = {
+// 			title: "Tcc formula selected",
+// 			command: "explorer.didSelectTccFormula",
+// 			arguments: [ this.uri, range ]
+// 		};
+// 	}
+// }
 class TccsOverviewItem extends TreeItem {
 	contextValue: string = "TCCs";
-	theoryName: string; // theory that is associated to this tcc list
-	fileName: string; // file that contains the theory
-	constructor(theoryName: string, fileName: string) {
-		super("tccs", TreeItemCollapsibleState.None);
-		this.theoryName = theoryName;
-		this.fileName = fileName;
+	tccs: TccItem[] = [];
+	fileName: string;
+	constructor(desc: { fileName: string }) {
+		super("TCCs", TreeItemCollapsibleState.None);
+		this.label = "tccs";
+		this.fileName = desc.fileName;
 	}
-	setTccTotal (n: number, overview?: string) {
+	setTccs (tccs: TccItem[]) {
+		this.tccs = tccs;
+		if (tccs && tccs.length > 0) {
+			this.setTotal(tccs.length);
+			this.collapsibleState = TreeItemCollapsibleState.Expanded;
+		} else {
+			this.setTotal(0);
+			this.collapsibleState = TreeItemCollapsibleState.None;
+		}
+	}
+	getTccItem (formulaName: string): TccItem {
+		const candidates: TccItem[] = this.tccs.filter((elem: TccItem) => {
+			return elem.tcc.formulaName === formulaName;
+		});
+		if (candidates && candidates.length === 1) {
+			return candidates[0];
+		}
+		return null;
+	}
+	listTccs (): TheoremItem[] {
+		const lst: TheoremItem[] = Object.keys(this.tccs).map(key => {
+			return this.tccs[key];
+		});
+		return lst;
+	}
+	setTotal (n: number, overview?: string) {
 		// update label
-		this.label = overview ? "tccs (" + overview + ")" : "tccs ( " + n + " )";
+		this.label = overview ? `tccs ( ${overview} )` : `tccs ( ${n} )`;
 		// update collapsible state
 		this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Collapsed
 									: TreeItemCollapsibleState.None;
@@ -146,15 +182,22 @@ class TheoremsOverviewItem extends TreeItem {
 	contextValue: string = "THEOREMS";
 	theorems: TheoremItem[] = [];
 	constructor() {
-		super("THEOREMS", TreeItemCollapsibleState.Expanded);
+		super("THEOREMS", TreeItemCollapsibleState.None);
 		this.label = "theorems";
 	}
 	setTheorems (theorems: TheoremItem[]) {
 		this.theorems = theorems;
+		if (theorems && theorems.length > 0) {
+			this.setTotal(theorems.length);
+			this.collapsibleState = TreeItemCollapsibleState.Expanded;
+		} else {
+			this.setTotal(0);
+			this.collapsibleState = TreeItemCollapsibleState.None;
+		}
 	}
-	getTheoremItem (fname: string): TheoremItem {
+	getTheoremItem (formulaName: string): TheoremItem {
 		const candidates: TheoremItem[] = this.theorems.filter((elem: TheoremItem) => {
-			return elem.desc.formulaName === fname;
+			return elem.desc.formulaName === formulaName;
 		});
 		if (candidates && candidates.length === 1) {
 			return candidates[0];
@@ -166,6 +209,13 @@ class TheoremsOverviewItem extends TreeItem {
 			return this.theorems[key];
 		});
 		return lst;
+	}
+	setTotal (n: number, overview?: string) {
+		// update label
+		this.label = overview ? `theorems ( ${overview} )` : `theorems ( ${n} )`;
+		// update collapsible state
+		this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Collapsed
+									: TreeItemCollapsibleState.None;
 	}
 }
 class TheoremItem extends TreeItem {
@@ -267,23 +317,39 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 			this.refreshView();
 		});
 		this.client.onNotification("pvs.context.theories-status.update", (theoriesStatusMap: TheoriesStatusMap) => {
-			this.updateTheorems(theoriesStatusMap);
+			this.updateFormulae(theoriesStatusMap);
 			this.refreshView();
         });
 	}
 
-	updateTheorems (theoriesStatusMap: TheoriesStatusMap): void {
+	updateFormulae (theoriesStatusMap: TheoriesStatusMap): void {
 		if (theoriesStatusMap) {
 			const theoryNames: string[] = Object.keys(theoriesStatusMap);
 			theoryNames.forEach((theoryName: string) => {
 				const theoryItem: TheoryItem = this.getTheoryItem(theoryName);
-				const theoremsStatus: TheoremsStatus = theoriesStatusMap[theoryName];
-				const formulaNames: string[] = Object.keys(theoremsStatus.theorems);
+				const theoryStatus: TheoryStatus = theoriesStatusMap[theoryName];
+				// add tccs
+				const tccs: TccItem[] = theoryStatus.tccs.map((tcc: TccDescriptor) => {
+					return new TccItem(tcc, "theoryName", "fileName", "pvsContextFolder");
+				})
+				theoryItem.tccsOverview.setTccs(tccs);
+				// update status of tccs and theorems
+				const formulaNames: string[] = Object.keys(theoryStatus.theorems);
 				formulaNames.forEach((formulaName: string) => {
 					const theoremItem: TheoremItem = theoryItem.theoremsOverview.getTheoremItem(formulaName);
-					theoremItem.setStatus(theoremsStatus.theorems[formulaName].status);
+					if (theoremItem) {
+						theoremItem.setStatus(theoryStatus.theorems[formulaName].status);
+					} else {
+						const tccItem: TccItem = theoryItem.tccsOverview.getTccItem(formulaName);
+						if (tccItem) {
+							tccItem.setStatus(theoryStatus.theorems[formulaName].status);
+						} else {
+							console.error(`Error: trying to update theorem ${formulaName} not listed in Theory Explorer :/`);
+						}
+					}
 				});
 			});
+			this.refreshView();
 		}
 	}
 	setTheorems (theoremList: TheoremList): void {
@@ -376,49 +442,49 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 		});
 	}
 
-	private updateTccs(ans: TheoriesMap) {
-		// the server will create a .tccs file containing the tccs
-		if (ans && ans.theoriesStatusMap) {
-			const theories: string[] = Object.keys(ans.theoriesStatusMap);
-			let tccFileContent: string = "";
-			for (let i in theories) {
-				let theoryName: string = theories[i];
-				let theoryItem: TheoryItem = this.getTheoryItem(theoryName);
-				if (theoryItem !== null) {
-					// populate the list of tccs
-					let tccs: TccDescriptor[] = ans.theoriesStatusMap[theoryName].tccs;
-					let overview = { };
-					if (tccs && tccs.length > 0) {
-						this.tccsOverview[theoryName] = new TccsOverviewItem(theoryItem.theoryName, theoryItem.fileName);
-						this.tccs[theoryName] = tccs.map((tcc: TccDescriptor) => {
-							// compile tccFileContent and TccItem
-							tccFileContent += tcc.content;
-							if (!overview[tcc.status]) {
-								overview[tcc.status] = 0;
-							}
-							overview[tcc.status]++;
-							return new TccItem(tcc, theoryName, theoryItem.fileName, theoryItem.pvsContextFolder);
-						});
-					} else {
-						this.tccsOverview[theoryName] = null;
-						this.tccs[theoryName] = null;
-					}
-					const ntccs: number = (tccs && tccs.length) ? tccs.length : 0;
-					// update theory label to indicate the number of tccs generated for the theory
-					theoryItem.setTccTotal(ntccs);
-					// update tcc overview to indicate the number of tccs generated for the theory
-					if (ntccs > 0 && this.tccsOverview[theoryName]) {
-						let overviewArray: string[] = [ ];
-						Object.keys(overview).forEach((key) => {
-							overviewArray.push(overview[key] + " " + key);
-						});
-						this.tccsOverview[theoryName].setTccTotal(tccs.length, overviewArray.join(", "));
-					}
-				}
-			}
-		}
-		this.refreshView();
-	}
+	// private updateTccs(ans: TheoriesMap) {
+	// 	// the server will create a .tccs file containing the tccs
+	// 	if (ans && ans.theoriesStatusMap) {
+	// 		const theories: string[] = Object.keys(ans.theoriesStatusMap);
+	// 		let tccFileContent: string = "";
+	// 		for (let i in theories) {
+	// 			let theoryName: string = theories[i];
+	// 			let theoryItem: TheoryItem = this.getTheoryItem(theoryName);
+	// 			if (theoryItem !== null) {
+	// 				// populate the list of tccs
+	// 				let tccs: TccDescriptor[] = ans.theoriesStatusMap[theoryName].tccs;
+	// 				let overview = { };
+	// 				if (tccs && tccs.length > 0) {
+	// 					this.tccsOverview[theoryName] = new TccsOverviewItem(theoryItem.theoryName, theoryItem.fileName);
+	// 					this.tccs[theoryName] = tccs.map((tcc: TccDescriptor) => {
+	// 						// compile tccFileContent and TccItem
+	// 						// tccFileContent += tcc.content;
+	// 						// if (!overview[tcc.status]) {
+	// 						// 	overview[tcc.status] = 0;
+	// 						// }
+	// 						// overview[tcc.status]++;
+	// 						return new TccItem(tcc, theoryName, theoryItem.fileName, theoryItem.pvsContextFolder);
+	// 					});
+	// 				} else {
+	// 					this.tccsOverview[theoryName] = null;
+	// 					this.tccs[theoryName] = null;
+	// 				}
+	// 				const ntccs: number = (tccs && tccs.length) ? tccs.length : 0;
+	// 				// update theory label to indicate the number of tccs generated for the theory
+	// 				theoryItem.setTccTotal(ntccs);
+	// 				// update tcc overview to indicate the number of tccs generated for the theory
+	// 				if (ntccs > 0 && this.tccsOverview[theoryName]) {
+	// 					let overviewArray: string[] = [ ];
+	// 					Object.keys(overview).forEach((key) => {
+	// 						overviewArray.push(overview[key] + " " + key);
+	// 					});
+	// 					this.tccsOverview[theoryName].setTccTotal(tccs.length, overviewArray.join(", "));
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// 	this.refreshView();
+	// }
 
 	/**
 	 * Handlers for messages received from the server
@@ -478,8 +544,9 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 			console.log(ans);
 		});
 		this.client.onRequest("server.response.show-tccs", async (ans: TheoriesMap) => {
-			this.updateTccs(ans);
+			// this.updateTccs(ans);
 			if (ans && ans.theoriesStatusMap) {
+				this.updateFormulae(ans.theoriesStatusMap);
 				const theoryNames: string[] = Object.keys(ans.theoriesStatusMap);
 				// Open .tccs file when the command is show-tccs
 				for (const i in theoryNames) {
@@ -490,13 +557,22 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 			}
 		});
 		this.client.onRequest("server.response.typecheck-file-and-show-tccs", (ans: TheoriesMap) => {
-			this.updateTccs(ans);
+			// this.updateTccs(ans);
+			if (ans && ans.theoriesStatusMap) {
+				this.updateFormulae(ans.theoriesStatusMap);
+			}
 		});
 		this.client.onRequest("server.response.typecheck-prove-and-show-tccs", (ans: TheoriesMap) => {
-			this.updateTccs(ans);
+			// this.updateTccs(ans);
+			if (ans && ans.theoriesStatusMap) {
+				this.updateFormulae(ans.theoriesStatusMap);
+			}
 		});
 		this.client.onRequest("server.response.typecheck-all-and-show-tccs", (ans: TheoriesMap) => {
-			this.updateTccs(ans);
+			// this.updateTccs(ans);
+			if (ans && ans.theoriesStatusMap) {
+				this.updateFormulae(ans.theoriesStatusMap);
+			}
 		});
 	}
 
@@ -661,13 +737,13 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 				// pvs theory
 				const desc: TheoryItem = <TheoryItem> element;
 				children = [
-					this.tccsOverview[desc.theoryName], // todo: tccs attribute within theoryitem
+					desc.tccsOverview,//this.tccsOverview[desc.theoryName], // todo: tccs attribute within theoryitem
 					desc.theoremsOverview
 				];
 			} else if (element.contextValue === "TCCs") {
 				// tcc list
 				const desc: TccsOverviewItem = <TccsOverviewItem> element;
-				children = this.tccs[desc.theoryName];
+				children = desc.listTccs();
 			} else if (element.contextValue === "tcc") {
 				// tcc
 				const desc: TccItem = <TccItem> element;
@@ -676,10 +752,11 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 				const pvsContextFolder: string = desc.pvsContextFolder;
 				const uri: Uri = Uri.file(path.join(pvsContextFolder, `${fileName}.pvs`));
 				const tccFile: Uri = Uri.file(path.join(pvsContextFolder, `${desc.theoryName}.tccs`));
-				children = [
-					new SymbolItem(tcc.symbolName, uri, tcc.line, tcc.character),
-					new TccFormulaItem(tcc.msg, tcc.formulaName, tccFile, tcc.line)
-				];
+				children = null;
+				// [
+				// 	new SymbolItem(tcc.symbolName, uri, tcc.line, tcc.symbolCharacter),
+				// 	new TccFormulaItem(null, tcc.formulaName, tccFile, tcc.line)
+				// ];
 			} else if (element.contextValue === "theorem") {
 				console.log('theorem');
 			} else if (element.contextValue === "THEOREMS") {
