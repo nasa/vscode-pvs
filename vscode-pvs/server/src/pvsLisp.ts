@@ -341,9 +341,10 @@ export class PvsLispReader {
 				ans.res = strategies;
 				break;
 			}
+			case "status-proof-theory":
 			case "prove-tccs-theory": {
 				// match[1] is theoryName, match[2] is the list of theorems, match[3] are time stats
-				const regexp: RegExp = /[\w\W\s]*\bProof summary for theory (\w+)\s*([\w\W\s]*)Theory \w+ totals:\s*([\w\W\s]*)/g;
+				const regexp: RegExp = /\bProof summary for theory\s*([\w\d]+)\s*([\w\W\s]*)/g;
 				let match: RegExpMatchArray = regexp.exec(data);
 				if (match && match.length > 1 && match[1]) {
 					const theoryStatus: TheoremsStatus = {
