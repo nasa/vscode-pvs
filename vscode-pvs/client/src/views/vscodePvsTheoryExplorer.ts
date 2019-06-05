@@ -520,25 +520,20 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 			}
 			this.setTheorems(theoremList);
 		});
-		this.client.onRequest("server.response.typecheck-file", (ans: PvsTypecheckerResponse) => {
-			// update theorems status
-			console.log(ans);
-		});
-		this.client.onRequest("server.response.show-tccs", async (ans: TheoriesMap) => {
-			// this.updateTccs(ans);
-			if (ans && ans.theoriesStatusMap) {
-				this.updateFormulae(ans.theoriesStatusMap);
-				const theoryNames: string[] = Object.keys(ans.theoriesStatusMap);
-				// Open .tccs file when the command is show-tccs
-				for (const i in theoryNames) {
-					const fileName: string = path.join(ans.pvsContextFolder, `${theoryNames[i]}.tccs`);
-					const document: TextDocument = await workspace.openTextDocument(fileName);
-					window.showTextDocument(document, window.activeTextEditor.viewColumn + 1, true);
-				}
-			}
-		});
+		// this.client.onRequest("server.response.show-tccs", async (ans: TheoriesMap) => {
+		// 	// this.updateTccs(ans);
+		// 	if (ans && ans.theoriesStatusMap) {
+		// 		this.updateFormulae(ans.theoriesStatusMap);
+		// 		const theoryNames: string[] = Object.keys(ans.theoriesStatusMap);
+		// 		// Open .tccs file when the command is show-tccs
+		// 		for (const i in theoryNames) {
+		// 			const fileName: string = path.join(ans.pvsContextFolder, `${theoryNames[i]}.tccs`);
+		// 			const document: TextDocument = await workspace.openTextDocument(fileName);
+		// 			window.showTextDocument(document, window.activeTextEditor.viewColumn + 1, true);
+		// 		}
+		// 	}
+		// });
 		this.client.onRequest("server.response.typecheck-file-and-show-tccs", (ans: TheoriesMap) => {
-			// this.updateTccs(ans);
 			if (ans && ans.theoriesStatusMap) {
 				this.updateFormulae(ans.theoriesStatusMap);
 			}

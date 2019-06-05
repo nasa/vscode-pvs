@@ -73,7 +73,7 @@ export class VSCodePvsEmacsBindingsProvider {
 					const text: string = window.activeTextEditor.document.getText();
 					const theoryName: string = findTheoryName(text, line);
 					if (theoryName) {
-						this.client.sendRequest('pvs.show-tccs', [ fileName, theoryName ]);
+						this.client.sendRequest('pvs.typecheck-file-and-show-tccs', [ fileName, theoryName ]);
 					} else {
 						window.showErrorMessage("Unable to identify theory at line " + line);
 					}

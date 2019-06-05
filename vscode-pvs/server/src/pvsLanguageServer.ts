@@ -85,7 +85,7 @@ const SERVER_COMMANDS = [
 	"pvs.typecheck-file-and-show-tccs", // typecheck file and generate tccs for the file
 	"pvs.typecheck-file", // typecheck file
 	"pvs.typecheck-prove", // typecheck file and discharge tccs for that file
-	"pvs.show-tccs", // show tccs for the current theory
+	// "pvs.show-tccs", // show tccs for the current theory -- replaced by pvs.typecheck-file-and-show-tccs
 	"pvs.runit", // evaluate an expression in pvsio (literate programming)
 	"pvs.step-proof" // step proof
 ];
@@ -624,33 +624,33 @@ class PvsLanguageServer {
 				this.connection.sendRequest("server.response.list-theories", response);
 				this.ready();
 			});
-			this.connection.onRequest("pvs.show-tccs", async (fileName: string, theoryName: string) => {
-				if (theoryName) {
-					this.info(`Generating proof obligations for ${theoryName}`);
-					const typecheckerResponse: PvsTypecheckerResponse = await this.pvsTypeChecker.typecheckFile(fileName);
-					// we need to typecheck twice because pvsParser and pvsTypechecker are two distinct processes
-					// we are saving the context after the first typecheck, so the second is faster
-					// await this.pvsParser.typecheckFile(fileName);
-					const pvsResponse: PvsResponseType = await this.pvsParser.showTccs(fileName, theoryName);
-					const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
-					const pvsContextFolder: string = this.pvsParser.getContextFolder();
-					const tccs: TheoriesStatusMap = {};
-					tccs[theoryName] = {
-						theoryName: theoryName,
-						fileName: fileName,
-						tccs: tccArray,
-						theorems: typecheckerResponse.res[theoryName].theorems
-					};
-					const response: TheoriesMap = {
-						pvsContextFolder: pvsContextFolder,
-						theoriesStatusMap: tccs
-					};
-					this.connection.sendRequest("server.response.show-tccs", response);
-					this.ready();
-				} else {
-					this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-theory-and-show-tccs request received by the server (fileName is null)");
-				}
-			});
+			// this.connection.onRequest("pvs.show-tccs", async (fileName: string, theoryName: string) => {
+			// 	if (theoryName) {
+			// 		this.info(`Generating proof obligations for ${theoryName}`);
+			// 		const typecheckerResponse: PvsTypecheckerResponse = await this.pvsTypeChecker.typecheckFile(fileName);
+			// 		// we need to typecheck twice because pvsParser and pvsTypechecker are two distinct processes
+			// 		// we are saving the context after the first typecheck, so the second is faster
+			// 		// await this.pvsParser.typecheckFile(fileName);
+			// 		const pvsResponse: PvsResponseType = await this.pvsParser.showTccs(fileName, theoryName);
+			// 		const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
+			// 		const pvsContextFolder: string = this.pvsParser.getContextFolder();
+			// 		const tccs: TheoriesStatusMap = {};
+			// 		tccs[theoryName] = {
+			// 			theoryName: theoryName,
+			// 			fileName: fileName,
+			// 			tccs: tccArray,
+			// 			theorems: typecheckerResponse.res[theoryName].theorems
+			// 		};
+			// 		const response: TheoriesMap = {
+			// 			pvsContextFolder: pvsContextFolder,
+			// 			theoriesStatusMap: tccs
+			// 		};
+			// 		this.connection.sendRequest("server.response.show-tccs", response);
+			// 		this.ready();
+			// 	} else {
+			// 		this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-theory-and-show-tccs request received by the server (fileName is null)");
+			// 	}
+			// });
 			this.connection.onRequest("pvs.typecheck-file-and-show-tccs", async (fileName: string) => {
 				if (fileName) {
 					this.info(`Typechecking ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
