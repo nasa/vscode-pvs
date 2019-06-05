@@ -269,17 +269,17 @@ class PvsCli {
 	}
 	async launchTheoremProver () {
 		console.log(`Typechecking...`)
-		await this.pvsProcess.typecheckFile(this.fileName); // FIXME -- use object as argument instead of string
 		// this.pvsProcess.setConnection(this.connection);
-		this.pvsProcess.startCli(this.outChannel);
+		const fileName: string = `${this.fileName}${this.fileExtension}`;
 		if (this.fileExtension === ".pvs") {
-			await this.pvsProcess.typecheckFile(this.fileName);
+			await this.pvsProcess.typecheckFile(fileName); // FIXME -- use object as argument instead of string
+			this.pvsProcess.startCli(this.outChannel);
 			await this.pvsProcess.stepProof({ fileName: this.fileName, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
 			await this.pvsProcess.proveFormula({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
 		} else {
 			// .tccs file
-			await this.pvsProcess.typecheckFile(this.fileName);
-			await this.pvsProcess.showTccs(this.fileName, this.theoryName);
+			await this.pvsProcess.showTccs(fileName, this.theoryName);
+			this.pvsProcess.startCli(this.outChannel);
 			await this.pvsProcess.stepTcc({ fileName: this.fileName, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
 			await this.pvsProcess.proveFormula({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
 		}

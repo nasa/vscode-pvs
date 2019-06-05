@@ -266,7 +266,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 		// register handler for terminal closed events
 		window.onDidCloseTerminal((e: Terminal) => {
-			if (e && e.name && e.name.endsWith(` ${json.proof.id}`)) {
+			if (e && e.name === json.proof.id) {
 				this.resetView();
 			}
 		});

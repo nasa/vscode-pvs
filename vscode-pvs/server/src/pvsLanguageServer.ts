@@ -44,14 +44,14 @@ import {
 	Connection, TextDocuments, TextDocument, CompletionItem, createConnection, ProposedFeatures, InitializeParams, 
 	DidChangeConfigurationNotification, TextDocumentPositionParams, Hover, CodeLens, CodeLensParams,
 	Diagnostic, Position, Range, DiagnosticSeverity, Definition, DocumentSymbolParams, SymbolInformation, 
-	ResponseError, Location
+	ResponseError, Location, combineConsoleFeatures
 } from 'vscode-languageserver';
 import { 
 	PvsParserResponse, PvsSymbolKind, PvsVersionDescriptor, PvsResponseType,
 	PvsFindDeclarationRequest, PvsDefinition, PRELUDE_FILE, PvsDeclarationDescriptor, PvsDeclarationType,
 	PvsListDeclarationsRequest, ExpressionDescriptor, EvaluationResult, ProofResult, FormulaDescriptor,
-	TccDescriptor, PvsTypecheckerResponse, FileList, TheoryMap, TheoryList, TccList,
-	TccMap, TheoremList, TheoremDescriptor
+	TccDescriptor, PvsTypecheckerResponse, FileList, TheoryMap, TheoryList, TheoriesMap,
+	TheoriesStatusMap, TheoremList, TheoremDescriptor
 } from './common/serverInterface'
 import { PvsExecutionContext } from './common/serverInterface';
 import { PvsProcess } from './pvsProcess';
@@ -318,7 +318,7 @@ class PvsLanguageServer {
 	 * @param fileName Path to the file to be typechecked
 	 * @returns Promise<TccList> Promise that resolves to a list of type check conditions
 	 */
-	private async typecheckFileAndShowTccs (fileName: string, proc?: PvsProcess): Promise<TccList> {
+	private async typecheckFileAndShowTccs (fileName: string, proc?: PvsProcess): Promise<TheoriesMap> {
 		const txt: string = await this.readFile(fileName); // it is necessary to use the readFile function because some pvs files may not be loaded yet in the context 
 		if (txt) {
 			// const pvsContextFolder: string = this.pvsTypeChecker.getContextFolder();
@@ -341,19 +341,19 @@ class PvsLanguageServer {
 				this.connection.sendDiagnostics({ uri: "file://" + fileName, diagnostics: [ diag ] });
 			}
 
-			let response: TccList = {
+			let response: TheoriesMap = {
 				pvsContextFolder: context,
-				tccs: null
+				theoriesStatusMap: null
 			};
 			if (typecheckerResponse && typecheckerResponse.res) {
-				response.tccs = {};
+				response.theoriesStatusMap = {};
 				const theoryNames: string[] = Object.keys(typecheckerResponse.res); //listTheoryNames(txt);
 				for (const i in theoryNames) {
 					const theoryName: string = theoryNames[i];
 					// note: showTccs automatically trigger typechecking. However, we are still calling typecheckFile because we want to save the binary files
 					const pvsResponse: PvsResponseType = await typechecker.showTccs(fileName, theoryName);
 					const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
-					response.tccs[theoryName] = {
+					response.theoriesStatusMap[theoryName] = {
 						theoryName: theoryName,
 						fileName: fileName,
 						tccs: tccArray,
@@ -381,9 +381,11 @@ class PvsLanguageServer {
 					enableNotifications: true
 				});
 				if (proc) {
-					const response: TccList = await this.typecheckFileAndShowTccs(fileName, proc);
+					const response: TheoriesMap = await this.typecheckFileAndShowTccs(fileName, proc);
 					// the list of proof obligations is provided incrementally to the client so feedback can be shown as soon as available
 					this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
+					// report updated list/status of theorems
+					this.connection.sendNotification('pvs.context.theories-status.update', response.theoriesStatusMap);
 				}
 				resolve();	
 			}));
@@ -406,7 +408,7 @@ class PvsLanguageServer {
 				enableNotifications: true
 			});
 			if (proc) {
-				const response: TccList = await this.typecheckFileAndShowTccs(fileName, proc);
+				const response: TheoriesMap = await this.typecheckFileAndShowTccs(fileName, proc);
 				// the list of proof obligations is provided incrementally to the client so feedback can be shown as soon as available
 				this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
 			}
@@ -415,9 +417,9 @@ class PvsLanguageServer {
 		this.connection.sendNotification('server.status.update', this.readyString);
 	}
 
-	private async serialTCP(fileName: string, theoryNames: string[]): Promise<TccList> {
+	private async serialTCP(fileName: string, theoryNames: string[]): Promise<TheoriesMap> {
 		const typecheckerResponse: PvsTypecheckerResponse = await this.pvsTypeChecker.typecheckProve(fileName);
-		const tccs: TccMap = {};
+		const tccs: TheoriesStatusMap = {};
 		for (const i in theoryNames) {
 			const theoryName: string = theoryNames[i];
 			const pvsResponse: PvsResponseType = await this.pvsTypeChecker.showTccs(fileName, theoryNames[i]);
@@ -430,9 +432,9 @@ class PvsLanguageServer {
 			};
 		}
 		const pvsContextFolder: string = this.pvsTypeChecker.getContextFolder();
-		const response: TccList = {
+		const response: TheoriesMap = {
 			pvsContextFolder: pvsContextFolder,
-			tccs: tccs
+			theoriesStatusMap: tccs
 		};
 		return response;
 	}
@@ -625,20 +627,23 @@ class PvsLanguageServer {
 			this.connection.onRequest("pvs.show-tccs", async (fileName: string, theoryName: string) => {
 				if (theoryName) {
 					this.info(`Generating proof obligations for ${theoryName}`);
-					const typecheckerResponse: PvsTypecheckerResponse = await this.pvsParser.typecheckFile(fileName);
+					const typecheckerResponse: PvsTypecheckerResponse = await this.pvsTypeChecker.typecheckFile(fileName);
+					// we need to typecheck twice because pvsParser and pvsTypechecker are two distinct processes
+					// we are saving the context after the first typecheck, so the second is faster
+					// await this.pvsParser.typecheckFile(fileName);
 					const pvsResponse: PvsResponseType = await this.pvsParser.showTccs(fileName, theoryName);
 					const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
 					const pvsContextFolder: string = this.pvsParser.getContextFolder();
-					const tccs: TccMap = {};
+					const tccs: TheoriesStatusMap = {};
 					tccs[theoryName] = {
 						theoryName: theoryName,
 						fileName: fileName,
 						tccs: tccArray,
 						theorems: typecheckerResponse.res[theoryName].theorems
 					};
-					const response: TccList = {
+					const response: TheoriesMap = {
 						pvsContextFolder: pvsContextFolder,
-						tccs: tccs
+						theoriesStatusMap: tccs
 					};
 					this.connection.sendRequest("server.response.show-tccs", response);
 					this.ready();
@@ -650,7 +655,7 @@ class PvsLanguageServer {
 				if (fileName) {
 					this.info(`Typechecking ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
 					fileName = this.normaliseFileName(fileName);
-					const response: TccList = await this.typecheckFileAndShowTccs(fileName);
+					const response: TheoriesMap = await this.typecheckFileAndShowTccs(fileName);
 					this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
 					this.ready();
 				} else {
@@ -668,7 +673,7 @@ class PvsLanguageServer {
 					const txt: string = await this.readFile(fileName);
 					if (txt) {
 						const theoryNames: string[] = listTheoryNames(txt);
-						const response: TccList = await this.serialTCP(fileName, theoryNames);
+						const response: TheoriesMap = await this.serialTCP(fileName, theoryNames);
 						// const response: TccList = await this.parallelTCP(fileName, theoryNames);
 						this.connection.sendRequest("server.response.typecheck-prove-and-show-tccs", response);
 					}
@@ -684,7 +689,7 @@ class PvsLanguageServer {
 					});
 					if (proc) {
 						this.info("Initialising step-proof...");
-						await proc.typecheckFile(data.fileName);
+						await proc.typecheckFile(`${data.fileName}${data.fileExtension}`);
 						const response: PvsResponseType = await proc.stepProof(data);
 						if (response && response.res) {
 							this.connection.sendRequest("server.response.step-proof", response.res);

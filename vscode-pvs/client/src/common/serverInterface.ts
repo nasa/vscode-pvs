@@ -129,13 +129,13 @@ export declare interface FormulaMap {
 	}
 }
 
-export declare interface TheoryStatus {
+export declare interface TheoremsStatus {
 	theoryName: string;
 	theorems: FormulaMap;
 }
 
 export declare interface TheoryStatusMap {
-	[ theoryName: string ]: TheoryStatus
+	[ theoryName: string ]: TheoremsStatus
 }
 
 export declare interface PvsTypecheckerResponse {
@@ -224,6 +224,7 @@ export declare interface PvsFileListDescriptor {
 
 export declare interface ProofDescriptor {
 	fileName: string;
+	fileExtension: string;
 	formulaName: string;
 	theoryName: string;
 	line: number;
@@ -315,15 +316,16 @@ export declare interface DeclarationMap {
 		}
 	}
 }
-export declare interface TccMap {
-	[ theoryName: string ]: {
-		fileName: string,
-		theoryName: string,
-		tccs: TccDescriptor[],
-		theorems: FormulaMap
-	};
+export declare interface TheoryStatus {
+	fileName: string,
+	theoryName: string,
+	tccs: TccDescriptor[],
+	theorems: FormulaMap
 }
-export declare interface TccList {
+export declare interface TheoriesStatusMap {
+	[ theoryName: string ]: TheoryStatus
+}
+export declare interface TheoriesMap {
 	pvsContextFolder: string;
-	tccs: TccMap;
+	theoriesStatusMap: TheoriesStatusMap;
 }

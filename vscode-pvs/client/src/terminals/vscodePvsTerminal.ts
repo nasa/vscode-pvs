@@ -6,6 +6,7 @@ import { TextDocument, LanguageClient } from 'vscode-languageclient';
 import { VSCodePvsExplorer, TheoryDescriptor } from '../views/vscodePvsTheoryExplorer';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../utils/vscode-utils';
+import { ProofDescriptor } from '../common/serverInterface';
 
 function getPvsPath (): string {
     const mode: string = vscode.workspace.getConfiguration().get("pvs.zen-mode");
@@ -147,14 +148,16 @@ class ProverTerminal {
         if (fileName.endsWith(".pvs")) {
             fileName = fsUtils.removeFileExtension(fileName);
         }
-        this.client.sendRequest('pvs.step-proof', { fileName, theoryName, formulaName, line });
+        const data: ProofDescriptor = { fileName, theoryName, formulaName, line, fileExtension: ".pvs" };
+        this.client.sendRequest('pvs.step-proof', data);
         return this;
     }
     async stepTcc(fileName: string, theoryName: string, formulaName: string, line: number) {
         if (fileName.endsWith(".tccs")) {
             fileName = fsUtils.removeFileExtension(fileName);
         }
-        this.client.sendRequest('pvs.step-tcc', { fileName, theoryName, formulaName, line });
+        const data: ProofDescriptor = { fileName, theoryName, formulaName, line, fileExtension: ".tccs" };
+        this.client.sendRequest('pvs.step-tcc', data);
         return this;
     }
 }

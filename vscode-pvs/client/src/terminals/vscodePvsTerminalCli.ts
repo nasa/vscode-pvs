@@ -6,7 +6,7 @@ import { TextDocument, LanguageClient } from 'vscode-languageclient';
 import { VSCodePvsExplorer, TheoryDescriptor } from '../views/vscodePvsTheoryExplorer';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../utils/vscode-utils';
-import { PvsCliInterface } from '../common/serverInterface';
+import { PvsCliInterface, ProofDescriptor } from '../common/serverInterface';
 import { PVS_CLI_FILE } from '../common/serverInterface';
 
 // TODO: move this function to vscode-utils.ts
@@ -33,24 +33,6 @@ class ProverTerminal {
         this.client = client;
         this.terminalID = terminalID;
     }
-    private sendCommand(cmd: string): void {
-        this.terminal.sendText(cmd);
-    }
-    // private pvsLispTypecheckFile(fileName: string, opt?: {
-    //     proveTccs: boolean,
-    //     proveImportChain: boolean
-    // }) {
-    //     // vscode.window.setStatusBarMessage("Typechecking " + fileName);
-    //     let args: string = opt ? opt.proveTccs ? "nil t 'typecheck-prove" : "t t 'typecheck-prove-importchain"
-    //                         : "nil nil nil";
-    //     this.sendCommand('(typecheck-file "' + fileName + '" ' + args + ')');
-    //     this.sendCommand('(save-context)');
-    // }
-    stepCommand (cmd: string) {
-        // TODO: place a semaphore
-        this.interactiveCommand = "step-executed";
-        this.sendCommand(cmd);
-    }
     private createPvsTerminal(terminalName: string, args: PvsCliInterface): vscode.Terminal {
         const terminal: vscode.Terminal = vscode.window.createTerminal(terminalName, 'node', [ this.pvsCliFileName, JSON.stringify(args) ]);
         (<any>terminal).onDidWriteData((data: string) => {
@@ -65,6 +47,13 @@ class ProverTerminal {
         });
         terminal.show();
         return terminal;
+    }
+    private sendCommand(cmd: string): void {
+        this.terminal.sendText(cmd);
+    }
+    stepCommand (cmd: string) {
+        this.interactiveCommand = "step-executed";
+        this.sendCommand(cmd);
     }
     proveFormula (fileName: string, theoryName: string, formulaName: string, line: number) {
         if (fileName.endsWith(".pvs")) {
@@ -85,8 +74,7 @@ class ProverTerminal {
         if (fileName.endsWith(".tccs")) {
             fileName = fsUtils.removeFileExtension(fileName);
         }
-        const terminalName: string = `prove ${formulaName}`;
-        this.terminal = this.createPvsTerminal(terminalName, {
+        this.terminal = this.createPvsTerminal(formulaName, {
             pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder, cmd: 'prove-formula', 
             fileName, theoryName, formulaName, fileExtension: ".tccs", line });
         this.interactiveCommand = "step-proof-ready";
@@ -95,75 +83,77 @@ class ProverTerminal {
         // this.sendCommand('(prove-formula "' + theoryName + '" "' + formulaName +'" t)');
         return this;
     }
-    typecheck (fileName: string) {
-        const fileExtension: string = fileName.endsWith(".pvs") ? ".pvs" : 
-                                        fileName.endsWith(".tccs") ? ".tccs"
-                                        : null;
-        if (fileName.endsWith(".pvs") || fileName.endsWith(".tccs")) {
-            fileName = fsUtils.removeFileExtension(fileName);
-        }
-        const terminalName: string = `typecheck ${fileName}`;
-        this.terminal = this.createPvsTerminal(terminalName, { 
-            pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder, cmd: 'typecheck-file',
-            fileName, fileExtension });
+    // typecheck (fileName: string) {
+    //     const fileExtension: string = fileName.endsWith(".pvs") ? ".pvs" : 
+    //                                     fileName.endsWith(".tccs") ? ".tccs"
+    //                                     : null;
+    //     if (fileName.endsWith(".pvs") || fileName.endsWith(".tccs")) {
+    //         fileName = fsUtils.removeFileExtension(fileName);
+    //     }
+    //     const terminalName: string = `typecheck ${fileName}`;
+    //     this.terminal = this.createPvsTerminal(terminalName, { 
+    //         pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder, cmd: 'typecheck-file',
+    //         fileName, fileExtension });
 
-        // this.sendCommand('(typecheck-file "' + fileName + '" nil nil nil)');
-        return this;
-    }
-    typecheckProve (fileName: string) {
-        const fileExtension: string = fileName.endsWith(".pvs") ? ".pvs" : 
-                                        fileName.endsWith(".tccs") ? ".tccs"
-                                        : null;
-        if (fileName.endsWith(".pvs") || fileName.endsWith(".tccs")) {
-            fileName = fsUtils.removeFileExtension(fileName);
-        }
-        const terminalName: string = `typecheck-prove ${fileName}`;
-        this.terminal = this.createPvsTerminal(terminalName, { 
-            pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder, cmd: 'typecheck-file', 
-            fileName, fileExtension });
+    //     // this.sendCommand('(typecheck-file "' + fileName + '" nil nil nil)');
+    //     return this;
+    // }
+    // typecheckProve (fileName: string) {
+    //     const fileExtension: string = fileName.endsWith(".pvs") ? ".pvs" : 
+    //                                     fileName.endsWith(".tccs") ? ".tccs"
+    //                                     : null;
+    //     if (fileName.endsWith(".pvs") || fileName.endsWith(".tccs")) {
+    //         fileName = fsUtils.removeFileExtension(fileName);
+    //     }
+    //     const terminalName: string = `typecheck-prove ${fileName}`;
+    //     this.terminal = this.createPvsTerminal(terminalName, { 
+    //         pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder, cmd: 'typecheck-file', 
+    //         fileName, fileExtension });
 
-        // this.sendCommand(`(typecheck-file "${fileName}" nil t 'typecheck-prove)`);
-        return this;
-    }
+    //     // this.sendCommand(`(typecheck-file "${fileName}" nil t 'typecheck-prove)`);
+    //     return this;
+    // }
+    // showTccs (fileName: string, theoryName: string) {
+    //     const fileExtension: string = fileName.endsWith(".pvs") ? ".pvs" : 
+    //                                     fileName.endsWith(".tccs") ? ".tccs"
+    //                                     : null;
+    //     if (fileName.endsWith(".pvs") || fileName.endsWith(".tccs")) {
+    //         fileName = fsUtils.removeFileExtension(fileName);
+    //     }
+    //     const terminalName: string = `show-tccs ${theoryName}`;
+    //     this.terminal = this.createPvsTerminal(terminalName, { 
+    //         pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder, cmd: 'show-tccs', 
+    //         fileName, fileExtension, theoryName });
+
+    //     // this.sendCommand('(typecheck-file "' + fileName + '" nil nil nil)');
+    //     // this.sendCommand('(show-tccs "' + theoryName + '" nil)');
+    //     return this;
+    // }
     async showProof(fileName: string, theoryName: string, formulaName: string, line: number) {
         if (fileName.endsWith(".pvs")) {
             fileName = fsUtils.removeFileExtension(fileName);
         }
-        this.client.sendRequest('pvs.step-proof', { fileName, theoryName, formulaName, line });
+        const data: ProofDescriptor = { fileName, theoryName, formulaName, line, fileExtension: ".pvs" };
+        this.client.sendRequest('pvs.step-proof', data);
         return this;
     }
-    showTccs (fileName: string, theoryName: string) {
-        const fileExtension: string = fileName.endsWith(".pvs") ? ".pvs" : 
-                                        fileName.endsWith(".tccs") ? ".tccs"
-                                        : null;
-        if (fileName.endsWith(".pvs") || fileName.endsWith(".tccs")) {
-            fileName = fsUtils.removeFileExtension(fileName);
-        }
-        const terminalName: string = `show-tccs ${theoryName}`;
-        this.terminal = this.createPvsTerminal(terminalName, { 
-            pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder, cmd: 'show-tccs', 
-            fileName, fileExtension, theoryName });
-
-        // this.sendCommand('(typecheck-file "' + fileName + '" nil nil nil)');
-        // this.sendCommand('(show-tccs "' + theoryName + '" nil)');
-        return this;
-    }
-    // printMessage(msg: string) {
-    //     this.terminal.sendText("echo '" + msg + "'");
+    // // printMessage(msg: string) {
+    // //     this.terminal.sendText("echo '" + msg + "'");
+    // //     return this;
+    // // }
+    // async stepProof(fileName: string, theoryName: string, formulaName: string, line: number) {
+    //     if (fileName.endsWith(".pvs")) {
+    //         fileName = fsUtils.removeFileExtension(fileName);
+    //     }
+    //     this.client.sendRequest('pvs.step-proof', { fileName, theoryName, formulaName, line });
     //     return this;
     // }
-    async stepProof(fileName: string, theoryName: string, formulaName: string, line: number) {
-        if (fileName.endsWith(".pvs")) {
-            fileName = fsUtils.removeFileExtension(fileName);
-        }
-        this.client.sendRequest('pvs.step-proof', { fileName, theoryName, formulaName, line });
-        return this;
-    }
     async stepTcc(fileName: string, theoryName: string, formulaName: string, line: number) {
         if (fileName.endsWith(".tccs")) {
             fileName = fsUtils.removeFileExtension(fileName);
         }
-        this.client.sendRequest('pvs.step-tcc', { fileName, theoryName, formulaName, line });
+        const data: ProofDescriptor = { fileName, theoryName, formulaName, line, fileExtension: ".tccs" };
+        this.client.sendRequest('pvs.step-tcc', data);
         return this;
     }
 }
@@ -277,6 +267,8 @@ export class VSCodePvsTerminal {
             this.ready();
         }
     }
+
+    // install handlers
     activate (context: vscode.ExtensionContext) {
         this.context = context;
 
