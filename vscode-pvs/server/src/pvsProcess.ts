@@ -550,9 +550,11 @@ export class PvsProcess {
 		// const res = await this.serverProxy.lisp(cmd);
 		// create a new file with the tccs. The file name corresponds to the theory name.
 		if (ans && ans.res) {
-			let tccsFileContent: string = ans.raw;
-			const fileName: string = path.join(this.pvsContextFolder, `${theoryName}.tccs`)
-			await fsUtils.writeFile(fileName, tccsFileContent);
+			const tccsFileContent: string = ans.raw;
+			const tccsFileName: string = path.join(this.pvsContextFolder, `${theoryName}.tccs`)
+			await fsUtils.writeFile(tccsFileName, tccsFileContent);
+			const tccsFileNameJSON: string = path.join(this.pvsContextFolder, `${theoryName}.tccs.json`)
+			await fsUtils.writeFile(tccsFileNameJSON, JSON.stringify(ans.res, null, " "));
 		}
 		return ans;
 	}
@@ -635,6 +637,23 @@ export class PvsProcess {
 	}
 
 	/**
+	 * Returns the status of theorems and tccs in a given theory
+	 * @param desc Theory descriptor, defines the theoryName
+	 */
+	async getTheoryStatus(desc: { fileName: string, fileExtension: string, theoryName: string }): Promise<TheoryStatus> {
+		if (desc && desc.theoryName) {
+			const statusInfo: PvsResponseType = await this.pvsExec(`(status-proof-theory "${desc.theoryName}")`);
+			// const statusInfo: PvsResponseType = await this.pvsExec(`(prove-tccs-theory "${theoryName}" nil "${fileName}" nil)`);
+			if (statusInfo && statusInfo.res) {
+				// status-proof-theories theoryname
+				const theoryStatus: TheoryStatus = statusInfo.res;
+				return theoryStatus;
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Typechecks a file
 	 * @param uri The uri of the file to be typechecked
 	 * @param attemptProof Tries to discharge all tccs (default is no)
@@ -661,11 +680,10 @@ export class PvsProcess {
 					const theoryNames: string[] = Object.keys(theoryMap);
 					for (const i in theoryNames) {
 						const theoryName: string = theoryNames[i];
-						const statusInfo: PvsResponseType = await this.pvsExec(`(prove-tccs-theory "${theoryName}" nil "${fileName}" nil)`);
-						if (statusInfo && statusInfo.res) {
-							const theoryStatus: TheoryStatus = statusInfo.res;
+						const theoryStatus: TheoryStatus = await this.getTheoryStatus({ fileName, fileExtension: ".pvs", theoryName });
+						if (theoryStatus) {
 							response.res[theoryName] = theoryStatus;
-						}							
+						}
 					}
 				}
 				// await this.saveContext();

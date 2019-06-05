@@ -1,7 +1,7 @@
 /**
- * @module pvsInterpreter
+ * @module pvsCli
  * @author Paolo Masci
- * @date 2019.05.24
+ * @date 2019.06.05
  * @copyright 
  * Copyright 2016 United States Government as represented by the
  * Administrator of the National Aeronautics and Space Administration. No
@@ -37,13 +37,9 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-import { spawn, ChildProcess } from 'child_process';
-import * as fsUtils from './common/fsUtils';
-import { Connection, TextDocument, combineConsoleFeatures } from 'vscode-languageserver';
 import * as utils from './common/languageUtils';
 import * as readline from 'readline';
 import { PvsCliInterface, PvsResponseType, PvsVersionDescriptor, SimpleConsole, StrategyDescriptor } from './common/serverInterface';
-import * as path from 'path';
 
 class CliConsole implements SimpleConsole {
 	private connection: CliConnection = null;
@@ -148,8 +144,12 @@ class PvsCli {
 
 	private outChannel (data: string) {
 		console.log(data);
+		const regex: RegExp = /:end-pvs-loc\b/;
+		if (regex.test(data)) {
+			// Status update for theory explorer
+			this.pvsProcess.getTheoryStatus({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName });
+		}
 	}
-
 	/**
 	 * @constructor
 	 * @param args information necessary to launch the theorem prover
@@ -188,19 +188,6 @@ class PvsCli {
 		});
 		this.connection = new CliConnection();
 	}
-	private prompt () {
-		this.rl.prompt();
-	}
-	
-	// /**
-	//  * Utility function, clears the pvsbin folder
-	//  */
-	// private async clearContext (): Promise<void> {
-	// 	const currentContext: string = this.ctx.pvsContextFolder;
-	// 	if (currentContext) {
-	// 		await fsUtils.deletePvsCache(currentContext);
-	// 	}
-	// }
 	/**
 	 * Utility function, creates a new pvs process
 	 */
@@ -223,6 +210,9 @@ class PvsCli {
 		}
 		return null;
 	}
+	// async killPvsProcess(): Promise<boolean> {
+
+	// }
 	async startPvs (args: PvsCliInterface) {
 		// console.log(utils.colorText(args.cmd, utils.textColor.blue));
 		// TODO: check why we need to clear double the number of lines executed
@@ -232,6 +222,7 @@ class PvsCli {
 		// readline.clearLine(process.stdin, 0);
 		// setup stdin to emit 'keypress' events
 		if (process.stdin.isTTY) {
+			// this is necessary for correct identification of keypresses for navigation keys and tab
 			process.stdin.setRawMode(true);
 		}
 		// readline.emitKeypressEvents(process.stdin);
@@ -273,17 +264,21 @@ class PvsCli {
 		const fileName: string = `${this.fileName}${this.fileExtension}`;
 		if (this.fileExtension === ".pvs") {
 			await this.pvsProcess.typecheckFile(fileName); // FIXME -- use object as argument instead of string
-			this.pvsProcess.startCli(this.outChannel);
+			this.pvsProcess.startCli((data: string) => {
+				this.outChannel(data);
+			});
 			await this.pvsProcess.stepProof({ fileName: this.fileName, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
 			await this.pvsProcess.proveFormula({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
 		} else {
 			// .tccs file
 			await this.pvsProcess.showTccs(fileName, this.theoryName);
-			this.pvsProcess.startCli(this.outChannel);
+			this.pvsProcess.startCli((data: string) => {
+				this.outChannel(data);
+			});
 			await this.pvsProcess.stepTcc({ fileName: this.fileName, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
 			await this.pvsProcess.proveFormula({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
 		}
-		this.prompt();
+		this.rl.prompt();
 	}
 	// on (event: "line", listener: (input: string) => void) {
 	// 	this.rl.on("line", listener);

@@ -24,6 +24,7 @@ class ProverTerminal {
     pvsContextFolder: string;
     terminal: vscode.Terminal;
     client: LanguageClient;
+    private active: boolean = true;
     terminalID: string;
     private interactiveCommand: string = null;
     constructor (client: LanguageClient, pvsCliFileName: string, context: vscode.ExtensionContext, terminalID: string) {
@@ -43,6 +44,10 @@ class ProverTerminal {
                     vscode.commands.executeCommand(`terminal.pvs.response.${this.interactiveCommand}`);
                     this.interactiveCommand = null;
                 }
+                const regex: RegExp = /:end-pvs-loc\b/;
+                if (regex.test(data)) {
+                    this.active = false;
+                }
             }
         });
         terminal.show();
@@ -50,6 +55,9 @@ class ProverTerminal {
     }
     private sendCommand(cmd: string): void {
         this.terminal.sendText(cmd);
+    }
+    isActive() {
+        return this.active;
     }
     stepCommand (cmd: string) {
         this.interactiveCommand = "step-executed";
@@ -250,7 +258,7 @@ export class VSCodePvsTerminal {
                 : this.findSelectedFormula();
         if (data) {
             const terminalID: string = VSCodePvsTerminal.getTerminalID(data);
-            if (this.activeTerminals[terminalID]) {
+            if (this.activeTerminals[terminalID] && this.activeTerminals[terminalID].isActive()) {
                 this.activeTerminals[terminalID].terminal.show();
             } else {
                 this.info(`Starting new prover session for ${data.formulaName}`);

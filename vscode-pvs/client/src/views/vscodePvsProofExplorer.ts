@@ -3,7 +3,6 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window, TextDocum
 			TreeDataProvider, workspace, MarkdownString, TreeView, Disposable, Terminal } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import { ProofDescriptor, ProofStructure } from '../common/serverInterface';
-import { VSCodePvsTerminal } from '../terminals/vscodePvsTerminal';
 
 /**
  * Definition of tree items
@@ -294,6 +293,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	activate(context: ExtensionContext) {
 		this.installHandlers(context);
+
+		// -- commands sent by pvsTerminalCli
 		let cmd: Disposable = commands.registerCommand("proof-explorer.step", () => {
 			this.step();
 		});
@@ -305,6 +306,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		cmd = commands.registerCommand("terminal.pvs.response.step-proof-ready", () => {
 			this.startProof();
 		});
+
+		// -- proof explorer commands
 		context.subscriptions.push(cmd);
 		cmd = commands.registerCommand("proof-explorer.jump-to", (resource: ProofItem) => {
 			if (resource && this.nodes) {
