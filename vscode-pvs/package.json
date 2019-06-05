@@ -383,6 +383,11 @@
 				"when": "resourceExtname == .pvs"
 			},
 			{
+				"key": "shift+ctrl+t",
+				"command": "explorer.typecheck-all",
+				"when": "resourceLangId == pvs"
+			},
+			{
 				"key": "ctrl+alt+g",
 				"command": "proof-explorer.grind",
 				"when": "resourceLangId == pvs"

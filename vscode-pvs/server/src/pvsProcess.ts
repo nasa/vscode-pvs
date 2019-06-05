@@ -49,7 +49,7 @@ import {
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsFindDeclarationRequest, PvsDefinition,
 	TccDescriptorArray, TccDescriptor, PvsFileListDescriptor, PvsTypecheckerResponse,
-	PvsExecutionContext, SimpleConnection, TheoryList, FileList, TheoremsMap, TheoryMap, TheoryStatus
+	PvsExecutionContext, SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus
 } from './common/serverInterface'
 import { Connection, TextDocument } from 'vscode-languageserver';
 import * as path from 'path';

@@ -278,10 +278,6 @@ export declare interface TheoremDescriptor {
 	status: string; // proof status
 }
 
-export declare interface TheoremsMap {
-	[ theorem: string ]: TheoremDescriptor
-}
-
 export declare interface FileList {
 	pvsContextFolder: string;
 	fileNames: string[]; // TODO: FileDescriptor[]
