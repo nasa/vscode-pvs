@@ -85,7 +85,6 @@ class CliConnection {
 }
 
 import { PvsProcess } from './pvsProcess';
-import { PvsExecutionContext } from './common/serverInterface';
 import { ConnectionError } from 'vscode-jsonrpc';
 
 // utility function, ensures open brackets match closed brackets for commands
@@ -129,7 +128,8 @@ class PvsCli {
 		return `(${strat.name}`;
 	});
 
-	private ctx: PvsExecutionContext;
+	private pvsPath: string;
+	private pvsContextFolder: string;
 	private fileName: string;
 	private fileExtension: string;
 	private theoryName: string;
@@ -155,10 +155,8 @@ class PvsCli {
 	 * @param args information necessary to launch the theorem prover
 	 */
 	constructor (args: PvsCliInterface) {
-		this.ctx = {
-			pvsContextFolder: args.pvsContextFolder,
-			pvsPath: args.pvsPath
-		}
+		this.pvsPath = args.pvsPath;
+		this.pvsContextFolder = args.pvsContextFolder;
 		this.fileName = args.fileName; // FIXME: fileName needs to include extension
 		this.fileExtension = args.fileExtension;
 		this.theoryName = args.theoryName;
@@ -192,12 +190,12 @@ class PvsCli {
 	 * Utility function, creates a new pvs process
 	 */
 	async createPvsProcess(): Promise<PvsProcess> {
-		const proc: PvsProcess = new PvsProcess(this.ctx);
+		const proc: PvsProcess = new PvsProcess({ pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder });
 		// proc.removeConnection();
 		const success: boolean = await proc.pvs();
 		if (success) {
 			await proc.disableGcPrintout();
-			await proc.changeContext(this.ctx.pvsContextFolder);
+			await proc.changeContext(this.pvsContextFolder);
 			// const ans: PvsResponseType = await proc.listProofStrategies();
 			// if (ans && ans.res) {
 			// 	const strategies: StrategyDescriptor[] = ans.res;

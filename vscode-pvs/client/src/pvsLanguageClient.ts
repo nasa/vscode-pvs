@@ -2,7 +2,6 @@ import * as path from 'path';
 import * as comm from './common/serverInterface';
 import { TextDocument, window, workspace, ExtensionContext, Position, Disposable, commands } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
-import { PvsExecutionContext } from './common/serverInterface';
 import { log } from './utils/vscode-utils';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 // import { VSCodePvsHoverProvider } from './providers/vscodePvsHoverProvider-obsolete';
@@ -131,24 +130,19 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 		workspace.onDidChangeConfiguration(async  () => {
 			// re-initialise pvs if the executable is different
-			const restartPvs = async (pvsPath: string) => {
-				if (pvsPath !== this.pvsPath) {
-					window.showInformationMessage(`Restarting PVS (pvs path changed to ${pvsPath})`);
-					this.pvsPath = pvsPath;
-					const pvsExecutionContext: PvsExecutionContext = {
-						pvsPath: this.pvsPath,
-						pvsContextFolder: this.pvsContextFolder // document.fileName include the path name
-					};
-					await this.client.sendRequest('pvs.init', pvsExecutionContext);	
-				}	
-			};
-			
 			const pvsPath: string = await this.getPvsPath();
-			restartPvs(pvsPath);
+			if (pvsPath !== this.pvsPath) {
+				window.showInformationMessage(`Restarting PVS (pvs path changed to ${pvsPath})`);
+				this.pvsPath = pvsPath;
+				await this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder });	
+			}	
 		});
 	}
 	activate (context: ExtensionContext) {
+		// save pointer to extension context
 		this.context = context;
+		
+		// register handlers
 		let cmd = commands.registerCommand('cmd.runit', (resource: comm.ExpressionDescriptor) => {
 			this.client.sendRequest('pvs.runit', resource);
 		});
@@ -165,19 +159,16 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		context.subscriptions.push(cmd);
 
 		// The server is implemented in NodeJS
-		let serverModule = context.asAbsolutePath(server_path);
-		// The debug options for the server
-		// --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-		let debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
+		const serverModule = context.asAbsolutePath(server_path);
 
 		// If the extension is launched in debug mode then the debug server options are used
 		// Otherwise the run options are used
-		let serverOptions: ServerOptions = {
+		const serverOptions: ServerOptions = {
 			run: { module: serverModule, transport: TransportKind.ipc },
 			debug: {
 				module: serverModule,
 				transport: TransportKind.ipc,
-				options: debugOptions
+				options: { execArgv: ['--nolazy', '--inspect=6009'] } // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
 			}
 		};
 
@@ -226,22 +217,13 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		await this.client.start(); // this will start also the server
 		await this.client.onReady();
 		this._registerHandlers();
-		this.pvsContextFolder = fs.getPathname(window.activeTextEditor.document.fileName);
-		this.pvsPath = workspace.getConfiguration().get("pvs.path");
 
-		// request initialisation of pvs
-		const pvsExecutionContext: PvsExecutionContext = {
-			pvsPath: this.pvsPath,
-			pvsContextFolder: this.pvsContextFolder // document.fileName include the path name
-		};
-
-		// setTimeout(async () => {
 		// create status bar
 		this.pvsStatusBar = new VSCodePvsStatusBar(this.client);
 		this.pvsStatusBar.activate(this.context);
 
 		// initialise pvs
-		await this.client.sendRequest('pvs.init', pvsExecutionContext);
+		// await this.client.sendRequest('pvs.init', pvsExecutionContext);
 		
 		// initialise service providers defined on the client-side
 		this.decorationProvider = new VSCodePvsDecorationProvider();
@@ -266,10 +248,17 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		if (window.activeTextEditor && fs.isPvsFile(window.activeTextEditor.document.fileName)) {
 			this.decorationProvider.updateDecorations(window.activeTextEditor);
 		}
-		// }, 2000);
+
+		setTimeout(() => {
+			// start PVS
+			this.pvsContextFolder = fs.getPathname(window.activeTextEditor.document.fileName);
+			this.pvsPath = this.getPvsPath();
+			this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder });			
+		}, 500);
 	}
 	stop () {
 		if (this.client) {
+			this.client.sendRequest("kill-pvs");
 			return this.client.stop();
 		}
 		return Promise.resolve();

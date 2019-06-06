@@ -49,7 +49,7 @@ import {
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsFindDeclarationRequest, PvsDefinition,
 	TccDescriptorArray, TccDescriptor, PvsFileListDescriptor, PvsTypecheckerResponse,
-	PvsExecutionContext, SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus
+	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, TheoremsStatus
 } from './common/serverInterface'
 import { Connection, TextDocument } from 'vscode-languageserver';
 import * as path from 'path';
@@ -75,6 +75,7 @@ export class PvsProcess {
 	private proverProcess: ChildProcess = null;
 	private pvsioProcessBusy: boolean = false;
 	private proverProcessBusy: boolean = false;
+	private processType: string; // "typechecker" or "parser"
 
 	// private serverProxy: xmlrpcProvider.XmlRpcProxy;
 
@@ -122,12 +123,13 @@ export class PvsProcess {
 
 	/**
 	 * @constructor
-	 * @param pvsExecutionContext PVS context 
+	 * @param desc Information on the PVS execution environment 
 	 * @param connection Connection with the language client
 	 */
-	constructor (pvsExecutionContext: PvsExecutionContext, connection?: Connection) {
-		this.pvsPath = pvsExecutionContext.pvsPath || __dirname;
-		this.pvsContextFolder = pvsExecutionContext.pvsContextFolder || __dirname;
+	constructor (desc: { pvsPath: string, pvsContextFolder: string, processType?: string }, connection?: Connection) {
+		this.pvsPath = desc.pvsPath || __dirname;
+		this.pvsContextFolder = desc.pvsContextFolder || __dirname;
+		this.processType = desc.processType || "typechecker";
 
 		// this.serverProxy = new xmlrpcProvider.XmlRpcProxy();
 
@@ -258,6 +260,21 @@ export class PvsProcess {
 		});
 	}
 
+	kill() {
+		if (this.pvsProcess) {
+			this.pvsProcess.kill();
+			if (this.connection) {
+				this.connection.sendNotification(`server.delete-pvs-${this.processType}`);
+			}
+		}
+	}
+
+	getProcessId (): string {
+		if (this.pvsProcess) {
+			return this.pvsProcess.pid.toString();
+		}
+		return null;
+	}
 
 	async pvs(opt?: {
 		enableNotifications?: boolean
@@ -271,7 +288,7 @@ export class PvsProcess {
 			const pvsLispReader = new PvsLispReader(this.connection);
 			let pvs: string = path.join(this.pvsPath, "pvs");
 			const args: string[] = [ "-raw"];//, "-port", "22334" ];
-			if (this.connection) { this.connection.console.info(`Spawning pvs process ${pvs} ${args.join(" ")}`); }
+			// if (this.connection) { this.connection.console.info(`Spawning pvs process ${pvs} ${args.join(" ")}`); }
 			return new Promise(async (resolve, reject) => {
 				const fileExists: boolean = await fsUtils.fileExists(pvs);
 				if (fileExists) {
@@ -292,8 +309,9 @@ export class PvsProcess {
 					this.pvsProcess.stderr.on("data", (data: string) => {
 						if (this.connection) { this.connection.console.log(data); }
 					});
+					// if (this.connection) { this.connection.console.info("PVS process ready!"); }
 					if (this.connection) {
-						this.connection.console.info("PVS process ready!");
+						this.connection.sendNotification(`server.new-pvs-${this.processType}`);
 					}
 				} else {
 					console.error(`\n>>> PVS executable not found at ${pvs} <<<\n`);
@@ -549,12 +567,29 @@ export class PvsProcess {
 		// const res = await this.serverProxy.typecheck(fileName);
 		// const res = await this.serverProxy.lisp(cmd);
 		// create a new file with the tccs. The file name corresponds to the theory name.
+		const tccsFileName: string = path.join(this.pvsContextFolder, `${theoryName}.tccs`);
+		const tccsFileNameJSON: string = path.join(this.pvsContextFolder, `${theoryName}.tccs.json`);
 		if (ans && ans.res) {
 			const tccsFileContent: string = ans.raw;
-			const tccsFileName: string = path.join(this.pvsContextFolder, `${theoryName}.tccs`)
-			await fsUtils.writeFile(tccsFileName, tccsFileContent);
-			const tccsFileNameJSON: string = path.join(this.pvsContextFolder, `${theoryName}.tccs.json`)
-			await fsUtils.writeFile(tccsFileNameJSON, JSON.stringify(ans.res, null, " "));
+			fsUtils.writeFile(tccsFileName, tccsFileContent).then(() => {
+				const tccDescriptors: TccDescriptor[] = ans.res;
+				if (tccDescriptors) {
+					const json = tccDescriptors.map((desc: TccDescriptor) => {
+						return {
+							formulaName: desc.formulaName,
+							line: desc.symbolLine,
+							character: desc.symbolCharacter
+						};
+					});
+					fsUtils.writeFile(tccsFileNameJSON, JSON.stringify(json, null, " "));
+				}	
+			});
+		} else {
+			const tccsFileContent: string = `% ${ans.raw}`;
+			fsUtils.writeFile(tccsFileName, tccsFileContent).then(() => {
+				const tccsFileNameJSON: string = path.join(this.pvsContextFolder, `${theoryName}.tccs.json`);
+				fsUtils.writeFile(tccsFileNameJSON, "[]");	
+			});
 		}
 		return ans;
 	}

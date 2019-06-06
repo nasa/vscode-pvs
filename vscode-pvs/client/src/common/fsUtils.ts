@@ -20,8 +20,13 @@ export async function readDir(pvsContextFolder: string): Promise<string[]> {
 	});
 }
 
-export async function readFile(path: string): Promise<string> {
-	return await fs.readFileSync(path).toString('utf8');
+export async function readFile(path: string): Promise<string | null> {
+	try {
+		return await fs.readFileSync(path).toString('utf8');
+	} catch (fileReadError) {
+		console.error(fileReadError);
+	}
+	return null;
 }
 export async function deletePvsCache(contextFolder: string): Promise<boolean> {
 	try {

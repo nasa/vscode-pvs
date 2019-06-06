@@ -241,10 +241,10 @@ export declare interface PvsCliInterface {
 	line?: number
 }
 
-export declare interface PvsExecutionContext {
-	pvsPath: string,
-	pvsContextFolder: string
-}
+// export declare interface PvsExecutionContext {
+// 	pvsPath: string,
+// 	pvsContextFolder: string
+// }
 
 export const PVS_CLI_FILE: string = 'PvsCli';
 
@@ -257,7 +257,7 @@ export declare interface SimpleConsole {
 
 export declare interface SimpleConnection {
     console: SimpleConsole,
-	sendNotification?: (type: string, msg: string) => void;
+	sendNotification?: (type: string, msg?: string) => void;
 }
 
 

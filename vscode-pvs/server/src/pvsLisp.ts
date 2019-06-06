@@ -197,6 +197,17 @@ export class PvsLispReader {
 							character: 0
 						}
 					};
+				} else if (data.includes("</pvserror>")) {
+					// detailed information on the error are currently not provided by pvs
+					ans.error = {
+						msg: "Typecheck error",
+						parserError: {
+							msg: `PVS file does not typecheck correctly`,
+							fileName: "",
+							line: 0,
+							character: 0
+						}
+					};
 				} else {
 					ans.res = data;
 				}
@@ -213,52 +224,56 @@ export class PvsLispReader {
 				let declarations: PvsFindDeclarationInterface = {};
 				let info = null;
 				while (info = PVS_FIND_DECLARATION_REGEXP.prelude.exec(data)) {
-					const symbolName: string = info[1];
-					const symbolTheory: string = info[2];
-					const symbolDeclarationFile: string = PRELUDE_FILE;
-					const symbolDeclarationPosition = info[4].split(" ");
-					const symbolDeclarationRange = {
-						start: {
-							line: +symbolDeclarationPosition[0],
-							character: +symbolDeclarationPosition[1]
-						},
-						end: {
-							line: +symbolDeclarationPosition[2],
-							character: +symbolDeclarationPosition[3]
-						}
-					};
-					const symbolDeclaration: string = info[5];
-					declarations[getKey(symbolTheory, symbolName)] = {
-						symbolName: symbolName,
-						symbolTheory: symbolTheory,
-						symbolDeclaration: symbolDeclaration,
-						symbolDeclarationRange: symbolDeclarationRange,
-						symbolDeclarationFile: symbolDeclarationFile
-					};
+					if (info && info.length > 5) {
+						const symbolName: string = info[1];
+						const symbolTheory: string = info[2];
+						const symbolDeclarationFile: string = PRELUDE_FILE;
+						const symbolDeclarationPosition = info[4].split(" ");
+						const symbolDeclarationRange = {
+							start: {
+								line: +symbolDeclarationPosition[0],
+								character: +symbolDeclarationPosition[1]
+							},
+							end: {
+								line: +symbolDeclarationPosition[2],
+								character: +symbolDeclarationPosition[3]
+							}
+						};
+						const symbolDeclaration: string = info[5];
+						declarations[getKey(symbolTheory, symbolName)] = {
+							symbolName: symbolName,
+							symbolTheory: symbolTheory,
+							symbolDeclaration: symbolDeclaration,
+							symbolDeclarationRange: symbolDeclarationRange,
+							symbolDeclarationFile: symbolDeclarationFile
+						};
+					}
 				}
 				while (info = PVS_FIND_DECLARATION_REGEXP.other.exec(data)) {
-					const symbolName: string = info[1];
-					const symbolTheory: string = info[2];
-					const symbolDeclarationFile: string = info[3];
-					const symbolDeclarationPosition = info[4].split(" ");
-					const symbolDeclarationRange = {
-						start: {
-							line: +symbolDeclarationPosition[0],
-							character: +symbolDeclarationPosition[1]
-						},
-						end: {
-							line: +symbolDeclarationPosition[2],
-							character: +symbolDeclarationPosition[3]
-						}
-					};
-					const symbolDeclaration: string = info[5];
-					declarations[getKey(symbolTheory, symbolName)] = {
-						symbolName: symbolName,
-						symbolTheory: symbolTheory,
-						symbolDeclaration: symbolDeclaration,
-						symbolDeclarationRange: symbolDeclarationRange,
-						symbolDeclarationFile: symbolDeclarationFile
-					};
+					if (info && info.length > 5) {
+						const symbolName: string = info[1];
+						const symbolTheory: string = info[2];
+						const symbolDeclarationFile: string = info[3];
+						const symbolDeclarationPosition = info[4].split(" ");
+						const symbolDeclarationRange = {
+							start: {
+								line: +symbolDeclarationPosition[0],
+								character: +symbolDeclarationPosition[1]
+							},
+							end: {
+								line: +symbolDeclarationPosition[2],
+								character: +symbolDeclarationPosition[3]
+							}
+						};
+						const symbolDeclaration: string = info[5];
+						declarations[getKey(symbolTheory, symbolName)] = {
+							symbolName: symbolName,
+							symbolTheory: symbolTheory,
+							symbolDeclaration: symbolDeclaration,
+							symbolDeclarationRange: symbolDeclarationRange,
+							symbolDeclarationFile: symbolDeclarationFile
+						};
+					}
 				}
 				ans.res = declarations;
 				break;
@@ -270,41 +285,47 @@ export class PvsLispReader {
 				const regexp: RegExp = /Theory\s+([^\s]+) is\s*/gi;
 				let match: RegExpMatchArray = null;
 				while(match = regexp.exec(data)) {
-					res.theories.push(match[1]);
+					if (match && match.length > 1) {
+						res.theories.push(match[1]);
+					}
 				}
 				regexp.lastIndex = 0;
 				ans.res = res;
 				break;
 			}
 			case "show-tccs": {
-				data = /(%[\w\W\s]*)\bnil\b/.exec(data)[1].trim(); // this removes two trailing lines included in the pvs response (nil + pvs prompt)
 				ans.raw = data;
-				const res: TccDescriptor[] = [];
-				// capture group 1: tcc message (Subtype TCC generated at ...)
-				// capture group 2: position (line) of the symbol that has triggered the tcc
-				// capture group 3: position (column) of the symbol that has triggered the tcc
-				// capture group 4: formulaName
-				const regexp: RegExp = new RegExp(/(%\s*(?:.+)(?: generated)?\(at line (\d+), column (\d+)\)).*(?:\s*%.*\s)*([\w\?]+):\s*OBLIGATION/g);
-				let match: RegExpMatchArray = null;
-				while (match = regexp.exec(data)) {
-					if (match.length > 4 && match[4]) {
-						const formulaName: string = match[4];
-						const line: number = utils.findProofObligation(formulaName, data);
-						res.push({
-							formulaName,
-							line: (line > 0) ? line : 1, // position of the formula in the tccs file
-							symbolLine: +match[2],
-							symbolCharacter: +match[3]
-						});
+				const matchTcc: RegExpMatchArray = /(%[\w\W\s]*)\bnil\b/.exec(data);
+				if (matchTcc && matchTcc.length > 1) {
+					data = matchTcc[1].trim(); // this removes two trailing lines included in the pvs response (nil + pvs prompt)
+					ans.raw = data;
+					const res: TccDescriptor[] = [];
+					// capture group 1: tcc message (Subtype TCC generated at ...)
+					// capture group 2: position (line) of the symbol that has triggered the tcc
+					// capture group 3: position (column) of the symbol that has triggered the tcc
+					// capture group 4: formulaName
+					const regexp: RegExp = new RegExp(/(%\s*(?:.+)(?: generated)?\(at line (\d+), column (\d+)\)).*(?:\s*%.*\s)*([\w\?]+):\s*OBLIGATION/g);
+					let match: RegExpMatchArray = null;
+					while (match = regexp.exec(data)) {
+						if (match.length > 4 && match[4]) {
+							const formulaName: string = match[4];
+							const line: number = utils.findProofObligation(formulaName, data);
+							res.push({
+								formulaName,
+								line: (line > 0) ? line : 1, // position of the formula in the tccs file
+								symbolLine: +match[2],
+								symbolCharacter: +match[3]
+							});
+						}
 					}
+					ans.res = res;
 				}
-				ans.res = res;
 				break;
 			}
 			case "change-context": {
 				const regexp: RegExp = /Context changed to (.*)\s*\".*\"/;
 				const match: RegExpMatchArray = regexp.exec(data);
-				if (match && match[1]) {
+				if (match && match.length > 1 && match[1]) {
 					ans.res = {
 						context: match[1]
 					}
@@ -315,7 +336,7 @@ export class PvsLispReader {
 			case "edit-proof-at": {
 				const regexp: RegExp = /[\s\w\W]*;;;\s*Proof .+ for formula .*\s;;;.*\s([\s\w\W]*)/gim;
 				const match: RegExpMatchArray = regexp.exec(data);
-				if (match && match[1]) {
+				if (match && match.length > 1 && match[1]) {
 					const innerMatch = /([\s\w\W]*)\snil/gim.exec(match[1]);
 					if (innerMatch && innerMatch[1]) {
 						ans.res = innerMatch[1].trim();
@@ -332,11 +353,13 @@ export class PvsLispReader {
 				let match: RegExpMatchArray = null;
 				const strategies: StrategyDescriptor[] = [];
 				while (match = regexp.exec(data)) {
-					const strat: StrategyDescriptor = {
-						name: match[1],
-						description: ""
-					};
-					strategies.push(strat);
+					if (match.length > 1) {
+						const strat: StrategyDescriptor = {
+							name: match[1],
+							description: ""
+						};
+						strategies.push(strat);
+					}
 				}
 				ans.res = strategies;
 				break;

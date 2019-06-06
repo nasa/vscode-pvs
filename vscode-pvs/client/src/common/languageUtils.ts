@@ -65,7 +65,7 @@ export function findTheories(fileName: string, fileContent: string): TheoryMap {
 				) {
 				// the first match is the theory declaration -- in pvs, theories cannot be imported if they have not been declared first
 				line = i;
-				character = lines[i].split(match[1])[0].length;
+				character = (lines[i].split(match[1]) && lines[i].split(match[1]).length > 0) ? lines[i].split(match[1])[0].length : 0;
 				theoryName = match[1];
 				ans[theoryName] = {
 					position: {
@@ -120,38 +120,42 @@ export async function listTheoremsInFile (uri: string): Promise<TheoremDescripto
 	if (uri) {
 		const fileName: string = uri.replace("file://", "");
 		const txt: string = await fsUtils.readFile(fileName);
-		const slices: string[] = txt.split("\n");
-		const theories: TheoryMap = findTheories(fileName, txt);
-		const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories
-		const theoryNames: string[] = Object.keys(theories);
-		for (let i = 0; i < theoryNames.length; i++) {
-			boundaries.push({
-				theoryName: theoryNames[i],
-				from: theories[theoryNames[i]].position.line,
-				to: (i + 1 < theoryNames.length) ? theories[theoryNames[i + 1]].position.line : slices.length
-			});
-		}
-		const theoremsArray: TheoremDescriptor[] = [];
-		for (let i = 0; i < boundaries.length; i++) {
-			const content: string = slices.slice(boundaries[i].from, boundaries[i].to).join("\n");
-			const regex: RegExp = new RegExp(theoremRegexp);
-			let match: RegExpMatchArray = null;
-			while (match = regex.exec(content)) {
-				if (match.length > 2 && match[2] && !match[1]) {
-					const formulaName: string = match[2];
-					const offset: number = content.slice(0, match.index).split("\n").length;
-					const line: number = boundaries[i].from + offset;
-					theoremsArray.push({
-						fileName: fsUtils.getFilename(uri),
-						theoryName: boundaries[i].theoryName,
-						formulaName,
-						position: { line, character: 0 },
-						status: null
+		if (txt) {
+			const slices: string[] = txt.split("\n");
+			const theories: TheoryMap = findTheories(fileName, txt);
+			const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories
+			const theoryNames: string[] = Object.keys(theories);
+			if (theoryNames) {
+				for (let i = 0; i < theoryNames.length; i++) {
+					boundaries.push({
+						theoryName: theoryNames[i],
+						from: theories[theoryNames[i]].position.line,
+						to: (i + 1 < theoryNames.length) ? theories[theoryNames[i + 1]].position.line : slices.length
 					});
 				}
+				const theoremsArray: TheoremDescriptor[] = [];
+				for (let i = 0; i < boundaries.length; i++) {
+					const content: string = slices.slice(boundaries[i].from, boundaries[i].to).join("\n");
+					const regex: RegExp = new RegExp(theoremRegexp);
+					let match: RegExpMatchArray = null;
+					while (match = regex.exec(content)) {
+						if (match.length > 2 && match[2] && !match[1]) {
+							const formulaName: string = match[2];
+							const offset: number = content.slice(0, match.index).split("\n").length;
+							const line: number = boundaries[i].from + offset;
+							theoremsArray.push({
+								fileName: fsUtils.getFilename(uri),
+								theoryName: boundaries[i].theoryName,
+								formulaName,
+								position: { line, character: 0 },
+								status: null
+							});
+						}
+					}
+				}
+				return theoremsArray;
 			}
 		}
-		return theoremsArray;
 	}
 	return null;
 }
@@ -171,7 +175,7 @@ export function findTheorem(txt: string, line: number): string | null {
 	const regexp: RegExp = new RegExp(theoremRegexp);
 	let match: RegExpMatchArray = null;
 	while(match = regexp.exec(text)) {
-		if (match.length > 2 && match[2] && !match[1]) {
+		if (match && match.length > 2 && match[2] && !match[1]) {
 			candidates.push(match[2]);
 		}
 	}
@@ -193,7 +197,9 @@ export function findProofObligation(formulaName: string, txt: string): number {
 	let match: RegExpMatchArray = regexp.exec(txt);
 	if (match) {
 		const trim: string = txt.substr(0, match.index);
-		return trim.split("\n").length;
+		if (trim && trim.length > 0) {
+			return trim.split("\n").length;
+		}
 	}
 	return 0;
 };
@@ -221,7 +227,7 @@ export function getWordRange(txt: string, position: Position): Range {
 	let character: number = position.character;
 	let len: number = 0;
 	let lines: string[] = txt.split("\n");
-	if (lines.length > position.line) {
+	if (lines && lines.length > position.line) {
 		let txt: string = lines[position.line];
 		let needle: RegExp = /(\w+\??\!?\+?)|\"([^\"]*)\"/g; // symbol, which may terminate with ? ! + | string
 		let match: RegExpMatchArray = [];
@@ -242,12 +248,15 @@ export function getWordRange(txt: string, position: Position): Range {
 }
 
 export function getText(txt: string, range: Range): string {
-	const lines: string[] = txt.split("\n");
-	let ans: string[] = lines.slice(range.start.line, range.end.line);
-	ans[0] = ans[0].substr(range.start.character);
-	const len: number = ans.length - 1;
-	ans[ans.length - 1] = ans[ans.length - 1].substr(0, len - range.end.character);
-	return ans.join("\n");
+	if (txt) {
+		const lines: string[] = txt.split("\n");
+		let ans: string[] = lines.slice(range.start.line, range.end.line);
+		ans[0] = ans[0].substr(range.start.character);
+		const len: number = ans.length - 1;
+		ans[ans.length - 1] = ans[ans.length - 1].substr(0, len - range.end.character);
+		return ans.join("\n");
+	}
+	return txt;
 }
 
 /**
@@ -260,9 +269,11 @@ export function getErrorRange(txt: string, position: Position): Range {
 	let character: number = position.character;
 	let len: number = 0;
 	let lines: string[] = txt.split("\n");
-	if (lines.length > position.line) {
+	if (lines && lines.length > position.line) {
 		let txt: string = lines[position.line];
-		len = txt.length - position.character;
+		if (txt) {
+			len = txt.length - position.character;
+		}
 	}
 	return {
 		start: { line: position.line, character: character },
@@ -288,10 +299,12 @@ export async function listTheoriesInFile (fileName: string): Promise<TheoryMap> 
 		fileName = fileName.startsWith("file://") ? fileName.replace("file://", "") : fileName;
 		let response: TheoryMap = {};
 		const txt: string = await fsUtils.readFile(fileName);
-		fileName = fsUtils.getFilename(fileName, { removeFileExtension: true });
-		// const doc: TextDocument = this.documents.get("file://" + uri);
-		response = findTheories(fileName, txt);
-		return response;
+		if (txt) {
+			fileName = fsUtils.getFilename(fileName, { removeFileExtension: true });
+			// const doc: TextDocument = this.documents.get("file://" + uri);
+			response = findTheories(fileName, txt);
+			return response;
+		}
 	}
 	return null;
 }

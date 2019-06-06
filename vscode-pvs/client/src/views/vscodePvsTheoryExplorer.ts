@@ -39,7 +39,7 @@ class TheoryItem extends TreeItem {
 	refreshLabel () {
 		// update label
 		const n: number = this.tccsOverview.tccs.length + this.theoremsOverview.theorems.length;
-		this.label = `${this.theoryName} (${this.tccsOverview.tccs.length} tccs, ${this.theoremsOverview.theorems.length} theorems)`;
+		this.label = `${this.theoryName}`;// (${this.tccsOverview.tccs.length} tccs, ${this.theoremsOverview.theorems.length} theorems)`;
 		// update collapsible state
 		this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
 	}
@@ -246,7 +246,25 @@ class TheoremItem extends TreeItem {
 		this.refreshLabel();
 	}
 	private refreshLabel() {
-		this.label = (this.desc.status) ? `${this.desc.formulaName} (${this.desc.status})` : this.desc.formulaName;
+		if (this.desc && this.desc.status) {
+			switch (this.desc.status) {
+				case "proved": {
+					this.label = `✅ ${this.desc.formulaName} (${this.desc.status})`;
+					break;
+				}
+				case "unfinished": { // proof attempted but failed
+					this.label = `❗ ${this.desc.formulaName} (${this.desc.status})`;
+					break;
+				}
+				case "unchecked": // proof was successful, but needs to be checked again because of changes in the theories
+				case "untried": // proof has not been attempted yet
+				default: {
+					this.label = `❓ ${this.desc.formulaName} (${this.desc.status})`;
+				}
+			}
+		} else {
+			this.label = this.desc.formulaName;			
+		}
 	}
 }
 
