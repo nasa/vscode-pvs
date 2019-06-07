@@ -249,6 +249,8 @@ class PvsLanguageServer {
 	private async killAllPvsProcesses() {
 		if (this.pvsParser) {
 			this.pvsParser.kill();
+			// pvs parser does not come with a connection, we need to notify its deletion to correctly update the status bar
+			this.connection.sendNotification(`server.delete-pvs-parser`);
 		}
 		if (this.pvsTypeChecker) {
 			this.pvsTypeChecker.kill();
