@@ -41,6 +41,11 @@ import * as utils from './common/languageUtils';
 import * as readline from 'readline';
 import { PvsCliInterface, PvsResponseType, PvsVersionDescriptor, SimpleConsole, StrategyDescriptor } from './common/serverInterface';
 
+const usage: string = `
+${utils.colorText("Prover Command Line Interface (CLI)", utils.textColor.blue)}
+Usage: node pvsCli '{ "pvsPath": "<path-to-pvs-installation>", "pvsContextFolder": "<context-folder>" }'
+`;
+
 class CliConsole implements SimpleConsole {
 	private connection: CliConnection = null;
 
@@ -141,6 +146,8 @@ class PvsCli {
 	private cmds: string[] = []; // queue of commands to be executed
 	private tabCompleteMode: boolean = false;
 
+	private args: PvsCliInterface;
+
 
 	private outChannel (data: string) {
 		console.log(data);
@@ -155,6 +162,7 @@ class PvsCli {
 	 * @param args information necessary to launch the theorem prover
 	 */
 	constructor (args: PvsCliInterface) {
+		this.args = args;
 		this.pvsPath = args.pvsPath;
 		this.pvsContextFolder = args.pvsContextFolder;
 		this.fileName = args.fileName; // FIXME: fileName needs to include extension
@@ -165,20 +173,25 @@ class PvsCli {
 		this.rl = readline.createInterface(process.stdout, process.stdin, this.completer);
 		// this.rl.setPrompt(utils.colorText("Prover > ", utils.textColor.blue));
 		this.rl.setPrompt(utils.colorText("", utils.textColor.blue));
-		this.rl.on("line", (cmd: string) => {
+		this.rl.on("line", async (cmd: string) => {
 			// console.log(`Received command ${cmd}`);
 			try {
 				// console.log(`received command from keyboard: ${cmd}`);
-				if (quotesMatch(cmd)) {
-					// clear current line and retype in blue
-					// readline.moveCursor(process.stdin, 0, -1);
-					// readline.clearScreenDown(process.stdin);
-					cmd = parMatch(cmd);
-					console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
-					this.pvsProcess.execCmd(`${cmd}\n`);
+				if (cmd === "kill") {
+					await this.killPvsProcess();
+					await this.startPvs(this.args); // restart pvs
 				} else {
-					console.log("Mismatching double quotes, please check your expression");
-					this.pvsProcess.execCmd("()\n");
+					if (quotesMatch(cmd)) {
+						// clear current line and retype in blue
+						// readline.moveCursor(process.stdin, 0, -1);
+						// readline.clearScreenDown(process.stdin);
+						cmd = parMatch(cmd);
+						console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
+						this.pvsProcess.execCmd(`${cmd}\n`);
+					} else {
+						console.log("Mismatching double quotes, please check your expression");
+						this.pvsProcess.execCmd("()\n");
+					}
 				}
 			} catch (err) {
 				console.error(err);
@@ -207,11 +220,14 @@ class PvsCli {
 			return proc;
 		}
 		return null;
+	
 	}
-	// async killPvsProcess(): Promise<boolean> {
-
-	// }
-	async startPvs (args: PvsCliInterface) {
+	async killPvsProcess(): Promise<void> {
+		if (this.pvsProcess) {
+			this.pvsProcess.kill();
+		}
+	}
+	async startPvs (args: PvsCliInterface): Promise<PvsProcess> {
 		// console.log(utils.colorText(args.cmd, utils.textColor.blue));
 		// TODO: check why we need to clear double the number of lines executed
 		// readline.moveCursor(process.stdin, 0, -y);
@@ -255,6 +271,7 @@ class PvsCli {
 		} else {
 			console.error(`could not start pvs :/`);
 		}
+		return this.pvsProcess;
 	}
 	async launchTheoremProver () {
 		console.log(`Typechecking...`)
@@ -306,8 +323,17 @@ if (process.argv.length > 2) {
 	const args: PvsCliInterface = JSON.parse(process.argv[2]);
 	console.log(args);
 	const pvsCli: PvsCli = new PvsCli(args);
-	pvsCli.startPvs(args).then(async () => {
-		await pvsCli.launchTheoremProver();
+	pvsCli.startPvs(args).then(async (pvsProcess: PvsProcess) => {
+		if (args && args.fileName) {
+			await pvsCli.launchTheoremProver();
+		} else {
+			pvsProcess.startCli((data: string) => {
+				console.log(data);
+			});
+			pvsProcess.execCmd("()");
+		}
 	});
+} else {
+	console.log(usage);
 }
 
