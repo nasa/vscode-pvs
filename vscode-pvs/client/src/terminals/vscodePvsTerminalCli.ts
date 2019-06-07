@@ -1,12 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { findTheoryName, findTheorem } from '../common/languageUtils';
-import * as fs from '../common/fsUtils';
 import { TextDocument, LanguageClient } from 'vscode-languageclient';
-import { VSCodePvsExplorer, TheoryDescriptor } from '../views/vscodePvsTheoryExplorer';
+import { VSCodePvsExplorer } from '../views/vscodePvsTheoryExplorer';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../utils/vscode-utils';
-import { PvsCliInterface, ProofDescriptor } from '../common/serverInterface';
+import { PvsCliInterface, ProofDescriptor, TheoryDescriptor } from '../common/serverInterface';
 import { PVS_CLI_FILE } from '../common/serverInterface';
 
 // TODO: move this function to vscode-utils.ts
@@ -26,7 +25,7 @@ class ProverTerminal {
     constructor (client: LanguageClient, pvsCliFileName: string, context: vscode.ExtensionContext, terminalID: string) {
         this.pvsCliFileName = pvsCliFileName;
         this.pvsPath = getPvsPath();
-        this.pvsContextFolder = fs.getPathname(vscode.window.activeTextEditor.document.fileName);
+        this.pvsContextFolder = fsUtils.getContextFolder(vscode.window.activeTextEditor.document.fileName);
         this.client = client;
         this.terminalID = terminalID;
     }
@@ -200,7 +199,7 @@ export class VSCodePvsTerminal {
         let formulaName: string = null;
         if (fileName.endsWith(".tccs")) {
             // .tccs file
-            theoryName = fs.getFilename(document.fileName, { removeFileExtension: true });
+            theoryName = fsUtils.getFilename(document.fileName, { removeFileExtension: true });
             if (theoryName) {
                 const desc: TheoryDescriptor = this.theoryExplorer.getTheoryDescriptor(theoryName);
                 fileName = (desc) ? desc.fileName : null;
@@ -294,7 +293,7 @@ export class VSCodePvsTerminal {
         context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.send-proof-command', async (data: {
             fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string, cmd: string
         }) => {
-            if (data && data.cmd && vscode.window.activeTextEditor && fs.isPvsFile(vscode.window.activeTextEditor.document.fileName)) {
+            if (data && data.cmd && vscode.window.activeTextEditor && fsUtils.isPvsFile(vscode.window.activeTextEditor.document.fileName)) {
                 const terminalID: string = VSCodePvsTerminal.getTerminalID(data);
                 if (!this.activeTerminals[terminalID]) {
                     this.activeTerminals[terminalID] = new ProverTerminal(this.client, this.pvsCli, this.context, terminalID);

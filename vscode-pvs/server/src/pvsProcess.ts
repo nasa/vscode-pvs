@@ -45,17 +45,16 @@ import * as language from "./common/languageKeywords";
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import { 
 	PvsResponseType, PvsParserResponse, PvsDeclarationDescriptor,
-	PRELUDE_FILE, PvsDeclarationType, FormulaDescriptor, ProofResult, PrettyPrintRegionRequest,
+	PRELUDE_FILE, PvsDeclarationType, PrettyPrintRegionRequest,
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
-	PvsFindDeclarationRequest, PvsDefinition,
-	TccDescriptorArray, TccDescriptor, PvsFileListDescriptor, PvsTypecheckerResponse,
-	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, TheoremsStatus
+	PvsTypecheckerResponse,
+	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus
 } from './common/serverInterface'
-import { Connection, TextDocument } from 'vscode-languageserver';
+import { Connection } from 'vscode-languageserver';
 import * as path from 'path';
 import { PVS_TRUE_FALSE_REGEXP_SOURCE, PVS_STRING_REGEXP_SOURCE } from "./common/languageKeywords";
 import * as fsUtils from './common/fsUtils';
-import { PvsFindDeclarationInterface, PvsLispReader } from './pvsLisp';
+import { PvsFindDeclarationInterface, PvsLispReader, TccDescriptor } from './pvsLisp';
 import * as utils from './common/languageUtils';
 // import * as xmlrpcProvider from './common/xmlrpcProvider';
 
@@ -160,7 +159,7 @@ export class PvsProcess {
 	// 	this.connection = null;
 	// }
 
-	private pvsExecAux(cmd: string): Promise<PvsResponseType> {
+	private pvsExecAux(cmd: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponseType> {
 		if (this.pvsProcessBusy) {
 			const msg: string = "PVS busy, cannot execute " + cmd + " :/";
 			return this.cannotExecute(msg);
@@ -179,7 +178,7 @@ export class PvsProcess {
 					pvsLispReader.read(data, async (pvsOut: string) => {
 						this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
 						this.pvsProcessBusy = false;
-						const ans: PvsResponseType = pvsLispReader.parse(commandId, pvsOut);
+						const ans: PvsResponseType = pvsLispReader.parse(commandId, pvsOut, desc);
 						resolve(ans);
 					});
 				};
@@ -195,13 +194,13 @@ export class PvsProcess {
 		});
 	}
 
-	private pvsExec(cmd: string): Promise<PvsResponseType> {
+	private pvsExec(cmd: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponseType> {
 		this.pvsCmdQueue = new Promise((resolve, reject) => {
 			this.pvsCmdQueue.then(() => {
 				// this.pvsExecAux(commandId, cmd).then((ans: PvsResponseType) => {
 				// 	resolve(ans);
 				// });
-				this.pvsExecAux(cmd).then((ans: PvsResponseType) => {
+				this.pvsExecAux(cmd, desc).then((ans: PvsResponseType) => {
 					resolve(ans);
 				});
 			});
@@ -677,7 +676,7 @@ export class PvsProcess {
 	 */
 	async getTheoryStatus(desc: { fileName: string, fileExtension: string, theoryName: string }): Promise<TheoryStatus> {
 		if (desc && desc.theoryName) {
-			const statusInfo: PvsResponseType = await this.pvsExec(`(status-proof-theory "${desc.theoryName}")`);
+			const statusInfo: PvsResponseType = await this.pvsExec(`(status-proof-theory "${desc.theoryName}")`, desc);
 			// const statusInfo: PvsResponseType = await this.pvsExec(`(prove-tccs-theory "${theoryName}" nil "${fileName}" nil)`);
 			if (statusInfo && statusInfo.res) {
 				// status-proof-theories theoryname
@@ -695,16 +694,15 @@ export class PvsProcess {
 	 */
 	async typecheckFile (uri: string, attemptProof?: boolean): Promise<PvsTypecheckerResponse> {
 		const fileName: string = fsUtils.getFilename(uri, { removeFileExtension: true });
-		const filePath: string = fsUtils.getPathname(uri);
+		const filePath: string = fsUtils.getContextFolder(uri);
 		let response: PvsTypecheckerResponse = {
 			fileName: fileName,
 			res: null,
 			error: null
 		};
 		if (filePath !== this.pvsPath && filePath !== path.join(this.pvsPath, "lib")) {
-			const info: PvsResponseType = (attemptProof) ? 
-				await this.pvsExec(`(typecheck-file "${fileName}" nil t nil)`)
-				: await this.pvsExec(`(typecheck-file "${fileName}" nil nil nil)`);
+			const info: PvsResponseType = (attemptProof) ? await this.pvsExec(`(typecheck-file "${fileName}" nil t nil)`)
+															: await this.pvsExec(`(typecheck-file "${fileName}" nil nil nil)`);
 			if (info && info.error) {
 				response.error = info.error.parserError;
 			} else {
@@ -715,8 +713,22 @@ export class PvsProcess {
 					const theoryNames: string[] = Object.keys(theoryMap);
 					for (const i in theoryNames) {
 						const theoryName: string = theoryNames[i];
-						const theoryStatus: TheoryStatus = await this.getTheoryStatus({ fileName, fileExtension: ".pvs", theoryName });
+						const theoryStatus: TheoryStatus = await this.getTheoryStatus({ fileName, fileExtension: ".pvs", theoryName });	
 						if (theoryStatus) {
+							const pvsResponse: PvsResponseType = await this.showTccs(fileName, theoryName);
+							const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : null;
+							if (tccArray) {
+								// set tcc flags in theoryStatus and update filename and position
+								for (const i in tccArray) {
+									const formulaName: string = tccArray[i].formulaName;
+									theoryStatus.theorems[formulaName].isTcc = true;
+									theoryStatus.theorems[formulaName].fileName = `${theoryName}.tccs`;
+									theoryStatus.theorems[formulaName].position = {
+										line: tccArray[i].line,
+										character: 0
+									}
+								}
+							}
 							response.res[theoryName] = theoryStatus;
 						}
 					}

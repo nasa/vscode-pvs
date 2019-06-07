@@ -50,8 +50,8 @@ import {
 	PvsParserResponse, PvsSymbolKind, PvsVersionDescriptor, PvsResponseType,
 	PvsFindDeclarationRequest, PvsDefinition, PRELUDE_FILE, PvsDeclarationDescriptor, PvsDeclarationType,
 	PvsListDeclarationsRequest, ExpressionDescriptor, EvaluationResult, ProofResult, FormulaDescriptor,
-	TccDescriptor, PvsTypecheckerResponse, FileList, TheoryMap, TheoryList, TheoriesMap,
-	TheoriesStatusMap, TheoremList, TheoremDescriptor
+	PvsTypecheckerResponse, FileList, TheoryMap, TheoryList, TheoriesMap,
+	TheoriesStatusMap
 } from './common/serverInterface'
 import { PvsProcess } from './pvsProcess';
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
@@ -169,7 +169,7 @@ class PvsLanguageServer {
 		this.documents.onDidOpen(async open => {
 			if (this.pvsParser) {
 				const fileName: string = fsUtils.getFilename(open.document.uri);
-				const pvsContextFolder: string = fsUtils.getPathname(open.document.uri);
+				const pvsContextFolder: string = fsUtils.getContextFolder(open.document.uri);
 				if (this.pvsContextFolder !== pvsContextFolder) {
 					this.pvsParser.changeContext(pvsContextFolder);
 					fsUtils.listPvsFiles(pvsContextFolder).then((pvsFiles: FileList) => {
@@ -326,7 +326,7 @@ class PvsLanguageServer {
 	private async typecheckFileAndShowTccs (fileName: string, typechecker: PvsProcess): Promise<TheoriesMap> {
 		const txt: string = await this.readFile(fileName); // it is necessary to use the readFile function because some pvs files may not be loaded yet in the context 
 		if (txt) {
-			const context: string = fsUtils.getPathname(fileName);
+			const context: string = fsUtils.getContextFolder(fileName);
 			typechecker.changeContext(context);
 			
 			let typecheckerResponse: PvsTypecheckerResponse = null;
@@ -360,12 +360,11 @@ class PvsLanguageServer {
 					for (const i in theoryNames) {
 						const theoryName: string = theoryNames[i];
 						// note: showTccs automatically trigger typechecking. However, we are still calling typecheckFile because we want to save the binary files
-						const pvsResponse: PvsResponseType = await typechecker.showTccs(fileName, theoryName);
-						const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
+						// const pvsResponse: PvsResponseType = await typechecker.showTccs(fileName, theoryName);
+						// const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
 						response.theoriesStatusMap[theoryName] = {
 							theoryName: theoryName,
 							fileName: fileName,
-							tccs: tccArray,
 							theorems: typecheckerResponse.res[theoryName].theorems // this includes the status of theorems and tccs
 						};
 					}
@@ -436,12 +435,11 @@ class PvsLanguageServer {
 			const tccs: TheoriesStatusMap = {};
 			for (const i in theoryNames) {
 				const theoryName: string = theoryNames[i];
-				const pvsResponse: PvsResponseType = await proc.showTccs(fileName, theoryNames[i]);
-				const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
+				// const pvsResponse: PvsResponseType = await proc.showTccs(fileName, theoryNames[i]);
+				// const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
 				tccs[theoryNames[i]] = {
 					theoryName: theoryName,
 					fileName: fileName,
-					tccs: tccArray,
 					theorems: typecheckerResponse.res[theoryName].theorems
 				};
 			}
@@ -482,10 +480,10 @@ class PvsLanguageServer {
 	/**
 	 * Lists all theorems in the current context folder
 	 */
-	private async listTheorems (): Promise<TheoremList> {
+	private async listTheorems (): Promise<TheoriesMap> {
 		// this.connection.console.info("list-all-theories, file " + uri);
 		const pvsContextFolder: string = this.pvsContextFolder;
-		let response: TheoremList = await utils.listTheorems(pvsContextFolder);
+		let response: TheoriesMap = await utils.listTheorems(pvsContextFolder);
 		return response;
 	}
 
@@ -496,7 +494,7 @@ class PvsLanguageServer {
 		this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
 		const theories: TheoryList = await this.listTheories();
 		this.connection.sendRequest("server.response.list-theories", theories);
-		const theorems: TheoremList = await this.listTheorems();
+		const theorems: TheoriesMap = await this.listTheorems();
 		this.connection.sendRequest("server.response.list-theorems", theorems);
 		return res;
 	}
@@ -676,8 +674,8 @@ class PvsLanguageServer {
 				this.connection.sendRequest("server.response.list-files", response);
 			});
 			this.connection.onRequest("pvs.typecheck-all-and-show-tccs", () => {
-				this.parallelTypeCheckAllAndShowTccs();
-				// this.serialTypeCheckAllAndShowTccs();
+				// this.parallelTypeCheckAllAndShowTccs();
+				this.serialTypeCheckAllAndShowTccs();
 			});
 			this.connection.onRequest("pvs.list-theories", async (uri: string) => {
 				// this.connection.console.info("list-all-theories, file " + uri);

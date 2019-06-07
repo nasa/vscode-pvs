@@ -123,10 +123,7 @@ export declare interface PvsParserResponse {
 }
 
 export declare interface FormulaMap {
-	[ formulaName: string ]: {
-		status: string,
-		time: string
-	}
+	[ formulaName: string ]: FormulaDescriptor
 }
 
 export declare interface TheoremsStatus {
@@ -144,18 +141,13 @@ export declare interface PvsTypecheckerResponse {
 	error: ErrorType
 }
 
-export declare interface TccDescriptor {
-	formulaName: string; // tcc ID
-	symbolLine: number; // position (line) of the symbol in the pvs file
-	symbolCharacter: number; // position (character) of the symbol in the pvs file
-	line: number; // position of the formula in the .tccs file
-}
 
-export declare interface TccDescriptorArray {
-	theoryName: string; // theory name
-	fileName: string; // pvs file containing the theory
-	tccs: TccDescriptor[]; // structured view of the list of tccs generated for the theory
-}
+
+// export declare interface TccDescriptorArray {
+// 	theoryName: string; // theory name
+// 	fileName: string; // pvs file containing the theory
+// 	tccs: TccDescriptor[]; // structured view of the list of tccs generated for the theory
+// }
 
 export declare interface PvsSymbolKind<type> {
 	keywords: type,
@@ -179,13 +171,6 @@ export declare interface EvaluationResult {
 	fileName: string,
 	msg: string,
 	result: string
-};
-
-export declare interface FormulaDescriptor {
-	fileName: string,
-	theoryName: string,
-	formulaName: string,
-	line: number
 };
 
 export declare interface ProofResult {
@@ -269,13 +254,20 @@ export declare interface TheoryMap {
 	}
 }
 
-// TODO: check if this is equivalent to FormulaDescriptor
-export declare interface TheoremDescriptor {
+
+export interface TheoryDescriptor {
+	theoryName: string,
+	fileName: string,
+	position: Position
+}
+
+export declare interface FormulaDescriptor {
 	fileName: string;
 	theoryName: string;
 	formulaName: string;
 	position: Position;
 	status: string; // proof status
+	isTcc?: boolean;
 }
 
 export declare interface FileList {
@@ -288,11 +280,11 @@ export declare interface TheoryList {
 	theories: TheoryMap; //  TODO TheoryDescriptor[]
 }
 
-export declare interface TheoremList {
-	pvsContextFolder: string;
-	theorems: TheoremDescriptor[];
-	fileName?: string; // when fileName is specified, the theorem list describes the content of a specific file. This is useful for status updates.
-}
+// export declare interface TheoremList {
+// 	pvsContextFolder: string;
+// 	theorems: TheoremDescriptor[];
+// 	fileName?: string; // when fileName is specified, the theorem list describes the content of a specific file. This is useful for status updates.
+// }
 
 export declare interface DeclarationMap {
 	[ theoryName: string ]: {
@@ -310,7 +302,6 @@ export declare interface DeclarationMap {
 export declare interface TheoryStatus {
 	fileName: string,
 	theoryName: string,
-	tccs: TccDescriptor[],
 	theorems: FormulaMap
 }
 export declare interface TheoriesStatusMap {

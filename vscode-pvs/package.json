@@ -181,11 +181,7 @@
 				"title": "Prove-all"
 			},
 			{
-				"command": "explorer.prove-tcc",
-				"title": "Prove"
-			},
-			{
-				"command": "explorer.prove-theorem",
+				"command": "explorer.prove-formula",
 				"title": "Prove"
 			},
 			{
@@ -260,12 +256,17 @@
 					"group": "inline"
 				},
 				{
-					"command": "explorer.prove-tcc",
+					"command": "explorer.typecheck-prove",
+					"when": "view == theory-explorer-view && viewItem == theory",
+					"group": "inline"
+				},
+				{
+					"command": "explorer.prove-formula",
 					"when": "view == theory-explorer-view && viewItem == tcc",
 					"group": "inline"
 				},
 				{
-					"command": "explorer.prove-theorem",
+					"command": "explorer.prove-formula",
 					"when": "view == theory-explorer-view && viewItem == theorem",
 					"group": "inline"
 				},
@@ -293,6 +294,10 @@
 					"command": "proof-explorer.jump-to",
 					"when": "view == proof-explorer-view && viewItem == proof-command",
 					"group": "inline"
+				},
+				{
+					"command": "explorer.typecheck-file-and-show-tccs",
+					"when": "view == theory-explorer-view && viewItem == theory"
 				},
 				{
 					"command": "proof-explorer.fast-forward",

@@ -63,7 +63,7 @@ export function removeFileExtension(fileName: string): string {
 export function getFileExtension(fileName: string): string {
 	return `.${fileName.split(".").slice(-1).join(".")}`;
 }
-export function getPathname(path: string): string {
+export function getContextFolder(path: string): string {
 	return path.split("/").slice(0, -1).join("/").replace("file://", "");
 }
 export function isPvsFile(fileName: string): boolean {

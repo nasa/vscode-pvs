@@ -46,8 +46,12 @@ The extension provides the following language features:
 
 
 ## ChangeLog
-### 1.1.2 (2019.06.03)
+### 1.1.2 (2019.06.07)
 - PVS Command Line Interface (auto-completion and history navigation for proof commands)
+- Improved Theory Explorer (icons for proof status)
+- Improved name resolution (typechecking information are now fed to the parser process)
+- Improved status bar
+- Cheat codes for developers: M-x pvs6 M-x pvs7 allow rapid switch of pvs version (need to set pvs-zen path variables in vscode-pvs settings)
 
 ### 1.1.1 (2019.05.29)
 - Improved Theory Explorer (navigation of theorems)

@@ -1,8 +1,8 @@
 import * as lang from './languageKeywords';
 import * as fsUtils from './fsUtils';
 import * as path from 'path';
-import { TheoryMap, TheoremDescriptor, StrategyDescriptor,
-			TheoryList, FileList, TheoremList } from '../common/serverInterface';
+import { TheoryMap, StrategyDescriptor,
+			TheoryList, FileList, TheoriesMap, TheoryStatus, FormulaDescriptor } from '../common/serverInterface';
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -116,7 +116,7 @@ export const theoremRegexp: RegExp = /(%.*)?(\b\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\
 // 	return ans;
 // }
 
-export async function listTheoremsInFile (uri: string): Promise<TheoremDescriptor[]> {
+export async function listTheoremsInFile (uri: string): Promise<FormulaDescriptor[]> {
 	if (uri) {
 		const fileName: string = uri.replace("file://", "");
 		const txt: string = await fsUtils.readFile(fileName);
@@ -133,7 +133,7 @@ export async function listTheoremsInFile (uri: string): Promise<TheoremDescripto
 						to: (i + 1 < theoryNames.length) ? theories[theoryNames[i + 1]].position.line : slices.length
 					});
 				}
-				const theoremsArray: TheoremDescriptor[] = [];
+				const theoremsArray: FormulaDescriptor[] = [];
 				for (let i = 0; i < boundaries.length; i++) {
 					const content: string = slices.slice(boundaries[i].from, boundaries[i].to).join("\n");
 					const regex: RegExp = new RegExp(theoremRegexp);
@@ -143,13 +143,14 @@ export async function listTheoremsInFile (uri: string): Promise<TheoremDescripto
 							const formulaName: string = match[2];
 							const offset: number = content.slice(0, match.index).split("\n").length;
 							const line: number = boundaries[i].from + offset;
-							theoremsArray.push({
+							const desc: FormulaDescriptor = {
 								fileName: fsUtils.getFilename(uri),
 								theoryName: boundaries[i].theoryName,
 								formulaName,
 								position: { line, character: 0 },
 								status: null
-							});
+							}
+							theoremsArray.push(desc);
 						}
 					}
 				}
@@ -312,16 +313,34 @@ export async function listTheoriesInFile (fileName: string): Promise<TheoryMap> 
 /**
  * Lists all theorems in a given context folder
  */
-export async function listTheorems (pvsContextFolder: string): Promise<TheoremList> {
-	let response: TheoremList = {
-		theorems: [],
+export async function listTheorems (pvsContextFolder: string): Promise<TheoriesMap> {
+	const response: TheoriesMap = {
+		theoriesStatusMap: {},
 		pvsContextFolder
 	};
 	const fileList: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
 	for (let i in fileList.fileNames) {
-		let uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
-		let theorems: TheoremDescriptor[] = await listTheoremsInFile(uri);
-		response.theorems = response.theorems.concat(theorems);
+		const uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
+		const desc: FormulaDescriptor[] = await listTheoremsInFile(uri);
+		if (desc) {
+			for (const i in desc) {
+				const theoryName: string = desc[i].theoryName;
+				response.theoriesStatusMap[theoryName] = response.theoriesStatusMap[theoryName] || {
+					fileName: desc[i].fileName,
+					theoryName: theoryName,
+					theorems: {}
+				};
+				const formulaName: string = desc[i].formulaName;
+				const formulaDescriptor: FormulaDescriptor = {
+					fileName: desc[i].fileName,
+					theoryName: theoryName,
+					formulaName,
+					position: desc[i].position,
+					status: desc[i].status
+				}
+				response.theoriesStatusMap[theoryName].theorems[formulaName] = formulaDescriptor;
+			}
+		}
 	}
 	return response;
 }

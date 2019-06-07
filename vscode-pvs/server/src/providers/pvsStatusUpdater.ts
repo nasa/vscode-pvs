@@ -1,6 +1,6 @@
 import { Connection, TextDocument } from 'vscode-languageserver';
-import { listTheoremsInFile } from '../common/languageUtils';
-import { TheoremDescriptor, TheoremList } from '../common/serverInterface';
+import * as utils from '../common/languageUtils';
+import { TheoriesMap } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
 
 
@@ -12,11 +12,9 @@ export class PvsStatusUpdater {
             connection.onDidSaveTextDocument(async (evt) => {
                 if (evt && evt.textDocument && evt.textDocument.uri) {
                     const uri: string = evt.textDocument.uri;
-                    const theorems: TheoremDescriptor[] = await listTheoremsInFile(uri);
-                    const pvsContextFolder: string = fsUtils.getPathname(uri);
-                    const fileName: string = fsUtils.getFilename(uri);
-                    const theoremList: TheoremList = { theorems, fileName, pvsContextFolder };
-                    connection.sendNotification('pvs.context.theorems.update', theoremList);
+                    const contextFolder: string = fsUtils.getContextFolder(uri);
+                    const theoriesMap: TheoriesMap = await utils.listTheorems(contextFolder);
+                    connection.sendNotification('pvs.context.theories-status.update', theoriesMap);
                 }
             });
         }

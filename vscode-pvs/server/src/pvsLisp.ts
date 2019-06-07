@@ -39,20 +39,23 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-
-import { spawn, ChildProcess } from 'child_process';
-import * as language from "./common/languageKeywords";
-import { 
-	PvsResponseType, PRELUDE_FILE, PvsDeclarationType, TccDescriptor,
-	StrategyDescriptor, TheoryStatus, TheoremsStatus
-} from './common/serverInterface'
 import * as utils from './common/languageUtils';
+import { 
+	PvsResponseType, PRELUDE_FILE, PvsDeclarationType,
+	StrategyDescriptor, TheoremsStatus
+} from './common/serverInterface'
 
 export interface PvsFindDeclarationInterface {
     [ key: string ] : PvsDeclarationType;
 }
 export interface PvsShowImportChain {
 	theories: string[] // list of theories, ordered by import
+}
+export declare interface TccDescriptor {
+	formulaName: string; // tcc ID
+	symbolLine: number; // position (line) of the symbol in the pvs file
+	symbolCharacter: number; // position (character) of the symbol in the pvs file
+	line: number; // position of the formula in the .tccs file
 }
 
 
@@ -116,7 +119,7 @@ export class PvsLispReader {
 		}
 
 	}
-	parse(commandId: string, data: string): PvsResponseType {
+	parse(commandId: string, data: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): PvsResponseType {
 		const ans: PvsResponseType = {
 			error: null,
 			res: null,
@@ -383,9 +386,13 @@ export class PvsLispReader {
 							const formulaName: string = match[1];
 							const status: string = match[2].trim();
 							const time: string = match[3].trim();
+							const line: number = data.substr(0, match.index).split("\n").length;
 							theoryStatus.theorems[formulaName] = {
 								status,
-								time 
+								formulaName,
+								theoryName: (desc) ? desc.theoryName : null,
+								fileName: (desc) ? desc.fileName : null,
+								position: { line, character: 0 }
 							}
 						}
 					}
