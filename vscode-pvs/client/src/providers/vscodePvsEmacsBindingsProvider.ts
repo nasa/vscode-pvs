@@ -10,6 +10,7 @@
 import { ExtensionContext, commands, window, Disposable, TextDocument, InputBox, QuickInputButtons } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import { findTheoryName } from '../common/languageUtils';
+import { workspace } from 'vscode';
 
 const cmds: string[] = [
 	"tc", "typecheck",
@@ -18,7 +19,8 @@ const cmds: string[] = [
 	"prove",
 	"show-tccs",
 	"pvsio",
-	"step-proof"
+	"step-proof",
+	"pvs7", "pvs6"
 ];
 
 export class VSCodePvsEmacsBindingsProvider {
@@ -38,13 +40,23 @@ export class VSCodePvsEmacsBindingsProvider {
 				}
 			}
 		}
-		return "";
+		return input;
 	}
 	private onDidAccept(userInput) {
 		if (userInput) {
 			userInput = userInput.toLowerCase();
 			// const document: TextDocument = window.activeTextEditor.document;
 			switch (userInput) {
+				case "pvs6": {
+					const v6: string = workspace.getConfiguration().get(`pvs.zen-mode:pvs-6-path`);
+					this.client.sendRequest('pvs.restart', { pvsPath: v6 });
+					break;
+				}
+				case "pvs7": {
+					const v7: string = workspace.getConfiguration().get(`pvs.zen-mode:pvs-7-path`);
+					this.client.sendRequest('pvs.restart', { pvsPath: v7 });
+					break;
+				}
 				case "tc": 
 				case "typecheck": {
 					// typecheck current file

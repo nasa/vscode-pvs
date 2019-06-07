@@ -48,10 +48,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	private pvsStatusBar: VSCodePvsStatusBar;
 
 	private getPvsPath (): string {
-		const mode: string = workspace.getConfiguration().get("pvs.zen-mode");
-		if (mode === "pvs-6" || mode === "pvs-7") {
-			return workspace.getConfiguration().get(`pvs.zen-mode:${mode}-path`);
-		}
 		return workspace.getConfiguration().get("pvs.path");
 	}
 

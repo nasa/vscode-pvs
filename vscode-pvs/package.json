@@ -60,17 +60,6 @@
 						"default": true,
 						"description": "Enable literate programming."
 					},
-					"pvs.zen-mode": {
-						"type": "string",
-						"enum": [
-							"off",
-							"pvs-6",
-							"pvs-7"
-						],
-						"default": "off",
-						"description": "Rapid switch between PVS versions (this setting overrides pvs.path)",
-						"scope": "window"
-					},
 					"pvs.zen-mode:pvs-7-path": {
 						"type": "string",
 						"default": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",

@@ -246,7 +246,7 @@ class TheoremItem extends TreeItem {
 		this.refreshLabel();
 	}
 	private refreshLabel() {
-		if (this.desc && this.desc.status) {
+		if (this.desc) {
 			switch (this.desc.status) {
 				case "proved": {
 					this.label = `✅ ${this.desc.formulaName} (${this.desc.status})`;
@@ -262,8 +262,6 @@ class TheoremItem extends TreeItem {
 					this.label = `❓ ${this.desc.formulaName} (${this.desc.status})`;
 				}
 			}
-		} else {
-			this.label = this.desc.formulaName;			
 		}
 	}
 }
@@ -309,10 +307,6 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	// private tccs: { [ theoryName: string ]: (TccItem | NoTccItem)[] } = {};
 
 	private getPvsPath (): string {
-		const mode: string = workspace.getConfiguration().get("pvs.zen-mode");
-		if (mode === "pvs-6" || mode === "pvs-7") {
-			return workspace.getConfiguration().get(`pvs.zen-mode:${mode}-path`);
-		}
 		return workspace.getConfiguration().get("pvs.path");
 	}
 
