@@ -32,7 +32,7 @@ class TheoryItem extends TreeItem {
 			command: "explorer.didSelectTheory",
 			arguments: [ theoryName, fileName, position, pvsContextFolder ]
 		};
-		this.theoremsOverview = new TheoremsOverviewItem();
+		this.theoremsOverview = new TheoremsOverviewItem({ fileName });
 		this.tccsOverview = new TccsOverviewItem({ fileName });
 		this.refreshLabel();
 	}
@@ -79,10 +79,28 @@ class TccItem extends TreeItem {
 	}
 	setStatus (status: string) {
 		this.status = status;
-		this.updateLabel();
+		this.refreshLabel();
 	}
-	private updateLabel() {
-		this.label = (this.status) ? `${this.tcc.formulaName} (${this.status})` : this.tcc.formulaName;
+	private refreshLabel() {
+		this.status = this.status || "needs typechecking"
+		switch (this.status) {
+			case "proved": {
+				this.label = `✅ ${this.tcc.formulaName} (${this.status})`;
+				break;
+			}
+			case "unfinished": { // proof attempted but failed
+				this.label = `❗ ${this.tcc.formulaName} (${this.status})`;
+				break;
+			}
+			case "unchecked": // proof was successful, but needs to be checked again because of changes in the theories
+			case "untried": {// proof has not been attempted yet
+				this.label = `❄️ ${this.tcc.formulaName} (${this.status})`;
+				break;
+			}
+			default: {
+				this.label = `✨ ${this.tcc.formulaName} (${this.status})`;
+			}
+		}
 	}
 }
 class NoTccItem extends TreeItem {
@@ -136,11 +154,11 @@ class NoTccItem extends TreeItem {
 // 	}
 // }
 class TccsOverviewItem extends TreeItem {
-	contextValue: string = "TCCs";
+	contextValue: string = "TCCS";
 	tccs: TccItem[] = [];
 	fileName: string;
 	constructor(desc: { fileName: string }) {
-		super("TCCs", TreeItemCollapsibleState.None);
+		super("TCCS", TreeItemCollapsibleState.None);
 		this.label = "tccs";
 		this.fileName = desc.fileName;
 	}
@@ -181,10 +199,12 @@ class TccsOverviewItem extends TreeItem {
 //-- theorems
 class TheoremsOverviewItem extends TreeItem {
 	contextValue: string = "THEOREMS";
+	fileName: string;
 	theorems: TheoremItem[] = [];
-	constructor() {
+	constructor(desc: { fileName: string }) {
 		super("THEOREMS", TreeItemCollapsibleState.None);
 		this.label = "theorems";
+		this.fileName = desc.fileName;
 	}
 	setTheorems (theorems: TheoremItem[]) {
 		this.theorems = theorems;
@@ -192,7 +212,7 @@ class TheoremsOverviewItem extends TreeItem {
 	}
 	getTheoremItem (formulaName: string): TheoremItem {
 		const candidates: TheoremItem[] = this.theorems.filter((elem: TheoremItem) => {
-			return elem.desc.formulaName === formulaName;
+			return elem.formulaName === formulaName;
 		});
 		if (candidates && candidates.length === 1) {
 			return candidates[0];
@@ -221,11 +241,20 @@ class TheoremsOverviewItem extends TreeItem {
 }
 class TheoremItem extends TreeItem {
 	contextValue: string = "theorem";
-	desc: TheoremDescriptor;
+	// desc: TheoremDescriptor;
+	fileName: string;
+	theoryName: string;
+	formulaName: string;
+	position: Position;
+	status: string;
 	pvsContextFolder: string;
 	constructor(desc: TheoremDescriptor, pvsContextFolder: string) {
 		super("theorem", TreeItemCollapsibleState.None);
-		this.desc = desc;
+		this.fileName = desc.fileName;
+		this.theoryName = desc.theoryName;
+		this.formulaName = desc.formulaName;
+		this.position = new Position (desc.position.line, desc.position.character);
+		this.status = desc.status;
 		this.pvsContextFolder = pvsContextFolder;
 		const range: Range = new Range(
 			new Position(desc.position.line - 1, 0),
@@ -236,31 +265,33 @@ class TheoremItem extends TreeItem {
 			title: "Theorem selected",
 			command: "explorer.didSelectTheorem",
 			arguments: [
-				Uri.file(path.join(pvsContextFolder, this.desc.fileName)),
+				Uri.file(path.join(pvsContextFolder, this.fileName)),
 				range
 			]
 		};
 	}
 	setStatus (status: string) {
-		this.desc.status = status;
+		this.status = status;
 		this.refreshLabel();
 	}
 	private refreshLabel() {
-		if (this.desc) {
-			switch (this.desc.status) {
-				case "proved": {
-					this.label = `✅ ${this.desc.formulaName} (${this.desc.status})`;
-					break;
-				}
-				case "unfinished": { // proof attempted but failed
-					this.label = `❗ ${this.desc.formulaName} (${this.desc.status})`;
-					break;
-				}
-				case "unchecked": // proof was successful, but needs to be checked again because of changes in the theories
-				case "untried": // proof has not been attempted yet
-				default: {
-					this.label = `❓ ${this.desc.formulaName} (${this.desc.status})`;
-				}
+		this.status = this.status || "needs typechecking"
+		switch (this.status) {
+			case "proved": {
+				this.label = `✅ ${this.formulaName} (${this.status})`;
+				break;
+			}
+			case "unfinished": { // proof attempted but failed
+				this.label = `❗ ${this.formulaName} (${this.status})`;
+				break;
+			}
+			case "unchecked": // proof was successful, but needs to be checked again because of changes in the theories
+			case "untried": {// proof has not been attempted yet
+				this.label = `❄️ ${this.formulaName} (${this.status})`;
+				break;
+			}
+			default: {
+				this.label = `✨ ${this.formulaName} (${this.status})`;
 			}
 		}
 	}
@@ -581,7 +612,7 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 	activate(context: ExtensionContext) {
 		// click on show-tccs (button shown inline with the tree element) to show tccs associated with the theory
 		// let cmd = commands.registerCommand('cmd.show-tccs', (resource: TreeItem) => {
-		// 	if (resource && resource.contextValue === "TCCs") {
+		// 	if (resource && resource.contextValue === "TCCS") {
 		// 		const desc: TccsOverviewItem = <TccsOverviewItem> resource;
 		// 		this.client.sendRequest('pvs.typecheck-theory-and-show-tccs', {
 		// 			theoryName: desc.theoryName,
@@ -607,8 +638,12 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 
 		// click on prove tccs to trigger tcp
 		cmd = commands.registerCommand('explorer.typecheck-prove', (resource: TccsOverviewItem) => {
-			if (resource && resource.contextValue === "TCCs") {
-				this.client.sendRequest('pvs.typecheck-prove-and-show-tccs', resource.fileName);
+			if (resource) {
+				if (resource.fileName) {
+					this.client.sendRequest('pvs.typecheck-prove-and-show-tccs', resource.fileName);
+				} else {
+					window.showErrorMessage("Error while trying to execute explorer.typecheck-prove: fileName is null");
+				}
 			} else {
 				window.showErrorMessage("Error while trying to execute explorer.typecheck-prove: resource is null");
 			}
@@ -638,10 +673,10 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 			if (resource && resource.contextValue === "theorem") {
 				const theorem: TheoremItem = <TheoremItem> resource;
 				const data = {
-					fileName: theorem.desc.fileName,
-					formulaName: theorem.desc.formulaName,
-					theoryName: theorem.desc.theoryName,
-					line: theorem.desc.position.line,
+					fileName: theorem.fileName,
+					formulaName: theorem.formulaName,
+					theoryName: theorem.theoryName,
+					line: theorem.position.line,
 					fileExtension: ".pvs"
 				};
 				commands.executeCommand("terminal.pvs.prove", data);
@@ -728,7 +763,7 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 					desc.tccsOverview,//this.tccsOverview[desc.theoryName], // todo: tccs attribute within theoryitem
 					desc.theoremsOverview
 				];
-			} else if (element.contextValue === "TCCs") {
+			} else if (element.contextValue === "TCCS") {
 				// tcc list
 				const desc: TccsOverviewItem = <TccsOverviewItem> element;
 				children = desc.listTccs();

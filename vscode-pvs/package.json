@@ -251,7 +251,12 @@
 			"view/item/context": [
 				{
 					"command": "explorer.typecheck-prove",
-					"when": "view == theory-explorer-view && viewItem == TCCs",
+					"when": "view == theory-explorer-view && viewItem == TCCS",
+					"group": "inline"
+				},
+				{
+					"command": "explorer.typecheck-prove",
+					"when": "view == theory-explorer-view && viewItem == THEOREMS",
 					"group": "inline"
 				},
 				{
@@ -262,6 +267,21 @@
 				{
 					"command": "explorer.prove-theorem",
 					"when": "view == theory-explorer-view && viewItem == theorem",
+					"group": "inline"
+				},
+				{
+					"command": "explorer.typecheck-file-and-show-tccs",
+					"when": "view == theory-explorer-view && viewItem == theorem",
+					"group": "inline"
+				},
+				{
+					"command": "explorer.typecheck-file-and-show-tccs",
+					"when": "view == theory-explorer-view && viewItem == THEOREMS",
+					"group": "inline"
+				},
+				{
+					"command": "explorer.typecheck-file-and-show-tccs",
+					"when": "view == theory-explorer-view && viewItem == TCCS",
 					"group": "inline"
 				},
 				{

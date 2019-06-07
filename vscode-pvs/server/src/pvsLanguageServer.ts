@@ -419,7 +419,8 @@ class PvsLanguageServer {
 				const response: TheoriesMap = await this.typecheckFileAndShowTccs(fileName, proc);
 				// the list of proof obligations is provided incrementally to the client so feedback can be shown as soon as available
 				this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
-				proc.kill();
+				// feed symbols to the parser
+				this.pvsParser.typecheckFile(fileName, false);
 			}
 		}
 		this.connection.sendNotification('server.status.info', "Typechecking complete!");
@@ -442,12 +443,14 @@ class PvsLanguageServer {
 					theorems: typecheckerResponse.res[theoryName].theorems
 				};
 			}
-			proc.kill();
 			const pvsContextFolder: string = this.pvsContextFolder;
 			const response: TheoriesMap = {
 				pvsContextFolder: pvsContextFolder,
 				theoriesStatusMap: tccs
 			};
+			// feed symbols to the parser
+			this.pvsParser.typecheckFile(fileName, false);
+			// return response to the caller
 			return response;
 		}
 		return null;
@@ -633,7 +636,8 @@ class PvsLanguageServer {
 				if (proc) {
 					const response: PvsTypecheckerResponse = await proc.typecheckFile(fileName, false);
 					this.connection.sendRequest("server.response.typecheck-file", response);
-					proc.kill();
+					// feed symbols to the parser
+					this.pvsParser.typecheckFile(fileName, false);
 				}
 				this.pvsReady();
 			});
@@ -645,7 +649,8 @@ class PvsLanguageServer {
 				if (proc) {
 					const response: PvsTypecheckerResponse = await proc.typecheckFile(fileName, true);
 					this.connection.sendRequest("server.response.typecheck-file", response);
-					proc.kill();
+					// feed symbols to the parser
+					this.pvsParser.typecheckFile(fileName, false);
 				}
 				this.pvsReady();
 			});
@@ -715,7 +720,8 @@ class PvsLanguageServer {
 					if (proc) {
 						const response: TheoriesMap = await this.typecheckFileAndShowTccs(fileName, proc);
 						this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
-						proc.kill();
+						// feed symbols to the parser
+						this.pvsParser.typecheckFile(fileName, false);
 					}
 					this.pvsReady();
 				} else {
@@ -755,6 +761,8 @@ class PvsLanguageServer {
 							this.connection.sendNotification('server.status.error', `Error while executing step-proof: ${JSON.stringify(response)}`);
 						}
 						this.pvsReady();
+						// feed symbols to the parser
+						this.pvsParser.typecheckFile(data.fileName, false);
 					}
 				} else {
 					this.connection.sendNotification('server.status.error', `Malformed pvs.step-proof request received by the server: ${JSON.stringify(data)}`);
@@ -777,6 +785,8 @@ class PvsLanguageServer {
 							this.connection.sendNotification('server.status.error', `Error while executing step-tcc: ${JSON.stringify(response)}`);
 						}
 						this.pvsReady();
+						// feed symbols to the parser
+						this.pvsParser.typecheckFile(data.fileName, false);
 					}
 				} else {
 					this.connection.sendNotification('server.status.error', `Malformed pvs.step-proof request received by the server: ${JSON.stringify(data)}`);
