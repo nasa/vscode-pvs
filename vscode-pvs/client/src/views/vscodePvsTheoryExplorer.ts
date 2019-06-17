@@ -137,7 +137,9 @@ class FormulaItem extends TreeItem {
 	private refreshLabel() {
 		this.status = this.status || "needs typechecking"
 		switch (this.status) {
-			case "proved": {
+			case "proved": 
+			case "proved - incomplete":
+			case "proved - complete": {
 				this.label = `✅ ${this.formulaName} (${this.status})`;
 				break;
 			}

@@ -13,6 +13,7 @@
 		"vscode": "^1.33.1"
 	},
 	"dependencies": {
+		"sloc": "^0.2.1",
 		"vscode-languageclient": "^5.2.1"
 	},
 	"dependencies?": {
