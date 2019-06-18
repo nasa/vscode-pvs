@@ -91,6 +91,8 @@ export class PvsProcess {
 	private connection: SimpleConnection;
 	private enableNotifications: boolean;
 
+	private _disableGC: boolean = false;
+
 	// utility functions for showing notifications on the status bar
 	private info(msg: string) {
 		if (this.enableNotifications && this.connection && msg && msg.length > 10 && !msg.startsWith(";;;")) {
@@ -180,14 +182,18 @@ export class PvsProcess {
 						this.info(data);
 					}
 					pvsLispReader.read(data, async (pvsOut: string) => {
-						this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
+						if (this.pvsProcess) {
+							this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
+						}
 						this.pvsProcessBusy = false;
 						const ans: PvsResponseType = pvsLispReader.parse(commandId, pvsOut, desc);
 						resolve(ans);
 					});
 				};
-				this.pvsProcess.stdout.on("data", listener);
-				this.pvsProcess.stdin.write(cmd + "\n");
+				if (this.pvsProcess) {
+					this.pvsProcess.stdout.on("data", listener);
+					this.pvsProcess.stdin.write(cmd + "\n");
+				}
 			});
 		}
 		if (this.connection) { this.connection.console.error(`Unrecognised command ${cmd}`); }
@@ -269,6 +275,14 @@ export class PvsProcess {
 			if (this.connection) {
 				this.connection.sendNotification(`server.delete-pvs-${this.processType}`);
 			}
+		}
+	}
+
+	async restart(): Promise<void> {
+		this.kill();
+		await this.pvs();
+		if (this._disableGC) {
+			await this.disableGcPrintout();
 		}
 	}
 
@@ -414,6 +428,7 @@ export class PvsProcess {
 	 * Disables garbage collector messages
 	 */
 	async disableGcPrintout(): Promise<PvsResponseType> {
+		this._disableGC = true;
 		return await this.pvsExec('(setq *disable-gc-printout* t)');
 	}
 	/**
@@ -523,7 +538,7 @@ export class PvsProcess {
 			error: null
 		};
 		if (this.pvsContextFolder !== this.pvsPath && this.pvsContextFolder !== this.pvsLibraryPath) {
-			const parserInfo: PvsResponseType = await this.pvsExec(`(parse-file "${fileName}" nil nil)`);
+			const parserInfo: PvsResponseType = await this.pvsExec(`(parse-file "${fileName}" nil nil)`); // (defmethod parse-file ((filename string) &optional forced? no-message?)
 			if (parserInfo.error) {
 				response.error = parserInfo.error.parserError;
 			} else {
@@ -712,17 +727,33 @@ export class PvsProcess {
 						const theoryName: string = theoryNames[i];
 						const theoryStatus: TheoryStatus = await this.getTheoryStatus({ fileName, fileExtension: ".pvs", theoryName });	
 						if (theoryStatus) {
+							theoryStatus.theorems = theoryStatus.theorems || {};
 							const pvsResponse: PvsResponseType = await this.showTccs(fileName, theoryName);
 							const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : null;
 							if (tccArray) {
 								// set tcc flags in theoryStatus and update filename and position
 								for (const i in tccArray) {
 									const formulaName: string = tccArray[i].formulaName;
-									theoryStatus.theorems[formulaName].isTcc = true;
-									theoryStatus.theorems[formulaName].fileName = `${theoryName}.tccs`;
-									theoryStatus.theorems[formulaName].position = {
-										line: tccArray[i].line,
-										character: 0
+									if (theoryStatus.theorems[formulaName]) {
+										theoryStatus.theorems[formulaName].isTcc = true;
+										theoryStatus.theorems[formulaName].fileName = `${theoryName}.tccs`;
+										theoryStatus.theorems[formulaName].position = {
+											line: tccArray[i].line,
+											character: 0
+										}
+									} else {
+										console.error("ooops");
+										theoryStatus.theorems[formulaName] = {
+											isTcc: true,
+											fileName: `${theoryName}.tccs`,
+											position: {
+												line: tccArray[i].line,
+												character: 0
+											},
+											theoryName: theoryName,
+											formulaName: formulaName,
+											status: "not available"
+										};
 									}
 								}
 							}

@@ -207,7 +207,7 @@ class PvsLanguageServer {
 		this.linter = new PvsLinter();
 		this.statusUpdater = new PvsStatusUpdater(this.connection);
 		// parse all files in the current context. This operation will also send diagnostics to the front-end
-		this.changeContextAndParseFiles(this.pvsContextFolder);
+		this.changeContextAndParseFiles(this.pvsContextFolder, { force: true });
 	}
 	/**
 	 * Utility function, creates a new pvs process
@@ -326,9 +326,10 @@ class PvsLanguageServer {
 					theoriesStatusMap: null
 				};
 				if (typecheckerResponse.error) {
-					const txt: string = await fsUtils.readFile(fileName);
+					const file: string = path.join(response.pvsContextFolder, typecheckerResponse.error.fileName);
+					const txt: string = await fsUtils.readFile(file);
 					if (txt) {
-						const errorPosition: Position = { line: typecheckerResponse.error.line - 1, character: typecheckerResponse.error.character };
+						const errorPosition: Position = { line: typecheckerResponse.error.line, character: typecheckerResponse.error.character };
 						const errorRange: Range = getErrorRange(txt, errorPosition);
 						const diag: Diagnostic = {
 							severity: DiagnosticSeverity.Error,
@@ -452,41 +453,30 @@ class PvsLanguageServer {
     }
     private pvsError(msg: string) {
         this.connection.sendNotification("pvs-error", msg);
-    }
-
-	/**
-	 * Lists all theories in the current context folder
-	 */
-	private async listTheories (): Promise<TheoryList> {
-		// this.connection.console.info("list-all-theories, file " + uri);
-		const pvsContextFolder: string = this.pvsContextFolder;
-		let response: TheoryList = await utils.listTheories(pvsContextFolder);
-		return response;
+	}
+	
+	private async _parseCurrentContext(): Promise<ContextDiagnostics> {
+		let response: TheoryList = {
+			theories: {},
+			pvsContextFolder: this.pvsContextFolder
+		};
+		// send the empty response to trigger a refresh of the view on the connected client
+		this.connection.sendRequest("server.response.list-theories", response);
+		return await this.pvsParser.parseCurrentContext();
 	}
 
-	/**
-	 * Lists all theorems in the current context folder
-	 */
-	private async listTheorems (): Promise<TheoriesMap> {
-		// this.connection.console.info("list-all-theories, file " + uri);
-		const pvsContextFolder: string = this.pvsContextFolder;
-		let response: TheoriesMap = await utils.listTheorems(pvsContextFolder);
-		return response;
-	}
-
-	async changeContextAndParseFiles(context: string): Promise<ContextDiagnostics> {
-		if (this.pvsContextFolder !== context) {
+	async changeContextAndParseFiles(context: string, opt?: { force?: boolean }): Promise<void> {
+		opt = opt || {};
+		if (opt.force || this.pvsContextFolder !== context) {
 			this.pvsContextFolder = context;
+			await this.pvsParser.restart();
 			await this.pvsParser.changeContext(context);
+			const res: ContextDiagnostics = await this._parseCurrentContext();
+			const pvsFiles: FileList = await fsUtils.listPvsFiles(context);
+			this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
+			await utils.listTheories(context, this.connection);
+			await utils.listTheorems(context, this.connection);
 		}
-		const res: ContextDiagnostics = await this.pvsParser.parseCurrentContext();
-		const pvsFiles: FileList = await fsUtils.listPvsFiles(context);
-		this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
-		const theories: TheoryList = await this.listTheories();
-		this.connection.sendRequest("server.response.list-theories", theories);
-		const theorems: TheoriesMap = await this.listTheorems();
-		this.connection.sendRequest("server.response.list-theorems", theorems);
-		return res;
 	}
 
 
@@ -501,7 +491,7 @@ class PvsLanguageServer {
 		this.info("Initialising PVS...");
 		try {
 			// create pvs process allocated for parsing
-			this.pvsParser = await this.createPvsProcess({ emacsInterface: true, processType: "parser", enableNotifications: false  });
+			this.pvsParser = await this.createPvsProcess({ emacsInterface: true, processType: "parser", enableNotifications: true  });
 			if (this.pvsParser) {
 				this.pvsTypeChecker = await this.createPvsProcess({ enableNotifications: true });
 				// fetch pvs version information
@@ -597,14 +587,6 @@ class PvsLanguageServer {
 				this.startPvs();
 			});
 
-			this.connection.onRequest('pvs.change-context', async (contextPath) => {
-				this.info(`Context changed to ${contextPath}`);
-				const msg = await this.pvsParser.changeContext(contextPath);
-				this.connection.sendRequest("server.response.change-context", msg);
-				setTimeout(() => {
-					this.pvsReady();
-				}, 500);
-			});
 			this.connection.onRequest('pvs.version', async () => {
 				const version = await this.pvsParser.pvsVersionInformation();
 				this.connection.sendRequest("server.response.pvs.version", version);
@@ -646,9 +628,7 @@ class PvsLanguageServer {
 
 			this.connection.onRequest('pvs.change-context-and-parse-files', async (context: string) => {
 				this.connection.sendNotification('server.status.update', `Parsing files in context ${context}`);
-				const response: ContextDiagnostics = await this.changeContextAndParseFiles(context);
-				// this.connection.sendRequest("server.response.change-context-and-parse-files", response);
-				// this.connection.sendNotification('server.status.info', "Parsing complete!");
+				await this.changeContextAndParseFiles(context);
 				this.pvsReady();
 			});
 			this.connection.onRequest("pvs.list-declarations", async (desc: PvsListDeclarationsRequest) => {
@@ -666,42 +646,9 @@ class PvsLanguageServer {
 				this.serialTypeCheckAllAndShowTccs();
 			});
 			this.connection.onRequest("pvs.list-theories", async (uri: string) => {
-				// this.connection.console.info("list-all-theories, file " + uri);
-				// const pvsContextFolder: string = this.pvsParser.getContextFolder();
-				this.info(`Loading list of theories for context ${this.pvsContextFolder}`);
-				// send updated list of theories and theorems to the client
-				const theories: TheoryList = await this.listTheories();
-				this.connection.sendRequest("server.response.list-theories", theories);
-				const theorems: TheoriesMap = await this.listTheorems();
-				this.connection.sendRequest("server.response.list-theorems", theorems);
+				const context: string = fsUtils.getContextFolder(uri);
+				this.changeContextAndParseFiles(context);
 			});
-			// this.connection.onRequest("pvs.show-tccs", async (fileName: string, theoryName: string) => {
-			// 	if (theoryName) {
-			// 		this.info(`Generating proof obligations for ${theoryName}`);
-			// 		const typecheckerResponse: PvsTypecheckerResponse = await this.pvsTypeChecker.typecheckFile(fileName);
-			// 		// we need to typecheck twice because pvsParser and pvsTypechecker are two distinct processes
-			// 		// we are saving the context after the first typecheck, so the second is faster
-			// 		// await this.pvsParser.typecheckFile(fileName);
-			// 		const pvsResponse: PvsResponseType = await this.pvsParser.showTccs(fileName, theoryName);
-			// 		const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
-			// 		const pvsContextFolder: string = this.pvsParser.getContextFolder();
-			// 		const tccs: TheoriesStatusMap = {};
-			// 		tccs[theoryName] = {
-			// 			theoryName: theoryName,
-			// 			fileName: fileName,
-			// 			tccs: tccArray,
-			// 			theorems: typecheckerResponse.res[theoryName].theorems
-			// 		};
-			// 		const response: TheoriesMap = {
-			// 			pvsContextFolder: pvsContextFolder,
-			// 			theoriesStatusMap: tccs
-			// 		};
-			// 		this.connection.sendRequest("server.response.show-tccs", response);
-			// 		this.ready();
-			// 	} else {
-			// 		this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-theory-and-show-tccs request received by the server (fileName is null)");
-			// 	}
-			// });
 			this.connection.onRequest("pvs.typecheck-file-and-show-tccs", async (fileName: string) => {
 				if (fileName) {
 					this.info(`Typechecking ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);

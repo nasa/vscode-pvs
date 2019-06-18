@@ -104,8 +104,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.client.onRequest("server.response.change-context-and-parse-files", (ans: comm.PvsParserResponse) => {
 			// do nothing for now.
 		});
-		window.onDidChangeActiveTextEditor((editor: TextEditor) => {
+		window.onDidChangeActiveTextEditor((event: TextEditor) => {
 			// event emitted when the active editor focuses on a new document
+			const editor: TextEditor = event || window.activeTextEditor;
 			if (editor.document && fsUtils.isPvsFile(editor.document.fileName)) {
 				// update decorations
 				this.decorationProvider.updateDecorations(editor);

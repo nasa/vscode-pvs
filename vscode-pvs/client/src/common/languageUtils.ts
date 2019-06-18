@@ -2,7 +2,7 @@ import * as lang from './languageKeywords';
 import * as fsUtils from './fsUtils';
 import * as path from 'path';
 import { TheoryMap, StrategyDescriptor,
-			TheoryList, FileList, TheoriesMap, TheoryStatus, FormulaDescriptor } from '../common/serverInterface';
+			TheoryList, FileList, TheoriesMap, TheoryStatus, FormulaDescriptor, SimpleConnection } from '../common/serverInterface';
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -302,11 +302,15 @@ export async function listTheoriesInFile (fileName: string): Promise<TheoryMap> 
 /**
  * Lists all theorems in a given context folder
  */
-export async function listTheorems (pvsContextFolder: string): Promise<TheoriesMap> {
+export async function listTheorems (pvsContextFolder: string, connection?: SimpleConnection): Promise<TheoriesMap> {
 	const response: TheoriesMap = {
 		theoriesStatusMap: {},
 		pvsContextFolder
 	};
+	if (connection && connection.sendRequest) {
+		// send an initial response so the client can update the view
+		connection.sendRequest("server.response.list-theorems", response);
+	}
 	const fileList: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
 	for (let i in fileList.fileNames) {
 		const uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
@@ -328,6 +332,10 @@ export async function listTheorems (pvsContextFolder: string): Promise<TheoriesM
 					status: desc[i].status
 				}
 				response.theoriesStatusMap[theoryName].theorems[formulaName] = formulaDescriptor;
+				if (connection && connection.sendRequest) {
+					// send response incrementally to the client
+					connection.sendRequest("server.response.list-theorems", response);
+				}
 			}
 		}
 	}
@@ -335,15 +343,18 @@ export async function listTheorems (pvsContextFolder: string): Promise<TheoriesM
 }
 
 
-
 /**
  * Lists all theories in a given context foder
+ * @param pvsContextFolder Current context folder
+ * @param connection Connection to the client, useful for sending status updates about what the function is doing (the function may take some time to complete for large files)
  */
-export async function listTheories (pvsContextFolder: string): Promise<TheoryList> {
+export async function listTheories (pvsContextFolder: string, connection?: SimpleConnection): Promise<TheoryList> {
 	let response: TheoryList = {
 		theories: {},
 		pvsContextFolder
 	};
+	// send the empty response to trigger a refresh of the view
+	connection.sendRequest("server.response.list-theories", response);
 	const fileList: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
 	for (let i in fileList.fileNames) {
 		let uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
@@ -364,6 +375,10 @@ export async function listTheories (pvsContextFolder: string): Promise<TheoryLis
 			// // 		comment: declarations[key].comment
 			// // 	};
 			// });
+			if (connection && connection.sendRequest) {
+				// send the response incrementally, as soon as another bit of information is available
+				connection.sendRequest("server.response.list-theories", response);
+			}
 		}
 	}
 	return Promise.resolve(response);

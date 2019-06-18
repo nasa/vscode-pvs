@@ -243,6 +243,7 @@ export declare interface SimpleConsole {
 export declare interface SimpleConnection {
     console: SimpleConsole,
 	sendNotification?: (type: string, msg?: string) => void;
+	sendRequest?: (type: string, data: any) => void;
 }
 
 
