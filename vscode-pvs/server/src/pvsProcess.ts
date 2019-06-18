@@ -572,7 +572,7 @@ export class PvsProcess {
 	 * The .tccs file name is the name of the selected theory.
 	 * @returns TODO: change return type to an array of TCC descriptors
 	 */
-	async showTccs (fileName: string, theoryName: string): Promise<PvsResponseType> {	
+	async showTccs (file: { fileName: string, fileExtension: string }, theoryName: string): Promise<PvsResponseType> {	
 		const ans: PvsResponseType = await this.pvsExec(`(show-tccs "${theoryName}" nil)`);
 		// const res = await this.serverProxy.changeContext(this.pvsContextFolder);
 		// const res = await this.serverProxy.typecheck(fileName);
@@ -704,31 +704,30 @@ export class PvsProcess {
 	 * @param uri The uri of the file to be typechecked
 	 * @param attemptProof Tries to discharge all tccs (default is no)
 	 */
-	async typecheckFile (uri: string, attemptProof?: boolean): Promise<PvsTypecheckerResponse> {
-		const fileName: string = fsUtils.getFilename(uri, { removeFileExtension: true });
-		const filePath: string = fsUtils.getContextFolder(uri);
+	async typecheckFile (desc: { fileName: string, fileExtension: string }, attemptProof?: boolean): Promise<PvsTypecheckerResponse> {
+		const context: string = this.pvsContextFolder;
 		let response: PvsTypecheckerResponse = {
-			fileName: fileName,
+			fileName: desc.fileName,
 			res: null,
 			error: null
 		};
-		if (filePath !== this.pvsPath && filePath !== path.join(this.pvsPath, "lib")) {
-			const info: PvsResponseType = (attemptProof) ? await this.pvsExec(`(typecheck-file "${fileName}" nil t nil)`)
-															: await this.pvsExec(`(typecheck-file "${fileName}" nil nil nil)`);
+		if (context !== this.pvsPath && context !== path.join(this.pvsPath, "lib")) {
+			const info: PvsResponseType = (attemptProof) ? await this.pvsExec(`(typecheck-file "${desc.fileName}" nil t nil)`)
+															: await this.pvsExec(`(typecheck-file "${desc.fileName}" nil nil nil)`);
 			if (info && info.error) {
 				response.error = info.error.parserError;
 			} else {
 				// load status info for each theory
-				const theoryMap: TheoryMap = await utils.listTheoriesInFile(uri);
+				const theoryMap: TheoryMap = await utils.listTheoriesInFile(path.join(this.pvsContextFolder, `${desc.fileName}.pvs`));
 				if (theoryMap) {
 					response.res = {};
 					const theoryNames: string[] = Object.keys(theoryMap);
 					for (const i in theoryNames) {
 						const theoryName: string = theoryNames[i];
-						const theoryStatus: TheoryStatus = await this.getTheoryStatus({ fileName, fileExtension: ".pvs", theoryName });	
+						const theoryStatus: TheoryStatus = await this.getTheoryStatus({ fileName: desc.fileName, fileExtension: ".pvs", theoryName });	
 						if (theoryStatus) {
 							theoryStatus.theorems = theoryStatus.theorems || {};
-							const pvsResponse: PvsResponseType = await this.showTccs(fileName, theoryName);
+							const pvsResponse: PvsResponseType = await this.showTccs(desc, theoryName);
 							const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : null;
 							if (tccArray) {
 								// set tcc flags in theoryStatus and update filename and position
@@ -765,17 +764,16 @@ export class PvsProcess {
 			}
 		} else {
 			if (this.connection) {
-				this.connection.console.info(`PVS library file ${fileName} already typechecked.`);
+				this.connection.console.info(`PVS library file ${desc.fileName} already typechecked.`);
 			}
 		}
 		return response;
 	}
 	/**
 	 * Typechecks a file and tries to discharge all tccs
-	 * @param uri The uri of the file to be typechecked
 	 */
-	async typecheckProve (uri: string): Promise<PvsTypecheckerResponse> {
-		return this.typecheckFile(uri, true)
+	async typecheckProve (desc: { fileName: string, fileExtension: string }): Promise<PvsTypecheckerResponse> {
+		return this.typecheckFile(desc, true)
 	}
 	private async saveContext(): Promise<PvsResponseType> {
 		return await this.pvsExec('(save-context)');

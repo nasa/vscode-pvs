@@ -305,18 +305,20 @@ class PvsLanguageServer {
 
 	/**
 	 * Interface function for typechecking a given file
-	 * @param fileName Path to the file to be typechecked
+	 * @param fname Path to the file to be typechecked
 	 * @returns Promise<TccList> Promise that resolves to a list of type check conditions
 	 */
-	private async typecheckFileAndShowTccs (fileName: string, typechecker: PvsProcess): Promise<TheoriesMap> {
-		const txt: string = await this.readFile(fileName); // it is necessary to use the readFile function because some pvs files may not be loaded yet in the context 
+	private async typecheckFileAndShowTccs (fname: string, typechecker: PvsProcess): Promise<TheoriesMap> {
+		const txt: string = await this.readFile(fname); // it is necessary to use the readFile function because some pvs files may not be loaded yet in the context 
 		if (txt) {
-			const context: string = fsUtils.getContextFolder(fileName);
+			const context: string = fsUtils.getContextFolder(fname);
+			const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
+			const fileExtension: string = fsUtils.getFileExtension(fname);
 			typechecker.changeContext(context);
 			
 			let typecheckerResponse: PvsTypecheckerResponse = null;
 			try {
-				typecheckerResponse = await typechecker.typecheckFile(fileName);
+				typecheckerResponse = await typechecker.typecheckFile({ fileName, fileExtension });
 			} catch (typecheckerError) {
 				console.error(typecheckerError);
 			}
@@ -396,17 +398,19 @@ class PvsLanguageServer {
 		const pvsContextFolder: string = this.pvsContextFolder;
 		const pvsFiles: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
 		for (const i in pvsFiles.fileNames) {
-			let fileName: string = pvsFiles.fileNames[i];
-			fileName = this.normaliseFileName(fileName);
-			this.connection.sendNotification('server.status.update', "Typechecking " + fileName);
+			let fname: string = pvsFiles.fileNames[i];
+			fname = this.normaliseFileName(fname);
+			this.connection.sendNotification('server.status.update', "Typechecking " + fname);
 
 			const proc: PvsProcess = this.pvsTypeChecker;
 			if (proc) {
-				const response: TheoriesMap = await this.typecheckFileAndShowTccs(fileName, proc);
+				const response: TheoriesMap = await this.typecheckFileAndShowTccs(fname, proc);
 				// the list of proof obligations is provided incrementally to the client so feedback can be shown as soon as available
 				this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
 				// feed symbols to the parser
-				this.pvsParser.typecheckFile(fileName, false);
+				const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
+				const fileExtension: string = fsUtils.getFileExtension(fname);
+				this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
 			}
 		}
 		this.connection.sendNotification('server.status.update', "Typechecking complete!");
@@ -415,10 +419,12 @@ class PvsLanguageServer {
 		}, 500);
 	}
 
-	private async serialTCP(fileName: string, theoryNames: string[]): Promise<TheoriesMap> {
+	private async serialTCP(fname: string, theoryNames: string[]): Promise<TheoriesMap> {
 		const proc: PvsProcess = this.pvsTypeChecker;
 		if (proc) {
-			const typecheckerResponse: PvsTypecheckerResponse = await proc.typecheckProve(fileName);
+			const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
+			const fileExtension: string = fsUtils.getFileExtension(fname);
+			const typecheckerResponse: PvsTypecheckerResponse = await proc.typecheckProve({ fileName, fileExtension });
 			const tccs: TheoriesStatusMap = {};
 			for (const i in theoryNames) {
 				const theoryName: string = theoryNames[i];
@@ -426,7 +432,7 @@ class PvsLanguageServer {
 				// const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : [];
 				tccs[theoryNames[i]] = {
 					theoryName: theoryName,
-					fileName: fileName,
+					fileName: fname,
 					theorems: typecheckerResponse.res[theoryName].theorems
 				};
 			}
@@ -436,7 +442,7 @@ class PvsLanguageServer {
 				theoriesStatusMap: tccs
 			};
 			// feed symbols to the parser
-			this.pvsParser.typecheckFile(fileName, false);
+			this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
 			// return response to the caller
 			return response;
 		}
@@ -599,28 +605,32 @@ class PvsLanguageServer {
 				this.connection.sendRequest("server.response.parse-file", response);
 				// this.pvsReady();
 			});
-			this.connection.onRequest('pvs.typecheck-file', async (fileName: string) => {
-				this.info(`Typechecking ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
-				fileName = this.normaliseFileName(fileName);
+			this.connection.onRequest('pvs.typecheck-file', async (fname: string) => {
+				this.info(`Typechecking ${fsUtils.getFilename(fname, { removeFileExtension: true })}`);
+				fname = this.normaliseFileName(fname);
 				const proc: PvsProcess = this.pvsTypeChecker;
 				if (proc) {
-					const response: PvsTypecheckerResponse = await proc.typecheckFile(fileName, false);
+					const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
+					const fileExtension: string = fsUtils.getFileExtension(fname);
+					const response: PvsTypecheckerResponse = await proc.typecheckFile({ fileName, fileExtension }, false);
 					this.connection.sendRequest("server.response.typecheck-file", response);
 					// feed symbols to the parser
-					this.pvsParser.typecheckFile(fileName, false);
+					this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
 				}
 				this.pvsReady();
 			});
-			this.connection.onRequest('pvs.typecheck-prove', async (fileName: string) => {
-				this.info(`Typechecking ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
-				fileName = this.normaliseFileName(fileName);
-				this.connection.sendNotification('server.status.update', "Typechecking " + fileName);
+			this.connection.onRequest('pvs.typecheck-prove', async (fname: string) => {
+				this.info(`Typechecking ${fsUtils.getFilename(fname, { removeFileExtension: true })}`);
+				fname = this.normaliseFileName(fname);
+				this.connection.sendNotification('server.status.update', "Typechecking " + fname);
 				const proc: PvsProcess = this.pvsTypeChecker;
 				if (proc) {
-					const response: PvsTypecheckerResponse = await proc.typecheckFile(fileName, true);
+					const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
+					const fileExtension: string = fsUtils.getFileExtension(fname);
+					const response: PvsTypecheckerResponse = await proc.typecheckFile({ fileName, fileExtension }, true);
 					this.connection.sendRequest("server.response.typecheck-file", response);
 					// feed symbols to the parser
-					this.pvsParser.typecheckFile(fileName, false);
+					this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
 				}
 				this.pvsReady();
 			});
@@ -649,16 +659,18 @@ class PvsLanguageServer {
 				const context: string = fsUtils.getContextFolder(uri);
 				this.changeContextAndParseFiles(context);
 			});
-			this.connection.onRequest("pvs.typecheck-file-and-show-tccs", async (fileName: string) => {
-				if (fileName) {
-					this.info(`Typechecking ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
-					fileName = this.normaliseFileName(fileName);
+			this.connection.onRequest("pvs.typecheck-file-and-show-tccs", async (fname: string) => {
+				if (fname) {
+					this.info(`Typechecking ${fsUtils.getFilename(fname, { removeFileExtension: true })}`);
+					fname = this.normaliseFileName(fname);
 					const proc: PvsProcess = this.pvsTypeChecker;
 					if (proc) {
-						const response: TheoriesMap = await this.typecheckFileAndShowTccs(fileName, proc);
+						const response: TheoriesMap = await this.typecheckFileAndShowTccs(fname, proc);
 						this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
 						// feed symbols to the parser
-						this.pvsParser.typecheckFile(fileName, false);
+						const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
+						const fileExtension: string = fsUtils.getFileExtension(fname);
+						this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
 					}
 					this.pvsReady();
 				} else {
@@ -690,7 +702,7 @@ class PvsLanguageServer {
 					const proc: PvsProcess = this.pvsTypeChecker;
 					if (proc) {
 						this.info("Initialising step-proof...");
-						await proc.typecheckFile(`${data.fileName}${data.fileExtension}`);
+						await proc.typecheckFile(data);
 						const response: PvsResponseType = await proc.stepProof(data);
 						if (response && response.res) {
 							this.connection.sendRequest("server.response.step-proof", response.res);
@@ -699,7 +711,7 @@ class PvsLanguageServer {
 						}
 						this.pvsReady();
 						// feed symbols to the parser
-						this.pvsParser.typecheckFile(data.fileName, false);
+						this.pvsParser.typecheckFile(data, false);
 					}
 				} else {
 					this.connection.sendNotification('server.status.error', `Malformed pvs.step-proof request received by the server: ${JSON.stringify(data)}`);
@@ -713,8 +725,8 @@ class PvsLanguageServer {
 					const proc: PvsProcess = this.pvsTypeChecker;
 					if (proc) {
 						this.info("Initialising step-proof for tcc...");
-						await proc.typecheckFile(data.fileName);
-						await proc.showTccs(data.fileName, data.theoryName);
+						await proc.typecheckFile(data);
+						await proc.showTccs(data, data.theoryName);
 						const response: PvsResponseType = await proc.stepTcc(data);
 						if (response && response.res) {
 							this.connection.sendRequest("server.response.step-tcc", response.res);
@@ -723,7 +735,7 @@ class PvsLanguageServer {
 						}
 						this.pvsReady();
 						// feed symbols to the parser
-						this.pvsParser.typecheckFile(data.fileName, false);
+						this.pvsParser.typecheckFile(data, false);
 					}
 				} else {
 					this.connection.sendNotification('server.status.error', `Malformed pvs.step-proof request received by the server: ${JSON.stringify(data)}`);
