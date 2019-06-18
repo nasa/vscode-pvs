@@ -1,17 +1,10 @@
 /**
  * @module PvsLinter
- * @version 2019.03.22
- * PvsLinter aims to promote good engineering practices for the development of 
- * pvs specification. 
- * The current implementation of the linter checks that type definitions
- * have been properly documented.
  * @author Paolo Masci
- * @date 2019.03.22
+ * @date 2019.06.18
  * @copyright 
- * Copyright 2016 United States Government as represented by the
- * Administrator of the National Aeronautics and Space Administration. No
- * copyright is claimed in the United States under Title 17, 
- * U.S. Code. All Other Rights Reserved.
+ * Copyright 2019 United States Government as represented by the Administrator 
+ * of the National Aeronautics and Space Administration. All Rights Reserved.
  *
  * Disclaimers
  *

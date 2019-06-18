@@ -1,12 +1,10 @@
 /**
- * @module pvsCli
+ * @module PvsCli
  * @author Paolo Masci
- * @date 2019.06.05
+ * @date 2019.06.18
  * @copyright 
- * Copyright 2016 United States Government as represented by the
- * Administrator of the National Aeronautics and Space Administration. No
- * copyright is claimed in the United States under Title 17, 
- * U.S. Code. All Other Rights Reserved.
+ * Copyright 2019 United States Government as represented by the Administrator 
+ * of the National Aeronautics and Space Administration. All Rights Reserved.
  *
  * Disclaimers
  *
@@ -37,6 +35,7 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
+
 import * as utils from './common/languageUtils';
 import * as readline from 'readline';
 import { PvsCliInterface, PvsResponseType, PvsVersionDescriptor, SimpleConsole, StrategyDescriptor } from './common/serverInterface';

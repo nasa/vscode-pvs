@@ -1,14 +1,10 @@
 /**
  * @module PvsLanguageServer
- * @version 2019.02.07
- * PVS process wrapper
  * @author Paolo Masci
- * @date 2019.02.07
+ * @date 2019.06.18
  * @copyright 
- * Copyright 2016 United States Government as represented by the
- * Administrator of the National Aeronautics and Space Administration. No
- * copyright is claimed in the United States under Title 17, 
- * U.S. Code. All Other Rights Reserved.
+ * Copyright 2019 United States Government as represented by the Administrator 
+ * of the National Aeronautics and Space Administration. All Rights Reserved.
  *
  * Disclaimers
  *

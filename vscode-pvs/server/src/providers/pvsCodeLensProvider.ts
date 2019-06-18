@@ -1,19 +1,14 @@
 
 /**
  * @module PvsCodeLensProvider
- * @version 2019.02.07
- * @description Code lens engine for PVS, provides commands that can be shown inline along with the specification, 
- *              e.g,. to animate an expression or prove a theorem.
  * @author Paolo Masci
- * @date 2019.02.07
+ * @date 2019.06.18
  * @copyright 
- * Copyright 2016 United States Government as represented by the
- * Administrator of the National Aeronautics and Space Administration. No
- * copyright is claimed in the United States under Title 17, 
- * U.S. Code. All Other Rights Reserved.
- * 
+ * Copyright 2019 United States Government as represented by the Administrator 
+ * of the National Aeronautics and Space Administration. All Rights Reserved.
+ *
  * Disclaimers
- * 
+ *
  * No Warranty: THE SUBJECT SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY
  * WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
  * INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE SUBJECT SOFTWARE
@@ -28,7 +23,7 @@
  * FURTHER, GOVERNMENT AGENCY DISCLAIMS ALL WARRANTIES AND LIABILITIES
  * REGARDING THIRD-PARTY SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE,
  * AND DISTRIBUTES IT "AS IS."
- * 
+ *
  * Waiver and Indemnity: RECIPIENT AGREES TO WAIVE ANY AND ALL CLAIMS
  * AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
  * SUBCONTRACTORS, AS WELL AS ANY PRIOR RECIPIENT.  IF RECIPIENT'S USE OF
