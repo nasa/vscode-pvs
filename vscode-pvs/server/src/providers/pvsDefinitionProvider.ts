@@ -89,7 +89,7 @@ export class PvsDefinitionProvider {
 	 * Returns the current pvs context path
 	 */
 	public getLibrariesPath () {
-		return this.pvsProcess.getLibrariesPath();
+		return this.pvsProcess.getPvsLibraryPath();
 	}
 
 	/**
@@ -204,8 +204,10 @@ export class PvsDefinitionProvider {
 	 * @param token Cancellation token (optional)
 	 */
 	async provideDefinition(document: TextDocument, position: Position, token?: CancellationToken): Promise<PvsDefinition[]> {
+		console.log("provide definition");
 		const txt: string = document.getText();
 		const symbolRange: Range = getWordRange(txt, position);
+		console.log(`Provide definition`, symbolRange);
 		// sanity check
 		if (symbolRange.end.character > position.character) {
 			const symbolName: string = document.getText(symbolRange);

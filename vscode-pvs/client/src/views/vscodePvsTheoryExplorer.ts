@@ -371,10 +371,6 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 		});
 		this.client.onRequest("server.response.list-theorems", (theoriesMap: TheoriesMap) => {
 			// add theorems
-			if (theoriesMap && theoriesMap.pvsContextFolder !== this.pvsContextFolder) {
-				this.pvsContextFolder = theoriesMap.pvsContextFolder;
-				this.resetView();
-			}
 			this.updateFormulae(theoriesMap);
 		});
 		// this.client.onRequest("server.response.show-tccs", async (ans: TheoriesMap) => {
@@ -526,8 +522,8 @@ export class VSCodePvsExplorer implements TreeDataProvider<TreeItem> {
 			commands.executeCommand('vscode.open', uri, {
 				viewColumn: window.activeTextEditor.viewColumn, // do not open new tabs
 				selection: new Range(
-					position,
-					new Position(position.line, position.character + theoryName.length) // highlight the theory name
+					new Position(position.line - 1, 0), // - 1 is because lines in vscode start from 0
+					new Position(position.line, 0) // highlight entire line
 				)
 			});
 		});

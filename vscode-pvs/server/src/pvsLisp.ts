@@ -88,7 +88,7 @@ export class PvsLispReader {
 	 * @param data A string representing the output of pvs lisp
 	 * @param cb Callback function to be invoked when the output is ready (i.e., when the pvs ready prompt is detected)
 	 */
-	async read(data: string, cb: (out:string) => void) {
+	read(data: string, cb: (out:string) => void) {
 		this.pvsOut += data;
 		// see also regexp from emacs-src/ilisp/ilisp-acl.el
 		// const PVS_COMINT_PROMPT_REGEXP: RegExp = /\s*pvs\(\d+\):|([\w\W\s]*)\spvs\(\d+\):/g;
@@ -105,15 +105,15 @@ export class PvsLispReader {
 		// 	cb(ans);
 		// }
 
-		const PVS_COMINT_PROMPT_REGEXP: RegExp = /(.*)\s*pvs\(\d+\):|(.*)\[.+\]\s*pvs\(\d+\):/g; // capture group 1 is the pvs lisp output
+		const PVS_COMINT_PROMPT_REGEXP: RegExp = /([\w\W\s]*)\s*pvs\(\d+\):|([\w\W\s]*)\[.+\]\s*pvs\(\d+\):/g; // capture group 1 is the pvs lisp output
 		const PVSIO_PROMPT: RegExp = /<PVSio>/g;
 		const PROVER_PROMPT: RegExp = /\bRule\?/g;
 		const QUERY_YES_NO: RegExp = /\?\s*\(Y or N\)|\?\s*\(Yes or No\)/gi;
 		if (PVS_COMINT_PROMPT_REGEXP.test(data) || PVSIO_PROMPT.test(data) 
 				|| PROVER_PROMPT.test(data) || QUERY_YES_NO.test(data)) {
-			const ans: string = (PVS_COMINT_PROMPT_REGEXP.test(data)) ?
-								PVS_COMINT_PROMPT_REGEXP.exec(data)[1]
-								: this.pvsOut;
+			PVS_COMINT_PROMPT_REGEXP.lastIndex = 0;
+			const match: RegExpMatchArray = PVS_COMINT_PROMPT_REGEXP.exec(this.pvsOut);
+			const ans: string = (match && match.length > 1) ? match[1] : this.pvsOut;
 			this.pvsOut = ""
 			cb(ans);
 		}

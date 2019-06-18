@@ -48,36 +48,20 @@ export function findTheories(fileName: string, fileContent: string): TheoryMap {
 	let ans: TheoryMap = {};
 	const regexp: RegExp = new RegExp(theoryRegexp);
 	let match: RegExpMatchArray = null;
-	let lines: string[] = fileContent.split("\n");
 	while(match = regexp.exec(fileContent)) {
-		let line: number = 0;
-		let character: number = 0;
-		let theoryName: string = null;
-		for (let i = 0; i < lines.length; i++) {
-			if (lines[i].includes(` ${match[1]} `)
-				|| lines[i].includes(` ${match[1]}:`)
-				|| lines[i].includes(` ${match[1]}[`)
-				|| lines[i].includes(` ${match[1]}%`)
-				|| lines[i].startsWith(`${match[1]} `)
-				|| lines[i].startsWith(`${match[1]}:`)
-				|| lines[i].startsWith(`${match[1]}[`)
-				|| lines[i].startsWith(`${match[1]}%`)
-				) {
-				// the first match is the theory declaration -- in pvs, theories cannot be imported if they have not been declared first
-				line = i;
-				character = (lines[i].split(match[1]) && lines[i].split(match[1]).length > 0) ? lines[i].split(match[1])[0].length : 0;
-				theoryName = match[1];
-				ans[theoryName] = {
-					position: {
-						line: line,
-						character: character
-					},
-					theoryName: theoryName,
-					fileName: fileName
-				};
-				break;
-			}
-		}
+		let theoryName: string = match[1];
+		const clip: string = fileContent.slice(0, match.index);
+		const lines: string[] = clip.split("\n"); 
+		const line: number = lines.length;
+		const character: number = 0; //match.index - lines.slice(-1).join("\n").length;
+		ans[theoryName] = {
+			position: {
+				line: line,
+				character: character
+			},
+			theoryName: theoryName,
+			fileName: fileName
+		};
 	}
 	return ans;
 }
@@ -136,22 +120,27 @@ export async function listTheoremsInFile (uri: string): Promise<FormulaDescripto
 				const theoremsArray: FormulaDescriptor[] = [];
 				for (let i = 0; i < boundaries.length; i++) {
 					const content: string = slices.slice(boundaries[i].from, boundaries[i].to).join("\n");
-					const regex: RegExp = new RegExp(theoremRegexp);
-					let match: RegExpMatchArray = null;
-					while (match = regex.exec(content)) {
-						if (match.length > 2 && match[2] && !match[1]) {
-							const formulaName: string = match[2];
-							const offset: number = content.slice(0, match.index).split("\n").length;
-							const line: number = boundaries[i].from + offset;
-							const desc: FormulaDescriptor = {
-								fileName: fsUtils.getFilename(uri),
-								theoryName: boundaries[i].theoryName,
-								formulaName,
-								position: { line, character: 0 },
-								status: null
+					if (content && content.trim()) {
+						const regex: RegExp = new RegExp(theoremRegexp);
+						let match: RegExpMatchArray = null;
+						while (match = regex.exec(content)) {
+							if (match.length > 2 && match[2] && !match[1]) {
+								const formulaName: string = match[2];
+								const slice: string = content.slice(0, match.index);
+								const offset: number = (slice) ? slice.split("\n").length : 0;
+								const line: number = boundaries[i].from + offset;
+								const desc: FormulaDescriptor = {
+									fileName: fsUtils.getFilename(uri),
+									theoryName: boundaries[i].theoryName,
+									formulaName,
+									position: { line, character: 0 },
+									status: null
+								}
+								theoremsArray.push(desc);
 							}
-							theoremsArray.push(desc);
 						}
+					} else {
+						console.error("Error while finding theory names :/");
 					}
 				}
 				return theoremsArray;

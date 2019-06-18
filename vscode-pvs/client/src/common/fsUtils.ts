@@ -72,8 +72,15 @@ export function isPvsFile(fileName: string): boolean {
 // export function rmDir(path: string) {
 // 	return rimraf.sync(path);
 // }
-export function dirExists(path: string) {
-	return fs.existsSync(path);
+export function dirExists(path: string): boolean {
+	let ans: boolean = false;
+	try {
+		ans = fs.existsSync(path);
+	} catch (readError) {
+		console.error(readError);
+	} finally {
+		return ans;
+	}
 }
 
 /**

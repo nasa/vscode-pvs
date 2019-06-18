@@ -48,7 +48,7 @@ import {
 	PRELUDE_FILE, PvsDeclarationType, PrettyPrintRegionRequest,
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsTypecheckerResponse,
-	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus
+	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, PvsVersionDescriptor
 } from './common/serverInterface'
 import { Connection } from 'vscode-languageserver';
 import * as path from 'path';
@@ -76,6 +76,8 @@ export class PvsProcess {
 	private proverProcessBusy: boolean = false;
 	private processType: string; // "typechecker" or "parser"
 
+	pvsVersionInfo: PvsVersionDescriptor;
+
 	// private serverProxy: xmlrpcProvider.XmlRpcProxy;
 
 	private pvsServerProcess: ChildProcess = null;
@@ -83,11 +85,12 @@ export class PvsProcess {
 	private pvsCmdQueue: Promise<PvsResponseType> = Promise.resolve({ res: null, error: null, raw: null });
 
 	private pvsPath: string = null;
+	private pvsLibraryPath: string = null;
 	private pvsContextFolder: string = null;
 
 	private connection: SimpleConnection;
 	private enableNotifications: boolean;
-	private readyString: string = "PVS ready!";
+
 	// utility functions for showing notifications on the status bar
 	private info(msg: string) {
 		if (this.enableNotifications && this.connection && msg && msg.length > 10 && !msg.startsWith(";;;")) {
@@ -96,7 +99,7 @@ export class PvsProcess {
 	}
 	private ready() {
 		if (this.enableNotifications) {
-			this.connection.sendNotification('pvs-ready', this.readyString);
+			this.connection.sendNotification('pvs-ready');
 		}
 	}
 	private error(msg: string) {
@@ -116,7 +119,7 @@ export class PvsProcess {
 	/**
 	 * @returns Path of the prelude library
 	 */
-	getLibrariesPath(): string {
+	getPvsLibraryPath(): string {
 		return path.join(this.pvsPath, "lib");
 	}
 
@@ -127,6 +130,7 @@ export class PvsProcess {
 	 */
 	constructor (desc: { pvsPath: string, pvsContextFolder: string, processType?: string }, connection?: Connection) {
 		this.pvsPath = desc.pvsPath || __dirname;
+		this.pvsLibraryPath = path.join(this.pvsPath, "lib");
 		this.pvsContextFolder = desc.pvsContextFolder || __dirname;
 		this.processType = desc.processType || "typechecker";
 
@@ -359,16 +363,9 @@ export class PvsProcess {
 		// await this.serverProxy.changeContext(contextFolder);
 		const folderExists: boolean = await fsUtils.dirExists(contextFolder);
 		if (folderExists) {
-			if (contextFolder !== this.pvsContextFolder) {
-				const cmd: string = `(change-context "${contextFolder}" nil)`;
-				this.pvsContextFolder = contextFolder;
-				return await this.pvsExec(cmd);
-			}
-			return {
-				res: { context: contextFolder },
-				error: null,
-				raw: `Context folder unchanged: ${contextFolder}`
-			};
+			const cmd: string = `(change-context "${contextFolder}" nil)`;
+			this.pvsContextFolder = contextFolder;
+			return await this.pvsExec(cmd);
 		}
 		return {
 			res: null,
@@ -525,7 +522,7 @@ export class PvsProcess {
 			res: null,
 			error: null
 		};
-		if (!this.pvsContextFolder.startsWith(this.pvsPath)) {
+		if (this.pvsContextFolder !== this.pvsPath && this.pvsContextFolder !== this.pvsLibraryPath) {
 			const parserInfo: PvsResponseType = await this.pvsExec(`(parse-file "${fileName}" nil nil)`);
 			if (parserInfo.error) {
 				response.error = parserInfo.error.parserError;
@@ -534,7 +531,7 @@ export class PvsProcess {
 			}
 		} else {
 			if (this.connection) {
-				this.connection.console.info(`PVS library file ${fileName} already parsed.`);
+				this.info(`Reading library file ${fileName}...`);
 			}
 		}
 		return response;
@@ -545,13 +542,13 @@ export class PvsProcess {
 	 */
 	async parseCurrentContext (): Promise<ContextDiagnostics> {
 		const result: { [ fileName: string ] : PvsParserResponse } = {};
-		const contextFolder: string = this.getContextFolder();
-		const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
+		const contextFiles: FileList = await fsUtils.listPvsFiles(this.pvsContextFolder);
 		if (contextFiles && contextFiles.fileNames) {
 			for (const i in contextFiles.fileNames) {
 				result[contextFiles.fileNames[i]] = await this.parseFile(contextFiles.fileNames[i]);
 			}
 		}
+		this.ready();
 		return result;
 	}
 	/**

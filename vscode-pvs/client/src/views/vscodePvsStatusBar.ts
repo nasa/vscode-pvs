@@ -1,6 +1,7 @@
 import { VSCodePvsProofExplorer } from "./vscodePvsProofExplorer";
 import { StatusBarItem, ExtensionContext, StatusBarAlignment, window } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
+import { PvsVersionDescriptor } from "../common/serverInterface";
 
 export class StatusBarPriority {
     public static Low: number = 1;
@@ -19,8 +20,10 @@ export class VSCodePvsStatusBar {
     constructor (client: LanguageClient) {
         this.client = client;
         // register notification handlers
-        this.client.onNotification("pvs-ready", (pvsVersionInfo: string) => {
-            this.versionInfoBar.text = pvsVersionInfo;
+        this.client.onNotification("pvs-ready", (pvsVersion: string) => {
+            if (pvsVersion) {
+                this.versionInfoBar.text = pvsVersion;
+            }
             this.statusBar.text = `Ready!`;
         });
         this.client.onNotification("server.status.update", (msg: string) => {

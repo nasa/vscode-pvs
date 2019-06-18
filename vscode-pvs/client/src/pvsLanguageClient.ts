@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, Position, Disposable, commands } from 'vscode';
+import { TextDocument, window, workspace, ExtensionContext, Position, Disposable, commands, TextEditor, TextDocumentChangeEvent } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
 import { log } from './utils/vscode-utils';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
@@ -104,18 +104,17 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.client.onRequest("server.response.change-context-and-parse-files", (ans: comm.PvsParserResponse) => {
 			// do nothing for now.
 		});
-		window.onDidChangeActiveTextEditor(editor => {
+		window.onDidChangeActiveTextEditor((editor: TextEditor) => {
 			// event emitted when the active editor focuses on a new document
 			if (editor.document && fsUtils.isPvsFile(editor.document.fileName)) {
 				// update decorations
 				this.decorationProvider.updateDecorations(editor);
 				// trigger file parsing to get syntax diagnostics
-				const context: string = fsUtils.getContextFolder(window.activeTextEditor.document.fileName);
+				const context: string = fsUtils.getContextFolder(editor.document.fileName);
 				this.client.sendRequest('pvs.change-context-and-parse-files', context);
-				// this.theoriesDataProvider.showTheories(window.activeTextEditor.document.fileName);
 			}
 		}, null, _this.context.subscriptions);
-		workspace.onDidChangeTextDocument(event => {
+		workspace.onDidChangeTextDocument((event: TextDocumentChangeEvent) => {
 			// event emitted when the document changes
 			if (fsUtils.isPvsFile(event.document.fileName)) {
 				this.decorationProvider.updateDecorations(window.activeTextEditor);
@@ -124,7 +123,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			}
 		}, null, _this.context.subscriptions);
 
-		workspace.onDidChangeConfiguration(async  () => {
+		workspace.onDidChangeConfiguration(async () => {
 			// re-initialise pvs if the executable is different
 			const pvsPath: string = await this.getPvsPath();
 			if (pvsPath !== this.pvsPath) {
