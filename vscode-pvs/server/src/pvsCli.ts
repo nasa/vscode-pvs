@@ -90,7 +90,7 @@ class CliConnection {
 }
 
 import { PvsProcess } from './pvsProcess';
-import { ConnectionError } from 'vscode-jsonrpc';
+import { ConnectionError, Disposable } from 'vscode-jsonrpc';
 
 // utility function, ensures open brackets match closed brackets for commands
 function parMatch(cmd: string): string {
@@ -124,6 +124,17 @@ function quotesMatch(cmd: string): boolean {
 	return nQuotes % 2 === 0;
 }
 
+let progressLevel: number = 0;
+let progressMsg: string = "";
+function showProgress (data: string) {
+	progressLevel++;
+	if (progressLevel > 4) {
+		progressLevel = 0;
+		readline.clearLine(process.stdin, 0);
+	}
+	console.log("  " + progressMsg + ".".repeat(progressLevel));
+	readline.moveCursor(process.stdin, 0, -1);
+}
 
 class PvsCli {
 	private rl: readline.ReadLine;
@@ -148,7 +159,6 @@ class PvsCli {
 
 	private args: PvsCliInterface;
 
-
 	private outChannel (data: string) {
 		console.log(PvsCli.withSyntaxHighlighting(data));
 		const regex: RegExp = /:end-pvs-loc\b/;
@@ -157,6 +167,7 @@ class PvsCli {
 			this.pvsProcess.getTheoryStatus({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName });
 		}
 	}
+
 	/**
 	 * @constructor
 	 * @param args information necessary to launch the theorem prover
@@ -234,28 +245,36 @@ class PvsCli {
 		// readline.clearLine(process.stdin, 0);
 		// readline.moveCursor(process.stdin, 0, -y);
 		// readline.clearLine(process.stdin, 0);
-		// setup stdin to emit 'keypress' events
 		if (process.stdin.isTTY) {
 			// this is necessary for correct identification of keypresses for navigation keys and tab
 			process.stdin.setRawMode(true);
 		}
+		// // setup stdin to emit 'keypress' events
 		// readline.emitKeypressEvents(process.stdin);
 		// process.stdin.on('keypress', (str, key) => {
-		// 	if (key) {
-		// 		switch (key.name) {
-		// 			case "tab": {
-		// 				this.tabCompleteMode = true;
-		// 				break;
-		// 			}
-		// 			case "a": {
-		// 				if (this.tabCompleteMode) {
-		// 					this.tabCompleteMode = false;
-		// 					this.pvsProcess.execCmd("(assert)");
-		// 				}
-		// 				break;
-		// 			}
-		// 		}
-		// 	}
+		// 	// if (key) {
+		// 	// 	switch (key.name) {
+		// 	// 		// case "tab": {
+		// 	// 		// 	this.tabCompleteMode = true;
+		// 	// 		// 	break;
+		// 	// 		// }
+		// 	// 		case "esc": {
+		// 	// 			this.tabCompleteMode = false;
+		// 	// 			break;
+		// 	// 		}
+		// 	// 		// case "a": {
+		// 	// 		// 	if (this.tabCompleteMode) {
+		// 	// 		// 		this.tabCompleteMode = false;
+		// 	// 		// 		this.pvsProcess.execCmd("(assert)");
+		// 	// 		// 	}
+		// 	// 		// 	break;
+		// 	// 		// }
+		// 	// 	}
+		// 	// 	// console.log(key);
+		// 	// if (key.name !== "tab") {
+		// 	process.stdout.write(str);
+		// 	// }
+		// 	// }
 		// });
 		this.cmds.push(args.cmd);
 		// create pvs process
@@ -274,10 +293,13 @@ class PvsCli {
 		return this.pvsProcess;
 	}
 	async launchTheoremProver () {
-		console.log(`Typechecking...`)
 		// this.pvsProcess.setConnection(this.connection);
 		if (this.fileExtension === ".pvs") {
+			progressMsg = "Typechecking";
+			this.pvsProcess.startCli(showProgress);
 			await this.pvsProcess.typecheckFile({ fileName: this.fileName, fileExtension: this.fileExtension }); // FIXME -- use object as argument instead of string
+			progressMsg = "";
+			this.pvsProcess.endCli(showProgress);
 			this.pvsProcess.startCli((data: string) => {
 				this.outChannel(data);
 			});

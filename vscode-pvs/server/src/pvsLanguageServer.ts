@@ -194,16 +194,14 @@ class PvsLanguageServer {
 	/**
 	 * Initialises pvs parser and service providers
 	 */
-	private async initServiceProviders(): Promise<void> {
+	private async initServiceProviders(pvsParser: PvsProcess): Promise<void> {
 		// Create service providers
-		this.definitionProvider = new PvsDefinitionProvider(this.pvsParser, this.documents);
+		this.definitionProvider = new PvsDefinitionProvider(pvsParser, this.documents);
 		this.completionProvider = new PvsCompletionProvider(this.definitionProvider);
 		this.codeLensProvider = new PvsCodeLensProvider(this.definitionProvider);
 		this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
 		this.linter = new PvsLinter();
 		this.statusUpdater = new PvsStatusUpdater(this.connection);
-		// parse all files in the current context. This operation will also send diagnostics to the front-end
-		this.changeContextAndParseFiles(this.pvsContextFolder, { force: true });
 	}
 	/**
 	 * Utility function, creates a new pvs process
@@ -473,7 +471,7 @@ class PvsLanguageServer {
 			this.pvsContextFolder = context;
 			await this.pvsParser.restart();
 			await this.pvsParser.changeContext(context);
-			const res: ContextDiagnostics = await this._parseCurrentContext();
+			await this._parseCurrentContext();
 			const pvsFiles: FileList = await fsUtils.listPvsFiles(context);
 			this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
 			await utils.listTheories(context, this.connection);
@@ -495,6 +493,11 @@ class PvsLanguageServer {
 			// create pvs process allocated for parsing
 			this.pvsParser = await this.createPvsProcess({ emacsInterface: true, processType: "parser", enableNotifications: true  });
 			if (this.pvsParser) {
+				// start service providers
+				this.initServiceProviders(this.pvsParser);
+				// parse all files in the current context. This operation will also send diagnostics to the front-end
+				this.changeContextAndParseFiles(this.pvsContextFolder, { force: true });
+				// start typechecker process
 				this.pvsTypeChecker = await this.createPvsProcess({ enableNotifications: true });
 				// fetch pvs version information
 				const ans: PvsResponseType = await this.pvsParser.pvsVersionInformation();
@@ -509,8 +512,6 @@ class PvsLanguageServer {
 					lispVersion: ""
 				};
 			}
-			// start service providers
-			await this.initServiceProviders();
 			this.pvsReady();
 		} catch (err) {
 			this.connection.sendNotification('server.status.update', err);
@@ -586,60 +587,70 @@ class PvsLanguageServer {
 					this.pvsContextFolder = desc.pvsContextFolder || this.pvsContextFolder;
 					await this.killAllPvsProcesses();
 				}
-				this.startPvs();
+				await this.startPvs();
 			});
 
 			this.connection.onRequest('pvs.version', async () => {
-				const version = await this.pvsParser.pvsVersionInformation();
-				this.connection.sendRequest("server.response.pvs.version", version);
+				if (this.pvsParser) {
+					const version = await this.pvsParser.pvsVersionInformation();
+					this.connection.sendRequest("server.response.pvs.version", version);
+				}
 			});
 
 			this.connection.onRequest('pvs.parse-file', async (fileName: string) => {
-				// this.info(`Parsing ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
-				fileName = this.normaliseFileName(fileName);
-				const response: PvsParserResponse = await this.pvsParser.parseFile(fileName);
-				this.connection.sendRequest("server.response.parse-file", response);
-				// this.pvsReady();
+				if (this.pvsParser) {
+					fileName = this.normaliseFileName(fileName);
+					const response: PvsParserResponse = await this.pvsParser.parseFile(fileName);
+					this.connection.sendRequest("server.response.parse-file", response);
+				}
 			});
 			this.connection.onRequest('pvs.typecheck-file', async (fname: string) => {
-				this.info(`Typechecking ${fsUtils.getFilename(fname, { removeFileExtension: true })}`);
-				fname = this.normaliseFileName(fname);
-				const proc: PvsProcess = this.pvsTypeChecker;
-				if (proc) {
-					const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
-					const fileExtension: string = fsUtils.getFileExtension(fname);
-					const response: PvsTypecheckerResponse = await proc.typecheckFile({ fileName, fileExtension }, false);
-					this.connection.sendRequest("server.response.typecheck-file", response);
-					// feed symbols to the parser
-					this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
+				if (this.pvsParser) {
+					this.info(`Typechecking ${fsUtils.getFilename(fname, { removeFileExtension: true })}`);
+					fname = this.normaliseFileName(fname);
+					const proc: PvsProcess = this.pvsTypeChecker;
+					if (proc) {
+						const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
+						const fileExtension: string = fsUtils.getFileExtension(fname);
+						const response: PvsTypecheckerResponse = await proc.typecheckFile({ fileName, fileExtension }, false);
+						this.connection.sendRequest("server.response.typecheck-file", response);
+						// feed symbols to the parser
+						this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
+					}
+					this.pvsReady();
 				}
-				this.pvsReady();
 			});
 			this.connection.onRequest('pvs.typecheck-prove', async (fname: string) => {
-				this.info(`Typechecking ${fsUtils.getFilename(fname, { removeFileExtension: true })}`);
-				fname = this.normaliseFileName(fname);
-				this.connection.sendNotification('server.status.update', "Typechecking " + fname);
-				const proc: PvsProcess = this.pvsTypeChecker;
-				if (proc) {
-					const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
-					const fileExtension: string = fsUtils.getFileExtension(fname);
-					const response: PvsTypecheckerResponse = await proc.typecheckFile({ fileName, fileExtension }, true);
-					this.connection.sendRequest("server.response.typecheck-file", response);
-					// feed symbols to the parser
-					this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
+				if (this.pvsParser) {
+					this.info(`Typechecking ${fsUtils.getFilename(fname, { removeFileExtension: true })}`);
+					fname = this.normaliseFileName(fname);
+					this.connection.sendNotification('server.status.update', "Typechecking " + fname);
+					const proc: PvsProcess = this.pvsTypeChecker;
+					if (proc) {
+						const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
+						const fileExtension: string = fsUtils.getFileExtension(fname);
+						const response: PvsTypecheckerResponse = await proc.typecheckFile({ fileName, fileExtension }, true);
+						this.connection.sendRequest("server.response.typecheck-file", response);
+						// feed symbols to the parser
+						this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
+					}
+					this.pvsReady();
 				}
-				this.pvsReady();
 			});
 
 
 			this.connection.onRequest('pvs.change-context-and-parse-files', async (context: string) => {
-				this.connection.sendNotification('server.status.update', `Parsing files in context ${context}`);
-				await this.changeContextAndParseFiles(context);
-				this.pvsReady();
+				if (this.pvsParser) {
+					this.connection.sendNotification('server.status.update', `Parsing files in context ${context}`);
+					await this.changeContextAndParseFiles(context);
+					this.pvsReady();
+				}
 			});
 			this.connection.onRequest("pvs.list-declarations", async (desc: PvsListDeclarationsRequest) => {
-				const response: PvsDeclarationDescriptor[] = await this.pvsParser.listDeclarations(desc);
-				this.connection.sendRequest("server.response.list-declarations", response);
+				if (this.pvsParser) {
+					const response: PvsDeclarationDescriptor[] = await this.pvsParser.listDeclarations(desc);
+					this.connection.sendRequest("server.response.list-declarations", response);
+				}
 			});
 			// TODO: add context folder as function argument?
 			this.connection.onRequest("pvs.list-files", async () => {
@@ -648,49 +659,57 @@ class PvsLanguageServer {
 				this.connection.sendRequest("server.response.list-files", response);
 			});
 			this.connection.onRequest("pvs.typecheck-all-and-show-tccs", () => {
-				// this.parallelTypeCheckAllAndShowTccs();
-				this.serialTypeCheckAllAndShowTccs();
+				if (this.pvsTypeChecker) {
+					// this.parallelTypeCheckAllAndShowTccs();
+					this.serialTypeCheckAllAndShowTccs();
+				}
 			});
 			this.connection.onRequest("pvs.list-theories", async (uri: string) => {
-				const context: string = fsUtils.getContextFolder(uri);
-				this.changeContextAndParseFiles(context);
+				if (this.pvsParser) {
+					const context: string = fsUtils.getContextFolder(uri);
+					this.changeContextAndParseFiles(context);
+				}
 			});
 			this.connection.onRequest("pvs.typecheck-file-and-show-tccs", async (fname: string) => {
-				if (fname) {
-					this.info(`Typechecking ${fsUtils.getFilename(fname, { removeFileExtension: true })}`);
-					fname = this.normaliseFileName(fname);
-					const proc: PvsProcess = this.pvsTypeChecker;
-					if (proc) {
-						const response: TheoriesMap = await this.typecheckFileAndShowTccs(fname, proc);
-						this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
-						// feed symbols to the parser
-						const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
-						const fileExtension: string = fsUtils.getFileExtension(fname);
-						this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
+				if (this.pvsTypeChecker) {
+					if (fname) {
+						this.info(`Typechecking ${fsUtils.getFilename(fname, { removeFileExtension: true })}`);
+						fname = this.normaliseFileName(fname);
+						const proc: PvsProcess = this.pvsTypeChecker;
+						if (proc) {
+							const response: TheoriesMap = await this.typecheckFileAndShowTccs(fname, proc);
+							this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
+							// feed symbols to the parser
+							const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
+							const fileExtension: string = fsUtils.getFileExtension(fname);
+							this.pvsParser.typecheckFile({ fileName, fileExtension }, false);
+						}
+						this.pvsReady();
+					} else {
+						this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-file-and-show-tccs request received by the server (fileName is null)");
 					}
-					this.pvsReady();
-				} else {
-					this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-file-and-show-tccs request received by the server (fileName is null)");
 				}
 			});
 			this.connection.onRequest('pvs.typecheck-prove-and-show-tccs', async (fileName: string) => {
-				if (fileName) {
-					this.info(`Discharging proof obligations for ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
-					fileName = this.normaliseFileName(fileName);
-					// execute tcp
-					// TODO: run tcp in parallel -- to do this, create n processes, each proving one tcc (tcp can only perform sequential execution)
-					// await this.pvsTypeChecker.typecheckProve(fileName);
-					// gather updated information about tccs
-					const txt: string = await this.readFile(fileName);
-					if (txt) {
-						const theoryNames: string[] = listTheoryNames(txt);
-						const response: TheoriesMap = await this.serialTCP(fileName, theoryNames);
-						// const response: TccList = await this.parallelTCP(fileName, theoryNames);
-						this.connection.sendRequest("server.response.typecheck-prove-and-show-tccs", response);
+				if (this.pvsTypeChecker) {
+					if (fileName) {
+						this.info(`Discharging proof obligations for ${fsUtils.getFilename(fileName, { removeFileExtension: true })}`);
+						fileName = this.normaliseFileName(fileName);
+						// execute tcp
+						// TODO: run tcp in parallel -- to do this, create n processes, each proving one tcc (tcp can only perform sequential execution)
+						// await this.pvsTypeChecker.typecheckProve(fileName);
+						// gather updated information about tccs
+						const txt: string = await this.readFile(fileName);
+						if (txt) {
+							const theoryNames: string[] = listTheoryNames(txt);
+							const response: TheoriesMap = await this.serialTCP(fileName, theoryNames);
+							// const response: TccList = await this.parallelTCP(fileName, theoryNames);
+							this.connection.sendRequest("server.response.typecheck-prove-and-show-tccs", response);
+						}
+						this.pvsReady();
+					} else {
+						this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-prove-and-show-tccs request received by the server (fileName is null)");
 					}
-					this.pvsReady();
-				} else {
-					this.connection.sendNotification('server.status.error', "Malformed pvs.typecheck-prove-and-show-tccs request received by the server (fileName is null)");
 				}
 			});
 			this.connection.onRequest('pvs.step-proof', async (data: ProofDescriptor) => {
@@ -757,65 +776,73 @@ class PvsLanguageServer {
 
 		// register LSP event handlers
 		this.connection.onCompletion(async (tpp: TextDocumentPositionParams): Promise<CompletionItem[]> => {
-			// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.completionProvider;
-			if (tpp.textDocument.uri.endsWith(".pvs") && this.completionProvider) {
-				const document: TextDocument = this.documents.get(tpp.textDocument.uri);
-				let completionItems: CompletionItem[] = await this.completionProvider.provideCompletionItems(document, tpp.position);
-				return completionItems;
+			if (this.pvsParser) {
+				// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.completionProvider;
+				if (tpp.textDocument.uri.endsWith(".pvs") && this.completionProvider) {
+					const document: TextDocument = this.documents.get(tpp.textDocument.uri);
+					let completionItems: CompletionItem[] = await this.completionProvider.provideCompletionItems(document, tpp.position);
+					return completionItems;
+				}
 			}
 			return null;
 		});
 		this.connection.onHover(async (tpp: TextDocumentPositionParams): Promise<Hover> => {
-			// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.hoverProvider;
-			if (fsUtils.isPvsFile(tpp.textDocument.uri) && this.hoverProvider) {
-				const document: TextDocument = this.documents.get(tpp.textDocument.uri);
-				let hover: Hover = await this.hoverProvider.provideHover(document, tpp.position);
-				return hover;
+			if (this.pvsParser) {
+				// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.hoverProvider;
+				if (fsUtils.isPvsFile(tpp.textDocument.uri) && this.hoverProvider) {
+					const document: TextDocument = this.documents.get(tpp.textDocument.uri);
+					let hover: Hover = await this.hoverProvider.provideHover(document, tpp.position);
+					return hover;
+				}
 			}
 			return null;
 		});
 		this.connection.onCodeLens(async (tpp: CodeLensParams): Promise<CodeLens[]> => {
-			// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.codelensProvider;
-			if ((tpp.textDocument.uri.endsWith(".pvs") || tpp.textDocument.uri.endsWith(".tccs")) && this.codeLensProvider) {
-				const document: TextDocument = this.documents.get(tpp.textDocument.uri);
-				let codelens: CodeLens[] = await this.codeLensProvider.provideCodeLens(document);
-				return codelens;
+			if (this.pvsParser) {
+				// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.codelensProvider;
+				if ((tpp.textDocument.uri.endsWith(".pvs") || tpp.textDocument.uri.endsWith(".tccs")) && this.codeLensProvider) {
+					const document: TextDocument = this.documents.get(tpp.textDocument.uri);
+					let codelens: CodeLens[] = await this.codeLensProvider.provideCodeLens(document);
+					return codelens;
+				}
 			}
 			return null;
 		});
 		// this provider enables peek definition in the editor
 		this.connection.onDefinition(async (tpp: TextDocumentPositionParams): Promise<Definition> => {
-			if (fsUtils.isPvsFile(tpp.textDocument.uri) && this.definitionProvider) {
-				// const pvsFolder = (await this.connection.workspace.getConfiguration("pvs")).path;
-				// const filePath = tpp.textDocument.uri.trim().split("/");
-				// const fileName = filePath[filePath.length - 1].split(".pvs")[0];
-				const document: TextDocument = this.documents.get(tpp.textDocument.uri);
-				if (document) { 
-					const pvsDefinitions: PvsDefinition[] = await this.definitionProvider.provideDefinition(document, tpp.position);
-					if (pvsDefinitions) {
-						const ans: Location[] = [];
-						for (const i in pvsDefinitions) {
-							const def: PvsDefinition = pvsDefinitions[i];
-							const uri: string = (def.symbolDeclarationFile === PRELUDE_FILE) ?
-													path.join(this.pvsParser.getPvsLibraryPath(), "prelude.pvs")
-													: path.join(this.pvsContextFolder, def.symbolDeclarationFile + ".pvs");
-							const range: Range = {
-								start: {
-									line: def.symbolDeclarationRange.start.line - 1,
-									character: def.symbolDeclarationRange.start.character
-								},
-								end: {
-									line: def.symbolDeclarationRange.end.line - 1,
-									character: def.symbolDeclarationRange.end.character
+			if (this.pvsParser) {
+				if (fsUtils.isPvsFile(tpp.textDocument.uri) && this.definitionProvider) {
+					// const pvsFolder = (await this.connection.workspace.getConfiguration("pvs")).path;
+					// const filePath = tpp.textDocument.uri.trim().split("/");
+					// const fileName = filePath[filePath.length - 1].split(".pvs")[0];
+					const document: TextDocument = this.documents.get(tpp.textDocument.uri);
+					if (document) { 
+						const pvsDefinitions: PvsDefinition[] = await this.definitionProvider.provideDefinition(document, tpp.position);
+						if (pvsDefinitions) {
+							const ans: Location[] = [];
+							for (const i in pvsDefinitions) {
+								const def: PvsDefinition = pvsDefinitions[i];
+								const uri: string = (def.symbolDeclarationFile === PRELUDE_FILE) ?
+														path.join(this.pvsParser.getPvsLibraryPath(), "prelude.pvs")
+														: path.join(this.pvsContextFolder, def.symbolDeclarationFile + ".pvs");
+								const range: Range = {
+									start: {
+										line: def.symbolDeclarationRange.start.line - 1,
+										character: def.symbolDeclarationRange.start.character
+									},
+									end: {
+										line: def.symbolDeclarationRange.end.line - 1,
+										character: def.symbolDeclarationRange.end.character
+									}
 								}
+								const location: Location = {
+									uri: "file://" + uri,
+									range: range
+								}
+								ans.push(location);
 							}
-							const location: Location = {
-								uri: "file://" + uri,
-								range: range
-							}
-							ans.push(location);
+							return ans.reverse();
 						}
-						return ans.reverse();
 					}
 				}
 			}

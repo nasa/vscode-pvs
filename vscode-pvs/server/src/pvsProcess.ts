@@ -187,8 +187,12 @@ export class PvsProcess {
 					});
 				};
 				if (this.pvsProcess) {
-					this.pvsProcess.stdout.on("data", listener);
-					this.pvsProcess.stdin.write(cmd + "\n");
+					try {
+						this.pvsProcess.stdout.on("data", listener);
+						this.pvsProcess.stdin.write(cmd + "\n");
+					} catch (pvsProcessWriteError) {
+						console.warn(pvsProcessWriteError);
+					}
 				}
 			});
 		}

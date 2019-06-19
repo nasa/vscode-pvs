@@ -282,32 +282,20 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 			const theoryNames: string[] = Object.keys(theoriesMap.theoriesStatusMap);
 			theoryNames.forEach((theoryName: string) => {
 				const theoryItem: TheoryItem = this.getTheoryItem(theoryName);
-				const theoryStatus: TheoryStatus = theoriesMap.theoriesStatusMap[theoryName];
-				// update status of tccs and theorems
-				const formulaNames: string[] = Object.keys(theoryStatus.theorems);
-				formulaNames.forEach((formulaName: string) => {
-					const formulaDescriptor: FormulaDescriptor = theoriesMap.theoriesStatusMap[theoryName].theorems[formulaName];
-					if (formulaDescriptor.isTcc) {
-						theoryItem.tccsOverview.updateStatus(formulaDescriptor);
-					} else {
-						theoryItem.theoremsOverview.updateStatus(formulaDescriptor);
-					}
-					// if (theoremItem) {
-					// 	theoremItem.setStatus(theoryStatus.theorems[formulaName].status);
-					// } else {
-					// 	// check if tcc
-
-					// 	const theorem: TheoremItem = new TheoremItem(desc, theoriesMap.pvsContextFolder);
-					// 	theoryItem.theoremsOverview.
-					// 	const tccItem: TccItem = theoryItem.tccsOverview.getTccItem(formulaName);
-					// 	if (tccItem) {
-					// 		tccItem.setStatus(theoryStatus.theorems[formulaName].status);
-					// 	} else {
-					// 		console.error(`Error: trying to update theorem ${formulaName} not listed in Theory Explorer :/`);
-					// 	}
-					// }
-				});
-				theoryItem.refreshLabel();
+				if (theoryItem) {
+					const theoryStatus: TheoryStatus = theoriesMap.theoriesStatusMap[theoryName];
+					// update status of tccs and theorems
+					const formulaNames: string[] = Object.keys(theoryStatus.theorems);
+					formulaNames.forEach((formulaName: string) => {
+						const formulaDescriptor: FormulaDescriptor = theoriesMap.theoriesStatusMap[theoryName].theorems[formulaName];
+						if (formulaDescriptor.isTcc) {
+							theoryItem.tccsOverview.updateStatus(formulaDescriptor);
+						} else {
+							theoryItem.theoremsOverview.updateStatus(formulaDescriptor);
+						}
+					});
+					theoryItem.refreshLabel();
+				}
 			});
 			this.refreshView();
 		}

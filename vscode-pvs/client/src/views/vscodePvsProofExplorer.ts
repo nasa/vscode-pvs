@@ -316,9 +316,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	private installHandlers(context: ExtensionContext) {
 		this.client.onRequest('server.response.step-proof', (ans: string) => {
 			this.fromJSON(JSON.parse(ans));
+			this.startProof();
 		});
 		this.client.onRequest('server.response.step-tcc', (ans: string) => {
 			this.fromJSON(JSON.parse(ans));
+			this.startProof();
 		});
 		this.client.onRequest("server.response.prover", (ans) => {
 		});
@@ -335,14 +337,14 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		let cmd: Disposable = commands.registerCommand("proof-explorer.step", () => {
 			this.step();
 		});
-		context.subscriptions.push(cmd);
-		cmd = commands.registerCommand("terminal.pvs.response.step-executed", () => {
-			// this.refreshView();
-		});
-		context.subscriptions.push(cmd);
-		cmd = commands.registerCommand("terminal.pvs.response.step-proof-ready", () => {
-			this.startProof();
-		});
+		// context.subscriptions.push(cmd);
+		// cmd = commands.registerCommand("terminal.pvs.response.step-executed", () => {
+		// 	// this.refreshView();
+		// });
+		// context.subscriptions.push(cmd);
+		// cmd = commands.registerCommand("terminal.pvs.response.step-proof-ready", () => {
+		// 	this.startProof();
+		// });
 
 		// -- proof explorer commands
 		context.subscriptions.push(cmd);
