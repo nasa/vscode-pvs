@@ -1,9 +1,9 @@
 # VSCode-PVS: An Integrated Development Environment for the Prototype Verification System
-VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
-The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
+VSCode-PVS is an integrated development environment for creating, evaluating, and verifying PVS specifications.
+The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the features provided by development environments used by software developers.
 
-## Functionalities
-The main functionalities provided by the environment are as follows:
+## Features
+The main features provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
 - **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented to the user when the user is typing a symbol name in the editor. Code snippets are provided for frequent modeling blocks, e.g., if-then-else. 
 - **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the developer places the cursor over an identifier.
@@ -51,17 +51,17 @@ The main functionalities provided by the environment are as follows:
 
 
 ## ChangeLog
-### 1.1.2 (2019.06.07)
+### 1.0.12 (2019.06.07)
 - PVS Command Line Interface (auto-completion and history navigation for proof commands)
 - Improved Theory Explorer (proof status for theorems and tccs)
 - Improved navigation of symbol definitions (typechecking information are now fed to the parser process)
 - Improved status bar
 - Cheat codes for developers: M-x pvs6 M-x pvs7 allow rapid switch of pvs version (requires setting of pvs-zen-path variables in vscode-pvs settings)
 
-### 1.1.1 (2019.05.29)
+### 1.0.11 (2019.05.29)
 - Improved Theory Explorer (navigation of theorems)
 
-### 1.1.0 (2019.05.24)
+### 1.0.10 (2019.05.24)
 - Added support for view-proof and step-proof commands
 - Improved feedback on status bar
 
