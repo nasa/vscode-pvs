@@ -93,7 +93,6 @@ class ProverTerminalCLI {
         return this.active;
     }
     stepCommand (cmd: string) {
-        this.interactiveCommand = "step-executed";
         this.sendCommand(cmd);
     }
     proveFormula (fileName: string, theoryName: string, formulaName: string, line: number) {
@@ -104,7 +103,7 @@ class ProverTerminalCLI {
         this.terminal = this.createPvsTerminal(terminalName, {
             pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder, cmd: 'prove-formula', 
             fileName, theoryName, formulaName, line, fileExtension: ".pvs" });
-        this.interactiveCommand = "step-proof-ready";
+        // this.interactiveCommand = "step-proof-ready";
         return this;
     }
     proveTcc (fileName: string, theoryName: string, formulaName: string, line: number) {
@@ -114,7 +113,7 @@ class ProverTerminalCLI {
         this.terminal = this.createPvsTerminal(formulaName, {
             pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder, cmd: 'prove-formula', 
             fileName, theoryName, formulaName, fileExtension: ".tccs", line });
-        this.interactiveCommand = "step-proof-ready";
+        // this.interactiveCommand = "step-proof-ready";
         return this;
     }
     async showProof(fileName: string, theoryName: string, formulaName: string, line: number) {

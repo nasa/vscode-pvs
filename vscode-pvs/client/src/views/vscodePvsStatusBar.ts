@@ -59,9 +59,10 @@ export class VSCodePvsStatusBar {
         // register notification handlers
         this.client.onNotification("pvs-ready", (pvsVersion: string) => {
             if (pvsVersion) {
+                this.pvsVersionInfo = pvsVersion;
                 this.versionInfoBar.text = pvsVersion;
             }
-            this.statusBar.text = "";
+            this.ready();
         });
         this.client.onNotification("server.status.update", (msg: string) => {
 			this.statusBar.text = msg;
@@ -82,7 +83,7 @@ export class VSCodePvsStatusBar {
     }
 
     ready () {
-        this.statusBar.text = this.pvsVersionInfo;
+        this.statusBar.text = "";
     }
 
     activate (context: ExtensionContext) {

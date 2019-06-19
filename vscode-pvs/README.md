@@ -52,7 +52,7 @@ The main features provided by the environment are as follows:
 
 ## ChangeLog
 ### 1.0.12 (2019.06.07)
-- PVS Command Line Interface (auto-completion and history navigation for proof commands)
+- PVS Command Line Interface (auto-completion and history navigation for proof commands, syntax highlighting for PVS language)
 - Improved Theory Explorer (proof status for theorems and tccs)
 - Improved navigation of symbol definitions (typechecking information are now fed to the parser process)
 - Improved status bar
