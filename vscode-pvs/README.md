@@ -30,19 +30,23 @@ The main functionalities provided by the environment are as follows:
 ├── client                       // PVS Language Client (VSCode entry point)
 │   └── src
 │       ├── providers            // Client-side service providers (emacs binding, decorations)
-│       ├── views                // Explorer views and integrated terminals 
+│       ├── views                // PVS Proof Explorer, PVS Theory Explorer 
+│       ├── terminals            // PVS Command Line Interface 
 │       └── pvsLanguageClient.ts // PVS Language Client implementation
 ├── icons                        // PVS icons theme
 ├── package.json                 // The extension manifest
 ├── syntax                       // Syntax highlighting
+├── LICENSES                     // NASA Open Source License Agreement
 └── server                       // PVS Language Server
     └── src
         ├── providers                          // Server-side service providers
-        │     ├── pvsCodeLensProvider.ts       // Literate programming
+        │     ├── pvsCodeLensProvider.ts       // In-line actionable commands
         │     ├── pvsCompletionProvider.ts     // Auto-completion
-        │     ├── pvsDefinitionProvider.ts     // Goto/peek definition
+        │     ├── pvsDefinitionProvider.ts     // Find definitions
         │     └── pvsHoverProvider.ts          // Hover information                
-        │             
+        ├── pvsCli.ts            // PVS Command Line Interface
+        ├── pvsProcess.ts        // PVS process wrapper
+        ├── pvsLisp.ts           // Lisp reader for parsing PVS responses
         └── pvsLanguageServer.ts // PVS Language Server implementation
 ```
 
