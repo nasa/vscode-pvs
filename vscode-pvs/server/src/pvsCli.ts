@@ -318,10 +318,14 @@ class PvsCli {
 	}
 	static withSyntaxHighlighting(text: string): string {
 		if (text) {
-			// numbers should be highlighted first, otherwise the regexp will change numbers introduced by the colors
+			// numbers and operators should be highlighted first, otherwise the regexp will change characters introduced to colorize the string
 			const number_regexp: RegExp = new RegExp(language.PVS_NUMBER_REGEXP_SOURCE, "g");
 			text = text.replace(number_regexp, (number: string) => {
 				return utils.colorText(number, utils.textColor.yellow);
+			});
+			const operators_regexp: RegExp = new RegExp(language.PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE, "g");
+			text = text.replace(operators_regexp, (op: string) => {
+				return utils.colorText(op, utils.textColor.blue);
 			});
 			const keywords_regexp: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
 			text = text.replace(keywords_regexp, (keyword: string) => {
@@ -334,6 +338,10 @@ class PvsCli {
 			const builtin_types_regexp: RegExp = new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g");
 			text = text.replace(builtin_types_regexp, (tname: string) => {
 				return utils.colorText(tname, utils.textColor.green);
+			});
+			const truefalse_regexp: RegExp = new RegExp(language.PVS_TRUE_FALSE_REGEXP_SOURCE, "gi");
+			text = text.replace(truefalse_regexp, (tf: string) => {
+				return utils.colorText(tf, utils.textColor.blue);
 			});
 		}
 		return text;
