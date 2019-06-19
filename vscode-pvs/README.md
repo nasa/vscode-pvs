@@ -1,9 +1,9 @@
 # VSCode-PVS: An Integrated Development Environment for the Prototype Verification System
-VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
-The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
+VSCode-PVS is an integrated development environment for creating, evaluating, and verifying PVS specifications.
+The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the features provided by development environments used by software developers.
 
-## Functionalities
-The main functionalities provided by the environment are as follows:
+## Features
+The main features provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
 - **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented to the user when the user is typing a symbol name in the editor. Code snippets are provided for frequent modeling blocks, e.g., if-then-else. 
 - **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the developer places the cursor over an identifier.
