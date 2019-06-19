@@ -39,6 +39,7 @@
 import * as utils from './common/languageUtils';
 import * as readline from 'readline';
 import { PvsCliInterface, PvsResponseType, PvsVersionDescriptor, SimpleConsole, StrategyDescriptor } from './common/serverInterface';
+import * as language from "./common/languageKeywords";
 
 const usage: string = `
 ${utils.colorText("Prover Command Line Interface (CLI)", utils.textColor.blue)}
@@ -149,7 +150,7 @@ class PvsCli {
 
 
 	private outChannel (data: string) {
-		console.log(data);
+		console.log(PvsCli.withSyntaxHighlighting(data));
 		const regex: RegExp = /:end-pvs-loc\b/;
 		if (regex.test(data)) {
 			// Status update for theory explorer
@@ -314,6 +315,28 @@ class PvsCli {
 		// return [ hits.length ? hits : PvsCli.completions, line ];
 		// show nothing if no completion is found
 		return [ hits, line ];
+	}
+	static withSyntaxHighlighting(text: string): string {
+		if (text) {
+			// numbers should be highlighted first, otherwise the regexp will change numbers introduced by the colors
+			const number_regexp: RegExp = new RegExp(language.PVS_NUMBER_REGEXP_SOURCE, "g");
+			text = text.replace(number_regexp, (number: string) => {
+				return utils.colorText(number, utils.textColor.yellow);
+			});
+			const keywords_regexp: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
+			text = text.replace(keywords_regexp, (keyword: string) => {
+				return utils.colorText(keyword, utils.textColor.blue);
+			});
+			const function_regexp: RegExp = new RegExp(language.PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE, "g");
+			text = text.replace(function_regexp, (fname: string) => {
+				return utils.colorText(fname, utils.textColor.green);
+			});
+			const builtin_types_regexp: RegExp = new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g");
+			text = text.replace(builtin_types_regexp, (tname: string) => {
+				return utils.colorText(tname, utils.textColor.green);
+			});
+		}
+		return text;
 	}
 }
 
