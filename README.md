@@ -18,15 +18,56 @@ The main functionalities provided by the environment are as follows:
 
 
 ## Installation instructions
-- Download the latest release of VSCode-PVS from the [github repository](releases)
-- Download NodeJS from https://nodejs.org/en/download
-- Download PVS from http://pvs.csl.sri.com
-- Download Visual Studio Code from https://code.visualstudio.com
-- Install vscode-pvs in VSCode: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
-- Set the path to the PVS executable from the Settings menu: Files -> Preferences -> Settings -> Extensions -> PVS -> path
-- Have fun using the extension!
+1. Download the latest release of VSCode-PVS from the [github repository](releases)
+2. Download NodeJS from https://nodejs.org/en/download
+3. Download PVS from http://pvs.csl.sri.com
+4. Download Visual Studio Code from https://code.visualstudio.com
+5. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
+6. Set the path to the PVS executable in Visual Studio Code: from the Settings menu, choose Files -> Preferences -> Settings -> Extensions -> PVS -> path
+7. Have fun using the extension!
+
+## Updating VSCode-PVS
+When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
+
+- Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
+
+All settings and preferences from the previous version of VSCode-PVS will be maintained.
+
+
+## Notices
+### Copyright 
+Copyright 2019 United States Government as represented by the Administrator of the National Aeronautics and Space Administration. All Rights Reserved.
+ 
+### Disclaimers
+**No Warranty**: THE SUBJECT SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY
+  WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
+  INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE SUBJECT SOFTWARE
+  WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
+  INFRINGEMENT, ANY WARRANTY THAT THE SUBJECT SOFTWARE WILL BE ERROR
+  FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM TO
+  THE SUBJECT SOFTWARE. THIS AGREEMENT DOES NOT, IN ANY MANNER,
+  CONSTITUTE AN ENDORSEMENT BY GOVERNMENT AGENCY OR ANY PRIOR RECIPIENT
+  OF ANY RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY
+  OTHER APPLICATIONS RESULTING FROM USE OF THE SUBJECT SOFTWARE.
+  FURTHER, GOVERNMENT AGENCY DISCLAIMS ALL WARRANTIES AND LIABILITIES
+  REGARDING THIRD-PARTY SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE,
+  AND DISTRIBUTES IT "AS IS."
+ 
+**Waiver and Indemnity**: RECIPIENT AGREES TO WAIVE ANY AND ALL CLAIMS
+  AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
+  SUBCONTRACTORS, AS WELL AS ANY PRIOR RECIPIENT.  IF RECIPIENT'S USE OF
+  THE SUBJECT SOFTWARE RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES,
+  EXPENSES OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM
+  PRODUCTS BASED ON, OR RESULTING FROM, RECIPIENT'S USE OF THE SUBJECT
+  SOFTWARE, RECIPIENT SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED
+  STATES GOVERNMENT, ITS CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY
+  PRIOR RECIPIENT, TO THE EXTENT PERMITTED BY LAW.  RECIPIENT'S SOLE
+  REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
+  TERMINATION OF THIS AGREEMENT.
 
 
 ## Contacts
 * Paolo Masci (NIA) (paolo.masci@nianet.org)
-* Cesar Munoz (cesar.a.munoz@nasa.gov)
+* Cesar Munoz (NASA LaRC) (cesar.a.munoz@nasa.gov)
+
