@@ -308,8 +308,12 @@ export function getErrorRange(txt: string, position: Position): Range {
 	};
 }
 
+// based on the 256 color scheme, see colors at https://misc.flogisoft.com/bash/tip_colors_and_formatting
 export const textColor: { [ key: string ]: number } = {
-    blue: 32
+	blue: 32,
+	yellow: 11,
+	green: 10,
+	magenta: 90
 }
 
 export function colorText(text: string, colorCode: number): string {

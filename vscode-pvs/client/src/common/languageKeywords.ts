@@ -124,10 +124,9 @@ export const PVS_BUILTIN_TYPES: string[] = [ "bool", "boolean", "nat", "natural"
 export const PVS_BUILTIN_TYPE_REGEXP_SOURCE: string = regExpSource(PVS_BUILTIN_TYPES);
 // export const PVS_BUILTIN_TYPES_REGEXP = new RegExp(PVS_BUILTIN_TYPES_REGEXP_SOURCE, "gi");
 
-export const PVS_LIBRARY_FUNCTIONS: string[] = [ "cons", "car", "cdr", "str2pvs", "pvs2str", "abs", "nth", "length", "reverse",
-												 "ceiling", "floor", "fractional", "expt", "pred", "PRED", "predicate", "PREDICATE", "setof", "SETOF",
-												 "unique?", "injective?", "surjective?", "bijective?", "upto", "below", "upfrom", "above", "subrange" ];
-export const PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE: string = regExpSource(PVS_LIBRARY_FUNCTIONS);
+// export const PVS_LIBRARY_FUNCTIONS: string[] = [ "cons", "car", "cdr", "str2pvs", "pvs2str", "abs", "nth", "length", "reverse", "ceiling", "floor", "fractional", "expt", "pred", "PRED", "predicate", "PREDICATE", "setof", "SETOF", "unique?", "injective?", "surjective?", "inverse?", "bijective?", "upto", "below", "upfrom", "above", "subrange", "member", "empty?", "emptyset", "nonempty?", "full?", "fullset", "nontrivial?", "subset?", "strict_subset?", "union", "intersection", "disjoint?", "complement", "difference", "symmetric_difference", "every", "some", "singleton?", "singleton", "add", "remove", "choose", "the", "rest", "powerset", "Union", "Intersection", "even?", "odd?" ];
+export const PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE: string = "\\bcons\\b|\\bcar\\b|\\bcdr\\b|\\bstr2pvs\\b|\\bpvs2str\\b|\\babs\\b|\\bnth\\b|\\blength\\b|\\breverse\\b|\\bceiling\\b|\\bfloor\\b|\\bfractional\\b|\\bexpt\\b|\\bpred\\b|\\bPRED\\b|\\bpredicate\\b|\\bPREDICATE\\b|\\bsetof\\b|\\bSETOF\\b|\\bunique\\?$|\\binjective\\?$|\\bsurjective\\?$|\\binverse\\?$|\\bbijective\\?$|\\bupto\\b|\\bbelow\\b|\\bupfrom\\b|\\babove\\b|\\bsubrange\\b|\\bmember\\b|\\bempty\\?$|\\bemptyset\\b|\\bnonempty\\?$|\\bfull\\?$|\\bfullset\\b|\\bnontrivial\\?$|\\bsubset\\?$|\\bstrict_subset\\?$|\\bunion\\b|\\bintersection\\b|\\bdisjoint\\?$|\\bcomplement\\b|\\bdifference\\b|\\bsymmetric_difference\\b|\\bevery\\b|\\bsome\\b|\\bsingleton\\?$|\\bsingleton\\b|\\badd\\b|\\bremove\\b|\\bchoose\\b|\\bthe\\b|\\brest\\b|\\bpowerset\\b|\\bUnion\\b|\\bIntersection\\b|\\beven\\?$|\\bodd\\?$";
+export const PVS_LIBRARY_FUNCTIONS: string[] = PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE.split("|").map(elem => { return elem.replace(/\\b/g, "").replace("\\?$", "?") });
 
 export const PVS_NUMBER_REGEXP_SOURCE: string = "([+-]?)\\b(\\d+\/\\d+)|([+-]?)\\b(\\d+(?:\\.\\d+)?)"; // the first two capturing groups are sign and value for rationals (e.g., -1/12); the second two groups are sign and value for integers (e.g., +1) and reals (e.g., +0.12)
 
