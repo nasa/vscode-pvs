@@ -16,11 +16,13 @@ The main features provided by the environment are as follows:
 
 
 ## Installation instructions
-- Download and install NodeJS from https://nodejs.org/en/download/
-- Download and install PVS Allegro from http://pvs.csl.sri.com/
-- Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
-- Set the path to the PVS executable from the Settings menu: Files -> Preferences -> Settings -> Extensions -> PVS -> path
-- Have fun using the extension!
+1. Download the latest release of VSCode-PVS from the [github repository](releases)
+2. Download and install NodeJS from https://nodejs.org/en/download
+3. Download and install PVS Allegro from http://pvs.csl.sri.com
+4. Download and install Visual Studio Code from https://code.visualstudio.com
+5. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
+6. Set the path to the PVS executable in Visual Studio Code: from the Settings menu, choose Files -> Preferences -> Settings -> Extensions -> PVS -> path
+7. Have fun using the extension!
 
 
 ## Structure
