@@ -84,46 +84,50 @@ export class PvsHoverProvider {
 			// else, not a comment
 			let definitions: PvsDefinition[] = await this.definitionProvider.provideDefinition(document, position, null);
 			if (definitions) {
-				if (definitions.length === 1) {
-					const desc: PvsDefinition = definitions[0];
-					let contents: MarkedString[] = [];
-					if (desc.error) {
-						// errors are shown alone in the hover to avoid cluttering
-						contents.push(desc.error.msg);
-					} else {
-						if (desc.comment) {
-							contents.push({
-								value: desc.comment,
-								language: "pvs"
-							});
-						}
-						if (desc.symbolTheory && desc.symbolDeclaration) {
-							if (desc.symbolDeclarationRange && desc.symbolDeclarationFile) {
-								const folder = (PVS_LIBRARY_FILES[desc.symbolDeclarationFile]) ?
-												this.definitionProvider.getLibrariesPath()
-													: this.definitionProvider.getContextPath();
-								const fileName = PVS_LIBRARY_FILES[desc.symbolDeclarationFile] || (desc.symbolDeclarationFile + ".pvs");
-								const link: MarkedString = // encoded as a markdown string
-									"[" + desc.symbolDeclarationFile + ".pvs "
-										+ "(Ln " + desc.symbolDeclarationRange.start.line 
-										+ ", Col " + desc.symbolDeclarationRange.start.character + ")]"
-									+ "(file://" + path.join(folder, fileName)
-									+ "#L" + desc.symbolDeclarationRange.start.line	+ ")";
-									// + ", Col " + desc.symbolDeclarationRange.start.character + ")";
-								contents.push(link);
-							}
-							const content: MarkedString = {
-								value: desc.symbolDeclaration,
-								language: "pvs"
-							};
-							contents.push(content);
-						}
+				const desc: PvsDefinition = definitions[0];
+				let contents: MarkedString[] = [];
+				if (desc.error) {
+					// errors are shown alone in the hover to avoid cluttering
+					contents.push(desc.error.msg);
+				} else {
+					if (desc.comment) {
+						contents.push({
+							value: desc.comment,
+							language: "pvs"
+						});
 					}
-					return {
-						contents: contents,
-						range: { start: position, end: position } // the hover is located at the mouse position
-					};
+					if (desc.symbolTheory && desc.symbolDeclaration) {
+						if (desc.symbolDeclarationRange && desc.symbolDeclarationFile) {
+							const folder = (PVS_LIBRARY_FILES[desc.symbolDeclarationFile]) ?
+											this.definitionProvider.getLibrariesPath()
+												: this.definitionProvider.getContextPath();
+							const fileName = PVS_LIBRARY_FILES[desc.symbolDeclarationFile] || (desc.symbolDeclarationFile + ".pvs");
+							const link: MarkedString = // encoded as a markdown string
+								"[" + desc.symbolDeclarationFile + ".pvs "
+									+ "(Ln " + desc.symbolDeclarationRange.start.line 
+									+ ", Col " + desc.symbolDeclarationRange.start.character + ")]"
+								+ "(file://" + path.join(folder, fileName)
+								+ "#L" + desc.symbolDeclarationRange.start.line	+ ")";
+								// + ", Col " + desc.symbolDeclarationRange.start.character + ")";
+							contents.push(link);
+						}
+						const content: MarkedString = {
+							value: desc.symbolDeclaration,
+							language: "pvs"
+						};
+						contents.push(content);
+					}
 				}
+				if (definitions.length > 1) {
+					contents = contents.concat([
+						`${definitions.length - 1} additional definitions found`,
+						"Please use peek-definition to view all possible definitions"
+					]);
+				}
+				return {
+					contents: contents,
+					range: { start: position, end: position } // the hover is located at the mouse position
+				};
 			}
 		}
 		return null;
