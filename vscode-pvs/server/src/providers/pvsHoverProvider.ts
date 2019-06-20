@@ -43,7 +43,7 @@ import { PvsDefinitionProvider } from "./pvsDefinitionProvider";
 import { PVS_LIBRARY_FILES } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
 import * as path from 'path';
-import * as fs from '../common/fsUtils';
+import * as fsUtils from '../common/fsUtils';
 
 export class PvsHoverProvider {
 	/**`
@@ -71,7 +71,7 @@ export class PvsHoverProvider {
 	 * @param token Cancellation token (optional).
 	 */
 	async provideHover (document: TextDocument, position: Position, token?: CancellationToken): Promise<Hover> {
-		if (fs.isPvsFile(document.uri)) {
+		if (fsUtils.isPvsFile(document.uri)) {
 			// load the text preceeding the current position and check if this is a comment
 			const line: string = document.getText({
 				start: { line: position.line, character: 0 },
@@ -98,8 +98,7 @@ export class PvsHoverProvider {
 					}
 					if (desc.symbolTheory && desc.symbolDeclaration) {
 						if (desc.symbolDeclarationRange && desc.symbolDeclarationFile) {
-							const folder = (PVS_LIBRARY_FILES[desc.symbolDeclarationFile]) ?
-											this.definitionProvider.getLibrariesPath()
+							const folder = (PVS_LIBRARY_FILES[desc.symbolDeclarationFile]) ? this.definitionProvider.getLibrariesPath()
 												: this.definitionProvider.getContextPath();
 							const fileName = PVS_LIBRARY_FILES[desc.symbolDeclarationFile] || (desc.symbolDeclarationFile + ".pvs");
 							const link: MarkedString = // encoded as a markdown string

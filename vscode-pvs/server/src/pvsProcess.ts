@@ -59,6 +59,17 @@ export interface ContextDiagnostics {
 	[fileName: string]: PvsParserResponse
 };
 
+export class PvsProgressInfo {
+	private progressLevel: number = 0;
+	showProgress (cmd: string, data?: string): string {
+		this.progressLevel++;
+		if (this.progressLevel > 4) {
+			this.progressLevel = 0;
+		}
+		return `Executing ${cmd}${".".repeat(this.progressLevel)}`;
+	}
+}
+
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
  */
@@ -74,6 +85,7 @@ export class PvsProcess {
 
 	pvsVersionInfo: PvsVersionDescriptor;
 
+	private progressInfo: PvsProgressInfo;
 	// private serverProxy: xmlrpcProvider.XmlRpcProxy;
 
 	private pvsServerProcess: ChildProcess = null;
@@ -132,6 +144,7 @@ export class PvsProcess {
 		this.pvsContextFolder = desc.pvsContextFolder || __dirname;
 		this.processType = desc.processType || "typechecker";
 
+		this.progressInfo = new PvsProgressInfo();
 		// this.serverProxy = new xmlrpcProvider.XmlRpcProxy();
 
 		this.connection = connection;
@@ -141,7 +154,7 @@ export class PvsProcess {
 	 * @param cmd 
 	 */
 	private cannotExecute (msg: string): Promise<PvsResponseType> {
-		if (this.connection) { this.connection.console.error(msg); }
+		// if (this.connection) { this.connection.console.error(msg); }
 		return Promise.resolve({
 			error: {
 				msg: msg,
@@ -167,7 +180,7 @@ export class PvsProcess {
 				const listener = (data: string) => {
 					if (this.connection) {
 						this.connection.console.log(data); // this is the crude pvs lisp output, useful for debugging
-						this.info(data);
+						this.info(this.progressInfo.showProgress(commandId, data));
 					}
 					pvsLispReader.read(data, async (pvsOut: string) => {
 						if (this.pvsProcess) {
@@ -175,13 +188,14 @@ export class PvsProcess {
 						}
 						this.pvsProcessBusy = false;
 						const ans: PvsResponseType = pvsLispReader.parse(commandId, pvsOut, desc);
+						this.ready();
 						resolve(ans);
 					});
 				};
 				if (this.pvsProcess) {
 					try {
-						this.pvsProcess.stdout.on("data", listener);
-						this.pvsProcess.stdin.write(cmd + "\n");
+						if (this.pvsProcess.stdout) { this.pvsProcess.stdout.on("data", listener); }
+						if (this.pvsProcess.stdin) { this.pvsProcess.stdin.write(cmd + "\n"); }
 					} catch (pvsProcessWriteError) {
 						console.warn(pvsProcessWriteError);
 					}
@@ -262,10 +276,15 @@ export class PvsProcess {
 
 	kill() {
 		if (this.pvsProcess) {
-			this.pvsProcess.kill();
-			if (this.connection) {
-				this.connection.sendNotification(`server.delete-pvs-${this.processType}`);
-			}
+            // before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
+            // because the destruction of the process is immediate but previous calls to write() may not have drained
+            // see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
+            // FIXME: disabling this for now, it is not working as intended, needs to be debugged
+            this.pvsProcess.stdin.end(() => {});
+            this.pvsProcess.kill();
+            if (this.connection) {
+                this.connection.sendNotification(`server.delete-pvs-${this.processType}`);
+            }
 		}
 	}
 
@@ -288,7 +307,7 @@ export class PvsProcess {
 		const relocateScript: string = `cd ${this.pvsPath} && bin/relocate`;
 		try {
 			const output: Buffer = execSync(relocateScript);
-			console.log(output.toString());
+			// console.log(output.toString());
 		} catch (relocateError) {
 			console.error(relocateError);
 			return false;

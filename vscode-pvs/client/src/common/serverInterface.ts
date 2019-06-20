@@ -246,6 +246,7 @@ export declare interface ProofDescriptor {
 	formulaName: string;
 	theoryName: string;
 	line: number;
+	pvsContextFolder: string;
 }
 
 export declare interface ProofStructure {

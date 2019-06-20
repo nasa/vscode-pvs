@@ -273,11 +273,15 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
 
 		this.client.onNotification("pvs.context.theories-status.update", (theoriesMap: TheoriesMap) => {
-			this.updateFormulae(theoriesMap);
+			this.updateView(theoriesMap);
         });
 	}
 
-	updateFormulae (theoriesMap: TheoriesMap): void {
+	getClient (): LanguageClient {
+		return this.client;
+	}
+
+	updateView (theoriesMap: TheoriesMap): void {
 		if (theoriesMap && theoriesMap.theoriesStatusMap) {
 			const theoryNames: string[] = Object.keys(theoriesMap.theoriesStatusMap);
 			theoryNames.forEach((theoryName: string) => {
@@ -396,7 +400,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		});
 		this.client.onRequest("server.response.list-theorems", (theoriesMap: TheoriesMap) => {
 			// add theorems
-			this.updateFormulae(theoriesMap);
+			this.updateView(theoriesMap);
 		});
 		// this.client.onRequest("server.response.show-tccs", async (ans: TheoriesMap) => {
 		// 	// this.updateTccs(ans);
@@ -412,13 +416,13 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		// 	}
 		// });
 		this.client.onRequest("server.response.typecheck-file-and-show-tccs", (theoriesMap: TheoriesMap) => {
-			this.updateFormulae(theoriesMap);
+			this.updateView(theoriesMap);
 		});
 		this.client.onRequest("server.response.typecheck-prove-and-show-tccs", (theoriesMap: TheoriesMap) => {
-			this.updateFormulae(theoriesMap);
+			this.updateView(theoriesMap);
 		});
 		this.client.onRequest("server.response.typecheck-all-and-show-tccs", (theoriesMap: TheoriesMap) => {
-			this.updateFormulae(theoriesMap);
+			this.updateView(theoriesMap);
 		});
 	}
 
@@ -569,7 +573,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 				// pvs theory
 				const desc: TheoryItem = <TheoryItem> element;
 				children = [
-					desc.tccsOverview,//this.tccsOverview[desc.theoryName], // todo: tccs attribute within theoryitem
+					desc.tccsOverview,
 					desc.theoremsOverview
 				];
 			} else if (element.contextValue === "TCCS") {

@@ -297,6 +297,7 @@ class PvsCli {
 		if (this.fileExtension === ".pvs") {
 			progressMsg = "Typechecking";
 			this.pvsProcess.startCli(showProgress);
+			await this.pvsProcess.changeContext(this.pvsContextFolder);
 			await this.pvsProcess.typecheckFile({ fileName: this.fileName, fileExtension: this.fileExtension }); // FIXME -- use object as argument instead of string
 			progressMsg = "";
 			this.pvsProcess.endCli(showProgress);

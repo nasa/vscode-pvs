@@ -62,6 +62,7 @@ export class PvsCodeLensProvider {
 	provideCodeLens(document: TextDocument, token?: CancellationToken): CodeLens[] {
         const fileName: string = fs.getFilename(document.uri);
         const fileExtension: string = fs.getFileExtension(document.uri);
+        const pvsContextFolder: string = fs.getContextFolder(document.uri);
         const codeLens: CodeLens[] = [];
         const doc: string = document.getText();
         const lines: string[] = doc.split("\n");
@@ -103,6 +104,8 @@ export class PvsCodeLensProvider {
                 const docUp: string = doc.slice(0, match.index + match[2].length);
                 const i: number = docUp.split("\n").length - 1;
                 const theoryName: string = utils.findTheoryName(doc,i);
+                const args: { fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string, pvsContextFolder: string } =
+                        { fileName, theoryName, formulaName, line: i, fileExtension, pvsContextFolder }
                 codeLens.push({
                     range: {
                         start: { line: i, character: match.index },
@@ -111,7 +114,7 @@ export class PvsCodeLensProvider {
                     command: {
                         title: `prove`,
                         command: "codelense.pvs.step-proof",
-                        arguments: [ { fileName, theoryName, formulaName, line: i, fileExtension } ]
+                        arguments: [ args ]
                     }
                 });
             }

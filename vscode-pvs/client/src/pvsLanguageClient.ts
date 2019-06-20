@@ -72,8 +72,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	private emacsBindingsProvider: VSCodePvsEmacsBindingsProvider;
 
 	// data provider for the tree views
-	private theoriesDataProvider: VSCodePvsTheoryExplorer;
-	private proofDataProvider: VSCodePvsProofExplorer;
+	private theoryExplorer: VSCodePvsTheoryExplorer;
+	private proofExplorer: VSCodePvsProofExplorer;
 
 	// integrated terminals for PVSio
 	private pvsioTerminal: VSCodePVSioTerminal;
@@ -267,13 +267,13 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.pvsioTerminal.activate(this.context);
 
 		// this.inputManager = new MultiStepInput(this.client);
-		this.theoriesDataProvider = new VSCodePvsTheoryExplorer(this.client, 'theory-explorer-view');
-		this.theoriesDataProvider.activate(this.context);
+		this.theoryExplorer = new VSCodePvsTheoryExplorer(this.client, 'theory-explorer-view');
+		this.theoryExplorer.activate(this.context);
 
-		this.proofDataProvider = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
-		this.proofDataProvider.activate(this.context);
+		this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
+		this.proofExplorer.activate(this.context);
 
-		this.pvsTerminal = new VSCodePvsTerminal(this.client, this.theoriesDataProvider);
+		this.pvsTerminal = new VSCodePvsTerminal(this.client, this.theoryExplorer);
 		this.pvsTerminal.activate(this.context);
 
 		if (window.activeTextEditor && fsUtils.isPvsFile(window.activeTextEditor.document.fileName)) {

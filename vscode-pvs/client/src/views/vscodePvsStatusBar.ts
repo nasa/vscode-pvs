@@ -84,6 +84,10 @@ export class VSCodePvsStatusBar {
 
     ready () {
         this.statusBar.text = "";
+        // this.statusBar.text = "Ready!";
+        // setTimeout(() => {
+        //     this.statusBar.text = "";
+        // }, 1000);
     }
 
     activate (context: ExtensionContext) {

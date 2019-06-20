@@ -242,6 +242,10 @@
 			{
 				"command": "proof-explorer.step",
 				"title": "️️step-proof"
+			},
+			{
+				"command": "proof-explorer.run",
+				"title": "️️run-proof"
 			}
 		],
 		"menus": {
@@ -372,6 +376,11 @@
 				},
 				{
 					"command": "proof-explorer.step",
+					"when": "view == proof-explorer-view",
+					"group": "navigation"
+				},
+				{
+					"command": "proof-explorer.run",
 					"when": "view == proof-explorer-view",
 					"group": "navigation"
 				}

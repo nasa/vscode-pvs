@@ -198,25 +198,32 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 		return nextCommand;
 	}
-	execActiveCommand(cmd?: string): ProofCommand {
+	execActiveCommand (cmd?: string): ProofCommand {
 		const activeCommand: ProofCommand = this.getActiveCommand();
 		if (activeCommand) {
 			cmd = cmd || activeCommand.name;
 			const data: {
-				fileName: string, theoryName: string, formulaName: string, line: number, cmd: string
-			} = { fileName: this.desc.fileName, theoryName: this.desc.theoryName, formulaName: this.desc.formulaName, line: this.desc.line, cmd };
+				fileName: string, theoryName: string, formulaName: string, line: number, cmd: string, pvsContextFolder: string
+			} = { fileName: this.desc.fileName, theoryName: this.desc.theoryName, formulaName: this.desc.formulaName, line: this.desc.line, cmd, pvsContextFolder: this.desc.pvsContextFolder };
 			commands.executeCommand("terminal.pvs.send-proof-command", data);
 		}
 		return activeCommand;
 	}
-	step(): void {
+	step (): void {
 		this.execActiveCommand();
 		this.advance();
 		this.refreshView();
 	}
-	private fastForward (id: number): void {
+	run (): void {
+		if (this.nodes) {
+			const lastNodeID: number = +this.nodes[this.nodes.length - 1].node.id;
+			this.fastForward(lastNodeID);
+			this.step();
+		}
+	}
+	private fastForward (id?: number): void {
 		const commands: string[] = [];
-		for (let i = this.activeIndex; i < this.nodes.length && +this.nodes[i].node.id !== id; i++) {
+		for (let i = this.activeIndex; i < this.nodes.length && id !== undefined && +this.nodes[i].node.id !== id; i++) {
 			if (this.nodes[i].node.contextValue === "proof-command") {
 				commands.push(this.nodes[i].node.name);
 			}
@@ -337,7 +344,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		let cmd: Disposable = commands.registerCommand("proof-explorer.step", () => {
 			this.step();
 		});
-		// context.subscriptions.push(cmd);
+		context.subscriptions.push(cmd);
+		cmd = commands.registerCommand("proof-explorer.run", () => {
+			this.run();
+		});
+		context.subscriptions.push(cmd);
 		// cmd = commands.registerCommand("terminal.pvs.response.step-executed", () => {
 		// 	// this.refreshView();
 		// });
@@ -345,9 +356,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// cmd = commands.registerCommand("terminal.pvs.response.step-proof-ready", () => {
 		// 	this.startProof();
 		// });
+		// context.subscriptions.push(cmd);
 
 		// -- proof explorer commands
-		context.subscriptions.push(cmd);
 		cmd = commands.registerCommand("proof-explorer.jump-to", (resource: ProofItem) => {
 			if (resource && this.nodes) {
 				this.jumpTo(+resource.id);
