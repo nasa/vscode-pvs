@@ -36,7 +36,7 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess, execSync } from 'child_process';
 import * as language from "./common/languageKeywords";
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import { 
@@ -153,14 +153,6 @@ export class PvsProcess {
 		});
 	}
 
-	// public setConnection (connection: SimpleConnection) {
-	// 	this.connection = connection;
-	// }
-
-	// public removeConnection () {
-	// 	this.connection = null;
-	// }
-
 	private pvsExecAux(cmd: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponseType> {
 		if (this.pvsProcessBusy) {
 			const msg: string = "PVS busy, cannot execute " + cmd + " :/";
@@ -207,12 +199,11 @@ export class PvsProcess {
 	private pvsExec(cmd: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponseType> {
 		this.pvsCmdQueue = new Promise((resolve, reject) => {
 			this.pvsCmdQueue.then(() => {
-				// this.pvsExecAux(commandId, cmd).then((ans: PvsResponseType) => {
-				// 	resolve(ans);
-				// });
 				this.pvsExecAux(cmd, desc).then((ans: PvsResponseType) => {
 					resolve(ans);
-				});
+				}).catch(execError => {
+                    console.error(execError);
+                });
 			});
 		});
 		return this.pvsCmdQueue;
@@ -293,17 +284,29 @@ export class PvsProcess {
 		return null;
 	}
 
+	async relocate(): Promise<boolean> {
+		const relocateScript: string = `cd ${this.pvsPath} && bin/relocate`;
+		try {
+			const output: Buffer = execSync(relocateScript);
+			console.log(output.toString());
+		} catch (relocateError) {
+			console.error(relocateError);
+			return false;
+		}
+		return true;
+	}
+
 	async pvs(opt?: {
 		enableNotifications?: boolean
 	}): Promise<boolean> {
 		opt = opt || {};
+		await this.relocate();
 		this.enableNotifications = opt.enableNotifications;
 		await this.clearContext();
 		if (!this.pvsProcessBusy) {
 			this.pvsProcessBusy = true;
-			// const pvslispParser = new PvsLisp("pvs-init", this.connection);
 			const pvsLispReader = new PvsLispReader(this.connection);
-			let pvs: string = path.join(this.pvsPath, "pvs");
+			const pvs: string = path.join(this.pvsPath, "pvs");
 			const args: string[] = [ "-raw"];//, "-port", "22334" ];
 			// if (this.connection) { this.connection.console.info(`Spawning pvs process ${pvs} ${args.join(" ")}`); }
 			return new Promise(async (resolve, reject) => {
@@ -397,33 +400,6 @@ export class PvsProcess {
 		const cmd: string = '(pvs-current-directory)';
 		return await this.pvsExec(cmd);
 	}
-	// /**
-	//  * FIXME: remove this command in favour of listPvsFiles?
-	//  * Identifies the set of theories loaded in the current context
-	//  * FIXME: it is not clear when theories are loaded in the context? how to find the importchain??
-	//  * @returns A descriptor providing the list of theories in the current context.
-	//  * 			The descriptor contains two fields:
-	//  * 			- files: list of theories grouped by filename (type: { [fileName: string]: string })
-	//  * 			- theories: list of theories ordered by name (type: string[] )
-	//  */
-	// private async listTheories(): Promise<PvsResponseType> {
-	// 	const cmd: string = '(context-files-and-theories "'+ this.pvsContextFolder +'")';
-	// 	return await this.pvsExec(cmd);
-	// }
-	/**
-	 * Returns the pvs files in the current context, i.e., all pvs files in the current context folder
-	 * @returns A descriptor providing the list of pvs files and the name of the context folder
-	 */
-	// async listPvsFiles(): Promise<PvsFileListDescriptor> {
-	// 	let files: string[] = await fsUtils.readDir(this.pvsContextFolder);
-	// 	let pvsFiles: string[] = files.filter(fileName => {
-	// 		return fileName.endsWith(".pvs") && !fileName.startsWith(".");
-	// 	});
-	// 	return {
-	// 		fileNames: pvsFiles,
-	// 		folder: this.pvsContextFolder
-	// 	};
-	// }
 	/**
 	 * Disables garbage collector messages
 	 */
@@ -516,15 +492,6 @@ export class PvsProcess {
 		}
 		return response;
 	}
-	// /**
-	//  * Parse the expression passed as argument
-	//  * @param expression The expression to be parsed
-	//  */
-	// async parseExpression(expression: string): Promise<PvsResponseType> {
-	// 	const cmd: string = '(describe (pc-parse "' + expression + '" `expr))';
-	// 	return await this.pvsExec("parse-expression", cmd);
-	// }
-
 	/**
 	 * Parse a file
 	 * @param fileName File to be parsed, must be in the current pvs context
