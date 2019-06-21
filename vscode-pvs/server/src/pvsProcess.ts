@@ -294,6 +294,21 @@ export class PvsProcess {
 		return null;
 	}
 	/**
+	 * Internal function. Returns the current context.
+	 * @returns Path to the current context
+	 */
+	private async currentContext(): Promise<PvsResponseType> {
+		const cmd: string = '(pvs-current-directory)';
+		return await this.pvsExec(cmd);
+	}
+	/**
+	 * Internal function. Disables garbage collector messages.
+	 */
+	private async disableGcPrintout(): Promise<PvsResponseType> {
+		this._disableGC = true;
+		return await this.pvsExec('(setq *disable-gc-printout* t)');
+	}
+	/**
 	 * Internal function. Runs the relocate script necessary for starting pvs.
 	 */
 	private async relocate(): Promise<boolean> {
@@ -306,22 +321,6 @@ export class PvsProcess {
 			return false;
 		}
 		return true;
-	}
-	/**
-	 * Creates a new pvs process.
-	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
-	 */
-	async pvs(opt?: { enableNotifications?: boolean}): Promise<boolean> {
-		const res: boolean = await this._pvs(opt);
-		await this.changeContext(this.pvsContextFolder);
-		const ans: PvsCurrentContextResponseType = await this.currentContext();
-		// refresh this.currentContext, to make sure the string is identical to that used by pvs -- useful for deciding whether a future change context is actually changing the context
-		if (ans && ans.res) {
-			this.pvsContextFolder = ans.res;
-		} else {
-			console.error(`Unexpected value for context folder`, ans);
-		}
-		return res;
 	}
 	/**
 	 * Internal function. Creates a new pvs process.
@@ -370,6 +369,28 @@ export class PvsProcess {
 			});
 		}
 	}
+
+	//----------------------------------------------------------------------------------------------------
+	//--------------------- The following functions are the main APIs provided by PvsProcess
+	//----------------------------------------------------------------------------------------------------
+
+	/**
+	 * Creates a new pvs process.
+	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
+	 */
+	async pvs(opt?: { enableNotifications?: boolean}): Promise<boolean> {
+		const res: boolean = await this._pvs(opt);
+		await this.disableGcPrintout();
+		await this.changeContext(this.pvsContextFolder);
+		const ans: PvsCurrentContextResponseType = await this.currentContext();
+		// refresh this.currentContext, to make sure the string is identical to that used by pvs -- useful for deciding whether a future change context is actually changing the context
+		if (ans && ans.res) {
+			this.pvsContextFolder = ans.res;
+		} else {
+			console.error(`Unexpected value for context folder`, ans);
+		}
+		return res;
+	}
 	/**
 	 * Changes the current context. When the context is changed, all symbol information are erased and the parser/typechecker needs to be re-run.
 	 * @param contextFolder Path of the context folder 
@@ -391,21 +412,6 @@ export class PvsProcess {
 			},
 			raw: null
 		};
-	}
-	/**
-	 * Returns the current context
-	 * @returns Path of the current context
-	 */
-	private async currentContext(): Promise<PvsResponseType> {
-		const cmd: string = '(pvs-current-directory)';
-		return await this.pvsExec(cmd);
-	}
-	/**
-	 * Disables garbage collector messages
-	 */
-	async disableGcPrintout(): Promise<PvsResponseType> {
-		this._disableGC = true;
-		return await this.pvsExec('(setq *disable-gc-printout* t)');
 	}
 	/**
 	 * Enables the pvs emacs interface.

@@ -218,7 +218,7 @@ class PvsCli {
 		// proc.removeConnection();
 		const success: boolean = await proc.pvs();
 		if (success) {
-			await proc.disableGcPrintout();
+			// await proc.disableGcPrintout();
 			await proc.changeContext(this.pvsContextFolder);
 			// const ans: PvsResponseType = await proc.listProofStrategies();
 			// if (ans && ans.res) {

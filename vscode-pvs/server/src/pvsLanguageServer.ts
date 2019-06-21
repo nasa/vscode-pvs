@@ -224,7 +224,7 @@ class PvsLanguageServer {
 			enableNotifications: opt.enableNotifications
 		});
 		if (success) {
-			await proc.disableGcPrintout();
+			// await proc.disableGcPrintout();
 			if (opt.emacsInterface) { await proc.emacsInterface(); }
 			await proc.changeContext(this.pvsContextFolder);
 			if (this.connection && !connection) {
