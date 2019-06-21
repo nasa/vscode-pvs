@@ -85,6 +85,11 @@ export declare interface PvsDeclarationDescriptor {
 	comment?: string | null;
 	error?: ErrorType | null;
 };
+export declare interface PvsListDeclarationsResponseType extends PvsResponseType {
+	error: PvsErrorType,
+	res: PvsDeclarationDescriptor[],
+	raw: string
+}
 
 export declare interface PvsFindDeclarationRequest {
 	symbolName: string;
@@ -113,19 +118,20 @@ export declare interface PvsListDeclarationsRequest {
 	line?: number;
 	character?: number;
 }
-export declare interface PvsListDeclarationsResponse {
-	file?: string;
-	line?: number;
-	character?: number;
-	symbolName: string | null;
-	symbolTheory: string | null;
-	symbolDeclaration: string | null;
-	symbolDeclarationRange: Range | null;
-	symbolDeclarationFile: string | null;
-	symbolDoc?: string;
-	comment?: string;
-	error?: ErrorType;
-}[];
+
+// export declare interface PvsListDeclarationsResponse {
+// 	file?: string;
+// 	line?: number;
+// 	character?: number;
+// 	symbolName: string | null;
+// 	symbolTheory: string | null;
+// 	symbolDeclaration: string | null;
+// 	symbolDeclarationRange: Range | null;
+// 	symbolDeclarationFile: string | null;
+// 	symbolDoc?: string;
+// 	comment?: string;
+// 	error?: ErrorType;
+// }[];
 
 export declare interface StrategyDescriptor {
 	name: string,
@@ -189,6 +195,7 @@ export declare interface PvsFindDeclarationResponseType extends PvsResponseType 
 	res: FindDeclarationResponseType,
 	raw: string
 }
+
 
 export const PRELUDE_FILE: string = "*prelude*";
 export const PVS_LIBRARY_FILES: { [ key: string ] : string } = {

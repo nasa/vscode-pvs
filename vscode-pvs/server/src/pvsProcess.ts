@@ -44,7 +44,7 @@ import {
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsTypecheckerResponse, PvsChangeContextResponseType, PvsCurrentContextResponseType,
 	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, PvsVersionDescriptor, PvsVersionInfoResponseType, 
-	JsonType, ProofNodeType, ProofDescriptor, ProofObjectType, PvsListProofStrategiesResponseType, FindDeclarationResponseType, PvsFindDeclarationResponseType
+	JsonType, ProofNodeType, ProofDescriptor, ProofObjectType, PvsListProofStrategiesResponseType, FindDeclarationResponseType, PvsFindDeclarationResponseType, PvsListDeclarationsResponseType
 } from './common/serverInterface'
 import { Connection } from 'vscode-languageserver';
 import * as path from 'path';
@@ -474,33 +474,39 @@ export class PvsProcess {
 	 * List all declarations in a given theory. The theory should parse correctly, otherwise the list of declarations cannot be computed.
 	 * @param desc Theory descriptor TODO: use the standard format { fileName, fileExtension, theoryName, line, character }
 	 */
-	async listDeclarations (desc: PvsListDeclarationsRequest): Promise<PvsDeclarationDescriptor[]> {
+	async listDeclarations (desc: PvsListDeclarationsRequest): Promise<PvsListDeclarationsResponseType> {
 		let response: PvsDeclarationDescriptor[] = [];
-		const path = desc.file.trim().split("/");
-		const fileName = path[path.length - 1].split(".pvs")[0];
+		// const contextFolder = fsUtils.getContextFolder(desc.file);
+		const fileName = fsUtils.getFilename(desc.file, { removeFileExtension: true });
 		if (fileName !== PRELUDE_FILE) {
 			// find-declaration works even if a pvs file does not parse correctly 
 			let ans: PvsResponseType = await this.pvsExec(`(list-declarations "${desc.theoryName}")`);
-			const allDeclarations: FindDeclarationResponseType = ans.res;
-			response = Object.keys(allDeclarations).map(function (key) {
-				const info: PvsDeclarationType = allDeclarations[key];
-				const ans: PvsDeclarationDescriptor = {
-					line: desc.line,
-					character: desc.character,
-					file: desc.file,
-					symbolName: info.symbolName,
-					symbolTheory: info.symbolTheory,
-					symbolDeclaration: (info) ? info.symbolDeclaration : null,
-					symbolDeclarationRange: (info) ? info.symbolDeclarationRange : null,
-					symbolDeclarationFile: (info) ? info.symbolDeclarationFile : null,
-					symbolDoc: null,
-					comment: null,
-					error: null
-				}
-				return ans;
-			});
+			if (ans && ans.res) {
+				const allDeclarations: FindDeclarationResponseType = ans.res;
+				response = Object.keys(allDeclarations).map((key: string) => {
+					const info: PvsDeclarationType = allDeclarations[key];
+					const ans: PvsDeclarationDescriptor = {
+						line: desc.line,
+						character: desc.character,
+						file: desc.file,
+						symbolName: info.symbolName,
+						symbolTheory: info.symbolTheory,
+						symbolDeclaration: (info) ? info.symbolDeclaration : null,
+						symbolDeclarationRange: (info) ? info.symbolDeclarationRange : null,
+						symbolDeclarationFile: (info) ? info.symbolDeclarationFile : null,
+						symbolDoc: null,
+						comment: null,
+						error: null
+					}
+					return ans;
+				});
+			}
 		}
-		return response;
+		return {
+			error: null,
+			res: response,
+			raw: null
+		}
 	}
 	/**
 	 * Parse a file

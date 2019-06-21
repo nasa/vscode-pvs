@@ -48,7 +48,8 @@ import {
 	PvsListDeclarationsRequest, ExpressionDescriptor, EvaluationResult, ProofResult, FormulaDescriptor,
 	PvsTypecheckerResponse, FileList, TheoryMap, TheoryList, TheoriesMap,
 	TheoriesStatusMap,
-	PvsVersionInfoResponseType
+	PvsVersionInfoResponseType,
+	PvsListDeclarationsResponseType
 } from './common/serverInterface'
 import { PvsProcess } from './pvsProcess';
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
@@ -656,8 +657,10 @@ class PvsLanguageServer {
 			});
 			this.connection.onRequest("pvs.list-declarations", async (desc: PvsListDeclarationsRequest) => {
 				if (this.pvsParser) {
-					const response: PvsDeclarationDescriptor[] = await this.pvsParser.listDeclarations(desc);
-					this.connection.sendRequest("server.response.list-declarations", response);
+					const ans: PvsListDeclarationsResponseType = await this.pvsParser.listDeclarations(desc);
+					if (ans && ans.res) {
+						this.connection.sendRequest("server.response.list-declarations", ans.res);
+					}
 				}
 			});
 			// TODO: add context folder as function argument?
