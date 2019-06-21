@@ -40,99 +40,141 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { FileList } from '../common/serverInterface';
 
-export async function stat(file: string): Promise<fs.Stats> {
-	return new Promise<fs.Stats>((resolve, reject) => {
-		fs.stat(file, (error, stat) => {
-			// ignore errors for now
-			resolve(stat);
-		});
-	});
-};
-
-export async function readDir(pvsContextFolder: string): Promise<string[]> {
-	return new Promise<string[]>((resolve, reject) => {
-		fs.readdir(pvsContextFolder, (error, children) => {
-			// ignore errors for now
-			resolve(children || []);
-		});
-	});
+const HOME_DIR: string = require('os').homedir();
+// nodeJS does not support tilde expansion for the home folder
+export function tildeExpansion(path: string): string {
+	if (path && path.startsWith("~")) {
+		path = path.replace("~", HOME_DIR);
+	}
+	return path;
 }
-
-export async function readFile(path: string): Promise<string | null> {
-	try {
-		return await fs.readFileSync(path).toString('utf8');
-	} catch (fileReadError) {
-		console.error(fileReadError);
+export async function stat(fileName: string): Promise<fs.Stats> {
+	if (fileName) {
+		fileName = tildeExpansion(fileName);
+		return new Promise<fs.Stats>((resolve, reject) => {
+			fs.stat(fileName, (error, stat) => {
+				// ignore errors for now
+				resolve(stat);
+			});
+		});
+	}
+	return null;
+};
+export async function readDir(pvsContextFolder: string): Promise<string[]> {
+	if (pvsContextFolder) {
+		pvsContextFolder = tildeExpansion(pvsContextFolder);
+		return new Promise<string[]>((resolve, reject) => {
+			fs.readdir(pvsContextFolder, (error, children) => {
+				// ignore errors for now
+				resolve(children || []);
+			});
+		});
 	}
 	return null;
 }
-export async function deletePvsCache(contextFolder: string): Promise<boolean> {
+export async function readFile(path: string): Promise<string | null> {
+	if (path) {
+		path = tildeExpansion(path);
+		try {
+			return await fs.readFileSync(path).toString('utf8');
+		} catch (fileReadError) {
+			console.error(fileReadError);
+		}
+	}
+	return null;
+}
+export async function deletePvsCache(pvsContextFolder: string): Promise<boolean> {
 	try {
-		const cacheFolder: string = path.join(contextFolder, "pvsbin");
-		const fileList: string[] = await fs.readdirSync(cacheFolder);
-		fileList.forEach(file => {
-			fs.unlinkSync(path.join(cacheFolder, file));
-		});
+		if (pvsContextFolder) {
+			const cacheFolder: string = path.join(pvsContextFolder, "pvsbin");
+			const fileList: string[] = await fs.readdirSync(cacheFolder);
+			fileList.forEach(file => {
+				fs.unlinkSync(path.join(cacheFolder, file));
+			});
+		}
 	} catch (deleteError) {
 		return false;
 	}
 	return true;
 }
 export async function writeFile(path: string, content: string): Promise<void> {
-	return await fs.writeFileSync(path, content);
-}
-
-export async function fileExists(path: string): Promise<boolean> {
-	return await fs.existsSync(path);
-}
-
-export function getFilename(fileName: string, opt?: { removeFileExtension?: boolean }): string {
-	opt = opt || {};
-	const pathlessFileName = fileName.includes("/") ? fileName.split("/").slice(-1)[0] : fileName;
-	if (opt.removeFileExtension &&
-			(pathlessFileName.endsWith(".pvs") || pathlessFileName.endsWith(".tccs"))) {
-		return pathlessFileName.split(".").slice(0, -1).join(".");
+	if (path) {
+		await fs.writeFileSync(path, content);
 	}
-	return pathlessFileName;
+}
+export function getFilename(fileName: string, opt?: { removeFileExtension?: boolean }): string {
+	if (fileName) {
+		opt = opt || {};
+		const pathlessFileName = fileName.includes("/") ? fileName.split("/").slice(-1)[0] : fileName;
+		if (opt.removeFileExtension &&
+				(pathlessFileName.endsWith(".pvs") || pathlessFileName.endsWith(".tccs"))) {
+			return pathlessFileName.split(".").slice(0, -1).join(".");
+		}
+		return pathlessFileName;
+	}
+	return null;
 }
 export function removeFileExtension(fileName: string): string {
-	return fileName.split(".").slice(0, -1).join(".");
+	if (fileName) {
+		return fileName.split(".").slice(0, -1).join(".");
+	}
+	return null;
 }
 export function getFileExtension(fileName: string): string {
-	return `.${fileName.split(".").slice(-1).join(".")}`;
+	if (fileName) {
+		return `.${fileName.split(".").slice(-1).join(".")}`;
+	}
+	return null;
 }
 export function getContextFolder(path: string): string {
-	return path.split("/").slice(0, -1).join("/").replace("file://", "");
+	if (path) {
+		return path.split("/").slice(0, -1).join("/").replace("file://", "");
+	}
+	return null;
 }
 export function isPvsFile(fileName: string): boolean {
-	return fileName.endsWith('.pvs') || fileName.endsWith('.tccs');
+	if (fileName) {
+		return fileName.endsWith('.pvs') || fileName.endsWith('.tccs');
+	}
+	return false;
 }
-// export function rmDir(path: string) {
-// 	return rimraf.sync(path);
-// }
+export async function fileExists(path: string): Promise<boolean> {
+	if (path) {
+		path = tildeExpansion(path);
+		return await fs.existsSync(path);
+	}
+	return null;
+}
 export function dirExists(path: string): boolean {
 	let ans: boolean = false;
-	try {
-		ans = fs.existsSync(path);
-	} catch (readError) {
-		console.error(readError);
-	} finally {
-		return ans;
+	if (path) {
+		path = tildeExpansion(path);
+		try {
+			ans = fs.existsSync(path);
+		} catch (readError) {
+			console.error(readError);
+		} finally {
+			return ans;
+		}
 	}
+	return false;
 }
-
 /**
  * Utility function, returns the list of pvs files contained in a given folder
- * @param folder Path to a folder
+ * @param folder Path to a folder containing pvs files.
+ * @returs List of pvs files, as a structure FileList. Null if the folder does not exist.
  */
 export async function listPvsFiles (folder: string): Promise<FileList> {
-	const children: string[] = await readDir(folder);
-	const fileList: FileList = {
-		fileNames: children.filter((fileName) => {
-			return fileName.endsWith(".pvs") 
-					&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
-		}),
-		pvsContextFolder: folder
-	};
-	return fileList;
+	if (folder) {
+		const children: string[] = await readDir(folder);
+		const fileList: FileList = {
+			fileNames: children.filter((fileName) => {
+				return fileName.endsWith(".pvs") 
+						&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
+			}),
+			pvsContextFolder: folder
+		};
+		return fileList;
+	}
+	return null;
 }

@@ -143,6 +143,19 @@ export declare interface PvsResponseType {
 	res: any, // json object -- TODO: define the different types of objects, include a field "type" in each object
 	raw: string // raw output of pvs-lisp
 };
+export declare interface ChangeContextResponseType {
+	context: string,
+}
+export declare interface PvsChangeContextResponseType extends PvsResponseType {
+	error: PvsErrorType,
+	res: ChangeContextResponseType,
+	raw: string
+}
+export declare interface PvsCurrentContextResponseType extends PvsResponseType {
+	error: PvsErrorType,
+	res: string,
+	raw: string
+}
 
 export const PRELUDE_FILE: string = "*prelude*";
 export const PVS_LIBRARY_FILES: { [ key: string ] : string } = {

@@ -648,7 +648,7 @@ class PvsLanguageServer {
 
 			this.connection.onRequest('pvs.change-context-and-parse-files', async (context: string) => {
 				if (this.pvsParser) {
-					this.connection.sendNotification('server.status.update', `Changing context to ${context}`);
+					this.info(this.progressInfo.showProgress(`Changing context to ${context}`));
 					await this.changeContextAndParseFiles(context);
 					this.pvsReady();
 				}

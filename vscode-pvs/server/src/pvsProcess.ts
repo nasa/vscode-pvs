@@ -43,7 +43,7 @@ import {
 	PvsResponseType, PvsParserResponse, PvsDeclarationDescriptor,
 	PRELUDE_FILE, PvsDeclarationType, PrettyPrintRegionRequest,
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
-	PvsTypecheckerResponse,
+	PvsTypecheckerResponse, PvsChangeContextResponseType, PvsCurrentContextResponseType,
 	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, PvsVersionDescriptor
 } from './common/serverInterface'
 import { Connection } from 'vscode-languageserver';
@@ -138,15 +138,13 @@ export class PvsProcess {
 	 * @param desc Information on the PVS execution environment 
 	 * @param connection Connection with the language client
 	 */
-	constructor (desc: { pvsPath: string, pvsContextFolder: string, processType?: string }, connection?: Connection) {
-		this.pvsPath = desc.pvsPath || __dirname;
+	constructor (desc: { pvsPath: string, pvsContextFolder?: string, processType?: string }, connection?: Connection) {
+		this.pvsPath = (desc && desc.pvsPath) ? fsUtils.tildeExpansion(desc.pvsPath) : __dirname
 		this.pvsLibraryPath = path.join(this.pvsPath, "lib");
-		this.pvsContextFolder = desc.pvsContextFolder || __dirname;
-		this.processType = desc.processType || "typechecker";
-
+		this.pvsContextFolder = (desc && desc.pvsContextFolder) ? fsUtils.tildeExpansion(desc.pvsContextFolder) : __dirname;
+		this.processType = (desc && desc.processType) ? desc.processType : "typechecker"; // this is used only for debugging
 		this.progressInfo = new PvsProgressInfo();
 		// this.serverProxy = new xmlrpcProvider.XmlRpcProxy();
-
 		this.connection = connection;
 	}
 	/**
@@ -238,8 +236,7 @@ export class PvsProcess {
 	
 
 	/**
-	 * Executes a pvs lisp command using the pvsio process
-	 * @param commandId Command name (e.g,. parse-file), see list of commands in PvsLisp
+	 * Internal function. Executes a pvs lisp command using the pvsio process
 	 * @param cmd The pvs lisp command, e.g., (parse-file "main" nil nil)
 	 */
 	private pvsioExec(cmd: string): Promise<PvsResponseType> {
@@ -274,6 +271,9 @@ export class PvsProcess {
 		});
 	}
 
+	/**
+	 * Utility function. Kills the pvs process.
+	 */
 	kill() {
 		if (this.pvsProcess) {
             // before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
@@ -288,6 +288,9 @@ export class PvsProcess {
 		}
 	}
 
+	/**
+	 * Utility function. Restarts the pvs process.
+	 */
 	async restart(): Promise<void> {
 		this.kill();
 		await this.pvs();
@@ -296,6 +299,9 @@ export class PvsProcess {
 		}
 	}
 
+	/**
+	 * Utility function. Returns the ID of the pvs process.
+	 */
 	getProcessId (): string {
 		if (this.pvsProcess) {
 			return this.pvsProcess.pid.toString();
@@ -303,7 +309,10 @@ export class PvsProcess {
 		return null;
 	}
 
-	async relocate(): Promise<boolean> {
+	/**
+	 * Internal function. Runs the relocate script necessary for starting pvs.
+	 */
+	private async relocate(): Promise<boolean> {
 		const relocateScript: string = `cd ${this.pvsPath} && bin/relocate`;
 		try {
 			const output: Buffer = execSync(relocateScript);
@@ -315,7 +324,28 @@ export class PvsProcess {
 		return true;
 	}
 
-	async pvs(opt?: {
+	/**
+	 * Creates a new pvs process.
+	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
+	 */
+	async pvs(opt?: { enableNotifications?: boolean}): Promise<boolean> {
+		const res: boolean = await this._pvs(opt);
+		await this.changeContext(this.pvsContextFolder);
+		const ans: PvsCurrentContextResponseType = await this.currentContext();
+		// refresh this.currentContext, to make sure the string is identical to that used by pvs -- useful for deciding whether a future change context is actually changing the context
+		if (ans && ans.res) {
+			this.pvsContextFolder = ans.res;
+		} else {
+			console.error(`Unexpected value for context folder`, ans);
+		}
+		return res;
+	}
+
+	/**
+	 * Internal function. Creates a new pvs process.
+	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
+	 */
+	private async _pvs(opt?: {
 		enableNotifications?: boolean
 	}): Promise<boolean> {
 		opt = opt || {};
@@ -400,8 +430,10 @@ export class PvsProcess {
 		const folderExists: boolean = await fsUtils.dirExists(contextFolder);
 		if (folderExists) {
 			const cmd: string = `(change-context "${contextFolder}" nil)`;
-			this.pvsContextFolder = contextFolder;
-			return await this.pvsExec(cmd);
+			const ans: PvsChangeContextResponseType = await this.pvsExec(cmd);
+			if (ans && ans.res && ans.res.context) {
+				this.pvsContextFolder = ans.res.context;
+			}
 		}
 		return {
 			res: null,
@@ -415,7 +447,7 @@ export class PvsProcess {
 	 * Returns the current context
 	 * @returns Path of the current context
 	 */
-	async currentContext(): Promise<PvsResponseType> {
+	private async currentContext(): Promise<PvsResponseType> {
 		const cmd: string = '(pvs-current-directory)';
 		return await this.pvsExec(cmd);
 	}

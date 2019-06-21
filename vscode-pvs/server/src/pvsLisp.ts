@@ -39,7 +39,7 @@
 import * as utils from './common/languageUtils';
 import { 
 	PvsResponseType, PRELUDE_FILE, PvsDeclarationType,
-	StrategyDescriptor, TheoremsStatus
+	StrategyDescriptor, TheoremsStatus, ChangeContextResponseType
 } from './common/serverInterface'
 
 export interface PvsFindDeclarationInterface {
@@ -120,7 +120,7 @@ export class PvsLispReader {
 		const ans: PvsResponseType = {
 			error: null,
 			res: null,
-			raw: data
+			raw: (data) ? data.trim() : null
 		};
 		switch (commandId) {
 			case "get-pvs-version-information": {
@@ -326,9 +326,10 @@ export class PvsLispReader {
 				const regexp: RegExp = /Context changed to (.*)\s*\".*\"/;
 				const match: RegExpMatchArray = regexp.exec(data);
 				if (match && match.length > 1 && match[1]) {
-					ans.res = {
+					const res: ChangeContextResponseType = {
 						context: match[1]
 					}
+					ans.res = res;
 				}
 				break;
 			}
@@ -397,7 +398,14 @@ export class PvsLispReader {
 				}
 				break;
 			}
-			case "current-context":
+			case "pvs-current-directory": {
+				const regexp: RegExp = /\"(.*)\"/g;
+				const match: RegExpMatchArray = regexp.exec(data);
+				if (match && match.length > 1) {
+					ans.res = match[1];
+				}
+				break;
+			}
 			case "disable-gc-printout":
 			case "emacs-interface":
 			case "pvs-continue":
