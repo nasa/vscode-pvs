@@ -281,7 +281,7 @@ class PvsCli {
 		this.pvsProcess = await this.createPvsProcess();
 		if (this.pvsProcess) {
 			// fetch pvs version information
-			const ans: PvsResponseType = await this.pvsProcess.pvsVersionInformation();
+			const ans: PvsResponseType = await this.pvsProcess.getPvsVersionInfo();
 			const versionInfo: PvsVersionDescriptor = {
 				pvsVersion: ans.res.pvsVersion,
 				lispVersion: ans.res.lispVersion
