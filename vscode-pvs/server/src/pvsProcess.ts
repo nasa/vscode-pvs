@@ -43,13 +43,14 @@ import {
 	PRELUDE_FILE, PvsDeclarationType, PrettyPrintRegionRequest,
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsTypecheckerResponse, PvsChangeContextResponseType, PvsCurrentContextResponseType,
-	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, PvsVersionDescriptor, PvsVersionInfoResponseType, JsonType, ProofNodeType, ProofDescriptor, ProofObjectType
+	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, PvsVersionDescriptor, PvsVersionInfoResponseType, 
+	JsonType, ProofNodeType, ProofDescriptor, ProofObjectType, PvsListProofStrategiesResponseType, FindDeclarationResponseType, PvsFindDeclarationResponseType
 } from './common/serverInterface'
 import { Connection } from 'vscode-languageserver';
 import * as path from 'path';
 import { PVS_TRUE_FALSE_REGEXP_SOURCE, PVS_STRING_REGEXP_SOURCE } from "./common/languageKeywords";
 import * as fsUtils from './common/fsUtils';
-import { PvsFindDeclarationInterface, PvsLispReader, TccDescriptor } from './pvsLisp';
+import { PvsLispReader, TccDescriptor } from './pvsLisp';
 import * as utils from './common/languageUtils';
 // import * as xmlrpcProvider from './common/xmlrpcProvider';
 
@@ -78,7 +79,7 @@ export class PvsProcess {
 
 	private processType: string; // "typechecker" or "parser"
 
-	pvsVersionInfo: PvsVersionDescriptor;
+	private pvsVersionInfo: PvsVersionDescriptor;
 
 	private progressInfo: PvsProgressInfo;
 	// private serverProxy: xmlrpcProvider.XmlRpcProxy;
@@ -259,41 +260,6 @@ export class PvsProcess {
 		this.pvsProcess.stdin.write(cmd);
 	}
 	/**
-	 * Utility function. Kills the pvs process.
-	 */
-	kill (): void {
-		if (this.pvsProcess) {
-            // before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
-            // because the destruction of the process is immediate but previous calls to write() may not have drained
-            // see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
-            // FIXME: disabling this for now, it is not working as intended, needs to be debugged
-            this.pvsProcess.stdin.end(() => {});
-            this.pvsProcess.kill();
-            if (this.connection) {
-                this.connection.sendNotification(`server.delete-pvs-${this.processType}`);
-            }
-		}
-	}
-	/**
-	 * Utility function. Restarts the pvs process.
-	 */
-	async restart (): Promise<void> {
-		this.kill();
-		await this.pvs();
-		if (this._disableGC) {
-			await this.disableGcPrintout();
-		}
-	}
-	/**
-	 * Utility function. Returns the ID of the pvs process.
-	 */
-	getProcessID (): string {
-		if (this.pvsProcess) {
-			return this.pvsProcess.pid.toString();
-		}
-		return null;
-	}
-	/**
 	 * Internal function. Returns the current context.
 	 * @returns Path to the current context
 	 */
@@ -325,6 +291,7 @@ export class PvsProcess {
 	/**
 	 * Internal function. Creates a new pvs process.
 	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
+	 * @returns true if the process has been created; false if the process could not be created.
 	 */
 	private async _pvs(opt?: { enableNotifications?: boolean }): Promise<boolean> {
 		opt = opt || {};
@@ -377,6 +344,7 @@ export class PvsProcess {
 	/**
 	 * Creates a new pvs process.
 	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
+	 * @returns true if the process has been created; false if the process could not be created.
 	 */
 	async pvs(opt?: { enableNotifications?: boolean}): Promise<boolean> {
 		const res: boolean = await this._pvs(opt);
@@ -392,10 +360,49 @@ export class PvsProcess {
 		return res;
 	}
 	/**
+	 * Kills the pvs process.
+	 * @returns The ID of the process that was killed. Null if no process was killed.
+	 */
+	kill (): string {
+		if (this.pvsProcess) {
+			const id: string = this.getProcessID();
+            // before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
+            // because the destruction of the process is immediate but previous calls to write() may not have drained
+            // see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
+            this.pvsProcess.stdin.end(() => {});
+            this.pvsProcess.kill();
+            if (this.connection) {
+                this.connection.sendNotification(`server.delete-pvs-${this.processType}`); // used for debugging & stats
+			}
+			return id;
+		}
+		return null;
+	}
+	/**
+	 * Restarts the pvs process.
+	 */
+	async restart (): Promise<void> {
+		this.kill();
+		await this.pvs();
+		if (this._disableGC) {
+			await this.disableGcPrintout();
+		}
+	}
+	/**
+	 * Utility function. Returns a string representing the ID of the pvs process.
+	 * @returns String representation of the pvs process ID.
+	 */
+	getProcessID (): string {
+		if (this.pvsProcess && this.pvsProcess.pid) {
+			return this.pvsProcess.pid.toString();
+		}
+		return null;
+	}
+	/**
 	 * Changes the current context. When the context is changed, all symbol information are erased and the parser/typechecker needs to be re-run.
 	 * @param contextFolder Path of the context folder 
 	 */
-	async changeContext(contextFolder: string): Promise<PvsResponseType> {
+	async changeContext (contextFolder: string): Promise<PvsChangeContextResponseType> {
 		// await this.serverProxy.changeContext(contextFolder);
 		const folderExists: boolean = await fsUtils.dirExists(contextFolder);
 		if (folderExists) {
@@ -407,9 +414,7 @@ export class PvsProcess {
 		}
 		return {
 			res: null,
-			error: {
-				msg: `Error: Could not change context to ${contextFolder} (folder does not exist or cannot be read).`
-			},
+			error: { msg: `Error: Could not change context to ${contextFolder} (folder does not exist or cannot be read).` },
 			raw: null
 		};
 	}
@@ -437,21 +442,21 @@ export class PvsProcess {
 	 * 1: Abort entirely from this (lisp) process.
 	 * pvs(10):
 	 */
-	async emacsInterface(): Promise<PvsResponseType> {
+	async emacsInterface (): Promise<void> {
 		const cmd: string = '(setq *pvs-emacs-interface* t)';
-		return await this.pvsExec(cmd);
+		await this.pvsExec(cmd);
 	}
 	/**
 	 * Returns the list of commands accepted by the theorem prover
 	 */
-	async listProofStrategies(): Promise<PvsResponseType> {
+	async listProofStrategies(): Promise<PvsListProofStrategiesResponseType> {
 		return await this.pvsExec('(collect-strategy-names)');
 	}
 	/**
 	 * Finds a symbol declaration. Requires parsing. May return a list of results when the symbol is overloaded.
 	 * @param symbolName Name of the symbol
 	 */
-	async findDeclaration(symbolName: string): Promise<PvsResponseType> {
+	async findDeclaration(symbolName: string): Promise<PvsFindDeclarationResponseType> {
 		if (new RegExp(PVS_TRUE_FALSE_REGEXP_SOURCE).test(symbolName)) {
 			// find-declaration is unable to handle boolean constants if they are not spelled with capital letters
 			symbolName = symbolName.toUpperCase();
@@ -476,7 +481,7 @@ export class PvsProcess {
 		if (fileName !== PRELUDE_FILE) {
 			// find-declaration works even if a pvs file does not parse correctly 
 			let ans: PvsResponseType = await this.pvsExec(`(list-declarations "${desc.theoryName}")`);
-			const allDeclarations: PvsFindDeclarationInterface = ans.res;
+			const allDeclarations: FindDeclarationResponseType = ans.res;
 			response = Object.keys(allDeclarations).map(function (key) {
 				const info: PvsDeclarationType = allDeclarations[key];
 				const ans: PvsDeclarationDescriptor = {

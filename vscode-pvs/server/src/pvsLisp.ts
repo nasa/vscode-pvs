@@ -39,12 +39,9 @@
 import * as utils from './common/languageUtils';
 import { 
 	PvsResponseType, PRELUDE_FILE, PvsDeclarationType,
-	StrategyDescriptor, TheoremsStatus, ChangeContextResponseType, PvsVersionInfoResponseType, VersionInfoResponseType
+	StrategyDescriptor, TheoremsStatus, ChangeContextResponseType, PvsVersionInfoResponseType, VersionInfoResponseType, FindDeclarationResponseType
 } from './common/serverInterface'
 
-export interface PvsFindDeclarationInterface {
-    [ key: string ] : PvsDeclarationType;
-}
 export interface PvsShowImportChain {
 	theories: string[] // list of theories, ordered by import
 }
@@ -223,7 +220,7 @@ export class PvsLispReader {
 					other: /\("[^"]*\s*"\s*"([^\s"]*)"\s*"([^\s"]*)"\s*"([^"]*)"*\s*\((\d+\s*\d+\s*\d+\s*\d+)\)\s*"([^"]*)"\)/g
 				}
 				// key is symbolFile.symbolTheory.symbolName, value is { symbolKind: string, symbolDeclaration: string, symbolDeclarationRange: vscode.Range }
-				let declarations: PvsFindDeclarationInterface = {};
+				let declarations: FindDeclarationResponseType = {};
 				let info = null;
 				while (info = PVS_FIND_DECLARATION_REGEXP.prelude.exec(data)) {
 					if (info && info.length > 5) {

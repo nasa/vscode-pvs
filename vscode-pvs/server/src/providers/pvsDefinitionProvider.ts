@@ -36,12 +36,12 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { PvsDeclarationDescriptor, PvsDefinition, PvsDeclarationType, PRELUDE_FILE, PvsResponseType } from '../common/serverInterface';
+import { PvsDeclarationDescriptor, PvsDefinition, PvsDeclarationType, PRELUDE_FILE, PvsResponseType, PvsFindDeclarationResponseType } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
 import { Connection, TextDocument, Position, Range, CancellationToken, TextDocuments } from 'vscode-languageserver';
 import { PvsProcess } from '../pvsProcess';
 import { findTheoryName, getWordRange, getText } from '../common/languageUtils';
-import { PvsFindDeclarationInterface, PvsShowImportChain } from '../pvsLisp';
+import { PvsShowImportChain } from '../pvsLisp';
 import * as fs from '../common/fsUtils';
 
 export class PvsDefinitionProvider {
@@ -145,7 +145,7 @@ export class PvsDefinitionProvider {
 			// we can narrow down the results by traversing the importchain
 			// part of this extra logic can be removed when Sam completes the implementation of find-object
 			if (ans.res && ans.res !== {}) {
-				const allDeclarations: PvsFindDeclarationInterface = ans.res;
+				const allDeclarations: PvsFindDeclarationResponseType = ans.res;
 				let candidates: PvsDefinition[] = Object.keys(allDeclarations).map(key => {
 					const info: PvsDeclarationType = allDeclarations[key];
 					const ans: PvsDefinition = {

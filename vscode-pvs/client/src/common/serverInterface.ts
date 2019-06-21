@@ -176,6 +176,19 @@ export declare interface ProofNodeType {
 export declare interface ProofObjectType {
 	proof: ProofNodeType
 }
+export declare interface PvsListProofStrategiesResponseType extends PvsResponseType {
+	error: PvsErrorType,
+	res: StrategyDescriptor[],
+	raw: string
+}
+export interface FindDeclarationResponseType {
+    [ key: string ] : PvsDeclarationType;
+}
+export declare interface PvsFindDeclarationResponseType extends PvsResponseType {
+	error: PvsErrorType,
+	res: FindDeclarationResponseType,
+	raw: string
+}
 
 export const PRELUDE_FILE: string = "*prelude*";
 export const PVS_LIBRARY_FILES: { [ key: string ] : string } = {
