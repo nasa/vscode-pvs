@@ -39,7 +39,7 @@
 import * as utils from './common/languageUtils';
 import { 
 	PvsResponseType, PRELUDE_FILE, PvsDeclarationType,
-	StrategyDescriptor, TheoremsStatus, ChangeContextResponseType
+	StrategyDescriptor, TheoremsStatus, ChangeContextResponseType, PvsVersionInfoResponseType, VersionInfoResponseType
 } from './common/serverInterface'
 
 export interface PvsFindDeclarationInterface {
@@ -132,16 +132,18 @@ export class PvsLispReader {
 				if (info && info.length > 2) {
 					const pvsVersion: string = info[1];
 					const lispVersion: string = info.slice(2).join(" ");
-					ans.res = {
-						pvsVersion: "PVS " + pvsVersion,
+					const res: VersionInfoResponseType = {
+						pvsVersion: `PVS ${pvsVersion}`,
 						lispVersion: lispVersion
-					};
+					}
+					ans.res = res;
 				} else {
-					if (this.connection) { this.connection.console.warn("Unexpected pvs version response\n" + data); }
-					ans.res = {
+					if (this.connection) { this.connection.console.warn(`Unexpected pvs version response\n${data}`); }
+					const res: VersionInfoResponseType = {
 						pvsVersion: data,
 						lispVersion: ""
 					};
+					ans.res = res;
 				}
 				break;
 			}

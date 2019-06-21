@@ -47,7 +47,8 @@ import {
 	PvsFindDeclarationRequest, PvsDefinition, PRELUDE_FILE, PvsDeclarationDescriptor, PvsDeclarationType,
 	PvsListDeclarationsRequest, ExpressionDescriptor, EvaluationResult, ProofResult, FormulaDescriptor,
 	PvsTypecheckerResponse, FileList, TheoryMap, TheoryList, TheoriesMap,
-	TheoriesStatusMap
+	TheoriesStatusMap,
+	PvsVersionInfoResponseType
 } from './common/serverInterface'
 import { PvsProcess } from './pvsProcess';
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
@@ -380,10 +381,10 @@ class PvsLanguageServer {
 					enableNotifications: true
 				});
 				if (proc) {
-					this.dynamicPool[proc.getProcessId()] = proc;
+					this.dynamicPool[proc.getProcessID()] = proc;
 					const response: TheoriesMap = await this.typecheckFileAndShowTccs(fileName, proc);
-					if (this.dynamicPool[proc.getProcessId()]) {
-						this.dynamicPool[proc.getProcessId()].kill();
+					if (this.dynamicPool[proc.getProcessID()]) {
+						this.dynamicPool[proc.getProcessID()].kill();
 					}
 					// the list of proof obligations is provided incrementally to the client so feedback can be shown as soon as available
 					this.connection.sendRequest("server.response.typecheck-file-and-show-tccs", response);
@@ -510,7 +511,7 @@ class PvsLanguageServer {
 				// start typechecker process
 				this.pvsTypeChecker = await this.createPvsProcess({ enableNotifications: true });
 				// fetch pvs version information
-				const ans: PvsResponseType = await this.pvsParser.pvsVersionInformation();
+				const ans: PvsResponseType = await this.pvsParser.getPvsVersionInfo();
 				const versionInfo: PvsVersionDescriptor = {
 					pvsVersion: ans.res.pvsVersion,
 					lispVersion: ans.res.lispVersion
@@ -596,7 +597,7 @@ class PvsLanguageServer {
 			});
 			this.connection.onRequest('pvs.version', async () => {
 				if (this.pvsParser) {
-					const version = await this.pvsParser.pvsVersionInformation();
+					const version: PvsVersionInfoResponseType = await this.pvsParser.getPvsVersionInfo();
 					this.connection.sendRequest("server.response.pvs.version", version);
 				}
 			});
@@ -771,9 +772,9 @@ class PvsLanguageServer {
 			 *  literate programming
 			 */
 			this.connection.onRequest("pvs.runit", async (desc: ExpressionDescriptor) => {
-				this.connection.console.log("received command runit");
-				const response: EvaluationResult = await this.pvsParser.runit(desc);
-				this.connection.sendRequest("server.response.runit", response);
+				// this.connection.console.log("received command runit");
+				// const response: EvaluationResult = await this.pvsParser.runit(desc);
+				// this.connection.sendRequest("server.response.runit", response);
 			});
 			// this.connection.onRequest("pvs.proveit", async (desc: FormulaDescriptor) => {
 			// 	this.connection.console.log("received command proveit");

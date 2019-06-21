@@ -37,14 +37,13 @@
  **/
 
 import { spawn, ChildProcess, execSync } from 'child_process';
-import * as language from "./common/languageKeywords";
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import { 
 	PvsResponseType, PvsParserResponse, PvsDeclarationDescriptor,
 	PRELUDE_FILE, PvsDeclarationType, PrettyPrintRegionRequest,
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsTypecheckerResponse, PvsChangeContextResponseType, PvsCurrentContextResponseType,
-	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, PvsVersionDescriptor
+	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, PvsVersionDescriptor, PvsVersionInfoResponseType, JsonType, ProofNodeType, ProofDescriptor, ProofObjectType
 } from './common/serverInterface'
 import { Connection } from 'vscode-languageserver';
 import * as path from 'path';
@@ -77,18 +76,12 @@ export class PvsProcess {
 	private pvsProcess: ChildProcess = null;
 	private pvsProcessBusy: boolean = false;
 
-	private pvsioProcess: ChildProcess = null;
-	private proverProcess: ChildProcess = null;
-	private pvsioProcessBusy: boolean = false;
-	private proverProcessBusy: boolean = false;
 	private processType: string; // "typechecker" or "parser"
 
 	pvsVersionInfo: PvsVersionDescriptor;
 
 	private progressInfo: PvsProgressInfo;
 	// private serverProxy: xmlrpcProvider.XmlRpcProxy;
-
-	private pvsServerProcess: ChildProcess = null;
 
 	private pvsCmdQueue: Promise<PvsResponseType> = Promise.resolve({ res: null, error: null, raw: null });
 
@@ -101,41 +94,55 @@ export class PvsProcess {
 
 	private _disableGC: boolean = false;
 
-	// utility functions for showing notifications on the status bar
+	/**
+	 * utility function for sending notifications over the connection (if any connection is available)
+	 * @param msg message to be sent
+	 */
 	private info(msg: string) {
 		if (this.enableNotifications && this.connection && msg && msg.length > 10 && !msg.startsWith(";;;")) {
 			this.connection.sendNotification('server.status.update', msg.trim());
 		}
 	}
-	private ready() {
-		if (this.enableNotifications) {
-			this.connection.sendNotification('pvs-ready');
-		}
-	}
+	/**
+	 * utility function for sending error messages over the connection (if any connection is available)
+	 * @param msg message to be sent
+	 */
 	private error(msg: string) {
 		if (this.enableNotifications) {
 			this.connection.sendNotification('pvs-error', msg);
 		}
 	}
-
-
 	/**
+	 * utility function for notifying the client that the pvs process ready
+	 */
+	private ready() {
+		if (this.enableNotifications) {
+			this.connection.sendNotification('pvs-ready');
+		}
+	}
+	/**
+	 * Path to the current context folder (i.e., the working directory)
 	 * @returns The current pvs context path
 	 */
-	getContextFolder(): string {
+	getContextFolder (): string {
 		return this.pvsContextFolder;
 	}
-
 	/**
+	 * Path to the pvs library folder
 	 * @returns Path of the prelude library
 	 */
-	getPvsLibraryPath(): string {
+	getPvsLibraryPath (): string {
 		return path.join(this.pvsPath, "lib");
 	}
-
+	/**
+	 * Path to the pvs executable
+	 */
+	getPvsPath (): string {
+		return this.pvsPath;
+	}
 	/**
 	 * @constructor
-	 * @param desc Information on the PVS execution environment 
+	 * @param desc Information on the PVS execution environment.
 	 * @param connection Connection with the language client
 	 */
 	constructor (desc: { pvsPath: string, pvsContextFolder?: string, processType?: string }, connection?: Connection) {
@@ -148,7 +155,7 @@ export class PvsProcess {
 		this.connection = connection;
 	}
 	/**
-	 * Internal function, used to communicate that the process is busy and cmd cannot be executed
+	 * Internal function, used to communicate that the process is busy and cmd cannot be executed.
 	 * @param cmd 
 	 */
 	private cannotExecute (msg: string): Promise<PvsResponseType> {
@@ -163,8 +170,12 @@ export class PvsProcess {
 			raw: null
 		});
 	}
-
-	private pvsExecAux(cmd: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponseType> {
+	/**
+	 * Internal function. Executes pvs Lisp commands.
+	 * @param cmd pvs Lisp command
+	 * @param desc information on the pvs file and pvs theory to be used for the execution of the pvs command.
+	 */
+	private pvsExecAux (cmd: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponseType> {
 		if (this.pvsProcessBusy) {
 			const msg: string = "PVS busy, cannot execute " + cmd + " :/";
 			return this.cannotExecute(msg);
@@ -207,8 +218,14 @@ export class PvsProcess {
 			raw: null
 		});
 	}
-
-	private pvsExec(cmd: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponseType> {
+	/**
+	 * Internal function. Executes pvs Lisp commands. Uses a buffer to queue messages if pvs process is busy.
+	 * This function is used by the APIs provided by PvsProcess. Requires correct syntax for commands, cannot be used for CLI Interfaces
+	 * as commands typed with wrong syntax may miss parentheses and therefore pvs Lisp would not return control.
+	 * @param cmd pvs Lisp command to be executed
+	 * @param desc information on the pvs file and pvs theory to be used for the execution of the pvs command.
+	 */
+	private pvsExec (cmd: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponseType> {
 		this.pvsCmdQueue = new Promise((resolve, reject) => {
 			this.pvsCmdQueue.then(() => {
 				this.pvsExecAux(cmd, desc).then((ans: PvsResponseType) => {
@@ -220,61 +237,31 @@ export class PvsProcess {
 		});
 		return this.pvsCmdQueue;
 	}
-
-
-	startCli(listener: (data: string) => void) {
+	/**
+	 * Utility function. Can be used to pipe the output of the pvs process to a listener function. Currently used by PVS CLI. 
+	 * @param listener the listener to be added
+	 */
+	startCli (listener: (data: string) => void): void {
 		this.pvsProcess.stdout.on("data", listener);
 	}
-
-	endCli(listener: (data: string) => void) {
+	/**
+	 * Utility function. Removes a given listener from the output channel of the pvs process.
+	 * @param listener the listener to be removed
+	 */
+	endCli (listener: (data: string) => void): void {
 		this.pvsProcess.stdout.removeListener("data", listener);
 	}
-
-	execCmd(cmd: string): void {
+	/**
+	 * Executes a pvs Lisp command. Unbuffered version. Should only be used in CLI interfaces.
+	 * @param cmd 
+	 */
+	execCmd (cmd: string): void {
 		this.pvsProcess.stdin.write(cmd);
 	}
-	
-
-	/**
-	 * Internal function. Executes a pvs lisp command using the pvsio process
-	 * @param cmd The pvs lisp command, e.g., (parse-file "main" nil nil)
-	 */
-	private pvsioExec(cmd: string): Promise<PvsResponseType> {
-		// utility function, automatically responds to lisp interactive commands, such as when pvs crashes into lisp
-		function getResult(pvsLispResponse: string): PvsResponseType {
-			const ans: PvsResponseType = JSON.parse(pvsLispResponse);
-			if (/.*==>\s*(.*)\s*<PVSio>/.test(ans.res)) {
-				let match: RegExpMatchArray = /.*==>\s*(.*)\s*<PVSio>/.exec(ans.res);
-				ans.res = match[1];
-			}
-			return ans; 
-		}
-		if (this.pvsioProcessBusy) {
-			const msg: string = `PVSio busy, cannot execute ${cmd} :/`;
-			return this.cannotExecute(msg);
-		}	
-		this.pvsioProcessBusy = true;
-		const pvsLispReader: PvsLispReader = new PvsLispReader(this.connection);
-		// const pvslispParser = new PvsLisp(commandId, this.connection);
-		// if (this.connection) { this.connection.console.log(cmd); }
-		return new Promise((resolve, reject) => {
-			const listener = (data: string) => {
-				if (this.connection) { this.connection.console.log(data); }// this is the crude pvs lisp output, useful for debugging
-				pvsLispReader.read(data, async (res: string) => {
-					this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-					this.pvsioProcessBusy = false;
-					resolve(getResult(res));
-				});
-			};
-			this.pvsioProcess.stdout.on("data", listener);
-			this.pvsioProcess.stdin.write(cmd + "\n");
-		});
-	}
-
 	/**
 	 * Utility function. Kills the pvs process.
 	 */
-	kill() {
+	kill (): void {
 		if (this.pvsProcess) {
             // before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
             // because the destruction of the process is immediate but previous calls to write() may not have drained
@@ -287,28 +274,25 @@ export class PvsProcess {
             }
 		}
 	}
-
 	/**
 	 * Utility function. Restarts the pvs process.
 	 */
-	async restart(): Promise<void> {
+	async restart (): Promise<void> {
 		this.kill();
 		await this.pvs();
 		if (this._disableGC) {
 			await this.disableGcPrintout();
 		}
 	}
-
 	/**
 	 * Utility function. Returns the ID of the pvs process.
 	 */
-	getProcessId (): string {
+	getProcessID (): string {
 		if (this.pvsProcess) {
 			return this.pvsProcess.pid.toString();
 		}
 		return null;
 	}
-
 	/**
 	 * Internal function. Runs the relocate script necessary for starting pvs.
 	 */
@@ -323,7 +307,6 @@ export class PvsProcess {
 		}
 		return true;
 	}
-
 	/**
 	 * Creates a new pvs process.
 	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
@@ -340,18 +323,15 @@ export class PvsProcess {
 		}
 		return res;
 	}
-
 	/**
 	 * Internal function. Creates a new pvs process.
 	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
 	 */
-	private async _pvs(opt?: {
-		enableNotifications?: boolean
-	}): Promise<boolean> {
+	private async _pvs(opt?: { enableNotifications?: boolean }): Promise<boolean> {
 		opt = opt || {};
 		await this.relocate();
 		this.enableNotifications = opt.enableNotifications;
-		await this.clearContext();
+		// await this.clearContext();
 		if (!this.pvsProcessBusy) {
 			this.pvsProcessBusy = true;
 			const pvsLispReader = new PvsLispReader(this.connection);
@@ -380,47 +360,16 @@ export class PvsProcess {
 					});
 					// if (this.connection) { this.connection.console.info("PVS process ready!"); }
 					if (this.connection) {
-						this.connection.sendNotification(`server.new-pvs-${this.processType}`);
+						this.connection.sendNotification(`server.new-pvs-${this.processType}`); // used for debugging
 					}
 				} else {
 					console.error(`\n>>> PVS executable not found at ${pvs} <<<\n`);
+					this.pvsProcessBusy = false;
 					resolve(false)
 				}
 			});
 		}
 	}
-
-	/**
-	 * Starts the pvsio process
-	 */
-	private async pvsio (): Promise<{}> {
-		if (!this.pvsioProcessBusy) {
-			this.pvsioProcessBusy = true;
-			// const pvslispParser = new PvsLisp("pvs-init", this.connection);	
-			const pvsLispReader = new PvsLispReader(this.connection);
-			let cmd: string = path.join(this.pvsPath, "pvs");
-			if (this.connection) { this.connection.console.info(`Spawning PVSio process ${cmd}`); }
-			return new Promise((resolve, reject) => {
-				this.pvsioProcess = spawn(cmd, ["-raw"]);
-				this.pvsioProcess.stdout.setEncoding("utf8");
-				this.pvsioProcess.stderr.setEncoding("utf8");
-				const listener = (data: string) => {
-					if (this.connection) { this.connection.console.log(data); } // this is the crude pvs lisp output, useful for debugging
-					pvsLispReader.read(data, (res: string) => {
-						// connection.console.info(res);
-						this.pvsioProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-						this.pvsioProcessBusy = false;
-						resolve();
-					});
-				};
-				this.pvsioProcess.stdout.on("data", listener);
-				this.pvsioProcess.stderr.on("data", function (data: string) {
-					if (this.connection) { this.connection.console.log(data); }
-				});
-			});
-		}
-	}
-
 	/**
 	 * Changes the current context. When the context is changed, all symbol information are erased and the parser/typechecker needs to be re-run.
 	 * @param contextFolder Path of the context folder 
@@ -486,7 +435,6 @@ export class PvsProcess {
 		const cmd: string = '(setq *pvs-emacs-interface* t)';
 		return await this.pvsExec(cmd);
 	}
-
 	/**
 	 * Returns the list of commands accepted by the theorem prover
 	 */
@@ -624,43 +572,43 @@ export class PvsProcess {
 	}
 
 	/**
-	 * Animates a pvs expression
+	 * DEPRECATED Animates a pvs expression
 	 * @param desc Expression descriptor
 	 */
-	async runit (desc: ExpressionDescriptor): Promise<EvaluationResult> {
-		// start pvsio process
-		await this.pvsio();
-		let cmd: string = '(setq *disable-gc-printout* t)';
-		// disable garbage collector printout
-		await this.pvsioExec("disable-gc-printout");
-		// // enable emacs interface
-		// cmd = '(setq *pvs-emacs-interface* t)';
-		// await this.pvsioExec("emacs-interface", cmd);
-		// make sure we are in the correct context
-		cmd = `(change-context "${this.pvsContextFolder}" t)`;
-		await this.pvsioExec("change-context");
-		// typecheck
-		let fileName = fsUtils.getFilename(desc.fileName, { removeFileExtension: true });
-		cmd = `(typecheck-file "${fileName}" nil nil nil)`;
-		await this.pvsioExec("typecheck-file");
-		// load semantic attachments
-		cmd = "(load-pvs-attachments)";
-		await this.pvsioExec("load-pvs-attachments");
-		// enter pvsio mode
-		cmd = `(evaluation-mode-pvsio "${desc.theoryName}" nil nil nil)`; // the fourth argument removes the pvsio 	banner
-		await this.pvsioExec("evaluation-mode-pvsio");
-		// send expression to be evaluated
-		cmd = `${desc.expression};`;
-		let ans = await this.pvsioExec("eval-expr");
-		// await this.pvsioExec("quit-pvsio", "quit;");
-		this.pvsioProcess.kill();
-		return {
-			fileName: desc.fileName,
-			theoryName: desc.theoryName,
-			msg: "%-- animation result for " + desc.expression,
-			result: ans.res
-		};
-	}
+	// async runit (desc: ExpressionDescriptor): Promise<EvaluationResult> {
+	// 	// start pvsio process
+	// 	await this.pvsio();
+	// 	let cmd: string = '(setq *disable-gc-printout* t)';
+	// 	// disable garbage collector printout
+	// 	await this.pvsioExec("disable-gc-printout");
+	// 	// // enable emacs interface
+	// 	// cmd = '(setq *pvs-emacs-interface* t)';
+	// 	// await this.pvsioExec("emacs-interface", cmd);
+	// 	// make sure we are in the correct context
+	// 	cmd = `(change-context "${this.pvsContextFolder}" t)`;
+	// 	await this.pvsioExec("change-context");
+	// 	// typecheck
+	// 	let fileName = fsUtils.getFilename(desc.fileName, { removeFileExtension: true });
+	// 	cmd = `(typecheck-file "${fileName}" nil nil nil)`;
+	// 	await this.pvsioExec("typecheck-file");
+	// 	// load semantic attachments
+	// 	cmd = "(load-pvs-attachments)";
+	// 	await this.pvsioExec("load-pvs-attachments");
+	// 	// enter pvsio mode
+	// 	cmd = `(evaluation-mode-pvsio "${desc.theoryName}" nil nil nil)`; // the fourth argument removes the pvsio 	banner
+	// 	await this.pvsioExec("evaluation-mode-pvsio");
+	// 	// send expression to be evaluated
+	// 	cmd = `${desc.expression};`;
+	// 	let ans = await this.pvsioExec("eval-expr");
+	// 	// await this.pvsioExec("quit-pvsio", "quit;");
+	// 	this.pvsioProcess.kill();
+	// 	return {
+	// 		fileName: desc.fileName,
+	// 		theoryName: desc.theoryName,
+	// 		msg: "%-- animation result for " + desc.expression,
+	// 		result: ans.res
+	// 	};
+	// }
 
 	/**
 	 * Internal function, proves a theorem stored in a .pvs file
@@ -699,7 +647,6 @@ export class PvsProcess {
 			}
 		}
 	}
-
 	/**
 	 * Returns the status of theorems and tccs in a given theory
 	 * @param desc Theory descriptor, defines the theoryName
@@ -716,7 +663,6 @@ export class PvsProcess {
 		}
 		return null;
 	}
-
 	/**
 	 * Typechecks a file
 	 * @param uri The uri of the file to be typechecked
@@ -802,8 +748,6 @@ export class PvsProcess {
 			await fsUtils.deletePvsCache(currentContext);
 		}
 	}
-
-
 	/**
 	 * Typechecks a theory
 	 * @param theoryName The theory to be typechecked
@@ -822,7 +766,7 @@ export class PvsProcess {
 	/**
 	 * Provides pvs version information
 	 */
-	async pvsVersionInformation(): Promise<PvsResponseType> {
+	async getPvsVersionInfo(): Promise<PvsVersionInfoResponseType> {
 		const cmd: string = '(get-pvs-version-information)';
 		return await this.pvsExec(cmd);
 	}
@@ -831,15 +775,6 @@ export class PvsProcess {
 		// TODO
 		return null;
 	}
-
-	// async continueProof(cmd: string): Promise<string> {
-	// 	// await this.initTypeChecker();
-	// 	let ans: string = (await this.pvsExec("prove-formula", cmd)).res;
-	// 	// (install-prooflite-scripts "test" "test" 0 t)
-	// 	//'(install-prooflite-scripts "' + desc.fileName + '" "' + desc.theoryName +  '" ' + desc.line + ' t)';
-	// 	return ans;
-	// }
-
 
 	// TODO: make a single function out of stepTcc and stepProof
 	async stepProof(data: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<PvsResponseType> {
@@ -888,20 +823,27 @@ export class PvsProcess {
 		return "";
 	}
 
-	static prf2json(prf: string, formulaName: string, parent?: { id: string, children: any[], type: string }): { [key: string]: any } {
+	/**
+	 * Utility function, transforms a .prf (proof file) into a json object
+	 * @param prf proof file file content
+	 * @param formulaName name of the theorem or tcc associated to the proof
+	 * @param parent argument not used in regular invocations --- it is used by the function itself during recursive calls, to keep track of the current parent in the proof tree
+	 */
+	static prf2json(prf: string, formulaName: string, parent?: ProofNodeType): ProofObjectType {
 		if (prf) {
 			prf = prf.trim();
-			const res: { [key: string]: any } = {};
+			const res: ProofObjectType = {
+				proof: {
+					id: formulaName,
+					children: [],
+					type: "root"
+				}
+			};
 			while (prf && prf.length) {
 				if (prf.startsWith(`(""`)) {
 					// root node
 					const match: RegExpMatchArray = /\(\"\"([\w\W\s]+)\s*\)/.exec(prf);
 					prf = match[1].trim();
-					res["proof"] = {
-						id: formulaName,
-						children: [],
-						type: "root"
-					};
 					parent = res["proof"];
 				} else {
 					// series of proof branches or a proof commands
@@ -912,13 +854,13 @@ export class PvsProcess {
 							// remove a pair of parentheses and iterate
 							const match: RegExpMatchArray = /\(([\w\W\s]+)\s*\)/.exec(prf);
 							const subexpr: string = match[1];
-							const currentParent: { id: string, children: any[], type: string } = parent.children[parent.children.length - 1];
+							const currentParent: ProofNodeType = parent.children[parent.children.length - 1];
 							PvsProcess.prf2json(subexpr, formulaName, currentParent);
 						} else if (expr.startsWith(`("`)) {
 							// proof command from a labelled branch -- remove the label and iterate
 							const match: RegExpMatchArray = /\(\"(\d+)\"\s*([\w\W\s]+)/.exec(expr);
 							const subexpr: string = match[2].replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
-							const currentBranch: { id: string, children: any[], type: string } = { id: match[1], children:[], type: "proof-branch" };
+							const currentBranch: ProofNodeType = { id: match[1], children:[], type: "proof-branch" };
 							parent.children.push(currentBranch);
 							PvsProcess.prf2json(subexpr, formulaName, currentBranch);
 						} else {
@@ -944,374 +886,4 @@ export class PvsProcess {
 		}
 		return null;
 	}
-
-	static test(): string[] {
-		const tactics: string[] = [
-			`(""
-			(skeep)
-			(lemma "sin2_cos2")
-			(inst?)
-			(both-sides-f 1 "sq")
-			(("1"
-			  (both-sides "-" "sq(cos(acos(sig)))" -1)
-			  (("1"
-				(assert)
-				(replaces -1)
-				(rewrite "cos_acos")
-				(rewrite "sq_sqrt"))
-			   ("2" (iff) (ground))))
-			 ("2"
-			  (case "FORALL (zz,qq:nnreal): sq(zz) = sq(qq) IMPLIES zz=qq")
-			  (("1"
-				(invoke (inst - "%1" "%2") (! 1 1) (! 1 2))
-				(("1" (assert) (assert)) ("2" (assert))
-				 ("3" (assert) (lemma "sin_ge_0") (inst?) (assert))))
-			   ("2"
-				(hide-all-but 1)
-				(skeep)
-				(case "sqrt(sq(zz)) = sqrt(sq(qq))")
-				(("1" (assert)) ("2" (replaces -1))))))))`,
-
-			`(""
-			(case "FORALL (zz,qq:nnreal): sq(zz) = sq(qq) IMPLIES zz=qq")
-			(("1"
-			  (label "igz" -1)
-			  (hide "igz")
-			  (skeep)
-			  (skoletin :var "AA")
-			  (assert)
-			  (expand "xyz2spherical")
-			  (assert)
-			  (lift-if)
-			  (split -)
-			  (("1"
-				(flatten)
-				(assert)
-				(case "x = 0 AND y=0")
-				(("1"
-				  (flatten)
-				  (assert)
-				  (flatten)
-				  (replaces -5)
-				  (assert)
-				  (replace -1)
-				  (replace -2)
-				  (assert)
-				  (expand "^" + 1)
-				  (expand "expt")
-				  (assert)
-				  (lemma "sqrt_sq")
-				  (inst - "z")
-				  (split -)
-				  (("1"
-					(expand "expt")
-					(expand "expt")
-					(expand "sq")
-					(replaces -1)
-					(assert)
-					(expand "spherical2xyz")
-					(assert)
-					(rewrite "cos_pi")
-					(rewrite "sin_0")
-					(rewrite "sin_pi")
-					(rewrite "cos_0")
-					(assert))
-				   ("2" (propax))))
-				 ("2"
-				  (hide-all-but (-1 1))
-				  (case "NOT x^2+y^2=0")
-				  (("1" (assert))
-				   ("2"
-					(case "NOT sq(x)+sq(y)=0")
-					(("1" (grind))
-					 ("2"
-					  (lemma "sq_eq_0")
-					  (inst-cp - "x")
-					  (inst - "y")
-					  (grind))))))))
-			   ("2"
-				(flatten)
-				(split -1)
-				(("1"
-				  (flatten)
-				  (assert)
-				  (hide -3)
-				  (lift-if)
-				  (split -)
-				  (("1" (ground))
-				   ("2"
-					(flatten)
-					(hide 1)
-					(replaces -1)
-					(assert)
-					(case "x = 0 AND y = 0")
-					(("1"
-					  (flatten)
-					  (replaces -1)
-					  (replaces -1)
-					  (assert)
-					  (case-replace "sqrt(z^2) = -z")
-					  (("1"
-						(expand "spherical2xyz")
-						(rewrite "cos_pi")
-						(assert)
-						(rewrite "sin_pi")
-						(assert))
-					   ("2"
-						(hide-all-but (1 2))
-						(rewrite "expt_x2")
-						(rewrite "sq" :dir rl)
-						(assert))
-					   ("3" (hide-all-but 1) (grind))))
-					 ("2"
-					  (hide (2 3))
-					  (case "NOT x^2+y^2=0")
-					  (("1" (assert))
-					   ("2"
-						(case "NOT sq(x)+sq(y)=0")
-						(("1" (grind))
-						 ("2"
-						  (lemma "sq_eq_0")
-						  (inst-cp - "x")
-						  (inst - "y")
-						  (ground))))))))))
-				 ("2"
-				  (flatten)
-				  (hide 2)
-				  (assert)
-				  (replaces -1)
-				  (assert)
-				  (expand "spherical2xyz")
-				  (name "R" "sqrt(x^2+y^2+z^2)")
-				  (("1"
-					(replace -1)
-					(case "R > 0")
-					(("1"
-					  (case "x/=0 OR y/=0")
-					  (("1"
-						(hide -4)
-						(assert)
-						(split +)
-						(("1"
-						  (rewrite "cos_atan2")
-						  (assert)
-						  (lift-if)
-						  (assert)
-						  (split +)
-						  (("1" (propax))
-						   ("2"
-							(flatten)
-							(rewrite "sin_acos_ecef")
-							(("1"
-							  (case "sqrt(1 - sq(z / R)) * (1 / sqrt(1 + sq(y / x))) * R = abs(x)")
-							  (("1"
-								(split +)
-								(("1"
-								  (flatten)
-								  (expand "abs")
-								  (expand "sq")
-								  (lift-if)
-								  (ground))
-								 ("2"
-								  (flatten)
-								  (expand "abs")
-								  (expand "sq")
-								  (lift-if)
-								  (ground))))
-							   ("2"
-								(hide 3)
-								(reveal "igz")
-								(invoke (inst - "%1" "%2") (! 1 1) (! 1 2))
-								(assert)
-								(hide 2)
-								(rewrite "sq_times")
-								(rewrite "sq_times")
-								(rewrite "sq_div")
-								(rewrite "sq_div")
-								(("1"
-								  (rewrite "sq_div")
-								  (rewrite "sq_sqrt")
-								  (("1"
-									(field)
-									(replaces -2 1 :dir rl)
-									(rewrite "sq_sqrt")
-									(("1" (grind))
-									 ("2"
-									  (typepred "sq(x)+sq(y)+sq(z)")
-									  (grind))))
-								   ("2"
-									(assert)
-									(lemma "nnreal_div_posreal_is_nnreal")
-									(inst?)
-									(("1" (assert))
-									 ("2" (lemma "sq_eq_0") (inst?) (assert))))))
-								 ("2"
-								  (flatten)
-								  (lemma "sqrt_eq_0")
-								  (inst - "1+sq(y)/sq(x)")
-								  (assert))
-								 ("3"
-								  (lemma "nnreal_div_posreal_is_nnreal")
-								  (inst?)
-								  (("1" (assert))
-								   ("2" (lemma "sq_eq_0") (inst?) (assert))))))
-							   ("3" (assert))))
-							 ("2"
-							  (rewrite "abs_div")
-							  (expand "abs" + 2)
-							  (cross-mult 1)
-							  (lemma "sq_le")
-							  (inst?)
-							  (assert)
-							  (hide 2)
-							  (case "FORALL (rr:real): 1*rr = rr")
-							  (("1"
-								(rewrite -1)
-								(hide -1)
-								(replaces -2 :dir rl)
-								(rewrite "sq_sqrt")
-								(("1" (typepred "sq(x)+sq(y)") (grind))
-								 ("2" (typepred "sq(x)+sq(y)+sq(z)") (grind))))
-							   ("2" (assert))))))))
-						 ("2"
-						  (rewrite "sin_acos_ecef")
-						  (("1"
-							(rewrite "sin_atan2")
-							(lift-if)
-							(assert)
-							(split +)
-							(("1"
-							  (flatten)
-							  (assert)
-							  (case "sqrt(1 - sq(z / R)) * R = abs(y)")
-							  (("1" (expand "abs") (lift-if) (ground))
-							   ("2"
-								(hide 2)
-								(reveal "igz")
-								(invoke (inst - "%1" "%2") (! 1 1) (! 1 2))
-								(assert)
-								(hide 2)
-								(delabel "igz")
-								(rewrite "sq_times")
-								(rewrite "sq_div")
-								(replace -1)
-								(assert)
-								(field)
-								(replaces -4 1 :dir rl)
-								(rewrite "sq_sqrt")
-								(("1" (assert) (grind))
-								 ("2" (typepred "sq(y)+sq(z)") (grind))))))
-							 ("2"
-							  (flatten)
-							  (case "sqrt(1 - sq(z / R)) * (y / abs(x) / sqrt(1 + sq(y / x))) * R = y")
-							  (("1"
-								(split +)
-								(("1" (flatten) (expand "abs") (lift-if) (assert))
-								 ("2" (flatten) (expand "abs") (assert))))
-							   ("2"
-								(hide 3)
-								(reveal "igz")
-								(case "sqrt(1 - sq(z / R)) * (abs(y) / abs(x) / sqrt(1 + sq(y / x))) * R = abs(y)")
-								(("1"
-								  (name "d" "abs(y)")
-								  (replace -1)
-								  (expand "abs" -1)
-								  (replaces -1 :dir rl)
-								  (lift-if)
-								  (ground))
-								 ("2"
-								  (hide 2)
-								  (invoke (inst - "%1" "%2") (! 1 1) (! 1 2))
-								  (("1"
-									(assert)
-									(hide 1)
-									(delabel "igz")
-									(rewrite "sq_times")
-									(rewrite "sq_div")
-									(rewrite "sq_times")
-									(rewrite "sq_div")
-									(rewrite "sq_div")
-									(("1"
-									  (rewrite "sq_div")
-									  (rewrite "sq_sqrt")
-									  (rewrite "sq_sqrt")
-									  (("1"
-										(field)
-										(case "sq(R) = sq(x)+sq(y)+sq(z)")
-										(("1" (replaces -1) (grind))
-										 ("2"
-										  (replace -2 1 :dir rl)
-										  (rewrite "sq_sqrt")
-										  (("1" (grind))
-										   ("2"
-											(typepred "sq(x)+sq(y)+sq(z)")
-											(grind))))))
-									   ("2"
-										(lemma "nnreal_div_posreal_is_nnreal")
-										(inst?)
-										(("1" (assert))
-										 ("2"
-										  (lemma "sq_eq_0")
-										  (inst?)
-										  (assert))))))
-									 ("2"
-									  (flatten)
-									  (lemma "sqrt_eq_0")
-									  (inst - "1+sq(y)/sq(x)")
-									  (assert))
-									 ("3"
-									  (lemma "nnreal_div_posreal_is_nnreal")
-									  (inst?)
-									  (("1" (assert))
-									   ("2"
-										(lemma "sq_eq_0")
-										(inst?)
-										(assert))))))
-								   ("2"
-									(rewrite "nnreal_times_nnreal_is_nnreal")
-									(rewrite "nnreal_times_nnreal_is_nnreal")
-									(cross-mult 1))))))
-							   ("3" (assert)) ("4" (assert))))))
-						   ("2"
-							(rewrite "abs_div")
-							(cross-mult 1)
-							(expand "abs" 1 2)
-							(assert)
-							(lemma "sq_le")
-							(inst?)
-							(assert)
-							(replace -3 1 :dir rl)
-							(rewrite "sq_sqrt")
-							(("1" (typepred "sq(x)+sq(y)") (grind))
-							 ("2" (typepred "sq(x)+sq(y)+sq(z)") (grind))))))
-						 ("3" (rewrite "cos_acos") (assert))))
-					   ("2"
-						(flatten)
-						(assert)
-						(replace -1)
-						(replace -2)
-						(assert))))
-					 ("2"
-					  (assert)
-					  (lemma "sqrt_pos")
-					  (assert)
-					  (lemma "sq_eq_0")
-					  (typepred "sq(x)")
-					  (typepred "sq(y)")
-					  (typepred "sq(z)")
-					  (split -)
-					  (("1" (flatten) (inst - "x") (grind))
-					   ("2" (inst - "y") (grind)) ("3" (inst - "z") (grind))))))
-				   ("2" (hide 3) (typepred "sq(x)+sq(y)+sq(z)") (grind))))))))
-			 ("2" (hide 2) (skeep) (both-sides-f -1 "sqrt") (replaces -1))))`
-		];
-		// tactics.forEach(tactic => {
-		// 	const res = PvsProcess.prf2json(tactic, "test");
-		// 	console.log(res);
-		// });
-		return tactics;
-	}
-
-
-
 }

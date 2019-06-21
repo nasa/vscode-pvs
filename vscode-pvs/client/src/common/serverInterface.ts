@@ -144,7 +144,7 @@ export declare interface PvsResponseType {
 	raw: string // raw output of pvs-lisp
 };
 export declare interface ChangeContextResponseType {
-	context: string,
+	context: string
 }
 export declare interface PvsChangeContextResponseType extends PvsResponseType {
 	error: PvsErrorType,
@@ -155,6 +155,26 @@ export declare interface PvsCurrentContextResponseType extends PvsResponseType {
 	error: PvsErrorType,
 	res: string,
 	raw: string
+}
+export declare interface VersionInfoResponseType {
+	pvsVersion: string,
+	lispVersion: string
+}
+export declare interface PvsVersionInfoResponseType extends PvsResponseType {
+	error: PvsErrorType,
+	res: VersionInfoResponseType,
+	raw: string
+}
+export declare interface JsonType {
+	[ key: string ]: JsonType | string; 
+}
+export declare interface ProofNodeType { 
+	id: string, 
+	children: ProofNodeType[], 
+	type: string 
+}
+export declare interface ProofObjectType {
+	proof: ProofNodeType
 }
 
 export const PRELUDE_FILE: string = "*prelude*";
