@@ -44,5 +44,5 @@ install:
 	npm install
 
 clean:
-	rm -r node_modules
-	rm -r out
+	rm -rf node_modules
+	rm -rf out

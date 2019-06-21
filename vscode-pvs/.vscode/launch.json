@@ -21,6 +21,16 @@
                 "port": 6009,
                 "restart": true,
                 "outFiles": ["${workspaceRoot}/server/out/**/*.js"]
+        },        
+        {
+                "type": "node",
+                "request": "launch",
+                "name": "Test PVS Language Server",
+                "runtimeExecutable": "${execPath}",
+                "preLaunchTask": {
+                        "type": "npm",
+                        "script": "test:server"
+                }
         }
     ],
     "compounds": [

@@ -559,16 +559,19 @@
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
-		"postinstall": "cd client && npm install && cd ../server && npm install && cd .."
+		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+		"test:server": "node_modules/jasmine-ts/lib/index.js --config=server/test/jasmine.json"
 	},
-	"dependencies": {},
 	"devDependencies": {
-		"vsce": "^1.64.0",
+		"ts-node": "^8.3.0",
+		"@types/jasmine": "^3.3.13",
 		"@types/node": "^8.9.1",
-		"typescript": "^3.4.3",
-		"vscode": "^1.1.33",
+		"jasmine": "^3.4.0",
+		"jasmine-ts": "^0.3.0",
 		"tslint": "^5.11.0",
-		"jasmine": "^3.4.0"
+		"typescript": "^3.4.3",
+		"vsce": "^1.64.0",
+		"vscode": "^1.1.33"
 	},
 	"devDependencies?": {
 		"@types/mocha": "^5.2.6"
