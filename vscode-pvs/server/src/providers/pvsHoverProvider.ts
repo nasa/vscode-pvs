@@ -120,7 +120,7 @@ export class PvsHoverProvider {
 				if (definitions.length > 1) {
 					contents = contents.concat([
 						`${definitions.length - 1} additional definitions found`,
-						"Please use peek-definition to view all possible definitions"
+						"Please use peek-definition to view all definitions"
 					]);
 				}
 				return {

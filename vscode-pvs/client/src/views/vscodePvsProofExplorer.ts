@@ -203,8 +203,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		if (activeCommand) {
 			cmd = cmd || activeCommand.name;
 			const data: {
-				fileName: string, theoryName: string, formulaName: string, line: number, cmd: string, pvsContextFolder: string
-			} = { fileName: this.desc.fileName, theoryName: this.desc.theoryName, formulaName: this.desc.formulaName, line: this.desc.line, cmd, pvsContextFolder: this.desc.pvsContextFolder };
+				fileName: string, theoryName: string, formulaName: string, line: number, cmd: string, contextFolder: string
+			} = { fileName: this.desc.fileName, theoryName: this.desc.theoryName, formulaName: this.desc.formulaName, line: this.desc.line, cmd, contextFolder: this.desc.contextFolder };
 			commands.executeCommand("terminal.pvs.send-proof-command", data);
 		}
 		return activeCommand;

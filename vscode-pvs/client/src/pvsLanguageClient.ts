@@ -62,7 +62,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// context variables
 	private context: ExtensionContext;
-	private pvsContextFolder: string;
+	private contextFolder: string;
 
 	private timers: {[key: string]: NodeJS.Timer } = {};
 
@@ -93,6 +93,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			clearTimeout(this.timers['autosave']);
 		}
 		// save document after a delay
+		// FIXME: check this function, it seems that save is triggered twice
 		this.timers['autosave'] = setTimeout(() => {
 			document.save();
 			this.timers['autosave'] = null;
@@ -165,7 +166,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			if (pvsPath !== this.pvsPath) {
 				window.showInformationMessage(`Restarting PVS (pvs path changed to ${pvsPath})`);
 				this.pvsPath = pvsPath;
-				await this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder });	
+				await this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, contextFolder: this.contextFolder });	
 			}	
 		});
 	}
@@ -220,27 +221,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			serverOptions,
 			clientOptions
 		);
-
-		// register command handlers
-		// const _this = this;
-		// vscode.commands.registerTextEditorCommand("client.request.peek_definition", function (textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, ...args: any[]) {
-		// 	const line = textEditor.selection.active.line;
-		// 	const column = textEditor.selection.active.character;
-		// 	const symbolRange = vscode.window.activeTextEditor.document.getWordRangeAtPosition(textEditor.selection.start); // vscode starts to count lines from 0, pvs starts from 1
-		// 	const symbolName = textEditor.document.getText(symbolRange);
-		// 	_this._commands["peek-definition"](textEditor.document, line, column, symbolName);
-		// });
-		// vscode.commands.registerTextEditorCommand("client.request.eval", function (textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, ...args: any[]) {
-		// 	const text = textEditor.document.getText(textEditor.selection);
-		// 	// let filename = textEditor.document.fileName;
-		// 	// let line = textEditor.selection.active.line;
-		// 	// let column = textEditor.selection.active.character;
-		// 	const cmd = "pvsio.eval " + text;
-		// 	// log("sending command " + cmd);
-		// 	_this.client.sendRequest(ExecuteCommandRequest.type, {
-		// 		command: cmd
-		// 	});
-		// });
 		
 		return this;
 	}
@@ -252,21 +232,15 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// create status bar
 		this.pvsStatusBar = new VSCodePvsStatusBar(this.client);
 		this.pvsStatusBar.activate(this.context);
-
-		// initialise pvs
-		// await this.client.sendRequest('pvs.init', pvsExecutionContext);
 		
 		// initialise service providers defined on the client-side
 		this.decorationProvider = new VSCodePvsDecorationProvider();
-		// this.hoverProvider = new VSCodePvsHoverProvider(this.client);
-		// this.hoverProvider.activate(this.context);
 		this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client);
 		this.emacsBindingsProvider.activate(this.context);
 
 		this.pvsioTerminal = new VSCodePVSioTerminal(this.pvsStatusBar.getVersionInfo());
 		this.pvsioTerminal.activate(this.context);
 
-		// this.inputManager = new MultiStepInput(this.client);
 		this.theoryExplorer = new VSCodePvsTheoryExplorer(this.client, 'theory-explorer-view');
 		this.theoryExplorer.activate(this.context);
 
@@ -280,12 +254,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.decorationProvider.updateDecorations(window.activeTextEditor);
 		}
 
-		setTimeout(() => {
-			// start PVS
-			this.pvsContextFolder = fsUtils.getContextFolder(window.activeTextEditor.document.fileName);
-			this.pvsPath = this.getPvsPath();
-			this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder });			
-		}, 500);
+		// start PVS
+		this.contextFolder = fsUtils.getContextFolder(window.activeTextEditor.document.fileName);
+		this.pvsPath = this.getPvsPath();
+		this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, contextFolder: this.contextFolder });			
 	}
 	stop () {
 		if (this.client) {

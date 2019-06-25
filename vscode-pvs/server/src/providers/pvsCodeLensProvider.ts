@@ -62,7 +62,7 @@ export class PvsCodeLensProvider {
 	provideCodeLens(document: TextDocument, token?: CancellationToken): CodeLens[] {
         const fileName: string = fs.getFilename(document.uri);
         const fileExtension: string = fs.getFileExtension(document.uri);
-        const pvsContextFolder: string = fs.getContextFolder(document.uri);
+        const contextFolder: string = fs.getContextFolder(document.uri);
         const codeLens: CodeLens[] = [];
         const doc: string = document.getText();
         const lines: string[] = doc.split("\n");
@@ -104,8 +104,8 @@ export class PvsCodeLensProvider {
                 const docUp: string = doc.slice(0, match.index + match[2].length);
                 const i: number = docUp.split("\n").length - 1;
                 const theoryName: string = utils.findTheoryName(doc,i);
-                const args: { fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string, pvsContextFolder: string } =
-                        { fileName, theoryName, formulaName, line: i, fileExtension, pvsContextFolder }
+                const args: { fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string, contextFolder: string } =
+                        { fileName, theoryName, formulaName, line: i, fileExtension, contextFolder }
                 codeLens.push({
                     range: {
                         start: { line: i, character: match.index },

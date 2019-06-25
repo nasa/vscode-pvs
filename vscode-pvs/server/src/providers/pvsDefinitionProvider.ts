@@ -140,21 +140,20 @@ export class PvsDefinitionProvider {
 		const fileName = path[path.length - 1].split(".pvs")[0];
 		if (fileName !== PRELUDE_FILE) {
 			// find-declaration works even if a pvs file does not parse correctly 
-			let ans: PvsResponseType = await this.pvsProcess.findDeclaration(symbolName);
+			let ans: PvsFindDeclarationResponseType = await this.pvsProcess.findDeclaration(symbolName);
 			// find-declaration may return more than one result -- the file is not typechecked
 			// we can narrow down the results by traversing the importchain
 			// part of this extra logic can be removed when Sam completes the implementation of find-object
-			if (ans.res && ans.res !== {}) {
-				const allDeclarations: PvsFindDeclarationResponseType = ans.res;
-				let candidates: PvsDefinition[] = Object.keys(allDeclarations).map(key => {
-					const info: PvsDeclarationType = allDeclarations[key];
+			if (ans.res && ans.res) {
+				const allDeclarations: PvsDeclarationType[] = ans.res;
+				let candidates: PvsDefinition[] = allDeclarations.map((info: PvsDeclarationType)=> {
 					const ans: PvsDefinition = {
 						theory: currentTheory,
 						line: (position) ? position.line : null,
 						character: (position) ? position.character : null,
 						file: document.uri,
 						symbolName: symbolName,
-						symbolTheory: info.symbolTheory,
+						symbolTheory: info.theoryName,
 						symbolDeclaration: (info) ? info.symbolDeclaration : null,
 						symbolDeclarationRange: (info) ? info.symbolDeclarationRange : null,
 						symbolDeclarationFile: (info) ? info.symbolDeclarationFile : null,

@@ -53,21 +53,21 @@ class TheoryItem extends TreeItem {
 	position: Position;
 	tccsOverview: TccsOverviewItem;
 	theoremsOverview: TheoremsOverviewItem;
-	pvsContextFolder: string;
-	constructor (theoryName: string, fileName: string, position: Position, pvsContextFolder: string, collapsibleState: TreeItemCollapsibleState) {
+	contextFolder: string;
+	constructor (theoryName: string, fileName: string, position: Position, contextFolder: string, collapsibleState: TreeItemCollapsibleState) {
 		super(theoryName, collapsibleState);
 		this.theoryName = theoryName;
 		this.fileName = fileName;
 		this.position = position;
-		this.pvsContextFolder = pvsContextFolder;
+		this.contextFolder = contextFolder;
 		this.tooltip = `Click to open ${theoryName}`;
 		this.command = {
 			title: "Theory selected",
 			command: "explorer.didSelectTheory",
-			arguments: [ theoryName, fileName, position, pvsContextFolder ]
+			arguments: [ theoryName, fileName, position, contextFolder ]
 		};
-		this.theoremsOverview = new TheoremsOverviewItem({ fileName, pvsContextFolder });
-		this.tccsOverview = new TccsOverviewItem({ fileName, pvsContextFolder });
+		this.theoremsOverview = new TheoremsOverviewItem({ fileName, contextFolder });
+		this.tccsOverview = new TccsOverviewItem({ fileName, contextFolder });
 		this.refreshLabel();
 	}
 	refreshLabel () {
@@ -89,14 +89,14 @@ class TheoryItem extends TreeItem {
 class OverviewItem extends TreeItem {
 	contextValue: string = "OverviewItem";
 	fileName: string;
-	pvsContextFolder: string;
+	contextFolder: string;
 	formulae: { [ formulaName: string ]: FormulaItem } = {};
-	constructor(typeName: string, desc: { pvsContextFolder: string, fileName: string }) {
+	constructor(typeName: string, desc: { contextFolder: string, fileName: string }) {
 		super(typeName, TreeItemCollapsibleState.None);
 		this.contextValue = typeName;
 		this.label = typeName.toLowerCase();
 		this.fileName = desc.fileName;
-		this.pvsContextFolder = desc.pvsContextFolder;
+		this.contextFolder = desc.contextFolder;
 	}
 	getFormula (formulaName: string): FormulaItem {
 		return this.formulae[formulaName];
@@ -122,7 +122,7 @@ class OverviewItem extends TreeItem {
 				}
 			} else {
 				const formulaType: string = (desc.isTcc) ? "tcc" : "theorem"
-				this.formulae[desc.formulaName] = new FormulaItem(formulaType, desc, this.pvsContextFolder);
+				this.formulae[desc.formulaName] = new FormulaItem(formulaType, desc, this.contextFolder);
 				this.refreshLabel();
 			} 
 		}
@@ -139,8 +139,8 @@ class FormulaItem extends TreeItem {
 	private formulaName: string;
 	private position: Position;
 	private status: string;
-	private pvsContextFolder: string;
-	constructor(typeName: string, desc: FormulaDescriptor, pvsContextFolder: string) {
+	private contextFolder: string;
+	constructor(typeName: string, desc: FormulaDescriptor, contextFolder: string) {
 		super(typeName, TreeItemCollapsibleState.None);
 		this.contextValue = typeName;
 		this.fileName = desc.fileName;
@@ -148,7 +148,7 @@ class FormulaItem extends TreeItem {
 		this.formulaName = desc.formulaName;
 		this.position = new Position (desc.position.line, desc.position.character);
 		this.status = desc.status;
-		this.pvsContextFolder = pvsContextFolder;
+		this.contextFolder = contextFolder;
 		const range: Range = new Range(
 			new Position(desc.position.line - 1, 0),
 			new Position(desc.position.line, 0)
@@ -158,7 +158,7 @@ class FormulaItem extends TreeItem {
 			title: "Formula selected",
 			command: "explorer.didSelectTheorem",
 			arguments: [
-				Uri.file(path.join(pvsContextFolder, this.fileName)),
+				Uri.file(path.join(contextFolder, this.fileName)),
 				range
 			]
 		};
@@ -197,24 +197,24 @@ class FormulaItem extends TreeItem {
 }
 //-- overviews
 class TheoremsOverviewItem extends OverviewItem {
-	constructor(desc: { pvsContextFolder: string, fileName: string }) {
+	constructor(desc: { contextFolder: string, fileName: string }) {
 		super("THEOREMS", desc);
 	}
 }
 class TccsOverviewItem extends OverviewItem {
-	constructor(desc: { pvsContextFolder: string, fileName: string }) {
+	constructor(desc: { contextFolder: string, fileName: string }) {
 		super("TCCS", desc);
 	}
 }
 //-- Items
 class TheoremItem extends FormulaItem {
-	constructor(desc: FormulaDescriptor, pvsContextFolder: string) {
-		super("theorem", desc, pvsContextFolder);
+	constructor(desc: FormulaDescriptor, contextFolder: string) {
+		super("theorem", desc, contextFolder);
 	}
 }
 class TccItem extends FormulaItem {
-	constructor(desc: FormulaDescriptor, pvsContextFolder: string) {
-		super("tcc", desc, pvsContextFolder);
+	constructor(desc: FormulaDescriptor, contextFolder: string) {
+		super("tcc", desc, contextFolder);
 	}
 }
 
@@ -224,7 +224,7 @@ class TccItem extends FormulaItem {
  */
 export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 	private pvsLibrariesPath: string = null;
-	private pvsContextFolder: string = null;
+	private contextFolder: string = null;
 
 	/**
 	 * Events for updating the tree structure
@@ -354,7 +354,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 				if (ans && ans.fileNames) {
 					let n: number = 0;
 					for (let i in ans.fileNames) {
-						let uri: Uri = Uri.file(path.join(ans.pvsContextFolder, ans.fileNames[i]));
+						let uri: Uri = Uri.file(path.join(ans.contextFolder, ans.fileNames[i]));
 						workspace.openTextDocument(uri).then(() => {
 							n++;
 							if (n === ans.fileNames.length) {
@@ -374,8 +374,8 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		// server.response.list-theories events are automatically sent by the server when the context folder changes
 		this.client.onRequest("server.response.list-theories", (ans: TheoryList) => {
 			// update the list of theories
-			if (ans && ans.pvsContextFolder !== this.pvsContextFolder) {
-				this.pvsContextFolder = ans.pvsContextFolder;
+			if (ans && ans.contextFolder !== this.contextFolder) {
+				this.contextFolder = ans.contextFolder;
 				this.resetView();
 			}
 			if (ans && ans.theories) {
@@ -390,7 +390,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 					} else {
 						let position: Position = new Position(ans.theories[theoryName].position.line, ans.theories[theoryName].position.character);
 						const fileName: string = ans.theories[theoryName].fileName;
-						const theoryItem: TheoryItem = new TheoryItem(theoryName, fileName, position, ans.pvsContextFolder, TreeItemCollapsibleState.Collapsed);
+						const theoryItem: TheoryItem = new TheoryItem(theoryName, fileName, position, ans.contextFolder, TreeItemCollapsibleState.Collapsed);
 						theoryItems.push(theoryItem);
 					}
 				}
@@ -409,7 +409,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		// 		const theoryNames: string[] = Object.keys(ans.theoriesStatusMap);
 		// 		// Open .tccs file when the command is show-tccs
 		// 		for (const i in theoryNames) {
-		// 			const fileName: string = path.join(ans.pvsContextFolder, `${theoryNames[i]}.tccs`);
+		// 			const fileName: string = path.join(ans.contextFolder, `${theoryNames[i]}.tccs`);
 		// 			const document: TextDocument = await workspace.openTextDocument(fileName);
 		// 			window.showTextDocument(document, window.activeTextEditor.viewColumn + 1, true);
 		// 		}
@@ -545,9 +545,9 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		context.subscriptions.push(cmd);
 		
 		// click on a theory name to open the file and highlight the theory name in the file
-		cmd = commands.registerCommand('explorer.didSelectTheory', async (theoryName: string, fileName: string, position: Position, pvsContextFolder: string) => {
+		cmd = commands.registerCommand('explorer.didSelectTheory', async (theoryName: string, fileName: string, position: Position, contextFolder: string) => {
 			// window.showInformationMessage("theory selected: " + theoryName + " " + fileName + "(" + position.line + ", " + position.character + ")");
-			const uri: Uri = Uri.file(path.join(pvsContextFolder, fileName + ".pvs"));
+			const uri: Uri = Uri.file(path.join(contextFolder, fileName + ".pvs"));
 			commands.executeCommand('vscode.open', uri, {
 				viewColumn: window.activeTextEditor.viewColumn, // do not open new tabs
 				selection: new Range(

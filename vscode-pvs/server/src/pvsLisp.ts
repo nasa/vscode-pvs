@@ -39,8 +39,9 @@
 import * as utils from './common/languageUtils';
 import { 
 	PvsResponseType, PRELUDE_FILE, PvsDeclarationType,
-	StrategyDescriptor, TheoremsStatus, ChangeContextResponseType, PvsVersionInfoResponseType, VersionInfoResponseType, FindDeclarationResponseType
+	StrategyDescriptor, TheoremsStatus, ChangeContextResponseType, PvsVersionInfoResponseType, VersionInfoResponseType, ErrorType, ParserResponse
 } from './common/serverInterface'
+import * as fsUtils from './common/fsUtils';
 
 export interface PvsShowImportChain {
 	theories: string[] // list of theories, ordered by import
@@ -56,7 +57,7 @@ export declare interface TccDescriptor {
 // utility functions and constants
 const PVS_LISP_ERROR_RETURN_TO_TOP_LEVEL: string = 'Return to Top Level (an "abort" restart)';
 function getKey(theoryName: string, symbolName: string): string {
-	return theoryName + "." + symbolName;
+	return `${theoryName}.${symbolName}`;
 }
 
 export interface Console {
@@ -155,60 +156,53 @@ export class PvsLispReader {
 			case "parse-file":
 			case "json-typecheck-file":
 			case "typecheck-file": {
-				if (data.includes(PVS_LISP_ERROR_RETURN_TO_TOP_LEVEL)) {
+				if (data.includes(PVS_LISP_ERROR_RETURN_TO_TOP_LEVEL) || /<pvserror .*>/g.test(data)) {
 					const PVS_PARSE_FILE_ERROR_REGEXP = /Parsing (.*)([\w\W\n]+)In file (\w*)\s*\(line (\d+), col (\d+)\)\s+Error: parse error/gim;
 					const matchParserError: RegExpMatchArray = PVS_PARSE_FILE_ERROR_REGEXP.exec(data);
+					const PVS_TYPECHECK_ERROR_REGEXP = /(?:[\w\W\n]*)<pvserror .*>\s+"([\w\W\n]+)In file (\w*)\s*\(line (\d+), col (\d+)\)(?:[\w\W\n]+)<\/pvserror>/gim;
+					const matchTypecheckError: RegExpMatchArray = PVS_TYPECHECK_ERROR_REGEXP.exec(data);
 					if (matchParserError && matchParserError.length === 6) {
-						ans.error = {
-							msg: `Error while parsing ${matchParserError[1]}`,
-							parserError: {
-								msg: matchParserError[2],
-								fileName: matchParserError[3],
-								line: +matchParserError[4],
-								character: +matchParserError[5]
-							}
+						const error: ErrorType = {
+							msg: matchParserError[2],
+							fileName: `${matchParserError[3]}.pvs`,
+							line: +matchParserError[4],
+							character: +matchParserError[5]
 						};
+						ans.error = error;
+					} else if (matchTypecheckError && matchTypecheckError.length === 5) {
+						const error: ErrorType = {
+							msg: matchTypecheckError[1].split("\\n").join("\n"),
+							fileName: `${matchTypecheckError[2]}.pvs`,
+							line: +matchTypecheckError[3],
+							character: +matchTypecheckError[4]
+						};
+						ans.error = error;
 					} else {
-						const PVS_TYPECHECK_ERROR_REGEXP = /(?:[\w\W\n]*)<pvserror .*>\s+"([\w\W\n]+)In file (\w*)\s*\(line (\d+), col (\d+)\)(?:[\w\W\n]+)<\/pvserror>/gim;
-						const matchTypecheckError: RegExpMatchArray = PVS_TYPECHECK_ERROR_REGEXP.exec(data);
-						if (matchTypecheckError && matchTypecheckError.length === 5) {
-							ans.error = {
-								msg: `Error while typechecking ${matchTypecheckError[1]}`,
-								parserError: {
-									msg: matchTypecheckError[1].split("\\n").join("\n"),
-									fileName: matchTypecheckError[2],
-									line: +matchTypecheckError[3],
-									character: +matchTypecheckError[4]
-								}
-							};
-						} else {
-							if (this.connection) { this.connection.console.error("Unexpected parser error\n" + data); }
-						}
+						const error: ErrorType = {
+							msg: data,
+							fileName: null,
+							line: 0,
+							character: 0
+						};
+						ans.error = error;
+						if (this.connection) { this.connection.console.error("Unexpected parser error\n" + data); }
 					}
 				} else if (/PVS file .+ is not in the current context/gim.test(data)) {
 					const match: RegExpMatchArray = /(PVS file (.+) is not in the current context)/gim.exec(data);
-					ans.error = {
-						msg: match[0],
-						parserError: {
-							msg: `PVS file ${match[0]} is not in the current context`,
-							fileName: (match.length > 2) ? match[2] : "",
-							line: 0,
-							character: 0
-						}
+					const error: ErrorType = {
+						msg: `PVS file ${match[0]} is not in the current context`,
+						fileName: `${match[0]}.pvs`,
+						line: 0,
+						character: 0
 					};
-				} else if (data.includes("</pvserror>")) {
-					// detailed information on the error are currently not provided by pvs
-					ans.error = {
-						msg: "Typecheck error",
-						parserError: {
-							msg: `PVS file does not typecheck correctly`,
-							fileName: "",
-							line: 0,
-							character: 0
-						}
-					};
+					ans.error = error;
 				} else {
-					ans.res = data;
+					const msgs: string[] = (ans.raw) ? ans.raw.replace(/\bnil\b/g, "").split("\n").filter((str: string) => { return str !== ""; }) : null;
+					const res: ParserResponse = {
+						msgs: msgs
+					}
+					ans.res = res;
+					ans.raw = msgs.join("; ");
 				}
 				break;
 			}
@@ -216,16 +210,17 @@ export class PvsLispReader {
 			case "find-declaration": {
 				// regexp for parsing the pvs lisp response
 				const PVS_FIND_DECLARATION_REGEXP = {
+					// capture group 1 is symbolName, group 2 is theoryName, group 3 is declarationFile (nil for prelude), group 4 is declaration range, group 5 is symbolDeclaration 
 					prelude: /\("[^"]*\s*"\s*"([^\s"]*)"\s*"([^\s"]*)"\s*([nil]*)\s*\((\d+\s*\d+\s*\d+\s*\d+)\)\s*"([^"]*)"\)/g,
 					other: /\("[^"]*\s*"\s*"([^\s"]*)"\s*"([^\s"]*)"\s*"([^"]*)"*\s*\((\d+\s*\d+\s*\d+\s*\d+)\)\s*"([^"]*)"\)/g
 				}
-				// key is symbolFile.symbolTheory.symbolName, value is { symbolKind: string, symbolDeclaration: string, symbolDeclarationRange: vscode.Range }
-				let declarations: FindDeclarationResponseType = {};
+				// key is theoryName.symbolName, value is { symbolKind: string, symbolDeclaration: string, symbolDeclarationRange: vscode.Range }
+				let declarations: PvsDeclarationType[] = [];
 				let info = null;
 				while (info = PVS_FIND_DECLARATION_REGEXP.prelude.exec(data)) {
 					if (info && info.length > 5) {
 						const symbolName: string = info[1];
-						const symbolTheory: string = info[2];
+						const theoryName: string = info[2];
 						const symbolDeclarationFile: string = PRELUDE_FILE;
 						const symbolDeclarationPosition = info[4].split(" ");
 						const symbolDeclarationRange = {
@@ -239,19 +234,19 @@ export class PvsLispReader {
 							}
 						};
 						const symbolDeclaration: string = info[5];
-						declarations[getKey(symbolTheory, symbolName)] = {
-							symbolName: symbolName,
-							symbolTheory: symbolTheory,
-							symbolDeclaration: symbolDeclaration,
-							symbolDeclarationRange: symbolDeclarationRange,
-							symbolDeclarationFile: symbolDeclarationFile
-						};
+						declarations.push({
+							symbolName,
+							theoryName,
+							symbolDeclaration,
+							symbolDeclarationRange,
+							symbolDeclarationFile
+						});
 					}
 				}
 				while (info = PVS_FIND_DECLARATION_REGEXP.other.exec(data)) {
 					if (info && info.length > 5) {
 						const symbolName: string = info[1];
-						const symbolTheory: string = info[2];
+						const theoryName: string = info[2];
 						const symbolDeclarationFile: string = info[3];
 						const symbolDeclarationPosition = info[4].split(" ");
 						const symbolDeclarationRange = {
@@ -265,13 +260,13 @@ export class PvsLispReader {
 							}
 						};
 						const symbolDeclaration: string = info[5];
-						declarations[getKey(symbolTheory, symbolName)] = {
-							symbolName: symbolName,
-							symbolTheory: symbolTheory,
-							symbolDeclaration: symbolDeclaration,
-							symbolDeclarationRange: symbolDeclarationRange,
-							symbolDeclarationFile: symbolDeclarationFile
-						};
+						declarations.push({
+							symbolName,
+							theoryName,
+							symbolDeclaration,
+							symbolDeclarationRange,
+							symbolDeclarationFile
+						});
 					}
 				}
 				ans.res = declarations;
@@ -326,7 +321,7 @@ export class PvsLispReader {
 				const match: RegExpMatchArray = regexp.exec(data);
 				if (match && match.length > 1 && match[1]) {
 					const res: ChangeContextResponseType = {
-						context: match[1]
+						context: fsUtils.tildeExpansion(match[1])
 					}
 					ans.res = res;
 				}
@@ -401,7 +396,7 @@ export class PvsLispReader {
 				const regexp: RegExp = /\"(.*)\"/g;
 				const match: RegExpMatchArray = regexp.exec(data);
 				if (match && match.length > 1) {
-					ans.res = match[1];
+					ans.res = fsUtils.tildeExpansion(match[1]);
 				}
 				break;
 			}

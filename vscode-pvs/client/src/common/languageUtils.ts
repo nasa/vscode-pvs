@@ -52,7 +52,8 @@ export const RECORD: { [key: string]: RegExp } = {
 }
 
 // (?:\%.*\s)* removes comments
-export const theoryRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*(?:\[.+\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
+// group 1 is theoryName, group 2 is comma-separated list of theory parameters
+export const theoryRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*(?:\[([^\]]+)\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
 
 /**
  * @function findTheoryName
@@ -343,18 +344,18 @@ export async function listTheoriesInFile (fileName: string): Promise<TheoryMap> 
 /**
  * Lists all theorems in a given context folder
  */
-export async function listTheorems (pvsContextFolder: string, connection?: SimpleConnection): Promise<TheoriesMap> {
+export async function listTheorems (contextFolder: string, connection?: SimpleConnection): Promise<TheoriesMap> {
 	const response: TheoriesMap = {
 		theoriesStatusMap: {},
-		pvsContextFolder
+		contextFolder
 	};
 	if (connection && connection.sendRequest) {
 		// send an initial response so the client can update the view
 		connection.sendRequest("server.response.list-theorems", response);
 	}
-	const fileList: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
+	const fileList: FileList = await fsUtils.listPvsFiles(contextFolder);
 	for (let i in fileList.fileNames) {
-		const uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
+		const uri: string = path.join(contextFolder, fileList.fileNames[i]);
 		const desc: FormulaDescriptor[] = await listTheoremsInFile(uri);
 		if (desc) {
 			for (const i in desc) {
@@ -386,19 +387,19 @@ export async function listTheorems (pvsContextFolder: string, connection?: Simpl
 
 /**
  * Lists all theories in a given context foder
- * @param pvsContextFolder Current context folder
+ * @param contextFolder Current context folder
  * @param connection Connection to the client, useful for sending status updates about what the function is doing (the function may take some time to complete for large files)
  */
-export async function listTheories (pvsContextFolder: string, connection?: SimpleConnection): Promise<TheoryList> {
+export async function listTheories (contextFolder: string, connection?: SimpleConnection): Promise<TheoryList> {
 	let response: TheoryList = {
 		theories: {},
-		pvsContextFolder
+		contextFolder
 	};
 	// send the empty response to trigger a refresh of the view
 	connection.sendRequest("server.response.list-theories", response);
-	const fileList: FileList = await fsUtils.listPvsFiles(pvsContextFolder);
+	const fileList: FileList = await fsUtils.listPvsFiles(contextFolder);
 	for (let i in fileList.fileNames) {
-		let uri: string = path.join(pvsContextFolder, fileList.fileNames[i]);
+		let uri: string = path.join(contextFolder, fileList.fileNames[i]);
 		let theories: TheoryMap = await listTheoriesInFile(uri);
 		let theoryNames: string[] = Object.keys(theories);
 		for (let i in theoryNames) {

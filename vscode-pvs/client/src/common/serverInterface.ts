@@ -58,26 +58,22 @@ export declare interface PvsVersionDescriptor {
 
 export declare interface ErrorType {
 	msg: string,
-	fileName: string,
-	line: number,
-	character: number
+	fileName?: string,
+	line?: number,
+	character?: number
 };
 
 export declare interface PvsDeclarationType {
 	symbolName: string | null;
-	symbolTheory: string | null;
+	theoryName: string | null;
 	symbolDeclaration: string | null;
 	symbolDeclarationRange: Range | null;
 	symbolDeclarationFile: string | null;
 };
 
 export declare interface PvsDeclarationDescriptor {
-	file?: string;
-	theory?: string;
-	line?: number;
-	character?: number;
 	symbolName: string | null;
-	symbolTheory: string | null;
+	theoryName: string | null;
 	symbolDeclaration: string | null;
 	symbolDeclarationRange: Range | null;
 	symbolDeclarationFile: string | null;
@@ -86,7 +82,7 @@ export declare interface PvsDeclarationDescriptor {
 	error?: ErrorType | null;
 };
 export declare interface PvsListDeclarationsResponseType extends PvsResponseType {
-	error: PvsErrorType,
+	error: ErrorType,
 	res: PvsDeclarationDescriptor[],
 	raw: string
 }
@@ -139,13 +135,13 @@ export declare interface StrategyDescriptor {
 }
 
 
-export declare interface PvsErrorType {
-	msg: string,
-	parserError?: ErrorType,
-	restartOption?: number | string
-};
+// export declare interface PvsErrorType {
+// 	msg: string,
+// 	parserError?: ErrorType,
+// 	restartOption?: number | string
+// };
 export declare interface PvsResponseType {
-	error: PvsErrorType,
+	error: ErrorType,
 	res: any, // json object -- TODO: define the different types of objects, include a field "type" in each object
 	raw: string // raw output of pvs-lisp
 };
@@ -153,12 +149,12 @@ export declare interface ChangeContextResponseType {
 	context: string
 }
 export declare interface PvsChangeContextResponseType extends PvsResponseType {
-	error: PvsErrorType,
+	error: ErrorType,
 	res: ChangeContextResponseType,
 	raw: string
 }
 export declare interface PvsCurrentContextResponseType extends PvsResponseType {
-	error: PvsErrorType,
+	error: ErrorType,
 	res: string,
 	raw: string
 }
@@ -167,7 +163,7 @@ export declare interface VersionInfoResponseType {
 	lispVersion: string
 }
 export declare interface PvsVersionInfoResponseType extends PvsResponseType {
-	error: PvsErrorType,
+	error: ErrorType,
 	res: VersionInfoResponseType,
 	raw: string
 }
@@ -183,16 +179,16 @@ export declare interface ProofObjectType {
 	proof: ProofNodeType
 }
 export declare interface PvsListProofStrategiesResponseType extends PvsResponseType {
-	error: PvsErrorType,
+	error: ErrorType,
 	res: StrategyDescriptor[],
 	raw: string
 }
-export interface FindDeclarationResponseType {
-    [ key: string ] : PvsDeclarationType;
-}
+// export interface FindDeclarationResponseType {
+//     [ key: string ] : PvsDeclarationType; // key is theoryName.symbolName
+// }
 export declare interface PvsFindDeclarationResponseType extends PvsResponseType {
-	error: PvsErrorType,
-	res: FindDeclarationResponseType,
+	error: ErrorType,
+	res: PvsDeclarationType[],
 	raw: string
 }
 
@@ -207,14 +203,25 @@ export const PVS_LIBRARY_FILES: { [ key: string ] : string } = {
 	"union_adt": "union_adt.pvs"
 };
 
-export declare interface PvsParserResponse {
-	fileName: string,
-	res: string,
-	error: ErrorType
+export declare interface ParserResponse {
+	msgs: string[];
+}
+export declare interface PvsParserResponse extends PvsResponseType {
+	error: ErrorType,
+	res: ParserResponse,
+	raw: string
+}
+export declare interface TypecheckerResponse {
+	[ theoryName: string ]: TheoryStatus
+}
+export declare interface PvsTypecheckerResponse extends PvsResponseType {
+	error: ErrorType;
+	res: TypecheckerResponse;
+	raw: string;
 }
 
 export declare interface FormulaMap {
-	[ formulaName: string ]: FormulaDescriptor
+	[ formulaName: string ]: FormulaDescriptor;
 }
 
 export declare interface TheoremsStatus {
@@ -226,11 +233,7 @@ export declare interface TheoryStatusMap {
 	[ theoryName: string ]: TheoremsStatus
 }
 
-export declare interface PvsTypecheckerResponse {
-	fileName: string,
-	res: TheoryStatusMap,
-	error: ErrorType
-}
+
 
 
 
@@ -299,7 +302,7 @@ export declare interface ProofDescriptor {
 	formulaName: string;
 	theoryName: string;
 	line: number;
-	pvsContextFolder: string;
+	contextFolder: string;
 }
 
 export declare interface ProofStructure {
@@ -309,7 +312,7 @@ export declare interface ProofStructure {
 
 export declare interface PvsCliInterface {
 	pvsPath: string,
-	pvsContextFolder: string,
+	contextFolder: string,
 	cmd: string,
 	fileName: string,
 	fileExtension: string, // either .pvs or .tccs -- TODO: keep this info directly in fileName
@@ -320,7 +323,7 @@ export declare interface PvsCliInterface {
 
 // export declare interface PvsExecutionContext {
 // 	pvsPath: string,
-// 	pvsContextFolder: string
+// 	contextFolder: string
 // }
 
 export const PVS_CLI_FILE: string = 'PvsCli';
@@ -364,17 +367,17 @@ export declare interface FormulaDescriptor {
 }
 
 export declare interface FileList {
-	pvsContextFolder: string;
+	contextFolder: string;
 	fileNames: string[]; // TODO: FileDescriptor[]
 }
 
 export declare interface TheoryList {
-	pvsContextFolder: string;
+	contextFolder: string;
 	theories: TheoryMap; //  TODO TheoryDescriptor[]
 }
 
 // export declare interface TheoremList {
-// 	pvsContextFolder: string;
+// 	contextFolder: string;
 // 	theorems: TheoremDescriptor[];
 // 	fileName?: string; // when fileName is specified, the theorem list describes the content of a specific file. This is useful for status updates.
 // }
@@ -401,6 +404,6 @@ export declare interface TheoriesStatusMap {
 	[ theoryName: string ]: TheoryStatus
 }
 export declare interface TheoriesMap {
-	pvsContextFolder: string;
+	contextFolder: string;
 	theoriesStatusMap: TheoriesStatusMap;
 }

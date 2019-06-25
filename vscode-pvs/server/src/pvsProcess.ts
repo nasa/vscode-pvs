@@ -44,7 +44,7 @@ import {
 	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
 	PvsTypecheckerResponse, PvsChangeContextResponseType, PvsCurrentContextResponseType,
 	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, PvsVersionDescriptor, PvsVersionInfoResponseType, 
-	JsonType, ProofNodeType, ProofDescriptor, ProofObjectType, PvsListProofStrategiesResponseType, FindDeclarationResponseType, PvsFindDeclarationResponseType, PvsListDeclarationsResponseType
+	JsonType, ProofNodeType, ProofDescriptor, ProofObjectType, PvsListProofStrategiesResponseType, PvsFindDeclarationResponseType, PvsListDeclarationsResponseType, TypecheckerResponse
 } from './common/serverInterface'
 import { Connection } from 'vscode-languageserver';
 import * as path from 'path';
@@ -88,7 +88,7 @@ export class PvsProcess {
 
 	private pvsPath: string = null;
 	private pvsLibraryPath: string = null;
-	private pvsContextFolder: string = null;
+	private contextFolder: string = null;
 
 	private connection: SimpleConnection;
 	private enableNotifications: boolean;
@@ -126,7 +126,7 @@ export class PvsProcess {
 	 * @returns The current pvs context path
 	 */
 	getContextFolder (): string {
-		return this.pvsContextFolder;
+		return this.contextFolder;
 	}
 	/**
 	 * Path to the pvs library folder
@@ -146,10 +146,10 @@ export class PvsProcess {
 	 * @param desc Information on the PVS execution environment.
 	 * @param connection Connection with the language client
 	 */
-	constructor (desc: { pvsPath: string, pvsContextFolder?: string, processType?: string }, connection?: Connection) {
+	constructor (desc: { pvsPath: string, contextFolder?: string, processType?: string }, connection?: Connection) {
 		this.pvsPath = (desc && desc.pvsPath) ? fsUtils.tildeExpansion(desc.pvsPath) : __dirname
 		this.pvsLibraryPath = path.join(this.pvsPath, "lib");
-		this.pvsContextFolder = (desc && desc.pvsContextFolder) ? fsUtils.tildeExpansion(desc.pvsContextFolder) : __dirname;
+		this.contextFolder = (desc && desc.contextFolder) ? fsUtils.tildeExpansion(desc.contextFolder) : __dirname;
 		this.processType = (desc && desc.processType) ? desc.processType : "typechecker"; // this is used only for debugging
 		this.progressInfo = new PvsProgressInfo();
 		// this.serverProxy = new xmlrpcProvider.XmlRpcProxy();
@@ -349,14 +349,7 @@ export class PvsProcess {
 	async pvs(opt?: { enableNotifications?: boolean}): Promise<boolean> {
 		const res: boolean = await this._pvs(opt);
 		await this.disableGcPrintout();
-		await this.changeContext(this.pvsContextFolder);
-		const ans: PvsCurrentContextResponseType = await this.currentContext();
-		// refresh this.currentContext, to make sure the string is identical to that used by pvs -- useful for deciding whether a future change context is actually changing the context
-		if (ans && ans.res) {
-			this.pvsContextFolder = ans.res;
-		} else {
-			console.error(`Unexpected value for context folder`, ans);
-		}
+		await this.changeContext(this.contextFolder, { force: true });
 		return res;
 	}
 	/**
@@ -384,9 +377,6 @@ export class PvsProcess {
 	async restart (): Promise<void> {
 		this.kill();
 		await this.pvs();
-		if (this._disableGC) {
-			await this.disableGcPrintout();
-		}
 	}
 	/**
 	 * Utility function. Returns a string representing the ID of the pvs process.
@@ -402,21 +392,34 @@ export class PvsProcess {
 	 * Changes the current context. When the context is changed, all symbol information are erased and the parser/typechecker needs to be re-run.
 	 * @param contextFolder Path of the context folder 
 	 */
-	async changeContext (contextFolder: string): Promise<PvsChangeContextResponseType> {
+	async changeContext (contextFolder: string, opt?: { force?: boolean }): Promise<PvsChangeContextResponseType> {
 		// await this.serverProxy.changeContext(contextFolder);
-		const folderExists: boolean = await fsUtils.dirExists(contextFolder);
-		if (folderExists) {
-			const cmd: string = `(change-context "${contextFolder}" nil)`;
-			const ans: PvsChangeContextResponseType = await this.pvsExec(cmd);
-			if (ans && ans.res && ans.res.context) {
-				this.pvsContextFolder = ans.res.context;
+		opt = opt || {};
+		if (contextFolder) {
+			if (opt.force || this.contextFolder !== contextFolder || this.contextFolder !== fsUtils.tildeExpansion(contextFolder) || fsUtils.tildeExpansion(this.contextFolder) !== contextFolder) {
+				contextFolder = fsUtils.tildeExpansion(contextFolder);
+				const folderExists: boolean = await fsUtils.dirExists(contextFolder);
+				if (folderExists) {				
+					const cmd: string = `(change-context "${contextFolder}" nil)`;
+					const ans: PvsChangeContextResponseType = await this.pvsExec(cmd);
+					if (ans && ans.res && ans.res.context) {
+						this.contextFolder = ans.res.context;
+					}
+					return ans
+				}
+				return {
+					res: null,
+					error: { msg: `Error: Could not change context to ${contextFolder} (folder does not exist or cannot be read).` },
+					raw: null
+				};
 			}
+			return {
+				res: { context: contextFolder },
+				error: null,
+				raw: null
+			};
 		}
-		return {
-			res: null,
-			error: { msg: `Error: Could not change context to ${contextFolder} (folder does not exist or cannot be read).` },
-			raw: null
-		};
+		return null;
 	}
 	/**
 	 * Enables the pvs emacs interface.
@@ -482,15 +485,11 @@ export class PvsProcess {
 			// find-declaration works even if a pvs file does not parse correctly 
 			let ans: PvsResponseType = await this.pvsExec(`(list-declarations "${desc.theoryName}")`);
 			if (ans && ans.res) {
-				const allDeclarations: FindDeclarationResponseType = ans.res;
-				response = Object.keys(allDeclarations).map((key: string) => {
-					const info: PvsDeclarationType = allDeclarations[key];
+				const allDeclarations: PvsDeclarationType[] = ans.res;
+				response = allDeclarations.map((info: PvsDeclarationType) => {
 					const ans: PvsDeclarationDescriptor = {
-						line: desc.line,
-						character: desc.character,
-						file: desc.file,
 						symbolName: info.symbolName,
-						symbolTheory: info.symbolTheory,
+						theoryName: info.theoryName,
 						symbolDeclaration: (info) ? info.symbolDeclaration : null,
 						symbolDeclarationRange: (info) ? info.symbolDeclarationRange : null,
 						symbolDeclarationFile: (info) ? info.symbolDeclarationFile : null,
@@ -513,26 +512,29 @@ export class PvsProcess {
 	 * @param fileName File to be parsed, must be in the current pvs context
 	 * @returns Parser result, can be either a message (parse successful), or list of syntax errors
 	 */
-	async parseFile (fileName: string): Promise<PvsParserResponse> {
-		fileName = fsUtils.getFilename(fileName, { removeFileExtension: true });
-		let response: PvsParserResponse = {
-			fileName: fileName,
-			res: null,
-			error: null
-		};
-		if (this.pvsContextFolder !== this.pvsPath && this.pvsContextFolder !== this.pvsLibraryPath) {
-			const parserInfo: PvsResponseType = await this.pvsExec(`(parse-file "${fileName}" nil nil)`); // (defmethod parse-file ((filename string) &optional forced? no-message?)
-			if (parserInfo.error) {
-				response.error = parserInfo.error.parserError;
+	async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsParserResponse> {
+		if (desc) {
+			const response: PvsParserResponse = {
+				res: null,
+				error: null,
+				raw: null
+			};
+			if (this.contextFolder !== this.pvsPath && this.contextFolder !== this.pvsLibraryPath) {
+				await this.changeContext(desc.contextFolder);
+				const parserInfo: PvsParserResponse = await this.pvsExec(`(parse-file "${desc.fileName}" nil nil)`); // (defmethod parse-file ((filename string) &optional forced? no-message?)
+				if (parserInfo.error) {
+					response.error = parserInfo.error;
+				} else {
+					response.res = parserInfo.res
+				}
 			} else {
-				response.res = parserInfo.res
+				if (this.connection) {
+					this.info(`Reading library file ${desc.fileName}...`);
+				}
 			}
-		} else {
-			if (this.connection) {
-				this.info(`Reading library file ${fileName}...`);
-			}
+			return response;
 		}
-		return response;
+		return null;
 	}
 	/**
 	 * Parse all files in the current context folder
@@ -540,10 +542,19 @@ export class PvsProcess {
 	 */
 	async parseCurrentContext (): Promise<ContextDiagnostics> {
 		const result: { [ fileName: string ] : PvsParserResponse } = {};
-		const contextFiles: FileList = await fsUtils.listPvsFiles(this.pvsContextFolder);
+		const contextFiles: FileList = await fsUtils.listPvsFiles(this.contextFolder);
 		if (contextFiles && contextFiles.fileNames) {
 			for (const i in contextFiles.fileNames) {
-				result[contextFiles.fileNames[i]] = await this.parseFile(contextFiles.fileNames[i]);
+				const fname: string = contextFiles.fileNames[i];
+				const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
+				const fileExtension: string = fsUtils.getFileExtension(fname);
+				const contextFolder: string = this.contextFolder;
+				const ans: PvsParserResponse = await this.parseFile({ fileName, fileExtension, contextFolder });
+				// if there is a parser error, check that the fileName is provided
+				if (ans && ans.error) {
+					ans.error.fileName = ans.error.fileName || fname;
+				}
+				result[contextFiles.fileNames[i]] = ans;
 			}
 		}
 		this.ready();
@@ -555,14 +566,15 @@ export class PvsProcess {
 	 * The .tccs file name is the name of the selected theory.
 	 * @returns TODO: change return type to an array of TCC descriptors
 	 */
-	async showTccs (file: { fileName: string, fileExtension: string }, theoryName: string): Promise<PvsResponseType> {	
-		const ans: PvsResponseType = await this.pvsExec(`(show-tccs "${theoryName}" nil)`);
-		// const res = await this.serverProxy.changeContext(this.pvsContextFolder);
+	async showTccs (file: { fileName: string, fileExtension: string }, theoryName: string): Promise<PvsResponseType> {
+		// const res = await this.serverProxy.changeContext(this.contextFolder);
 		// const res = await this.serverProxy.typecheck(fileName);
 		// const res = await this.serverProxy.lisp(cmd);
 		// create a new file with the tccs. The file name corresponds to the theory name.
-		const tccsFileName: string = path.join(this.pvsContextFolder, `${theoryName}.tccs`);
-		const tccsFileNameJSON: string = path.join(this.pvsContextFolder, `${theoryName}.tccs.json`);
+		const tccsFileName: string = path.join(this.contextFolder, `${theoryName}.tccs`);
+		const tccsFileNameJSON: string = path.join(this.contextFolder, `${theoryName}.tccs.json`);
+
+		const ans: PvsResponseType = await this.pvsExec(`(show-tccs "${theoryName}" nil)`);
 		if (ans && ans.res) {
 			const tccsFileContent: string = ans.raw;
 			fsUtils.writeFile(tccsFileName, tccsFileContent).then(() => {
@@ -581,7 +593,6 @@ export class PvsProcess {
 		} else {
 			const tccsFileContent: string = `% ${ans.raw}`;
 			fsUtils.writeFile(tccsFileName, tccsFileContent).then(() => {
-				const tccsFileNameJSON: string = path.join(this.pvsContextFolder, `${theoryName}.tccs.json`);
 				fsUtils.writeFile(tccsFileNameJSON, "[]");	
 			});
 		}
@@ -602,7 +613,7 @@ export class PvsProcess {
 	// 	// cmd = '(setq *pvs-emacs-interface* t)';
 	// 	// await this.pvsioExec("emacs-interface", cmd);
 	// 	// make sure we are in the correct context
-	// 	cmd = `(change-context "${this.pvsContextFolder}" t)`;
+	// 	cmd = `(change-context "${this.contextFolder}" t)`;
 	// 	await this.pvsioExec("change-context");
 	// 	// typecheck
 	// 	let fileName = fsUtils.getFilename(desc.fileName, { removeFileExtension: true });
@@ -684,83 +695,91 @@ export class PvsProcess {
 	 * Typechecks a file
 	 * @param uri The uri of the file to be typechecked
 	 * @param attemptProof Tries to discharge all tccs (default is no)
+	 * TODO: change args type, make it consistent with parseFile
 	 */
-	async typecheckFile (desc: { fileName: string, fileExtension: string }, attemptProof?: boolean): Promise<PvsTypecheckerResponse> {
-		const context: string = this.pvsContextFolder;
-		let response: PvsTypecheckerResponse = {
-			fileName: desc.fileName,
-			res: null,
-			error: null
-		};
-		if (context !== this.pvsPath && context !== path.join(this.pvsPath, "lib")) {
-			const info: PvsResponseType = (attemptProof) ? await this.pvsExec(`(typecheck-file "${desc.fileName}" nil t nil)`)
-															: await this.pvsExec(`(typecheck-file "${desc.fileName}" nil nil nil)`);
-			if (info && info.error) {
-				response.error = info.error.parserError;
-			} else {
-				// load status info for each theory
-				const theoryMap: TheoryMap = await utils.listTheoriesInFile(path.join(this.pvsContextFolder, `${desc.fileName}.pvs`));
-				if (theoryMap) {
-					response.res = {};
-					const theoryNames: string[] = Object.keys(theoryMap);
-					for (const i in theoryNames) {
-						const theoryName: string = theoryNames[i];
-						const theoryStatus: TheoryStatus = await this.getTheoryStatus({ fileName: desc.fileName, fileExtension: ".pvs", theoryName });	
-						if (theoryStatus) {
-							theoryStatus.theorems = theoryStatus.theorems || {};
-							const pvsResponse: PvsResponseType = await this.showTccs(desc, theoryName);
-							const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : null;
-							if (tccArray) {
-								// set tcc flags in theoryStatus and update filename and position
-								for (const i in tccArray) {
-									const formulaName: string = tccArray[i].formulaName;
-									if (theoryStatus.theorems[formulaName]) {
-										theoryStatus.theorems[formulaName].isTcc = true;
-										theoryStatus.theorems[formulaName].fileName = `${theoryName}.tccs`;
-										theoryStatus.theorems[formulaName].position = {
-											line: tccArray[i].line,
-											character: 0
+	async typecheckFile (desc: { fileName: string, fileExtension: string, contextFolder: string }, attemptProof?: boolean): Promise<PvsTypecheckerResponse> {
+		if (desc) {
+			if (desc.contextFolder !== this.pvsPath && desc.contextFolder !== path.join(this.pvsPath, "lib")) {
+				await this.changeContext(desc.contextFolder);
+				const cmd: string = (attemptProof) ? `(typecheck-file "${desc.fileName}" nil t nil)` : `(typecheck-file "${desc.fileName}" nil nil nil)`;
+				const typecheckerResponse: PvsParserResponse =  await this.pvsExec(cmd);
+				if (typecheckerResponse) {
+					const ans: PvsTypecheckerResponse = {
+						res: {},
+						error: typecheckerResponse.error,
+						raw: typecheckerResponse.raw
+					}
+					if (ans.error) {
+						// amend fileName field, if null
+						ans.error.fileName = ans.error.fileName || `${desc.fileName}${desc.fileExtension}`;
+					} else {
+						// load status info for each theory
+						const res: TypecheckerResponse = {};
+						const theoryMap: TheoryMap = await utils.listTheoriesInFile(path.join(this.contextFolder, `${desc.fileName}.pvs`));
+						if (theoryMap) {
+							const theoryNames: string[] = Object.keys(theoryMap);
+							for (const i in theoryNames) {
+								const theoryName: string = theoryNames[i];
+								const theoryStatus: TheoryStatus = await this.getTheoryStatus({ fileName: desc.fileName, fileExtension: ".pvs", theoryName });	
+								if (theoryStatus) {
+									theoryStatus.theorems = theoryStatus.theorems || {};
+									const pvsResponse: PvsResponseType = await this.showTccs(desc, theoryName);
+									const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : null;
+									if (tccArray) {
+										// set tcc flags in theoryStatus and update filename and position
+										for (const i in tccArray) {
+											const formulaName: string = tccArray[i].formulaName;
+											if (theoryStatus.theorems[formulaName]) {
+												theoryStatus.theorems[formulaName].isTcc = true;
+												theoryStatus.theorems[formulaName].fileName = `${theoryName}.tccs`;
+												theoryStatus.theorems[formulaName].position = {
+													line: tccArray[i].line,
+													character: 0
+												}
+											} else {
+												console.error("ooops");
+												theoryStatus.theorems[formulaName] = {
+													isTcc: true,
+													fileName: `${theoryName}.tccs`,
+													position: {
+														line: tccArray[i].line,
+														character: 0
+													},
+													theoryName: theoryName,
+													formulaName: formulaName,
+													status: "not available"
+												};
+											}
 										}
-									} else {
-										console.error("ooops");
-										theoryStatus.theorems[formulaName] = {
-											isTcc: true,
-											fileName: `${theoryName}.tccs`,
-											position: {
-												line: tccArray[i].line,
-												character: 0
-											},
-											theoryName: theoryName,
-											formulaName: formulaName,
-											status: "not available"
-										};
 									}
+									res[theoryName] = theoryStatus;
 								}
 							}
-							response.res[theoryName] = theoryStatus;
+							ans.res = res;
+							// await this.saveContext();
 						}
 					}
+					return ans;
 				}
-				// await this.saveContext();
-			}
-		} else {
-			if (this.connection) {
-				this.connection.console.info(`PVS library file ${desc.fileName} already typechecked.`);
+			} else {
+				if (this.connection) {
+					this.connection.console.info(`PVS library file ${desc.fileName} already typechecked.`);
+				}
 			}
 		}
-		return response;
+		return null;
 	}
 	/**
 	 * Typechecks a file and tries to discharge all tccs
 	 */
-	async typecheckProve (desc: { fileName: string, fileExtension: string }): Promise<PvsTypecheckerResponse> {
+	async typecheckProve (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsTypecheckerResponse> {
 		return this.typecheckFile(desc, true)
 	}
 	private async saveContext(): Promise<PvsResponseType> {
 		return await this.pvsExec('(save-context)');
 	}
 	private async clearContext (): Promise<void> {
-		const currentContext: string = this.pvsContextFolder;
+		const currentContext: string = this.contextFolder;
 		if (currentContext) {
 			await fsUtils.deletePvsCache(currentContext);
 		}
@@ -771,8 +790,8 @@ export class PvsProcess {
 	 */
 	async typecheckTheory(theoryName: string): Promise<PvsParserResponse> {
 		if (theoryName) {
-			const pvsContextFolder: string = this.getContextFolder();
-			const list: TheoryList = await utils.listTheories(pvsContextFolder);
+			const contextFolder: string = this.getContextFolder();
+			const list: TheoryList = await utils.listTheories(contextFolder);
 			if (list && list.theories && list.theories[theoryName]) {
 				const fileName = list.theories[theoryName].fileName;
 				return (await this.pvsExec(`(typecheck-file "${fileName}" nil nil nil)`)).res;

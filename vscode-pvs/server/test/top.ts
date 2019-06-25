@@ -1,5 +1,5 @@
 import { PvsProcess } from "./server/pvsProcess";
-import { PvsResponseType, PvsVersionInfoResponseType, JsonType, ProofNodeType, ProofObjectType, PvsListProofStrategiesResponseType, StrategyDescriptor, PvsFindDeclarationResponseType } from "./server/common/serverInterface";
+import { PvsResponseType, PvsVersionInfoResponseType, JsonType, ProofNodeType, ProofObjectType, PvsListProofStrategiesResponseType, StrategyDescriptor, PvsFindDeclarationResponseType, PvsListDeclarationsResponseType, PvsDeclarationType, PvsParserResponse, PvsTypecheckerResponse } from "./server/common/serverInterface";
 import * as fsUtils from "./server/common/fsUtils";
 import * as test from "./test-costants";
 import * as path from 'path';
@@ -35,12 +35,12 @@ describe("PvsProcess", async () => {
 	});
 
 	it("constructor can set context", async () => {
-		const pvsContextFolder: string = "~/Work/";
-		const proc: PvsProcess = new PvsProcess({ pvsPath, pvsContextFolder });
+		const contextFolder: string = "~/Work/";
+		const proc: PvsProcess = new PvsProcess({ pvsPath, contextFolder });
 		await proc.pvs();
 		const ctx: string = await proc.getContextFolder();
 		log(`Current context: ${ctx}`);
-		expect(ctx).toEqual(pvsContextFolder);
+		expect(ctx).toEqual(fsUtils.tildeExpansion(contextFolder));
 	});
 
 	it("changeContext() can change context", async () => {
@@ -147,14 +147,50 @@ describe("PvsProcess", async () => {
 		expect(declarations).toBeDefined();
 		expect(declarations.res).toBeDefined();
 		log(declarations.res);
-		expect(Object.keys(declarations.res).length).toEqual(1);
-		Object.keys(declarations.res).forEach((key: string) => {
-			// key is in the form theoryName.symbolName
-			expect(declarations.res[key].symbolDeclaration).toBeDefined();
-			expect(declarations.res[key].symbolDeclarationFile).toBeDefined();
-			expect(declarations.res[key].symbolDeclarationRange).toBeDefined();
-			expect(declarations.res[key].symbolName).toBeDefined();
-			expect(declarations.res[key].symbolTheory).toBeDefined();
+		expect(declarations.res.length).toEqual(1);
+		declarations.res.forEach((decl: PvsDeclarationType) => {
+			expect(decl.symbolDeclaration).toBeDefined();
+			expect(decl.symbolDeclarationFile).toBeDefined();
+			expect(decl.symbolDeclarationRange).toBeDefined();
+			expect(decl.symbolName).toBeDefined();
+			expect(decl.theoryName).toBeDefined();
 		});
 	});
+
+	it("findDeclaration() can list all declarations in a given theory", async () => {
+		const proc: PvsProcess = new PvsProcess({ pvsPath });
+		await proc.pvs();
+		const declarations: PvsListDeclarationsResponseType = await proc.listDeclarations({ theoryName: "reals" });
+		expect(declarations).toBeDefined();
+		expect(declarations.res).toBeDefined();
+		log(declarations.res);
+		expect(declarations.res.length).not.toEqual(0);
+		declarations.res.forEach((decl: PvsDeclarationType) => {
+			expect(decl.symbolDeclaration).toBeDefined();
+			expect(decl.symbolDeclarationFile).toBeDefined();
+			expect(decl.symbolDeclarationRange).toBeDefined();
+			expect(decl.symbolName).toBeDefined();
+			expect(decl.theoryName).toBeDefined();
+		});
+	});
+
+	it("parseFile() can parse a pvs file", async () => {
+		const proc: PvsProcess = new PvsProcess({ pvsPath });
+		await proc.pvs();
+		const ans: PvsParserResponse = await proc.parseFile({ contextFolder: "~/Work/sandbox/nasalib/ACCoRD", fileName: "bands_3D", fileExtension: ".pvs" });
+		expect(ans).toBeDefined();
+		expect(ans.error).toBeNull();
+		expect(ans.res).toBeDefined();
+		log(ans);
+	});
+
+	it("typecheckFile() can typecheck a pvs file", async () => {
+		const proc: PvsProcess = new PvsProcess({ pvsPath });
+		await proc.pvs();
+		const ans: PvsTypecheckerResponse = await proc.typecheckFile({ contextFolder: "~/Work/sandbox/examples", fileName: "alaris2lnewmodes.types_and_constants", fileExtension: ".pvs" });
+		expect(ans).toBeDefined();
+		expect(ans.error).toBeNull();
+		log(ans);
+	}, 10000);
+
 });

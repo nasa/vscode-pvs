@@ -43,7 +43,7 @@ import * as language from "./common/languageKeywords";
 
 const usage: string = `
 ${utils.colorText("Prover Command Line Interface (CLI)", utils.textColor.blue)}
-Usage: node pvsCli '{ "pvsPath": "<path-to-pvs-installation>", "pvsContextFolder": "<context-folder>" }'
+Usage: node pvsCli '{ "pvsPath": "<path-to-pvs-installation>", "contextFolder": "<context-folder>" }'
 `;
 
 class CliConsole implements SimpleConsole {
@@ -145,7 +145,7 @@ class PvsCli {
 	});
 
 	private pvsPath: string;
-	private pvsContextFolder: string;
+	private contextFolder: string;
 	private fileName: string;
 	private fileExtension: string;
 	private theoryName: string;
@@ -175,7 +175,7 @@ class PvsCli {
 	constructor (args: PvsCliInterface) {
 		this.args = args;
 		this.pvsPath = args.pvsPath;
-		this.pvsContextFolder = args.pvsContextFolder;
+		this.contextFolder = args.contextFolder;
 		this.fileName = args.fileName; // FIXME: fileName needs to include extension
 		this.fileExtension = args.fileExtension;
 		this.theoryName = args.theoryName;
@@ -214,12 +214,12 @@ class PvsCli {
 	 * Utility function, creates a new pvs process
 	 */
 	async createPvsProcess(): Promise<PvsProcess> {
-		const proc: PvsProcess = new PvsProcess({ pvsPath: this.pvsPath, pvsContextFolder: this.pvsContextFolder });
+		const proc: PvsProcess = new PvsProcess({ pvsPath: this.pvsPath, contextFolder: this.contextFolder });
 		// proc.removeConnection();
 		const success: boolean = await proc.pvs();
 		if (success) {
 			// await proc.disableGcPrintout();
-			await proc.changeContext(this.pvsContextFolder);
+			await proc.changeContext(this.contextFolder);
 			// const ans: PvsResponseType = await proc.listProofStrategies();
 			// if (ans && ans.res) {
 			// 	const strategies: StrategyDescriptor[] = ans.res;
@@ -297,8 +297,7 @@ class PvsCli {
 		if (this.fileExtension === ".pvs") {
 			progressMsg = "Typechecking";
 			this.pvsProcess.startCli(showProgress);
-			await this.pvsProcess.changeContext(this.pvsContextFolder);
-			await this.pvsProcess.typecheckFile({ fileName: this.fileName, fileExtension: this.fileExtension }); // FIXME -- use object as argument instead of string
+			await this.pvsProcess.typecheckFile({ fileName: this.fileName, fileExtension: this.fileExtension, contextFolder: this.contextFolder }); // FIXME -- use object as argument instead of string
 			progressMsg = "";
 			this.pvsProcess.endCli(showProgress);
 			this.pvsProcess.startCli((data: string) => {

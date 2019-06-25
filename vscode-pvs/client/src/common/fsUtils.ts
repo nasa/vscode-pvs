@@ -60,11 +60,11 @@ export async function stat(fileName: string): Promise<fs.Stats> {
 	}
 	return null;
 };
-export async function readDir(pvsContextFolder: string): Promise<string[]> {
-	if (pvsContextFolder) {
-		pvsContextFolder = tildeExpansion(pvsContextFolder);
+export async function readDir(contextFolder: string): Promise<string[]> {
+	if (contextFolder) {
+		contextFolder = tildeExpansion(contextFolder);
 		return new Promise<string[]>((resolve, reject) => {
-			fs.readdir(pvsContextFolder, (error, children) => {
+			fs.readdir(contextFolder, (error, children) => {
 				// ignore errors for now
 				resolve(children || []);
 			});
@@ -83,10 +83,10 @@ export async function readFile(path: string): Promise<string | null> {
 	}
 	return null;
 }
-export async function deletePvsCache(pvsContextFolder: string): Promise<boolean> {
+export async function deletePvsCache(contextFolder: string): Promise<boolean> {
 	try {
-		if (pvsContextFolder) {
-			const cacheFolder: string = path.join(pvsContextFolder, "pvsbin");
+		if (contextFolder) {
+			const cacheFolder: string = path.join(contextFolder, "pvsbin");
 			const fileList: string[] = await fs.readdirSync(cacheFolder);
 			fileList.forEach(file => {
 				fs.unlinkSync(path.join(cacheFolder, file));
@@ -99,6 +99,7 @@ export async function deletePvsCache(pvsContextFolder: string): Promise<boolean>
 }
 export async function writeFile(path: string, content: string): Promise<void> {
 	if (path) {
+		path = tildeExpansion(path);
 		await fs.writeFileSync(path, content);
 	}
 }
@@ -172,7 +173,7 @@ export async function listPvsFiles (folder: string): Promise<FileList> {
 				return fileName.endsWith(".pvs") 
 						&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
 			}),
-			pvsContextFolder: folder
+			contextFolder: folder
 		};
 		return fileList;
 	}
