@@ -16,7 +16,7 @@ The main features provided by the environment are as follows:
 
 
 ## Installation instructions
-1. Download the latest release of VSCode-PVS from the [github repository](releases)
+1. Download the latest release of VSCode-PVS from the [github repository](https://github.com/nasa/vscode-pvs/releases)
 2. Download and install NodeJS from https://nodejs.org/en/download
 3. Download and install PVS Allegro from http://pvs.csl.sri.com
 4. Download and install Visual Studio Code from https://code.visualstudio.com

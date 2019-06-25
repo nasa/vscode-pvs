@@ -15,7 +15,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "xxx"
+		"url": "https://github.com/nasa/vscode-pvs"
 	},
 	"publisher": "paolomasci",
 	"categories": [],
@@ -40,11 +40,11 @@
 				"properties": {
 					"pvs.path": {
 						"type": "string",
-						"default": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
-						"pvs7-mac": "/Users/pmasci/Work/pvs-snapshots/pvs-7.0-851",
-						"pvs7-linux": "/home/nia/github/PVS/pvs-7.0-851",
-						"pvs6-mac": "/Users/pmasci/Work/pvs-snapshots/PVS-6",
-						"pvs6-linux": "...",
+						"default": "",
+						"pvs7-mac": "",
+						"pvs7-linux": "",
+						"pvs6-mac": "",
+						"pvs6-linux": "",
 						"description": "PVS installation folder"
 					},
 					"pvs.settings.completionProvider": {
