@@ -58,7 +58,7 @@ class ProverTerminalCLI {
     client: LanguageClient;
     private active: boolean = true;
     terminalID: string;
-    private interactiveCommand: string = null;
+
     constructor (client: LanguageClient, pvsCliFileName: string, context: vscode.ExtensionContext, terminalID: string) {
         this.pvsCliFileName = pvsCliFileName;
         this.pvsPath = getPvsPath();
@@ -68,24 +68,21 @@ class ProverTerminalCLI {
     private createPvsTerminal(terminalName: string, args: PvsCliInterface): vscode.Terminal {
         const terminal: vscode.Terminal = vscode.window.createTerminal(terminalName, 'node', [ this.pvsCliFileName, JSON.stringify(args) ]);
         (<any>terminal).onDidWriteData((data: string) => {
-            if (this.interactiveCommand) {
-                const PVS_COMINT_PROMPT_REGEXP: RegExp = /(.*)\s*pvs\(\d+\):|(.*)\[.+\]\s*pvs\(\d+\):/g; // capture group 1 is the pvs lisp output
-                const PROVER_PROMPT: RegExp = /\bRule\?/g;
-                if (PROVER_PROMPT.test(data)) {
-                    vscode.commands.executeCommand(`terminal.pvs.response.${this.interactiveCommand}`);
-                    this.interactiveCommand = null;
-                }
-                const regex: RegExp = /:end-pvs-loc\b/;
-                if (regex.test(data)) {
-                    this.active = false;
-                }
+            const regex: RegExp = /:pvs-loc\b/;
+            if (regex.test(data)) {
+                this.active = false;
+                // update theory explorer view
+                // const fname: string = path.join(args.contextFolder, `${args.fileName}${args.fileExtension}`);
+                // this.client.sendRequest('pvs.typecheck-file-and-show-tccs', fname);
             }
         });
         terminal.show();
         return terminal;
     }
     private sendCommand(cmd: string): void {
-        this.terminal.sendText(cmd);
+        if (this.active) {
+            this.terminal.sendText(cmd);
+        }
     }
     isActive() {
         return this.active;
@@ -109,7 +106,6 @@ class ProverTerminalCLI {
             fileExtension: ".pvs"
         };
         this.terminal = this.createPvsTerminal(terminalName, args);
-        // this.interactiveCommand = "step-proof-ready";
         return this;
     }
     proveTcc (desc: { fileName: string, theoryName: string, formulaName: string, line: number, contextFolder: string }) {
@@ -119,9 +115,10 @@ class ProverTerminalCLI {
         this.terminal = this.createPvsTerminal(desc.formulaName, {
             pvsPath: this.pvsPath, contextFolder: desc.contextFolder, cmd: 'prove-formula', 
             fileName: desc.fileName, theoryName: desc.theoryName, formulaName: desc.formulaName, fileExtension: ".tccs", line: desc.line });
-        // this.interactiveCommand = "step-proof-ready";
         return this;
     }
+    // NOTE: showProof uses the typechecker process known to the client, this allows to update Proof Explorer.
+    //       proveFormula and proveTcc do not have this capability, because they create a new process from command line, and the process cannot send messages to Proof Explorer
     async showProof(desc: { fileName: string, theoryName: string, formulaName: string, line: number, contextFolder: string }) {
         if (desc.fileName.endsWith(".pvs")) {
             desc.fileName = fsUtils.removeFileExtension(desc.fileName);
@@ -138,6 +135,25 @@ class ProverTerminalCLI {
         this.client.sendRequest('pvs.step-tcc', data);
         return this;
     }
+}
+
+export declare interface PvsProverInterface {
+    fileName: string;
+    theoryName: string;
+    formulaName: string;
+    line: number;
+    fileExtension: string;
+    contextFolder: string;
+}
+
+declare interface SendProofCommand extends PvsProverInterface {
+    fileName: string;
+    theoryName: string;
+    formulaName: string;
+    line: number;
+    fileExtension: string;
+    contextFolder: string;
+    cmd: string;
 }
 
 export class VSCodePvsTerminal {
@@ -162,7 +178,7 @@ export class VSCodePvsTerminal {
         });
     }
     // TODO: move some of these functionalities to PvsProcess / PvsServer
-    private findSelectedFormula(codelensLine?: number): { fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string, contextFolder: string } {
+    private findSelectedFormula(codelensLine?: number): PvsProverInterface {
         const document = vscode.window.activeTextEditor.document;
         let fileName: string = document.fileName;
         const contextFolder: string = fsUtils.getContextFolder(document.fileName);
@@ -218,9 +234,7 @@ export class VSCodePvsTerminal {
     static getTerminalID(data: { fileName: string, formulaName?: string, theoryName?: string }): string {
         return `${fsUtils.getFilename(data.fileName, { removeFileExtension: true })}.${data.theoryName}.${data.formulaName}`;
     }
-    async stepProof (desc: { 
-        fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string, contextFolder: string 
-    }) {
+    async stepProof (desc: PvsProverInterface) {
         desc = (desc) ? 
                 (desc.fileExtension === ".tccs") ?
                     this.findSelectedFormula(desc.line) : desc
@@ -264,9 +278,7 @@ export class VSCodePvsTerminal {
             this.stepProof(data);
         }));
 
-        context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.send-proof-command', async (data: {
-            fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string, cmd: string, contextFolder: string
-        }) => {
+        context.subscriptions.push(vscode.commands.registerCommand('terminal.pvs.send-proof-command', async (data: SendProofCommand) => {
             if (data && data.cmd && vscode.window.activeTextEditor && fsUtils.isPvsFile(vscode.window.activeTextEditor.document.fileName)) {
                 const terminalID: string = VSCodePvsTerminal.getTerminalID(data);
                 if (!this.activeTerminals[terminalID]) {

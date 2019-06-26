@@ -440,6 +440,7 @@ class PvsLanguageServer {
 		}, 500);
 	}
 
+	// an important difference between parallelTCP and serialTCP is that serialTCP reuses the same pvs process
 	private async serialTCP(fname: string, theoryNames: string[]): Promise<TheoriesMap> {
 		const proc: PvsProcess = this.pvsTypeChecker;
 		if (proc) {

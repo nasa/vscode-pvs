@@ -40,9 +40,10 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window, TextDocum
 			TreeDataProvider, workspace, TreeView } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import { FileList, TheoryList, TheoriesMap, FormulaDescriptor,
-			TheoryStatus, TheoryDescriptor } from '../common/serverInterface';
+			TheoryStatus, TheoryDescriptor, PvsCliInterface } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
+import { PvsProverInterface } from '../terminals/vscodePvsTerminalCli';
 
 //-- theories
 class TheoryItem extends TreeItem {
@@ -167,6 +168,7 @@ class FormulaItem extends TreeItem {
 	getFileName(): string { return this.fileName; }
 	getTheoryName(): string { return this.theoryName; }
 	getFormulaName(): string { return this.formulaName; }
+	getContextFolder(): string { return this.contextFolder; }
 	setStatus (status: string) {
 		this.status = status;
 		this.refreshLabel();
@@ -176,6 +178,7 @@ class FormulaItem extends TreeItem {
 		switch (this.status) {
 			case "proved": 
 			case "proved - incomplete":
+			case "proved - by mapping":
 			case "proved - complete": {
 				this.label = `✅ ${this.formulaName} (${this.status})`;
 				break;
@@ -485,12 +488,13 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		cmd = commands.registerCommand('explorer.prove-formula', (resource: FormulaItem) => {
 			if (resource) {
 				// TODO: modify server APIs so that extension is included in filename
-				const data = {
+				const data: PvsProverInterface = {
 					fileName: fsUtils.getFilename(resource.getFileName(), { removeFileExtension: true }),
 					formulaName: resource.getFormulaName(),
 					theoryName: resource.getTheoryName(),
 					line: resource.getPosition().line,
-					fileExtension: ".pvs"
+					fileExtension: ".pvs",
+					contextFolder: resource.getContextFolder()
 				};
 				commands.executeCommand("terminal.pvs.prove", data);
 			} else {

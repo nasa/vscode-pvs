@@ -158,13 +158,18 @@ class PvsCli {
 	private tabCompleteMode: boolean = false;
 
 	private args: PvsCliInterface;
+	private active: boolean = false;
 
 	private outChannel (data: string) {
-		console.log(PvsCli.withSyntaxHighlighting(data));
-		const regex: RegExp = /:end-pvs-loc\b/;
+		const regex: RegExp = /:pvs-loc\b/;
 		if (regex.test(data)) {
-			// Status update for theory explorer
-			this.pvsProcess.getTheoryStatus({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName });
+			this.active = false;
+			// Show proof summary
+			console.log(PvsCli.withSyntaxHighlighting(data));
+			// this.pvsProcess.getTheoryStatus({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName });
+		}
+		if (this.active) {
+			console.log(PvsCli.withSyntaxHighlighting(data));
 		}
 	}
 
@@ -176,7 +181,7 @@ class PvsCli {
 		this.args = args;
 		this.pvsPath = args.pvsPath;
 		this.contextFolder = args.contextFolder;
-		this.fileName = args.fileName; // FIXME: fileName needs to include extension
+		this.fileName = args.fileName;
 		this.fileExtension = args.fileExtension;
 		this.theoryName = args.theoryName;
 		this.formulaName = args.formulaName;
@@ -293,6 +298,7 @@ class PvsCli {
 		return this.pvsProcess;
 	}
 	async launchTheoremProver () {
+		this.active = true;
 		// this.pvsProcess.setConnection(this.connection);
 		if (this.fileExtension === ".pvs") {
 			progressMsg = "Typechecking";
