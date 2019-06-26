@@ -71,7 +71,8 @@ class ProverTerminalCLI {
             const regex: RegExp = /:pvs-loc\b/;
             if (regex.test(data)) {
                 this.active = false;
-                // update theory explorer view
+                // TODO: find a clean way to update theory explorer view
+                // the following takes too long
                 // const fname: string = path.join(args.contextFolder, `${args.fileName}${args.fileExtension}`);
                 // this.client.sendRequest('pvs.typecheck-file-and-show-tccs', fname);
             }
