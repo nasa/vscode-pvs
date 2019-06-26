@@ -91,7 +91,7 @@ class OverviewItem extends TreeItem {
 	contextValue: string = "OverviewItem";
 	fileName: string;
 	contextFolder: string;
-	formulae: { [ formulaName: string ]: FormulaItem } = {};
+	formulaMap: { [ formulaName: string ]: FormulaItem } = {};
 	constructor(typeName: string, desc: { contextFolder: string, fileName: string }) {
 		super(typeName, TreeItemCollapsibleState.None);
 		this.contextValue = typeName;
@@ -100,36 +100,36 @@ class OverviewItem extends TreeItem {
 		this.contextFolder = desc.contextFolder;
 	}
 	getFormula (formulaName: string): FormulaItem {
-		return this.formulae[formulaName];
+		return this.formulaMap[formulaName];
 	}
 	listFormulae (): FormulaItem[] {
-		const lst: FormulaItem[] = Object.keys(this.formulae).map(key => {
-			return this.formulae[key];
+		const lst: FormulaItem[] = Object.keys(this.formulaMap).map(key => {
+			return this.formulaMap[key];
 		});
 		return lst;
 	}
 	private refreshLabel () {
-		const lst: string[] = Object.keys(this.formulae);
+		const lst: string[] = Object.keys(this.formulaMap);
 		this.label = `${this.contextValue.toLowerCase()} ( ${lst.length} )`;
 		this.collapsibleState = (lst.length > 0) ? TreeItemCollapsibleState.Expanded
 													: TreeItemCollapsibleState.None;
 	}
 	updateStatus (desc: FormulaDescriptor): void {
 		if (desc) {
-			if (this.formulae[desc.formulaName]) {
+			if (this.formulaMap[desc.formulaName]) {
 				if (desc.status) {
-					this.formulae[desc.formulaName].setStatus(desc.status);
+					this.formulaMap[desc.formulaName].setStatus(desc.status);
 					this.refreshLabel();
 				}
 			} else {
 				const formulaType: string = (desc.isTcc) ? "tcc" : "theorem"
-				this.formulae[desc.formulaName] = new FormulaItem(formulaType, desc, this.contextFolder);
+				this.formulaMap[desc.formulaName] = new FormulaItem(formulaType, desc, this.contextFolder);
 				this.refreshLabel();
 			} 
 		}
 	}
 	getTotal (): number {
-		return Object.keys(this.formulae).length;
+		return Object.keys(this.formulaMap).length;
 	}
 }
 class FormulaItem extends TreeItem {
@@ -245,7 +245,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	private providerView: string;
 
-	private view: TreeView<TreeItem>
+	private view: TreeView<TreeItem>;
 
 	// TODO: remove theories, theoryMap, tccs and tccsOverview
 	private theories: TheoryItem[] = [];	
@@ -273,7 +273,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		// register tree view.
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
-		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
+		this.view = window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: true });
 
 		this.client.onNotification("pvs.context.theories-status.update", (theoriesMap: TheoriesMap) => {
 			this.updateView(theoriesMap);
@@ -521,6 +521,12 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 			this.client.sendRequest('pvs.typecheck-all-and-show-tccs');
 		});
 		context.subscriptions.push(cmd);
+
+		// TODO: expand all theories in theory explorer view
+		// cmd = commands.registerCommand('explorer.expand-all', () => {
+		// 	this.expandAll();
+		// });
+		// context.subscriptions.push(cmd);
 		
 		// // click on a tcc symbol to open the file and highlight the tcc name in the theory
 		// cmd = commands.registerCommand('explorer.didSelectTccSymbol', async (uri: Uri, range: Range) => {
@@ -606,9 +612,10 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 				children = desc.listFormulae();
 			}
 			return Promise.resolve(children);
+		} else {
+			// root node: show the list of theories from the selected file
+			return Promise.resolve(this.theories);
 		}
-		// root node: show the list of theories from the selected file
-		return Promise.resolve(this.theories);
 	}
 
 	getTreeItem(element: TreeItem): TreeItem {
