@@ -284,6 +284,19 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		return this.client;
 	}
 
+	setStatusProved(desc: { theoryName: string, formulaName: string }): void {
+		if (desc) {
+			const theoryItem: TheoryItem = this.getTheoryItem(desc.theoryName);
+			if (theoryItem) {
+				const formulaItem: FormulaItem = theoryItem.getFormula(desc.formulaName);
+				if (formulaItem) {
+					formulaItem.setStatus("proved");
+					this.refreshView();
+				}
+			}
+		}
+	}
+
 	updateView (theoriesMap: TheoriesMap): void {
 		if (theoriesMap && theoriesMap.theoriesStatusMap) {
 			const theoryNames: string[] = Object.keys(theoriesMap.theoriesStatusMap);

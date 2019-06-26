@@ -52,29 +52,32 @@ function getPvsPath (): string {
 }
 
 class ProverTerminalCLI {
-    pvsPath: string;
-    pvsCliFileName: string; // PvsCli file
+    private pvsPath: string;
+    private pvsCliFileName: string; // PvsCli file
     terminal: vscode.Terminal;
-    client: LanguageClient;
+    private client: LanguageClient;
     private active: boolean = true;
-    terminalID: string;
+    private terminalID: string;
+    private theoryExplorer: VSCodePvsTheoryExplorer;
 
-    constructor (client: LanguageClient, pvsCliFileName: string, context: vscode.ExtensionContext, terminalID: string) {
+    constructor (client: LanguageClient, pvsCliFileName: string, theoryExplorer: VSCodePvsTheoryExplorer, terminalID: string) {
         this.pvsCliFileName = pvsCliFileName;
         this.pvsPath = getPvsPath();
         this.client = client;
         this.terminalID = terminalID;
+        this.theoryExplorer = theoryExplorer;
     }
-    private createPvsTerminal(terminalName: string, args: PvsCliInterface): vscode.Terminal {
+    private createPvsTerminal(terminalName: string, args: PvsCliInterface, theoryExplorer: VSCodePvsTheoryExplorer): vscode.Terminal {
         const terminal: vscode.Terminal = vscode.window.createTerminal(terminalName, 'node', [ this.pvsCliFileName, JSON.stringify(args) ]);
         (<any>terminal).onDidWriteData((data: string) => {
-            const regex: RegExp = /:pvs-loc\b/;
-            if (regex.test(data)) {
+            const qed_regex: RegExp = /\bQ\.E\.D\.\s/;
+            if (qed_regex.test(data)) {
+                // send status update to theory explorer
+                this.theoryExplorer.setStatusProved({ formulaName: args.formulaName, theoryName: args.theoryName });
+            }
+            const proof_end_regex: RegExp = /:pvs-loc\b/;
+            if (proof_end_regex.test(data)) {
                 this.active = false;
-                // TODO: find a clean way to update theory explorer view
-                // the following takes too long
-                // const fname: string = path.join(args.contextFolder, `${args.fileName}${args.fileExtension}`);
-                // this.client.sendRequest('pvs.typecheck-file-and-show-tccs', fname);
             }
         });
         terminal.show();
@@ -106,16 +109,18 @@ class ProverTerminalCLI {
             line: desc.line, 
             fileExtension: ".pvs"
         };
-        this.terminal = this.createPvsTerminal(terminalName, args);
+        this.terminal = this.createPvsTerminal(terminalName, args, this.theoryExplorer);
         return this;
     }
     proveTcc (desc: { fileName: string, theoryName: string, formulaName: string, line: number, contextFolder: string }) {
         if (desc.fileName.endsWith(".tccs")) {
             desc.fileName = fsUtils.removeFileExtension(desc.fileName);
         }
-        this.terminal = this.createPvsTerminal(desc.formulaName, {
+        const args: PvsCliInterface = {
             pvsPath: this.pvsPath, contextFolder: desc.contextFolder, cmd: 'prove-formula', 
-            fileName: desc.fileName, theoryName: desc.theoryName, formulaName: desc.formulaName, fileExtension: ".tccs", line: desc.line });
+            fileName: desc.fileName, theoryName: desc.theoryName, formulaName: desc.formulaName, fileExtension: ".tccs", line: desc.line 
+        };
+        this.terminal = this.createPvsTerminal(desc.formulaName, args, this.theoryExplorer);
         return this;
     }
     // NOTE: showProof uses the typechecker process known to the client, this allows to update Proof Explorer.
@@ -246,7 +251,7 @@ export class VSCodePvsTerminal {
                 this.activeTerminals[terminalID].terminal.show();
             } else {
                 this.info(`Starting new prover session for ${desc.formulaName}`);
-                const pvsTerminal: ProverTerminalCLI = new ProverTerminalCLI(this.client, this.pvsCli, this.context, terminalID);
+                const pvsTerminal: ProverTerminalCLI = new ProverTerminalCLI(this.client, this.pvsCli, this.theoryExplorer, terminalID);
                 this.activeTerminals[terminalID] = pvsTerminal;
                 if (desc.fileExtension === ".pvs") {
                     pvsTerminal.showProof(desc);
@@ -283,7 +288,7 @@ export class VSCodePvsTerminal {
             if (data && data.cmd && vscode.window.activeTextEditor && fsUtils.isPvsFile(vscode.window.activeTextEditor.document.fileName)) {
                 const terminalID: string = VSCodePvsTerminal.getTerminalID(data);
                 if (!this.activeTerminals[terminalID]) {
-                    this.activeTerminals[terminalID] = new ProverTerminalCLI(this.client, this.pvsCli, this.context, terminalID);
+                    this.activeTerminals[terminalID] = new ProverTerminalCLI(this.client, this.pvsCli, this.theoryExplorer, terminalID);
                     const pvsTerminal = this.activeTerminals[terminalID];
                     if (data.fileExtension === ".pvs") {
                         pvsTerminal.showProof(data);
