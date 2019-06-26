@@ -200,38 +200,6 @@
 				"title": "PVS theorem prover (terminal)"
 			},
 			{
-				"command": "proof-explorer.grind",
-				"title": "grind"
-			},
-			{
-				"command": "proof-explorer.assert",
-				"title": "assert"
-			},
-			{
-				"command": "proof-explorer.skosimp*",
-				"title": "skosimp*"
-			},
-			{
-				"command": "proof-explorer.inst?",
-				"title": "inst?"
-			},
-			{
-				"command": "proof-explorer.flatten",
-				"title": "flatten"
-			},
-			{
-				"command": "proof-explorer.lift-if",
-				"title": "lift-if"
-			},
-			{
-				"command": "proof-explorer.split",
-				"title": "split"
-			},
-			{
-				"command": "proof-explorer.postpone",
-				"title": "postpone"
-			},
-			{
 				"command": "proof-explorer.jump-to",
 				"title": "jump-to"
 			},
@@ -332,7 +300,7 @@
 				{
 					"command": "explorer.typecheck-all",
 					"when": "view == theory-explorer-view",
-					"group": "pvs"
+					"group": "navigation"
 				},
 				{
 					"command": "proof-explorer.step",
