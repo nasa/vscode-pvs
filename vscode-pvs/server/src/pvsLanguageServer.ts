@@ -770,8 +770,13 @@ class PvsLanguageServer {
 						if (response && response.res) {
 							this.connection.sendRequest("server.response.step-proof", response.res);
 						} else {
-							const msg: string = JSON.stringify(response).replace("\n", "").replace("\"","");
-							this.connection.sendNotification('server.status.error', `Error while executing step-proof: ${msg}`);
+							if (response.error) {
+								const msg: string = JSON.stringify(response).replace("\n", "").replace("\"","");
+								this.connection.sendNotification('server.status.error', `Error while executing step-proof: ${msg}`);
+							} else {
+								// formula does not have a proof
+								this.connection.sendNotification('server.status.error', response.raw);
+							}
 						}
 						// this.pvsReady();
 						// feed symbols to the parser
@@ -795,8 +800,13 @@ class PvsLanguageServer {
 						if (response && response.res) {
 							this.connection.sendRequest("server.response.step-tcc", response.res);
 						} else {
-							const msg: string = JSON.stringify(response).replace("\n", "").replace("\"","");
-							this.connection.sendNotification('server.status.error', `Error while executing step-tcc: ${msg}`);
+							if (response.error) {
+								const msg: string = JSON.stringify(response).replace("\n", "").replace("\"","");
+								this.connection.sendNotification('server.status.error', `Error while executing step-tcc: ${msg}`);
+							} else {
+								// formula does not have a proof
+								this.connection.sendNotification('server.status.error', response.raw);
+							}
 						}
 						// this.pvsReady();
 						// feed symbols to the parser
