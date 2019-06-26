@@ -490,14 +490,15 @@ class PvsLanguageServer {
 			theories: {},
 			contextFolder: this.contextFolder
 		};
-		// send the empty response to trigger a refresh of the view on the connected client
-		this.connection.sendRequest("server.response.list-theories", response);
 		return await this.pvsParser.parseCurrentContext();
 	}
 
 	async changeContextAndParseFiles(context: string, opt?: { force?: boolean }): Promise<void> {
 		opt = opt || {};
 		if (opt.force || this.contextFolder !== context) {
+			utils.listTheories(context, this.connection).then(() => {
+				utils.listTheorems(context, this.connection);
+			});
 			this.contextFolder = context;
 			await this.pvsParser.restart();
 			await this.pvsParser.changeContext(context);
@@ -513,8 +514,6 @@ class PvsLanguageServer {
 			}
 			const pvsFiles: FileList = await fsUtils.listPvsFiles(context);
 			this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
-			await utils.listTheories(context, this.connection);
-			await utils.listTheorems(context, this.connection);
 		}
 	}
 
