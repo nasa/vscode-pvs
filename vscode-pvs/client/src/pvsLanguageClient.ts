@@ -49,6 +49,11 @@ import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsStatusBar } from './views/vscodePvsStatusBar';
 
+//--------- experimental features -----------------
+const EXPERIMENTAL: boolean = true;
+import { VSCodePvsSequentExplorer } from './views/vscodePvsSequentExplorer';
+//-------------------------------------------------
+
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 1000; //ms
 
@@ -62,7 +67,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// context variables
 	private context: ExtensionContext;
-	private contextFolder: string;
 
 	private timers: {[key: string]: NodeJS.Timer } = {};
 
@@ -78,6 +82,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	// integrated terminals for PVSio
 	private pvsioTerminal: VSCodePVSioTerminal;
 	private pvsTerminal: VSCodePvsTerminal;
+
+	// sequent viewer
+	private sequentExplorer: VSCodePvsSequentExplorer;
 
 	// status bar
 	private pvsStatusBar: VSCodePvsStatusBar;
@@ -162,11 +169,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 		workspace.onDidChangeConfiguration(async () => {
 			// re-initialise pvs if the executable is different
-			const pvsPath: string = await this.getPvsPath();
+			const pvsPath: string = this.getPvsPath();
 			if (pvsPath !== this.pvsPath) {
 				window.showInformationMessage(`Restarting PVS (pvs path changed to ${pvsPath})`);
 				this.pvsPath = pvsPath;
-				await this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, contextFolder: this.contextFolder });	
+				await this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
 			}	
 		});
 	}
@@ -247,6 +254,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
 		this.proofExplorer.activate(this.context);
 
+		if (EXPERIMENTAL) {
+			this.sequentExplorer = new VSCodePvsSequentExplorer();
+			this.sequentExplorer.activate(this.context);
+		}
+
 		this.pvsTerminal = new VSCodePvsTerminal(this.client, this.theoryExplorer);
 		this.pvsTerminal.activate(this.context);
 
@@ -255,9 +267,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		}
 
 		// start PVS
-		this.contextFolder = fsUtils.getContextFolder(window.activeTextEditor.document.fileName);
+		const contextFolder = (window.activeTextEditor) ? fsUtils.getContextFolder(window.activeTextEditor.document.fileName) : null;
 		this.pvsPath = this.getPvsPath();
-		this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, contextFolder: this.contextFolder });			
+		this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, contextFolder });			
 	}
 	stop () {
 		if (this.client) {
