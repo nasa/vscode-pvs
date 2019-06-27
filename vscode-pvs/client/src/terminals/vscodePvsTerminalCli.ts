@@ -45,6 +45,7 @@ import * as fsUtils from '../common/fsUtils';
 import * as utils from '../utils/vscode-utils';
 import { PvsCliInterface, ProofDescriptor, TheoryDescriptor } from '../common/serverInterface';
 import { PVS_CLI_FILE } from '../common/serverInterface';
+import { SequentDescriptor } from '../views/vscodePvsSequentExplorer';
 
 // TODO: move this function to vscode-utils.ts
 function getPvsPath (): string {
@@ -78,6 +79,21 @@ class ProverTerminalCLI {
             const proof_end_regex: RegExp = /:pvs-loc\b/;
             if (proof_end_regex.test(data)) {
                 this.active = false;
+            }
+            const proof_start_regex: RegExp = new RegExp(`\\b${args.formulaName}\\s:\\s*([\\w\\W\\s]*)\\s+`, "gm"); // capture group 1 are the sequents
+            let match: RegExpMatchArray = proof_start_regex.exec(data);
+            if (data && this.active && match) {
+                // fire event for sequentExplorer
+                const seqData: SequentDescriptor = {
+                    contextFolder: args.contextFolder,
+                    fileName: args.fileName,
+                    fileExtension: args.fileExtension,
+                    theoryName: args.theoryName,
+                    formulaName: args.formulaName,
+                    line: args.line,
+                    sequent: match[1]
+				};
+                vscode.commands.executeCommand("sequent-explorer.show-sequent", seqData);
             }
         });
         terminal.show();

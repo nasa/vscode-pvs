@@ -340,7 +340,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	activate(context: ExtensionContext) {
 		this.installHandlers(context);
 
-		// -- commands sent by pvsTerminalCli
+		// -- user commands sent to pvsTerminalCli
 		let cmd: Disposable = commands.registerCommand("proof-explorer.step", () => {
 			this.step();
 		});
