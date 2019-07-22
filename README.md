@@ -4,6 +4,9 @@ The environment redefines the way developers interact with PVS, and better align
 
 ![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
+## Latest version
+[vscode-pvs-1.0.12](releases/vscode-pvs-1.0.12.vsix)
+
 ## Functionalities
 The main functionalities provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
