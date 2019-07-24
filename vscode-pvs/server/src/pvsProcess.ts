@@ -94,6 +94,7 @@ export class PvsProcess {
 	private enableNotifications: boolean;
 
 	private _disableGC: boolean = false;
+	private xmlRpcServer: { port: number; };
 
 	/**
 	 * utility function for sending notifications over the connection (if any connection is available)
@@ -150,6 +151,7 @@ export class PvsProcess {
 		this.pvsPath = (desc && desc.pvsPath) ? fsUtils.tildeExpansion(desc.pvsPath) : __dirname
 		this.pvsLibraryPath = path.join(this.pvsPath, "lib");
 		this.contextFolder = (desc && desc.contextFolder) ? fsUtils.tildeExpansion(desc.contextFolder) : __dirname;
+
 		this.processType = (desc && desc.processType) ? desc.processType : "typechecker"; // this is used only for debugging
 		this.progressInfo = new PvsProgressInfo();
 		// this.serverProxy = new xmlrpcProvider.XmlRpcProxy();
@@ -181,7 +183,7 @@ export class PvsProcess {
 			const msg: string = "PVS busy, cannot execute " + cmd + " :/";
 			return this.cannotExecute(msg);
 		}
-		const pvsLispReader: PvsLispReader = new PvsLispReader(this.connection);
+		const pvsLispReader: PvsLispReader = new PvsLispReader(this.pvsPath, this.contextFolder, this.connection);
 		const match: RegExpMatchArray = /\(\b([\w\-]+)\b.*\)/.exec(cmd);
 		if (match && match[1]) {
 			const commandId: string = match[1];
@@ -278,31 +280,44 @@ export class PvsProcess {
 	 * Internal function. Runs the relocate script necessary for starting pvs.
 	 */
 	private async relocate(): Promise<boolean> {
-		const relocateScript: string = `cd ${this.pvsPath} && bin/relocate`;
-		try {
-			const output: Buffer = execSync(relocateScript);
-			// console.log(output.toString());
-		} catch (relocateError) {
-			console.error(relocateError);
-			return false;
+		let relocate: string = null;
+		if (await fsUtils.fileExists(path.join(`${this.pvsPath}`, "bin/relocate"))) {
+			relocate = `cd ${this.pvsPath} && bin/relocate`;
+		} else if (await fsUtils.fileExists(path.join(`${this.pvsPath}`, "install-sh"))) {
+			relocate = `cd ${this.pvsPath} && ./install-sh`
 		}
-		return true;
+		if (relocate) {
+			try {
+				const output: Buffer = execSync(relocate);
+				// console.log(output.toString());
+			} catch (relocateError) {
+				console.error(relocateError);
+				return false;
+			}
+			return true;
+		}
+		return false;
 	}
 	/**
 	 * Internal function. Creates a new pvs process.
 	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
 	 * @returns true if the process has been created; false if the process could not be created.
 	 */
-	private async _pvs(opt?: { enableNotifications?: boolean }): Promise<boolean> {
+	private async _pvs(opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number } }): Promise<boolean> {
 		opt = opt || {};
-		await this.relocate();
-		this.enableNotifications = opt.enableNotifications;
+		if (!await this.relocate()) {
+			console.warn("Warning: could not execute PVS relocation/install script");
+		}
+		this.enableNotifications = opt.enableNotifications || this.enableNotifications;
+		const serverPort: number = (!!opt.xmlRpcServer && typeof opt.xmlRpcServer === "object") ? opt.xmlRpcServer.port : 22334;
+		this.xmlRpcServer = (!!opt.xmlRpcServer) ? { port: serverPort } : this.xmlRpcServer;
 		// await this.clearContext();
 		if (!this.pvsProcessBusy) {
 			this.pvsProcessBusy = true;
-			const pvsLispReader = new PvsLispReader(this.connection);
+			const pvsLispReader = new PvsLispReader(this.pvsPath, this.contextFolder, this.connection);
 			const pvs: string = path.join(this.pvsPath, "pvs");
-			const args: string[] = [ "-raw"];//, "-port", "22334" ];
+			const args: string[] = (!!this.xmlRpcServer) ? [ "-raw", "-port", this.xmlRpcServer.port.toString() ] : [ "-raw"];//, "-port", "22334" ];
+			// console.info(`pvs args: `, args);
 			// if (this.connection) { this.connection.console.info(`Spawning pvs process ${pvs} ${args.join(" ")}`); }
 			return new Promise(async (resolve, reject) => {
 				const fileExists: boolean = await fsUtils.fileExists(pvs);
@@ -310,7 +325,7 @@ export class PvsProcess {
 					this.pvsProcess = spawn(pvs, args);
 					this.pvsProcess.stdout.setEncoding("utf8");
 					this.pvsProcess.stderr.setEncoding("utf8");
-					let listener = (data: string) => {
+					const listener = (data: string) => {
 						if (this.connection) { this.connection.console.log(data); } // this is the crude pvs lisp output, useful for debugging
 						// pvslispParser.parse(data, (res: string) => {
 						pvsLispReader.read(data, (res: string) => {
@@ -346,11 +361,13 @@ export class PvsProcess {
 	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
 	 * @returns true if the process has been created; false if the process could not be created.
 	 */
-	async pvs(opt?: { enableNotifications?: boolean}): Promise<boolean> {
-		const res: boolean = await this._pvs(opt);
-		await this.disableGcPrintout();
-		await this.changeContext(this.contextFolder, { force: true });
-		return res;
+	async pvs(opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number }}): Promise<boolean> {
+		const success: boolean = await this._pvs(opt);
+		if (success) {
+			await this.disableGcPrintout();
+			await this.changeContext(this.contextFolder, { force: true });
+		}
+		return success;
 	}
 	/**
 	 * Kills the pvs process.
@@ -374,9 +391,10 @@ export class PvsProcess {
 	/**
 	 * Restarts the pvs process.
 	 */
-	async restart (): Promise<void> {
+	async restart (): Promise<boolean> {
 		this.kill();
-		await this.pvs();
+		let success: boolean = await this.pvs();
+		return success;
 	}
 	/**
 	 * Utility function. Returns a string representing the ID of the pvs process.
@@ -519,7 +537,8 @@ export class PvsProcess {
 				error: null,
 				raw: null
 			};
-			if (this.contextFolder !== this.pvsPath && this.contextFolder !== this.pvsLibraryPath) {
+			desc.contextFolder = fsUtils.normalizePath(desc.contextFolder);
+			if (desc.contextFolder !== this.pvsPath && desc.contextFolder !== this.pvsLibraryPath) {
 				await this.changeContext(desc.contextFolder);
 				const parserInfo: PvsParserResponse = await this.pvsExec(`(parse-file "${desc.fileName}" nil nil)`); // (defmethod parse-file ((filename string) &optional forced? no-message?)
 				if (parserInfo.error) {

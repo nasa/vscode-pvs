@@ -37,9 +37,10 @@
  **/
 
 import * as utils from './common/languageUtils';
+import * as path from 'path';
 import { 
 	PvsResponseType, PRELUDE_FILE, PvsDeclarationType,
-	StrategyDescriptor, TheoremsStatus, ChangeContextResponseType, PvsVersionInfoResponseType, VersionInfoResponseType, ErrorType, ParserResponse
+	StrategyDescriptor, TheoremsStatus, ChangeContextResponseType, PvsVersionInfoResponseType, VersionInfoResponseType, ErrorType, ParserResponse, PVS_LIBRARY_FILES
 } from './common/serverInterface'
 import * as fsUtils from './common/fsUtils';
 
@@ -53,6 +54,14 @@ export declare interface TccDescriptor {
 	line: number; // position of the formula in the .tccs file
 }
 
+export declare interface FindDeclarationElem {
+	"declname": string, // this is the identifier
+	"decl-ppstring": string, // this is the definition of the identifier
+	"filename": string, // file containing the declaration (full path)
+	"place": number[], // from row, from col, to row, to col
+	"theoryid": string, // theory containing the declaration
+	"type": string // declaration type, e.g., type, constant, function, etc.
+};
 
 // utility functions and constants
 const PVS_LISP_ERROR_RETURN_TO_TOP_LEVEL: string = 'Return to Top Level (an "abort" restart)';
@@ -72,11 +81,18 @@ export interface Console {
 export class PvsLispReader {
 	private pvsOut: string = "";
 	private connection: Console = null;
+	private pvsPath: string = null;
+	private pvsLibraryPath: string = null;
+	private contextFolder: string = null;
+
 	/**
 	 * Constructor
 	 */
-	constructor (connection?: Console) {
+	constructor (pvsPath: string, contextFolder: string, connection?: Console) {
 		this.connection = connection;
+		this.pvsPath = pvsPath;
+		this.pvsLibraryPath = path.join(pvsPath, "lib");
+		this.contextFolder = contextFolder;
 	}
 	/**
 	 * Reads pvs lisp output.
@@ -208,65 +224,93 @@ export class PvsLispReader {
 			}
 			case "list-declarations":
 			case "find-declaration": {
-				// regexp for parsing the pvs lisp response
-				const PVS_FIND_DECLARATION_REGEXP = {
-					// capture group 1 is symbolName, group 2 is theoryName, group 3 is declarationFile (nil for prelude), group 4 is declaration range, group 5 is symbolDeclaration 
-					prelude: /\("[^"]*\s*"\s*"([^\s"]*)"\s*"([^\s"]*)"\s*([nil]*)\s*\((\d+\s*\d+\s*\d+\s*\d+)\)\s*"([^"]*)"\)/g,
-					other: /\("[^"]*\s*"\s*"([^\s"]*)"\s*"([^\s"]*)"\s*"([^"]*)"*\s*\((\d+\s*\d+\s*\d+\s*\d+)\)\s*"([^"]*)"\)/g
-				}
 				// key is theoryName.symbolName, value is { symbolKind: string, symbolDeclaration: string, symbolDeclarationRange: vscode.Range }
-				let declarations: PvsDeclarationType[] = [];
-				let info = null;
-				while (info = PVS_FIND_DECLARATION_REGEXP.prelude.exec(data)) {
-					if (info && info.length > 5) {
-						const symbolName: string = info[1];
-						const theoryName: string = info[2];
-						const symbolDeclarationFile: string = PRELUDE_FILE;
-						const symbolDeclarationPosition = info[4].split(" ");
-						const symbolDeclarationRange = {
-							start: {
-								line: +symbolDeclarationPosition[0],
-								character: +symbolDeclarationPosition[1]
-							},
-							end: {
-								line: +symbolDeclarationPosition[2],
-								character: +symbolDeclarationPosition[3]
-							}
-						};
-						const symbolDeclaration: string = info[5];
-						declarations.push({
-							symbolName,
-							theoryName,
-							symbolDeclaration,
-							symbolDeclarationRange,
-							symbolDeclarationFile
-						});
+				const declarations: PvsDeclarationType[] = [];
+				if (data.includes("decl-ppstring")) {
+					try {
+						// console.info("data", data);
+						const tmp: string = JSON.parse(data);
+						// console.info("tmp", tmp);
+						const res: FindDeclarationElem[] = JSON.parse(tmp);
+						// console.info("res", res);
+						if (res) {
+							res.forEach(info => {
+								declarations.push({
+									symbolName: info.declname,
+									theoryName: info.theoryid,
+									symbolDeclaration: info["decl-ppstring"],
+									symbolDeclarationRange: {
+										start: { line: info.place[0], character: info.place[1] },
+										end: { line: info.place[2], character: info.place[3] }	
+									},
+									symbolDeclarationFile: (info.filename.includes("/")) ? info.filename : path.join(this.contextFolder, info.filename)
+								});
+							});
+						}
+					} catch (jsonFormatError) {
+						console.error(jsonFormatError);
 					}
-				}
-				while (info = PVS_FIND_DECLARATION_REGEXP.other.exec(data)) {
-					if (info && info.length > 5) {
-						const symbolName: string = info[1];
-						const theoryName: string = info[2];
-						const symbolDeclarationFile: string = info[3];
-						const symbolDeclarationPosition = info[4].split(" ");
-						const symbolDeclarationRange = {
-							start: {
-								line: +symbolDeclarationPosition[0],
-								character: +symbolDeclarationPosition[1]
-							},
-							end: {
-								line: +symbolDeclarationPosition[2],
-								character: +symbolDeclarationPosition[3]
-							}
-						};
-						const symbolDeclaration: string = info[5];
-						declarations.push({
-							symbolName,
-							theoryName,
-							symbolDeclaration,
-							symbolDeclarationRange,
-							symbolDeclarationFile
-						});
+				} else {
+					// try legacy code
+					// regexp for parsing the pvs lisp response
+					const PVS_FIND_DECLARATION_REGEXP = {
+						// capture group 1 is symbolName, group 2 is theoryName, group 3 is declarationFile (nil for prelude), group 4 is declaration range, group 5 is symbolDeclaration 
+						prelude: /\("[^"]*\s*"\s*"([^\s"]*)"\s*"([^\s"]*)"\s*([nil]*)\s*\((\d+\s*\d+\s*\d+\s*\d+)\)\s*"([^"]*)"\)/g,
+						other: /\("[^"]*\s*"\s*"([^\s"]*)"\s*"([^\s"]*)"\s*"([^"]*)"*\s*\((\d+\s*\d+\s*\d+\s*\d+)\)\s*"([^"]*)"\)/g
+					}
+					let info = null;
+					while (info = PVS_FIND_DECLARATION_REGEXP.prelude.exec(data)) {
+						if (info && info.length > 5) {
+							const symbolName: string = info[1];
+							const theoryName: string = info[2];
+							const fileName = PVS_LIBRARY_FILES[PRELUDE_FILE];
+							const symbolDeclarationFile: string = path.join(this.pvsLibraryPath, fileName);
+							const symbolDeclarationPosition = info[4].split(" ");
+							const symbolDeclarationRange = {
+								start: {
+									line: +symbolDeclarationPosition[0],
+									character: +symbolDeclarationPosition[1]
+								},
+								end: {
+									line: +symbolDeclarationPosition[2],
+									character: +symbolDeclarationPosition[3]
+								}
+							};
+							const symbolDeclaration: string = info[5];
+							declarations.push({
+								symbolName,
+								theoryName,
+								symbolDeclaration,
+								symbolDeclarationRange,
+								symbolDeclarationFile
+							});
+						}
+					}
+					while (info = PVS_FIND_DECLARATION_REGEXP.other.exec(data)) {
+						if (info && info.length > 5) {
+							const symbolName: string = info[1];
+							const theoryName: string = info[2];
+							const symbolDeclarationFile: string = path.join(this.contextFolder, `${info[3]}.pvs`);
+							const symbolDeclarationPosition = info[4].split(" ");
+							const symbolDeclarationRange = {
+								start: {
+									line: +symbolDeclarationPosition[0],
+									character: +symbolDeclarationPosition[1]
+								},
+								end: {
+									line: +symbolDeclarationPosition[2],
+									character: +symbolDeclarationPosition[3]
+								}
+							};
+							const symbolDeclaration: string = info[5];
+							declarations.push({
+								symbolName,
+								theoryName,
+								symbolDeclaration,
+								symbolDeclarationRange,
+								symbolDeclarationFile
+							});
+						}
 					}
 				}
 				ans.res = declarations;

@@ -326,7 +326,7 @@ export declare interface PvsCliInterface {
 // 	contextFolder: string
 // }
 
-export const PVS_CLI_FILE: string = 'PvsCli';
+export const PVS_CLI_FILE: string = 'pvsCli';
 
 export declare interface SimpleConsole {
 	log: (str: string) => void,

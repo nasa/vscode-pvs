@@ -140,22 +140,20 @@ export function isPvsFile(fileName: string): boolean {
 	return false;
 }
 export async function fileExists(path: string): Promise<boolean> {
-	if (path) {
-		path = tildeExpansion(path);
-		return await fs.existsSync(path);
-	}
-	return null;
+	return pathExists(path);
 }
-export function dirExists(path: string): boolean {
+export async function dirExists(path: string): Promise<boolean> {
+	return pathExists(path);
+}
+export async function pathExists(path: string): Promise<boolean> {
 	let ans: boolean = false;
 	if (path) {
 		path = tildeExpansion(path);
 		try {
-			ans = fs.existsSync(path);
-		} catch (readError) {
-			console.error(readError);
-		} finally {
+			ans = await fs.existsSync(path);
 			return ans;
+		} catch (readError) {
+			// console.error(readError);
 		}
 	}
 	return false;
@@ -178,4 +176,14 @@ export async function listPvsFiles (folder: string): Promise<FileList> {
 		return fileList;
 	}
 	return null;
+}
+
+
+export function normalizePath(p: string) {
+	if (p) {
+		p = path.normalize(p);
+		p = (p.endsWith("/")) ? p.substr(0, p.length - 1) : p;
+		p = tildeExpansion(p);
+	}
+	return p;
 }

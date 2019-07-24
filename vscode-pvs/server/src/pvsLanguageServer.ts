@@ -484,14 +484,6 @@ class PvsLanguageServer {
     private pvsError(msg: string) {
         this.connection.sendNotification("pvs-error", msg);
 	}
-	
-	private async _parseCurrentContext(): Promise<ContextDiagnostics> {
-		let response: TheoryList = {
-			theories: {},
-			contextFolder: this.contextFolder
-		};
-		return await this.pvsParser.parseCurrentContext();
-	}
 
 	async changeContextAndParseFiles(context: string, opt?: { force?: boolean }): Promise<void> {
 		opt = opt || {};
@@ -500,20 +492,22 @@ class PvsLanguageServer {
 				utils.listTheorems(context, this.connection);
 			});
 			this.contextFolder = context;
-			await this.pvsParser.restart();
-			await this.pvsParser.changeContext(context);
-			const diags: ContextDiagnostics = await this._parseCurrentContext();
-			if (diags) {
-				// send diagnostics
-				Object.keys(diags).forEach(async (key: string) => {
-					const ans: PvsParserResponse = diags[key];
-					if (ans.error) {
-						this.sendDiagnostics(context, ans.error, "Parse error");
-					}
-				});
+			const success: boolean = await this.pvsParser.restart();
+			if (success) {
+				await this.pvsParser.changeContext(context);
+				const diags: ContextDiagnostics = await this.pvsParser.parseCurrentContext()
+				if (diags) {
+					// send diagnostics
+					Object.keys(diags).forEach(async (key: string) => {
+						const ans: PvsParserResponse = diags[key];
+						if (ans.error) {
+							this.sendDiagnostics(context, ans.error, "Parse error");
+						}
+					});
+				}
+				const pvsFiles: FileList = await fsUtils.listPvsFiles(context);
+				this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
 			}
-			const pvsFiles: FileList = await fsUtils.listPvsFiles(context);
-			this.connection.sendRequest("server.response.change-context-and-parse-files", pvsFiles);
 		}
 	}
 

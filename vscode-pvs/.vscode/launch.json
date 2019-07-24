@@ -25,7 +25,7 @@
         {
                 "type": "node",
                 "request": "launch",
-                "name": "Test Server",
+                "name": "Test PVS Language Server",
                 "runtimeExecutable": "${execPath}",
                 "preLaunchTask": {
                         "type": "npm",

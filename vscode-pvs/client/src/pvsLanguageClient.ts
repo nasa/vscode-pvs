@@ -269,7 +269,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// start PVS
 		const contextFolder = (window.activeTextEditor) ? fsUtils.getContextFolder(window.activeTextEditor.document.fileName) : null;
 		this.pvsPath = this.getPvsPath();
-		this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, contextFolder });			
+		setTimeout(() => {
+		this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, contextFolder });
+		}, 2000);
 	}
 	stop () {
 		if (this.client) {

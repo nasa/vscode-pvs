@@ -48,10 +48,10 @@ import { ConnectionError } from "vscode-jsonrpc";
 // 					"proof-command","prove-formula","reset","typecheck"
 // 				],"jsonrpc":"2.0","id":"0"}}'
 
-const xmlrpc = require("xmlrpc");
+import { Client, Server, createClient, createServer } from 'xmlrpc';
 
 export interface XmlRpcError {
-	code: string,
+	code: number,
 	message: string,
 	stack: string
 }
@@ -76,47 +76,107 @@ export interface XmlRpcResponse {
 	error: XmlRpcError,
 	res: RpcPvsResponse
 }
+export interface XmlRpcSystemMethods {
+	error: XmlRpcError;
+	res: string[];
+}
+export interface PvsXmlRpcResponseType {
+	method: string,
+	params: string[],
+	jsonrpc: "2.0"
+}
 
 export class XmlRpcProxy {
-	serverPort: number;
-	client: any;
-	server: any;
-	constructor () {
-		this.serverPort = 22334;
-		this.client = xmlrpc.createClient({
-			host: "localhost", port: 22334, path: "/RPC2"
-		});
-		this.server = xmlrpc.createServer({
-			host: "localhost", port: 9090
-		});
-		this.server.on('info', (res) => {
-			console.log("info");
-		});
-		this.server.on('warning', (res) => {
-			console.log("warning");
-		});
-		this.server.on('debug', (res) => {
-			console.log("debug");
-		});
-		this.server.on('buffer', (res) => {
-			console.log("buffer");
-		});
-		this.server.on('yes-no', (res) => {
-			console.log("yes-no");
-		});
-		this.server.on('dialog', (res) => {
-			console.log("dialog");
+	protected isActive: boolean = false;
+	readonly MAXTIME: number = 2000; // millis
+	readonly client_methods: string[] = [ 'info', 'warning', 'debug', 'buffer', 'yes-no', 'dialog' ];
+	protected banner: string;
+	protected handlers: { [ mth: string ]: (params: string[]) => string[] } = {};
+	protected pvsServerAddress: string = "localhost";
+	protected pvsServerPort: number;
+	protected clientAddress: string = "localhost"
+	protected clientPort: number;
+	protected client: Client;
+	protected server: Server; // GUI server, needed to receive responses sent back by pvs-server
+	constructor (opt?: { serverPort?: number, clientPort?: number }) {
+		opt = opt || {};
+		this.pvsServerPort = (!!opt.serverPort) ? opt.serverPort : 22334;
+		this.clientPort = (!!opt.clientPort) ? opt.clientPort : 9092;
+		this.client_methods.forEach(mth => {
+			this.handlers[mth] = (params: string[]): string[] => {
+				console.log("info", params);
+				return params;
+			}
 		});
 	}
-    listMethods(): Promise<XmlRpcResponse> {
+	protected serverReadyCallBack (resolve: (success: boolean) => void) {
+		this.banner = `XML-RPC GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
+		this.server.on('request', (error: any, params: string, callback: (error: any, value: any) => void) => {
+			if (error) {
+				console.error(error);
+			}
+			if (params) {
+				try {
+					// console.info(`\n res: `, res);
+					const json: PvsXmlRpcResponseType = JSON.parse(params);
+					// console.info(`\n json: `, json);
+					if (json && json.method && this.handlers[json.method]) {
+						this.handlers[json.method](json.params);
+					}
+				} catch (jsonError) {
+					console.error(jsonError);
+				}
+			}
+			callback(error, params);
+		});
+		this.isActive = true;
+		console.info(this.banner);
+		console.log(this.server.httpServer);
+		resolve(true);
+	}
+	async activate (): Promise<boolean> {
+		if (this.isActive) {
+			return Promise.resolve(true);
+		}
 		return new Promise((resolve, reject) => {
-			this.client.methodCall("system.listMethods", [ ], (error: XmlRpcError, value: string) => {
-				const res: RpcPvsResponse = JSON.parse(value);
-				resolve({ error, res });
+			try {
+				this.client = createClient({
+					host: this.pvsServerAddress, port: this.pvsServerPort, path: "/RPC2"
+				});
+				this.server = createServer({
+					host: this.clientAddress, port: this.clientPort, path: "/RPC2"
+				}, () => {
+					this.serverReadyCallBack(resolve);
+				});
+			} catch (err) {
+				console.error("Error while activating XmlRpcProvider", JSON.stringify(err));
+				reject(JSON.stringify(err));
+			}
+		});
+	}
+	async kill (): Promise<void> {
+		return new Promise((resolve, reject) => {
+			if (this.server) {
+				this.server.httpServer.close(() => {
+					delete this.server;
+					delete this.client;
+					this.isActive = false;
+					resolve();
+				});
+			} else {
+				this.isActive = false;
+				resolve();
+			}
+		});
+	}
+    listSystemMethods (): Promise<{ error: XmlRpcError, res: string[] }> {
+		return new Promise((resolve, reject) => {
+			this.client.methodCall("system.listMethods", [ ], (error: XmlRpcError, value: string[]) => {
+				resolve({ error, res: value });
 			});
 		});
     }
-    methodHelp(methodName: string): Promise<XmlRpcResponse> {
+    methodHelp (methodName: string): Promise<XmlRpcResponse> {
 		return new Promise((resolve, reject) => {
 			this.client.methodCall("system.methodHelp", [ methodName ], (error: XmlRpcError, value: string) => {
 				const res: RpcPvsResponse = JSON.parse(value);
@@ -124,124 +184,76 @@ export class XmlRpcProxy {
 			});
 		});
 	}
-	pvsRequest(method: string, args?: string[]): Promise<XmlRpcResponse> {
-        let req = {
-            jsonrpc: "2.0",
-			method: method,
-			id: new Date().getTime()
-        };
-        let jsonReq: string = JSON.stringify(req);//.replace(/"/g,'\\"');
-		return new Promise((resolve, reject) => {
-			this.client.methodCall("pvs.request", [ jsonReq ], (error: XmlRpcError, value: string) => {
-				const res: RpcPvsResponse = JSON.parse(value);
-				resolve({ error, res });
-			});
-		});
-    }
-	typecheck(fileName: string): Promise<XmlRpcResponse> {
-        let req = {
-            jsonrpc: "2.0",
-			method: "typecheck",
-			params: [ fileName ],
-			id: new Date().getTime()
-        };
-        let jsonReq: string = JSON.stringify(req);//.replace(/"/g,'\\"');
-		return new Promise((resolve, reject) => {
-			this.client.methodCall("pvs.request", [ jsonReq, "http://localhost:9090" ], (error: XmlRpcError, value: string) => {
-				const res: RpcPvsResponse = JSON.parse(value);
-				resolve({ error, res });
-			});
-		});
-    }
-	changeContext(contextFolder: string): Promise<XmlRpcResponse> {
-        let req = {
-            jsonrpc: "2.0",
-			method: "change-context",
-			params: [ contextFolder ],
-			id: new Date().getTime()
-        };
-        let jsonReq: string = JSON.stringify(req);//.replace(/"/g,'\\"');
-		return new Promise((resolve, reject) => {
-			this.client.methodCall("pvs.request", [ jsonReq, "http://localhost:9090" ], (error: XmlRpcError, value: string) => {
-				const res: RpcPvsResponse = JSON.parse(value);
-				resolve({ error, res });
-			});
-		});
-	}
-	lisp(cmd: string): Promise<XmlRpcResponse> {
-        let req = {
-            jsonrpc: "2.0",
-			method: "lisp",
-			params: [ cmd ],
-			id: new Date().getTime()
-        };
-        let jsonReq: string = JSON.stringify(req);//.replace(/"/g,'\\"');
-		return new Promise((resolve, reject) => {
-			this.client.methodCall("pvs.request", [ jsonReq, "http://localhost:9090" ], (error: XmlRpcError, value: string) => {
-				const res: RpcPvsResponse = JSON.parse(value);
-				resolve({ error, res });
-			});
-		});
-	}
-}
-
-
-
-function xmlRequest(jsonrpc: string): string {
-    return '<?xml version="1.0"?>'
-            + '\n<methodCall>'
-            + '\n<methodName>pvs.request</methodName>'
-            + '\n<params>'
-            + '\n<param>'
-            // + '\n<value><array><data>'
-            + '\n<value><string>"' + jsonrpc + '"</string></value>'
-            // + '\n</data></array></value>'
-            + '\n</param>'
-            + '\n</params>'
-            + '\n</methodCall>';
-};
-
-class XmlRpcClient {
-    // {
-    //     "jsonrpc":"2.0",
-    //     "id":"typecheck-file /home/nia/Work/nasagitlab/sandbox/examples/sri.pvs",
-    //     "method":"typecheck",
-    //     "params":"/home/nia/Work/nasa-gitlab/sandbox/examples/sri.pvs"
-    // }      
-    typecheck(fileName: string): string {
-        let req = {
-            jsonrpc: "2.0",
-            id: "typecheck-file " + fileName,
-            method: "typecheck",
-            params: fileName
-        };
-
-        // let req = {
-        //     jsonrpc: "2.0",
-        //     method: "typecheck",
-        //     params: "[ " + fileName + " ]",
-        //     id: 0
-        // };
-        let str: string = JSON.stringify(req);
-        let ans: string = xmlRequest(str); //encodeURIComponent ?
-        return ans;
-    }
-    // {
-    //     "jsonrpc":"2.0",
-    //     "id":"list-methods",
-    //     "method":"list-methods"
-    //  }
-    listMethods() {
-        let req = {
+	listMethods(): Promise<XmlRpcResponse> {
+        const req = {
             jsonrpc: "2.0",
 			method: "list-methods",
-			id: "list-methods"
-        };
-        let str: string = JSON.stringify(req);//.replace(/"/g,'\\"');
-        let ans: string = xmlRequest(str);
-        return ans;
+			params: [ ],
+			id: new Date().getTime()
+		};
+        let jsonReq: string = JSON.stringify(req);//.replace(/"/g,'\\"');
+		return new Promise((resolve, reject) => {
+			this.client.methodCall("pvs.request", [ jsonReq, `http://${this.clientAddress}:${this.clientPort}` ], (error: XmlRpcError, value: string) => {
+				if (value) {
+					const res: RpcPvsResponse = JSON.parse(value);
+					resolve({ error, res });
+				} else {
+					reject(null);
+				}
+			});
+		});
     }
+	protected pvsRequest(method: string, params?: string[]): Promise<XmlRpcResponse> {
+        const req = {
+            jsonrpc: "2.0",
+			method: method,
+			params: params || [],
+			id: new Date().getTime()
+        };
+        const jsonReq: string = JSON.stringify(req);//.replace(/"/g,'\\"');
+		return new Promise((resolve, reject) => {
+			this.client.methodCall("pvs.request", [ jsonReq, `http://${this.clientAddress}:${this.clientPort}` ], (error: XmlRpcError, value: string) => {
+				// console.info("RESOLVING...");
+				if (value) {
+					const res: RpcPvsResponse = JSON.parse(value);
+					if (res && res.jsonrpc_result && res.jsonrpc_result.error) {
+						error = error || {
+							code: res.jsonrpc_result.error.code,
+							message: res.jsonrpc_result.error.message,
+							stack: null
+						};
+					}
+					resolve({ error, res });
+				} else {
+					console.warn("Warning: pvs.request responded with null value");
+					resolve({ error: null, res: null });
+				}
+			});
+		});
+    }
+	typecheckFile(fileName: string): Promise<XmlRpcResponse> {
+		return this.pvsRequest('typecheck', [ fileName ]);
+    }
+	parseFile(fileName: string): Promise<XmlRpcResponse> {
+		// this function is missing in pvs-server
+		return this.pvsRequest('parse', [ fileName ]);
+
+    }
+	changeContext(contextFolder: string): Promise<XmlRpcResponse> {
+		return this.pvsRequest('change-context', [ contextFolder ]);
+	}
+	currentContext(): Promise<XmlRpcResponse> {
+		return this.lisp('(pvs-current-directory)');
+	}
+	clientMethods(): Promise<XmlRpcResponse> {
+		return this.pvsRequest('list-client-methods');
+	}
+	lisp(cmd: string): Promise<XmlRpcResponse> {
+		return this.pvsRequest('lisp', [ cmd ]);
+	}
 }
+
+
 
 const pvsJson = {
     "$schema": "http://json-schema.org/schema#",

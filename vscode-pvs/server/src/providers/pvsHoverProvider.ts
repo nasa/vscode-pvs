@@ -40,7 +40,6 @@ import { PvsDefinition } from '../common/serverInterface';
 import { TextDocument, Position, CancellationToken, Hover, Range } from 'vscode-languageserver';
 import { MarkedString } from 'vscode-languageserver-types';
 import { PvsDefinitionProvider } from "./pvsDefinitionProvider";
-import { PVS_LIBRARY_FILES } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
@@ -98,15 +97,11 @@ export class PvsHoverProvider {
 					}
 					if (desc.symbolTheory && desc.symbolDeclaration) {
 						if (desc.symbolDeclarationRange && desc.symbolDeclarationFile) {
-							const folder = (PVS_LIBRARY_FILES[desc.symbolDeclarationFile]) ? this.definitionProvider.getLibrariesPath()
-												: this.definitionProvider.getContextPath();
-							const fileName = PVS_LIBRARY_FILES[desc.symbolDeclarationFile] || (desc.symbolDeclarationFile + ".pvs");
+							const fileName: string = fsUtils.getFilename(desc.symbolDeclarationFile);
 							const link: MarkedString = // encoded as a markdown string
-								"[" + desc.symbolDeclarationFile + ".pvs "
-									+ "(Ln " + desc.symbolDeclarationRange.start.line 
-									+ ", Col " + desc.symbolDeclarationRange.start.character + ")]"
-								+ "(file://" + path.join(folder, fileName)
-								+ "#L" + desc.symbolDeclarationRange.start.line	+ ")";
+								`[${fileName} (Ln ${desc.symbolDeclarationRange.start.line}, Col ${desc.symbolDeclarationRange.start.character})]`
+								+ `(file://${desc.symbolDeclarationFile}`
+								+ `#L${desc.symbolDeclarationRange.start.line})`;
 								// + ", Col " + desc.symbolDeclarationRange.start.character + ")";
 							contents.push(link);
 						}
