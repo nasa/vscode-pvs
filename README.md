@@ -11,13 +11,22 @@ The environment redefines the way developers interact with PVS, and better align
 The main functionalities provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
 - **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented to the user when the user is typing a symbol name in the editor. Code snippets are provided for frequent modeling blocks, e.g., if-then-else. 
+<br> <img src="vscode-pvs/screenshots/vscode-pvs-autocompletion.gif" width="600">
+
 - **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the developer places the cursor over an identifier.
-- **Jump-to declaration**: Navigation of symbol declarations can be performed with simple point-and-click actions: the user places the cursor over the name of an identifier, and a click on the name of the identifier while holding the Ctrl key down allow to jump to the location where the identifier is declared.
+<br> <img src="vscode-pvs/screenshots/vscode-pvs-hover.gif" width="600">
+
+- **Go-to definition**: Navigation of symbol definitions can be performed with simple point-and-click actions: the user places the cursor over the name of an identifier, and a click on the name of the identifier while holding the Ctrl key down allow to jump to the location where the identifier is declared.
+<br> <img src="vscode-pvs/screenshots/vscode-pvs-goto-definition.gif" width="600">
+
 - **Live diagnostics**: Parsing is automatically performed in the background, and errors are reported in-line in the editor. Problematic expressions are underlined with red wavy lines. Tooltips presenting the error details are shown when the user places the cursor over the wavy lines.
-- **In-line actionable commands**: Actionable commands are available for PVS theorems. They are rendered in-line in the editor, above the name of the theorem, and can be used to start a new prover session for the theorem with a simple click action.
-- **Overview of PVS theories**: The overall structure of a set of PVS theories is rendered using an interactive tree-based view. It shows the set of PVS theories in the active workspace, as well as the name and status (proved, unfinished, etc.) of the theorems defined in each theory. Point-and-click actions can be used to jump to theory definitions and type-check the theories.
-- **Interactive proof tree visualizer and editor**: An interactive tree-based view shows the proof associated with a theorem. Point-and-click actions are provided for step-by-step execution of proof commands. Functionalites for editing the proof are currently under development.
-- **Integrated PVS and PVSio Command Line Interfaces**: Integrated command line interfaces allow interaction with the theorem prover and the PVSio evaluator. Auto-completion is provided for prover commands, as well as access to the commands history.
+<br> <img src="vscode-pvs/screenshots/vscode-pvs-live-diagnostics.gif" width="600">
+
+- **Theory Explorer**: The overall structure of a set of PVS theories is rendered using an interactive tree-based view. It shows the set of PVS theories in the active workspace, as well as the name and status (proved, unfinished, etc.) of the theorems defined in each theory. Point-and-click actions can be used to jump to theory definitions and type-check the theories.
+<br> <img src="vscode-pvs/screenshots/vscode-pvs-theory-explorer.gif" width="600">
+
+- **Proof Explorer**: Actionable commands can be used to start a proof, and an interactive tree view can be used to view and edit the proof tree. An integrated command line allows interaction with the theorem prover. Auto-completion is provided for prover commands, as well as access to the commands history.
+<br> <img src="vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
 
 ## Installation instructions
