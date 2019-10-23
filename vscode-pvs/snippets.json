@@ -3,11 +3,11 @@
 	"prefix": "theory",
 	"scope": "pvs",
 	"body": [
-		"${TM_CURRENT_LINE/\\w+\\:(\\s*\\w+)//}THEORY",
+		"${1:theoryName}: THEORY",
 		"  BEGIN $0",
-		"  END ${TM_CURRENT_LINE/(\\w+)\\:(\\s*\\w+)/$1/}"
-	],
-	"notes": "the regexp is in the form (\\w+):(\\s*\\w) -- the first group captures the theory name, the second group captures the incomplete input :theory"
+		"    $2",
+		"  END $1"
+	]
 }, {
 	"description": "Insert if-then-else block",
 	"prefix": "if-then-else",

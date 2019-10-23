@@ -1,0 +1,9 @@
+lib: THEORY
+  BEGIN 
+    flib(x: int): int
+    MIN: int = 2
+    Rec3: TYPE = [#
+      cc1: bool,
+      cc2: bool
+    #]
+  END lib

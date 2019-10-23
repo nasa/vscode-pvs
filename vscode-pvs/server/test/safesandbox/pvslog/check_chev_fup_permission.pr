@@ -1,0 +1,8 @@
+
+{-1}   (no_button_down(st!1) OR
+        (which_press(st!1) = fupb AND pressed(st!1) < maxpress))
+       & per_chevron(st!1)
+  ├───────
+{1}   IF pressed(st!1) - 1 >= 0 THEN pressed(st!1) - 1 < maxpress
+      ELSE pressed(st!1) < maxpress
+      ENDIF

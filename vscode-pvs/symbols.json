@@ -15,7 +15,7 @@
         "scope": "pvs",
         "body": [ "⇒" ]
     }, {
-        "description": "iff",
+        "description": "if and only if",
         "prefix": "\\iff",
         "scope": "pvs",
         "body": [ "⇔" ]

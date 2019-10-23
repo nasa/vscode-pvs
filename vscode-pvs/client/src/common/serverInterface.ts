@@ -36,6 +36,8 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
+ // import { PvsProxy } from "../pvsProxy";
+
 export declare interface Position {
 	line: number, // this attribute ranges from 1 to n, while vscode.line ranges from 0 to n-1 
 	character: number
@@ -57,7 +59,7 @@ export declare interface PvsVersionDescriptor {
 };
 
 export declare interface ErrorType {
-	msg: string,
+	message: string,
 	fileName?: string,
 	line?: number,
 	character?: number
@@ -162,7 +164,7 @@ export declare interface VersionInfoResponseType {
 	pvsVersion: string,
 	lispVersion: string
 }
-export declare interface PvsVersionInfoResponseType extends PvsResponseType {
+export declare interface PvsVersionInfo extends PvsResponseType {
 	error: ErrorType,
 	res: VersionInfoResponseType,
 	raw: string
@@ -170,15 +172,19 @@ export declare interface PvsVersionInfoResponseType extends PvsResponseType {
 export declare interface JsonType {
 	[ key: string ]: JsonType | string; 
 }
-export declare interface ProofNodeType { 
-	id: string, 
-	children: ProofNodeType[], 
+export declare interface ProofNode { 
+	id: string,
+	children: ProofNode[], 
 	type: string 
 }
-export declare interface ProofObjectType {
-	proof: ProofNodeType
+export declare interface ProofTree {
+	proofStructure: ProofNode;
+	proofName: string;
+	formulaName: string;
+	proverVersion: string;
+	prf: string;
 }
-export declare interface PvsListProofStrategiesResponseType extends PvsResponseType {
+export declare interface PvsListProofStrategies extends PvsResponseType {
 	error: ErrorType,
 	res: StrategyDescriptor[],
 	raw: string
@@ -186,7 +192,7 @@ export declare interface PvsListProofStrategiesResponseType extends PvsResponseT
 // export interface FindDeclarationResponseType {
 //     [ key: string ] : PvsDeclarationType; // key is theoryName.symbolName
 // }
-export declare interface PvsFindDeclarationResponseType extends PvsResponseType {
+export declare interface PvsFindDeclaration extends PvsResponseType {
 	error: ErrorType,
 	res: PvsDeclarationType[],
 	raw: string
@@ -211,27 +217,27 @@ export declare interface PvsParserResponse extends PvsResponseType {
 	res: ParserResponse,
 	raw: string
 }
-export declare interface TypecheckerResponse {
-	[ theoryName: string ]: TheoryStatus
-}
-export declare interface PvsTypecheckerResponse extends PvsResponseType {
-	error: ErrorType;
-	res: TypecheckerResponse;
-	raw: string;
-}
+// export declare interface TypecheckerResponse {
+// 	[ theoryName: string ]: TheoryStatus
+// }
+// export declare interface PvsTypecheckerResponse extends PvsResponseType {
+// 	error: ErrorType;
+// 	res: TypecheckerResponse;
+// 	raw: string;
+// }
 
-export declare interface FormulaMap {
-	[ formulaName: string ]: FormulaDescriptor;
-}
+// export declare interface FormulaMap {
+// 	[ formulaName: string ]: FormulaDescriptor;
+// }
 
-export declare interface TheoremsStatus {
-	theoryName: string;
-	theorems: FormulaMap;
-}
+// export declare interface TheoremsStatus {
+// 	theoryName: string;
+// 	theorems: FormulaDescriptor[];
+// }
 
-export declare interface TheoryStatusMap {
-	[ theoryName: string ]: TheoremsStatus
-}
+// export declare interface TheoryStatusMap {
+// 	[ theoryName: string ]: TheoremsStatus
+// }
 
 
 
@@ -296,37 +302,27 @@ export declare interface PvsFileListDescriptor {
 	fileNames: string[] // pvs files
 }
 
-export declare interface ProofDescriptor {
-	fileName: string;
-	fileExtension: string;
-	formulaName: string;
-	theoryName: string;
-	line: number;
-	contextFolder: string;
-}
 
-export declare interface ProofStructure {
-	desc: ProofDescriptor,
-	proof: { id: string, children: any[] }
-}
 
 export declare interface PvsCliInterface {
-	pvsPath: string,
-	contextFolder: string,
-	cmd: string,
-	fileName: string,
-	fileExtension: string, // either .pvs or .tccs -- TODO: keep this info directly in fileName
-	theoryName?: string,
-	formulaName?: string,
-	line?: number
+	type: string;
+	//pvsPath: string;
+	contextFolder: string;
+	// pvsProxy: PvsProxy,
+	// cmd: string,
+	fileName: string;
+	fileExtension: string;
+	channelID: string;
+	theoryName?: string;
+	formulaName?: string;
+	line?: number;
+	prompt?: string;
 }
 
 // export declare interface PvsExecutionContext {
 // 	pvsPath: string,
 // 	contextFolder: string
 // }
-
-export const PVS_CLI_FILE: string = 'pvsCli';
 
 export declare interface SimpleConsole {
 	log: (str: string) => void,
@@ -337,44 +333,30 @@ export declare interface SimpleConsole {
 
 export declare interface SimpleConnection {
     console: SimpleConsole,
-	sendNotification?: (type: string, msg?: string) => void;
-	sendRequest?: (type: string, data: any) => void;
+	sendNotification: (type: string, msg?: string) => void;
+	sendRequest: (type: string, data: any) => void;
 }
 
 
-export declare interface TheoryMap {
-	[ theoryName: string ]: {
-		theoryName: string,
-		fileName: string,
-		position: Position
-	}
-}
-
-
-export interface TheoryDescriptor {
-	theoryName: string,
-	fileName: string,
-	position: Position
-}
-
-export declare interface FormulaDescriptor {
-	fileName: string;
-	theoryName: string;
-	formulaName: string;
-	position: Position;
-	status: string; // proof status
-	isTcc?: boolean;
-}
+// export declare interface TheoryMap {
+// 	[ theoryName: string ]: {
+// 		theoryName: string,
+// 		fileName: string,
+// 		fileExtension: string,
+// 		contextFolder: string,
+// 		position: Position
+// 	}
+// }
 
 export declare interface FileList {
 	contextFolder: string;
 	fileNames: string[]; // TODO: FileDescriptor[]
 }
 
-export declare interface TheoryList {
-	contextFolder: string;
-	theories: TheoryMap; //  TODO TheoryDescriptor[]
-}
+// export declare interface TheoryList {
+// 	contextFolder: string;
+// 	theories: TheoryDescriptor[]; //  TODO TheoryDescriptor[]
+// }
 
 // export declare interface TheoremList {
 // 	contextFolder: string;
@@ -395,15 +377,75 @@ export declare interface DeclarationMap {
 		}
 	}
 }
-export declare interface TheoryStatus {
-	fileName: string,
-	theoryName: string,
-	theorems: FormulaMap
-}
-export declare interface TheoriesStatusMap {
-	[ theoryName: string ]: TheoryStatus
-}
-export declare interface TheoriesMap {
+
+// export interface TheoryDescriptor {
+// 	theoryName: string,
+// 	fileName: string,
+// 	position: Position
+// }
+
+export declare interface FormulaDescriptor {
+	fileName: string;
+	fileExtension: string;
 	contextFolder: string;
-	theoriesStatusMap: TheoriesStatusMap;
+	theoryName: string;
+	formulaName: string;
+	position: Position;
+	status: string; // proof status
+	isTcc?: boolean;
 }
+
+export declare interface TheoryDescriptor {
+	fileName: string;
+	fileExtension: string;
+	contextFolder: string;
+	theoryName: string;
+	position: Position; // position of the theory declaration
+	theorems?: FormulaDescriptor[];
+}
+// export declare interface TheoriesStatusMap {
+// 	[ theoryName: string ]: TheoryStatus;
+// }
+// export declare interface TheoriesMap {
+// 	contextFolder: string;
+// 	theoriesStatusMap: TheoriesStatusMap;
+// }
+export declare interface ContextDescriptor {
+	contextFolder: string;
+	theories: TheoryDescriptor[];
+};
+
+export const cliSessionType = {
+	pvsioEvaluator: "pvs.pvsio-evaluator",
+	proveFormula: "pvs.prove-formula"
+};
+
+export const serverCommand = {
+	typecheckFile: "pvs.typecheck-file",
+	proveFormula: "pvs.prove-formula",
+	proofScript: "pvs.proof-script",
+	proofCommand: "pvs.proof-command",
+	parseContext: "pvs.parse-context",
+	parseFile: "pvs.parse-file",
+	listContext: "pvs.list-context",
+	showTccs: "pvs.show-tccs",
+	restart: "pvs.restart"
+};
+// TODO: add here type information for args
+export const serverEvent = {
+	typecheckFileResponse: "pvs.response.typecheck-file",
+	proveFormulaResponse: "pvs.response.prove-formula",
+	proofScriptResponse: "pvs.response.proof-script",
+	proofCommandResponse: "pvs.response.proof-command",
+	parseContextResponse: "pvs.response.parse-context",
+	parseFileResponse: "pvs.response.parse-file",
+	listContextResponse: "pvs.response.list-context",
+	showTccsResponse: "pvs.response.show-tccs",
+	restartResponse: "pvs.response.restart",
+
+	contextUpdate: "pvs.event.context-update",
+	proofStateUpdate: "pvs.event.proof-state",
+
+	pvsVersionInfo: "pvs.event.version-info",
+	pvsNotPresent: "pvs.event.pvs-not-present"
+};

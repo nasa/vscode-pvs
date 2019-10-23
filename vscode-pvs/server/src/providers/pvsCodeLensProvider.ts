@@ -38,113 +38,111 @@
  **/
 
 import { TextDocument, CancellationToken, CodeLens, Range } from 'vscode-languageserver';
-import { ExpressionDescriptor } from '../common/serverInterface';
 import { PvsDefinitionProvider } from './pvsDefinitionProvider';
-import { findTheoryName } from '../common/languageUtils';
-import * as fs from '../common/fsUtils';
+import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 
 export class PvsCodeLensProvider {
-	private definitionProvider: PvsDefinitionProvider;
+    protected definitionProvider: PvsDefinitionProvider;
+
     /**
      * @constructor
-     * @param definitionProvider Pointer to the definition provider 
-     */
-    constructor (definitionProvider: PvsDefinitionProvider) {
+	 * @param definitionProvider Definition provider, necessary for resolving symbol definitions.
+	 */
+	constructor (definitionProvider: PvsDefinitionProvider) {
 		this.definitionProvider = definitionProvider;
-    }
+	}
     /**
 	 * Standard API of the language server, provides a completion list while typing a pvs expression
-	 * @param document Text document requiring intellisense
+     * TODO: improve performance of this function
+	 * @param document Text document requiring codelens
 	 * @param position Current position of the cursor
 	 * @param token Cancellation token
 	 */
-	provideCodeLens(document: TextDocument, token?: CancellationToken): CodeLens[] {
-        const fileName: string = fs.getFilename(document.uri);
-        const fileExtension: string = fs.getFileExtension(document.uri);
-        const contextFolder: string = fs.getContextFolder(document.uri);
-        const codeLens: CodeLens[] = [];
-        const doc: string = document.getText();
-        const lines: string[] = doc.split("\n");
-        for (let i = 0; i < document.lineCount; i++) {
-            // runit
-            if (/\s*%\s*@\s*runit\b/gi.test(lines[i])) {
-                const txt: string = lines.slice(i).join("\n");
-                const match: RegExpMatchArray = /\s*%\s*@\s*runit\b\s*(?:(?:\s*%[^\n]*\s*)*)(\w+)/gi.exec(txt);
-                if (match && match[1]) {
-                    const theoryName: string = findTheoryName(doc, i);
-                    const range: Range = {
-						start: { line: i + 1, character: 0 },
-						end: { line: i + 1, character: 10 }
-					};
-                    const req: ExpressionDescriptor = {
-                        fileName: fileName,
-                        theoryName: theoryName,
-                        expression: match[1]
-                    };
-                    codeLens.push({
-						range: range, 
-						command: {
-                        	title: "run " + match[1],
-                        	command: "cmd.runit",
-							arguments: [ req ]
-						}
-					});
-                }
-            }
-        }
-        // step proof
-        // (?:\%.*\s)* is for comments
-        //const theoremRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\s)*\s*)*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
-        const regexp: RegExp = new RegExp(utils.theoremRegexp);
-        let match: RegExpMatchArray = null;
-        while (match = regexp.exec(doc)) {
-            if (match.length > 2 && match[2] && !match[1]) {
-                const formulaName: string = match[2];
-                const docUp: string = doc.slice(0, match.index + match[2].length);
-                const i: number = docUp.split("\n").length - 1;
-                const theoryName: string = utils.findTheoryName(doc,i);
-                const args: { fileName: string, theoryName: string, formulaName: string, line: number, fileExtension: string, contextFolder: string } =
-                        { fileName, theoryName, formulaName, line: i, fileExtension, contextFolder }
-                codeLens.push({
-                    range: {
-                        start: { line: i, character: match.index },
-                        end: { line: i, character: match.index + formulaName.length }
-                    },
-                    command: {
-                        title: `prove`,
-                        command: "codelense.pvs.step-proof",
-                        arguments: [ args ]
+	provideCodeLens(document: { txt: string, uri: string }, token?: CancellationToken): Thenable<CodeLens[]> {
+        if (document) {
+            const contextFolder: string = fsUtils.getContextFolder(document.uri);
+            const fileName: string = fsUtils.getFileName(document.uri);
+            const fileExtension: string = fsUtils.getFileExtension(document.uri);
+            if (!this.definitionProvider.isProtectedFolder(contextFolder)) {
+                // const fileName: string = fs.getFilename(document.uri);
+                // const fileExtension: string = fs.getFileExtension(document.uri);
+                const codeLens: CodeLens[] = [];
+                const doc: string = document.txt;
+                // prove-formula
+                // (?:\%.*\s)* is for comments
+                //const theoremRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\s)*\s*)*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
+                const regexp: RegExp = new RegExp(utils.theoremRegexp);
+                let match: RegExpMatchArray = null;
+                while (match = regexp.exec(doc)) {
+                    if (match.length > 2 && match[2] && !match[1]) {
+                        const formulaName: string = match[2];
+
+                        // the following can be done in the resolve
+                        const character: number = match.index;
+                        const docUp: string = doc.slice(0, character + formulaName.length);
+                        const line: number = docUp.split("\n").length - 1;
+
+                        const theoryName: string = utils.findTheoryName(doc, line);
+                        const args = {
+                            fileName,
+                            fileExtension,
+                            contextFolder,
+                            theoryName, 
+                            formulaName,
+                            line
+                        };
+                        codeLens.push({
+                            range: {
+                                start: { line: line, character: match.index },
+                                end: { line: line, character: match.index + formulaName.length }
+                            },
+                            command: {
+                                title: `prove`,
+                                command: "vscode-pvs.prove-formula",
+                                arguments: [ args ]
+                            }
+                            // ,
+                            // data: {
+                            //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
+                            // }
+                        });
                     }
-                });
+                }
+                return Promise.resolve(codeLens);
             }
         }
-            // proveit
-            // else if (/\s*%\s*@\s*proveit\b/gi.test(lines[i])) {
-            //     let txt: string = lines.slice(i).join("\n");
-            //     let match: RegExpMatchArray = /\s*%\s*@\s*proveit\b\s*(?:(?:\s*%[^\n]*\s*)*)(\w+)/gi.exec(txt);
-            //     if (match[1]) {
-			// 		let theoryName: string = findTheoryName(doc, i);
-            //         let range: Range = {
-			// 			start: { line: i + 1, character: 0 },
-			// 			end: { line: i + 1, character: 10 }
-			// 		};
-            //         let req: FormulaDescriptor = {
-            //             fileName: fileName,
-            //             theoryName: theoryName,
-            //             formulaName: match[1],
-            //             line: range.start.line
-            //         };
-            //         codeLens.push({
-			// 			range: range,
-			// 			command: {
-			// 				title: "prove " + match[1],
-			// 				command: "cmd.proveit",
-			// 				arguments: [ req ]
-			// 			}
-			// 		});
-            //     }
-            // }
-        return codeLens;
+        return null;
     }
-}
+
+    resolveCodeLens(codeLens: CodeLens, token?: CancellationToken): CodeLens {
+        return codeLens;
+        // if (codeLens && codeLens.data) {
+        //     const doc: string = codeLens.data.doc;
+        //     const line: number = codeLens.data.line;
+        //     const character: number = codeLens.data.character;
+        //     const formulaName: string = codeLens.data.formulaName;
+        //     const fileName: string = codeLens.data.fileName;
+        //     const fileExtension: string = codeLens.data.fileExtension;
+        //     const contextFolder: string = codeLens.data.contextFolder;
+
+        //     const theoryName: string = utils.findTheoryName(doc, line);
+        //     console.log("codelense: theoryName = ", theoryName);
+        //     console.log("codelense: formulaName = ", formulaName);
+            
+        //     const args = { fileName, theoryName, formulaName, line, fileExtension, contextFolder }
+        //     return {
+        //         range: {
+        //             start: { line, character },
+        //             end: { line, character: character + formulaName.length }
+        //         },
+        //         command: {
+        //             title: `prove`,
+        //             command: "codelense.pvs.prove-formula",
+        //             arguments: [ args ]
+        //         }
+        //     };
+        // }
+        // return null;
+    }
+ }

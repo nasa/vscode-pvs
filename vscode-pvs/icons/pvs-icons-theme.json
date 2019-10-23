@@ -1,13 +1,24 @@
 {
 	"iconDefinitions": {
-		"_pvs_icon": {
-			"iconPath": "pvs-icon.png"
+		"pvs_icon": {
+			"iconPath": "pvs-icon.png",
+			"description": "pvs specification file"
+		},
+		"proof_script_icon": {
+			"iconPath": "prf-icon.png",
+			"description": "pvs proof file"
+		},
+		"proof_state_icon": {
+			"iconPath": "pr-icon.png",
+			"description": "pvs proof state file"
 		}
 	},
 	"fileExtensions": {
-		"pvs": "_pvs_icon"
+		"pvs": "pvs_icon",
+		"prf": "proof_script_icon",
+		"pr" : "proof_state_icon"
 	},
 	"languageIds": {
-		"pvs": "_pvs_icon"
+		"pvs": "pvs_icon"
 	}
 }

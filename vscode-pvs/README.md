@@ -17,9 +17,9 @@ The main features provided by the environment are as follows:
 
 ## Installation instructions
 1. Download the latest release of VSCode-PVS from the [github repository](https://github.com/nasa/vscode-pvs/releases)
-2. Download and install NodeJS from https://nodejs.org/en/download
-3. Download and install PVS Allegro from http://pvs.csl.sri.com
-4. Download and install Visual Studio Code from https://code.visualstudio.com
+2. Download and install NodeJS (v10.16.3 or greater) from https://nodejs.org/en/download
+3. Download and install PVS Allegro (v7.0 or greater) from http://pvs.csl.sri.com
+4. Download and install Visual Studio Code (v1.38 or greater) from https://code.visualstudio.com
 5. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
 6. Set the path to the PVS executable in Visual Studio Code: from the Settings menu, choose Files -> Preferences -> Settings -> Extensions -> PVS -> path
 7. Have fun using the extension!
@@ -31,20 +31,22 @@ The main features provided by the environment are as follows:
 ├── client                       // PVS Language Client (VSCode entry point)
 │   └── src
 │       ├── providers            // Client-side service providers (emacs binding, decorations)
-│       ├── views                // PVS Proof Explorer, PVS Theory Explorer 
-│       ├── terminals            // PVS Command Line Interface 
+│       ├── views                // Visual Components: Proof Explorer, Theory Explorer, Terminals, Status Bar, Sequent Viewer 
+│       ├── common               // Utility functions 
 │       └── pvsLanguageClient.ts // PVS Language Client implementation
 ├── icons                        // PVS icons theme
 ├── package.json                 // The extension manifest
 ├── syntax                       // Syntax highlighting
 ├── LICENSES                     // NASA Open Source License Agreement
+├── Makefile                     // Makefile for building a .vsix image from the source code
 └── server                       // PVS Language Server
     └── src
         ├── providers                          // Server-side service providers
         │     ├── pvsCodeLensProvider.ts       // In-line actionable commands
         │     ├── pvsCompletionProvider.ts     // Auto-completion
         │     ├── pvsDefinitionProvider.ts     // Find definitions
-        │     └── pvsHoverProvider.ts          // Hover information                
+        │     └── pvsHoverProvider.ts          // Hover information 
+        ├── common               // Utility functions           
         ├── pvsCli.ts            // PVS Command Line Interface
         ├── pvsProcess.ts        // PVS process wrapper
         ├── pvsLisp.ts           // Lisp reader for parsing PVS responses
@@ -53,12 +55,17 @@ The main features provided by the environment are as follows:
 
 
 ## ChangeLog
+### 1.0.13 (2019.10.xx)
+- New visual components: Proof Explorer, Sequent Viewer
+- Revised architecture, to connect to the new XMLRPC server provided by PVS 7.0
+- Improved PVS command line interface: autocompletion, syntax highlighting
+- Improved status bar
+
 ### 1.0.12 (2019.06.07)
 - PVS Command Line Interface (auto-completion and history navigation for proof commands, syntax highlighting for PVS language)
 - Improved Theory Explorer (proof status for theorems and tccs)
 - Improved navigation of symbol definitions (typechecking information are now fed to the parser process)
 - Improved status bar
-- Cheat codes for developers: M-x pvs6 M-x pvs7 allow rapid switch of pvs version (requires setting of pvs-zen-path variables in vscode-pvs settings)
 
 ### 1.0.11 (2019.05.29)
 - Improved Theory Explorer (navigation of theorems)

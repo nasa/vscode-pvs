@@ -1,0 +1,7 @@
+lib0: THEORY
+  BEGIN 
+    Rec: TYPE [#
+      cc1: bool,
+      cc2: bool
+    #]
+  END 

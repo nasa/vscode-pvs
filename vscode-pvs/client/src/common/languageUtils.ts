@@ -38,9 +38,19 @@
 
 import * as fsUtils from './fsUtils';
 import * as path from 'path';
-import { TheoryMap, StrategyDescriptor,
-			TheoryList, FileList, TheoriesMap, TheoryStatus, FormulaDescriptor, SimpleConnection } from '../common/serverInterface';
+import * as language from '../common/languageKeywords';
+import { StrategyDescriptor, FileList, FormulaDescriptor, SimpleConnection, ContextDescriptor, 
+			TheoryDescriptor, ProofNode,  ProofTree } from '../common/serverInterface';
 
+interface Position {
+	line: number;
+	character: number;
+}
+interface Range {
+	start: Position,
+	end: Position
+};
+			
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
 export const RECORD: { [key: string]: RegExp } = {
@@ -76,33 +86,7 @@ export function findTheoryName(txt: string, line: number): string | null {
 	}
 	return null;
 };
-/**
- * Utility function, finds all theories in a given file
- * @param fileName 
- * @param fileContent 
- */
-export function findTheories(fileName: string, fileContent: string): TheoryMap {
-	// TODO: return an array rather than a map? open the file directly in the function?
-	let ans: TheoryMap = {};
-	const regexp: RegExp = new RegExp(theoryRegexp);
-	let match: RegExpMatchArray = null;
-	while(match = regexp.exec(fileContent)) {
-		let theoryName: string = match[1];
-		const clip: string = fileContent.slice(0, match.index);
-		const lines: string[] = clip.split("\n"); 
-		const line: number = lines.length;
-		const character: number = 0; //match.index - lines.slice(-1).join("\n").length;
-		ans[theoryName] = {
-			position: {
-				line: line,
-				character: character
-			},
-			theoryName: theoryName,
-			fileName: fileName
-		};
-	}
-	return ans;
-}
+
 
 /**
  * @function listTheoryNames
@@ -138,51 +122,20 @@ export const theoremRegexp: RegExp = /(%.*)?(\b\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\
 // 	return ans;
 // }
 
-export async function listTheoremsInFile (uri: string): Promise<FormulaDescriptor[]> {
-	if (uri) {
-		const fileName: string = uri.replace("file://", "");
-		const txt: string = await fsUtils.readFile(fileName);
-		if (txt) {
-			const slices: string[] = txt.split("\n");
-			const theories: TheoryMap = findTheories(fileName, txt);
-			const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories
-			const theoryNames: string[] = Object.keys(theories);
-			if (theoryNames) {
-				for (let i = 0; i < theoryNames.length; i++) {
-					boundaries.push({
-						theoryName: theoryNames[i],
-						from: theories[theoryNames[i]].position.line,
-						to: (i + 1 < theoryNames.length) ? theories[theoryNames[i + 1]].position.line : slices.length
-					});
-				}
-				const theoremsArray: FormulaDescriptor[] = [];
-				for (let i = 0; i < boundaries.length; i++) {
-					const content: string = slices.slice(boundaries[i].from, boundaries[i].to).join("\n");
-					if (content && content.trim()) {
-						const regex: RegExp = new RegExp(theoremRegexp);
-						let match: RegExpMatchArray = null;
-						while (match = regex.exec(content)) {
-							if (match.length > 2 && match[2] && !match[1]) {
-								const formulaName: string = match[2];
-								const slice: string = content.slice(0, match.index);
-								const offset: number = (slice) ? slice.split("\n").length : 0;
-								const line: number = boundaries[i].from + offset;
-								const desc: FormulaDescriptor = {
-									fileName: fsUtils.getFilename(uri),
-									theoryName: boundaries[i].theoryName,
-									formulaName,
-									position: { line, character: 0 },
-									status: null
-								}
-								theoremsArray.push(desc);
-							}
-						}
-					} else {
-						console.error("Error while finding theory names :/");
-					}
-				}
-				return theoremsArray;
-			}
+
+/**
+ * Utility function, returns the list of theories defined in a given pvs file
+ * @param fname Path to a pvs file
+ */
+export async function listTheoriesInFile (fname: string): Promise<TheoryDescriptor[]> {
+	if (fname) {
+		const fileName: string = fsUtils.getFileName(fname);
+		const fileExtension: string = fsUtils.getFileExtension(fname);
+		const contextFolder: string = fsUtils.getContextFolder(fname);
+		const fileContent: string = await fsUtils.readFile(fname);
+		if (fileContent) {
+			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
+			return response;
 		}
 	}
 	return null;
@@ -190,13 +143,237 @@ export async function listTheoremsInFile (uri: string): Promise<FormulaDescripto
 
 
 /**
- * @function findTheorem
+ * Utility function, returns the list of theories defined in a given pvs file
+ * @param fname Path to a pvs file
+ */
+export async function mapTheoriesInFile (fname: string): Promise<{ [ key: string ]: TheoryDescriptor }> {
+	if (fname) {
+		const fileName: string = fsUtils.getFileName(fname);
+		const fileExtension: string = fsUtils.getFileExtension(fname);
+		const contextFolder: string = fsUtils.getContextFolder(fname);
+		const fileContent: string = await fsUtils.readFile(fname);
+		if (fileContent) {
+			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
+			const theoryMap: { [ key: string ]: TheoryDescriptor } = {};
+			for (const i in response) {
+				theoryMap[ response[i].theoryName ] = response[i];
+			}
+			return theoryMap;
+		}
+	}
+	return null;
+}
+
+
+/**
+ * Utility function, finds all theories in a given file
+ * @param desc Descriptor indicating filename, file extension, context folder, and file content
+ */
+export function listTheories(desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean }): TheoryDescriptor[] {
+	if (desc) {
+		let ans: TheoryDescriptor[] = [];
+		const regexp: RegExp = new RegExp(theoryRegexp);
+		let match: RegExpMatchArray = null;
+		while (match = regexp.exec(desc.fileContent)) {
+			let theoryName: string = match[1];
+			const clip: string = desc.fileContent.slice(0, match.index);
+			const lines: string[] = clip.split("\n"); 
+			const line: number = lines.length;
+			const character: number = 0; //match.index - lines.slice(-1).join("\n").length;
+			ans.push({
+				theoryName,
+				position: {
+					line: line,
+					character: character
+				},
+				fileName: desc.fileName,
+				fileExtension: desc.fileExtension,
+				contextFolder: desc.contextFolder
+			});
+		}
+		return ans;
+	}
+	return null;
+}
+
+/**
+ * Utility function, returns the list of theories defined in a given pvs file
+ * @param fname Path to a pvs file
+ */
+export async function listTheoremsInFile (fname: string): Promise<FormulaDescriptor[]> {
+	if (fname) {
+		const fileName: string = fsUtils.getFileName(fname);
+		const fileExtension: string = fsUtils.getFileExtension(fname);
+		const contextFolder: string = fsUtils.getContextFolder(fname);
+		const fileContent: string = await fsUtils.readFile(fname);
+		if (fileContent) {
+			const response: FormulaDescriptor[] = await listTheorems({ fileName, fileExtension, contextFolder, fileContent });
+			return response;
+		}
+	}
+	return null;
+}
+
+
+export interface SFormulas {
+	labels: string[];
+	changed: boolean;
+	formula: string;
+	'names-info': any[];
+}
+
+export interface ProofStateNode {
+	label: string;
+	sequent: { succedents?: SFormulas[], antecedents?: SFormulas[] };
+	commentary: string[];
+	action?: string;
+	num_subgoals: number;
+	'prev-cmd'?: string[]; // this is actually the last command executed. Why is this an array btw? from the execution I can see just one command in it
+}
+
+import { PvsResponse, PvsResult } from './pvs-gui';
+
+function sequentToString(s: SFormulas[], opt?: { useColors?: boolean }): string {
+	let res: string = "";
+	opt = opt || {};
+	s.forEach((sequent: SFormulas) => {
+		let label: string = sequent.labels.join(" ");
+		label = (sequent.changed) ? `{${label}}` : `[${label}]` ;
+		label = (sequent.changed && opt.useColors) ? `${colorText(label, textColor.green)}` : `${label}` ;
+		const formula: string = (opt.useColors) ? `${pvsCliSyntaxHighlighting(sequent.formula)}` : sequent.formula;
+		res += `${label}   ${formula}\n`;
+	});
+	return res;
+}
+
+export function desc2id (desc: { fileName: string, formulaName?: string, theoryName?: string }): string {
+	if (desc) {
+		if (desc.formulaName) {
+			return desc.formulaName;
+		}
+		if (desc.fileName) {
+			return desc.fileName;
+		}
+	}
+	console.error("[languageUtils.desc2id] Warning: trying to generate ID from null descriptor");
+	return null;
+}
+
+export function pvsCliSyntaxHighlighting(text: string): string {
+	if (text) {
+		// numbers and operators should be highlighted first, otherwise the regexp will change characters introduced to colorize the string
+		const number_regexp: RegExp = new RegExp(language.PVS_NUMBER_REGEXP_SOURCE, "g");
+		text = text.replace(number_regexp, (number: string) => {
+			return colorText(number, textColor.yellow);
+		});
+		const operators_regexp: RegExp = new RegExp(language.PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE, "g");
+		text = text.replace(operators_regexp, (op: string) => {
+			return colorText(op, textColor.blue);
+		});
+		const keywords_regexp: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
+		text = text.replace(keywords_regexp, (keyword: string) => {
+			return colorText(keyword, textColor.blue);
+		});
+		const function_regexp: RegExp = new RegExp(language.PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE, "g");
+		text = text.replace(function_regexp, (fname: string) => {
+			return colorText(fname, textColor.green);
+		});
+		const builtin_types_regexp: RegExp = new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g");
+		text = text.replace(builtin_types_regexp, (tname: string) => {
+			return colorText(tname, textColor.green);
+		});
+		const truefalse_regexp: RegExp = new RegExp(language.PVS_TRUE_FALSE_REGEXP_SOURCE, "gi");
+		text = text.replace(truefalse_regexp, (tf: string) => {
+			return colorText(tf, textColor.blue);
+		});
+	}
+	return text;
+}
+
+export function formatProofState (proofState: ProofStateNode, opt?: { useColors?: boolean, showAction?: boolean }): string {
+	if (proofState) {
+		let res: string = "";
+		opt = opt || {};
+		if (proofState.action && opt.showAction) {
+			res += `\n${proofState.action}\n`;
+		}
+		if (proofState.sequent) {
+			res += "\n";
+			if (proofState.sequent.antecedents) {
+				res += sequentToString(proofState.sequent.antecedents, opt);
+			}
+			// res += "  |-------\n";
+			res += "  ├───────\n";
+			if (proofState.sequent.succedents) {
+				res += sequentToString(proofState.sequent.succedents, opt);
+			}
+		}
+		return res;
+	} else {
+		console.error("[language-utils.format-proof-state] Error: proof state is null :/");
+	}
+	return null;
+}
+
+/**
+ * Utility function, returns the list of theorems defined in a given pvs file
+ * @param desc Descriptor indicating filename, file extension, context folder, file content, and whether the file in question is the prelude (flag prelude)
+ */
+export function listTheorems (desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean }): FormulaDescriptor[] {
+	if (desc) {
+		const theories: TheoryDescriptor[] = listTheories(desc);
+		const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories
+		if (theories) {
+			const slices: string[] = desc.fileContent.split("\n");
+			for (let i = 0; i < theories.length; i++) {
+				boundaries.push({
+					theoryName: theories[i].theoryName,
+					from: theories[i].position.line,
+					to: (i + 1 < theories.length) ? theories[i + 1].position.line : slices.length
+				});
+			}
+			const formulaDescriptors: FormulaDescriptor[] = [];
+			for (let i = 0; i < boundaries.length; i++) {
+				const content: string = slices.slice(boundaries[i].from, boundaries[i].to).join("\n");
+				if (content && content.trim()) {
+					const regex: RegExp = new RegExp(theoremRegexp);
+					let match: RegExpMatchArray = null;
+					while (match = regex.exec(content)) {
+						if (match.length > 2 && match[2] && !match[1]) {
+							const formulaName: string = match[2];
+							const slice: string = content.slice(0, match.index);
+							const offset: number = (slice) ? slice.split("\n").length : 0;
+							const line: number = boundaries[i].from + offset;
+							const fdesc: FormulaDescriptor = {
+								fileName: desc.fileName,
+								fileExtension: desc.fileExtension,
+								contextFolder: desc.contextFolder,
+								theoryName: boundaries[i].theoryName,
+								formulaName,
+								position: { line, character: 0 },
+								status: (desc.prelude) ? "proved" : null
+							}
+							formulaDescriptors.push(fdesc);
+						}
+					}
+				} else {
+					console.error("Error while finding theory names :/");
+				}
+			}
+			return formulaDescriptors;
+		}
+	}
+	return null;
+}
+
+/**
+ * @function findFormulaName
  * @description Utility function, finds the name of a theorem that immediately preceeds a given line
  * @param txt The text where the theory should be searched 
  * @param line The line in the document where search should end
  * @returns { string | null } The theory name if any is found, null otherwise
  */
-export function findTheorem(txt: string, line: number): string | null {
+export function findFormulaName(txt: string, line: number): string | null {
 	let text: string = txt.split("\n").slice(0, line + 1).join("\n");
 	let candidates: string[] = [];
 	// (?:\%.*\s)* removes comments
@@ -212,6 +389,7 @@ export function findTheorem(txt: string, line: number): string | null {
 	}
 	return null;
 };
+
 
 /**
  * @function findProofObligation
@@ -233,40 +411,49 @@ export function findProofObligation(formulaName: string, txt: string): number {
 };
 
 
-interface Position {
-	line: number;
-	character: number;
-}
-interface Range {
-	start: Position,
-	end: Position
-};
-
-
 /**
  * @function getWordRange
  * @TODO improve this function, currently operators are not recognized/resolved
  * @description Utility function, identifies the range of the word at the cursor position.
- * 				The default search strategy builds on a regular expression designed to identify symbol names (\w+) and strings (\"([^\"]*)\")
+ * 				Uses regular expressions designed to identify symbol names (\w+) and strings (\"([^\"]*)\")
  * @param txt The document that contains the word
  * @param position Position in the document
  */
 export function getWordRange(txt: string, position: Position): Range {
+
+	const testTokenizer = (regexp: RegExp, txt: string): { token: string, character: number } => {
+		let match: RegExpMatchArray = regexp.exec(txt);
+		let needle: number = -1;
+		let token: string = null;
+		while (match && match.index <= position.character) {
+			needle = match.index;
+			token = match[0];
+			match = regexp.exec(txt);
+		}
+		if (needle >= 0 && needle + token.length >= position.character) {
+			character = needle;
+			len = token.length;
+			return { token, character: needle };
+		}
+		return null;
+	}
+
 	let character: number = position.character;
 	let len: number = 0;
-	let lines: string[] = txt.split("\n");
+	const lines: string[] = txt.split("\n");
 	if (lines && lines.length > position.line) {
-		let txt: string = lines[position.line];
-		let needle: RegExp = /(\w+\??\!?\+?)|\"([^\"]*)\"/g; // symbol, which may terminate with ? ! + | string
-		let match: RegExpMatchArray = [];
-		while(match = needle.exec(txt)) {
-			if (match.index <= position.character) {
-				character = match.index;
-				len = (match[1]) ? match[1].length 
-						: match[2].length + 2; // match[2] is a string, we need to add +2 because of the ""
-			} else {
-				break;
-			}
+		const txt: string = lines[position.line];
+		const strings: RegExp = /\"[\w\W]+?\"/g;
+		const numbers: RegExp = /([+-]?\d+\.?\d*)\b/g;
+		const keywords: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
+		const symbols: RegExp = /(\w+\??)/g;
+		let ans = testTokenizer(strings, txt)
+					|| testTokenizer(numbers, txt)
+					|| testTokenizer(keywords, txt)
+					|| testTokenizer(symbols, txt);
+		if (ans) {
+			character = ans.character;
+			len = ans.token.length;
 		}
 	}
 	return {
@@ -275,17 +462,39 @@ export function getWordRange(txt: string, position: Position): Range {
 	};
 }
 
-export function getText(txt: string, range: Range): string {
-	if (txt) {
-		const lines: string[] = txt.split("\n");
-		let ans: string[] = lines.slice(range.start.line, range.end.line);
-		ans[0] = ans[0].substr(range.start.character);
-		const len: number = ans.length - 1;
-		ans[ans.length - 1] = ans[ans.length - 1].substr(0, len - range.end.character);
-		return ans.join("\n");
+
+
+/**
+ * @function listSymbols
+ * @TODO improve this function, currently operators are not recognized/resolved
+ * @description Utility function, identifies symbols in the given text.
+ * 				Uses regular expressions designed to identify symbol names (\w+) and strings (\"([^\"]*)\")
+ * @param txt The document that contains the word
+ * @param position Position in the document
+ */
+export function listSymbols(txt: string): string[] {
+
+	const symbols: RegExp = /(\w+\??)/g; // TODO: negative lookahead to remove strings
+	const keywords: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
+
+	let symbolsMap: { [ symbol: string ]: { line: number, character: number } } = {};
+	let match: RegExpMatchArray = null;
+	const lines: string[] = txt.split("\n");
+	const maxIterations: number = 100;
+	if (lines && lines.length) {
+		for (let i = 0; i < lines.length; i++) {
+			const txt: string = lines[i];
+			for(let n = 0; n < maxIterations && (match = symbols.exec(txt)); n++) {
+				if (!keywords.test(match[0]) && isNaN(+match[0])) {
+					symbolsMap[match[0]] = { line: i, character: match.index }; // position is used for debugging purposes here
+				}
+			}
+		}
 	}
-	return txt;
+
+	return Object.keys(symbolsMap);
 }
+
 
 /**
  * @function getErrorRange
@@ -314,7 +523,7 @@ export const textColor: { [ key: string ]: number } = {
 	blue: 32,
 	yellow: 3,
 	green: 10,
-	magenta: 90
+	red: 90 // this is actually magenta
 }
 
 export function colorText(text: string, colorCode: number): string {
@@ -322,61 +531,35 @@ export function colorText(text: string, colorCode: number): string {
 	return `\x1b[38;5;${colorCode}m${text}\x1b[0m`;
 }
 
-/**
- * Utility function, returns the list of theories defined in a given pvs file
- * @param uri Path to a pvs file
- */
-export async function listTheoriesInFile (fileName: string): Promise<TheoryMap> {
-	if (fileName) {
-		fileName = fileName.startsWith("file://") ? fileName.replace("file://", "") : fileName;
-		let response: TheoryMap = {};
-		const txt: string = await fsUtils.readFile(fileName);
-		if (txt) {
-			fileName = fsUtils.getFilename(fileName, { removeFileExtension: true });
-			// const doc: TextDocument = this.documents.get("file://" + uri);
-			response = findTheories(fileName, txt);
-			return response;
-		}
-	}
-	return null;
-}
 
 /**
  * Lists all theorems in a given context folder
  */
-export async function listTheorems (contextFolder: string, connection?: SimpleConnection): Promise<TheoriesMap> {
-	const response: TheoriesMap = {
-		theoriesStatusMap: {},
+export async function getContextDescriptor (contextFolder: string, connection: SimpleConnection, prelude?: boolean): Promise<ContextDescriptor> {
+	const response: ContextDescriptor = {
+		theories: [],
 		contextFolder
 	};
-	if (connection && connection.sendRequest) {
-		// send an initial response so the client can update the view
-		connection.sendRequest("server.response.list-theorems", response);
-	}
 	const fileList: FileList = await fsUtils.listPvsFiles(contextFolder);
-	for (let i in fileList.fileNames) {
-		const uri: string = path.join(contextFolder, fileList.fileNames[i]);
-		const desc: FormulaDescriptor[] = await listTheoremsInFile(uri);
-		if (desc) {
-			for (const i in desc) {
-				const theoryName: string = desc[i].theoryName;
-				response.theoriesStatusMap[theoryName] = response.theoriesStatusMap[theoryName] || {
-					fileName: desc[i].fileName,
-					theoryName: theoryName,
-					theorems: {}
-				};
-				const formulaName: string = desc[i].formulaName;
-				const formulaDescriptor: FormulaDescriptor = {
-					fileName: desc[i].fileName,
-					theoryName: theoryName,
-					formulaName,
-					position: desc[i].position,
-					status: desc[i].status
-				}
-				response.theoriesStatusMap[theoryName].theorems[formulaName] = formulaDescriptor;
-				if (connection && connection.sendRequest) {
-					// send response incrementally to the client
-					connection.sendRequest("server.response.list-theorems", response);
+	if (fileList) {
+		for (let i in fileList.fileNames) {
+			const fname: string = path.join(contextFolder, fileList.fileNames[i]);
+			const fileName: string = fsUtils.getFileName(fileList.fileNames[i]);
+			const fileExtension: string = fsUtils.getFileExtension(fileList.fileNames[i]);
+			const fileContent: string = await fsUtils.readFile(fname);
+			const theories: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
+			const desc: FormulaDescriptor[] = listTheorems({ fileName, fileExtension, contextFolder, fileContent, prelude });
+			if (desc && theories) {
+				for (let i = 0; i < theories.length; i++) {
+					const theoryName: string = theories[i].theoryName;
+					const position: Position = theories[i].position;
+					const theoryDescriptor: TheoryDescriptor = {
+						fileName, fileExtension, contextFolder, theoryName, position, 
+						theorems: desc.filter((desc: FormulaDescriptor) => {
+							return desc.theoryName === theoryName;
+						})
+					}
+					response.theories.push(theoryDescriptor);
 				}
 			}
 		}
@@ -386,45 +569,144 @@ export async function listTheorems (contextFolder: string, connection?: SimpleCo
 
 
 /**
+ * Utility function, transforms a proof tree into a json object
+ * @param desc Descriptor specifying proofTree, formulaName, proofName, and parent node (keeps track of the current parent in the proof tree, used in recursive calls)
+ */
+export function proofScriptToJson (proofScript: string): ProofTree {
+	function proofTreeToJson(prf: string, proofName: string): ProofNode {
+		if (prf) {
+			prf = prf.trim();
+			if (prf.startsWith(`(""`)) {
+				const rootNode: ProofNode = {
+					id: proofName,
+					children: [],
+					type: "root"
+				};
+				// root node
+				const match: RegExpMatchArray = /\(\"\"([\w\W\s]+)\s*\)/.exec(prf);
+				prf = match[1].trim();
+				buildProofTree(prf, rootNode);
+				return rootNode;
+			} else {
+				console.error("[pvs-proxy] Warning: unrecognised proof structure", prf);
+			}
+		}
+		return null;
+	}
+	function buildProofTree(prf: string, parent: ProofNode): void {
+		if (parent) {
+			while (prf && prf.length) {
+				// series of proof branches or a proof commands
+				const expr: string = getProofCommands(prf);
+				if (expr && expr.length) {
+					if (expr.startsWith("((")) {
+						// series of proof branches
+						// remove a pair of parentheses and iterate
+						const match: RegExpMatchArray = /\(([\w\W\s]+)\s*\)/.exec(prf);
+						const subexpr: string = match[1];
+						const currentParent: ProofNode = parent.children[parent.children.length - 1];
+						buildProofTree(subexpr, currentParent);
+					} else if (expr.startsWith(`("`)) {
+						// proof command from a labelled branch -- remove the label and iterate
+						const match: RegExpMatchArray = /\(\"(\d+)\"\s*([\w\W\s]+)/.exec(expr);
+						const subexpr: string = match[2].replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
+						const currentBranch: ProofNode = { id: match[1], children:[], type: "proof-branch" };
+						parent.children.push(currentBranch);
+						buildProofTree(subexpr, currentBranch);
+					} else {
+						// proof command
+						parent.children.push({
+							id: expr,
+							children: [],
+							type: "proof-command"
+						});
+					}
+					// update prf
+					prf = prf.substr(expr.length).trim();
+				} else {
+					// ) parentheses comes before (, from parsing a series labelled branches, just ignore them and iterate
+					const match: RegExpMatchArray = /\)+([\w\W\s]*)/.exec(prf);
+					// update prf
+					prf = match[1].trim(); // remove all \n introduced by pvs in the expression
+					if (prf && prf.length) {
+						buildProofTree(prf, parent);
+					}
+				}
+			}
+		} else {
+			console.error("[pvs-proxy] Warning: unable to build proof tree (parent node is null)");
+		}
+	}
+	function getProofCommands(prf: string): string {
+		let par: number = 0;
+		let match: RegExpMatchArray = null;
+		const regexp: RegExp = new RegExp(/([\(\)])/g);
+		while(match = regexp.exec(prf)) {
+			switch (match[1]) {
+				case "(": { par++; break; }
+				case ")": { par--; break; }
+				default: {}
+			}
+			if (par === 0) {
+				return prf.substr(0, match.index + 1);
+			}
+		}
+		return "";
+	}
+
+	const script: string = proofScript.replace(/\n/g, "");
+	// capture group 1 is proofName
+	// capture group 2 is formulaName,
+	// capture group 3 is proofTree
+	const data: RegExpMatchArray = /;;; Proof ([\w\-\.]+) for formula ([\w\-\.]+).*(\(""[\n\w\W]+)/.exec(script);
+	if (data && data.length > 3) {
+		const proofName: string = data[1];
+		const formulaName: string = data[2];
+		const prf: string = data[3];
+		const proofTree: ProofNode = proofTreeToJson(prf, proofName);
+		const result: ProofTree = {
+			proofStructure: proofTree,
+			proofName,
+			formulaName,
+			prf: proofScript,
+			proverVersion: "7.0-1020"
+		};
+		// console.dir(result, { depth: null });
+		return result;
+	}
+	return null;
+}
+
+
+/**
  * Lists all theories in a given context foder
  * @param contextFolder Current context folder
  * @param connection Connection to the client, useful for sending status updates about what the function is doing (the function may take some time to complete for large files)
  */
-export async function listTheories (contextFolder: string, connection?: SimpleConnection): Promise<TheoryList> {
-	let response: TheoryList = {
-		theories: {},
-		contextFolder
-	};
-	// send the empty response to trigger a refresh of the view
-	connection.sendRequest("server.response.list-theories", response);
-	const fileList: FileList = await fsUtils.listPvsFiles(contextFolder);
-	for (let i in fileList.fileNames) {
-		let uri: string = path.join(contextFolder, fileList.fileNames[i]);
-		let theories: TheoryMap = await listTheoriesInFile(uri);
-		let theoryNames: string[] = Object.keys(theories);
-		for (let i in theoryNames) {
-			let theoryName: string = theoryNames[i];
-			response.theories[theoryName] = theories[theoryName];
-			// const declarations: PvsDeclarationDescriptor[] = await this.pvsProcess.listDeclarations({ theoryName: theoryName });
-			// Object.keys(declarations).forEach((key) => {
-			// // 	response.declarations[theoryName][key] = {
-			// // 		theoryName: theoryName,
-			// // 		symbolName: declarations[key].symbolName,
-			// // 		symbolDeclaration: declarations[key].symbolDeclaration,
-			// // 		symbolDeclarationRange: declarations[key].symbolDeclarationRange,
-			// // 		symbolDeclarationFile: declarations[key].symbolDeclarationFile,
-			// // 		symbolDoc: declarations[key].symbolDoc,
-			// // 		comment: declarations[key].comment
-			// // 	};
-			// });
-			if (connection && connection.sendRequest) {
-				// send the response incrementally, as soon as another bit of information is available
-				connection.sendRequest("server.response.list-theories", response);
-			}
-		}
-	}
-	return Promise.resolve(response);
-}
+// export async function listTheories (contextFolder: string, connection?: SimpleConnection): Promise<ContextDescriptor> {
+// 	let response: ContextDescriptor = {
+// 		theories: [],
+// 		contextFolder
+// 	};
+// 	// send the empty response to trigger a refresh of the view
+// 	sendTheories(response, connection);
+// 	const fileList: FileList = await fsUtils.listPvsFiles(contextFolder);
+// 	for (let i in fileList.fileNames) {
+// 		let uri: string = path.join(contextFolder, fileList.fileNames[i]);
+// 		let theories: TheoryDescriptor[] = await listTheoriesInFile(uri);
+// 		response.theories.concat(theories);
+// 	}
+// 	sendTheories(response, connection);
+// 	return Promise.resolve(response);
+// }
+
+// export function sendTheories (desc: ContextDescriptor, connection?: SimpleConnection): void {
+// 	if (connection && connection.sendRequest) {
+// 		// send the response incrementally, as soon as another bit of information is available
+// 		connection.sendRequest("server.response.get-context-descriptor", desc);
+// 	}
+// }
+
 
 
 // list obtained with collect-strategy-names
@@ -767,9 +1049,9 @@ export const PROVER_STRATEGIES_FULL_SET: StrategyDescriptor[] = [
 ];
 
 export const PROVER_STRATEGIES_CORE: StrategyDescriptor[] = [
-	{ name: "all-typepreds", description:"" },
-	{ name: "apply-extensionality", description:"" },
-	{ name: "apply-lemma", description:"" },
+	{ name: "all-typepreds", description:"make type constraints of subexpressions explicit" },
+	{ name: "apply-extensionality", description:"use extensionality to prove equality" },
+	{ name: "apply-lemma", description:"automatically determines the required substitutions in a lemma" },
 	{ name: "apply-rewrite", description:"" },
 	{ name: "assert", description:"" },
 	{ name: "auto-rewrite", description:"" },
@@ -790,7 +1072,7 @@ export const PROVER_STRATEGIES_CORE: StrategyDescriptor[] = [
 	{ name: "hide-all-but", description:"" },
 	{ name: "iff", description:"" },
 	{ name: "inst?", description:"" },
-	{ name: "lemma", description:"" },
+	{ name: "lemma", description:"introduces an instance of a lemma" },
 	{ name: "lift-if", description:"" },
 	{ name: "postpone", description:"" },
 	{ name: "prop", description:"" },

@@ -49,6 +49,11 @@ import { ExtensionContext, commands, window, Disposable, TextDocument, InputBox,
 import { LanguageClient } from 'vscode-languageclient';
 import { findTheoryName } from '../common/languageUtils';
 import { workspace } from 'vscode';
+import * as fsUtils from '../common/fsUtils';
+import * as utils from '../common/languageUtils';
+import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
+import { serverCommand } from '../common/serverInterface';
+import * as vscode from 'vscode';
 
 const cmds: string[] = [
 	"tc", "typecheck",
@@ -58,19 +63,25 @@ const cmds: string[] = [
 	"show-tccs",
 	"pvsio",
 	"step-proof",
+	"restart-pvs",
 	"pvs7", "pvs6"
 ];
 
 export class VSCodePvsEmacsBindingsProvider {
-	private client: LanguageClient;
-	private inputBox: InputBox;
-	private metax: string = "M-x ";
-	private userInput: string; // used by autocompletion
+	protected client: LanguageClient;
+	protected inputBox: InputBox;
+	protected metax: string = "M-x ";
+	protected userInput: string; // used by autocompletion
+	protected statusBar: VSCodePvsStatusBar;
 
-	constructor (client: LanguageClient) {
+	constructor (client: LanguageClient, statusBar: VSCodePvsStatusBar) {
 		this.client = client;
+		this.statusBar = statusBar;
 	}
-	private autocompleteInput(input: string): string {
+	activate (context: ExtensionContext) {
+		// do nothing for now
+	}
+	protected autocompleteInput(input: string): string {
 		if (input) {
 			for (const i in cmds) {
 				if (cmds[i].startsWith(input)) {
@@ -80,88 +91,87 @@ export class VSCodePvsEmacsBindingsProvider {
 		}
 		return input;
 	}
-	private onDidAccept(userInput) {
+	protected onDidAccept(userInput: string) {
 		if (userInput) {
 			userInput = userInput.toLowerCase();
-			// const document: TextDocument = window.activeTextEditor.document;
+			const document: TextDocument = window.activeTextEditor.document;
+			const line: number = window.activeTextEditor.selection.active.line;
+			const theoryName: string = utils.findTheoryName(document.getText(), line);
+			const formulaName: string = utils.findFormulaName(document.getText(), line);
+			const desc = { 
+				fileName: fsUtils.getFileName(document.fileName),
+				fileExtension: fsUtils.getFileExtension(document.fileName),
+				contextFolder: fsUtils.getContextFolder(document.fileName),
+				theoryName,
+				formulaName,
+				line
+			};
 			switch (userInput) {
 				case "pvs6": {
 					const v6: string = workspace.getConfiguration().get(`pvs.zen-mode:pvs-6-path`);
-					this.client.sendRequest('pvs.restart', { pvsPath: v6 });
+					this.client.sendRequest(serverCommand.restart, { pvsPath: v6 });
 					break;
 				}
 				case "pvs7": {
 					const v7: string = workspace.getConfiguration().get(`pvs.zen-mode:pvs-7-path`);
-					this.client.sendRequest('pvs.restart', { pvsPath: v7 });
+					this.client.sendRequest(serverCommand.restart, { pvsPath: v7 });
 					break;
 				}
+				case "show-tccs":
 				case "tc": 
 				case "typecheck": {
-					// typecheck current file
-					this.client.sendRequest('pvs.typecheck-file-and-show-tccs', window.activeTextEditor.document.fileName);
-					// commands.executeCommand("terminal.pvs.typecheck");
-					// this.client.sendRequest('pvs.typecheck-file', {
-					// 	fileName: document.fileName
-					// });
+					commands.executeCommand('vscode-pvs.typecheck-file', desc);
 					break;
 				}
 				case "tcp": 
 				case "typecheck-prove": {
-					this.client.sendRequest('pvs.typecheck-prove-and-show-tccs', window.activeTextEditor.document.fileName);
-					// commands.executeCommand("terminal.pvs.typecheck-prove");
+					commands.executeCommand('vscode-pvs.prove-tccs', desc);
 					break;
 				}
 				case "pr":
 				case "prove": {
-					// open pvs terminal
-					commands.executeCommand("terminal.pvs.prove");
+					commands.executeCommand('vscode-pvs.prove-formula', desc);
 					break;
 				}
 				case "show-tccs": {
-					const fileName: string = window.activeTextEditor.document.fileName;
-					const line: number = window.activeTextEditor.selection.active.line;
-					const text: string = window.activeTextEditor.document.getText();
-					const theoryName: string = findTheoryName(text, line);
-					if (theoryName) {
-						this.client.sendRequest('pvs.typecheck-file-and-show-tccs', [ fileName, theoryName ]);
-					} else {
-						window.showErrorMessage("Unable to identify theory at line " + line);
-					}
+					commands.executeCommand('vscode-pvs.show-tccs', desc);
 					break;
 				}
 				case "pvsio": {
-					// open pvsio terminal
-					commands.executeCommand("terminal.pvsio");
+					commands.executeCommand("vscode-pvs.pvsio-evaluator", desc);
 					break;
 				}
 				case "step-proof": {
 					// open pvs terminal
-					commands.executeCommand("terminal.pvs.prove");
+					// TODO
 					break;
+				}
+				case "restart-pvs": {
+					const pvsPath: string = workspace.getConfiguration().get(`pvs.path`);
+					this.client.sendRequest(serverCommand.restart, { pvsPath });
 				}
 				default: {}
 			}
 		}
 	}
-	activate (context: ExtensionContext) {
-		let cmd: Disposable = commands.registerCommand("pvsemacs.M-x", () => {
-			window.setStatusBarMessage("M-x", 2000);
-			// window.showInputBox({
-			// 	prompt: "M-x ",
-			// }).then((userInput: string) => {
-			this.inputBox = window.createInputBox();
-			this.inputBox.prompt = this.metax;
-			this.inputBox.onDidAccept(() => {
-				this.onDidAccept(this.userInput);
-				this.inputBox.dispose();
-			});
-			this.inputBox.onDidChangeValue((input: string) => {
-				// FIXME: VSCode does not seem to capture tabs in the input box??
-				this.userInput = this.autocompleteInput(input);
-				this.inputBox.prompt = this.metax + this.userInput;
-			});
-			this.inputBox.show();
+	metaxPrompt (): void {
+		this.statusBar.msg(this.metax);
+		// window.showInputBox({
+		// 	prompt: "M-x ",
+		// }).then((userInput: string) => {
+		this.inputBox = window.createInputBox();
+		this.inputBox.prompt = this.metax;
+		this.inputBox.onDidAccept(() => {
+			this.onDidAccept(this.userInput);
+			this.inputBox.dispose();
+			this.statusBar.ready();
 		});
-		context.subscriptions.push(cmd);
+		this.inputBox.onDidChangeValue((input: string) => {
+			// FIXME: VSCode does not seem to capture tabs in the input box??
+			this.userInput = this.autocompleteInput(input);
+			this.inputBox.prompt = this.metax + this.userInput;
+			this.statusBar.msg(this.inputBox.prompt);
+		});
+		this.inputBox.show();
 	}
 }

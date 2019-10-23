@@ -1,0 +1,1004 @@
+(alaris_th
+ (IMP_pump_th_TCC1 0
+  (IMP_pump_th_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (IMP_pump_th subtype "alaris_th.maxtime"
+    "{maxtime: integers.posnat | reals.>(maxtime, alaris_th.timeout)}")))
+ (IMP_pump_th_TCC2 0
+  (IMP_pump_th_TCC2-1 nil 3761995943 ("" (assuming-tcc) nil nil) nil
+   nil
+   (IMP_pump_th assuming
+    "pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min]"
+    "timeoutLTmaxtime: ASSUMPTION reals.<(pump_th.timeout, pump_th.maxtime)")))
+ (IMP_pump_th_TCC3 0
+  (IMP_pump_th_TCC3-1 nil 3761995943 ("" (assuming-tcc) nil nil) nil
+   nil
+   (IMP_pump_th assuming
+    "pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min]"
+    "shorttimeoutLTtimeout: ASSUMPTION reals.<(pump_th.shorttimeout, pump_th.timeout)")))
+ (IMP_pump_th_TCC4 0
+  (IMP_pump_th_TCC4-1 nil 3761995943 ("" (assuming-tcc) nil nil) nil
+   nil
+   (IMP_pump_th assuming
+    "pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min]"
+    "maxinfuseLEQmaxtime: ASSUMPTION reals.<=(pump_th.maxinfuse, pump_th.maxtime)")))
+ (decrement_TCC1 0
+  (decrement_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (decrement subtype "(number_fields.-)(alaris_th.t, alaris_th.n)"
+    "presstime[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (trim_rate_TCC1 0
+  (trim_rate_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (trim_rate subtype "alaris_th.x"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (trim_vtbi_TCC1 0
+  (trim_vtbi_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (trim_vtbi subtype "alaris_th.x"
+    "ivols[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (trim_time_TCC1 0
+  (trim_time_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (trim_time subtype "alaris_th.x"
+    "itimes[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC1 0
+  (init?_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC2 0
+  (init?_TCC2-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC3 0
+  (init?_TCC3-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC4 0
+  (init?_TCC4-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC5 0
+  (init?_TCC5-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dbags"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC6 0
+  (init?_TCC6-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dkvorate"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC7 0
+  (init?_TCC7-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dquery"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC8 0
+  (init?_TCC8-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewvtbi"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC9 0
+  (init?_TCC9-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewrate"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC10 0
+  (init?_TCC10-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewtime"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (init?_TCC11 0
+  (init?_TCC11-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype "0"
+    "naturalnumbers.upto(types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags)")))
+ (init?_TCC12 0
+  (init?_TCC12-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype "1"
+    "naturalnumbers.upto(types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags)")))
+ (init?_TCC13 0
+  (init?_TCC13-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype "2"
+    "naturalnumbers.upto(types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags)")))
+ (init?_TCC14 0
+  (init?_TCC14-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype "3"
+    "naturalnumbers.upto(types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags)")))
+ (init?_TCC15 0
+  (init?_TCC15-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype "4"
+    "naturalnumbers.upto(types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags)")))
+ (init?_TCC16 0
+  (init?_TCC16-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype "5"
+    "naturalnumbers.upto(types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags)")))
+ (init?_TCC17 0
+  (init?_TCC17-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype "6"
+    "naturalnumbers.upto(types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags)")))
+ (init?_TCC18 0
+  (init?_TCC18-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype "7"
+    "naturalnumbers.upto(types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags)")))
+ (init?_TCC19 0
+  (init?_TCC19-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype "8"
+    "naturalnumbers.upto(types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags)")))
+ (init?_TCC20 0
+  (init?_TCC20-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (init? subtype "9"
+    "naturalnumbers.upto(types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags)")))
+ (release_key_TCC1 0
+  (release_key_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (release_key subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].small_step"
+    "steprate[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (release_key_TCC2 0
+  (release_key_TCC2-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (release_key subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].maxpress"
+    "presstime[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (switch_from_battery_low_TCC1 0
+  (switch_from_battery_low_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (switch_from_battery_low disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> device(alaris_th.st)`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> device(alaris_th.st)`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (switch_from_battery_low_TCC2 0
+  (switch_from_battery_low_TCC2-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (switch_from_battery_low disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> (booleans.NOT)(device(alaris_th.st)`kvoflag), alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dkvorate -> device(alaris_th.st)`kvoflag, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (switch_from_battery_low_TCC3 0
+  (switch_from_battery_low_TCC3-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (switch_from_battery_low disjointness
+    "COND booleans.AND(device(alaris_th.st)`infusing?, (booleans.NOT)(device(alaris_th.st)`kvoflag)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`kvoflag) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispkvo, booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate = 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding ENDCOND"
+    "nil")))
+ (switch_TCC1 0
+  (switch_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil
+   nil
+   (switch disjointness
+    "COND device(alaris_th.st)`ac_connect -> alaris_th.switch_battery_low(alaris_th.st), booleans.&((booleans.NOT)(device(alaris_th.st)`ac_connect), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].batterylow)) -> alaris_th.switch_from_battery_low(alaris_th.st), ELSE -> alaris_th.st ENDCOND"
+    "nil")))
+ (on_case_infusionstatusblank_TCC1 0
+  (on_case_infusionstatusblank_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (on_case_infusionstatusblank disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> device(alaris_th.st)`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> booleans.OR((device(alaris_th.st)`vtbi /= 0), (device(alaris_th.st)`infusionrate /= 0)), alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (on_case_infusionstatusNOTblank_TCC1 0
+  (on_case_infusionstatusNOTblank_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (on_case_infusionstatusNOTblank subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].midbag"
+    "ibagscursor[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (on_TCC1 0
+  (on_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (on disjointness
+    "COND (booleans.NOT)(device(alaris_th.st)`powered_on?) -> alaris_th.on_case_infusionstatusblank(alaris_th.st), device(alaris_th.st)`powered_on? -> alaris_th.on_case_infusionstatusNOTblank(alaris_th.st) ENDCOND"
+    "nil")))
+ (run_cond_NZ_TCC1 0
+  (run_cond_NZ_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (run_cond_NZ subtype "alaris_th.st`device"
+    "(pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_start)")))
+ (run_TCC1 0
+  (run_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (run disjointness
+    "COND booleans.&(device(alaris_th.st)`vtbi /= 0, booleans.&(device(alaris_th.st)`infusionrate /= 0, booleans.&(rlock(alaris_th.st), device(alaris_th.st)`set_fitted))) -> alaris_th.run_cond_NZ(alaris_th.st), booleans.&(device(alaris_th.st)`vtbi /= 0, booleans.&(device(alaris_th.st)`infusionrate /= 0, booleans.&((booleans.NOT)(rlock(alaris_th.st)), device(alaris_th.st)`set_fitted))) -> alaris_th.run_check_rlock(alaris_th.st), booleans.&(device(alaris_th.st)`vtbi = 0, booleans.&(device(alaris_th.st)`kvoflag, device(alaris_th.st)`set_fitted)) -> alaris_th.run_cond_vtbi0_kvoflag(alaris_th.st), booleans.&(device(alaris_th.st)`vtbi = 0, booleans.&((booleans.NOT)(device(alaris_th.st)`kvoflag), device(alaris_th.st)`set_fitted)) -> alaris_th.run_cond_vtbi0_NOTkvoflag(alaris_th.st), (booleans.NOT)(device(alaris_th.st)`set_fitted) -> alaris_th.run_cond_setnotfitted(alaris_th.st) ENDCOND"
+    "nil")))
+ (run_TCC2 0
+  (run_TCC2-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (run coverage
+    "COND booleans.&(device(alaris_th.st)`vtbi /= 0, booleans.&(device(alaris_th.st)`infusionrate /= 0, booleans.&(rlock(alaris_th.st), device(alaris_th.st)`set_fitted))) -> alaris_th.run_cond_NZ(alaris_th.st), booleans.&(device(alaris_th.st)`vtbi /= 0, booleans.&(device(alaris_th.st)`infusionrate /= 0, booleans.&((booleans.NOT)(rlock(alaris_th.st)), device(alaris_th.st)`set_fitted))) -> alaris_th.run_check_rlock(alaris_th.st), booleans.&(device(alaris_th.st)`vtbi = 0, booleans.&(device(alaris_th.st)`kvoflag, device(alaris_th.st)`set_fitted)) -> alaris_th.run_cond_vtbi0_kvoflag(alaris_th.st), booleans.&(device(alaris_th.st)`vtbi = 0, booleans.&((booleans.NOT)(device(alaris_th.st)`kvoflag), device(alaris_th.st)`set_fitted)) -> alaris_th.run_cond_vtbi0_NOTkvoflag(alaris_th.st), (booleans.NOT)(device(alaris_th.st)`set_fitted) -> alaris_th.run_cond_setnotfitted(alaris_th.st) ENDCOND"
+    "nil")))
+ (pause_TCC1 0
+  (pause_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (pause disjointness
+    "COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND"
+    "nil")))
+ (pause_TCC2 0
+  (pause_TCC2-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (pause disjointness
+    "COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND"
+    "nil")))
+ (pause_TCC3 0
+  (pause_TCC3-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (pause disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (query_TCC1 0
+  (query_TCC1-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (query coverage
+          "COND alaris_th.x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ratelock, alaris_th.x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, alaris_th.x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusionsetup, alaris_th.x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime, alaris_th.x = 4 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, alaris_th.x = 5 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].disableratelock, alaris_th.x = 6 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails ENDCOND"
+          "nil")))
+ (query_TCC2 0
+  (query_TCC2-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (query coverage
+          "COND alaris_th.x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rateunlock, alaris_th.x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, alaris_th.x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusionsetup, alaris_th.x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime, alaris_th.x = 4 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, alaris_th.x = 5 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].disableratelock, alaris_th.x = 6 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails ENDCOND"
+          "nil")))
+ (query_TCC3 0
+  (query_TCC3-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (query disjointness
+          "COND booleans.AND(device(alaris_th.st)`infusing?, booleans.AND((booleans.NOT)(rdisabled(alaris_th.st)), rlock(alaris_th.st))) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ratelock, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].optionblank ENDCOND, booleans.AND(device(alaris_th.st)`infusing?, booleans.AND((booleans.NOT)(rdisabled(alaris_th.st)), (booleans.NOT)(rlock(alaris_th.st)))) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rateunlock, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].optionblank ENDCOND, booleans.AND(device(alaris_th.st)`infusing?, rdisabled(alaris_th.st)) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].optionblank ENDCOND, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.AND((booleans.NOT)(rdisabled(alaris_th.st)), (booleans.NOT)(rlock(alaris_th.st)))) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ratelock, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusionsetup, x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime, x = 4 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 5 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].disableratelock, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails ENDCOND, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.AND((booleans.NOT)(rdisabled(alaris_th.st)), rlock(alaris_th.st))) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rateunlock, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusionsetup, x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime, x = 4 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 5 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].disableratelock, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails ENDCOND, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), rdisabled(alaris_th.st)) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusionsetup, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime, x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 4 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].enableratelock, x = 5 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].optionblank ENDCOND ENDCOND"
+          "nil")))
+ (query_TCC4 0
+  (query_TCC4-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (query coverage
+          "COND booleans.AND(device(alaris_th.st)`infusing?, booleans.AND((booleans.NOT)(rdisabled(alaris_th.st)), rlock(alaris_th.st))) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ratelock, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].optionblank ENDCOND, booleans.AND(device(alaris_th.st)`infusing?, booleans.AND((booleans.NOT)(rdisabled(alaris_th.st)), (booleans.NOT)(rlock(alaris_th.st)))) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rateunlock, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].optionblank ENDCOND, booleans.AND(device(alaris_th.st)`infusing?, rdisabled(alaris_th.st)) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].optionblank ENDCOND, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.AND((booleans.NOT)(rdisabled(alaris_th.st)), (booleans.NOT)(rlock(alaris_th.st)))) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ratelock, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusionsetup, x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime, x = 4 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 5 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].disableratelock, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails ENDCOND, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.AND((booleans.NOT)(rdisabled(alaris_th.st)), rlock(alaris_th.st))) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rateunlock, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusionsetup, x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime, x = 4 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 5 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].disableratelock, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails ENDCOND, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), rdisabled(alaris_th.st)) -> LAMBDA (x: types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qcurse): COND x = 0 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dosingsumm, x = 1 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusionsetup, x = 2 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime, x = 3 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].adjalarm, x = 4 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].enableratelock, x = 5 -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pumpdetails, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].optionblank ENDCOND ENDCOND"
+          "nil")))
+ (query_TCC5 0
+  (query_TCC5-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (query subtype "0"
+          "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC1 0
+  (per_tick_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC2 0
+  (per_tick_TCC2-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewvtbi"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC3 0
+  (per_tick_TCC3-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewtime"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC4 0
+  (per_tick_TCC4-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewrate"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC5 0
+  (per_tick_TCC5-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC6 0
+  (per_tick_TCC6-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC7 0
+  (per_tick_TCC7-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC8 0
+  (per_tick_TCC8-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC9 0
+  (per_tick_TCC9-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewvtbi"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC10 0
+  (per_tick_TCC10-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC11 0
+  (per_tick_TCC11-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dkvorate"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC12 0
+  (per_tick_TCC12-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_tick_TCC13 0
+  (per_tick_TCC13-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_tick subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (tick_case_holding_volume_etc_elapseLTtimeout_TCC1 0
+  (tick_case_holding_volume_etc_elapseLTtimeout_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (tick_case_holding_volume_etc_elapseLTtimeout subtype
+    "alaris_th.st`device"
+    "{st: pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].pump | pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_tick(st)}")))
+ (tick_case_holding_volume_etc_elapseLTtimeoutlocked_TCC1 0
+  (tick_case_holding_volume_etc_elapseLTtimeoutlocked_TCC1-1 nil
+   3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (tick_case_holding_volume_etc_elapseLTtimeoutlocked disjointness
+    "COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND"
+    "nil")))
+ (tick_case_holding_volume_etc_elapseLTtimeoutlocked_TCC2 0
+  (tick_case_holding_volume_etc_elapseLTtimeoutlocked_TCC2-1 nil
+   3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (tick_case_holding_volume_etc_elapseLTtimeoutlocked disjointness
+    "COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND"
+    "nil")))
+ (tick_case_holding_volume_etc_elapseLTtimeoutlocked_TCC3 0
+  (tick_case_holding_volume_etc_elapseLTtimeoutlocked_TCC3-1 nil
+   3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (tick_case_holding_volume_etc_elapseLTtimeoutlocked disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (tick_case_holding_volume_etc_elapseLTtimeoutlocked_TCC4 0
+  (tick_case_holding_volume_etc_elapseLTtimeoutlocked_TCC4-1 nil
+   3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (tick_case_holding_volume_etc_elapseLTtimeoutlocked disjointness
+    "COND entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qmode -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options, booleans.&(entrymode(alaris_th.st) /= types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].qmode, device(alaris_th.st)`infusionrate = 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding ENDCOND"
+    "nil")))
+ (tick_case_holding_volume_etc_elapseEQshorttimeout_TCC1 0
+  (tick_case_holding_volume_etc_elapseEQshorttimeout_TCC1-1 nil
+   3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (tick_case_holding_volume_etc_elapseEQshorttimeout disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> alaris_th.newdevice`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> alaris_th.newdevice`vtbi /= 0, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (tick_TCC1 0
+  (tick_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (tick subtype "alaris_th.st"
+    "{st: alaris_th.alaris | pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_tick(device(st))}")))
+ (tick_TCC2 0
+  (tick_TCC2-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (tick subtype "alaris_th.st"
+    "{st: alaris_th.alaris | pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_tick(device(st))}")))
+ (tick_TCC3 0
+  (tick_TCC3-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (tick subtype "alaris_th.st"
+    "{st: alaris_th.alaris | pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_tick(device(st))}")))
+ (tick_TCC4 0
+  (tick_TCC4-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (tick subtype "alaris_th.st"
+    "{st: alaris_th.alaris | pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_tick(device(st))}")))
+ (tick_TCC5 0
+  (tick_TCC5-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (tick subtype "alaris_th.st"
+    "{st: alaris_th.alaris | pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_tick(device(st))}")))
+ (tick_TCC6 0
+  (tick_TCC6-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (tick disjointness
+    "COND topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_holding_volume_etc_elapseLTtimeoutlocked(alaris_th.st), topline(alaris_th.st) /= types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_holding_volume_etc_elapseLTtimeout(alaris_th.st) ENDCOND"
+    "nil")))
+ (tick_TCC7 0
+  (tick_TCC7-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (tick disjointness
+    "COND (reals.>=(device(alaris_th.st)`elapse, alaris_th.timeout)) -> alaris_th.tick_case_holding_volume_etc_elapseEQtimeout(alaris_th.st), booleans.&((reals.>=(device(alaris_th.st)`elapse, alaris_th.shorttimeout)), (reals.<(device(alaris_th.st)`elapse, alaris_th.timeout))) -> alaris_th.tick_case_holding_volume_etc_elapseEQshorttimeout(alaris_th.st), (reals.<(device(alaris_th.st)`elapse, alaris_th.shorttimeout)) -> COND topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_holding_volume_etc_elapseLTtimeoutlocked(alaris_th.st), topline(alaris_th.st) /= types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_holding_volume_etc_elapseLTtimeout(alaris_th.st) ENDCOND ENDCOND"
+    "nil")))
+ (tick_TCC8 0
+  (tick_TCC8-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (tick coverage
+    "COND (reals.>=(device(alaris_th.st)`elapse, alaris_th.timeout)) -> alaris_th.tick_case_holding_volume_etc_elapseEQtimeout(alaris_th.st), booleans.&((reals.>=(device(alaris_th.st)`elapse, alaris_th.shorttimeout)), (reals.<(device(alaris_th.st)`elapse, alaris_th.timeout))) -> alaris_th.tick_case_holding_volume_etc_elapseEQshorttimeout(alaris_th.st), (reals.<(device(alaris_th.st)`elapse, alaris_th.shorttimeout)) -> COND topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_holding_volume_etc_elapseLTtimeoutlocked(alaris_th.st), topline(alaris_th.st) /= types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_holding_volume_etc_elapseLTtimeout(alaris_th.st) ENDCOND ENDCOND"
+    "nil")))
+ (tick_TCC9 0
+  (tick_TCC9-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (tick subtype "alaris_th.st"
+    "{st: alaris_th.alaris | pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_tick(device(st))}")))
+ (tick_TCC10 0
+  (tick_TCC10-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (tick subtype "alaris_th.st"
+    "{st: alaris_th.alaris | pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_tick(device(st))}")))
+ (tick_TCC11 0
+  (tick_TCC11-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (tick disjointness
+    "COND topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_infuse_infusionrateLTvtbilocked(alaris_th.st), topline(alaris_th.st) /= types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_infuse_infusionrateLTvtbi(alaris_th.st) ENDCOND"
+    "nil")))
+ (tick_TCC12 0
+  (tick_TCC12-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (tick subtype "alaris_th.st"
+    "{st: alaris_th.alaris | pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_tick(device(st))}")))
+ (tick_TCC13 0
+  (tick_TCC13-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (tick subtype "alaris_th.st"
+    "{st: alaris_th.alaris | pump_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].per_tick(device(st))}")))
+ (tick_TCC14 0
+  (tick_TCC14-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (tick disjointness
+    "COND (reals.<(device(alaris_th.st)`infusionrate, device(alaris_th.st)`vtbi)) -> COND topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_infuse_infusionrateLTvtbilocked(alaris_th.st), topline(alaris_th.st) /= types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_infuse_infusionrateLTvtbi(alaris_th.st) ENDCOND, booleans.&((reals.>=(device(alaris_th.st)`infusionrate, device(alaris_th.st)`vtbi)), (booleans.NOT)(device(alaris_th.st)`kvoflag)) -> alaris_th.tick_case_infuse_infusionrateEQvtbi_notkvoflag(alaris_th.st), booleans.&((reals.>=(device(alaris_th.st)`infusionrate, device(alaris_th.st)`vtbi)), device(alaris_th.st)`kvoflag) -> alaris_th.tick_case_infuse_infusionrateEQvtbi_kvoflag(alaris_th.st) ENDCOND"
+    "nil")))
+ (tick_TCC15 0
+  (tick_TCC15-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (tick coverage
+    "COND (reals.<(device(alaris_th.st)`infusionrate, device(alaris_th.st)`vtbi)) -> COND topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_infuse_infusionrateLTvtbilocked(alaris_th.st), topline(alaris_th.st) /= types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].locked -> alaris_th.tick_case_infuse_infusionrateLTvtbi(alaris_th.st) ENDCOND, booleans.&((reals.>=(device(alaris_th.st)`infusionrate, device(alaris_th.st)`vtbi)), (booleans.NOT)(device(alaris_th.st)`kvoflag)) -> alaris_th.tick_case_infuse_infusionrateEQvtbi_notkvoflag(alaris_th.st), booleans.&((reals.>=(device(alaris_th.st)`infusionrate, device(alaris_th.st)`vtbi)), device(alaris_th.st)`kvoflag) -> alaris_th.tick_case_infuse_infusionrateEQvtbi_kvoflag(alaris_th.st) ENDCOND"
+    "nil")))
+ (key1_case_clearsetup_TCC1 0
+  (key1_case_clearsetup_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1_case_clearsetup disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> booleans.FALSE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (key1_case_holdinginfusingdispkvo_TCC1 0
+  (key1_case_holdinginfusingdispkvo_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1_case_holdinginfusingdispkvo disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.FALSE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> booleans.FALSE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (key1_case_dispvtbi_vtmode_TCC1 0
+  (key1_case_dispvtbi_vtmode_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1_case_dispvtbi_vtmode disjointness
+    "COND (booleans.NOT)(device(alaris_th.st)`infusing?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rmode, device(alaris_th.st)`infusing? -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusemode ENDCOND"
+    "nil")))
+ (key1_case_dispvtbi_vtmode_TCC2 0
+  (key1_case_dispvtbi_vtmode_TCC2-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1_case_dispvtbi_vtmode disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> newvtbi(alaris_th.st) /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> newvtbi(alaris_th.st) /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (key1_case_dispvtbi_vtmode_TCC3 0
+  (key1_case_dispvtbi_vtmode_TCC3-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1_case_dispvtbi_vtmode disjointness
+    "COND booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate /= 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate = 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, device(alaris_th.st)`infusing? -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing ENDCOND"
+    "nil")))
+ (key1_case_dispvtbi_vtmode_TCC4 0
+  (key1_case_dispvtbi_vtmode_TCC4-1 nil 3761995943
+   ("" (cond-coverage-tcc) nil nil) nil nil
+   (key1_case_dispvtbi_vtmode coverage
+    "COND booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate /= 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate = 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, device(alaris_th.st)`infusing? -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing ENDCOND"
+    "nil")))
+ (key1_case_dispvtbi_bagmode_TCC1 0
+  (key1_case_dispvtbi_bagmode_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1_case_dispvtbi_bagmode disjointness
+    "COND bagscursor(alaris_th.st) = 0 -> 0, bagscursor(alaris_th.st) = 1 -> 50, bagscursor(alaris_th.st) = 2 -> 100, bagscursor(alaris_th.st) = 3 -> 200, bagscursor(alaris_th.st) = 4 -> 250, bagscursor(alaris_th.st) = 5 -> 500, bagscursor(alaris_th.st) = 6 -> 1000, bagscursor(alaris_th.st) = 7 -> 1500, bagscursor(alaris_th.st) = 8 -> 2000, bagscursor(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags -> 3000 ENDCOND"
+    "nil")))
+ (key1_case_dispvtbi_bagmode_TCC2 0
+  (key1_case_dispvtbi_bagmode_TCC2-1 nil 3761995943
+   ("" (cond-coverage-tcc) nil nil) nil nil
+   (key1_case_dispvtbi_bagmode coverage
+    "COND bagscursor(alaris_th.st) = 0 -> 0, bagscursor(alaris_th.st) = 1 -> 50, bagscursor(alaris_th.st) = 2 -> 100, bagscursor(alaris_th.st) = 3 -> 200, bagscursor(alaris_th.st) = 4 -> 250, bagscursor(alaris_th.st) = 5 -> 500, bagscursor(alaris_th.st) = 6 -> 1000, bagscursor(alaris_th.st) = 7 -> 1500, bagscursor(alaris_th.st) = 8 -> 2000, bagscursor(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags -> 3000 ENDCOND"
+    "nil")))
+ (key1_case_dispvtbi_tbagmode_TCC1 0
+  (key1_case_dispvtbi_tbagmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (key1_case_dispvtbi_tbagmode subtype "newtime(alaris_th.st)"
+    "nznum")))
+ (key1_case_dispvtbi_tbagmode_TCC2 0
+  (key1_case_dispvtbi_tbagmode_TCC2-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (key1_case_dispvtbi_tbagmode subtype
+    "number_fields./(alaris_th.nvtbi, newtime(alaris_th.st))"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (key1_case_options_dlock_TCC1 0
+  (key1_case_options_dlock_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1_case_options_dlock disjointness
+    "COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND"
+    "nil")))
+ (key1_case_options_dlock_TCC2 0
+  (key1_case_options_dlock_TCC2-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1_case_options_dlock disjointness
+    "COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND"
+    "nil")))
+ (key1_case_options_dlock_TCC3 0
+  (key1_case_options_dlock_TCC3-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1_case_options_dlock disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> COND device(alaris_th.st)`vtbi = 0 -> booleans.FALSE, device(alaris_th.st)`vtbi /= 0 -> booleans.TRUE ENDCOND, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (key1_case_options_dlock_TCC4 0
+  (key1_case_options_dlock_TCC4-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1_case_options_dlock disjointness
+    "COND booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate /= 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate = 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, device(alaris_th.st)`infusing? -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing ENDCOND"
+    "nil")))
+ (key1_TCC1 0
+  (key1_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1 disjointness
+    "COND entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode -> alaris_th.key1_case_dispvtbi_vtmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode -> alaris_th.key1_case_dispvtbi_bagmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode -> alaris_th.key1_case_dispvtbi_tbagmode(alaris_th.st) ENDCOND"
+    "nil")))
+ (key1_TCC2 0
+  (key1_TCC2-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (key1 coverage
+    "COND entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode -> alaris_th.key1_case_dispvtbi_vtmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode -> alaris_th.key1_case_dispvtbi_bagmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode -> alaris_th.key1_case_dispvtbi_tbagmode(alaris_th.st) ENDCOND"
+    "nil")))
+ (key1_TCC3 0
+  (key1_TCC3-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1 disjointness
+    "COND booleans.OR((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ratelock), (optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rateunlock)) -> alaris_th.key1_case_options_dlock(alaris_th.st), booleans.&((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.key1_case_options_dsetvtbi(alaris_th.st), booleans.&((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime), rlock(alaris_th.st)) -> alaris_th.key1_case_options_dsetvtbilocked(alaris_th.st), booleans.OR((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].disableratelock), (optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].enableratelock)) -> alaris_th.key1_case_options_ddisablerate(alaris_th.st), ELSE -> alaris_th.key1_case_options_ddosing_dsetup_dadjustav_dpdtls(alaris_th.st) ENDCOND"
+    "nil")))
+ (key1_TCC4 0
+  (key1_TCC4-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key1 disjointness
+    "COND booleans.OR((booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate)), booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispkvo))) -> alaris_th.key1_case_holdinginfusingdispkvo(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].clearsetup -> alaris_th.key1_case_clearsetup(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].lockrate -> alaris_th.key1_case_infuselocked(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi -> COND entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode -> alaris_th.key1_case_dispvtbi_vtmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode -> alaris_th.key1_case_dispvtbi_bagmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode -> alaris_th.key1_case_dispvtbi_tbagmode(alaris_th.st) ENDCOND, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options -> COND booleans.OR((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ratelock), (optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rateunlock)) -> alaris_th.key1_case_options_dlock(alaris_th.st), booleans.&((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.key1_case_options_dsetvtbi(alaris_th.st), booleans.&((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime), rlock(alaris_th.st)) -> alaris_th.key1_case_options_dsetvtbilocked(alaris_th.st), booleans.OR((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].disableratelock), (optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].enableratelock)) -> alaris_th.key1_case_options_ddisablerate(alaris_th.st), ELSE -> alaris_th.key1_case_options_ddosing_dsetup_dadjustav_dpdtls(alaris_th.st) ENDCOND, booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, booleans.&(entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode, newvtbi(alaris_th.st) /= 0)) -> alaris_th.key1_case_vtbitime_vttmode(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, booleans.&(entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode, newvtbi(alaris_th.st) = 0)) -> alaris_th.key1_case_vtbitime_vttmode_vtbiZ(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode) -> alaris_th.key1_case_vtbitime_ttmode(alaris_th.st) ENDCOND"
+    "nil")))
+ (key1_TCC5 0
+  (key1_TCC5-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (key1 coverage
+    "COND booleans.OR((booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate)), booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispkvo))) -> alaris_th.key1_case_holdinginfusingdispkvo(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].clearsetup -> alaris_th.key1_case_clearsetup(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].lockrate -> alaris_th.key1_case_infuselocked(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi -> COND entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode -> alaris_th.key1_case_dispvtbi_vtmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode -> alaris_th.key1_case_dispvtbi_bagmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode -> alaris_th.key1_case_dispvtbi_tbagmode(alaris_th.st) ENDCOND, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options -> COND booleans.OR((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ratelock), (optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rateunlock)) -> alaris_th.key1_case_options_dlock(alaris_th.st), booleans.&((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.key1_case_options_dsetvtbi(alaris_th.st), booleans.&((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbiovertime), rlock(alaris_th.st)) -> alaris_th.key1_case_options_dsetvtbilocked(alaris_th.st), booleans.OR((optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].disableratelock), (optionsmenu(alaris_th.st)(qcursor(alaris_th.st)) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].enableratelock)) -> alaris_th.key1_case_options_ddisablerate(alaris_th.st), ELSE -> alaris_th.key1_case_options_ddosing_dsetup_dadjustav_dpdtls(alaris_th.st) ENDCOND, booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, booleans.&(entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode, newvtbi(alaris_th.st) /= 0)) -> alaris_th.key1_case_vtbitime_vttmode(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, booleans.&(entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode, newvtbi(alaris_th.st) = 0)) -> alaris_th.key1_case_vtbitime_vttmode_vtbiZ(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode) -> alaris_th.key1_case_vtbitime_ttmode(alaris_th.st) ENDCOND"
+    "nil")))
+ (key2_case_volume_TCC1 0
+  (key2_case_volume_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key2_case_volume disjointness
+    "COND booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusemode, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rmode, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].nullmode ENDCOND"
+    "nil")))
+ (key2_case_volume_TCC2 0
+  (key2_case_volume_TCC2-1 nil 3761995943
+   ("" (cond-coverage-tcc) nil nil) nil nil
+   (key2_case_volume coverage
+    "COND booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusemode, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rmode, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].nullmode ENDCOND"
+    "nil")))
+ (key2_case_volume_TCC3 0
+  (key2_case_volume_TCC3-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key2_case_volume disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> device(alaris_th.st)`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> device(alaris_th.st)`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (key2_case_volume_TCC4 0
+  (key2_case_volume_TCC4-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key2_case_volume disjointness
+    "COND booleans.AND(device(alaris_th.st)`infusing?, booleans.AND(device(alaris_th.st)`powered_on?, (booleans.NOT)(device(alaris_th.st)`kvoflag))) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, booleans.AND(device(alaris_th.st)`infusing?, booleans.AND(device(alaris_th.st)`powered_on?, device(alaris_th.st)`kvoflag)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispkvo, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.AND(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate /= 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.AND(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate = 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispblank ENDCOND"
+    "nil")))
+ (key2_case_volume_TCC5 0
+  (key2_case_volume_TCC5-1 nil 3761995943
+   ("" (cond-coverage-tcc) nil nil) nil nil
+   (key2_case_volume coverage
+    "COND booleans.AND(device(alaris_th.st)`infusing?, booleans.AND(device(alaris_th.st)`powered_on?, (booleans.NOT)(device(alaris_th.st)`kvoflag))) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, booleans.AND(device(alaris_th.st)`infusing?, booleans.AND(device(alaris_th.st)`powered_on?, device(alaris_th.st)`kvoflag)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispkvo, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.AND(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate /= 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.AND(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate = 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispblank ENDCOND"
+    "nil")))
+ (key2_TCC1 0
+  (key2_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key2 disjointness
+    "COND (booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbi)))) -> alaris_th.key2_case_holding_infusing(alaris_th.st), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].volume) -> alaris_th.key2_case_volume(alaris_th.st), (booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime)) -> alaris_th.key2_case_dispvtbiORvtbitime(alaris_th.st) ENDCOND"
+    "nil")))
+ (key2_TCC2 0
+  (key2_TCC2-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (key2 coverage
+    "COND (booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbi)))) -> alaris_th.key2_case_holding_infusing(alaris_th.st), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].volume) -> alaris_th.key2_case_volume(alaris_th.st), (booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime)) -> alaris_th.key2_case_dispvtbiORvtbitime(alaris_th.st) ENDCOND"
+    "nil")))
+ (key3_case_attention_clearsetup_TCC1 0
+  (key3_case_attention_clearsetup_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3_case_attention_clearsetup disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> device(alaris_th.st)`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> device(alaris_th.st)`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (key3_case_volume_TCC1 0
+  (key3_case_volume_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3_case_volume disjointness
+    "COND booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusemode, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rmode, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].nullmode ENDCOND"
+    "nil")))
+ (key3_case_volume_TCC2 0
+  (key3_case_volume_TCC2-1 nil 3761995943
+   ("" (cond-coverage-tcc) nil nil) nil nil
+   (key3_case_volume coverage
+    "COND booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusemode, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rmode, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].nullmode ENDCOND"
+    "nil")))
+ (key3_case_volume_TCC3 0
+  (key3_case_volume_TCC3-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3_case_volume disjointness
+    "COND alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi -> device(alaris_th.st)`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> device(alaris_th.st)`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> (booleans.NOT)((booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`kvoflag))), alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dkvorate -> booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`kvoflag), ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (key3_case_volume_TCC4 0
+  (key3_case_volume_TCC4-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3_case_volume disjointness
+    "COND (booleans.NOT)(device(alaris_th.st)`kvoflag) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, device(alaris_th.st)`kvoflag -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispkvo ENDCOND"
+    "nil")))
+ (key3_case_volume_TCC5 0
+  (key3_case_volume_TCC5-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3_case_volume disjointness
+    "COND booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?) -> COND (booleans.NOT)(device(alaris_th.st)`kvoflag) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, device(alaris_th.st)`kvoflag -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispkvo ENDCOND, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.&(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate = 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.&(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate /= 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispblank ENDCOND"
+    "nil")))
+ (key3_case_volume_TCC6 0
+  (key3_case_volume_TCC6-1 nil 3761995943
+   ("" (cond-coverage-tcc) nil nil) nil nil
+   (key3_case_volume coverage
+    "COND booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?) -> COND (booleans.NOT)(device(alaris_th.st)`kvoflag) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, device(alaris_th.st)`kvoflag -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispkvo ENDCOND, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.&(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate = 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.&(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate /= 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispblank ENDCOND"
+    "nil")))
+ (key3_case_dispvtbi_vtmode_TCC1 0
+  (key3_case_dispvtbi_vtmode_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3_case_dispvtbi_vtmode disjointness
+    "COND booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].rmode, booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusemode, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].nullmode ENDCOND"
+    "nil")))
+ (key3_case_dispvtbi_vtmode_TCC2 0
+  (key3_case_dispvtbi_vtmode_TCC2-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3_case_dispvtbi_vtmode disjointness
+    "COND (booleans.AND(alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi, ((booleans.NOT)(device(alaris_th.st)`kvoflag)))) -> (device(alaris_th.st)`vtbi /= 0), (booleans.AND(alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi, device(alaris_th.st)`kvoflag)) -> booleans.FALSE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime -> device(alaris_th.st)`vtbi /= 0, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvol -> booleans.TRUE, alaris_th.x = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dkvorate -> device(alaris_th.st)`kvoflag, ELSE -> booleans.FALSE ENDCOND"
+    "nil")))
+ (key3_case_dispvtbi_vtmode_TCC3 0
+  (key3_case_dispvtbi_vtmode_TCC3-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3_case_dispvtbi_vtmode disjointness
+    "COND booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.&(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate = 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.&(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate /= 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.AND((booleans.NOT)(device(alaris_th.st)`kvoflag), booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, booleans.AND(device(alaris_th.st)`kvoflag, booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispkvo, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispblank ENDCOND"
+    "nil")))
+ (key3_case_dispvtbi_vtmode_TCC4 0
+  (key3_case_dispvtbi_vtmode_TCC4-1 nil 3761995943
+   ("" (cond-coverage-tcc) nil nil) nil nil
+   (key3_case_dispvtbi_vtmode coverage
+    "COND booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.&(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate = 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), booleans.&(device(alaris_th.st)`powered_on?, device(alaris_th.st)`infusionrate /= 0)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.AND((booleans.NOT)(device(alaris_th.st)`kvoflag), booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, booleans.AND(device(alaris_th.st)`kvoflag, booleans.AND(device(alaris_th.st)`infusing?, device(alaris_th.st)`powered_on?)) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispkvo, (booleans.NOT)(device(alaris_th.st)`powered_on?) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispblank ENDCOND"
+    "nil")))
+ (key3_case_optionsORdispinfo_TCC1 0
+  (key3_case_optionsORdispinfo_TCC1-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3_case_optionsORdispinfo disjointness
+    "COND booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate /= 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate = 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, device(alaris_th.st)`infusing? -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing ENDCOND"
+    "nil")))
+ (key3_case_optionsORdispinfo_TCC2 0
+  (key3_case_optionsORdispinfo_TCC2-1 nil 3761995943
+   ("" (cond-coverage-tcc) nil nil) nil nil
+   (key3_case_optionsORdispinfo coverage
+    "COND booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate /= 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, booleans.&((booleans.NOT)(device(alaris_th.st)`infusing?), device(alaris_th.st)`infusionrate = 0) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate, device(alaris_th.st)`infusing? -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing ENDCOND"
+    "nil")))
+ (key3_TCC1 0
+  (key3_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3 disjointness
+    "COND entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode -> alaris_th.key3_case_dispvtbi_vtmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode -> alaris_th.key3_case_dispvtbi_bagmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode -> alaris_th.key3_case_dispvtbi_tbagmode(alaris_th.st) ENDCOND"
+    "nil")))
+ (key3_TCC2 0
+  (key3_TCC2-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (key3 coverage
+    "COND entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode -> alaris_th.key3_case_dispvtbi_vtmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode -> alaris_th.key3_case_dispvtbi_bagmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode -> alaris_th.key3_case_dispvtbi_tbagmode(alaris_th.st) ENDCOND"
+    "nil")))
+ (key3_TCC3 0
+  (key3_TCC3-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (key3 disjointness
+    "COND (booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].attention, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].clearsetup)) -> alaris_th.key3_case_attention_clearsetup(alaris_th.st), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].batterylow) -> alaris_th.key3_case_battery_low(alaris_th.st), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].lockrate) -> alaris_th.key3_case_infuse(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].volume -> alaris_th.key3_case_volume(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbidone -> alaris_th.key3_case_vtbidone(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi -> COND entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode -> alaris_th.key3_case_dispvtbi_vtmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode -> alaris_th.key3_case_dispvtbi_bagmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode -> alaris_th.key3_case_dispvtbi_tbagmode(alaris_th.st) ENDCOND, (booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbi), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setnotfitted))) -> alaris_th.key3_case_setvtbi_rate_notfitted(alaris_th.st), booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispinfo) -> alaris_th.key3_case_optionsORdispinfo(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode) -> alaris_th.key3_case_vtbitime_vttmode(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode) -> alaris_th.key3_case_vtbitime_ttmode(alaris_th.st) ENDCOND"
+    "nil")))
+ (key3_TCC4 0
+  (key3_TCC4-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (key3 coverage
+    "COND (booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].attention, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].clearsetup)) -> alaris_th.key3_case_attention_clearsetup(alaris_th.st), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].batterylow) -> alaris_th.key3_case_battery_low(alaris_th.st), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].lockrate) -> alaris_th.key3_case_infuse(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].volume -> alaris_th.key3_case_volume(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbidone -> alaris_th.key3_case_vtbidone(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi -> COND entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode -> alaris_th.key3_case_dispvtbi_vtmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode -> alaris_th.key3_case_dispvtbi_bagmode(alaris_th.st), entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode -> alaris_th.key3_case_dispvtbi_tbagmode(alaris_th.st) ENDCOND, (booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setvtbi), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setnotfitted))) -> alaris_th.key3_case_setvtbi_rate_notfitted(alaris_th.st), booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispinfo) -> alaris_th.key3_case_optionsORdispinfo(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode) -> alaris_th.key3_case_vtbitime_vttmode(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode) -> alaris_th.key3_case_vtbitime_ttmode(alaris_th.st) ENDCOND"
+    "nil")))
+ (per_chevron_TCC1 0
+  (per_chevron_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_chevron subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_chevron_TCC2 0
+  (per_chevron_TCC2-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_chevron subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_chevron_TCC3 0
+  (per_chevron_TCC3-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_chevron subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_chevron_TCC4 0
+  (per_chevron_TCC4-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_chevron subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].drate"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_chevron_TCC5 0
+  (per_chevron_TCC5-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_chevron subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dtime"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_chevron_TCC6 0
+  (per_chevron_TCC6-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_chevron subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dvtbi"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_chevron_TCC7 0
+  (per_chevron_TCC7-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_chevron subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewvtbi"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_chevron_TCC8 0
+  (per_chevron_TCC8-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_chevron subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewvtbi"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_chevron_TCC9 0
+  (per_chevron_TCC9-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil nil
+   (per_chevron subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewtime"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (per_chevron_TCC10 0
+  (per_chevron_TCC10-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil
+   nil
+   (per_chevron subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dnewrate"
+    "imid_type[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fup_case_holding_NOTrlock_TCC1 0
+  (fup_case_holding_NOTrlock_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fup_case_holding_NOTrlock subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].big_step"
+    "steprate[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fup_case_dispvtbi_vtmode_TCC1 0
+  (fup_case_dispvtbi_vtmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fup_case_dispvtbi_vtmode subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].big_step"
+    "stepvol[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fup_case_vtbitime_vttmode_TCC1 0
+  (fup_case_vtbitime_vttmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fup_case_vtbitime_vttmode subtype "newtime(alaris_th.st)"
+    "nznum")))
+ (fup_case_vtbitime_vttmode_TCC2 0
+  (fup_case_vtbitime_vttmode_TCC2-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fup_case_vtbitime_vttmode subtype
+    "number_fields./(alaris_th.nv, newtime(alaris_th.st))"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (alaris_UP_time_TCC1 0
+  (alaris_UP_time_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil
+   nil (alaris_UP_time subtype "alaris_th.s" "nznum")))
+ (fup_case_vtbitime_ttmode_TCC1 0
+  (fup_case_vtbitime_ttmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fup_case_vtbitime_ttmode subtype
+    "number_fields.*(10, types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].small_step)"
+    "steptime[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fup_case_vtbitime_ttmode_TCC2 0
+  (fup_case_vtbitime_ttmode_TCC2-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fup_case_vtbitime_ttmode subtype "alaris_th.nt" "nznum")))
+ (fup_case_vtbitime_ttmode_TCC3 0
+  (fup_case_vtbitime_ttmode_TCC3-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fup_case_vtbitime_ttmode subtype
+    "number_fields./(newvtbi(alaris_th.st), alaris_th.nt)"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fup_case_dispvtbi_bagmode_TCC1 0
+  (fup_case_dispvtbi_bagmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fup_case_dispvtbi_bagmode subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags"
+    "ibagscursor[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fup_case_options_TCC1 0
+  (fup_case_options_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil)
+   nil nil
+   (fup_case_options subtype "0"
+    "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fup_TCC1 0
+  (fup_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (fup disjointness
+    "(COND booleans.&((booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate)), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.fup_case_holding_NOTrlock(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.fup_case_infusing_NOTrlock(alaris_th.d, alaris_th.st), booleans.&((booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate))), rlock(alaris_th.st)) -> alaris_th.fup_case_infusingORholding_rlock(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode) -> alaris_th.fup_case_dispvtbi_vtmode(alaris_th.d, alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode) -> alaris_th.fup_case_vtbitime_vttmode(alaris_th.d, alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode) -> alaris_th.fup_case_vtbitime_ttmode(alaris_th.d, alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode) -> alaris_th.fup_case_dispvtbi_bagmode(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode) -> alaris_th.fup_case_dispvtbi_tbagmode(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options -> alaris_th.fup_case_options(alaris_th.st) ENDCOND)"
+    "nil")))
+ (fup_TCC2 0
+  (fup_TCC2-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (fup coverage
+    "(COND booleans.&((booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate)), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.fup_case_holding_NOTrlock(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.fup_case_infusing_NOTrlock(alaris_th.d, alaris_th.st), booleans.&((booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate))), rlock(alaris_th.st)) -> alaris_th.fup_case_infusingORholding_rlock(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode) -> alaris_th.fup_case_dispvtbi_vtmode(alaris_th.d, alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode) -> alaris_th.fup_case_vtbitime_vttmode(alaris_th.d, alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode) -> alaris_th.fup_case_vtbitime_ttmode(alaris_th.d, alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode) -> alaris_th.fup_case_dispvtbi_bagmode(alaris_th.st), booleans.&(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi, entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode) -> alaris_th.fup_case_dispvtbi_tbagmode(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options -> alaris_th.fup_case_options(alaris_th.st) ENDCOND)"
+    "nil")))
+ (sup_case_vtbitime_vttmode_TCC1 0
+  (sup_case_vtbitime_vttmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sup_case_vtbitime_vttmode subtype "newtime(alaris_th.st)"
+    "nznum")))
+ (sup_case_vtbitime_vttmode_TCC2 0
+  (sup_case_vtbitime_vttmode_TCC2-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sup_case_vtbitime_vttmode subtype
+    "number_fields./(alaris_th.nv, newtime(alaris_th.st))"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sup_case_vtbitime_ttmode_TCC1 0
+  (sup_case_vtbitime_ttmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sup_case_vtbitime_ttmode subtype
+    "number_fields.*(10, types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].small_step)"
+    "steptime[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sup_case_vtbitime_ttmode_TCC2 0
+  (sup_case_vtbitime_ttmode_TCC2-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sup_case_vtbitime_ttmode subtype "alaris_th.nt" "nznum")))
+ (sup_case_vtbitime_ttmode_TCC3 0
+  (sup_case_vtbitime_ttmode_TCC3-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sup_case_vtbitime_ttmode subtype
+    "number_fields./(newvtbi(alaris_th.st), alaris_th.nt)"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sup_case_dispvtbi_bagmode_TCC1 0
+  (sup_case_dispvtbi_bagmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sup_case_dispvtbi_bagmode subtype
+    "(number_fields.+)(bagscursor(alaris_th.st), 1)"
+    "ibagscursor[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sup_case_dispvtbi_bagmode_TCC2 0
+  (sup_case_dispvtbi_bagmode_TCC2-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (sup_case_dispvtbi_bagmode disjointness
+    "COND reals.<(bagscursor(alaris_th.st), types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags) -> (number_fields.+)(bagscursor(alaris_th.st), 1), reals.>=(bagscursor(alaris_th.st), types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags) -> bagscursor(alaris_th.st) ENDCOND"
+    "nil")))
+ (sup_case_dispvtbi_bagmode_TCC3 0
+  (sup_case_dispvtbi_bagmode_TCC3-1 nil 3761995943
+   ("" (cond-coverage-tcc) nil nil) nil nil
+   (sup_case_dispvtbi_bagmode coverage
+    "COND reals.<(bagscursor(alaris_th.st), types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags) -> (number_fields.+)(bagscursor(alaris_th.st), 1), reals.>=(bagscursor(alaris_th.st), types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].mbags) -> bagscursor(alaris_th.st) ENDCOND"
+    "nil")))
+ (sup_case_options_TCC1 0
+  (sup_case_options_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil)
+   nil nil
+   (sup_case_options subtype "0"
+    "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sup_case_options_TCC2 0
+  (sup_case_options_TCC2-1 nil 3761995943 ("" (subtype-tcc) nil nil)
+   nil nil
+   (sup_case_options subtype
+    "(number_fields.-)(qcursor(alaris_th.st), 1)"
+    "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sup_TCC1 0
+  (sup_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (sup disjointness
+        "(COND booleans.&((booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate)), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.sup_case_holding_NOTrlock(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.sup_case_infusing_NOTrlock(alaris_th.st), booleans.&((booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate))), rlock(alaris_th.st)) -> alaris_th.sup_case_infusingORholding_rlock(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode)) -> alaris_th.sup_case_dispvtbi_vtmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode)) -> alaris_th.sup_case_vtbitime_vttmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode)) -> alaris_th.sup_case_vtbitime_ttmode(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode)) -> alaris_th.sup_case_dispvtbi_bagmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode)) -> alaris_th.sup_case_dispvtbi_tbagmode(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options -> alaris_th.sup_case_options(alaris_th.st) ENDCOND)"
+        "nil")))
+ (sup_TCC2 0
+  (sup_TCC2-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (sup coverage
+        "(COND booleans.&((booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate)), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.sup_case_holding_NOTrlock(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.sup_case_infusing_NOTrlock(alaris_th.st), booleans.&((booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing, booleans.OR(topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding, topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate))), rlock(alaris_th.st)) -> alaris_th.sup_case_infusingORholding_rlock(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode)) -> alaris_th.sup_case_dispvtbi_vtmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode)) -> alaris_th.sup_case_vtbitime_vttmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode)) -> alaris_th.sup_case_vtbitime_ttmode(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode)) -> alaris_th.sup_case_dispvtbi_bagmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode)) -> alaris_th.sup_case_dispvtbi_tbagmode(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options -> alaris_th.sup_case_options(alaris_th.st) ENDCOND)"
+        "nil")))
+ (fdown_case_holding_NOTrlock_TCC1 0
+  (fdown_case_holding_NOTrlock_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fdown_case_holding_NOTrlock subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].big_step"
+    "steprate[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_holding_NOTrlock_TCC2 0
+  (fdown_case_holding_NOTrlock_TCC2-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (fdown_case_holding_NOTrlock disjointness
+    "COND booleans.AND(alaris_th.d = 0, booleans.AND(current_sr(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].small_step, (booleans.OR((booleans.AND(reals.>(alaris_th.v, 10), booleans.AND(reals.<(alaris_th.v, 100), floor_ceil.fractional(number_fields./(alaris_th.v, 10)) = 0))), (booleans.AND(reals.>(alaris_th.v, 100), floor_ceil.fractional(number_fields./(alaris_th.v, 100)) = 0)))))) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].big_step, booleans.AND(alaris_th.d /= types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].maxpress, booleans.AND(current_sr(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].big_step, (booleans.OR(alaris_th.v = 10, alaris_th.v = 100)))) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].small_step, ELSE -> current_sr(alaris_th.st) ENDCOND"
+    "nil")))
+ (fdown_case_dispvtbi_vtmode_TCC1 0
+  (fdown_case_dispvtbi_vtmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fdown_case_dispvtbi_vtmode subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].big_step"
+    "stepvol[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_dispvtbi_vtmode_TCC2 0
+  (fdown_case_dispvtbi_vtmode_TCC2-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (fdown_case_dispvtbi_vtmode disjointness
+    "COND booleans.AND(alaris_th.d = 0, booleans.AND(current_sv(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].small_step, (booleans.OR((booleans.AND(reals.>(newvtbi(alaris_th.st), 10), booleans.AND(reals.<(newvtbi(alaris_th.st), 100), floor_ceil.fractional(number_fields./(newvtbi(alaris_th.st), 10)) = 0))), (booleans.AND(reals.>(newvtbi(alaris_th.st), 100), floor_ceil.fractional(number_fields./(newvtbi(alaris_th.st), 100)) = 0)))))) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].big_step, booleans.AND(alaris_th.d /= types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].maxpress, booleans.AND(current_sv(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].big_step, (booleans.OR(newvtbi(alaris_th.st) = 10, newvtbi(alaris_th.st) = 100)))) -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].small_step, ELSE -> current_sv(alaris_th.st) ENDCOND"
+    "nil")))
+ (fdown_case_vtbitime_vttmode_TCC1 0
+  (fdown_case_vtbitime_vttmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fdown_case_vtbitime_vttmode subtype "newtime(alaris_th.st)"
+    "nznum")))
+ (fdown_case_vtbitime_vttmode_TCC2 0
+  (fdown_case_vtbitime_vttmode_TCC2-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fdown_case_vtbitime_vttmode subtype
+    "number_fields./(alaris_th.nv, newtime(alaris_th.st))"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_vtbitime_ttmode_TCC1 0
+  (fdown_case_vtbitime_ttmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fdown_case_vtbitime_ttmode subtype
+    "number_fields.*(10, types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].small_step)"
+    "steptime[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_vtbitime_ttmode_TCC2 0
+  (fdown_case_vtbitime_ttmode_TCC2-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fdown_case_vtbitime_ttmode subtype "alaris_th.nt" "nznum")))
+ (fdown_case_vtbitime_ttmode_TCC3 0
+  (fdown_case_vtbitime_ttmode_TCC3-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fdown_case_vtbitime_ttmode subtype
+    "number_fields./(newvtbi(alaris_th.st), alaris_th.nt)"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_dispvtbi_bagmode_TCC1 0
+  (fdown_case_dispvtbi_bagmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (fdown_case_dispvtbi_bagmode subtype "0"
+    "ibagscursor[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_options_TCC1 0
+  (fdown_case_options_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil)
+   nil nil
+   (fdown_case_options subtype "3"
+    "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_options_TCC2 0
+  (fdown_case_options_TCC2-1 nil 3761995943 ("" (subtype-tcc) nil nil)
+   nil nil
+   (fdown_case_options subtype "3"
+    "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_options_TCC3 0
+  (fdown_case_options_TCC3-1 nil 3761995943 ("" (subtype-tcc) nil nil)
+   nil nil
+   (fdown_case_options subtype "2"
+    "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_options_TCC4 0
+  (fdown_case_options_TCC4-1 nil 3761995943 ("" (subtype-tcc) nil nil)
+   nil nil
+   (fdown_case_options subtype "5"
+    "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_options_TCC5 0
+  (fdown_case_options_TCC5-1 nil 3761995943 ("" (subtype-tcc) nil nil)
+   nil nil
+   (fdown_case_options subtype
+    "types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dpdtls"
+    "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (fdown_case_options_TCC6 0
+  (fdown_case_options_TCC6-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (fdown_case_options disjointness
+    "COND booleans.AND(device(alaris_th.st)`infusing?, booleans.AND((booleans.NOT)(rdisabled(alaris_th.st)), rlock(alaris_th.st))) -> 3, booleans.AND(device(alaris_th.st)`infusing?, booleans.AND((booleans.NOT)(rdisabled(alaris_th.st)), (booleans.NOT)(rlock(alaris_th.st)))) -> 3, booleans.AND(device(alaris_th.st)`infusing?, rdisabled(alaris_th.st)) -> 2, booleans.AND((booleans.NOT)(device(alaris_th.st)`infusing?), rdisabled(alaris_th.st)) -> 5, ELSE -> types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dpdtls ENDCOND"
+    "nil")))
+ (fdown_TCC1 0
+  (fdown_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (fdown disjointness
+    "(COND booleans.&((booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate))), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.fdown_case_holding_NOTrlock(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.fdown_case_infusing_NOTrlock(alaris_th.d, alaris_th.st), booleans.&((booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate)))), rlock(alaris_th.st)) -> alaris_th.fdown_case_infusingORholding_rlock(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode)) -> alaris_th.fdown_case_dispvtbi_vtmode(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode)) -> alaris_th.fdown_case_vtbitime_vttmode(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode)) -> alaris_th.fdown_case_vtbitime_ttmode(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode)) -> alaris_th.fdown_case_dispvtbi_bagmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode)) -> alaris_th.fdown_case_dispvtbi_tbagmode(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options -> alaris_th.fdown_case_options(alaris_th.st) ENDCOND)"
+    "nil")))
+ (fdown_TCC2 0
+  (fdown_TCC2-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (fdown coverage
+    "(COND booleans.&((booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate))), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.fdown_case_holding_NOTrlock(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.fdown_case_infusing_NOTrlock(alaris_th.d, alaris_th.st), booleans.&((booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate)))), rlock(alaris_th.st)) -> alaris_th.fdown_case_infusingORholding_rlock(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode)) -> alaris_th.fdown_case_dispvtbi_vtmode(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode)) -> alaris_th.fdown_case_vtbitime_vttmode(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode)) -> alaris_th.fdown_case_vtbitime_ttmode(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode)) -> alaris_th.fdown_case_dispvtbi_bagmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode)) -> alaris_th.fdown_case_dispvtbi_tbagmode(alaris_th.st), topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options -> alaris_th.fdown_case_options(alaris_th.st) ENDCOND)"
+    "nil")))
+ (alaris_dn_rate_TCC1 0
+  (alaris_dn_rate_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil) nil
+   nil
+   (alaris_dn_rate subtype
+    "(number_fields.-)(alaris_th.v, alaris_th.d)"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sdown_case_vtbitime_vttmode_TCC1 0
+  (sdown_case_vtbitime_vttmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sdown_case_vtbitime_vttmode subtype "newtime(alaris_th.st)"
+    "nznum")))
+ (sdown_case_vtbitime_vttmode_TCC2 0
+  (sdown_case_vtbitime_vttmode_TCC2-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sdown_case_vtbitime_vttmode subtype
+    "number_fields./(alaris_th.nv, newtime(alaris_th.st))"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sdown_case_vtbitime_ttmode_TCC1 0
+  (sdown_case_vtbitime_ttmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sdown_case_vtbitime_ttmode subtype
+    "number_fields.*(10, types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].small_step)"
+    "steptime[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sdown_case_vtbitime_ttmode_TCC2 0
+  (sdown_case_vtbitime_ttmode_TCC2-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sdown_case_vtbitime_ttmode subtype "alaris_th.nt" "nznum")))
+ (sdown_case_vtbitime_ttmode_TCC3 0
+  (sdown_case_vtbitime_ttmode_TCC3-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sdown_case_vtbitime_ttmode subtype
+    "number_fields./(newvtbi(alaris_th.st), alaris_th.nt)"
+    "irates[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sdown_case_dispvtbi_bagmode_TCC1 0
+  (sdown_case_dispvtbi_bagmode_TCC1-1 nil 3761995943
+   ("" (subtype-tcc) nil nil) nil nil
+   (sdown_case_dispvtbi_bagmode subtype
+    "(number_fields.-)(bagscursor(alaris_th.st), 1)"
+    "ibagscursor[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sdown_case_dispvtbi_bagmode_TCC2 0
+  (sdown_case_dispvtbi_bagmode_TCC2-1 nil 3761995943
+   ("" (cond-disjoint-tcc) nil nil) nil nil
+   (sdown_case_dispvtbi_bagmode disjointness
+    "COND reals.>(bagscursor(alaris_th.st), 0) -> (number_fields.-)(bagscursor(alaris_th.st), 1), bagscursor(alaris_th.st) = 0 -> bagscursor(alaris_th.st) ENDCOND"
+    "nil")))
+ (sdown_case_dispvtbi_bagmode_TCC3 0
+  (sdown_case_dispvtbi_bagmode_TCC3-1 nil 3761995943
+   ("" (cond-coverage-tcc) nil nil) nil nil
+   (sdown_case_dispvtbi_bagmode coverage
+    "COND reals.>(bagscursor(alaris_th.st), 0) -> (number_fields.-)(bagscursor(alaris_th.st), 1), bagscursor(alaris_th.st) = 0 -> bagscursor(alaris_th.st) ENDCOND"
+    "nil")))
+ (sdown_case_options_TCC1 0
+  (sdown_case_options_TCC1-1 nil 3761995943 ("" (subtype-tcc) nil nil)
+   nil nil
+   (sdown_case_options subtype
+    "(number_fields.+)(qcursor(alaris_th.st), 1)"
+    "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sdown_case_options_TCC2 0
+  (sdown_case_options_TCC2-1 nil 3761995943 ("" (subtype-tcc) nil nil)
+   nil nil
+   (sdown_case_options subtype
+    "(number_fields.+)(qcursor(alaris_th.st), 1)"
+    "qcurse[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]")))
+ (sdown_TCC1 0
+  (sdown_TCC1-1 nil 3761995943 ("" (cond-disjoint-tcc) nil nil) nil nil
+   (sdown disjointness
+    "(COND booleans.&((booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate))), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.sdown_case_holding_NOTrlock(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.sdown_case_infusing_NOTrlock(alaris_th.st), booleans.&((booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate)))), rlock(alaris_th.st)) -> alaris_th.sdown_case_infusingORholding_rlock(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode)) -> alaris_th.sdown_case_dispvtbi_vtmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode)) -> alaris_th.sdown_case_vtbitime_vttmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode)) -> alaris_th.sdown_case_vtbitime_ttmode(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode)) -> alaris_th.sdown_case_dispvtbi_bagmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode)) -> alaris_th.sdown_case_dispvtbi_tbagmode(alaris_th.st), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options) -> alaris_th.sdown_case_options(alaris_th.st) ENDCOND)"
+    "nil")))
+ (sdown_TCC2 0
+  (sdown_TCC2-1 nil 3761995943 ("" (cond-coverage-tcc) nil nil) nil nil
+   (sdown coverage
+    "(COND booleans.&((booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate))), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.sdown_case_holding_NOTrlock(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), (booleans.NOT)(rlock(alaris_th.st))) -> alaris_th.sdown_case_infusing_NOTrlock(alaris_th.st), booleans.&((booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].infusing), booleans.OR((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].holding), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].setrate)))), rlock(alaris_th.st)) -> alaris_th.sdown_case_infusingORholding_rlock(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtmode)) -> alaris_th.sdown_case_dispvtbi_vtmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vttmode)) -> alaris_th.sdown_case_vtbitime_vttmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].vtbitime), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].ttmode)) -> alaris_th.sdown_case_vtbitime_ttmode(alaris_th.d, alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].bagmode)) -> alaris_th.sdown_case_dispvtbi_bagmode(alaris_th.st), booleans.&((topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].dispvtbi), (entrymode(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].tbagmode)) -> alaris_th.sdown_case_dispvtbi_tbagmode(alaris_th.st), (topline(alaris_th.st) = types_and_constants_th[alaris_th.maxrate, alaris_th.maxinfuse, alaris_th.infusemin, alaris_th.timeout, alaris_th.shorttimeout, alaris_th.maxtime, alaris_th.bat_max, alaris_th.bat_min].options) -> alaris_th.sdown_case_options(alaris_th.st) ENDCOND)"
+    "nil")))
+ (check_chev_fup_permission 0
+  (check_chev_fup_permission-1 nil 3761995953 ("" (postpone) nil nil)
+   nil shostak))
+ (check_chev_sdown_permission 0
+  (check_chev_sdown_permission-1 nil 3766480707 ("" (postpone) nil nil)
+   nil shostak)))
+

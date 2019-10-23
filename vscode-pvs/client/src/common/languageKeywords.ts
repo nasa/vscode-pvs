@@ -36,28 +36,35 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-export function regExpSource(v: Array<string>) {
-	v = v.filter((elem:string) => {
-		return elem !== "auto_rewrite+" && elem !== "auto_rewrite-" && elem !== "type+";
-	}).map((elem: string) => {
-		// keywords ending with +/- need negative lookahead
-		// regex /\btype\+?/ is not good enough because it does not check the keyword boundary (e.g., types would be captured)
-		// regexp /\btype\+?\b/ does not work either, because \b is designed to work with words, not \+ symbols
-		if (elem === "type") {
-			return "\\b(?!" + elem + "\\+)"
-					+ elem + "\\b|\\b" + elem + "\\+";
-		} else if (elem === "auto_rewrite") {
-			return "\\b(?!" + elem + "[\\+\\-])"
-					+ elem + "\\b|\\b" + elem + "[\\+\\-]";
+ // utility function for creating regexp
+function regExpSource(v: Array<string>): string {
+	if (v) {
+		v = v.filter((elem:string) => {
+			return elem !== "auto_rewrite+" && elem !== "auto_rewrite-" && elem !== "type+";
+		});
+		if (v && v.length) {
+			v = v.map((elem: string) => {
+				// keywords ending with +/- need negative lookahead
+				// regex /\btype\+?/ is not good enough because it does not check the keyword boundary (e.g., types would be captured)
+				// regexp /\btype\+?\b/ does not work either, because \b is designed to work with words, not \+ symbols
+				if (elem === "type") {
+					return "\\b(?!" + elem + "\\+)"
+							+ elem + "\\b|\\b" + elem + "\\+";
+				} else if (elem === "auto_rewrite") {
+					return "\\b(?!" + elem + "[\\+\\-])"
+							+ elem + "\\b|\\b" + elem + "[\\+\\-]";
+				}
+				const op: string = elem.includes("?") ? "?"
+									: elem.includes("+") ? "+" 
+									: elem.includes("!") ? "!" : null;
+				return (op) ? "\\b" + elem.replace(op, "\\" + op)
+							: "\\b" + elem + "\\b";
+			});
+			let ans: string = v.join("|");
+			return ans;
 		}
-		const op: string = elem.includes("?") ? "?"
-							: elem.includes("+") ? "+" 
-							: elem.includes("!") ? "!" : null;
-		return (op) ? "\\b" + elem.replace(op, "\\" + op)
-					: "\\b" + elem + "\\b";
-	});
-	let ans: string = v.join("|");
-	return ans;
+	}
+	return "";
 }
 
 // from pvs-prover-helps.el
@@ -144,7 +151,7 @@ export interface SnippetType {
 	body: string[]
 };
 
-export function regexpOr(regexpSourceV: string[], mod?: string): RegExp {
-	mod = mod || "g";
-	return new RegExp(regexpSourceV.join("|"), mod);
-}
+// export function regexpOr(regexpSourceV: string[], mod?: string): RegExp {
+// 	mod = mod || "g";
+// 	return new RegExp(regexpSourceV.join("|"), mod);
+// }

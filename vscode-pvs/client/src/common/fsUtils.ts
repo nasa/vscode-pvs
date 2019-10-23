@@ -43,7 +43,7 @@ import { FileList } from '../common/serverInterface';
 const HOME_DIR: string = require('os').homedir();
 // nodeJS does not support tilde expansion for the home folder
 export function tildeExpansion(path: string): string {
-	if (path && path.startsWith("~")) {
+	if (path && (path.startsWith("~/") || path === "~")) {
 		path = path.replace("~", HOME_DIR);
 	}
 	return path;
@@ -74,68 +74,100 @@ export async function readDir(contextFolder: string): Promise<string[]> {
 }
 export async function readFile(path: string): Promise<string | null> {
 	if (path) {
+		path = path.replace("file://", "");
 		path = tildeExpansion(path);
 		try {
-			return await fs.readFileSync(path).toString('utf8');
+			return fs.readFileSync(path).toString('utf8');
 		} catch (fileReadError) {
-			console.error(fileReadError);
+			// console.error(fileReadError);
+			return null;
 		}
 	}
 	return null;
 }
+export function deleteFile(fname: string): boolean {
+	try {
+		fs.unlinkSync(fname);
+	} catch (deleteError) {
+		return false;
+	}
+	return true;
+}
 export async function deletePvsCache(contextFolder: string): Promise<boolean> {
 	try {
+		// console.log(`Deleting cache for context ${contextFolder}`);
 		if (contextFolder) {
+			contextFolder = tildeExpansion(contextFolder);
+			// console.log(`Deleting cache for context ${contextFolder}`);
 			const cacheFolder: string = path.join(contextFolder, "pvsbin");
-			const fileList: string[] = await fs.readdirSync(cacheFolder);
-			fileList.forEach(file => {
-				fs.unlinkSync(path.join(cacheFolder, file));
+			const pvsBinFiles: string[] = fs.readdirSync(cacheFolder);
+			// console.log(pvsBinFiles);
+			pvsBinFiles.forEach(file => {
+				deleteFile(path.join(cacheFolder, file));
 			});
+			// console.log(`removing ${path.join(contextFolder, ".pvscontext")}`);
+			deleteFile(path.join(contextFolder, ".pvscontext"));
+			// console.log(`reading folder ${contextFolder}`);
+			const tccFiles: string[] = fs.readdirSync(contextFolder);
+			// console.log(tccFiles);
+			if (tccFiles) {
+				// console.log(tccFiles);
+				tccFiles.filter(name => {
+					// console.log(name);
+					return name.endsWith(".tccs");
+				}).forEach(file => {
+					// console.log(`deleting ${file}`);
+					deleteFile(path.join(cacheFolder, file));
+				});
+			}
 		}
 	} catch (deleteError) {
 		return false;
 	}
 	return true;
 }
+export async function createFolder(path: string): Promise<void> {
+	if (!fs.existsSync(path)){
+		fs.mkdirSync(path);
+	}
+}
 export async function writeFile(path: string, content: string): Promise<void> {
 	if (path) {
 		path = tildeExpansion(path);
-		await fs.writeFileSync(path, content);
+		fs.writeFileSync(path, content);
 	}
 }
-export function getFilename(fileName: string, opt?: { removeFileExtension?: boolean }): string {
-	if (fileName) {
-		opt = opt || {};
-		const pathlessFileName = fileName.includes("/") ? fileName.split("/").slice(-1)[0] : fileName;
-		if (opt.removeFileExtension &&
-				(pathlessFileName.endsWith(".pvs") || pathlessFileName.endsWith(".tccs"))) {
-			return pathlessFileName.split(".").slice(0, -1).join(".");
-		}
-		return pathlessFileName;
+export function getFileName(fname: string): string {
+	if (fname) {
+		fname = fname.replace("file://", "");
+		fname = fname.includes("/") ? fname.split("/").slice(-1)[0] : fname;
+		fname = fname.includes(".") ? fname.split(".").slice(0, -1).join(".") : fname;
+		return fname;
 	}
 	return null;
 }
-export function removeFileExtension(fileName: string): string {
-	if (fileName) {
-		return fileName.split(".").slice(0, -1).join(".");
+export function removeFileExtension(fname: string): string {
+	if (fname) {
+		return fname.split(".").slice(0, -1).join(".");
 	}
 	return null;
 }
-export function getFileExtension(fileName: string): string {
-	if (fileName) {
-		return `.${fileName.split(".").slice(-1).join(".")}`;
+export function getFileExtension(fname: string): string {
+	if (fname) {
+		return `.${fname.split(".").slice(-1).join(".")}`;
 	}
 	return null;
 }
-export function getContextFolder(path: string): string {
-	if (path) {
-		return path.split("/").slice(0, -1).join("/").replace("file://", "");
+export function getContextFolder(fname: string): string {
+	if (fname) {
+		fname = fname.replace("file://", "");
+		return fname.split("/").slice(0, -1).join("/").replace("//", "/");
 	}
 	return null;
 }
 export function isPvsFile(fileName: string): boolean {
 	if (fileName) {
-		return fileName.endsWith('.pvs') || fileName.endsWith('.tccs');
+		return fileName.endsWith('.pvs') || fileName.endsWith('.tccs') || fileName.endsWith('.ppe') || fileName.endsWith('.pr');
 	}
 	return false;
 }
@@ -186,4 +218,43 @@ export function normalizePath(p: string) {
 		p = tildeExpansion(p);
 	}
 	return p;
+}
+
+export function getText(txt: string, range: { start: { line: number, character?: number }, end: { line: number, character?: number } }): string {
+	if (txt) {
+		const lines: string[] = txt.split("\n");
+		let ans: string[] = lines.slice(range.start.line, range.end.line + 1);
+		if (ans && ans.length > 0) {
+			if (!isNaN(range.start.character)) {
+				ans[0] = ans[0].substr(range.start.character);
+			}
+			if (!isNaN(range.end.character)) {
+				let endCharacter: number = range.end.character;
+				if (!isNaN(range.start.character) && range.start.line === range.end.line) {
+					endCharacter -= range.start.character;
+				}
+				ans[ans.length - 1] = ans[ans.length - 1].substr(0, endCharacter);
+			}
+			return ans.join("\n");
+		}
+	}
+	return txt;
+}
+
+import * as crypto from 'crypto';
+
+export function get_fresh_id(): string {
+	// This may be overkill, a simple call to random is probably good enough.
+	return crypto.createHash('sha256').update(Math.random().toString(36)).digest('hex');
+}
+
+export function fname2desc (fname: string): { fileName: string, fileExtension: string, contextFolder: string } {
+	const fileName: string = getFileName(fname);
+	const fileExtension: string = getFileExtension(fname);
+	const contextFolder: string = getContextFolder(fname);
+	return { fileName, fileExtension, contextFolder };
+}
+
+export function desc2fname (desc: { fileName: string, fileExtension: string, contextFolder: string }): string {
+	return path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 }

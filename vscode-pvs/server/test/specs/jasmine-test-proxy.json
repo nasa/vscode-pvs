@@ -1,0 +1,8 @@
+{
+  "spec_dir": "server/test",
+  "spec_files": [
+    "test-proxy.ts"
+  ],
+  "stopSpecOnExpectationFailure": false,
+  "random": true
+}

@@ -1,0 +1,8 @@
+{
+  "spec_dir": "server/test",
+  "spec_files": [
+    "test-prover.ts"
+  ],
+  "stopSpecOnExpectationFailure": false,
+  "random": true
+}

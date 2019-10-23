@@ -41,6 +41,20 @@
 install:
 	npm install
 
+test-proxy:
+	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-proxy.json
+test-parser:
+	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-parser.json
+test-find-declaration:
+	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-find-declaration.json
+test-typechecker:
+	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-typechecker.json
+test-prover:
+	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-prover.json
+test:
+	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-all.json
+test-all: test
+
 clean:
 	cd client && make clean && cd .. && cd server && make clean && cd ..
 	rm -rf node_modules

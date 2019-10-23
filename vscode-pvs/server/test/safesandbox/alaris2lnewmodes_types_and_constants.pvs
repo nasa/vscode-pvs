@@ -1,0 +1,90 @@
+% Michael Harrison and Paolo Masci (QMUL and Newcastle University) April 2014
+types_and_constants_th: THEORY
+ BEGIN
+
+  maxinfuse: nat = 3000
+  maxrate  : nat = 1200
+  infusemin: posreal = 0.1
+  timeout  : nat = 200 % must be less than maxtime
+  shorttime: nat = 20
+  shorttimeout: nat = shorttime
+  maxtime  : nat = maxinfuse
+  bat_max  : nat = maxtime - 1
+  bat_min  : nat = 2
+
+
+%-------------- Constants Definitions
+
+   %-- Generic to device
+   % maxrate  : nat = 7
+   % maxinfuse: nat = 7
+   % infusemin: nat = 2
+   % timeout  : nat = 3
+   % maxtime  : nat = 7
+
+   %-- Specific to Alaris GP infusion pump
+   maxbags  : nat = 3000
+   bigstep  : nat = 10
+   drate    : nat = 0
+   dvtbi    : nat = 1
+   dvol     : nat = 2
+   dtime    : nat = 3
+   dbags    : nat = 4
+   dquery   : nat = 5
+   dkvorate : nat = 6
+   dnewvtbi : nat = 7
+   dnewtime : nat = 8
+   dnewrate : nat = 9
+   dlock    : nat = 0
+   dpdtls   : nat = 6
+   mbags    : nat = 9
+   midbag   : nat = 4
+   
+   maxpress : nat = 5
+   tiny_step : real = 0.1
+   small_step: real = 1
+   big_step: real = 10
+
+
+
+%-------------- Type Definitions
+   irates   : TYPE = nonneg_real
+
+   %-- Generic to the device
+ %  imode    : TYPE = { blank, hold, infuse }
+   % >>new edit<<
+   %irates   : TYPE = {x : real | x >= 0 & x <= maxrate}
+   %ivols    : TYPE = {x: real | x >= 0 & x <= maxinfuse}
+   %itimes   : TYPE = {x: real | x >= 0 & x <= maxtime}
+   ivols    : TYPE = nonneg_real
+   itimes   : TYPE = nonneg_real
+
+   %-- Specific to Alaris GP
+   iline    : TYPE = { holding, infusing, volume, dispvtbi, attention, 
+                       vtbidone, dispkvo, setvtbi, setrate, setnotfitted,
+                       lockrate, locked, options, dispinfo, 
+                       vtbitime, dispblank, clearsetup, batterylow }
+   option_tags : TYPE = {ratelock, rateunlock, dosingsumm, adjalarm, 
+                         pumpdetails, infusionsetup, setvtbiovertime, 
+                         disableratelock, enableratelock, optionblank}
+   imid_type  : TYPE = {x: upto(dnewrate) | x >= drate}
+   imid       : TYPE = [ imid_type -> boolean ]
+   ifunctions : TYPE = { fvol, fvtbi, fcancel, fclear, fnull, fback, fok, 
+                         fbags, fquit, fkeep, fyes, fno }
+   emodes     : TYPE = { rmode, bagmode, tbagmode, qmode, vtmode, vttmode, 
+                         ttmode, nullmode, infusemode }
+   ibags      : TYPE = upto(maxbags)
+   ibagscursor: TYPE = upto(mbags)
+   qcurse     : TYPE = { x: upto(dpdtls) | x >= dlock }
+   o_menu     : TYPE = [ qcurse -> option_tags ]
+   abags      : TYPE = [ upto(mbags) -> ibags ]
+   delta      : TYPE = nat
+   presstime : TYPE = upto(maxpress)
+   pausetime : TYPE = upto(maxtime)
+   steprate:   TYPE = {x: irates | x = small_step OR x=bigstep} % OR x=tiny_step}
+   stepvol:    TYPE = {x: ivols | x = small_step OR x=bigstep} % OR x=tiny_step}
+   steptime:    TYPE = {x: itimes | x = small_step OR x= 10*small_step OR x=60 OR x=600}
+   chev_buttons: TYPE = {fupb, fdownb, supb, sdownb, nob}
+
+
+ END types_and_constants_th

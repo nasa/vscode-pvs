@@ -41,19 +41,14 @@ import { TextDocument, Position, CancellationToken, Hover, Range } from 'vscode-
 import { MarkedString } from 'vscode-languageserver-types';
 import { PvsDefinitionProvider } from "./pvsDefinitionProvider";
 import * as language from "../common/languageKeywords";
-import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
+import * as utils from '../common/languageUtils';
 
 export class PvsHoverProvider {
 	/**`
 	 * Pointer to the definition provider
 	 */
 	private definitionProvider: PvsDefinitionProvider;
-
-	/**
-	 * folder where PVS context path
-	 */
-	private pvsLibrariesPath: string;
 
 	/**
 	 * Creates a new hover provider
@@ -69,60 +64,72 @@ export class PvsHoverProvider {
 	 * @param position Current cursor position
 	 * @param token Cancellation token (optional).
 	 */
-	async provideHover (document: TextDocument, position: Position, token?: CancellationToken): Promise<Hover> {
-		if (fsUtils.isPvsFile(document.uri)) {
+	async provideHover (document: { txt: string, uri: string, position: Position }, token?: CancellationToken): Promise<Hover> {
+		if (document && document.txt && document.uri && document.position) {
+			let contents: MarkedString[] = [];
 			// load the text preceeding the current position and check if this is a comment
-			const line: string = document.getText({
-				start: { line: position.line, character: 0 },
-				end: { line: position.line, character: position.character }
+			const line: string = fsUtils.getText(document.txt, {
+				start: { line:document.position.line },
+				end: { line: document.position.line }
 			});
 			// check if the cursor is over a comment -- if that's the case, do nothing
 			const commentRegex: RegExp = new RegExp(language.PVS_COMMENT_REGEXP_SOURCE);
-			const isComment: boolean = commentRegex.test(line);
+			const matchComment: RegExpMatchArray = commentRegex.exec(line);
+			const isComment: boolean = matchComment && matchComment.index <= document.position.character; //commentRegex.test(line);
 			if (isComment) { return null; }
 			// else, not a comment
-			let definitions: PvsDefinition[] = await this.definitionProvider.provideDefinition(document, position, null);
-			if (definitions) {
-				const desc: PvsDefinition = definitions[0];
-				let contents: MarkedString[] = [];
-				if (desc.error) {
-					// errors are shown alone in the hover to avoid cluttering
-					contents.push(desc.error.msg);
-				} else {
-					if (desc.comment) {
-						contents.push({
-							value: desc.comment,
-							language: "pvs"
-						});
-					}
-					if (desc.symbolTheory && desc.symbolDeclaration) {
-						if (desc.symbolDeclarationRange && desc.symbolDeclarationFile) {
-							const fileName: string = fsUtils.getFilename(desc.symbolDeclarationFile);
-							const link: MarkedString = // encoded as a markdown string
-								`[${fileName} (Ln ${desc.symbolDeclarationRange.start.line}, Col ${desc.symbolDeclarationRange.start.character})]`
-								+ `(file://${desc.symbolDeclarationFile}`
-								+ `#L${desc.symbolDeclarationRange.start.line})`;
-								// + ", Col " + desc.symbolDeclarationRange.start.character + ")";
-							contents.push(link);
+			const ans: { symbolName: string, definitions: PvsDefinition[] } = await this.definitionProvider.provideDefinition(document);
+			if (ans) {
+				const definitions: PvsDefinition[] = ans.definitions;
+				if (definitions && definitions.length > 0) {
+					// give preference to definitions in the same file
+					const sameTheoryDefs: PvsDefinition[] = definitions.filter((def: PvsDefinition) => {
+						return def.symbolDeclarationFile === document.uri;
+					});
+					const def: PvsDefinition = (sameTheoryDefs && sameTheoryDefs.length > 0) ? sameTheoryDefs[0] : definitions[0];
+					if (def.error) {
+						// errors are shown alone in the hover to avoid cluttering
+						contents.push(def.error.message);
+					} else {
+						if (def.comment) {
+							contents.push({
+								value: def.comment,
+								language: "pvs"
+							});
 						}
-						const content: MarkedString = {
-							value: desc.symbolDeclaration,
-							language: "pvs"
-						};
-						contents.push(content);
+						if (definitions.length > 1) {
+							// const uri: string = (document.uri.startsWith("file://")) ? document.uri : `file://${document.uri}`;
+							// contents.push(`Symbol [${ans.symbolName}](${uri}#L${document.position.line + 1}) is overloaded: ${definitions.length} definitions found.`);
+							contents.push(`Symbol ${ans.symbolName} is overloaded: ${definitions.length} definitions found.`);
+							contents.push(`This tooltip shows one definition. Use peek-definition to view all definitions.`);
+						}	
+						if (def.symbolTheory && def.symbolDeclaration) {
+							if (def.symbolDeclarationRange && def.symbolDeclarationFile) {
+								const fileName: string = fsUtils.getFileName(def.symbolDeclarationFile);
+								const link: MarkedString = // encoded as a markdown string
+									`[${fileName} (Ln ${def.symbolDeclarationRange.start.line}, Col ${def.symbolDeclarationRange.start.character})]`
+									+ `(file://${def.symbolDeclarationFile}`
+									+ `#L${def.symbolDeclarationRange.start.line})`;
+									// + ", Col " + desc.symbolDeclarationRange.start.character + ")";
+								contents.push(link);
+							}
+							const content: MarkedString = {
+								value: def.symbolDeclaration,
+								language: "pvs"
+							};
+							contents.push(content);
+						}
 					}
+				} else {
+					const link: MarkedString = // encoded as a markdown string
+							`[${ans.symbolName}](file://${document.uri}#L${document.position.line + 1})`;
+					contents.push(`No definition found for ${link}`);
 				}
-				if (definitions.length > 1) {
-					contents = contents.concat([
-						`${definitions.length - 1} additional definitions found`,
-						"Please use peek-definition to view all definitions"
-					]);
-				}
-				return {
-					contents: contents,
-					range: { start: position, end: position } // the hover is located at the mouse position
-				};
 			}
+			return {
+				contents: contents,
+				range: { start: document.position, end: document.position } // the hover is located at the mouse position
+			};
 		}
 		return null;
 	}

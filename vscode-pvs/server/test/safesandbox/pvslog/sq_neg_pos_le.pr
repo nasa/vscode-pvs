@@ -1,0 +1,4 @@
+
+  ⊢-------
+{1}   FORALL (a: real, nnc: nonneg_real):
+        sq(a) <= sq(nnc) IFF (-nnc <= a AND a <= nnc)

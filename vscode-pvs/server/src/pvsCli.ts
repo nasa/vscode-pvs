@@ -38,32 +38,33 @@
 
 import * as utils from './common/languageUtils';
 import * as readline from 'readline';
-import { PvsCliInterface, PvsResponseType, PvsVersionDescriptor, SimpleConsole, StrategyDescriptor } from './common/serverInterface';
-import * as language from "./common/languageKeywords";
+import { PvsCliInterface, SimpleConsole, StrategyDescriptor, SimpleConnection, serverEvent, serverCommand } from './common/serverInterface';
+import * as fsUtils from './common/fsUtils';
+
 
 const usage: string = `
-${utils.colorText("Prover Command Line Interface (CLI)", utils.textColor.blue)}
+${utils.colorText("PVS Prover Command Line Interface (PVS-CLI)", utils.textColor.blue)}
 Usage: node pvsCli '{ "pvsPath": "<path-to-pvs-installation>", "contextFolder": "<context-folder>" }'
 `;
 
 class CliConsole implements SimpleConsole {
-	private connection: CliConnection = null;
+	protected connection: CliConnection = null;
 
 	constructor (connection?: CliConnection) {
 		this.connection = connection;
 	}
-	log (str: string,) {
+	log (elem: any) {
 		if (this.connection) {
-			this.connection.console.log(str);
+			this.connection.console.log(elem);
 		} else {
-			console.log(str);
+			console.log(elem);
 		}
 	}
-	error (str: string) {
+	error (elem: any) {
 		if (this.connection) {
-			this.connection.console.error(str);
+			this.connection.console.error(elem);
 		} else {
-			console.error(str);
+			console.error(elem);
 		}
 	}
 	info (str: string) {
@@ -82,18 +83,22 @@ class CliConsole implements SimpleConsole {
 	}
 }
 
-class CliConnection {
+class CliConnection implements SimpleConnection {
 	public console: CliConsole;
 	constructor () {
 		this.console = new CliConsole();
 	}
+	sendNotification (type: string, msg?: string): void { };
+	sendRequest (type: string, data: any): void { };
 }
 
-import { PvsProcess } from './pvsProcess';
-import { ConnectionError, Disposable } from 'vscode-jsonrpc';
+import { PvsProxy } from './pvsProxy';
+import { PvsResponse } from './common/pvs-gui';
+
+import * as WebSocket from 'ws';
 
 // utility function, ensures open brackets match closed brackets for commands
-function parMatch(cmd: string): string {
+function parMatch (cmd: string): string {
 	const openRegex: RegExp = new RegExp(/\(/g);
 	const closeRegex: RegExp = new RegExp(/\)/g);
 	let par: number = 0;
@@ -111,17 +116,30 @@ function parMatch(cmd: string): string {
 		cmd = '('.repeat(-par) + cmd;
 		// console.log(`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
 	}
-	return cmd;
+	return cmd.startsWith('(') ? cmd : `(${cmd})`; // add outer parentheses if they are missing
 }
 
 // utility function, ensures open brackets match closed brackets for commands
-function quotesMatch(cmd: string): boolean {
+function quotesMatch (cmd: string): boolean {
 	const quotesRegex: RegExp = new RegExp(/\"/g);
 	let nQuotes: number = 0;
 	while (quotesRegex.exec(cmd)) {
 		nQuotes++;
 	}
 	return nQuotes % 2 === 0;
+}
+
+function isQuit (cmd: string): boolean {
+	switch (cmd) {
+		case "quit":
+		case "quit;":
+		case "(quit)":
+		case "exit":
+		case "exit;": {
+			return true;
+		}
+	}
+	return false;
 }
 
 let progressLevel: number = 0;
@@ -137,257 +155,234 @@ function showProgress (data: string) {
 }
 
 class PvsCli {
-	private rl: readline.ReadLine;
-	private pvsProcess: PvsProcess;
+	protected rl: readline.ReadLine;
+	// protected pvsProcess: PvsProcess;
 
-	private static completions: string[] = utils.PROVER_STRATEGIES_CORE.map((strat: StrategyDescriptor) => {
-		return `(${strat.name}`;
+	protected static completions: string[] = utils.PROVER_STRATEGIES_CORE.map((strat: StrategyDescriptor) => {
+		return strat.name;
 	});
 
-	private pvsPath: string;
-	private contextFolder: string;
-	private fileName: string;
-	private fileExtension: string;
-	private theoryName: string;
-	private formulaName: string;
-	private line: number;
+	// protected pvsPath: string;
+	protected contextFolder: string;
+	protected pvsProxy: PvsProxy;
+	protected fileName: string;
+	protected fileExtension: string;
+	protected theoryName: string;
+	protected formulaName: string;
+	protected line: number;
 
-	private connection: CliConnection;
+	protected clientID: string;
 
-	private cmds: string[] = []; // queue of commands to be executed
-	private tabCompleteMode: boolean = false;
+	protected connection: CliConnection;
 
-	private args: PvsCliInterface;
-	private active: boolean = false;
+	protected cmds: string[] = []; // queue of commands to be executed
+	protected tabCompleteMode: boolean = false;
 
-	private outChannel (data: string) {
-		const regex: RegExp = /:pvs-loc\b/;
-		if (regex.test(data)) {
-			this.active = false;
-			// Show proof summary
-			console.log(PvsCli.withSyntaxHighlighting(data));
-			// this.pvsProcess.getTheoryStatus({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName });
+	protected args: PvsCliInterface;
+	protected pvsPath: string;
+
+	protected prompt: string;
+
+	protected proofState: string;
+
+	protected wsClient: WebSocket;
+
+	protected notifyStartExecution (msg: string): void {
+		if (this.connection) {
+			this.connection.console.info(msg);
 		}
-		if (this.active) {
-			console.log(PvsCli.withSyntaxHighlighting(data));
+	}
+	protected notifyEndExecution (): void {
+		if (this.connection) {
+			this.connection.console.info("Ready!");
 		}
+	}
+
+	protected qed (ans: PvsResponse): boolean {
+		return ans && ans.result && ans.result.result && ans.result.result === "Q.E.D.";
 	}
 
 	/**
 	 * @constructor
 	 * @param args information necessary to launch the theorem prover
 	 */
-	constructor (args: PvsCliInterface) {
+	constructor (args?: PvsCliInterface) {
 		this.args = args;
-		this.pvsPath = args.pvsPath;
-		this.contextFolder = args.contextFolder;
-		this.fileName = args.fileName;
-		this.fileExtension = args.fileExtension;
-		this.theoryName = args.theoryName;
-		this.formulaName = args.formulaName;
-		this.line = args.line;
-		this.rl = readline.createInterface(process.stdout, process.stdin, this.completer);
-		// this.rl.setPrompt(utils.colorText("Prover > ", utils.textColor.blue));
-		this.rl.setPrompt(utils.colorText("", utils.textColor.blue));
-		this.rl.on("line", async (cmd: string) => {
-			// console.log(`Received command ${cmd}`);
-			try {
-				// console.log(`received command from keyboard: ${cmd}`);
-				if (cmd === "kill") {
-					await this.killPvsProcess();
-					await this.startPvs(this.args); // restart pvs
-				} else {
-					if (quotesMatch(cmd)) {
-						// clear current line and retype in blue
-						// readline.moveCursor(process.stdin, 0, -1);
-						// readline.clearScreenDown(process.stdin);
-						cmd = parMatch(cmd);
-						console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
-						this.pvsProcess.execCmd(`${cmd}\n`);
-					} else {
-						console.log("Mismatching double quotes, please check your expression");
-						this.pvsProcess.execCmd("()\n");
-					}
-				}
-			} catch (err) {
-				console.error(err);
-			}
-		});
-		this.connection = new CliConnection();
+		this.prompt = " >> ";
+		this.clientID = fsUtils.get_fresh_id();
 	}
-	/**
-	 * Utility function, creates a new pvs process
-	 */
-	async createPvsProcess(): Promise<PvsProcess> {
-		const proc: PvsProcess = new PvsProcess({ pvsPath: this.pvsPath, contextFolder: this.contextFolder });
-		// proc.removeConnection();
-		const success: boolean = await proc.pvs();
-		if (success) {
-			// await proc.disableGcPrintout();
-			await proc.changeContext(this.contextFolder);
-			// const ans: PvsResponseType = await proc.listProofStrategies();
-			// if (ans && ans.res) {
-			// 	const strategies: StrategyDescriptor[] = ans.res;
-			// 	console.log(JSON.stringify(strategies));
-			// 	PvsCli.completions = strategies.map((strat: StrategyDescriptor) => {
-			// 		return `(${strat.name}`;
-			// 	});
-			// }
-			return proc;
-		}
-		return null;
-	
-	}
-	async killPvsProcess(): Promise<void> {
-		if (this.pvsProcess) {
-			this.pvsProcess.kill();
-		}
-	}
-	async startPvs (args: PvsCliInterface): Promise<PvsProcess> {
-		// console.log(utils.colorText(args.cmd, utils.textColor.blue));
-		// TODO: check why we need to clear double the number of lines executed
-		// readline.moveCursor(process.stdin, 0, -y);
-		// readline.clearLine(process.stdin, 0);
-		// readline.moveCursor(process.stdin, 0, -y);
-		// readline.clearLine(process.stdin, 0);
+	activateRepl () {
 		if (process.stdin.isTTY) {
-			// this is necessary for correct identification of keypresses for navigation keys and tab
+			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
 		}
-		// // setup stdin to emit 'keypress' events
-		// readline.emitKeypressEvents(process.stdin);
-		// process.stdin.on('keypress', (str, key) => {
-		// 	// if (key) {
-		// 	// 	switch (key.name) {
-		// 	// 		// case "tab": {
-		// 	// 		// 	this.tabCompleteMode = true;
-		// 	// 		// 	break;
-		// 	// 		// }
-		// 	// 		case "esc": {
-		// 	// 			this.tabCompleteMode = false;
-		// 	// 			break;
-		// 	// 		}
-		// 	// 		// case "a": {
-		// 	// 		// 	if (this.tabCompleteMode) {
-		// 	// 		// 		this.tabCompleteMode = false;
-		// 	// 		// 		this.pvsProcess.execCmd("(assert)");
-		// 	// 		// 	}
-		// 	// 		// 	break;
-		// 	// 		// }
-		// 	// 	}
-		// 	// 	// console.log(key);
-		// 	// if (key.name !== "tab") {
-		// 	process.stdout.write(str);
-		// 	// }
-		// 	// }
-		// });
-		this.cmds.push(args.cmd);
-		// create pvs process
-		this.pvsProcess = await this.createPvsProcess();
-		if (this.pvsProcess) {
-			// fetch pvs version information
-			const ans: PvsResponseType = await this.pvsProcess.getPvsVersionInfo();
-			const versionInfo: PvsVersionDescriptor = {
-				pvsVersion: ans.res.pvsVersion,
-				lispVersion: ans.res.lispVersion
-			};
-			console.log(`${versionInfo.pvsVersion} ${versionInfo.lispVersion}`);
-		} else {
-			console.error(`could not start pvs :/`);
-		}
-		return this.pvsProcess;
-	}
-	async launchTheoremProver () {
-		this.active = true;
-		// this.pvsProcess.setConnection(this.connection);
-		if (this.fileExtension === ".pvs") {
-			progressMsg = "Typechecking";
-			this.pvsProcess.startCli(showProgress);
-			await this.pvsProcess.typecheckFile({ fileName: this.fileName, fileExtension: this.fileExtension, contextFolder: this.contextFolder }); // FIXME -- use object as argument instead of string
-			progressMsg = "";
-			this.pvsProcess.endCli(showProgress);
-			this.pvsProcess.startCli((data: string) => {
-				this.outChannel(data);
+		readline.emitKeypressEvents(process.stdin);
+		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.completer(line); });
+		this.rl.setPrompt(utils.colorText(this.prompt, utils.textColor.blue));
+		this.rl.on("line", async (cmd: string) => {
+			if (isQuit(cmd)) {
+				this.wsClient.send(JSON.stringify({
+					type: serverCommand.proofCommand,
+					cmd: "quit",
+					fileName: this.args.fileName,
+					fileExtension: this.args.fileExtension,
+					contextFolder: this.args.contextFolder,
+					theoryName: this.args.theoryName,
+					formulaName: this.args.formulaName
+				}));
+				console.log();
+				console.log("Prover session terminated.");
+				console.log();
+				this.rl.question("Press Enter to close the terminal.", () => {
+					this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+					this.wsClient.close();	
+				});
+			} else {
+				if (quotesMatch(cmd)) {
+					cmd = parMatch(cmd);
+					// log command, for debugging purposes
+					// this.connection.console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
+				} else {
+					this.connection.console.warn("Mismatching double quotes, please check your expression");
+				}
+				this.wsClient.send(JSON.stringify({
+					type: serverCommand.proofCommand, 
+					cmd,
+					fileName: this.args.fileName,
+					fileExtension: this.args.fileExtension,
+					contextFolder: this.args.contextFolder,
+					theoryName: this.args.theoryName,
+					formulaName: this.args.formulaName
+				}));
+			}
+		});		
+		this.connection = new CliConnection();
+	}	
+
+	async subscribe (channelID: string): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+			this.wsClient = new WebSocket("ws://0.0.0.0:33445");
+			this.wsClient.on("open", () => {
+				// subscribe to cli gateway
+				// const channelID: string = utils.desc2id({ fileName: this.args.fileName, theoryName: this.args.theoryName, formulaName: this.args.formulaName });
+				// console.log(`Subscribing to ${terminalID}`);
+                this.wsClient.send(JSON.stringify({ type: "subscribe", channelID, clientID: this.clientID }));
 			});
-			await this.pvsProcess.stepProof({ fileName: this.fileName, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
-			await this.pvsProcess.proveFormula({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
+			this.wsClient.on("message", (msg: string) => {
+				// console.log(msg);
+				try {
+					const data = JSON.parse(msg);
+					if (data) {
+						switch (data.type) {
+							case "subscribe-response": {
+								// this.wsClient.send(JSON.stringify({ type: "publish", channelID: "event.cli-ready", clientID: this.clientID }));
+								// console.log(`Client ${this.clientID} ready to receive events ${channelID}`);
+								resolve(data.success);
+								break;
+							}
+							case serverEvent.proofStateUpdate: {
+								const pvsResponse: PvsResponse = data.response;
+								if (pvsResponse) {
+									this.proofState = utils.formatProofState(pvsResponse.result);
+									console.log(utils.formatProofState(pvsResponse.result, { useColors: true, showAction: false })); // show proof state
+									this.rl.prompt(); // show prompt
+									readline.clearLine(process.stdin, 1); // clear any previous input
+								} else {
+									console.warn("Warning: received null response from pvs-server");
+								}
+								break;
+							}
+							case serverEvent.typecheckFileResponse: {
+								const pvsResponse: PvsResponse = data.response;
+								if (pvsResponse.error) {
+									console.log(`${utils.colorText("Typecheck error", utils.textColor.red)}`);
+									console.dir(data.response, { colors: true, depth: null });
+								} else {
+									console.log(`Typechecking completed successfully!`);
+								}
+								this.rl.question("Press Enter to close the terminal", () => {
+									this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID, clientID: this.clientID }));
+									this.wsClient.close();	
+								});
+								break;
+							}
+							default: {
+								// FIXME: investigate why we are receiving cli-ready events
+								// console.error("[pvs-cli] Warning: received unknown message type", data);
+							}
+						}
+					} else {
+						console.error("[pvs-cli] Warning: received empty message");
+					}
+				} catch (jsonError) {
+					// FIXME: investigate why sometimes we get malformed json
+					// console.error("[pvs-cli] Error: received malformed json string", msg);
+				}
+            });
+            this.wsClient.on("error", (err: Error) => {
+                console.error(err);
+                resolve(false);
+            });
+		});
+    }
+
+	protected completer (line: string) {
+		let hits: string[] = null;
+		if (line.startsWith("(expand") || line.startsWith("expand")) {
+			// autocomplete symbol names
+			const symbols: string[] = utils.listSymbols(this.proofState);
+			// console.dir(symbols, { depth: null });
+			hits = [];
+			if (symbols && symbols.length) {
+				for (let i = 0; i < symbols.length; i++) {
+					if (`(expand "${symbols[i]}"`.startsWith(line)) {
+						hits.push(`(expand "${symbols[i]}"`);
+					} else if (`expand "${symbols[i]}"`.startsWith(line)) {
+						hits.push(`expand "${symbols[i]}"`);
+					}
+				}
+			}
+		} else if (line.trim() === ("(")) {
+			hits = PvsCli.completions.map((c: string) => {
+				return `(${c}`;
+			}).filter((c: string) => c.startsWith(line));
 		} else {
-			// .tccs file
-			await this.pvsProcess.showTccs({ fileName: this.fileName, fileExtension: this.fileExtension }, this.theoryName);
-			this.pvsProcess.startCli((data: string) => {
-				this.outChannel(data);
-			});
-			await this.pvsProcess.stepTcc({ fileName: this.fileName, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
-			await this.pvsProcess.proveFormula({ fileName: this.fileName, fileExtension: this.fileExtension, theoryName: this.theoryName, formulaName: this.formulaName, line: this.line });
+			// Show all completions if none found
+			// return [ hits.length ? hits : PvsCli.completions, line ];
+			// show nothing if no completion is found
+			hits = PvsCli.completions.filter((c: string) => c.startsWith(line));
 		}
-		this.rl.prompt();
-	}
-	// on (event: "line", listener: (input: string) => void) {
-	// 	this.rl.on("line", listener);
-	// }
-	// private loadingTheorem () {
-	// 	// readline.cursorTo(process.stdin, 0, 0);
-	// 	// readline.clearScreenDown(process.stdin);
-	// 	console.log(`Loading theorem ${utils.colorText(this.formulaName, utils.textColor.blue)}`); // todo: display theory name
-	// }
-	ready () {
-		this.rl.prompt();
-	}
-	prover (str: string) {
-		this.rl.prompt();
-		console.log(str);
-	}
-	private completer (line: string) {
-		const hits = PvsCli.completions.filter((c) => c.startsWith(line));
-		// Show all completions if none found
-		// return [ hits.length ? hits : PvsCli.completions, line ];
-		// show nothing if no completion is found
 		return [ hits, line ];
-	}
-	static withSyntaxHighlighting(text: string): string {
-		if (text) {
-			// numbers and operators should be highlighted first, otherwise the regexp will change characters introduced to colorize the string
-			const number_regexp: RegExp = new RegExp(language.PVS_NUMBER_REGEXP_SOURCE, "g");
-			text = text.replace(number_regexp, (number: string) => {
-				return utils.colorText(number, utils.textColor.yellow);
-			});
-			const operators_regexp: RegExp = new RegExp(language.PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE, "g");
-			text = text.replace(operators_regexp, (op: string) => {
-				return utils.colorText(op, utils.textColor.blue);
-			});
-			const keywords_regexp: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
-			text = text.replace(keywords_regexp, (keyword: string) => {
-				return utils.colorText(keyword, utils.textColor.blue);
-			});
-			const function_regexp: RegExp = new RegExp(language.PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE, "g");
-			text = text.replace(function_regexp, (fname: string) => {
-				return utils.colorText(fname, utils.textColor.green);
-			});
-			const builtin_types_regexp: RegExp = new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g");
-			text = text.replace(builtin_types_regexp, (tname: string) => {
-				return utils.colorText(tname, utils.textColor.green);
-			});
-			const truefalse_regexp: RegExp = new RegExp(language.PVS_TRUE_FALSE_REGEXP_SOURCE, "gi");
-			text = text.replace(truefalse_regexp, (tf: string) => {
-				return utils.colorText(tf, utils.textColor.blue);
-			});
-		}
-		return text;
 	}
 }
 
+import { cliSessionType } from './common/serverInterface';
+
 if (process.argv.length > 2) {
+	// ATTN: the client must not print anything on the console until it's subscribed --- vscodePvsPvsCli checks the output on the console to understand when the client is ready.
 	const args: PvsCliInterface = JSON.parse(process.argv[2]);
-	console.log(args);
+	readline.cursorTo(process.stdout, 0, 0);
+	readline.clearScreenDown(process.stdout);
 	const pvsCli: PvsCli = new PvsCli(args);
-	pvsCli.startPvs(args).then(async (pvsProcess: PvsProcess) => {
-		if (args && args.fileName) {
-			await pvsCli.launchTheoremProver();
+	pvsCli.subscribe(args.channelID).then((success: boolean) => {
+		console.log(args);
+		if (success) {
+			switch (args.type) {
+				case cliSessionType.pvsioEvaluator: {
+					console.log(`\nStarting new pvsio evaluator session for ${utils.colorText(args.formulaName, utils.textColor.blue)}\n`);
+					break;
+				}
+				case cliSessionType.proveFormula: {
+					console.log(`\nStarting new prover session for ${utils.colorText(args.formulaName, utils.textColor.blue)}\n`);
+					pvsCli.activateRepl();
+					break;
+				}
+				default: {
+					console.error("[pvsCli] Warning: unknown cli session type", args);
+				}
+			}
 		} else {
-			pvsProcess.startCli((data: string) => {
-				console.log(data);
-			});
-			pvsProcess.execCmd("()");
+			console.error("[pvs-cli] Error: unable to register client", args);
 		}
 	});
 } else {

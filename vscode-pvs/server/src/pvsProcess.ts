@@ -39,259 +39,75 @@
 import { spawn, ChildProcess, execSync } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import { 
-	PvsResponseType, PvsParserResponse, PvsDeclarationDescriptor,
-	PRELUDE_FILE, PvsDeclarationType, PrettyPrintRegionRequest,
-	PrettyPrintRegionResult, ExpressionDescriptor, EvaluationResult, PvsListDeclarationsRequest,
-	PvsTypecheckerResponse, PvsChangeContextResponseType, PvsCurrentContextResponseType,
-	SimpleConnection, TheoryList, FileList, TheoryMap, TheoryStatus, PvsVersionDescriptor, PvsVersionInfoResponseType, 
-	JsonType, ProofNodeType, ProofDescriptor, ProofObjectType, PvsListProofStrategiesResponseType, PvsFindDeclarationResponseType, PvsListDeclarationsResponseType, TypecheckerResponse
+	PvsParserResponse, PvsVersionDescriptor,
+	SimpleConnection
 } from './common/serverInterface'
-import { Connection } from 'vscode-languageserver';
 import * as path from 'path';
-import { PVS_TRUE_FALSE_REGEXP_SOURCE, PVS_STRING_REGEXP_SOURCE } from "./common/languageKeywords";
 import * as fsUtils from './common/fsUtils';
-import { PvsLispReader, TccDescriptor } from './pvsLisp';
-import * as utils from './common/languageUtils';
-// import * as xmlrpcProvider from './common/xmlrpcProvider';
-
 
 export interface ContextDiagnostics {
 	[fileName: string]: PvsParserResponse
 };
 
-export class PvsProgressInfo {
-	private progressLevel: number = 0;
-	showProgress (cmd: string, data?: string): string {
-		this.progressLevel++;
-		if (this.progressLevel > 4) {
-			this.progressLevel = 0;
-		}
-		return `Executing ${cmd}${".".repeat(this.progressLevel)}`;
-	}
-}
 
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
  */
 export class PvsProcess {
-	private pvsProcess: ChildProcess = null;
-	private pvsProcessBusy: boolean = false;
+	protected pvsProcess: ChildProcess = null;
+	protected pvsVersionInfo: PvsVersionDescriptor;
 
-	private processType: string; // "typechecker" or "parser"
+	protected pvsPath: string = null;
+	protected pvsLibraryPath: string = null;
 
-	private pvsVersionInfo: PvsVersionDescriptor;
+	protected connection: SimpleConnection;
+	protected enableNotifications: boolean;
 
-	private progressInfo: PvsProgressInfo;
-	// private serverProxy: xmlrpcProvider.XmlRpcProxy;
+	protected xmlRpcServer: { port: number; };
 
-	private pvsCmdQueue: Promise<PvsResponseType> = Promise.resolve({ res: null, error: null, raw: null });
-
-	private pvsPath: string = null;
-	private pvsLibraryPath: string = null;
-	private contextFolder: string = null;
-
-	private connection: SimpleConnection;
-	private enableNotifications: boolean;
-
-	private _disableGC: boolean = false;
-	private xmlRpcServer: { port: number; };
-
-	/**
-	 * utility function for sending notifications over the connection (if any connection is available)
-	 * @param msg message to be sent
-	 */
-	private info(msg: string) {
-		if (this.enableNotifications && this.connection && msg && msg.length > 10 && !msg.startsWith(";;;")) {
-			this.connection.sendNotification('server.status.update', msg.trim());
-		}
-	}
 	/**
 	 * utility function for sending error messages over the connection (if any connection is available)
 	 * @param msg message to be sent
 	 */
-	private error(msg: string) {
-		if (this.enableNotifications) {
-			this.connection.sendNotification('pvs-error', msg);
+	protected error(msg: string): void {
+		if (msg) {
+			if (this.connection && this.enableNotifications) {
+				this.connection.sendNotification('pvs-error', msg);
+			}
+			console.log('[pvs-process] pvs-error', msg);
 		}
 	}
-	/**
-	 * utility function for notifying the client that the pvs process ready
-	 */
-	private ready() {
-		if (this.enableNotifications) {
-			this.connection.sendNotification('pvs-ready');
-		}
-	}
-	/**
-	 * Path to the current context folder (i.e., the working directory)
-	 * @returns The current pvs context path
-	 */
-	getContextFolder (): string {
-		return this.contextFolder;
-	}
-	/**
-	 * Path to the pvs library folder
-	 * @returns Path of the prelude library
-	 */
-	getPvsLibraryPath (): string {
-		return path.join(this.pvsPath, "lib");
-	}
-	/**
-	 * Path to the pvs executable
-	 */
-	getPvsPath (): string {
-		return this.pvsPath;
-	}
+
 	/**
 	 * @constructor
 	 * @param desc Information on the PVS execution environment.
 	 * @param connection Connection with the language client
 	 */
-	constructor (desc: { pvsPath: string, contextFolder?: string, processType?: string }, connection?: Connection) {
+	constructor (desc: { pvsPath: string, contextFolder?: string, processType?: string }, connection?: SimpleConnection) {
 		this.pvsPath = (desc && desc.pvsPath) ? fsUtils.tildeExpansion(desc.pvsPath) : __dirname
 		this.pvsLibraryPath = path.join(this.pvsPath, "lib");
-		this.contextFolder = (desc && desc.contextFolder) ? fsUtils.tildeExpansion(desc.contextFolder) : __dirname;
+		// this.contextFolder = (desc && desc.contextFolder) ? fsUtils.tildeExpansion(desc.contextFolder) : __dirname;
 
-		this.processType = (desc && desc.processType) ? desc.processType : "typechecker"; // this is used only for debugging
-		this.progressInfo = new PvsProgressInfo();
-		// this.serverProxy = new xmlrpcProvider.XmlRpcProxy();
+		// this.processType = (desc && desc.processType) ? desc.processType : "typechecker"; // this is used only for debugging
 		this.connection = connection;
 	}
-	/**
-	 * Internal function, used to communicate that the process is busy and cmd cannot be executed.
-	 * @param cmd 
-	 */
-	private cannotExecute (msg: string): Promise<PvsResponseType> {
-		// if (this.connection) { this.connection.console.error(msg); }
-		return Promise.resolve({
-			error: {
-				msg: msg,
-				parserError: null,
-				restartOption: null
-			},
-			res: null,
-			raw: null
-		});
-	}
-	/**
-	 * Internal function. Executes pvs Lisp commands.
-	 * @param cmd pvs Lisp command
-	 * @param desc information on the pvs file and pvs theory to be used for the execution of the pvs command.
-	 */
-	private pvsExecAux (cmd: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponseType> {
-		if (this.pvsProcessBusy) {
-			const msg: string = "PVS busy, cannot execute " + cmd + " :/";
-			return this.cannotExecute(msg);
-		}
-		const pvsLispReader: PvsLispReader = new PvsLispReader(this.pvsPath, this.contextFolder, this.connection);
-		const match: RegExpMatchArray = /\(\b([\w\-]+)\b.*\)/.exec(cmd);
-		if (match && match[1]) {
-			const commandId: string = match[1];
-			if (this.connection) { this.connection.console.log(cmd); }
-			return new Promise((resolve, reject) => {
-				const listener = (data: string) => {
-					if (this.connection) {
-						this.connection.console.log(data); // this is the crude pvs lisp output, useful for debugging
-						this.info(this.progressInfo.showProgress(commandId, data));
-					}
-					pvsLispReader.read(data, async (pvsOut: string) => {
-						if (this.pvsProcess) {
-							this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-						}
-						this.pvsProcessBusy = false;
-						const ans: PvsResponseType = pvsLispReader.parse(commandId, pvsOut, desc);
-						this.ready();
-						resolve(ans);
-					});
-				};
-				if (this.pvsProcess) {
-					try {
-						if (this.pvsProcess.stdout) { this.pvsProcess.stdout.on("data", listener); }
-						if (this.pvsProcess.stdin) { this.pvsProcess.stdin.write(cmd + "\n"); }
-					} catch (pvsProcessWriteError) {
-						console.warn(pvsProcessWriteError);
-					}
-				}
-			});
-		}
-		if (this.connection) { this.connection.console.error(`Unrecognised command ${cmd}`); }
-		Promise.reject({
-			res: null,
-			error: `Unrecognised command ${cmd}`,
-			raw: null
-		});
-	}
-	/**
-	 * Internal function. Executes pvs Lisp commands. Uses a buffer to queue messages if pvs process is busy.
-	 * This function is used by the APIs provided by PvsProcess. Requires correct syntax for commands, cannot be used for CLI Interfaces
-	 * as commands typed with wrong syntax may miss parentheses and therefore pvs Lisp would not return control.
-	 * @param cmd pvs Lisp command to be executed
-	 * @param desc information on the pvs file and pvs theory to be used for the execution of the pvs command.
-	 */
-	private pvsExec (cmd: string, desc?: { fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponseType> {
-		this.pvsCmdQueue = new Promise((resolve, reject) => {
-			this.pvsCmdQueue.then(() => {
-				this.pvsExecAux(cmd, desc).then((ans: PvsResponseType) => {
-					resolve(ans);
-				}).catch(execError => {
-                    console.error(execError);
-                });
-			});
-		});
-		return this.pvsCmdQueue;
-	}
-	/**
-	 * Utility function. Can be used to pipe the output of the pvs process to a listener function. Currently used by PVS CLI. 
-	 * @param listener the listener to be added
-	 */
-	startCli (listener: (data: string) => void): void {
-		this.pvsProcess.stdout.on("data", listener);
-	}
-	/**
-	 * Utility function. Removes a given listener from the output channel of the pvs process.
-	 * @param listener the listener to be removed
-	 */
-	endCli (listener: (data: string) => void): void {
-		this.pvsProcess.stdout.removeListener("data", listener);
-	}
-	/**
-	 * Executes a pvs Lisp command. Unbuffered version. Should only be used in CLI interfaces.
-	 * @param cmd 
-	 */
-	execCmd (cmd: string): void {
-		this.pvsProcess.stdin.write(cmd);
-	}
-	/**
-	 * Internal function. Returns the current context.
-	 * @returns Path to the current context
-	 */
-	private async currentContext(): Promise<PvsResponseType> {
-		const cmd: string = '(pvs-current-directory)';
-		return await this.pvsExec(cmd);
-	}
-	/**
-	 * Internal function. Disables garbage collector messages.
-	 */
-	private async disableGcPrintout(): Promise<PvsResponseType> {
-		this._disableGC = true;
-		return await this.pvsExec('(setq *disable-gc-printout* t)');
-	}
+
 	/**
 	 * Internal function. Runs the relocate script necessary for starting pvs.
 	 */
-	private async relocate(): Promise<boolean> {
+	protected async relocate(): Promise<boolean> {
 		let relocate: string = null;
-		if (await fsUtils.fileExists(path.join(`${this.pvsPath}`, "bin/relocate"))) {
-			relocate = `cd ${this.pvsPath} && bin/relocate`;
-		} else if (await fsUtils.fileExists(path.join(`${this.pvsPath}`, "install-sh"))) {
-			relocate = `cd ${this.pvsPath} && ./install-sh`
+		if (await fsUtils.fileExists(path.join(`${this.pvsPath}`, "install-sh"))) {
+			relocate = `cd ${this.pvsPath} && ./install-sh` // pvs 7 has this new script
+		} else if (await fsUtils.fileExists(path.join(`${this.pvsPath}`, "bin/relocate"))) {
+			relocate = `cd ${this.pvsPath} && bin/relocate`; // this is for backwards compatibility
 		}
 		if (relocate) {
 			try {
 				const output: Buffer = execSync(relocate);
 				// console.log(output.toString());
 			} catch (relocateError) {
-				console.error(relocateError);
+				console.log(relocateError);
 				return false;
 			}
 			return true;
@@ -303,52 +119,45 @@ export class PvsProcess {
 	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
 	 * @returns true if the process has been created; false if the process could not be created.
 	 */
-	private async _pvs(opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number } }): Promise<boolean> {
+	protected async _activate (opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number } }): Promise<boolean> {
 		opt = opt || {};
 		if (!await this.relocate()) {
-			console.warn("Warning: could not execute PVS relocation/install script");
+			console.warn("[pvs-process] Warning: could not execute PVS relocation/install script");
 		}
 		this.enableNotifications = opt.enableNotifications || this.enableNotifications;
-		const serverPort: number = (!!opt.xmlRpcServer && typeof opt.xmlRpcServer === "object") ? opt.xmlRpcServer.port : 22334;
-		this.xmlRpcServer = (!!opt.xmlRpcServer) ? { port: serverPort } : this.xmlRpcServer;
-		// await this.clearContext();
-		if (!this.pvsProcessBusy) {
-			this.pvsProcessBusy = true;
-			const pvsLispReader = new PvsLispReader(this.pvsPath, this.contextFolder, this.connection);
-			const pvs: string = path.join(this.pvsPath, "pvs");
-			const args: string[] = (!!this.xmlRpcServer) ? [ "-raw", "-port", this.xmlRpcServer.port.toString() ] : [ "-raw"];//, "-port", "22334" ];
-			// console.info(`pvs args: `, args);
-			// if (this.connection) { this.connection.console.info(`Spawning pvs process ${pvs} ${args.join(" ")}`); }
-			return new Promise(async (resolve, reject) => {
-				const fileExists: boolean = await fsUtils.fileExists(pvs);
-				if (fileExists) {
-					this.pvsProcess = spawn(pvs, args);
-					this.pvsProcess.stdout.setEncoding("utf8");
-					this.pvsProcess.stderr.setEncoding("utf8");
-					const listener = (data: string) => {
-						if (this.connection) { this.connection.console.log(data); } // this is the crude pvs lisp output, useful for debugging
-						// pvslispParser.parse(data, (res: string) => {
-						pvsLispReader.read(data, (res: string) => {
-							// connection.console.info(res);
-							this.pvsProcess.stdout.removeListener("data", listener); // remove listener otherwise this will capture the output of other commands
-							this.pvsProcessBusy = false;
-							resolve(true);
-						});
-					};
-					this.pvsProcess.stdout.on("data", listener);
-					this.pvsProcess.stderr.on("data", (data: string) => {
-						if (this.connection) { this.connection.console.log(data); }
-					});
-					// if (this.connection) { this.connection.console.info("PVS process ready!"); }
-					if (this.connection) {
-						this.connection.sendNotification(`server.new-pvs-${this.processType}`); // used for debugging
+		const serverPort: number = (opt.xmlRpcServer && typeof opt.xmlRpcServer === "object") ? opt.xmlRpcServer.port : 22334;
+		this.xmlRpcServer = (opt.xmlRpcServer) ? { port: serverPort } : this.xmlRpcServer;
+
+		const pvs: string = path.join(this.pvsPath, "pvs");
+		const port: string = this.xmlRpcServer.port.toString();
+		const args: string[] = (this.xmlRpcServer) ? [ "-raw", "-port", port ] : [ "-raw"];//, "-port", "22334" ];
+		// pvs args
+		console.info(`${this.pvsPath}/pvs ${args.join(" ")}`);
+		const fileExists: boolean = await fsUtils.fileExists(pvs);
+		if (fileExists) {
+			const readyPrompt: RegExp = /\s*pvs\(\d+\):|([\w\W\s]*)\spvs\(\d+\):/g;
+			return await new Promise((resolve, reject) => {
+				this.pvsProcess = spawn(pvs, args);
+				this.pvsProcess.stdout.setEncoding("utf8");
+				this.pvsProcess.stderr.setEncoding("utf8");
+				this.pvsProcess.stdout.on("data", (data: string) => {
+					if (this.connection && this.connection.console) {
+						this.connection.console.log(data);
 					}
-				} else {
-					console.error(`\n>>> PVS executable not found at ${pvs} <<<\n`);
-					this.pvsProcessBusy = false;
-					resolve(false)
-				}
+					// wait for the pvs prompt, to make sure pvs-server is operational
+					const match: RegExpMatchArray = readyPrompt.exec(data);
+					if (match) {
+						resolve(true);
+					}
+				});
+				this.pvsProcess.stderr.on("data", (data: string) => {
+					this.error(data);
+					// resolve(false);
+				});	
 			});
+		} else {
+			console.log(`\n>>> PVS executable not found at ${pvs} <<<\n`);
+			return false;
 		}
 	}
 
@@ -361,584 +170,77 @@ export class PvsProcess {
 	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
 	 * @returns true if the process has been created; false if the process could not be created.
 	 */
-	async pvs(opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number }}): Promise<boolean> {
-		const success: boolean = await this._pvs(opt);
-		if (success) {
-			await this.disableGcPrintout();
-			await this.changeContext(this.contextFolder, { force: true });
-		}
+	async activate (opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number }}): Promise<boolean> {
+		const success: boolean = await this._activate(opt);
 		return success;
 	}
 	/**
 	 * Kills the pvs process.
 	 * @returns The ID of the process that was killed. Null if no process was killed.
 	 */
-	kill (): string {
-		if (this.pvsProcess) {
-			const id: string = this.getProcessID();
-            // before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
-            // because the destruction of the process is immediate but previous calls to write() may not have drained
-            // see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
-            this.pvsProcess.stdin.end(() => {});
-            this.pvsProcess.kill();
-            if (this.connection) {
-                this.connection.sendNotification(`server.delete-pvs-${this.processType}`); // used for debugging & stats
+	async kill (): Promise<boolean> {
+		return new Promise((resolve, reject) => {
+			if (this.pvsProcess) {
+				// const pid: string = this.getProcessID();
+				// before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
+				// because the destruction of the process is immediate but previous calls to write() may not have drained
+				// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
+				if (this.pvsProcess) {
+					this.pvsProcess.stdin.end(() => {});
+				}
+				// try {
+				// 	execSync(`kill -9 ${pid}`);
+				// } finally {
+				// 	setTimeout(() => {
+				// 		resolve(true);
+				// 	}, 1000);
+				// }
+				try {
+					const allegro: string = execSync("ps -A | grep pvs").toString();
+					if (allegro) {
+						const procs: string[] = allegro.trim().split("\n");
+						try {
+							for (let i = 0; i < procs.length; i++) {
+								const info: string = procs[i];
+								const match: RegExpMatchArray = /\w+\s+\w+\s+\w+\s+(\w+)/.exec(info);
+								if (match && match.length > 1 && match[1]) {
+									const allegro_pid: string = match[1];
+									if (allegro_pid) {
+										execSync(`kill -15 ${allegro_pid}`);
+									}
+								}
+							}
+							// execSync(`kill -15 ${pid}`);
+						} finally {
+							setTimeout(() => {
+								resolve(true);
+							}, 1000);
+						}
+					}
+				} finally {
+					resolve(true);
+				}
+			} else {
+				resolve(true);
 			}
-			return id;
-		}
-		return null;
-	}
-	/**
-	 * Restarts the pvs process.
-	 */
-	async restart (): Promise<boolean> {
-		this.kill();
-		let success: boolean = await this.pvs();
-		return success;
+		});
 	}
 	/**
 	 * Utility function. Returns a string representing the ID of the pvs process.
 	 * @returns String representation of the pvs process ID.
 	 */
-	getProcessID (): string {
+	protected getProcessID (): string {
 		if (this.pvsProcess && this.pvsProcess.pid) {
 			return this.pvsProcess.pid.toString();
 		}
 		return null;
 	}
-	/**
-	 * Changes the current context. When the context is changed, all symbol information are erased and the parser/typechecker needs to be re-run.
-	 * @param contextFolder Path of the context folder 
-	 */
-	async changeContext (contextFolder: string, opt?: { force?: boolean }): Promise<PvsChangeContextResponseType> {
-		// await this.serverProxy.changeContext(contextFolder);
-		opt = opt || {};
-		if (contextFolder) {
-			if (opt.force || this.contextFolder !== contextFolder || this.contextFolder !== fsUtils.tildeExpansion(contextFolder) || fsUtils.tildeExpansion(this.contextFolder) !== contextFolder) {
-				contextFolder = fsUtils.tildeExpansion(contextFolder);
-				const folderExists: boolean = await fsUtils.dirExists(contextFolder);
-				if (folderExists) {				
-					const cmd: string = `(change-context "${contextFolder}" nil)`;
-					const ans: PvsChangeContextResponseType = await this.pvsExec(cmd);
-					if (ans && ans.res && ans.res.context) {
-						this.contextFolder = ans.res.context;
-					}
-					return ans
-				}
-				return {
-					res: null,
-					error: { msg: `Error: Could not change context to ${contextFolder} (folder does not exist or cannot be read).` },
-					raw: null
-				};
-			}
-			return {
-				res: { context: contextFolder },
-				error: null,
-				raw: null
-			};
-		}
-		return null;
-	}
-	/**
-	 * Enables the pvs emacs interface.
-	 * This is used to overcome a limitation of the raw mode, which does not provide detailed info for errors.
-	 * ATT: Use this command carefully. The parser works fine, but the prover cannot be started as it expects commands from emacs. 
-	 *
-	 * pvs output in raw mode:
-	 * pvs(7): (typecheck-file "test" nil nil nil)
-	 * Parsing test
-	 * <pvserror msg="Parser error">
-	 * "Found '-' when expecting 'END'"
-	 * </pvserror>
-	 * 
-	 * pvs output in emacs mode
-	 * pvs(8): (setq *pvs-emacs-interface* t)
-	 * pvs(9): (typecheck-file "test" nil nil nil)
-	 * Parsing test
-	 * Found '-' when expecting 'END'
-	 * In file test (line 11, col 9)
-	 * Error: Parse error
-	 * Restart actions (select using :continue):
-	 * 0: Return to Top Level (an "abort" restart).
-	 * 1: Abort entirely from this (lisp) process.
-	 * pvs(10):
-	 */
-	async emacsInterface (): Promise<void> {
-		const cmd: string = '(setq *pvs-emacs-interface* t)';
-		await this.pvsExec(cmd);
-	}
-	/**
-	 * Returns the list of commands accepted by the theorem prover
-	 */
-	async listProofStrategies(): Promise<PvsListProofStrategiesResponseType> {
-		return await this.pvsExec('(collect-strategy-names)');
-	}
-	/**
-	 * Finds a symbol declaration. Requires parsing. May return a list of results when the symbol is overloaded.
-	 * @param symbolName Name of the symbol
-	 */
-	async findDeclaration(symbolName: string): Promise<PvsFindDeclarationResponseType> {
-		if (new RegExp(PVS_TRUE_FALSE_REGEXP_SOURCE).test(symbolName)) {
-			// find-declaration is unable to handle boolean constants if they are not spelled with capital letters
-			symbolName = symbolName.toUpperCase();
-		} else if (new RegExp(PVS_STRING_REGEXP_SOURCE).test(symbolName)) {
-			// string constant, nothing to do
-			return Promise.resolve({
-				res: null,
-				error: null,
-				raw: null
-			});
-		}
-		return await this.pvsExec(`(find-declaration "${symbolName}")`);
-	}
-	/**
-	 * List all declarations in a given theory. The theory should parse correctly, otherwise the list of declarations cannot be computed.
-	 * @param desc Theory descriptor TODO: use the standard format { fileName, fileExtension, theoryName, line, character }
-	 */
-	async listDeclarations (desc: PvsListDeclarationsRequest): Promise<PvsListDeclarationsResponseType> {
-		let response: PvsDeclarationDescriptor[] = [];
-		// const contextFolder = fsUtils.getContextFolder(desc.file);
-		const fileName = fsUtils.getFilename(desc.file, { removeFileExtension: true });
-		if (fileName !== PRELUDE_FILE) {
-			// find-declaration works even if a pvs file does not parse correctly 
-			let ans: PvsResponseType = await this.pvsExec(`(list-declarations "${desc.theoryName}")`);
-			if (ans && ans.res) {
-				const allDeclarations: PvsDeclarationType[] = ans.res;
-				response = allDeclarations.map((info: PvsDeclarationType) => {
-					const ans: PvsDeclarationDescriptor = {
-						symbolName: info.symbolName,
-						theoryName: info.theoryName,
-						symbolDeclaration: (info) ? info.symbolDeclaration : null,
-						symbolDeclarationRange: (info) ? info.symbolDeclarationRange : null,
-						symbolDeclarationFile: (info) ? info.symbolDeclarationFile : null,
-						symbolDoc: null,
-						comment: null,
-						error: null
-					}
-					return ans;
-				});
-			}
-		}
-		return {
-			error: null,
-			res: response,
-			raw: null
-		}
-	}
-	/**
-	 * Parse a file
-	 * @param fileName File to be parsed, must be in the current pvs context
-	 * @returns Parser result, can be either a message (parse successful), or list of syntax errors
-	 */
-	async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsParserResponse> {
-		if (desc) {
-			const response: PvsParserResponse = {
-				res: null,
-				error: null,
-				raw: null
-			};
-			desc.contextFolder = fsUtils.normalizePath(desc.contextFolder);
-			if (desc.contextFolder !== this.pvsPath && desc.contextFolder !== this.pvsLibraryPath) {
-				await this.changeContext(desc.contextFolder);
-				const parserInfo: PvsParserResponse = await this.pvsExec(`(parse-file "${desc.fileName}" nil nil)`); // (defmethod parse-file ((filename string) &optional forced? no-message?)
-				if (parserInfo.error) {
-					response.error = parserInfo.error;
-				} else {
-					response.res = parserInfo.res
-				}
-			} else {
-				if (this.connection) {
-					this.info(`Reading library file ${desc.fileName}...`);
-				}
-			}
-			return response;
-		}
-		return null;
-	}
-	/**
-	 * Parse all files in the current context folder
-	 * @returns Parser result for each file, can be either a message (parse successful), or list of syntax errors
-	 */
-	async parseCurrentContext (): Promise<ContextDiagnostics> {
-		const result: { [ fileName: string ] : PvsParserResponse } = {};
-		const contextFiles: FileList = await fsUtils.listPvsFiles(this.contextFolder);
-		if (contextFiles && contextFiles.fileNames) {
-			for (const i in contextFiles.fileNames) {
-				const fname: string = contextFiles.fileNames[i];
-				const fileName: string = fsUtils.getFilename(fname, { removeFileExtension: true });
-				const fileExtension: string = fsUtils.getFileExtension(fname);
-				const contextFolder: string = this.contextFolder;
-				const ans: PvsParserResponse = await this.parseFile({ fileName, fileExtension, contextFolder });
-				// if there is a parser error, check that the fileName is provided
-				if (ans && ans.error) {
-					ans.error.fileName = ans.error.fileName || fname;
-				}
-				result[contextFiles.fileNames[i]] = ans;
-			}
-		}
-		this.ready();
-		return result;
-	}
-	/**
-	 * Shows the Type Check Conditions (TCCs) for the selected theory.
-	 * This command triggers typechecking and creates a .tccs file on disk.
-	 * The .tccs file name is the name of the selected theory.
-	 * @returns TODO: change return type to an array of TCC descriptors
-	 */
-	async showTccs (file: { fileName: string, fileExtension: string }, theoryName: string): Promise<PvsResponseType> {
-		// const res = await this.serverProxy.changeContext(this.contextFolder);
-		// const res = await this.serverProxy.typecheck(fileName);
-		// const res = await this.serverProxy.lisp(cmd);
-		// create a new file with the tccs. The file name corresponds to the theory name.
-		const tccsFileName: string = path.join(this.contextFolder, `${theoryName}.tccs`);
-		const tccsFileNameJSON: string = path.join(this.contextFolder, `${theoryName}.tccs.json`);
 
-		const ans: PvsResponseType = await this.pvsExec(`(show-tccs "${theoryName}" nil)`);
-		if (ans && ans.res) {
-			const tccsFileContent: string = ans.raw;
-			fsUtils.writeFile(tccsFileName, tccsFileContent).then(() => {
-				const tccDescriptors: TccDescriptor[] = ans.res;
-				if (tccDescriptors) {
-					const json = tccDescriptors.map((desc: TccDescriptor) => {
-						return {
-							formulaName: desc.formulaName,
-							line: desc.symbolLine,
-							character: desc.symbolCharacter
-						};
-					});
-					fsUtils.writeFile(tccsFileNameJSON, JSON.stringify(json, null, " "));
-				}	
-			});
-		} else {
-			const tccsFileContent: string = `% ${ans.raw}`;
-			fsUtils.writeFile(tccsFileName, tccsFileContent).then(() => {
-				fsUtils.writeFile(tccsFileNameJSON, "[]");	
-			});
-		}
-		return ans;
-	}
-
-	/**
-	 * DEPRECATED Animates a pvs expression
-	 * @param desc Expression descriptor
-	 */
-	// async runit (desc: ExpressionDescriptor): Promise<EvaluationResult> {
-	// 	// start pvsio process
-	// 	await this.pvsio();
-	// 	let cmd: string = '(setq *disable-gc-printout* t)';
-	// 	// disable garbage collector printout
-	// 	await this.pvsioExec("disable-gc-printout");
-	// 	// // enable emacs interface
-	// 	// cmd = '(setq *pvs-emacs-interface* t)';
-	// 	// await this.pvsioExec("emacs-interface", cmd);
-	// 	// make sure we are in the correct context
-	// 	cmd = `(change-context "${this.contextFolder}" t)`;
-	// 	await this.pvsioExec("change-context");
-	// 	// typecheck
-	// 	let fileName = fsUtils.getFilename(desc.fileName, { removeFileExtension: true });
-	// 	cmd = `(typecheck-file "${fileName}" nil nil nil)`;
-	// 	await this.pvsioExec("typecheck-file");
-	// 	// load semantic attachments
-	// 	cmd = "(load-pvs-attachments)";
-	// 	await this.pvsioExec("load-pvs-attachments");
-	// 	// enter pvsio mode
-	// 	cmd = `(evaluation-mode-pvsio "${desc.theoryName}" nil nil nil)`; // the fourth argument removes the pvsio 	banner
-	// 	await this.pvsioExec("evaluation-mode-pvsio");
-	// 	// send expression to be evaluated
-	// 	cmd = `${desc.expression};`;
-	// 	let ans = await this.pvsioExec("eval-expr");
-	// 	// await this.pvsioExec("quit-pvsio", "quit;");
-	// 	this.pvsioProcess.kill();
-	// 	return {
-	// 		fileName: desc.fileName,
-	// 		theoryName: desc.theoryName,
-	// 		msg: "%-- animation result for " + desc.expression,
-	// 		result: ans.res
-	// 	};
-	// }
-
-	/**
-	 * Internal function, proves a theorem stored in a .pvs file
-	 * @param desc Formula descriptor
-	 */
-	private async proveTheorem(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
-		if (desc) {			
-			// await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
-			await this.pvsExec(`(prove-file-at "${desc.theoryName}" ${desc.line} nil nil)`);
-		}
-	}
-	/**
-	 * Internal function, proves a theorem stored in a .tccs file
-	 * @param desc Formula descriptor
-	 */
-	private async proveTcc(desc: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
-		if (desc) {			
-			// await this.pvsExec(`(prove-formula "${desc.theoryName}" "${desc.formulaName}" t)`);
-			await this.pvsExec(`(prove-file-at "${desc.theoryName}" ${desc.line} nil nil)`);
-		}
-	}
-	/**
-	 * Proves a formula
-	 * @param desc Formula descriptor
-	 */
-	async proveFormula(desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
-		if (desc) {
-			if (desc.fileExtension === ".pvs") {
-				return await this.proveTheorem(desc);
-			} else if (desc.fileExtension === ".tccs") {
-				return await this.proveTcc(desc);
-			} else {
-				if (this.connection) {
-					this.connection.console.error(`Could not prove formula ${desc.formulaName} (formula is not in a pvs file).`);
-				}
-			}
-		}
-	}
-	/**
-	 * Returns the status of theorems and tccs in a given theory
-	 * @param desc Theory descriptor, defines the theoryName
-	 */
-	async getTheoryStatus(desc: { fileName: string, fileExtension: string, theoryName: string }): Promise<TheoryStatus> {
-		if (desc && desc.theoryName) {
-			const statusInfo: PvsResponseType = await this.pvsExec(`(status-proof-theory "${desc.theoryName}")`, desc);
-			// const statusInfo: PvsResponseType = await this.pvsExec(`(prove-tccs-theory "${theoryName}" nil "${fileName}" nil)`);
-			if (statusInfo && statusInfo.res) {
-				// status-proof-theories theoryname
-				const theoryStatus: TheoryStatus = statusInfo.res;
-				return theoryStatus;
-			}
-		}
-		return null;
-	}
-	/**
-	 * Typechecks a file
-	 * @param uri The uri of the file to be typechecked
-	 * @param attemptProof Tries to discharge all tccs (default is no)
-	 * TODO: change args type, make it consistent with parseFile
-	 */
-	async typecheckFile (desc: { fileName: string, fileExtension: string, contextFolder: string }, attemptProof?: boolean): Promise<PvsTypecheckerResponse> {
-		if (desc) {
-			if (desc.contextFolder !== this.pvsPath && desc.contextFolder !== path.join(this.pvsPath, "lib")) {
-				await this.changeContext(desc.contextFolder);
-				const cmd: string = (attemptProof) ? `(typecheck-file "${desc.fileName}" nil t nil)` : `(typecheck-file "${desc.fileName}" nil nil nil)`;
-				const typecheckerResponse: PvsParserResponse =  await this.pvsExec(cmd);
-				if (typecheckerResponse) {
-					const ans: PvsTypecheckerResponse = {
-						res: {},
-						error: typecheckerResponse.error,
-						raw: typecheckerResponse.raw
-					}
-					if (ans.error) {
-						// amend fileName field, if null
-						ans.error.fileName = ans.error.fileName || `${desc.fileName}${desc.fileExtension}`;
-					} else {
-						// load status info for each theory
-						const res: TypecheckerResponse = {};
-						const theoryMap: TheoryMap = await utils.listTheoriesInFile(path.join(this.contextFolder, `${desc.fileName}.pvs`));
-						if (theoryMap) {
-							const theoryNames: string[] = Object.keys(theoryMap);
-							for (const i in theoryNames) {
-								const theoryName: string = theoryNames[i];
-								const theoryStatus: TheoryStatus = await this.getTheoryStatus({ fileName: desc.fileName, fileExtension: ".pvs", theoryName });	
-								if (theoryStatus) {
-									theoryStatus.theorems = theoryStatus.theorems || {};
-									const pvsResponse: PvsResponseType = await this.showTccs(desc, theoryName);
-									const tccArray: TccDescriptor[] = (pvsResponse && pvsResponse.res) ? pvsResponse.res : null;
-									if (tccArray) {
-										// set tcc flags in theoryStatus and update filename and position
-										for (const i in tccArray) {
-											const formulaName: string = tccArray[i].formulaName;
-											if (theoryStatus.theorems[formulaName]) {
-												theoryStatus.theorems[formulaName].isTcc = true;
-												theoryStatus.theorems[formulaName].fileName = `${theoryName}.tccs`;
-												theoryStatus.theorems[formulaName].position = {
-													line: tccArray[i].line,
-													character: 0
-												}
-											} else {
-												console.error("ooops");
-												theoryStatus.theorems[formulaName] = {
-													isTcc: true,
-													fileName: `${theoryName}.tccs`,
-													position: {
-														line: tccArray[i].line,
-														character: 0
-													},
-													theoryName: theoryName,
-													formulaName: formulaName,
-													status: "not available"
-												};
-											}
-										}
-									}
-									res[theoryName] = theoryStatus;
-								}
-							}
-							ans.res = res;
-							// await this.saveContext();
-						}
-					}
-					return ans;
-				}
-			} else {
-				if (this.connection) {
-					this.connection.console.info(`PVS library file ${desc.fileName} already typechecked.`);
-				}
-			}
-		}
-		return null;
-	}
-	/**
-	 * Typechecks a file and tries to discharge all tccs
-	 */
-	async typecheckProve (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsTypecheckerResponse> {
-		return this.typecheckFile(desc, true)
-	}
-	private async saveContext(): Promise<PvsResponseType> {
-		return await this.pvsExec('(save-context)');
-	}
-	private async clearContext (): Promise<void> {
-		const currentContext: string = this.contextFolder;
+	public async clearContext (contextFolder?: string): Promise<void> {
+		const currentContext: string = contextFolder;// || this.contextFolder;
 		if (currentContext) {
+			// console.info(`** clearing pvs cache for context ${currentContext} **`)
 			await fsUtils.deletePvsCache(currentContext);
 		}
-	}
-	/**
-	 * Typechecks a theory
-	 * @param theoryName The theory to be typechecked
-	 */
-	async typecheckTheory(theoryName: string): Promise<PvsParserResponse> {
-		if (theoryName) {
-			const contextFolder: string = this.getContextFolder();
-			const list: TheoryList = await utils.listTheories(contextFolder);
-			if (list && list.theories && list.theories[theoryName]) {
-				const fileName = list.theories[theoryName].fileName;
-				return (await this.pvsExec(`(typecheck-file "${fileName}" nil nil nil)`)).res;
-			}
-		}
-		return null;
-	}
-	/**
-	 * Provides pvs version information
-	 */
-	async getPvsVersionInfo(): Promise<PvsVersionInfoResponseType> {
-		const cmd: string = '(get-pvs-version-information)';
-		return await this.pvsExec(cmd);
-	}
-
-	async prettyprintRegion (desc: PrettyPrintRegionRequest): Promise<PrettyPrintRegionResult> {
-		// TODO
-		return null;
-	}
-
-	// TODO: make a single function out of stepTcc and stepProof
-	async stepProof(data: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<PvsResponseType> {
-		// const tactics = await PvsProcess.test();
-		// const res = await PvsProcess.prf2json(tactics[1], "test");
-		// return {
-		// 	res: JSON.stringify(res),
-		// 	raw: null,
-		// 	error: null
-		// };
-		const cmd: string = `(edit-proof-at "${data.fileName}" nil ${data.line} "pvs" "${data.fileName}.pvs" 0 nil)`;
-		const response: PvsResponseType = await this.pvsExec(cmd);
-		if (response && response.res) {
-			const proof: { [key: string]: any } = PvsProcess.prf2json(response.res, data.formulaName);
-			proof['desc'] = data; // append descriptor that identifies file, formula, and line
-			response.res = JSON.stringify(proof);
-		}
-		return response;
-	}
-	async stepTcc(data: { fileName: string, theoryName: string, formulaName: string, line: number }): Promise<PvsResponseType> {
-		const cmd: string = `(edit-proof-at "${data.theoryName}" nil ${data.line} "tccs" "${data.theoryName}.tccs" 0 nil)`;
-		const response: PvsResponseType = await this.pvsExec(cmd);
-		if (response && response.res) {
-			const proof: { [key: string]: any } = PvsProcess.prf2json(response.res, data.formulaName);
-			proof['desc'] = data; // append descriptor that identifies file, formula, and line
-			response.res = JSON.stringify(proof);
-		}
-		return response;
-	}
-
-	//--- utility functions
-	static getExpression(prf: string): string {
-		let par: number = 0;
-		let match: RegExpMatchArray = null;
-		const regexp: RegExp = new RegExp(/([\(\)])/g);
-		while(match = regexp.exec(prf)) {
-			switch (match[1]) {
-				case "(": { par++; break; }
-				case ")": { par--; break; }
-				default: {}
-			}
-			if (par === 0) {
-				return prf.substr(0, match.index + 1);
-			}
-		}
-		return "";
-	}
-
-	/**
-	 * Utility function, transforms a .prf (proof file) into a json object
-	 * @param prf proof file file content
-	 * @param formulaName name of the theorem or tcc associated to the proof
-	 * @param parent argument not used in regular invocations --- it is used by the function itself during recursive calls, to keep track of the current parent in the proof tree
-	 */
-	static prf2json(prf: string, formulaName: string, parent?: ProofNodeType): ProofObjectType {
-		if (prf) {
-			prf = prf.trim();
-			const res: ProofObjectType = {
-				proof: {
-					id: formulaName,
-					children: [],
-					type: "root"
-				}
-			};
-			while (prf && prf.length) {
-				if (prf.startsWith(`(""`)) {
-					// root node
-					const match: RegExpMatchArray = /\(\"\"([\w\W\s]+)\s*\)/.exec(prf);
-					prf = match[1].trim();
-					parent = res["proof"];
-				} else {
-					// series of proof branches or a proof commands
-					const expr: string = PvsProcess.getExpression(prf);
-					if (expr && expr.length) {
-						if (expr.startsWith("((")) {
-							// series of proof branches
-							// remove a pair of parentheses and iterate
-							const match: RegExpMatchArray = /\(([\w\W\s]+)\s*\)/.exec(prf);
-							const subexpr: string = match[1];
-							const currentParent: ProofNodeType = parent.children[parent.children.length - 1];
-							PvsProcess.prf2json(subexpr, formulaName, currentParent);
-						} else if (expr.startsWith(`("`)) {
-							// proof command from a labelled branch -- remove the label and iterate
-							const match: RegExpMatchArray = /\(\"(\d+)\"\s*([\w\W\s]+)/.exec(expr);
-							const subexpr: string = match[2].replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
-							const currentBranch: ProofNodeType = { id: match[1], children:[], type: "proof-branch" };
-							parent.children.push(currentBranch);
-							PvsProcess.prf2json(subexpr, formulaName, currentBranch);
-						} else {
-							// proof command
-							parent.children.push({
-								id: expr.replace(/\n/g, ""), // remove all \n introduced by pvs in the expression
-								children: [],
-								type: "proof-command"
-							});
-						}
-						prf = prf.substr(expr.length).trim();
-					} else {
-						// ) parentheses comes before (, from parsing a series labelled branches, just ignore them and iterate
-						const match: RegExpMatchArray = /\)+([\w\W\s]*)/.exec(prf);
-						prf = match[1].trim(); // remove all \n introduced by pvs in the expression
-						if (prf && prf.length) {
-							PvsProcess.prf2json(prf, formulaName, parent);
-						}
-					}
-				}
-			}
-			return res;
-		}
-		return null;
 	}
 }

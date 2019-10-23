@@ -1,5 +1,5 @@
 /**
- * @module pvsLanguageServer
+ * @module PvsLanguageClient
  * @author Paolo Masci
  * @date 2019.06.18
  * @copyright 
@@ -37,169 +37,156 @@
  **/
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, Position, Disposable, commands, TextEditor, TextDocumentChangeEvent } from 'vscode';
+import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, WorkspaceConfiguration, Uri, ConfigurationTarget } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
-import { log } from './utils/vscode-utils';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsTheoryExplorer } from './views/vscodePvsTheoryExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
-import { VSCodePVSioTerminal } from './terminals/vscodePVSioTerminal'; 
-import { VSCodePvsTerminal } from './terminals/vscodePvsTerminalCli';
+import { VSCodePVSioTerminal } from './views/vscodePVSioTerminal'; 
+import { VSCodePvsTerminal } from './views/vscodePvsTerminal';
 import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsStatusBar } from './views/vscodePvsStatusBar';
-
-//--------- experimental features -----------------
-const EXPERIMENTAL: boolean = true;
-import { VSCodePvsSequentExplorer } from './views/vscodePvsSequentExplorer';
-//-------------------------------------------------
+import { EventsDispatcher } from './eventsDispatcher';
+import { VSCodePvsSequentViewer } from './views/vscodePvsSequentViewer';
+import { serverEvent } from "./common/serverInterface";
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
-const AUTOSAVE_INTERVAL: number = 1000; //ms
+const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
 
 export class PvsLanguageClient { //implements vscode.Disposable {
 	// language client
-	private client: LanguageClient;
-
-	// input manager
-	// private inputManager: MultiStepInput;
-	private pvsPath: string;
+	protected client: LanguageClient;
+	protected pvsPath: string;
 
 	// context variables
-	private context: ExtensionContext;
+	protected context: ExtensionContext;
 
-	private timers: {[key: string]: NodeJS.Timer } = {};
+	// timers, for periodic events such as autosave
+	protected timers: {[key: string]: NodeJS.Timer } = {};
 
-	// data providers for the text editor
-	// private hoverProvider: VSCodePvsHoverProvider;
-	private decorationProvider: VSCodePvsDecorationProvider;
-	private emacsBindingsProvider: VSCodePvsEmacsBindingsProvider;
+	// providers for text editor
+	protected decorationProvider: VSCodePvsDecorationProvider;
+	protected emacsBindingsProvider: VSCodePvsEmacsBindingsProvider;
 
-	// data provider for the tree views
-	private theoryExplorer: VSCodePvsTheoryExplorer;
-	private proofExplorer: VSCodePvsProofExplorer;
+	// providers for explorer
+	protected theoryExplorer: VSCodePvsTheoryExplorer;
+	protected proofExplorer: VSCodePvsProofExplorer;
 
-	// integrated terminals for PVSio
-	private pvsioTerminal: VSCodePVSioTerminal;
-	private pvsTerminal: VSCodePvsTerminal;
-
-	// sequent viewer
-	private sequentExplorer: VSCodePvsSequentExplorer;
+	// integrated command line interfaces
+	protected pvsioTerminal: VSCodePVSioTerminal;
+	protected vscodePvsTerminal: VSCodePvsTerminal;
 
 	// status bar
-	private pvsStatusBar: VSCodePvsStatusBar;
+	protected statusBar: VSCodePvsStatusBar;
 
-	private getPvsPath (): string {
+	// sequent viewer
+	protected sequentViewer: VSCodePvsSequentViewer;
+
+	// events dispatcher
+	protected eventsDispatcher: EventsDispatcher;
+
+	/**
+	 * Internal function, returns the pvs path indicated in the configuration file
+	 */
+	protected getPvsPath (): string {
 		return workspace.getConfiguration().get("pvs.path");
 	}
+	/**
+	 * Internal function, returns the context folder of the editor
+	 */
+	protected getContextFolder() : string {
+		return (window.activeTextEditor) ? fsUtils.getContextFolder(window.activeTextEditor.document.fileName) : null;
+	}
 
-	// autosave pvs files with frequency AUTOSAVE_INTERVAL
-	private autosave (document: TextDocument) {
+	/**
+	 * Internal function, autosaves pvs files with frequency AUTOSAVE_INTERVAL
+	 * @param document 
+	 */
+	protected autosave (document: TextDocument) {
 		// cancel any previously scheduled save 
 		if (this.timers['autosave']) {
 			clearTimeout(this.timers['autosave']);
+			this.timers['autosave'] = null;
 		}
 		// save document after a delay
-		// FIXME: check this function, it seems that save is triggered twice
-		this.timers['autosave'] = setTimeout(() => {
-			document.save();
-			this.timers['autosave'] = null;
+		this.timers['autosave'] = setTimeout(async () => {
+			if (document.isDirty) {
+				this.statusBar.progress(`Autosave ${document.fileName}`);
+				await document.save();
+				this.statusBar.ready();
+			}
 		}, AUTOSAVE_INTERVAL);
 	}
-	// utility function for registering handlers
-	private _registerHandlers() {
-		const _this = this;
-		// register handlers for server responses
-		this.client.onRequest("pvs.lisp", function (ans: string) {
-			log("received answer for pvs.lisp");
-			log(ans);
-		});
-		this.client.onRequest("server.response.runit", function (ans: comm.EvaluationResult) {
-			// vscode.workspace.openTextDocument(vscode.Uri.parse("untitled:animation.result")).then(function (document) {
-			// 	vscode.window.showTextDocument(document, vscode.window.activeTextEditor.viewColumn + 1, true);
-			// });
-			let content: string = ans.msg + "\n" + ans.result;
-			workspace.openTextDocument({ language: 'pvs', content: content }).then((document: TextDocument) => {
-				window.showTextDocument(document, window.activeTextEditor.viewColumn + 1, true);
-			});
-		});
-		this.client.onRequest("server.response.proveit", async (ans: comm.ProofResult) => {
-			// vscode.workspace.openTextDocument(vscode.Uri.parse("untitled:animation.result")).then(function (document) {
-			// 	vscode.window.showTextDocument(document, vscode.window.activeTextEditor.viewColumn + 1, true);
-			// });
-			let content: string = ans.result;
-			workspace.openTextDocument({ language: 'sequent', content: content }).then((document: TextDocument) => {
-				window.showTextDocument(document, window.activeTextEditor.viewColumn + 1, true);
-			});
-			// // Create and show panel
-			// const panel = new SequentView();
-			// panel.showSequents(content);
 
-			// let res = await _this.inputManager.createInputBox();
-
-			// const terminal = vscode.window.createTerminal("Ext Terminal #1");
-			// terminal.sendText(content);
-
-		});
-		this.client.onRequest("server.response.parse-file", (ans: comm.PvsParserResponse) => {
-			// do nothing for now.
-		});
-		this.client.onRequest("server.response.change-context-and-parse-files", (ans: comm.PvsParserResponse) => {
-			// do nothing for now.
-		});
+	/**
+	 * Internal function, defines handlers for document events
+	 */
+	protected registerTextEditorHandlers () {
+		// onDidChangeActiveTextEditor is emitted when the active editor focuses on a new document
 		window.onDidChangeActiveTextEditor((event: TextEditor) => {
-			// event emitted when the active editor focuses on a new document
-			const editor: TextEditor = event || window.activeTextEditor;
-			if (editor.document && fsUtils.isPvsFile(editor.document.fileName)) {
+			const editor: TextEditor = window.activeTextEditor; //event || window.activeTextEditor;
+			if (editor && editor.document && fsUtils.isPvsFile(editor.document.fileName)) {
 				// update decorations
 				this.decorationProvider.updateDecorations(editor);
 				// trigger file parsing to get syntax diagnostics
 				const context: string = fsUtils.getContextFolder(editor.document.fileName);
-				this.client.sendRequest('pvs.change-context-and-parse-files', context);
+				this.client.sendRequest(comm.serverCommand.parseContext, context);
 			}
-		}, null, _this.context.subscriptions);
+		}, null, this.context.subscriptions);
+
+		// onDidChangeTextDocument is emitted when the content of a document changes
 		workspace.onDidChangeTextDocument((event: TextDocumentChangeEvent) => {
-			// event emitted when the document changes
 			if (fsUtils.isPvsFile(event.document.fileName)) {
 				this.decorationProvider.updateDecorations(window.activeTextEditor);
-				this.autosave(event.document); // this will trigger diagnostics (parsefile updates diagnostics every time the file is saved on disk)
-				// this.theoriesDataProvider.showTheories(window.activeTextEditor.document.fileName);
+				// autosave will trigger parsing, which in turn triggers diagnostics
+				this.autosave(event.document);
 			}
-		}, null, _this.context.subscriptions);
+		}, null, this.context.subscriptions);
 
-		workspace.onDidChangeConfiguration(async () => {
+		// onDidChangeConfiguration is emitted when the configuration file changes
+		workspace.onDidChangeConfiguration(() => {
 			// re-initialise pvs if the executable is different
 			const pvsPath: string = this.getPvsPath();
 			if (pvsPath !== this.pvsPath) {
 				window.showInformationMessage(`Restarting PVS (pvs path changed to ${pvsPath})`);
 				this.pvsPath = pvsPath;
-				await this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
+				this.client.sendRequest(comm.serverCommand.restart, { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
 			}	
-		});
+		}, null, this.context.subscriptions);
 	}
-	activate (context: ExtensionContext) {
+
+	async choosePvsPathDialog () {
+		const setPvsPath: string = "Choose PVS path";
+		const downloadPvs: string = "Download PVS";
+		const item = await window.showErrorMessage("Error: Could not find PVS executable", setPvsPath, downloadPvs);
+		if (item === setPvsPath) {
+			const config: WorkspaceConfiguration = workspace.getConfiguration();
+			const pvsExecutable: Uri[] = await window.showOpenDialog({
+				canSelectFiles: false,
+				canSelectFolders: true,
+				canSelectMany: false
+			});
+			if (pvsExecutable && pvsExecutable.length === 1) {
+				await config.update("pvs.path", pvsExecutable[0].fsPath, ConfigurationTarget.Global); // the updated value is visible only at the next restart, that's why we are using pvsExecutable[0].fsPath in the sendRequest
+				window.showInformationMessage(`Booting PVS from ${pvsExecutable[0].fsPath}`);
+				this.client.sendRequest(comm.serverCommand.restart, { pvsPath: pvsExecutable[0].fsPath, contextFolder: this.getContextFolder });
+			}
+		} else if (item === downloadPvs) {
+			//...
+		}
+	}
+
+	/**
+	 * Client activation function.
+	 * @param context 
+	 */
+	async activate (context: ExtensionContext): Promise<void> {
 		// save pointer to extension context
 		this.context = context;
 		
-		// register handlers
-		let cmd = commands.registerCommand('cmd.runit', (resource: comm.ExpressionDescriptor) => {
-			this.client.sendRequest('pvs.runit', resource);
-		});
-		context.subscriptions.push(cmd);
-		cmd = commands.registerCommand('cmd.proveit', (resource: comm.FormulaDescriptor) => {
-			this.client.sendRequest('pvs.proveit', resource);
-		});
-		context.subscriptions.push(cmd);
-		cmd = commands.registerCommand('editor.typecheck-file', () => {
-			// typechecking: shortcut C-t
-			// The file name is given by the file opened in the active editor
-			this.client.sendRequest('pvs.typecheck-file-and-show-tccs', window.activeTextEditor.document.fileName);
-		});
-		context.subscriptions.push(cmd);
-
 		// The server is implemented in NodeJS
 		const serverModule = context.asAbsolutePath(server_path);
-
 		// If the extension is launched in debug mode then the debug server options are used
 		// Otherwise the run options are used
 		const serverOptions: ServerOptions = {
@@ -210,9 +197,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				options: { execArgv: ['--nolazy', '--inspect=6009'] } // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
 			}
 		};
-
 		// Options to control the language client
-		let clientOptions: LanguageClientOptions = {
+		const clientOptions: LanguageClientOptions = {
 			// Register the server for pvs files
 			documentSelector: [{ scheme: 'file', language: 'pvs' }],
 			synchronize: {
@@ -220,69 +206,79 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
 			}
 		};
-
 		// Create the language client and start the client.
 		this.client = new LanguageClient(
 			'PvsLanguageServer',
-			'PVS Lisp',
+			'pvs-server',
 			serverOptions,
 			clientOptions
 		);
 		
-		return this;
-	}
-	async start () {
-		await this.client.start(); // this will start also the server
-		await this.client.onReady();
-		this._registerHandlers();
-
 		// create status bar
-		this.pvsStatusBar = new VSCodePvsStatusBar(this.client);
-		this.pvsStatusBar.activate(this.context);
+		this.statusBar = new VSCodePvsStatusBar(this.client);
+		this.statusBar.activate(this.context);
+		this.statusBar.progress("Starting vscode-pvs...");
+		
+		// start client, which in turn will also start the server
+		this.client.start(); 
+		await this.client.onReady();
 		
 		// initialise service providers defined on the client-side
-		this.decorationProvider = new VSCodePvsDecorationProvider();
-		this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client);
+		this.statusBar.progress("Activating vscode-pvs components...");	
+		this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
 		this.emacsBindingsProvider.activate(this.context);
-
-		this.pvsioTerminal = new VSCodePVSioTerminal(this.pvsStatusBar.getVersionInfo());
-		this.pvsioTerminal.activate(this.context);
-
 		this.theoryExplorer = new VSCodePvsTheoryExplorer(this.client, 'theory-explorer-view');
 		this.theoryExplorer.activate(this.context);
-
 		this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
 		this.proofExplorer.activate(this.context);
+		this.vscodePvsTerminal = new VSCodePvsTerminal(this.client, this.proofExplorer);
+		this.vscodePvsTerminal.activate(this.context);
+		this.sequentViewer = new VSCodePvsSequentViewer();
+		this.sequentViewer.activate(this.context);
+		this.pvsioTerminal = new VSCodePVSioTerminal();
+		this.pvsioTerminal.activate(this.context);
 
-		if (EXPERIMENTAL) {
-			this.sequentExplorer = new VSCodePvsSequentExplorer();
-			this.sequentExplorer.activate(this.context);
-		}
+		// enable decorations for pvs syntax
+		this.decorationProvider = new VSCodePvsDecorationProvider();
+		this.decorationProvider.updateDecorations(window.activeTextEditor);
 
-		this.pvsTerminal = new VSCodePvsTerminal(this.client, this.theoryExplorer);
-		this.pvsTerminal.activate(this.context);
-
-		if (window.activeTextEditor && fsUtils.isPvsFile(window.activeTextEditor.document.fileName)) {
-			this.decorationProvider.updateDecorations(window.activeTextEditor);
-		}
+		// register handlers for document events
+		this.registerTextEditorHandlers();
+		
+		// create event dispatcher for handling events for views
+		this.eventsDispatcher = new EventsDispatcher(this.client, {
+			statusBar: this.statusBar,
+			emacsBindings: this.emacsBindingsProvider,
+			theoryExplorer: this.theoryExplorer,
+			proofExplorer: this.proofExplorer,
+			vscodePvsTerminal: this.vscodePvsTerminal,
+			sequentViewer: this.sequentViewer
+		});
+		this.eventsDispatcher.activate(context);
 
 		// start PVS
-		const contextFolder = (window.activeTextEditor) ? fsUtils.getContextFolder(window.activeTextEditor.document.fileName) : null;
+		const contextFolder = this.getContextFolder();
 		this.pvsPath = this.getPvsPath();
-		setTimeout(() => {
-		this.client.sendRequest('pvs.restart', { pvsPath: this.pvsPath, contextFolder });
-		}, 2000);
+
+		this.client.onRequest(serverEvent.pvsNotPresent, () => {
+            this.choosePvsPathDialog();
+		});
+		
+		// setTimeout(() => {
+		this.client.sendRequest(comm.serverCommand.restart, { pvsPath: this.pvsPath, contextFolder });
+		// }, 2000);
 	}
-	stop () {
+
+
+	async stop (): Promise<void> {
 		if (this.client) {
 			this.client.sendRequest("kill-pvs");
-			return this.client.stop();
+			await this.client.stop();
 		}
-		return Promise.resolve();
 	}
 }
 
-
+// client instance
 const pvsLanguageClient = new PvsLanguageClient();
 
 /**
@@ -293,11 +289,12 @@ const pvsLanguageClient = new PvsLanguageClient();
  */
 export function activate(context: ExtensionContext) {
 	// Activate the client.
-	pvsLanguageClient.activate(context);
-	// Start the client. This will also launch the server
-	pvsLanguageClient.start();
+	pvsLanguageClient.activate(context); // async call
 }
 
-export function deactivate(): Thenable<void> | undefined {
-	return pvsLanguageClient.stop();
+export function deactivate(): Thenable<void> {
+	return new Promise(async (resolve, reject) => {
+		await pvsLanguageClient.stop();
+		resolve();
+	});
 }

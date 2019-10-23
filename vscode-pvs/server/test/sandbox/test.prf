@@ -1,0 +1,42 @@
+(foo_th)
+(string_th)
+(records_th)
+(bool_th)
+(list_example
+ (lst_TCC1 0
+  (lst_TCC1-1 nil 3758462319 ("" (subtype-tcc) nil nil) nil nil
+   (lst subtype "list_adt[real].null" "list[int]"))))
+(bindings_th)
+(test_me
+ (thm 0
+  (thm-7 nil 3758899387
+   ("" (skosimp*) (("" (all-typepreds) nil nil)) nil)
+   ((>= const-decl "bool" reals nil)
+    (nonneg_real nonempty-type-eq-decl nil real_types nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (even? const-decl "bool" integers nil))
+   nil)
+  (thm-6 nil 3758899139 ("" (grind) nil nil) nil nil)
+  (thm-5 nil 3758898209 ("1" (then (rewrite-msg-off) (grind)) nil nil)
+   nil nil)
+  (thm-4 nil 3758898141 ("" (then (rewrite-msg-off) (grind)) nil nil)
+   nil nil)
+  (thm-3 nil 3758897993 ("" (postpone) nil nil) nil nil)
+  (thm-2 nil 3758882368 ("" (postpone) nil nil) nil nil)
+  (thm-1 nil 3758881772 ("" (postpone) nil nil) nil shostak)))
+(test_th)
+

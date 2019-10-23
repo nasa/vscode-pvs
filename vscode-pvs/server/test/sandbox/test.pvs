@@ -1,0 +1,118 @@
+
+
+foo_th: THEORY
+  BEGIN
+   toggle(x: int): int = -x
+   g(ww: int): int = toggle(ww)
+   MAX: int = 30
+  END foo_th
+
+%
+% this is a comment
+string_th: THEORY
+  BEGIN
+   pvs: string = "PVS"
+   info(str: string): string = 2.0 / 3
+   pvs2: bool = let x = info("PVS") in true
+   single: string = "a" 
+  END string_th
+
+
+records_th: THEORY
+  BEGIN IMPORTING foo_th, lib
+    Rec1: TYPE = [#
+        ac1: bool,
+        ac2: int
+    #]
+    Rec2: TYPE = [#
+      bc1: real,
+      bc2: int
+    #]
+    rc1: Rec1 = (# ac1 := true, ac2 := MIN #)
+    rc2: Rec2
+    rc3: Rec3
+    
+  END records_th
+
+bool_th: THEORY
+  BEGIN IMPORTING string_th   
+
+  edt: DATATYPE BEGIN
+    dd: dd?
+    ee: ee?
+  END edt
+
+
+
+
+  abs(x: real): nonneg_real = IF x > 0 THEN x ELSE -x ENDIF
+
+
+
+  
+  f(x: real): real = abs(x)
+
+
+
+
+  enm: TYPE = { id1, id2 }
+  a: int = 1
+  id: bool = IF a < 2 THEN true ELSE false ENDIF
+
+
+
+
+
+
+  b1(x: real): bool = 
+    COND
+      x > 0 -> TRUE,
+      ELSE -> FALSE
+    ENDCOND
+  b2(x: real): bool = IF x > 0 THEN true ELSE false ENDIF
+  tt: enm = id1
+    
+END bool_th
+
+
+list_example: THEORY
+ BEGIN IMPORTING lib
+   %lst: list[int] = cons(10, null) %(: 10, 20 :)
+   rat: real = 1/10
+   %@runit
+   z: int = flib(10)
+ END list_example
+
+
+bindings_th: THEORY
+ BEGIN
+   f: bool = LET x: bool = true in x
+
+ END bindings_th
+
+test_me: THEORY
+  BEGIN IMPORTING foo_th
+
+    t1: int = toggle(1)
+    t4: int = toggle(5)
+    %@proveit
+    thm: THEOREM
+      EXISTS (x: nonneg_real): x >= 0
+
+    thm2: THEOREM
+      FORALL (x: nonneg_real): x > -1
+
+  END test_me
+
+
+
+test_th: THEORY
+ BEGIN
+  enm: TYPE = { id1, id2 }
+  i: enm = id1
+  b1(xx: real): bool =
+   LET nx000 = xx
+   IN COND nx000 > 0 -> TRUE, ELSE -> FALSE ENDCOND
+ END test_th
+
+
