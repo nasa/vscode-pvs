@@ -45,11 +45,6 @@ import {
 import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 
-export interface ContextDiagnostics {
-	[fileName: string]: PvsParserResponse
-};
-
-
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
  */

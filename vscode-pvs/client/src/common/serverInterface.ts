@@ -429,7 +429,10 @@ export const serverCommand = {
 	parseFile: "pvs.parse-file",
 	listContext: "pvs.list-context",
 	showTccs: "pvs.show-tccs",
-	restart: "pvs.restart"
+	restart: "pvs.restart",
+
+	listDownloadableVersions: "pvs.list-downloadable-versions",
+	downloadPvs: "pvs.download-pvs"
 };
 // TODO: add here type information for args
 export const serverEvent = {
@@ -442,6 +445,8 @@ export const serverEvent = {
 	listContextResponse: "pvs.response.list-context",
 	showTccsResponse: "pvs.response.show-tccs",
 	restartResponse: "pvs.response.restart",
+	listDownloadableVersionsResponse: "pvs.response.list-downloadable-versions",
+	downloadPvsResponse: "pvs.response.download-pvs",
 
 	contextUpdate: "pvs.event.context-update",
 	proofStateUpdate: "pvs.event.proof-state",
@@ -449,3 +454,8 @@ export const serverEvent = {
 	pvsVersionInfo: "pvs.event.version-info",
 	pvsNotPresent: "pvs.event.pvs-not-present"
 };
+
+export interface PvsDownloadDescriptor { url: string, fileName: string, version: string };
+
+export const www_cls_sri_com: string = "www.csl.sri.com";
+export const www_pvs_snapshots: string = `http://${www_cls_sri_com}/users/owre/drop/pvs-snapshots/`;

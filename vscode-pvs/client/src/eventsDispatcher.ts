@@ -175,6 +175,7 @@ export class EventsDispatcher {
             // do nothing for now
         });
 
+
         //---------------------------------------------------------
         // commands invoked using code lens, emacs bindings, explorer, etc
         //---------------------------------------------------------

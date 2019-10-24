@@ -37,8 +37,8 @@
  **/
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, WorkspaceConfiguration, Uri, ConfigurationTarget } from 'vscode';
-import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
+import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, WorkspaceConfiguration, Uri, ConfigurationTarget, ProgressLocation, ProgressOptions, Progress } from 'vscode';
+import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, CancellationToken } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsTheoryExplorer } from './views/vscodePvsTheoryExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
@@ -50,6 +50,8 @@ import { VSCodePvsStatusBar } from './views/vscodePvsStatusBar';
 import { EventsDispatcher } from './eventsDispatcher';
 import { VSCodePvsSequentViewer } from './views/vscodePvsSequentViewer';
 import { serverEvent } from "./common/serverInterface";
+import * as vscodeUtils from './utils/vscode-utils';
+import { VSCodePvsPackageManager } from './providers/vscodePvsPackageManager';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -86,18 +88,16 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	// events dispatcher
 	protected eventsDispatcher: EventsDispatcher;
 
+	// package manager
+	protected packageManager: VSCodePvsPackageManager;
+
 	/**
 	 * Internal function, returns the pvs path indicated in the configuration file
 	 */
 	protected getPvsPath (): string {
 		return workspace.getConfiguration().get("pvs.path");
 	}
-	/**
-	 * Internal function, returns the context folder of the editor
-	 */
-	protected getContextFolder() : string {
-		return (window.activeTextEditor) ? fsUtils.getContextFolder(window.activeTextEditor.document.fileName) : null;
-	}
+
 
 	/**
 	 * Internal function, autosaves pvs files with frequency AUTOSAVE_INTERVAL
@@ -154,27 +154,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				this.client.sendRequest(comm.serverCommand.restart, { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
 			}	
 		}, null, this.context.subscriptions);
-	}
-
-	async choosePvsPathDialog () {
-		const setPvsPath: string = "Choose PVS path";
-		const downloadPvs: string = "Download PVS";
-		const item = await window.showErrorMessage("Error: Could not find PVS executable", setPvsPath, downloadPvs);
-		if (item === setPvsPath) {
-			const config: WorkspaceConfiguration = workspace.getConfiguration();
-			const pvsExecutable: Uri[] = await window.showOpenDialog({
-				canSelectFiles: false,
-				canSelectFolders: true,
-				canSelectMany: false
-			});
-			if (pvsExecutable && pvsExecutable.length === 1) {
-				await config.update("pvs.path", pvsExecutable[0].fsPath, ConfigurationTarget.Global); // the updated value is visible only at the next restart, that's why we are using pvsExecutable[0].fsPath in the sendRequest
-				window.showInformationMessage(`Booting PVS from ${pvsExecutable[0].fsPath}`);
-				this.client.sendRequest(comm.serverCommand.restart, { pvsPath: pvsExecutable[0].fsPath, contextFolder: this.getContextFolder });
-			}
-		} else if (item === downloadPvs) {
-			//...
-		}
 	}
 
 	/**
@@ -237,6 +216,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.sequentViewer.activate(this.context);
 		this.pvsioTerminal = new VSCodePVSioTerminal();
 		this.pvsioTerminal.activate(this.context);
+		this.packageManager = new VSCodePvsPackageManager(this.client);
 
 		// enable decorations for pvs syntax
 		this.decorationProvider = new VSCodePvsDecorationProvider();
@@ -257,11 +237,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.eventsDispatcher.activate(context);
 
 		// start PVS
-		const contextFolder = this.getContextFolder();
+		const contextFolder = vscodeUtils.getEditorContextFolder();
 		this.pvsPath = this.getPvsPath();
 
 		this.client.onRequest(serverEvent.pvsNotPresent, () => {
-            this.choosePvsPathDialog();
+            this.packageManager.run();
 		});
 		
 		// setTimeout(() => {

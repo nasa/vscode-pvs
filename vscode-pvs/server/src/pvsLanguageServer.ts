@@ -48,7 +48,8 @@ import {
 	ContextDescriptor,
 	serverEvent,
 	serverCommand,
-	cliSessionType
+	cliSessionType,
+	PvsDownloadDescriptor
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -62,6 +63,7 @@ import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import { PvsProxy, ContextDiagnostics } from './pvsProxy';
 import { ParseResult, PvsResponse, PvsError, PvsResult, ImportingDecl, TypedDecl, FormulaDecl } from './common/pvs-gui';
+import { PvsPackageManager } from './providers/pvsPackageManager';
 
 
 export interface PvsTheoryDescriptor {
@@ -1107,6 +1109,15 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverCommand.parseContext, async (request: string | { contextFolder: string }) => {
 				this.parseContextRequest(request); // async call
+			});
+
+			this.connection.onRequest(serverCommand.listDownloadableVersions, async () => {
+				const versions: PvsDownloadDescriptor[] = await PvsPackageManager.listDownloadableVersions();
+				this.connection.sendRequest(serverEvent.listDownloadableVersionsResponse, { response: versions });
+			});
+			this.connection.onRequest(serverCommand.downloadPvs, async (desc: PvsDownloadDescriptor) => {
+				const fname: string = await PvsPackageManager.downloadPvs(desc);
+				this.connection.sendRequest(serverEvent.downloadPvsResponse, { response: fname });
 			});
 
 

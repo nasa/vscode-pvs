@@ -258,3 +258,12 @@ export function fname2desc (fname: string): { fileName: string, fileExtension: s
 export function desc2fname (desc: { fileName: string, fileExtension: string, contextFolder: string }): string {
 	return path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 }
+
+export function getOs (): string {
+	if (process.platform === 'linux' || process.platform === 'freebsd' || process.platform === 'openbsd' || process.platform === 'sunos' || process.platform === 'aix') {
+		return 'Linux';
+	} else if (process.platform === 'darwin') {
+		return 'MacOSX';
+	}
+	return process.platform;
+}

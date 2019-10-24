@@ -272,7 +272,7 @@ class TccItem extends FormulaItem {
  * Data provider for PVS Explorer view
  */
 export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
-	protected pvsLibrariesPath: string = null;
+	// protected pvsLibrariesPath: string = null;
 	protected contextFolder: string = null;
 
 	/**
@@ -306,8 +306,8 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 	constructor(client: LanguageClient, providerView: string) {
 		this.client = client;
 		this.providerView = providerView;
-		const pvsPath: string = this.getPvsPath();
-		this.pvsLibrariesPath = path.join(pvsPath, "lib");
+		// const pvsPath: string = this.getPvsPath();
+		// this.pvsLibrariesPath = path.join(pvsPath, "lib");
 		// register tree view.
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
