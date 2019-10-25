@@ -108,7 +108,7 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 ### 1.0.3 (2019.03.01)
 - Overview of tccs in explorer view
 - Shortcut C-t for typechecking files
-- Bugfix (Language server not responsive when pvs file contains syntax errors)
+- Improved PVS language server
 
 ### 1.0.2 (2019.02.24)
 - Snippets for pvs language (theory declaration, if-then-else, cond-case)
