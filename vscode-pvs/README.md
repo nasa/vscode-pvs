@@ -2,11 +2,6 @@
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
-![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
-
-## Latest version
-[vscode-pvs-1.0.13](../releases/vscode-pvs-1.0.13.vsix)
-
 ## Functionalities
 The main functionalities provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
