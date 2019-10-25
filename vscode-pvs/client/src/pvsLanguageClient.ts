@@ -241,7 +241,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.pvsPath = this.getPvsPath();
 
 		this.client.onRequest(serverEvent.pvsNotPresent, () => {
-            this.packageManager.run();
+            this.packageManager.installationWizard();
 		});
 		
 		// setTimeout(() => {

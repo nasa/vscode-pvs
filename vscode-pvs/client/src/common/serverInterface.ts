@@ -432,7 +432,8 @@ export const serverCommand = {
 	restart: "pvs.restart",
 
 	listDownloadableVersions: "pvs.list-downloadable-versions",
-	downloadPvs: "pvs.download-pvs"
+	downloadPvs: "pvs.download-pvs",
+	downloadLicensePage: "pvs.download-license-page"
 };
 // TODO: add here type information for args
 export const serverEvent = {
@@ -447,6 +448,7 @@ export const serverEvent = {
 	restartResponse: "pvs.response.restart",
 	listDownloadableVersionsResponse: "pvs.response.list-downloadable-versions",
 	downloadPvsResponse: "pvs.response.download-pvs",
+	downloadLicensePageResponse: "pvs.response.download-license-page",
 
 	contextUpdate: "pvs.event.context-update",
 	proofStateUpdate: "pvs.event.proof-state",
@@ -459,3 +461,4 @@ export interface PvsDownloadDescriptor { url: string, fileName: string, version:
 
 export const www_cls_sri_com: string = "www.csl.sri.com";
 export const www_pvs_snapshots: string = `http://${www_cls_sri_com}/users/owre/drop/pvs-snapshots/`;
+export const www_pvs_allegro_license: string = `http://pvs.csl.sri.com/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;

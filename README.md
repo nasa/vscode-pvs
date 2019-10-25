@@ -5,7 +5,7 @@ The environment redefines the way developers interact with PVS, and better align
 ![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.12](releases/vscode-pvs-1.0.12.vsix)
+[vscode-pvs-1.0.13](releases/vscode-pvs-1.0.13.vsix)
 
 ## Functionalities
 The main functionalities provided by the environment are as follows:
@@ -29,14 +29,14 @@ The main functionalities provided by the environment are as follows:
 <br> <img src="vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
 
+## Requirements
+- NodeJS (v10.16.3 or greater) https://nodejs.org/en/download
+- Visual Studio Code (v1.38 or greater) https://code.visualstudio.com
+
 ## Installation instructions
-1. Download the latest release of VSCode-PVS from the [github repository](releases)
-2. Download and install NodeJS from https://nodejs.org/en/download
-3. Download and install PVS Allegro from http://pvs.csl.sri.com
-4. Download and install Visual Studio Code from https://code.visualstudio.com
-5. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
-6. Set the path to the PVS executable in Visual Studio Code: from the Settings menu, choose Files -> Preferences -> Settings -> Extensions -> PVS -> path
-7. Have fun using the extension!
+1. Download the latest release of VSCode-PVS from the [github repository](https://github.com/nasa/vscode-pvs/releases)
+2. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
+3. Have fun using the extension!
 
 ## Updating VSCode-PVS
 When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:

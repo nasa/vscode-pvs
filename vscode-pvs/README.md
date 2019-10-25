@@ -1,29 +1,37 @@
 # VSCode-PVS: An Integrated Development Environment for the Prototype Verification System
-VSCode-PVS is an integrated development environment for creating, evaluating, and verifying PVS specifications.
-The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the features provided by development environments used by software developers.
+VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
+The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
-## Features
-The main features provided by the environment are as follows:
+![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
+
+## Latest version
+[vscode-pvs-1.0.13](../releases/vscode-pvs-1.0.13.vsix)
+
+## Functionalities
+The main functionalities provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
-- **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented to the user when the user is typing a symbol name in the editor. Code snippets are provided for frequent modeling blocks, e.g., if-then-else. 
+- **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented to the user when the user is typing a symbol name in the editor. Code snippets are provided for frequent modeling blocks, e.g., if-then-else.
 - **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the developer places the cursor over an identifier.
-- **Jump-to declaration**: Navigation of symbol declarations can be performed with simple point-and-click actions: the user places the cursor over the name of an identifier, and a click on the name of the identifier while holding the Ctrl key down allow to jump to the location where the identifier is declared.
+- **Go-to definition**: Navigation of symbol definitions can be performed with simple point-and-click actions: the user places the cursor over the name of an identifier, and a click on the name of the identifier while holding the Ctrl key down allow to jump to the location where the identifier is declared.
 - **Live diagnostics**: Parsing is automatically performed in the background, and errors are reported in-line in the editor. Problematic expressions are underlined with red wavy lines. Tooltips presenting the error details are shown when the user places the cursor over the wavy lines.
-- **In-line actionable commands**: Actionable commands are available for PVS theorems. They are rendered in-line in the editor, above the name of the theorem, and can be used to start a new prover session for the theorem with a simple click action.
-- **Overview of PVS theories**: The overall structure of a set of PVS theories is rendered using an interactive tree-based view. It shows the set of PVS theories in the active workspace, as well as the name and status (proved, unfinished, etc.) of the theorems defined in each theory. Point-and-click actions can be used to jump to theory definitions and type-check the theories.
-- **Interactive proof tree visualizer and editor**: An interactive tree-based view shows the proof associated with a theorem. Point-and-click actions are provided for step-by-step execution of proof commands. Functionalites for editing the proof are currently under development.
-- **Integrated PVS and PVSio Command Line Interfaces**: Integrated command line interfaces allow interaction with the theorem prover and the PVSio evaluator. Auto-completion is provided for prover commands, as well as access to the commands history.
+- **Theory Explorer**: The overall structure of a set of PVS theories is rendered using an interactive tree-based view. It shows the set of PVS theories in the active workspace, as well as the name and status (proved, unfinished, etc.) of the theorems defined in each theory. Point-and-click actions can be used to jump to theory definitions and type-check the theories.
+- **Proof Explorer**: Actionable commands can be used to start a proof, and an interactive tree view can be used to view and edit the proof tree. An integrated command line allows interaction with the theorem prover. Auto-completion is provided for prover commands, as well as access to the commands history.
 
+## Requirements
+- NodeJS (v10.16.3 or greater) https://nodejs.org/en/download
+- Visual Studio Code (v1.38 or greater) https://code.visualstudio.com
 
 ## Installation instructions
 1. Download the latest release of VSCode-PVS from the [github repository](https://github.com/nasa/vscode-pvs/releases)
-2. Download and install NodeJS (v10.16.3 or greater) from https://nodejs.org/en/download
-3. Download and install PVS Allegro (v7.0 or greater) from http://pvs.csl.sri.com
-4. Download and install Visual Studio Code (v1.38 or greater) from https://code.visualstudio.com
-5. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
-6. Set the path to the PVS executable in Visual Studio Code: from the Settings menu, choose Files -> Preferences -> Settings -> Extensions -> PVS -> path
-7. Have fun using the extension!
+2. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
+3. Have fun using the extension!
 
+## Updating VSCode-PVS
+When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
+
+- Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
+
+All settings and preferences from the previous version of VSCode-PVS will be maintained.
 
 ## Structure
 ```
@@ -55,11 +63,12 @@ The main features provided by the environment are as follows:
 
 
 ## ChangeLog
-### 1.0.13 (2019.10.xx)
+### 1.0.13 (2019.10.25)
 - New visual components: Proof Explorer, Sequent Viewer
 - Revised architecture, to connect to the new XMLRPC server provided by PVS 7.0
 - Improved PVS command line interface: autocompletion, syntax highlighting
 - Improved status bar
+- Installation wizard
 
 ### 1.0.12 (2019.06.07)
 - PVS Command Line Interface (auto-completion and history navigation for proof commands, syntax highlighting for PVS language)

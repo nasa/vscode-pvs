@@ -1116,8 +1116,12 @@ export class PvsLanguageServer {
 				this.connection.sendRequest(serverEvent.listDownloadableVersionsResponse, { response: versions });
 			});
 			this.connection.onRequest(serverCommand.downloadPvs, async (desc: PvsDownloadDescriptor) => {
-				const fname: string = await PvsPackageManager.downloadPvs(desc);
+				const fname: string = await PvsPackageManager.downloadPvsExecutable(desc);
 				this.connection.sendRequest(serverEvent.downloadPvsResponse, { response: fname });
+			});
+			this.connection.onRequest(serverCommand.downloadLicensePage, async () => {
+				const lpage: string = await PvsPackageManager.downloadPvsLicensePage();
+				this.connection.sendRequest(serverEvent.downloadLicensePageResponse, { response: lpage });
 			});
 
 

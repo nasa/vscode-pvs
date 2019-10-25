@@ -1,10 +1,16 @@
 ## ChangeLog
+### 1.0.13 (2019.10.25)
+- New visual components: Proof Explorer, Sequent Viewer
+- Revised architecture, to connect to the new XMLRPC server provided by PVS 7.0
+- Improved PVS command line interface: autocompletion, syntax highlighting
+- Improved status bar
+- Installation wizard
+
 ### 1.0.12 (2019.06.07)
 - PVS Command Line Interface (auto-completion and history navigation for proof commands, syntax highlighting for PVS language)
 - Improved Theory Explorer (proof status for theorems and tccs)
 - Improved navigation of symbol definitions (typechecking information are now fed to the parser process)
 - Improved status bar
-- Cheat codes for developers: M-x pvs6 M-x pvs7 allow rapid switch of pvs version (requires setting of pvs-zen-path variables in vscode-pvs settings)
 
 ### 1.0.11 (2019.05.29)
 - Improved Theory Explorer (navigation of theorems)

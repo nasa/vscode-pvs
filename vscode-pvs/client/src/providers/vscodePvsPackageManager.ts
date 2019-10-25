@@ -37,7 +37,7 @@
  **/
 
 import { LanguageClient } from "vscode-languageclient";
-import { window, Uri, workspace, ConfigurationTarget, Progress, CancellationToken, WorkspaceConfiguration, ProgressLocation, Terminal } from "vscode";
+import { window, Uri, workspace, ConfigurationTarget, Progress, CancellationToken, WorkspaceConfiguration, ProgressLocation, Terminal, ViewColumn, WebviewPanel } from "vscode";
 import { serverEvent, www_cls_sri_com, serverCommand, PvsDownloadDescriptor } from "../common/serverInterface";
 import * as os from 'os';
 import * as vscodeUtils from '../utils/vscode-utils';
@@ -50,6 +50,59 @@ export class VSCodePvsPackageManager {
 		this.client = client;
 	}
 
+    async installationWizard (): Promise<boolean> {
+		const labels: { [ btn: string ]: string } = {
+			setPvsPath: "Select PVS installation folder",
+			downloadPvs: "Download PVS"
+        };
+		const item = await window.showWarningMessage("Could not find PVS executable", labels.downloadPvs, labels.setPvsPath);
+		if (item === labels.setPvsPath) {
+            return this.selectPvsPath();
+		} else if (item === labels.downloadPvs) {
+
+            // choose installation folder
+            const targetFolder: string = await this.chooseInstallationFolder();
+            if (!targetFolder) {
+                // operation cancelled by the user
+                return; 
+            }
+
+            // show license agreement
+            const panel: WebviewPanel = window.createWebviewPanel(
+                'pvsLicenseAgreement', // Identifies the type of the webview. Used internally
+                'PVS Allegro License Agreement', // Title of the panel displayed to the user
+                ViewColumn.One, // Editor column to show the new webview panel in.
+                { enableFindWidget: true } // Webview options. More on these later.
+            );
+            panel.webview.html = await this.downloadPvsLicensePageWithProgress();
+            const agreement: { [ btn: string ]: string } = {
+                license: "View PVS License",
+                cancel: "Cancel",
+                accept: "I Accept",
+                doNotAccept: "I DO NOT Accept"
+            };
+            const info: string = `The PVS version you are about to download from ${www_cls_sri_com} is freely available, 
+                but requires a license agreement. Please read carefully the terms of the PVS license and click "I Accept" 
+                if you agree with its terms.`;
+            const item = await window.showWarningMessage(info, agreement.accept, agreement.doNotAccept);
+
+            // install pvs if the user accepts the terms of the license
+            if (item === agreement.accept) {
+                const desc: { fname: string, version: string } = await this.downloadPvsExecutableWithProgress();
+                if (desc) {
+                    if (targetFolder) {
+                        const pvsPath: string = await this.installPvs({ fname: desc.fname, targetFolder: targetFolder, version: desc.version });
+                        if (pvsPath) {
+                            this.updateVscodeConfiguration(pvsPath);
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    
 	async extractPVS (desc: { fname: string, targetFolder: string }) {
 		const label: string = `Extracting PVS in ${desc.targetFolder}`;
 		const terminal = window.createTerminal({ name: label });
@@ -73,7 +126,7 @@ export class VSCodePvsPackageManager {
             browse: "Choose PVS Installation Folder",
             cancel: "Cancel"
         }
-        const item = await window.showInformationMessage(`Please choose PVS installation folder`, labels.browse, labels.cancel);
+        const item = await window.showInformationMessage(`Please choose the installation folder`, labels.browse, labels.cancel);
         if (item === labels.browse) {
             const pvsInstallationFolder: Uri[] = await window.showOpenDialog({
                 canSelectFiles: false,
@@ -97,7 +150,7 @@ export class VSCodePvsPackageManager {
         return pvsPath;
 	}
 
-	downloadPvsDialog (progress: Progress<{ message?: string, increment?: number }>, token: CancellationToken) {
+	async downloadPvsDialog (progress: Progress<{ message?: string, increment?: number }>, token: CancellationToken): Promise<boolean> {
 		progress.report({ increment: 0 });
 		this.client.sendRequest(serverCommand.listDownloadableVersions);
 		return new Promise((resolve, reject) => {
@@ -136,7 +189,7 @@ export class VSCodePvsPackageManager {
         return false;
     }
 
-    async downloadPvsWithProgress (): Promise<{ fname: string, version: string }> {
+    async downloadPvsExecutableWithProgress (): Promise<{ fname: string, version: string }> {
         return window.withProgress({
             location: ProgressLocation.Notification,
             cancellable: true
@@ -183,28 +236,35 @@ export class VSCodePvsPackageManager {
         });
     }
     
-	async run (): Promise<boolean> {
-		const labels: { [ btn: string ]: string } = {
-			setPvsPath: "Select PVS installation folder",
-			downloadPvs: "Download PVS"
-		};
-		const item = await window.showWarningMessage("Could not find PVS executable", labels.setPvsPath, labels.downloadPvs);
-		if (item === labels.setPvsPath) {
-            return this.selectPvsPath();
-		} else if (item === labels.downloadPvs) {			
-            const desc: { fname: string, version: string } = await this.downloadPvsWithProgress();
-            if (desc) {
-                const targetFolder: string = await this.chooseInstallationFolder();
-                if (targetFolder) {
-                    const pvsPath: string = await this.installPvs({ fname: desc.fname, targetFolder: targetFolder, version: desc.version });
-                    if (pvsPath) {
-                        this.updateVscodeConfiguration(pvsPath);
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-	}
+    async downloadPvsLicensePageWithProgress (): Promise<string> {
+        return window.withProgress({
+            location: ProgressLocation.Notification,
+            cancellable: true
+        }, async (progress, token) => {
+            let terminal: Terminal = null;
 
- }
+            progress.report({ increment: -1, message: `Loading PVS license page from ${www_cls_sri_com}` });
+
+            return new Promise((resolve, reject) => {
+                token.onCancellationRequested(() => {
+                    window.showInformationMessage("Download cancelled");
+                    if (terminal) {
+                        terminal.dispose();
+                        resolve(null);
+                    }
+                });
+                
+                this.client.sendRequest(serverCommand.downloadLicensePage);
+                this.client.onRequest(serverEvent.downloadLicensePageResponse, (desc: { response: string }) => {
+                    if (desc && desc.response && desc.response) {
+                        resolve(desc.response);
+                    } else {
+                        progress.report({ increment: 100, message: `Error: ${www_cls_sri_com} is not responding, please try again later.` });
+                        resolve(null);
+                    }
+                });
+            });
+        });
+    }
+
+}

@@ -39,7 +39,7 @@
 import { execSync } from 'child_process';
 import * as os from 'os';
 import * as fsUtils from '../common/fsUtils';
-import { www_pvs_snapshots, PvsDownloadDescriptor } from '../common/serverInterface';
+import { www_pvs_snapshots, PvsDownloadDescriptor, www_pvs_allegro_license } from '../common/serverInterface';
 
 export class PvsPackageManager {
 
@@ -62,12 +62,23 @@ export class PvsPackageManager {
         return null;
     }
 
-    static async downloadPvs (desc: PvsDownloadDescriptor): Promise<string> {
+    static async downloadPvsExecutable (desc: PvsDownloadDescriptor): Promise<string> {
         const fname: string = `${os.tmpdir()}/${desc.fileName}`;
         const downloadCommand: string = `curl -o ${fname} ${desc.url}`;
         const dnl: Buffer = execSync(downloadCommand);
         if (dnl) {
             return fname;
+        }
+        return null;
+    }
+
+    static async downloadPvsLicensePage (): Promise<string> {
+        const downloadCommand: string = `curl -s -L ${www_pvs_allegro_license}`;
+        const dnl: Buffer = execSync(downloadCommand);
+        if (dnl) {
+            return dnl.toLocaleString()
+                        .replace(`<body>`, `<body style="color: black;background-color: white;">`)
+                        .replace(`action="../cgi-bin/download.cgi">`, `action="../cgi-bin/download.cgi" style="display: none;">`);
         }
         return null;
     }
