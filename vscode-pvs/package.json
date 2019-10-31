@@ -585,7 +585,7 @@
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-		"test:server": "node_modules/jasmine-ts/lib/index.js --config=server/test/jasmine.json"
+		"test:server": "node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-all.json"
 	},
 	"devDependencies": {
 		"ts-node": "^8.3.0",
