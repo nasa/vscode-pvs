@@ -7,6 +7,8 @@ import { ParseResult, ListMethodsResult, PvsError, PvsResponse, PvsResult, FindD
 import { PvsProxy, ContextDiagnostics } from './server/pvsProxy'; // XmlRpcSystemMethods
 import { label, log, dir, configFile, sandboxExamples } from './test-utils';
 
+const EXTERNAL_SERVER: boolean = false;
+
 //----------------------------
 //   Test cases for parser
 //----------------------------
@@ -18,7 +20,7 @@ describe("pvs-parser", () => {
 		log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
-		pvsProxy = new PvsProxy(pvsPath, { externalServer: false });
+		pvsProxy = new PvsProxy(pvsPath, { externalServer: EXTERNAL_SERVER });
 		await pvsProxy.activate({ debugMode: true }); // this will also start pvs-server
 
 		// delete pvsbin files
@@ -28,10 +30,12 @@ describe("pvs-parser", () => {
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
 
-		// kill pvs server & proxy
-		// console.log(" kill pvs server...")
-		// await pvsProxy.killPvsServer();
-		// await pvsProxy.killPvsProxy();
+		if (EXTERNAL_SERVER) {
+			// kill pvs server & proxy
+			console.log(" killing pvs server...")
+			await pvsProxy.killPvsServer();
+			await pvsProxy.killPvsProxy();
+		}
 	});
 
 	it(`pvs-server can parse file`, async () => {

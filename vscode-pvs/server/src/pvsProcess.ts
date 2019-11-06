@@ -201,7 +201,7 @@ export class PvsProcess {
 								if (match && match.length > 1 && match[1]) {
 									const allegro_pid: string = match[1];
 									if (allegro_pid) {
-										execSync(`kill -15 ${allegro_pid}`);
+										execSync(`kill -9 ${allegro_pid}`);
 									}
 								}
 							}

@@ -4,5 +4,5 @@
     "test-proxy.ts"
   ],
   "stopSpecOnExpectationFailure": false,
-  "random": true
+  "random": false
 }

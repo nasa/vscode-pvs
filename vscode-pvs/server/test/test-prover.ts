@@ -120,6 +120,9 @@ describe("pvs-prover", () => {
 		// check prover status
 		const proverStatus: PvsResponse = await pvsProxy.proverStatus();
 		expect(proverStatus.result).toEqual("active");
+
+		// quit the proof attempt
+		await pvsProxy.proofCommand({ cmd: 'quit'});
 	}, 10000);
 
 	it(`pvs-server returns proverStatus = inactive after quitting a prover session`, async () => {

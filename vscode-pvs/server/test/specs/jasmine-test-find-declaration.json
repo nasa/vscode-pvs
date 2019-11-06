@@ -4,5 +4,5 @@
     "test-find-declaration.ts"
   ],
   "stopSpecOnExpectationFailure": false,
-  "random": true
+  "random": false
 }
