@@ -6,6 +6,8 @@ import * as path from 'path';
 import { ParseResult, ListMethodsResult, PvsError, PvsResponse, PvsResult, FindDeclarationResult } from "./server/common/pvs-gui";
 import { PvsProxy, ContextDiagnostics } from './server/pvsProxy'; // XmlRpcSystemMethods
 import { label, log, dir, configFile, sandboxExamples } from './test-utils';
+
+
 //----------------------------
 //   Test cases for prover
 //----------------------------
@@ -17,8 +19,8 @@ describe("pvs-prover", () => {
 		log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
-		pvsProxy = new PvsProxy(pvsPath, { externalServer: false });
-		await pvsProxy.activate({ debugMode: true });
+		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
+		await pvsProxy.activate({ debugMode: true }); // this will also start pvs-server
 
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
@@ -26,7 +28,15 @@ describe("pvs-prover", () => {
 	afterAll(async () => {
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
+
+		if (test.EXTERNAL_SERVER) {
+			// kill pvs server & proxy
+			console.log(" killing pvs server...")
+			await pvsProxy.killPvsServer();
+			await pvsProxy.killPvsProxy();
+		}
 	});
+	
 	it(`pvs-server can start a prover session and quit the prover session`, async () => {
 		label(`pvs-server can start a prover session and quit the prover session`);
 

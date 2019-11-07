@@ -18,8 +18,8 @@ describe("find-declaration", () => {
 		log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
-		pvsProxy = new PvsProxy(pvsPath, { externalServer: false });
-		await pvsProxy.activate({ debugMode: true });
+		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
+		await pvsProxy.activate({ debugMode: true }); // this will also start pvs-server
 
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
@@ -27,7 +27,15 @@ describe("find-declaration", () => {
 	afterAll(async () => {
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
+
+		if (test.EXTERNAL_SERVER) {
+			// kill pvs server & proxy
+			console.log(" killing pvs server...")
+			await pvsProxy.killPvsServer();
+			await pvsProxy.killPvsProxy();
+		}
 	});
+	
 	it(`pvs-server can invoke find-declaration`, async () => {
 		label(`pvs-server can invoke find-declaration`);
 		// Need to clear-theories, in case rerunning with the same server.

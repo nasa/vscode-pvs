@@ -112,7 +112,7 @@ export class EventsDispatcher {
     }
 	activate (context: ExtensionContext): void {
         // -- handlers for server responses
-        this.client.onRequest(serverEvent.startPvsServerResponse, (version: { "pvs-version": string, "lisp-version": string }) => {
+        this.client.onRequest(serverEvent.pvsServerReady, (version: { "pvs-version": string, "lisp-version": string }) => {
             // parse file opened in the editor
             if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
                 this.client.sendRequest(serverCommand.parseFile, vscode.window.activeTextEditor.document.fileName);
