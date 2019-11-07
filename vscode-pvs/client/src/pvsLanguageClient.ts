@@ -151,7 +151,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			if (pvsPath !== this.pvsPath) {
 				window.showInformationMessage(`Restarting PVS (pvs path changed to ${pvsPath})`);
 				this.pvsPath = pvsPath;
-				this.client.sendRequest(comm.serverCommand.restart, { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
+				this.client.sendRequest(comm.serverCommand.startPvsServer, { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
 			}	
 		}, null, this.context.subscriptions);
 	}
@@ -169,7 +169,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// If the extension is launched in debug mode then the debug server options are used
 		// Otherwise the run options are used
 		const serverOptions: ServerOptions = {
-			run: { module: serverModule, transport: TransportKind.ipc },
+			run:  { module: serverModule, transport: TransportKind.socket }, //{ module: serverModule, transport: TransportKind.ipc },
 			debug: {
 				module: serverModule,
 				transport: TransportKind.ipc,
@@ -245,7 +245,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		});
 		
 		// setTimeout(() => {
-		this.client.sendRequest(comm.serverCommand.restart, { pvsPath: this.pvsPath, contextFolder });
+		this.client.sendRequest(comm.serverCommand.startPvsServer, { pvsPath: this.pvsPath, contextFolder });
 		// }, 2000);
 	}
 

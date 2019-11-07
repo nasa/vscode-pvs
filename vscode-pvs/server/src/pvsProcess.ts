@@ -115,6 +115,10 @@ export class PvsProcess {
 	 * @returns true if the process has been created; false if the process could not be created.
 	 */
 	protected async _activate (opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number } }): Promise<boolean> {
+		if (this.pvsProcess) {
+			// process already running, nothing to do
+			return true;
+		}
 		opt = opt || {};
 		if (!await this.relocate()) {
 			console.warn("[pvs-process] Warning: could not execute PVS relocation/install script");
@@ -176,12 +180,13 @@ export class PvsProcess {
 	async kill (): Promise<boolean> {
 		return new Promise((resolve, reject) => {
 			if (this.pvsProcess) {
-				// const pid: string = this.getProcessID();
+				const pvs_shell: string = this.getProcessID();
 				// before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
 				// because the destruction of the process is immediate but previous calls to write() may not have drained
 				// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
 				if (this.pvsProcess) {
-					this.pvsProcess.stdin.end(() => {});
+					this.pvsProcess.stdin.destroy();
+					// this.pvsProcess.stdin.end(() => {});
 				}
 				// try {
 				// 	execSync(`kill -9 ${pid}`);
@@ -191,29 +196,34 @@ export class PvsProcess {
 				// 	}, 1000);
 				// }
 				try {
-					const allegro: string = execSync("ps -A | grep pvs").toString();
-					if (allegro) {
-						const procs: string[] = allegro.trim().split("\n");
-						try {
-							for (let i = 0; i < procs.length; i++) {
-								const info: string = procs[i];
-								const match: RegExpMatchArray = /\w+\s+\w+\s+\w+\s+(\w+)/.exec(info);
-								if (match && match.length > 1 && match[1]) {
-									const allegro_pid: string = match[1];
-									if (allegro_pid) {
-										execSync(`kill -9 ${allegro_pid}`);
-									}
+					const allegro_path: string = path.join(this.pvsPath);
+					const pvs_allegro: string = execSync(`ps aux | grep pvs-allegro`).toString();
+					if (pvs_allegro) {
+						const procs: string[] = pvs_allegro.trim().split("\n");
+						for (let i = 0; i < procs.length; i++) {
+							const info: string = procs[i];
+							const elems: string[] = info.replace(/\s+/g, " ").split(" ");
+							if (elems && elems.length > 2 && elems[1]) {
+								const allegro_pid: string = elems[1];
+								const cmd_path: string = elems[elems.length - 2];
+								if (cmd_path.startsWith(allegro_path)) {
+									console.log(`[pvsProcess] Killing process id ${allegro_pid}`);
+									execSync(`kill -9 ${allegro_pid}`);
 								}
 							}
-							// execSync(`kill -15 ${pid}`);
-						} finally {
-							setTimeout(() => {
-								resolve(true);
-							}, 1000);
 						}
 					}
 				} finally {
-					resolve(true);
+					try {
+						execSync(`kill -9 ${pvs_shell}`);
+					} finally {
+						console.log(`[pvsProcess] Killing process id ${pvs_shell}`);
+						this.pvsProcess = null;
+						setTimeout(() => {
+							resolve(true);
+						}, 1000);
+						resolve(true);
+					}
 				}
 			} else {
 				resolve(true);
@@ -225,7 +235,7 @@ export class PvsProcess {
 	 * @returns String representation of the pvs process ID.
 	 */
 	protected getProcessID (): string {
-		if (this.pvsProcess && this.pvsProcess.pid) {
+		if (this.pvsProcess && !isNaN(this.pvsProcess.pid)) {
 			return this.pvsProcess.pid.toString();
 		}
 		return null;

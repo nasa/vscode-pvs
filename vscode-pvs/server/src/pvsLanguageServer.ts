@@ -973,7 +973,7 @@ export class PvsLanguageServer {
 	 * FIXME: create separate functions for starting pvs-server and pvs-proxy
 	 * @param desc 
 	 */
-	protected async restartPvsRequest (desc: { pvsPath: string, contextFolder?: string }): Promise<boolean> {
+	protected async startPvsServerRequest (desc: { pvsPath: string, contextFolder?: string }): Promise<boolean> {
 		if (desc) {
 			this.pvsPath = desc.pvsPath || this.pvsPath;
 			if (this.pvsPath) {
@@ -999,7 +999,7 @@ export class PvsLanguageServer {
 				// send version info to the front-end
 				this.pvsProxy.getPvsVersionInfo().then((pvsVersion: { "pvs-version": string, "lisp-version": string }) => {
 					if (pvsVersion) {
-						this.connection.sendRequest(serverEvent.restartResponse, pvsVersion);
+						this.connection.sendRequest(serverEvent.pvsServerReady, pvsVersion);
 						this.connection.sendRequest(serverEvent.pvsVersionInfo, pvsVersion);
 					} else {
 						this.connection.sendRequest(serverEvent.pvsNotPresent);
@@ -1080,8 +1080,12 @@ export class PvsLanguageServer {
 			// 	});
 			// }
 
-			this.connection.onRequest(serverCommand.restart, async (request: { pvsPath: string, contextFolder?: string }) => {
-				this.restartPvsRequest(request); // async call
+			this.connection.onRequest(serverCommand.startPvsLanguageServer, async (request: { pvsPath: string, contextFolder?: string }) => {
+				// this should be called just once at the beginning
+				this.startPvsServerRequest(request); // async call
+			});
+			this.connection.onRequest(serverCommand.rebootPvsServer, async () => {
+				this.pvsProxy.restartPvsServer(); // async call
 			});
 			this.connection.onRequest(serverCommand.parseFile, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.parseFileRequest(request); // async call

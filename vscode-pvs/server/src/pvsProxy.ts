@@ -125,7 +125,7 @@ interface _PvsResult_ {
 
 export class PvsProxy {
 	protected debugMode: boolean = false;
-	protected isActive: boolean = false;
+	// protected isActive: boolean = false;
 	readonly MAXTIME: number = 2000; // millis
 	readonly MAX_PORT_ATTEMPTS: number = 20;
 	readonly client_methods: string[] = ['info', 'warning', 'debug', 'buffer', 'yes-no', 'dialog'];
@@ -664,7 +664,7 @@ export class PvsProxy {
 				console.info("[pvs-proxy] connection params", params);
 			}
 		});
-		this.isActive = true;
+		// this.isActive = true;
 		// console.info(this.server.httpServer);
 	}
 	/**
@@ -696,6 +696,7 @@ export class PvsProxy {
 	async killPvsServer(): Promise<void> {
 		if (this.pvsServer) {
 			await this.pvsServer.kill();
+			console.info("[pvs-proxy] Killed pvs-server");
 		}
 	}
 	/**
@@ -707,20 +708,19 @@ export class PvsProxy {
 				this.guiServer.httpServer.close(() => {
 					delete this.guiServer;
 					delete this.client;
-					this.isActive = false;
+					// this.isActive = false;
 					resolve();
 				});
 			} else {
-				this.isActive = false;
+				// this.isActive = false;
 				resolve();
 			}
 		});
 	}
 	async restartPvsServer (): Promise<void> {
-		console.info("[pvs-proxy] Rebooting pvs-server");
 		await this.killPvsServer();
-		await this.createPvsServer();
-		console.info("[pvs-proxy] Reboot completed!");
+		// pvs server will automatically be rebooted --- see pvsRequest method
+		// await this.rebootPvsServer();
 	}
 
 	async listSystemMethods (): Promise<{ error: { code: string, message: string, stack: string }, result: string[] }> {
@@ -738,8 +738,9 @@ export class PvsProxy {
 
 	async rebootPvsServer (): Promise<boolean> {
 		if (!this.externalServer) {
-			console.info("[pvs-proxy] Restarting pvs-server...");
+			console.info("[pvs-proxy] Rebooting pvs-server...");
 			this.pvsServer = await this.createPvsServer({ enableNotifications: true });
+			console.info("[pvs-proxy] Reboot complete!");
 			return true;
 		}
 		return false;
@@ -790,7 +791,7 @@ export class PvsProxy {
 		opt = opt || {};
 		opt.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
 		this.debugMode = !!opt.debugMode;
-		if (this.isActive) {
+		if (this.pvsServer) {
 			return Promise.resolve(true);
 		}
 		// create pvs server

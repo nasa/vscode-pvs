@@ -23,7 +23,7 @@
 		"multi-root ready"
 	],
 	"engines": {
-		"vscode": "^1.33.1"
+		"vscode": "^1.1.33"
 	},
 	"activationEvents": [
 		"onLanguage:pvs"
@@ -88,11 +88,13 @@
 			"explorer": [
 				{
 					"id": "theory-explorer-view",
-					"name": "PVS Theory Explorer"
+					"name": "PVS Theory Explorer",
+					"when": "resourceLangId == pvs"
 				},
 				{
 					"id": "proof-explorer-view",
-					"name": "PVS Proof Explorer"
+					"name": "PVS Proof Explorer",
+					"when": "resourceLangId == pvs"
 				}
 			]
 		},
@@ -218,7 +220,7 @@
 			"explorer/context": [
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceExtname == .pvs"
+					"when": "resourceScheme == file && resourceExtname == .pvs"
 				}
 			],
 			"view/item/context": [
@@ -331,13 +333,13 @@
 			"editor/title/context": [
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceExtname == .pvs"
+					"when": "resourceScheme == file && resourceExtname == .pvs"
 				}
 			],
 			"editor/context": [
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceExtname == .pvs"
+					"when": "resourceScheme == file && resourceExtname == .pvs"
 				}
 			],
 			"view/title": [

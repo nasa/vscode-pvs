@@ -172,7 +172,7 @@ export class VSCodePvsPackageManager {
         const config: WorkspaceConfiguration = workspace.getConfiguration();
         await config.update("pvs.path", pvsPath, ConfigurationTarget.Global); // the updated value is visible only at the next restart, that's why we are using pvsExecutable[0].fsPath in the sendRequest
         window.showInformationMessage(`Booting PVS from ${pvsPath}`);
-        this.client.sendRequest(serverCommand.restart, { pvsPath, contextFolder: vscodeUtils.getEditorContextFolder() });
+        this.client.sendRequest(serverCommand.startPvsServer, { pvsPath, contextFolder: vscodeUtils.getEditorContextFolder() });
     }
 
     async selectPvsPath (): Promise<boolean> {

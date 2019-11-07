@@ -429,7 +429,8 @@ export const serverCommand = {
 	parseFile: "pvs.parse-file",
 	listContext: "pvs.list-context",
 	showTccs: "pvs.show-tccs",
-	restart: "pvs.restart",
+	startPvsLanguageServer: "pvs.start-pvs-server",
+	rebootPvsServer: "pvs.reboot-pvs-server",
 
 	listDownloadableVersions: "pvs.list-downloadable-versions",
 	downloadPvs: "pvs.download-pvs",
@@ -445,10 +446,12 @@ export const serverEvent = {
 	parseFileResponse: "pvs.response.parse-file",
 	listContextResponse: "pvs.response.list-context",
 	showTccsResponse: "pvs.response.show-tccs",
-	restartResponse: "pvs.response.restart",
+
 	listDownloadableVersionsResponse: "pvs.response.list-downloadable-versions",
 	downloadPvsResponse: "pvs.response.download-pvs",
 	downloadLicensePageResponse: "pvs.response.download-license-page",
+
+	pvsServerReady: "pvs.response.restart",
 
 	contextUpdate: "pvs.event.context-update",
 	proofStateUpdate: "pvs.event.proof-state",

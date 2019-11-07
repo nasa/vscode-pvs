@@ -109,12 +109,12 @@ export class VSCodePvsEmacsBindingsProvider {
 			switch (userInput) {
 				// case "pvs6": {
 				// 	const v6: string = workspace.getConfiguration().get(`pvs.zen-mode:pvs-6-path`);
-				// 	this.client.sendRequest(serverCommand.restart, { pvsPath: v6 });
+				// 	this.client.sendRequest(serverCommand.start_pvs_server, { pvsPath: v6 });
 				// 	break;
 				// }
 				// case "pvs7": {
 				// 	const v7: string = workspace.getConfiguration().get(`pvs.zen-mode:pvs-7-path`);
-				// 	this.client.sendRequest(serverCommand.restart, { pvsPath: v7 });
+				// 	this.client.sendRequest(serverCommand.start_pvs_server, { pvsPath: v7 });
 				// 	break;
 				// }
 				case "show-tccs":
@@ -148,7 +148,7 @@ export class VSCodePvsEmacsBindingsProvider {
 				}
 				case "restart-pvs": {
 					const pvsPath: string = workspace.getConfiguration().get(`pvs.path`);
-					this.client.sendRequest(serverCommand.restart, { pvsPath });
+					this.client.sendRequest(serverCommand.rebootPvsServer, { pvsPath });
 				}
 				default: {}
 			}
