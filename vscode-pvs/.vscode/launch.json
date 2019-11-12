@@ -1,42 +1,40 @@
 // A launch configuration that compiles the extension and then opens it inside a new window
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-                "type": "extensionHost",
-                "request": "launch",
-                "name": "Launch Client",
-                "runtimeExecutable": "${execPath}",
-                "args": ["--extensionDevelopmentPath=${workspaceRoot}"],
-                "outFiles": ["${workspaceRoot}/client/out/**/*.js"],
-                "preLaunchTask": {
-                        "type": "npm",
-                        "script": "watch"
-                }
-        },
-        {
-                "type": "node",
-                "request": "attach",
-                "name": "Attach to Server",
-                "port": 6009,
-                "restart": true,
-                "outFiles": ["${workspaceRoot}/server/out/**/*.js"]
-        },        
-        {
-                "type": "node",
-                "request": "launch",
-                "name": "Test PVS Language Server",
-                "runtimeExecutable": "${execPath}",
-                "preLaunchTask": {
-                        "type": "npm",
-                        "script": "test:server"
-                }
-        }
-    ],
-    "compounds": [
-            {
-                    "name": "Client + Server",
-                    "configurations": ["Launch Client", "Attach to Server"]
-            }
-    ]
+	"version": "0.2.0",
+	"configurations": [
+			{
+					"type": "extensionHost",
+					"request": "launch",
+					"name": "Launch Client",
+					"runtimeExecutable": "${execPath}",
+					"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
+					"stopOnEntry": false,
+					"sourceMaps": true,
+					"outFiles": ["${workspaceRoot}/client/out/**/*.js"],
+					"preLaunchTask": "npm: watch"
+			},
+			{
+					"type": "node",
+					"request": "attach",
+					"name": "Attach to Server",
+					"address": "localhost",
+					"protocol": "inspector",
+					"port": 6009,
+					"sourceMaps": true,
+					"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
+			},       
+			{
+					"type": "node",
+					"request": "launch",
+					"name": "Test PVS Language Server",
+					"runtimeExecutable": "${execPath}",
+					"preLaunchTask": "npm: test:server"
+			}
+	],
+	"compounds": [
+			{
+					"name": "Client + Server",
+					"configurations": ["Launch Client", "Attach to Server"]
+			}
+	]
 }
