@@ -160,7 +160,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	 * Client activation function.
 	 * @param context 
 	 */
-	async activate (context: ExtensionContext): Promise<void> {
+	activate (context: ExtensionContext): void {
 		// save pointer to extension context
 		this.context = context;
 		
@@ -169,7 +169,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// If the extension is launched in debug mode then the debug server options are used
 		// Otherwise the run options are used
 		const serverOptions: ServerOptions = {
-			run:  { module: serverModule, transport: TransportKind.socket }, //{ module: serverModule, transport: TransportKind.ipc },
+			run:  { module: serverModule, transport: TransportKind.ipc },
 			debug: {
 				module: serverModule,
 				transport: TransportKind.ipc,
@@ -199,54 +199,54 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.statusBar.progress("Starting vscode-pvs...");
 		
 		// start client, which in turn will also start the server
-		this.client.start(); 
-		await this.client.onReady();
-		
-		// initialise service providers defined on the client-side
-		this.statusBar.progress("Activating vscode-pvs components...");	
-		this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
-		this.emacsBindingsProvider.activate(this.context);
-		this.theoryExplorer = new VSCodePvsTheoryExplorer(this.client, 'theory-explorer-view');
-		this.theoryExplorer.activate(this.context);
-		this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
-		this.proofExplorer.activate(this.context);
-		this.vscodePvsTerminal = new VSCodePvsTerminal(this.client, this.proofExplorer);
-		this.vscodePvsTerminal.activate(this.context);
-		this.sequentViewer = new VSCodePvsSequentViewer();
-		this.sequentViewer.activate(this.context);
-		this.pvsioTerminal = new VSCodePVSioTerminal();
-		this.pvsioTerminal.activate(this.context);
-		this.packageManager = new VSCodePvsPackageManager(this.client);
-
-		// enable decorations for pvs syntax
-		this.decorationProvider = new VSCodePvsDecorationProvider();
-		this.decorationProvider.updateDecorations(window.activeTextEditor);
-
-		// register handlers for document events
-		this.registerTextEditorHandlers();
-		
-		// create event dispatcher for handling events for views
-		this.eventsDispatcher = new EventsDispatcher(this.client, {
-			statusBar: this.statusBar,
-			emacsBindings: this.emacsBindingsProvider,
-			theoryExplorer: this.theoryExplorer,
-			proofExplorer: this.proofExplorer,
-			vscodePvsTerminal: this.vscodePvsTerminal,
-			sequentViewer: this.sequentViewer
+		this.client.start();
+		this.client.onReady().then(() => {		
+			// initialise service providers defined on the client-side
+			this.statusBar.progress("Activating vscode-pvs components...");	
+			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
+			this.emacsBindingsProvider.activate(this.context);
+			this.theoryExplorer = new VSCodePvsTheoryExplorer(this.client, 'theory-explorer-view');
+			this.theoryExplorer.activate(this.context);
+			this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
+			this.proofExplorer.activate(this.context);
+			this.vscodePvsTerminal = new VSCodePvsTerminal(this.client, this.proofExplorer);
+			this.vscodePvsTerminal.activate(this.context);
+			this.sequentViewer = new VSCodePvsSequentViewer();
+			this.sequentViewer.activate(this.context);
+			this.pvsioTerminal = new VSCodePVSioTerminal();
+			this.pvsioTerminal.activate(this.context);
+			this.packageManager = new VSCodePvsPackageManager(this.client);
+	
+			// enable decorations for pvs syntax
+			this.decorationProvider = new VSCodePvsDecorationProvider();
+			this.decorationProvider.updateDecorations(window.activeTextEditor);
+	
+			// register handlers for document events
+			this.registerTextEditorHandlers();
+			
+			// create event dispatcher for handling events for views
+			this.eventsDispatcher = new EventsDispatcher(this.client, {
+				statusBar: this.statusBar,
+				emacsBindings: this.emacsBindingsProvider,
+				theoryExplorer: this.theoryExplorer,
+				proofExplorer: this.proofExplorer,
+				vscodePvsTerminal: this.vscodePvsTerminal,
+				sequentViewer: this.sequentViewer
+			});
+			this.eventsDispatcher.activate(context);
+	
+			// start PVS
+			const contextFolder = vscodeUtils.getEditorContextFolder();
+			this.pvsPath = this.getPvsPath();
+	
+			this.client.onRequest(serverEvent.pvsNotPresent, () => {
+				this.packageManager.installationWizard();
+			});
+			
+			// setTimeout(() => {
+			this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, { pvsPath: this.pvsPath, contextFolder });
+			// }, 2000);
 		});
-		this.eventsDispatcher.activate(context);
-
-		// start PVS
-		const contextFolder = vscodeUtils.getEditorContextFolder();
-		this.pvsPath = this.getPvsPath();
-
-		this.client.onRequest(serverEvent.pvsNotPresent, () => {
-            this.packageManager.installationWizard();
-		});
-		
-		// setTimeout(() => {
-		this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, { pvsPath: this.pvsPath, contextFolder });
-		// }, 2000);
 	}
 
 
@@ -273,8 +273,9 @@ export function activate(context: ExtensionContext) {
 }
 
 export function deactivate(): Thenable<void> {
-	return new Promise(async (resolve, reject) => {
-		await pvsLanguageClient.stop();
-		resolve();
+	return new Promise((resolve, reject) => {
+		pvsLanguageClient.stop().then(() => {
+			resolve();
+		});
 	});
 }
