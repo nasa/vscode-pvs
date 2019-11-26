@@ -5,7 +5,7 @@ The environment redefines the way developers interact with PVS, and better align
 ![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.13](releases/vscode-pvs-1.0.13.vsix)
+[vscode-pvs-1.0.14](releases/vscode-pvs-1.0.14.vsix)
 
 ## Functionalities
 The main functionalities provided by the environment are as follows:
@@ -35,7 +35,7 @@ The main functionalities provided by the environment are as follows:
 - PVS Allegro (7.0 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots/ 
 
 ## Installation instructions
-1. Download the latest release of VSCode-PVS from the [github repository](https://github.com/nasa/vscode-pvs/releases)
+1. Download the latest release of VSCode-PVS from the [github repository](releases)
 2. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
 3. Have fun using the extension!
 
