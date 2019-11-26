@@ -184,7 +184,11 @@ export class PvsProxy {
 				this.progressInfo.showProgress(method);
 				const jsonReq: string = JSON.stringify(req);
 				// console.log(jsonReq);
-				return this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], async (error: string, value: string) => {
+				return this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], async (error: Error, value: string) => {
+					console.log("[pvs-proxy] Error: ");
+					console.dir(error, { depth: null });
+					console.log("[pvs-proxy] Value: ");
+					console.dir(value);
 					if (value) {
 						this.progressInfo.showProgress(method);
 						try {
@@ -200,10 +204,12 @@ export class PvsProxy {
 							resolve(null);
 						}
 					} else {
+						let msg: string = "";
 						if (error) {
 							console.log(`[pvs-proxy] pvs-server returned error`, error);
+							msg = error.message;
 						} else {
-							error = "pvs-server returned null";
+							msg = "pvs-server returned null";
 							console.info(`[pvs-proxy] pvs-server returned null`);
 						}
 						await this.rebootPvsServer();
@@ -212,7 +218,7 @@ export class PvsProxy {
 							id: req.id,
 							error: {
 								code: -1,
-								message: error
+								message: msg
 							}
 						});
 					}

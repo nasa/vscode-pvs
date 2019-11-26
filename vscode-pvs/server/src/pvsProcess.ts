@@ -36,7 +36,7 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { spawn, ChildProcess, execSync } from 'child_process';
+import { spawn, ChildProcess, execSync, execFileSync, execFile } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import { 
 	PvsParserResponse, PvsVersionDescriptor,
@@ -109,12 +109,17 @@ export class PvsProcess {
 		}
 		return false;
 	}
+
+	//----------------------------------------------------------------------------------------------------
+	//--------------------- The following functions are the main APIs provided by PvsProcess
+	//----------------------------------------------------------------------------------------------------
+
 	/**
-	 * Internal function. Creates a new pvs process.
+	 * Creates a new pvs process.
 	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
 	 * @returns true if the process has been created; false if the process could not be created.
 	 */
-	protected async _activate (opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number } }): Promise<boolean> {
+	async activate (opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number } }): Promise<boolean> {
 		if (this.pvsProcess) {
 			// process already running, nothing to do
 			return true;
@@ -137,9 +142,15 @@ export class PvsProcess {
 			const readyPrompt: RegExp = /\s*pvs\(\d+\):|([\w\W\s]*)\spvs\(\d+\):/g;
 			return await new Promise((resolve, reject) => {
 				this.pvsProcess = spawn(pvs, args);
+				// console.dir(this.pvsProcess, { depth: null });
 				this.pvsProcess.stdout.setEncoding("utf8");
 				this.pvsProcess.stderr.setEncoding("utf8");
 				this.pvsProcess.stdout.on("data", (data: string) => {
+					// console.dir({ 
+					// 	type: "memory usage",
+					// 	data: process.memoryUsage()
+					// }, { depth: null });
+					// console.log(data);
 					if (this.connection && this.connection.console) {
 						this.connection.console.log(data);
 					}
@@ -150,28 +161,31 @@ export class PvsProcess {
 					}
 				});
 				this.pvsProcess.stderr.on("data", (data: string) => {
+					console.log("[pvs-server] Error: " + data);
 					this.error(data);
 					// resolve(false);
-				});	
+				});
+				this.pvsProcess.on("error", (err: Error) => {
+					console.log("[pvs-process] Process error");
+					// console.dir(err, { depth: null });
+				});
+				this.pvsProcess.on("close", (code: number, signal: string) => {
+					console.log("[pvs-process] Process terminated");
+					// console.dir({ code, signal }, { depth: null });
+				});
+				this.pvsProcess.on("exit", (code: number, signal: string) => {
+					console.log("[pvs-process] Process exited");
+					// console.dir({ code, signal });
+				});
+				this.pvsProcess.on("message", (message: any) => {
+					console.log("[pvs-process] Process message");
+					// console.dir(message, { depth: null });
+				});
 			});
 		} else {
 			console.log(`\n>>> PVS executable not found at ${pvs} <<<\n`);
 			return false;
 		}
-	}
-
-	//----------------------------------------------------------------------------------------------------
-	//--------------------- The following functions are the main APIs provided by PvsProcess
-	//----------------------------------------------------------------------------------------------------
-
-	/**
-	 * Creates a new pvs process.
-	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
-	 * @returns true if the process has been created; false if the process could not be created.
-	 */
-	async activate (opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number }}): Promise<boolean> {
-		const success: boolean = await this._activate(opt);
-		return success;
 	}
 	/**
 	 * Kills the pvs process.
@@ -242,10 +256,10 @@ export class PvsProcess {
 	}
 
 	public async clearContext (contextFolder?: string): Promise<void> {
-		const currentContext: string = contextFolder;// || this.contextFolder;
-		if (currentContext) {
-			// console.info(`** clearing pvs cache for context ${currentContext} **`)
-			await fsUtils.deletePvsCache(currentContext);
-		}
+		// const currentContext: string = contextFolder;// || this.contextFolder;
+		// if (currentContext) {
+		// 	// console.info(`** clearing pvs cache for context ${currentContext} **`)
+		// 	await fsUtils.deletePvsCache(currentContext);
+		// }
 	}
 }

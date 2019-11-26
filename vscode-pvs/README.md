@@ -59,6 +59,9 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
+### 1.0.14 (2019.11.26)
+- Improved error handling in pvs-proxy
+
 ### 1.0.13 (2019.10.25)
 - New visual components: Proof Explorer, Sequent Viewer
 - Revised architecture, to connect to the new XMLRPC server provided by PVS 7.0

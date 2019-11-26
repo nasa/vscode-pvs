@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem prover into Visual Studio Code",
-	"version": "1.0.13",
+	"version": "1.0.14",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -150,10 +150,6 @@
 			{
 				"command": "vscode-pvs.prove-formula",
 				"title": "Prove"
-			},
-			{
-				"command": "explorer.typecheck-all",
-				"title": "Typecheck-all"
 			},
 			{
 				"command": "vscode-pvs.prove-tccs",
@@ -344,11 +340,6 @@
 			],
 			"view/title": [
 				{
-					"command": "explorer.typecheck-all",
-					"when": "view == theory-explorer-view",
-					"group": "navigation"
-				},
-				{
 					"command": "proof-explorer.back",
 					"when": "view == proof-explorer-view",
 					"group": "navigation"
@@ -389,11 +380,6 @@
 			{
 				"key": "ctrl+t",
 				"command": "vscode-pvs.typecheck-file",
-				"when": "resourceLangId == pvs"
-			},
-			{
-				"key": "shift+ctrl+t",
-				"command": "explorer.typecheck-all",
 				"when": "resourceLangId == pvs"
 			},
 			{
