@@ -32,8 +32,8 @@ describe("find-declaration", () => {
 			// kill pvs server & proxy
 			console.log(" killing pvs server...")
 			await pvsProxy.killPvsServer();
-			await pvsProxy.killPvsProxy();
 		}
+		await pvsProxy.killPvsProxy();
 	});
 	
 	it(`pvs-server can invoke find-declaration`, async () => {

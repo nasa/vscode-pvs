@@ -142,6 +142,10 @@ function isQuit (cmd: string): boolean {
 	return false;
 }
 
+function isQED (cmd: string): boolean {
+	return cmd.startsWith("Q.E.D.");
+}
+
 let progressLevel: number = 0;
 let progressMsg: string = "";
 function showProgress (data: string) {
@@ -232,6 +236,16 @@ class PvsCli {
 				}));
 				console.log();
 				console.log("Prover session terminated.");
+				console.log();
+				this.rl.question("Press Enter to close the terminal.", () => {
+					this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+					this.wsClient.close();	
+				});
+			} else if (isQED(cmd)) {
+				readline.moveCursor(process.stdin, 0, -1);
+				readline.clearScreenDown(process.stdin);
+				console.log();
+				console.log(utils.colorText("Q.E.D.", utils.textColor.green));
 				console.log();
 				this.rl.question("Press Enter to close the terminal.", () => {
 					this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));

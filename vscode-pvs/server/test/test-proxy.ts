@@ -33,8 +33,8 @@ describe("pvs-proxy", () => {
 			// kill pvs server & proxy
 			console.log(" killing pvs server...")
 			await pvsProxy.killPvsServer();
-			await pvsProxy.killPvsProxy();
 		}
+		await pvsProxy.killPvsProxy();
 	});
 
 	//-----------------------------------

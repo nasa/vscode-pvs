@@ -46,7 +46,7 @@
 
 import { Client, Server, createClient, createServer } from 'xmlrpc';
 import { PvsProcess } from "./pvsProcess";
-import { PvsResponse } from "./common/pvs-gui.d";
+import { PvsResponse, PvsError } from "./common/pvs-gui.d";
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
@@ -56,37 +56,37 @@ import * as utils from './common/languageUtils';
 
 //----------------------------
 // constants introduced for dev purposes, while waiting for the new pvs snapshot
-export const show_tccs_result: any =
-    [ { id: 'sq_TCC1',
-	theory: 'sq',
-	comment: [ '% Subtype TCC generated (at line 10, column 23) for  a * a\n    % expected type  nonneg_real' ],
-	'from-decl': 'sq',
-	definition: 'FORALL (a: real): a * a >= 0',
-	proved: true },
-      { id: 'sq_div_TCC1',
-	theory: 'sq',
-	comment: [ '% Subtype TCC generated (at line 32, column 54) for  sq(d)\n    % expected type  nznum' ],
-	'from-decl': 'sq_div',
-	definition: 'FORALL (d: real): d /= 0 IMPLIES sq(d) /= 0',
-  proved: true } ] ;
+// export const show_tccs_result: any =
+//     [ { id: 'sq_TCC1',
+// 	theory: 'sq',
+// 	comment: [ '% Subtype TCC generated (at line 10, column 23) for  a * a\n    % expected type  nonneg_real' ],
+// 	'from-decl': 'sq',
+// 	definition: 'FORALL (a: real): a * a >= 0',
+// 	proved: true },
+//       { id: 'sq_div_TCC1',
+// 	theory: 'sq',
+// 	comment: [ '% Subtype TCC generated (at line 32, column 54) for  sq(d)\n    % expected type  nznum' ],
+// 	'from-decl': 'sq_div',
+// 	definition: 'FORALL (d: real): d /= 0 IMPLIES sq(d) /= 0',
+//   proved: true } ] ;
 
-export const proof_script_result: string =
-  ';;; Proof sq_ge-1 for formula sq.sq_ge\n(""\n (skosimp)\n (ground)\n (("1"\n   (expand "sq")\n   (case "forall (x,y:real): x>=y iff not x<y")\n   (("1" (flatten) (assert)) ("2" (skosimp) (ground))))\n  ("2" (assert))))'
+// export const proof_script_result: string =
+//   ';;; Proof sq_ge-1 for formula sq.sq_ge\n(""\n (skosimp)\n (ground)\n (("1"\n   (expand "sq")\n   (case "forall (x,y:real): x>=y iff not x<y")\n   (("1" (flatten) (assert)) ("2" (skosimp) (ground))))\n  ("2" (assert))))'
 
 
-const proof_script_check_chev_fup_permission: string = `;;; Proof check_chev_fup_permission-1 for formula alaris_th.check_chev_fup_permission
-(""
- (skosimp*)
- (expand "per_release_fup")
- (split)
- (("1" (postpone))
-  ("2"
-   (expand "fup")
-   (expand "decrement")
-   (lift-if)
-   (split)
-   (("1" (postpone)) ("2" (flatten) (postpone))))
-  ("3" (expand "per_release_chevron") (flatten) (postpone))))`;  
+// const proof_script_check_chev_fup_permission: string = `;;; Proof check_chev_fup_permission-1 for formula alaris_th.check_chev_fup_permission
+// (""
+//  (skosimp*)
+//  (expand "per_release_fup")
+//  (split)
+//  (("1" (postpone))
+//   ("2"
+//    (expand "fup")
+//    (expand "decrement")
+//    (lift-if)
+//    (split)
+//    (("1" (postpone)) ("2" (flatten) (postpone))))
+//   ("3" (expand "per_release_chevron") (flatten) (postpone))))`;  
 //----------------------------
 
 var assert = require('assert');
@@ -127,7 +127,7 @@ export class PvsProxy {
 	protected debugMode: boolean = false;
 	// protected isActive: boolean = false;
 	readonly MAXTIME: number = 2000; // millis
-	readonly MAX_PORT_ATTEMPTS: number = 20;
+	readonly MAX_PORT_ATTEMPTS: number = 200;
 	readonly client_methods: string[] = ['info', 'warning', 'debug', 'buffer', 'yes-no', 'dialog'];
 	protected banner: string;
 	protected handlers: { [mth: string]: (params: string[]) => string[] } = {};
@@ -203,15 +203,30 @@ export class PvsProxy {
 						if (error) {
 							console.log(`[pvs-proxy] pvs-server returned error`, error);
 						} else {
-							console.info(`[pvs-proxy] pvs-server returning null?`);
+							error = "pvs-server returned null";
+							console.info(`[pvs-proxy] pvs-server returned null`);
 						}
 						await this.rebootPvsServer();
-						resolve(null);
+						resolve({
+							jsonrpc: "2.0",
+							id: req.id,
+							error: {
+								code: -1,
+								message: error
+							}
+						});
 					}
 				});
 			} else {
 				console.log(`[pvs-proxy] Warning: could not invoke method ${method} (client is null)`);
-				resolve(null);
+				resolve({
+					jsonrpc: "2.0",
+					id: req.id,
+					error: {
+						code: -1,
+						message: "pvs-proxy failed to initialize gui server"
+					}
+				});
 			}
 		});
 	}
@@ -419,14 +434,14 @@ export class PvsProxy {
 	 */
 	async proofScript(desc: { contextFolder: string, fileName: string, fileExtension: string, formulaName: string, theoryName: string }): Promise<PvsResponse> {
 		if (desc) {
-			// const fname: string = fsUtils.desc2fname(desc);
-			// const result: PvsResponse = await this.pvsRequest('proof-script', [ fname, desc.formulaName ]);
-			// return result;
-			return { 
-				result: proof_script_check_chev_fup_permission, //proof_script_result, 
-				jsonrpc: "2.0", 
-				id: "testing-proof-script" 
-			};
+			const fname: string = fsUtils.desc2fname(desc);
+			const result: PvsResponse = await this.pvsRequest('proof-script', [ fname, desc.formulaName ]);
+			return result;
+			// return { 
+			// 	result: proof_script_check_chev_fup_permission, //proof_script_result, 
+			// 	jsonrpc: "2.0", 
+			// 	id: "testing-proof-script" 
+			// };
 		}
 		return null;
 	}
@@ -593,18 +608,30 @@ export class PvsProxy {
 	 * The check works as follows. A dummy server is created at port p; if the creation of the server succeeds, an event 'listening' is triggered, otherwise an event 'error' is triggered.
 	 * The server is turned off as soon as an answer is available.
 	 */
-	protected async portIsAvailable(p: number): Promise<boolean> {
+	protected checkPort (p: number, retry: boolean): Promise<boolean> {
 		// console.info(`checking port ${p}`);
 		return new Promise((resolve, reject) => {
+			console.log(`[pvs-proxy] Checking port ${p}...`);
 			const server: net.Server = net.createServer();
+			const timeout: number = 1000; // msec
 			server.once('error', (error: Error) => {
-				console.log(`port ${p} is not available :/`);
-				resolve(false);
+				if (error["code"] === 'EADDRINUSE' && retry) {
+					console.log(`[pvs-proxy] port ${p} busy, retrying after timeout of ${timeout} msec`);
+					retry = false; // retry just once on the same port
+					setTimeout(() => {
+						this.checkPort(p, false);
+					}, timeout);
+				} else {
+					console.log(`[pvs-proxy] port ${p} is not available :/`);
+					resolve(false);
+				}
 			});
 			server.once('listening', () => {
 				// console.error(`port ${p} is available :)`);
+				server.once('close', () => {
+					resolve(true);
+				});
 				server.close();
-				resolve(true);
 			});
 			server.listen(p);
 		});
@@ -620,7 +647,7 @@ export class PvsProxy {
 		return new Promise((resolve, reject) => {
 			client.methodCall('request', [], (error, value) => {
 				if (error) {
-					console.log("server-test error:", error);
+					console.log("[pvs-proxy] server-test error:", error);
 					return resolve(false);
 				}
 				// console.log("server-test value:", value);
@@ -635,7 +662,7 @@ export class PvsProxy {
 	protected serverReadyCallBack() {
 		this.guiServer.on('request', (error: any, params: string[], callback: (error: any, value: any) => void) => {
 			if (error) {
-				console.log(error);
+				console.log("[pvs-proxy] Error", error);
 			}
 			// console.log("params", params);
 			if (params && params.length > 0) {
@@ -648,7 +675,7 @@ export class PvsProxy {
 						}
 					}
 				} catch (jsonError) {
-					console.log(jsonError);
+					console.log("[pvs-proxy] Error", jsonError);
 				}
 			}
 			callback(error, params);
@@ -694,7 +721,7 @@ export class PvsProxy {
 	 * Kill pvs process
 	 */
 	async killPvsServer(): Promise<void> {
-		if (this.pvsServer) {
+		if (this.pvsServer && !this.externalServer) {
 			await this.pvsServer.kill();
 			console.info("[pvs-proxy] Killed pvs-server");
 		}
@@ -705,14 +732,15 @@ export class PvsProxy {
 	async killPvsProxy (): Promise<void> {
 		return new Promise((resolve, reject) => {
 			if (this.guiServer) {
-				this.guiServer.httpServer.close(() => {
-					delete this.guiServer;
-					delete this.client;
-					// this.isActive = false;
+				console.dir(this.guiServer, { depth: null });
+				this.guiServer.httpServer.once("close", () => {
+					console.log("[pvs-proxy] Closed pvs-proxy");
+					this.guiServer = null;
+					this.client = null;
 					resolve();
 				});
+				this.guiServer.httpServer.close();
 			} else {
-				// this.isActive = false;
 				resolve();
 			}
 		});
@@ -804,14 +832,15 @@ export class PvsProxy {
 			return new Promise(async (resolve, reject) => {
 				this.notifyStartExecution(`Loading user interface components...`);
 				try {
-					let portIsAvailable: boolean = false;
+					let portIsAvailable: boolean = (this.guiServer) ? true : false;
 					for (let i = 0; !portIsAvailable && i < this.MAX_PORT_ATTEMPTS; i++) {
-						portIsAvailable = await this.portIsAvailable(this.clientPort);
+						portIsAvailable = await this.checkPort(this.clientPort, true);
 						if (portIsAvailable === false) {
 							this.clientPort++;
 						}
 					}
 					if (portIsAvailable) {
+						this.banner = `XML-RPC GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
 						this.client = createClient({
 							host: this.serverAddress, port: this.serverPort, path: "/RPC2"
 						});
@@ -819,16 +848,18 @@ export class PvsProxy {
 							console.log(`[pvs-proxy] Error: could not create client necessary to connect to pvs-server`);
 							reject(false);
 						}
-						this.guiServer = createServer({
-							host: this.clientAddress, port: this.clientPort, path: "/RPC2"
-						}, () => {
-							this.serverReadyCallBack();
-							if (opt.showBanner) {
-								console.log(this.banner);
-							}
-							this.notifyEndExecution();
-							resolve(true);
-						});
+						if (!this.guiServer) {
+							this.guiServer = createServer({
+								host: this.clientAddress, port: this.clientPort, path: "/RPC2"
+							}, () => {
+								this.serverReadyCallBack();
+								if (opt.showBanner) {
+									console.log("[pvs-proxy] " + this.banner);
+								}
+								this.notifyEndExecution();
+								resolve(true);
+							});
+						}
 					} else {
 						console.log(`[pvs-proxy] Error: could not start GUI-server`);
 						reject(false);

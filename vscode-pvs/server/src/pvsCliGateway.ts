@@ -116,7 +116,7 @@ export class PvsCliGateway {
 									console.info('[pvs-cli-gateway] received subscription request');
 									console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
 									console.info('[pvs-cli-gateway] client ID = ', data.clientID);
-									this.vscodeTerminal[data.channelID] = this.pvsCli[data.channelID] || {};
+									this.vscodeTerminal[data.channelID] = this.vscodeTerminal[data.channelID] || {};
 									this.vscodeTerminal[data.channelID][data.clientID] = wsClient;
 									wsClient.send(JSON.stringify({
 										type: "subscribe-response", success: true, channelID: data.channelID

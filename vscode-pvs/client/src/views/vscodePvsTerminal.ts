@@ -141,14 +141,14 @@ class TerminalSession {
                                 break;
                             }
 							default: {
-								console.error("[vscode-pvs-cli] Warning: received unknown message type", data);
+								console.error("[vscode-pvs-terminal] Warning: received unknown message type", data);
 							}
 						}
 					} else {
-						console.error("[vscode-pvs-cli] Warning: received empty message");
+						console.error("[vscode-pvs-terminal] Warning: received empty message");
 					}
 				} catch (jsonError) {
-					console.error("[vscode-pvs-cli] Error: received malformed json string", msg);
+					console.error("[vscode-pvs-terminal] Error: received malformed json string", msg);
 				}
             });
             this.wsClient.on("error", (err: Error) => {

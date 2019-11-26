@@ -31,8 +31,8 @@ describe("pvs-parser", () => {
 			// kill pvs server & proxy
 			console.log(" killing pvs server...")
 			await pvsProxy.killPvsServer();
-			await pvsProxy.killPvsProxy();
 		}
+		await pvsProxy.killPvsProxy();
 	});
 
 	it(`pvs-server can parse file`, async () => {

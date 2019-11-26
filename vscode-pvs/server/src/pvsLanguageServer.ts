@@ -181,8 +181,9 @@ export class PvsLanguageServer {
 	async proofCommand (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<PvsResponse> {
 		if (args) {
 			const response: PvsResponse = await this.pvsProxy.proofCommand(args);
+			const status: PvsResponse = await this.pvsProxy.proverStatus();
 			// ATTN: when quitting the proof, pvs-server returns an object { result: string }, where the string indicates the proof status (completed, unfinished, ...)
-			if (response && response.result && response.result.sequent) {
+			if (response && response.result) {
 				return response;
 			}
 		} else {

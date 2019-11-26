@@ -33,8 +33,8 @@ describe("pvs-prover", () => {
 			// kill pvs server & proxy
 			console.log(" killing pvs server...")
 			await pvsProxy.killPvsServer();
-			await pvsProxy.killPvsProxy();
 		}
+		await pvsProxy.killPvsProxy();
 	});
 	
 	it(`pvs-server can start a prover session and quit the prover session`, async () => {
