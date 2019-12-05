@@ -1,0 +1,74 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Computational Logic A & D / PROJECT SECOND SEMESTER 2019 
+%%%%% 
+%%%%% Merge sort
+%%% 
+%%% Grupo de Teoria da Computacao, Universidade de Brasilia
+%%% Ariane A. Almeida & Mauricio Ayala-Rincon
+%%% Last modification:  September 23, 2019
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% this version of the theory does not typecheck correctly (missing theory parameters)
+% this is intentional, to test the behavior of the typecheck and prove commands
+mergesort_1: THEORY
+BEGIN
+
+IMPORTING sorting [T, <=]
+
+l,l1,l2 : VAR list[T]
+x: VAR T
+
+% Merging (sorted lists)
+
+merge(l1, l2 : list[T]) : RECURSIVE list[T] =
+IF null?(l1) OR null?(l2) THEN append(l1, l2)
+ELSIF car(l1) <= car(l2) THEN cons(car(l1), merge(cdr(l1),l2))
+ELSE cons(car(l2), merge(l1, cdr(l2)))
+ENDIF
+MEASURE length(l1) + length(l2)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Next lemmas prove that the length of merge is
+%%%%% the sum of the lengths of the merged lists. This is used
+%%%%% to complete the proof that merging two lists gives
+%%%%% as result a permutation of the append of these lists.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+merge_size : LEMMA 
+FORALL (l1, l2 : list[T]) : 
+  length(merge(l1,l2)) = length(l1) + length(l2)
+
+
+end mergesort_1
+
+
+% this second theory is used to check if pvs is able to distinguish identical theory names in the same context
+mergesort: THEORY
+BEGIN
+
+IMPORTING sorting [T, <=]
+
+l,l1,l2 : VAR list[T]
+x: VAR T
+
+% Merging (sorted lists)
+
+merge(l1, l2 : list[T]) : RECURSIVE list[T] =
+IF null?(l1) OR null?(l2) THEN append(l1, l2)
+ELSIF car(l1) <= car(l2) THEN cons(car(l1), merge(cdr(l1),l2))
+ELSE cons(car(l2), merge(l1, cdr(l2)))
+ENDIF
+MEASURE length(l1) + length(l2)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Next lemmas prove that the length of merge is
+%%%%% the sum of the lengths of the merged lists. This is used
+%%%%% to complete the proof that merging two lists gives
+%%%%% as result a permutation of the append of these lists.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+merge_size : LEMMA 
+FORALL (l1, l2 : list[T]) : 
+  length(merge(l1,l2)) = length(l1) + length(l2)
+
+
+end mergesort

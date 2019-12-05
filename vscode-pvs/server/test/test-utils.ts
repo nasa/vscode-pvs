@@ -5,6 +5,8 @@ const VERBOSE: boolean = true;
 
 // sandbox folder with the examples
 export const sandboxExamples: string = path.join(__dirname, "sandbox");
+export const safeSandboxExamples: string = path.join(__dirname, "safesandbox");
+export const radixExamples: string = path.join(__dirname, "radix_sort_7");
 
 // load configuration indicating the installation folder of pvs
 export const configFile: string = path.join(__dirname, "test.config");

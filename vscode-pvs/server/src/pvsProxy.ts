@@ -147,6 +147,9 @@ export class PvsProxy {
 
 	protected parserQueue: Promise<PvsResponse> = Promise.resolve(null);
 
+	protected nReboots: number = 0;
+	readonly MAX_REBOOTS: number = 4;
+
 	/** The constructor simply sets various properties in the PvsProxy class. */
 	constructor(pvsPath: string,
 		opt?: {
@@ -184,12 +187,13 @@ export class PvsProxy {
 				this.progressInfo.showProgress(method);
 				const jsonReq: string = JSON.stringify(req);
 				// console.log(jsonReq);
-				return this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], async (error: Error, value: string) => {
+				return this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
 					console.log("[pvs-proxy] Error: ");
 					console.dir(error, { depth: null });
 					console.log("[pvs-proxy] Value: ");
 					console.dir(value);
 					if (value) {
+						this.nReboots = 0;
 						this.progressInfo.showProgress(method);
 						try {
 							const resp: PvsResponse = JSON.parse(value);
@@ -204,23 +208,43 @@ export class PvsProxy {
 							resolve(null);
 						}
 					} else {
-						let msg: string = "";
-						if (error) {
-							console.log(`[pvs-proxy] pvs-server returned error`, error);
-							msg = error.message;
-						} else {
-							msg = "pvs-server returned null";
-							console.info(`[pvs-proxy] pvs-server returned null`);
-						}
-						await this.rebootPvsServer();
-						resolve({
-							jsonrpc: "2.0",
-							id: req.id,
-							error: {
-								code: -1,
-								message: msg
+						if (error && error['code'] === 'ECONNREFUSED') {
+							// if the server refuses the connection, try to reboot
+							if (this.nReboots < this.MAX_REBOOTS) {
+								this.nReboots++;
+								console.log(`[pvs-proxy] Connection refused, trying to reboot pvs from ${this.pvsPath} (attempt #${this.nReboots})`);
+								setTimeout(() => {
+									this.restartPvsServer().then(() => {
+										resolve({
+											jsonrpc: "2.0",
+											id: req.id,
+											error
+										});
+									});
+								}, 1000);
+							} else {
+								console.log(`[pvs-proxy] Connection refused, pvs path was ${this.pvsPath}`);
+								resolve({
+									jsonrpc: "2.0",
+									id: req.id,
+									error
+								});
 							}
-						});
+						} else {
+							if (error) {
+								console.log(`[pvs-proxy] pvs-server returned error`, error);
+							} else {
+								console.info(`[pvs-proxy] pvs-server returned null`);
+							}
+							resolve({
+								jsonrpc: "2.0",
+								id: req.id,
+								error: {
+									code: -1,
+									message: (error && error.message) ? error.message : "pvs-server returned null"
+								}
+							});
+						}
 					}
 				});
 			} else {
@@ -229,13 +253,32 @@ export class PvsProxy {
 					jsonrpc: "2.0",
 					id: req.id,
 					error: {
-						code: -1,
+						code: -2,
 						message: "pvs-proxy failed to initialize gui server"
 					}
 				});
 			}
 		});
 	}
+	// pvsRequest(method: string, params?: string[]): Promise<PvsResponse> {
+	// 	return new Promise ((resolve, reject) => {
+	// 		this._pvsRequest(method, params).then(async (res: PvsResponse) => {
+	// 			if (res && res.error) {
+	// 				// try to reboot
+	// 				await this.rebootPvsServer();
+	// 			}
+	// 			if (this.killingPvs) {
+	// 				resolve({
+	// 					jsonrpc: "2.0",
+	// 					id: res.id,
+	// 					code: -1, // rebooting pvs
+	// 				});
+	// 			} else {
+	// 				resolve(res);
+	// 			}
+	// 		});
+	// 	});
+	// }
 	async listMethodsRequest(): Promise<PvsResponse> {
 		return await this.pvsRequest('list-methods');
 	}
@@ -523,7 +566,7 @@ export class PvsProxy {
 	// }
 
 	/**
-	 * Parse all files in the given context folder
+	 * Parse all files in the given context folder, sequential version
 	 */
 	async parseContext (contextFolder: string): Promise<ContextDiagnostics> {
 		this.notifyStartExecution(`Parsing folder ${contextFolder}`);
@@ -553,7 +596,7 @@ export class PvsProxy {
 	async getPvsVersionInfo(): Promise<{ "pvs-version": string, "lisp-version": string }> {
 		const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
 		if (res && res.result) {
-			const regexp: RegExp = /\((\d+.?\d*)[\s|nil]*([\w\s\d\.]*)/g; // group 1 is pvs version, group 2 is lisp version
+			const regexp: RegExp = /\((\d+(?:.?\d+)*)[\s|nil]*([\w\s\d\.]*)/g; // group 1 is pvs version, group 2 is lisp version
 			const info: RegExpMatchArray = regexp.exec(res.result);
 			if (info && info.length > 2) {
 				return {
@@ -751,11 +794,6 @@ export class PvsProxy {
 			}
 		});
 	}
-	async restartPvsServer (): Promise<void> {
-		await this.killPvsServer();
-		// pvs server will automatically be rebooted --- see pvsRequest method
-		// await this.rebootPvsServer();
-	}
 
 	async listSystemMethods (): Promise<{ error: { code: string, message: string, stack: string }, result: string[] }> {
 		return new Promise((resolve, reject) => {
@@ -770,7 +808,21 @@ export class PvsProxy {
 		});
 	}
 
-	async rebootPvsServer (): Promise<boolean> {
+	async killAndRestartPvsServer (desc?: { pvsPath?: string }): Promise<void> {
+		if (desc && desc.pvsPath) {
+			this.pvsPath = desc.pvsPath;
+			console.log(`[pvs-proxy] New pvs path: ${this.pvsPath}`);
+		}
+		await this.killPvsServer();
+		// pvs server will automatically be rebooted --- see pvsRequest method
+		// await this.restartPvsServer();
+	}
+
+	async restartPvsServer (desc?: { pvsPath?: string }): Promise<boolean> {
+		if (desc && desc.pvsPath) {
+			this.pvsPath = desc.pvsPath;
+			console.log(`[pvs-proxy] New pvs path: ${this.pvsPath}`);
+		}
 		if (!this.externalServer) {
 			console.info("[pvs-proxy] Rebooting pvs-server...");
 			this.pvsServer = await this.createPvsServer({ enableNotifications: true });

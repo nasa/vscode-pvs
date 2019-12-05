@@ -234,18 +234,22 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				sequentViewer: this.sequentViewer
 			});
 			this.eventsDispatcher.activate(context);
-	
+		
+			// define error handlers
+			this.client.onRequest(serverEvent.pvsNotPresent, () => {
+				this.packageManager.installationWizard("Could not find PVS executable");
+			});
+			this.client.onRequest(serverEvent.pvsIncorrectVersion, (msg: string) => {
+				this.packageManager.installationWizard(msg);
+			});
+
 			// start PVS
 			const contextFolder = vscodeUtils.getEditorContextFolder();
 			this.pvsPath = this.getPvsPath();
-	
-			this.client.onRequest(serverEvent.pvsNotPresent, () => {
-				this.packageManager.installationWizard();
-			});
 			
 			// setTimeout(() => {
 			this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, { pvsPath: this.pvsPath, contextFolder });
-			// }, 2000);
+			// }, 2000);			
 		});
 	}
 

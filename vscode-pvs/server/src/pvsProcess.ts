@@ -169,10 +169,6 @@ export class PvsProcess {
 					console.log("[pvs-process] Process error");
 					// console.dir(err, { depth: null });
 				});
-				this.pvsProcess.on("close", (code: number, signal: string) => {
-					console.log("[pvs-process] Process terminated");
-					// console.dir({ code, signal }, { depth: null });
-				});
 				this.pvsProcess.on("exit", (code: number, signal: string) => {
 					console.log("[pvs-process] Process exited");
 					// console.dir({ code, signal });
@@ -230,13 +226,17 @@ export class PvsProcess {
 				} finally {
 					try {
 						execSync(`kill -9 ${pvs_shell}`);
-					} finally {
-						console.log(`[pvsProcess] Killing process id ${pvs_shell}`);
+						this.pvsProcess.on("close", (code: number, signal: string) => {
+							console.log("[pvs-process] Process terminated");
+							resolve(true);
+							// console.dir({ code, signal }, { depth: null });
+						});
+					} catch (kill_error) {
+						console.log(`[pvsProcess] Warning: Could not kill process id ${pvs_shell}.`);
 						this.pvsProcess = null;
 						setTimeout(() => {
 							resolve(true);
 						}, 1000);
-						resolve(true);
 					}
 				}
 			} else {

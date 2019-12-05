@@ -50,12 +50,12 @@ export class VSCodePvsPackageManager {
 		this.client = client;
 	}
 
-    async installationWizard (): Promise<boolean> {
+    async installationWizard (msg: string): Promise<boolean> {
 		const labels: { [ btn: string ]: string } = {
 			setPvsPath: "Select PVS installation folder",
 			downloadPvs: "Download PVS"
         };
-		const item = await window.showWarningMessage("Could not find PVS executable", labels.downloadPvs, labels.setPvsPath);
+		const item = await window.showWarningMessage(msg, labels.downloadPvs, labels.setPvsPath);
 		if (item === labels.setPvsPath) {
             return this.selectPvsPath();
 		} else if (item === labels.downloadPvs) {
@@ -170,9 +170,8 @@ export class VSCodePvsPackageManager {
 
     async updateVscodeConfiguration (pvsPath: string) {
         const config: WorkspaceConfiguration = workspace.getConfiguration();
-        await config.update("pvs.path", pvsPath, ConfigurationTarget.Global); // the updated value is visible only at the next restart, that's why we are using pvsExecutable[0].fsPath in the sendRequest
-        window.showInformationMessage(`Booting PVS from ${pvsPath}`);
-        this.client.sendRequest(serverCommand.startPvsLanguageServer, { pvsPath, contextFolder: vscodeUtils.getEditorContextFolder() });
+        await config.update("pvs.path", pvsPath, ConfigurationTarget.Global);
+        // pvsLanguageClient will reboot the server, see handler workspace.onDidChangeConfiguration
     }
 
     async selectPvsPath (): Promise<boolean> {

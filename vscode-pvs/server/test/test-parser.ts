@@ -4,7 +4,7 @@ import * as fsUtils from "./server/common/fsUtils";
 import * as test from "./test-constants";
 import { PvsResponse, PvsResult } from "./server/common/pvs-gui";
 import { PvsProxy } from './server/pvsProxy'; // XmlRpcSystemMethods
-import { label, log, dir, configFile, sandboxExamples } from './test-utils';
+import { label, log, dir, configFile, sandboxExamples, safeSandboxExamples } from './test-utils';
 
 //----------------------------
 //   Test cases for parser
@@ -46,6 +46,22 @@ describe("pvs-parser", () => {
 		expect(response.result).toEqual(test.parse1_result);
 	}, 100000);
 
+	it(`pvs-server can parse multiple files in parallel`, async () => {
+		label(`pvs-server can parse multiple files in parallel`);
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		// async calls
+		pvsProxy.parseFile({ fileName: "alaris2lnewmodes", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
+		pvsProxy.parseFile({ fileName: "alaris2lnewmodes.pump", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
+		pvsProxy.parseFile({ fileName: "alaris2lnewmodes.types_and_constants", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
+
+		const response: PvsResponse = await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
+		// dir(response); // Uncomment this to see the whole ans
+		expect(response).not.toBeNull();
+		expect(response.result).toEqual(test.parse1_result);
+	}, 100000);
+
 	it(`pvs-server can report parse errors`, async () => {
 		label(`pvs-server can report parse errors`);
 
@@ -77,16 +93,16 @@ describe("pvs-parser", () => {
 		expect(response).not.toBeNull();
 	}, 100000);
 
-	// it(`pvs-server can parse file when filename contains '.'`, async () => {
-	// 	label(`pvs-server can parse file when filename contains '.'`);
+	it(`pvs-server can parse file when filename contains '.'`, async () => {
+		label(`pvs-server can parse file when filename contains '.'`);
 
-	// 	let response: PvsResponse = await pvsProxy.parseFile({ fileName: "alaris2lnewmodes.pump", fileExtension: ".pvs", contextFolder: sandboxExamples });
-	// 	dir(response);
-	// 	expect(response).not.toBeNull();
-	// 	expect(response.result).not.toBeNull();
-	// 	expect(response.result.length).toEqual(1);
-	// 	expect(response.result).toEqual(test.parse2_result);
-	// }, 100000);
+		let response: PvsResponse = await pvsProxy.parseFile({ fileName: "alaris2lnewmodes.pump", fileExtension: ".pvs", contextFolder: sandboxExamples });
+		dir(response);
+		expect(response).not.toBeNull();
+		expect(response.result).not.toBeNull();
+		expect(response.result.length).toEqual(1);
+		expect(response.result).toEqual(test.parse2_result);
+	}, 100000);
 
 });
 

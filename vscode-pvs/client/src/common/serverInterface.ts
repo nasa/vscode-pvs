@@ -457,7 +457,8 @@ export const serverEvent = {
 	proofStateUpdate: "pvs.event.proof-state",
 
 	pvsVersionInfo: "pvs.event.version-info",
-	pvsNotPresent: "pvs.event.pvs-not-present"
+	pvsNotPresent: "pvs.event.pvs-not-present",
+	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version"
 };
 
 export interface PvsDownloadDescriptor { url: string, fileName: string, version: string };

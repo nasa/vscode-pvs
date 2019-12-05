@@ -1,0 +1,103 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Computational Logic A & D / PROJECT SECOND SEMESTER 2019 
+%%%%% 
+%%%%% Merge sort
+%%% 
+%%% Grupo de Teoria da Computacao, Universidade de Brasilia
+%%% Ariane A. Almeida & Mauricio Ayala-Rincon
+%%% Last modification:  September 23, 2019
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+mergesort[T : TYPE, (IMPORTING total_preorder) <= : (total_preorder?[T])]:THEORY
+BEGIN
+
+IMPORTING sorting [T, <=]
+
+l,l1,l2 : VAR list[T]
+x: VAR T
+
+% Merging (sorted lists)
+
+merge(l1, l2 : list[T]) : RECURSIVE list[T] =
+IF null?(l1) OR null?(l2) THEN append(l1, l2)
+ELSIF car(l1) <= car(l2) THEN cons(car(l1), merge(cdr(l1),l2))
+ELSE cons(car(l2), merge(l1, cdr(l2)))
+ENDIF
+MEASURE length(l1) + length(l2)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Next lemmas prove that the length of merge is
+%%%%% the sum of the lengths of the merged lists. This is used
+%%%%% to complete the proof that merging two lists gives
+%%%%% as result a permutation of the append of these lists.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+merge_size : LEMMA 
+FORALL (l1, l2 : list[T]) : 
+  length(merge(l1,l2)) = length(l1) + length(l2)
+
+merge_occurrence: LEMMA
+FORALL (l1, l2 : list[T], x: T) : 
+  occurrences(merge(l1,l2))(x) =
+      occurrences(l1)(x) + occurrences(l2)(x)
+
+merge_is_permutation : LEMMA
+FORALL (l1, l2 : list[T]) : 
+  permutations(merge(l1,l2), append(l1,l2))
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Next lemma proves that merging sorted lists gives as
+%%%%% result a sorted list. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+merge_of_sorted_is_sorted : LEMMA
+FORALL (l1, l2 : list[T]) : 
+  is_sorted?(l1) AND is_sorted?(l2) IMPLIES is_sorted?(merge(l1,l2))
+
+
+%%%%%%% merge_sort, the main function, sorts a list recursively 
+%%%%%%% using the function merge.
+merge_sort(l) : RECURSIVE list[T] =
+ IF length(l) <= 1 THEN l 
+ ELSE merge(merge_sort(prefix(l,floor(length(l) / 2))), 
+                 merge_sort(suffix(l,floor(length(l)/2))))
+ ENDIF 
+MEASURE length(l)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Next lemmas prove that merge_sort works; that is, prove
+%%%%% that merge_sort of list l, gives as result a permutation
+%%%%% of l that is sorted. 
+%%%%% To obtain the main result, merge_sort_works, the sequence
+%%%%% of auxiliary lemmas below are proved. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+merge_sort_size: LEMMA
+FORALL (l : list[T]) :
+  length(merge_sort(l)) = length(l)
+
+merge_sort_is_sorted: LEMMA
+FORALL (l : list[T]) :
+  is_sorted?(merge_sort(l))
+
+merge_sort_is_permutation: LEMMA
+FORALL (l : list[T]) :
+  permutations(merge_sort(l), l)
+
+merge_sort_works: LEMMA
+FORALL (l : list[T]) :
+  is_sorted?(merge_sort(l)) AND permutations(merge_sort(l), l)
+
+% Conservativity of merge sort is required to prove
+% its adequability to be applied in radix sort
+merge_sort_is_conservative
+: CONJECTURE%D THEOREM
+  FORALL(l: list[T], m,n: below[length(merge_sort(l))]):
+    (m < n AND nth(merge_sort(l),m) <= nth(merge_sort(l),n) AND
+      nth(merge_sort(l),n) <= nth(merge_sort(l),m)) IMPLIES
+    EXISTS (i, j: below[length(l)]): 
+      i < j AND 
+      nth(merge_sort(l),m) = nth(l,i) AND
+      nth(merge_sort(l),n) = nth(l,j)
+
+end mergesort

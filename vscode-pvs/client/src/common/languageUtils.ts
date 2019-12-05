@@ -63,7 +63,8 @@ export const RECORD: { [key: string]: RegExp } = {
 
 // (?:\%.*\s)* removes comments
 // group 1 is theoryName, group 2 is comma-separated list of theory parameters
-export const theoryRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*(?:\[([^\]]+)\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
+export const theoryRegexp: RegExp = /(\w+)\s*(?:\[(.*)\])?\:\s*THEORY\s*BEGIN\b/gi;
+// /(\w+)\s*(?:\%.*\s)*(?:\[([^\]]+)\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
 
 /**
  * @function findTheoryName

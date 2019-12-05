@@ -5,7 +5,7 @@ import * as test from "./test-constants";
 import * as path from 'path';
 import { ParseResult, ListMethodsResult, PvsError, PvsResponse, PvsResult, FindDeclarationResult } from "./server/common/pvs-gui";
 import { PvsProxy, ContextDiagnostics } from './server/pvsProxy'; // XmlRpcSystemMethods
-import { label, log, dir, configFile, sandboxExamples } from './test-utils';
+import { label, log, dir, configFile, sandboxExamples, radixExamples } from './test-utils';
 
 //----------------------------
 //   Test cases for typechecker
@@ -86,7 +86,7 @@ describe("pvs-typechecker", () => {
 	it(`pvs-server can typecheck theories with parameters`, async () => {
 		label(`pvs-server can typecheck theories with parameters`);
 
-		const desc = {
+		let desc = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
 			fileName: "alaris2lnewmodes.pump",
@@ -96,6 +96,20 @@ describe("pvs-typechecker", () => {
 		};
 		let response: PvsResponse = await pvsProxy.typecheckFile(desc);
 		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+
+		desc = {
+			contextFolder: radixExamples,
+			fileExtension: ".pvs",
+			fileName: "mergesort.pvs",
+			formulaName: "merge_size",
+			line: 36,
+			theoryName: "mergesort"
+		};
+		response = await pvsProxy.typecheckFile(desc);
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+		
 	}, 10000);
 
 });

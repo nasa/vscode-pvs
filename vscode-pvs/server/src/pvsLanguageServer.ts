@@ -978,9 +978,10 @@ export class PvsLanguageServer {
 		if (desc) {
 			this.pvsPath = desc.pvsPath || this.pvsPath;
 			if (this.pvsPath) {
+				console.log(`[pvs-language-server] Rebooting pvs (boot script in folder ${this.pvsPath})`);
 				const contextFolder: string = desc.contextFolder || this.lastParsedContext || this.pvsPath;
 				if (this.pvsProxy) {
-					await this.pvsProxy.restartPvsServer();
+					await this.pvsProxy.restartPvsServer({ pvsPath: this.pvsPath });
 				} else {
 					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection });
 					this.createServiceProviders();
@@ -998,22 +999,30 @@ export class PvsLanguageServer {
 				// activate cli gateway
 				await this.cliGateway.activate();
 				// send version info to the front-end
-				this.pvsProxy.getPvsVersionInfo().then((pvsVersion: { "pvs-version": string, "lisp-version": string }) => {
-					if (pvsVersion) {
-						this.connection.sendRequest(serverEvent.pvsServerReady, pvsVersion);
-						this.connection.sendRequest(serverEvent.pvsVersionInfo, pvsVersion);
+				this.pvsProxy.getPvsVersionInfo().then((desc: { "pvs-version": string, "lisp-version": string }) => {
+					if (desc) {
+						const majorReleaseNumber: number = parseInt(desc["pvs-version"]);
+						if (majorReleaseNumber >= 7) {
+							this.connection.sendRequest(serverEvent.pvsServerReady, desc);
+							this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
+							// parse context folder after a timeout and send diagnostics to the client
+							setTimeout(async () => {
+								const diags: ContextDiagnostics = await this.parseContext({ contextFolder });
+								this.sendDiagnostics(diags, contextFolder, "Parse");	
+							}, 4000);
+						} else {
+							console.error(`[pvs-language-server] Error: incompatible pvs version ${desc["pvs-version"]}`);
+							this.connection.sendRequest(serverEvent.pvsIncorrectVersion, `Incorrect PVS version ${desc["pvs-version"]} (vscode-pvs requires pvs ver >= 7)`);
+						}
 					} else {
-						this.connection.sendRequest(serverEvent.pvsNotPresent);
+						const msg: string = `PVS 7.x not found at ${this.pvsPath}`;
+						console.error(msg);
+						this.connection.sendRequest(serverEvent.pvsIncorrectVersion, msg);
 					}
 				});
-				// parse context folder and send diagnostics to the client
-				setTimeout(async () => {
-					const diags: ContextDiagnostics = await this.parseContext({ contextFolder });
-					this.sendDiagnostics(diags, contextFolder, "Parse");	
-				}, 4000);
 				return true;
 			} else {
-				console.error("[pvs-language-server] Error: failed to activate pvs-proxy");
+				console.error("[pvs-language-server] Error: failed to identify pvs path");
 				this.connection.sendRequest(serverEvent.pvsNotPresent);
 				return false;
 			}
@@ -1086,7 +1095,7 @@ export class PvsLanguageServer {
 				this.startPvsServerRequest(request); // async call
 			});
 			this.connection.onRequest(serverCommand.rebootPvsServer, async () => {
-				this.pvsProxy.restartPvsServer(); // async call
+				this.pvsProxy.killAndRestartPvsServer(); // async call
 			});
 			this.connection.onRequest(serverCommand.parseFile, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.parseFileRequest(request); // async call

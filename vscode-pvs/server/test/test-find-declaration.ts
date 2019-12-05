@@ -10,7 +10,7 @@ import { label, log, dir, configFile, sandboxExamples } from './test-utils';
 //----------------------------
 //   Test cases for find-declaration
 //----------------------------
-describe("find-declaration", () => {
+describe("find-declaration / term-at", () => {
 	let pvsProxy: PvsProxy = null;
 	beforeAll(async () => {
 		const config: string = await fsUtils.readFile(configFile);
@@ -36,6 +36,10 @@ describe("find-declaration", () => {
 		await pvsProxy.killPvsProxy();
 	});
 	
+	//-----------------------------------------
+	// test cases for find-declaration
+	//-----------------------------------------
+
 	it(`pvs-server can invoke find-declaration`, async () => {
 		label(`pvs-server can invoke find-declaration`);
 		// Need to clear-theories, in case rerunning with the same server.
@@ -56,15 +60,11 @@ describe("find-declaration", () => {
 		expect(result[0].place).toEqual(test.find_declaration_result[0].place);
 		expect(result[0]['decl-ppstring']).toEqual(test.find_declaration_result[0]['decl-ppstring']);
 
-		// the check on the type fails --- pvs-server is returning 'nil'
-		// expect(result[0].type).toEqual(test.find_declaration_result[0].type);
-
 	}, 10000);
 
 	it(`pvs-server can sustain workload with find-declaration`, async () => {
 		label(`pvs-server can sustain workload with find-declaration`);
 
-		// parse context performs async calls
 		let response: PvsResponse = null;
 		for (let i = 0; i < 10; i++) {
 			response = await pvsProxy.findDeclaration("boolean");
@@ -90,6 +90,82 @@ describe("find-declaration", () => {
 			response = await pvsProxy.findDeclaration("pred");
 		}
 		expect(response).not.toBeNull();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+
 	}, 40000);
+
+	it(`pvs-server can perform multiple find-declaration in parallel`, async () => {
+		label(`pvs-server can perform multiple find-declaration in parallel`);
+
+		pvsProxy.findDeclaration("boolean");
+		pvsProxy.findDeclaration("T");
+		pvsProxy.findDeclaration("if_def");
+		pvsProxy.findDeclaration("not_def");
+		pvsProxy.findDeclaration("and_def");
+		pvsProxy.findDeclaration("syand_def");
+		pvsProxy.findDeclaration("or_def");
+		pvsProxy.findDeclaration("implies_def");
+		pvsProxy.findDeclaration("syimplies_def");
+		pvsProxy.findDeclaration("when_def");
+		pvsProxy.findDeclaration("syiff_def");
+		pvsProxy.findDeclaration("excluded_middle");
+		pvsProxy.findDeclaration("not_exists");
+		pvsProxy.findDeclaration("exists_not");
+		pvsProxy.findDeclaration("exists_or");
+		pvsProxy.findDeclaration("exists_implies");
+		pvsProxy.findDeclaration("exists_and");
+		pvsProxy.findDeclaration("forall_and");
+		pvsProxy.findDeclaration("forall_not");
+		pvsProxy.findDeclaration("forall_or");
+
+		const response: PvsResponse = await pvsProxy.findDeclaration("pred");
+		expect(response).not.toBeNull();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+
+	}, 40000);
+
+	it(`pvs-server returns a full and well-formed filename in find-declaration`, async () => {
+		label(`pvs-server returns a full and well-formed filename in find-declaration`);
+
+		const response: PvsResponse = await pvsProxy.findDeclaration("boolean");
+		expect(response).not.toBeNull();
+		expect(response.result).toBeDefined();
+		expect(response.result[0].filename).toContain("/"); // a simple way to that filename includes a path is to check that there is at least one path separator
+		expect(response.result[0].filename).not.toContain("//"); // consecutive double slashes should not be present
+		expect(response.result[0].filename).not.toContain("~"); // tilde should be expanded
+		expect(response.result[0].filename).toMatch(/\/.*/); // path should be absolute, i.e., start with /
+
+	}, 40000);
+
+	it(`pvs-server can execute find-declaration while parsing`, async () => {
+		label(`pvs-server can execute find-declaration while parsing`);
+
+		// async call
+		pvsProxy.parseFile({ fileName: "alaris2lnewmodes", fileExtension: ".pvs", contextFolder: sandboxExamples });
+		
+		const response: PvsResponse = await pvsProxy.findDeclaration("boolean");
+		expect(response).not.toBeNull();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+	}, 40000);
+
+	//-----------------------------------------
+	// test cases for term-at
+	//-----------------------------------------
+	it(`pvs-server can invoke term-at`, async () => {
+		label(`pvs-server can invoke term-at`);
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		const fname: string = path.join(sandboxExamples, "sqrt.pvs");
+		const response: PvsResponse = await pvsProxy.pvsRequest("term-at", [ fname, `(23 2)`, 't' ]); 
+		dir(response);
+		expect(response).not.toBeNull();
+		expect(response["result"]).not.toBeNull();
+		expect(response["error"]).not.toBeDefined();
+
+	}, 10000);
 
 });

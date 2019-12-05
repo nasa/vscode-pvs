@@ -1,0 +1,122 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Searching and Sorting - Examples of formalization
+%%% of correctness properties of functional specifications.
+%%% This file contains specification and verification of
+%%% basic notions and properties such as list permutation,
+%%% sorted lists etc. 
+%%%
+%%% Grupo de Teoria da Computacao, Universidade de Brasilia
+%%% Thiago M.F. Ramos, Ariane A. Almeida & 
+%%% Ana C. R. Oliveira Valverde & M. Ayala-Rincon
+%%% Last modification:  September/2019
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+sorting [T : TYPE, (IMPORTING total_preorder) <= : (total_preorder?[T]) ]: THEORY
+
+BEGIN
+
+IMPORTING sorting_aux[T]
+
+  l,l1,l2 : VAR list[T]
+  x: VAR T
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Searching function
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%% A searching recursive specification on lists
+search(i : T, l) : RECURSIVE nat =
+  IF null?(l) THEN length(l)
+  ELSIF car(l) = i THEN 0 
+     ELSE 1 + search(i, cdr(l)) ENDIF
+MEASURE length(l)
+
+%%% The search function gives as output the length of
+%%% the input list if there are no occurrences of the
+%%% key being searched in the list.
+not_in_l_gives_lenght_l : LEMMA 
+FORALL(l : list[T], i: T) :
+  (FORALL( k : below[length(l)]): 
+      NOT nth(l, k) = i)  =>
+   search(i, l) = length(l)
+
+%%% Variation of the previous lemma: whenever k isn't
+%%% member of l, search(k,l) returns l'length
+not_member_gives_length : LEMMA
+FORALL(l : list[T], i : T):
+  NOT member(i,l) => 
+   search(i, l) = length(l)
+
+%%% The search function specified gives as output
+%%% an index of the lists in which the searched 
+%%% key occurs  
+search_works : LEMMA  
+FORALL (l : list[T], k : T) : 
+  member(k, l) => nth(l, search(k, l)) = k 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% search_min_index states that if the 
+%%% searched key belongs to the list, then the 
+%%% search function finds the minimun index in 
+%%% which it appears
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+search_min_index : LEMMA
+FORALL (l : list[T], k : T) :
+   FORALL (m : below[length(l)]) : nth(l, m) = k =>  
+          search(k, l) <= m
+
+%%% Searching k in the reverse of the list l gives
+%%% as output a natural out, such that (|l|-1) - out
+%%% is the maximum index in which k occurs in l.  
+search_in_rev_max_index  : LEMMA
+FORALL (l : list[T], k : T) :
+   FORALL (m : below[length(l)]) : nth(l, m) = k =>
+          (length(l) - 1) - search(k, reverse(l)) >= m 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Searching keys in appended lists
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+search_in_append_of_lists_key_in_the_first : LEMMA
+FORALL (l1, l2 : list[T], k : T) : 
+   member(k, l1) =>
+     search(k, append(l1, l2)) = search(k,l1) 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% No membership prefix invariance of search 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+search_in_append_of_lists_key_not_member_of_the_first : LEMMA
+FORALL (l1, l2 : list[T], k : T) : 
+   NOT member(k, l1) =>
+     search(k, append(l1, l2)) = length(l1) + search(k,l2) 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Membership prefix invariance of search  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+search_in_append_of_lists_with_searched_key : LEMMA
+FORALL (l1, l2 : list[T], k : T) : 
+     search(k, append(l1, cons(k,l2))) <= length(l1)  
+
+%%%%% This predicate on lists holds whenever the list
+%%%%% is well-sorted in non-decreasing order.
+is_sorted?(l): bool =
+FORALL (k : below[length(l)]) :
+    0 <= k AND k <= length(l) - 2 => nth(l, k) <= nth(l, k+1)
+
+is_sorted_implies_monotone: LEMMA
+  is_sorted?(l) IMPlIES 
+    FORALL (j : below[length(l)], i: below[j]) :
+      nth(l,i) <= nth(l,j)
+
+%%% A trivial auxiliary lemma about cdr of sorted lists
+cdr_of_sorted_is_sorted: LEMMA
+FORALL (l : list[T]) :
+  NOT null?(l) AND is_sorted?(l) IMPLIES is_sorted?(cdr(l))
+
+END sorting
+
