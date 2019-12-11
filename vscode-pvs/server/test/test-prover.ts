@@ -37,8 +37,8 @@ describe("pvs-prover", () => {
 		await pvsProxy.killPvsProxy();
 	});
 	
-	it(`pvs-server can start a prover session and quit the prover session`, async () => {
-		label(`pvs-server can start a prover session and quit the prover session`);
+	it(`can start a prover session and quit the prover session`, async () => {
+		label(`can start a prover session and quit the prover session`);
 
 		const desc = {
 			contextFolder: sandboxExamples,
@@ -54,8 +54,8 @@ describe("pvs-prover", () => {
 		expect(response.result).toEqual({ result: 'Unfinished' });
 	}, 20000);
 
-	it(`pvs-server can start interactive proof session when the formula has already been proved`, async () => {
-		label(`pvs-server can start interactive proof session when the formula has already been proved`);
+	it(`can start interactive proof session when the formula has already been proved`, async () => {
+		label(`can start interactive proof session when the formula has already been proved`);
 
 		const desc = {
 			contextFolder: sandboxExamples,
@@ -102,16 +102,16 @@ describe("pvs-prover", () => {
 
 	}, 20000);
 
-	it(`pvs-server returns proverStatus = inactive when a prover session is not active`, async () => {
-		label(`pvs-server returns proverStatus = inactive when a prover session is not active`);
+	it(`returns proverStatus = inactive when a prover session is not active`, async () => {
+		label(`returns proverStatus = inactive when a prover session is not active`);
 
 		const proverStatus: PvsResponse = await pvsProxy.proverStatus();
 		expect(proverStatus.result).toEqual("inactive");
 	}, 10000);
 
 
-	it(`pvs-server returns proverStatus = active when a prover session is active`, async () => {
-		label(`pvs-server returns proverStatus = active when a prover session is active`);
+	it(`returns proverStatus = active when a prover session is active`, async () => {
+		label(`returns proverStatus = active when a prover session is active`);
 
 		const desc = {
 			contextFolder: sandboxExamples,
@@ -132,8 +132,8 @@ describe("pvs-prover", () => {
 		await pvsProxy.proofCommand({ cmd: 'quit'});
 	}, 10000);
 
-	it(`pvs-server returns proverStatus = inactive after quitting a prover session`, async () => {
-		label(`pvs-server returns proverStatus = inactive after quitting a prover session`);
+	it(`returns proverStatus = inactive after quitting a prover session`, async () => {
+		label(`returns proverStatus = inactive after quitting a prover session`);
 
 		const desc = {
 			contextFolder: sandboxExamples,
@@ -154,8 +154,8 @@ describe("pvs-prover", () => {
 	}, 10000);
 	
 
-	it(`pvs-server can generate .tcc file content`, async () => {
-		label(`pvs-server can generate the .tcc file content`);
+	it(`can generate .tcc file content`, async () => {
+		label(`can generate the .tcc file content`);
 		const response: PvsResponse = await pvsProxy.showTccs({ fileName: "sqrt", fileExtension: ".pvs", theoryName: "sqrt", contextFolder: sandboxExamples });
 		dir("response", response);
 		expect(response.error).not.toBeDefined();
@@ -163,8 +163,8 @@ describe("pvs-prover", () => {
 	});
 	
 	// discharge tccs
-	it(`pvs-server can discharge tccs`, async () => {
-		label(`pvs-server can discharge tccs`);
+	it(`can discharge tccs`, async () => {
+		label(`can discharge tccs`);
 		const fname: string = path.join(sandboxExamples, "sq.pvs");
 
 		const response: PvsResponse = await pvsProxy.pvsRequest('prove-tccs', [ fname ]);
@@ -179,8 +179,8 @@ describe("pvs-prover", () => {
 	}, 4000);
 
 	// show proof when proof script is available 
-	it(`pvs-server can show proof script`, async () => {
-		label(`pvs-server show proof script`);
+	it(`can show proof script`, async () => {
+		label(`show proof script`);
 		const fname: string = path.join(sandboxExamples, "sq.pvs");
 
 		const response: PvsResponse = await pvsProxy.pvsRequest('proof-script', [ fname, "sq_neg" ]);
@@ -192,8 +192,8 @@ describe("pvs-prover", () => {
 
 
 	// show proof when proof script is NOT available 
-	it(`pvs-server returns a well-formed proof script when the proof file is not available`, async () => {
-		label(`pvs-server returns a well-formed proof script when the proof file is not available`);
+	it(`returns a well-formed proof script when the proof file is not available`, async () => {
+		label(`returns a well-formed proof script when the proof file is not available`);
 
 		// a well-formed response for formula sqrt_0 is in the form /;;; Proof sqrt_0(\-\d+)? for formula sqrt.sqrt_0\n(""\s*)/
 		const fname: string = path.join(sandboxExamples, "sqrt.pvs");
@@ -206,8 +206,8 @@ describe("pvs-prover", () => {
 	});
 
 	// prover session in theories with parameters
-	it(`pvs-server can start prover sessions in theories with parameters`, async () => {
-		label(`pvs-server can start prover sessions in theories with parameters`);
+	it(`can start prover sessions in theories with parameters`, async () => {
+		label(`can start prover sessions in theories with parameters`);
 
 		const desc = {
 			contextFolder: sandboxExamples,
@@ -225,8 +225,8 @@ describe("pvs-prover", () => {
 	}, 10000);
 
 	// start prover session while parsing
-	it(`pvs-server can start prover session while parsing files in other contexts`, async () => {
-		label(`pvs-server can start prover session while parsing files in other contexts`);
+	it(`can start prover session while parsing files in other contexts`, async () => {
+		label(`can start prover session while parsing files in other contexts`);
 
 		// async call to the parser in context safesandbox
 		pvsProxy.parseFile({ fileName: "alaris2lnewmodes", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
@@ -248,8 +248,8 @@ describe("pvs-prover", () => {
 	}, 10000);
 
 	// prover session is not started if theory does not typecheck
-	it(`pvs-server reports typecheck error when the prove command is executed but the theory does not typecheck`, async () => {
-		label(`pvs-server reports typecheck error when the prove command is executed but the theory does not typecheck`);
+	it(`reports typecheck error when the prove command is executed but the theory does not typecheck`, async () => {
+		label(`reports typecheck error when the prove command is executed but the theory does not typecheck`);
 
 		const desc = {
 			contextFolder: radixExamples,
@@ -264,8 +264,8 @@ describe("pvs-prover", () => {
 	}, 2000);
 	
 	// prover session is not started if theory does not exist
-	it(`pvs-server reports error when the prove command is executed but the theory does not exist`, async () => {
-		label(`pvs-server reports error when the prove command is executed but the theory does not exist`);
+	it(`reports error when the prove command is executed but the theory does not exist`, async () => {
+		label(`reports error when the prove command is executed but the theory does not exist`);
 
 		let desc = {
 			contextFolder: radixExamples,
@@ -280,8 +280,8 @@ describe("pvs-prover", () => {
 	}, 2000);
 
 	// prover session is not started if the formula does not exist
-	it(`pvs-server reports error when the prove command is executed but the formula does not exist`, async () => {
-		label(`pvs-server reports error when the prove command is executed but the formula does not exist`);
+	it(`reports error when the prove command is executed but the formula does not exist`, async () => {
+		label(`reports error when the prove command is executed but the formula does not exist`);
 
 		const desc = {
 			contextFolder: radixExamples,
@@ -296,8 +296,8 @@ describe("pvs-prover", () => {
 	}, 2000);
 
 	// prover is able to distinguish theories with the same name that are stored in different files in the same context
-	it(`pvs-server is able to distinguish theories with the same name that are stored in different files in the same context`, async () => {
-		label(`pvs-server is able to distinguish theories with the same name that are stored in different files in the same context`);
+	it(`is able to distinguish theories with the same name that are stored in different files in the same context`, async () => {
+		label(`is able to distinguish theories with the same name that are stored in different files in the same context`);
 
 		// this version of the theory does not typecheck, so the prover should report error
 		let desc = {

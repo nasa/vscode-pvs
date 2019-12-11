@@ -35,8 +35,8 @@ describe("pvs-parser", () => {
 		await pvsProxy.killPvsProxy();
 	});
 
-	it(`pvs-server can parse file`, async () => {
-		label(`pvs-server can parse file`);
+	it(`can parse file`, async () => {
+		label(`can parse file`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
@@ -46,8 +46,8 @@ describe("pvs-parser", () => {
 		expect(response.result).toEqual(test.parse1_result);
 	}, 100000);
 
-	it(`pvs-server can parse multiple files in parallel`, async () => {
-		label(`pvs-server can parse multiple files in parallel`);
+	it(`can parse multiple files in parallel`, async () => {
+		label(`can parse multiple files in parallel`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
@@ -62,8 +62,8 @@ describe("pvs-parser", () => {
 		expect(response.result).toEqual(test.parse1_result);
 	}, 100000);
 
-	it(`pvs-server can report parse errors`, async () => {
-		label(`pvs-server can report parse errors`);
+	it(`can report parse errors`, async () => {
+		label(`can report parse errors`);
 
 		const response: PvsResult = await pvsProxy.parseFile({ fileName: "lib0", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		dir(response);
@@ -83,8 +83,8 @@ describe("pvs-parser", () => {
 		expect(response.error.data.error_string.startsWith(exp.data.error_string.split("\n")[0])).toBeTruthy();
 	}, 100000);
 
-	it(`pvs-server can parse file with inline declarations`, async () => {
-		label(`pvs-server can parse file with inline declarations`);
+	it(`can parse file with inline declarations`, async () => {
+		label(`can parse file with inline declarations`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
@@ -93,8 +93,8 @@ describe("pvs-parser", () => {
 		expect(response).not.toBeNull();
 	}, 100000);
 
-	it(`pvs-server can parse file when filename contains '.'`, async () => {
-		label(`pvs-server can parse file when filename contains '.'`);
+	it(`can parse file when filename contains '.'`, async () => {
+		label(`can parse file when filename contains '.'`);
 
 		let response: PvsResponse = await pvsProxy.parseFile({ fileName: "alaris2lnewmodes.pump", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		dir(response);

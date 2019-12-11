@@ -34,12 +34,12 @@
  # REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  # TERMINATION OF THIS AGREEMENT.
  
- all:
+all:
 	npm install
 	node_modules/vsce/out/vsce package
 
 install:
-	npm install
+	npm install && npm install jasmine-ts
 
 test-proxy:
 	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-proxy.json
@@ -51,6 +51,8 @@ test-typechecker:
 	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-typechecker.json
 test-prover:
 	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-prover.json
+test-workspace:
+	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-workspace.json
 test:
 	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-all.json
 test-all: test

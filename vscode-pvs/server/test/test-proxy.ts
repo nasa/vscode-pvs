@@ -41,16 +41,16 @@ describe("pvs-proxy", () => {
 	console.info("Starting test case execution");
 	//-----------------------------------
 
-	it(`server proxy can be started correctly`, async () => {
-		label(`server proxy can be started correctly`);
+	it(`can be started correctly`, async () => {
+		label(`can be started correctly`);
 		expect(pvsProxy).not.toBeNull();
 
 		const success: boolean = await pvsProxy.testServerConnectivity();
 		expect(success).toBeTruthy();
 	});
 
-	it(`pvs-server can list xml-rpc system methods`, async () => {
-		label(`pvs-server can list xml-rpc system methods`);
+	it(`can list xml-rpc system methods`, async () => {
+		label(`can list xml-rpc system methods`);
 		const ans: { error: { code: string, message: string, stack: string }, result: string[] } = await pvsProxy.listSystemMethods();
 		expect(ans).not.toBeNull();
 		expect(ans.error).toBeNull();
@@ -61,8 +61,8 @@ describe("pvs-proxy", () => {
 		}).length).toEqual(1);
 	});
 
-	it(`server proxy can list pvs-server methods`, async () => {
-		label(`server proxy can list pvs-server methods`);
+	it(`can list pvs-server methods`, async () => {
+		label(`can list pvs-server methods`);
 		const response: PvsResponse = await pvsProxy.listMethodsRequest();
 		log(response);
 		const mths: string[] = [
@@ -81,8 +81,8 @@ describe("pvs-proxy", () => {
 		expect(response.result).toEqual(mths);
 	});
 
-	it(`pvs-server knows client methods`, async () => {
-		label(`pvs-server knows client methods`);
+	it(`knows client methods`, async () => {
+		label(`knows client methods`);
 		const response: PvsResponse = await pvsProxy.listClientMethods();
 		log(response);
 		// console.info("listClientMethods: ans = ", ans);

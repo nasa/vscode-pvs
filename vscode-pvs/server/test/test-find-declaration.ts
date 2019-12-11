@@ -40,8 +40,8 @@ describe("find-declaration / term-at", () => {
 	// test cases for find-declaration
 	//-----------------------------------------
 
-	it(`pvs-server can invoke find-declaration`, async () => {
-		label(`pvs-server can invoke find-declaration`);
+	it(`can invoke find-declaration`, async () => {
+		label(`can invoke find-declaration`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
@@ -62,8 +62,8 @@ describe("find-declaration / term-at", () => {
 
 	}, 10000);
 
-	it(`pvs-server can sustain workload with find-declaration`, async () => {
-		label(`pvs-server can sustain workload with find-declaration`);
+	it(`can sustain workload with find-declaration`, async () => {
+		label(`can sustain workload with find-declaration`);
 
 		let response: PvsResponse = null;
 		for (let i = 0; i < 10; i++) {
@@ -95,8 +95,8 @@ describe("find-declaration / term-at", () => {
 
 	}, 40000);
 
-	it(`pvs-server can perform multiple find-declaration in parallel`, async () => {
-		label(`pvs-server can perform multiple find-declaration in parallel`);
+	it(`can perform multiple find-declaration in parallel`, async () => {
+		label(`can perform multiple find-declaration in parallel`);
 
 		pvsProxy.findDeclaration("boolean");
 		pvsProxy.findDeclaration("T");
@@ -126,8 +126,8 @@ describe("find-declaration / term-at", () => {
 
 	}, 40000);
 
-	it(`pvs-server returns a full and well-formed filename in find-declaration`, async () => {
-		label(`pvs-server returns a full and well-formed filename in find-declaration`);
+	it(`returns a full and well-formed filename in find-declaration`, async () => {
+		label(`returns a full and well-formed filename in find-declaration`);
 
 		const response: PvsResponse = await pvsProxy.findDeclaration("boolean");
 		expect(response).not.toBeNull();
@@ -139,8 +139,8 @@ describe("find-declaration / term-at", () => {
 
 	}, 40000);
 
-	it(`pvs-server can execute find-declaration while parsing`, async () => {
-		label(`pvs-server can execute find-declaration while parsing`);
+	it(`can execute find-declaration while parsing`, async () => {
+		label(`can execute find-declaration while parsing`);
 
 		// async call
 		pvsProxy.parseFile({ fileName: "alaris2lnewmodes", fileExtension: ".pvs", contextFolder: sandboxExamples });
@@ -154,8 +154,8 @@ describe("find-declaration / term-at", () => {
 	//-----------------------------------------
 	// test cases for term-at
 	//-----------------------------------------
-	it(`pvs-server can invoke term-at`, async () => {
-		label(`pvs-server can invoke term-at`);
+	it(`can invoke term-at`, async () => {
+		label(`can invoke term-at`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 

@@ -36,8 +36,8 @@ describe("pvs-typechecker", () => {
 		await pvsProxy.killPvsProxy();
 	});
 
-	it(`pvs-server can typecheck pvs files`, async () => {
-		label(`pvs-server can typecheck pvs files`);
+	it(`can typecheck pvs files`, async () => {
+		label(`can typecheck pvs files`);
 
 		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "more_real_props", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		dir(response);
@@ -46,8 +46,8 @@ describe("pvs-typechecker", () => {
 	}, 100000);
 
 
-	it(`pvs-server can typecheck files that import other files`, async () => {
-		label(`pvs-server can typecheck files that import other files`);
+	it(`can typecheck files that import other files`, async () => {
+		label(`can typecheck files that import other files`);
 
 		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		dir(response);
@@ -83,8 +83,8 @@ describe("pvs-typechecker", () => {
 		expect(res_decls).toEqual(exp_decls);
 	}, 100000);
 
-	it(`pvs-server can typecheck theories with parameters`, async () => {
-		label(`pvs-server can typecheck theories with parameters`);
+	it(`can typecheck theories with parameters`, async () => {
+		label(`can typecheck theories with parameters`);
 
 		let desc = {
 			contextFolder: sandboxExamples,

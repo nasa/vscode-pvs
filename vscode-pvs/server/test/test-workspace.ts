@@ -33,8 +33,8 @@ describe("workspace", () => {
 		await pvsProxy.killPvsProxy();
 	});
 
-	it(`pvs-server can tell what is the current context and returns a well-formed path`, async () => {
-		label(`pvs-server can tell what is the current context and returns a well-formed path`);
+	it(`can tell what is the current context and returns a well-formed path`, async () => {
+		label(`can tell what is the current context and returns a well-formed path`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
@@ -44,8 +44,8 @@ describe("workspace", () => {
 		expect(current.result).toMatch(/\/.*/); // path should be absolute, therefore it should start with /
 	});
 
-	it(`pvs-server can change context`, async () => {
-		label(`pvs-server can change context`);
+	it(`an change context`, async () => {
+		label(`can change context`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
