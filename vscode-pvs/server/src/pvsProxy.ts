@@ -46,12 +46,12 @@
 
 import { Client, Server, createClient, createServer } from 'xmlrpc';
 import { PvsProcess } from "./pvsProcess";
-import { PvsResponse, PvsError } from "./common/pvs-gui.d";
+import { PvsResponse, PvsError, FindDeclarationResult } from "./common/pvs-gui.d";
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, StrategyDescriptor, ProofNode,  ProofTree } from './common/serverInterface';
+import { SimpleConnection, StrategyDescriptor, ProofNode,  ProofTree, serverEvent } from './common/serverInterface';
 import * as utils from './common/languageUtils';
 
 //----------------------------
@@ -449,7 +449,14 @@ export class PvsProxy {
 	 * @param symbolName Symbol name 
 	 */
 	async findDeclaration(symbolName: string): Promise<PvsResponse> {
-		return await this.pvsRequest('find-declaration', [ symbolName ]);
+		const ans: PvsResponse = await this.pvsRequest('find-declaration', [ symbolName ]);
+		// check well-formedness of result
+		if (ans && ans.result) {
+			if (typeof ans.result !== "object") {
+				console.error(`[pvs-proxy] Warning: pvs-server returned malformed result for find-declaration (expecting object found ${typeof ans.result})`);
+			}
+		}
+		return ans;
 	}
 
 	/**
@@ -818,18 +825,25 @@ export class PvsProxy {
 		// await this.restartPvsServer();
 	}
 
-	async restartPvsServer (desc?: { pvsPath?: string }): Promise<boolean> {
+	protected sendPvsVersionInfo () : void {
+		this.getPvsVersionInfo().then((desc: { "pvs-version": string, "lisp-version": string }) => {
+			if (desc) {
+				this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
+			}
+		});
+	}
+
+	async restartPvsServer (desc?: { pvsPath?: string }): Promise<void> {
 		if (desc && desc.pvsPath) {
 			this.pvsPath = desc.pvsPath;
 			console.log(`[pvs-proxy] New pvs path: ${this.pvsPath}`);
 		}
 		if (!this.externalServer) {
-			console.info("[pvs-proxy] Rebooting pvs-server...");
+			console.info("[pvs-proxy] Restarting pvs-server...");
 			this.pvsServer = await this.createPvsServer({ enableNotifications: true });
-			console.info("[pvs-proxy] Reboot complete!");
-			return true;
+			console.info("[pvs-proxy] Restart complete!");
 		}
-		return false;
+		this.sendPvsVersionInfo(); // async call
 	}
 
   // async xmlrpcMethodHelp (methodName: string): Promise<XmlRpcResponse> {

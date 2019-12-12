@@ -10,7 +10,7 @@ import { label, log, dir, configFile, sandboxExamples } from './test-utils';
 //----------------------------
 //   Test cases for find-declaration
 //----------------------------
-describe("find-declaration / term-at", () => {
+describe("pvs-proxy", () => {
 	let pvsProxy: PvsProxy = null;
 	beforeAll(async () => {
 		const config: string = await fsUtils.readFile(configFile);
@@ -53,6 +53,7 @@ describe("find-declaration / term-at", () => {
 		expect(response["result"]).not.toBeNull();
 
 		const result: FindDeclarationResult = response["result"];
+		expect(typeof result).toEqual("object");
 		expect(result.length).toEqual(1);
 		expect(result[0].declname).toEqual(test.find_declaration_result[0].declname);
 		expect(result[0].theoryid).toEqual(test.find_declaration_result[0].theoryid);

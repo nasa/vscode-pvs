@@ -48,18 +48,6 @@ import * as fsUtils from '../common/fsUtils';
 
 export const PVS_CLI_FILE: string = 'pvsCli'; // pvsCli file name
 
-export interface SFormulas {
-	labels: string[];
-	changed: boolean;
-	formula: string;
-	'names-info': any[];
-}
-export interface ProofStateNode {
-	label: string;
-	sequent: { succedents: SFormulas[], antecedents: SFormulas[] };
-	commentary: string[];
-}
-
 
 class TerminalSession {
     protected cliFileName: string; // full path to the PvsCli file

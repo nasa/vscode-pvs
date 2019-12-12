@@ -534,6 +534,13 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	onStepExecuted (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }}): void {
 		if (desc && desc.response && desc.response.result && desc.args && desc.args.cmd) {
 			const cmd: string = desc.args.cmd;
+			if (utils.isQuitCommand(cmd) 
+				|| utils.isEmptyCommand(cmd)
+				|| (typeof desc.response.result.commentary === "object" &&
+					typeof desc.response.result.commentary[0] === "string" &&
+					desc.response.result.commentary[0].endsWith("not a valid prover command"))) {
+				return;
+			}
 			const activeCommand: ProofCommand = this.getActiveCommand();
 			if (activeCommand) {
 				if (cmd === "(undo)" || cmd.startsWith("(undo ")) {

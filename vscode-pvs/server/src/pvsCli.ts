@@ -129,19 +129,6 @@ function quotesMatch (cmd: string): boolean {
 	return nQuotes % 2 === 0;
 }
 
-function isQuit (cmd: string): boolean {
-	switch (cmd) {
-		case "quit":
-		case "quit;":
-		case "(quit)":
-		case "exit":
-		case "exit;": {
-			return true;
-		}
-	}
-	return false;
-}
-
 function isQED (cmd: string): boolean {
 	return cmd.startsWith("Q.E.D.");
 }
@@ -224,7 +211,7 @@ class PvsCli {
 		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.completer(line); });
 		this.rl.setPrompt(utils.colorText(this.prompt, utils.textColor.blue));
 		this.rl.on("line", async (cmd: string) => {
-			if (isQuit(cmd)) {
+			if (utils.isQuitCommand(cmd)) {
 				this.wsClient.send(JSON.stringify({
 					type: serverCommand.proofCommand,
 					cmd: "quit",
@@ -297,32 +284,43 @@ class PvsCli {
 							case serverEvent.proofStateUpdate: {
 								const pvsResponse: PvsResponse = data.response;
 								if (pvsResponse) {
-									this.proofState = utils.formatProofState(pvsResponse.result);
-									console.log(utils.formatProofState(pvsResponse.result, { useColors: true, showAction: false })); // show proof state
-									this.rl.prompt(); // show prompt
-									readline.clearLine(process.stdin, 1); // clear any previous input
+									if (pvsResponse.result) {
+										const res: utils.ProofStateNode = pvsResponse.result;
+										// print commentary in the CLI
+										if (res.commentary && typeof res.commentary === "object" && res.commentary.length > 0) {
+											// the last line of the commentary is the sequent, dont' print it!
+											for (let i = 0; i < res.commentary.length - 1; i++) {
+												console.log(res.commentary[i]);
+											}
+										}
+										this.proofState = utils.formatProofState(res);
+										console.log(utils.formatProofState(pvsResponse.result, { useColors: true, showAction: false })); // show proof state
+										this.rl.prompt(); // show prompt
+										readline.clearLine(process.stdin, 1); // clear any previous input
+									} else {
+										console.warn(`[pvs-cli] Warning: received null result from pvs-server`);
+									}
 								} else {
-									console.warn("Warning: received null response from pvs-server");
+									console.warn(`[pvs-cli] Warning: received null response from pvs-server`);
 								}
 								break;
 							}
-							case serverEvent.typecheckFileResponse: {
-								const pvsResponse: PvsResponse = data.response;
-								if (pvsResponse.error) {
-									console.log(`${utils.colorText("Typecheck error", utils.textColor.red)}`);
-									console.dir(data.response, { colors: true, depth: null });
-								} else {
-									console.log(`Typechecking completed successfully!`);
-								}
-								this.rl.question("Press Enter to close the terminal", () => {
-									this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID, clientID: this.clientID }));
-									this.wsClient.close();	
-								});
-								break;
-							}
+							// case serverEvent.typecheckFileResponse: {
+							// 	const pvsResponse: PvsResponse = data.response;
+							// 	if (pvsResponse.error) {
+							// 		console.log(`${utils.colorText("Typecheck error", utils.textColor.red)}`);
+							// 		console.dir(data.response, { colors: true, depth: null });
+							// 	} else {
+							// 		console.log(`[pvs-cli] Typechecking completed successfully!`);
+							// 	}
+							// 	this.rl.question("Press Enter to close the terminal", () => {
+							// 		this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID, clientID: this.clientID }));
+							// 		this.wsClient.close();	
+							// 	});
+							// 	break;
+							// }
 							default: {
-								// FIXME: investigate why we are receiving cli-ready events
-								// console.error("[pvs-cli] Warning: received unknown message type", data);
+								console.error("[pvs-cli] Warning: received unknown message type", data);
 							}
 						}
 					} else {

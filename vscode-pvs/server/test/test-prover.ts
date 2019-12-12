@@ -100,14 +100,14 @@ describe("pvs-prover", () => {
 		// quit the proof attempt
 		await pvsProxy.proofCommand({ cmd: 'quit'});
 
-	}, 20000);
+	}, 4000);
 
 	it(`returns proverStatus = inactive when a prover session is not active`, async () => {
 		label(`returns proverStatus = inactive when a prover session is not active`);
 
 		const proverStatus: PvsResponse = await pvsProxy.proverStatus();
 		expect(proverStatus.result).toEqual("inactive");
-	}, 10000);
+	}, 4000);
 
 
 	it(`returns proverStatus = active when a prover session is active`, async () => {
@@ -130,7 +130,7 @@ describe("pvs-prover", () => {
 
 		// quit the proof attempt
 		await pvsProxy.proofCommand({ cmd: 'quit'});
-	}, 10000);
+	}, 4000);
 
 	it(`returns proverStatus = inactive after quitting a prover session`, async () => {
 		label(`returns proverStatus = inactive after quitting a prover session`);
@@ -151,7 +151,7 @@ describe("pvs-prover", () => {
 		// check prover status
 		const proverStatus: PvsResponse = await pvsProxy.proverStatus();
 		expect(proverStatus.result).toEqual("inactive");
-	}, 10000);
+	}, 4000);
 	
 
 	it(`can generate .tcc file content`, async () => {
@@ -315,8 +315,7 @@ describe("pvs-prover", () => {
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
 
-
-		// this version of the theory typechecks correctly, so the prover should correctly start a prover session
+		// this version of the theory, on the other hand, typechecks correctly, so the prover should correctly start a prover session
 		desc = {
 			contextFolder: radixExamples,
 			fileExtension: ".pvs",
@@ -334,5 +333,34 @@ describe("pvs-prover", () => {
 
 	}, 2000);
 	
-	
+	it(`is robust to incorrect / malformed prover commands`, async () => {
+		label(`is robust to incorrect / malformed prover commands`);
+
+		const desc = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "sq",
+			formulaName: "sq_neg",
+			theoryName: "sq",
+			rerun: false
+		};
+
+		let response: PvsResponse = await pvsProxy.proveFormula(desc);
+		console.dir(response);
+		expect(response.result.label).toEqual(test.sq_neg_prove_formula.label);
+		expect(response.result.sequent).toEqual(test.sq_neg_prove_formula.sequent);
+
+		// send proof command (skosimp*)
+		response = await pvsProxy.proofCommand({ cmd: '(sko)'});
+		expect(response.result.commentary).toBeDefined();
+		expect(response.results.commentary[0].endsWith("not a valid prover command")).toBeTruthy();
+
+		response = await pvsProxy.proofCommand({ cmd: '(sko'});
+		expect(response.result.commentary).toBeDefined();
+		expect(response.results.commentary[0].endsWith("not a valid prover command")).toBeTruthy();
+
+		// quit the proof attempt
+		await pvsProxy.proofCommand({ cmd: 'quit'});
+	});
+
 });

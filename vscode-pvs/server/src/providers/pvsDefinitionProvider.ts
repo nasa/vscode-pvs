@@ -148,7 +148,7 @@ export class PvsDefinitionProvider {
 		// part of this extra logic can be removed when Sam completes the implementation of find-object
 		if (ans && ans.result) {
 			const declarations: FindDeclarationResult = ans.result;
-			if (declarations) {
+			if (declarations && typeof declarations === "object" && declarations.length > 0) {
 				const candidates: PvsDefinition[] = declarations.map((info: {
 					declname?: string;
 					type?: string;

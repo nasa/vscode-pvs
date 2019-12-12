@@ -7,7 +7,7 @@ import { label, log, dir, configFile, sandboxExamples } from './test-utils';
 //----------------------------
 //   Test cases for parser
 //----------------------------
-describe("workspace", () => {
+describe("pvs-proxy", () => {
 	let pvsProxy: PvsProxy = null;
 	beforeAll(async () => {
 		const config: string = await fsUtils.readFile(configFile);

@@ -678,6 +678,21 @@ export function proofScriptToJson (proofScript: string): ProofTree {
 	return null;
 }
 
+export function isQuitCommand (cmd: string): boolean {
+	return cmd === "quit" 
+		|| cmd === "quit;"
+		|| cmd === "(quit)"
+		|| cmd === "exit"
+		|| cmd === "exit;";
+}
+
+export function isEmptyCommand (cmd: string): boolean {
+	return cmd === "" 
+		|| cmd === "()"
+		|| cmd === null;
+}
+
+
 
 /**
  * Lists all theories in a given context foder
