@@ -5,7 +5,7 @@ The environment redefines the way developers interact with PVS, and better align
 ![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.14](releases/vscode-pvs-1.0.14.vsix)
+[vscode-pvs-1.0.15-alpha](releases/vscode-pvs-1.0.15-alpha.vsix)
 
 ## Functionalities
 The main functionalities provided by the environment are as follows:
