@@ -38,7 +38,7 @@
 	@echo 'Installing dependencies...'
 	npm install
 	@echo 'Compiling...'
-	cd .. && npm run compile-client && cd client
+	npm install --no-save typescript && npm run compile
 
 install:
 	npm install

@@ -38,7 +38,7 @@
 	@echo 'Installing dependencies...'
 	npm install
 	@echo 'Compiling...'
-	npm run compile
+	npm install --no-save typescript && npm run compile
 
 install:
 	npm install

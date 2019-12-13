@@ -84,7 +84,7 @@ export class PvsCliGateway {
 		return new Promise((resolve, reject) => {
 			this.httpServer = http.createServer();
 			this.httpServer.listen(this.port, "0.0.0.0", () => {
-				const url = `http://${this.httpServer.address().address}:${this.httpServer.address().port}`;
+				const url = `http://${this.httpServer.address().toString()}`;
 				console.dir(this.httpServer.address(), { depth: null });
 				// console.info(`Server folder ${daaDisplaysRoot}`);
 				console.info(`[pvs-cli-gateway] http server ready at ${url}`);

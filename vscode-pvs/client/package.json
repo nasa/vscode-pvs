@@ -2,7 +2,7 @@
 	"name": "vscode-pvs-client",
 	"description": "PVS client for Visual Studio Code",
 	"author": "Paolo Masci",
-	"version": "1.1.2",
+	"version": "1.0.15-alpha",
 	"publisher": "paolomasci",
 	"license": "NASA-1.3",
 	"notices": {
@@ -14,18 +14,18 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "xxx"
+		"url": "https://github.com/nasa/vscode-pvs"
 	},
 	"engines": {
-		"vscode": "^1.33.1"
+		"vscode": "*"
 	},
 	"dependencies": {
 		"vscode-languageclient": "^5.2.1",
-		"ws": "^7.1.2"
+		"ws": "^7.2.0"
 	},
 	"devDependencies": {
-		"vscode": "^1.1.33",
-		"@types/node": "^8.9.1"
+		"@types/vscode": "^1.41.0",
+		"@types/node": "^12.12.17"
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
