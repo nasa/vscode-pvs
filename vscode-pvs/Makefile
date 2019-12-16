@@ -39,7 +39,7 @@ all:
 	node_modules/vsce/out/vsce package
 
 install:
-	npm install && npm install --no-save jasmine && npm install --no-save jasmine-ts
+	npm install && npm install --no-save jasmine ts-node jasmine-ts
 
 test-proxy:
 	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-proxy.json
