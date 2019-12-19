@@ -1,7 +1,7 @@
 import * as pvsgui from "./server/common/pvs-gui.d";
 import { ProofTree } from "./server/common/serverInterface";
 
-export const EXTERNAL_SERVER: boolean = false;
+export const EXTERNAL_SERVER: boolean = true;
 
 export const parse1_result: pvsgui.ParseResult =
     [ { id: 'sqrt',
