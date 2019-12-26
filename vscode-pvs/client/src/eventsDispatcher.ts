@@ -44,12 +44,13 @@ import { VSCodePvsProofExplorer } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
 import { ProofStateNode } from './common/languageUtils';
 import { ContextDescriptor, serverEvent, serverCommand } from "./common/serverInterface";
-import { window, commands, ExtensionContext } from "vscode";
+import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsSequentViewer } from "./views/vscodePvsSequentViewer";
 import { PVSioTerminal } from "./views/vscodePVSioTerminal";
+import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -60,6 +61,7 @@ export class EventsDispatcher {
     protected proofExplorer: VSCodePvsProofExplorer;
     protected vscodePvsTerminal: VSCodePvsTerminal;
     protected sequentViewer: VSCodePvsSequentViewer;
+    protected proofMate: VSCodePvsProofMate;
 
     constructor (client: LanguageClient, handlers: {
         statusBar: VSCodePvsStatusBar,
@@ -67,7 +69,8 @@ export class EventsDispatcher {
         theoryExplorer: VSCodePvsTheoryExplorer,
         proofExplorer: VSCodePvsProofExplorer,
         vscodePvsTerminal: VSCodePvsTerminal,
-        sequentViewer: VSCodePvsSequentViewer
+        sequentViewer: VSCodePvsSequentViewer,
+        proofMate: VSCodePvsProofMate
     }) {
         this.client = client;
         this.statusBar = handlers.statusBar;
@@ -76,6 +79,7 @@ export class EventsDispatcher {
         this.proofExplorer = handlers.proofExplorer;
         this.vscodePvsTerminal = handlers.vscodePvsTerminal;
         this.sequentViewer = handlers.sequentViewer;
+        this.proofMate = handlers.proofMate;
     }
     protected resource2desc (resource: any): { 
         fileName: string, fileExtension: string, contextFolder: string 
@@ -155,6 +159,8 @@ export class EventsDispatcher {
             this.proofExplorer.setInitialProofState(desc.response.result);
             // request proof script
             this.client.sendRequest(serverCommand.proofScript, desc.args);
+            // set vscode context variable prover-session-active to true
+            vscode.commands.executeCommand('setContext', 'prover-session-active', true);
         });
 		this.client.onRequest(serverEvent.proofScriptResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             if (desc) {
@@ -163,6 +169,8 @@ export class EventsDispatcher {
                     this.proofExplorer.setProofDescriptor(desc.args);
                     this.proofExplorer.showProofScript(desc.response.result);
                     this.proofExplorer.activateSelectedProof();
+                    
+                    this.proofMate.addRecommendations([ { cmd: "skosimp*", tooltip: "Removes universal quantifier" } ]);
                 } else {
                     console.error(`[event-dispatcher] Warning: ${serverEvent.proofScriptResponse} response indicates error`, desc);
                 }
@@ -287,14 +295,35 @@ export class EventsDispatcher {
         this.client.onNotification("server.status.ready", () => {
             this.statusBar.ready();
         });
-        this.client.onNotification("server.status.start-important-task", (msg: string) => {
-            window.showInformationMessage(msg);
-            this.statusBar.progress(msg);
+        this.client.onNotification("server.status.start-important-task", (message: string) => {
+
+            // show dialog with progress
+            window.withProgress({
+                location: ProgressLocation.Notification,
+                cancellable: true
+            }, (progress, token) => {    
+                progress.report({ increment: -1, message });
+    
+                return new Promise((resolve, reject) => {
+                    token.onCancellationRequested(() => {
+                        resolve(null);
+                    });
+                    this.client.onNotification("server.status.progress-important-task", (progress_message: string) => {
+                        progress.report({ increment: -1, message: progress_message });
+                    });
+                    this.client.onNotification("server.status.end-important-task", (end_message: string) => {
+                        window.showInformationMessage(end_message);
+                        this.statusBar.ready();
+                        resolve(null);
+                    });
+                });
+            });
+
+            // show progress on the status bar
+            this.statusBar.progress(message);
+
         });
-        this.client.onNotification("server.status.end-important-task", (msg: string) => {
-            window.showInformationMessage(msg);
-            this.statusBar.ready();
-        });
+
         this.client.onNotification("server.status.report-error", (msg: string) => {
             window.showErrorMessage(msg);
             this.statusBar.ready();

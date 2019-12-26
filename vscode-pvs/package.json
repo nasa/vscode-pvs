@@ -23,7 +23,7 @@
 		"multi-root ready"
 	],
 	"engines": {
-		"vscode": ">=1.41.0"
+		"vscode": ">=1.31.0"
 	},
 	"activationEvents": [
 		"onLanguage:pvs"
@@ -94,7 +94,12 @@
 				{
 					"id": "proof-explorer-view",
 					"name": "PVS Proof Explorer",
-					"when": "resourceLangId == pvs"
+					"when": "resourceLangId == pvs && prover-session-active"
+				},
+				{
+					"id": "proofmate-view",
+					"name": "PVS Proof Mate",
+					"when": "resourceLangId == pvs && prover-session-active"
 				}
 			]
 		},
@@ -578,7 +583,7 @@
 	"devDependencies": {
 		"@types/node": "12.12.2",
 		"@types/jasmine": "^3.5.0",
-		"@types/vscode": "^1.41.0",
+		"@types/vscode": "^1.31.0",
 		"typescript": "^3.7.3",
 		"vsce": "^1.71.0",
 		"xmlrpc": "^1.3.2"

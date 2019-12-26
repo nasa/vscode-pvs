@@ -52,6 +52,7 @@ import { VSCodePvsSequentViewer } from './views/vscodePvsSequentViewer';
 import { serverEvent } from "./common/serverInterface";
 import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsPackageManager } from './providers/vscodePvsPackageManager';
+import { VSCodePvsProofMate } from './views/vscodePvsProofMate';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -84,6 +85,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// sequent viewer
 	protected sequentViewer: VSCodePvsSequentViewer;
+
+	// proofmate
+	protected proofMate: VSCodePvsProofMate;
 
 	// events dispatcher
 	protected eventsDispatcher: EventsDispatcher;
@@ -131,7 +135,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				this.decorationProvider.updateDecorations(editor);
 				// trigger file parsing to get syntax diagnostics
 				const context: string = fsUtils.getContextFolder(editor.document.fileName);
-				this.client.sendRequest(comm.serverCommand.parseContext, context);
+				this.client.sendRequest(comm.serverCommand.parseFile, editor.document.fileName);
+				// this.client.sendRequest(comm.serverCommand.parseContext, context);
 			}
 		}, null, this.context.subscriptions);
 
@@ -213,6 +218,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.vscodePvsTerminal.activate(this.context);
 			this.sequentViewer = new VSCodePvsSequentViewer();
 			this.sequentViewer.activate(this.context);
+			this.proofMate = new VSCodePvsProofMate();
+			this.proofMate.activate(this.context);
 			this.pvsioTerminal = new VSCodePVSioTerminal();
 			this.pvsioTerminal.activate(this.context);
 			this.packageManager = new VSCodePvsPackageManager(this.client);
@@ -231,7 +238,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				theoryExplorer: this.theoryExplorer,
 				proofExplorer: this.proofExplorer,
 				vscodePvsTerminal: this.vscodePvsTerminal,
-				sequentViewer: this.sequentViewer
+				sequentViewer: this.sequentViewer,
+				proofMate: this.proofMate
 			});
 			this.eventsDispatcher.activate(context);
 		

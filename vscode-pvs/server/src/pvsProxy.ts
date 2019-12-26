@@ -53,6 +53,8 @@ import * as net from 'net';
 import * as crypto from 'crypto';
 import { SimpleConnection, StrategyDescriptor, ProofNode,  ProofTree, serverEvent } from './common/serverInterface';
 import * as utils from './common/languageUtils';
+import { PvsParser } from './parser/pvsParser';
+import { DiagnosticSeverity, Diagnostic, Position, Range } from 'vscode-languageserver';
 
 //----------------------------
 // constants introduced for dev purposes, while waiting for the new pvs snapshot
@@ -89,7 +91,8 @@ import * as utils from './common/languageUtils';
 //   ("3" (expand "per_release_chevron") (flatten) (postpone))))`;  
 //----------------------------
 
-var assert = require('assert');
+
+const ENABLE_NEW_PARSER: boolean = false;
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -111,17 +114,17 @@ export interface ContextDiagnostics {
   [fileName: string]: PvsResponse
 };
 
-type _PvsResponse_ = _PvsError_ | _PvsResult_
-interface _PvsError_ {
-	jsonrpc: "2.0";
-	id: string;
-	error: string;
-}
-interface _PvsResult_ {
-	jsonrpc: "2.0";
-	id: string;
-	result?: string;
-}
+// type _PvsResponse_ = _PvsError_ | _PvsResult_
+// interface _PvsError_ {
+// 	jsonrpc: "2.0";
+// 	id: string;
+// 	error: string;
+// }
+// interface _PvsResult_ {
+// 	jsonrpc: "2.0";
+// 	id: string;
+// 	result?: string;
+// }
 
 export class PvsProxy {
 	protected debugMode: boolean = false;
@@ -145,7 +148,12 @@ export class PvsProxy {
 	protected cliListener: (data: string) => void; // useful to show progress feedback
 	protected progressInfo: PvsProgressInfo; // sends progress feedback to the front-end, in a form that can be rendered in the status bar
 
-	protected parserQueue: Promise<PvsResponse> = Promise.resolve(null);
+	// protected parserQueue: Promise<PvsResponse> = Promise.resolve(null);
+	/**
+	 * Parser
+	 */
+	protected parser: PvsParser;
+
 
 	protected nReboots: number = 0;
 	readonly MAX_REBOOTS: number = 4;
@@ -174,6 +182,11 @@ export class PvsProxy {
 		this.externalServer = !!opt.externalServer;
 		this.cliListener = null;
 		this.progressInfo = new PvsProgressInfo();
+
+		if (ENABLE_NEW_PARSER) {
+			// create pvs parser
+			this.parser = new PvsParser();
+		}
 	}
 
 	//--------------------------------------------------
@@ -292,31 +305,41 @@ export class PvsProxy {
 	 */
 	async parseFile(desc: { contextFolder: string, fileName: string, fileExtension: string,  }): Promise<PvsResponse> {
 		if (desc) {
-			// using parserQueue to serialize parallel parseFile requests -- pvs-server seems to throw exceptions when sending multiple parse requests at the same time
-			// this.parserQueue = new Promise((resolve, reject) => {
-			// 	this.parserQueue.then(async () => {
-					this.notifyStartExecution(`Parsing ${desc.fileName}`);
-					if (this.isProtectedFolder(desc.contextFolder)) {
-						this.info(`${desc.contextFolder} is already parsed`);
-						// return resolve(null);
-						return null;
-					}
-					const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-					const res: PvsResponse = await this.pvsRequest('parse', [fname]);
-					//console.info('parseFile:');
-					//console.dir(res, { depth: null });
-					this.notifyEndExecution();
-					if (res && ((res.error && res.error.data) || res.result)) {
-						// return resolve(res);
-						return res;	
-					} else {
-						console.log(`[pvs-proxy] Warning: received pvs-server error while parsing file ${desc.fileName}`, res);
-						// return resolve(null);
-						return null;
-					}
-			// 	})
-			// });
-			// return Promise.resolve(this.parserQueue);
+			this.notifyStartExecution(`Parsing ${desc.fileName}`);
+			if (this.isProtectedFolder(desc.contextFolder)) {
+				this.info(`${desc.contextFolder} is already parsed`);
+				// return resolve(null);
+				return null;
+			}
+
+			if (ENABLE_NEW_PARSER) {
+				// using new parser
+				const diags: Diagnostic[] = await this.parser.parseFile(desc); // TODO: create processes in pvsParser
+				const error: { code: number, message: string, data: Diagnostic[] } = (diags && diags.length > 0) ? {
+					code: 1,
+					message: 'Parse error',
+					data: diags
+				} : undefined;
+				return ({
+					jsonrpc: "2.0",
+					id: "xx",
+					error
+				});
+			} else {
+				const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+				const res: PvsResponse = await this.pvsRequest('parse', [fname]);
+				// console.info('parseFile:');
+				// console.dir(res, { depth: null });
+				this.notifyEndExecution();
+				if (res && ((res.error && res.error.data) || res.result)) {
+					// return resolve(res);
+					return res;	
+				} else {
+					console.log(`[pvs-proxy] Warning: received pvs-server error while parsing file ${desc.fileName}`, res);
+					// return resolve(null);
+					return null;
+				}
+			}
 		}
 		return null;
 	}
@@ -455,6 +478,9 @@ export class PvsProxy {
 			if (typeof ans.result !== "object") {
 				console.error(`[pvs-proxy] Warning: pvs-server returned malformed result for find-declaration (expecting object found ${typeof ans.result})`);
 			}
+			if (typeof ans.result === "string") {
+				ans.result = JSON.parse(ans.result);
+			}
 		}
 		return ans;
 	}
@@ -579,19 +605,19 @@ export class PvsProxy {
 		this.notifyStartExecution(`Parsing folder ${contextFolder}`);
 		let result: ContextDiagnostics = {};
 		// console.info(`[pvs-proxy] Parsing folder ${contextFolder}`);
-		if (!this.isProtectedFolder(contextFolder)) {
-			result = {};
-			const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
-			if (contextFiles && contextFiles.fileNames) {
-				for (const i in contextFiles.fileNames) {
-					const fname: string = contextFiles.fileNames[i];
-					const fileName: string = fsUtils.getFileName(fname);
-					const fileExtension: string = fsUtils.getFileExtension(fname);
-					const ans: PvsResponse = await this.parseFile({ fileName, fileExtension, contextFolder });
-					result[fname] = ans;
-				}
-			}
-		}
+		// if (!this.isProtectedFolder(contextFolder)) {
+		// 	result = {};
+		// 	const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
+		// 	if (contextFiles && contextFiles.fileNames) {
+		// 		for (const i in contextFiles.fileNames) {
+		// 			const fname: string = contextFiles.fileNames[i];
+		// 			const fileName: string = fsUtils.getFileName(fname);
+		// 			const fileExtension: string = fsUtils.getFileExtension(fname);
+		// 			const ans: PvsResponse = await this.parseFile({ fileName, fileExtension, contextFolder });
+		// 			result[fname] = ans;
+		// 		}
+		// 	}
+		// }
 		this.notifyEndExecution();
 		// console.info(`[pvs-proxy] ${contextFolder} parsed!`);
 		return result;
@@ -640,6 +666,11 @@ export class PvsProxy {
 	protected notifyStartImportantTask (msg: string): void {
 		if (this.connection) {
 			this.connection.sendNotification("server.status.start-important-task", msg);
+		}
+	}
+	protected notifyProgressImportantTask (msg: string): void {
+		if (this.connection) {
+			this.connection.sendNotification("server.status.progress-important-task", msg);
 		}
 	}
 	protected notifyEndImportantTask (msg: string): void {

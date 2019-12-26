@@ -65,6 +65,7 @@ import { PvsProxy, ContextDiagnostics } from './pvsProxy';
 import { ParseResult, PvsResponse, PvsError, PvsResult, ImportingDecl, TypedDecl, FormulaDecl } from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
 
+import { PvsParser } from './parser/pvsParser';
 
 export interface PvsTheoryDescriptor {
 	id?: string;
@@ -450,13 +451,15 @@ export class PvsLanguageServer {
 				contextFolder: string 
 			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
 			if (desc) {
+				// const response: PvsResponse = await this.parseFile(desc);
+				// const diags: ContextDiagnostics = {};
 				const response: PvsResponse = await this.parseFile(desc);
 				const diags: ContextDiagnostics = {};
 				const fname: string = fsUtils.desc2fname(desc);
 				if (response) {
 					// send parser response
 					this.connection.sendRequest(serverEvent.parseFileResponse, response);
-					// send diagnostics
+					// collect diagnostics
 					diags[fname] = response;
 				} else {
 					// clear diagnostics, as the parse error may have gone and we don't know because pvs-server failed to execute parseFile
@@ -822,6 +825,8 @@ export class PvsLanguageServer {
 					const response: PvsResponse = diags[fname];
 					if (response && response["error"]) {
 						const info: PvsError = <PvsError> response;
+
+						// old parser
 						if (info.error && info.error.data && info.error.data.place && info.error.data.place.length >= 2) {
 							const errorPosition: Position = { line: info.error.data.place[0], character: info.error.data.place[1] };
 							fname = fname.includes("/") ? fname : path.join(contextFolder, fname); // FIXME: pvs-server does not include path when the file is in the current context -- this inconsistency be fixed
@@ -841,6 +846,20 @@ export class PvsLanguageServer {
 							} else {
 								console.error(`[pvs-language-server] Warning: unable to send error diagnostics for file ${fname}`);
 							}
+						}
+						// new parser
+						else if (info.error && info.error.data && info.error.data.length > 0) {
+							const diagnostics: Diagnostic[] = <Diagnostic[]> info.error.data.map(diag => {
+								return {
+									range: {
+										start: { line: diag.range.start.line - 1, character: diag.range.start.character }, // lines in the editor start from 0
+										end: { line: diag.range.end.line - 1, character: diag.range.end.character }
+									},
+									message: diag.message,
+									severity: diag.severity
+								}
+							});
+							this.connection.sendDiagnostics({ uri: `file://${fname}`, diagnostics });
 						}
 					} else {
 						// send clean diagnostics

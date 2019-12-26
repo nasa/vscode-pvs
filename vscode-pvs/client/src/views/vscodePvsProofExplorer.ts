@@ -509,6 +509,14 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.refreshView();
 	}
 
+	hide(): void {
+		commands.executeCommand('setContext', 'prover-session-active', false);
+	}
+
+	reveal(): void {
+		commands.executeCommand('setContext', 'prover-session-active', true);
+	}
+
 	QED (): void {
 		// set QED
 		this.root.QED();

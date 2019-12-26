@@ -44,5 +44,7 @@ install:
 	npm install
 
 clean:
-	rm -rf node_modules
-	rm -rf out
+	-rm -r node_modules
+	-rm -r out
+	-rm test/**/pvsbin/*
+	-rm test/**/pvslog/*

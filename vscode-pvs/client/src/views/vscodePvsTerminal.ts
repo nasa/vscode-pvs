@@ -154,12 +154,13 @@ class TerminalSession {
         if (this.active) {
             // close terminal
             this.terminal.dispose();
-            // close proof explorer
-            if (this.proofExplorer) {
-                this.proofExplorer.resetView();
-            }
+            // close proof explorer and proofmate
+            vscode.commands.executeCommand('setContext', 'prover-session-active', false);
+            // if (this.proofExplorer) {
+            //     this.proofExplorer.resetView();
+            // }
             // close proof stepper and sequent viewer on the status bar
-            vscode.commands.executeCommand("vscode-pvs.close-proof-stepper");
+            // vscode.commands.executeCommand("vscode-pvs.close-proof-stepper");
             vscode.commands.executeCommand("vscode-pvs.close-sequent-viewer");
         }
     }

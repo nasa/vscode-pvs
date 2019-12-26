@@ -24,7 +24,7 @@
 		"ws": "^7.2.0"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.41.0",
+		"@types/vscode": "^1.31.0",
 		"@types/node": "^12.12.17"
 	},
 	"scripts": {

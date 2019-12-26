@@ -57,6 +57,9 @@ test:
 	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-all.json
 test-all: test
 
+parser:
+	cd server/src/parser/ && make
+
 clean:
 	cd client && make clean && cd .. && cd server && make clean && cd ..
 	rm -rf node_modules
