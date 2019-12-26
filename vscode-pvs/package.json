@@ -157,14 +157,6 @@
 				"title": "Prove"
 			},
 			{
-				"command": "vscode-pvs.prove-tccs",
-				"title": "Prove-tccs"
-			},
-			{
-				"command": "vscode-pvs.prove-theorems",
-				"title": "Prove-theorems"
-			},
-			{
 				"command": "vscode-pvs.pvsio-evaluator",
 				"title": "PVSio evaluator"
 			},
@@ -238,16 +230,6 @@
 				{
 					"command": "vscode-pvs.typecheck-file",
 					"when": "view == theory-explorer-view && viewItem == theory",
-					"group": "inline"
-				},
-				{
-					"command": "vscode-pvs.prove-tccs",
-					"when": "view == theory-explorer-view && viewItem == TCCS",
-					"group": "inline"
-				},
-				{
-					"command": "vscode-pvs.prove-theorems",
-					"when": "view == theory-explorer-view && viewItem == THEOREMS",
 					"group": "inline"
 				},
 				{
