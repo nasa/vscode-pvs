@@ -65,8 +65,6 @@ import { PvsProxy, ContextDiagnostics } from './pvsProxy';
 import { ParseResult, PvsResponse, PvsError, PvsResult, ImportingDecl, TypedDecl, FormulaDecl } from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
 
-import { PvsParser } from './parser/pvsParser';
-
 export interface PvsTheoryDescriptor {
 	id?: string;
 	/**

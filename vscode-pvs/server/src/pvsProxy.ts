@@ -53,7 +53,7 @@ import * as net from 'net';
 import * as crypto from 'crypto';
 import { SimpleConnection, StrategyDescriptor, ProofNode,  ProofTree, serverEvent } from './common/serverInterface';
 import * as utils from './common/languageUtils';
-import { PvsParser } from './parser/pvsParser';
+import { PvsParser } from './parser/java/pvsParser';
 import { DiagnosticSeverity, Diagnostic, Position, Range } from 'vscode-languageserver';
 
 //----------------------------
@@ -92,7 +92,7 @@ import { DiagnosticSeverity, Diagnostic, Position, Range } from 'vscode-language
 //----------------------------
 
 
-const ENABLE_NEW_PARSER: boolean = false;
+const ENABLE_NEW_PARSER: boolean = true;
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -313,18 +313,26 @@ export class PvsProxy {
 			}
 
 			if (ENABLE_NEW_PARSER) {
+				const id: string = this.get_fresh_id();
 				// using new parser
-				const diags: Diagnostic[] = await this.parser.parseFile(desc); // TODO: create processes in pvsParser
-				const error: { code: number, message: string, data: Diagnostic[] } = (diags && diags.length > 0) ? {
-					code: 1,
-					message: 'Parse error',
-					data: diags
-				} : undefined;
-				return ({
+				const diags: Diagnostic[] = await this.parser.parseFile(desc);
+				this.notifyEndExecution();
+				if (diags && diags.length > 0) {
+					return {
+						jsonrpc: "2.0",
+						id,
+						error: {
+							code: 1,
+							message: 'Parse error',
+							data: diags
+						}
+					};
+				}
+				return {
 					jsonrpc: "2.0",
-					id: "xx",
-					error
-				});
+					id
+					// TODO: send declarations?
+				}
 			} else {
 				const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 				const res: PvsResponse = await this.pvsRequest('parse', [fname]);

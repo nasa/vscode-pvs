@@ -1,9 +1,6 @@
 {
-    "dependencies": {
-        "antlr4": "^4.7.2",
-        "antlr4-cli": "4.5.3"
-    },
     "scripts": {
-        "antlr4": "node node_modules/antlr4-cli/bin/antlr4.js -Dlanguage=JavaScript PvsLanguage.g4 -o ./dist"
+        "antlr4JS": "java -jar antlr-4.7.2-complete.jar -Dlanguage=JavaScript PvsLanguage.g4 -o ./js",
+        "antlr4Java": "java -jar antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./java"
     }
 }

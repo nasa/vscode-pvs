@@ -1,9 +1,11 @@
 const antlr4 = require('antlr4/index');
-const PvsLanguageLexer = require('./dist/PvsLanguageLexer').PvsLanguageLexer;
-const PvsLanguageParser = require('./dist/PvsLanguageParser').PvsLanguageParser;
-const PvsLanguageListener = require('./dist/PvsLanguageListener').PvsLanguageListener;
-import * as fsUtils from '../common/fsUtils';
+const PvsLanguageLexer = require('./PvsLanguageLexer').PvsLanguageLexer;
+const PvsLanguageParser = require('./PvsLanguageParser').PvsLanguageParser;
+const PvsLanguageListener = require('./PvsLanguageListener').PvsLanguageListener;
+import * as fsUtils from '../../common/fsUtils';
 import { DiagnosticSeverity, Diagnostic, Position, Range } from 'vscode-languageserver';
+import { DefaultErrorStrategy, BailErrorStrategy } from 'antlr4/error/ErrorStrategy';
+import { PredictionMode } from 'antlr4/atn/PredictionMode';
 
 export declare class Symbol {
     channel: number;
@@ -15,6 +17,20 @@ export declare class Symbol {
     tokenIndex: number;
     type: number;
 };
+export declare class Parser {
+    // from the pvs grammar
+    parse ();
+    // from antlr Parser.js
+    buildParseTrees: boolean;
+    _errHandler: DefaultErrorStrategy | BailErrorStrategy;
+    // from antlr Recognizer.js
+    addErrorListener(listener): void;
+    removeErrorListeners(): void;
+    _interp: {
+        predictionMode: PredictionMode
+    };
+
+}
 // @Override
 // PvsLanguageListener.prototype.enterParse = function(ctx) {
 // 	console.log(ctx.getText());
@@ -44,12 +60,55 @@ class PvsLanguageErrorListener extends antlr4.error.ErrorListener {
 	}
 }
 
-export class PvsParser extends PvsLanguageListener {
+export class PvsParser {
+    /**
+     * Parse a pvs file
+     * @param desc File descriptor, includes file name, file extension, and context folder
+     */
+    async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<Diagnostic[]> {
+        const fname: string = fsUtils.desc2fname(desc);
+        console.info(`[vscode-pvs-parser] Parsing ${fname}`);
+        const input: string = await fsUtils.readFile(fname);
+        
+        const chars = new antlr4.InputStream(input.toLocaleString());
+        const lexer = new PvsLanguageLexer(chars);
+        const tokens = new antlr4.CommonTokenStream(lexer);
+        const parser: Parser = new PvsLanguageParser(tokens);
+
+        parser.buildParseTrees = false; // setting buildParseTrees to false should improve performance?
+        // parser._errHandler = new BailErrorStrategy(); // using BailErrorStrategy should improve performance?
+
+        const errors: Diagnostic[] = [];
+        parser.removeErrorListeners();
+        parser.addErrorListener(new PvsLanguageErrorListener(errors));
+
+        return new Promise ((resolve, reject) => {
+
+            parser._interp.predictionMode = PredictionMode.LL; //SLL is the fastest but fails to resolve ambiguities, LL is default, LL_EXACT_AMBIG_DETECTION is the slowest
+            const tree = parser.parse(); // this invocation may take time
+            
+            // logic for processing the parse tree
+            // const listener = new PvsLanguageListener();
+            // antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
+            
+            if (errors.length) {
+                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} contains errors`);
+                console.dir(errors, { depth: null });
+            } else {
+                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully!`);
+                // console.log(tree);
+            }
+            resolve(errors);    
+        });
+    }
+
+    // @Override
+    /*
     enterFunctionDeclaration (ctx) {
         // const tokens = parser.getTokenStream();
         
-        const body: string = ctx.expr().toString();
-        console.dir(body);
+        // const body: string = ctx.expr().toString();
+        // console.dir(body);
 
         // // console.log(ctx.getText());
         // // const identifiers = ctx.identifiers();
@@ -59,40 +118,8 @@ export class PvsParser extends PvsLanguageListener {
         // // const expr = ctx.expr().getText();
         // // console.log(expr);
     }
+    */
 
-    async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<Diagnostic[]> {
-        const fname: string = fsUtils.desc2fname(desc);
-        console.info(`[vscode-pvs-parser] Parsing ${fname}`);
-        const input: string = await fsUtils.readFile(fname);
-        
-        const chars = new antlr4.InputStream(input.toLocaleString());
-        const lexer = new PvsLanguageLexer(chars);
-        const tokens = new antlr4.CommonTokenStream(lexer);
-        const parser = new PvsLanguageParser(tokens);
-
-        parser.buildParseTrees = false; // presumably this will speed up parsing?
-        parser.removeErrorListeners();
-
-        const errors: Diagnostic[] = [];
-        parser.addErrorListener(new PvsLanguageErrorListener(errors));
-
-        return new Promise ((resolve, reject) => {
-            const tree = parser.parse(); // this invocation may take time
-            if (errors.length) {
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} contains errors`);
-                console.dir(errors, { depth: null });
-            } else {
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully!`);
-                // console.log(tree);
-            }
-            resolve(errors);    
-        })
-
-        // const listener = new PvsLanguageListener();
-        // antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
-        // console.log("\n\n" + tree.toStringTree());
-
-    }
 }
 
 // PvsLanguageListener.prototype.enterExpr = function(ctx) {

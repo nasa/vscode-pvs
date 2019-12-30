@@ -114,6 +114,12 @@ K_FORMULA
 K_ASSUMING: A S S U M I N G;
 K_ENDASSUMING: E N D A S S U M I N G;
 K_ASSUMPTION: A S S U M P T I O N;
+K_JUDGEMENT: J U D G E M E N T;
+K_HAS_TYPE: H A S '_' T Y P E;
+K_SUBTYPE_OF: S U B T Y P E '_' O F;
+K_AUTO_REWRITE: A U T O '_' R E W R I T E;
+K_AUTO_REWRITE_PLUS: A U T O '_' R E W R I T E '+';
+K_AUTO_REWRITE_MINUS: A U T O '_' R E W R I T E '-';
 
 O_IFF: (I F F) | '<=>' | '⇔';
 O_IMPLIES: (I M P L I E S) | '=>' | '⇒';
@@ -126,7 +132,17 @@ O_GE: '>=' | '≥';
 O_EQUAL: '=';
 O_EXP: '^';
 O_CONCAT: 'o';
+O_COMMA: ',';
+O_SUCH_THAT: '|';
+COLON: ':';
+TERMINATOR: ';';
 
+PAREN_L: '(';
+PAREN_R: ')';
+BRACKET_L: '[';
+BRACKET_R: ']';
+BRACE_L: '{';
+BRACE_R: '}';
 
 //------------------------
 // Operators -- defined as a parser rule

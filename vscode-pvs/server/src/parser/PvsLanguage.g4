@@ -47,84 +47,106 @@ parse
 	;
 
 theory
- 	: identifier ('[' theoryFormal (',' theoryFormal)* ']')? ':' K_THEORY 
-	 	K_BEGIN
+ 	: theoryBegin
 			assumingPart?
 			theoryPart?
-		K_END identifier
+	  theoryEnd
 	;
-
-theoryFormal
-	: ('(' importing ')')? theoryFormalDeclaration
-	;
-theoryFormalDeclaration
-	: theoryFormalType
-	| theoryFormalConst
-	;
+theoryBegin
+    : identifier theoryFormals? ':' K_THEORY K_BEGIN
+    ;
+theoryEnd
+    : K_END identifier
+    ;
+theoryFormals
+    : ('[' (theoryFormalType | theoryFormalConstant) (',' (theoryFormalType | theoryFormalConstant))* ']')
+    ;
 theoryFormalType
 	: identifier ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS)
 	;
-theoryFormalConst
-	: identifierOrOperators ':' typeExpression
+theoryFormalConstant
+	: ('(' importing ')')? identifierOrOperators ':' typeExpression
 	;
 
 assumingPart
-	: K_ASSUMING assumingElement (';' assumingElement)* K_ENDASSUMING
+	: K_ASSUMING (assumingElement ';'?)+ K_ENDASSUMING
 	;
 assumingElement
-	: importing
-	| assumption
-	| theoryDeclaration
-	;
+    : importing
+    | assumption
+    | declaration
+    ;
 assumption
-	: identifiers ':' K_ASSUMPTION expr
+	: identifier (',' identifier)* ':' K_ASSUMPTION expr
 	;
 
 theoryPart
-	: theoryElement+
+	: (importing | declaration)+
 	;
-theoryElement
-	: importing
 	// judgement
 	// conversion
-	// autorewrite
-	| theoryDeclaration ';'?
-	;
-theoryDeclaration
+declaration
 	: typeDeclaration
 	| formulaDeclaration
 	| constantDeclaration
+	| varDeclaration
 	| functionDeclaration
 	| recursiveDeclaration
+	| judgementDeclaration
 	| conversionDeclaration
-	| varDeclaration
+	| autorewriteDeclaration
+	| declaration ';'
 	;
-
+autorewriteDeclaration
+    : (K_AUTO_REWRITE | K_AUTO_REWRITE_PLUS | K_AUTO_REWRITE_MINUS) name (',' name)*
+    ;
 typeDeclaration
-	: identifiers arguments* ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS) typeDefinition?
+	: identifier arguments* (identifier arguments*)* ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS) typeDefinition?
 	;
 typeDefinition
 	: ('=' | K_FROM) typeExpression (K_CONTAINING expr)?
 	;
 
 formulaDeclaration
-	: identifiers ':' K_FORMULA expr
+	: identifier ':' K_FORMULA formulaDefinition
 	;
+formulaDefinition
+    : expr
+    ;
 
 constantDeclaration
-	: identifierOrOperators ':' typeExpression ('=' expr)?
-	;
+ 	: identifierOrOperators ':' typeExpression ('=' constantDefinition)?
+ 	;
+constantDefinition
+    : expr
+    ;
 
 functionDeclaration
-	: identifierOrOperator arguments*
-		':' (K_MACRO | K_INDUCTIVE)? typeExpression ('=' expr)?
+	: (identifier | unaryOp | binaryOp) arguments* ':' (K_MACRO | K_INDUCTIVE)? typeExpression ('=' functionDefinition)?
+	// | error_functionDeclaration_missed_equal
+	;
+functionDefinition
+    : expr
+    ;
+// error_functionDeclaration_missed_equal
+//    : (identifier | unaryOp | binaryOp) arguments* ':' (K_MACRO | K_INDUCTIVE)? typeExpression functionDefinition { notifyErrorListeners("Missing '=' before definition."); }
+//    ;
+recursiveDeclaration
+	: (identifier | unaryOp | binaryOp) arguments*
+		':' K_RECURSIVE typeExpression
+		'=' functionDefinition
+		measureExpression
 	;
 
-recursiveDeclaration
-	: identifierOrOperator arguments*
-		':' K_RECURSIVE typeExpression
-		'=' expr
-		measureExpression
+judgementDeclaration
+	: subtypeJudgement
+	| constantJudgement
+	;
+subtypeJudgement
+	: ((identifier | unaryOp | binaryOp) ':')? K_JUDGEMENT typeExpression (',' typeExpression)* K_SUBTYPE_OF typeExpression
+	;
+constantJudgement
+	: ((identifier | unaryOp | binaryOp) ':')? K_JUDGEMENT (NUMBER | (name bindings*)) (',' (NUMBER | '{' name bindings* '}'))* K_HAS_TYPE typeExpression
 	;
 
 conversionDeclaration
@@ -136,7 +158,7 @@ varDeclaration
 	;
 
 arguments
-	: '(' identifiers (':' expr)? (',' identifiers (':' expr)?)* ')'
+	: '(' expr (':' expr)? (',' expr (':' expr)?)* ')'
 	| '(' subtype (',' subtype)* ')'
 	;
 typeExpression
@@ -149,27 +171,52 @@ typeExpression
 	| name
 	;
 expr
-	: expr binaryOp expr+
-	| expr arguments
-	| functionExpression
+	: constantExpression
+//	unaryOp+ expr
+//	| expr (binaryOp expr)+
 	| typeExpression
-	| unaryOp expr+
-	| TRUE_FALSE
-	| name
+    | listExpression
+    | recordExpression
+    | expr K_WHERE letBindings
+    | expr K_WITH '[' assignmentExpression (',' assignmentExpression)* ']'
+	| term
+	;
+
+constantExpression
+    : 	'('* unaryOp? term (binaryOp '('* unaryOp? term ')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
+    ;
+term
+    : name ('`' term)*
 	| ifExpression
 	| bindingExpression
-	| '(:' expr (',' expr)* ':)' // list literal
-	| '(#' assignmentExpression (',' assignmentExpression)* '#)' // record literal
-	| '(' expr (',' expr)* ')'
-	| K_LET letBindings K_IN expr+
-	| expr K_WHERE letBindings
-	| expr K_WITH '[' assignmentExpression (',' assignmentExpression)* ']'
-	| NUMBER
+    | letExpression
+    | tupleExpression
+    | NUMBER
+    | TRUE_FALSE
 	| STRING
-	;
+    ;
+letExpression
+    : K_LET letBindings K_IN expr
+    | '(' letExpression ')'
+    ;
+tupleExpression
+    : '(' expr (',' expr)+ ')'
+    | '(' tupleExpression ')'
+    ;
+listExpression
+    : '(:' expr (',' expr)* ':)'
+    | 'cons' '(' expr (',' expr)* ')'
+    | '(' listExpression ')'
+    | listExpression (O_CONCAT '('* listExpression ')'*)+ // to maximize parsing speed, this rule does not check matching parentheses
+    ;
+recordExpression
+    : '(#' assignmentExpression (',' assignmentExpression)* '#)'
+    | '(' recordExpression ')'
+    ;
 ifExpression
 	: K_IF expr K_THEN expr (K_ELSIF expr K_THEN expr)* K_ELSE expr K_ENDIF
 	| K_COND expr '->' expr (',' expr '->' expr)* (',' K_ELSE '->' expr)? K_ENDCOND
+	| '(' ifExpression ')'
 	;
 measureExpression
 	: K_MEASURE expr (K_BY expr)?
@@ -177,12 +224,14 @@ measureExpression
 
 bindingExpression
 	: (K_FORALL | K_EXISTS | K_LAMBDA) lambdaBindings ':' expr
+	| '(' bindingExpression ')'
 	;
 lambdaBindings
-	: lambdaBinding (',' lambdaBinding)* //identifierOrOperators ':' typeExpression (',' identifierOrOperators ':' typeExpression)*
+	: lambdaBinding (',' lambdaBinding)*
+	| '(' lambdaBinding (',' lambdaBinding)* ')'
 	;
 lambdaBinding
-	: identifierOrOperator
+	: identifier | unaryOp | binaryOp
 	| bindings
 	;
 bindings
@@ -193,10 +242,10 @@ binding
 	| '(' typeIds ')'
 	;
 typeId
-	: identifierOrOperator (':' expr+)? ('|' expr+)?
+	: (identifier | unaryOp | binaryOp) (':' expr)? ('|' expr)?
 	;
 typeIds
-	: identifierOrOperators (':' expr+)? ('|' expr+)?
+	: identifierOrOperators (':' expr)? ('|' expr)?
 	;
 letBindings
 	: letBinding (',' letBinding)*
@@ -205,10 +254,7 @@ letBinding
 	: letBind (',' letBind)* '=' expr
 	;
 letBind
-	: identifierOrOperator? bindings* (':' expr)?
-	;
-functionExpression
-	: identifier actuals? '(' expr+ (',' expr+)* ')' ('(' expr+ (',' expr+)* ')')*
+	: (identifier | unaryOp | binaryOp)? bindings* (':' expr)?
 	;
 assignmentExpression
 	: identifier (':=' | '|->') expr
@@ -230,14 +276,14 @@ tupleType
 	;
 
 subtype
-	: '{' identifiers ':' expr '|' expr '}'
-	| '(' identifiers (':' expr ('|' expr)?)? ')' // shotcut for subtype
-	| '(' expr ')' // another shortcut for subtype
+	: '{' identifiers (':' expr)? (',' identifiers (':' expr)?)* ('|' expr)? '}'
+	| '(' expr (':' expr)? ('|' expr)? ')' // shotcut for subtype
+//	| '(' expr ')' // another shortcut for subtype
 	// | name ('|' expr)? // another shortcut for subtype
 	;
 
 name
-	: (identifier '@')? identifierOrOperator actuals? arguments*
+	: (identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
 	;
 
 actuals
@@ -249,10 +295,10 @@ enumerationType
 	;
 
 importing
-	: K_IMPORTING theoryName (',' theoryName)*
+	: K_IMPORTING importedTheoryName (',' importedTheoryName)*
 	;
 
-theoryName
+importedTheoryName
 	: (identifier '@')? identifier actuals?
 	;
 
@@ -262,10 +308,10 @@ datatype
 
 identifier: ID;
 identifiers: identifier (',' identifier)*;
-identifierOrOperator: identifier | unaryOp | binaryOp;
-identifierOrOperators: identifierOrOperator (',' identifierOrOperator)*;
+//identifierOrOperator: identifier | unaryOp | binaryOp;
+identifierOrOperators: (identifier | unaryOp | binaryOp) (',' (identifier | unaryOp | binaryOp))*;
 
 unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>';
-binaryOp: '`' | O_CONCAT | O_IFF | O_IMPLIES | O_AND | O_OR | '*' | '/' | '+' | '-' | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP;
+binaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | '*' | '/' | '+' | '-' | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT;
 
 

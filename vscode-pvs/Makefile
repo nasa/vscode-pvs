@@ -36,6 +36,9 @@
  
 all:
 	npm install
+	cd server && npm install --no-save typescript && npm run compile && npm install
+	cd client && npm install --no-save typescript && npm run compile && npm install
+	make parser
 	node_modules/vsce/out/vsce package
 
 install:
