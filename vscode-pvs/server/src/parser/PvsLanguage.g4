@@ -183,7 +183,7 @@ expr
 	;
 
 constantExpression
-    : 	'('* unaryOp? '('* term ')'* (binaryOp '('* unaryOp? term ')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
+    : 	'('* unaryOp? term ')'* (binaryOp '('* unaryOp? term ')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
     ;
 term
     : name ('`' term)*
