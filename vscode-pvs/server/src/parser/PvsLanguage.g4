@@ -62,7 +62,7 @@ theoryFormals
     : ('[' (theoryFormalType | theoryFormalConstant) (',' (theoryFormalType | theoryFormalConstant))* ']')
     ;
 theoryFormalType
-	: identifier ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS)
+	: identifierOrOperators ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS)
 	;
 theoryFormalConstant
 	: ('(' importing ')')? identifierOrOperators ':' typeExpression
@@ -174,16 +174,16 @@ expr
 	: constantExpression
 //	unaryOp+ expr
 //	| expr (binaryOp expr)+
-	| typeExpression
     | listExpression
     | recordExpression
     | expr K_WHERE letBindings
     | expr K_WITH '[' assignmentExpression (',' assignmentExpression)* ']'
 	| term
+	| typeExpression
 	;
 
 constantExpression
-    : 	'('* unaryOp? term (binaryOp '('* unaryOp? term ')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
+    : 	'('* unaryOp? '('* term ')'* (binaryOp '('* unaryOp? term ')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
     ;
 term
     : name ('`' term)*
