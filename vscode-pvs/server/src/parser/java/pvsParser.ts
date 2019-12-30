@@ -58,24 +58,29 @@ export class PvsParser {
 
         let diagnostics: Diagnostic[] = [];
         const parserFolder: string = __dirname;
+
+        const start: number = Date.now();
 		// const cmd: string = `cd ${parserFolder} && java -classpath ../antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ${fname}`;
         // const cmd: string = `cd ${parserFolder} && java -classpath ../antlr-4.7.2-complete.jar:./ PvsParser ${fname}`; // this will produce a JSON object of type Diagnostic[]
         const cmd: string = `cd ${parserFolder} && java -jar PvsParser.jar ${fname}`; // this will produce a JSON object of type Diagnostic[]
         try {
             const errors: Buffer = execSync(cmd);
+            const stats: number = Date.now() - start;
             if (errors && errors.length > 0) {
                 const res: string = errors.toLocaleString();
                 console.log(res);
                 diagnostics = JSON.parse(res);
                 console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} contains errors`);
             } else {
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully!`);
+                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${stats}ms`);
             }
         } catch (relocateError) {
             console.log(relocateError);
         } finally {
-            console.log(`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
-            console.dir(diagnostics, { depth: null });
+            // console.log(`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
+            if (diagnostics && diagnostics.length > 0) {
+                console.dir(diagnostics, { depth: null });
+            }
             return diagnostics;
         }
 	}
