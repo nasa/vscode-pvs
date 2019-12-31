@@ -36,13 +36,8 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { spawn, ChildProcess, execSync, execFileSync, execFile } from 'child_process';
+import { execSync } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
-import { 
-	PvsParserResponse, PvsVersionDescriptor,
-	SimpleConnection
-} from '../../common/serverInterface'
-import * as path from 'path';
 import * as fsUtils from '../../common/fsUtils';
 import { Diagnostic } from 'vscode-languageserver';
 
@@ -68,19 +63,19 @@ export class PvsParser {
             const stats: number = Date.now() - start;
             if (errors && errors.length > 0) {
                 const res: string = errors.toLocaleString();
-                console.log(res);
+                // console.log(res);
                 diagnostics = JSON.parse(res);
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} contains errors`);
+                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed in ${stats}ms`);
             } else {
                 console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${stats}ms`);
             }
-        } catch (relocateError) {
-            console.log(relocateError);
+        } catch (parserError) {
+            console.log(parserError);
         } finally {
             // console.log(`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
-            if (diagnostics && diagnostics.length > 0) {
-                console.dir(diagnostics, { depth: null });
-            }
+            // if (diagnostics && diagnostics.length > 0) {
+            //     console.dir(diagnostics, { depth: null });
+            // }
             return diagnostics;
         }
 	}

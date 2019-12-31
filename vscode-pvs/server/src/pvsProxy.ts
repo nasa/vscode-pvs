@@ -613,19 +613,27 @@ export class PvsProxy {
 		this.notifyStartExecution(`Parsing folder ${contextFolder}`);
 		let result: ContextDiagnostics = {};
 		// console.info(`[pvs-proxy] Parsing folder ${contextFolder}`);
-		// if (!this.isProtectedFolder(contextFolder)) {
-		// 	result = {};
-		// 	const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
-		// 	if (contextFiles && contextFiles.fileNames) {
-		// 		for (const i in contextFiles.fileNames) {
-		// 			const fname: string = contextFiles.fileNames[i];
-		// 			const fileName: string = fsUtils.getFileName(fname);
-		// 			const fileExtension: string = fsUtils.getFileExtension(fname);
-		// 			const ans: PvsResponse = await this.parseFile({ fileName, fileExtension, contextFolder });
-		// 			result[fname] = ans;
-		// 		}
-		// 	}
-		// }
+		if (!this.isProtectedFolder(contextFolder)) {
+			result = {};
+			const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
+			if (contextFiles && contextFiles.fileNames) {
+				const promises: Promise<PvsResponse>[] = [];
+				for (const i in contextFiles.fileNames) {
+					const fname: string = contextFiles.fileNames[i];
+					const fileName: string = fsUtils.getFileName(fname);
+					const fileExtension: string = fsUtils.getFileExtension(fname);
+					// const ans: PvsResponse = await this.parseFile({ fileName, fileExtension, contextFolder });
+					// result[fname] = ans;
+					promises.push(new Promise ((resolve, reject) => {
+						this.parseFile({ fileName, fileExtension, contextFolder }).then((ans: PvsResponse) => {
+							result[fname] = ans;
+							resolve(ans);
+						});
+					}));
+				}
+				Promise.all(promises);
+			}
+		}
 		this.notifyEndExecution();
 		// console.info(`[pvs-proxy] ${contextFolder} parsed!`);
 		return result;

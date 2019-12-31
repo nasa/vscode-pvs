@@ -1023,10 +1023,11 @@ export class PvsLanguageServer {
 							this.connection.sendRequest(serverEvent.pvsServerReady, desc);
 							this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
 							// parse context folder after a timeout and send diagnostics to the client
-							setTimeout(async () => {
-								const diags: ContextDiagnostics = await this.parseContext({ contextFolder });
-								this.sendDiagnostics(diags, contextFolder, "Parse");	
-							}, 4000);
+							// disabling parseContext for now as the parser still lacks performance
+							// setTimeout(async () => {
+							// 	const diags: ContextDiagnostics = await this.parseContext({ contextFolder });
+							// 	this.sendDiagnostics(diags, contextFolder, "Parse");	
+							// }, 4000);
 						} else {
 							console.error(`[pvs-language-server] Error: incompatible pvs version ${desc["pvs-version"]}`);
 							this.connection.sendRequest(serverEvent.pvsIncorrectVersion, `Incorrect PVS version ${desc["pvs-version"]} (vscode-pvs requires pvs ver >= 7)`);
