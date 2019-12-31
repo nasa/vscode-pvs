@@ -39,107 +39,110 @@
 grammar PvsDDL;
 import PvsLexer;
 
-parse
-    : program* EOF
+parseDDL
+    : dlProgram* EOF
     ;
 
-program
-    : discreteProgramLoop
+dlProgram
+    : dlDiscreteProgramLoop
     | dlExpression
-    | identifier
+    | dlIdentifier
     ;
 
 dlExpression
-    : term
-    | booleanExpression
-    | assignmentExpression
-    | arithmeticExpression
-    | bindingExpression
-    | starExpression
-    | allRunsExpression
-    | someRunsExpression
+    : dlTerm
+    | dlBooleanExpression
+    | dlAssignmentExpression
+    | dlArithmeticExpression
+    | dlBindingExpression
+    | dlStarExpression
+    | dlAllRunsExpression
+    | dlSomeRunsExpression
     ;
 
-assignmentExpression
-    : simpleAssignment
-    | parallelAssignment
-    | sequentialAssignment
-    | anyAssignment
+dlAssignmentExpression
+    : dlSimpleAssignment
+    | dlParallelAssignment
+    | dlSequentialAssignment
+    | dlAnyAssignment
     ;
 
-parallelAssignment
-    : simpleAssignment (',' simpleAssignment)+
+dlParallelAssignment
+    : dlSimpleAssignment (',' dlSimpleAssignment)+
     ;
 
-sequentialAssignment
-    : simpleAssignment (';' simpleAssignment)+
+dlSequentialAssignment
+    : dlSimpleAssignment (';' dlSimpleAssignment)+
     ;
 
-simpleAssignment
-    : identifier ':=' dlExpression
+dlSimpleAssignment
+    : dlIdentifier ':=' dlExpression
     ;
 
-anyAssignment
-    : identifier ':=' 'ANY' '(' bindDeclaration (',' bindDeclaration)* ('|' booleanExpression)? ')'
+dlAnyAssignment
+    : dlIdentifier ':=' 'ANY' '(' bindDeclaration (',' bindDeclaration)* ('|' dlBooleanExpression)? ')'
     ;
 
-arithmeticExpression
-    :<assoc=right> arithmeticExpression '^' arithmeticExpression
-    |<assoc=left> arithmeticExpression ('*' | '/') arithmeticExpression
+dlArithmeticExpression
+    :<assoc=right> dlArithmeticExpression '^' dlArithmeticExpression
+    |<assoc=left> dlArithmeticExpression ('*' | '/') dlArithmeticExpression
     | timesExpression
-    |<assoc=left> arithmeticExpression ('+' | '-') arithmeticExpression
-    | '(' arithmeticExpression ')'
-    | term
+    |<assoc=left> dlArithmeticExpression ('+' | '-') dlArithmeticExpression
+    | '(' dlArithmeticExpression ')'
+    | dlTerm
     | NUMBER
     ;
 
 timesExpression
-    :<assoc=left> NUMBER term
+    :<assoc=left> NUMBER dlTerm
     ;
 
-booleanExpression
-    : booleanExpression O_AND booleanExpression
-    | booleanExpression O_OR booleanExpression
-    | O_NOT booleanExpression
-    | booleanExpression (O_GE | O_LE | '>' | '<' | O_EQUAL) booleanExpression
-    | term
+dlBooleanExpression
+    : dlBooleanExpression O_AND dlBooleanExpression
+    | dlBooleanExpression O_OR dlBooleanExpression
+    | O_NOT dlBooleanExpression
+    | dlBooleanExpression (O_GE | O_LE | '>' | '<' | O_EQUAL) dlBooleanExpression
+    | dlTerm
     | NUMBER
-    | '(' booleanExpression ')'
+    | '(' dlBooleanExpression ')'
     ;
 
-bindingExpression
+dlBindingExpression
     : 'FORALL' '(' bindDeclaration (',' bindDeclaration)* ')' ':' dlExpression
     ;
 
 bindDeclaration
-    : identifier ':' typeName
+    : dlIdentifier ':' typeName
     ;
 
-starExpression
+dlStarExpression
     : '(' dlExpression ')' '*'
     ;
 
-allRunsExpression
-    : '[' program ']' booleanExpression
+dlAllRunsExpression
+    : '[' dlProgram ']' dlBooleanExpression
     ;
 
-someRunsExpression
-    : '<' program '>' booleanExpression
+dlSomeRunsExpression
+    : '<' dlProgram '>' dlBooleanExpression
     ;
 
-term
+dlTerm
     : NUMBER
-    | identifier ('(' term ')')*
+    | dlIdentifier ('(' dlTerm ')')*
     ;
 
 typeName
-    : identifier
+    : dlIdentifier
     ;
 
-discreteProgramLoop
-    : booleanExpression '-->' '[' dlExpression ']' '(' booleanExpression ')'
+dlDiscreteProgramLoop
+    : dlBooleanExpression '|-' '[' dlExpression ']' '(' dlBooleanExpression ')'
     ;
 
-identifier
+dlIdentifier
     : ID
     ;
+
+// keywords
+K_PROGRAM: P R O G R A M;

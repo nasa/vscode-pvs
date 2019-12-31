@@ -24,7 +24,13 @@ ddl:
 	# java
 	java -jar antlr-4.7.2-complete.jar -Dlanguage=Java PvsDDL.g4 -o ./out/java
 	cd out/java && javac -Xlint -classpath ../../antlr-4.7.2-complete.jar:./ *.java && cd ../..
-	cd out/java && java -classpath ../../antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsDDL parse ../../examples/test.ddl -gui
+	cd out/java && java -classpath ../../antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsDDL parseDDL ../../examples/test.ddl -gui
+
+ddllanguage:
+	# java
+	java -jar antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguageDDL.g4 -o ./out/java
+	cd out/java && javac -Xlint -classpath ../../antlr-4.7.2-complete.jar:./ *.java && cd ../..
+	cd out/java && java -classpath ../../antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguageDDL parse ../../examples/discrete_loop_hp.ddl -gui
 
 download:
 	curl -O https://www.antlr.org/download/antlr-4.7.2-complete.jar
