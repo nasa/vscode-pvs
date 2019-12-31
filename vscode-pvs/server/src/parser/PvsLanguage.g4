@@ -219,11 +219,11 @@ ifExpression
 	| '(' ifExpression ')'
 	;
 measureExpression
-	: K_MEASURE expr (K_BY expr)?
+	: K_MEASURE expr (K_BY (unaryOp | binaryOp | expr))?
 	;
 
 bindingExpression
-	: (K_FORALL | K_EXISTS | K_LAMBDA) lambdaBindings ':' expr
+	: (K_FORALL | K_EXISTS | K_LAMBDA) lambdaBindings+ ':' expr
 	| '(' bindingExpression ')'
 	;
 lambdaBindings
@@ -231,8 +231,10 @@ lambdaBindings
 	| '(' lambdaBinding (',' lambdaBinding)* ')'
 	;
 lambdaBinding
-	: identifier | unaryOp | binaryOp
-	| bindings
+	: 
+	//identifier | unaryOp | binaryOp
+	//| 
+	bindings
 	;
 bindings
 	: binding (',' binding)*
@@ -295,10 +297,10 @@ enumerationType
 	;
 
 importing
-	: K_IMPORTING importedTheoryName (',' importedTheoryName)*
+	: K_IMPORTING importTheoryName (',' importTheoryName)*
 	;
 
-importedTheoryName
+importTheoryName
 	: (identifier '@')? identifier actuals?
 	;
 
@@ -306,12 +308,12 @@ datatype
 	: identifier ':' K_DATATYPE K_BEGIN K_END identifier
 	;
 
-identifier: ID;
+identifier: (ID '.')? ID;
 identifiers: identifier (',' identifier)*;
 //identifierOrOperator: identifier | unaryOp | binaryOp;
 identifierOrOperators: (identifier | unaryOp | binaryOp) (',' (identifier | unaryOp | binaryOp))*;
 
 unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>';
-binaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | '*' | '/' | '+' | '-' | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT;
+binaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | '*' | '/' | '+' | '-' | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=';
 
 

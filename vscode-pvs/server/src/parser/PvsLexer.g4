@@ -38,13 +38,6 @@
  
 lexer grammar PvsLexer;
 
-
-
-// THEORY_FORMAL_TYPE
-// 	: IDs WS* ':' WS* K_ANY_TYPE
-// 	;
-
-
 //------------------------
 // Lexer Rules
 // NOTES:
