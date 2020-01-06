@@ -277,6 +277,42 @@ export class EventsDispatcher {
 		}));
 
 
+        // vscode-pvs.parse-file
+		context.subscriptions.push(commands.registerCommand("vscode-pvs.parse-file", async (resource: string | { path: string } | { contextValue: string }) => {
+            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
+                resource = { path: window.activeTextEditor.document.fileName };
+            }
+			if (resource) {
+                let desc = <{ 
+                    fileName: string, fileExtension: string, contextFolder: string
+                }> this.resource2desc(resource);
+                if (desc) {
+                    // send parse request to pvs-server
+                    this.client.sendRequest(serverCommand.parseFile, desc);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
+            }
+		}));
+
+        // vscode-pvs.generate-pvs-file
+		context.subscriptions.push(commands.registerCommand("vscode-pvs.generate-pvs-file", async (resource: string | { path: string } | { contextValue: string }) => {
+            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
+                resource = { path: window.activeTextEditor.document.fileName };
+            }
+			if (resource) {
+                let desc = <{ 
+                    fileName: string, fileExtension: string, contextFolder: string
+                }> this.resource2desc(resource);
+                if (desc) {
+                    // send parse request to pvs-server
+                    this.client.sendRequest(serverCommand.generatePvsFile, desc);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
+            }
+		}));
+
         //----------------------------------
         // events triggered by pvs-language-server
         //----------------------------------

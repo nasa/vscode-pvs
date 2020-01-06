@@ -212,6 +212,8 @@ fragment Z : [zZ];
 //------------------------
 // Whitespace and comments
 //------------------------
-WS: [ \t\r\n\u000C]+ -> channel(1);
-COMMENT: '%' ~[\r\n]* -> channel(2);
+SPACE: ' ' -> channel(1);
+TAB: '\t' -> channel(2);
+CR: [\r\n\u000C] -> channel(3);
+COMMENT: '%' ~[\r\n]* -> channel(4);
 UnrecognizedChar: .;

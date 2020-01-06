@@ -157,6 +157,14 @@
 				"title": "Typecheck"
 			},
 			{
+				"command": "vscode-pvs.parse-file",
+				"title": "Parse"
+			},
+			{
+				"command": "vscode-pvs.generate-pvs-file",
+				"title": "Generate PVS file"
+			},
+			{
 				"command": "vscode-pvs.prove-formula",
 				"title": "Prove"
 			},
@@ -321,12 +329,36 @@
 				{
 					"command": "vscode-pvs.typecheck-file",
 					"when": "resourceScheme == file && resourceExtname == .pvs"
+				},
+				{
+					"command": "vscode-pvs.parse-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs"
+				},
+				{
+					"command": "vscode-pvs.parse-file",
+					"when": "resourceScheme == file && resourceExtname == .hpvs"
+				},
+				{
+					"command": "vscode-pvs.generate-pvs-file",
+					"when": "resourceScheme == file && resourceExtname == .hpvs"
 				}
 			],
 			"editor/context": [
 				{
 					"command": "vscode-pvs.typecheck-file",
 					"when": "resourceScheme == file && resourceExtname == .pvs"
+				},
+				{
+					"command": "vscode-pvs.parse-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs"
+				},
+				{
+					"command": "vscode-pvs.parse-file",
+					"when": "resourceScheme == file && resourceExtname == .hpvs"
+				},
+				{
+					"command": "vscode-pvs.generate-pvs-file",
+					"when": "resourceScheme == file && resourceExtname == .hpvs"
 				}
 			],
 			"view/title": [
@@ -461,7 +493,7 @@
 					".ppe",
 					".prf",
 					".pr",
-					".hp"
+					".hpvs"
 				],
 				"configuration": "./syntax/pvs-language-configuration.json",
 				"aliases": [

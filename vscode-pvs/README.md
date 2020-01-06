@@ -59,6 +59,10 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
+### 1.0.15 (2020.01.xx)
+- Introduced new pvs parser based on antlr4
+- Added support for hybrid programs (.hpvs files)
+
 ### 1.0.14 (2019.11.26)
 - Improved error handling in pvs-proxy
 

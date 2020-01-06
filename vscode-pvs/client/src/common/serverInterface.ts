@@ -431,6 +431,7 @@ export const serverCommand = {
 	showTccs: "pvs.show-tccs",
 	startPvsLanguageServer: "pvs.start-pvs-server",
 	rebootPvsServer: "pvs.reboot-pvs-server",
+	generatePvsFile: "pvs.generate-pvs-file",
 
 	listDownloadableVersions: "pvs.list-downloadable-versions",
 	downloadPvs: "pvs.download-pvs",

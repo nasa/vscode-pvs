@@ -31,6 +31,7 @@ The main functionalities provided by the environment are as follows:
 
 ## Requirements
 - NodeJS (v10.16.3 or greater) https://nodejs.org/en/download
+- Java Runtime Environment (v8 or greater) https://openjdk.java.net/ or https://java.com/en/download/
 - Visual Studio Code (v1.38 or greater) https://code.visualstudio.com
 - PVS Allegro (7.0 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots/ 
 

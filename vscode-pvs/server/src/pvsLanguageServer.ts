@@ -441,6 +441,17 @@ export class PvsLanguageServer {
 		}
 		return null;
 	}
+	async generatePvsFile (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
+		if (this.checkArgs("generatePvsFile", args)) {
+			try {
+				return await this.pvsProxy.generatePvsFile(args);
+			} catch (ex) {
+				console.error('[pvs-language-server.generatePvsFile] Error: pvsProxy has thrown an exception', ex);
+				return null;
+			}
+		}
+		return null;
+	}
 	async parseFileRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
 		if (request) {
 			const desc: {
@@ -452,6 +463,37 @@ export class PvsLanguageServer {
 				// const response: PvsResponse = await this.parseFile(desc);
 				// const diags: ContextDiagnostics = {};
 				const response: PvsResponse = await this.parseFile(desc);
+				const diags: ContextDiagnostics = {};
+				const fname: string = fsUtils.desc2fname(desc);
+				if (response) {
+					// send parser response
+					this.connection.sendRequest(serverEvent.parseFileResponse, response);
+					// collect diagnostics
+					diags[fname] = response;
+				} else {
+					// clear diagnostics, as the parse error may have gone and we don't know because pvs-server failed to execute parseFile
+					diags[fname] = null;
+				}
+				// send diagnostics
+				this.sendDiagnostics(diags, desc.contextFolder, "Parse");
+			} else {
+				console.error("[pvs-language-server] Warning: pvs.parse-file is unable to identify filename for ", request);
+			}
+		} else {
+			console.error("[pvs-language-server] Warning: pvs.parse-file invoked with null request");
+		}
+	}
+	async generatePvsFileRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
+		if (request) {
+			const desc: {
+				fileName: string, 
+				fileExtension: string, 
+				contextFolder: string 
+			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
+			if (desc) {
+				// const response: PvsResponse = await this.parseFile(desc);
+				// const diags: ContextDiagnostics = {};
+				const response: PvsResponse = await this.generatePvsFile(desc);
 				const diags: ContextDiagnostics = {};
 				const fname: string = fsUtils.desc2fname(desc);
 				if (response) {
@@ -1117,6 +1159,9 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverCommand.parseFile, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.parseFileRequest(request); // async call
+			});
+			this.connection.onRequest(serverCommand.generatePvsFile, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
+				this.generatePvsFileRequest(request); // async call
 			});
 			this.connection.onRequest(serverCommand.typecheckFile, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.typecheckFileRequest(request); // async call

@@ -45,15 +45,13 @@
  * - pvsio: M-x pvsio
  * - view prelude: M-x view-prelude-file
  */
-import { ExtensionContext, commands, window, Disposable, TextDocument, InputBox, QuickInputButtons } from 'vscode';
+import { ExtensionContext, commands, window, TextDocument, InputBox } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { findTheoryName } from '../common/languageUtils';
 import { workspace } from 'vscode';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
 import { serverCommand } from '../common/serverInterface';
-import * as vscode from 'vscode';
 
 const cmds: string[] = [
 	"tc", "typecheck",
@@ -126,6 +124,10 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "tcp": 
 				case "typecheck-prove": {
 					commands.executeCommand('vscode-pvs.prove-tccs', desc);
+					break;
+				}
+				case "parse": {
+					commands.executeCommand('vscode-pvs.parse-file', desc);
 					break;
 				}
 				case "pr":

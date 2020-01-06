@@ -37,7 +37,7 @@ ddl-embedding: download
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java DdlEmbedding.g4 -o ./ddl/javaTarget/out
 	cd ddl/javaTarget && cp DdlParser.java ./out && cp MANIFEST.MF ./out && cd ../..
 	cd ddl/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../../..
-	cd ddl/javaTarget/out && java -classpath ../../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig DdlEmbedding parse ../../../examples/discrete_loop_hp.hp -gui
+	cd ddl/javaTarget/out && java -classpath ../../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig DdlEmbedding parse ../../../examples/discrete_loop_hp.hpvs -gui
 
 ddl-parser: download
 	# generating java target
@@ -53,7 +53,8 @@ ddl-parser: download
 	@-rm -r ddl/javaTarget/out
 	@-rm -r lib
 	# testing parser
-	cd ../../out/parser/lib && java -jar DdlParser.jar ../../../src/parser/examples/discrete_loop_hp.hp
+	cd ../../out/parser/lib && java -jar DdlParser.jar ../../../src/parser/examples/discrete_loop_hp.hpvs -test
+	cd ../../out/parser/lib && java -jar DdlParser.jar ../../../src/parser/examples/discrete_loop_hp.hpvs -out ../../../src/parser/examples/discrete_loop_hp.pvs
 
 	
 

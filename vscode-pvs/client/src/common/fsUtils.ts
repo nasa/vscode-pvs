@@ -167,7 +167,8 @@ export function getContextFolder(fname: string): string {
 }
 export function isPvsFile(fileName: string): boolean {
 	if (fileName) {
-		return fileName.endsWith('.pvs') || fileName.endsWith('.tccs') || fileName.endsWith('.ppe') || fileName.endsWith('.pr');
+		return fileName.endsWith('.pvs') || fileName.endsWith('.tccs') || fileName.endsWith('.ppe') || fileName.endsWith('.pr')
+				||fileName.endsWith('.hpvs');
 	}
 	return false;
 }
@@ -200,7 +201,7 @@ export async function listPvsFiles (folder: string): Promise<FileList> {
 		const children: string[] = await readDir(folder);
 		const fileList: FileList = {
 			fileNames: children.filter((fileName) => {
-				return fileName.endsWith(".pvs") 
+				return (fileName.endsWith(".pvs") || fileName.endsWith(".hpvs"))
 						&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
 			}),
 			contextFolder: folder

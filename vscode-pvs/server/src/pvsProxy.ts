@@ -53,7 +53,7 @@ import * as net from 'net';
 import * as crypto from 'crypto';
 import { SimpleConnection, StrategyDescriptor, ProofNode,  ProofTree, serverEvent } from './common/serverInterface';
 import * as utils from './common/languageUtils';
-import { PvsParser } from './parser/pvs/javaTarget/pvsParser';
+import { Parser } from './parser/Parser';
 import { DiagnosticSeverity, Diagnostic, Position, Range } from 'vscode-languageserver';
 
 //----------------------------
@@ -152,7 +152,7 @@ export class PvsProxy {
 	/**
 	 * Parser
 	 */
-	protected parser: PvsParser;
+	protected parser: Parser;
 
 
 	protected nReboots: number = 0;
@@ -185,7 +185,7 @@ export class PvsProxy {
 
 		if (ENABLE_NEW_PARSER) {
 			// create pvs parser
-			this.parser = new PvsParser();
+			this.parser = new Parser();
 		}
 	}
 
@@ -347,6 +347,41 @@ export class PvsProxy {
 					// return resolve(null);
 					return null;
 				}
+			}
+		}
+		return null;
+	}
+
+	async generatePvsFile(desc: { contextFolder: string, fileName: string, fileExtension: string,  }): Promise<PvsResponse> {
+		if (desc) {
+			if (ENABLE_NEW_PARSER) {
+				this.notifyStartExecution(`Generating PVS file ${desc.fileName}.hpvs`);
+				const id: string = this.get_fresh_id();
+				
+				const diags: Diagnostic[] = await this.parser.generatePvsFile(desc);
+				this.notifyEndExecution();
+				if (diags && diags.length > 0) {
+					return {
+						jsonrpc: "2.0",
+						id,
+						error: {
+							code: 1,
+							message: 'Parse error',
+							data: diags
+						}
+					};
+				}
+				return {
+					jsonrpc: "2.0",
+					id
+					// TODO: send declarations?
+				}
+			} else {
+				// do nothing
+				this.notifyStartExecution(`PVS could not be generated (function disabled in the parser)`);
+				setTimeout(() => {
+					this.notifyEndExecution();
+				}, 4000);
 			}
 		}
 		return null;

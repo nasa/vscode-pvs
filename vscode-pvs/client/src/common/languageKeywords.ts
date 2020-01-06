@@ -89,18 +89,22 @@ const PVS_OPERATORS_REGEXP_SOURCE = "\\(:|:\\)|->|:="; // (: :) -> :=
 // 								+ "|" + "\\(\\[\\|->\\|\\]\\)";
 
 // from pvs-mode.el
-export const PVS_KEYWORDS = [ "and", "andthen", "array", "as", "assuming", "assumption", "auto_rewrite",
-							"auto_rewrite+", "auto_rewrite-", "axiom", "begin", "but", "by", "cases",
-							"challenge", "claim", "closure", "codatatype", "coinductive", "cond",
-							"conjecture", "containing", "conversion", "conversion+", "conversion-",
-							"corollary", "datatype", "else", "elsif", "end", "endassuming", "endcases",
-							"endcond", "endif", "endtable", "exists", "exporting", "fact", // "false",
-							"forall", "formula", "from", "function", "has_type", "if", "iff", "implies",
-							"importing", "in", "inductive", "judgement", "lambda", "law", "lemma", "let",
-							"library", "macro", "measure", "nonempty_type", "not", "o", "obligation", "of",
-							"or", "orelse", "postulate", "proposition", "recursive", "sublemma", "subtypes",
-							"subtype_of", "table", "then", "theorem", "theory", //"true", 
-							"type", "type+", "var", "when", "where", "with", "xor" ]
+export const PVS_KEYWORDS = [ 
+	"and", "andthen", "array", "as", "assuming", "assumption", "auto_rewrite",
+	"auto_rewrite+", "auto_rewrite-", "axiom", "begin", "but", "by", "cases",
+	"challenge", "claim", "closure", "codatatype", "coinductive", "cond",
+	"conjecture", "containing", "conversion", "conversion+", "conversion-",
+	"corollary", "datatype", "else", "elsif", "end", "endassuming", "endcases",
+	"endcond", "endif", "endtable", "exists", "exporting", "fact", // "false",
+	"forall", "formula", "from", "function", "has_type", "if", "iff", "implies",
+	"importing", "in", "inductive", "judgement", "lambda", "law", "lemma", "let",
+	"library", "macro", "measure", "nonempty_type", "not", "o", "obligation", "of",
+	"or", "orelse", "postulate", "proposition", "recursive", "sublemma", "subtypes",
+	"subtype_of", "table", "then", "theorem", "theory", //"true", 
+	"type", "type+", "var", "when", "where", "with", "xor",
+	// hybrid pvs extension
+	"problem"
+];
 
 export const PVS_TRUE_FALSE: string[] = [ "true", "false" ];
 export const PVS_TRUE_FALSE_REGEXP_SOURCE: string = "true|false";
