@@ -38,7 +38,7 @@
 
 import { execSync } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
-import * as fsUtils from '../../common/fsUtils';
+import * as fsUtils from '../../../common/fsUtils';
 import { Diagnostic } from 'vscode-languageserver';
 
 export class PvsParser {
@@ -52,7 +52,7 @@ export class PvsParser {
         console.info(`[vscode-pvs-parser] Parsing ${fname}`);
 
         let diagnostics: Diagnostic[] = [];
-        const parserFolder: string = __dirname;
+        const parserFolder: string = __dirname.replace('src', 'out');
 
         const start: number = Date.now();
 		// const cmd: string = `cd ${parserFolder} && java -classpath ../antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ${fname}`;
@@ -65,7 +65,7 @@ export class PvsParser {
                 const res: string = errors.toLocaleString();
                 // console.log(res);
                 diagnostics = JSON.parse(res);
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed in ${stats}ms`);
+                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${stats}ms`);
             } else {
                 console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${stats}ms`);
             }

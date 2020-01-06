@@ -16,9 +16,16 @@ BEGIN
   %
   %---------------------------------
    
-  discrete_loop: PROGRAM
+  discrete_loop: PROBLEM
      (x>=8) AND (y>=0) AND (y<=5)
-%     |- [(x:=x+y; y:=x-2y)*](x>=0)
+     |- [(x':=x+y; x':=x+y; x:=x+y; y:=x-2y)*] (x>=0)
+
+%  discrete_loop: LEMMA
+%     val(x) >= 8 AND val(y) >= 0 AND val(y) <= 5
+%  |- ALLRUNS(STAR(SEQ(ASSIGN((:(x,val(x)+val(y)):)),
+%                      ASSIGN((:(y,val(x)-2*val(y)):)))),
+%     val(x) >= 0)
+
 
 %|- discrete_loop : PROOF
 %|- (spread (dl-loop "val(x) >= val(y) AND val(y) >= 0")
