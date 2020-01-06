@@ -18,12 +18,16 @@
 		"url": "https://github.com/nasa/vscode-pvs"
 	},
 	"publisher": "paolomasci",
-	"categories": [],
+	"categories": [
+		"Programming Languages"
+	],
 	"keywords": [
-		"multi-root ready"
+		"vscode-pvs",
+		"pvs",
+		"prototype verification system"
 	],
 	"engines": {
-		"vscode": ">=1.31.0"
+		"vscode": "^1.31.0"
 	},
 	"activationEvents": [
 		"onLanguage:pvs"

@@ -257,7 +257,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			
 			// setTimeout(() => {
 			this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, { pvsPath: this.pvsPath, contextFolder });
-			// }, 2000);			
+			// }, 2000);
 		});
 	}
 

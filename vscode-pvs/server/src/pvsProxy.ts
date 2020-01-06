@@ -53,7 +53,7 @@ import * as net from 'net';
 import * as crypto from 'crypto';
 import { SimpleConnection, StrategyDescriptor, ProofNode,  ProofTree, serverEvent } from './common/serverInterface';
 import * as utils from './common/languageUtils';
-import { PvsParser } from './parser/java/pvsParser';
+import { PvsParser } from './parser/pvs/javaTarget/pvsParser';
 import { DiagnosticSeverity, Diagnostic, Position, Range } from 'vscode-languageserver';
 
 //----------------------------

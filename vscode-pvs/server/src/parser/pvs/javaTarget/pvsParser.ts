@@ -40,6 +40,7 @@ import { execSync } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import * as fsUtils from '../../../common/fsUtils';
 import { Diagnostic } from 'vscode-languageserver';
+import * as path from 'path';
 
 export class PvsParser {
 
@@ -52,12 +53,12 @@ export class PvsParser {
         console.info(`[vscode-pvs-parser] Parsing ${fname}`);
 
         let diagnostics: Diagnostic[] = [];
-        const parserFolder: string = __dirname.replace('src', 'out');
+        const libFolder: string = path.join(__dirname, "../../../../out/parser/lib");
 
         const start: number = Date.now();
 		// const cmd: string = `cd ${parserFolder} && java -classpath ../antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ${fname}`;
         // const cmd: string = `cd ${parserFolder} && java -classpath ../antlr-4.7.2-complete.jar:./ PvsParser ${fname}`; // this will produce a JSON object of type Diagnostic[]
-        const cmd: string = `cd ${parserFolder} && java -jar PvsParser.jar ${fname}`; // this will produce a JSON object of type Diagnostic[]
+        const cmd: string = `cd ${libFolder} && java -jar PvsParser.jar ${fname}`; // this will produce a JSON object of type Diagnostic[]
         try {
             const errors: Buffer = execSync(cmd);
             const stats: number = Date.now() - start;

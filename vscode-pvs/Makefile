@@ -61,6 +61,7 @@ test:
 test-all: test
 
 parser:
+	-mkdir server/out && mkdir server/out/parser
 	cd server/src/parser/ && make
 
 clean:
