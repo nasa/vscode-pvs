@@ -460,7 +460,8 @@
 					".tccs",
 					".ppe",
 					".prf",
-					".pr"
+					".pr",
+					".hp"
 				],
 				"configuration": "./syntax/pvs-language-configuration.json",
 				"aliases": [
