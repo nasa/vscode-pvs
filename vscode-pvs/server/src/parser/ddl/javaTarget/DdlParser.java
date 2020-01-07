@@ -296,5 +296,11 @@ public class DdlParser {
             pvsSpec += "val(" + ctx.getText() + ")";
             // System.out.print(pvsSpec);
         }
+        @Override public void enterDlFunction(DdlEmbeddingParser.DlFunctionContext ctx) {
+            pvsSpec += ctx.dlFunctionName().getText() + "(";
+        }
+        @Override public void exitDlFunction(DdlEmbeddingParser.DlFunctionContext ctx) {
+            pvsSpec += ")";
+        }
     }
 }

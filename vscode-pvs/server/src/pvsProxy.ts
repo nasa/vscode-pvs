@@ -127,6 +127,7 @@ export interface ContextDiagnostics {
 // }
 
 export class PvsProxy {
+	protected hashTable: { [ filename: string ]: { hash: string, diags: Diagnostic[] } } = {};
 	protected debugMode: boolean = false;
 	// protected isActive: boolean = false;
 	readonly MAXTIME: number = 2000; // millis
@@ -299,6 +300,26 @@ export class PvsProxy {
 		return await this.pvsRequest('list-client-methods');
 	}
 
+
+	protected makeDiags (diags: Diagnostic[]): PvsResponse {
+		const id: string = this.get_fresh_id();
+		if (diags && diags.length > 0) {
+			return {
+				jsonrpc: "2.0",
+				id,
+				error: {
+					code: 1,
+					message: 'Parse error',
+					data: diags
+				}
+			};
+		}
+		return {
+			jsonrpc: "2.0",
+			id
+			// TODO: send declarations?
+		}
+	}
 	/**
 	 * Parse a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
@@ -306,46 +327,41 @@ export class PvsProxy {
 	async parseFile(desc: { contextFolder: string, fileName: string, fileExtension: string,  }): Promise<PvsResponse> {
 		if (desc) {
 			this.notifyStartExecution(`Parsing ${desc.fileName}`);
-			if (this.isProtectedFolder(desc.contextFolder)) {
-				this.info(`${desc.contextFolder} is already parsed`);
-				// return resolve(null);
-				return null;
-			}
-
-			if (ENABLE_NEW_PARSER) {
-				const id: string = this.get_fresh_id();
-				// using new parser
-				const diags: Diagnostic[] = await this.parser.parseFile(desc);
+			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+			const content: string = await fsUtils.readFile(fname);
+			const hash: string = crypto.createHash('sha256').update(content).digest('hex');
+			if (this.hashTable[fname] && hash === this.hashTable[fname].hash) {
+				console.log("[pvs-proxy] Parser diagnostics loaded from cache.");
+				const diags: Diagnostic[] = this.hashTable[fname].diags;
 				this.notifyEndExecution();
-				if (diags && diags.length > 0) {
-					return {
-						jsonrpc: "2.0",
-						id,
-						error: {
-							code: 1,
-							message: 'Parse error',
-							data: diags
-						}
-					};
-				}
-				return {
-					jsonrpc: "2.0",
-					id
-					// TODO: send declarations?
-				}
+				return this.makeDiags(diags);
 			} else {
-				const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-				const res: PvsResponse = await this.pvsRequest('parse', [fname]);
-				// console.info('parseFile:');
-				// console.dir(res, { depth: null });
-				this.notifyEndExecution();
-				if (res && ((res.error && res.error.data) || res.result)) {
-					// return resolve(res);
-					return res;	
+				if (ENABLE_NEW_PARSER) {
+					// using new parser
+					console.log("[pvs-proxy] Updating parser cache.");
+					const diags: Diagnostic[] = await this.parser.parseFile(desc);
+					this.hashTable[fname] = { hash, diags };
+					this.notifyEndExecution();
+					return this.makeDiags(diags);
 				} else {
-					console.log(`[pvs-proxy] Warning: received pvs-server error while parsing file ${desc.fileName}`, res);
-					// return resolve(null);
-					return null;
+					if (this.isProtectedFolder(desc.contextFolder)) {
+						this.info(`${desc.contextFolder} is already parsed`);
+						// return resolve(null);
+						this.notifyEndExecution();
+						return null;
+					}
+					const res: PvsResponse = await this.pvsRequest('parse', [fname]);
+					// console.info('parseFile:');
+					// console.dir(res, { depth: null });
+					this.notifyEndExecution();
+					if (res && ((res.error && res.error.data) || res.result)) {
+						// return resolve(res);
+						return res;	
+					} else {
+						console.log(`[pvs-proxy] Warning: received pvs-server error while parsing file ${desc.fileName}`, res);
+						// return resolve(null);
+						return null;
+					}
 				}
 			}
 		}

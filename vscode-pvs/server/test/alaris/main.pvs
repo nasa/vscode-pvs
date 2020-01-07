@@ -3,7 +3,7 @@ main :THEORY
   IMPORTING alaris_th
 
   device_init: pump = (#
-     powered_on? := FALSE,
+     powered_on? := FALSE
      infusing? := FALSE,
      infusionrate := 0,
      volumeinfused := 0,

@@ -129,6 +129,7 @@ dlArithmeticExpression
     | parenLeft dlArithmeticExpression parenRight                                #dlParExpression
     | dlValue  #dlValueExpression
     | dlConst  #dlConstExpression
+    | dlFunction #dlFunctionExpression
     ;
 
 parenLeft: '(';
@@ -139,6 +140,7 @@ dlBooleanExpression
     | dlBooleanExpression operatorOR dlBooleanExpression
     | operatorNOT dlBooleanExpression
     | dlBooleanExpression operatorCMP dlBooleanExpression
+    | dlFunction
     | dlValue
     | dlConst
     | parenLeft dlBooleanExpression parenRight
@@ -157,6 +159,14 @@ dlBindingExpression
 
 bindDeclaration
     : dlIdentifier ':' typeName
+    ;
+
+dlFunction
+    : dlFunctionName ('(' (dlArithmeticExpression | dlBooleanExpression) ')')+
+    ;
+
+dlFunctionName
+    : ID
     ;
 
 dlValue

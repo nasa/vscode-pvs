@@ -95,7 +95,6 @@ export function findTheoryName(txt: string, line: number): string | null {
  * @param txt The text where the theory should be searched 
  * @returns string[]
  */
-// TODO: check if we can use listTheoryNames in place of findTheories
 export function listTheoryNames (txt: string): string[] {
 	const ans: string[] = [];
 	let match: RegExpMatchArray = null;

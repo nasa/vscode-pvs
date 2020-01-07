@@ -91,7 +91,7 @@ declaration
 	| constantDeclaration
 	| varDeclaration
 	| functionDeclaration
-	| recursiveDeclaration
+	// | recursiveDeclaration
 	| judgementDeclaration
 	| conversionDeclaration
 	| autorewriteDeclaration
@@ -122,7 +122,10 @@ constantDefinition
     ;
 
 functionDeclaration
-	: (identifier | unaryOp | binaryOp) arguments* ':' (K_MACRO | K_INDUCTIVE)? typeExpression ('=' functionDefinition)?
+	: (identifier | unaryOp | binaryOp) arguments* 
+		':' (K_MACRO | K_INDUCTIVE | K_RECURSIVE)? typeExpression 
+		('=' functionDefinition)?
+		measureExpression?
 	// | error_functionDeclaration_missed_equal
 	;
 functionDefinition
@@ -131,12 +134,12 @@ functionDefinition
 // error_functionDeclaration_missed_equal
 //    : (identifier | unaryOp | binaryOp) arguments* ':' (K_MACRO | K_INDUCTIVE)? typeExpression functionDefinition { notifyErrorListeners("Missing '=' before definition."); }
 //    ;
-recursiveDeclaration
-	: (identifier | unaryOp | binaryOp) arguments*
-		':' K_RECURSIVE typeExpression
-		'=' functionDefinition
-		measureExpression
-	;
+// recursiveDeclaration
+// 	: (identifier | unaryOp | binaryOp) arguments*
+// 		':' K_RECURSIVE typeExpression
+// 		'=' functionDefinition
+// 		measureExpression
+// 	;
 
 judgementDeclaration
 	: subtypeJudgement
@@ -195,6 +198,12 @@ term
     | TRUE_FALSE
 	| STRING
     ;
+ifExpression
+	: K_IF expr K_THEN expr (K_ELSIF expr K_THEN expr)* K_ELSE expr K_ENDIF
+	| K_CASES expr K_OF expr ':' expr (',' expr ':' expr)* (K_ELSE expr)? K_ENDCASES
+	| K_COND expr '->' expr (',' expr '->' expr)* (',' K_ELSE '->' expr)? K_ENDCOND
+	| '(' ifExpression ')'
+	;
 letExpression
     : K_LET letBindings K_IN expr
     | '(' letExpression ')'
@@ -213,11 +222,6 @@ recordExpression
     : '(#' assignmentExpression (',' assignmentExpression)* '#)'
     | '(' recordExpression ')'
     ;
-ifExpression
-	: K_IF expr K_THEN expr (K_ELSIF expr K_THEN expr)* K_ELSE expr K_ENDIF
-	| K_COND expr '->' expr (',' expr '->' expr)* (',' K_ELSE '->' expr)? K_ENDCOND
-	| '(' ifExpression ')'
-	;
 measureExpression
 	: K_MEASURE expr (K_BY (unaryOp | binaryOp | expr))?
 	;
@@ -278,7 +282,7 @@ tupleType
 	;
 
 subtype
-	: '{' identifiers (':' expr)? (',' identifiers (':' expr)?)* ('|' expr)? '}'
+	: '{' identifier (',' identifier)* (':' expr)? (',' identifier (',' identifier)* (':' expr)?)* ('|' expr)? '}'
 	| '(' expr (':' expr)? ('|' expr)? ')' // shotcut for subtype
 //	| '(' expr ')' // another shortcut for subtype
 	// | name ('|' expr)? // another shortcut for subtype
@@ -309,7 +313,7 @@ datatype
 	;
 
 identifier: (ID '.')? ID;
-identifiers: identifier (',' identifier)*;
+// identifiers: identifier (',' identifier)*;
 //identifierOrOperator: identifier | unaryOp | binaryOp;
 identifierOrOperators: (identifier | unaryOp | binaryOp) (',' (identifier | unaryOp | binaryOp))*;
 
