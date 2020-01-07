@@ -123,6 +123,7 @@ public class DdlParser {
         protected String padding = "";
 
         protected HashSet<String> variablesMap = null; 
+        protected HashSet<String> localBindingsMap = null; 
         protected DdlEmbeddingParser.TheoryBeginContext theoryBeginContext = null;
 
         Ddl2Pvs (BufferedTokenStream tokens) {
@@ -130,6 +131,7 @@ public class DdlParser {
             this.tokens = tokens;
             rewriter = new TokenStreamRewriter(tokens);
             variablesMap = new HashSet<String>();
+            localBindingsMap = new HashSet<String>();
         }
 
         public String getSource (ParserRuleContext ctx) {
@@ -221,11 +223,11 @@ public class DdlParser {
             pvsSpec += ")";
             // System.out.print(pvsSpec);
         }
-        @Override public void enterDlSequentialProgram(DdlEmbeddingParser.DlSequentialProgramContext ctx) {
+        @Override public void enterDlSequentialStatement(DdlEmbeddingParser.DlSequentialStatementContext ctx) {
             pvsSpec += "SEQ(";
             // System.out.print(pvsSpec);  
         }
-        @Override public void exitDlSequentialProgram(DdlEmbeddingParser.DlSequentialProgramContext ctx) {
+        @Override public void exitDlSequentialStatement(DdlEmbeddingParser.DlSequentialStatementContext ctx) {
             pvsSpec += ")";
             // System.out.print(pvsSpec);
         }
@@ -328,8 +330,13 @@ public class DdlParser {
             // System.out.print(pvsSpec);
         }
         @Override public void enterDlValue(DdlEmbeddingParser.DlValueContext ctx) {
-            this.variablesMap.add(ctx.getText());
-            pvsSpec += "val(" + ctx.getText() + ")";
+            String id = ctx.getText();
+            if (this.localBindingsMap.contains(id)) {
+                pvsSpec += id;
+            } else {
+                this.variablesMap.add(id);
+                pvsSpec += "val(" + id + ")";
+            }
             // System.out.print(pvsSpec);
         }
         @Override public void enterDlFunction(DdlEmbeddingParser.DlFunctionContext ctx) {
@@ -337,6 +344,9 @@ public class DdlParser {
         }
         @Override public void exitDlFunction(DdlEmbeddingParser.DlFunctionContext ctx) {
             pvsSpec += ")";
+        }
+        @Override public void enterVarDeclaration(DdlEmbeddingParser.VarDeclarationContext ctx) {
+            this.localBindingsMap.add(ctx.identifierOrOperators().getText());
         }
     }
 }

@@ -55,30 +55,23 @@ initCondition
     : dlBooleanExpression
     ;
 
-dlProgram
-    : dlParallelProgram
-    | dlSequentialProgram
-    | dlStarProgram
-    | dlProgramIdentifier
+dlProgram: dlProgramIdentifier
     | dlAllRunsProgram
     | dlSomeRunsProgram
     ;
 
 dlStatement
-    : dlStatement (operatorPlusPlus dlStatement)+ #dlUnionStatement
+    : '(' dlStatement ')' '*' #dlStarStatement
+    | dlStatement (operatorColon dlStatement)+ #dlSequentialStatement
+    | dlStatement (',' dlStatement)+ #dlParallelStatement
+    | dlStatement (operatorPlusPlus dlStatement)+ #dlUnionStatement
     | dlIdentifier operatorAssign '*' ('(' bindDeclaration (',' bindDeclaration)* ('|' dlBooleanExpression)? ')')? #dlAnyAssignmentStatement
     | dlDiffAssignmentElem (operatorColon dlDiffAssignmentElem)* (O_AND dlDiffInvariant)? #dlDiffStatement
     | dlSimpleAssignmentElem (operatorColon dlSimpleAssignmentElem)* #dlSimpleAssignmentStatement
     | '?' dlExpression #dlTestStatement
+    | parenLeft dlStatement parenRight #dlParStatement
     ;
 
-dlParallelProgram
-    : dlStatement (',' dlStatement)+
-    ;
-
-dlSequentialProgram
-    : dlStatement (operatorColon dlStatement)+
-    ;
 
 dlDiffAssignmentElem
     : dlDiffIdentifier operatorEqual dlExpression
@@ -93,15 +86,15 @@ dlSimpleAssignmentElem
     ;
 
 dlStarProgram
-    : '(' dlProgram ')' '*'
+    : 
     ;
 
 dlAllRunsProgram
-    : '[' dlProgram ']' dlInvariant?
+    : '[' dlStatement ']' dlInvariant?
     ;
 
 dlSomeRunsProgram
-    : '<' dlProgram '>' dlInvariant?
+    : '<' dlStatement '>' dlInvariant?
     ;
 
 dlInvariant
