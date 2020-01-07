@@ -48,7 +48,7 @@ parseDDL
     ;
 
 dlProblem
-    : initCondition operatorEntail dlProgram
+    : (initCondition operatorEntail)? dlProgram
     ;
 
 initCondition
@@ -61,24 +61,33 @@ dlProgram: dlProgramIdentifier
     ;
 
 dlStatement
-    : '(' dlStatement ')' '*' #dlStarStatement
-    | dlStatement (operatorColon dlStatement)+ #dlSequentialStatement
-    | dlStatement (',' dlStatement)+ #dlParallelStatement
-    | dlStatement (operatorPlusPlus dlStatement)+ #dlUnionStatement
-    | dlIdentifier operatorAssign '*' ('(' bindDeclaration (',' bindDeclaration)* ('|' dlBooleanExpression)? ')')? #dlAnyAssignmentStatement
-    | dlDiffAssignmentElem (operatorColon dlDiffAssignmentElem)* (O_AND dlDiffInvariant)? #dlDiffStatement
-    | dlSimpleAssignmentElem (operatorColon dlSimpleAssignmentElem)* #dlSimpleAssignmentStatement
-    | '?' dlExpression #dlTestStatement
+    : dlSimpleStatement (operatorColon dlSimpleStatement)+ #dlSequentialStatement
+    | dlSimpleStatement (',' dlSimpleStatement)+ #dlParallelStatement
+    | '(' dlStatement ')' '*' #dlStarStatement
     | parenLeft dlStatement parenRight #dlParStatement
+    | dlSimpleStatement #simpleStatement
+    ;
+
+dlSimpleStatement
+    : '?' dlExpression #dlTestStatement
+    | dlUnionElem (operatorPlusPlus dlUnionElem)+ #dlUnionStatement
+    | dlAnyAssignmentIdentifier O_ASSIGN '*' ('(' bindDeclaration (',' bindDeclaration)* ('|' dlBooleanExpression)? ')')? #dlAnyAssignmentStatement
+    | dlDiffAssignmentElem (operatorComma dlDiffAssignmentElem)* (O_AND dlDiffInvariant)? #dlDiffStatement
+    | dlSimpleAssignmentElem (operatorComma dlSimpleAssignmentElem)* #dlSimpleAssignmentStatement
+    | parenLeft dlSimpleStatement parenRight #dlSimpleParStatement
     ;
 
 
 dlDiffAssignmentElem
-    : dlDiffIdentifier operatorEqual dlExpression
+    : dlDiffIdentifier operatorDiffEqual dlExpression
     ;
 
 dlDiffInvariant
     : dlBooleanExpression
+    ;
+
+dlUnionElem
+    : dlSimpleAssignmentElem
     ;
 
 dlSimpleAssignmentElem
@@ -106,7 +115,7 @@ dlExpression
     | dlBooleanExpression
     | dlArithmeticExpression
     | dlBindingExpression
-    | operatorPlusMinus dlValue
+    | operatorPlusMinusUnary dlValue
     ;
 
 dlArithmeticExpression
@@ -141,8 +150,11 @@ operatorNOT: O_NOT;
 operatorCMP: O_GE | O_LE | '>' | '<' | O_EQUAL;
 operatorMulDiv: '*' | '/';
 operatorPlusMinus: '+' | '-';
+operatorPlusMinusUnary: '+' | '-';
 operatorComparison: O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL;
 operatorEqual: O_EQUAL;
+operatorDiffEqual: O_EQUAL;
+operatorComma: ',';
 
 dlBindingExpression
     : K_FORALL '(' bindDeclaration (',' bindDeclaration)* ')' ':' dlExpression
@@ -169,7 +181,7 @@ typeName
     ;
 
 dlConst
-    : operatorPlusMinus? NUMBER
+    : ('+'|'-')? NUMBER
     ;
 
 dlDiffIdentifier
@@ -177,6 +189,10 @@ dlDiffIdentifier
     ;
 
 dlProgramIdentifier
+    : ID
+    ;
+
+dlAnyAssignmentIdentifier
     : ID
     ;
 

@@ -15,9 +15,10 @@
 
 % any
 %x := ANY(y: real | P(y))
+[x := *]
 
 % simple assignment
-%(x>=0) |- [x:=(x + 1)] (x>=0)
+(x>=0) |- [x:=(x + 1)] (x>=0)
 
 % discrete program loop
 (x>=8) AND (y>=f(0)) AND (y<=5)

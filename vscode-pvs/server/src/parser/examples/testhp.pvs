@@ -1,0 +1,101 @@
+testhp: THEORY
+BEGIN
+
+  IMPORTING dynamic_logic
+
+  %-- Definition of syntactic sugar for variables and assignments
+  a: nat = 0
+  w: nat = 1
+  x: nat = 2
+  y: nat = 3
+  %--
+
+
+
+  IMPORTING dynamic_logic
+
+  %--- Definition of syntactic sugar for variables and assignments
+  x : nat = 0
+  y : nat = 1
+  %--- 
+ 
+ 
+  A:VAR real
+  B:VAR real
+
+  F(a:RealExpr):RealExpr = a + cnst(2) 
+ 
+  dist(a:real): RealExpr
+
+  % Single assignment
+  %---------------------------------
+  % test1: PROBLEM
+  %    (x>=0) |- [x:=(x + 1)] (x>=0)
+  %---------------------------------
+  test1: LEMMA
+   (val(x) >= cnst(0))
+   |- ALLRUNS(ASSIGN((: (x, (val(x) + cnst(1))) :)), (val(x) >= cnst(0)))
+
+
+ % % Assignment with star
+  %---------------------------------
+  % test2: PROBLEM
+  %    (x>=0) |- [(x:=x + 1)*] (x>=0)
+  %---------------------------------
+  test2: LEMMA
+   (val(x) >= cnst(0))
+   |- ALLRUNS(ASSIGN((: (x, val(x) + cnst(1)) :)), (val(x) >= cnst(0)))
+
+
+  % % Assignment with test
+  %---------------------------------
+  % test3: PROBLEM
+  %    (x=0) |- [?x>0;x:=x + 1] (x=0)
+  %---------------------------------
+  test3: LEMMA
+   (val(x) = cnst(0))
+   |- ALLRUNS(SEQ(TEST(val(x) > cnst(0)), ASSIGN((: (x, val(x) + cnst(1)) :))), (val(x) = cnst(0)))
+
+
+  % % % test with AND
+  %---------------------------------
+  % test4: PROBLEM
+  %    (x > 0) AND (y > 0) |- [?x < 5 AND y < 3; x := x +1; y:= y + 1] (x > 0 AND y > 0)
+  %---------------------------------
+  test4: LEMMA
+   (val(x) > cnst(0)) AND (val(y) > cnst(0))
+   |- ALLRUNS(SEQ(TEST(val(x) < cnst(5) AND val(y) < cnst(3)), ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :))), (val(x) > cnst(0) AND val(y) > cnst(0)))
+
+
+  % % % Unions
+  %---------------------------------
+  % test5: PROBLEM
+  %    (x > 0) AND (y > 0) |- [(a:=1 ++ a:=-1; x := x +1; y:= y + 1)*] (x > 0 AND y > 0)
+  %---------------------------------
+  test5: LEMMA
+   (val(x) > cnst(0)) AND (val(y) > cnst(0))
+   |- ALLRUNS(SEQ(UNION(ASSIGN((: (a, cnst(1)) :)), ASSIGN((: (a, cnst(-1)) :))), ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :))), (val(x) > cnst(0) AND val(y) > cnst(0)))
+
+
+  % % Differential equations
+  %---------------------------------
+  % test6: PROBLEM
+  %    (x > 0) AND (y > 0) |- [x'= y, y'=x*y] (x > 0 AND y >0)
+  %---------------------------------
+  test6: LEMMA
+   (val(x) > cnst(0)) AND (val(y) > cnst(0))
+   |- ALLRUNS(DIFF((: (x, val(y)) :), DLTRUE)DIFF((: (y, val(x) * val(y)) :), DLTRUE), (val(x) > cnst(0) AND val(y) > cnst(0)))
+
+
+  % % Test any
+  %---------------------------------
+  % test7: PROBLEM
+  %   (x > 0) AND (y > 0) |- [w:=*; x'= x + w] (x > 0)
+  %---------------------------------
+  test7: LEMMA
+  (val(x) > cnst(0)) AND (val(y) > cnst(0))
+  |- ALLRUNS(SEQ(ANY(w, DLRANDOM), DIFF((: (x, val(x) + val(w)) :), DLTRUE)), (val(x) > cnst(0)))
+
+
+END testhp
+

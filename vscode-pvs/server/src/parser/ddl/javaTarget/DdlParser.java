@@ -123,7 +123,7 @@ public class DdlParser {
         protected String padding = "";
 
         protected HashSet<String> variablesMap = null; 
-        protected HashSet<String> localBindingsMap = null; 
+        protected HashMap<String, String> localBindingsMap = null; 
         protected DdlEmbeddingParser.TheoryBeginContext theoryBeginContext = null;
 
         Ddl2Pvs (BufferedTokenStream tokens) {
@@ -131,7 +131,7 @@ public class DdlParser {
             this.tokens = tokens;
             rewriter = new TokenStreamRewriter(tokens);
             variablesMap = new HashSet<String>();
-            localBindingsMap = new HashSet<String>();
+            localBindingsMap = new HashMap<String, String>();
         }
 
         public String getSource (ParserRuleContext ctx) {
@@ -212,7 +212,7 @@ public class DdlParser {
             // System.out.println(pvsSpec);
         }
         @Override public void enterDlInvariant(DdlEmbeddingParser.DlInvariantContext ctx) {
-            pvsSpec += ",";
+            pvsSpec += ", ";
             // System.out.println(pvsSpec);
         }
         @Override public void enterDlAllRunsProgram(DdlEmbeddingParser.DlAllRunsProgramContext ctx) {
@@ -301,6 +301,10 @@ public class DdlParser {
             pvsSpec += ctx.getText();
             // System.out.print(pvsSpec); 
         }
+        @Override public void enterOperatorDiffEqual(DdlEmbeddingParser.OperatorDiffEqualContext ctx) {
+            pvsSpec += ", ";
+            // System.out.print(pvsSpec);            
+        }
         @Override public void enterOperatorNOT(DdlEmbeddingParser.OperatorNOTContext ctx) {
             pvsSpec += " " + ctx.getText() + " ";
             // System.out.print(pvsSpec);            
@@ -321,6 +325,10 @@ public class DdlParser {
             pvsSpec += " " + ctx.getText() + " ";
             // System.out.print(pvsSpec);
         }
+        @Override public void enterOperatorPlusMinusUnary(DdlEmbeddingParser.OperatorPlusMinusUnaryContext ctx) {
+            pvsSpec += " " + ctx.getText();
+            // System.out.print(pvsSpec);
+        }
     	@Override public void enterOperatorMulDiv(DdlEmbeddingParser.OperatorMulDivContext ctx) {
             pvsSpec += " " + ctx.getText() + " ";
             // System.out.print(pvsSpec);
@@ -331,7 +339,7 @@ public class DdlParser {
         }
         @Override public void enterDlValue(DdlEmbeddingParser.DlValueContext ctx) {
             String id = ctx.getText();
-            if (this.localBindingsMap.contains(id)) {
+            if (this.localBindingsMap.get(id) != null) {
                 pvsSpec += id;
             } else {
                 this.variablesMap.add(id);
@@ -346,7 +354,42 @@ public class DdlParser {
             pvsSpec += ")";
         }
         @Override public void enterVarDeclaration(DdlEmbeddingParser.VarDeclarationContext ctx) {
-            this.localBindingsMap.add(ctx.identifierOrOperators().getText());
+            this.localBindingsMap.put(ctx.identifierOrOperators().getText(), ctx.typeExpression().getText());
+        }
+        @Override public void enterDlAnyAssignmentStatement(DdlEmbeddingParser.DlAnyAssignmentStatementContext ctx) {
+            String id = ctx.dlAnyAssignmentIdentifier().getText();
+            this.variablesMap.add(id);
+            // String type = this.localBindingsMap.get(id);
+            // if (type == null) {
+            //     // assume it's a real
+            //     type = "real";
+            //     this.localBindingsMap.put(id, type);
+            // }
+            pvsSpec += "ANY(" + id + ", DLRANDOM)";
+        }
+        @Override public void enterOperatorComma(DdlEmbeddingParser.OperatorCommaContext ctx) {
+            pvsSpec += ", ";
+        }
+        @Override public void enterDlUnionStatement(DdlEmbeddingParser.DlUnionStatementContext ctx) {
+            pvsSpec += "UNION(";
+        }
+        @Override public void exitDlUnionStatement(DdlEmbeddingParser.DlUnionStatementContext ctx) {
+            pvsSpec += ")";
+        }
+        @Override public void enterOperatorPlusPlus(DdlEmbeddingParser.OperatorPlusPlusContext ctx) {
+            pvsSpec += ", ";
+        }
+        @Override public void enterDlUnionElem(DdlEmbeddingParser.DlUnionElemContext ctx) {
+            pvsSpec += "ASSIGN((: (";
+        }
+        @Override public void exitDlUnionElem(DdlEmbeddingParser.DlUnionElemContext ctx) {
+            pvsSpec += ") :))";
+        }
+        @Override public void enterDlTestStatement(DdlEmbeddingParser.DlTestStatementContext ctx) {
+            pvsSpec += "TEST(";
+        }
+        @Override public void exitDlTestStatement(DdlEmbeddingParser.DlTestStatementContext ctx) {
+            pvsSpec += ")";
         }
     }
 }
