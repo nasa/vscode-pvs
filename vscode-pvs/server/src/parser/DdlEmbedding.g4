@@ -10,3 +10,7 @@ formulaDeclaration
 hpEmbedding
 	: identifier ':' K_PROBLEM dlProblem
 	;
+
+hpTheoryPart
+	: theoryPart
+	;

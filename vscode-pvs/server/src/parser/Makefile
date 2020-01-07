@@ -28,9 +28,9 @@ test: download
 
 ddl: download
 	# java
-	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java DdlLanguage.g4 -o ./ddl/javaTarget/out
+	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java DdlEmbedding.g4 -o ./ddl/javaTarget/out
 	cd ddl/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../../..
-	cd ddl/javaTarget/out && java -classpath ../../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig DdlLanguage parseDDL ../../../examples/test.hp -gui
+	cd ddl/javaTarget/out && java -classpath ../../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig DdlEmbedding testDDL ../../../examples/test.hp -gui
 
 ddl-embedding: download
 	# java

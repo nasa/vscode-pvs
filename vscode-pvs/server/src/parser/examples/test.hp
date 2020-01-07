@@ -19,3 +19,18 @@
 % discrete program loop
 (x>=8) AND (y>=f(0)) AND (y<=5)
      |- [(x:=x+y; y:=x-2y)*](x>=0)
+
+% test expression
+(x=0) |- [?x>0; x:=x + 1] (x=0)
+
+% test with AND
+(x > 0) AND (y > 0) |- [?(x < 5 AND y < 3); x := x +1; y:= y + 1] (x > 0 AND y > 0)
+
+%union
+(x > 0) AND (y > 0) |- [(a:=1 ++ a:=-1; x := x +1; y:= y + 1)*] (x > 0 AND y > 0)
+
+%differential eqs
+(x > 0) AND (y > 0) |- [x'= -y, y'=-y] (x > 0 AND y >0)
+
+%any
+(x > 0) AND (y > 0) |- [w:=*; x'= x + w] (x > 0)

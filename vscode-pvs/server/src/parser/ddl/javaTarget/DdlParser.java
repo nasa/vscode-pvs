@@ -122,10 +122,14 @@ public class DdlParser {
         protected TokenStreamRewriter rewriter = null;
         protected String padding = "";
 
+        protected HashSet<String> variablesMap = null; 
+        protected DdlEmbeddingParser.TheoryBeginContext theoryBeginContext = null;
+
         Ddl2Pvs (BufferedTokenStream tokens) {
             super();
             this.tokens = tokens;
             rewriter = new TokenStreamRewriter(tokens);
+            variablesMap = new HashSet<String>();
         }
 
         public String getSource (ParserRuleContext ctx) {
@@ -135,6 +139,20 @@ public class DdlParser {
             Interval interval = new Interval(start.getStartIndex(), stop.getStopIndex());
             String src = cs.getText(interval);
             return src;
+        }
+        public String getVariableDeclarations () {
+            String ans = "";
+            int len = this.variablesMap.size();
+            if (len > 0) {
+                Iterator<String> it = this.variablesMap.iterator();
+                int i = 0;
+                ans += "\n  %-- Definition of syntactic sugar for variables and assignments\n";
+                while (it.hasNext()) {
+                    ans += "  " + it.next() + ": nat = " + i++ + "\n";
+                }
+                ans += "  %--\n\n";
+            }
+            return ans;
         }
         public String getPvsSpec () {
             return rewriter.getText();
@@ -167,12 +185,28 @@ public class DdlParser {
             // System.out.print(pvsSpec);
             // System.out.println(ctx.getText());
         }
+        @Override public void enterTheoryBegin(DdlEmbeddingParser.TheoryBeginContext ctx) {
+            this.theoryBeginContext = ctx;
+        }
+        @Override public void exitTheoryPart(DdlEmbeddingParser.TheoryPartContext ctx) {
+            if (this.theoryBeginContext != null) {
+                // place variable declarations and importing dynamic_logic at the beginning of the theory
+                Token stop = this.theoryBeginContext.getStop();
+                String importing = "\n\n  IMPORTING dynamic_logic\n";
+                String decls = getVariableDeclarations();
+                rewriter.insertAfter(stop, importing + decls);
+            }
+        }
         @Override public void exitHpEmbedding(DdlEmbeddingParser.HpEmbeddingContext ctx) {
             // rewrite hp embedding in the original .hpvs file with pvsSpec so as to produce the .pvs file
             Token start = ctx.getStart();
             Token stop = ctx.getStop();
+            // replace PROBLEMS with LEMMAS
             rewriter.insertBefore(start, hpComment + pvsSpec.replace("\n", "\n" + padding));
             rewriter.replace(start, stop, "\n");
+            // reset pvsSpec and comment
+            this.pvsSpec = "";
+            this.hpComment = "";
             // System.out.println(pvsSpec);
         }
         @Override public void enterDlInvariant(DdlEmbeddingParser.DlInvariantContext ctx) {
@@ -187,19 +221,19 @@ public class DdlParser {
             pvsSpec += ")";
             // System.out.print(pvsSpec);
         }
-        @Override public void enterDlSequentialAssignment(DdlEmbeddingParser.DlSequentialAssignmentContext ctx) {
+        @Override public void enterDlSequentialProgram(DdlEmbeddingParser.DlSequentialProgramContext ctx) {
             pvsSpec += "SEQ(";
             // System.out.print(pvsSpec);  
         }
-        @Override public void exitDlSequentialAssignment(DdlEmbeddingParser.DlSequentialAssignmentContext ctx) {
+        @Override public void exitDlSequentialProgram(DdlEmbeddingParser.DlSequentialProgramContext ctx) {
             pvsSpec += ")";
             // System.out.print(pvsSpec);
         }
-        @Override public void enterDlDiffAssignment(DdlEmbeddingParser.DlDiffAssignmentContext ctx) {
+        @Override public void enterDlDiffStatement(DdlEmbeddingParser.DlDiffStatementContext ctx) {
             pvsSpec += "DIFF((: ";
             // System.out.print(pvsSpec);  
         }
-        @Override public void exitDlDiffAssignment(DdlEmbeddingParser.DlDiffAssignmentContext ctx) {
+        @Override public void exitDlDiffStatement(DdlEmbeddingParser.DlDiffStatementContext ctx) {
             pvsSpec += " :)";
             if (ctx.dlDiffInvariant() == null) {
                 pvsSpec += ", DLTRUE";
@@ -215,11 +249,11 @@ public class DdlParser {
             pvsSpec += ")";
             // System.out.print(pvsSpec);
         }
-        @Override public void enterDlSimpleAssignment(DdlEmbeddingParser.DlSimpleAssignmentContext ctx) {
+        @Override public void enterDlSimpleAssignmentStatement(DdlEmbeddingParser.DlSimpleAssignmentStatementContext ctx) {
             pvsSpec += "ASSIGN((: (";
             // System.out.print(pvsSpec); 
         }
-        @Override public void exitDlSimpleAssignment(DdlEmbeddingParser.DlSimpleAssignmentContext ctx) {
+        @Override public void exitDlSimpleAssignmentStatement(DdlEmbeddingParser.DlSimpleAssignmentStatementContext ctx) {
             pvsSpec += ") :))";
             // System.out.print(pvsSpec); 
         }
@@ -261,6 +295,7 @@ public class DdlParser {
             // System.out.print(pvsSpec); 
         }
         @Override public void enterDlIdentifier(DdlEmbeddingParser.DlIdentifierContext ctx) {
+            this.variablesMap.add(ctx.getText());
             pvsSpec += ctx.getText();
             // System.out.print(pvsSpec); 
         }
@@ -293,6 +328,7 @@ public class DdlParser {
             // System.out.print(pvsSpec);
         }
         @Override public void enterDlValue(DdlEmbeddingParser.DlValueContext ctx) {
+            this.variablesMap.add(ctx.getText());
             pvsSpec += "val(" + ctx.getText() + ")";
             // System.out.print(pvsSpec);
         }
