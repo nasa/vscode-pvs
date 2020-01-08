@@ -36,5 +36,8 @@
 %differential eqs
 (x > 0) AND (y > 0) |- [x'= -y, y'=-y] (x > 0 AND y >0)
 
+%parallel assignment
+(x > 0) AND (y > 0) |- [x := y, y := y] (x > 0 AND y >0)
+
 %any
 (x > 0) AND (y > 0) |- [w:=*; x'= x + w] (x > 0)

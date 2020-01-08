@@ -61,20 +61,22 @@ dlProgram: dlProgramIdentifier
     ;
 
 dlStatement
-    : dlSimpleStatement (operatorColon dlSimpleStatement)+ #dlSequentialStatement
-    | dlSimpleStatement (operatorComma dlSimpleStatement)+ #dlParallelStatement
+    : dlDiffAssignmentElem (operatorComma dlDiffAssignmentElem)+ (O_AND dlDiffInvariant)? #dlParallelDiffStatement
+    | dlSimpleAssignmentElem (operatorComma dlSimpleAssignmentElem)+ #dlSimpleParallelAssignmentStatement
+    | dlStatementL1 (operatorComma dlStatementL1)+ #dlParallelStatement
+    | dlStatementL1 (operatorColon dlStatementL1)+ #dlSequentialStatement
     | '(' dlStatement ')' '*' #dlStarStatement
     | parenLeft dlStatement parenRight #dlParStatement
-    | dlSimpleStatement #simpleStatement
+    | dlStatementL1 #simpleStatement
     ;
 
-dlSimpleStatement
+dlStatementL1
     : '?' dlExpression #dlTestStatement
     | dlUnionElem (operatorPlusPlus dlUnionElem)+ #dlUnionStatement
     | dlAnyAssignmentIdentifier O_ASSIGN '*' ('(' bindDeclaration (',' bindDeclaration)* ('|' dlBooleanExpression)? ')')? #dlAnyAssignmentStatement
-    | dlDiffAssignmentElem (operatorComma dlDiffAssignmentElem)* (O_AND dlDiffInvariant)? #dlDiffStatement
+    | dlDiffAssignmentElem (O_AND dlDiffInvariant)? #dlDiffStatement
     | dlSimpleAssignmentElem (operatorComma dlSimpleAssignmentElem)* #dlSimpleAssignmentStatement
-    | parenLeft dlSimpleStatement parenRight #dlSimpleParStatement
+    | parenLeft dlStatementL1 parenRight #dlSimpleParStatement
     ;
 
 

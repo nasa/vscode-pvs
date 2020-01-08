@@ -40,6 +40,10 @@ BEGIN
   test6: PROBLEM
    (x > 0) AND (y > 0) |- [x'= y, y'=x*y] (x > 0 AND y >0)
 
+  % Paralllel assignment
+  test6: PROBLEM
+   (x > 0) AND (y > 0) |- [x := y, y := x*y] (x > 0 AND y >0)
+
   % % Test any
   test7: PROBLEM
   (x > 0) AND (y > 0) |- [w:=*; x'= x + w] (x > 0)

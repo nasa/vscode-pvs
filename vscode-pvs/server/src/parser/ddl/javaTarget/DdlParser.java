@@ -252,11 +252,11 @@ public class DdlParser {
             // System.out.print(pvsSpec);
         }
         @Override public void enterDlSimpleAssignmentStatement(DdlEmbeddingParser.DlSimpleAssignmentStatementContext ctx) {
-            pvsSpec += "ASSIGN((: (";
+            pvsSpec += "ASSIGN((: ";
             // System.out.print(pvsSpec); 
         }
         @Override public void exitDlSimpleAssignmentStatement(DdlEmbeddingParser.DlSimpleAssignmentStatementContext ctx) {
-            pvsSpec += ") :))";
+            pvsSpec += " :))";
             // System.out.print(pvsSpec); 
         }
         @Override public void exitOperatorColon(DdlEmbeddingParser.OperatorColonContext ctx) {
@@ -389,6 +389,25 @@ public class DdlParser {
             pvsSpec += "TEST(";
         }
         @Override public void exitDlTestStatement(DdlEmbeddingParser.DlTestStatementContext ctx) {
+            pvsSpec += ")";
+        }
+        @Override public void enterDlParallelDiffStatement(DdlEmbeddingParser.DlParallelDiffStatementContext ctx) {
+            pvsSpec += "DIFF((: ";
+            // System.out.print(pvsSpec);  
+        }
+        @Override public void exitDlParallelDiffStatement(DdlEmbeddingParser.DlParallelDiffStatementContext ctx) {
+            pvsSpec += " :))";
+        }
+        @Override public void enterDlSimpleParallelAssignmentStatement(DdlEmbeddingParser.DlSimpleParallelAssignmentStatementContext ctx) {
+            pvsSpec += "ASSIGN((: ";
+        }
+        @Override public void exitDlSimpleParallelAssignmentStatement(DdlEmbeddingParser.DlSimpleParallelAssignmentStatementContext ctx) {
+            pvsSpec += " :))";
+        }
+        @Override public void enterDlSimpleAssignmentElem(DdlEmbeddingParser.DlSimpleAssignmentElemContext ctx) {
+            pvsSpec += "(";
+        }
+        @Override public void exitDlSimpleAssignmentElem(DdlEmbeddingParser.DlSimpleAssignmentElemContext ctx) {
             pvsSpec += ")";
         }
     }
