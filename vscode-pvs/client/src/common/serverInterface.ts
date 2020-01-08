@@ -427,11 +427,12 @@ export const serverCommand = {
 	proofCommand: "pvs.proof-command",
 	parseContext: "pvs.parse-context",
 	parseFile: "pvs.parse-file",
+	parseFileWithFeedback: "pvs.parse-file.with-feedback",
 	listContext: "pvs.list-context",
 	showTccs: "pvs.show-tccs",
 	startPvsLanguageServer: "pvs.start-pvs-server",
 	rebootPvsServer: "pvs.reboot-pvs-server",
-	generatePvsFile: "pvs.generate-pvs-file",
+	hp2pvs: "pvs.hp-to-pvs-file",
 
 	listDownloadableVersions: "pvs.list-downloadable-versions",
 	downloadPvs: "pvs.download-pvs",

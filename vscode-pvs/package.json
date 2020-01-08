@@ -161,7 +161,7 @@
 				"title": "Parse"
 			},
 			{
-				"command": "vscode-pvs.generate-pvs-file",
+				"command": "vscode-pvs.hp2pvs",
 				"title": "Generate PVS file"
 			},
 			{
@@ -339,7 +339,7 @@
 					"when": "resourceScheme == file && resourceExtname == .hpvs"
 				},
 				{
-					"command": "vscode-pvs.generate-pvs-file",
+					"command": "vscode-pvs.hp2pvs",
 					"when": "resourceScheme == file && resourceExtname == .hpvs"
 				}
 			],
@@ -357,7 +357,7 @@
 					"when": "resourceScheme == file && resourceExtname == .hpvs"
 				},
 				{
-					"command": "vscode-pvs.generate-pvs-file",
+					"command": "vscode-pvs.hp2pvs",
 					"when": "resourceScheme == file && resourceExtname == .hpvs"
 				}
 			],

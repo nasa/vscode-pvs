@@ -84,7 +84,7 @@ BEGIN
   %---------------------------------
   test6: LEMMA
    (val(x) > cnst(0)) AND (val(y) > cnst(0))
-   |- ALLRUNS(DIFF((: (x, val(y)) :), DLTRUE)DIFF((: (y, val(x) * val(y)) :), DLTRUE), (val(x) > cnst(0) AND val(y) > cnst(0)))
+   |- ALLRUNS(DIFF((: (x, val(y)) :), DLTRUE), DIFF((: (y, val(x) * val(y)) :), DLTRUE), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
 
   % % Test any

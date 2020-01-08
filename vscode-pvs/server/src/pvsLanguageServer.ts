@@ -148,6 +148,51 @@ export class PvsLanguageServer {
 		this.connection.listen();
 	}
 	
+	//-- utility functions
+	protected notifyStartExecution (msg: string): void {
+		if (this.connection) {
+			this.connection.sendNotification("server.status.progress", msg);
+		}
+	}
+	protected notifyEndExecution (msg?: string): void {
+		if (this.connection) {
+			this.connection.sendNotification("server.status.ready", msg);
+		}
+	}
+	protected notifyStartImportantTask (msg: string): void {
+		if (this.connection) {
+			this.connection.sendNotification("server.status.start-important-task", msg);
+		}
+	}
+	protected notifyProgressImportantTask (msg: string): void {
+		if (this.connection) {
+			this.connection.sendNotification("server.status.progress-important-task", msg);
+		}
+	}
+	protected notifyEndImportantTask (msg: string): void {
+		if (this.connection) {
+			this.connection.sendNotification("server.status.end-important-task", msg);
+		}
+	}
+	protected notifyEndImportantTaskWithErrors (msg: string) {
+		if (this.connection) {
+			this.connection.sendNotification("server.status.end-important-task-with-errors", msg);
+		}
+	}
+	protected reportError (msg: string): void {
+		// error shown in a dialogue box
+		if (this.connection) {
+			this.connection.sendNotification("server.status.report-error", msg);
+		}
+	}
+	protected notifyError (msg: string): void {
+		// error shown in the status bar
+		if (this.connection) {
+			this.connection.sendNotification("server.status.error", msg);
+		}
+	}
+	//--
+
 	/**
 	 * Internal function, checks that pvsProxy and desc are defined
 	 * @param desc 
@@ -441,10 +486,10 @@ export class PvsLanguageServer {
 		}
 		return null;
 	}
-	async generatePvsFile (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
+	async hp2pvs (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
 		if (this.checkArgs("generatePvsFile", args)) {
 			try {
-				return await this.pvsProxy.generatePvsFile(args);
+				return await this.pvsProxy.hp2pvs(args);
 			} catch (ex) {
 				console.error('[pvs-language-server.generatePvsFile] Error: pvsProxy has thrown an exception', ex);
 				return null;
@@ -452,8 +497,9 @@ export class PvsLanguageServer {
 		}
 		return null;
 	}
-	async parseFileRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
+	async parseFileRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }, opt?: { withFeedback?: boolean }): Promise<void> {
 		if (request) {
+			opt = opt || {};
 			const desc: {
 				fileName: string, 
 				fileExtension: string, 
@@ -470,6 +516,14 @@ export class PvsLanguageServer {
 					this.connection.sendRequest(serverEvent.parseFileResponse, response);
 					// collect diagnostics
 					diags[fname] = response;
+					// send feedback to the front-end
+					if (opt.withFeedback) {
+						if (response.error) {
+							this.notifyEndImportantTaskWithErrors(`${desc.fileName}${desc.fileExtension} contains parse errors`);
+						} else {
+							this.notifyEndImportantTask(`${desc.fileName}${desc.fileExtension} parsed successfully!`);
+						}
+					}
 				} else {
 					// clear diagnostics, as the parse error may have gone and we don't know because pvs-server failed to execute parseFile
 					diags[fname] = null;
@@ -483,7 +537,7 @@ export class PvsLanguageServer {
 			console.error("[pvs-language-server] Warning: pvs.parse-file invoked with null request");
 		}
 	}
-	async generatePvsFileRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
+	async hp2pvsRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
 		if (request) {
 			const desc: {
 				fileName: string, 
@@ -493,7 +547,7 @@ export class PvsLanguageServer {
 			if (desc) {
 				// const response: PvsResponse = await this.parseFile(desc);
 				// const diags: ContextDiagnostics = {};
-				const response: PvsResponse = await this.generatePvsFile(desc);
+				const response: PvsResponse = await this.hp2pvs(desc);
 				const diags: ContextDiagnostics = {};
 				const fname: string = fsUtils.desc2fname(desc);
 				if (response) {
@@ -1160,8 +1214,13 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.parseFile, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.parseFileRequest(request); // async call
 			});
-			this.connection.onRequest(serverCommand.generatePvsFile, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
-				this.generatePvsFileRequest(request); // async call
+			this.connection.onRequest(serverCommand.parseFileWithFeedback, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
+				const f: string = (typeof request === "string") ? request : fsUtils.desc2fname(request);
+				this.notifyStartImportantTask(`Parsing file ${f}`);
+				this.parseFileRequest(request, { withFeedback: true }); // async call
+			});
+			this.connection.onRequest(serverCommand.hp2pvs, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
+				this.hp2pvsRequest(request); // async call
 			});
 			this.connection.onRequest(serverCommand.typecheckFile, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.typecheckFileRequest(request); // async call

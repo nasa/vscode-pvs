@@ -288,15 +288,15 @@ export class EventsDispatcher {
                 }> this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
-                    this.client.sendRequest(serverCommand.parseFile, desc);
+                    this.client.sendRequest(serverCommand.parseFileWithFeedback, desc);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
             }
 		}));
 
-        // vscode-pvs.generate-pvs-file
-		context.subscriptions.push(commands.registerCommand("vscode-pvs.generate-pvs-file", async (resource: string | { path: string } | { contextValue: string }) => {
+        // vscode-pvs.hp2pvs
+		context.subscriptions.push(commands.registerCommand("vscode-pvs.hp2pvs", async (resource: string | { path: string } | { contextValue: string }) => {
             if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
                 resource = { path: window.activeTextEditor.document.fileName };
             }
@@ -306,7 +306,7 @@ export class EventsDispatcher {
                 }> this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
-                    this.client.sendRequest(serverCommand.generatePvsFile, desc);
+                    this.client.sendRequest(serverCommand.hp2pvs, desc);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
@@ -328,11 +328,13 @@ export class EventsDispatcher {
         this.client.onNotification("server.status.progress", (msg: string) => {
             this.statusBar.progress(msg);
         });
-        this.client.onNotification("server.status.ready", () => {
+        this.client.onNotification("server.status.ready", (msg?: string) => {
             this.statusBar.ready();
+            if (msg) {
+                window.showInformationMessage(msg);
+            }
         });
         this.client.onNotification("server.status.start-important-task", (message: string) => {
-
             // show dialog with progress
             window.withProgress({
                 location: ProgressLocation.Notification,
@@ -349,6 +351,11 @@ export class EventsDispatcher {
                     });
                     this.client.onNotification("server.status.end-important-task", (end_message: string) => {
                         window.showInformationMessage(end_message);
+                        this.statusBar.ready();
+                        resolve(null);
+                    });
+                    this.client.onNotification("server.status.end-important-task-with-errors", (error_message: string) => {
+                        window.showErrorMessage(error_message);
                         this.statusBar.ready();
                         resolve(null);
                     });

@@ -300,7 +300,10 @@ export class PvsProxy {
 		return await this.pvsRequest('list-client-methods');
 	}
 
-
+	/**
+	 * Utility function, creates a PvsResponse out of parse diagnostic messages
+	 * @param diags Diagnostic messages from the parser
+	 */
 	protected makeDiags (diags: Diagnostic[]): PvsResponse {
 		const id: string = this.get_fresh_id();
 		if (diags && diags.length > 0) {
@@ -333,7 +336,15 @@ export class PvsProxy {
 			if (this.hashTable[fname] && hash === this.hashTable[fname].hash) {
 				console.log("[pvs-proxy] Parser diagnostics loaded from cache.");
 				const diags: Diagnostic[] = this.hashTable[fname].diags;
-				this.notifyEndExecution();
+				if (diags && diags.length > 0) {
+					const msg: string = `${desc.fileName}${desc.fileExtension} contains parse errors.`;
+					this.notifyError(msg);
+					console.log(`[pvs-proxy] ${msg}`);
+				} else {
+					const msg: string = `${desc.fileName}${desc.fileExtension} parsed successfully!`;
+					this.notifyEndExecution();
+					console.log(`[pvs-proxy] ${msg}`);
+				}
 				return this.makeDiags(diags);
 			} else {
 				if (ENABLE_NEW_PARSER) {
@@ -368,15 +379,19 @@ export class PvsProxy {
 		return null;
 	}
 
-	async generatePvsFile(desc: { contextFolder: string, fileName: string, fileExtension: string,  }): Promise<PvsResponse> {
+	/**
+	 * Translates a hybrid program into a standard pvs file
+	 * @param desc File descriptor for the hybrid program
+	 */
+	async hp2pvs(desc: { contextFolder: string, fileName: string, fileExtension: string }): Promise<PvsResponse> {
 		if (desc) {
 			if (ENABLE_NEW_PARSER) {
 				this.notifyStartExecution(`Generating PVS file ${desc.fileName}.hpvs`);
 				const id: string = this.get_fresh_id();
 				
 				const diags: Diagnostic[] = await this.parser.generatePvsFile(desc);
-				this.notifyEndExecution();
 				if (diags && diags.length > 0) {
+					this.reportError(`PVS file could not be generated (${desc.fileName}.hpvs contains parse errors)`);
 					return {
 						jsonrpc: "2.0",
 						id,
@@ -387,6 +402,7 @@ export class PvsProxy {
 						}
 					};
 				}
+				this.notifyEndExecution(`${desc.fileName}.pvs generated successfully!`);
 				return {
 					jsonrpc: "2.0",
 					id
@@ -421,7 +437,7 @@ export class PvsProxy {
 				if (res.result) {
 					this.notifyEndImportantTask(`Typechecking successful for ${desc.fileName}${desc.fileExtension}`);
 				} else {
-					this.reportError(`Typecheck error in file ${desc.fileName}${desc.fileExtension}: ${res.error.data.error_string}`);
+					this.notifyEndImportantTaskWithErrors(`Typecheck error in file ${desc.fileName}${desc.fileExtension}: ${res.error.data.error_string}`);
 				}
 			} else {
 				console.log(`[pvs-proxy] Warning: received pvs-server error while typechecking file ${desc.fileName}${desc.fileExtension}`, res);
@@ -725,9 +741,9 @@ export class PvsProxy {
 			this.connection.sendNotification("server.status.progress", msg);
 		}
 	}
-	protected notifyEndExecution (): void {
+	protected notifyEndExecution (msg?: string): void {
 		if (this.connection) {
-			this.connection.sendNotification("server.status.ready");
+			this.connection.sendNotification("server.status.ready", msg);
 		}
 	}
 	protected notifyStartImportantTask (msg: string): void {
@@ -743,6 +759,11 @@ export class PvsProxy {
 	protected notifyEndImportantTask (msg: string): void {
 		if (this.connection) {
 			this.connection.sendNotification("server.status.end-important-task", msg);
+		}
+	}
+	protected notifyEndImportantTaskWithErrors (msg: string) {
+		if (this.connection) {
+			this.connection.sendNotification("server.status.end-important-task-with-errors", msg);
 		}
 	}
 	protected reportError (msg: string): void {

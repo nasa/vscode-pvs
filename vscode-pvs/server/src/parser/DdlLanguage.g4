@@ -62,7 +62,7 @@ dlProgram: dlProgramIdentifier
 
 dlStatement
     : dlSimpleStatement (operatorColon dlSimpleStatement)+ #dlSequentialStatement
-    | dlSimpleStatement (',' dlSimpleStatement)+ #dlParallelStatement
+    | dlSimpleStatement (operatorComma dlSimpleStatement)+ #dlParallelStatement
     | '(' dlStatement ')' '*' #dlStarStatement
     | parenLeft dlStatement parenRight #dlParStatement
     | dlSimpleStatement #simpleStatement
