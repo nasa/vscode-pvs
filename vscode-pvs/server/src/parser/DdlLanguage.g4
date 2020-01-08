@@ -62,9 +62,8 @@ dlProgram: dlProgramIdentifier
 
 dlStatement
     : dlDiffAssignmentElem (operatorComma dlDiffAssignmentElem)+ (O_AND dlDiffInvariant)? #dlParallelDiffStatement
-    | dlSimpleAssignmentElem (operatorComma dlSimpleAssignmentElem)+ #dlSimpleParallelAssignmentStatement
+    | dlAssignmentElem (operatorComma dlAssignmentElem)+ #dlParallelAssignmentStatement
     | dlStatementL1 (operatorComma dlStatementL1)+ #dlParallelStatement
-    | dlStatementL1 (operatorColon dlStatementL1)+ #dlSequentialStatement
     | '(' dlStatement ')' '*' #dlStarStatement
     | parenLeft dlStatement parenRight #dlParStatement
     | dlStatementL1 #simpleStatement
@@ -72,10 +71,11 @@ dlStatement
 
 dlStatementL1
     : '?' dlExpression #dlTestStatement
-    | dlUnionElem (operatorPlusPlus dlUnionElem)+ #dlUnionStatement
+    |<assoc=right> dlStatementL1 operatorPlusPlus dlStatementL1 #dlUnionStatement
+    |<assoc=right> dlStatementL1 operatorColon dlStatementL1 #dlSequentialStatement
     | dlAnyAssignmentIdentifier O_ASSIGN '*' ('(' bindDeclaration (',' bindDeclaration)* ('|' dlBooleanExpression)? ')')? #dlAnyAssignmentStatement
     | dlDiffAssignmentElem (O_AND dlDiffInvariant)? #dlDiffStatement
-    | dlSimpleAssignmentElem (operatorComma dlSimpleAssignmentElem)* #dlSimpleAssignmentStatement
+    | dlAssignmentElem #dlSimpleAssignmentStatement
     | parenLeft dlStatementL1 parenRight #dlSimpleParStatement
     ;
 
@@ -89,10 +89,10 @@ dlDiffInvariant
     ;
 
 dlUnionElem
-    : dlSimpleAssignmentElem
+    : dlAssignmentElem
     ;
 
-dlSimpleAssignmentElem
+dlAssignmentElem
     : dlIdentifier operatorAssign dlExpression
     ;
 

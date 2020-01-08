@@ -398,16 +398,16 @@ public class DdlParser {
         @Override public void exitDlParallelDiffStatement(DdlEmbeddingParser.DlParallelDiffStatementContext ctx) {
             pvsSpec += " :))";
         }
-        @Override public void enterDlSimpleParallelAssignmentStatement(DdlEmbeddingParser.DlSimpleParallelAssignmentStatementContext ctx) {
+        @Override public void enterDlParallelAssignmentStatement(DdlEmbeddingParser.DlParallelAssignmentStatementContext ctx) {
             pvsSpec += "ASSIGN((: ";
         }
-        @Override public void exitDlSimpleParallelAssignmentStatement(DdlEmbeddingParser.DlSimpleParallelAssignmentStatementContext ctx) {
+        @Override public void exitDlParallelAssignmentStatement(DdlEmbeddingParser.DlParallelAssignmentStatementContext ctx) {
             pvsSpec += " :))";
         }
-        @Override public void enterDlSimpleAssignmentElem(DdlEmbeddingParser.DlSimpleAssignmentElemContext ctx) {
+        @Override public void enterDlAssignmentElem(DdlEmbeddingParser.DlAssignmentElemContext ctx) {
             pvsSpec += "(";
         }
-        @Override public void exitDlSimpleAssignmentElem(DdlEmbeddingParser.DlSimpleAssignmentElemContext ctx) {
+        @Override public void exitDlAssignmentElem(DdlEmbeddingParser.DlAssignmentElemContext ctx) {
             pvsSpec += ")";
         }
     }

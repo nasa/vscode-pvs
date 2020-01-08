@@ -12,14 +12,6 @@ BEGIN
 
 
 
-  IMPORTING dynamic_logic
-
-  %--- Definition of syntactic sugar for variables and assignments
-  x : nat = 0
-  y : nat = 1
-  %--- 
- 
- 
   A:VAR real
   B:VAR real
 
@@ -64,17 +56,17 @@ BEGIN
   %---------------------------------
   test4: LEMMA
    (val(x) > cnst(0)) AND (val(y) > cnst(0))
-   |- ALLRUNS(SEQ(TEST(val(x) < cnst(5) AND val(y) < cnst(3)), ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :))), (val(x) > cnst(0) AND val(y) > cnst(0)))
+   |- ALLRUNS(SEQ(TEST(val(x) < cnst(5) AND val(y) < cnst(3)), SEQ(ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :)))), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
 
   % % % Unions
   %---------------------------------
   % test5: PROBLEM
-  %    (x > 0) AND (y > 0) |- [(a:=1 ++ a:=-1; x := x +1; y:= y + 1)*] (x > 0 AND y > 0)
+  %    (x > 0) AND (y > 0) |- [(a:=1 ++ a:=-1 ++ a:=1; x := x +1; y:= y + 1)*] (x > 0 AND y > 0)
   %---------------------------------
   test5: LEMMA
    (val(x) > cnst(0)) AND (val(y) > cnst(0))
-   |- ALLRUNS(SEQ(UNION(ASSIGN((: ((a, cnst(1))) :)), ASSIGN((: ((a, cnst(-1))) :))), ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :))), (val(x) > cnst(0) AND val(y) > cnst(0)))
+   |- ALLRUNS(SEQ(UNION(ASSIGN((: (a, cnst(1)) :)), UNION(ASSIGN((: (a, cnst(-1)) :)), ASSIGN((: (a, cnst(1)) :)))), SEQ(ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :)))), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
 
   % % Differential equations
@@ -89,10 +81,10 @@ BEGIN
 
   % Paralllel assignment
   %---------------------------------
-  % test6: PROBLEM
+  % test6a: PROBLEM
   %    (x > 0) AND (y > 0) |- [x := y, y := x*y] (x > 0 AND y >0)
   %---------------------------------
-  test6: LEMMA
+  test6a: LEMMA
    (val(x) > cnst(0)) AND (val(y) > cnst(0))
    |- ALLRUNS(ASSIGN((: (x, val(y)), (y, val(x) * val(y)) :)), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
