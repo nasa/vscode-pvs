@@ -2,6 +2,9 @@ import org.antlr.v4.runtime.*;
 import java.util.*;
 
 public class PvsParser {
+    protected static Boolean test = false;
+    protected static String ifname = null;
+
     public static interface DiagnosticSeverity {
         int Error = 1;
         int Warning = 2;
@@ -28,22 +31,46 @@ public class PvsParser {
         }
 
     }
+    public static class ErrorHandler extends DefaultErrorStrategy {
+        // @Override public void reportNoViableAlternative(Parser parser, NoViableAltException e) {
+        //     parser.notifyErrorListeners(e.getOffendingToken(), "Syntax error", e);
+        // }
+    }
+    protected static void parseCliArgs (String[] args) {
+        // System.out.println(args.toString());
+        for (int a = 0; a < args.length; a++) {
+            if (args[a].equals("--test") || args[a].equals("-test")) {
+                test = true;
+            } else {
+                ifname = args[a];
+            }
+        }
+    }
     public static void main(String[] args) throws Exception {
         // open file
         if (args != null && args.length > 0) {
-            // System.out.println("Parsing file " + args[0]);
-            CharStream input = CharStreams.fromFileName(args[0]);
+            parseCliArgs(args);
+            if (test) {
+                System.out.println("Parsing file " + ifname);
+            }
+            CharStream input = CharStreams.fromFileName(ifname);
             PvsLanguageLexer lexer = new PvsLanguageLexer(input);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             PvsLanguageParser parser = new PvsLanguageParser(tokens);
             parser.removeErrorListeners(); // remove ConsoleErrorListener
             ErrorListener el = new ErrorListener();
             parser.addErrorListener(el); // add new error listener
+            ErrorHandler eh = new ErrorHandler();
+            parser.setErrorHandler(eh);
+            parser.setBuildParseTree(false); // disable parse tree creation, to speed up parsing
             parser.parse(); // parse as usual
             if (el.errors.size() > 0) {
                 System.out.println(el.errors);
+            } else {
+                if (test) {
+                    System.out.println(ifname + " parsed successfully!");
+                }
             }
-            // System.out.println("Done!");
         }
     }
 }

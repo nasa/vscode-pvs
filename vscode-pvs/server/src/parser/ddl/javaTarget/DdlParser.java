@@ -24,7 +24,9 @@ public class DdlParser {
         // open file
         if (args != null && args.length > 0) {
             parseCliArgs(args);
-            // System.out.println("Parsing file " + ifname);
+            if (test) {
+                System.out.println("Parsing file " + ifname);
+            }
             CharStream input = CharStreams.fromFileName(ifname);
             DdlEmbeddingLexer lexer = new DdlEmbeddingLexer(input);
             CommonTokenStream tokens = new CommonTokenStream(lexer);

@@ -2,6 +2,12 @@ all:
 	make pvs-parser
 	make ddl-parser
 
+pvs: download
+	# java
+	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./pvs/javaTarget/out
+	cd pvs/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../../..
+	cd pvs/javaTarget/out && java -classpath ../../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ../../../../../test/sandbox/sq.pvs -gui
+
 pvs-parser: download
 	# generating java target
 	@java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./pvs/javaTarget/out
@@ -15,6 +21,8 @@ pvs-parser: download
 	cp lib/antlr-4.7.2-complete.jar ../../out/parser/lib
 	@-rm -r pvs/javaTarget/out
 	@-rm -r lib
+	# testing parser
+	cd ../../out/parser/lib && java -jar PvsParser.jar ../../../test/sandbox/sq.pvs -test
 
 pvs-parser-js: download
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=JavaScript PvsLanguage.g4 -o ./pvs/jsTarget/out
