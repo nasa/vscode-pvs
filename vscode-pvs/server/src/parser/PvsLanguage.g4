@@ -111,6 +111,8 @@ typeDefinition
 
 formulaDeclaration
 	: identifier ':' K_FORMULA formulaDefinition
+	// error handling
+	| identifier { notifyErrorListeners("Missing ':' before keyword K_FORMULA"); } K_FORMULA formulaDefinition
 	;
 formulaDefinition
     : expr
@@ -169,6 +171,7 @@ expr
     | recordExpression
 	| typeExpression
 	| term
+	| '(' expr ')'
 	;
 
 // constantExpression
@@ -230,14 +233,8 @@ lambdaBody
 	| '(' lambdaBody ')'
 	;
 lambdaBindings
-	: lambdaBinding (',' lambdaBinding)*
+	: bindings (',' bindings)*
 	| '(' lambdaBindings ')'
-	;
-lambdaBinding
-	: 
-	//identifier | unaryOp | binaryOp
-	//| 
-	bindings
 	;
 bindings
 	: binding (',' binding)*
@@ -296,8 +293,8 @@ tupleType
 	;
 
 subtype
-	: '{' identifier (',' identifier)* (':' expr)? (',' identifier (',' identifier)* (':' expr)?)* ('|' expr)? '}'
-	| '(' expr (':' expr)? ('|' expr)? ')' // shotcut for subtype
+	: '{' name (',' name)* (':' expr)? (',' name (',' name)* (':' expr)?)* ('|' expr)? '}'
+	| '(' name (':' expr)? ('|' expr)? ')' // shotcut for subtype
 //	| '(' expr ')' // another shortcut for subtype
 	// | name ('|' expr)? // another shortcut for subtype
 	;
