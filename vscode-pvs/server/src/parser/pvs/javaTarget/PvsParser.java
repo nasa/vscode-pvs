@@ -1,5 +1,11 @@
 import org.antlr.v4.runtime.*;
 import java.util.*;
+import org.antlr.v4.runtime.ANTLRInputStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.*;
+import org.antlr.v4.runtime.misc.Interval;
 
 public class PvsParser {
     protected static Boolean test = false;
@@ -46,6 +52,25 @@ public class PvsParser {
             }
         }
     }
+    public static class DeclDescriptor {
+        int start_line;
+        int start_character;
+        int stop_line;
+        int stop_character;
+        DeclDescriptor (int start_line, int start_character, int stop_line, int stop_character) {
+            this.start_line = start_line;
+            this.start_character = start_character;
+            this.stop_line = stop_line;
+            this.stop_character = stop_character;
+        }
+        public String toString () {
+            return "{ \"start\": "
+                + "{ \"line\": " + this.start_line + ", \"character\": " + this.start_character + "}"
+                + ", \"stop\": "
+                + "{ \"line\": " + this.stop_line + ", \"character\": " + this.stop_character + "}"
+                + " }";
+        }
+    }
     public static void main(String[] args) throws Exception {
         // open file
         if (args != null && args.length > 0) {
@@ -62,13 +87,73 @@ public class PvsParser {
             parser.addErrorListener(el); // add new error listener
             ErrorHandler eh = new ErrorHandler();
             parser.setErrorHandler(eh);
-            parser.setBuildParseTree(false); // disable parse tree creation, to speed up parsing
-            parser.parse(); // parse as usual
+            // parser.setBuildParseTree(false); // disable parse tree creation, to speed up parsing
+            ParserRuleContext tree = parser.parse(); // parse as usual
             if (el.errors.size() > 0) {
                 System.out.println(el.errors);
             } else {
                 if (test) {
                     System.out.println(ifname + " parsed successfully!");
+                }
+                // walk the tree
+                ParseTreeWalker walker = new ParseTreeWalker();
+                PvsParserListener listener = new PvsParserListener(tokens);
+                walker.walk(listener, tree);
+            }
+        }
+    }
+    public static class PvsParserListener extends PvsLanguageBaseListener {
+        protected BufferedTokenStream tokens = null;
+        protected TokenStreamRewriter rewriter = null;
+        protected HashMap<String, DeclDescriptor> typeDeclarations = new HashMap<String, DeclDescriptor>();
+        protected HashMap<String, DeclDescriptor> formulaDeclarations = new HashMap<String, DeclDescriptor>();
+        PvsParserListener (BufferedTokenStream tokens) {
+            super();
+            this.tokens = tokens;
+            rewriter = new TokenStreamRewriter(tokens);
+        }
+
+        @Override public void enterTypeDeclaration(PvsLanguageParser.TypeDeclarationContext ctx) {
+            ListIterator<PvsLanguageParser.IdentifierContext> it = ctx.identifier().listIterator();
+            while (it.hasNext()) {
+                PvsLanguageParser.IdentifierContext ictx = it.next();
+                Token start = ictx.getStart();
+                Token stop = ictx.getStop();
+                String id = ictx.getText();
+                this.typeDeclarations.put(
+                    id, 
+                    new DeclDescriptor(start.getLine(), start.getCharPositionInLine(), stop.getLine(), stop.getCharPositionInLine())
+                );
+            }
+        }
+        @Override public void enterFormulaDeclaration(PvsLanguageParser.FormulaDeclarationContext ctx) {
+            Token start = ctx.getStart();
+            Token stop = ctx.getStop();
+            String id = ctx.identifier().getText();
+            this.formulaDeclarations.put(
+                id, 
+                new DeclDescriptor(start.getLine(), start.getCharPositionInLine(), stop.getLine(), stop.getCharPositionInLine())
+            );
+        }
+        @Override public void exitTheory(PvsLanguageParser.TheoryContext ctx) {
+            if (test) {
+                if (this.typeDeclarations != null) {
+                    int n = this.typeDeclarations.size();
+                    System.out.println("------------------------------");
+                    System.out.println(n + " type declarations");
+                    System.out.println("------------------------------");
+                    for (String id: this.typeDeclarations.keySet()){
+                        System.out.println(id + " " + this.typeDeclarations.get(id));
+                    }
+                }
+                if (this.formulaDeclarations != null) {
+                    int n = this.formulaDeclarations.size();
+                    System.out.println("------------------------------");
+                    System.out.println(n + " formula declarations");
+                    System.out.println("------------------------------");
+                    for (String id: this.formulaDeclarations.keySet()){
+                        System.out.println(id + " " + this.formulaDeclarations.get(id));
+                    }
                 }
             }
         }
