@@ -332,7 +332,7 @@ export class PvsProxy {
 			this.notifyStartExecution(`Parsing ${desc.fileName}`);
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 			const content: string = await fsUtils.readFile(fname);
-			const hash: string = crypto.createHash('sha256').update(content).digest('hex');
+			const hash: string = crypto.createHash('sha256').update(content.replace(/\s/g, "")).digest('hex'); // do not consider white spaces when creating the hash
 			if (this.parserCache[fname] && hash === this.parserCache[fname].hash) {
 				console.log("[pvs-proxy] Parser diagnostics loaded from cache.");
 				const diags: Diagnostic[] = this.parserCache[fname].diags;
