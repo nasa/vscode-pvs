@@ -36,13 +36,44 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { execSync } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import * as fsUtils from '../../../common/fsUtils';
 import { Diagnostic } from 'vscode-languageserver';
 import * as path from 'path';
 
 export class PvsParser {
+
+    protected workers: { [ fname: string ]: ChildProcess } = {};
+    protected processWorker (fname: string, args: string[]): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const worker: ChildProcess = spawn("java", args.concat(fname));
+            this.workers[fname] = worker;
+            worker.stdout.setEncoding("utf8");
+            worker.stderr.setEncoding("utf8");
+            worker.stdout.on("data", (diags: string) => {
+                resolve(diags);
+            });
+            worker.stderr.on("data", (data: string) => {
+                console.log("[pvs-parser] Error: ", data);
+                // resolve(false);
+            });
+            worker.on("error", (err: Error) => {
+                console.log("[pvs-parser] Process error ", err);
+                // console.dir(err, { depth: null });
+            });
+            worker.on("exit", (code: number, signal: string) => {
+                // console.log("[pvs-parser] Process exited with code ", code);
+                // file parsed successfully
+                resolve(null);
+                // console.dir({ code, signal });
+            });
+            worker.on("message", (message: any) => {
+                console.log("[pvs-parser] Process message", message);
+                // console.dir(message, { depth: null });
+            });
+        });
+    }
 
     /**
      * Parse a pvs file
@@ -56,16 +87,12 @@ export class PvsParser {
         const libFolder: string = path.join(__dirname, "../../../../out/parser/lib");
 
         const start: number = Date.now();
-		// const cmd: string = `cd ${parserFolder} && java -classpath ../antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ${fname}`;
-        // const cmd: string = `cd ${parserFolder} && java -classpath ../antlr-4.7.2-complete.jar:./ PvsParser ${fname}`; // this will produce a JSON object of type Diagnostic[]
-        const cmd: string = `cd ${libFolder} && java -jar PvsParser.jar ${fname}`; // this will produce a JSON object of type Diagnostic[]
+        const args: string[] = [ "-jar", `${libFolder}/PvsParser.jar` ]; // this will produce a JSON object of type Diagnostic[]
         try {
-            const errors: Buffer = execSync(cmd);
+            const diags: string = await this.processWorker(fname, args);
             const stats: number = Date.now() - start;
-            if (errors && errors.length > 0) {
-                const res: string = errors.toLocaleString();
-                // console.log(res);
-                diagnostics = JSON.parse(res);
+            if (diags) {
+                diagnostics = JSON.parse(diags);
                 console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${stats}ms`);
             } else {
                 console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${stats}ms`);

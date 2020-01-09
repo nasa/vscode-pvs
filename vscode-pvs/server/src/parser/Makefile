@@ -7,6 +7,8 @@ pvs: download
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./pvs/javaTarget/out
 	cd pvs/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../../..
 	cd pvs/javaTarget/out && java -classpath ../../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ../../../../../test/sandbox/sq.pvs -gui
+	# cd pvs/javaTarget/out && java -classpath ../../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ../../../examples/test.pvs -gui
+	# cd pvs/javaTarget/out && java -classpath ../../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ../../../../../test/alaris/alaris2lnewmodes.pvs -gui
 
 pvs-parser: download
 	# generating java target

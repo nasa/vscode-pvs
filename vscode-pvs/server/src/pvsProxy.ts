@@ -127,7 +127,7 @@ export interface ContextDiagnostics {
 // }
 
 export class PvsProxy {
-	protected hashTable: { [ filename: string ]: { hash: string, diags: Diagnostic[] } } = {};
+	protected parserCache: { [ filename: string ]: { hash: string, diags: Diagnostic[] } } = {};
 	protected debugMode: boolean = false;
 	// protected isActive: boolean = false;
 	readonly MAXTIME: number = 2000; // millis
@@ -333,9 +333,9 @@ export class PvsProxy {
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 			const content: string = await fsUtils.readFile(fname);
 			const hash: string = crypto.createHash('sha256').update(content).digest('hex');
-			if (this.hashTable[fname] && hash === this.hashTable[fname].hash) {
+			if (this.parserCache[fname] && hash === this.parserCache[fname].hash) {
 				console.log("[pvs-proxy] Parser diagnostics loaded from cache.");
-				const diags: Diagnostic[] = this.hashTable[fname].diags;
+				const diags: Diagnostic[] = this.parserCache[fname].diags;
 				if (diags && diags.length > 0) {
 					const msg: string = `${desc.fileName}${desc.fileExtension} contains parse errors.`;
 					this.notifyError(msg);
@@ -351,7 +351,7 @@ export class PvsProxy {
 					// using new parser
 					console.log("[pvs-proxy] Updating parser cache.");
 					const diags: Diagnostic[] = await this.parser.parseFile(desc);
-					this.hashTable[fname] = { hash, diags };
+					this.parserCache[fname] = { hash, diags };
 					this.notifyEndExecution();
 					return this.makeDiags(diags);
 				} else {
