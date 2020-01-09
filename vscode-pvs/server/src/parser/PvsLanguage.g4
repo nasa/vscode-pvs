@@ -171,29 +171,30 @@ typeExpression
 	| functionType
 	| bindingDeclaration
 	| subtype
-	| name
+	| name ('.' typeExpression)?
 	;
 expr
-	: constantExpression
-//	unaryOp+ expr
-//	| expr (binaryOp expr)+
+//	: constantExpression
+	: unaryOp+ expr
+	| expr (binaryOp expr)+
     | listExpression
     | recordExpression
-    | expr K_WHERE letBindings
-    | expr K_WITH '[' assignmentExpression (',' assignmentExpression)* ']'
-	| term
 	| typeExpression
+	| term
 	;
 
-constantExpression
-    : 	'('* unaryOp? term ')'* (binaryOp '('* unaryOp? term ')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
-    ;
+// constantExpression
+//     : 	open+='('* unaryOp? term closed+=')'* (binaryOp open+='('* unaryOp? term closed+=')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
+//     ;
 term
     : name ('`' term)*
 	| ifExpression
 	| bindingExpression
     | letExpression
     | tupleExpression
+    | term K_WHERE letBindings
+    | term K_WITH '[' assignmentExpression (',' assignmentExpression)* ']'
+	| term '::' typeExpression // coercion expression, i.e., expr is expected to be of type typeExpression
     | NUMBER
     | TRUE_FALSE
 	| STRING
@@ -215,8 +216,8 @@ tupleExpression
 listExpression
     : '(:' expr (',' expr)* ':)'
     | 'cons' '(' expr (',' expr)* ')'
-    | '(' listExpression ')'
     | listExpression (O_CONCAT '('* listExpression ')'*)+ // to maximize parsing speed, this rule does not check matching parentheses
+    | '(' listExpression ')'
     ;
 recordExpression
     : '(#' assignmentExpression (',' assignmentExpression)* '#)'
@@ -227,12 +228,17 @@ measureExpression
 	;
 
 bindingExpression
-	: (K_FORALL | K_EXISTS | K_LAMBDA) lambdaBindings+ ':' expr
+	: (K_FORALL | K_EXISTS | K_LAMBDA) lambdaBody
 	| '(' bindingExpression ')'
+	;
+lambdaBody
+	: lambdaBindings+ ':' expr
+	| lambdaBody (',' lambdaBody)+
+	| '(' lambdaBody ')'
 	;
 lambdaBindings
 	: lambdaBinding (',' lambdaBinding)*
-	| '(' lambdaBinding (',' lambdaBinding)* ')'
+	| '(' lambdaBindings ')'
 	;
 lambdaBinding
 	: 
@@ -263,7 +269,12 @@ letBind
 	: (identifier | unaryOp | binaryOp)? bindings* (':' expr)?
 	;
 assignmentExpression
-	: identifier (':=' | '|->') expr
+	: assignmentIdentifier (':=' | '|->') expr
+	| '(' assignmentExpression ')'
+	;
+assignmentIdentifier
+	: (name? '`')? name
+	| '(' assignmentIdentifier ')'
 	;
 bindingDeclaration
 	: identifier ':' expr
@@ -290,6 +301,7 @@ subtype
 
 name
 	: (identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
+	| '(' name ')'
 	;
 
 actuals
@@ -312,10 +324,12 @@ datatype
 	: identifier ':' K_DATATYPE K_BEGIN K_END identifier
 	;
 
-identifier: (ID '.')? ID;
-// identifiers: identifier (',' identifier)*;
-//identifierOrOperator: identifier | unaryOp | binaryOp;
-identifierOrOperators: (identifier | unaryOp | binaryOp) (',' (identifier | unaryOp | binaryOp))*;
+identifier
+	: (ID '.')? ID
+	| '(' identifier ')';
+
+identifierOrOperators
+	: (identifier | unaryOp | binaryOp) (',' (identifier | unaryOp | binaryOp))*;
 
 unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>';
 binaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | '*' | '/' | '+' | '-' | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=';
