@@ -222,6 +222,9 @@ listExpression
 recordExpression
     : '(#' assignmentExpression (',' assignmentExpression)* '#)'
     | '(' recordExpression ')'
+	// error handling
+    | '(#' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("Missing `,` in record expression"); } (assignmentExpression+ (',' assignmentExpression)*)* '#)' // error: omission of comma
+    | '(#' (assignmentExpression (',' assignmentExpression)*)? (','+ { notifyErrorListeners("Too many `,` in record expression"); } assignmentExpression?)* '#)' // error: extra commas
     ;
 measureExpression
 	: K_MEASURE expr (K_BY (unaryOp | binaryOp | expr))?
