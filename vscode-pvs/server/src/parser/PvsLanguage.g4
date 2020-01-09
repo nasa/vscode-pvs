@@ -47,17 +47,20 @@ parse
 	;
 
 theory
- 	: theoryBegin
-			assumingPart?
-			theoryPart?
-	  theoryEnd
+ 	: theoryBegin theoryBody theoryEnd
 	;
 theoryBegin
     : identifier theoryFormals? ':' K_THEORY K_BEGIN
     ;
 theoryEnd
     : K_END identifier
+	// error handling
+	| { notifyErrorListeners("Missing theory name after keyword 'END'"); } K_END
     ;
+theoryBody
+	: assumingPart? theoryPart?
+	;
+
 theoryFormals
     : ('[' (theoryFormalType | theoryFormalConstant) (',' (theoryFormalType | theoryFormalConstant))* ']')
     ;
@@ -83,15 +86,12 @@ assumption
 theoryPart
 	: (importing | declaration)+
 	;
-	// judgement
-	// conversion
+
 declaration
 	: typeDeclaration
 	| formulaDeclaration
-	| constantDeclaration
 	| varDeclaration
 	| functionDeclaration
-	// | recursiveDeclaration
 	| judgementDeclaration
 	| conversionDeclaration
 	| autorewriteDeclaration
@@ -105,6 +105,8 @@ typeDeclaration
 	;
 typeDefinition
 	: ('=' | K_FROM) typeExpression (K_CONTAINING expr)?
+	// error handling
+	| { notifyErrorListeners("Missing '=' before type definition"); } typeExpression (K_CONTAINING expr)?
 	;
 
 formulaDeclaration
@@ -114,32 +116,18 @@ formulaDefinition
     : expr
     ;
 
-constantDeclaration
- 	: identifierOrOperators ':' typeExpression ('=' constantDefinition)?
- 	;
-constantDefinition
-    : expr
-    ;
-
 functionDeclaration
-	: (identifier | unaryOp | binaryOp) arguments* 
+	: identifierOrOperators ':' typeExpression functionDefinition?
+	| (identifier | unaryOp | binaryOp) arguments* 
 		':' (K_MACRO | K_INDUCTIVE | K_RECURSIVE)? typeExpression 
-		('=' functionDefinition)?
-		measureExpression?
-	// | error_functionDeclaration_missed_equal
+		(functionDefinition measureExpression?)?
 	;
+
 functionDefinition
-    : expr
+    : '=' expr
+	// error handling
+	// | { notifyErrorListeners("Missing '=' before definition"); } expr // this is erroneously catching also correct syntax (see sandbox/lib.pvs), need to refine it
     ;
-// error_functionDeclaration_missed_equal
-//    : (identifier | unaryOp | binaryOp) arguments* ':' (K_MACRO | K_INDUCTIVE)? typeExpression functionDefinition { notifyErrorListeners("Missing '=' before definition."); }
-//    ;
-// recursiveDeclaration
-// 	: (identifier | unaryOp | binaryOp) arguments*
-// 		':' K_RECURSIVE typeExpression
-// 		'=' functionDefinition
-// 		measureExpression
-// 	;
 
 judgementDeclaration
 	: subtypeJudgement
@@ -149,7 +137,7 @@ subtypeJudgement
 	: ((identifier | unaryOp | binaryOp) ':')? K_JUDGEMENT typeExpression (',' typeExpression)* K_SUBTYPE_OF typeExpression
 	;
 constantJudgement
-	: ((identifier | unaryOp | binaryOp) ':')? K_JUDGEMENT (NUMBER | (name bindings*)) (',' (NUMBER | '{' name bindings* '}'))* K_HAS_TYPE typeExpression
+	: ((identifier | unaryOp | binaryOp) ':')? K_RECURSIVE? K_JUDGEMENT (NUMBER | (name bindings*)) (',' (NUMBER | '{' name bindings* '}'))* K_HAS_TYPE typeExpression
 	;
 
 conversionDeclaration
@@ -225,6 +213,8 @@ recordExpression
 	// error handling
     | '(#' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("Missing `,` in record expression"); } (assignmentExpression+ (',' assignmentExpression)*)* '#)' // error: omission of comma
     | '(#' (assignmentExpression (',' assignmentExpression)*)? (','+ { notifyErrorListeners("Too many `,` in record expression"); } assignmentExpression?)* '#)' // error: extra commas
+	| { notifyErrorListeners("Mismatching record parentheses: '(' should be '(#"); } '(' assignmentExpression (',' assignmentExpression)* '#)' // error: mismatching parentheses
+	| '(#' assignmentExpression (',' assignmentExpression)* { notifyErrorListeners("Mismatching record parentheses: ')' should be '#)"); } ')' // error: mismatching parentheses
     ;
 measureExpression
 	: K_MEASURE expr (K_BY (unaryOp | binaryOp | expr))?
@@ -261,6 +251,8 @@ typeId
 	;
 typeIds
 	: identifierOrOperators (':' expr)? ('|' expr)?
+	// error handling
+	| expr { notifyErrorListeners("Missing ':' in binding expression"); } expr
 	;
 letBindings
 	: letBinding (',' letBinding)*
@@ -274,6 +266,8 @@ letBind
 assignmentExpression
 	: assignmentIdentifier (':=' | '|->') expr
 	| '(' assignmentExpression ')'
+	// error handling
+	| assignmentIdentifier { notifyErrorListeners("'=' should be ':="); } '=' expr
 	;
 assignmentIdentifier
 	: (name? '`')? name
@@ -284,6 +278,12 @@ bindingDeclaration
 	;
 recordType
 	: '[#' bindingDeclaration (',' bindingDeclaration)* '#]'
+	// error handling
+	| '[#' (bindingDeclaration (',' bindingDeclaration)*)? { notifyErrorListeners("Missing `,` in record type definition"); } (bindingDeclaration+ (',' bindingDeclaration)*)* '#]' // error: missing commas
+	| '[#' (bindingDeclaration (',' bindingDeclaration)*)? (','+ { notifyErrorListeners("Too many `,` in record type definition"); } bindingDeclaration?)* '#)' // error: extra commas
+	| { notifyErrorListeners("Mismatching record parentheses: '[' should be '[#"); } '[' bindingDeclaration (',' bindingDeclaration)* '#]' // error: mismatching parentheses
+	| '[#' bindingDeclaration (',' bindingDeclaration)* { notifyErrorListeners("Mismatching record parentheses: ']' should be '#]'"); } ']' // error: mismatching parentheses
+	| { notifyErrorListeners("Incorrect parentheses in record type definition: '[ .. ]' should be '[# .. #]'"); } '[' bindingDeclaration (',' bindingDeclaration)* ']'
 	;
 
 functionType
