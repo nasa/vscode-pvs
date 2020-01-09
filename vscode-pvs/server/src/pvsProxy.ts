@@ -349,7 +349,7 @@ export class PvsProxy {
 			} else {
 				if (ENABLE_NEW_PARSER) {
 					// using new parser
-					console.log("[pvs-proxy] Updating parser cache.");
+					// console.log("[pvs-proxy] Updating parser cache.");
 					const diags: Diagnostic[] = await this.parser.parseFile(desc);
 					this.parserCache[fname] = { hash, diags };
 					this.notifyEndExecution();
