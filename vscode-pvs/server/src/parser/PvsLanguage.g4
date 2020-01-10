@@ -55,7 +55,7 @@ theoryBegin
 theoryEnd
     : K_END identifier
 	// error handling
-	| { notifyErrorListeners("Missing theory name after keyword 'END'"); } K_END
+	| { notifyErrorListeners("Theory name expected after keyword 'END'."); } K_END
     ;
 theoryBody
 	: assumingPart? theoryPart?
@@ -106,13 +106,13 @@ typeDeclaration
 typeDefinition
 	: ('=' | K_FROM) typeExpression (K_CONTAINING expr)?
 	// error handling
-	| { notifyErrorListeners("Missing '=' before type definition"); } typeExpression (K_CONTAINING expr)?
+	| { notifyErrorListeners("'=' expected."); } typeExpression (K_CONTAINING expr)?
 	;
 
 formulaDeclaration
 	: identifier ':' K_FORMULA formulaDefinition
 	// error handling
-	| identifier { notifyErrorListeners("Missing ':' before keyword K_FORMULA"); } K_FORMULA formulaDefinition
+	| identifier { notifyErrorListeners("':' expected."); } K_FORMULA formulaDefinition
 	;
 formulaDefinition
     : expr
@@ -128,7 +128,7 @@ functionDeclaration
 functionDefinition
     : '=' expr
 	// error handling
-	// | { notifyErrorListeners("Missing '=' before definition"); } expr // this is erroneously catching also correct syntax (see sandbox/lib.pvs), need to refine it
+	// | { notifyErrorListeners("'=' expected."); } expr // this is erroneously catching also correct syntax (see sandbox/lib.pvs), need to refine it
     ;
 
 judgementDeclaration
@@ -189,6 +189,8 @@ term
     | NUMBER
     | TRUE_FALSE
 	| STRING
+	// error handling
+    | term K_WITH '[' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("',' expected."); } assignmentExpression+ (assignmentExpression (',' assignmentExpression)*)? ']'
     ;
 ifExpression
 	: K_IF expr K_THEN expr (K_ELSIF expr K_THEN expr)* K_ELSE expr K_ENDIF
@@ -214,10 +216,10 @@ recordExpression
     : '(#' assignmentExpression (',' assignmentExpression)* '#)'
     | '(' recordExpression ')'
 	// error handling
-    | '(#' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("Missing `,` in record expression"); } (assignmentExpression+ (',' assignmentExpression)*)* '#)' // error: omission of comma
-    | '(#' (assignmentExpression (',' assignmentExpression)*)? (','+ { notifyErrorListeners("Too many `,` in record expression"); } assignmentExpression?)* '#)' // error: extra commas
-	| { notifyErrorListeners("Mismatching record parentheses: '(' should be '(#"); } '(' assignmentExpression (',' assignmentExpression)* '#)' // error: mismatching parentheses
-	| '(#' assignmentExpression (',' assignmentExpression)* { notifyErrorListeners("Mismatching record parentheses: ')' should be '#)"); } ')' // error: mismatching parentheses
+    | '(#' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("','' expected."); } (assignmentExpression+ (',' assignmentExpression)*)* '#)' // error: omission of comma
+    | '(#' (assignmentExpression (',' assignmentExpression)*)? (','+ { notifyErrorListeners("Assignment expression expected."); } assignmentExpression?)* '#)' // error: extra commas
+	| { notifyErrorListeners("''(#' expected."); } '(' assignmentExpression (',' assignmentExpression)* '#)' // error: mismatching parentheses
+	| '(#' assignmentExpression (',' assignmentExpression)* { notifyErrorListeners("''#)' expected."); } ')' // error: mismatching parentheses
     ;
 measureExpression
 	: K_MEASURE expr (K_BY (unaryOp | binaryOp | expr))?
@@ -249,7 +251,7 @@ typeId
 typeIds
 	: identifierOrOperators (':' expr)? ('|' expr)?
 	// error handling
-	| expr { notifyErrorListeners("Missing ':' in binding expression"); } expr
+	| expr { notifyErrorListeners("':' expected."); } expr
 	;
 letBindings
 	: letBinding (',' letBinding)*
@@ -264,7 +266,7 @@ assignmentExpression
 	: assignmentIdentifier (':=' | '|->') expr
 	| '(' assignmentExpression ')'
 	// error handling
-	| assignmentIdentifier { notifyErrorListeners("'=' should be ':="); } '=' expr
+	| assignmentIdentifier { notifyErrorListeners("':=' expected."); } '=' expr
 	;
 assignmentIdentifier
 	: (name? '`')? name
@@ -276,11 +278,11 @@ bindingDeclaration
 recordType
 	: '[#' bindingDeclaration (',' bindingDeclaration)* '#]'
 	// error handling
-	| '[#' (bindingDeclaration (',' bindingDeclaration)*)? { notifyErrorListeners("Missing `,` in record type definition"); } (bindingDeclaration+ (',' bindingDeclaration)*)* '#]' // error: missing commas
-	| '[#' (bindingDeclaration (',' bindingDeclaration)*)? (','+ { notifyErrorListeners("Too many `,` in record type definition"); } bindingDeclaration?)* '#)' // error: extra commas
-	| { notifyErrorListeners("Mismatching record parentheses: '[' should be '[#"); } '[' bindingDeclaration (',' bindingDeclaration)* '#]' // error: mismatching parentheses
-	| '[#' bindingDeclaration (',' bindingDeclaration)* { notifyErrorListeners("Mismatching record parentheses: ']' should be '#]'"); } ']' // error: mismatching parentheses
-	| { notifyErrorListeners("Incorrect parentheses in record type definition: '[ .. ]' should be '[# .. #]'"); } '[' bindingDeclaration (',' bindingDeclaration)* ']'
+	| '[#' (bindingDeclaration (',' bindingDeclaration)*)? { notifyErrorListeners("`,` expected."); } (bindingDeclaration+ (',' bindingDeclaration)*)* '#]' // error: missing commas
+	| '[#' (bindingDeclaration (',' bindingDeclaration)*)? (','+ { notifyErrorListeners("Binding declaration expected."); } bindingDeclaration?)* '#)' // error: extra commas
+	| { notifyErrorListeners("'[#' expected."); } '[' bindingDeclaration (',' bindingDeclaration)* '#]' // error: mismatching parentheses
+	| '[#' bindingDeclaration (',' bindingDeclaration)* { notifyErrorListeners("'#]' expected."); } ']' // error: mismatching parentheses
+	| { notifyErrorListeners("'[# .. #]' expected"); } '[' bindingDeclaration (',' bindingDeclaration)* ']'
 	;
 
 functionType
