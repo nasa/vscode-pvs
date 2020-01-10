@@ -64,7 +64,7 @@ export async function readDir(contextFolder: string): Promise<string[]> {
 	if (contextFolder) {
 		contextFolder = tildeExpansion(contextFolder);
 		return new Promise<string[]>((resolve, reject) => {
-			fs.readdir(contextFolder, (error, children) => {
+			fs.readdir(contextFolder, (error: NodeJS.ErrnoException, children: string[]) => {
 				// ignore errors for now
 				resolve(children || []);
 			});
@@ -77,7 +77,11 @@ export async function readFile(path: string): Promise<string | null> {
 		path = path.replace("file://", "");
 		path = tildeExpansion(path);
 		try {
-			return fs.readFileSync(path).toString('utf8');
+			return new Promise<string>((resolve, reject) => {
+				fs.readFile(path, (error: NodeJS.ErrnoException, data: Buffer) => {
+					resolve(data.toString('utf8'));
+				});
+			});
 		} catch (fileReadError) {
 			// console.error(fileReadError);
 			return null;
