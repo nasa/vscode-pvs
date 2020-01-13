@@ -45,7 +45,7 @@ BEGIN
   %---------------------------------
   test4: LEMMA
   (val(x) > cnst(0)) AND (val(y) > cnst(0))
-  |- ALLRUNS(SEQ(TEST((val(x) < cnst(5) AND val(y) < cnst(3))), ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :))), (val(x) > cnst(0) AND val(y) > cnst(0)))
+  |- ALLRUNS(SEQ(TEST((val(x) < cnst(5) AND val(y) < cnst(3))), SEQ(ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :)))), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
 
   % Unions
@@ -55,7 +55,7 @@ BEGIN
   %---------------------------------
   test5: LEMMA
   (val(x) > cnst(0)) AND (val(y) > cnst(0))
-  |- ALLRUNS(SEQ(UNION(ASSIGN((: ((a, cnst(1))) :)), ASSIGN((: ((a, cnst(-1))) :))), ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :))), (val(x) > cnst(0) AND val(y) > cnst(0)))
+  |- ALLRUNS(SEQ(UNION(ASSIGN((: (a, cnst(1)) :)), ASSIGN((: (a, cnst(-1)) :))), SEQ(ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :)))), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
 
   % Differential equations

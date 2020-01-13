@@ -38,7 +38,7 @@ all:
 	npm install
 	cd server && npm install --no-save typescript && npm run compile && npm install
 	cd client && npm install --no-save typescript && npm run compile && npm install
-	make parser
+	make core
 	node_modules/vsce/out/vsce package
 
 install:
@@ -60,9 +60,9 @@ test:
 	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-all.json
 test-all: test
 
-parser:
-	-mkdir server/out && mkdir server/out/parser
-	cd server/src/parser/ && make
+core:
+	-mkdir server/out && mkdir server/out/core
+	cd server/src/core/ && make
 
 clean:
 	cd client && make clean && cd .. && cd server && make clean && cd ..

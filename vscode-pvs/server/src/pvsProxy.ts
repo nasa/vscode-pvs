@@ -53,7 +53,7 @@ import * as net from 'net';
 import * as crypto from 'crypto';
 import { SimpleConnection, StrategyDescriptor, ProofNode,  ProofTree, serverEvent } from './common/serverInterface';
 import * as utils from './common/languageUtils';
-import { Parser } from './parser/Parser';
+import { Parser } from './core/Parser';
 import { DiagnosticSeverity, Diagnostic, Position, Range } from 'vscode-languageserver';
 
 //----------------------------

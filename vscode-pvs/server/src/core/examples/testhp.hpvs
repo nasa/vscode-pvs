@@ -10,7 +10,7 @@ BEGIN
 
   % Single assignment
   test1: PROBLEM
-   (x>=0) |- [x:=(x + 1)] (x>=0)
+   x>=0 |- [x:=x + 1] (x>=0)
 
  % % Assignment with star
   test2: PROBLEM

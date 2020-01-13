@@ -18,13 +18,13 @@ pvs-parser: download
 	# creating pvsparser
 	cd pvs-parser/javaTarget/out && jar -cfm PvsParser.jar ./MANIFEST.MF *.class && rm *.class && cd ../../..
 	# completing installation in parser/lib
-	@-mkdir ../../out/parser/lib
-	cp pvs-parser/javaTarget/out/PvsParser.jar ../../out/parser/lib
-	cp lib/antlr-4.7.2-complete.jar ../../out/parser/lib
+	@-mkdir ../../out/core/lib
+	cp pvs-parser/javaTarget/out/PvsParser.jar ../../out/core/lib
+	cp lib/antlr-4.7.2-complete.jar ../../out/core/lib
 	@-rm -r pvs-parser/javaTarget/out
 	@-rm -r lib
 	# testing parser
-	cd ../../out/parser/lib && java -jar PvsParser.jar ../../../test/sandbox/sq.pvs -test
+	cd ../../out/core/lib && java -jar PvsParser.jar ../../../test/sandbox/sq.pvs -test
 
 pvs-parser-js: download
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=JavaScript PvsLanguage.g4 -o ./pvs-parser/jsTarget/out
@@ -57,14 +57,14 @@ ddl-parser: download
 	# creating ddlparser
 	cd ddl-parser/javaTarget/out && jar -cfm DdlParser.jar ./MANIFEST.MF *.class && rm *.class && cd ../../..
 	# completing installation in parser/lib
-	@-mkdir ../../out/parser/lib
-	cp ddl-parser/javaTarget/out/DdlParser.jar ../../out/parser/lib
-	cp lib/antlr-4.7.2-complete.jar ../../out/parser/lib
+	@-mkdir ../../out/core/lib
+	cp ddl-parser/javaTarget/out/DdlParser.jar ../../out/core/lib
+	cp lib/antlr-4.7.2-complete.jar ../../out/core/lib
 	@-rm -r ddl-parser/javaTarget/out
 	@-rm -r lib
 	# testing parser
-	cd ../../out/parser/lib && java -jar DdlParser.jar ../../../src/parser/examples/testhp.hpvs -test
-	cd ../../out/parser/lib && java -jar DdlParser.jar ../../../src/parser/examples/testhp.hpvs -out ../../../src/parser/examples/testhp.pvs
+	cd ../../out/core/lib && java -jar DdlParser.jar ../../../src/core/examples/testhp.hpvs -test
+	cd ../../out/core/lib && java -jar DdlParser.jar ../../../src/core/examples/testhp.hpvs -out ../../../src/core/examples/testhp.pvs
 
 	
 

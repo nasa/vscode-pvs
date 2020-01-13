@@ -22,11 +22,11 @@ BEGIN
   % Single assignment
   %---------------------------------
   % test1: PROBLEM
-  %    (x>=0) |- [x:=(x + 1)] (x>=0)
+  %    x>=0 |- [x:=x + 1] (x>=0)
   %---------------------------------
   test1: LEMMA
-   (val(x) >= cnst(0))
-   |- ALLRUNS(ASSIGN((: (x, (val(x) + cnst(1))) :)), (val(x) >= cnst(0)))
+   val(x) >= cnst(0)
+   |- ALLRUNS(ASSIGN((: (x, val(x) + cnst(1)) :)), (val(x) >= cnst(0)))
 
 
  % % Assignment with star
