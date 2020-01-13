@@ -37,8 +37,8 @@
  **/
 
 import { Diagnostic } from 'vscode-languageserver';
-import { PvsParser } from './pvs/javaTarget/pvsParser';
-import { DdlParser } from './ddl/javaTarget/ddlParser';
+import { PvsParser } from './pvs-parser/javaTarget/pvsParser';
+import { DdlParser } from './ddl-parser/javaTarget/ddlParser';
 import * as path from 'path';
 
 export class Parser {

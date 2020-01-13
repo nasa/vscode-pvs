@@ -53,21 +53,21 @@ public class PvsParser {
         }
     }
     public static class DeclDescriptor {
-        int start_line;
-        int start_character;
-        int stop_line;
-        int stop_character;
-        DeclDescriptor (int start_line, int start_character, int stop_line, int stop_character) {
-            this.start_line = start_line;
-            this.start_character = start_character;
-            this.stop_line = stop_line;
-            this.stop_character = stop_character;
+        int line;
+        int character;
+        String declaration;
+        String identifier;
+        DeclDescriptor (String identifier, int line, int character, String declaration) {
+            this.line = line;
+            this.character = character;
+            this.identifier = identifier;
+            this.declaration = declaration;
         }
         public String toString () {
-            return "{ \"start\": "
-                + "{ \"line\": " + this.start_line + ", \"character\": " + this.start_character + "}"
-                + ", \"stop\": "
-                + "{ \"line\": " + this.stop_line + ", \"character\": " + this.stop_character + "}"
+            return "{ \"line\": " + this.line
+                + ", \"character\": " + this.character
+                + ", \"identifier\": \"" + this.identifier + "\""
+                + ", \"declaration\": \"" + this.declaration + "\""
                 + " }";
         }
     }
@@ -107,10 +107,20 @@ public class PvsParser {
         protected TokenStreamRewriter rewriter = null;
         protected HashMap<String, DeclDescriptor> typeDeclarations = new HashMap<String, DeclDescriptor>();
         protected HashMap<String, DeclDescriptor> formulaDeclarations = new HashMap<String, DeclDescriptor>();
+
         PvsParserListener (BufferedTokenStream tokens) {
             super();
             this.tokens = tokens;
             rewriter = new TokenStreamRewriter(tokens);
+        }
+
+        public String getSource (ParserRuleContext ctx) {
+            Token start = ctx.getStart();
+            Token stop = ctx.getStop();
+            CharStream cs = start.getInputStream();
+            Interval interval = new Interval(start.getStartIndex(), stop.getStopIndex());
+            String src = cs.getText(interval);
+            return src;
         }
 
         @Override public void enterTypeDeclaration(PvsLanguageParser.TypeDeclarationContext ctx) {
@@ -120,9 +130,13 @@ public class PvsParser {
                 Token start = ictx.getStart();
                 Token stop = ictx.getStop();
                 String id = ictx.getText();
-                this.typeDeclarations.put(
-                    id, 
-                    new DeclDescriptor(start.getLine(), start.getCharPositionInLine(), stop.getLine(), stop.getCharPositionInLine())
+                this.typeDeclarations.put(id, 
+                    new DeclDescriptor(
+                        id,
+                        start.getLine(),
+                        start.getCharPositionInLine(),
+                        this.getSource(ctx)
+                    )
                 );
             }
         }
@@ -130,9 +144,13 @@ public class PvsParser {
             Token start = ctx.getStart();
             Token stop = ctx.getStop();
             String id = ctx.identifier().getText();
-            this.formulaDeclarations.put(
-                id, 
-                new DeclDescriptor(start.getLine(), start.getCharPositionInLine(), stop.getLine(), stop.getCharPositionInLine())
+            this.formulaDeclarations.put(id, 
+                new DeclDescriptor(
+                    id,
+                    start.getLine(), 
+                    start.getCharPositionInLine(), 
+                    this.getSource(ctx)
+                )
             );
         }
         @Override public void exitTheory(PvsLanguageParser.TheoryContext ctx) {
