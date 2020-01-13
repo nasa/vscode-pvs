@@ -1,6 +1,7 @@
 all:
 	make pvs-parser
 	make ddl-parser
+	make pvs-typechecker
 
 pvs: download
 	# java
@@ -15,9 +16,9 @@ pvs-parser: download
 	@java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./pvs-parser/javaTarget/out
 	@cd pvs-parser/javaTarget && cp PvsParser.java ./out && cp MANIFEST.MF ./out && cd ../..
 	@cd pvs-parser/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../../..
-	# creating pvsparser
+	# creating pvs-parser
 	cd pvs-parser/javaTarget/out && jar -cfm PvsParser.jar ./MANIFEST.MF *.class && rm *.class && cd ../../..
-	# completing installation in parser/lib
+	# completing installation in core/lib
 	@-mkdir ../../out/core/lib
 	cp pvs-parser/javaTarget/out/PvsParser.jar ../../out/core/lib
 	cp lib/antlr-4.7.2-complete.jar ../../out/core/lib
@@ -25,6 +26,22 @@ pvs-parser: download
 	@-rm -r lib
 	# testing parser
 	cd ../../out/core/lib && java -jar PvsParser.jar ../../../test/sandbox/sq.pvs -test
+
+pvs-typechecker: download
+	# generating java target
+	@java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./pvs-typechecker/javaTarget/out
+	@cd pvs-typechecker/javaTarget && cp PvsTypechecker.java ./out && cp MANIFEST.MF ./out && cd ../..
+	@cd pvs-typechecker/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../../..
+	# creating pvs-typechecker
+	cd pvs-typechecker/javaTarget/out && jar -cfm PvsTypechecker.jar ./MANIFEST.MF *.class && rm *.class && cd ../../..
+	# completing installation in core/lib
+	@-mkdir ../../out/core/lib
+	cp pvs-typechecker/javaTarget/out/PvsTypechecker.jar ../../out/core/lib
+	cp lib/antlr-4.7.2-complete.jar ../../out/core/lib
+	@-rm -r pvs-typechecker/javaTarget/out
+	@-rm -r lib
+	# testing typechecker
+	cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../test/sandbox/sq.pvs -test
 
 pvs-parser-js: download
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=JavaScript PvsLanguage.g4 -o ./pvs-parser/jsTarget/out
