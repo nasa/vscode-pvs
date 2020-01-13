@@ -139,7 +139,7 @@ subtypeJudgement
 	: ((identifier | unaryOp | binaryOp) ':')? K_JUDGEMENT typeExpression (',' typeExpression)* K_SUBTYPE_OF typeExpression
 	;
 constantJudgement
-	: ((identifier | unaryOp | binaryOp) ':')? K_RECURSIVE? K_JUDGEMENT (NUMBER | (name bindings*)) (',' (NUMBER | '{' name bindings* '}'))* K_HAS_TYPE typeExpression
+	: ((identifier | unaryOp | binaryOp) ':')? K_RECURSIVE? K_JUDGEMENT (number | (name bindings*)) (',' (number | '{' name bindings* '}'))* K_HAS_TYPE typeExpression
 	;
 
 conversionDeclaration
@@ -165,12 +165,12 @@ typeExpression
 	;
 expr
 //	: constantExpression
-	: unaryOp+ expr
+	: term
+	| unaryOp+ expr
 	| expr (binaryOp expr)+
     | listExpression
     | recordExpression
 	| typeExpression
-	| term
 	| '(' expr ')'
 	;
 
@@ -186,12 +186,30 @@ term
     | term K_WHERE letBindings
     | term K_WITH '[' assignmentExpression (',' assignmentExpression)* ']'
 	| term '::' typeExpression // coercion expression, i.e., expr is expected to be of type typeExpression
-    | NUMBER
-    | TRUE_FALSE
-	| STRING
+	| builtin
 	// error handling
     | term K_WITH '[' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("',' expected."); } assignmentExpression+ (assignmentExpression (',' assignmentExpression)*)? ']'
     ;
+builtin
+	: number
+    | true_false
+	| string
+	;
+number
+	: rational
+	| natural
+	| integer
+	;
+// realNumber: REAL_NUMBER;
+rational
+	: RAT_NUMBER_DOT_NOTATION
+	| RAT_NUMBER_FRACTIONAL_NOTATION
+	| RAT_NUMBER_SCIENTIFIC_NOTATION
+	;
+natural: NAT_NUMBER;
+integer: INT_NUMBER;
+true_false: TRUE_FALSE;
+string: STRING;
 ifExpression
 	: K_IF expr K_THEN expr (K_ELSIF expr K_THEN expr)* K_ELSE expr K_ENDIF
 	| K_CASES expr K_OF expr ':' expr (',' expr ':' expr)* (K_ELSE expr)? K_ENDCASES

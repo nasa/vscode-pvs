@@ -64,6 +64,10 @@ core:
 	-mkdir server/out && mkdir server/out/core
 	cd server/src/core/ && make
 
+pvs-language:
+	-mkdir server/out && mkdir server/out/core
+	cd server/src/core/ && make pvs
+
 clean:
 	cd client && make clean && cd .. && cd server && make clean && cd ..
 	rm -rf node_modules

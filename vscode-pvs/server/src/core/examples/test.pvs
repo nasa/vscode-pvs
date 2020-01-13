@@ -2,7 +2,7 @@ test: theory begin
 
 
   vtbi_over_rate_lemma: LEMMA 
-    FORALL(v: ivols, r: {r: irates | (NOT r = 0)}): (v / r) >= 0 
+    FORALL(v: ivols, r: {r: real | (NOT r = -1e-10)}): (v / r) >= +10/2 
 
         
 end test

@@ -159,7 +159,11 @@ STRING: '"' (ESC | .)*? '"';
 //------------------------
 // Numbers
 //------------------------
-NUMBER: DIGIT+ ('.' DIGIT+)?;
+INT_NUMBER: ('+'|'-')? DIGIT+;
+RAT_NUMBER_FRACTIONAL_NOTATION: ('+'|'-')? DIGIT+ '/' DIGIT+;
+RAT_NUMBER_DOT_NOTATION: ('+'|'-')? DIGIT+ ('.' DIGIT+)?;
+RAT_NUMBER_SCIENTIFIC_NOTATION: ('+'|'-')? DIGIT+ 'e' ('+'|'-')? DIGIT+;
+NAT_NUMBER: DIGIT+;
 
 //------------------------
 // Identifiers
