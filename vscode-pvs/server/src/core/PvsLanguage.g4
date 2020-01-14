@@ -165,30 +165,31 @@ typeExpression
 	;
 expr
 //	: constantExpression
-	: term
-	| unaryOp+ expr
-	| expr (binaryOp expr)+
-    | listExpression
-    | recordExpression
-	| typeExpression
-	| '(' expr ')'
+	: term                    #termExpr
+	| unaryOp+ expr           #unaryOpExpr
+	| expr (binaryOp expr)+   #binaryOpExpr
+    | listExpression          #listExpr
+    | recordExpression        #recordExpr
+	| typeExpression          #typeExpr
+	| '(' expr ')'            #parenExpr
 	;
 
 // constantExpression
 //     : 	open+='('* unaryOp? term closed+=')'* (binaryOp open+='('* unaryOp? term closed+=')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
 //     ;
 term
-    : name ('`' term)*
-	| ifExpression
-	| bindingExpression
-    | letExpression
-    | tupleExpression
-    | term K_WHERE letBindings
-    | term K_WITH '[' assignmentExpression (',' assignmentExpression)* ']'
-	| term '::' typeExpression // coercion expression, i.e., expr is expected to be of type typeExpression
-	| builtin
+    : name                    #idTerm
+	| name ('`' term)+        #idAccessor
+	| ifExpression            #ifExpr
+	| bindingExpression       #bindingExpr
+    | letExpression           #letExpr
+    | tupleExpression         #tupleExpr
+    | term K_WHERE letBindings #whereExpr
+    | term K_WITH '[' assignmentExpression (',' assignmentExpression)* ']' #withExpr
+	| term '::' typeExpression #corcExpr // coercion expression, i.e., expr is expected to be of type typeExpression
+	| builtin #builtinTerm
 	// error handling
-    | term K_WITH '[' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("',' expected."); } assignmentExpression+ (assignmentExpression (',' assignmentExpression)*)? ']'
+    | term K_WITH '[' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("',' expected."); } assignmentExpression+ (assignmentExpression (',' assignmentExpression)*)? ']' #termError
     ;
 builtin
 	: number
@@ -352,6 +353,7 @@ identifierOrOperators
 	: (identifier | unaryOp | binaryOp) (',' (identifier | unaryOp | binaryOp))*;
 
 unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>';
-binaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | '*' | '/' | '+' | '-' | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=';
+binaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | '*' | operatorDiv | '+' | '-' | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=';
+operatorDiv: O_DIV;
 
 

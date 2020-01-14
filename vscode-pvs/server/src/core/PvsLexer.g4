@@ -141,8 +141,9 @@ BRACE_L: '{';
 BRACE_R: '}';
 
 //------------------------
-// Operators -- defined as a parser rule
+// Operators
 //------------------------
+O_DIV: '/';
 // BINARYOP: 'o' | O_IFF | O_IMPLIES | O_AND | O_OR | '*' | '/' | '+' | '-' | '<=' | '<' | '>=' | '>' | '/=' | '='; //...
 // UNARYOP: O_NOT | '~' | '[]' | '<>';
 
@@ -160,7 +161,7 @@ STRING: '"' (ESC | .)*? '"';
 // Numbers
 //------------------------
 INT_NUMBER: ('+'|'-')? DIGIT+;
-RAT_NUMBER_FRACTIONAL_NOTATION: ('+'|'-')? DIGIT+ '/' DIGIT+;
+RAT_NUMBER_FRACTIONAL_NOTATION: ('+'|'-')? DIGIT+ '/' (NZDIGIT DIGIT*);
 RAT_NUMBER_DOT_NOTATION: ('+'|'-')? DIGIT+ ('.' DIGIT+)?;
 RAT_NUMBER_SCIENTIFIC_NOTATION: ('+'|'-')? DIGIT+ 'e' ('+'|'-')? DIGIT+;
 NAT_NUMBER: DIGIT+;
