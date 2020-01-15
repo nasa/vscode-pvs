@@ -170,8 +170,8 @@ expr
 	| unaryOp+ expr           #unaryOpExpr
     | listExpression          #listExpr
     | recordExpression        #recordExpr
-	| typeExpression          #typeExpr
 	| '(' expr ')'            #parenExpr
+	| typeExpression          #typeExpr // NB: typeExpression needs to be after parenExpression, otherwise expression surrounded by parentheses will be mistakenly identified as subtypes
 	;
 
 // constantExpression
@@ -323,7 +323,7 @@ subtype
 
 name
 	: (identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
-	| '(' name ')'
+	// | '(' name ')'
 	;
 
 actuals
@@ -348,7 +348,8 @@ datatype
 
 identifier
 	: (ID '.')? ID
-	| '(' identifier ')';
+	// | '(' identifier ')'
+	;
 
 identifierOrOperators
 	: (identifier | unaryOp | binaryOp) (',' (identifier | unaryOp | binaryOp))*;
