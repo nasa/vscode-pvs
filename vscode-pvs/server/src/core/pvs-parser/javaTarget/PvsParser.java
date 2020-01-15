@@ -100,6 +100,7 @@ public class PvsParser {
         }
 
         public ParserUtils.DeclDescriptor findDeclaration (String name) {//, int line, int character) {
+            System.out.println("Finding declaration for " + name);
             ParserUtils.DeclDescriptor candidate = typeDeclarations.get(name);
             if (candidate != null) {
                 return candidate;

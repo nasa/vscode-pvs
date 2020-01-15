@@ -38,20 +38,20 @@ public class PvsTypechecker {
         int character;
         String tccType;
         String id;
-        String tccDecl;
-        TccDescriptor (String id, int line, int character, String tccType, String tccDecl) {
+        String tccBody;
+        TccDescriptor (String id, int line, int character, String tccType, String tccBody) {
             this.id = id;
             this.line = line;
             this.character = character;
             this.tccType = tccType;
-            this.tccDecl = tccDecl;
+            this.tccBody = tccBody;
         }
         public String toString () {
             return "{ \"line\": " + this.line
                 + ", \"character\": " + this.character
                 + ", \"tcc-id\": \"" + this.id + "\""
                 + ", \"tcc-type\": \"" + this.tccType + "\""
-                + ", \"tcc-decl\": \"" + this.tccDecl + "\""
+                + ", \"tcc-tccBody\": \"" + this.tccBody + "\""
                 + " }";
         }
     }
@@ -110,30 +110,39 @@ public class PvsTypechecker {
         @Override public void enterOperatorDiv(PvsLanguageParser.OperatorDivContext ctx) {
             // new subtype tcc (check division by zero)
             String tccContextName = this.findTccContextName(ctx);
+            
             // get operand on the right
             PvsLanguageParser.BinaryOpExprContext exprContext = (PvsLanguageParser.BinaryOpExprContext) ctx.parent.parent;
             PvsLanguageParser.ExprContext divisorContext = exprContext.expr().get(1);
+
             // find declaration of all terms in the expression
-            ParserUtils.DeclDescriptor desc = (divisorContext instanceof PvsLanguageParser.TermExprContext) ? 
-                findDeclaration(((PvsLanguageParser.TermExprContext) divisorContext).term().getText())
-                : null;
-            String locals = (desc != null) ? desc.declaration : divisorContext.getText();
+            ArrayList<String> terms = ParserUtils.getTerms(divisorContext);
+
             String expr = divisorContext.getText();
             Token start = divisorContext.getStart();
             int line = start.getLine();
             int character = start.getCharPositionInLine();
             if (tccContextName != null) {
-                String id = tccContextName + "_TCC" + (this.tccs.size() + 1);
-                String decl = id + ": OBLIGATION\n"
-                            + " FORALL (" + locals + "):\n"
-                            + "   " + expr + " /= 0";
+                String tccName = tccContextName + "_TCC" + (this.tccs.size() + 1);
+                String tccBody = expr + " /= 0";
+                if (terms != null) {
+                    ArrayList<String> termsDecl = new ArrayList<String>();
+                    for (String term: terms) {
+                        ParserUtils.DeclDescriptor desc = findDeclaration(term);
+                        if (desc != null) {
+                            termsDecl.add(desc.declaration);
+                        }
+                    }
+                    tccBody = ParserUtils.makeForall(termsDecl) + "  " + tccBody;
+                }
+                String tccDecl = ParserUtils.makeTccDeclaration(tccName, tccBody);
                 this.tccs.add(
                     new TccDescriptor(
-                        id,
+                        tccName,
                         line,
                         character,
                         "SUBTYPE_TCC",
-                        decl
+                        tccDecl
                     )
                 );
             } else {
