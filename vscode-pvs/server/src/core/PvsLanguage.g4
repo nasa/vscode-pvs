@@ -166,8 +166,8 @@ typeExpression
 expr
 //	: constantExpression
 	: term                    #termExpr
-	| unaryOp+ expr           #unaryOpExpr
 	| expr (binaryOp expr)+   #binaryOpExpr
+	| unaryOp+ expr           #unaryOpExpr
     | listExpression          #listExpr
     | recordExpression        #recordExpr
 	| typeExpression          #typeExpr
@@ -206,9 +206,10 @@ rational
 	: RAT_NUMBER_DOT_NOTATION
 	| RAT_NUMBER_FRACTIONAL_NOTATION
 	| RAT_NUMBER_SCIENTIFIC_NOTATION
+	| ('+'|'-') rational
 	;
 natural: NAT_NUMBER;
-integer: INT_NUMBER;
+integer: ('+'|'-') NAT_NUMBER;
 true_false: TRUE_FALSE;
 string: STRING;
 ifExpression
