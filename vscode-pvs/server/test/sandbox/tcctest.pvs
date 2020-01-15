@@ -1,0 +1,43 @@
+tcctest: THEORY
+ BEGIN
+
+  %--------------------------------------------
+  % inconsistencies in tcc generation (PVS 6.0)
+  %--------------------------------------------
+  
+  % this lemma *does not* generate tccs...
+  vtbi_over_rate_lemma1: LEMMA
+    FORALL(v: nat, r: posnat): (r / 1) >= 0
+    
+
+  % ...but this lemma (correctly) generates a tccs
+  % Subtype TCC generated (at line 14, column 36) for  0
+  % expected type  nznum
+  % unfinished
+  % vtbi_over_rate_lemma2_TCC1: OBLIGATION 0 /= 0;
+  vtbi_over_rate_lemma2: LEMMA
+    FORALL(v: nat, r: posnat): (r / 0) >= 0
+
+
+  % ...and this lemma generates a tccs
+  % Subtype TCC generated (at line 18, column 26) for  (PI - 1)
+  % expected type  nznum
+  % unfinished
+  %  vtbi_over_rate_lemma3_TCC1: OBLIGATION (PI - 1) /= 0;
+  vtbi_over_rate_lemma3: LEMMA
+    FORALL(r: nat): (r / (PI - 1)) >= 0
+
+
+  % ... and this lemma generates a tcc with an incorrect quantification over r
+  % Subtype TCC generated (at line 24, column 48) for  (8 - 8)
+  % expected type  nznum
+  % unfinished
+  % vtbi_over_rate_lemma4_TCC1: OBLIGATION
+  %   FORALL (r: irates | r /= 0): (8 - 8) /= 0;
+  ivols: TYPE = int
+  irates: TYPE = int  
+  vtbi_over_rate_lemma4: LEMMA
+    FORALL(v: ivols, r: irates | r /= 0): (v / (8 - 8)) >= 0
+    
+    
+ END tcctest
