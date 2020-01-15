@@ -19,7 +19,7 @@ tcctest: THEORY
     FORALL(v: nat, r: posnat): (r / 0) >= 0
 
 
-  % ...and this lemma generates a tccs
+  % ...and this lemma generates a tcc
   % Subtype TCC generated (at line 18, column 26) for  (PI - 1)
   % expected type  nznum
   % unfinished

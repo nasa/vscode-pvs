@@ -93,39 +93,30 @@ public class PvsTypechecker {
             super(tokens);
         }
 
-        public String findTccContextName (RuleContext ctx) {
-            String tccContextName = null;
-            RuleContext candidate = ctx.parent;
-            while (candidate != null) {
-                if (candidate instanceof PvsLanguageParser.FormulaDeclarationContext) {
-                    PvsLanguageParser.FormulaDeclarationContext c = (PvsLanguageParser.FormulaDeclarationContext) candidate;
-                    tccContextName = c.identifier().getText();
-                    break;
-                }
-                candidate = candidate.parent;
-            }
-            return tccContextName;
-        }
-
         @Override public void enterOperatorDiv(PvsLanguageParser.OperatorDivContext ctx) {
             // new subtype tcc (check division by zero)
-            String tccContextName = this.findTccContextName(ctx);
+            String tccContextName = ParserUtils.findScopeName(ctx);
             
-            // get operand on the right
+            // get operand on the right of operatorDIV
             PvsLanguageParser.BinaryOpExprContext exprContext = (PvsLanguageParser.BinaryOpExprContext) ctx.parent.parent;
             PvsLanguageParser.ExprContext divisorContext = exprContext.expr().get(1);
 
-            // find declaration of all terms in the expression
-            ArrayList<String> terms = ParserUtils.getTerms(divisorContext);
-
-            String expr = divisorContext.getText();
+            // find position of the divisor
             Token start = divisorContext.getStart();
             int line = start.getLine();
             int character = start.getCharPositionInLine();
+
             if (tccContextName != null) {
+                // find name of all terms in the expression
+                ArrayList<String> terms = ParserUtils.getTerms(divisorContext);
+
+                // create tcc name
                 String tccName = tccContextName + "_TCC" + (this.tccs.size() + 1);
-                String tccBody = expr + " /= 0";
+
+                // create tcc body
+                String tccBody = divisorContext.getText() + " /= 0";
                 if (terms != null) {
+                    // find the declaration of each term in the expression
                     ArrayList<String> termsDecl = new ArrayList<String>();
                     for (String term: terms) {
                         ParserUtils.DeclDescriptor desc = findDeclaration(term);
@@ -135,6 +126,8 @@ public class PvsTypechecker {
                     }
                     tccBody = ParserUtils.makeForall(termsDecl) + "  " + tccBody;
                 }
+
+                // generate tcc declaration and add it to the list of tccs
                 String tccDecl = ParserUtils.makeTccDeclaration(tccName, tccBody);
                 this.tccs.add(
                     new TccDescriptor(

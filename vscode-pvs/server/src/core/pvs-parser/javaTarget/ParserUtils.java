@@ -92,6 +92,19 @@ public class ParserUtils {
         }
         return null;
     }
+    public static String findScopeName (RuleContext ctx) {
+        String nodeName = null;
+        RuleContext candidate = ctx.parent;
+        while (candidate != null) {
+            if (candidate instanceof PvsLanguageParser.FormulaDeclarationContext) {
+                PvsLanguageParser.FormulaDeclarationContext c = (PvsLanguageParser.FormulaDeclarationContext) candidate;
+                nodeName = c.identifier().getText();
+                break;
+            }
+            candidate = candidate.parent;
+        }
+        return nodeName;
+    }
     /**
      * Returns the fragment of source code associated to a given context
      * @param ctx (ParserRuleContex) context for which the source code should be returned
