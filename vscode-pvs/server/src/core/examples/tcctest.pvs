@@ -38,6 +38,24 @@ tcctest: THEORY
   irates: TYPE = int  
   vtbi_over_rate_lemma4: LEMMA
     FORALL(v: ivols, r: irates | r /= 0): (v / (8 - 8)) >= 0
-    
-    
+
+
+  % ...and the following ones work just fine
+  
+  % Subtype TCC generated (at line 44, column 37) for  (4 - 4)
+  % expected type  nznum
+  % unfinished
+  %   vtbi_over_rate_lemma5_TCC1: OBLIGATION (4 - 4) /= 0;
+  vtbi_over_rate_lemma5: LEMMA
+    FORALL(x: nat, r: posnat): (x / (4 - 4)) >= 0
+
+
+  % Subtype TCC generated (at line 57, column 39) for  (r - v)
+  % expected type  nznum
+  % unfinished
+  % vtbi_over_rate_lemma6_TCC1: OBLIGATION
+  %   FORALL (v: ivols, r: irates): (r - v) /= 0;
+  vtbi_over_rate_lemma6: LEMMA
+    FORALL(v: ivols, r: irates): (v / (r - v)) >= 0
+
  END tcctest

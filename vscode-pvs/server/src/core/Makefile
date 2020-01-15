@@ -43,7 +43,7 @@ pvs-typechecker: download
 	@-rm -r lib
 	# testing typechecker
 	# cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../test/sandbox/sq.pvs -test
-	cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../src/core/examples/test.pvs -test
+	cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../src/core/examples/tcctest.pvs -test
 
 pvs-parser-js: download
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=JavaScript PvsLanguage.g4 -o ./pvs-parser/jsTarget/out
