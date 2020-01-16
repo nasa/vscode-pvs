@@ -31,8 +31,8 @@ pvs-parser: download
 pvs-typechecker: download
 	# generating java target
 	@java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./pvs-typechecker/javaTarget/out
-	@cd pvs-typechecker/javaTarget && cp PvsTypechecker.java ./out && cp MANIFEST.MF ./out && cd ../..
-	@cd pvs-typechecker/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:../../../pvs-parser/javaTarget/:./ *.java && cd ../../..
+	@cd pvs-typechecker/javaTarget && cp *.java ./out && cp ../../pvs-parser/javaTarget/*.java ./out && cp MANIFEST.MF ./out && cd ../..
+	@cd pvs-typechecker/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../../..
 	# creating pvs-typechecker
 	cd pvs-typechecker/javaTarget/out && jar -cfm PvsTypechecker.jar ./MANIFEST.MF *.class && rm *.class && cd ../../..
 	# completing installation in core/lib
@@ -43,7 +43,7 @@ pvs-typechecker: download
 	@-rm -r lib
 	# testing typechecker
 	# cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../test/sandbox/sq.pvs -test
-	cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../src/core/examples/tcctest.pvs -test
+	cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../src/core/examples/test.pvs -test
 
 pvs-parser-js: download
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=JavaScript PvsLanguage.g4 -o ./pvs-parser/jsTarget/out
