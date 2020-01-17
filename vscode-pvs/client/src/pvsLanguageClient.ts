@@ -136,7 +136,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// trigger file parsing to get syntax diagnostics
 				this.client.sendRequest(comm.serverCommand.parseFile, editor.document.fileName);
 				// const context: string = fsUtils.getContextFolder(editor.document.fileName);
-				// this.client.sendRequest(comm.serverCommand.parseContext, context);
+				// this.client.sendRequest(comm.serverCommand.parseWorkspace, context);
 			}
 		}, null, this.context.subscriptions);
 

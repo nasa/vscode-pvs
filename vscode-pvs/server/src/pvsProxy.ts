@@ -676,7 +676,7 @@ export class PvsProxy {
 	/**
 	 * Parse all files in the given context folder, sequential version
 	 */
-	async parseContext (contextFolder: string): Promise<ContextDiagnostics> {
+	async parseWorkspace (contextFolder: string): Promise<ContextDiagnostics> {
 		this.notifyStartExecution(`Parsing folder ${contextFolder}`);
 		let result: ContextDiagnostics = {};
 		// console.info(`[pvs-proxy] Parsing folder ${contextFolder}`);
@@ -686,19 +686,22 @@ export class PvsProxy {
 			if (contextFiles && contextFiles.fileNames) {
 				const promises: Promise<PvsResponse>[] = [];
 				for (const i in contextFiles.fileNames) {
-					const fname: string = contextFiles.fileNames[i];
+					const fname: string = path.join(contextFolder, contextFiles.fileNames[i]);
 					const fileName: string = fsUtils.getFileName(fname);
 					const fileExtension: string = fsUtils.getFileExtension(fname);
+					
 					// const ans: PvsResponse = await this.parseFile({ fileName, fileExtension, contextFolder });
 					// result[fname] = ans;
 					promises.push(new Promise ((resolve, reject) => {
 						this.parseFile({ fileName, fileExtension, contextFolder }).then((ans: PvsResponse) => {
-							result[fname] = ans;
+							if (ans && ans.error) {
+								result[fname] = ans;
+							}
 							resolve(ans);
 						});
 					}));
 				}
-				Promise.all(promises);
+				await Promise.all(promises);
 			}
 		}
 		this.notifyEndExecution();

@@ -79,7 +79,8 @@ export class PvsParser {
      * Parse a pvs file
      * @param desc File descriptor, includes file name, file extension, and context folder
      */
-    async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<Diagnostic[]> {
+    async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { stats?: boolean }): Promise<Diagnostic[]> {
+        opt = opt || {};
         const fname: string = fsUtils.desc2fname(desc);
         console.info(`[vscode-pvs-parser] Parsing ${fname}`);
 
@@ -87,11 +88,13 @@ export class PvsParser {
         const libFolder: string = path.join(__dirname, "../../../../out/core/lib");
 
         const start: number = Date.now();
-        const args: string[] = [ "-jar", `${libFolder}/PvsParser.jar` ]; // this will produce a JSON object of type Diagnostic[]
+        const options: string = (opt.stats) ? "-stats" : ""; // stats includes statistics about the number of declarations contained in the file
+        const args: string[] = [ "-jar", `${libFolder}/PvsParser.jar`, options ]; // this command will produce a JSON object of type Diagnostic[]
         try {
             const diags: string = await this.processWorker(fname, args);
             const stats: number = Date.now() - start;
             if (diags) {
+                console.log(diags);
                 diagnostics = JSON.parse(diags);
                 console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${stats}ms`);
             } else {

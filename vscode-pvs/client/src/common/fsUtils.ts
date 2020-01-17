@@ -79,7 +79,11 @@ export async function readFile(path: string): Promise<string | null> {
 		try {
 			return new Promise<string>((resolve, reject) => {
 				fs.readFile(path, (error: NodeJS.ErrnoException, data: Buffer) => {
-					resolve(data.toString('utf8'));
+					if (data) {
+						resolve(data.toString('utf8'));
+					} else {
+						resolve(null);
+					}
 				});
 			});
 		} catch (fileReadError) {
@@ -151,7 +155,7 @@ export function getFileName(fname: string): string {
 	return null;
 }
 export function removeFileExtension(fname: string): string {
-	if (fname) {
+	if (fname && fname.indexOf(".") >= 0) {
 		return fname.split(".").slice(0, -1).join(".");
 	}
 	return null;

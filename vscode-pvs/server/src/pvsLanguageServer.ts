@@ -569,32 +569,40 @@ export class PvsLanguageServer {
 		}
 	}
 	/**
-	 * Parse all files in a given context
-	 * @param args Handler arguments: context folder
+	 * Parse all files in a given workspace
+	 * @param args Handler arguments: workspace folder
 	 */
-	async parseContext (args: { contextFolder: string }): Promise<ContextDiagnostics> {
-		if (this.checkArgs("parseContext", args)) {
+	async parseWorkspace (args: { contextFolder: string }): Promise<ContextDiagnostics> {
+		if (this.checkArgs("parseWorkspace", args)) {
 			if (args.contextFolder !== this.lastParsedContext || args.contextFolder !== path.join(this.lastParsedContext, "pvslog")) {
 				this.lastParsedContext = args.contextFolder;
 				try {
-					return await this.pvsProxy.parseContext(args.contextFolder);
+					return await this.pvsProxy.parseWorkspace(args.contextFolder);
 				} catch (ex) {
-					console.error('[pvs-language-server.parseContext] Error: pvsProxy has thrown an exception', ex);
+					console.error('[pvs-language-server.parseWorkspace] Error: pvsProxy has thrown an exception', ex);
 					return null;
 				}
 			}
 		}
 		return null;
 	}
-	async parseContextRequest (request: string | { contextFolder: string }): Promise<void> {
+	async parseWorkspaceRequest (request: string | { contextFolder: string }, opt?: { withFeedback?: boolean }): Promise<void> {
 		if (request) {
+			opt = opt || {};
 			const desc: { contextFolder: string } = (typeof request === "string") ? { contextFolder: request } : request;
 			// send context update first -- so the front-end can be updated promptly
 			const cdesc: ContextDescriptor = await this.getContextDescriptor(desc);
 			this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 			// parse context
-			const diags: ContextDiagnostics = await this.parseContext(desc);
+			const diags: ContextDiagnostics = await this.parseWorkspace(desc);
 			this.sendDiagnostics(diags, desc.contextFolder, "Parse error");
+			if (opt.withFeedback) {
+				if (diags && Object.keys(diags).length) {
+					this.notifyEndImportantTaskWithErrors(`${desc.contextFolder} contains parse errors`);
+				} else {
+					this.notifyEndImportantTask(`${desc.contextFolder} parsed successfully!`);
+				}
+			}
 		} else {
 			console.error("[pvs-language-server] Warning: pvs.parse-context invoked with null request");
 		}
@@ -1219,6 +1227,14 @@ export class PvsLanguageServer {
 				this.notifyStartImportantTask(`Parsing file ${f}`);
 				this.parseFileRequest(request, { withFeedback: true }); // async call
 			});
+			this.connection.onRequest(serverCommand.parseWorkspace, async (request: string | { contextFolder: string }) => {
+				this.parseWorkspaceRequest(request); // async call
+			});
+			this.connection.onRequest(serverCommand.parseWorkspaceWithFeedback, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
+				const w: string = (typeof request === "string") ? fsUtils.getContextFolder(request) : request.contextFolder;
+				this.notifyStartImportantTask(`Parsing workspace ${w}`);
+				this.parseWorkspaceRequest(request, { withFeedback: true }); // async call
+			});
 			this.connection.onRequest(serverCommand.hp2pvs, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.hp2pvsRequest(request); // async call
 			});
@@ -1242,9 +1258,6 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverCommand.proofCommand, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, cmd: string }) => {
 				this.proofCommandRequest(args); // async call
-			});
-			this.connection.onRequest(serverCommand.parseContext, async (request: string | { contextFolder: string }) => {
-				this.parseContextRequest(request); // async call
 			});
 
 			this.connection.onRequest(serverCommand.listDownloadableVersions, async () => {

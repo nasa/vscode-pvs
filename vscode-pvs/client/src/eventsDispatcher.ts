@@ -293,6 +293,24 @@ export class EventsDispatcher {
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
             }
+        }));
+        
+        // vscode-pvs.parse-workspace
+		context.subscriptions.push(commands.registerCommand("vscode-pvs.parse-workspace", async (resource: string | { path: string } | { contextValue: string }) => {
+            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
+                resource = { path: window.activeTextEditor.document.fileName };
+            }
+			if (resource) {
+                let desc = <{ 
+                    fileName: string, fileExtension: string, contextFolder: string
+                }> this.resource2desc(resource);
+                if (desc) {
+                    // send parse request to pvs-server
+                    this.client.sendRequest(serverCommand.parseWorkspaceWithFeedback, desc);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
+            }
 		}));
 
         // vscode-pvs.hp2pvs

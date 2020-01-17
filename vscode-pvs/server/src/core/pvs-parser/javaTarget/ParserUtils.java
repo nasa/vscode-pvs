@@ -69,7 +69,7 @@ public class ParserUtils {
         while (candidate != null) {
             if (candidate instanceof PvsLanguageParser.TypeDeclarationContext
                     || candidate instanceof PvsLanguageParser.FormulaDeclarationContext
-                    || candidate instanceof PvsLanguageParser.VarDeclarationContext
+                    // || candidate instanceof PvsLanguageParser.VarDeclarationContext
                     || candidate instanceof PvsLanguageParser.FunctionDeclarationContext
                     || candidate instanceof PvsLanguageParser.JudgementDeclarationContext
                     || candidate instanceof PvsLanguageParser.ConversionDeclarationContext
@@ -83,27 +83,33 @@ public class ParserUtils {
                 int from_col = start.getCharPositionInLine() + 1 + start.getText().length();
                 int stop_line = stop.getLine();
                 int to_col = stop.getCharPositionInLine() + 1 + stop.getText().length();
-                System.out.println("\nSCOPE of " + identifier + " is " + ((candidate instanceof PvsLanguageParser.TheoryContext) ? "THEORY" : getSource(candidate)));
-                System.out.println("start " + start_line + "(" + from_col + ")");
-                System.out.println("stop " + stop_line + "(" + to_col + ")");
+                // System.out.println("\nSCOPE of " + identifier + " is " + ((candidate instanceof PvsLanguageParser.TheoryContext) ? "THEORY" : getSource(candidate)));
+                // System.out.println("start " + start_line + "(" + from_col + ")");
+                // System.out.println("stop " + stop_line + "(" + to_col + ")");
                 return new Range(start_line, from_col, stop_line, to_col);
             }
             candidate = candidate.getParent();
         }
         return null;
     }
-    public static String findScopeName (RuleContext ctx) {
-        String nodeName = null;
+    public static String findScopeName (ParserRuleContext ctx) {
+        String scopeName = null;
         RuleContext candidate = ctx.parent;
         while (candidate != null) {
             if (candidate instanceof PvsLanguageParser.FormulaDeclarationContext) {
                 PvsLanguageParser.FormulaDeclarationContext c = (PvsLanguageParser.FormulaDeclarationContext) candidate;
-                nodeName = c.identifier().getText();
+                scopeName = c.identifier().getText();
                 break;
+            }
+            if (candidate instanceof PvsLanguageParser.FunctionDeclarationContext) {
+                PvsLanguageParser.FunctionDeclarationContext c = (PvsLanguageParser.FunctionDeclarationContext) candidate;
+                if (c.functionName() != null) {
+                    scopeName =  c.functionName().getText();
+                }
             }
             candidate = candidate.parent;
         }
-        return nodeName;
+        return scopeName;
     }
     /**
      * Returns the fragment of source code associated to a given context
@@ -143,6 +149,24 @@ public class ParserUtils {
             if (ctx instanceof PvsLanguageParser.ParenExprContext) {
                 return getTerms(((PvsLanguageParser.ParenExprContext) ctx).expr());
             }
+        }
+        return null;
+    }
+
+    public static String getFileName (String fname) {
+        if (fname != null) {
+            String fileName = fname.replace("file://", "");
+            fileName = (fileName.indexOf("/") >= 0) ? fileName.substring(fileName.lastIndexOf("/") + 1, fileName.length() - 1) : fileName;
+            fileName = (fileName.indexOf(".") >= 0) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
+            return fileName;
+        }
+        return null;
+    }
+    public static String getContextFolder (String fname) {
+        if (fname != null) {
+            String folder = fname.replace("file://", "");
+            folder = folder.substring(0, folder.lastIndexOf("/"));
+            return folder;
         }
         return null;
     }
