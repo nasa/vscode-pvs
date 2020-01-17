@@ -65,7 +65,7 @@ theoryFormals
     : ('[' (theoryFormalType | theoryFormalConstant) (',' (theoryFormalType | theoryFormalConstant))* ']')
     ;
 theoryFormalType
-	: identifierOrOperators ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS)
+	: ('(' importing ')')? identifierOrOperators ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS)
 	;
 theoryFormalConstant
 	: ('(' importing ')')? identifierOrOperators ':' typeExpression
@@ -92,6 +92,7 @@ declaration
 	| formulaDeclaration
 	| varDeclaration
 	| functionDeclaration
+	| constantDeclaration
 	| judgementDeclaration
 	| conversionDeclaration
 	| autorewriteDeclaration
@@ -118,13 +119,23 @@ formulaDefinition
     : expr
     ;
 
+constantDeclaration
+	: constantName (',' constantName)* ':' typeExpression constantDefinition?
+	;
+constantName
+	: (identifier | unaryOp | binaryOp)
+	;
+constantDefinition
+    : '=' expr
+	;
 functionDeclaration
-	: identifierOrOperators ':' typeExpression functionDefinition?
-	| (identifier | unaryOp | binaryOp) arguments* 
+	: functionName arguments+ 
 		':' (K_MACRO | K_INDUCTIVE | K_RECURSIVE)? typeExpression 
 		(functionDefinition measureExpression?)?
 	;
-
+functionName
+	: (identifier | unaryOp | binaryOp)
+	;
 functionDefinition
     : '=' expr
 	// error handling
@@ -136,10 +147,14 @@ judgementDeclaration
 	| constantJudgement
 	;
 subtypeJudgement
-	: ((identifier | unaryOp | binaryOp) ':')? K_JUDGEMENT typeExpression (',' typeExpression)* K_SUBTYPE_OF typeExpression
+	: (judgementName ':')? K_JUDGEMENT typeExpression (',' typeExpression)* K_SUBTYPE_OF typeExpression
 	;
 constantJudgement
-	: ((identifier | unaryOp | binaryOp) ':')? K_RECURSIVE? K_JUDGEMENT (number | (name bindings*)) (',' (number | '{' name bindings* '}'))* K_HAS_TYPE typeExpression
+	: (judgementName ':')? K_RECURSIVE? K_JUDGEMENT (bindingExpression | name)* K_HAS_TYPE typeExpression
+	;
+
+judgementName
+	: (identifier | unaryOp | binaryOp)
 	;
 
 conversionDeclaration
@@ -170,6 +185,9 @@ expr
 	| unaryOp+ expr           #unaryOpExpr
     | listExpression          #listExpr
     | recordExpression        #recordExpr
+	| tableExpression         #tableExpr
+    | expr K_WITH '[' assignmentExpression (',' assignmentExpression)* ']' #withExpr
+    | expr K_WHERE letBindings #whereExpr
 	| '(' expr ')'            #parenExpr
 	| typeExpression          #typeExpr // NB: typeExpression needs to be after parenExpression, otherwise expression surrounded by parentheses will be mistakenly identified as subtypes
 	;
@@ -184,8 +202,6 @@ term
 	| bindingExpression       #bindingExpr
     | letExpression           #letExpr
     | tupleExpression         #tupleExpr
-    | term K_WHERE letBindings #whereExpr
-    | term K_WITH '[' assignmentExpression (',' assignmentExpression)* ']' #withExpr
 	| term '::' typeExpression #corcExpr // coercion expression, i.e., expr is expected to be of type typeExpression
 	| builtin #builtinTerm
 	// error handling
@@ -197,19 +213,7 @@ builtin
 	| string
 	;
 number
-	: rational
-	| natural
-	| integer
-	;
-// realNumber: REAL_NUMBER;
-rational
-	: RAT_NUMBER_DOT_NOTATION
-	| RAT_NUMBER_FRACTIONAL_NOTATION
-	| RAT_NUMBER_SCIENTIFIC_NOTATION
-	| ('+'|'-') rational
-	;
-natural: NAT_NUMBER;
-integer: ('+'|'-') NAT_NUMBER;
+	: ('+' | '-')? NUMBER;
 true_false: TRUE_FALSE;
 string: STRING;
 ifExpression
@@ -234,6 +238,7 @@ listExpression
     ;
 recordExpression
     : '(#' assignmentExpression (',' assignmentExpression)* '#)'
+	| '{|' expr (',' expr) '|}'
     | '(' recordExpression ')'
 	// error handling
     | '(#' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("','' expected."); } (assignmentExpression+ (',' assignmentExpression)*)* '#)' // error: omission of comma
@@ -241,6 +246,16 @@ recordExpression
 	| { notifyErrorListeners("''(#' expected."); } '(' assignmentExpression (',' assignmentExpression)* '#)' // error: mismatching parentheses
 	| '(#' assignmentExpression (',' assignmentExpression)* { notifyErrorListeners("''#)' expected."); } ')' // error: mismatching parentheses
     ;
+tableExpression
+	: K_TABLE colHeading? tableEntry+ K_ENDTABLE
+	| '[|' expr (',' (expr | K_ELSE) )* '|]'
+	;
+colHeading
+	: '|[' expr ('|' (expr | K_ELSE) )* ']|'
+	;
+tableEntry
+	: '|' expr ('|' (expr | K_ELSE) )* '|'
+	;
 measureExpression
 	: K_MEASURE expr (K_BY (unaryOp | binaryOp | expr))?
 	;
@@ -266,10 +281,13 @@ binding
 	| '(' typeIds ')'
 	;
 typeId
-	: (identifier | unaryOp | binaryOp) (':' expr)? ('|' expr)?
+	: localName (':' typeExpression)? ('|' expr)?
+	;
+localName
+	: (identifier | unaryOp | binaryOp)
 	;
 typeIds
-	: identifierOrOperators (':' expr)? ('|' expr)?
+	: identifierOrOperators (':' typeExpression)? ('|' expr)?
 	// error handling
 	| expr { notifyErrorListeners("':' expected."); } expr
 	;
@@ -280,7 +298,8 @@ letBinding
 	: letBind (',' letBind)* '=' expr
 	;
 letBind
-	: (identifier | unaryOp | binaryOp)? bindings* (':' expr)?
+	: (name | unaryOp | binaryOp) (':' typeExpression)?
+	| '(' (name | unaryOp | binaryOp) (',' (name | unaryOp | binaryOp))* ')'  (':' typeExpression)?
 	;
 assignmentExpression
 	: assignmentIdentifier (':=' | '|->') expr
@@ -355,7 +374,7 @@ identifierOrOperators
 	: (identifier | unaryOp | binaryOp) (',' (identifier | unaryOp | binaryOp))*;
 
 unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>';
-binaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | '*' | operatorDiv | '+' | '-' | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=';
+binaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | '*' | operatorDiv | '+' | '-' | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=' | '{||}';
 operatorDiv: O_DIV;
 
 
