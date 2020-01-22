@@ -46,8 +46,14 @@ export class StatusBarPriority {
 
 export class VSCodePvsStatusBar {
     protected pvsVersionInfo: { "pvs-version": string, "lisp-version": string };
-    protected statusBar: StatusBarItem;
+    protected pvsStatus: StatusBarItem;
+    protected workspaceStatus: StatusBarItem;
     protected versionInfoBar: StatusBarItem;
+
+    protected stats: {
+        [filename: string]: { lemmas: number, definitions: number, types: number }
+    };
+    protected nfiles: number = 0;
 
     protected sequentViewerLabelStart: StatusBarItem;
     protected sequentViewerShow: StatusBarItem;
@@ -61,6 +67,16 @@ export class VSCodePvsStatusBar {
 
     protected client: LanguageClient;
 
+    protected makeStats (): string {
+        const nFiles: number = Object.keys(this.stats).length - 1;
+        const msg: string = (nFiles !== 1) ? `${nFiles} out of ${this.nfiles} files parsed` : `1 of ${this.nfiles} file parsed`;
+        return msg + ` (${this.stats["!tot!"].types} types, ${this.stats["!tot!"].lemmas} lemmas, ${this.stats["!tot!"].definitions} definitions)`;
+    }
+    protected resetStats (): void {
+        this.stats = {};
+        this.stats["!tot!"] = { lemmas: 0, definitions: 0, types: 0 };
+    }
+
     /**
      * Constructor
      * @param client VSCode Language Client, necessary for registering event handlers 
@@ -68,7 +84,8 @@ export class VSCodePvsStatusBar {
     constructor (client: LanguageClient) {
         this.client = client;
         // create status bar elements
-        this.statusBar = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
+        this.pvsStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
+        this.workspaceStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
         this.versionInfoBar = window.createStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
 
         this.sequentViewerLabelStart = window.createStatusBarItem(StatusBarAlignment.Left, 10);
@@ -134,7 +151,7 @@ export class VSCodePvsStatusBar {
      * Shows pvs version and lisp version in the status bar
      * @param desc pvs version and lisp version
      */
-    pvsReady (desc: { "pvs-version": string, "lisp-version": string }) {
+    pvsReady (desc: { "pvs-version": string, "lisp-version": string }): void {
         if (desc) {
             this.pvsVersionInfo = desc;
             this.versionInfoBar.text = desc["pvs-version"];
@@ -142,11 +159,37 @@ export class VSCodePvsStatusBar {
         }
     }
 
+    showWorkspaceStats (nfiles: number): void {
+        this.nfiles = nfiles;
+    }
+    showStats (filename: string, desc: { types: number, definitions: number, lemmas: number }): void {
+        if (desc) {
+            if (!this.stats[filename] 
+                || (this.stats[filename] 
+                    && (this.stats[filename].lemmas !== desc.lemmas 
+                        || this.stats[filename].definitions !== desc.definitions
+                        || this.stats[filename].types !== desc.types))) {
+                this.stats[filename] = desc;
+                const fnames: string[] = Object.keys(this.stats);
+                this.stats["!tot!"] = { lemmas: 0, definitions: 0, types: 0 };
+                for (const i in fnames) {
+                    const fname: string = fnames[i];
+                    if (fname !== "!tot!") {
+                        this.stats["!tot!"].lemmas += this.stats[fname].lemmas;
+                        this.stats["!tot!"].definitions += this.stats[fname].definitions;
+                        this.stats["!tot!"].types += this.stats[fname].types;
+                    }
+                }
+            } 
+            this.workspaceStatus.text = this.makeStats();
+        }
+    }
+
     /**
      * Shows "ready" in the status bar for 2 secs
      */
     ready (): void {
-        this.statusBar.text = `$(check)  Ready!`;
+        this.pvsStatus.text = `$(check)  Ready!`;
         // setTimeout(() => {
         //     this.statusBar.text = "";
         // }, 10000);    
@@ -157,7 +200,7 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     progress (msg: string): void {
-        this.statusBar.text = `$(sync~spin)  ${msg}`;
+        this.pvsStatus.text = `$(sync~spin)  ${msg}`;
     }
 
     /**
@@ -165,7 +208,7 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     info (msg: string): void {
-        this.statusBar.text = `$(megaphone)  ${msg}`;
+        this.pvsStatus.text = `$(megaphone)  ${msg}`;
     }
 
     /**
@@ -173,7 +216,7 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     msg (msg: string): void {
-        this.statusBar.text = msg;
+        this.pvsStatus.text = msg;
     }
     
     /**
@@ -181,14 +224,16 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     error (msg: string): void {
-        this.statusBar.text = msg;
+        this.pvsStatus.text = msg;
     }
 
     /**
      * Activates the service provider
      */
     activate (context: ExtensionContext) {
-        this.statusBar.show();
+        this.pvsStatus.show();
+        this.resetStats();
+        this.workspaceStatus.show();
         this.versionInfoBar.show();
     }
 

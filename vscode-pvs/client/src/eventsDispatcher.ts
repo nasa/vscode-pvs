@@ -143,7 +143,19 @@ export class EventsDispatcher {
             console.log(desc);
         });
 		this.client.onRequest(serverEvent.parseFileResponse, (res: PvsResponse) => {
-			// do nothing for now
+            // show stats
+            if (res && res["math-objects"] && res.filename) {
+                const stats: { types: number, definitions: number, lemmas: number } = <{ types: number, definitions: number, lemmas: number }> res["math-objects"];
+                this.statusBar.showStats(res.filename, stats);
+                // display info in the status bar
+            }
+        });
+		this.client.onRequest(serverEvent.workspaceStats, (res: PvsResponse) => {
+            // show stats
+            if (res && res["files"]) {
+                this.statusBar.showWorkspaceStats(res["files"]);
+                // display info in the status bar
+            }
         });
         this.client.onRequest(serverEvent.proofCommandResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }}) => {
             // notify proofexplorer

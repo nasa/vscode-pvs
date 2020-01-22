@@ -445,7 +445,6 @@ export const serverEvent = {
 	proveFormulaResponse: "pvs.response.prove-formula",
 	proofScriptResponse: "pvs.response.proof-script",
 	proofCommandResponse: "pvs.response.proof-command",
-	parseWorkspaceResponse: "pvs.response.parse-workspace",
 	parseFileResponse: "pvs.response.parse-file",
 	listContextResponse: "pvs.response.list-context",
 	showTccsResponse: "pvs.response.show-tccs",
@@ -458,6 +457,7 @@ export const serverEvent = {
 
 	contextUpdate: "pvs.event.context-update",
 	proofStateUpdate: "pvs.event.proof-state",
+	workspaceStats: "pvs.event.workspace-stats",
 
 	pvsVersionInfo: "pvs.event.version-info",
 	pvsNotPresent: "pvs.event.pvs-not-present",
