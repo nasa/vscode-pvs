@@ -206,11 +206,12 @@ term
 	| bindingExpression       #bindingExpr
     | letExpression           #letExpr
     | tupleExpression         #tupleExpr
-	| name ('`' (term | number))*        #idAccessor
+	| name ('`' (identifier | number))*        #idAccessor
 	| term '::' typeExpression #corcExpr // coercion expression, i.e., expr is expected to be of type typeExpression
-	| term (arithmeticBinaryOp (identifier | builtin | term))+ #arithmeticBinaryOpTerm 
-	| term (logicalBinaryOp (identifier | builtin | term))+ #logicalBinaryOpTerm 
-	| term (comparisonBinaryOp (identifier | builtin | term))+ #comparisonBinaryOpTerm 
+	| term (binaryOp (identifier | builtin | term))+ #logicalBinaryOpTerm
+	// | term (logicalBinaryOp (identifier | builtin | term))+ #logicalBinaryOpTerm 
+	// | term (comparisonBinaryOp (identifier | builtin | term))+ #comparisonBinaryOpTerm 
+	// | term (arithmeticBinaryOp (identifier | builtin | term))+ #arithmeticBinaryOpTerm 
 	| ('+'|'-') term #plusminusTerm
 	| '(' term ')' #parenTerm
     ;
@@ -218,9 +219,9 @@ builtin
 	: number
     | true_false
 	| string
-	| builtin (arithmeticBinaryOp (number | true_false | string | expr))+ 
-	| builtin (logicalBinaryOp (number | true_false | string | expr))+
+	// | builtin (logicalBinaryOp (number | true_false | string | expr))+
 	| builtin (comparisonBinaryOp (number | true_false | string | expr))+
+	| builtin (arithmeticBinaryOp (number | true_false | string | expr))+ 
 	| '(' builtin ')'
 	;
 number
