@@ -55,6 +55,7 @@ import { SimpleConnection, StrategyDescriptor, ProofNode,  ProofTree, serverEven
 import * as utils from './common/languageUtils';
 import { Parser } from './core/Parser';
 import { DiagnosticSeverity, Diagnostic, Position, Range } from 'vscode-languageserver';
+import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
 
 //----------------------------
 // constants introduced for dev purposes, while waiting for the new pvs snapshot
@@ -92,7 +93,7 @@ import { DiagnosticSeverity, Diagnostic, Position, Range } from 'vscode-language
 //----------------------------
 
 
-const ENABLE_NEW_PARSER: boolean = true;
+const ENABLE_NEW_PARSER: boolean = false;
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -127,7 +128,9 @@ export interface ContextDiagnostics {
 // }
 
 export class PvsProxy {
-	protected parserCache: { [ filename: string ]: { hash: string, diags: Diagnostic[] } } = {};
+	protected parserCache: { [ filename: string ]: { hash: string, diags: ParserDiagnostics } } = {};
+	protected activeParsers: { [ filename: string ]: boolean } = {};
+
 	protected debugMode: boolean = false;
 	// protected isActive: boolean = false;
 	readonly MAXTIME: number = 2000; // millis
@@ -304,21 +307,25 @@ export class PvsProxy {
 	 * Utility function, creates a PvsResponse out of parse diagnostic messages
 	 * @param diags Diagnostic messages from the parser
 	 */
-	protected makeDiags (diags: Diagnostic[]): PvsResponse {
+	protected makeDiags (diags: ParserDiagnostics): PvsResponse {
 		const id: string = this.get_fresh_id();
-		if (diags && diags.length > 0) {
+		if (diags && diags.errors && diags.errors.length > 0) {
 			return {
 				jsonrpc: "2.0",
 				id,
+				"math-objects": diags["math-objects"],
+				filename: diags.filename,
 				error: {
 					code: 1,
 					message: 'Parse error',
-					data: diags
+					data: diags.errors
 				}
 			};
 		}
 		return {
 			jsonrpc: "2.0",
+			"math-objects": diags["math-objects"],
+			filename: diags.filename,
 			id
 			// TODO: send declarations?
 		}
@@ -335,25 +342,33 @@ export class PvsProxy {
 			const hash: string = crypto.createHash('sha256').update(content.replace(/\s/g, "")).digest('hex'); // do not consider white spaces when creating the hash
 			if (this.parserCache[fname] && hash === this.parserCache[fname].hash) {
 				console.log("[pvs-proxy] Parser diagnostics loaded from cache.");
-				const diags: Diagnostic[] = this.parserCache[fname].diags;
-				if (diags && diags.length > 0) {
-					const msg: string = `${desc.fileName}${desc.fileExtension} contains parse errors.`;
-					this.notifyError(msg);
-					console.log(`[pvs-proxy] ${msg}`);
-				} else {
-					const msg: string = `${desc.fileName}${desc.fileExtension} parsed successfully!`;
-					this.notifyEndExecution();
-					console.log(`[pvs-proxy] ${msg}`);
+				const diags: ParserDiagnostics = this.parserCache[fname].diags;
+				if (diags) {
+					const stats: string = JSON.stringify(this.parserCache[fname].diags["math-objects"]);
+					if (diags.errors && diags.errors.length > 0) {
+						const msg: string = `${desc.fileName}${desc.fileExtension} contains parse errors.`;
+						this.notifyError(msg);
+						console.log(`[pvs-proxy] ${msg}`);
+					} else {
+						const msg: string = `${desc.fileName}${desc.fileExtension} parsed successfully!`;
+						this.notifyEndExecution();
+						console.log(`[pvs-proxy] ${msg}`);
+					}
+					console.log(`[pvs-proxy] ${stats}`);
 				}
 				return this.makeDiags(diags);
 			} else {
 				if (ENABLE_NEW_PARSER) {
-					// using new parser
-					// console.log("[pvs-proxy] Updating parser cache.");
-					const diags: Diagnostic[] = await this.parser.parseFile(desc);
-					this.parserCache[fname] = { hash, diags };
-					this.notifyEndExecution();
-					return this.makeDiags(diags);
+					if (!this.activeParsers[fname]) {
+						// using new parser
+						// console.log("[pvs-proxy] Updating parser cache.");
+						this.activeParsers[fname] = true;
+						const diags: ParserDiagnostics = await this.parser.parseFile(desc);
+						this.parserCache[fname] = { hash, diags };
+						delete this.activeParsers[fname];
+						this.notifyEndExecution();
+						return this.makeDiags(diags);
+					}
 				} else {
 					if (this.isProtectedFolder(desc.contextFolder)) {
 						this.info(`${desc.contextFolder} is already parsed`);
@@ -389,12 +404,14 @@ export class PvsProxy {
 				this.notifyStartExecution(`Generating PVS file ${desc.fileName}.hpvs`);
 				const id: string = this.get_fresh_id();
 				
-				const diags: Diagnostic[] = await this.parser.generatePvsFile(desc);
-				if (diags && diags.length > 0) {
+				const diags: ParserDiagnostics = await this.parser.hp2pvs(desc);
+				if (diags && diags.errors && diags.errors.length > 0) {
 					this.reportError(`PVS file could not be generated (${desc.fileName}.hpvs contains parse errors)`);
 					return {
 						jsonrpc: "2.0",
 						id,
+						"math-objects": diags["math-objects"],
+						filename: diags.filename,
 						error: {
 							code: 1,
 							message: 'Parse error',
@@ -405,7 +422,9 @@ export class PvsProxy {
 				this.notifyEndExecution(`${desc.fileName}.pvs generated successfully!`);
 				return {
 					jsonrpc: "2.0",
-					id
+					id,
+					"math-objects": diags["math-objects"],
+					filename: diags.filename
 					// TODO: send declarations?
 				}
 			} else {
@@ -673,41 +692,41 @@ export class PvsProxy {
 	// 	return null;
 	// }
 
-	/**
-	 * Parse all files in the given context folder, sequential version
-	 */
-	async parseWorkspace (contextFolder: string): Promise<ContextDiagnostics> {
-		this.notifyStartExecution(`Parsing folder ${contextFolder}`);
-		let result: ContextDiagnostics = {};
-		// console.info(`[pvs-proxy] Parsing folder ${contextFolder}`);
-		if (!this.isProtectedFolder(contextFolder)) {
-			result = {};
-			const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
-			if (contextFiles && contextFiles.fileNames) {
-				const promises: Promise<PvsResponse>[] = [];
-				for (const i in contextFiles.fileNames) {
-					const fname: string = path.join(contextFolder, contextFiles.fileNames[i]);
-					const fileName: string = fsUtils.getFileName(fname);
-					const fileExtension: string = fsUtils.getFileExtension(fname);
+	// /**
+	//  * Parse all files in the given context folder, sequential version
+	//  */
+	// async parseWorkspace (contextFolder: string): Promise<ContextDiagnostics> {
+	// 	this.notifyStartExecution(`Parsing folder ${contextFolder}`);
+	// 	let result: ContextDiagnostics = {};
+	// 	// console.info(`[pvs-proxy] Parsing folder ${contextFolder}`);
+	// 	if (!this.isProtectedFolder(contextFolder)) {
+	// 		result = {};
+	// 		const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
+	// 		if (contextFiles && contextFiles.fileNames) {
+	// 			const promises: Promise<PvsResponse>[] = [];
+	// 			for (const i in contextFiles.fileNames) {
+	// 				const fname: string = path.join(contextFolder, contextFiles.fileNames[i]);
+	// 				const fileName: string = fsUtils.getFileName(fname);
+	// 				const fileExtension: string = fsUtils.getFileExtension(fname);
 					
-					// const ans: PvsResponse = await this.parseFile({ fileName, fileExtension, contextFolder });
-					// result[fname] = ans;
-					promises.push(new Promise ((resolve, reject) => {
-						this.parseFile({ fileName, fileExtension, contextFolder }).then((ans: PvsResponse) => {
-							if (ans && ans.error) {
-								result[fname] = ans;
-							}
-							resolve(ans);
-						});
-					}));
-				}
-				await Promise.all(promises);
-			}
-		}
-		this.notifyEndExecution();
-		// console.info(`[pvs-proxy] ${contextFolder} parsed!`);
-		return result;
-	}
+	// 				// const ans: PvsResponse = await this.parseFile({ fileName, fileExtension, contextFolder });
+	// 				// result[fname] = ans;
+	// 				promises.push(new Promise ((resolve, reject) => {
+	// 					this.parseFile({ fileName, fileExtension, contextFolder }).then((ans: PvsResponse) => {
+	// 						if (ans && ans.error) {
+	// 							result[fname] = ans;
+	// 						}
+	// 						resolve(ans);
+	// 					});
+	// 				}));
+	// 			}
+	// 			await Promise.all(promises);
+	// 		}
+	// 	}
+	// 	this.notifyEndExecution();
+	// 	// console.info(`[pvs-proxy] ${contextFolder} parsed!`);
+	// 	return result;
+	// }
 
 	/**
 	 * Returns pvs version information
@@ -894,6 +913,11 @@ export class PvsProxy {
 		console.log(`[pvs-proxy] Failed to activate pvs-server at http://${this.serverAddress}:${this.serverPort}`);
 		this.notifyError("Failed to start pvs-server");
 		return null;
+	}
+	killParser(): void {
+		if (this.parser) {
+			this.parser.killParser();
+		}
 	}
 	/**
 	 * Kill pvs process

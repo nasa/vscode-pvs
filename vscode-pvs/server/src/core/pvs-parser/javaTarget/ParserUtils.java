@@ -124,34 +124,34 @@ public class ParserUtils {
         return src;
     }
 
-    /**
-     * Returns the name of the terms in a given expression context
-     * @param ctx (ExprContext) the expression context
-     */
-    public static ArrayList<String> getTerms (PvsLanguageParser.ExprContext ctx) {
-        if (ctx != null) {
-            if (ctx instanceof PvsLanguageParser.TermExprContext) {
-                ArrayList<String> ans = new ArrayList<String>();
-                ans.add(((PvsLanguageParser.TermExprContext) ctx).term().getText());
-                System.out.println("[getTerms] " + ans.get(0));
-                return ans;
-            }
-            if (ctx instanceof PvsLanguageParser.BinaryOpExprContext) {
-                ArrayList<String> left = getTerms(((PvsLanguageParser.BinaryOpExprContext) ctx).expr().get(0));
-                ArrayList<String> right = getTerms(((PvsLanguageParser.BinaryOpExprContext) ctx).expr().get(1));
-                if (left != null) {
-                    left.addAll(right);
-                    return left;
-                }
-                return right;
-            }
+    // /**
+    //  * Returns the name of the terms in a given expression context
+    //  * @param ctx (ExprContext) the expression context
+    //  */
+    // public static ArrayList<String> getTerms (PvsLanguageParser.ExprContext ctx) {
+    //     if (ctx != null) {
+    //         if (ctx instanceof PvsLanguageParser.TermExprContext) {
+    //             ArrayList<String> ans = new ArrayList<String>();
+    //             ans.add(((PvsLanguageParser.TermExprContext) ctx).term().getText());
+    //             System.out.println("[getTerms] " + ans.get(0));
+    //             return ans;
+    //         }
+    //         if (ctx instanceof PvsLanguageParser.BinaryOpExprContext) {
+    //             ArrayList<String> left = getTerms(((PvsLanguageParser.BinaryOpExprContext) ctx).expr().get(0));
+    //             ArrayList<String> right = getTerms(((PvsLanguageParser.BinaryOpExprContext) ctx).expr().get(1));
+    //             if (left != null) {
+    //                 left.addAll(right);
+    //                 return left;
+    //             }
+    //             return right;
+    //         }
 
-            if (ctx instanceof PvsLanguageParser.ParenExprContext) {
-                return getTerms(((PvsLanguageParser.ParenExprContext) ctx).expr());
-            }
-        }
-        return null;
-    }
+    //         if (ctx instanceof PvsLanguageParser.ParenExprContext) {
+    //             return getTerms(((PvsLanguageParser.ParenExprContext) ctx).expr());
+    //         }
+    //     }
+    //     return null;
+    // }
 
     public static String getFileName (String fname) {
         if (fname != null) {

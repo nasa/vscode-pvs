@@ -167,11 +167,13 @@ NUMBER
 	| RAT_NUMBER_DOT_NOTATION
 	| RAT_NUMBER_SCIENTIFIC_NOTATION
 	| NAT_NUMBER
+	| PI
 	;
 RAT_NUMBER_FRACTIONAL_NOTATION: DIGIT+ '/' DIGIT+;
 RAT_NUMBER_DOT_NOTATION: DIGIT+ ('.' DIGIT+)?;
 RAT_NUMBER_SCIENTIFIC_NOTATION: DIGIT+ 'e' ('+'|'-')? DIGIT+;
-NAT_NUMBER: DIGIT+;
+NAT_NUMBER: '0' | (NZDIGIT DIGIT*);
+PI: 'PI' | 'pi';
 
 //------------------------
 // Identifiers
@@ -222,7 +224,6 @@ fragment W : [wW];
 fragment X : [xX];
 fragment Y : [yY];
 fragment Z : [zZ];
-
 
 //------------------------
 // Whitespace and comments

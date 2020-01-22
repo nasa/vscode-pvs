@@ -12,5 +12,5 @@ hpEmbedding
 	;
 
 hpTheoryPart
-	: theoryPart
+	: (importing | declaration)*
 	;

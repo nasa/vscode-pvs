@@ -58,7 +58,7 @@ theoryEnd
 	| { notifyErrorListeners("Theory name expected after keyword 'END'."); } K_END
     ;
 theoryBody
-	: assumingPart? theoryPart?
+	: assumingPart? (importing | declaration)*
 	;
 
 theoryFormals
@@ -81,10 +81,6 @@ assumingElement
     ;
 assumption
 	: identifier (',' identifier)* ':' K_ASSUMPTION expr
-	;
-
-theoryPart
-	: (importing | declaration)+
 	;
 
 declaration
@@ -120,7 +116,7 @@ formulaDefinition
     ;
 
 constantDeclaration
-	: constantName (',' constantName)* ':' typeExpression constantDefinition?
+	: constantName (',' constantName)* ':' K_MACRO? typeExpression constantDefinition?
 	;
 constantName
 	: (identifier | unaryOp | binaryOp)
@@ -178,39 +174,53 @@ typeExpression
 	| subtype
 	| name ('.' typeExpression)?
 	;
+
 expr
+	: term 
+	| expression;
+
+expression:
 //	: constantExpression
-	: term                    #termExpr
-	| expr (binaryOp expr)+   #binaryOpExpr
-	| unaryOp+ expr           #unaryOpExpr
+	 //term                    #termExpr
+	  expression (binaryOp expr)+   #binaryOpExpr // the use of term can reduce nesting for expressions in the parse tree
+	| unaryOp+ (term | expression)           #unaryOpExpr
+	| expression ('`' term)+        #exprAccessor
     | listExpression          #listExpr
     | recordExpression        #recordExpr
 	| tableExpression         #tableExpr
-    | expr K_WITH '[' assignmentExpression (',' assignmentExpression)* ']' #withExpr
-    | expr K_WHERE letBindings #whereExpr
-	| '(' expr ')'            #parenExpr
+    | expression K_WITH '[' assignmentExpression (',' assignmentExpression)* ']' #withExpr
+    | expression K_WHERE letBindings #whereExpr
+	| '(' expression ')'            #parenExpr
+	| term #termExpr
 	| typeExpression          #typeExpr // NB: typeExpression needs to be after parenExpression, otherwise expression surrounded by parentheses will be mistakenly identified as subtypes
+	// error handling
+    | expression K_WITH '[' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("',' expected."); } assignmentExpression (assignmentExpression+ (',' assignmentExpression)*)? ']' #termError
 	;
 
 // constantExpression
 //     : 	open+='('* unaryOp? term closed+=')'* (binaryOp open+='('* unaryOp? term closed+=')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
 //     ;
 term
-    : name                    #idTerm
-	| name ('`' term)+        #idAccessor
-	| ifExpression            #ifExpr
+    : ifExpression            #ifExpr
 	| bindingExpression       #bindingExpr
     | letExpression           #letExpr
     | tupleExpression         #tupleExpr
+	| builtin                 #builtinTerm
 	| term '::' typeExpression #corcExpr // coercion expression, i.e., expr is expected to be of type typeExpression
-	| builtin #builtinTerm
-	// error handling
-    | term K_WITH '[' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("',' expected."); } assignmentExpression+ (assignmentExpression (',' assignmentExpression)*)? ']' #termError
+	| term (arithmeticBinaryOp (name | builtin | term))+ #arithmeticBinaryOpTerm 
+	| term (logicalBinaryOp (name | builtin | term))+ #logicalBinaryOpTerm 
+	| ('+'|'-') term #plusminusTerm
+	| name                    #idTerm
+	| name ('`' term)+        #idAccessor
+	| '(' term ')' #parenTerm
     ;
 builtin
 	: number
     | true_false
 	| string
+	| builtin (arithmeticBinaryOp (number | true_false | string))+ 
+	| builtin (logicalBinaryOp (number | true_false | string))+
+	| '(' builtin ')'
 	;
 number
 	: ('+' | '-')? NUMBER;
@@ -251,7 +261,7 @@ tableExpression
 	| '[|' expr (',' (expr | K_ELSE) )* '|]'
 	;
 colHeading
-	: '|[' expr ('|' (expr | K_ELSE) )* ']|'
+	: '|[' expr ('|' (expr | K_ELSE) )* ']''|'
 	;
 tableEntry
 	: '|' expr ('|' (expr | K_ELSE) )* '|'
@@ -261,25 +271,31 @@ measureExpression
 	;
 
 bindingExpression
-	: (K_FORALL | K_EXISTS | K_LAMBDA) lambdaBody
+	: (K_FORALL | K_EXISTS | K_LAMBDA) lambdaBindings ':' lambdaBody
 	| '(' bindingExpression ')'
 	;
-lambdaBody
-	: lambdaBindings+ ':' expr
-	| lambdaBody (',' lambdaBody)+
-	| '(' lambdaBody ')'
-	;
 lambdaBindings
-	: bindings (',' bindings)*
+	: bindingName (',' bindingName)* (':' typeExpression)? ('|' expression)?
+	| lambdaBindings (',' lambdaBindings)+
 	| '(' lambdaBindings ')'
 	;
-bindings
-	: binding (',' binding)*
+bindingName: identifier | unaryOp | binaryOp;
+lambdaBody: expr
+	// : //lambdaBindings+ ':' expr
+	// // | lambdaBody (',' lambdaBody)+
+	// | '(' lambdaBody ')'
 	;
-binding
-	: typeId
-	| '(' typeIds ')'
-	;
+// lambdaBindings
+// 	: bindings (',' bindings)*
+// 	| '(' lambdaBindings ')'
+// 	;
+// bindings
+// 	: binding (',' binding)*
+// 	;
+// binding
+// 	: typeId
+// 	| '(' typeIds ')'
+// 	;
 typeId
 	: localName (':' typeExpression)? ('|' expr)?
 	;
@@ -341,8 +357,8 @@ subtype
 	;
 
 name
-	: (identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
-	// | '(' name ')'
+	: (identifier '@')? identifierOrOperator actuals? (arguments (arguments (arguments arguments?)?)?)? //(identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
+	| '(' name ')'
 	;
 
 actuals
@@ -371,10 +387,15 @@ identifier
 	;
 
 identifierOrOperators
-	: (identifier | unaryOp | binaryOp) (',' (identifier | unaryOp | binaryOp))*;
+	: identifierOrOperator (',' identifierOrOperator)*;
+identifierOrOperator
+	: (identifier | unaryOp );
 
-unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>';
-binaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | '*' | operatorDiv | '+' | '-' | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=' | '{||}';
+unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>' | '^';
+
+binaryOp: logicalBinaryOp | arithmeticBinaryOp | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=' | '{||}';
+logicalBinaryOp: O_IFF | O_IMPLIES | O_AND | O_OR;
+arithmeticBinaryOp: '*' | operatorDiv | '+' | '-';
 operatorDiv: O_DIV;
 
 

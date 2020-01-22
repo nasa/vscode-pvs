@@ -82,6 +82,8 @@ const DEBUG_MODE: boolean = true;
 
 
 export class PvsLanguageServer {
+	protected MAX_PARALLEL_PROCESSES: number = 4;
+
 	// pvs path, context folder, server path
 	protected pvsPath: string;
 	// protected pvsVersion: { "pvs-version": string, "lisp-version": string };
@@ -572,40 +574,72 @@ export class PvsLanguageServer {
 	 * Parse all files in a given workspace
 	 * @param args Handler arguments: workspace folder
 	 */
-	async parseWorkspace (args: { contextFolder: string }): Promise<ContextDiagnostics> {
-		if (this.checkArgs("parseWorkspace", args)) {
-			if (args.contextFolder !== this.lastParsedContext || args.contextFolder !== path.join(this.lastParsedContext, "pvslog")) {
-				this.lastParsedContext = args.contextFolder;
-				try {
-					return await this.pvsProxy.parseWorkspace(args.contextFolder);
-				} catch (ex) {
-					console.error('[pvs-language-server.parseWorkspace] Error: pvsProxy has thrown an exception', ex);
-					return null;
+	// async parseWorkspace (args: { contextFolder: string }): Promise<ContextDiagnostics> {
+	// 	if (this.checkArgs("parseWorkspace", args)) {
+	// 		if (args.contextFolder !== this.lastParsedContext || args.contextFolder !== path.join(this.lastParsedContext, "pvslog")) {
+	// 			this.lastParsedContext = args.contextFolder;
+	// 			try {
+	// 				return await this.pvsProxy.parseWorkspace(args.contextFolder);
+	// 			} catch (ex) {
+	// 				console.error('[pvs-language-server.parseWorkspace] Error: pvsProxy has thrown an exception', ex);
+	// 				return null;
+	// 			}
+	// 		}
+	// 	}
+	// 	return null;
+	// }
+	parseWorkspaceRequest (request: string | { contextFolder: string }, opt?: { withFeedback?: boolean }): Promise<void> {
+		return new Promise (async (resolve, reject) => {
+			if (request) {
+				const contextFolder: string = (typeof request === "string") ? request : request.contextFolder;
+				const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
+				if (contextFiles && contextFiles.fileNames) {
+					const nfiles: number = contextFiles.fileNames.length;
+					console.log(`Parsing context ${contextFolder} (${nfiles} files)`);
+					this.connection.sendRequest(serverEvent.workspaceStats, { files: nfiles });
+					// run the promises & cap the concurrent function execution
+					let next_file_index: number = this.MAX_PARALLEL_PROCESSES;
+					const parseWorkspaceAux = (desc: { fileName: string, fileExtension: string, contextFolder: string }) => {
+						this.parseFileRequest(desc, opt).then(() => {
+							next_file_index++;
+							if (next_file_index < contextFiles.fileNames.length) {
+								const fname: string = path.join(contextFolder, contextFiles.fileNames[next_file_index]);
+								const fileName: string = fsUtils.getFileName(fname);
+								const fileExtension: string = fsUtils.getFileExtension(fname);
+								parseWorkspaceAux({ fileName, fileExtension, contextFolder });
+							} else {
+								this.notifyEndImportantTask(`${contextFolder} parsing completed!`);
+								resolve();
+							}
+						});
+					}
+					for (let i = 0; i < this.MAX_PARALLEL_PROCESSES && i < contextFiles.fileNames.length; i++) {
+						const fname: string = path.join(contextFolder, contextFiles.fileNames[i]);
+						const fileName: string = fsUtils.getFileName(fname);
+						const fileExtension: string = fsUtils.getFileExtension(fname);
+						parseWorkspaceAux({ fileName, fileExtension, contextFolder });
+					}
 				}
+
+				// opt = opt || {};
+				// const desc: { contextFolder: string } = (typeof request === "string") ? { contextFolder: request } : request;
+				// // send context update first -- so the front-end can be updated promptly
+				// const cdesc: ContextDescriptor = await this.getContextDescriptor(desc);
+				// this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+				// // parse context
+				// const diags: ContextDiagnostics = await this.parseWorkspace(desc);
+				// this.sendDiagnostics(diags, desc.contextFolder, "Parse error");
+				// if (opt.withFeedback) {
+				// 	if (diags && Object.keys(diags).length) {
+				// 		this.notifyEndImportantTaskWithErrors(`${desc.contextFolder} contains parse errors`);
+				// 	} else {
+				// 		this.notifyEndImportantTask(`${desc.contextFolder} parsed successfully!`);
+				// 	}
+				// }
+			} else {
+				console.error("[pvs-language-server] Warning: pvs.parse-context invoked with null request");
 			}
-		}
-		return null;
-	}
-	async parseWorkspaceRequest (request: string | { contextFolder: string }, opt?: { withFeedback?: boolean }): Promise<void> {
-		if (request) {
-			opt = opt || {};
-			const desc: { contextFolder: string } = (typeof request === "string") ? { contextFolder: request } : request;
-			// send context update first -- so the front-end can be updated promptly
-			const cdesc: ContextDescriptor = await this.getContextDescriptor(desc);
-			this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
-			// parse context
-			const diags: ContextDiagnostics = await this.parseWorkspace(desc);
-			this.sendDiagnostics(diags, desc.contextFolder, "Parse error");
-			if (opt.withFeedback) {
-				if (diags && Object.keys(diags).length) {
-					this.notifyEndImportantTaskWithErrors(`${desc.contextFolder} contains parse errors`);
-				} else {
-					this.notifyEndImportantTask(`${desc.contextFolder} parsed successfully!`);
-				}
-			}
-		} else {
-			console.error("[pvs-language-server] Warning: pvs.parse-context invoked with null request");
-		}
+		});
 	}
 	/**
 	 * Returns the list of pvs files in a given context folder
@@ -1273,6 +1307,10 @@ export class PvsLanguageServer {
 				this.connection.sendRequest(serverEvent.downloadLicensePageResponse, { response: lpage });
 			});
 
+
+			this.connection.onRequest("kill-parser", async (args: { fileName: string, fileExtension: string, contextFolder: string }) => {
+				this.pvsProxy.killParser(); // async call
+			});
 
 			// pvs.prove-tccs handler
 			this.connection.onRequest('pvs.prove-tccs', async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {

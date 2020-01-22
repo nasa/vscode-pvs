@@ -95,52 +95,54 @@ public class PvsTypechecker {
 
         @Override public void enterOperatorDiv(PvsLanguageParser.OperatorDivContext ctx) {
             // new subtype tcc (check division by zero)
-            String tccContextName = ParserUtils.findScopeName(ctx);
+            // String tccContextName = ParserUtils.findScopeName(ctx);
             
-            // get operand on the right of operatorDIV
-            PvsLanguageParser.BinaryOpExprContext exprContext = (PvsLanguageParser.BinaryOpExprContext) ctx.parent.parent;
-            PvsLanguageParser.ExprContext divisorContext = exprContext.expr().get(1);
+            // // get operand on the right of operatorDIV
+            // PvsLanguageParser.BinaryOpExprContext exprContext = (PvsLanguageParser.BinaryOpExprContext) ctx.parent.parent;
+            // PvsLanguageParser.ExprContext divisorContext = exprContext.expr().get(1);
 
-            // find position of the divisor
-            Token start = divisorContext.getStart();
-            int line = start.getLine();
-            int character = start.getCharPositionInLine();
+            // // find position of the divisor
+            // Token start = divisorContext.getStart();
+            // int line = start.getLine();
+            // int character = start.getCharPositionInLine();
 
-            if (tccContextName != null) {
-                // find name of all terms in the expression
-                ArrayList<String> terms = ParserUtils.getTerms(divisorContext);
+            // if (tccContextName != null) {
+            //     // find name of all terms in the expression
+            //     ArrayList<String> terms = null;//ParserUtils.getTerms(divisorContext);
 
-                // create tcc name
-                String tccName = tccContextName + "_TCC" + (this.tccs.size() + 1);
+            //     // create tcc name
+            //     String tccName = tccContextName + "_TCC" + (this.tccs.size() + 1);
 
-                // create tcc body
-                String tccBody = divisorContext.getText() + " /= 0";
-                if (terms != null) {
-                    // find the declaration of each term in the expression
-                    ArrayList<String> termsDecl = new ArrayList<String>();
-                    for (String term: terms) {
-                        ParserUtils.DeclDescriptor desc = findDeclaration(term);
-                        if (desc != null) {
-                            termsDecl.add(desc.declaration);
-                        }
-                    }
-                    tccBody = ParserUtils.makeForall(termsDecl) + "  " + tccBody;
-                }
+            //     // create tcc body
+            //     String tccBody = divisorContext.getText() + " /= 0";
+            //     if (terms != null) {
+            //         // find the declaration of each term in the expression
+            //         ArrayList<String> termsDecl = new ArrayList<String>();
+            //         for (String term: terms) {
+            //             ParserUtils.DeclDescriptor desc = findDeclaration(term);
+            //             if (desc != null) {
+            //                 termsDecl.add(desc.declaration);
+            //             }
+            //         }
+            //         tccBody = ParserUtils.makeForall(termsDecl) + "  " + tccBody;
+            //     }
 
-                // generate tcc declaration and add it to the list of tccs
-                String tccDecl = ParserUtils.makeTccDeclaration(tccName, tccBody);
-                this.tccs.add(
-                    new TccDescriptor(
-                        tccName,
-                        line,
-                        character,
-                        "SUBTYPE_TCC",
-                        tccDecl
-                    )
-                );
-            } else {
-                System.err.println("[pvs-typechecker] Warning: Operator DIV could not find tcc context name at ln " + line + " col " + character);
-            }
+            //     // generate tcc declaration and add it to the list of tccs
+            //     String tccDecl = ParserUtils.makeTccDeclaration(tccName, tccBody);
+            //     this.tccs.add(
+            //         new TccDescriptor(
+            //             tccName,
+            //             line,
+            //             character,
+            //             "SUBTYPE_TCC",
+            //             tccDecl
+            //         )
+            //     );
+            // } else {
+            //     System.err.println("[pvs-typechecker] Warning: Operator DIV could not find tcc context name at ln " + line + " col " + character);
+            // }
+
+            
             // ListIterator<PvsLanguageParser.BinaryOpContext> it = ctx.binaryOp().listIterator();
             // while (it.hasNext()) {
             //     PvsLanguageParser.BinaryOpContext bctx = it.next();

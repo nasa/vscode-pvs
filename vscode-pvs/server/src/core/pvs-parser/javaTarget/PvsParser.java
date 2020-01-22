@@ -9,7 +9,6 @@ import org.antlr.v4.runtime.misc.Interval;
 
 public class PvsParser {
     protected static Boolean test = false;
-    protected static Boolean stats = false;
     protected static String ifname = null;
 
     public static interface DiagnosticSeverity {
@@ -48,8 +47,6 @@ public class PvsParser {
         for (int a = 0; a < args.length; a++) {
             if (args[a].equals("--test") || args[a].equals("-test")) {
                 test = true;
-            } else if (args[a].equals("--stats") || args[a].equals("-stats")) {
-                stats = true;
             } else {
                 ifname = args[a];
             }
@@ -64,6 +61,8 @@ public class PvsParser {
             if (test) {
                 System.out.println("Parsing file " + ifname);
             }
+            double parseStart = System.currentTimeMillis();
+
             CharStream input = CharStreams.fromFileName(ifname);
             PvsLanguageLexer lexer = new PvsLanguageLexer(input);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -75,23 +74,29 @@ public class PvsParser {
             parser.setErrorHandler(eh);
             // parser.setBuildParseTree(false); // disable parse tree creation, to speed up parsing
             ParserRuleContext tree = parser.parse(); // parse as usual
+            // walk the tree
+            ParseTreeWalker walker = new ParseTreeWalker();
+            PvsParserListener listener = new PvsParserListener(tokens);
+            walker.walk(listener, tree);
+
+            double parseTime = System.currentTimeMillis() - parseStart;
+
+            String ans = "{"
+                        + "\n \"filename\": \"" + ifname + "\""
+                        + ",\n \"math-objects\": " + listener.getStats()
+                        + ",\n \"parse-time\": { \"ms\": " + parseTime + " }";
             if (el.errors.size() > 0) {
-                System.out.println(el.errors);
-            } else {
-                if (test) {
-                    System.out.println(ifname + " parsed successfully!");
-                }
-                // walk the tree
-                ParseTreeWalker walker = new ParseTreeWalker();
-                PvsParserListener listener = new PvsParserListener(tokens);
-                walker.walk(listener, tree);
+                ans += ",\n \"errors\": " + el.errors;
             }
+            ans += "\n}";
+            System.out.println(ans);
         }
     }
     public static class PvsParserListener extends PvsLanguageBaseListener {
         protected BufferedTokenStream tokens = null;
         protected TokenStreamRewriter rewriter = null;
 
+        // stats
         protected int nTypes = 0;
         protected int nDefs = 0;
         protected int nFormulas = 0;
@@ -211,26 +216,15 @@ public class PvsParser {
             );
         }
 
-        @Override public void exitTheory(PvsLanguageParser.TheoryContext ctx) {
-            if (stats) {
-                // System.out.println("#mathDecl ( #formulaDecl, #typeDecl )");
-                // System.out.println(this.nDecl + " " + "(" + this.formulaDeclarations.size() + "," + this.typeDeclarations.size() + ")");
-                String stats = "{"
-                    + " \"types\": " + this.nTypes + ", "
-                    + " \"definitions\": " + this.nDefs + ", "
+        public String getStats () {
+            return "{"
+                    + " \"types\": " + this.nTypes + ","
+                    + " \"definitions\": " + this.nDefs + ","
                     + " \"lemmas\": " + this.nFormulas
                     + " }";
-                System.out.println(stats);
-                // try {
-                    // String outfile = ParserUtils.getContextFolder(ifname) + "/" + ParserUtils.getFileName(ifname) + ".stats";
-                    // System.out.println("Writing file " + outfile);
-                    // java.io.PrintWriter writer = new java.io.PrintWriter(outfile, "UTF-8");
-                    // writer.write(stats);
-                    // writer.close();
-                // } catch (java.io.IOException e) {
-                //     System.out.println(e);
-                // }
-            }
+        }
+
+        @Override public void exitTheory(PvsLanguageParser.TheoryContext ctx) {
             if (test) {
                 if (this.typeDeclarations != null) {
                     int n = this.typeDeclarations.size();

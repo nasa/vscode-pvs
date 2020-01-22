@@ -41,6 +41,7 @@ import { execSync } from 'child_process';
 import * as fsUtils from '../../../common/fsUtils';
 import { Diagnostic } from 'vscode-languageserver';
 import * as path from 'path';
+import { ParserDiagnostics } from '../../pvs-parser/javaTarget/pvsParser';
 
 export class DdlParser {
 
@@ -48,31 +49,32 @@ export class DdlParser {
      * Parse a hybrid program file
      * @param desc File descriptor, includes file name, file extension, and context folder
      */
-    async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { output: string }): Promise<Diagnostic[]> {
+    async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { output: string }): Promise<ParserDiagnostics> {
         const ofname: string = (opt && opt.output) ? opt.output : "";
 
         const ifname: string = fsUtils.desc2fname(desc);
         console.info(`[vscode-pvs-parser] Parsing ${ifname}`);
 
-        let diagnostics: Diagnostic[] = [];
+        let diags: ParserDiagnostics = null;
         const libFolder: string = path.join(__dirname, "../../../../out/core/lib");
 
-        const start: number = Date.now();
+        // const start: number = Date.now();
         let cmd: string = `cd ${libFolder} && java -jar DdlParser.jar ${ifname}`; // this command will produce a JSON object of type Diagnostic[] on stdout
         if (ofname) {
             console.log(`[ddl-parser] Writing file ${ofname}`);
             cmd += ` -out ${ofname};`
         }
         try {
-            const errors: Buffer = execSync(cmd);
-            const stats: number = Date.now() - start;
-            if (errors && errors.length > 0) {
-                const res: string = errors.toLocaleString();
-                // console.log(res);
-                diagnostics = JSON.parse(res);
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${stats}ms`);
-            } else {
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${stats}ms`);
+            const ans: Buffer = execSync(cmd);
+            // const stats: number = Date.now() - start;
+            if (ans) {
+                const res: string = ans.toLocaleString();
+                diags = JSON.parse(res);
+                if (diags && diags.errors && diags.errors.length > 0) {
+                    console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${diags["parse-time"].ms}ms`);
+                } else {
+                    console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${diags["parse-time"].ms}ms`);
+                }
             }
         } catch (parserError) {
             console.log(parserError);
@@ -81,7 +83,7 @@ export class DdlParser {
             // if (diagnostics && diagnostics.length > 0) {
             //     console.dir(diagnostics, { depth: null });
             // }
-            return diagnostics;
+            return diags;
         }
 	}
 }

@@ -192,7 +192,7 @@ public class DdlParser {
         @Override public void enterTheoryBegin(DdlEmbeddingParser.TheoryBeginContext ctx) {
             this.theoryBeginContext = ctx;
         }
-        @Override public void exitTheoryPart(DdlEmbeddingParser.TheoryPartContext ctx) {
+        @Override public void exitHpTheoryPart(DdlEmbeddingParser.HpTheoryPartContext ctx) {
             if (this.theoryBeginContext != null) {
                 // place variable declarations and importing dynamic_logic at the beginning of the theory
                 Token stop = this.theoryBeginContext.getStop();

@@ -36,22 +36,23 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { Diagnostic } from 'vscode-languageserver';
-import { PvsParser } from './pvs-parser/javaTarget/pvsParser';
+import { PvsParser, ParserDiagnostics } from './pvs-parser/javaTarget/pvsParser';
 import { DdlParser } from './ddl-parser/javaTarget/ddlParser';
 import * as path from 'path';
 
 export class Parser {
+    protected pvsParser = new PvsParser();
+    protected ddlParser = new DdlParser();
 
     /**
      * Parse a pvs file
      * @param desc File descriptor, includes file name, file extension, and context folder
      */
-    async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<Diagnostic[]> {
+    async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<ParserDiagnostics> {
         if (desc) {
             switch (desc.fileExtension) {
-                case ".pvs": { return await new PvsParser().parseFile(desc); }
-                case ".hpvs": { return await new DdlParser().parseFile(desc); }
+                case ".pvs": { return await this.pvsParser.parseFile(desc); }
+                case ".hpvs": { return await this.ddlParser.parseFile(desc); }
                 default: {
                     console.error(`[parser.parseFile] Error: unrecognized extension ${desc.fileExtension}`);
                 }
@@ -60,13 +61,18 @@ export class Parser {
         return null;
     }
     
-    async generatePvsFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<Diagnostic[]> {
+    async hp2pvs (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<ParserDiagnostics> {
         if (desc) {
             if (desc.fileExtension === ".hpvs") {
                 const ofname: string = path.join(desc.contextFolder, `${desc.fileName}.pvs`);
-                return await new DdlParser().parseFile(desc, { output: `${ofname}` });
+                return await this. ddlParser.parseFile(desc, { output: `${ofname}` });
             }
         }
         return null;
+    }
+
+    killParser (): void {
+        if (this.pvsParser) { this.pvsParser.stop(); }
+        // if (this.ddlParser) { this.ddlParser.stop(); }
     }
 }
