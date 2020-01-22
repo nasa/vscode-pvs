@@ -60,7 +60,6 @@ theoryEnd
 theoryBody
 	: assumingPart? (importing | declaration)*
 	;
-
 theoryFormals
     : ('[' (theoryFormalType | theoryFormalConstant) (',' (theoryFormalType | theoryFormalConstant))* ']')
     ;
@@ -162,7 +161,7 @@ varDeclaration
 	;
 
 arguments
-	: '(' expr (':' expr)? (',' expr (':' expr)?)* ')'
+	: '(' expr (':' typeExpression)? (',' expr (':' typeExpression)?)* ')'
 	| '(' subtype (',' subtype)* ')'
 	;
 typeExpression
@@ -185,7 +184,7 @@ expression:
 	 //term                    #termExpr
 	  expression (binaryOp expr)+   #binaryOpExpr // the use of term can reduce nesting for expressions in the parse tree
 	| unaryOp+ expr           #unaryOpExpr
-	| expression ('`' term)+        #exprAccessor
+	| expression ('`' (term | number))+        #exprAccessor
     | listExpression          #listExpr
     | recordExpression        #recordExpr
 	| tableExpression         #tableExpr
@@ -207,10 +206,11 @@ term
 	| bindingExpression       #bindingExpr
     | letExpression           #letExpr
     | tupleExpression         #tupleExpr
-	| name ('`' term)*        #idAccessor
+	| name ('`' (term | number))*        #idAccessor
 	| term '::' typeExpression #corcExpr // coercion expression, i.e., expr is expected to be of type typeExpression
 	| term (arithmeticBinaryOp (identifier | builtin | term))+ #arithmeticBinaryOpTerm 
 	| term (logicalBinaryOp (identifier | builtin | term))+ #logicalBinaryOpTerm 
+	| term (comparisonBinaryOp (identifier | builtin | term))+ #comparisonBinaryOpTerm 
 	| ('+'|'-') term #plusminusTerm
 	| '(' term ')' #parenTerm
     ;
@@ -218,8 +218,9 @@ builtin
 	: number
     | true_false
 	| string
-	| builtin (arithmeticBinaryOp (number | true_false | string))+ 
-	| builtin (logicalBinaryOp (number | true_false | string))+
+	| builtin (arithmeticBinaryOp (number | true_false | string | expr))+ 
+	| builtin (logicalBinaryOp (number | true_false | string | expr))+
+	| builtin (comparisonBinaryOp (number | true_false | string | expr))+
 	| '(' builtin ')'
 	;
 number
@@ -393,9 +394,10 @@ identifierOrOperator
 
 operator: unaryOp | binaryOp;
 unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>' | '^';
-binaryOp: logicalBinaryOp | arithmeticBinaryOp | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=' | '{||}';
+binaryOp: logicalBinaryOp | arithmeticBinaryOp | comparisonBinaryOp | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=' | '{||}';
 logicalBinaryOp: O_IFF | O_IMPLIES | O_AND | O_OR;
 arithmeticBinaryOp: '*' | operatorDiv | '+' | '-';
+comparisonBinaryOp: O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL;
 operatorDiv: O_DIV;
 
 
