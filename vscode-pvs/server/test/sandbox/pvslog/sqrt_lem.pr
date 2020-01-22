@@ -1,3 +1,0 @@
-
-  |-------
-{1}   FORALL (nny, nnz: nonneg_real): sqrt(nny) = nnz IFF nnz * nnz = nny

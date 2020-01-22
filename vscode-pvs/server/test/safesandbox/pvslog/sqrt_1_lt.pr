@@ -1,3 +1,0 @@
-
-  ├───────
-{1}   FORALL (x: real): x * x < 1 IMPLIES abs(x) < 1

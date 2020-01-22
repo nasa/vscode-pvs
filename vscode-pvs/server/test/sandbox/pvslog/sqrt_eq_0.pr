@@ -1,3 +1,0 @@
-
-  |-------
-{1}   FORALL (nnx: nonneg_real): sqrt(nnx) = 0 IMPLIES nnx = 0

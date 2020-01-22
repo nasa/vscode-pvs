@@ -1,3 +1,0 @@
-
-  |-------
-{1}   FORALL (a: real): sq(-a) = sq(a)

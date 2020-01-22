@@ -1,3 +1,0 @@
-
-  |-------
-{1}   FORALL (x: real): sqrt(sq(x)) = abs(x)

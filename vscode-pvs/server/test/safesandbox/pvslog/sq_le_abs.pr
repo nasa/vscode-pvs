@@ -1,3 +1,0 @@
-
-  |-------
-{1}   FORALL (a, b: real): sq(a) <= sq(b) IFF abs(a) <= abs(b)
