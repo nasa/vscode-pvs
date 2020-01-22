@@ -599,15 +599,18 @@ export class PvsLanguageServer {
 					this.connection.sendRequest(serverEvent.workspaceStats, { files: nfiles });
 					// run the promises & cap the concurrent function execution
 					let next_file_index: number = this.MAX_PARALLEL_PROCESSES;
+					let completed_tasks: number = 0;
 					const parseWorkspaceAux = (desc: { fileName: string, fileExtension: string, contextFolder: string }) => {
 						this.parseFileRequest(desc, opt).then(() => {
 							next_file_index++;
+							completed_tasks++;
 							if (next_file_index < contextFiles.fileNames.length) {
 								const fname: string = path.join(contextFolder, contextFiles.fileNames[next_file_index]);
 								const fileName: string = fsUtils.getFileName(fname);
 								const fileExtension: string = fsUtils.getFileExtension(fname);
 								parseWorkspaceAux({ fileName, fileExtension, contextFolder });
-							} else {
+							}
+							if (completed_tasks >= contextFiles.fileNames.length) {
 								this.notifyEndImportantTask(`${contextFolder} parsing completed!`);
 								resolve();
 							}
