@@ -176,14 +176,15 @@ typeExpression
 	;
 
 expr
-	: term 
+	: builtin
+	| term 
 	| expression;
 
 expression:
 //	: constantExpression
 	 //term                    #termExpr
 	  expression (binaryOp expr)+   #binaryOpExpr // the use of term can reduce nesting for expressions in the parse tree
-	| unaryOp+ (term | expression)           #unaryOpExpr
+	| unaryOp+ expr           #unaryOpExpr
 	| expression ('`' term)+        #exprAccessor
     | listExpression          #listExpr
     | recordExpression        #recordExpr
@@ -201,17 +202,16 @@ expression:
 //     : 	open+='('* unaryOp? term closed+=')'* (binaryOp open+='('* unaryOp? term closed+=')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
 //     ;
 term
-    : ifExpression            #ifExpr
+    : identifier              #idTerm
+	| ifExpression            #ifExpr
 	| bindingExpression       #bindingExpr
     | letExpression           #letExpr
     | tupleExpression         #tupleExpr
-	| builtin                 #builtinTerm
+	| name ('`' term)*        #idAccessor
 	| term '::' typeExpression #corcExpr // coercion expression, i.e., expr is expected to be of type typeExpression
-	| term (arithmeticBinaryOp (name | builtin | term))+ #arithmeticBinaryOpTerm 
-	| term (logicalBinaryOp (name | builtin | term))+ #logicalBinaryOpTerm 
+	| term (arithmeticBinaryOp (identifier | builtin | term))+ #arithmeticBinaryOpTerm 
+	| term (logicalBinaryOp (identifier | builtin | term))+ #logicalBinaryOpTerm 
 	| ('+'|'-') term #plusminusTerm
-	| name                    #idTerm
-	| name ('`' term)+        #idAccessor
 	| '(' term ')' #parenTerm
     ;
 builtin
