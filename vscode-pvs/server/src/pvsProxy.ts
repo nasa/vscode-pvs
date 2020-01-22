@@ -93,7 +93,7 @@ import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
 //----------------------------
 
 
-const ENABLE_NEW_PARSER: boolean = false;
+const ENABLE_NEW_PARSER: boolean = true;
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;

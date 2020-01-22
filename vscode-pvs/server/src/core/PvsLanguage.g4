@@ -146,7 +146,7 @@ subtypeJudgement
 	: (judgementName ':')? K_JUDGEMENT typeExpression (',' typeExpression)* K_SUBTYPE_OF typeExpression
 	;
 constantJudgement
-	: (judgementName ':')? K_RECURSIVE? K_JUDGEMENT (bindingExpression | name)* K_HAS_TYPE typeExpression
+	: (judgementName ':')? K_RECURSIVE? K_JUDGEMENT (bindingExpression | ((name | operator) arguments*))+ K_HAS_TYPE typeExpression
 	;
 
 judgementName
@@ -362,7 +362,7 @@ name
 	;
 
 actuals
-	: '[' expr (',' expr)* ']'
+	: '[' (operator | expr) (',' (operator | expr))* ']'
 	;
 
 enumerationType
@@ -389,10 +389,10 @@ identifier
 identifierOrOperators
 	: identifierOrOperator (',' identifierOrOperator)*;
 identifierOrOperator
-	: (identifier | unaryOp );
+	: (identifier | operator );
 
+operator: unaryOp | binaryOp;
 unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>' | '^';
-
 binaryOp: logicalBinaryOp | arithmeticBinaryOp | O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=' | '{||}';
 logicalBinaryOp: O_IFF | O_IMPLIES | O_AND | O_OR;
 arithmeticBinaryOp: '*' | operatorDiv | '+' | '-';
