@@ -97,10 +97,10 @@ autorewriteDeclaration
     : (K_AUTO_REWRITE | K_AUTO_REWRITE_PLUS | K_AUTO_REWRITE_MINUS) name (',' name)*
     ;
 typeDeclaration
-	: identifier arguments* (identifier arguments*)* ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS) typeDefinition?
+	: identifier arguments* (identifier arguments*)* ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS) (('=' | K_FROM) typeDefinition)?
 	;
 typeDefinition
-	: ('=' | K_FROM) typeExpression (K_CONTAINING expr)?
+	: typeExpression (K_CONTAINING expr)?
 	// error handling
 	| { notifyErrorListeners("'=' expected."); } typeExpression (K_CONTAINING expr)?
 	;
@@ -115,24 +115,24 @@ formulaDefinition
     ;
 
 constantDeclaration
-	: constantName (',' constantName)* ':' K_MACRO? typeExpression constantDefinition?
+	: constantName (',' constantName)* ':' K_MACRO? typeExpression ('=' constantDefinition)?
 	;
 constantName
 	: (identifier | unaryOp | binaryOp)
 	;
 constantDefinition
-    : '=' expr
+    : expr
 	;
 functionDeclaration
 	: functionName arguments+ 
 		':' (K_MACRO | K_INDUCTIVE | K_RECURSIVE)? typeExpression 
-		(functionDefinition measureExpression?)?
+		('=' functionDefinition measureExpression?)?
 	;
 functionName
 	: (identifier | unaryOp | binaryOp)
 	;
 functionDefinition
-    : '=' expr
+    : expr
 	// error handling
 	// | { notifyErrorListeners("'=' expected."); } expr // this is erroneously catching also correct syntax (see sandbox/lib.pvs), need to refine it
     ;
@@ -188,6 +188,10 @@ expression:
     | listExpression          #listExpr
     | recordExpression        #recordExpr
 	| tableExpression         #tableExpr
+	| ifExpression            #ifExpr
+	| bindingExpression       #bindingExpr
+    | letExpression           #letExpr
+    | tupleExpression         #tupleExpr
     | expression K_WITH '[' assignmentExpression (',' assignmentExpression)* ']' #withExpr
     | expression K_WHERE letBindings #whereExpr
 	| '(' expression ')'            #parenExpr
@@ -201,18 +205,14 @@ expression:
 //     : 	open+='('* unaryOp? term closed+=')'* (binaryOp open+='('* unaryOp? term closed+=')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
 //     ;
 term
-    : identifier              #idTerm
-	| ifExpression            #ifExpr
-	| bindingExpression       #bindingExpr
-    | letExpression           #letExpr
-    | tupleExpression         #tupleExpr
-	| name ('`' (identifier | number))*        #idAccessor
+    : functionOrSymbolName ('`' (identifier | number))*        #idAccessor
+	| unaryOp (functionOrSymbolName | builtin | term) #logicalUnaryOpTerm
+	| term (binaryOp (functionOrSymbolName | builtin | term))+ #logicalBinaryOpTerm
 	| term '::' typeExpression #corcExpr // coercion expression, i.e., expr is expected to be of type typeExpression
-	| term (binaryOp (identifier | builtin | term))+ #logicalBinaryOpTerm
 	// | term (logicalBinaryOp (identifier | builtin | term))+ #logicalBinaryOpTerm 
 	// | term (comparisonBinaryOp (identifier | builtin | term))+ #comparisonBinaryOpTerm 
 	// | term (arithmeticBinaryOp (identifier | builtin | term))+ #arithmeticBinaryOpTerm 
-	| ('+'|'-') term #plusminusTerm
+	// | ('+'|'-') (identifier | term) #plusminusTerm
 	| '(' term ')' #parenTerm
     ;
 builtin
@@ -305,7 +305,7 @@ localName
 	: (identifier | unaryOp | binaryOp)
 	;
 typeIds
-	: identifierOrOperators (':' typeExpression)? ('|' expr)?
+	: functionOrSymbolName (',' functionOrSymbolName)* (':' typeExpression)? ('|' expr)?
 	// error handling
 	| expr { notifyErrorListeners("':' expected."); } expr
 	;
@@ -352,19 +352,25 @@ tupleType
 	;
 
 subtype
-	: '{' name (',' name)* (':' expr)? (',' name (',' name)* (':' expr)?)* ('|' expr)? '}'
-	| '(' name (':' expr)? ('|' expr)? ')' // shotcut for subtype
+	: '{' functionOrSymbolName (',' functionOrSymbolName)* (':' typeExpression)? (',' functionOrSymbolName (',' functionOrSymbolName)* (':' typeExpression)?)* ('|' expr)? '}'
+	| '(' functionOrSymbolName (':' typeExpression)? ('|' expr)? ')' // shotcut for subtype
 //	| '(' expr ')' // another shortcut for subtype
 	// | name ('|' expr)? // another shortcut for subtype
 	;
 
+functionOrSymbolName
+	: identifier actuals? arguments*
+	| '(' functionOrSymbolName ')'
+	;
+
 name
-	: (identifier '@')? identifierOrOperator actuals? (arguments (arguments (arguments arguments?)?)?)? //(identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
-	| '(' name ')'
+	: identifier actuals? arguments*
+	| (identifier '@')? identifierOrOperator actuals? arguments*//(arguments (arguments (arguments arguments?)?)?)? //(identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
+	// | '(' name ')'
 	;
 
 actuals
-	: '[' (operator | expr) (',' (operator | expr))* ']'
+	: '[' (expr | operator) (',' (expr | operator))* ']'
 	;
 
 enumerationType
