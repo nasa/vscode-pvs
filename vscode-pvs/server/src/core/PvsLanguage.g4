@@ -79,7 +79,7 @@ assumingElement
     | declaration
     ;
 assumption
-	: identifier (',' identifier)* ':' K_ASSUMPTION expr
+	: identifier ':' K_ASSUMPTION expr
 	;
 
 declaration
@@ -192,6 +192,7 @@ expression:
 	| bindingExpression       #bindingExpr
     | letExpression           #letExpr
     | tupleExpression         #tupleExpr
+	| expression '::' typeExpression #corcExpr
     | expression K_WITH '[' assignmentExpression (',' assignmentExpression)* ']' #withExpr
     | expression K_WHERE letBindings #whereExpr
 	| '(' expression ')'            #parenExpr
@@ -205,10 +206,10 @@ expression:
 //     : 	open+='('* unaryOp? term closed+=')'* (binaryOp open+='('* unaryOp? term closed+=')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
 //     ;
 term
-    : functionOrSymbolName ('`' (identifier | number))*        #idAccessor
-	| unaryOp (functionOrSymbolName | builtin | term) #logicalUnaryOpTerm
-	| term (binaryOp (functionOrSymbolName | builtin | term))+ #logicalBinaryOpTerm
-	| term '::' typeExpression #corcExpr // coercion expression, i.e., expr is expected to be of type typeExpression
+    : functionInvocationOrSymbolName ('`' (identifier | number))*        #idAccessor
+	| unaryOp ((unaryOp? '(' (functionInvocationOrSymbolName | builtin | term) ')') | (functionInvocationOrSymbolName | builtin | term)) #logicalUnaryOpTerm
+	| term (binaryOp ((unaryOp? '(' (functionInvocationOrSymbolName | builtin | term) ')') | (functionInvocationOrSymbolName | builtin | term)))+ #logicalBinaryOpTerm
+	| term '::' typeExpression #coercTerm // coercion expression, i.e., expr is expected to be of type typeExpression
 	// | term (logicalBinaryOp (identifier | builtin | term))+ #logicalBinaryOpTerm 
 	// | term (comparisonBinaryOp (identifier | builtin | term))+ #comparisonBinaryOpTerm 
 	// | term (arithmeticBinaryOp (identifier | builtin | term))+ #arithmeticBinaryOpTerm 
@@ -279,7 +280,7 @@ bindingExpression
 lambdaBindings
 	: bindingName (',' bindingName)* (':' typeExpression)? ('|' expression)?
 	| lambdaBindings (',' lambdaBindings)+
-	| '(' lambdaBindings ')'
+	| '(' lambdaBindings ')' ('(' lambdaBindings ')')*
 	;
 bindingName: identifier | unaryOp | binaryOp;
 lambdaBody: expr
@@ -305,7 +306,7 @@ localName
 	: (identifier | unaryOp | binaryOp)
 	;
 typeIds
-	: functionOrSymbolName (',' functionOrSymbolName)* (':' typeExpression)? ('|' expr)?
+	: functionInvocationOrSymbolName (',' functionInvocationOrSymbolName)* (':' typeExpression)? ('|' expr)?
 	// error handling
 	| expr { notifyErrorListeners("':' expected."); } expr
 	;
@@ -352,15 +353,16 @@ tupleType
 	;
 
 subtype
-	: '{' functionOrSymbolName (',' functionOrSymbolName)* (':' typeExpression)? (',' functionOrSymbolName (',' functionOrSymbolName)* (':' typeExpression)?)* ('|' expr)? '}'
-	| '(' functionOrSymbolName (':' typeExpression)? ('|' expr)? ')' // shotcut for subtype
+	: '{' functionInvocationOrSymbolName (',' functionInvocationOrSymbolName)* (':' typeExpression)? (',' functionInvocationOrSymbolName (',' functionInvocationOrSymbolName)* (':' typeExpression)?)* ('|' expr)? '}'
+	| '(' functionInvocationOrSymbolName (':' typeExpression)? ('|' expr)? ')' // shotcut for subtype
 //	| '(' expr ')' // another shortcut for subtype
 	// | name ('|' expr)? // another shortcut for subtype
 	;
 
-functionOrSymbolName
+functionInvocationOrSymbolName
 	: identifier actuals? arguments*
-	| '(' functionOrSymbolName ')'
+	| redefinableOperator actuals? arguments*
+	| '(' functionInvocationOrSymbolName ')'
 	;
 
 name
@@ -400,7 +402,8 @@ identifierOrOperator
 	: (identifier | operator );
 
 operator: unaryOp | binaryOp;
-unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>' | '^';
+redefinableOperator: '^';
+unaryOp: '+' | '-' | O_NOT | '~' | '[]' | '<>';
 binaryOp: logicalBinaryOp | arithmeticBinaryOp | comparisonBinaryOp | O_EXP | O_CONCAT | O_SUCH_THAT | '##' | '<<' | '>>' | '<<=' | '>>=' | '{||}';
 logicalBinaryOp: O_IFF | O_IMPLIES | O_AND | O_OR;
 arithmeticBinaryOp: '*' | operatorDiv | '+' | '-';
