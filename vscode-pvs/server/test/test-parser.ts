@@ -46,21 +46,21 @@ describe("pvs-parser", () => {
 		expect(response.result).toEqual(test.parse1_result);
 	}, 100000);
 
-	it(`can parse multiple files in parallel`, async () => {
-		label(`can parse multiple files in parallel`);
-		// Need to clear-theories, in case rerunning with the same server.
-		await pvsProxy.lisp("(clear-theories t)");
+	// it(`can parse multiple files in parallel`, async () => {
+	// 	label(`can parse multiple files in parallel`);
+	// 	// Need to clear-theories, in case rerunning with the same server.
+	// 	await pvsProxy.lisp("(clear-theories t)");
 
-		// async calls
-		pvsProxy.parseFile({ fileName: "alaris2lnewmodes", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
-		pvsProxy.parseFile({ fileName: "alaris2lnewmodes.pump", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
-		pvsProxy.parseFile({ fileName: "alaris2lnewmodes.types_and_constants", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
+	// 	// async calls
+	// 	pvsProxy.parseFile({ fileName: "alaris2lnewmodes", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
+	// 	pvsProxy.parseFile({ fileName: "alaris2lnewmodes_pump", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
+	// 	pvsProxy.parseFile({ fileName: "alaris2lnewmodes_types_and_constants", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
 
-		const response: PvsResponse = await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
-		// dir(response); // Uncomment this to see the whole ans
-		expect(response).not.toBeNull();
-		expect(response.result).toEqual(test.parse1_result);
-	}, 100000);
+	// 	const response: PvsResponse = await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
+	// 	// dir(response); // Uncomment this to see the whole ans
+	// 	expect(response).not.toBeNull();
+	// 	expect(response.result).toEqual(test.parse1_result);
+	// }, 100000);
 
 	it(`can report parse errors`, async () => {
 		label(`can report parse errors`);

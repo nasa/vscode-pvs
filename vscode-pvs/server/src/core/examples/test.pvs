@@ -1,22 +1,17 @@
 test: theory begin
 
-  vtbi_over_rate_lemma0: LEMMA TRUE 
-
-  vtbi_over_rate_lemma: LEMMA 
-    FORALL(v: ivols, r: {r: irates | (NOT r = 0)}): (v / r) >= 0 
 
 
-  % Subtype TCC generated (at line 28, column 57) for  r
-  % expected type  nznum
-  % unfinished
-%vtbi_over_rate_lemma_TCC1: OBLIGATION
-%  FORALL (r:
-%            {r:
-%               irates
-%                   [maxrate, maxinfuse, infusemin, timeout, shorttimeout,
-%                    maxtime, bat_max, bat_min] |
-%                     (NOT r = 0)}):
-%    r /= 0;
+lem1: LEMMA FORALL (v1,v2:Vect2): norm(v1) = 1 AND norm(v2) = 1
+    IMPLIES ((v1*v2>=0 IFF norm(v1-v2)<=sqrt(2)) AND
+    	    (v1*v2> 0 IFF norm(v1-v2)<sqrt(2)))
 
-        
+  lem2: LEMMA FORALL (v1,v2,v3:Vect2): norm(v1) = 1 AND norm(v2) = 1 AND
+  	      	     		       norm(v3) = 1
+    IMPLIES ((v1*v3 <= v2*v3) IFF norm(v1-v3)>=norm(v2-v3)) AND
+    	    ((v1*v3 < v2*v3) IFF norm(v1-v3)>norm(v2-v3))
+
+  
+
+     
 end test

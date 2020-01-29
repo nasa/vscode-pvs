@@ -40,7 +40,7 @@ describe("pvs-proxy", () => {
 	// test cases for find-declaration
 	//-----------------------------------------
 
-	it(`can invoke find-declaration`, async () => {
+	xit(`can invoke find-declaration`, async () => {
 		label(`can invoke find-declaration`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
@@ -63,7 +63,7 @@ describe("pvs-proxy", () => {
 
 	}, 10000);
 
-	it(`can sustain workload with find-declaration`, async () => {
+	xit(`can sustain workload with find-declaration`, async () => {
 		label(`can sustain workload with find-declaration`);
 
 		let response: PvsResponse = null;
@@ -96,7 +96,7 @@ describe("pvs-proxy", () => {
 
 	}, 40000);
 
-	it(`can perform multiple find-declaration in parallel`, async () => {
+	xit(`can perform multiple find-declaration in parallel`, async () => {
 		label(`can perform multiple find-declaration in parallel`);
 
 		pvsProxy.findDeclaration("boolean");
@@ -140,7 +140,7 @@ describe("pvs-proxy", () => {
 
 	}, 40000);
 
-	it(`can execute find-declaration while parsing`, async () => {
+	xit(`can execute find-declaration while parsing`, async () => {
 		label(`can execute find-declaration while parsing`);
 
 		// async call
@@ -162,10 +162,11 @@ describe("pvs-proxy", () => {
 
 		const fname: string = path.join(sandboxExamples, "sqrt.pvs");
 		const response: PvsResponse = await pvsProxy.pvsRequest("term-at", [ fname, `(23 2)`, 't' ]); 
-		dir(response);
+		// dir(response);
 		expect(response).not.toBeNull();
-		expect(response["result"]).not.toBeNull();
 		expect(response["error"]).not.toBeDefined();
+		expect(response["result"]).not.toBeNull();
+		expect(typeof response["result"]).toEqual("object");
 
 	}, 10000);
 

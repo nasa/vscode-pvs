@@ -28,7 +28,7 @@ tcctest: THEORY
     FORALL(r: nat): (r / (PI - 1)) >= 0
 
 
-  % ... and this lemma generates a tcc with an incorrect quantification over r
+  % ... and this lemma generates a tcc. Note the quantification over r, we want to keep it even tho the expression does not have r in it
   % Subtype TCC generated (at line 24, column 48) for  (8 - 8)
   % expected type  nznum
   % unfinished
@@ -37,7 +37,7 @@ tcctest: THEORY
   ivols: TYPE = int
   irates: TYPE = int  
   vtbi_over_rate_lemma4: LEMMA
-    FORALL(v: ivols, r: irates | r /= 0): (v / (8 - 8)) >= 0
+    FORALL(v: int, x: int, r: int | r /= 0): (v / x) >= 0
 
 
   % ...and the following ones work just fine
@@ -58,4 +58,19 @@ tcctest: THEORY
   vtbi_over_rate_lemma6: LEMMA
     FORALL(v: ivols, r: irates): (v / (r - v)) >= 0
 
+
+  %-- none of the following should generate tccs
+  band : LEMMA
+    FORALL (x:real) : 2 < 0 AND x/0 >= 0
+ 
+  bor : LEMMA
+    FORALL (x:real) : 2 > 0 OR x/0 >= 0
+ 
+  bif : LEMMA
+     FORALL (x:real): IF TRUE THEN x = 0
+                      ELSE x/0 < 0 ENDIF
+
  END tcctest
+
+
+

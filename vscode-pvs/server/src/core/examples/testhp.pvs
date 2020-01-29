@@ -1,17 +1,6 @@
 testhp: THEORY
 BEGIN
 
-  IMPORTING dynamic_logic
-
-  %-- Definition of syntactic sugar for variables and assignments
-  a: nat = 0
-  w: nat = 1
-  x: nat = 2
-  y: nat = 3
-  %--
-
-
-
   A:VAR real
   B:VAR real
 

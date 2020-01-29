@@ -191,6 +191,9 @@ public class PvsParser {
                 )
             );
         }
+        @Override public void enterAssumption(PvsLanguageParser.AssumptionContext ctx) {
+            nFormulas++;
+        }
         @Override public void enterJudgementDeclaration(PvsLanguageParser.JudgementDeclarationContext ctx) {
             nFormulas++;
         }

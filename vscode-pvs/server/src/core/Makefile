@@ -96,4 +96,6 @@ clean:
 	@-rm -r pvs-parser/javaTarget/out
 	@-rm -r pvs-parser/jsTarget/out
 	@-rm -r lib
+	@-rm ddl-parser/javaTarget/*.class
+	@-rm pvs-parser/javaTarget/*.class
 	

@@ -33,6 +33,7 @@ describe("pvs-proxy", () => {
 		await pvsProxy.killPvsProxy();
 	});
 
+
 	it(`can tell what is the current context and returns a well-formed path`, async () => {
 		label(`can tell what is the current context and returns a well-formed path`);
 		// Need to clear-theories, in case rerunning with the same server.
@@ -44,7 +45,10 @@ describe("pvs-proxy", () => {
 		expect(current.result).toMatch(/\/.*/); // path should be absolute, therefore it should start with /
 	});
 
-	it(`an change context`, async () => {
+	return; // the following tests are completed successfully -- remove the return statement if you want to run them
+
+	// OK
+	it(`can change context`, async () => {
 		label(`can change context`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
@@ -55,6 +59,7 @@ describe("pvs-proxy", () => {
 		expect(home.result).toMatch(/\/.*/); // path should be absolute, therefore it should start with /
 	});
 
+	// OK
 	it(`change context is equivalent to change-workspace`, async () => {
 		label(`change context is equivalent to change-workspace`);
 		// Need to clear-theories, in case rerunning with the same server.

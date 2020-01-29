@@ -205,16 +205,15 @@ export class PvsProxy {
 				const jsonReq: string = JSON.stringify(req);
 				// console.log(jsonReq);
 				return this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
-					console.log("[pvs-proxy] Error: ");
-					console.dir(error, { depth: null });
-					console.log("[pvs-proxy] Value: ");
+					if (error) { console.log("[pvs-proxy] Error returned by pvs-server: "); console.dir(error, { depth: null }); }
+					console.log("[pvs-proxy] Value returned by pvs-server: ");
 					console.dir(value);
 					if (value) {
 						this.nReboots = 0;
 						this.progressInfo.showProgress(method);
 						try {
 							const resp: PvsResponse = JSON.parse(value);
-							console.dir(resp, { depth: null });
+							// console.dir(resp, { depth: null });
 							if (resp && (resp["result"] === "null" || resp["result"] === "nil")) {
 								// sometimes pvs returns a string "null" or "nil" as result -- here the string is transformed into a proper null value
 								resp["result"] = null;
@@ -240,7 +239,7 @@ export class PvsProxy {
 									});
 								}, 1000);
 							} else {
-								console.log(`[pvs-proxy] Connection refused, pvs path was ${this.pvsPath}`);
+								console.log(`[pvs-proxy] Connection refused when launching pvs from ${this.pvsPath}`);
 								resolve({
 									jsonrpc: "2.0",
 									id: req.id,
@@ -354,7 +353,7 @@ export class PvsProxy {
 						this.notifyEndExecution();
 						console.log(`[pvs-proxy] ${msg}`);
 					}
-					console.log(`[pvs-proxy] ${stats}`);
+					console.log(`[pvs-proxy] ${desc.fileName}${desc.fileExtension} | ${stats}`);
 				}
 				return this.makeDiags(diags);
 			} else {
@@ -934,7 +933,7 @@ export class PvsProxy {
 	async killPvsProxy (): Promise<void> {
 		return new Promise((resolve, reject) => {
 			if (this.guiServer) {
-				console.dir(this.guiServer, { depth: null });
+				// console.dir(this.guiServer, { depth: null });
 				this.guiServer.httpServer.once("close", () => {
 					console.log("[pvs-proxy] Closed pvs-proxy");
 					this.guiServer = null;

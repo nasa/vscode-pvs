@@ -7,3 +7,7 @@ client/.DS_Store
 server/.DS_Store
 *.zip
 *.vsix
+*.pdf
+*.gif
+*.class
+.antlr

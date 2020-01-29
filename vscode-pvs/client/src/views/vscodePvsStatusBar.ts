@@ -68,7 +68,7 @@ export class VSCodePvsStatusBar {
     protected client: LanguageClient;
 
     protected makeStats (): string {
-        const nFiles: number = Object.keys(this.stats).length - 1;
+        const nFiles: number = Object.keys(this.stats).length - 1; // -1 because stats includes key "!tot!" with summary info
         const msg: string = (nFiles !== 1) ? `${nFiles} out of ${this.nfiles} files parsed` : `1 of ${this.nfiles} file parsed`;
         return msg + ` (${this.stats["!tot!"].types} types, ${this.stats["!tot!"].lemmas} lemmas, ${this.stats["!tot!"].definitions} definitions)`;
     }
@@ -159,7 +159,7 @@ export class VSCodePvsStatusBar {
         }
     }
 
-    showWorkspaceStats (nfiles: number): void {
+    initWorkspaceStats (nfiles: number): void {
         this.nfiles = nfiles;
     }
     showStats (filename: string, desc: { types: number, definitions: number, lemmas: number }): void {

@@ -207,8 +207,8 @@ expression:
 //     ;
 term
     : functionInvocationOrSymbolName ('`' (identifier | number))*        #idAccessor
-	| unaryOp ((unaryOp? '(' (functionInvocationOrSymbolName | builtin | term) ')') | (functionInvocationOrSymbolName | builtin | term)) #logicalUnaryOpTerm
-	| term (binaryOp ((unaryOp? '(' (functionInvocationOrSymbolName | builtin | term) ')') | (functionInvocationOrSymbolName | builtin | term)))+ #logicalBinaryOpTerm
+	| unaryOp ((unaryOp? '(' (functionInvocationOrSymbolName | builtin | term) ')') | (functionInvocationOrSymbolName | builtin | term)) #unaryOpTerm
+	| term (binaryOp ((unaryOp? '(' (functionInvocationOrSymbolName | builtin | term) ')') | (functionInvocationOrSymbolName | builtin | term)))+ #binaryOpTerm
 	| term '::' typeExpression #coercTerm // coercion expression, i.e., expr is expected to be of type typeExpression
 	// | term (logicalBinaryOp (identifier | builtin | term))+ #logicalBinaryOpTerm 
 	// | term (comparisonBinaryOp (identifier | builtin | term))+ #comparisonBinaryOpTerm 

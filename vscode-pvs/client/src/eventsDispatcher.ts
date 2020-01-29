@@ -152,9 +152,15 @@ export class EventsDispatcher {
         });
 		this.client.onRequest(serverEvent.workspaceStats, (res: PvsResponse) => {
             // show stats
-            if (res && res["files"]) {
-                this.statusBar.showWorkspaceStats(res["files"]);
-                // display info in the status bar
+            if (res) {
+                if (res["files"]) {
+                    this.statusBar.initWorkspaceStats(res["files"]);
+                }
+                if (res["math-objects"] && res.filename) {
+                    const stats: { types: number, definitions: number, lemmas: number } = <{ types: number, definitions: number, lemmas: number }> res["math-objects"];
+                    this.statusBar.showStats(res.filename, stats);
+                    // display info in the status bar
+                }
             }
         });
         this.client.onRequest(serverEvent.proofCommandResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }}) => {
@@ -364,36 +370,48 @@ export class EventsDispatcher {
                 window.showInformationMessage(msg);
             }
         });
-        this.client.onNotification("server.status.start-important-task", (message: string) => {
-            // show dialog with progress
-            window.withProgress({
-                location: ProgressLocation.Notification,
-                cancellable: true
-            }, (progress, token) => {    
-                progress.report({ increment: -1, message });
-    
-                return new Promise((resolve, reject) => {
-                    token.onCancellationRequested(() => {
-                        resolve(null);
-                    });
-                    this.client.onNotification("server.status.progress-important-task", (progress_message: string) => {
-                        progress.report({ increment: -1, message: progress_message });
-                    });
-                    this.client.onNotification("server.status.end-important-task", (end_message: string) => {
-                        window.showInformationMessage(end_message);
-                        this.statusBar.ready();
-                        resolve(null);
-                    });
-                    this.client.onNotification("server.status.end-important-task-with-errors", (error_message: string) => {
-                        window.showErrorMessage(error_message);
-                        this.statusBar.ready();
-                        resolve(null);
+        this.client.onNotification("server.status.start-important-task", (desc: { msg: string, increment?: number }) => {
+            if (desc && desc.msg) {
+                // show dialog with progress
+                window.withProgress({
+                    location: ProgressLocation.Notification,
+                    cancellable: true
+                }, (progress, token) => { 
+                    // show initial dialog with spinning progress   
+                    progress.report({ increment: -1, message: desc.msg });
+                    // update the dialog
+                    return new Promise((resolve, reject) => {
+                        token.onCancellationRequested(() => {
+                            resolve(null);
+                        });
+                        this.client.onNotification("server.status.progress-important-task", (desc: { msg: string, increment?: number }) => {
+                            if (desc) {
+                                progress.report({
+                                    increment: isNaN(desc.increment) ? -1 : desc.increment,
+                                    message: desc.msg
+                                });
+                            }
+                        });
+                        this.client.onNotification("server.status.end-important-task", (desc: { msg: string }) => {
+                            if (desc && desc.msg) {
+                                window.showInformationMessage(desc.msg);
+                            }
+                            this.statusBar.ready();
+                            resolve(null);
+                        });
+                        this.client.onNotification("server.status.end-important-task-with-errors", (desc: { msg: string }) => {
+                            if (desc && desc.msg) {
+                                window.showErrorMessage(desc.msg);
+                            }
+                            this.statusBar.ready();
+                            resolve(null);
+                        });
                     });
                 });
-            });
 
-            // show progress on the status bar
-            this.statusBar.progress(message);
+                // show progress on the status bar
+                this.statusBar.progress(desc.msg);
+            }
 
         });
 
