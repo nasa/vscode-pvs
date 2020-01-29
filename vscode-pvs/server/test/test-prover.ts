@@ -39,7 +39,7 @@ describe("pvs-prover", () => {
 	
 
 	// on MacOs, pvs-server returns the following message: '"Value #<unknown object of type number 12 @ #x70000001003fc> is not of a type which can be encoded by encode-json."'
-	xit(`returns proverStatus = inactive after quitting a prover session`, async () => {
+	it(`returns proverStatus = inactive after quitting a prover session`, async () => {
 		label(`returns proverStatus = inactive after quitting a prover session`);
 
 		const desc = {
@@ -63,7 +63,7 @@ describe("pvs-prover", () => {
 
 
 	// on Mac, pvs-server returns the following message: '"No methods applicable for generic function #<standard-generic-function id> with args (nil) of classes (null)"' }) not to be defined.
-	xit(`returns a well-formed proof script when the proof file is not available`, async () => {
+	it(`returns a well-formed proof script when the proof file is not available`, async () => {
 		label(`returns a well-formed proof script when the proof file is not available`);
 
 		// a well-formed response for formula sqrt_0 is in the form /;;; Proof sqrt_0(\-\d+)? for formula sqrt.sqrt_0\n(""\s*)/
@@ -78,7 +78,7 @@ describe("pvs-prover", () => {
 
 
 	// on Mac, pvs-server returns the following error: { code: 1, message: '"the assertion oplace failed."' },
-	xit(`can start prover session while parsing files in other contexts`, async () => {
+	it(`can start prover session while parsing files in other contexts`, async () => {
 		label(`can start prover session while parsing files in other contexts`);
 
 		// async call to the parser in context safesandbox
@@ -101,7 +101,7 @@ describe("pvs-prover", () => {
 	}, 10000);
 
 	// on Mac, pvs-server does not send a response back to the proxy, and pvs shows an error #<pvs-error @ #x1008b7da82> [condition type: pvs-error]
-	xit(`reports typecheck error when the prove command is executed but the theory does not typecheck`, async () => {
+	it(`reports typecheck error when the prove command is executed but the theory does not typecheck`, async () => {
 		label(`reports typecheck error when the prove command is executed but the theory does not typecheck`);
 
 		const desc = {
@@ -118,7 +118,7 @@ describe("pvs-prover", () => {
 
 	
 	// on Mac, pvs-server does not send a response back to the proxy, and pvs shows an error #<pvs-error @ #x1008828e62> [condition type: pvs-error]
-	xit(`reports error when the prove command is executed but the theory does not exist`, async () => {
+	it(`reports error when the prove command is executed but the theory does not exist`, async () => {
 		label(`reports error when the prove command is executed but the theory does not exist`);
 
 		let desc = {
@@ -135,7 +135,7 @@ describe("pvs-prover", () => {
 
 
 	// on Mac, pvs-server does not send a response back to the proxy, and pvs shows an error #<pvs-error @ #x1008b7da22> [condition type: pvs-error]
-	xit(`reports error when the prove command is executed but the formula does not exist`, async () => {
+	it(`reports error when the prove command is executed but the formula does not exist`, async () => {
 		label(`reports error when the prove command is executed but the formula does not exist`);
 
 		const desc = {
@@ -155,7 +155,7 @@ describe("pvs-prover", () => {
 	// the user has defined formula l in file f1, and another formula with the same name l in file f2;
 	// f1 typechecks correctly; f2 does not typecheck; the user tries to prove formula l in f2;
 	// pvs-server should not start the proof and return a typecheck error
-	xit(`is able to distinguish theories with the same name that are stored in different files in the same context`, async () => {
+	it(`is able to distinguish theories with the same name that are stored in different files in the same context`, async () => {
 		label(`is able to distinguish theories with the same name that are stored in different files in the same context`);
 
 		// this version of the theory does not typecheck, so the prover should report error
@@ -193,7 +193,7 @@ describe("pvs-prover", () => {
 	}, 2000);
 
 	// the following test fails because pvs-server is not reading the proof command (quit) after sending a malformed proof command (sko
-	xit(`is robust to incorrect / malformed prover commands`, async () => {
+	it(`is robust to incorrect / malformed prover commands`, async () => {
 		label(`is robust to incorrect / malformed prover commands`);
 
 		const desc = {
