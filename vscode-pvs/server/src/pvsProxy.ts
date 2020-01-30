@@ -93,7 +93,7 @@ import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
 //----------------------------
 
 
-const ENABLE_NEW_PARSER: boolean = false;
+const ENABLE_NEW_PARSER: boolean = true;
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -308,26 +308,22 @@ export class PvsProxy {
 	 */
 	protected makeDiags (diags: ParserDiagnostics): PvsResponse {
 		const id: string = this.get_fresh_id();
-		if (diags && diags.errors && diags.errors.length > 0) {
-			return {
-				jsonrpc: "2.0",
-				id,
-				"math-objects": diags["math-objects"],
-				filename: diags.filename,
-				error: {
+		let ans: PvsResponse = {
+			jsonrpc: "2.0",
+			id
+		}
+		if (diags) {
+			ans["math-objects"] = diags["math-objects"];
+			ans.filename = diags.filename;
+			if (diags.errors && diags.errors.length > 0) {
+				ans.error = {
 					code: 1,
 					message: 'Parse error',
 					data: diags.errors
-				}
-			};
+				};
+			}
 		}
-		return {
-			jsonrpc: "2.0",
-			"math-objects": diags["math-objects"],
-			filename: diags.filename,
-			id
-			// TODO: send declarations?
-		}
+		return ans;
 	}
 	/**
 	 * Parse a given pvs file

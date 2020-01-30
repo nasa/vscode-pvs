@@ -607,10 +607,11 @@ export class PvsLanguageServer {
 					let completed_tasks: number = 0;
 					const parseWorkspaceAux = (desc: { fileName: string, fileExtension: string, contextFolder: string }) => {
 						this.parseFile(desc).then((response: PvsResponse) => {
+							completed_tasks++;
+							
 							// send feedback
 							if (response) {
-								const msg: string = (response.error) ? `Parsing workspace ${contextFolder} (File ${desc.fileName}${desc.fileExtension} contains errors)`
-														: `Parsing workspace ${contextFolder} (File ${desc.fileName}${desc.fileExtension} parsed successfully!)`;
+								const msg: string = `Parsing workspace ${contextFolder} (${completed_tasks} of ${nfiles} files parsed)`;
 								this.notifyProgressImportantTask ({ msg, increment: 1 / nfiles * 100 });
 								this.connection.sendRequest(serverEvent.workspaceStats, {
 									files: nfiles, 
@@ -626,7 +627,6 @@ export class PvsLanguageServer {
 							this.sendDiagnostics(diags, desc.contextFolder, "Parse");
 
 							// check if there are more files that need to be parsed
-							completed_tasks++;
 							if (completed_tasks >= contextFiles.fileNames.length) {
 								this.notifyEndImportantTask({ msg: `Workspace ${contextFolder} parsing completed!` });
 								resolve();

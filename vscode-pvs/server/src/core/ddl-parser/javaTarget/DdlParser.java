@@ -356,7 +356,7 @@ public class DdlParser {
             pvsSpec += ")";
         }
         @Override public void enterVarDeclaration(DdlEmbeddingParser.VarDeclarationContext ctx) {
-            this.localBindingsMap.put(ctx.identifierOrOperators().getText(), ctx.typeExpression().getText());
+            this.localBindingsMap.put(ctx.varIdentifiers().getText(), ctx.typeExpression().getText());
         }
         @Override public void enterDlAnyAssignmentStatement(DdlEmbeddingParser.DlAnyAssignmentStatementContext ctx) {
             String id = ctx.dlAnyAssignmentIdentifier().getText();

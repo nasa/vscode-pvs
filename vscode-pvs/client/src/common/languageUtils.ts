@@ -540,30 +540,30 @@ export async function getContextDescriptor (contextFolder: string, connection: S
 		theories: [],
 		contextFolder
 	};
-	const fileList: FileList = await fsUtils.listPvsFiles(contextFolder);
-	if (fileList) {
-		for (let i in fileList.fileNames) {
-			const fname: string = path.join(contextFolder, fileList.fileNames[i]);
-			const fileName: string = fsUtils.getFileName(fileList.fileNames[i]);
-			const fileExtension: string = fsUtils.getFileExtension(fileList.fileNames[i]);
-			const fileContent: string = await fsUtils.readFile(fname);
-			const theories: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
-			const desc: FormulaDescriptor[] = listTheorems({ fileName, fileExtension, contextFolder, fileContent, prelude });
-			if (desc && theories) {
-				for (let i = 0; i < theories.length; i++) {
-					const theoryName: string = theories[i].theoryName;
-					const position: Position = theories[i].position;
-					const theoryDescriptor: TheoryDescriptor = {
-						fileName, fileExtension, contextFolder, theoryName, position, 
-						theorems: desc.filter((desc: FormulaDescriptor) => {
-							return desc.theoryName === theoryName;
-						})
-					}
-					response.theories.push(theoryDescriptor);
-				}
-			}
-		}
-	}
+	// const fileList: FileList = await fsUtils.listPvsFiles(contextFolder);
+	// if (fileList) {
+	// 	for (let i in fileList.fileNames) {
+	// 		const fname: string = path.join(contextFolder, fileList.fileNames[i]);
+	// 		const fileName: string = fsUtils.getFileName(fileList.fileNames[i]);
+	// 		const fileExtension: string = fsUtils.getFileExtension(fileList.fileNames[i]);
+	// 		const fileContent: string = await fsUtils.readFile(fname);
+	// 		const theories: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
+	// 		const desc: FormulaDescriptor[] = listTheorems({ fileName, fileExtension, contextFolder, fileContent, prelude });
+	// 		if (desc && theories) {
+	// 			for (let i = 0; i < theories.length; i++) {
+	// 				const theoryName: string = theories[i].theoryName;
+	// 				const position: Position = theories[i].position;
+	// 				const theoryDescriptor: TheoryDescriptor = {
+	// 					fileName, fileExtension, contextFolder, theoryName, position, 
+	// 					theorems: desc.filter((desc: FormulaDescriptor) => {
+	// 						return desc.theoryName === theoryName;
+	// 					})
+	// 				}
+	// 				response.theories.push(theoryDescriptor);
+	// 			}
+	// 		}
+	// 	}
+	// }
 	return response;
 }
 

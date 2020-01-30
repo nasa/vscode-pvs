@@ -233,7 +233,7 @@ export class PvsDefinitionProvider {
 			const symbolRange: Range = getWordRange(document.txt, document.position);
 			// console.log(`Provide definition`, symbolRange);
 			// sanity check
-			if (symbolRange.end.character > document.position.character) {
+			if (symbolRange && symbolRange.end && symbolRange.start && symbolRange.end.character > document.position.character) {
 				const symbolName: string = fsUtils.getText(document.txt, symbolRange);
 				const line: number = symbolRange.start.line + 1; // vscode starts lines from 0, we want to start from 1 (as in pvs)
 				const character: number = symbolRange.start.character;

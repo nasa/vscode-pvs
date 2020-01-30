@@ -69,7 +69,7 @@ export class VSCodePvsStatusBar {
 
     protected makeStats (): string {
         const nFiles: number = Object.keys(this.stats).length - 1; // -1 because stats includes key "!tot!" with summary info
-        const msg: string = (nFiles !== 1) ? `${nFiles} out of ${this.nfiles} files parsed` : `1 of ${this.nfiles} file parsed`;
+        const msg: string = (nFiles !== 1) ? `${nFiles} of ${this.nfiles} files parsed` : `1 of ${this.nfiles} file parsed`;
         return msg + ` (${this.stats["!tot!"].types} types, ${this.stats["!tot!"].lemmas} lemmas, ${this.stats["!tot!"].definitions} definitions)`;
     }
     protected resetStats (): void {
