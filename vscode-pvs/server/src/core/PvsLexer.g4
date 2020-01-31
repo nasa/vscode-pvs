@@ -55,6 +55,7 @@ K_THEORY: T H E O R Y;
 K_BEGIN: B E G I N;
 K_END: E N D;
 K_DATATYPE: D A T A T Y P E;
+K_CODATATYPE: C O D A T A T Y P E;
 K_IMPORTING: I M P O R T I N G;
 K_TYPE: T Y P E;
 K_NONEMPTY_TYPE: N O N E M P T Y '_' T Y P E;
@@ -66,6 +67,7 @@ K_ELSIF: E L S I F;
 K_ENDIF: E N D I F;
 K_LAMBDA: L A M B D A;
 K_EPSILON: E P S I L O N '!';
+K_THE: T H E '!';
 K_FORALL: F O R A L L;
 K_EXISTS: E X I S T S;
 K_FUNCTION: F U N C T I O N;
@@ -78,6 +80,7 @@ K_FROM: F R O M;
 K_CONTAINING: C O N T A I N I N G;
 K_MACRO: M A C R O;
 K_INDUCTIVE: I N D U C T I V E;
+K_COINDUCTIVE: C O I N D U C T I V E;
 K_LET: L E T;
 K_IN: I N;
 K_WHERE: W H E R E;
@@ -92,6 +95,7 @@ K_ENDCASES: E N D C A S E S;
 K_OF: O F;
 K_TABLE: T A B L E;
 K_ENDTABLE: E N D T A B L E;
+K_AS: A S;
 
 K_FORMULA
 	: A X I O M 
@@ -119,11 +123,17 @@ K_SUBTYPE_OF: S U B T Y P E '_' O F;
 K_AUTO_REWRITE: A U T O '_' R E W R I T E;
 K_AUTO_REWRITE_PLUS: A U T O '_' R E W R I T E '+';
 K_AUTO_REWRITE_MINUS: A U T O '_' R E W R I T E '-';
+K_SUBTYPES: S U B T Y P E S;
+K_EXPORTING: E X P O R T I N G;
+K_ALL: A L L;
+K_BUT: B U T;
+K_CLOSURE: C L O S U R E;
 
 O_IFF: (I F F) | '<=>' | '⇔';
 O_IMPLIES: (I M P L I E S) | '=>' | '⇒';
 O_NOT: (N O T) | '¬';
 O_AND: (A N D) | '&' | '∧';
+O_XOR: (X O R);
 O_OR: (O R) | '∨';
 O_NOT_EQUAL: '/=' | '≠';
 O_LE: '<=' | '≤';
@@ -134,6 +144,7 @@ O_COMMA: ',';
 O_SUCH_THAT: '|';
 COLON: ':';
 TERMINATOR: ';';
+O_DOUBLEHAT: '^^';
 
 PAREN_L: '(';
 PAREN_R: ')';
@@ -167,13 +178,14 @@ NUMBER
 	| RAT_NUMBER_DOT_NOTATION
 	| RAT_NUMBER_SCIENTIFIC_NOTATION
 	| NAT_NUMBER
-	| PI
+	| BUILTIN_CONSTANT
 	;
 RAT_NUMBER_FRACTIONAL_NOTATION: DIGIT+ '/' DIGIT+;
 RAT_NUMBER_DOT_NOTATION: DIGIT+ ('.' DIGIT+)?;
 RAT_NUMBER_SCIENTIFIC_NOTATION: DIGIT+ 'e' ('+'|'-')? DIGIT+;
 NAT_NUMBER: '0' | (NZDIGIT DIGIT*);
-PI: 'PI' | 'pi';
+BUILTIN_CONSTANT: PI;
+PI: 'pi';
 
 //------------------------
 // Identifiers

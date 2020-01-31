@@ -32,7 +32,7 @@ public class PvsParser {
             String end = "{ \"line\": " + line + ", \"character\": " + (col + 1 + len) + "}";
             // String end = "{ line: " + line + ", character: " + len + "}";
             String range = "{ \"start\": " + start + ", \"end\": " + end + "}";
-            String diag = "{ \"range\": " + range + ", \"message\": \"" + message + "\", \"severity\": " + DiagnosticSeverity.Error + " }";
+            String diag = "{ \"range\": " + range + ", \"message\": \"" + message.replaceAll("\"", "\\\\\"") + "\", \"severity\": " + DiagnosticSeverity.Error + " }";
             this.errors.add(diag);
         }
 
