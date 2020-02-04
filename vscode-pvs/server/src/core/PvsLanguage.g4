@@ -115,15 +115,16 @@ declaration
 	| declaration ';'
 	;
 autorewriteDeclaration
-    : (K_AUTO_REWRITE | K_AUTO_REWRITE_PLUS | K_AUTO_REWRITE_MINUS) identifierOrOperators
+    : (K_AUTO_REWRITE | K_AUTO_REWRITE_PLUS | K_AUTO_REWRITE_MINUS) name (',' name)*
     ;
 typeDeclaration
-	: identifier arguments* (',' identifier arguments*)* ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS) (('=' | K_FROM) typeDefinition)?
+	:  typeName (',' typeName)* ':' (K_TYPE | K_NONEMPTY_TYPE | K_TYPE_PLUS) (('=' | K_FROM) typeDefinition)?
+	;
+typeName
+	: identifier actuals* arguments*
 	;
 typeDefinition
 	: typeExpression (K_CONTAINING expr)?
-	// error handling
-	| { notifyErrorListeners("'=' expected."); } typeExpression (K_CONTAINING expr)?
 	;
 
 formulaDeclaration
@@ -136,10 +137,11 @@ formulaDefinition
     ;
 
 constantDeclaration
-	: constantName (',' constantName)* ':' K_MACRO? typeExpression ('=' constantDefinition)?
+	: constantName (',' constantName)* ':' typeExpression
+	| constantName ':' K_MACRO? typeExpression '=' constantDefinition
 	;
 constantName
-	: identifierOrOperator
+	: identifierOrOperator actuals* arguments*
 	;
 constantDefinition
     : expr
@@ -150,7 +152,7 @@ functionDeclaration
 		('=' functionDefinition measureExpression?)?
 	;
 functionName
-	: (identifier | redefinableBinaryOp)
+	: (identifier | redefinableOp)
 	;
 functionDefinition
     : expr
@@ -159,18 +161,17 @@ functionDefinition
     ;
 
 judgementDeclaration
-	: subtypeJudgement
-	| constantJudgement
-	;
-subtypeJudgement
-	: (judgementName ':')? K_JUDGEMENT typeExpression (',' typeExpression)* K_SUBTYPE_OF typeExpression
-	;
-constantJudgement
-	: (judgementName ':')? K_RECURSIVE? K_JUDGEMENT (bindingExpression | ((name | redefinableBinaryOp) arguments*))+ K_HAS_TYPE typeExpression
+	: (judgementName ':')? K_RECURSIVE? K_JUDGEMENT judgementExpression (K_HAS_TYPE | K_SUBTYPE_OF) typeExpression
 	;
 
 judgementName
 	: identifierOrOperator
+	;
+judgementExpression
+	: bindingExpression
+	| identifierOrOperator actuals* arguments*
+	| typeExpression
+	| judgementExpression (',' judgementExpression)+
 	;
 
 conversionDeclaration
@@ -198,18 +199,20 @@ typeExpression
 	| bindingDeclaration
 	| name
 	| theoryName ('.' typeExpression)?
+	| typeExpression actuals+
 	;
 
 theoryName: (identifier '@')? identifier actuals?;
 
 expr:
 	builtin                   #builtinExpr
-	| groundExpression        #groundExpr
-	| expr (binaryOp (groundExpression | builtin | expr))   #binaryOpExpr
-	| unaryOp (groundExpression | builtin | expr)          #unaryOpExpr
+	// | groundExpression        #groundExpr
+	| expr logicalBinaryOp expr      #binaryOpExpr
+	| expr comparisonBinaryOp expr      #binaryOpExpr
+	| expr arithmeticBinaryOp expr      #binaryOpExpr
+	| expr otherBuiltinBinaryOp expr      #binaryOpExpr
+	| unaryOp expr            #unaryOpExpr
 	| expr '`' expr           #accessorExpr
-	| expr '(' expr ')'       #holFunctionExpr
-	| '(' expr ')' expr       #hol2FunctionExpr
     | listExpression          #listExpr
     | recordExpression        #recordExpr
 	| tableExpression         #tableExpr
@@ -220,10 +223,13 @@ expr:
 	| expr '::' typeExpression #corcExpr
     | expr K_WITH  withAssignments #withExpr
     | expr K_WHERE letBindings #whereExpr
+	| expr '(' expr ')'       #holFunctionExpr
+	| '(' expr ')' expr       #hol2FunctionExpr
 	| '(' expr ')'            #parenExpr
+	| '{|' expr '|}'          #parenOperatorExpr
 	| typeExpression          #typeExpr // NB: typeExpression needs to be after parenExpression, otherwise expression surrounded by parentheses will be mistakenly identified as subtypes
-	| expr redefinableBinaryOp expr  #binaryOpExpr
-	| redefinableBinaryOp     #operatorExpr
+	| expr redefinableOp expr  #binaryOpExpr
+	| redefinableOp     #operatorExpr
 	// error handling
     | expr K_WITH '[' (assignmentExpression (',' assignmentExpression)*)? { notifyErrorListeners("',' expected."); } assignmentExpression (assignmentExpression+ (',' assignmentExpression)*)? ']' #exprError
 	;
@@ -235,20 +241,22 @@ withAssignments
 // constantExpression
 //     : 	open+='('* unaryOp? term closed+=')'* (binaryOp open+='('* unaryOp? term closed+=')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
 //     ;
-groundExpression
-    : term ('`' (number | term))*        #idAccessor
-	| ('+' | '-' | O_NOT) groundExpression #unaryOpTerm
-	| groundExpression (binaryOp groundExpression)+ #binaryOpTerm
-	| groundExpression '::' typeExpression #coercTerm // coercion expression, i.e., expr is expected to be of type typeExpression
-	| theoryName '.' groundExpression #nameDotTerm
-	| '(' groundExpression ')' #parenTerm
-    ;
+// groundExpression
+//     : term ('`' (number | term))*        #idAccessor
+// 	| ('+' | '-' | O_NOT) groundExpression #unaryOpTerm
+// 	| groundExpression comparisonBinaryOp groundExpression #binaryOpTerm
+// 	| groundExpression arithmeticBinaryOp groundExpression #binaryOpTerm
+// 	| groundExpression logicalBinaryOp groundExpression #binaryOpTerm
+// 	| groundExpression '::' typeExpression #coercTerm // coercion expression, i.e., expr is expected to be of type typeExpression
+// 	| theoryName '.' groundExpression #nameDotTerm
+// 	| '(' groundExpression ')' #parenTerm
+//     ;
 builtin
 	: number
     | true_false
 	| string
-	| builtin (comparisonBinaryOp builtin)
-	| builtin (arithmeticBinaryOp builtin) 
+	| builtin comparisonBinaryOp builtin
+	| builtin arithmeticBinaryOp builtin 
 	| '(' builtin ')'
 	;
 number
@@ -398,12 +406,12 @@ name
 	: //identifier actuals? arguments*
 	// | (identifier '@')? identifierOrOperator actuals? arguments*//(arguments (arguments (arguments arguments?)?)?)? //(identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
 	// | 
-	(theoryName '.')? identifier actuals? arguments*//(arguments (arguments (arguments arguments?)?)?)? //(identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
+	(theoryName '.')? identifierOrOperator actuals? arguments*//(arguments (arguments (arguments arguments?)?)?)? //(identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
 	// | '(' name ')'
 	;
 
 actuals
-	: '[' (expr | redefinableBinaryOp) (',' (expr | redefinableBinaryOp))* ']'
+	: '[' (expr | typeDeclaration) (',' (expr | typeDeclaration))* ']'
 	;
 
 enumerationType
@@ -447,18 +455,19 @@ identifierOrOperators
 	: identifierOrOperator (',' identifierOrOperator)*;
 
 identifierOrOperator
-	: identifier | redefinableConstant | redefinableBinaryOp
+	: identifier | redefinableConstant | redefinableOp
 	;
 
-binaryOp: builtinBinaryOp | redefinableBinaryOp;
+binaryOp: redefinableOp;
 unaryOp: builtinUnaryOp;
-redefinableBinaryOp: '~' | '[]' | '<>' | '##' | '<<' | '>>' | '<<=' | '>>=' | '{||}' | '[||]' | builtinBinaryOp | unaryOp | 'o' | '++' | '^^';
+redefinableOp: '~' | '[]' | '<>' | '##' | '#' | '<<' | '>>' | '<<=' | '>>=' | '{||}' | '[||]' | builtinBinaryOp | unaryOp | 'o' | '++' | '^^' | '==' | '|=' | '|-';
 redefinableConstant: NUMBER;
 builtinUnaryOp: '+' | '-' | O_NOT;
-builtinBinaryOp: logicalBinaryOp | arithmeticBinaryOp | comparisonBinaryOp | O_EXP | O_SUCH_THAT;
+builtinBinaryOp: logicalBinaryOp | arithmeticBinaryOp | comparisonBinaryOp | otherBuiltinBinaryOp;
+otherBuiltinBinaryOp: O_EXP | O_SUCH_THAT;
 logicalBinaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | O_XOR;
 arithmeticBinaryOp: '*' | operatorDiv | '+' | '-';
-comparisonBinaryOp: O_LE | '<' | O_GE | '>' | O_NOT_EQUAL | O_EQUAL;
+comparisonBinaryOp: O_LE | '<' | '>' | O_GE | O_NOT_EQUAL | O_EQUAL;
 operatorDiv: O_DIV;
 // operatorConcat: 'o';
 

@@ -152,6 +152,8 @@ BRACKET_L: '[';
 BRACKET_R: ']';
 BRACE_L: '{';
 BRACE_R: '}';
+BRACE_BAR_L: '{|';
+BRACE_BAR_R: '|}';
 
 //------------------------
 // Operators
@@ -203,7 +205,9 @@ fragment IDCHAR
 	| DIGIT
 	| '_'
 	| '?'
+	| SUBSCRIPT_NUMBER
 	;
+fragment SUBSCRIPT_NUMBER: '₀' | '₁' | '₂' | '₃' | '₄' | '₅' | '₆' | '₇' | '₈' | '₉';
 fragment LETTER: [a-zA-Z];
 fragment DIGIT: [0-9];
 fragment NZDIGIT: [1-9];
