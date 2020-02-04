@@ -37,6 +37,7 @@
  **/
 import { StatusBarItem, ExtensionContext, StatusBarAlignment, window } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
+import * as path from 'path';
 
 export class StatusBarPriority {
     public static Min: number = 1;
@@ -52,8 +53,9 @@ export class VSCodePvsStatusBar {
 
     protected stats: {
         [filename: string]: { lemmas: number, definitions: number, types: number }
-    };
+    } = { "!tot!": { lemmas: 0, definitions: 0, types: 0 } };
     protected nfiles: number = 0;
+    protected contextFolder: string = "";
 
     protected sequentViewerLabelStart: StatusBarItem;
     protected sequentViewerShow: StatusBarItem;
@@ -69,8 +71,11 @@ export class VSCodePvsStatusBar {
 
     protected makeStats (): string {
         const nFiles: number = Object.keys(this.stats).length - 1; // -1 because stats includes key "!tot!" with summary info
-        const msg: string = (nFiles !== 1) ? `${nFiles} of ${this.nfiles} files parsed` : `1 of ${this.nfiles} file parsed`;
-        return msg + ` (${this.stats["!tot!"].types} types, ${this.stats["!tot!"].lemmas} lemmas, ${this.stats["!tot!"].definitions} definitions)`;
+        const wName: string = this.contextFolder.substring(this.contextFolder.lastIndexOf("/") + 1, this.contextFolder.length);
+        let msg: string = `[ ${wName} ] `;
+        msg += (nFiles !== 1) ? `${nFiles} of ${this.nfiles} files parsed ` : `1 of ${this.nfiles} file parsed `;
+        msg += `(${this.stats["!tot!"].types} types, ${this.stats["!tot!"].lemmas} lemmas, ${this.stats["!tot!"].definitions} definitions)`;
+        return msg;
     }
     protected resetStats (): void {
         this.stats = {};
@@ -159,17 +164,25 @@ export class VSCodePvsStatusBar {
         }
     }
 
-    initWorkspaceStats (nfiles: number): void {
+    setFiles (nfiles: number): void {
         this.nfiles = nfiles;
     }
-    showStats (filename: string, desc: { types: number, definitions: number, lemmas: number }): void {
-        if (desc) {
-            if (!this.stats[filename] 
-                || (this.stats[filename] 
-                    && (this.stats[filename].lemmas !== desc.lemmas 
-                        || this.stats[filename].definitions !== desc.definitions
-                        || this.stats[filename].types !== desc.types))) {
-                this.stats[filename] = desc;
+    setContextFolder (contextFolder: string): void {
+        if (this.contextFolder !== contextFolder) {
+            this.contextFolder = contextFolder;
+            this.resetStats();
+            this.showStats();
+        }
+    }
+    updateStats (desc: { contextFolder: string, fileName: string, fileExtension: string, stats: { types: number, definitions: number, lemmas: number }}): void {
+        if (desc && desc.stats) {
+            const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+            if (!this.stats[fname] 
+                || (this.stats[fname]
+                    && (this.stats[fname].lemmas !== desc.stats.lemmas 
+                        || this.stats[fname].definitions !== desc.stats.definitions
+                        || this.stats[fname].types !== desc.stats.types))) {
+                this.stats[fname] = desc.stats;
                 const fnames: string[] = Object.keys(this.stats);
                 this.stats["!tot!"] = { lemmas: 0, definitions: 0, types: 0 };
                 for (const i in fnames) {
@@ -181,8 +194,10 @@ export class VSCodePvsStatusBar {
                     }
                 }
             } 
-            this.workspaceStatus.text = this.makeStats();
         }
+    }
+    showStats (): void {
+        this.workspaceStatus.text = this.makeStats();
     }
 
     /**

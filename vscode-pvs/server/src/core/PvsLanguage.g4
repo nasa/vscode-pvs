@@ -148,8 +148,8 @@ constantDefinition
 	;
 functionDeclaration
 	: functionName arguments+ 
-		':' (K_MACRO | K_INDUCTIVE | K_COINDUCTIVE | K_RECURSIVE)? typeExpression 
-		('=' functionDefinition measureExpression?)?
+		':' (((K_MACRO | K_INDUCTIVE | K_COINDUCTIVE)? typeExpression ('=' functionDefinition)?)
+				| (K_RECURSIVE typeExpression '=' functionDefinition measureExpression))
 	;
 functionName
 	: (identifier | redefinableOp)

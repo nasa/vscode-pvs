@@ -144,22 +144,27 @@ export class EventsDispatcher {
         });
 		this.client.onRequest(serverEvent.parseFileResponse, (res: PvsResponse) => {
             // show stats
-            if (res && res["math-objects"] && res.filename) {
-                const stats: { types: number, definitions: number, lemmas: number } = <{ types: number, definitions: number, lemmas: number }> res["math-objects"];
-                this.statusBar.showStats(res.filename, stats);
+            if (res && res["math-objects"] && res["contextFolder"] && res["fileName"]) {
                 // display info in the status bar
+                const stats: { types: number, definitions: number, lemmas: number } = <{ types: number, definitions: number, lemmas: number }> res["math-objects"];
+                this.statusBar.updateStats({ contextFolder: res["contextFolder"], fileName: res["fileName"], fileExtension: res["fileExtension"], stats });
+                this.statusBar.showStats();
             }
         });
 		this.client.onRequest(serverEvent.workspaceStats, (res: PvsResponse) => {
             // show stats
             if (res) {
                 if (res["files"]) {
-                    this.statusBar.initWorkspaceStats(res["files"]);
+                    this.statusBar.setFiles(res["files"]);
                 }
-                if (res["math-objects"] && res.filename) {
-                    const stats: { types: number, definitions: number, lemmas: number } = <{ types: number, definitions: number, lemmas: number }> res["math-objects"];
-                    this.statusBar.showStats(res.filename, stats);
-                    // display info in the status bar
+                if (res["contextFolder"]) {
+                    this.statusBar.setContextFolder(res["contextFolder"]);
+                    if (res["math-objects"] && res["contextFolder"]) {
+                        // display info in the status bar
+                        const stats: { types: number, definitions: number, lemmas: number } = <{ types: number, definitions: number, lemmas: number }> res["math-objects"];
+                        this.statusBar.updateStats({ contextFolder: res["contextFolder"], fileName: res["fileName"], fileExtension: res["fileExtension"], stats });
+                        this.statusBar.showStats();
+                    }
                 }
             }
         });

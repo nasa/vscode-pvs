@@ -511,7 +511,7 @@ export class PvsLanguageServer {
 				// send workspace stats
 				const contextFiles: FileList = await fsUtils.listPvsFiles(desc.contextFolder);
 				const nfiles: number = contextFiles.fileNames.length;
-				this.connection.sendRequest(serverEvent.workspaceStats, { files: nfiles });
+				this.connection.sendRequest(serverEvent.workspaceStats, { contextFolder: desc.contextFolder, files: nfiles });
 
 				// const response: PvsResponse = await this.parseFile(desc);
 				// const diags: ContextDiagnostics = {};
@@ -601,7 +601,7 @@ export class PvsLanguageServer {
 				if (contextFiles && contextFiles.fileNames) {
 					const nfiles: number = contextFiles.fileNames.length;
 					console.log(`Parsing context ${contextFolder} (${nfiles} files)`);
-					this.connection.sendRequest(serverEvent.workspaceStats, { files: nfiles });
+					this.connection.sendRequest(serverEvent.workspaceStats, { contextFolder, files: nfiles });
 					// run the promises & cap the concurrent function execution
 					let next_file_index: number = this.MAX_PARALLEL_PROCESSES;
 					let completed_tasks: number = 0;
@@ -610,12 +610,15 @@ export class PvsLanguageServer {
 							completed_tasks++;
 							
 							// send feedback
+							const workspace: string = contextFolder.substring(contextFolder.lastIndexOf('/') + 1, contextFolder.length);
 							if (response) {
-								const msg: string = `Parsing workspace ${contextFolder} (${completed_tasks} of ${nfiles} files parsed)`;
+								const msg: string = `Parsing workspace ${workspace} (${completed_tasks} of ${nfiles} files parsed)`;
 								this.notifyProgressImportantTask ({ msg, increment: 1 / nfiles * 100 });
 								this.connection.sendRequest(serverEvent.workspaceStats, {
+									contextFolder: response.contextFolder,
+									fileName: response.fileName,
+									fileExtension: response.fileExtension,
 									files: nfiles, 
-									filename: response["filename"], 
 									"math-objects": response["math-objects"]
 								});
 							}
@@ -628,7 +631,7 @@ export class PvsLanguageServer {
 
 							// check if there are more files that need to be parsed
 							if (completed_tasks >= contextFiles.fileNames.length) {
-								this.notifyEndImportantTask({ msg: `Workspace ${contextFolder} parsing completed!` });
+								this.notifyEndImportantTask({ msg: `Workspace ${workspace} parsed!` });
 								resolve();
 							} else {
 								if (next_file_index < contextFiles.fileNames.length) {
@@ -1296,7 +1299,8 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverCommand.parseWorkspaceWithFeedback, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
 				const w: string = (typeof request === "string") ? fsUtils.getContextFolder(request) : request.contextFolder;
-				this.notifyStartImportantTask({ msg: `Parsing workspace ${w}` });
+				const workspace: string = w.substring(w.lastIndexOf("/"), w.length);
+				this.notifyStartImportantTask({ msg: `Parsing workspace ${workspace}` });
 				this.parseWorkspaceRequest(request, { withFeedback: true }); // async call
 			});
 			this.connection.onRequest(serverCommand.hp2pvs, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {

@@ -43,7 +43,9 @@ import { Diagnostic } from 'vscode-languageserver';
 import * as path from 'path';
 
 export declare interface ParserDiagnostics extends Diagnostic {
-    filename: string;
+    fileName: string;
+    fileExtension: string;
+    contextFolder: string;
     "math-objects": {
         types: number,
         definitions: number,

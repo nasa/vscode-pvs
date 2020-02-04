@@ -82,7 +82,10 @@ public class PvsParser {
             double parseTime = System.currentTimeMillis() - parseStart;
 
             String ans = "{"
-                        + "\n \"filename\": \"" + ifname + "\""
+                        + "\n \"contextFolder\": \"" + ParserUtils.getContextFolder(ifname) + "\""
+                        + ",\n \"fileName\": \"" + ParserUtils.getFileName(ifname) + "\""
+                        + ",\n \"fileExtension\": \"" + ParserUtils.getFileExtension(ifname) + "\""
+                        // + ",\n \"filename\": \"" + ifname + "\""
                         + ",\n \"math-objects\": " + listener.getStats()
                         + ",\n \"parse-time\": { \"ms\": " + parseTime + " }";
             if (el.errors.size() > 0) {
@@ -98,7 +101,7 @@ public class PvsParser {
 
         // stats
         protected int nTypes = 0;
-        protected int nDefs = 0;
+        protected int nDefinitions = 0;
         protected int nFormulas = 0;
         
         protected HashMap<String, ParserUtils.DeclDescriptor> typeDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
@@ -135,9 +138,9 @@ public class PvsParser {
 
         @Override public void enterTypeDeclaration(PvsLanguageParser.TypeDeclarationContext ctx) {
             nTypes++;
-            ListIterator<PvsLanguageParser.IdentifierContext> it = ctx.identifier().listIterator();
+            ListIterator<PvsLanguageParser.TypeNameContext> it = ctx.typeName().listIterator();
             while (it.hasNext()) {
-                PvsLanguageParser.IdentifierContext ictx = it.next();
+                PvsLanguageParser.TypeNameContext ictx = it.next();
                 Token start = ictx.getStart();
                 Token stop = ictx.getStop();
                 String id = ictx.getText();
@@ -163,20 +166,20 @@ public class PvsParser {
                 new ParserUtils.DeclDescriptor(
                     id,
                     start.getLine(), 
-                    start.getCharPositionInLine(), 
+                    start.getCharPositionInLine(),
                     ParserUtils.getSource(ctx),
                     scope
                 )
             );
         }
         @Override public void enterVarDeclaration(PvsLanguageParser.VarDeclarationContext ctx) {
-            nDefs++;
+            // nDefinitions++;
         }
         @Override public void enterConstantDeclaration(PvsLanguageParser.ConstantDeclarationContext ctx) {
-            nDefs++;
+            nDefinitions++;
         }
         @Override public void enterFunctionDeclaration(PvsLanguageParser.FunctionDeclarationContext ctx) {
-            nDefs++;
+            nDefinitions++;
             Token start = ctx.getStart();
             Token stop = ctx.getStop();
             String id = ctx.functionName().getText();
@@ -198,10 +201,10 @@ public class PvsParser {
             nFormulas++;
         }
         @Override public void enterConversionDeclaration(PvsLanguageParser.ConversionDeclarationContext ctx) {
-            nDefs++;
+            nDefinitions++;
         }
         @Override public void enterAutorewriteDeclaration(PvsLanguageParser.AutorewriteDeclarationContext ctx) {
-            nDefs++;
+            nDefinitions++;
         }
         @Override public void enterTypeId(PvsLanguageParser.TypeIdContext ctx) {
             Token start = ctx.getStart();
@@ -222,7 +225,7 @@ public class PvsParser {
         public String getStats () {
             return "{"
                     + " \"types\": " + this.nTypes + ","
-                    + " \"definitions\": " + this.nDefs + ","
+                    + " \"definitions\": " + this.nDefinitions + ","
                     + " \"lemmas\": " + this.nFormulas
                     + " }";
         }

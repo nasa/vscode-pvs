@@ -314,7 +314,9 @@ export class PvsProxy {
 		}
 		if (diags) {
 			ans["math-objects"] = diags["math-objects"];
-			ans.filename = diags.filename;
+			ans.contextFolder = diags.contextFolder;
+			ans.fileName = diags.fileName;
+			ans.fileExtension = diags.fileExtension;
 			if (diags.errors && diags.errors.length > 0) {
 				ans.error = {
 					code: 1,
@@ -331,7 +333,7 @@ export class PvsProxy {
 	 */
 	async parseFile(desc: { contextFolder: string, fileName: string, fileExtension: string,  }): Promise<PvsResponse> {
 		if (desc) {
-			this.notifyStartExecution(`Parsing ${desc.fileName}`);
+			this.notifyStartExecution(`Parsing ${desc.fileName}${desc.fileExtension}`);
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 			const content: string = await fsUtils.readFile(fname);
 			const hash: string = crypto.createHash('sha256').update(content.replace(/\s/g, "")).digest('hex'); // do not consider white spaces when creating the hash
@@ -379,7 +381,7 @@ export class PvsProxy {
 						// return resolve(res);
 						return res;	
 					} else {
-						console.log(`[pvs-proxy] Warning: received pvs-server error while parsing file ${desc.fileName}`, res);
+						console.log(`[pvs-proxy] Warning: received pvs-server error while parsing file ${desc.fileName}${desc.fileExtension}`, res);
 						// return resolve(null);
 						return null;
 					}
@@ -398,33 +400,33 @@ export class PvsProxy {
 			if (ENABLE_NEW_PARSER) {
 				this.notifyStartExecution(`Generating PVS file ${desc.fileName}.hpvs`);
 				const id: string = this.get_fresh_id();
-				
-				const diags: ParserDiagnostics = await this.parser.hp2pvs(desc);
-				if (diags && diags.errors && diags.errors.length > 0) {
-					this.reportError(`PVS file could not be generated (${desc.fileName}.hpvs contains parse errors)`);
-					return {
-						jsonrpc: "2.0",
-						id,
-						"math-objects": diags["math-objects"],
-						filename: diags.filename,
-						error: {
-							code: 1,
-							message: 'Parse error',
-							data: diags
-						}
-					};
-				}
-				this.notifyEndExecution(`${desc.fileName}.pvs generated successfully!`);
-				return {
+
+				let ans: PvsResponse = {
 					jsonrpc: "2.0",
-					id,
-					"math-objects": diags["math-objects"],
-					filename: diags.filename
-					// TODO: send declarations?
+					id
+				}
+				const diags: ParserDiagnostics = await this.parser.hp2pvs(desc);
+				if (diags) {
+					ans["math-objects"] = diags["math-objects"];
+					ans.contextFolder = diags.contextFolder;
+					ans.fileName = diags.fileName;
+					ans.fileExtension = diags.fileExtension;
+					if (diags.errors && diags.errors.length > 0) {
+						const msg: string = `PVS file could not be generated (${desc.fileName}.hpvs contains parse errors)`;
+						this.reportError(msg);
+						ans.error = {
+							code: 1,
+							message: msg,
+							data: diags.errors
+						};
+					} else {
+						this.notifyEndExecution(`${desc.fileName}.pvs generated successfully!`);
+					}
+					return ans;
 				}
 			} else {
 				// do nothing
-				this.notifyStartExecution(`PVS could not be generated (function disabled in the parser)`);
+				this.notifyStartExecution(`PVS could not be generated (functionality not available in this version of vscode-pvs)`);
 				setTimeout(() => {
 					this.notifyEndExecution();
 				}, 4000);

@@ -160,7 +160,15 @@ public class ParserUtils {
             fileName = (fileName.indexOf(".") >= 0) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
             return fileName;
         }
-        return null;
+        return "";
+    }
+    public static String getFileExtension (String fname) {
+        if (fname != null) {
+            String fileExtension = fname.replace("file://", "");
+            fileExtension = fileExtension.substring(fileExtension.lastIndexOf("."), fileExtension.length());
+            return fileExtension;
+        }
+        return "";
     }
     public static String getContextFolder (String fname) {
         if (fname != null) {
@@ -168,7 +176,7 @@ public class ParserUtils {
             folder = folder.substring(0, folder.lastIndexOf("/"));
             return folder;
         }
-        return null;
+        return "";
     }
 
     public static String makeForall (ArrayList<String> terms) {
