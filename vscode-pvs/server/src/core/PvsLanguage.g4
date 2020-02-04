@@ -156,8 +156,6 @@ functionName
 	;
 functionDefinition
     : expr
-	// error handling
-	// | { notifyErrorListeners("'=' expected."); } expr // this is erroneously catching also correct syntax (see sandbox/lib.pvs), need to refine it
     ;
 
 judgementDeclaration
@@ -206,7 +204,6 @@ theoryName: (identifier '@')? identifier actuals?;
 
 expr:
 	builtin                   #builtinExpr
-	// | groundExpression        #groundExpr
 	| expr logicalBinaryOp expr      #binaryOpExpr
 	| expr comparisonBinaryOp expr      #binaryOpExpr
 	| expr arithmeticBinaryOp expr      #binaryOpExpr
@@ -238,19 +235,6 @@ withAssignments
 	: '[' assignmentExpression (',' assignmentExpression)* ']'
 	;
 
-// constantExpression
-//     : 	open+='('* unaryOp? term closed+=')'* (binaryOp open+='('* unaryOp? term closed+=')'*)* // to maximize parsing speed, this rule does not check matching parentheses and does not enforce associativity of binary operators. A second parser, specialized for expression is in charge of those checks.
-//     ;
-// groundExpression
-//     : term ('`' (number | term))*        #idAccessor
-// 	| ('+' | '-' | O_NOT) groundExpression #unaryOpTerm
-// 	| groundExpression comparisonBinaryOp groundExpression #binaryOpTerm
-// 	| groundExpression arithmeticBinaryOp groundExpression #binaryOpTerm
-// 	| groundExpression logicalBinaryOp groundExpression #binaryOpTerm
-// 	| groundExpression '::' typeExpression #coercTerm // coercion expression, i.e., expr is expected to be of type typeExpression
-// 	| theoryName '.' groundExpression #nameDotTerm
-// 	| '(' groundExpression ')' #parenTerm
-//     ;
 builtin
 	: number
     | true_false
@@ -263,6 +247,7 @@ number
 	: ('+' | '-')? NUMBER;
 true_false: TRUE_FALSE;
 string: STRING;
+
 ifExpression
 	: K_IF expr K_THEN expr (K_ELSIF expr K_THEN expr)* K_ELSE expr K_ENDIF
 	| K_CASES expr K_OF expr ':' expr (',' expr ':' expr)* (K_ELSE expr)? K_ENDCASES
@@ -280,8 +265,6 @@ tupleExpression
 listExpression
     : '(:' expr? (',' expr)* ':)'
     | 'cons' actuals? '(' expr (',' expr)* ')'
-    // | listExpression ('o' '('* listExpression ')'*)+ // to maximize parsing speed, this rule does not check matching parentheses
-    // | '(' listExpression ')'
     ;
 recordExpression
     : '(#' assignmentExpression (',' assignmentExpression)* '#)'
@@ -316,21 +299,7 @@ lambdaBindings
 	;
 bindingName: identifierOrOperator;
 lambdaBody: expr
-	// : //lambdaBindings+ ':' expr
-	// // | lambdaBody (',' lambdaBody)+
-	// | '(' lambdaBody ')'
 	;
-// lambdaBindings
-// 	: bindings (',' bindings)*
-// 	| '(' lambdaBindings ')'
-// 	;
-// bindings
-// 	: binding (',' binding)*
-// 	;
-// binding
-// 	: typeId
-// 	| '(' typeIds ')'
-// 	;
 typeId
 	: localName (':' typeExpression)? ('|' expr)?
 	;
@@ -403,11 +372,7 @@ term
 	;
 
 name
-	: //identifier actuals? arguments*
-	// | (identifier '@')? identifierOrOperator actuals? arguments*//(arguments (arguments (arguments arguments?)?)?)? //(identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
-	// | 
-	(theoryName '.')? identifierOrOperator actuals? arguments*//(arguments (arguments (arguments arguments?)?)?)? //(identifier '@')? (identifier | unaryOp | binaryOp) actuals? arguments*
-	// | '(' name ')'
+	: (theoryName '.')? identifierOrOperator actuals? arguments*
 	;
 
 actuals
@@ -448,7 +413,6 @@ exportingTheories
 
 identifier
 	: ID
-	// | '(' identifier ')'
 	;
 
 identifierOrOperators
@@ -469,6 +433,5 @@ logicalBinaryOp: O_IFF | O_IMPLIES | O_AND | O_OR | O_XOR;
 arithmeticBinaryOp: '*' | operatorDiv | '+' | '-';
 comparisonBinaryOp: O_LE | '<' | '>' | O_GE | O_NOT_EQUAL | O_EQUAL;
 operatorDiv: O_DIV;
-// operatorConcat: 'o';
 
 
