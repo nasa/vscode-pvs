@@ -245,34 +245,46 @@ describe("pvs-prover", () => {
 		expect(response.result.label).toEqual(test.sq_neg_prove_formula.label);
 		expect(response.result.sequent).toEqual(test.sq_neg_prove_formula.sequent);
 
-		// send proof command (skosimp*)
-		response = await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
-		console.dir(response);
-		expect(response.result).toEqual(test.sq_neg_proof_command_skosimp_star);
+		try {
+			// send proof command (skosimp*)
+			response = await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
+			console.dir(response);
+			expect(response.result.commentary[0].trim()).toEqual(test.sq_neg_proof_command_skosimp_star.commentary[0].trim());
+			expect(response.result.label).toEqual(test.sq_neg_proof_command_skosimp_star.label);
+			expect(response.result.action).toEqual(test.sq_neg_proof_command_skosimp_star.action);
+			expect(response.result.sequent).toEqual(test.sq_neg_proof_command_skosimp_star.sequent);
 
-		// send proof command (expand "sq")
-		response = await pvsProxy.proofCommand({ cmd: '(expand "sq")'});
-		console.dir(response);
-		expect(response.result).toEqual(test.sq_neg_expand);
+			// send proof command (expand "sq")
+			response = await pvsProxy.proofCommand({ cmd: '(expand "sq")'});
+			console.dir(response);
+			// expect(response.result.commentary[0].trim()).toEqual(test.sq_neg_expand.commentary[0].trim());
+			expect(response.result.label).toEqual(test.sq_neg_expand.label);
+			expect(response.result.action).toEqual(test.sq_neg_expand.action);
+			expect(response.result.sequent).toEqual(test.sq_neg_expand.sequent);
 
-		// send proof command (assert) to complete the proof
-		response = await pvsProxy.proofCommand({ cmd: '(assert)'});
-		console.dir(response);
-		expect(response.result).toEqual({ result: 'Q.E.D.' });
+			// send proof command (assert) to complete the proof
+			response = await pvsProxy.proofCommand({ cmd: '(assert)'});
+			console.dir(response);
+			expect(response.result).toEqual({ result: 'Q.E.D.' });
 
-		// try to re-start the proof
-		response = await pvsProxy.proveFormula(desc);
-		console.dir(response);
-		expect(response.result.label).toEqual(test.sq_neg_prove_formula.label);
-		expect(response.result.sequent).toEqual(test.sq_neg_prove_formula.sequent);
+			// try to re-start the proof
+			response = await pvsProxy.proveFormula(desc);
+			console.dir(response);
+			expect(response.result.label).toEqual(test.sq_neg_prove_formula.label);
+			expect(response.result.sequent).toEqual(test.sq_neg_prove_formula.sequent);
 
-		// send proof command (skosimp*)
-		response = await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
-		console.dir(response);
-		expect(response.result).toEqual(test.sq_neg_proof_command_skosimp_star);
-
-		// quit the proof attempt
-		await pvsProxy.proofCommand({ cmd: 'quit'});
+			// send proof command (skosimp*)
+			response = await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
+			console.dir(response);
+			expect(response.result.commentary[0].trim()).toEqual(test.sq_neg_proof_command_skosimp_star.commentary[0].trim());
+			expect(response.result.label).toEqual(test.sq_neg_proof_command_skosimp_star.label);
+			expect(response.result.action).toEqual(test.sq_neg_proof_command_skosimp_star.action);
+			expect(response.result.sequent).toEqual(test.sq_neg_proof_command_skosimp_star.sequent);
+		}
+		finally {
+			// quit the proof attempt
+			await pvsProxy.proofCommand({ cmd: 'quit'});
+		}
 
 	}, 4000);
 	
