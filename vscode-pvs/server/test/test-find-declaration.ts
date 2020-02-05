@@ -40,7 +40,7 @@ describe("pvs-proxy", () => {
 	// test cases for find-declaration
 	//-----------------------------------------
 
-	xit(`can invoke find-declaration`, async () => {
+	it(`can invoke find-declaration`, async () => {
 		label(`can invoke find-declaration`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
@@ -63,7 +63,7 @@ describe("pvs-proxy", () => {
 
 	}, 10000);
 
-	xit(`can sustain workload with find-declaration`, async () => {
+	it(`can sustain workload with find-declaration`, async () => {
 		label(`can sustain workload with find-declaration`);
 
 		let response: PvsResponse = null;
@@ -96,7 +96,7 @@ describe("pvs-proxy", () => {
 
 	}, 40000);
 
-	xit(`can perform multiple find-declaration in parallel`, async () => {
+	it(`can perform multiple find-declaration in parallel`, async () => {
 		label(`can perform multiple find-declaration in parallel`);
 
 		pvsProxy.findDeclaration("boolean");
@@ -140,7 +140,7 @@ describe("pvs-proxy", () => {
 
 	}, 40000);
 
-	xit(`can execute find-declaration while parsing`, async () => {
+	it(`can execute find-declaration while parsing`, async () => {
 		label(`can execute find-declaration while parsing`);
 
 		// async call

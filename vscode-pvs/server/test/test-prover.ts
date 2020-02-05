@@ -71,9 +71,9 @@ describe("pvs-prover", () => {
 
 		const response: PvsResponse = await pvsProxy.pvsRequest('proof-script', [ fname, "sqrt_0" ]);
 		dir("response", response);
-		expect(response.error).not.toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.result).toMatch(/;;; Proof sqrt_0(\-\d+)? for formula sqrt.sqrt_0\n(""\s*)/);
+		expect(response.result).not.toBeDefined();
+		expect(response.error).toBeDefined();
+		expect(response.error.data.error_string).toMatch(/(.*) does not have a proof/);
 	});
 
 
@@ -107,7 +107,7 @@ describe("pvs-prover", () => {
 		const desc = {
 			contextFolder: radixExamples,
 			fileExtension: ".pvs",
-			fileName: "mergesort-test.pvs",
+			fileName: "mergesort-test",
 			formulaName: "merge_size",
 			theoryName: "mergesort_1"
 		};
@@ -124,7 +124,7 @@ describe("pvs-prover", () => {
 		let desc = {
 			contextFolder: radixExamples,
 			fileExtension: ".pvs",
-			fileName: "mergesort-test.pvs",
+			fileName: "mergesort-test",
 			formulaName: "merge_size",
 			theoryName: "mergesort_2"
 		};
@@ -141,7 +141,7 @@ describe("pvs-prover", () => {
 		const desc = {
 			contextFolder: radixExamples,
 			fileExtension: ".pvs",
-			fileName: "mergesort-test.pvs",
+			fileName: "mergesort-test",
 			formulaName: "mm",
 			theoryName: "mergesort_1"
 		};
@@ -167,6 +167,7 @@ describe("pvs-prover", () => {
 			theoryName: "mergesort"
 		};
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
+		console.info('After proveFormula');
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
 		// the following command should have no effect
@@ -188,7 +189,7 @@ describe("pvs-prover", () => {
 
 		response = await pvsProxy.proofCommand({ cmd: 'quit' });
 		expect(response.result).toEqual({ result: 'Unfinished' });
-		expect(response.error).toBeDefined();
+		expect(response.error).not.toBeDefined();
 
 	}, 2000);
 
@@ -212,13 +213,14 @@ describe("pvs-prover", () => {
 
 		// send proof command (skosimp*)
 		response = await pvsProxy.proofCommand({ cmd: '(sko)'});
+		console.dir(response);
 		expect(response.result.commentary).toBeDefined();
-		expect(response.results.commentary[0].endsWith("not a valid prover command")).toBeTruthy();
-
+		expect(response.result.commentary[0].endsWith("not a valid prover command")).toBeTruthy();
 		response = await pvsProxy.proofCommand({ cmd: '(sko'});
+		console.dir(response);
 		expect(response.result.commentary).toBeDefined();
-		expect(response.results.commentary[0].endsWith("not a valid prover command")).toBeTruthy();
-
+		console.info(response.result.commentary);
+		expect(response.result.commentary[0]).toContain("eof encountered");
 		// quit the proof attempt
 		await pvsProxy.proofCommand({ cmd: 'quit'});
 	});

@@ -93,7 +93,7 @@ import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
 //----------------------------
 
 
-const ENABLE_NEW_PARSER: boolean = true;
+const ENABLE_NEW_PARSER: boolean = false;
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -490,7 +490,8 @@ export class PvsProxy {
 		if (desc) {
 			this.notifyStartExecution(`Proving formula ${desc.formulaName}`);
 			await this.changeContext(desc.contextFolder);
-			const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, desc.theoryName ]);			
+			const fullName: string = desc.fileName + desc.fileExtension + "#" + desc.theoryName;
+			const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, fullName ]);		
 			this.notifyEndExecution();
 			return ans;
 		}
