@@ -10,30 +10,30 @@ The environment redefines the way developers interact with PVS, and better align
 ## Functionalities
 The main functionalities provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
-- **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented to the user when the user is typing a symbol name in the editor. Code snippets are provided for frequent modeling blocks, e.g., if-then-else. 
+- **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented in the editor when placing the mouse over a symbol name. Code snippets are provided for frequent modeling blocks, e.g., if-then-else. 
 <br> <img src="vscode-pvs/screenshots/vscode-pvs-autocompletion.gif" width="600">
 
-- **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the developer places the cursor over an identifier.
+- **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the user places the cursor over an identifier.
 <br> <img src="vscode-pvs/screenshots/vscode-pvs-hover.gif" width="600">
 
-- **Go-to definition**: Navigation of symbol definitions can be performed with simple point-and-click actions: the user places the cursor over the name of an identifier, and a click on the name of the identifier while holding the Ctrl key down allow to jump to the location where the identifier is declared.
+- **Go-to definition**: Click on the name of the identifier while holding down the Ctrl key to jump to the location where the identifier is declared.
 <br> <img src="vscode-pvs/screenshots/vscode-pvs-goto-definition.gif" width="600">
 
 - **Live diagnostics**: Parsing is automatically performed in the background, and errors are reported in-line in the editor. Problematic expressions are underlined with red wavy lines. Tooltips presenting the error details are shown when the user places the cursor over the wavy lines.
 <br> <img src="vscode-pvs/screenshots/vscode-pvs-live-diagnostics.gif" width="600">
 
-- **Theory Explorer**: The overall structure of a set of PVS theories is rendered using an interactive tree-based view. It shows the set of PVS theories in the active workspace, as well as the name and status (proved, unfinished, etc.) of the theorems defined in each theory. Point-and-click actions can be used to jump to theory definitions and type-check the theories.
+- **Workspace Explorer**: Interactive tree view showing all theories in the current workspace, name and status of theorems and typecheck conditions.
 <br> <img src="vscode-pvs/screenshots/vscode-pvs-theory-explorer.gif" width="600">
 
-- **Proof Explorer**: Actionable commands can be used to start a proof, and an interactive tree view can be used to view and edit the proof tree. An integrated command line allows interaction with the theorem prover. Auto-completion is provided for prover commands, as well as access to the commands history.
+- **Proof Explorer + Integrated Terminal**: Interactive tree view for viewing and editing the current proof. An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
 <br> <img src="vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
 
 ## Requirements
-- NodeJS (v10.16.3 or greater) https://nodejs.org/en/download
-- Java Runtime Environment (v8 or greater) https://openjdk.java.net/ or https://java.com/en/download/
-- Visual Studio Code (v1.38 or greater) https://code.visualstudio.com
-- PVS Allegro (7.0 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots/ 
+- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
+- NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
+- Java JDK (1.8 or greater) https://openjdk.java.net
+- PVS Allegro (7.1 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots
 
 ## Installation instructions
 1. Download the latest release of VSCode-PVS from the [github repository](releases)

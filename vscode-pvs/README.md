@@ -8,7 +8,7 @@ The main functionalities provided by the environment are as follows:
 - **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented in the editor when placing the mouse over a symbol name. Code snippets are provided for frequent modeling blocks, e.g., if-then-else.
 - **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the user places the cursor over an identifier.
 - **Go-to definition**:  Click on the name of the identifier while holding down the Ctrl key to jump to the location where the identifier is declared.
-- **Peek defintions**: Symbol definitions can be shown in mini editors embedded in the current view.
+- **Peek definitions**: Symbol definitions can be shown in mini editors embedded in the current view.
 - **Live diagnostics**: Parsing is automatically performed in the background, and errors are reported in-line in the editor. Problematic expressions are underlined with red wavy lines. Tooltips presenting the error details are shown when the user places the cursor over the wavy lines.
 - **Outline View**: Interactive tree view showing the outline of the pvs file open in the editor. Point-and-click actions can be used to jump to definitions.
 - **Workspace Explorer**: Interactive tree view showing all theories in the current workspace, name and status of theorems and typecheck conditions.
