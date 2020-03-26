@@ -24,8 +24,8 @@ BEGIN
   %    (x>=0) |- [(x:=x + 1)*] (x>=0)
   %---------------------------------
   test2: LEMMA
-   (val(x) >= cnst(0))
-   |- ALLRUNS(ASSIGN((: (x, val(x) + cnst(1)) :)), (val(x) >= cnst(0)))
+      (val(x) >= cnst(0))
+      |- ALLRUNS(ASSIGN((: (x, val(x) + cnst(1)) :)), (val(x) >= cnst(0)))
 
 
   % % Assignment with test
@@ -34,8 +34,8 @@ BEGIN
   %    (x=0) |- [?x>0;x:=x + 1] (x=0)
   %---------------------------------
   test3: LEMMA
-   (val(x) = cnst(0))
-   |- ALLRUNS(SEQ(TEST(val(x) > cnst(0)), ASSIGN((: (x, val(x) + cnst(1)) :))), (val(x) = cnst(0)))
+         (val(x) = cnst(0))
+         |- ALLRUNS(SEQ(TEST(val(x) > cnst(0)), ASSIGN((: (x, val(x) + cnst(1)) :))), (val(x) = cnst(0)))
 
 
   % % % test with AND
@@ -44,8 +44,8 @@ BEGIN
   %    (x > 0) AND (y > 0) |- [?x < 5 AND y < 3; x := x +1; y:= y + 1] (x > 0 AND y > 0)
   %---------------------------------
   test4: LEMMA
-   (val(x) > cnst(0)) AND (val(y) > cnst(0))
-   |- ALLRUNS(SEQ(TEST(val(x) < cnst(5) AND val(y) < cnst(3)), SEQ(ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :)))), (val(x) > cnst(0) AND val(y) > cnst(0)))
+            (val(x) > cnst(0)) AND (val(y) > cnst(0))
+            |- ALLRUNS(SEQ(TEST(val(x) < cnst(5) AND val(y) < cnst(3)), SEQ(ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :)))), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
 
   % % % Unions
@@ -54,8 +54,8 @@ BEGIN
   %    (x > 0) AND (y > 0) |- [(a:=1 ++ a:=-1 ++ a:=1; x := x +1; y:= y + 1)*] (x > 0 AND y > 0)
   %---------------------------------
   test5: LEMMA
-   (val(x) > cnst(0)) AND (val(y) > cnst(0))
-   |- ALLRUNS(SEQ(UNION(ASSIGN((: (a, cnst(1)) :)), UNION(ASSIGN((: (a, cnst(-1)) :)), ASSIGN((: (a, cnst(1)) :)))), SEQ(ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :)))), (val(x) > cnst(0) AND val(y) > cnst(0)))
+               (val(x) > cnst(0)) AND (val(y) > cnst(0))
+               |- ALLRUNS(SEQ(UNION(ASSIGN((: (a, cnst(1)) :)), UNION(ASSIGN((: (a, cnst(-1)) :)), ASSIGN((: (a, cnst(1)) :)))), SEQ(ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :)))), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
 
   % % Differential equations
@@ -64,8 +64,8 @@ BEGIN
   %    (x > 0) AND (y > 0) |- [x'= y, y'=x*y] (x > 0 AND y >0)
   %---------------------------------
   test6: LEMMA
-   (val(x) > cnst(0)) AND (val(y) > cnst(0))
-   |- ALLRUNS(DIFF((: (x, val(y)), (y, val(x) * val(y)) :)), (val(x) > cnst(0) AND val(y) > cnst(0)))
+                  (val(x) > cnst(0)) AND (val(y) > cnst(0))
+                  |- ALLRUNS(DIFF((: (x, val(y)), (y, val(x) * val(y)) :)), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
 
   % Paralllel assignment
@@ -74,8 +74,8 @@ BEGIN
   %    (x > 0) AND (y > 0) |- [x := y, y := x*y] (x > 0 AND y >0)
   %---------------------------------
   test6a: LEMMA
-   (val(x) > cnst(0)) AND (val(y) > cnst(0))
-   |- ALLRUNS(ASSIGN((: (x, val(y)), (y, val(x) * val(y)) :)), (val(x) > cnst(0) AND val(y) > cnst(0)))
+                     (val(x) > cnst(0)) AND (val(y) > cnst(0))
+                     |- ALLRUNS(ASSIGN((: (x, val(y)), (y, val(x) * val(y)) :)), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
 
   % % Test any
@@ -84,8 +84,8 @@ BEGIN
   %   (x > 0) AND (y > 0) |- [w:=*; x'= x + w] (x > 0)
   %---------------------------------
   test7: LEMMA
-  (val(x) > cnst(0)) AND (val(y) > cnst(0))
-  |- ALLRUNS(SEQ(ANY(w, DLRANDOM), DIFF((: (x, val(x) + val(w)) :), DLTRUE)), (val(x) > cnst(0)))
+                       (val(x) > cnst(0)) AND (val(y) > cnst(0))
+                       |- ALLRUNS(SEQ(ANY(w, DLRANDOM), DIFF((: (x, val(x) + val(w)) :), DLTRUE)), (val(x) > cnst(0)))
 
 
 END testhp

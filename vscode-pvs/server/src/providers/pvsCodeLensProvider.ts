@@ -37,7 +37,7 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { TextDocument, CancellationToken, CodeLens, Range } from 'vscode-languageserver';
+import { CancellationToken, CodeLens, Range } from 'vscode-languageserver';
 import { PvsDefinitionProvider } from './pvsDefinitionProvider';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -65,25 +65,20 @@ export class PvsCodeLensProvider {
             const fileName: string = fsUtils.getFileName(document.uri);
             const fileExtension: string = fsUtils.getFileExtension(document.uri);
             if (!this.definitionProvider.isProtectedFolder(contextFolder)) {
-                // const fileName: string = fs.getFilename(document.uri);
-                // const fileExtension: string = fs.getFileExtension(document.uri);
                 const codeLens: CodeLens[] = [];
-                const doc: string = document.txt;
-                // prove-formula
-                // (?:\%.*\s)* is for comments
-                //const theoremRegexp: RegExp = /(\w+)\s*(?:\%.*\s)*:\s*(?:(?:\%.*\s)*\s*)*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gi;
-                const regexp: RegExp = new RegExp(utils.theoremRegexp);
+                const content: string = document.txt.replace(utils.commentRegexp, "");
+                const regexp: RegExp = utils.theoremRegexp;
                 let match: RegExpMatchArray = null;
-                while (match = regexp.exec(doc)) {
-                    if (match.length > 2 && match[2] && !match[1]) {
-                        const formulaName: string = match[2];
+                while (match = regexp.exec(content)) {
+                    if (match.length > 1 && match[1]) {
+                        const formulaName: string = match[1];
 
-                        // the following can be done in the resolve
+                        // the following can be done in the resolve if necessary for performance reasons
                         const character: number = match.index;
-                        const docUp: string = doc.slice(0, character + formulaName.length);
+                        const docUp: string = content.slice(0, character + formulaName.length);
                         const line: number = docUp.split("\n").length - 1;
 
-                        const theoryName: string = utils.findTheoryName(doc, line);
+                        const theoryName: string = utils.findTheoryName(content, line);
                         const args = {
                             fileName,
                             fileExtension,

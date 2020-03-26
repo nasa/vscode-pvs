@@ -36,12 +36,10 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import * as http from 'http';
 import * as WebSocket from 'ws';
 import { PvsResponse } from './common/pvs-gui';
 import { PvsLanguageServer } from './pvsLanguageServer'
 import { serverCommand } from './common/serverInterface';
-import { AddressInfo } from 'net';
 
 /**
  * PvsCliGateway provides a websocket gateway to the language server.
@@ -50,7 +48,6 @@ import { AddressInfo } from 'net';
  */
 export class PvsCliGateway {
     protected wsServer: WebSocket.Server;
-    protected httpServer: http.Server;
 	protected port: number = 33445;
 	
 	// websocket clients
@@ -83,19 +80,8 @@ export class PvsCliGateway {
 			return Promise.resolve(true);
 		}
 		return new Promise((resolve, reject) => {
-			this.httpServer = http.createServer();
-			this.httpServer.listen(this.port, "0.0.0.0", () => {
-				const addrInfo: AddressInfo | string = this.httpServer.address();
-				const addr: string = (typeof addrInfo === 'object') ? `${addrInfo.address}:${addrInfo.port}` : addrInfo;
-				const url = `http://${addr}`;
-				console.dir(this.httpServer.address(), { depth: null });
-				// console.info(`Server folder ${daaDisplaysRoot}`);
-				console.info(`[pvs-cli-gateway] http server ready at ${url}`);
-			});
-			// add support for websocket connections
-			this.wsServer = new WebSocket.Server({
-				server: this.httpServer
-			});
+			// create websocket server
+			this.wsServer = new WebSocket.Server({ port: this.port });
 			this.wsServer.on('connection', (wsClient: WebSocket) => {
 				console.info("[pvs-cli-gateway] New terminal session started");
 				wsClient.on('message', (msg: string) => {

@@ -1,6 +1,5 @@
 import org.antlr.v4.runtime.*;
 import java.util.*;
-import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;

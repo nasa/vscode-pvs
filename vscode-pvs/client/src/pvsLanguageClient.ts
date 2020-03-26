@@ -37,10 +37,10 @@
  **/
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, WorkspaceConfiguration, Uri, ConfigurationTarget, ProgressLocation, ProgressOptions, Progress } from 'vscode';
-import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, CancellationToken } from 'vscode-languageclient';
+import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands } from 'vscode';
+import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
-import { VSCodePvsTheoryExplorer } from './views/vscodePvsTheoryExplorer';
+import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
 import { VSCodePVSioTerminal } from './views/vscodePVSioTerminal'; 
 import { VSCodePvsTerminal } from './views/vscodePvsTerminal';
@@ -48,11 +48,11 @@ import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsStatusBar } from './views/vscodePvsStatusBar';
 import { EventsDispatcher } from './eventsDispatcher';
-import { VSCodePvsSequentViewer } from './views/vscodePvsSequentViewer';
 import { serverEvent } from "./common/serverInterface";
 import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsPackageManager } from './providers/vscodePvsPackageManager';
 import { VSCodePvsProofMate } from './views/vscodePvsProofMate';
+import { VSCodePvsFileOutlineProvider } from './providers/vscodsPvsOulineProvider';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -61,6 +61,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	// language client
 	protected client: LanguageClient;
 	protected pvsPath: string;
+	protected pvsServerReady: boolean = false;
 
 	// context variables
 	protected context: ExtensionContext;
@@ -73,8 +74,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	protected emacsBindingsProvider: VSCodePvsEmacsBindingsProvider;
 
 	// providers for explorer
-	protected theoryExplorer: VSCodePvsTheoryExplorer;
+	protected workspaceExplorer: VSCodePvsWorkspaceExplorer;
 	protected proofExplorer: VSCodePvsProofExplorer;
+
+	// outline provider
+	protected outlineProvider: VSCodePvsFileOutlineProvider;
 
 	// integrated command line interfaces
 	protected pvsioTerminal: VSCodePVSioTerminal;
@@ -82,9 +86,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// status bar
 	protected statusBar: VSCodePvsStatusBar;
-
-	// sequent viewer
-	protected sequentViewer: VSCodePvsSequentViewer;
 
 	// proofmate
 	protected proofMate: VSCodePvsProofMate;
@@ -98,9 +99,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	/**
 	 * Internal function, returns the pvs path indicated in the configuration file
 	 */
-	protected getPvsPath (): string {
-		return workspace.getConfiguration().get("pvs.path");
-	}
+	// protected getPvsPath (): string {
+	// 	return workspace.getConfiguration().get("pvs.path");
+	// }
 
 
 	/**
@@ -116,9 +117,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// save document after a delay
 		this.timers['autosave'] = setTimeout(async () => {
 			if (document.isDirty) {
-				this.statusBar.progress(`Autosave ${document.fileName}`);
+				// this.statusBar.progress(`Autosave ${document.fileName}`);
 				await document.save();
-				this.statusBar.ready();
+				// this.statusBar.ready();
 			}
 		}, AUTOSAVE_INTERVAL);
 	}
@@ -152,13 +153,27 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// onDidChangeConfiguration is emitted when the configuration file changes
 		workspace.onDidChangeConfiguration(() => {
 			// re-initialise pvs if the executable is different
-			const pvsPath: string = this.getPvsPath();
+			const pvsPath: string = workspace.getConfiguration().get("pvs.path");
 			if (pvsPath !== this.pvsPath) {
-				window.showInformationMessage(`Restarting PVS (pvs path changed to ${pvsPath})`);
 				this.pvsPath = pvsPath;
+				const msg: string = `Restarting PVS from ${pvsPath}`;
+				this.statusBar.progress(msg);
+				window.showInformationMessage(msg);
 				this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
 			}	
 		}, null, this.context.subscriptions);
+	}
+
+	event (eventName: string): void {
+		switch (eventName) {
+			case serverEvent.pvsServerReady: {
+				this.pvsServerReady = true;
+				break;
+			}
+			default: {
+				console.log(`[pvsLanguageClient] Warning: unhandled event ${eventName}`);
+			}
+		}
 	}
 
 	/**
@@ -166,6 +181,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	 * @param context 
 	 */
 	activate (context: ExtensionContext): void {
+		// set vscode context variable pvs-language-active to true
+		commands.executeCommand('setContext', 'pvs-language-active', true);
+		
 		// save pointer to extension context
 		this.context = context;
 		
@@ -210,19 +228,19 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.statusBar.progress("Activating vscode-pvs components...");	
 			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
 			this.emacsBindingsProvider.activate(this.context);
-			this.theoryExplorer = new VSCodePvsTheoryExplorer(this.client, 'theory-explorer-view');
-			this.theoryExplorer.activate(this.context);
+			this.workspaceExplorer = new VSCodePvsWorkspaceExplorer(this.client, 'theory-explorer-view');
+			this.workspaceExplorer.activate(this.context);
 			this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
 			this.proofExplorer.activate(this.context);
+			this.outlineProvider = new VSCodePvsFileOutlineProvider(this.client);
+			this.outlineProvider.activate(this.context);
 			this.vscodePvsTerminal = new VSCodePvsTerminal(this.client, this.proofExplorer);
 			this.vscodePvsTerminal.activate(this.context);
-			this.sequentViewer = new VSCodePvsSequentViewer();
-			this.sequentViewer.activate(this.context);
-			this.proofMate = new VSCodePvsProofMate();
+			this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');
 			this.proofMate.activate(this.context);
 			this.pvsioTerminal = new VSCodePVSioTerminal();
 			this.pvsioTerminal.activate(this.context);
-			this.packageManager = new VSCodePvsPackageManager(this.client);
+			this.packageManager = new VSCodePvsPackageManager(this.client, this.statusBar);
 	
 			// enable decorations for pvs syntax
 			this.decorationProvider = new VSCodePvsDecorationProvider();
@@ -235,10 +253,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.eventsDispatcher = new EventsDispatcher(this.client, {
 				statusBar: this.statusBar,
 				emacsBindings: this.emacsBindingsProvider,
-				theoryExplorer: this.theoryExplorer,
+				workspaceExplorer: this.workspaceExplorer,
 				proofExplorer: this.proofExplorer,
 				vscodePvsTerminal: this.vscodePvsTerminal,
-				sequentViewer: this.sequentViewer,
 				proofMate: this.proofMate
 			});
 			this.eventsDispatcher.activate(context);
@@ -253,7 +270,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 			// start PVS
 			const contextFolder = vscodeUtils.getEditorContextFolder();
-			this.pvsPath = this.getPvsPath();
+			this.pvsPath = workspace.getConfiguration().get("pvs.path");
 			
 			// setTimeout(() => {
 			this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, { pvsPath: this.pvsPath, contextFolder });
@@ -266,6 +283,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		if (this.client) {
 			this.client.sendRequest("kill-pvs");
 			await this.client.stop();
+			// set vscode context variable pvs-language-active to true
+			commands.executeCommand('setContext', 'pvs-language-active', false);
 		}
 	}
 }

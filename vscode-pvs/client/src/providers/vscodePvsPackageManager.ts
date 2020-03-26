@@ -42,12 +42,15 @@ import { serverEvent, www_cls_sri_com, serverCommand, PvsDownloadDescriptor } fr
 import * as os from 'os';
 import * as vscodeUtils from '../utils/vscode-utils';
 import * as path from 'path';
+import { VSCodePvsStatusBar } from "../views/vscodePvsStatusBar";
 
 export class VSCodePvsPackageManager {
     protected client: LanguageClient;
+    protected statusBar: VSCodePvsStatusBar;
 
-	constructor (client: LanguageClient) {
-		this.client = client;
+	constructor (client: LanguageClient, statusBar: VSCodePvsStatusBar) {
+        this.client = client;
+        this.statusBar = statusBar;
 	}
 
     async installationWizard (msg: string): Promise<boolean> {
@@ -126,7 +129,9 @@ export class VSCodePvsPackageManager {
             browse: "Choose PVS Installation Folder",
             cancel: "Cancel"
         }
-        const item = await window.showInformationMessage(`Please choose the installation folder`, labels.browse, labels.cancel);
+        const msg: string = `Please choose the installation folder`;
+        if (this.statusBar) { this.statusBar.progress(msg); }
+        const item = await window.showInformationMessage(msg, labels.browse, labels.cancel);
         if (item === labels.browse) {
             const pvsInstallationFolder: Uri[] = await window.showOpenDialog({
                 canSelectFiles: false,
@@ -146,7 +151,7 @@ export class VSCodePvsPackageManager {
         // extract pvs
         await this.extractPVS(desc);
         const pvsPath: string = path.join(desc.targetFolder, `pvs-${desc.version}`);
-		await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global); // the updated value is visible only at the next restart, that's why we are using pvsExecutable[0].fsPath in the sendRequest
+		await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global); // the updated value is visible only at the next restart, that's why we are using pvsExecutable[0].fsPath in selectPvsPath
         return pvsPath;
 	}
 
@@ -171,6 +176,9 @@ export class VSCodePvsPackageManager {
     async updateVscodeConfiguration (pvsPath: string) {
         const config: WorkspaceConfiguration = workspace.getConfiguration();
         await config.update("pvs.path", pvsPath, ConfigurationTarget.Global);
+        const updatedConfig: WorkspaceConfiguration = workspace.getConfiguration();
+        // const msg: string = `PVS path is ${updatedConfig.pvs.path}`;
+        // window.showInformationMessage(msg);
         // pvsLanguageClient will reboot the server, see handler workspace.onDidChangeConfiguration
     }
 
@@ -179,7 +187,7 @@ export class VSCodePvsPackageManager {
             canSelectFiles: false,
             canSelectFolders: true,
             canSelectMany: false,
-            openLabel: "Select PVS installation folder"
+            openLabel: "Select as PVS installation folder"
         });
         if (pvsExecutable && pvsExecutable.length === 1) {
             this.updateVscodeConfiguration(pvsExecutable[0].fsPath);

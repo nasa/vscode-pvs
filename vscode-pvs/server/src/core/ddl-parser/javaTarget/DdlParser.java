@@ -1,6 +1,5 @@
 import org.antlr.v4.runtime.*;
 import java.util.*;
-import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
@@ -165,11 +164,17 @@ public class DdlParser {
             List<Token> whites = tokens.getHiddenTokensToLeft(token.getTokenIndex(), SPACE);
             List<Token> tabs = tokens.getHiddenTokensToLeft(token.getTokenIndex(), TAB);
             if (whites != null) {
-                padding = " ".repeat(whites.size());
+                for (int i = 0; i < whites.size(); i++) {
+                    padding += " ";
+                }
+                // padding = " ".repeat(whites.size());
                 // System.out.println(whites.size());
             }
             if (tabs != null) {
-                padding = "\t".repeat(tabs.size());
+                for (int i = 0; i < tabs.size(); i++) {
+                    padding += "\t";
+                }
+                // padding = "\t".repeat(tabs.size());
                 // System.out.println(tabs.size());
             }
         }

@@ -57,16 +57,6 @@ export class VSCodePvsStatusBar {
     protected nfiles: number = 0;
     protected contextFolder: string = "";
 
-    protected sequentViewerLabelStart: StatusBarItem;
-    protected sequentViewerShow: StatusBarItem;
-    protected sequentViewerLabelEnd: StatusBarItem;
-
-    protected proofStepperLabelStart: StatusBarItem;
-    protected proofStepperPrev: StatusBarItem;
-    protected proofStepperPlay: StatusBarItem;
-    protected proofStepperNext: StatusBarItem;
-    protected proofStepperLabelEnd: StatusBarItem;
-
     protected client: LanguageClient;
 
     protected makeStats (): string {
@@ -92,63 +82,6 @@ export class VSCodePvsStatusBar {
         this.pvsStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
         this.workspaceStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
         this.versionInfoBar = window.createStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
-
-        this.sequentViewerLabelStart = window.createStatusBarItem(StatusBarAlignment.Left, 10);
-        this.sequentViewerShow = window.createStatusBarItem(StatusBarAlignment.Left, 10);
-        this.sequentViewerLabelEnd = window.createStatusBarItem(StatusBarAlignment.Left, 10);
-
-        this.proofStepperLabelStart = window.createStatusBarItem(StatusBarAlignment.Left, 20);
-        this.proofStepperPlay = window.createStatusBarItem(StatusBarAlignment.Left, 20);
-        this.proofStepperPrev = window.createStatusBarItem(StatusBarAlignment.Left, 20);
-        this.proofStepperNext = window.createStatusBarItem(StatusBarAlignment.Left, 20);
-        this.proofStepperLabelEnd = window.createStatusBarItem(StatusBarAlignment.Left, 20);
-    }
-
-    showSequentViewerControls (): void {
-        this.sequentViewerLabelStart.text = "Sequent Viewer  [";
-        this.sequentViewerShow.text = "$(browser)";
-        this.sequentViewerShow.tooltip = "Show active proof state";
-        this.sequentViewerLabelEnd.text = "]";
-
-        this.sequentViewerShow.command = "vscode-pvs.editor-show-sequent";
-
-        this.sequentViewerLabelStart.show();
-        this.sequentViewerShow.show();
-        this.sequentViewerLabelEnd.show();
-    }
-
-    hideSequentViewerControls (): void {
-        this.sequentViewerLabelStart.hide();
-        this.sequentViewerShow.hide();
-        this.sequentViewerLabelEnd.hide();
-    }
-
-    showProofStepperControls (): void {
-        this.proofStepperLabelStart.text = "Proof Stepper  [";
-        this.proofStepperPrev.text = "$(arrow-left)";
-        this.proofStepperPrev.tooltip = "undo";
-        this.proofStepperPlay.text = "$(play)";
-        this.proofStepperNext.text = "$(arrow-right)";
-        this.proofStepperNext.tooltip = "step";
-        this.proofStepperLabelEnd.text = "]";
-
-        this.proofStepperPrev.command = "proof-explorer.back";
-        this.proofStepperPlay.command = "proof-explorer.run";
-        this.proofStepperNext.command = "proof-explorer.forward";
-
-        this.proofStepperLabelStart.show();
-        this.proofStepperPrev.show();
-        // this.proofStepperPlay.show();
-        this.proofStepperNext.show();
-        this.proofStepperLabelEnd.show();
-    }
-
-    hideProofStepperControls (): void {
-        this.proofStepperLabelStart.hide();
-        this.proofStepperPrev.hide();
-        // this.proofStepperPlay.show();
-        this.proofStepperNext.hide();
-        this.proofStepperLabelEnd.hide();
     }
 
 
@@ -175,7 +108,7 @@ export class VSCodePvsStatusBar {
         }
     }
     updateStats (desc: { contextFolder: string, fileName: string, fileExtension: string, stats: { types: number, definitions: number, lemmas: number }}): void {
-        if (desc && desc.stats) {
+        if (desc && desc.stats && desc.fileExtension !== ".tccs") {
             const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
             if (!this.stats[fname] 
                 || (this.stats[fname]
@@ -205,9 +138,6 @@ export class VSCodePvsStatusBar {
      */
     ready (): void {
         this.pvsStatus.text = `$(check)  Ready!`;
-        // setTimeout(() => {
-        //     this.statusBar.text = "";
-        // }, 10000);    
     };
 
     /**

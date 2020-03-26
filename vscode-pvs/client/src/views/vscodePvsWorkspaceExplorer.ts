@@ -1,5 +1,5 @@
 /**
- * @module VSCodePvsTheoryExplorer
+ * @module VSCodePvsWorkspaceExplorer
  * @author Paolo Masci
  * @date 2019.06.18
  * @copyright 
@@ -42,15 +42,10 @@ import { LanguageClient } from 'vscode-languageclient';
 import { FileList, FormulaDescriptor,
 			TheoryDescriptor, ContextDescriptor } from '../common/serverInterface';
 import * as path from 'path';
+import * as fsUtils from '../common/fsUtils';
 import { serverCommand, serverEvent } from '../common/serverInterface';
 
 //-- theories
-class Loading extends TreeItem {
-	contextValue: string = "loading-animation";
-	constructor () {
-		super("Loading content...", TreeItemCollapsibleState.None);
-	}
-}
 class TheoryItem extends TreeItem {
 	contextValue: string = "theory";
 	theoryName: string;
@@ -120,15 +115,22 @@ class TheoryItem extends TreeItem {
 }
 class OverviewItem extends TreeItem {
 	contextValue: string = "OverviewItem";
-	fileName: string;
 	contextFolder: string;
-	theorems: FormulaItem[] = [];
-	constructor(typeName: string, desc: { contextFolder: string, fileName: string }) {
-		super(typeName, TreeItemCollapsibleState.None);
-		this.contextValue = typeName;
-		this.label = typeName.toLowerCase();
-		this.fileName = desc.fileName;
+	constructor(type: string, desc: { contextFolder: string }, collapsibleState?: TreeItemCollapsibleState) {
+		super(type, collapsibleState | TreeItemCollapsibleState.None);
+		this.contextValue = type;
+		this.label = type.toLowerCase();
 		this.contextFolder = desc.contextFolder;
+	}
+}
+class FormulaOverviewItem extends OverviewItem {
+	theorems: FormulaItem[] = [];
+	fileName: string;
+	fileExtension: string;
+	constructor(type: string, desc: { contextFolder: string, fileName: string, fileExtension: string }, collapsibleState?: TreeItemCollapsibleState) {
+		super(type, desc, collapsibleState);
+		this.fileName = desc.fileName;
+		this.fileExtension = desc.fileExtension;
 	}
 	getFormula (formulaName: string): FormulaItem {
 		const candidates: FormulaItem[] = this.theorems.filter((elem: FormulaItem) => {
@@ -139,7 +141,7 @@ class OverviewItem extends TreeItem {
 		}
 		return null;
 	}
-	listFormulae (): FormulaItem[] {
+	getChildren (): FormulaItem[] {
 		return this.theorems;
 	}
 	protected refreshLabel (opt?: { keepCollapsibleState?: boolean }) {
@@ -176,7 +178,7 @@ class OverviewItem extends TreeItem {
 		return this.theorems.length;
 	}
 }
-class FormulaItem extends TreeItem {
+export class FormulaItem extends TreeItem {
 	contextValue: string = "formula";
 	// desc: TheoremDescriptor;
 	protected fileName: string;
@@ -201,7 +203,7 @@ class FormulaItem extends TreeItem {
 		this.refreshLabel();
 		this.command = {
 			title: "Formula selected",
-			command: "explorer.didSelectTheorem",
+			command: "explorer.theorem-selected-event",
 			arguments: [ desc ]
 		};
 	}
@@ -216,14 +218,18 @@ class FormulaItem extends TreeItem {
 	}
 	protected refreshLabel() {
 		this.status = this.status || "unchecked"; //'\u{2705}'
+		this.status = this.status.startsWith("proved") ? "proved" : this.status;
 		switch (this.status) {
-			case "proved": 
-			case "proved - incomplete":
-			case "proved - by mapping":
-			case "proved - complete": {
+			case "subsumed":
+			case "simplified":
+			// case "proved - incomplete":
+			// case "proved - by mapping":
+			// case "proved - complete": 
+			case "proved": {
 				this.label = `✅ ${this.formulaName} (${this.status})`;
 				break;
 			}
+			case "unproved":
 			case "unfinished": { // proof attempted but failed
 				this.label = `❗ ${this.formulaName} (${this.status})`;
 				break;
@@ -241,18 +247,35 @@ class FormulaItem extends TreeItem {
 	}
 }
 //-- overviews
-class TheoremsOverviewItem extends OverviewItem {
-	constructor(desc: { contextFolder: string, fileName: string }) {
+class TheoremsOverviewItem extends FormulaOverviewItem {
+	constructor(desc: { contextFolder: string, fileName: string, fileExtension: string }) {
 		super("THEOREMS", desc);
 	}
 }
-class TccsOverviewItem extends OverviewItem {
-	constructor(desc: { contextFolder: string, fileName: string }) {
+class TccsOverviewItem extends FormulaOverviewItem {
+	constructor(desc: { contextFolder: string, fileName: string, fileExtension: string }) {
 		super("TCCS", desc);
 	}
 	// @overrides
 	updateStatus (desc: FormulaDescriptor): void {
 		super.updateStatus(desc, { keepCollapsibleState: true });
+	}
+}
+class ContextItem extends OverviewItem {
+	theories: TheoryItem[] = [];
+	constructor(desc: { contextFolder: string }) {
+		super("CONTEXT", desc, TreeItemCollapsibleState.Expanded);
+		this.label = (desc && desc.contextFolder) ? desc.contextFolder : this.contextValue;
+	}
+	setContextFolder (contextFolder: string) {
+		if (this.contextFolder !== contextFolder) {
+			this.contextFolder = contextFolder;
+			this.label = fsUtils.getContextFolderName(this.contextFolder);
+			this.theories = [];
+		}
+	}
+	getChildren (): OverviewItem[] {
+		return this.theories;
 	}
 }
 //-- Items
@@ -271,9 +294,8 @@ class TccItem extends FormulaItem {
 /**
  * Data provider for PVS Explorer view
  */
-export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
+export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	// protected pvsLibrariesPath: string = null;
-	protected contextFolder: string = null;
 
 	/**
 	 * Events for updating the tree structure
@@ -292,7 +314,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 	protected providerView: string;
 	
 	protected view: TreeView<TreeItem>;
-	protected theories: TheoryItem[] = [];	
+	protected root: ContextItem;
 
 	protected getPvsPath (): string {
 		return workspace.getConfiguration().get("pvs.path");
@@ -306,8 +328,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 	constructor(client: LanguageClient, providerView: string) {
 		this.client = client;
 		this.providerView = providerView;
-		// const pvsPath: string = this.getPvsPath();
-		// this.pvsLibrariesPath = path.join(pvsPath, "lib");
+		this.loading();
 		// register tree view.
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
@@ -316,6 +337,14 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 
 	getClient (): LanguageClient {
 		return this.client;
+	}
+
+	setContextFolder (context: string): void {
+		if (this.root) {
+			this.root.setContextFolder(context);
+		} else {
+			console.error(`[workspace-explorer] Error: root node is null`);
+		}
 	}
 
 	setStatusProved(desc: { theoryName: string, formulaName: string }): void {
@@ -331,96 +360,72 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
-	// updateTccs (desc: { [ fname: string ]: })
-
 	updateView (desc: ContextDescriptor): void {
-		// if (desc && desc.contextFolder !== this.contextFolder) {
-		// 	this.contextFolder = desc.contextFolder;
-		// 	this.resetView();
-		// }
-		// if (desc && desc.theories) {
-		// 	desc.theories.forEach((theory: TheoryDescriptor) => {
-		// 		const theoryItem: TheoryItem = this.getTheoryItem(theory.theoryName);
-		// 		if (theoryItem) {
-		// 			// update status of tccs and theorems
-		// 			theory.theorems.forEach((formula: FormulaDescriptor) => {
-		// 				if (formula.isTcc) {
-		// 					theoryItem.updateTcc(formula);
-		// 				} else {
-		// 					theoryItem.updateFormula(formula);
-		// 				}
-		// 			});
-		// 			theoryItem.updateLabel();
-		// 		}
-		// 	});
-		// 	this.refreshView();
-		// }
-		// update the list of theories
-		if (desc && desc.contextFolder !== this.contextFolder) {
-			this.contextFolder = desc.contextFolder;
-			this.resetView();
-		}
-		if (desc && desc.theories) {
-			let theoryItems: TheoryItem[] = [];
-			for (let i = 0; i < desc.theories.length; i++) {
-				const tdesc: TheoryDescriptor = desc.theories[i];
-				// check if the item already exists
-				let theoryItem: TheoryItem = this.getTheoryItem(tdesc.theoryName);
-				if (!theoryItem) {
-					theoryItem = new TheoryItem({
+		if (desc) {
+			// update the list of theories
+			if (desc && desc.contextFolder !== this.root.contextFolder) {
+				this.setContextFolder(desc.contextFolder);
+			}
+			if (desc && desc.theories) {
+				const theoryItems: TheoryItem[] = [];
+				for (let i = 0; i < desc.theories.length; i++) {
+					const tdesc: TheoryDescriptor = desc.theories[i];
+					// create a new item only if the item does not already exist in the tree view
+					const theoryItem: TheoryItem = this.getTheoryItem(tdesc.theoryName) || new TheoryItem({
 						theoryName: tdesc.theoryName,
 						fileName: tdesc.fileName,
 						fileExtension: tdesc.fileExtension,
-						position: new Position(tdesc.position.line, tdesc.position.character),
+						position: tdesc.position ? new Position(tdesc.position.line, tdesc.position.character) : new Position(0, 0),
 						contextFolder: tdesc.contextFolder,
 						collapsibleState: TreeItemCollapsibleState.Collapsed
 					});
-				}
-				for (let i = 0; i < tdesc.theorems.length; i++) {
-					const formula: FormulaDescriptor = tdesc.theorems[i];
-					if (formula.isTcc) {
-						theoryItem.updateTcc(formula);
-					} else {
-						theoryItem.updateFormula(formula);
+					for (let i = 0; i < tdesc.theorems.length; i++) {
+						const formula: FormulaDescriptor = tdesc.theorems[i];
+						if (formula.isTcc) {
+							theoryItem.updateTcc(formula);
+						} else {
+							theoryItem.updateFormula(formula);
+						}
 					}
+					theoryItem.refreshLabel({ keepCollapsibleState: true });
+					theoryItems.push(theoryItem);
 				}
-				theoryItem.refreshLabel({ keepCollapsibleState: true });
-				theoryItems.push(theoryItem);
+				const diff: TheoryItem[] = this.diff(this.root.theories, theoryItems);
+				const items: TheoryItem[] = theoryItems.concat(diff);
+				this.root.theories = items.sort((a: TheoryItem, b: TheoryItem): number => {
+					return (a.theoryName > b.theoryName) ? 1 : -1;
+				});
 			}
-			const diff: TheoryItem[] = this.diff(this.theories, theoryItems);
-			this.theories = theoryItems.concat(diff);
+		} else {
+			this.loading();
 		}
 		this.refreshView();
 	}
+	protected loading (): void {
+		this.root = new ContextItem({ contextFolder: "Loading content..." });
+	}
 	/**
-	 * Refresh tree view
+	 * Internal function, used to refresh the tree view
 	 */
 	protected refreshView(): void {
 		this._onDidChangeTreeData.fire();
 	}
 	/**
-	 * Resets the tree view
+	 * Internal function, computes the difference between two arrays of theory items. This is used for incremental loading of theories.
 	 */
-	protected resetView () {
-		this.theories = [];
-	}
 	protected diff (v1: TheoryItem[], v2: TheoryItem[]): TheoryItem[] {
-		if (!v1 || v1.length === 0) {
-			return [];
-		}
-		if (!v2 || v2.length === 0) {
-			return v1;
-		}
-		let diff: TheoryItem[] = v1.filter((item: TheoryItem) => {
+		if (!v1 || v1.length === 0) { return []; }
+		if (!v2 || v2.length === 0) { return v1; }
+		const res: TheoryItem[] = v1.filter((item: TheoryItem) => {
 			return !v2.some((elem) => {
 				return elem.theoryName === item.theoryName;
 			});
 		});
-		return diff;
+		return res;
 	}
 	getTheoryItem (theoryName: string): TheoryItem {
-		if (this.theories) {
-			let candidates: TheoryItem[] = this.theories.filter((item: TheoryItem) => {
+		if (this.root && this.root.theories) {
+			let candidates: TheoryItem[] = this.root.theories.filter((item: TheoryItem) => {
 				return item.theoryName === theoryName;
 			});
 			if (candidates && candidates.length === 1) {
@@ -430,8 +435,8 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		return null;
 	}
 	getTheoryDescriptor (theoryName: string): TheoryDescriptor {
-		if (this.theories) {
-			let candidates: TheoryItem[] = this.theories.filter((item: TheoryItem) => {
+		if (this.root && this.root.theories) {
+			let candidates: TheoryItem[] = this.root.theories.filter((item: TheoryItem) => {
 				return item.theoryName === theoryName;
 			});
 			if (candidates && candidates.length === 1) {
@@ -455,7 +460,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		// all commands in the form vscode-pvs.xxxx are handled by VSCodeEventsDispatcher
 
 		// click on a tcc formula to open the file and highlight the tcc name in the theory
-		context.subscriptions.push(commands.registerCommand('explorer.didSelectTcc', async (uri: Uri, range: Range) => {
+		context.subscriptions.push(commands.registerCommand('explorer.tcc-selected-event', async (uri: Uri, range: Range) => {
 			// window.showInformationMessage("theory selected: " + theoryName + " " + fileName + "(" + position.line + ", " + position.character + ")");
 			window.showTextDocument(uri, {
 				preserveFocus: true, 
@@ -466,7 +471,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		}));
 
 		// click on a theorem to open the file and highlight the theorem in the theory
-		context.subscriptions.push(commands.registerCommand('explorer.didSelectTheorem', async (desc: FormulaDescriptor) => {
+		context.subscriptions.push(commands.registerCommand('explorer.theorem-selected-event', async (desc: FormulaDescriptor) => {
 			// window.showInformationMessage("theory selected: " + theoryName + " " + fileName + "(" + position.line + ", " + position.character + ")");
 			const uri: Uri = Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
 
@@ -481,7 +486,7 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 		}))
 
 		// // click on a tcc formula to open the .tccs file
-		// cmd = commands.registerCommand('explorer.didSelectTccFormula', async (desc: { theoryName: string, fileName: string, fileExtension: string, contextFolder: string, position: Position }) => {
+		// cmd = commands.registerCommand('explorer.tcc-selected-eventFormula', async (desc: { theoryName: string, fileName: string, fileExtension: string, contextFolder: string, position: Position }) => {
 		// 	const uri: Uri = Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
 		// 	commands.executeCommand('vscode.open', uri, {
 		// 		viewColumn: window.activeTextEditor.viewColumn, // do not open new tabs
@@ -504,8 +509,6 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 				)
 			});
 		}));
-
-		this.resetView();
 	}
 
 	/**
@@ -515,7 +518,9 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 	getChildren(element: TreeItem): Thenable<TreeItem[]> {
 		if (element) {
 			let children: TreeItem[] = null;
-			if (element.contextValue === "theory") {
+			if (element.contextValue === "CONTEXT") {
+				children = this.root.getChildren();
+			} else if (element.contextValue === "theory") {
 				// pvs theory
 				const desc: TheoryItem = <TheoryItem> element;
 				children = [
@@ -525,20 +530,19 @@ export class VSCodePvsTheoryExplorer implements TreeDataProvider<TreeItem> {
 			} else if (element.contextValue === "TCCS") {
 				// tcc list
 				const desc: TccsOverviewItem = <TccsOverviewItem> element;
-				children = desc.listFormulae();
+				children = desc.getChildren();
 			} else if (element.contextValue === "tcc") {
 				// console.log('tcc');
 			} else if (element.contextValue === "theorem") {
 				// console.log('theorem');
 			} else if (element.contextValue === "THEOREMS") {
 				const desc: TheoremsOverviewItem = <TheoremsOverviewItem> element;
-				children = desc.listFormulae();
+				children = desc.getChildren();
 			}
 			return Promise.resolve(children);
-		} else {
-			// root node: show the list of theories from the selected file
-			return Promise.resolve(this.theories);
 		}
+		// root node: show context
+		return Promise.resolve([ this.root ]);
 	}
 
 	getTreeItem(element: TreeItem): TreeItem {

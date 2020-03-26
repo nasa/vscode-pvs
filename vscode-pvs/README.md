@@ -5,17 +5,22 @@ The environment redefines the way developers interact with PVS, and better align
 ## Functionalities
 The main functionalities provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
-- **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented to the user when the user is typing a symbol name in the editor. Code snippets are provided for frequent modeling blocks, e.g., if-then-else.
-- **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the developer places the cursor over an identifier.
-- **Go-to definition**: Navigation of symbol definitions can be performed with simple point-and-click actions: the user places the cursor over the name of an identifier, and a click on the name of the identifier while holding the Ctrl key down allow to jump to the location where the identifier is declared.
+- **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented in the editor when placing the mouse over a symbol name. Code snippets are provided for frequent modeling blocks, e.g., if-then-else.
+- **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the user places the cursor over an identifier.
+- **Go-to definition**:  Click on the name of the identifier while holding down the Ctrl key to jump to the location where the identifier is declared.
+- **Peek defintions**: Symbol definitions can be shown in mini editors embedded in the current view.
 - **Live diagnostics**: Parsing is automatically performed in the background, and errors are reported in-line in the editor. Problematic expressions are underlined with red wavy lines. Tooltips presenting the error details are shown when the user places the cursor over the wavy lines.
-- **Theory Explorer**: The overall structure of a set of PVS theories is rendered using an interactive tree-based view. It shows the set of PVS theories in the active workspace, as well as the name and status (proved, unfinished, etc.) of the theorems defined in each theory. Point-and-click actions can be used to jump to theory definitions and type-check the theories.
-- **Proof Explorer**: Actionable commands can be used to start a proof, and an interactive tree view can be used to view and edit the proof tree. An integrated command line allows interaction with the theorem prover. Auto-completion is provided for prover commands, as well as access to the commands history.
+- **Outline View**: Interactive tree view showing the outline of the pvs file open in the editor. Point-and-click actions can be used to jump to definitions.
+- **Workspace Explorer**: Interactive tree view showing all theories in the current workspace, name and status of theorems and typecheck conditions.
+- **Proof Explorer**: Interactive tree view for viewing and editing the current proof.
+- **Prover Terminal**: An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
+- **Proof Mate**: Helper designed to suggest proof commands that can be used to make progress with the current proof.
 
 ## Requirements
-- NodeJS (v10.16.3 or greater) https://nodejs.org/en/download
-- Visual Studio Code (v1.38 or greater) https://code.visualstudio.com
-- PVS Allegro (7.0 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots/ 
+- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
+- NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
+- Java JDK (1.8 or greater) https://openjdk.java.net
+- PVS Allegro (7.1 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots
 
 ## Installation instructions
 1. Download the latest release of VSCode-PVS from the [github repository](releases)
@@ -34,8 +39,8 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 .
 ├── client                       // PVS Language Client (VSCode entry point)
 │   └── src
-│       ├── providers            // Client-side service providers (emacs binding, decorations)
-│       ├── views                // Visual Components: Proof Explorer, Theory Explorer, Terminals, Status Bar, Sequent Viewer 
+│       ├── providers            // Client-side service providers (emacs binding, decorations, package manager, outline provider)
+│       ├── views                // Visual Components: Proof Explorer, Workspace Explorer, Terminals, Status Bar, Sequent Viewer, Proof Mate
 │       ├── common               // Utility functions 
 │       └── pvsLanguageClient.ts // PVS Language Client implementation
 ├── icons                        // PVS icons theme
@@ -49,7 +54,8 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
         │     ├── pvsCodeLensProvider.ts       // In-line actionable commands
         │     ├── pvsCompletionProvider.ts     // Auto-completion
         │     ├── pvsDefinitionProvider.ts     // Find definitions
-        │     └── pvsHoverProvider.ts          // Hover information 
+        │     ├── pvsHoverProvider.ts          // Hover information 
+        │     └── pvsPackageManager.ts         // Installation manager 
         ├── parser               // Parser grammar and scripts      
         ├── common               // Utility functions           
         ├── pvsCli.ts            // PVS Command Line Interface
@@ -60,8 +66,10 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
-### 1.0.15 (2020.01.xx)
-- Introduced new pvs parser based on antlr4
+### 1.0.15 (2020.03.12)
+- New visual components: Proof Mate, Workspace Explorer (formerly, Theory Explorer)
+- Added support for theory outline view (requires visual studio code >= 1.32.3)
+- Introduced new pvs parser based on antlr4 (requires java development environment)
 - Added support for hybrid programs (.hpvs files)
 
 ### 1.0.14 (2019.11.26)

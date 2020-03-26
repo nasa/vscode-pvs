@@ -212,19 +212,19 @@ class PvsCli {
 		this.rl.setPrompt(utils.colorText(this.prompt, utils.textColor.blue));
 		this.rl.on("line", async (cmd: string) => {
 			if (utils.isQuitCommand(cmd)) {
-				this.wsClient.send(JSON.stringify({
-					type: serverCommand.proofCommand,
-					cmd: "quit",
-					fileName: this.args.fileName,
-					fileExtension: this.args.fileExtension,
-					contextFolder: this.args.contextFolder,
-					theoryName: this.args.theoryName,
-					formulaName: this.args.formulaName
-				}));
 				console.log();
 				console.log("Prover session terminated.");
 				console.log();
 				this.rl.question("Press Enter to close the terminal.", () => {
+					this.wsClient.send(JSON.stringify({
+						type: serverCommand.proofCommand,
+						cmd: "quit",
+						fileName: this.args.fileName,
+						fileExtension: this.args.fileExtension,
+						contextFolder: this.args.contextFolder,
+						theoryName: this.args.theoryName,
+						formulaName: this.args.formulaName
+					}));	
 					this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
 					this.wsClient.close();	
 				});
@@ -285,7 +285,7 @@ class PvsCli {
 								const pvsResponse: PvsResponse = data.response;
 								if (pvsResponse) {
 									if (pvsResponse.result) {
-										const res: utils.ProofStateNode = pvsResponse.result;
+										const res: utils.ProofState = pvsResponse.result;
 										// print commentary in the CLI
 										if (res.commentary && typeof res.commentary === "object" && res.commentary.length > 0) {
 											// the last line of the commentary is the sequent, dont' print it!
@@ -294,7 +294,7 @@ class PvsCli {
 											}
 										}
 										this.proofState = utils.formatProofState(res);
-										console.log(utils.formatProofState(pvsResponse.result, { useColors: true, showAction: false })); // show proof state
+										console.log(utils.formatProofState(pvsResponse.result, { useColors: true, showAction: true })); // show proof state
 										this.rl.prompt(); // show prompt
 										readline.clearLine(process.stdin, 1); // clear any previous input
 									} else {
@@ -340,6 +340,7 @@ class PvsCli {
 
 	protected completer (line: string) {
 		let hits: string[] = null;
+		// console.log(`[pvs-cli] trying to auto-complete ${line}`);
 		if (line.startsWith("(expand") || line.startsWith("expand")) {
 			// autocomplete symbol names
 			const symbols: string[] = utils.listSymbols(this.proofState);
@@ -354,8 +355,9 @@ class PvsCli {
 					}
 				}
 			}
-		} else if (line.trim() === ("(")) {
+		} else if (line.trim().startsWith("(")) {
 			hits = PvsCli.completions.map((c: string) => {
+				// console.log(`(${c}`);
 				return `(${c}`;
 			}).filter((c: string) => c.startsWith(line));
 		} else {

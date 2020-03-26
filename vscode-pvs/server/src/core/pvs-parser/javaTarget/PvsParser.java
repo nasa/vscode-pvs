@@ -1,6 +1,5 @@
 import org.antlr.v4.runtime.*;
 import java.util.*;
-import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
@@ -10,6 +9,7 @@ import org.antlr.v4.runtime.misc.Interval;
 public class PvsParser {
     protected static Boolean test = false;
     protected static String ifname = null;
+    protected static Boolean outlineRequest = false;
 
     public static interface DiagnosticSeverity {
         int Error = 1;
@@ -47,12 +47,13 @@ public class PvsParser {
         for (int a = 0; a < args.length; a++) {
             if (args[a].equals("--test") || args[a].equals("-test")) {
                 test = true;
+            } else if (args[a].equals("--outline") || args[a].equals("-decls")) {
+                outlineRequest = true;
             } else {
                 ifname = args[a];
             }
         }
-    }
-    
+    }    
 
     public static void main(String[] args) throws Exception {
         // open file
@@ -81,13 +82,30 @@ public class PvsParser {
 
             double parseTime = System.currentTimeMillis() - parseStart;
 
+            if (outlineRequest) {
+                String outline = "{" 
+                    + "\n \"contextFolder\": \"" + ParserUtils.getContextFolder(ifname) + "\""
+                    + ",\n \"fileName\": \"" + ParserUtils.getFileName(ifname) + "\""
+                    + ",\n \"fileExtension\": \"" + ParserUtils.getFileExtension(ifname) + "\""
+                    + ",\n \"declarations\": {"
+                        + "\n\t \"types\": [ " + listener.printTypes() + " ]"
+                        + ",\n\t \"functions\": [ " + listener.printFunctions() + " ]"
+                        + ",\n\t \"formulas\": [ " + listener.printFormulas() + " ]"
+                        + ",\n\t \"locals\": [ " + listener.printLocals() + " ]"
+                    + "\n}"
+                    + ",\n \"parse-time\": { \"ms\": " + parseTime + " }";
+                System.out.println(outline);
+                return;
+            }
+
+            // else, standard parse request
             String ans = "{"
-                        + "\n \"contextFolder\": \"" + ParserUtils.getContextFolder(ifname) + "\""
-                        + ",\n \"fileName\": \"" + ParserUtils.getFileName(ifname) + "\""
-                        + ",\n \"fileExtension\": \"" + ParserUtils.getFileExtension(ifname) + "\""
-                        // + ",\n \"filename\": \"" + ifname + "\""
-                        + ",\n \"math-objects\": " + listener.getStats()
-                        + ",\n \"parse-time\": { \"ms\": " + parseTime + " }";
+                + "\n \"contextFolder\": \"" + ParserUtils.getContextFolder(ifname) + "\""
+                + ",\n \"fileName\": \"" + ParserUtils.getFileName(ifname) + "\""
+                + ",\n \"fileExtension\": \"" + ParserUtils.getFileExtension(ifname) + "\""
+                // + ",\n \"filename\": \"" + ifname + "\""
+                + ",\n \"math-objects\": " + listener.getStats()
+                + ",\n \"parse-time\": { \"ms\": " + parseTime + " }";
             if (el.errors.size() > 0) {
                 ans += ",\n \"errors\": " + el.errors;
             }
@@ -104,6 +122,7 @@ public class PvsParser {
         protected int nDefinitions = 0;
         protected int nFormulas = 0;
         
+        // declarations
         protected HashMap<String, ParserUtils.DeclDescriptor> typeDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
         protected HashMap<String, ParserUtils.DeclDescriptor> formulaDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
         protected HashMap<String, ParserUtils.DeclDescriptor> functionDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
@@ -114,6 +133,25 @@ public class PvsParser {
             this.tokens = tokens;
             rewriter = new TokenStreamRewriter(tokens);
         }
+
+        protected String printHashMap (HashMap<String, ParserUtils.DeclDescriptor> hs) {
+            String ans = "";
+            Set<String> elems = hs.keySet();
+            Iterator<String> it = elems.iterator();
+            while (it.hasNext()) {
+                String key = it.next();
+                ans += hs.get(key).outline();
+                if (it.hasNext()) {
+                    ans += ", ";
+                }
+            }
+            return ans;
+        }
+
+        String printTypes () { return this.printHashMap(this.typeDeclarations); }
+        String printFormulas () { return this.printHashMap(this.formulaDeclarations); }
+        String printFunctions () { return this.printHashMap(this.functionDeclarations); }
+        String printLocals () { return this.printHashMap(this.localBindingDeclarations); }
 
         public ParserUtils.DeclDescriptor findDeclaration (String name) {//, int line, int character) {
             System.out.println("Finding declaration for " + name);

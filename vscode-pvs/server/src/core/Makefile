@@ -27,6 +27,7 @@ pvs-parser: download
 	# testing parser
 	#cd ../../out/core/lib && java -jar PvsParser.jar ../../../test/sandbox/sq.pvs -test
 	cd ../../out/core/lib && java -jar PvsParser.jar ../../../src/core/examples/test.pvs -test
+	cd ../../out/core/lib && java -jar PvsParser.jar ../../../src/core/examples/test.pvs -decls
 
 pvs-typechecker: download
 	# generating java target

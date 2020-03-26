@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
-	"description": "Integrates the PVS theorem prover into Visual Studio Code",
-	"version": "1.0.15-beta",
+	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
+	"version": "1.0.15",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -27,7 +27,7 @@
 		"prototype verification system"
 	],
 	"engines": {
-		"vscode": "^1.31.0"
+		"vscode": "^1.32.3"
 	},
 	"activationEvents": [
 		"onLanguage:pvs"
@@ -92,18 +92,18 @@
 			"explorer": [
 				{
 					"id": "theory-explorer-view",
-					"name": "PVS Theory Explorer",
-					"when": "resourceLangId == pvs"
+					"name": "PVS Workspace Explorer",
+					"when": "pvs-language-active"
 				},
 				{
 					"id": "proof-explorer-view",
 					"name": "PVS Proof Explorer",
-					"when": "resourceLangId == pvs && prover-session-active"
+					"when": "pvs-language-active && prover-session-active"
 				},
 				{
-					"id": "proofmate-view",
+					"id": "proof-mate-view",
 					"name": "PVS Proof Mate",
-					"when": "resourceLangId == pvs && prover-session-active"
+					"when": "pvs-language-active && prover-session-active"
 				}
 			]
 		},
@@ -157,6 +157,18 @@
 				"title": "Typecheck"
 			},
 			{
+				"command": "vscode-pvs.generate-tccs",
+				"title": "Generate TCCs"
+			},
+			{
+				"command": "vscode-pvs.show-tccs",
+				"title": "Show TCCs"
+			},
+			{
+				"command": "vscode-pvs.show-tccs-alt",
+				"title": "Show"
+			},
+			{
 				"command": "vscode-pvs.parse-file",
 				"title": "Parse File"
 			},
@@ -173,32 +185,102 @@
 				"title": "Prove"
 			},
 			{
+				"command": "vscode-pvs.command-palette",
+				"title": "Command Palette..."
+			},
+			{
+				"command": "vscode-pvs.discharge-tccs-alt",
+				"title": "Discharge"
+			},
+			{
+				"command": "vscode-pvs.discharge-theorems-alt",
+				"title": "Discharge"
+			},
+			{
+				"command": "vscode-pvs.discharge-tccs",
+				"title": "Discharge TCCs"
+			},
+			{
 				"command": "vscode-pvs.pvsio-evaluator",
 				"title": "Evaluate in PVSio"
 			},
 			{
-				"command": "proof-explorer.jump-to",
-				"title": "Jump here"
+				"command": "proof-mate.exec-proof-command",
+				"title": "Execute"
 			},
 			{
-				"command": "proof-explorer.delete-proof-command",
-				"title": "Delete"
+				"command": "proof-mate.exec-proof-command-with-parameters",
+				"title": "Execute with parameters..."
 			},
 			{
-				"command": "proof-explorer.rename-proof-command",
+				"command": "proof-explorer.delete-node",
+				"title": "Delete",
+				"enablement": "view == proof-explorer-view"
+			},
+			{
+				"command": "proof-explorer.trim-subtree",
+				"title": "Trim",
+				"enablement": "view == proof-explorer-view"
+			},
+			{
+				"command": "proof-explorer.create-proof-branch",
+				"title": "New branch",
+				"enablement": "view == proof-explorer-view && viewItem != proof-branch"
+			},
+			{
+				"command": "proof-explorer.append-node",
+				"title": "New proof command",
+				"enablement": "view == proof-explorer-view"
+			},
+			{
+				"command": "proof-explorer.mark-as-pending",
+				"title": "Mark as pending",
+				"enablement": "view == proof-explorer-view && viewItem === proof-branch"
+			},
+			{
+				"command": "proof-explorer.mark-as-visited",
+				"title": "Mark as visited",
+				"enablement": "view == proof-explorer-view && viewItem != root"
+			},
+			{
+				"command": "proof-explorer.mark-as-not-visited",
+				"title": "Mark as not visited",
+				"enablement": "view == proof-explorer-view && viewItem != root"
+			},
+			{
+				"command": "proof-explorer.set-as-active",
+				"title": "Set as active",
+				"enablement": "view == proof-explorer-view && viewItem != root"
+			},
+			{
+				"command": "proof-explorer.show-sequent",
+				"title": "Open sequent in the editor",
+				"enablement": "view == proof-explorer-view",
+				"icon": "icons/browser-arrow-icon.png"
+			},
+			{
+				"command": "proof-explorer.rename-node",
 				"title": "Rename"
 			},
 			{
-				"command": "proof-explorer.cut-proof-command",
-				"title": "Cut"
+				"command": "proof-explorer.cut-node",
+				"title": "Cut",
+				"enablement": "view == proof-explorer-view && viewItem != root"
 			},
 			{
-				"command": "proof-explorer.copy-proof-command",
-				"title": "Copy"
+				"command": "proof-explorer.copy-node",
+				"title": "Copy proof command",
+				"enablement": "view == proof-explorer-view && viewItem != root"
 			},
 			{
-				"command": "proof-explorer.paste-proof-command",
-				"title": "Paste"
+				"command": "proof-explorer.copy-subtree",
+				"title": "Copy",
+				"enablement": "view == proof-explorer-view"
+			},
+			{
+				"command": "proof-explorer.paste-node",
+				"title": "Paste",
+				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node"
 			},
 			{
 				"command": "proof-explorer.back",
@@ -211,24 +293,31 @@
 				"icon": "icons/next-icon.png"
 			},
 			{
-				"command": "proof-explorer.run",
+				"command": "proof-explorer.run-proof",
 				"title": "️️Run proof",
-				"icon": "icons/play-circle-1-icon.png"
+				"icon": "icons/play-circle-1-icon.png",
+				"enablement": "view == proof-explorer-view"
 			},
 			{
 				"command": "proof-explorer.fast-forward",
 				"title": "️️Fast forward",
-				"icon": "icons/fast-forward-icon.png"
+				"icon": "icons/fast-forward-icon.png",
+				"enablement": "view == proof-explorer-view && viewItem != root"
 			},
 			{
-				"command": "vscode-pvs.editor-show-sequent",
-				"title": "️️Show sequent"
+				"command": "proof-mate.show-sequent",
+				"title": "️️Show sequent",
+				"icon": "icons/browser-arrow-icon.png"
 			}
 		],
 		"menus": {
 			"explorer/context": [
 				{
 					"command": "vscode-pvs.typecheck-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs"
+				},
+				{
+					"command": "vscode-pvs.generate-tccs",
 					"when": "resourceScheme == file && resourceExtname == .pvs"
 				}
 			],
@@ -249,128 +338,188 @@
 					"group": "inline"
 				},
 				{
-					"command": "vscode-pvs.typecheck-file",
-					"when": "view == theory-explorer-view && viewItem == theory",
-					"group": "context-menu"
+					"command": "vscode-pvs.show-tccs-alt",
+					"when": "view == theory-explorer-view && viewItem == TCCS",
+					"group": "inline"
+				},
+				{
+					"command": "vscode-pvs.discharge-tccs-alt",
+					"when": "view == theory-explorer-view && viewItem == TCCS",
+					"group": "inline"
+				},
+				{
+					"command": "vscode-pvs.discharge-theorems-alt",
+					"when": "view == theory-explorer-view && viewItem == THEOREMS",
+					"group": "inline"
 				},
 				{
 					"command": "proof-explorer.fast-forward",
-					"when": "view == proof-explorer-view && viewItem == proof-command",
+					"when": "view == proof-explorer-view && viewItem != root",
 					"group": "context-menu/ctrl"
 				},
 				{
-					"command": "proof-explorer.fast-forward",
-					"when": "view == proof-explorer-view && viewItem == proof-branch",
-					"group": "context-menu/ctrl"
-				},
-				{
-					"command": "proof-explorer.jump-to",
-					"when": "view == proof-explorer-view && viewItem == proof-command",
-					"group": "context-menu/ctrl"
-				},
-				{
-					"command": "proof-explorer.jump-to",
-					"when": "view == proof-explorer-view && viewItem == proof-branch",
-					"group": "context-menu/ctrl"
-				},
-				{
-					"command": "proof-explorer.run",
+					"command": "proof-explorer.run-proof",
 					"when": "view == proof-explorer-view && viewItem == root",
 					"group": "context-menu/ctrl"
 				},
 				{
-					"command": "proof-explorer.delete-proof-command",
-					"when": "view == proof-explorer-view && viewItem == proof-command",
+					"command": "proof-explorer.show-sequent",
+					"when": "view == proof-explorer-view",
+					"group": "inline"
+				},
+				{
+					"command": "proof-explorer.create-proof-branch",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-0"
+				},
+				{
+					"command": "proof-explorer.append-node",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-0"
+				},
+				{
+					"command": "proof-explorer.copy-subtree",
+					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-1"
 				},
 				{
-					"command": "proof-explorer.delete-proof-command",
-					"when": "view == proof-explorer-view && viewItem == proof-branch",
+					"command": "proof-explorer.cut-node",
+					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-1"
 				},
 				{
-					"command": "proof-explorer.rename-proof-command",
-					"when": "view == proof-explorer-view && viewItem == proof-command",
+					"command": "proof-explorer.paste-node",
+					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-1"
 				},
 				{
-					"command": "proof-explorer.rename-proof-command",
-					"when": "view == proof-explorer-view && viewItem == proof-branch",
-					"group": "context-menu/edit-1"
+					"command": "proof-explorer.copy-node",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-2"
 				},
 				{
-					"command": "proof-explorer.cut-proof-command",
-					"when": "view == proof-explorer-view && viewItem == proof-command",
-					"group": "context-menu/edit-0"
+					"command": "proof-explorer.rename-node",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-3"
 				},
 				{
-					"command": "proof-explorer.cut-proof-command",
-					"when": "view == proof-explorer-view && viewItem == proof-branch",
-					"group": "context-menu/edit-0"
+					"command": "proof-explorer.delete-node",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-4"
 				},
 				{
-					"command": "proof-explorer.copy-proof-command",
-					"when": "view == proof-explorer-view && viewItem == proof-command",
-					"group": "context-menu/edit-0"
+					"command": "proof-explorer.trim-subtree",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-4"
 				},
 				{
-					"command": "proof-explorer.copy-proof-command",
-					"when": "view == proof-explorer-view && viewItem == proof-branch",
-					"group": "context-menu/edit-0"
+					"command": "proof-explorer.mark-as-pending",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-6"
 				},
 				{
-					"command": "proof-explorer.paste-proof-command",
-					"when": "view == proof-explorer-view && viewItem == proof-command",
-					"group": "context-menu/edit-0"
+					"command": "proof-explorer.mark-as-visited",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-6"
 				},
 				{
-					"command": "proof-explorer.paste-proof-command",
-					"when": "view == proof-explorer-view && viewItem == proof-branch",
-					"group": "context-menu/edit-0"
+					"command": "proof-explorer.mark-as-not-visited",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-6"
+				},
+				{
+					"command": "proof-explorer.set-as-active",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-7"
+				},
+				{
+					"command": "proof-mate.exec-proof-command",
+					"when": "view == proof-mate-view && viewItem == proofmate-suggestion",
+					"group": "inline"
+				},
+				{
+					"command": "proof-mate.exec-proof-command",
+					"when": "view == proof-mate-view && viewItem == proofmate-suggestion",
+					"group": "context-menu/exec"
+				},
+				{
+					"command": "proof-mate.exec-proof-command-with-parameters",
+					"when": "view == proof-mate-view && viewItem == proofmate-suggestion",
+					"group": "context-menu/exec"
 				}
 			],
 			"editor/title/context": [
 				{
-					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs"
+					"command": "vscode-pvs.parse-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.parse-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs"
-				},
-				{
-					"command": "vscode-pvs.parse-file",
-					"when": "resourceScheme == file && resourceExtname == .hpvs"
+					"when": "resourceScheme == file && resourceExtname == .hpvs",
+					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
-					"when": "resourceScheme == file && resourceExtname == .pvs"
+					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.hp2pvs",
-					"when": "resourceScheme == file && resourceExtname == .hpvs"
+					"when": "resourceScheme == file && resourceExtname == .hpvs",
+					"group": "x_commands"
+				},
+				{
+					"command": "vscode-pvs.typecheck-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.generate-tccs",
+					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.discharge-tccs",
+					"when": "resourceScheme == file && resourceExtname == .tccs",
+					"group": "y_commands"
 				}
 			],
 			"editor/context": [
 				{
-					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs"
-				},
-				{
 					"command": "vscode-pvs.parse-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs"
+					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
-					"when": "resourceScheme == file && resourceExtname == .pvs"
+					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.parse-file",
-					"when": "resourceScheme == file && resourceExtname == .hpvs"
+					"when": "resourceScheme == file && resourceExtname == .hpvs",
+					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.hp2pvs",
-					"when": "resourceScheme == file && resourceExtname == .hpvs"
+					"when": "resourceScheme == file && resourceExtname == .hpvs",
+					"group": "x_commands"
+				},
+				{
+					"command": "vscode-pvs.typecheck-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.generate-tccs",
+					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.discharge-tccs",
+					"when": "resourceScheme == file && resourceExtname == .tccs",
+					"group": "y_commands"
 				}
 			],
 			"view/title": [
@@ -385,8 +534,13 @@
 					"group": "navigation"
 				},
 				{
-					"command": "proof-explorer.run",
+					"command": "proof-explorer.run-proof",
 					"when": "view == proof-explorer-view",
+					"group": "navigation"
+				},
+				{
+					"command": "proof-mate.show-sequent",
+					"when": "view == proof-mate-view",
 					"group": "navigation"
 				}
 			]
@@ -413,12 +567,11 @@
 				"when": "resourceLangId == pvs"
 			},
 			{
-				"key": "ctrl+t",
+				"key": "shift+ctrl+t",
 				"command": "vscode-pvs.typecheck-file",
 				"when": "resourceLangId == pvs"
 			},
 			{
-				"key": "ctrl+alt+g",
 				"command": "proof-explorer.grind",
 				"when": "resourceLangId == pvs"
 			},
@@ -434,16 +587,16 @@
 			},
 			{
 				"key": "ctrl+c",
-				"command": "proof-explorer.copy-proof-command",
+				"command": "proof-explorer.copy-subtree",
 				"args": {
 					"text": ""
 				},
-				"note": "copy proof command in proof explorer",
-				"when": "view == proof-explorer-view && viewItem == proof-command"
+				"note": "copy proof proof subtree",
+				"when": "view == proof-explorer-view"
 			},
 			{
 				"key": "ctrl+x",
-				"command": "proof-explorer.cut-proof-command",
+				"command": "proof-explorer.cut-node",
 				"args": {
 					"text": ""
 				},
@@ -452,16 +605,16 @@
 			},
 			{
 				"key": "ctrl+v",
-				"command": "proof-explorer.paste-proof-command",
+				"command": "proof-explorer.paste-node",
 				"args": {
 					"text": ""
 				},
 				"note": "paste proof command in proof explorer",
-				"when": "view == proof-explorer-view && viewItem == proof-command"
+				"when": "view == proof-explorer-view"
 			},
 			{
 				"key": "F2",
-				"command": "proof-explorer.rename-proof-command",
+				"command": "proof-explorer.rename-node",
 				"args": {
 					"text": ""
 				},
@@ -469,8 +622,13 @@
 				"when": "view == proof-explorer-view && viewItem == proof-command"
 			},
 			{
+				"key": "Del",
+				"command": "proof-explorer.delete-node",
+				"when": "view == proof-explorer-view"
+			},
+			{
 				"key": "F5",
-				"command": "proof-explorer.run",
+				"command": "proof-explorer.run-proof",
 				"args": {
 					"text": ""
 				},
@@ -609,12 +767,27 @@
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-		"test:server": "node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-all.json"
+		"test:server": "node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-all.json",
+		"lint": "eslint --ext .ts server/src && eslint --ext .ts client/src"
 	},
 	"devDependencies": {
-		"@types/node": "12.12.2",
 		"@types/jasmine": "^3.5.0",
-		"@types/vscode": "^1.31.0"
+		"@types/node": "12.12.2",
+		"@types/vscode": "^1.32.3",
+		"@typescript-eslint/eslint-plugin": "^2.25.0",
+		"@typescript-eslint/parser": "^2.25.0",
+		"eslint": "^6.8.0",
+		"typescript": "^3.7.3"
+	},
+	"eslintConfig": {
+		"env": {
+			"node": true,
+			"commonjs": true,
+			"es6": true
+		},
+		"parserOptions": {
+			"sourceType": "module"
+		}
 	},
 	"testDependencies": {
 		"jasmine": "^3.5.0",
@@ -625,8 +798,6 @@
 		"tslint": "^5.20.1"
 	},
 	"dependencies": {
-		"typescript": "^3.7.3",
-		"vsce": "^1.71.0",
 		"xmlrpc": "^1.3.2"
 	}
 }

@@ -172,10 +172,12 @@ export declare interface PvsVersionInfo extends PvsResponseType {
 export declare interface JsonType {
 	[ key: string ]: JsonType | string; 
 }
+export declare type ProofNodeType = "root" | "proof-branch" | "proof-command";
 export declare interface ProofNode { 
 	id: string,
 	children: ProofNode[], 
-	type: string 
+	type: ProofNodeType,
+	"branch-id": string
 }
 export declare interface ProofTree {
 	proofStructure: ProofNode;
@@ -392,7 +394,7 @@ export declare interface FormulaDescriptor {
 	formulaName: string;
 	position: Position;
 	status: string; // proof status
-	isTcc?: boolean;
+	isTcc: boolean;
 }
 
 export declare interface TheoryDescriptor {
@@ -415,6 +417,11 @@ export declare interface ContextDescriptor {
 	theories: TheoryDescriptor[];
 };
 
+export declare interface PvsFileDescriptor extends ContextDescriptor {
+	fileName: string;
+	fileExtension: string;
+}
+
 export const cliSessionType = {
 	pvsioEvaluator: "pvs.pvsio-evaluator",
 	proveFormula: "pvs.prove-formula"
@@ -423,6 +430,8 @@ export const cliSessionType = {
 export const serverCommand = {
 	typecheckFile: "pvs.typecheck-file",
 	proveFormula: "pvs.prove-formula",
+	dischargeTccs: "pvs.prove-tccs",
+	dischargeTheorems: "pvs.prove-file",
 	proofScript: "pvs.proof-script",
 	proofCommand: "pvs.proof-command",
 	parseFile: "pvs.parse-file",
@@ -430,10 +439,16 @@ export const serverCommand = {
 	parseWorkspace: "pvs.parse-workspace",
 	parseWorkspaceWithFeedback: "pvs.parse-workspace.with-feedback",
 	listContext: "pvs.list-context",
+	generateTccs: "pvs.generate-tccs",
 	showTccs: "pvs.show-tccs",
 	startPvsLanguageServer: "pvs.start-pvs-server",
 	rebootPvsServer: "pvs.reboot-pvs-server",
 	hp2pvs: "pvs.hp-to-pvs-file",
+
+	getContextDescriptor: "pvs.get-context-descriptor",
+	getFileDescriptor: "pvs.get-file-descriptor",
+
+	cancelOperation: "pvs.cancel-operation",
 
 	listDownloadableVersions: "pvs.list-downloadable-versions",
 	downloadPvs: "pvs.download-pvs",
@@ -443,11 +458,17 @@ export const serverCommand = {
 export const serverEvent = {
 	typecheckFileResponse: "pvs.response.typecheck-file",
 	proveFormulaResponse: "pvs.response.prove-formula",
+	dischargeTccsResponse: "pvs.reponse.prove-tccs",
+	dischargeTheoremsResponse: "pvs.reponse.prove-file",
 	proofScriptResponse: "pvs.response.proof-script",
 	proofCommandResponse: "pvs.response.proof-command",
 	parseFileResponse: "pvs.response.parse-file",
 	listContextResponse: "pvs.response.list-context",
+	generateTccsResponse: "pvs.response.generate-tccs",
 	showTccsResponse: "pvs.response.show-tccs",
+
+	getContextDescriptorResponse: "pvs.response.get-context-descriptor",
+	getFileDescriptorResponse: "pvs.response.get-file-descriptor",
 
 	listDownloadableVersionsResponse: "pvs.response.list-downloadable-versions",
 	downloadPvsResponse: "pvs.response.download-pvs",
@@ -458,6 +479,7 @@ export const serverEvent = {
 	contextUpdate: "pvs.event.context-update",
 	proofStateUpdate: "pvs.event.proof-state",
 	workspaceStats: "pvs.event.workspace-stats",
+	
 
 	pvsVersionInfo: "pvs.event.version-info",
 	pvsNotPresent: "pvs.event.pvs-not-present",

@@ -115,7 +115,10 @@ export class VSCodePvsEmacsBindingsProvider {
 				// 	this.client.sendRequest(serverCommand.start_pvs_server, { pvsPath: v7 });
 				// 	break;
 				// }
-				case "show-tccs":
+				case "show-tccs": {
+					commands.executeCommand('vscode-pvs.show-tccs', desc);
+					break;
+				}
 				case "tc": 
 				case "typecheck": {
 					commands.executeCommand('vscode-pvs.typecheck-file', desc);
@@ -123,7 +126,7 @@ export class VSCodePvsEmacsBindingsProvider {
 				}
 				case "tcp": 
 				case "typecheck-prove": {
-					commands.executeCommand('vscode-pvs.prove-tccs', desc);
+					commands.executeCommand('vscode-pvs.discharge-tccs', desc);
 					break;
 				}
 				case "parse": {
@@ -133,10 +136,6 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "pr":
 				case "prove": {
 					commands.executeCommand('vscode-pvs.prove-formula', desc);
-					break;
-				}
-				case "show-tccs": {
-					commands.executeCommand('vscode-pvs.show-tccs', desc);
 					break;
 				}
 				case "pvsio": {

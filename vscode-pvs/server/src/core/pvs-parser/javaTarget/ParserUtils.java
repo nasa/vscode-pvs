@@ -1,6 +1,5 @@
 import org.antlr.v4.runtime.*;
 import java.util.*;
-import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
@@ -56,6 +55,12 @@ public class ParserUtils {
                 + ", \"identifier\": \"" + this.identifier + "\""
                 + ", \"declaration\": \"" + this.declaration + "\""
                 + ", \"scope\": " + this.scope
+                + " }";
+        }
+        public String outline () {
+            return "{ \"line\": " + this.line
+                + ", \"character\": " + this.character
+                + ", \"identifier\": \"" + this.identifier + "\""
                 + " }";
         }
     }

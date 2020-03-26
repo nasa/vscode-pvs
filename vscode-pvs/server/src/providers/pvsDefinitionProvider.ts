@@ -94,7 +94,7 @@ export class PvsDefinitionProvider {
 	 * @param symbolName The symbol whose definition needs to be found
 	 * @param position Position where the symbol is used, helps to narrow down the list of potential definitions in the case of symbol overloading
 	 */
-	async findSymbolDefinition (uri: string, symbolName: string, position?: Position): Promise<PvsDefinition[]> {
+	async findSymbolDefinition (uri: string, symbolName: string, position: Position): Promise<PvsDefinition[]> {
 		symbolName = (symbolName.toUpperCase() === "TRUE" || symbolName.toUpperCase() === "FALSE") ? symbolName.toUpperCase() : symbolName;
 		let currentTheory: string = null;
 		// uri = uri.replace("file://", "");
@@ -143,6 +143,15 @@ export class PvsDefinitionProvider {
 		// find-declaration works even if a pvs file does not parse correctly 
 		let ans: PvsResponse = await this.pvsProxy.findDeclaration(symbolName); //await this.pvsProcess.findDeclaration(symbolName);
 
+		// const fileName: string = fsUtils.getFileName(uri);
+		// const fileExtension: string = fsUtils.getFileExtension(uri);
+		// const contextFolder: string = fsUtils.getContextFolder(uri);
+		// let ans1: PvsResponse = await this.pvsProxy.termAt({
+		// 	fileName, fileExtension, contextFolder, 
+		// 	line: position.line, 
+		// 	character: position.character
+		// });
+
 		// find-declaration may return more than one result -- the file is not typechecked
 		// we can narrow down the results by traversing the importchain
 		// part of this extra logic can be removed when Sam completes the implementation of find-object
@@ -159,10 +168,10 @@ export class PvsDefinitionProvider {
 				}) => {
 					let fname: string = info ? info.filename : null;
 					if (fname && fname.indexOf("/") < 0) {
-						// FIXME: pvs-server does not include path when file is in the current context
-						// add contextFolder to fname, check if this is the pvslog folder (if so, remove /pvslog)
+						// FIXME: pvs-server does not include path when the file is in the current context
+						// add contextFolder to fname, check if this is the pvslog folder (if so, remove /pvsbin)
 						let contextFolder: string = fsUtils.getContextFolder(uri);
-						if (contextFolder.endsWith("/pvslog")) {
+						if (contextFolder.endsWith(`/${fsUtils.logFolder}`)) {
 							contextFolder = contextFolder.split("/").slice(0, -1).join("/");
 						}
 						fname = path.join(contextFolder, fname);

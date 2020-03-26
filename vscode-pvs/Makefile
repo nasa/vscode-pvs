@@ -35,11 +35,17 @@
  # TERMINATION OF THIS AGREEMENT.
  
 all:
+	make install
+	cd server && npm install --no-save typescript && npm run compile && npm install
+	cd client && npm install --no-save typescript && npm run compile && npm install
+	make core
+
+release:
 	npm install
 	cd server && npm install --no-save typescript && npm run compile && npm install
 	cd client && npm install --no-save typescript && npm run compile && npm install
 	make core
-	node_modules/vsce/out/vsce package
+	npm install --no-save vsce && node_modules/vsce/out/vsce package
 
 install:
 	npm install && npm install --no-save jasmine ts-node jasmine-ts

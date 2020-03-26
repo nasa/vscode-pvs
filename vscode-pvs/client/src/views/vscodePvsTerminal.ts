@@ -39,7 +39,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { LanguageClient } from 'vscode-languageclient';
-import { VSCodePvsTheoryExplorer } from './vscodePvsTheoryExplorer';
+import { VSCodePvsWorkspaceExplorer } from './vscodePvsWorkspaceExplorer';
 import { PvsCliInterface } from '../common/serverInterface';
 import * as language from '../common/languageUtils';
 import { serverEvent } from '../common/serverInterface';
@@ -55,7 +55,7 @@ class TerminalSession {
     protected client: LanguageClient;
     protected active: boolean = true;
     protected channelID: string;
-    protected theoryExplorer: VSCodePvsTheoryExplorer;
+    protected workspaceExplorer: VSCodePvsWorkspaceExplorer;
     protected wsClient: WebSocket;
     protected clientID: string;
     protected proofExplorer: VSCodePvsProofExplorer;
@@ -76,7 +76,6 @@ class TerminalSession {
             await this.subscribe(() => {
                 resolve();
             });
-
             const terminalName: string = desc.formulaName || desc.fileName || typeID;
             const cliFileName: string = context.asAbsolutePath(path.join('server', 'out', PVS_CLI_FILE));
             const cliArgs: PvsCliInterface = {
@@ -90,12 +89,6 @@ class TerminalSession {
             };
             this.terminal = vscode.window.createTerminal(terminalName, 'node', [ cliFileName, JSON.stringify(cliArgs) ]);
             this.terminal.show();
-            // FIXME: use a websocket connection to exchange messages with the client
-            
-            //     (<any>this.terminal).onDidWriteData((data: string) => {
-            //         // resolve the promise as soon as the terminal window receives text, as this indicates CLI ready
-            //         resolve();
-            //     });
         });
     }
     async subscribe (readyCB: () => void): Promise<boolean> {
@@ -116,24 +109,24 @@ class TerminalSession {
                             }
                             case "cli-ready": {
                                 if (data.channelID !== this.channelID) {
-                                    console.error(`[vscode-pvs-terminal] Warning: received message on channel ${data.channelID} (was expecting on channel ${this.channelID})`);
+                                    console.error(`[vscode-pvs-terminal] Error: received message on channel ${data.channelID} (was expecting on channel ${this.channelID})`);
                                 }
                                 readyCB();
                                 break;
                             }
                             case "cli-end": {
                                 if (data.channelID !== this.channelID) {
-                                    console.error(`[vscode-pvs-terminal] Warning: received message on channel ${data.channelID} (was expecting on channel ${this.channelID})`);
+                                    console.error(`[vscode-pvs-terminal] Error: received message on channel ${data.channelID} (was expecting on channel ${this.channelID})`);
                                 }
                                 this.quit();
                                 break;
                             }
 							default: {
-								console.error("[vscode-pvs-terminal] Warning: received unknown message type", data);
+								console.error("[vscode-pvs-terminal] Error: received unknown message type", data);
 							}
 						}
 					} else {
-						console.error("[vscode-pvs-terminal] Warning: received empty message");
+						console.error("[vscode-pvs-terminal] Error: received empty message");
 					}
 				} catch (jsonError) {
 					console.error("[vscode-pvs-terminal] Error: received malformed json string", msg);
@@ -156,12 +149,6 @@ class TerminalSession {
             this.terminal.dispose();
             // close proof explorer and proofmate
             vscode.commands.executeCommand('setContext', 'prover-session-active', false);
-            // if (this.proofExplorer) {
-            //     this.proofExplorer.resetView();
-            // }
-            // close proof stepper and sequent viewer on the status bar
-            // vscode.commands.executeCommand("vscode-pvs.close-proof-stepper");
-            vscode.commands.executeCommand("vscode-pvs.close-sequent-viewer");
         }
     }
     isActive() {
@@ -170,19 +157,6 @@ class TerminalSession {
     stepCommand (cmd: string) {
         this.sendText(cmd);
     }
-    // async showProof(desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, line: number }): Promise<void> {
-    //     return new Promise((resolve, reject) => {
-    //         this.client.onRequest('pvs.response.show-proof', async (desc: { 
-    //             response: PvsResponse, 
-    //             args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string },
-    //             pvsLogFile: string
-    //         }) => {
-    //             console.dir(desc, { depth: null });
-    //             resolve();
-    //         });
-    //         this.client.sendRequest('pvs.show-proof', desc);
-    //     });
-    // }
 }
 
 import { cliSessionType } from '../common/serverInterface';
@@ -232,7 +206,7 @@ export class VSCodePvsTerminal {
     protected error(msg: string) {
         vscode.window.showErrorMessage(msg);
     }
-    async startProveFormulaSession (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, line: number }) {
+    async startProveFormulaSession (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }) {
         if (desc) {
             const channelID: string = language.desc2id(desc);
             if (this.activeTerminals[channelID] && this.activeTerminals[channelID].isActive()) {

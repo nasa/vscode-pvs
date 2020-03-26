@@ -48,7 +48,7 @@ export function tildeExpansion(path: string): string {
 	}
 	return path;
 }
-export async function stat(fileName: string): Promise<fs.Stats> {
+export function stat(fileName: string): Promise<fs.Stats> {
 	if (fileName) {
 		fileName = tildeExpansion(fileName);
 		return new Promise<fs.Stats>((resolve, reject) => {
@@ -60,7 +60,7 @@ export async function stat(fileName: string): Promise<fs.Stats> {
 	}
 	return null;
 };
-export async function readDir(contextFolder: string): Promise<string[]> {
+export function readDir(contextFolder: string): Promise<string[]> {
 	if (contextFolder) {
 		contextFolder = tildeExpansion(contextFolder);
 		return new Promise<string[]>((resolve, reject) => {
@@ -77,15 +77,20 @@ export async function readFile(path: string): Promise<string | null> {
 		path = path.replace("file://", "");
 		path = tildeExpansion(path);
 		try {
-			return new Promise<string>((resolve, reject) => {
-				fs.readFile(path, (error: NodeJS.ErrnoException, data: Buffer) => {
-					if (data) {
-						resolve(data.toString('utf8'));
-					} else {
-						resolve(null);
-					}
-				});
-			});
+			const data: Buffer = fs.readFileSync(path);
+			if (data) {
+				return data.toLocaleString();
+			}
+			return null;
+			// return new Promise<string>((resolve, reject) => {
+			// 	fs.readFile(path, (error: NodeJS.ErrnoException, data: Buffer) => {
+			// 		if (data) {
+			// 			resolve(data.toString('utf8'));
+			// 		} else {
+			// 			resolve(null);
+			// 		}
+			// 	});
+			// });
 		} catch (fileReadError) {
 			// console.error(fileReadError);
 			return null;
@@ -101,7 +106,7 @@ export function deleteFile(fname: string): boolean {
 	}
 	return true;
 }
-export async function deletePvsCache(contextFolder: string): Promise<boolean> {
+export function deletePvsCache(contextFolder: string): Promise<boolean> {
 	try {
 		// console.log(`Deleting cache for context ${contextFolder}`);
 		if (contextFolder) {
@@ -130,9 +135,9 @@ export async function deletePvsCache(contextFolder: string): Promise<boolean> {
 			}
 		}
 	} catch (deleteError) {
-		return false;
+		return Promise.resolve(false);
 	}
-	return true;
+	return Promise.resolve(true);
 }
 export async function createFolder(path: string): Promise<void> {
 	if (!fs.existsSync(path)){
@@ -168,15 +173,21 @@ export function getFileExtension(fname: string): string {
 }
 export function getContextFolder(fname: string): string {
 	if (fname) {
-		fname = fname.replace("file://", "");
-		return fname.split("/").slice(0, -1).join("/").replace("//", "/");
+		const ctx: string = fname.replace("file://", "");
+		return ctx.split("/").slice(0, -1).join("/").replace("//", "/");
+	}
+	return null;
+}
+export function getContextFolderName(contextFolder: string): string {
+	if (contextFolder) {
+		return contextFolder.substring(contextFolder.lastIndexOf('/') + 1, contextFolder.length);
 	}
 	return null;
 }
 export function isPvsFile(fileName: string): boolean {
 	if (fileName) {
 		return fileName.endsWith('.pvs') || fileName.endsWith('.tccs') || fileName.endsWith('.ppe') || fileName.endsWith('.pr')
-				||fileName.endsWith('.hpvs');
+				|| fileName.endsWith('.hpvs');
 	}
 	return false;
 }
@@ -276,3 +287,7 @@ export function getOs (): string {
 	}
 	return process.platform;
 }
+
+// constants
+export const logFolder: string = "pvsbin";
+export const logFileExtension: string = ".pr";

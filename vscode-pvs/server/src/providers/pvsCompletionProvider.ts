@@ -189,7 +189,7 @@ export class PvsCompletionProvider {
 								// const isUninterpreted: boolean = !tmp[3];
 								if (!isTypeDeclaration) {
 									const typeName: string = tmp[2];
-									let definitions: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.uri, typeName);
+									let definitions: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.uri, typeName, position);
 									decl = (definitions && definitions.length === 1) ? definitions[0] : null;
 								}
 								if (decl) {

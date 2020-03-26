@@ -55,6 +55,20 @@ export declare interface ParserDiagnostics extends Diagnostic {
     "errors"?: Diagnostic[]
 };
 
+export declare interface Outline {
+    contextFolder: string,
+    fileName: string,
+    fileExtension: string,
+    outline: {
+        types: [ { line: number, character: number, identifier: string } ],
+        functions: [ { line: number, character: number, identifier: string } ],
+        formulas: [ { line: number, character: number, identifier: string } ],
+        locals: [ { line: number, character: number, identifier: string } ]
+    },
+    "parse-time": {
+        ms: number
+    }
+}
 
 export class PvsParser {
 
@@ -167,6 +181,41 @@ export class PvsParser {
             //     console.dir(diagnostics, { depth: null });
             // }
             return diagnostics;
+        }
+    }
+    
+    /**
+     * Get an outline of the definitions contained in the file
+     * @param desc File descriptor, includes file name, file extension, and context folder
+     */
+    async getOutline (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<Outline> {
+        const fname: string = fsUtils.desc2fname(desc);
+        console.info(`[vscode-pvs-parser] Building outline for ${fname}`);
+
+        let res: Outline = null;
+        const libFolder: string = path.join(__dirname, "../../../../out/core/lib");
+
+        const start: number = Date.now();
+        const options: string = "-outline"; // stats includes statistics about the number of declarations contained in the file
+        const args: string[] = [ "-jar", `${libFolder}/PvsParser.jar`, options ]; // this command will produce a JSON object of type Diagnostic[]
+        try {
+            const outline: string = await this.processWorker(fname, args);
+            const stats: number = Date.now() - start;
+            if (outline) {
+                console.log(outline);
+                res = JSON.parse(outline);
+                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${stats}ms`);
+            } else {
+                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${stats}ms`);
+            }
+        } catch (parserError) {
+            console.log(parserError);
+        } finally {
+            // console.log(`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
+            // if (diagnostics && diagnostics.length > 0) {
+            //     console.dir(diagnostics, { depth: null });
+            // }
+            return res;
         }
 	}
 }
