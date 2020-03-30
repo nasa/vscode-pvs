@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, TreeView, Terminal } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { ProofTree, ProofNode, ProofNodeType } from '../common/serverInterface';
+import { ProofNode, ProofNodeType, serverCommand, PvsVersionDescriptor, ProofDescriptor, ProofStatus, serverEvent } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
 import { PvsResponse } from '../common/pvs-gui';
@@ -51,8 +51,11 @@ import * as vscode from 'vscode';
  * TreeData provider for Proof Explorer
  */
 export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
+	protected pvsVersionDescriptor: PvsVersionDescriptor;
 	protected logFileName: string;
 	protected tmpLogFileName: string;
+
+	protected dirtyFlag: boolean = false; // indicates whether the proof has changed since the last time it was saved
 
 	/**
 	 * Events for updating the tree structure
@@ -85,25 +88,24 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Attributes for run-time management of the proof tree rendered in the view
 	 */
-	protected root: RootNode; // the root of the tre
-	protected ghostNode: GhostNode; // used when developing a proof, signposts where the next proof command will be appended in the proof tree
+	protected root: RootNode; // the root of the tree
+	protected ghostNode: GhostNode; // this is a floating node that follows activeNode. It is used during proof development, to signpost where the next proof command will be appended in the proof tree
 	protected activeNode: ProofCommand | ProofBranch | GhostNode;
 
-	protected pendingExecution: boolean = false;
 	protected running: boolean = false; // status flag, indicates whether we are running all proof commands, as opposed to stepping through the proof commands
-	protected stopAt: ProofItem = null; // indicates which node we are fast-forwarding to
+	protected stopAt: ProofItem; // indicates which node we are fast-forwarding to
 
 	/**
-	 * JSON representation of the proof tree, updated at the beginning and end of the proof session
+	 * JSON representation of the proof script for the current proof.
+	 * The representation is updated at the beginning of the proof session.
 	 */
-	protected proofTree: ProofTree = null;
+	protected proofDescriptor: ProofDescriptor;
 
 	/**
 	 * Initial proof state
 	 */
 	protected initialProofState: ProofState;
 	
-
 	/**
 	 * @constructor
 	 * @param client Language client 
@@ -115,7 +117,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// Register tree view; use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
-		this.root = new RootNode("Proof explorer is not active");
+		this.root = new RootNode({ name: "Proof explorer is not active" });
 		this.ghostNode = new GhostNode({ parent: this.root, node: this.root });
 	}
 
@@ -123,59 +125,18 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Returns the active node in the proof tree
 	 * @returns {ProofItem} The active node 
 	 */
-	getActiveNode (): ProofItem {
-		return this.activeNode;
-	}
-	/**
-	 * Internal function, marks a node as active, i.e., ready to be executed. Automatically updates all dependent data structures (e.g., ghostNode and tooltips)
-	 * External classes should use setAsActive
-	 * @param desc 
-	 */
-	protected setActiveNode (desc: { selected: ProofItem, tooltip?: string }): void {
-		if (desc && desc.selected) {
-			switch (desc.selected.contextValue) {
-				// root should never be the active node
-				case "root": {
-					this.activeNode = this.ghostNode;
-					this.ghostNode.parent = this.root;
-					this.ghostNode.realNode = this.root;
-					break;
-				}
-				default: {
-					this.activeNode = desc.selected;
-				}
-			}
-			this.activeNode.active();
-			if (this.activeNode.contextValue !== "ghost") {
-				this.ghostNode.parent = this.activeNode.parent;
-				this.ghostNode.realNode = this.activeNode;
-				this.ghostNode.notVisited();
-			}
-			if (desc.tooltip) {
-				this.activeNode.tooltip = desc.tooltip;
-			}
-		} else {
-			console.warn(`[proof-explorer] Warning: could not set active node (selected node is null)`);
-		}
-	}
-	/**
-	 * Internal function, marks the first node in the proof tree as active
-	 */
-	protected moveIndicatorAtBeginning (): void {
-		if (this.root) {
-			this.setActiveNode({ selected: this.root });
-			this.refreshView();
-		} else {
-			console.error("Error: unable to render proof tree");
-		}
-	}
+	// getActiveNode (): ProofItem {
+	// 	return this.activeNode;
+	// }
+
 	/**
 	 * Internal function, moves the active node one position back in the proof tree.
 	 */
 	protected moveIndicatorBack (): void {
 		if (this.activeNode) {
 			const prev: ProofItem = this.activeNode.moveIndicatorBack();
-			this.setActiveNode({ selected: prev });
+			// this.setActiveNode({ selected: prev });
+			this.markAsActive({ selected: prev });
 			this.refreshView();
 		} else {
 			console.warn("[vscode-pvs-proof-explorer] Warning: active node is null");
@@ -184,11 +145,25 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Internal function, moves the active node one position forward in the proof tree.
 	 */
-	protected moveIndicatorForward (): void {
+	protected moveIndicatorForward (opt?: { keepSameBranch?: boolean, proofState?: ProofState }): void {
 		if (this.activeNode) {
+			opt = opt || {};
 			if (this.activeNode.contextValue !== "ghost") {
-				const next: ProofItem = this.activeNode.moveIndicatorForward() || this.ghostNode;
-				this.setActiveNode({ selected: next });
+				const next: ProofItem = this.activeNode.moveIndicatorForward(opt) || this.ghostNode;
+				if (next === this.ghostNode) {
+					this.ghostNode.parent = this.activeNode.parent;
+					this.ghostNode.realNode = this.activeNode;
+					this.ghostNode.active();
+					this.ghostNode.parent.pending();
+					this.root.pending();
+				} else {
+					// this.setActiveNode({ selected: next });
+					this.markAsActive({ selected: next }, { restore: false });
+					if (opt.proofState) {
+						this.activeNode.proofState = opt.proofState;
+						this.activeNode.setTooltip(utils.formatProofState(this.activeNode.proofState));		
+					}
+				}
 				this.refreshView();
 			}
 		} else {
@@ -229,78 +204,80 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 	/**
+	 * Utility function, checks if branch b1 is a sub-branch of b2
+	 * @param b1 branch to be checked
+	 * @param b2 reference branch
+	 */
+	protected branchHasChanged (b1: string, b2: string): boolean {
+		return b1 !== b2 || (b2 !== "" && b1.indexOf(b2) !== 0);
+	}
+	/**
 	 * Executes a proof command. 
 	 * The command is taken from the proof tree.
 	 * The command can also be specified as function argument -- this is useful for handling commands entered by the used at the prover prompt. 
 	 * @param cmd Optional parameter, specifying the command to be executed.
 	 */
 	step (cmd?: string): void {
-		if (this.root.isQED()) {
+		if (this.root.isQED() || this.stopAt === this.activeNode) {
+			this.stopAt = null;
 			this.running = false;
-			this.pendingExecution = false;
-		} else {
-			if (this.stopAt === this.activeNode) {
-				this.stopAt = null;
-				this.running = false;
-				this.pendingExecution = false;
-			} else {
-				this.pendingExecution = true;
-				switch (this.activeNode.contextValue) {
-					case "proof-command": {
-						cmd = cmd || this.activeNode.name;
-						const parent: ProofItem = this.activeNode.parent;
-						if (parent) {
-							if (utils.isUndoCommand(cmd) && parent.contextValue === "proof-branch" && this.activeNode.id === parent.children[0].id) {
-								// the active node is the first child in a branch. 
-								// The command has not been executed yet, just move the indicator back without sending any command to pvs-server
-								this.moveIndicatorBack();
-							} else {
-								commands.executeCommand("vscode-pvs.send-proof-command", {
-									fileName: this.desc.fileName,
-									fileExtension: this.desc.fileExtension,
-									theoryName: this.desc.theoryName,
-									formulaName: this.desc.formulaName,
-									contextFolder: this.desc.contextFolder,
-									cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
-								});
-							}
-						} else {
-							console.error(`[proof-explorer] Error: proof command ${this.activeNode.name} does not have a parent`);
-						}
-						break;		
+			return;
+		}
+		// else
+		switch (this.activeNode.contextValue) {
+			case "proof-command": {
+				cmd = cmd || this.activeNode.name;
+				const parent: ProofItem = this.activeNode.parent;
+				if (parent) {
+					if (utils.isUndoCommand(cmd) && parent.contextValue === "proof-branch" && this.activeNode.id === parent.children[0].id) {
+						// the active node is the first child in a branch. 
+						// The command has not been executed yet, just move the indicator back without sending any command to pvs-server
+						this.moveIndicatorBack();
+					} else {
+						commands.executeCommand("vscode-pvs.send-proof-command", {
+							fileName: this.desc.fileName,
+							fileExtension: this.desc.fileExtension,
+							theoryName: this.desc.theoryName,
+							formulaName: this.desc.formulaName,
+							contextFolder: this.desc.contextFolder,
+							cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
+						});
 					}
-					case "ghost": {
-						this.running = false;
-						break;
-					}
-					case "root":
-					case "proof-branch": 
-					default: {
-						if (utils.isUndoCommand(cmd)) {
-							if (this.activeNode.contextValue === "proof-branch") {
-								commands.executeCommand("vscode-pvs.send-proof-command", {
-									fileName: this.desc.fileName,
-									fileExtension: this.desc.fileExtension,
-									theoryName: this.desc.theoryName,
-									formulaName: this.desc.formulaName,
-									contextFolder: this.desc.contextFolder,
-									cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
-								});
-								// this.moveIndicatorBack();
-							}
-						} else {
-							// propagate tooltip
-							const tooltip: string = this.activeNode.tooltip;
-							this.moveIndicatorForward();
-							this.activeNode.tooltip = tooltip;
-						}
-						this.refreshView();
-						if (this.running) {
-							this.step();
-						}
-						break;
-					}
+				} else {
+					console.error(`[proof-explorer] Error: proof command ${this.activeNode.name} does not have a parent`);
 				}
+				break;		
+			}
+			case "ghost": {
+				this.running = false;
+				break;
+			}
+			case "root":
+			case "proof-branch": 
+			default: {
+				if (utils.isUndoCommand(cmd)) {
+					if (this.activeNode.contextValue === "proof-branch") {
+						commands.executeCommand("vscode-pvs.send-proof-command", {
+							fileName: this.desc.fileName,
+							fileExtension: this.desc.fileExtension,
+							theoryName: this.desc.theoryName,
+							formulaName: this.desc.formulaName,
+							contextFolder: this.desc.contextFolder,
+							cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
+						});
+						// this.moveIndicatorBack();
+					}
+				} else {
+					// propagate tooltip
+					const tooltip: string = this.activeNode.tooltip;
+					this.moveIndicatorForward();
+					this.activeNode.tooltip = tooltip;
+				}
+				this.refreshView();
+				if (this.running) {
+					this.step();
+				}
+				break;
 			}
 		}
 	}
@@ -309,121 +286,182 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param desc Descriptor specifying the reponse of the prover, as well as the actual values of the arguments used to invoke the step function.
 	 */
 	onStepExecuted (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }}): void {
-		if (desc && desc.response && desc.response.result && desc.args && desc.args.cmd) {
+		if (desc && desc.response && desc.response.result && desc.args) {
+			// get command and proof state
 			const cmd: string = desc.args.cmd;
-			if (utils.isQuitCommand(cmd)) {
-				this.disposeView();
-				return;	
-			} else if (utils.isEmptyCommand(cmd) || utils.isInvalidCommand(desc.response.result)) {
-				const msg: string = (desc.response.result.commentary && desc.response.result.commentary.length) ?
-					desc.response.result.commentary[0]
-					: `${desc.args.cmd} is not a valid command.`;
-				window.showWarningMessage(msg);
-				// @TODO: send warning message to the terminal
-				// commands.executeCommand("vscode-pvs.print-warning-message-in-terminal", {
-				// 	fileName: this.desc.fileName,
-				// 	fileExtension: this.desc.fileExtension,
-				// 	theoryName: this.desc.theoryName,
-				// 	formulaName: this.desc.formulaName,
-				// 	contextFolder: this.desc.contextFolder,
-				// 	msg: "warning-msg"
-				// });
-				return;
-			}
+			const proofState: ProofState = <ProofState> desc.response.result;
+			// identify active node in the proof tree
+			let activeNode: ProofItem = this.ghostNode.isActive() ? this.ghostNode.realNode : this.activeNode;
+
+			// if QED, update proof status and stop execution
 			if (utils.isQED(desc.response.result)) {
+				this.running = false;
 				this.QED();
 				return;
 			}
-			if (desc.response && desc.response.result) {
-				const proofState: ProofState = <ProofState> desc.response.result;
-				const previousBranchId: string = this.activeNode.branchId;
-				const newBranchId: string = utils.getBranchId(proofState.label);
-				const branchHasChanged: boolean = previousBranchId !== newBranchId
-													|| (previousBranchId !== "" && newBranchId.indexOf(previousBranchId) !== 0);
-				if (cmd === "(undo)" || cmd.startsWith("(undo ")) {
-					this.pendingExecution = false;
-					if (branchHasChanged) {
-						const targetBranch: ProofBranch = this.findProofBranch(newBranchId);
-						if (targetBranch) {
-							const msg: string = (newBranchId === "") ? `moving back to root branch` : `moving back to branch (${newBranchId})`;
-							window.showInformationMessage(msg);
-							this.activeNode.notVisited();
-							// go to the last visited child command in this branch
-							const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
-								return elem.contextValue === "proof-command" && elem.isVisited();
-							});
-							const targetNode: ProofItem = visitedChildren.length ? visitedChildren[visitedChildren.length - 1] : targetBranch;
-							targetNode.treeNotVisited();
-							this.setActiveNode({ selected: targetNode });
-						} else {
-							window.showWarningMessage(`Warning: could not find branch ${newBranchId} in the proof tree`);
-						}
-					} else {
-						this.moveIndicatorBack();
-					}
-				} else {	
-					// pendingExecution is false when the user manually enters a command at the prover terminal 
-					if (!this.pendingExecution) {
-						// command entered manually -- append a new node after the active node, only if the command entered at the prompt is different than the active command shown in the proof tree
-						if (`(${this.activeNode.name})` !== cmd) {
-							// concatenate new command
-							const elem: ProofCommand = new ProofCommand(cmd, this.activeNode.branchId, this.activeNode.parent, TreeItemCollapsibleState.None)
-							this.appendNode({ selected: this.activeNode, elem }, { beforeSelected: true });
-							this.setActiveNode({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
-							window.showInformationMessage(`${elem.name} added to the proof tree.`);
-						}
-					}
-					// check if the number of sub-goals is consistent with the current proof structure
-					const n: number = (proofState["num-subgoals"] > 1) ? (proofState["num-subgoals"] - this.activeNode.children.length) : 0;
-					// stop execution and notify user if n != 0
-					if (n) {
-						const msg: string = (n > 0) ? `${n} sub goals added to the proof tree.`
-							: `Proof tree has more sub goals than expected (expected ${proofState["num-subgoals"]}, found ${this.activeNode.children.length}).`; 
+			// if command is quit, do nothing
+			if (utils.isQuitCommand(cmd)) {
+				this.running = false;
+				return;	
+			}
+			// if command is invalid command, stop execution and provide feedback to the user 
+			if (utils.isEmptyCommand(cmd) || utils.isInvalidCommand(proofState)) {
+				this.running = false;
+				if (utils.isInvalidCommand(proofState)) {
+					window.showWarningMessage(proofState.commentary[0]);
+				}
+				return;
+			}
+			// if command produced no change, provide feedback to the user, stop any running proof
+			// move the indicator forward (keep same proof branch) if the command was in the proof tree 
+			if (utils.noChange(proofState)) {
+				this.running = false;
+				window.showWarningMessage(proofState.commentary.join("\n"));
+				if (utils.isSameCommand(activeNode.name, cmd)) {
+					this.moveIndicatorForward({ keepSameBranch: true, proofState });
+					// mark the tree rooted at the previous active node as not visited
+					activeNode.treeNotVisited();
+					// activeNode.noChange();
+				}
+				return;
+			}
+
+			const previousBranch: string = activeNode.branchId;
+			const newBranch: string = utils.getBranchId(proofState.label);
+
+			// if command is undo, go back to the last visited node
+			if (utils.isUndoCommand(cmd)) {
+				this.running = false;
+				this.ghostNode.notActive();
+				if (this.branchHasChanged(newBranch, previousBranch)) {
+					const targetBranch: ProofBranch = this.findProofBranch(newBranch);
+					if (targetBranch) {
+						this.activeNode.notVisited();
+						// find the last visited child in the new branch
+						const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
+							return elem.contextValue === "proof-command" && elem.isVisited();
+						});
+						const targetNode: ProofItem = visitedChildren.length ? visitedChildren[visitedChildren.length - 1] : targetBranch;
+						// mark the entire subtree as not visited
+						targetNode.treeNotVisited();
+						// mark the target node as active
+						this.markAsActive({ selected: targetNode });
+						// send feedback to the user
+						const msg: string = (newBranch === "") ? `back to root branch` : `back to branch (${newBranch})`;
 						window.showInformationMessage(msg);
-						if (this.running) {
-							this.running = false;
-							window.showWarningMessage(`Proof script might be broken (Mismatching number of sub goals). Stopping execution of proof script.`);
-						}
+					} else {
+						window.showErrorMessage(`Error: could not find branch ${newBranch} in the proof tree`);
 					}
-					if (!this.running && proofState["num-subgoals"] > 1) {
-						window.showInformationMessage(`Proof command ${desc.args.cmd} generated ${proofState["num-subgoals"]} sub-goals`);
-						// append branches if n > 0
-						for (let i = 0; i < n; i++) {
-							this.appendBranch({ selected: this.activeNode });
-						}
-					}
-					if (branchHasChanged) {
-						const elem: ProofItem = this.findProofBranch(newBranchId);
-						if (elem) {
-							window.showInformationMessage(`moving to branch (${newBranchId})`);
-							this.activeNode.visited();
-							this.setActiveNode({ selected: elem });
-						} else {
-							window.showWarningMessage(`Warning: could not find branch ${newBranchId} in the proof tree.`);
-						}
-					}
-					// move indicator forward
-					this.moveIndicatorForward();
-					// propagate tooltip
-					this.activeNode.proofState = proofState;
-					this.activeNode.setTooltip(utils.formatProofState(this.activeNode.proofState));
-				}
-				this.refreshView();
-				if (this.running && this.pendingExecution) {
-					this.step();
 				} else {
-					this.pendingExecution = false;
+					this.moveIndicatorBack();
 				}
-			} else {
+				return;
+			}
+
+			// if command is postpone, move to the new branch
+			if (utils.isPostponeCommand(cmd)) {
+				this.running = false;
+				if (this.branchHasChanged(newBranch, previousBranch)) {
+					this.ghostNode.notActive();
+					const targetBranch: ProofBranch = this.findProofBranch(newBranch);
+					if (targetBranch) {
+						this.activeNode.notVisited();
+						// find the last visited child in the new branch
+						const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
+							return elem.contextValue === "proof-command" && elem.isVisited();
+						});
+						const targetNode: ProofItem = visitedChildren.length ? visitedChildren[visitedChildren.length - 1] : targetBranch;
+						targetNode.pending();
+						// mark the target node as active
+						this.markAsActive({ selected: targetNode });
+						// send feedback to the user
+						const msg: string = (newBranch === "") ? `moving to root branch` : `moving to branch (${newBranch})`;
+						window.showInformationMessage(msg);
+						this.moveIndicatorForward({ keepSameBranch: true, proofState });
+					} else {
+						window.showWarningMessage(`Warning: could not find branch ${newBranch} in the proof tree`);
+					}
+				} else {
+					// do nothing, this is the only branch left to be proved
+				}
+				return;
+			}
+
+			// else, the prover has made progress with the provided proof command
+			// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
+			if (!utils.isSameCommand(activeNode.name, cmd)) {
+				this.running = false;
+				// concatenate new command
+				const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, TreeItemCollapsibleState.None);
+				// append before selected node (the active not has not been executed yet)
+				if (activeNode.isActive()) {
+					activeNode.notVisited();
+					this.appendNode({ selected: activeNode, elem }, { beforeSelected: true });
+				} else {
+					this.appendNode({ selected: activeNode, elem });
+				}
+				this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
+				activeNode = this.activeNode; // update local variable because the following instructions are using it
+				// provide feedback to the user
+				window.showInformationMessage(`${elem.name} added to the proof tree.`);
+			}
+
+			// check if the number of sub-goals generated by the proof command is consistent with the current proof structure
+			const nSubGoals: number = (proofState["num-subgoals"] > 1) ? (proofState["num-subgoals"] - activeNode.children.length) : 0;
+			if (nSubGoals) {
 				if (this.running) {
-					window.showErrorMessage("Error: could not read proof state information.");
-					this.pendingExecution = false;
-					this.running = false;
+					// double check that the new branch is a sub-branch of the old one -- pvs may have proved all sub-branches silently
+					if (this.branchHasChanged(newBranch, previousBranch) === false) {
+						// stop execution, there's a mismatch between the proof tree and the sub goals generated by the proof command
+						this.running = false;
+						window.showErrorMessage(`Error: Proof script might be broken (PVS generated ${proofState["num-subgoals"]} sub goals, but proof script contains ${this.activeNode.children.length} sub goals). Stopping execution of proof script.`);
+					} else {
+						window.showInformationMessage(`Proof command ${cmd} generated ${proofState["num-subgoals"]} sub-goals, but PVS has automatically discharged them`);
+					}
+				} else {
+					// append missing branches and provide feedback
+					// double check that the new branch is a sub-branch of the old one -- pvs may have proved all sub-branches silently
+					if (this.branchHasChanged(newBranch, previousBranch) === false) {
+						// we need to be careful with the branch names, pvs-server sometimes reports less branches because some were automatically discharged
+						for (let i = 0; i < nSubGoals; i++) {
+							this.appendBranch({ selected: activeNode }, { firstBranch: newBranch });
+						}
+						window.showInformationMessage(`Proof command ${cmd} on branch ${previousBranch} has generated ${proofState["num-subgoals"]} sub-goals`);
+					} else {
+						window.showInformationMessage(`Proof command ${cmd} on branch ${previousBranch} has generated ${proofState["num-subgoals"]} sub-goals, but PVS has automatically discharged them`);
+					}
 				}
-				// else, do nothing -- invalid command entered at the prover prompt, don't update the proof tree
+			}
+
+			// if the branch has changed, move to the new branch
+			// this case handles the completion of a proof branch (postpone is handled separately, see conditions above)
+			if (this.branchHasChanged(newBranch, previousBranch)) {
+				const targetBranch: ProofItem = this.findProofBranch(newBranch);
+				if (targetBranch) {
+					// go to the new branch
+					activeNode.visited();
+					this.activeNode.parent.visited();
+					this.markAsActive({ selected: targetBranch }, { restore: false });
+					this.activeNode.pending();
+					if (!this.running) {
+						window.showInformationMessage(`moving to branch (${newBranch})`);
+					}
+				} else {
+					window.showErrorMessage(`Error: could not find branch ${targetBranch} in the proof tree`);
+				}
+			}
+
+			// finally, move indicator forward and propagate tooltip to the new active node
+			this.moveIndicatorForward({ keepSameBranch: true, proofState });
+			this.refreshView();
+
+			// if a proof is running, then iterate
+			if (this.running) {
+				this.step();
 			}
 		} else {
-			console.error("[proofExplorer] Error: onStepExecuted invoked with a null or incomplete descriptor.");
+			this.running = false;
+			window.showErrorMessage("Error: could not read proof state information returned by pvs-server.");
 		}
 	}
 	/**
@@ -502,20 +540,32 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Utility function, marks the selected node as active.
 	 * @param desc Descriptor of the selected node
 	 */
-	setAsActive (desc: { selected: ProofItem }): void {
+	markAsActive (desc: { selected: ProofItem }, opt?: { force?: boolean, restore?: boolean }): void {
 		if (desc && desc.selected) {
-			this.running = false;
-			if (desc.selected !== this.activeNode) {
-				// const tooltip: string = this.activeNode.tooltip;
-				this.activeNode.restore();
-				if (desc.selected.isVisitedOrPending()) {
-					// the node has already been executed, activate ghost node
-					this.ghostNode.parent = desc.selected.parent;
-					this.ghostNode.realNode = desc.selected;
-					this.ghostNode.active();
-				} else {
-					this.setActiveNode({ selected: desc.selected });
+			opt = opt || {};
+			const restore: boolean = (opt.restore === undefined || opt.restore === null) ? true : opt.restore;
+			// this.running = false;
+			if (opt.force || desc.selected !== this.activeNode) {
+				// restore status of node currently active
+				if (restore) {
+					this.activeNode.restore();
 				}
+				// update activeNode
+				this.activeNode = desc.selected;
+				this.activeNode.active();
+				if (this.activeNode.contextValue !== "ghost") {
+					// update ghostNode
+					this.ghostNode.parent = this.activeNode.parent;
+					this.ghostNode.realNode = this.activeNode;
+				}
+				// if (this.activeNode.isVisitedOrPending()) {
+				// 	// the selected node has already been executed, activate ghost node
+				// 	this.ghostNode.parent = this.activeNode.parent;
+				// 	this.ghostNode.realNode = this.activeNode;
+				// 	this.ghostNode.active();
+				// } else {
+				// 	this.activeNode.active();
+				// }
 				this.refreshView();
 			}
 		} else {
@@ -534,9 +584,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	async appendNode (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean }): Promise<void> {
 		if (desc && desc.selected) {
+			this.dirtyFlag = true;
 			opt = opt || {};
-			const branchId: string = desc.selected.branchId;
-			const parent: ProofItem = desc.selected.parent;
+			const selectedNode: ProofItem = (desc.selected.contextValue === "ghost") ? (<GhostNode> desc.selected).realNode : desc.selected;
+			const branchId: string = selectedNode.branchId;
 			let newNode: ProofItem = desc.elem;
 			if (!newNode) {
 				const cmd: string = await vscode.window.showInputBox({
@@ -546,20 +597,21 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					ignoreFocusOut: true 
 				});
 				if (cmd) {
-					newNode = new ProofCommand(cmd, branchId, parent, TreeItemCollapsibleState.None);
+					newNode = new ProofCommand(cmd, branchId, selectedNode.parent, TreeItemCollapsibleState.None);
 				}
 			}
 			if (newNode) {
-				newNode.parent = parent;
-				switch (desc.selected.contextValue) {
+				switch (selectedNode.contextValue) {
 					case "root":
 					case "proof-branch": {
-						desc.selected.appendChildAtBeginning(newNode);
+						newNode.parent = selectedNode;
+						selectedNode.appendChildAtBeginning(newNode);
 						break;
 					}
 					case "ghost":
 					case "proof-command": {
-						desc.selected.appendSibling(newNode, opt);
+						newNode.parent = selectedNode.parent;
+						selectedNode.appendSibling(newNode, opt);
 						break;
 					}
 					default: {
@@ -580,8 +632,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * 			   If the selected node is a branch, then the branch will be appended to the parent of the selected branch.
 	 * @param opt Optionals: beforeSelected (boolean) flag used when the selected node is a branch, indicates whether the branch should be appended before the selected branch. 
 	 */
-	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean }): void {
+	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string }): void {
 		if (desc && desc.selected) {
+			this.dirtyFlag = true;
 			opt = opt || {};
 			let selectedNode: ProofItem = desc.selected;
 			const branchId: string = selectedNode.branchId;
@@ -592,19 +645,24 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 				case "proof-command": {
 					if (!newBranch) {
-						let branchId: string = utils.makeBranchId({ branchId: selectedNode.branchId, goalId: 1 });
+						let firstGoal: number = 1;
+						if (opt.firstBranch && opt.firstBranch.indexOf(".") > 0) {
+							firstGoal = +opt.firstBranch.split(".").slice(-1);
+						}
+						let branchId: string = utils.makeBranchId({ branchId: selectedNode.branchId, goalId: firstGoal });
 						// check which is the first available branch name -- there might be holes if branches have been deleted/renamed by the user
 						let found: boolean = false;
 						for (let i = 0; i < selectedNode.children.length && !found; i++) {
-							branchId = utils.makeBranchId({ branchId: selectedNode.branchId, goalId: i + 1 });
 							if (selectedNode.children[i].branchId !== branchId) {
-								found = true;
+								found = true
+							} else {
+								branchId = utils.makeBranchId({ branchId: selectedNode.branchId, goalId: firstGoal + i + 1 });
 							}
 						}
-						newBranch = new ProofBranch(branchId, branchId, desc.selected, TreeItemCollapsibleState.Expanded);
+						newBranch = new ProofBranch(branchId, branchId, selectedNode, TreeItemCollapsibleState.Expanded);
 					}
 					if (newBranch) {
-						desc.selected.appendChild(newBranch);
+						selectedNode.appendChild(newBranch);
 						this.refreshView();
 					}
 					break;
@@ -736,9 +794,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 				: yesno[0];
 			if (ans === yesno[0]) { 
+				this.dirtyFlag = true;
 				if (selected.contextValue === "root") {
 					selected.children = [];
-					this.setActiveNode({ selected: this.root });
+					// this.setActiveNode({ selected: this.root });
+					this.markAsActive({ selected: this.root });
 				} else {
 					const wasActive: boolean = selected.isActive();
 					if (wasActive) {
@@ -747,7 +807,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 							this.ghostNode.parent = selected.parent;
 							this.ghostNode.realNode = selected.getSiblingOrParent() || this.root;
 						}
-						this.setActiveNode({ selected: sibling });
+						// this.setActiveNode({ selected: sibling });
+						this.markAsActive({ selected: sibling });
 					}
 					selected.parent.deleteChild(selected);
 				}
@@ -777,10 +838,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 				: yesno[0];
 			if (ans === yesno[0]) {
+				this.dirtyFlag = true;
 				switch (node.contextValue) {
 					case "root": {
 						node.children = [];
-						this.setActiveNode({ selected: this.root });
+						// this.setActiveNode({ selected: this.root });
+						this.markAsActive({ selected: this.root });
 						break;
 					}
 					case "proof-branch": {
@@ -794,18 +857,23 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						}
 						if (childWasPendingOrActive) {
 							// mark the current branch as active
-							this.setActiveNode({ selected: node });
+							// this.setActiveNode({ selected: node });
+							this.markAsActive({ selected: node });
 						}
 						node.children = [];
 						break;
 					}
 					case "proof-command": {
-						// remove lower siblings
+						// remove children if any
+						node.children = [];
+						node.collapsibleState = TreeItemCollapsibleState.None;
+						// remove also lower siblings
 						const parent: ProofItem = node.parent;
 						const idx: number = parent.children.indexOf(node);
 						parent.children = parent.children.slice(0, idx + 1);
 						if (node.isVisited()) {
-							this.setActiveNode({ selected: node });
+							// this.setActiveNode({ selected: node });
+							this.markAsActive({ selected: node });
 						}
 						break;
 					}
@@ -825,6 +893,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	async renameNode (desc: { selected: ProofItem }): Promise<void> {
 		if (desc && desc.selected) {
+			this.dirtyFlag = true;
 			const node: ProofItem = desc.selected;
 			const newName: string = await vscode.window.showInputBox({ prompt: `Renaming proof command ${node.name}`, placeHolder: `${node.name}`, value: `${node.name}`, ignoreFocusOut: true });
 			if (newName) {
@@ -864,13 +933,14 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Utility function, marks the current proof as complete
 	 */
 	QED (): void {
-		// make sure execution stops
-		this.pendingExecution = false;
+		// stop execution
 		this.running = false;
 		// move indicator forward so any proof branch that needs to be marked as visited will be marked
 		this.activeNode.moveIndicatorForward();
 		// set QED
 		this.root.QED();
+		// update proof descriptor
+		this.proofDescriptor = this.getProofDescriptor();
 		// refresh tree view
 		this.refreshView();
 
@@ -892,7 +962,17 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			formulaName: this.desc.formulaName,
 			contextFolder: this.desc.contextFolder
 		});
+
+		// ask the user if the proof is to be saved
+		commands.executeCommand("proof-explorer.save-proof", {
+			fileName: this.desc.fileName,
+			fileExtension: this.desc.fileExtension,
+			theoryName: this.desc.theoryName,
+			formulaName: this.desc.formulaName,
+			contextFolder: this.desc.contextFolder
+		});
 	}
+
 
 	/**
 	 * Utility function, used to identify which formula is being proved in the proof tree session
@@ -900,15 +980,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	setProofDescriptor (desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }): void {
 		this.desc = desc;
-	}
-
-	/**
-	 * Utility function, shows a pvs proof script in proof explorer.
-	 * @param script 
-	 */
-	showProofScript (script: string): void {
-		const proofTree: ProofTree = utils.proofScriptToJson(script);
-		this.loadProofTree(proofTree);
 	}
 
 	/**
@@ -922,11 +993,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Utility function, activates the proof loaded in the view (i.e., sets the first node as active)
 	 */
-	activateSelectedProof (): void {
+	startProof (): void {
 		if (this.root) {
 			this.root.pending();
 			if (this.root.children && this.root.children.length) {
-				this.setActiveNode({ selected: this.root.children[0] });
+				// this.setActiveNode({ selected: this.root.children[0] });
+				this.markAsActive({ selected: this.root.children[0] });
 				// propagate tooltip
 				this.activeNode.proofState = this.root.proofState;
 				this.activeNode.tooltip = this.root.tooltip;	
@@ -937,50 +1009,125 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	}
 
 	/**
-	 * Internal function, loads a proof tree into proof-explorer
-	 * @param proofTree The proof to be loaded, in JSON format
+	 * Internal function, initialises data structures necessary for handling of activeNode, including ghostNode and tooltips.
+	 * @param desc Descriptor used for the initialisation of activeNode
 	 */
-	protected loadProofTree (proofTree: ProofTree): void {
+	protected initActiveNode (desc: { selected: ProofItem, tooltip?: string }): void {
+		if (desc && desc.selected) {
+			switch (desc.selected.contextValue) {
+				// root should never be the active node
+				case "root": {
+					this.activeNode = this.ghostNode;
+					this.ghostNode.parent = this.root;
+					this.ghostNode.realNode = this.root;
+					break;
+				}
+				default: {
+					this.activeNode = desc.selected;
+					this.ghostNode.parent = this.activeNode.parent;
+					this.ghostNode.realNode = this.activeNode;
+				}
+			}
+			if (desc.tooltip) {
+				this.activeNode.tooltip = desc.tooltip;
+			}
+		} else {
+			console.warn(`[proof-explorer] Warning: could not initialize active node (selected node is null)`);
+		}
+	}
+
+	/**
+	 * Loads a proof descriptor in proof-explorer
+	 * @param desc The proof descriptor to be loaded
+	 */
+	loadProofDescriptor (desc: ProofDescriptor): void {
 		// utility function for building the proof tree
 		const createTree = (elem: ProofNode, parent: ProofItem): void => {
 			const node: ProofItem = (elem.type === "proof-command") ? 
-				new ProofCommand(elem.id, elem["branch-id"], parent) 
-				: new ProofBranch(elem.id, elem["branch-id"], parent);
+				new ProofCommand(elem.name, elem.branch, parent) 
+				: new ProofBranch(elem.name, elem.branch, parent);
 			parent.appendChild(node);
-			if (elem.children && elem.children.length) {
-				elem.children.forEach(child => {
+			if (elem.rules && elem.rules.length) {
+				elem.rules.forEach(child => {
 					createTree(child, node);
 				});
 			} else {
 				node.collapsibleState = TreeItemCollapsibleState.None;
 			}
 		}
-		this.disposeView();
-		if (proofTree && proofTree.proofStructure) {
-			const proofStatus: string = "Unchecked";
-			this.root = new RootNode(proofTree.proofStructure.id, proofStatus); // this is the proof name
-			this.ghostNode = new GhostNode({ parent: this.root, node: this.root }); // this is the proof status
-			if (proofTree.proofStructure.children && proofTree.proofStructure.children.length) {
-				proofTree.proofStructure.children.forEach(child => {
+		// initialise
+		this.root = null;
+		this.refreshView();
+		if (desc && desc.info && desc.proof) {
+			this.root = new RootNode({ 
+				name: desc.proof.name, 
+				proofStatus: desc.info.status
+			});
+			this.ghostNode = new GhostNode({ parent: this.root, node: this.root });
+			if (desc.proof.rules && desc.proof.rules.length) {
+				desc.proof.rules.forEach((child: ProofNode) => {
 					createTree(child, this.root);
 				});
 			} else {
 				this.root.collapsibleState = TreeItemCollapsibleState.None;
 			}
-			this.proofTree = proofTree;
+			this.proofDescriptor = desc;
 			this.root.proofState = this.initialProofState;
-			this.root.tooltip = utils.formatProofState(this.initialProofState)
-			this.setActiveNode({ selected: this.root });
-			this.activateSelectedProof();
+			this.root.tooltip = utils.formatProofState(this.initialProofState);
+			this.root.pending();
+			this.root.setProofStatus(desc.info.status);
+			// select either the first child or the root if children are not present
+			const selected: ProofItem = (this.root.children && this.root.children.length) ? this.root.children[0] : this.root;
+			this.initActiveNode({ selected });
+			this.markAsActive({ selected }, { force: true });
+			this.startProof();
+			this.dirtyFlag = false;
 		}
-		// update placeholders
-		this.moveIndicatorAtBeginning();
+		// refresh view
+		this.refreshView();
+
 		// register handler for terminal closed events
-		window.onDidCloseTerminal((e: Terminal) => {
-			if (e && e.name === proofTree.proofName) {
+		const handler: vscode.Disposable = window.onDidCloseTerminal((e: Terminal) => {
+			if (e && e.name === `${this.desc.theoryName}.${this.desc.formulaName}`) {
+				// don't save the proof if the user types quit in the command prompt
+				// @TODO: add a command to save the proof from the command prompt
+				
+				// unregister handler
+				handler.dispose();
+				// dispose view
 				this.disposeView();
 			}
 		});
+	}
+
+	/**
+	 * Utility function, returns the current proof tree in JSON format.
+	 */
+	getProofDescriptor (): ProofDescriptor {
+		const makeProofStructure = (node: ProofItem): ProofNode => {
+			const res: ProofNode = {
+				branch: node.branchId,
+				name: node.name,
+				type: <ProofNodeType> node.contextValue,
+				rules: []
+			};
+			for (let i = 0; i < node.children.length; i++) {
+				const child: ProofNode = makeProofStructure(node.children[i]);
+				res.rules.push(child);
+			}
+			return res;
+		}
+		const proof: ProofNode = makeProofStructure(this.root);
+		const proofTree: ProofDescriptor = {
+			info: {
+				theory: this.desc.theoryName,
+				formula: this.desc.formulaName,
+				status: this.root.proofStatus,
+				prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "7.x"
+			},
+			proof
+		};
+		return proofTree;
 	}
 
 	/**
@@ -1070,23 +1217,126 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
             console.error(`[proof-explorer] Error: log file storing active sequent information is null`);
         }
 	}
+
+	/**
+	 * Identifies the pvs version used for the proof
+	 * @param desc PVS version descriptor
+	 */
+	pvsReady(desc: PvsVersionDescriptor): void {
+		this.pvsVersionDescriptor = desc;
+	}
 	
+	/**
+	 * Save the current proof on file
+	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
+	 */
+	async saveProof (opt?: { confirm?: boolean }): Promise<boolean> {
+		return new Promise(async (resolve, reject) => {
+			opt = opt || {};
+			// register handler
+			this.client.onRequest(serverEvent.saveProofResponse, (desc: {
+				response: { success: boolean, msg?: string }, 
+				args: { 
+					fileName: string, 
+					fileExtension: string, 
+					theoryName: string, 
+					formulaName: string, 
+					contextFolder: string, 
+					proofDescriptor: ProofDescriptor
+				}
+			}) => {
+				const fname: string = `${desc.args.fileName}.jprf`;
+				if (desc.response.success) {
+					window.showInformationMessage(`Proof ${desc.args.proofDescriptor.proof.name} saved in ${fname}`);
+				} else {
+					window.showErrorMessage(`Unexpected error while saving file ${fname} (please check pvs-server console for details)`);
+				}
+				resolve(desc.response.success);
+			});
+			// ask the user if the proof is to be saved
+			const yesno: string[] = [ "Yes", "No" ];
+			const msg: string = `Save ${this.root.name}?`;
+			const ans: string = (opt.confirm) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+									: yesno[0];
+			if (ans === yesno[0]) {
+				// update proof descriptor
+				this.proofDescriptor = this.getProofDescriptor();
+				// save proof descriptor to file
+				this.client.sendRequest(serverCommand.saveProof, { 
+					fileName: this.desc.fileName,
+					fileExtension: this.desc.fileExtension,
+					contextFolder: this.desc.contextFolder,
+					theoryName: this.desc.theoryName,
+					formulaName: this.desc.formulaName,
+					proofDescriptor: this.proofDescriptor
+				});
+			}
+		});
+	}
+	/**
+	 * Quit the current proof
+	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
+	 */
+	async quitProof (opt?: { confirm?: boolean }): Promise<boolean> {
+		return new Promise(async (resolve, reject) => {
+			opt = opt || {};
+			opt.confirm = (opt.confirm === undefined || opt.confirm === null) ? true : opt.confirm;
+			// ask the user if the proof is to be saved
+			const yesno: string[] = [ "Yes", "No" ];
+			const msg: string = `Quit proof session?`;
+			const ans: string = (opt.confirm) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+									: yesno[0];
+			if (ans === yesno[0]) {
+				// send quit to the terminal
+				commands.executeCommand("vscode-pvs.send-proof-command", {
+					fileName: this.desc.fileName,
+					fileExtension: this.desc.fileExtension,
+					theoryName: this.desc.theoryName,
+					formulaName: this.desc.formulaName,
+					contextFolder: this.desc.contextFolder,
+					cmd: "quit"
+				});
+			}
+		});
+	}
 	/**
 	 * Activation function, installs all proof-explorer command handlers.
 	 * @param context Client context 
 	 */
-	activate(context: ExtensionContext) {
+	activate(context: ExtensionContext): void {
+		this.client.onRequest(serverEvent.saveProofEvent, (request: { 
+			fileName: string, 
+			fileExtension: string, 
+			contextFolder: string, 
+			theoryName: string, 
+			formulaName: string, 
+			cmd: string 
+		}) => {
+			this.saveProof({ confirm: false });		
+		});
 		// -- handlers for proof explorer commands
+		context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof", () => {
+			this.saveProof({ confirm: true });
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", () => {
+			this.quitProof({ confirm: true });
+		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.forward", () => {
-			this.step();
+			if (!this.ghostNode.isActive()) {
+				this.root.pending();
+				this.step();
+			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.back", () => {
+			this.root.pending();
 			this.step("undo");
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.run-proof", () => {
+			this.root.pending();
 			this.run();
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.fast-forward", (resource: ProofItem) => {
+			this.root.pending();
 			this.fastForwardTo({ selected: resource });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-node", (resource: ProofItem) => {
@@ -1137,7 +1387,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.markAsNotVisited({ selected: resource });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.set-as-active", (resource: ProofItem) => {
-			this.setAsActive({ selected: resource });
+			this.markAsActive({ selected: resource });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.rename-node", (resource: ProofItem) => {
 			this.renameNode({ selected: resource });
@@ -1161,7 +1411,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (this.ghostNode.isActive()) {
 				for (let i = 0; i < children.length; i++) {
 					if (children[i] === this.ghostNode.realNode) {
-						const res: TreeItem[] = children.slice(0, i + 1).concat([this.ghostNode]).concat(children.slice(i + 2));
+						const res: TreeItem[] = children.slice(0, i + 1).concat([this.ghostNode]).concat(children.slice(i + 1));
 						return Promise.resolve(res);
 					}
 				}
@@ -1193,7 +1443,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 // https://emojipedia.org/symbols/
 //  ❌ 🔵 ⚫ ⚪ 🔴 🔽 🔼 ⏯ ⏩ ⏪ ⏫ ⏬ ▶️ ◀️ ⭕ 🔹🔸💠🔷🔶
 
-export const QED: string = "Q.E.D.";
+export const QED: ProofStatus = "proved";
 
 /**
  * Definition of tree items
@@ -1203,7 +1453,6 @@ class ProofItem extends TreeItem {
 	name: string; // prover command or branch id
 	branchId: string = ""; // branch in the proof tree where this command is located (branchId for root is "").
 	command: Command; // vscode action associated to the node
-	proofStatus: string; // this field is used only in the root node
 	protected icon: string = ""; // icon indicating the state of the node
 	protected previousState: {
 		tooltip?: string,
@@ -1214,8 +1463,9 @@ class ProofItem extends TreeItem {
 	protected activeFlag: boolean = false;
 	protected visitedFlag: boolean = false;
 	protected pendingFlag: boolean = false;
+	protected noChangeFlag: boolean = false;
 	proofState: ProofState = null;
-	constructor (type: ProofNodeType | "ghost", name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState) {
+	constructor (type: string, name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState) {
 		super(type, (collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : collapsibleState);
 		this.contextValue = type;
 		this.id = fsUtils.get_fresh_id();
@@ -1226,16 +1476,15 @@ class ProofItem extends TreeItem {
 		this.notVisited();
 	}
 	clone (parent?: ProofItem): ProofItem {
-		const c: ProofItem = 
-			(this.contextValue === "proof-command") ? new ProofCommand(this.name, this.branchId, this.parent, this.collapsibleState)
-			: (this.contextValue === "proof-branch") ? new ProofBranch(this.name, this.branchId, this.parent, this.collapsibleState)
-			: new RootNode(this.name, this.proofStatus);
-		c.parent = parent || null;
-		if (this.contextValue === "root") {
-			c.proofStatus = this.proofStatus;
-			c.pending();
+		switch (this.contextValue) {
+			case "root": { return <RootNode> this.clone(); }
+			case "proof-branch": { return <ProofBranch> this.clone(); }
+			case "proof-command": { return <ProofCommand> this.clone(); }
+			default: {
+				console.warn(`[proof-explorer] Warning: trying to clone node type ${this.contextValue}`);
+			}
 		}
-		return c;
+		return new ProofItem(this.contextValue, this.name, this.branchId, parent, this.collapsibleState);
 	}
 	cloneTree (parent?: ProofItem): ProofItem {
 		parent = parent || this.parent || null;
@@ -1261,6 +1510,7 @@ class ProofItem extends TreeItem {
 		this.activeFlag = false;
 		this.visitedFlag = false;
 		this.pendingFlag = true;
+		this.noChangeFlag = false;
 	}
 	visited (): void {
 		this.previousState.tooltip = this.tooltip;
@@ -1269,6 +1519,7 @@ class ProofItem extends TreeItem {
 		this.activeFlag = false;
 		this.visitedFlag = true;
 		this.pendingFlag = false;
+		this.noChangeFlag = false;
 	}
 	notVisited (): void {
 		this.previousState.tooltip = this.tooltip = " ";
@@ -1277,6 +1528,15 @@ class ProofItem extends TreeItem {
 		this.activeFlag = false;
 		this.visitedFlag = false;
 		this.pendingFlag = false;
+		this.noChangeFlag = false;
+	}
+	noChange (): void {
+		this.icon = '⭕';
+		this.label = `${this.icon}${this.name}`;
+		this.activeFlag = false;
+		this.visitedFlag = false;
+		this.pendingFlag = false;
+		this.noChangeFlag = true;
 	}
 	active (): void {
 		this.icon = "🔷";
@@ -1354,7 +1614,8 @@ class ProofItem extends TreeItem {
 		}
 		return ans;
 	}
-	moveIndicatorForward (lastVisitedChild?: ProofItem): ProofItem | null {
+	moveIndicatorForward (opt?: { lastVisitedChild?: ProofItem, keepSameBranch?: boolean }): ProofItem | null {
+		opt = opt || {};
 		if (this.contextValue === "proof-command") {
 			this.visited();
 		} else {
@@ -1363,9 +1624,9 @@ class ProofItem extends TreeItem {
 		}
 		// check if this node has children, if so, return the first non-visited child
 		if (this.children && this.children.length) {
-			if (lastVisitedChild) {
+			if (opt.lastVisitedChild) {
 				// the next node to be visited is the one after the last visited
-				const idx: number = this.children.indexOf(lastVisitedChild);
+				const idx: number = this.children.indexOf(opt.lastVisitedChild);
 				const next: number = idx + 1;
 				if (next < this.children.length) {
 					return this.children[next];
@@ -1374,10 +1635,14 @@ class ProofItem extends TreeItem {
 				return this.children[0];
 			}
 		}
-		// else, branch completed, go to next sibling
+		// else, branch completed
+		// go to next sibling, unless opt.keepSameBranch === true 
+		if (opt.keepSameBranch && this.children.length > 0) {
+			return null;
+		}
 		this.visited();
-		if (this.contextValue !== "root" && this.parent) {
-			return this.parent.moveIndicatorForward(this);
+		if (this.parent && this.contextValue !== "root") {
+			return this.parent.moveIndicatorForward({ lastVisitedChild: this });
 		}
 		return null;
 	}
@@ -1512,6 +1777,11 @@ class ProofCommand extends ProofItem {
 			arguments: [ this.contextValue ]
 		};
 	}
+	// @override
+	clone (parent?: ProofCommand): ProofCommand {
+		const c: ProofCommand = new ProofCommand(this.name, this.branchId, parent, this.collapsibleState);
+		return c;
+	}
 }
 class ProofBranch extends ProofItem {
 	constructor (cmd: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState) {
@@ -1524,13 +1794,21 @@ class ProofBranch extends ProofItem {
 			arguments: [ this.contextValue ]
 		};
 	}
+	// @override
+	clone (parent?: ProofBranch): ProofBranch {
+		const c: ProofBranch = new ProofBranch(this.name, this.branchId, this.parent, this.collapsibleState);
+		c.parent = parent || null;
+		return c;
+	}
+
 }
 class RootNode extends ProofItem {
-	constructor (proofName: string, proofStatus?: string) {
-		super("root", proofName, "", null, TreeItemCollapsibleState.Expanded);
-		this.parent = this; // the parent of the root is the root itself
-		this.name = proofName;
-		this.setProofStatus(proofStatus);
+	proofStatus: ProofStatus; // this is updated while running the proof
+	initialProofStatus: ProofStatus; // this is set at the beginning (and at the end of the proof attempt if the proof succeeds)
+	constructor (desc: { name: string, proofStatus?: ProofStatus }) {
+		super("root", desc.name, "", null, TreeItemCollapsibleState.Expanded);
+		this.parent = this; // the parent of the root is the root itself	
+		this.initialProofStatus = desc.proofStatus || "untried";
 		this.notVisited();
 		this.command = {
 			title: this.contextValue,
@@ -1539,34 +1817,54 @@ class RootNode extends ProofItem {
 		};
 	}
 	// @overrides
+	clone (parent?: RootNode): RootNode {
+		const c: RootNode = new RootNode({ name: this.name, proofStatus: this.proofStatus });
+		c.parent = parent || null;
+		c.pending();
+		return c;
+	}
+
+	// @overrides
 	notVisited (): void {
-		if (this.proofStatus !== QED) {
-			this.label = this.name;
-		}
+		this.proofStatus = "untried";
+		super.notVisited();
+		this.updateLabel();
 	}
 	// @overrides
 	visited (): void {
-		if (this.proofStatus !== QED) {
-			super.visited();
-		}
+		// do nothing
+	}
+	// @overrides
+	pending (): void {
+		this.proofStatus = "unchecked";
+		super.pending();
+		this.updateLabel();
 	}
 	QED (): void {
 		super.visited();
+		this.initialProofStatus = QED;
 		this.setProofStatus(QED);
-		this.label = " ★ " + this.label;
+		this.updateLabel();
 	}
 	isQED (): boolean {
 		return this.proofStatus === QED;
 	}
-	setProofStatus (proofStatus: string): void {
+	setProofStatus (proofStatus: ProofStatus): void {
 		if (proofStatus) {
 			this.proofStatus = proofStatus;
-			this.label = `${this.name} (${this.proofStatus})`;
+			this.updateLabel();
 		}
 	}
 	resetProofStatus (): void {
-		this.proofStatus = "";
-		this.label = `${this.name}`;
+		this.proofStatus = "untried";
+		this.updateLabel();
+	}
+	protected updateLabel (): void {
+		if (this.initialProofStatus === this.proofStatus) {
+			this.label = `${this.icon}${this.name} (${this.proofStatus})`;
+		} else {
+			this.label = `${this.icon}${this.name} (${this.initialProofStatus} - ${this.proofStatus})`;
+		}
 	}
 }
 class GhostNode extends ProofItem {
@@ -1583,6 +1881,10 @@ class GhostNode extends ProofItem {
 	active (): void {
 		this.activeFlag = true;
 		this.label = " 🔷 ...";
+	}
+	// equivalent to notVisited
+	notActive (): void {
+		this.notVisited();
 	}
 	// @overrides
 	notVisited () {

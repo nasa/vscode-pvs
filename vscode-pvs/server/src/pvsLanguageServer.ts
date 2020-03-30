@@ -51,7 +51,10 @@ import {
 	cliSessionType,
 	PvsDownloadDescriptor,
 	PvsFileDescriptor,
-	FormulaDescriptor
+	FormulaDescriptor,
+	PvsVersionDescriptor,
+	ProofFile,
+	ProofDescriptor
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -88,7 +91,7 @@ export class PvsLanguageServer {
 
 	// pvs path, context folder, server path
 	protected pvsPath: string;
-	// protected pvsVersion: { "pvs-version": string, "lisp-version": string };
+	protected pvsVersionDescriptor: PvsVersionDescriptor;
 
 	// timers
 	protected timers: { [ key:string ]: NodeJS.Timer } = {};
@@ -243,6 +246,13 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async proofCommandRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<void> {
+		// handle commands not supported by pvs-server
+		if (utils.isSaveCommand(request.cmd)) {
+			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request });
+			return;
+		}
+		
+		// else, relay command to pvs-server
 		const response: PvsResponse = await this.proofCommand(request);
 		if (response) {
 			if (response.result) {
@@ -387,8 +397,10 @@ export class PvsLanguageServer {
 	// 		console.error("[pvs-language-server] Warning: prove-formula returned null");
 	// 	}
 	// }
+
+
 	/**
-	 * Show proof script
+	 * Request proof script to pvs-server
 	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
 	 */
 	async proofScript (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<PvsResponse | null> {
@@ -403,15 +415,84 @@ export class PvsLanguageServer {
 		}
 		return null;
 	}
-	async proofScriptRequest (request: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }): Promise<void> {
+	async proofScriptRequest (request: { 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		formulaName: string, 
+		contextFolder: string
+	}): Promise<void> {
 		const response: PvsResponse = await this.proofScript(request);
-		if (response) {
-			this.connection.sendRequest(serverEvent.proofScriptResponse, { response, args: request });
+		if (response && response.result) {
+			const proofTree: ProofDescriptor = utils.proofScriptToJson({
+				prf: response.result,
+				theoryName: request.theoryName, 
+				formulaName: request.formulaName, 
+				version: this.pvsVersionDescriptor
+			});
+			this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: proofTree }, args: request });
 		} else {
+			// create empty proof response template
+			const proofTree: ProofDescriptor = utils.proofScriptToJson({
+				prf: null,
+				theoryName: request.theoryName, 
+				formulaName: request.formulaName, 
+				version: this.pvsVersionDescriptor
+			});			
+			this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: proofTree }, args: request });
 			console.error("[pvs-language-server] Warning: show-proof returned null");
 		}
 	}
 
+	/**
+	 * Load jprf proof file
+	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
+	 */
+	async loadProofRequest (request: { 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		formulaName: string, 
+		contextFolder: string
+	}): Promise<void> {
+		if (request) {
+			const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
+			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
+			const key: string = `${request.theoryName}.${request.formulaName}`;
+			if (proofFile && proofFile[key] && proofFile[key].length > 0) {
+				const pdesc: ProofDescriptor = proofFile[key][0]; // TODO: implement mechanism to allow selection of a specific proof
+				this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc }, args: request });
+			} else {
+				// if the proof is not found in the jprf file, try to ask pvs-server, as the proof may be stored using the old .prf format
+				await this.proofScriptRequest(request);
+			}
+		}
+	}
+
+	/**
+	 * Save jprf proof file
+	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name, proof
+	 */
+	async saveProofRequest (request: { 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		formulaName: string, 
+		contextFolder: string, 
+		proofDescriptor: ProofDescriptor
+	}): Promise<void> {
+		if (request) {
+			const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
+			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
+			proofFile = proofFile || {};
+			const key: string = `${request.theoryName}.${request.formulaName}`;
+			proofFile[key] = [ request.proofDescriptor ]; // TODO: implement mechanism to save a specific proof
+			const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
+			this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: request });
+		} else {
+			console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", request);
+		}
+	}
 	/**
 	 * Typecheck file
 	 * @param args Handler arguments: filename, file extension, context folder
@@ -1137,10 +1218,11 @@ export class PvsLanguageServer {
 				// activate cli gateway
 				await this.cliGateway.activate();
 				// send version info to the front-end
-				this.pvsProxy.getPvsVersionInfo().then((desc: { "pvs-version": string, "lisp-version": string }) => {
+				this.pvsProxy.getPvsVersionInfo().then((desc: PvsVersionDescriptor) => {
 					if (desc) {
 						const majorReleaseNumber: number = parseInt(desc["pvs-version"]);
 						if (majorReleaseNumber >= 7) {
+							this.pvsVersionDescriptor = desc;
 							this.connection.sendRequest(serverEvent.pvsServerReady, desc);
 							this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
 							// parse context folder after a timeout and send diagnostics to the client
@@ -1307,12 +1389,16 @@ export class PvsLanguageServer {
 			// this.connection.onRequest(serverCommand.pvsioEvaluator, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
 			// 	this.pvsioEvaluatorRequest(args); // async call
 			// });
-			this.connection.onRequest(serverCommand.proofScript, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
-				this.proofScriptRequest(args); // async call
+			this.connection.onRequest(serverCommand.loadProof, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
+				this.loadProofRequest(args); // async call
 			});
 			this.connection.onRequest(serverCommand.proofCommand, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, cmd: string }) => {
 				this.proofCommandRequest(args); // async call
 			});
+			this.connection.onRequest(serverCommand.saveProof, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, proofDescriptor: ProofDescriptor }) => {
+				this.saveProofRequest(args); // async call
+			});
+			
 
 			this.connection.onRequest(serverCommand.listDownloadableVersions, async () => {
 				const versions: PvsDownloadDescriptor[] = await PvsPackageManager.listDownloadableVersions();

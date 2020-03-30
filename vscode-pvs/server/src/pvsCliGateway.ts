@@ -97,6 +97,9 @@ export class PvsCliGateway {
 							type: "pvs.proof-command", fileName: string, fileExtension: string, contextFolder: string, 
 							formulaName: string, theoryName: string, cmd: string 
 						} | {
+							type: "pvs.save-proof", fileName: string, fileExtension: string, contextFolder: string, 
+							formulaName: string, theoryName: string
+						} | {
 							type: "publish", channelID: string
 						} = JSON.parse(msg);
 						if (data) {

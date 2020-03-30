@@ -46,15 +46,14 @@
 
 import { Client, Server, createClient, createServer } from 'xmlrpc';
 import { PvsProcess } from "./pvsProcess";
-import { PvsResponse, PvsError, FindDeclarationResult, ParseResult, ImportingDecl, TypedDecl, FormulaDecl, ShowTCCsResult } from "./common/pvs-gui.d";
+import { PvsResponse, ParseResult, ImportingDecl, TypedDecl, FormulaDecl } from "./common/pvs-gui.d";
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, StrategyDescriptor, ProofNode,  ProofTree, serverEvent } from './common/serverInterface';
-import * as utils from './common/languageUtils';
+import { SimpleConnection, serverEvent } from './common/serverInterface';
 import { Parser } from './core/Parser';
-import { DiagnosticSeverity, Diagnostic, Position, Range } from 'vscode-languageserver';
+import { Position, Range } from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
 import { getErrorRange } from './common/languageUtils';
 
@@ -692,8 +691,8 @@ export class PvsProxy {
 			const info: RegExpMatchArray = regexp.exec(res.result);
 			if (info && info.length > 2) {
 				return {
-					"pvs-version": info[1],
-					"lisp-version": info[2]
+					"pvs-version": info[1].trim(),
+					"lisp-version": info[2].trim()
 				}
 			}
 		}

@@ -54,8 +54,8 @@ export declare interface PeekDefinitionCommand {
 };
 
 export declare interface PvsVersionDescriptor {
-	pvsVersion: string,
-	lispVersion: string
+	"pvs-version": string,
+	"lisp-version": string
 };
 
 export declare interface ErrorType {
@@ -174,17 +174,23 @@ export declare interface JsonType {
 }
 export declare type ProofNodeType = "root" | "proof-branch" | "proof-command";
 export declare interface ProofNode { 
-	id: string,
-	children: ProofNode[], 
-	type: ProofNodeType,
-	"branch-id": string
+	name: string, // name of this node (proof name, branch name, or proof command)
+	rules: ProofNode[], // sequence of proof rules
+	type: ProofNodeType, // node type
+	branch: string // branch id
 }
-export declare interface ProofTree {
-	proofStructure: ProofNode;
-	proofName: string;
-	formulaName: string;
-	proverVersion: string;
-	prf: string;
+export declare type ProofStatus = "subsumed" | "simplified" | "proved" | "unproved" | "unfinished" | "unchecked" | "untried";
+export declare interface ProofFile {
+	[key: string]: [ProofDescriptor] // key is theoryName.formulaName
+}
+export declare interface ProofDescriptor {
+	info: {
+		theory: string, // theory name
+		formula: string, // formula name
+		status: ProofStatus, // proof status (proved, untried, unfininshed,...)
+		prover: string // prover version
+	},
+	proof?: ProofNode
 }
 export declare interface PvsListProofStrategies extends PvsResponseType {
 	error: ErrorType,
@@ -432,7 +438,8 @@ export const serverCommand = {
 	proveFormula: "pvs.prove-formula",
 	dischargeTccs: "pvs.prove-tccs",
 	dischargeTheorems: "pvs.prove-file",
-	proofScript: "pvs.proof-script",
+	loadProof: "pvs.load-proof",
+	saveProof: "pvs.save-proof",
 	proofCommand: "pvs.proof-command",
 	parseFile: "pvs.parse-file",
 	parseFileWithFeedback: "pvs.parse-file.with-feedback",
@@ -460,7 +467,8 @@ export const serverEvent = {
 	proveFormulaResponse: "pvs.response.prove-formula",
 	dischargeTccsResponse: "pvs.reponse.prove-tccs",
 	dischargeTheoremsResponse: "pvs.reponse.prove-file",
-	proofScriptResponse: "pvs.response.proof-script",
+	loadProofResponse: "pvs.response.load-proof",
+	saveProofResponse: "pvs.response.save-proof",
 	proofCommandResponse: "pvs.response.proof-command",
 	parseFileResponse: "pvs.response.parse-file",
 	listContextResponse: "pvs.response.list-context",
@@ -479,8 +487,8 @@ export const serverEvent = {
 	contextUpdate: "pvs.event.context-update",
 	proofStateUpdate: "pvs.event.proof-state",
 	workspaceStats: "pvs.event.workspace-stats",
+	saveProofEvent: "pvs.event.quit-proof",
 	
-
 	pvsVersionInfo: "pvs.event.version-info",
 	pvsNotPresent: "pvs.event.pvs-not-present",
 	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version"

@@ -38,6 +38,7 @@
 import { StatusBarItem, ExtensionContext, StatusBarAlignment, window } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
 import * as path from 'path';
+import { PvsVersionDescriptor } from "../common/serverInterface";
 
 export class StatusBarPriority {
     public static Min: number = 1;
@@ -46,7 +47,7 @@ export class StatusBarPriority {
 }
 
 export class VSCodePvsStatusBar {
-    protected pvsVersionInfo: { "pvs-version": string, "lisp-version": string };
+    protected pvsVersionInfo: PvsVersionDescriptor;
     protected pvsStatus: StatusBarItem;
     protected workspaceStatus: StatusBarItem;
     protected versionInfoBar: StatusBarItem;
@@ -89,7 +90,7 @@ export class VSCodePvsStatusBar {
      * Shows pvs version and lisp version in the status bar
      * @param desc pvs version and lisp version
      */
-    pvsReady (desc: { "pvs-version": string, "lisp-version": string }): void {
+    pvsReady (desc: PvsVersionDescriptor): void {
         if (desc) {
             this.pvsVersionInfo = desc;
             this.versionInfoBar.text = desc["pvs-version"];

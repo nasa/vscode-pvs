@@ -42,7 +42,7 @@ import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindin
 import { VSCodePvsWorkspaceExplorer } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { ContextDescriptor, serverEvent, serverCommand } from "./common/serverInterface";
+import { ContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
@@ -111,15 +111,16 @@ export class EventsDispatcher {
     }
 	activate (context: ExtensionContext): void {
         // -- handlers for server responses
-        this.client.onRequest(serverEvent.pvsServerReady, (version: { "pvs-version": string, "lisp-version": string }) => {
+        this.client.onRequest(serverEvent.pvsServerReady, (info: PvsVersionDescriptor) => {
             // parse file opened in the editor
             if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
                 this.client.sendRequest(serverCommand.parseFile, vscode.window.activeTextEditor.document.fileName);
             }
 		});
-		this.client.onRequest(serverEvent.pvsVersionInfo, (version: { "pvs-version": string, "lisp-version": string }) => {
+		this.client.onRequest(serverEvent.pvsVersionInfo, (version: PvsVersionDescriptor) => {
 			if (version) {
-				this.statusBar.pvsReady(version);
+                this.statusBar.pvsReady(version);
+                this.proofExplorer.pvsReady(version);
 			}
 		});
 		this.client.onRequest(serverEvent.contextUpdate, (desc: ContextDescriptor) => {
@@ -249,7 +250,7 @@ export class EventsDispatcher {
                     this.proofExplorer.setInitialProofState(desc.response.result);
                 }
                 // request proof script
-                this.client.sendRequest(serverCommand.proofScript, desc.args);
+                this.client.sendRequest(serverCommand.loadProof, desc.args);
                 // set vscode context variable prover-session-active to true
                 vscode.commands.executeCommand('setContext', 'prover-session-active', true);
             }
@@ -258,20 +259,20 @@ export class EventsDispatcher {
             // do nothing for now
             
         });
-        this.client.onRequest(serverEvent.proofScriptResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
+        this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             if (desc) {
                 console.log(desc);
                 if (desc.response && desc.response.result) {
                     this.proofExplorer.setProofDescriptor(desc.args);
-                    this.proofExplorer.showProofScript(desc.response.result);
-                    this.proofExplorer.activateSelectedProof();
+                    this.proofExplorer.loadProofDescriptor(desc.response.result);
+                    this.proofExplorer.startProof();
                 } else {
-                    console.error(`[event-dispatcher] Error: ${serverEvent.proofScriptResponse} response indicates error`, desc);
-                    window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.proofScriptResponse} response indicates error (please check pvs-server console for details)`);
+                    console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error`, desc);
+                    window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error (please check pvs-server console for details)`);
                 }
             } else {
-                console.error(`[event-dispatcher] Error: ${serverEvent.proofScriptResponse} received null response`);
-                window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.proofScriptResponse} received null response`);
+                console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} received null response`);
+                window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} received null response`);
             }
         });
         // proof-state handler

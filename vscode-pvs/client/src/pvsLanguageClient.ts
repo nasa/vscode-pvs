@@ -228,7 +228,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.statusBar.progress("Activating vscode-pvs components...");	
 			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
 			this.emacsBindingsProvider.activate(this.context);
-			this.workspaceExplorer = new VSCodePvsWorkspaceExplorer(this.client, 'theory-explorer-view');
+			this.workspaceExplorer = new VSCodePvsWorkspaceExplorer(this.client, 'workspace-explorer-view');
 			this.workspaceExplorer.activate(this.context);
 			this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
 			this.proofExplorer.activate(this.context);

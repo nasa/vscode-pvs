@@ -91,7 +91,7 @@
 		"views": {
 			"explorer": [
 				{
-					"id": "theory-explorer-view",
+					"id": "workspace-explorer-view",
 					"name": "PVS Workspace Explorer",
 					"when": "pvs-language-active"
 				},
@@ -283,6 +283,24 @@
 				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node"
 			},
 			{
+				"command": "proof-explorer.save-proof",
+				"title": "Save"
+			},
+			{
+				"command": "proof-explorer.save-proof-as",
+				"title": "Save As...",
+				"enablement": "false"
+			},
+			{
+				"command": "proof-explorer.open-proof",
+				"title": "Open Proof File...",
+				"enablement": "false"
+			},
+			{
+				"command": "proof-explorer.quit-proof",
+				"title": "Quit"
+			},
+			{
 				"command": "proof-explorer.back",
 				"title": "Back one step",
 				"icon": "icons/prev-icon.png"
@@ -308,6 +326,21 @@
 				"command": "proof-mate.show-sequent",
 				"title": "️️Show sequent",
 				"icon": "icons/browser-arrow-icon.png"
+			},
+			{
+				"command": "workspace-explorer.typecheck-all",
+				"title": "Typecheck All",
+				"enablement": "false"
+			},
+			{
+				"command": "workspace-explorer.parse-all",
+				"title": "Parse All",
+				"enablement": "false"
+			},
+			{
+				"command": "workspace-explorer.prove-all",
+				"title": "Prove All",
+				"enablement": "false"
 			}
 		],
 		"menus": {
@@ -324,32 +357,32 @@
 			"view/item/context": [
 				{
 					"command": "vscode-pvs.prove-formula",
-					"when": "view == theory-explorer-view && viewItem == tcc",
+					"when": "view == workspace-explorer-view && viewItem == tcc",
 					"group": "inline"
 				},
 				{
 					"command": "vscode-pvs.prove-formula",
-					"when": "view == theory-explorer-view && viewItem == theorem",
+					"when": "view == workspace-explorer-view && viewItem == theorem",
 					"group": "inline"
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "view == theory-explorer-view && viewItem == theory",
+					"when": "view == workspace-explorer-view && viewItem == theory",
 					"group": "inline"
 				},
 				{
 					"command": "vscode-pvs.show-tccs-alt",
-					"when": "view == theory-explorer-view && viewItem == TCCS",
+					"when": "view == workspace-explorer-view && viewItem == TCCS",
 					"group": "inline"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs-alt",
-					"when": "view == theory-explorer-view && viewItem == TCCS",
+					"when": "view == workspace-explorer-view && viewItem == TCCS",
 					"group": "inline"
 				},
 				{
 					"command": "vscode-pvs.discharge-theorems-alt",
-					"when": "view == theory-explorer-view && viewItem == THEOREMS",
+					"when": "view == workspace-explorer-view && viewItem == THEOREMS",
 					"group": "inline"
 				},
 				{
@@ -364,7 +397,7 @@
 				},
 				{
 					"command": "proof-explorer.show-sequent",
-					"when": "view == proof-explorer-view",
+					"when": "view == proof-explorer-view && viewItem != root",
 					"group": "inline"
 				},
 				{
@@ -539,9 +572,44 @@
 					"group": "navigation"
 				},
 				{
+					"command": "proof-explorer.open-proof",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-0"
+				},
+				{
+					"command": "proof-explorer.save-proof",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1"
+				},
+				{
+					"command": "proof-explorer.save-proof-as",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1"
+				},
+				{
+					"command": "proof-explorer.quit-proof",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-2"
+				},
+				{
 					"command": "proof-mate.show-sequent",
 					"when": "view == proof-mate-view",
 					"group": "navigation"
+				},
+				{
+					"command": "workspace-explorer.parse-all",
+					"when": "view == workspace-explorer-view",
+					"group": "ctrl-0"
+				},
+				{
+					"command": "workspace-explorer.typecheck-all",
+					"when": "view == workspace-explorer-view",
+					"group": "ctrl-0"
+				},
+				{
+					"command": "workspace-explorer.prove-all",
+					"when": "view == workspace-explorer-view",
+					"group": "ctrl-1"
 				}
 			]
 		},
@@ -604,6 +672,14 @@
 				"when": "view == proof-explorer-view && viewItem == proof-command"
 			},
 			{
+				"key": "ctrl+s",
+				"command": "proof-explorer.save-proof",
+				"args": {
+					"text": ""
+				},
+				"when": "view == proof-explorer-view"
+			},
+			{
 				"key": "ctrl+v",
 				"command": "proof-explorer.paste-node",
 				"args": {
@@ -662,6 +738,7 @@
 					".tccs",
 					".ppe",
 					".prf",
+					".jprf",
 					".pr",
 					".hpvs"
 				],

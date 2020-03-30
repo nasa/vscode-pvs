@@ -38,7 +38,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileList } from '../common/serverInterface';
+import { FileList, ProofFile } from '../common/serverInterface';
 
 const HOME_DIR: string = require('os').homedir();
 // nodeJS does not support tilde expansion for the home folder
@@ -98,6 +98,23 @@ export async function readFile(path: string): Promise<string | null> {
 	}
 	return null;
 }
+export async function readProofFile (fname: string): Promise<ProofFile> {
+	let proofFile: ProofFile = null;
+	try {
+		// check if a jprf file exists with the proof
+		const fnameExists: boolean = await fileExists(fname);
+		if (fnameExists) {
+			const content: string = await readFile(fname);
+			if (content) {
+				proofFile = JSON.parse(content);
+			}
+		}
+	} catch (jsonError) {
+		console.warn(`[fs-utils] Warning: unable to parse proof file ${fname}`, jsonError);
+	} finally {
+		return proofFile;
+	}
+ }
 export function deleteFile(fname: string): boolean {
 	try {
 		fs.unlinkSync(fname);
@@ -144,11 +161,17 @@ export async function createFolder(path: string): Promise<void> {
 		fs.mkdirSync(path);
 	}
 }
-export async function writeFile(path: string, content: string): Promise<void> {
+export async function writeFile(path: string, content: string): Promise<boolean> {
 	if (path) {
-		path = tildeExpansion(path);
-		fs.writeFileSync(path, content);
+		try {
+			path = tildeExpansion(path);
+			fs.writeFileSync(path, content);
+		} catch (error) {
+			console.error(`[fs-utils] Error while writing file ${path}`);
+			return false;
+		}
 	}
+	return true;
 }
 export function getFileName(fname: string): string {
 	if (fname) {
@@ -287,6 +310,9 @@ export function getOs (): string {
 	}
 	return process.platform;
 }
+
+
+
 
 // constants
 export const logFolder: string = "pvsbin";

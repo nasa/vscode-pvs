@@ -40,7 +40,7 @@ import * as fsUtils from './fsUtils';
 import * as path from 'path';
 import * as language from '../common/languageKeywords';
 import { StrategyDescriptor, FileList, FormulaDescriptor, SimpleConnection, ContextDescriptor, 
-			TheoryDescriptor, ProofNode,  ProofTree, PvsFileDescriptor } from '../common/serverInterface';
+			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor } from '../common/serverInterface';
 
 interface Position {
 	line: number;
@@ -651,20 +651,27 @@ export function getBranchId (label: string): string {
 	return "";
 }
 
+export function pvsVersionToString (version: PvsVersionDescriptor): string {
+	if (version) {
+		return `PVS ${version["pvs-version"]} (${version["lisp-version"]})`
+	}
+	return null;
+}
+
 /**
  * Utility function, transforms a proof tree into a json object
  * @param desc Descriptor specifying proofTree, formulaName, proofName, and parent node (keeps track of the current parent in the proof tree, used in recursive calls)
  */
-export function proofScriptToJson (proofScript: string): ProofTree {
+export function proofScriptToJson (desc: { prf: string, theoryName: string, formulaName: string, version: PvsVersionDescriptor }): ProofDescriptor {
 	const buildProofTree = (prf: string, proofName: string): ProofNode => {
 		if (prf) {
 			prf = prf.trim();
 			if (prf.startsWith(`(""`)) {
 				const rootNode: ProofNode = {
-					id: proofName,
-					children: [],
+					name: proofName,
+					rules: [],
 					type: "root",
-					"branch-id": "root"
+					branch: "root"
 				};
 				// root node
 				const match: RegExpMatchArray = /\(\"\"([\w\W\s]+)\s*\)/.exec(prf);
@@ -680,12 +687,12 @@ export function proofScriptToJson (proofScript: string): ProofTree {
 	}
 	const expandBranchNames = (node: ProofNode, branchId?: string): void => {
 		if (node) {
-			const goalId: number = +node.id;
+			const goalId: number = +node.name;
 			branchId = branchId || "";
 			branchId = makeBranchId({ branchId, goalId });
-			node["branch-id"] = branchId;
-			for (let i = 0; i < node.children.length; i++) {
-				expandBranchNames(node.children[i], branchId);
+			node.branch = branchId;
+			for (let i = 0; i < node.rules.length; i++) {
+				expandBranchNames(node.rules[i], branchId);
 			}
 		}
 	}
@@ -700,27 +707,27 @@ export function proofScriptToJson (proofScript: string): ProofTree {
 						// remove a matching pair of parentheses and iterate
 						const match: RegExpMatchArray = /\(([\w\W\s]+)\s*\)/.exec(prf);
 						const subexpr: string = match[1];
-						const currentParent: ProofNode = parent.children[parent.children.length - 1];
+						const currentParent: ProofNode = parent.rules[parent.rules.length - 1];
 						buildProofTree_aux(subexpr, proofName, currentParent);
 					} else if (expr.startsWith(`("`)) {
 						// proof command from a labelled branch -- remove the label and iterate
 						const match: RegExpMatchArray = /\(\"(\d+)\"\s*([\w\W\s]+)/.exec(expr);
 						const subexpr: string = match[2].replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
 						const currentBranch: ProofNode = {
-							id: match[1], 
-							children:[], 
+							name: match[1], 
+							rules:[], 
 							type: "proof-branch", 
-							"branch-id": match[1]
+							branch: match[1]
 						};
-						parent.children.push(currentBranch);
+						parent.rules.push(currentBranch);
 						buildProofTree_aux(subexpr, proofName, currentBranch);
 					} else {
 						// proof command
-						parent.children.push({
-							id: expr,
-							children: [],
+						parent.rules.push({
+							name: expr,
+							rules: [],
 							type: "proof-command",
-							"branch-id": expr
+							branch: expr
 						});
 					}
 					// update prf
@@ -756,24 +763,34 @@ export function proofScriptToJson (proofScript: string): ProofTree {
 		return "";
 	}
 
-	const script: string = proofScript.replace(/\n/g, "");
-	// capture group 1 is proofName
-	// capture group 2 is formulaName,
-	// capture group 3 is proofTree
-	const data: RegExpMatchArray = /;;; Proof\s+([\w\-\.\?]+)\s+for formula\s+([\w\-\.\?]+).*\s*(\(""[\n\w\W]+)/g.exec(script);
-	if (data && data.length > 3) {
-		const proofName: string = data[1];
-		const formulaName: string = data[2];
-		const prf: string = data[3];
-		const proofTree: ProofNode = buildProofTree(prf, proofName);
-		const result: ProofTree = {
-			proofStructure: proofTree,
-			proofName,
-			formulaName,
-			prf: proofScript,
-			proverVersion: "7.0-1020"
+	if (desc) {
+		const result: ProofDescriptor = {
+			info: {
+				theory: desc.theoryName,
+				formula: desc.formulaName,
+				status: "untried", // the prf file does not include the proof status
+				prover: pvsVersionToString(desc.version) || "7.x"
+			}
 		};
-		// console.dir(result, { depth: null });
+		if (desc.prf) {
+			const script: string = desc.prf.replace(/\n/g, "");
+			// capture group 1 is proofName
+			// capture group 2 is formulaName,
+			// capture group 3 is proofTree
+			const data: RegExpMatchArray = /;;; Proof\s+([\w\-\.\?]+)\s+for formula\s+([\w\-\.\?]+).*\s*(\(""[\n\w\W]+)/g.exec(script);
+			if (data && data.length > 3) {
+				const proofName: string = data[1];
+				const formulaName: string = data[2];
+				// consistency check
+				if (formulaName !== `${desc.theoryName}.${desc.formulaName}`) {
+					console.warn(`[language-utils] Warning: proof script for ${desc.theoryName}.${desc.formulaName} has unexpected signature ${formulaName}`);
+				}
+				const prf: string = data[3];
+				const proofTree: ProofNode = buildProofTree(prf, proofName);
+				result.proof = proofTree;
+				// console.dir(result, { depth: null });
+			}
+		}
 		return result;
 	}
 	return null;
@@ -800,12 +817,35 @@ export function isUndoCommand (cmd: string): boolean {
 					|| cmd.startsWith("undo "));
 }
 
+export function isPostponeCommand (cmd: string): boolean {
+	return cmd && (cmd === "(postpone)" 
+					|| cmd === "postpone");
+}
+
+export function isSaveCommand (cmd: string): boolean {
+	return cmd && (cmd === "(save)" 
+					|| cmd === "save");
+}
+
+export function isSameCommand (cmd1: string, cmd2: string): boolean {
+	return cmd1 === cmd2 || cmd1 === `(${cmd2})` || `(${cmd1})` === cmd2;
+}
+
 export function isInvalidCommand (result: { commentary: string[] }): boolean {
 	return result
 		&& typeof result.commentary === "object"
 		&& result.commentary.length
 		&& typeof result.commentary[0] === "string"
 		&& result.commentary[0].endsWith("not a valid prover command");
+}
+
+export function noChange (result: { commentary: string[] }): boolean {
+	return result
+		&& typeof result.commentary === "object"
+		&& result.commentary.length
+		&& result.commentary.filter((comment: string)=> {
+			return comment.startsWith("No change on:");
+		}).length > 0;
 }
 
 export function isQED (result: { result: string }): boolean {

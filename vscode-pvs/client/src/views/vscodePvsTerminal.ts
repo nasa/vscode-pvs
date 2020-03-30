@@ -76,7 +76,7 @@ class TerminalSession {
             await this.subscribe(() => {
                 resolve();
             });
-            const terminalName: string = desc.formulaName || desc.fileName || typeID;
+            const terminalName: string = `${desc.fileName}.${desc.formulaName}` || typeID;
             const cliFileName: string = context.asAbsolutePath(path.join('server', 'out', PVS_CLI_FILE));
             const cliArgs: PvsCliInterface = {
                 type: typeID,

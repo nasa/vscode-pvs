@@ -211,7 +211,22 @@ class PvsCli {
 		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.completer(line); });
 		this.rl.setPrompt(utils.colorText(this.prompt, utils.textColor.blue));
 		this.rl.on("line", async (cmd: string) => {
-			if (utils.isQuitCommand(cmd)) {
+			if (utils.isSaveCommand(cmd)) {
+				console.log();
+				console.log("Proof saved successfully!");
+				console.log();
+				this.wsClient.send(JSON.stringify({
+					type: serverCommand.proofCommand,
+					cmd: "save",
+					fileName: this.args.fileName,
+					fileExtension: this.args.fileExtension,
+					contextFolder: this.args.contextFolder,
+					theoryName: this.args.theoryName,
+					formulaName: this.args.formulaName
+				}));
+				// show prompt
+				this.rl.prompt();
+			} else if (utils.isQuitCommand(cmd)) {
 				console.log();
 				console.log("Prover session terminated.");
 				console.log();
