@@ -1,6 +1,8 @@
 ## ChangeLog
-### 1.0.15 (2020.01.xx)
-- Introduced new pvs parser based on antlr4
+### 1.0.15 (2020.03.12)
+- New visual components: Proof Mate, Workspace Explorer (formerly, Theory Explorer)
+- Added support for theory outline view (requires visual studio code >= 1.32.3)
+- Introduced new pvs parser based on antlr4 (requires java development environment)
 - Added support for hybrid programs (.hpvs files)
 
 ### 1.0.14 (2019.11.26)
