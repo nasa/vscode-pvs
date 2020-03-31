@@ -34,6 +34,9 @@ When a new release of VSCode-PVS is available in the [github repository](release
 
 All settings and preferences from the previous version of VSCode-PVS will be maintained.
 
+## Getting started
+New to the PVS verification system? Try out our [tutorial](tutorial/TUTORIAL.md)!
+
 ## Structure
 ```
 .
