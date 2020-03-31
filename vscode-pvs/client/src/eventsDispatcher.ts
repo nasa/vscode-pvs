@@ -49,6 +49,7 @@ import { PvsResponse } from "./common/pvs-gui";
 import * as fsUtils from './common/fsUtils';
 import { PVSioTerminal } from "./views/vscodePVSioTerminal";
 import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
+import * as utils from './common/languageUtils';
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -301,24 +302,41 @@ export class EventsDispatcher {
         }));
 
         // pvsio-evaluator
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-evaluator", async (resource) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-evaluator", async (resource: string | { path: string } | { contextValue: string }) => {
+            if (window.activeTextEditor && window.activeTextEditor.document) {
+                // if the file is currently open in the editor, save file first
+                await window.activeTextEditor.document.save();
+                if (!resource) {
+                    resource = { path: window.activeTextEditor.document.fileName };
+                }
+            }
             if (resource) {
                 let desc = <{ 
                     fileName: string, fileExtension: string, contextFolder: string, 
                     theoryName: string, formulaName: string 
                 }> this.resource2desc(resource);
                 if (desc) {
-                    // PVSio is a different beast, not supported by pvs-server at the moment
-                    new PVSioTerminal(desc);
-                    // // !important: create a new command line interface first, so it can subscribe to events published by the server
-                    // await this.vscodePvsTerminal.startPvsIoEvaluatorSession(desc);
-                    // // send prove-formula request to pvs-server
-                    // this.client.sendRequest(serverCommand.pvsioEvaluator, desc);
+                    if (!desc.theoryName) {
+                        const document: vscode.TextDocument = window.activeTextEditor.document;
+                        const line: number = window.activeTextEditor.selection.active.line;
+                        const theoryName: string = utils.findTheoryName(document.getText(), line);
+                        desc.theoryName = theoryName;
+                    }
+                    if (desc.theoryName) {
+                        // PVSio is a different beast, not supported by pvs-server at the moment
+                        new PVSioTerminal(desc);
+                        // // !important: create a new command line interface first, so it can subscribe to events published by the server
+                        // await this.vscodePvsTerminal.startPvsIoEvaluatorSession(desc);
+                        // // send prove-formula request to pvs-server
+                        // this.client.sendRequest(serverCommand.pvsioEvaluator, desc);
+                    } else {
+                        window.showErrorMessage(`Error while trying to invoke PVSio (could not identify theory name, please check that the file typechecks correctly)`);
+                    }
                 } else {
-                    console.error("[vscode-events-dispatcher] Warning: unknown vscode-pvs.prove-formula resource", resource);
+                    console.error("[vscode-events-dispatcher] Error: pvsio-evaluator invoked over an unknown resource", resource);
                 }
             } else {
-                console.error("[vscode-events-dispatcher] Warning: pvsio-evaluator invoked with null resource", resource);
+                console.error("[vscode-events-dispatcher] Error: pvsio-evaluator invoked with null resource", resource);
             }
         }));
 
@@ -394,14 +412,18 @@ export class EventsDispatcher {
         
         // vscode-pvs.typecheck-file
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-file", async (resource: string | { path: string } | { contextValue: string }) => {
-            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
-                resource = { path: window.activeTextEditor.document.fileName };
+            if (window.activeTextEditor && window.activeTextEditor.document) {
+                // if the file is currently open in the editor, save file first
+                await window.activeTextEditor.document.save();
+                if (!resource) {
+                    resource = { path: window.activeTextEditor.document.fileName };
+                }
             }
 			if (resource) {
                 let desc = <{ 
                     fileName: string, fileExtension: string, contextFolder: string
                 }> this.resource2desc(resource);
-                if (desc) {
+                if (desc) {                    
                     // send typecheck request to pvs-server
                     this.client.sendRequest(serverCommand.typecheckFile, desc);
                 }

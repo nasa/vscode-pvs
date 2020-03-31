@@ -42,11 +42,11 @@ import * as language from '../common/languageKeywords';
 import { StrategyDescriptor, FileList, FormulaDescriptor, SimpleConnection, ContextDescriptor, 
 			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor } from '../common/serverInterface';
 
-interface Position {
+export interface Position {
 	line: number;
 	character: number;
 }
-interface Range {
+export interface Range {
 	start: Position,
 	end: Position
 };

@@ -53,9 +53,10 @@ import * as net from 'net';
 import * as crypto from 'crypto';
 import { SimpleConnection, serverEvent } from './common/serverInterface';
 import { Parser } from './core/Parser';
-import { Position, Range } from 'vscode-languageserver';
+import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
 import { getErrorRange } from './common/languageUtils';
+import { Diagnostic } from 'vscode';
 
 //----------------------------
 // constants introduced for dev purposes, while waiting for the new pvs snapshot
@@ -353,45 +354,37 @@ export class PvsProxy {
 					const startTime: number = Date.now();
 					const res: PvsResponse = await this.pvsRequest('parse', [fname]);
 					if (res) {
-						let range: Range = null;
+						let range: languageserver.Range = null;
 						let message: string = `File ${desc.fileName} parsed successfully`;
-						let stats: { id?: string, decls?: (ImportingDecl | TypedDecl | FormulaDecl)[] }[] = null;
 						let mathObjects: { types: number, definitions: number, lemmas: number } = { types: 0, definitions: 0, lemmas: 0 };
 						if (res.result) {
 							const result: ParseResult = res.result;
 							if (result && result.length) {
 								for (let i = 0; i < result.length; i++) {
 									const theoryStats = result[i];
-									theoryStats.decls.forEach(decl => {
-										switch (decl.kind) {
-											case "type":
-											case "datatype":
-												mathObjects.types++;
-												break;
-											case "formula":
-											case "judgement":
-												mathObjects.lemmas++;
-												break;
-											case "expr":
-											case "conversion":
-											case "auto-rewrite":
-												mathObjects.definitions++;
-												break;
-											default: // do nothing
-										}
-									});
+									if (theoryStats && theoryStats.decls && theoryStats.decls.length) {
+										theoryStats.decls.forEach(decl => {
+											switch (decl.kind) {
+												case "type":
+												case "datatype":
+													mathObjects.types++;
+													break;
+												case "formula":
+												case "judgement":
+													mathObjects.lemmas++;
+													break;
+												case "expr":
+												case "conversion":
+												case "auto-rewrite":
+													mathObjects.definitions++;
+													break;
+												default: // do nothing
+											}
+										});
+									}
 								}
 							}
 						}
-						if (res.error && res.error.data) {
-							const errorPosition: Position = { 
-								line: res.error.data.place[0], 
-								character: res.error.data.place[1]
-							};
-							const txt: string = await fsUtils.readFile(fname);
-							range = getErrorRange(txt, errorPosition);
-							message = `File ${desc.fileName} contains errors`;
-						} 
 						const diags: ParserDiagnostics = {
 							fileName: desc.fileName,
 							fileExtension: desc.fileExtension,
@@ -401,6 +394,21 @@ export class PvsProxy {
 							range,
 							message
 						};
+						if (res.error && res.error.data) {
+							const errorPosition: languageserver.Position = { 
+								line: res.error.data.place[0], 
+								character: res.error.data.place[1]
+							};
+							const txt: string = await fsUtils.readFile(fname);
+							const error_range: languageserver.Range = getErrorRange(txt, errorPosition);
+							const error: languageserver.Diagnostic = {
+								range: error_range,
+								message: res.error.data.error_string,
+								severity: languageserver.DiagnosticSeverity.Error
+							};
+							diags.message = `File ${desc.fileName} contains errors`;
+							diags.errors = [ error ];
+						} 
 						this.parserCache[fname] = { hash, diags };
 						// console.info('parseFile:');
 						// console.dir(res, { depth: null });
