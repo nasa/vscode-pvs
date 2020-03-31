@@ -40,12 +40,17 @@ The main functionalities provided by the environment are as follows:
 2. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
 3. Have fun using the extension!
 
+> **Note**: VSCode-PVS is currently only available for Linux. We are working on the macOS version, please stay tuned. This page will inform you when the macOS version is ready.   
+
 ## Updating VSCode-PVS
 When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
 
 - Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
 
 All settings and preferences from the previous version of VSCode-PVS will be maintained.
+
+## Getting started
+New to the PVS verification system? Try out our [tutorial](vscode-pvs/tutorial/TUTORIAL.md)!
 
 
 ## Notices
