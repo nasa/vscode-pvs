@@ -1,37 +1,42 @@
-[{
-	"description": "Autocomplete theory block",
-	"prefix": "theory",
-	"scope": "pvs",
-	"body": [
-		"${1:theoryName}: THEORY",
-		"  BEGIN $0",
-		"    $2",
-		"  END $1"
-	]
-}, {
-	"description": "Insert if-then-else block",
-	"prefix": "if-then-else",
-	"scope": "pvs",
-	"body": [
-		"IF ${1:cond} THEN ${2:expr1} ELSE ${3:expr2} ENDIF"
-	]
-}, {
-	"description": "Insert COND block",
-	"prefix": "cond-endcond",
-	"scope": "pvs",
-	"body": [
-		"COND",
-		"  ${1:be1} -> ${2:e1},",
-		"  ${3:be2} -> ${4:e2}",
-		"ENDCOND"
-	]
-}, {
-	"description": "Insert BEGIN-END block",
-	"prefix": "begin-end",
-	"scope": "pvs",
-	"body": [
-		"BEGIN",
-		"  $1",
-		"END"
-	]
-}]
+{
+	"Autocomplete theory block": {
+		"description": "Autocomplete theory block",
+		"prefix": "theory",
+		"scope": "pvs",
+		"body": [
+			"${1:theoryName}: THEORY",
+			"  BEGIN $0",
+			"    $2",
+			"  END $1"
+		]
+	},
+	"Insert if-then-else block": {
+		"description": "Insert if-then-else block",
+		"prefix": "if-then-else",
+		"scope": "pvs",
+		"body": [
+			"IF ${1:cond} THEN ${2:expr1} ELSE ${3:expr2} ENDIF"
+		]
+	},
+	"Insert COND block": {
+		"description": "Insert COND block",
+		"prefix": "cond-endcond",
+		"scope": "pvs",
+		"body": [
+			"COND",
+			"  ${1:be1} -> ${2:e1},",
+			"  ${3:be2} -> ${4:e2}",
+			"ENDCOND"
+		]
+	},
+	"Insert BEGIN-END block": {
+		"description": "Insert BEGIN-END block",
+		"prefix": "begin-end",
+		"scope": "pvs",
+		"body": [
+			"BEGIN",
+			"  $1",
+			"END"
+		]
+	}
+}

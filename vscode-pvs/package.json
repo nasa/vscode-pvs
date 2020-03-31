@@ -198,7 +198,7 @@
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs",
-				"title": "Discharge TCCs"
+				"title": "Discharge all TCCs"
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
@@ -508,7 +508,12 @@
 					"group": "y_commands"
 				},
 				{
-					"command": "vscode-pvs.generate-tccs",
+					"command": "vscode-pvs.pvsio-evaluator",
+					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.show-tccs",
 					"when": "resourceScheme == file && resourceExtname == .pvs",
 					"group": "y_commands"
 				},
@@ -545,13 +550,18 @@
 					"group": "y_commands"
 				},
 				{
-					"command": "vscode-pvs.generate-tccs",
+					"command": "vscode-pvs.show-tccs",
 					"when": "resourceScheme == file && resourceExtname == .pvs",
 					"group": "y_commands"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs",
 					"when": "resourceScheme == file && resourceExtname == .tccs",
+					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.pvsio-evaluator",
+					"when": "resourceScheme == file && resourceExtname == .pvs",
 					"group": "y_commands"
 				}
 			],
