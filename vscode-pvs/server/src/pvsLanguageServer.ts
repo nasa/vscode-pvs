@@ -67,7 +67,7 @@ import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import { PvsProxy, ContextDiagnostics } from './pvsProxy';
-import { PvsResponse, PvsError, PvsResult, ImportingDecl, TypedDecl, FormulaDecl, ShowTCCsResult, ProveTccsResult } from './common/pvs-gui';
+import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl, ShowTCCsResult, ProveTccsResult } from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
 
 export interface PvsTheoryDescriptor {
@@ -83,11 +83,8 @@ interface Settings {
 	maxNumberOfProblems: number;
 }
 
-const DEBUG_MODE: boolean = true;
-
-
 export class PvsLanguageServer {
-	protected MAX_PARALLEL_PROCESSES: number = 4;
+	protected MAX_PARALLEL_PROCESSES: number = 1;
 
 	// pvs path, context folder, server path
 	protected pvsPath: string;
@@ -346,7 +343,7 @@ export class PvsLanguageServer {
 	async dischargeTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
 		// typecheck first
 		const taskId: string = `prove-tccs-${fsUtils.desc2fname(request)}`;
-		this.notifyStartImportantTask({ id: taskId, msg: `Typechecking files necessary to discharge typecheck conditions in ${request.fileName}${request.fileExtension}` });
+		this.notifyStartImportantTask({ id: taskId, msg: `Loading theories necessary to discharge typecheck conditions in ${request.fileName}${request.fileExtension}` });
 		// parse workspace files while typechecking
 		await this.parseWorkspaceRequest(request);
 		const req = { fileName: request.fileName, fileExtension: ".pvs", contextFolder: request.contextFolder };
@@ -489,6 +486,9 @@ export class PvsLanguageServer {
 			proofFile[key] = [ request.proofDescriptor ]; // TODO: implement mechanism to save a specific proof
 			const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
 			this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: request });
+			// trigger a context update, so proof status will be updated on the front-end
+			const cdesc: ContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+			this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 		} else {
 			console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", request);
 		}
@@ -529,11 +529,16 @@ export class PvsLanguageServer {
 				// send diagnostics
 				const diags: ContextDiagnostics = {};
 				if (response) {
-					if (response.error && response.error.data) {
-						const fname: string = response.error.data.file_name;
-						diags[fname] = response;
-						this.sendDiagnostics(diags, desc.contextFolder, "Typecheck");
-						this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} contains typecheck errors.` });
+					if (response.error) {
+						if (response.error.data) {
+							const fname: string = response.error.data.file_name;
+							diags[fname] = response;
+							this.sendDiagnostics(diags, desc.contextFolder, "Typecheck");
+							this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} contains typecheck errors.` });
+						} else if (response.error.message) {
+							// this is typically an error thrown by pvs-server, not an error in the PVS spec
+							this.notifyEndImportantTaskWithErrors({ id: taskId, msg: response.error.message });
+						}
 					} else {
 						const fname: string = fsUtils.desc2fname(desc);
 						diags[fname] = response;
@@ -1198,15 +1203,21 @@ export class PvsLanguageServer {
 	 * FIXME: create separate functions for starting pvs-server and pvs-proxy
 	 * @param desc 
 	 */
-	protected async startPvsServerRequest (desc: { pvsPath: string, contextFolder?: string }): Promise<boolean> {
+	protected async startPvsServerRequest (desc: { pvsPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
 		if (desc) {
 			this.pvsPath = desc.pvsPath || this.pvsPath;
+			const externalServer: boolean = !!desc.externalServer;
 			if (this.pvsPath) {
 				console.log(`[pvs-language-server] Rebooting pvs (installation folder is ${this.pvsPath})`);
 				if (this.pvsProxy) {
+					if (externalServer) {
+						await this.pvsProxy.enableExternalServer();
+					} else {
+						await this.pvsProxy.disableExternalServer();
+					}
 					await this.pvsProxy.restartPvsServer({ pvsPath: this.pvsPath });
 				} else {
-					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection });
+					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, externalServer });
 					this.createServiceProviders();
 					const success: boolean = await this.pvsProxy.activate({ debugMode: false });
 					if (!success) {
@@ -1333,7 +1344,7 @@ export class PvsLanguageServer {
 				}
 			});
 
-			this.connection.onRequest(serverCommand.startPvsLanguageServer, async (request: { pvsPath: string, contextFolder?: string }) => {
+			this.connection.onRequest(serverCommand.startPvsLanguageServer, async (request: { pvsPath: string, contextFolder?: string, externalServer?: boolean }) => {
 				// this should be called just once at the beginning
 				const success: boolean = await this.startPvsServerRequest(request);
 				if (success) {
@@ -1397,8 +1408,7 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverCommand.saveProof, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, proofDescriptor: ProofDescriptor }) => {
 				this.saveProofRequest(args); // async call
-			});
-			
+			});			
 
 			this.connection.onRequest(serverCommand.listDownloadableVersions, async () => {
 				const versions: PvsDownloadDescriptor[] = await PvsPackageManager.listDownloadableVersions();
@@ -1415,6 +1425,14 @@ export class PvsLanguageServer {
 			this.connection.onRequest("kill-parser", async (args: { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.pvsProxy.killParser(); // async call
 			});
+
+			this.connection.onRequest(serverCommand.enableExternalServer, async () => {
+				this.pvsProxy.enableExternalServer(); // async call
+			});
+			this.connection.onRequest(serverCommand.disableExternalServer, async () => {
+				this.pvsProxy.disableExternalServer(); // async call
+			});
+
 		});
 
 

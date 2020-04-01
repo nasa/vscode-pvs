@@ -457,7 +457,13 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 			// if a proof is running, then iterate
 			if (this.running) {
-				this.step();
+				// unless we have reached the end of the proof
+				if (this.ghostNode.isActive()) {
+					//  and so we need to stop the execution
+					this.running = false;
+				} else {
+					this.step();
+				}
 			}
 		} else {
 			this.running = false;
@@ -711,6 +717,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		if (desc && desc.selected) {
 			this.clipboard = desc.selected.clone();
 			this.clipboardTree = null;
+			// copy to the system clipboard as well
+			vscode.env.clipboard.writeText(this.clipboard.name);
 			// set vscode context variable proof-explorer.clipboard-contains-node to true
 			vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);
 		} else {
@@ -726,6 +734,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		if (desc && desc.selected) {
 			this.clipboardTree = desc.selected.cloneTree();
 			this.clipboard = null;
+			// copy to the system clipboard as well
+			vscode.env.clipboard.writeText(this.clipboardTree.name);
 			// set vscode context variable proof-explorer.clipboard-contains-node to true
 			vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);
 		} else {
@@ -1341,11 +1351,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-node", (resource: ProofItem) => {
 			this.copyNode({ selected: resource });
-			window.showInformationMessage(`Proof command ${resource.name} copied in clipboard`);
+			window.showInformationMessage(`${resource.name} copied in clipboard`);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-subtree", (resource: ProofItem) => {
 			this.copyTree({ selected: resource });
-			window.showInformationMessage(`Proof subtree rooted in ${resource.name} copied in clipboard`);
+			window.showInformationMessage(`${resource.name} copied in clipboard`);
 		}));
 		// context.subscriptions.push(commands.registerCommand("proof-explorer.paste-before-proof-command", (resource: ProofItem) => {
 		// 	this.pasteBeforeNode({ selected: resource });
@@ -1386,7 +1396,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		context.subscriptions.push(commands.registerCommand("proof-explorer.mark-as-not-visited", (resource: ProofItem) => {
 			this.markAsNotVisited({ selected: resource });
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.set-as-active", (resource: ProofItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.mark-as-active", (resource: ProofItem) => {
 			this.markAsActive({ selected: resource });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.rename-node", (resource: ProofItem) => {

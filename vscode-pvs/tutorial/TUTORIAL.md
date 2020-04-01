@@ -71,7 +71,7 @@ helloworld: THEORY
 2. Typecheck the specification. The system will report that the specification typechecks correctly and two TCCs were generated
 3. To inspect the TCCs: right-click in the editor window. A contextual menu will be shown, Select `Show TCCs` from the contextual menu. The editor will open a new file `helloworld.tccs` that allows you to check the TCCs.
 4. To discharge all TCCS: right-click in the editor window showing the TCCs. A contextual menu will be displayed. Select `Discharge all TCCs` from the contextual menu.
-> Hint: Check out the `PVS Workspace Explorer` located on the side panel, under the file explorer. It shows all theories defined in the context and, for each theory, all formulas and TCCs.
+> Hint: Check out `PVS Workspace Explorer` located in the side panel, under file explorer. It shows all theories defined in the context and, for each theory, all formulas and TCCs.
 ---
 
 ## Example 4: Testing
@@ -151,11 +151,11 @@ This new formulation of the theorem is not true. The theorem prover will not be 
 {1}   x!1 > 0
 {2}   -x!1 > 0
 ```
-Formula `{-1}` (called antecedent) indicates that `x` is a real number.
-Formulas `{1} and {2}` (called succedents) indicates that the theorem is true when `x > 0` and `-x > 0`.
+Formula `{-1}` (called antecedent) indicates that `x` is a real number (`x!1` is a skolem constant representing a generic `x`).
+Formulas `{1} and {2}` (called succedents) indicate that the theorem is true when `x > 0` and `x < 0`.
 Based on the above diagnostics, one can precisely identify the problem: the theorem therefore fails when `x` is `0`.
 
-> Hint 2: Check out the `PVS Proof Explorer` located on the side panel, under the file explorer. It shows the proof steps and provides functions for editing the proof.
+> Hint 2: Check out `PVS Proof Explorer` located in the side panel, under file explorer. It shows the proof steps and provides functions for proof playback and proof editing.
 
 ---
 

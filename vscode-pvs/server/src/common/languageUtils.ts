@@ -40,7 +40,7 @@ import * as fsUtils from './fsUtils';
 import * as path from 'path';
 import * as language from '../common/languageKeywords';
 import { StrategyDescriptor, FileList, FormulaDescriptor, SimpleConnection, ContextDescriptor, 
-			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor } from '../common/serverInterface';
+			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile } from '../common/serverInterface';
 
 export interface Position {
 	line: number;
@@ -339,7 +339,7 @@ export function formatProofState (proofState: ProofState, opt?: { useColors?: bo
  * Utility function, returns the list of theorems defined in a given pvs file
  * @param desc Descriptor indicating filename, file extension, context folder, file content, and whether the file in question is the prelude (flag prelude)
  */
-export function listTheorems (desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean, cache?: { theories?: TheoryDescriptor[] } }): FormulaDescriptor[] {
+export async function listTheorems (desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean, cache?: { theories?: TheoryDescriptor[] } }): Promise<FormulaDescriptor[]> {
 	if (desc) {
 		const theories: TheoryDescriptor[] = (desc.cache && desc.cache.theories) ? desc.cache.theories : listTheories(desc);
 		const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories
@@ -372,6 +372,18 @@ export function listTheorems (desc: { fileName: string, fileExtension: string, c
 								const matchStatus: RegExpMatchArray = tccStatusRegExp.exec(slice);
 								if (matchStatus && matchStatus.length > 1 && matchStatus[1]) {
 									status = matchStatus[1];
+								}
+							} else {
+								// check if the .jprf file contains the proof status
+								const jprf: string = fsUtils.desc2fname({ fileName: desc.fileName, fileExtension: ".jprf", contextFolder: desc.contextFolder });
+								const jprf_content: string = await fsUtils.readFile(jprf);
+								if (jprf_content) {
+									const proofFile: ProofFile = JSON.parse(jprf_content);
+									const theoryName: string = boundaries[i].theoryName;
+									const proofDescriptors: ProofDescriptor[] = proofFile[`${theoryName}.${formulaName}`];
+									if (proofDescriptors && proofDescriptors.length) {
+										status = proofDescriptors[0].info.status;
+									}
 								}
 							}
 							const fdesc: FormulaDescriptor = {
@@ -610,11 +622,11 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 		// if (opt.listTheorems) { console.log(`[languageUtils.getFileDescriptor] listTheorems(${fileName})`);	}
 		const lemmas: FormulaDescriptor[] = 
 			(opt.listTheorems) 
-				? listTheorems({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent, prelude: false, cache: { theories } })
+				? await listTheorems({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent, prelude: false, cache: { theories } })
 					: [];
 		const tccs: FormulaDescriptor[] = 
 			(opt.listTheorems && fileExtension !== ".tccs" && tccsFileContent) 
-				? listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: false })
+				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: false })
 					: [];
 		const descriptors: FormulaDescriptor[] = lemmas.concat(tccs);
 		for (let i = 0; i < theories.length; i++) {
@@ -712,7 +724,7 @@ export function proofScriptToJson (desc: { prf: string, theoryName: string, form
 					} else if (expr.startsWith(`("`)) {
 						// proof command from a labelled branch -- remove the label and iterate
 						const match: RegExpMatchArray = /\(\"(\d+)\"\s*([\w\W\s]+)/.exec(expr);
-						const subexpr: string = match[2].replace(/\n/g, ""); // remove all \n introduced by pvs in the expression
+						const subexpr: string = match[2].replace(/\s*\n\s*/g, " "); // remove all \n introduced by pvs in the expression
 						const currentBranch: ProofNode = {
 							name: match[1], 
 							rules:[], 
@@ -773,7 +785,7 @@ export function proofScriptToJson (desc: { prf: string, theoryName: string, form
 			}
 		};
 		if (desc.prf) {
-			const script: string = desc.prf.replace(/\n/g, "");
+			const script: string = desc.prf.replace(/\s*\n+\s*/g, " "); // remove all \n introduced by pvs in the expression
 			// capture group 1 is proofName
 			// capture group 2 is formulaName,
 			// capture group 3 is proofTree

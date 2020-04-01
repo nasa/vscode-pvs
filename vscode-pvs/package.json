@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.15",
+	"version": "1.0.16",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -45,27 +45,7 @@
 					"pvs.path": {
 						"type": "string",
 						"default": "",
-						"description": "PVS installation folder"
-					},
-					"pvs.settings.completionProvider": {
-						"type": "boolean",
-						"default": true,
-						"description": "Enable completion provider."
-					},
-					"pvs.settings.definitionProvider": {
-						"type": "boolean",
-						"default": true,
-						"description": "Enable definition provider."
-					},
-					"pvs.settings.hoverProvider": {
-						"type": "boolean",
-						"default": true,
-						"description": "Enable hover provider."
-					},
-					"pvs.settings.codelensProvider": {
-						"type": "boolean",
-						"default": true,
-						"description": "Enable literate programming."
+						"description": "PVS installation folder."
 					}
 				}
 			}
@@ -248,8 +228,8 @@
 				"enablement": "view == proof-explorer-view && viewItem != root"
 			},
 			{
-				"command": "proof-explorer.set-as-active",
-				"title": "Set as active",
+				"command": "proof-explorer.mark-as-active",
+				"title": "Mark as active",
 				"enablement": "view == proof-explorer-view && viewItem != root"
 			},
 			{
@@ -371,18 +351,8 @@
 					"group": "inline"
 				},
 				{
-					"command": "vscode-pvs.show-tccs-alt",
-					"when": "view == workspace-explorer-view && viewItem == TCCS",
-					"group": "inline"
-				},
-				{
 					"command": "vscode-pvs.discharge-tccs-alt",
 					"when": "view == workspace-explorer-view && viewItem == TCCS",
-					"group": "inline"
-				},
-				{
-					"command": "vscode-pvs.discharge-theorems-alt",
-					"when": "view == workspace-explorer-view && viewItem == THEOREMS",
 					"group": "inline"
 				},
 				{
@@ -461,9 +431,9 @@
 					"group": "context-menu/edit-6"
 				},
 				{
-					"command": "proof-explorer.set-as-active",
+					"command": "proof-explorer.mark-as-active",
 					"when": "view == proof-explorer-view",
-					"group": "context-menu/edit-7"
+					"group": "context-menu/edit-6"
 				},
 				{
 					"command": "proof-mate.exec-proof-command",

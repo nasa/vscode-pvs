@@ -69,6 +69,9 @@ New to the PVS verification system? Try out our [tutorial](tutorial/TUTORIAL.md)
 
 
 ## ChangeLog
+### 1.0.16 (2020.04.01)
+- Improved Proof Explorer functionalities
+
 ### 1.0.15 (2020.03.12)
 - New visual components: Proof Mate, Workspace Explorer (formerly, Theory Explorer)
 - Added support for theory outline view (requires visual studio code >= 1.32.3)

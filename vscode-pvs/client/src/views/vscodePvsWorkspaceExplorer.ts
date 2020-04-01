@@ -360,8 +360,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
-	updateView (desc: ContextDescriptor): void {
+	updateView (desc: ContextDescriptor, opt?: { ignoreTccs?: boolean }): void {
 		if (desc) {
+			opt = opt || {};
 			// update the list of theories
 			if (desc && desc.contextFolder !== this.root.contextFolder) {
 				this.setContextFolder(desc.contextFolder);
@@ -382,7 +383,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 					for (let i = 0; i < tdesc.theorems.length; i++) {
 						const formula: FormulaDescriptor = tdesc.theorems[i];
 						if (formula.isTcc) {
-							theoryItem.updateTcc(formula);
+							if (!opt.ignoreTccs) {
+								theoryItem.updateTcc(formula);
+							}
 						} else {
 							theoryItem.updateFormula(formula);
 						}

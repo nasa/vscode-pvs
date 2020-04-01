@@ -456,6 +456,8 @@ export const serverCommand = {
 	getFileDescriptor: "pvs.get-file-descriptor",
 
 	cancelOperation: "pvs.cancel-operation",
+	enableExternalServer: "pvs.enable-external-server",
+	disableExternalServer: "pvs.disable-external-server",
 
 	listDownloadableVersions: "pvs.list-downloadable-versions",
 	downloadPvs: "pvs.download-pvs",

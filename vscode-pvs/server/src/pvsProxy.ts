@@ -46,17 +46,16 @@
 
 import { Client, Server, createClient, createServer } from 'xmlrpc';
 import { PvsProcess } from "./pvsProcess";
-import { PvsResponse, ParseResult, ImportingDecl, TypedDecl, FormulaDecl } from "./common/pvs-gui.d";
+import { PvsResponse, ParseResult } from "./common/pvs-gui.d";
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, serverEvent } from './common/serverInterface';
+import { SimpleConnection, serverEvent, PvsVersionDescriptor } from './common/serverInterface';
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
 import { getErrorRange } from './common/languageUtils';
-import { Diagnostic } from 'vscode';
 
 //----------------------------
 // constants introduced for dev purposes, while waiting for the new pvs snapshot
@@ -181,7 +180,7 @@ export class PvsProxy {
 			this.handlers[mth] = (params: string[]): string[] => {
 				// console.info("info", params);
 				return params;
-			}
+			};
 		});
 		this.banner = `XML-RPC GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
 		this.connection = opt.connection;
@@ -191,6 +190,18 @@ export class PvsProxy {
 
 		// create antlr parser for pvs
 		this.parser = new Parser();
+	}
+
+	async enableExternalServer (): Promise<void> {
+		console.info("[pvs-proxy] Enabling external server...");
+		await this.killPvsServer();
+		this.externalServer = true;
+	}
+
+	async disableExternalServer (): Promise<void> {
+		console.info("[pvs-proxy] External server disabled");
+		this.externalServer = false;
+		await this.restartPvsServer();
 	}
 
 	//--------------------------------------------------
@@ -205,9 +216,9 @@ export class PvsProxy {
 				const jsonReq: string = JSON.stringify(req);
 				// console.log(jsonReq);
 				return this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
-					if (error) { console.log("[pvs-proxy] Error returned by pvs-server: "); console.dir(error, { depth: null }); }
-					console.log("[pvs-proxy] Value returned by pvs-server: ");
-					console.dir(value);
+					if (error) { console.error("[pvs-proxy] Error returned by pvs-server: "); console.dir(error, { depth: null }); }
+					// console.log("[pvs-proxy] Value returned by pvs-server: ");
+					// console.dir(value);
 					if (value) {
 						this.nReboots = 0;
 						this.progressInfo.showProgress(method);
@@ -220,7 +231,7 @@ export class PvsProxy {
 							}
 							resolve(resp);
 						} catch (jsonError) {
-							console.log(`[pvs-proxy] Unable to parse pvs-server response :/`, value);
+							console.error(`[pvs-proxy] Unable to parse pvs-server response :/`, value);
 							resolve(null);
 						}
 					} else {
@@ -319,18 +330,18 @@ export class PvsProxy {
 			const content: string = await fsUtils.readFile(fname);
 			const hash: string = crypto.createHash('sha256').update(content.replace(/\s/g, "")).digest('hex'); // do not consider white spaces when creating the hash
 			if (this.parserCache[fname] && hash === this.parserCache[fname].hash) {
-				console.log("[pvs-proxy] Parser diagnostics loaded from cache.");
+				// console.log("[pvs-proxy] Parser diagnostics loaded from cache.");
 				const diags: ParserDiagnostics = this.parserCache[fname].diags;
 				if (diags) {
 					const stats: string = JSON.stringify(this.parserCache[fname].diags["math-objects"]);
 					if (diags.errors && diags.errors.length > 0) {
 						const msg: string = `${desc.fileName}${desc.fileExtension} contains parse errors.`;
-						console.log(`[pvs-proxy] ${msg}`);
+						// console.log(`[pvs-proxy] ${msg}`);
 					} else {
 						const msg: string = `${desc.fileName}${desc.fileExtension} parsed successfully!`;
-						console.log(`[pvs-proxy] ${msg}`);
+						// console.log(`[pvs-proxy] ${msg}`);
 					}
-					console.log(`[pvs-proxy] ${desc.fileName}${desc.fileExtension} | ${stats}`);
+					// console.log(`[pvs-proxy] ${desc.fileName}${desc.fileExtension} | ${stats}`);
 				}
 				return this.makeDiags(diags);
 			} else {
@@ -415,7 +426,8 @@ export class PvsProxy {
 						// return resolve(res);
 						return this.makeDiags(diags, { id: res.id });
 					} else {
-						console.warn(`[pvs-proxy] Warning: received pvs-server error while parsing file ${desc.fileName}${desc.fileExtension}`, res);
+						console.error(`[pvs-proxy] Error: received pvs-server error while parsing file ${desc.fileName}${desc.fileExtension}`, res);
+						this.notifyError(JSON.stringify(res, null, " "));
 						// return resolve(null);
 						return null;
 					}
@@ -933,12 +945,14 @@ export class PvsProxy {
 		// await this.restartPvsServer();
 	}
 
-	protected sendPvsVersionInfo () : void {
-		this.getPvsVersionInfo().then((desc: { "pvs-version": string, "lisp-version": string }) => {
-			if (desc) {
-				this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
+	protected async sendPvsVersionInfo () : Promise<void> {
+		const desc: PvsVersionDescriptor = await this.getPvsVersionInfo();
+		if (desc) {
+			if (this.externalServer) {
+				desc["pvs-version"] += " [EXTERNAL SERVER]";
 			}
-		});
+			this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
+		}
 	}
 
 	async restartPvsServer (desc?: { pvsPath?: string }): Promise<void> {

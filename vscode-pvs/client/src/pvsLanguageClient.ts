@@ -37,7 +37,7 @@
  **/
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands } from 'vscode';
+import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, WorkspaceConfiguration } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
@@ -62,6 +62,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	protected client: LanguageClient;
 	protected pvsPath: string;
 	protected pvsServerReady: boolean = false;
+
+	protected externalServer: boolean = false;
 
 	// context variables
 	protected context: ExtensionContext;
@@ -154,13 +156,23 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		workspace.onDidChangeConfiguration(() => {
 			// re-initialise pvs if the executable is different
 			const pvsPath: string = workspace.getConfiguration().get("pvs.path");
+			const externalServer: boolean =  workspace.getConfiguration().get("pvs.settings.externalServer");
 			if (pvsPath !== this.pvsPath) {
 				this.pvsPath = pvsPath;
 				const msg: string = `Restarting PVS from ${pvsPath}`;
 				this.statusBar.progress(msg);
 				window.showInformationMessage(msg);
 				this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
-			}	
+			} else if (this.externalServer !== externalServer) {
+				this.externalServer = externalServer;
+				if (this.externalServer) {
+					window.showInformationMessage("Enabling external server on port 22334");
+					this.client.sendRequest(comm.serverCommand.enableExternalServer);
+				} else {
+					window.showInformationMessage("External server disabled");
+					this.client.sendRequest(comm.serverCommand.disableExternalServer);
+				}
+			}
 		}, null, this.context.subscriptions);
 	}
 
@@ -269,12 +281,15 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			});
 
 			// start PVS
-			const contextFolder = vscodeUtils.getEditorContextFolder();
-			this.pvsPath = workspace.getConfiguration().get("pvs.path");
-			
-			// setTimeout(() => {
-			this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, { pvsPath: this.pvsPath, contextFolder });
-			// }, 2000);
+			const contextFolder = vscodeUtils.getEditorContextFolder();			
+			const config: WorkspaceConfiguration = workspace.getConfiguration();
+			this.pvsPath = config.get("pvs.path");
+			this.externalServer = !!config.get("pvs.settings.externalServer");
+			this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, {
+				pvsPath: this.pvsPath, 
+				contextFolder, 
+				externalServer: this.externalServer
+			});
 		});
 	}
 

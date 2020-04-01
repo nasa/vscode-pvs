@@ -126,7 +126,7 @@ export class EventsDispatcher {
 		});
 		this.client.onRequest(serverEvent.contextUpdate, (desc: ContextDescriptor) => {
 			if (this.workspaceExplorer) {
-				this.workspaceExplorer.updateView(desc);
+				this.workspaceExplorer.updateView(desc, { ignoreTccs: true });
 			}
 		});
 		this.client.onRequest(serverEvent.typecheckFileResponse, (desc: { 
@@ -530,7 +530,7 @@ export class EventsDispatcher {
         //----------------------------------
         this.client.onNotification("server.status.error", (desc: { msg: string }) => {
             if (desc && desc.msg) {
-                this.statusBar.error(desc.msg);
+                window.showErrorMessage(desc.msg);
             }
         });
         this.client.onNotification("server.status.progress", (desc: { msg: string }) => {
