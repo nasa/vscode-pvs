@@ -37,21 +37,11 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { CancellationToken, CodeLens, Range } from 'vscode-languageserver';
-import { PvsDefinitionProvider } from './pvsDefinitionProvider';
+import { CancellationToken, CodeLens } from 'vscode-languageserver';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 
-export class PvsCodeLensProvider {
-    protected definitionProvider: PvsDefinitionProvider;
-
-    /**
-     * @constructor
-	 * @param definitionProvider Definition provider, necessary for resolving symbol definitions.
-	 */
-	constructor (definitionProvider: PvsDefinitionProvider) {
-		this.definitionProvider = definitionProvider;
-	}
+export class PvsCodeLensProvider {    
     /**
 	 * Standard API of the language server, provides a completion list while typing a pvs expression
      * TODO: improve performance of this function
@@ -64,50 +54,51 @@ export class PvsCodeLensProvider {
             const contextFolder: string = fsUtils.getContextFolder(document.uri);
             const fileName: string = fsUtils.getFileName(document.uri);
             const fileExtension: string = fsUtils.getFileExtension(document.uri);
-            if (!this.definitionProvider.isProtectedFolder(contextFolder)) {
-                const codeLens: CodeLens[] = [];
-                const content: string = document.txt.replace(utils.commentRegexp, "");
-                const regexp: RegExp = utils.theoremRegexp;
-                let match: RegExpMatchArray = null;
-                while (match = regexp.exec(content)) {
-                    if (match.length > 1 && match[1]) {
-                        const formulaName: string = match[1];
 
-                        // the following can be done in the resolve if necessary for performance reasons
-                        const character: number = match.index;
-                        const docUp: string = content.slice(0, character + formulaName.length);
-                        const line: number = docUp.split("\n").length - 1;
+            const codeLens: CodeLens[] = [];
+            const content: string = document.txt.replace(utils.commentRegexp, "");
+            const regexp: RegExp = utils.theoremRegexp;
+            let match: RegExpMatchArray = null;
 
-                        const theoryName: string = utils.findTheoryName(content, line);
-                        const args = {
-                            fileName,
-                            fileExtension,
-                            contextFolder,
-                            theoryName, 
-                            formulaName,
-                            line
-                        };
-                        codeLens.push({
-                            range: {
-                                start: { line: line, character: match.index },
-                                end: { line: line, character: match.index + formulaName.length }
-                            },
-                            command: {
-                                title: `prove`,
-                                command: "vscode-pvs.prove-formula",
-                                arguments: [ args ]
-                            }
-                            // ,
-                            // data: {
-                            //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
-                            // }
-                        });
-                    }
+            while (match = regexp.exec(content)) {
+                if (match.length > 1 && match[1]) {
+                    const formulaName: string = match[1];
+
+                    // the following can be done in the resolve if necessary for performance reasons
+                    const docUp: string = content.slice(0, match.index + formulaName.length);
+                    const lines: string[] = docUp.split("\n");
+                    const line: number = lines.length - 1;
+                    const character: number = lines[lines.length - 1].indexOf(match[1]);
+                    
+                    const theoryName: string = utils.findTheoryName(content, line);
+                    const args = {
+                        fileName,
+                        fileExtension,
+                        contextFolder,
+                        theoryName, 
+                        formulaName,
+                        line
+                    };
+                    codeLens.push({
+                        range: {
+                            start: { line, character },
+                            end: { line, character: character + formulaName.length }
+                        },
+                        command: {
+                            title: `prove`,
+                            command: "vscode-pvs.prove-formula",
+                            arguments: [ args ]
+                        }
+                        // ,
+                        // data: {
+                        //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
+                        // }
+                    });
                 }
-                return Promise.resolve(codeLens);
             }
+            return Promise.resolve(codeLens);
         }
-        return null;
+        return Promise.resolve([]);
     }
 
     resolveCodeLens(codeLens: CodeLens, token?: CancellationToken): CodeLens {
