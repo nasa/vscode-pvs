@@ -74,26 +74,29 @@ export function readDir(contextFolder: string): Promise<string[]> {
 }
 export async function readFile(path: string): Promise<string | null> {
 	if (path) {
-		path = path.replace("file://", "");
-		path = tildeExpansion(path);
-		try {
-			const data: Buffer = fs.readFileSync(path);
-			if (data) {
-				return data.toLocaleString();
+		const exists: boolean = await fileExists(path);
+		if (exists) {
+			path = path.replace("file://", "");
+			path = tildeExpansion(path);
+			try {
+				const data: Buffer = fs.readFileSync(path);
+				if (data) {
+					return data.toLocaleString();
+				}
+				return null;
+				// return new Promise<string>((resolve, reject) => {
+				// 	fs.readFile(path, (error: NodeJS.ErrnoException, data: Buffer) => {
+				// 		if (data) {
+				// 			resolve(data.toString('utf8'));
+				// 		} else {
+				// 			resolve(null);
+				// 		}
+				// 	});
+				// });
+			} catch (fileReadError) {
+				console.error(`[fs-utils] Error while reading file ${path}`, fileReadError);
+				return null;
 			}
-			return null;
-			// return new Promise<string>((resolve, reject) => {
-			// 	fs.readFile(path, (error: NodeJS.ErrnoException, data: Buffer) => {
-			// 		if (data) {
-			// 			resolve(data.toString('utf8'));
-			// 		} else {
-			// 			resolve(null);
-			// 		}
-			// 	});
-			// });
-		} catch (fileReadError) {
-			// console.error(fileReadError);
-			return null;
 		}
 	}
 	return null;
@@ -221,14 +224,15 @@ export async function dirExists(path: string): Promise<boolean> {
 	return pathExists(path);
 }
 export async function pathExists(path: string): Promise<boolean> {
-	let ans: boolean = false;
 	if (path) {
+		let ans: boolean = false;
 		path = tildeExpansion(path);
 		try {
-			ans = await fs.existsSync(path);
-			return ans;
+			ans = fs.existsSync(path);
 		} catch (readError) {
 			// console.error(readError);
+		} finally {
+			return ans;
 		}
 	}
 	return false;

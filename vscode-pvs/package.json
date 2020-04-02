@@ -46,6 +46,26 @@
 						"type": "string",
 						"default": "",
 						"description": "PVS installation folder."
+					},
+					"pvs.settings.codelensProvider": {
+						"type": "boolean",
+						"default": true,
+						"description": "Inline actionable commands"
+					},
+					"pvs.settings.hoverProvider": {
+						"type": "boolean",
+						"default": true,
+						"description": "Hover information for symbol definitions"
+					},
+					"pvs.settings.completionProvider": {
+						"type": "boolean",
+						"default": true,
+						"description": "Autocompletion for function names and language keywords"
+					},
+					"pvs.settings.definitionProvider": {
+						"type": "boolean",
+						"default": true,
+						"description": "Automatic search of symbol definitions"
 					}
 				}
 			}

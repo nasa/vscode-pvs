@@ -35,15 +35,14 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-import { ExtensionContext, TreeItemCollapsibleState, commands, window, TextDocument, 
+import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { FileList, FormulaDescriptor,
-			TheoryDescriptor, ContextDescriptor } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, ContextDescriptor, ProofStatus } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
-import { serverCommand, serverEvent } from '../common/serverInterface';
+import * as utils from '../common/languageUtils';
 
 //-- theories
 class TheoryItem extends TreeItem {
@@ -185,7 +184,7 @@ export class FormulaItem extends TreeItem {
 	protected theoryName: string;
 	protected formulaName: string;
 	protected position: Position;
-	protected status: string;
+	protected status: ProofStatus;
 	protected contextFolder: string;
 	constructor(typeName: string, desc: FormulaDescriptor) {
 		super(typeName, TreeItemCollapsibleState.None);
@@ -212,38 +211,14 @@ export class FormulaItem extends TreeItem {
 	getTheoryName(): string { return this.theoryName; }
 	getFormulaName(): string { return this.formulaName; }
 	getContextFolder(): string { return this.contextFolder; }
-	setStatus (status: string) {
+	setStatus (status: ProofStatus) {
 		this.status = status;
 		this.refreshLabel();
 	}
 	protected refreshLabel() {
 		this.status = this.status || "unchecked"; //'\u{2705}'
 		this.status = this.status.startsWith("proved") ? "proved" : this.status;
-		switch (this.status) {
-			case "subsumed":
-			case "simplified":
-			// case "proved - incomplete":
-			// case "proved - by mapping":
-			// case "proved - complete": 
-			case "proved": {
-				this.label = `✅ ${this.formulaName} (${this.status})`;
-				break;
-			}
-			case "unproved":
-			case "unfinished": { // proof attempted but failed
-				this.label = `❗ ${this.formulaName} (${this.status})`;
-				break;
-			}
-			case null:
-			case "unchecked": // proof was successful, but needs to be checked again because of changes in the theories
-			case "untried": {// proof has not been attempted yet
-				this.label = `❄️ ${this.formulaName} (${this.status})`;
-				break;
-			}
-			default: {
-				this.label = `✨ ${this.formulaName} (${this.status})`;
-			}
-		}
+		this.label = `${utils.getIcon(this.status)} ${this.formulaName} (${this.status})`;
 	}
 }
 //-- overviews

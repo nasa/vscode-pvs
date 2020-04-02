@@ -36,15 +36,16 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { PvsDeclarationDescriptor, PvsDefinition, PvsDeclarationType, PRELUDE_FILE, PvsResponseType, PvsFindDeclaration } from '../common/serverInterface';
+import { PvsDefinition, ProofStatus } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
-import { Connection, TextDocument, Position, Range, CancellationToken, TextDocuments } from 'vscode-languageserver';
+import { Connection, Position, Range, CancellationToken, TextDocuments } from 'vscode-languageserver';
 import { findTheoryName, getWordRange } from '../common/languageUtils';
 import * as fs from '../common/fsUtils';
 import { PvsProxy } from '../pvsProxy';
 import * as fsUtils from '../common/fsUtils';
 import { FindDeclarationResult, Place, PvsResponse } from '../common/pvs-gui';
 import * as path from 'path';
+import * as utils from '../common/languageUtils';
 
 export class PvsDefinitionProvider {
 	connection: Connection;
@@ -158,43 +159,59 @@ export class PvsDefinitionProvider {
 		if (ans && ans.result) {
 			const declarations: FindDeclarationResult = ans.result;
 			if (declarations && typeof declarations === "object" && declarations.length > 0) {
-				const candidates: PvsDefinition[] = declarations.map((info: {
-					declname?: string;
-					type?: string;
-					theoryid?: string;
-					filename?: string;
-					place?: Place;
-					"decl-ppstring"?: string;
-				}) => {
-					let fname: string = info ? info.filename : null;
-					if (fname && fname.indexOf("/") < 0) {
+				const candidates: PvsDefinition[] = [];
+				for (let i = 0; i < declarations.length; i++) {
+					const info: {
+						declname?: string;
+						type?: string;
+						theoryid?: string;
+						filename?: string;
+						place?: Place;
+						"decl-ppstring"?: string;
+					} = declarations[i];
+					if (info) {
+						let fname: string = info.filename;
 						// FIXME: pvs-server does not include path when the file is in the current context
-						// add contextFolder to fname, check if this is the pvslog folder (if so, remove /pvsbin)
-						let contextFolder: string = fsUtils.getContextFolder(uri);
-						if (contextFolder.endsWith(`/${fsUtils.logFolder}`)) {
-							contextFolder = contextFolder.split("/").slice(0, -1).join("/");
+						if (fname && fname.indexOf("/") < 0) {
+							// add contextFolder to fname, check if this is the pvslog folder (if so, remove /pvsbin)
+							let contextFolder: string = fsUtils.getContextFolder(uri);
+							if (contextFolder.endsWith(`/${fsUtils.logFolder}`)) {
+								contextFolder = contextFolder.split("/").slice(0, -1).join("/");
+							}
+							fname = path.join(contextFolder, fname);
 						}
-						fname = path.join(contextFolder, fname);
+						let comment: string = "";
+						if (fname && info.type === "theorem" || info.type === "lemma") {
+							// check if the theorem has been proved, and if so add the proof status to the tooltip
+							const proofStatus: ProofStatus = await utils.getProofStatus({
+								contextFolder: fsUtils.getContextFolder(fname),
+								fileName: fsUtils.getFileName(fname),
+								fileExtension: fsUtils.getFileExtension(fname),
+								theoryName: info.theoryid,
+								formulaName: info.declname
+							});
+							comment += `Formula ${info.declname} (${utils.getIcon(proofStatus)} ${proofStatus})`;
+						}
+						const ans: PvsDefinition = {
+							theory: currentTheory,
+							line: (position) ? position.line : null,
+							character: (position) ? position.character : null,
+							file: uri,
+							symbolName: symbolName,
+							symbolTheory: (info) ? info.theoryid : null,
+							symbolDeclaration: (info) ? info["decl-ppstring"] : null,
+							symbolDeclarationRange: (info && info.place && info.place.length > 1) ? { 
+								start: { line: info.place[0], character: info.place[1] }, 
+								end: (info.place.length === 4) ? { line: info.place[2], character: info.place[3] } : undefined
+							} : null,
+							symbolDeclarationFile: fname,
+							symbolDoc: null,
+							comment,
+							error: null
+						}
+						candidates.push(ans);
 					}
-					const ans: PvsDefinition = {
-						theory: currentTheory,
-						line: (position) ? position.line : null,
-						character: (position) ? position.character : null,
-						file: uri,
-						symbolName: symbolName,
-						symbolTheory: (info) ? info.theoryid : null,
-						symbolDeclaration: (info) ? info["decl-ppstring"] : null,
-						symbolDeclarationRange: (info && info.place && info.place.length > 1) ? { 
-							start: { line: info.place[0], character: info.place[1] }, 
-							end: (info.place.length === 4) ? { line: info.place[2], character: info.place[3] } : undefined
-						} : null,
-						symbolDeclarationFile: fname,
-						symbolDoc: null,
-						comment: null,
-						error: null
-					}
-					return ans;
-				});
+				}
 			
 				// // remove VAR from prelude
 				// candidates = candidates.filter(desc => {
@@ -213,15 +230,13 @@ export class PvsDefinitionProvider {
 				if (candidates.length === 1) {
 					response = candidates[0];
 					const isBuiltinType: boolean = new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g").test(symbolName);
+					const isTrueFalse: boolean = new RegExp(language.PVS_TRUE_FALSE_REGEXP_SOURCE, "gi").test(symbolName);
 					if (isBuiltinType) {
 						response.comment = `Builtin type ${symbolName}`;
-					} else {
-						const isTrueFalse: boolean = new RegExp(language.PVS_TRUE_FALSE_REGEXP_SOURCE, "gi").test(symbolName);
-						if (isTrueFalse) {
-							response.comment = `Builtin constant ${symbolName}`;
-						} else {
-							response.comment = `User-defined symbol ${symbolName}`
-						}
+					} else if (isTrueFalse) {
+						response.comment = `Builtin constant ${symbolName}`;
+					} else if (!response.comment) {
+						response.comment = `User-defined symbol ${symbolName}`
 					}
 					return [ response ];
 				}

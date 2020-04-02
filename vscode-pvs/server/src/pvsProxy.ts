@@ -1,5 +1,5 @@
 /**
- * @module xmlrpcProxy
+ * @module PvsProxy
  * @author Paolo Masci
  * @date 2019.06.18
  * @copyright 
@@ -941,7 +941,7 @@ export class PvsProxy {
 			console.log(`[pvs-proxy] New pvs path: ${this.pvsPath}`);
 		}
 		await this.killPvsServer();
-		// pvs server will automatically be rebooted --- see pvsRequest method
+		// an explicit invocation of restartServer is not necessary, pvs server will automatically be rebooted --- see pvsRequest method
 		// await this.restartPvsServer();
 	}
 
@@ -949,7 +949,7 @@ export class PvsProxy {
 		const desc: PvsVersionDescriptor = await this.getPvsVersionInfo();
 		if (desc) {
 			if (this.externalServer) {
-				desc["pvs-version"] += " [EXTERNAL SERVER]";
+				desc["lisp-version"] += " [EXTERNAL SERVER]";
 			}
 			this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
 		}

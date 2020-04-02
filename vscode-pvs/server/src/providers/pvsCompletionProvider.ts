@@ -170,59 +170,65 @@ export class PvsCompletionProvider {
 				if (lines && lines.length > position.line) {
 					const lineText: string = lines[position.line];
 					const currentInput: string = lineText.substr(0, position.character).trim();
-					let localSymbols: PvsDeclarationDescriptor[] = []; // TODO
 
-					let match: RegExpMatchArray = null;
-					if (match = (isense.recordExpression.exec(currentInput) || isense.recordAccessor.exec(currentInput))) {
-						// RegExp objects are stateful, we need to reset them every time
-						isense.recordExpression.lastIndex = isense.recordAccessor.lastIndex = 0;
-						if (!currentInput.endsWith(":=")) {
-							// resolve accessor
-							const symbolName: string = match[1];
-							let declarations: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.uri, symbolName, position);
-							if (declarations && declarations.length === 1 && declarations[0].symbolDeclaration) {
-								let decl: PvsDefinition = declarations[0];
-								let tmp: RegExpExecArray = utils.RECORD.declaration.exec(decl.symbolDeclaration);
-								utils.RECORD.declaration.lastIndex = 0;
-								// const id: string = tmp[1];
-								const isTypeDeclaration: boolean = tmp[2].toUpperCase() === "TYPE";
-								// const isUninterpreted: boolean = !tmp[3];
-								if (!isTypeDeclaration) {
-									const typeName: string = tmp[2];
-									let definitions: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.uri, typeName, position);
-									decl = (definitions && definitions.length === 1) ? definitions[0] : null;
-								}
-								if (decl) {
-									tmp = utils.RECORD.accessors.exec(decl.symbolDeclaration);
-									utils.RECORD.accessors.lastIndex = 0;
-									if (tmp && tmp.length > 1) {
-										const recordFields: string = tmp[1];
-										if (recordFields) {
-											const fields: string[] = recordFields.split(",");
-											if (fields) {
-												const fieldNames: CompletionItem[] = fields.map((decl) => {
-													const insertText: string = decl.split(":")[0].trim();
-													return {
-														label: decl.trim(),
-														insertText: insertText,
-														kind: CompletionItemKind.Field
-													};
-												});
-												return Promise.resolve(fieldNames);
+					if (currentInput.length > 2) {
+						let localSymbols: PvsDeclarationDescriptor[] = []; // TODO
+
+						let match: RegExpMatchArray = null;
+						if (match = (isense.recordExpression.exec(currentInput) || isense.recordAccessor.exec(currentInput))) {
+							// RegExp objects are stateful, we need to reset them every time
+							isense.recordExpression.lastIndex = isense.recordAccessor.lastIndex = 0;
+							if (!currentInput.endsWith(":=")) {
+								// resolve accessor
+								const symbolName: string = match[1];
+								let declarations: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.uri, symbolName, position);
+								if (declarations && declarations.length === 1 && declarations[0].symbolDeclaration) {
+									let decl: PvsDefinition = declarations[0];
+									let tmp: RegExpExecArray = utils.RECORD.declaration.exec(decl.symbolDeclaration);
+									utils.RECORD.declaration.lastIndex = 0;
+									// const id: string = tmp[1];
+									const isTypeDeclaration: boolean = tmp[2].toUpperCase() === "TYPE";
+									// const isUninterpreted: boolean = !tmp[3];
+									if (!isTypeDeclaration) {
+										const typeName: string = tmp[2];
+										let definitions: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.uri, typeName, position);
+										decl = (definitions && definitions.length === 1) ? definitions[0] : null;
+									}
+									if (decl) {
+										tmp = utils.RECORD.accessors.exec(decl.symbolDeclaration);
+										utils.RECORD.accessors.lastIndex = 0;
+										if (tmp && tmp.length > 1) {
+											const recordFields: string = tmp[1];
+											if (recordFields) {
+												const fields: string[] = recordFields.split(",");
+												if (fields) {
+													const fieldNames: CompletionItem[] = fields.map((decl) => {
+														const insertText: string = decl.split(":")[0].trim();
+														return {
+															label: decl.trim(),
+															insertText: insertText,
+															kind: CompletionItemKind.Field
+														};
+													});
+													return Promise.resolve(fieldNames);
+												}
 											}
 										}
 									}
 								}
+								return Promise.resolve([]);
+							} else {
+								// resolve accessor type
+								// TODO
 							}
-							return Promise.resolve([]);
-						} else {
-							// resolve accessor type
-							// TODO
 						}
+						return Promise.resolve(this.languageCompletionItems.filter((item: CompletionItem) => {
+							return item.label.startsWith(currentInput);
+						}));
 					}
 				}
 			}
 		}
-		return Promise.resolve(this.languageCompletionItems);
+		return null;
 	}
 }

@@ -40,7 +40,7 @@ import * as fsUtils from './fsUtils';
 import * as path from 'path';
 import * as language from '../common/languageKeywords';
 import { StrategyDescriptor, FileList, FormulaDescriptor, SimpleConnection, ContextDescriptor, 
-			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile } from '../common/serverInterface';
+			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus } from '../common/serverInterface';
 
 export interface Position {
 	line: number;
@@ -335,6 +335,24 @@ export function formatProofState (proofState: ProofState, opt?: { useColors?: bo
 	return null;
 }
 
+export async function getProofStatus (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<ProofStatus> {
+	if (desc) {
+		let status: ProofStatus = "untried";
+		// check if the .jprf file contains the proof status
+		const jprf: string = fsUtils.desc2fname({ fileName: desc.fileName, fileExtension: ".jprf", contextFolder: desc.contextFolder });
+		const jprf_content: string = await fsUtils.readFile(jprf);
+		if (jprf_content) {
+			const proofFile: ProofFile = JSON.parse(jprf_content);
+			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
+			if (proofDescriptors && proofDescriptors.length) {
+				status = proofDescriptors[0].info.status;
+			}
+		}
+		return status;
+	}
+	return null;
+}
+
 /**
  * Utility function, returns the list of theorems defined in a given pvs file
  * @param desc Descriptor indicating filename, file extension, context folder, file content, and whether the file in question is the prelude (flag prelude)
@@ -367,24 +385,22 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 							const offset: number = (slice) ? slice.split("\n").length : 0;
 							const line: number = boundaries[i].from + offset - 1;
 							const isTcc: boolean = desc.fileExtension === ".tccs";
-							let status: string = (desc.prelude) ? "proved" : "untried";
+							let status: ProofStatus = (desc.prelude) ? "proved" : "untried";
 							if (isTcc) {
 								const matchStatus: RegExpMatchArray = tccStatusRegExp.exec(slice);
 								if (matchStatus && matchStatus.length > 1 && matchStatus[1]) {
-									status = matchStatus[1];
+									status = <ProofStatus> matchStatus[1];
 								}
 							} else {
 								// check if the .jprf file contains the proof status
-								const jprf: string = fsUtils.desc2fname({ fileName: desc.fileName, fileExtension: ".jprf", contextFolder: desc.contextFolder });
-								const jprf_content: string = await fsUtils.readFile(jprf);
-								if (jprf_content) {
-									const proofFile: ProofFile = JSON.parse(jprf_content);
-									const theoryName: string = boundaries[i].theoryName;
-									const proofDescriptors: ProofDescriptor[] = proofFile[`${theoryName}.${formulaName}`];
-									if (proofDescriptors && proofDescriptors.length) {
-										status = proofDescriptors[0].info.status;
-									}
-								}
+								const theoryName: string = boundaries[i].theoryName;
+								status = await getProofStatus({
+									fileName: desc.fileName, 
+									fileExtension: desc.fileExtension, 
+									contextFolder: desc.contextFolder,
+									formulaName,
+									theoryName
+								});
 							}
 							const fdesc: FormulaDescriptor = {
 								fileName: desc.fileName,
@@ -864,6 +880,31 @@ export function isQED (result: { result: string }): boolean {
 	return result && result.result === "Q.E.D."; 
 }
 
+export const icons: { [name:string]: string } = {
+	"check": "✅",
+	"bang": "❗",
+	"snow": "❄️",
+	"stars": "✨"
+};
+
+export function getIcon (proofStatus: ProofStatus): string {
+	switch (proofStatus) {
+		case "subsumed":
+		case "simplified":
+		// case "proved - incomplete":
+		// case "proved - by mapping":
+		// case "proved - complete": 
+		case "proved":
+			return icons.check;
+		case "unproved":
+		case "unfinished": // proof attempted but failed
+			return icons.bang;
+		case "unchecked":  // proof was successful, but needs to be checked again because of changes in the theories
+			return icons.snow;
+		case "untried": // proof has not been attempted yet
+		return icons.stars;
+	}
+}
 
 
 /**

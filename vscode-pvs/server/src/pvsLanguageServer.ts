@@ -40,7 +40,7 @@ import {
 	Connection, TextDocuments, TextDocument, CompletionItem, createConnection, ProposedFeatures, InitializeParams, 
 	TextDocumentPositionParams, Hover, CodeLens, CodeLensParams,
 	Diagnostic, Position, Range, DiagnosticSeverity, Definition,
-	Location, TextDocumentChangeEvent, TextDocumentSyncKind
+	Location, TextDocumentChangeEvent, TextDocumentSyncKind, TextDocumentWillSaveEvent
 } from 'vscode-languageserver';
 import { 
 	PvsDefinition,
@@ -69,6 +69,7 @@ import * as path from 'path';
 import { PvsProxy, ContextDiagnostics } from './pvsProxy';
 import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl, ShowTCCsResult, ProveTccsResult } from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
+import { TextEdit } from 'vscode';
 
 export interface PvsTheoryDescriptor {
 	id?: string;
@@ -1070,12 +1071,12 @@ export class PvsLanguageServer {
 
 		// onDidSave fires when a document is saved on the editor
 		this.documents.onDidSave(async (save: TextDocumentChangeEvent) => {
-			if (save && save.document && save.document.uri) {
+			if (save && save.document && save.document.uri && fsUtils.isPvsFile(save.document.uri)) {
 				// parse file
 				const contextFolder: string = fsUtils.getContextFolder(save.document.uri);
 				const fileName: string = fsUtils.getFileName(save.document.uri);
 				const fileExtension: string = fsUtils.getFileExtension(save.document.uri);
-				this.parseFileRequest({ fileName, fileExtension, contextFolder }); // async call, will automatically send diags to the client
+				await this.parseFileRequest({ fileName, fileExtension, contextFolder }); // async call, will automatically send diags to the client
 			}
 		});
 
@@ -1089,7 +1090,7 @@ export class PvsLanguageServer {
 		// Create service providers
 		this.definitionProvider = new PvsDefinitionProvider(this.pvsProxy, this.documents);
 		this.completionProvider = new PvsCompletionProvider(this.definitionProvider);
-		this.codeLensProvider = new PvsCodeLensProvider(this.definitionProvider);
+		this.codeLensProvider = new PvsCodeLensProvider();
 		this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
 		this.linter = new PvsLinter();
 		this.cliGateway = new PvsCliGateway(this);
@@ -1426,13 +1427,6 @@ export class PvsLanguageServer {
 				this.pvsProxy.killParser(); // async call
 			});
 
-			this.connection.onRequest(serverCommand.enableExternalServer, async () => {
-				this.pvsProxy.enableExternalServer(); // async call
-			});
-			this.connection.onRequest(serverCommand.disableExternalServer, async () => {
-				this.pvsProxy.disableExternalServer(); // async call
-			});
-
 		});
 
 
@@ -1441,8 +1435,8 @@ export class PvsLanguageServer {
 		//-------------------------------
 
 		this.connection.onCompletion(async (tpp: TextDocumentPositionParams): Promise<CompletionItem[]> => {
-			if (this.pvsProxy && this.completionProvider) {
-				// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.completionProvider;
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.settings.completionProvider"));
+			if (this.completionProvider && isEnabled) {
 				const uri: string = tpp.textDocument.uri;
 				if (uri.endsWith(".pvs") && this.completionProvider) {
 					const txt: string = await this.readFile(uri);
@@ -1463,7 +1457,8 @@ export class PvsLanguageServer {
 			return item;
 		});
 		this.connection.onHover(async (tpp: TextDocumentPositionParams): Promise<Hover> => {
-			if (this.pvsProxy && this.hoverProvider) {
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.settings.hoverProvider"));
+			if (this.hoverProvider && isEnabled) {
 				// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.hoverProvider;
 				const uri: string = tpp.textDocument.uri;
 				if (fsUtils.isPvsFile(uri) && this.hoverProvider) {
@@ -1477,8 +1472,8 @@ export class PvsLanguageServer {
 			return null;
 		});
 		this.connection.onCodeLens(async (tpp: CodeLensParams): Promise<CodeLens[]> => {
-			if (this.codeLensProvider) {
-				// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.codelensProvider;
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.settings.codelensProvider"));
+			if (this.codeLensProvider && isEnabled) {
 				const uri: string = tpp.textDocument.uri;
 				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
 					// const doc: TextDocument = this.documents.get(tpp.textDocument.uri);
@@ -1490,16 +1485,18 @@ export class PvsLanguageServer {
 			return null;
 		});
 		this.connection.onCodeLensResolve(async (codeLens: CodeLens): Promise<CodeLens> => {
-			if (this.codeLensProvider) {
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.settings.completionProvider"));
+			if (this.codeLensProvider && isEnabled) {
 				return this.codeLensProvider.resolveCodeLens(codeLens);
 			}
 			return null;
 		});
 		// this provider enables peek definition in the editor
 		this.connection.onDefinition(async (tpp: TextDocumentPositionParams): Promise<Definition> => {
-			if (this.pvsProxy && this.definitionProvider) {
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.settings.definitionProvider"));
+			if (this.definitionProvider && isEnabled) {
 				const uri: string = tpp.textDocument.uri;
-				if (fsUtils.isPvsFile(uri) && this.definitionProvider) {
+				if (fsUtils.isPvsFile(uri)) {
 					const txt: string = await this.readFile(uri);
 					if (txt) {
 						const position: Position = tpp.position;
@@ -1508,7 +1505,7 @@ export class PvsLanguageServer {
 							const pvsDefinitions: PvsDefinition[] = info.definitions;
 							if (pvsDefinitions) {
 								const ans: Location[] = [];
-								for (const i in pvsDefinitions) {
+								for (let i: number = 0; i < pvsDefinitions.length; i++) {
 									const def: PvsDefinition = pvsDefinitions[i];
 									const uri: string = def.symbolDeclarationFile;
 									const range: Range = {
