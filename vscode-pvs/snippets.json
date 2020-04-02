@@ -1,7 +1,29 @@
 {
-	"Autocomplete theory block": {
-		"description": "Autocomplete theory block",
+	"Autocomplete theory declaration": {
+		"description": "Autocomplete theory declaration",
 		"prefix": "theory",
+		"scope": "pvs",
+		"body": [
+			"${TM_CURRENT_LINE/\\s*(\\b\\w+)\\s*:(\\s*\\w+)//g}THEORY",
+			"  BEGIN $0",
+			"    $2",
+			"  END ${TM_CURRENT_LINE/\\s*(\\b\\w+)\\s*:(\\s*\\w+)/$1/g}"
+		]
+	},
+	"Autocomplete datatype declaration": {
+		"description": "Autocomplete datatype declaration",
+		"prefix": "datatype",
+		"scope": "pvs",
+		"body": [
+			"${TM_CURRENT_LINE/\\s*(\\b\\w+)\\s*:(\\s*\\w+)//g}DATATYPE",
+			"  BEGIN $0",
+			"    $2",
+			"  END ${TM_CURRENT_LINE/\\s*(\\b\\w+)\\s*:(\\s*\\w+)/$1/g}"
+		]
+	},
+	"Theory template": {
+		"description": "Theory template",
+		"prefix": "theory-template",
 		"scope": "pvs",
 		"body": [
 			"${1:theoryName}: THEORY",
@@ -10,33 +32,33 @@
 			"  END $1"
 		]
 	},
-	"Insert if-then-else block": {
-		"description": "Insert if-then-else block",
+	"Datatype template": {
+		"description": "datatype template",
+		"prefix": "datatype-template",
+		"scope": "pvs",
+		"body": [
+			"${1:datatypeName}: THEORY",
+			"  BEGIN $0",
+			"    $2",
+			"  END $1"
+		]
+	},
+	"if-then-else template": {
+		"description": "if-then-else template",
 		"prefix": "if-then-else",
 		"scope": "pvs",
 		"body": [
 			"IF ${1:cond} THEN ${2:expr1} ELSE ${3:expr2} ENDIF"
 		]
 	},
-	"Insert COND block": {
-		"description": "Insert COND block",
-		"prefix": "cond-endcond",
+	"cond block template": {
+		"description": "cond template",
+		"prefix": "cond",
 		"scope": "pvs",
 		"body": [
 			"COND",
-			"  ${1:be1} -> ${2:e1},",
-			"  ${3:be2} -> ${4:e2}",
+			"  ${1:expression} -> ${2:action}",
 			"ENDCOND"
-		]
-	},
-	"Insert BEGIN-END block": {
-		"description": "Insert BEGIN-END block",
-		"prefix": "begin-end",
-		"scope": "pvs",
-		"body": [
-			"BEGIN",
-			"  $1",
-			"END"
 		]
 	}
 }
