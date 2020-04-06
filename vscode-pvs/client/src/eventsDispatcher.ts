@@ -258,7 +258,6 @@ export class EventsDispatcher {
         });
 		this.client.onRequest(serverEvent.dischargeTheoremsResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             // do nothing for now
-            
         });
         this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             if (desc) {
@@ -280,6 +279,11 @@ export class EventsDispatcher {
         this.client.onRequest(serverEvent.proofStateUpdate, async (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, pvsLogFile: string, pvsTmpLogFile: string }) => {
             // do nothing for now
         });
+
+        this.client.onRequest(serverEvent.startEvaluatorResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string }}) => {
+            console.log(desc);
+        });
+
 
 
         //---------------------------------------------------------
@@ -323,12 +327,7 @@ export class EventsDispatcher {
                         desc.theoryName = theoryName;
                     }
                     if (desc.theoryName) {
-                        // PVSio is a different beast, not supported by pvs-server at the moment
-                        new PVSioTerminal(desc);
-                        // // !important: create a new command line interface first, so it can subscribe to events published by the server
-                        // await this.vscodePvsTerminal.startPvsIoEvaluatorSession(desc);
-                        // // send prove-formula request to pvs-server
-                        // this.client.sendRequest(serverCommand.pvsioEvaluator, desc);
+                        await this.vscodePvsTerminal.startEvaluatorSession(desc);
                     } else {
                         window.showErrorMessage(`Error while trying to invoke PVSio (could not identify theory name, please check that the file typechecks correctly)`);
                     }
@@ -349,11 +348,7 @@ export class EventsDispatcher {
                 }> this.resource2desc(resource);
                 if (desc) {
                     if (desc.theoryName) {
-                        // !important: create a new command line interface first, so it can subscribe to events published by the server
-                        await this.vscodePvsTerminal.startProveFormulaSession(desc);
-                        // send prove-formula request to pvs-server
-                        this.client.sendRequest(serverCommand.proveFormula, desc);
-                        // proof script will be loaded upon receiving serverEvent.proveFormulaResponse
+                        await this.vscodePvsTerminal.startProverSession(desc);
                     } else {
                         console.error("[vscode-events-dispatcher] Error: theory name is null", desc);
                     }

@@ -36,6 +36,8 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
+import { PvsResponse } from "./pvs-gui";
+
  // import { PvsProxy } from "../pvsProxy";
 
 export declare interface Position {
@@ -314,7 +316,7 @@ export declare interface PvsFileListDescriptor {
 
 export declare interface PvsCliInterface {
 	type: string;
-	//pvsPath: string;
+	pvsPath: string;
 	contextFolder: string;
 	// pvsProxy: PvsProxy,
 	// cmd: string,
@@ -441,6 +443,7 @@ export const serverCommand = {
 	loadProof: "pvs.load-proof",
 	saveProof: "pvs.save-proof",
 	proofCommand: "pvs.proof-command",
+	evaluateExpression: "pvs.evaluate-expression",
 	parseFile: "pvs.parse-file",
 	parseFileWithFeedback: "pvs.parse-file.with-feedback",
 	parseWorkspace: "pvs.parse-workspace",
@@ -451,6 +454,8 @@ export const serverCommand = {
 	startPvsLanguageServer: "pvs.start-pvs-server",
 	rebootPvsServer: "pvs.reboot-pvs-server",
 	hp2pvs: "pvs.hp-to-pvs-file",
+	startEvaluator: "pvs.start-evaluator",
+	quitProver: "pvs.quit-prover",
 
 	getContextDescriptor: "pvs.get-context-descriptor",
 	getFileDescriptor: "pvs.get-file-descriptor",
@@ -474,6 +479,8 @@ export const serverEvent = {
 	listContextResponse: "pvs.response.list-context",
 	generateTccsResponse: "pvs.response.generate-tccs",
 	showTccsResponse: "pvs.response.show-tccs",
+	startEvaluatorResponse: "pvs.response.start-evaluator",
+
 
 	getContextDescriptorResponse: "pvs.response.get-context-descriptor",
 	getFileDescriptorResponse: "pvs.response.get-file-descriptor",
@@ -486,13 +493,50 @@ export const serverEvent = {
 
 	contextUpdate: "pvs.event.context-update",
 	proofStateUpdate: "pvs.event.proof-state",
+	evaluatorStateUpdate: "pvs.event.evaluator-state",
 	workspaceStats: "pvs.event.workspace-stats",
 	saveProofEvent: "pvs.event.quit-proof",
-	
+
 	pvsVersionInfo: "pvs.event.version-info",
 	pvsNotPresent: "pvs.event.pvs-not-present",
 	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version"
 };
+
+
+
+export declare type CliGatewayRequest = { 
+	type: "subscribe", clientID: string, channelID: string 
+} | { 
+	type: "subscribe-vscode", clientID: string, channelID: string 
+} | {
+	type: "unsubscribe", clientID: string, channelID: string
+} | { 
+	type: "pvs.proof-command", fileName: string, fileExtension: string, contextFolder: string, 
+	theoryName: string, formulaName: string, cmd: string 
+} | { 
+	type: "pvs.evaluate-expression", fileName: string, fileExtension: string, contextFolder: string, 
+	theoryName: string, cmd: string 
+} | {
+	type: "pvs.save-proof", fileName: string, fileExtension: string, contextFolder: string, 
+	theoryName: string, formulaName: string
+} | {
+	type: "publish", channelID: string
+};
+
+export declare type CliGatewayEvent = {  
+	type: "pvs.event.proof-state", // proofStateUpdate
+	channelID: string,
+	data: PvsResponse
+} | { 
+	type: "pvs.event.evaluator-state", // evaluatorStateUpdate
+	channelID: string,
+	data: PvsResponse
+};
+//  | { 
+// 	type: "publish",
+// 	channelID: string
+// };
+
 
 export interface PvsDownloadDescriptor { url: string, fileName: string, version: string };
 

@@ -40,9 +40,17 @@
 // - https://www.jsonrpc.org/specification) the JSON-RPC message indicates the command to be
 // - executed by pvs, e.g., reset, typecheck, etc.
 
-// '{ "result":["change-context", "help", "lisp", "list-client-methods", "list-methods", "names-info",
-// 		"proof-command", "prove-formula", "reset", "typecheck" ],
-//    "jsonrpc":"2.0", "id":"0" }'
+// methods supported by pvs-server:
+// 'change-context',      'change-workspace',
+// 'find-declaration',    'help',
+// 'interrupt',           'lisp',
+// 'list-client-methods', 'list-methods',
+// 'names-info',          'parse',
+// 'proof-command',       'proof-script',
+// 'proof-status',        'prove-formula',
+// 'prove-tccs',          'prover-status',
+// 'reset',               'show-tccs',
+// 'term-at',             'typecheck'
 
 import { Client, Server, createClient, createServer } from 'xmlrpc';
 import { PvsProcess } from "./pvsProcess";
@@ -547,24 +555,53 @@ export class PvsProxy {
 
 
 	/**
-	 * THIS IS NOT SUPPORTED YET
+	 * FIXME: THIS IS NOT SUPPORTED YET BY PVS-SERVER
 	 * Starts an interactive pvsio evaluator session for the given theory
 	 * @param desc 
 	 */
-	// async pvsioEvaluator (desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponse> {
-	// 	if (desc) {
-	// 		this.notifyStartExecution(`Evaluation environment for ${desc.theoryName}`);
-	// 		if (this.isProtectedFolder(desc.contextFolder)) {
-	// 			this.info(`${desc.contextFolder} cannot be evaluated`);
-	// 			return null;
-	// 		}
-	// 		const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-	// 		const res: PvsResponse = await this.lisp(`(pvsio "${fname}" t)`);
-	// 		this.notifyEndExecution();
-	// 		return res;
-	// 	}
-	// 	return null;
-	// }
+	protected async startEvaluator (desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponse> {
+		if (desc) {
+			this.notifyStartExecution(`Evaluation environment for ${desc.theoryName}`);
+			if (this.isProtectedFolder(desc.contextFolder)) {
+				this.info(`${desc.contextFolder} cannot be evaluated`);
+				return null;
+			}
+			// const res: PvsResponse = await this.lisp(`(pvsio "${fname}" t)`);
+			// make sure file typechecks correctly
+			let ans: PvsResponse = await this.typecheckFile(desc);
+			if (ans && !ans.error) {
+				// make sure we are in the correct context
+				ans = await this.changeContext(desc.contextFolder);
+				// disable garbage collector printout
+				ans = await this.lisp('(setq *disable-gc-printout* t)');
+				// load semantic attachments
+				ans = await this.lisp('(load-pvs-attachments)');
+				// enter pvsio mode -- do not wait, pvs won't return control
+				this.lisp(`(evaluation-mode-pvsio "${desc.theoryName}" nil nil)`); // the fourth argument removes the pvsio banner
+			}
+			this.notifyEndExecution();
+			return ans;
+		}
+		return null;
+	}
+
+	/**
+	 * FIXME: THIS IS NOT SUPPORTED YET BY PVS-SERVER
+	 * Evaluates a pvs/lisp expression
+	 * @param desc Descriptor of the expression
+	 */
+	protected async evaluateExpression (desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, cmd: string }): Promise<PvsResponse> {
+		if (desc) {
+			const cmd = (desc.cmd.endsWith("!") || desc.cmd.endsWith(";")) ? desc.cmd
+							: `${desc.cmd};`;
+			this.notifyStartExecution(`Executing ${cmd}`);
+			// console.dir(desc, { depth: null });
+			const res: PvsResponse =  await this.pvsRequest('proof-command', [ desc.cmd ]); //await this.lisp(cmd);
+			this.notifyEndExecution();
+			return res;
+		}
+		return null;
+	}
 
 	/**
 	 * Returns the status of all proofs in a given theory

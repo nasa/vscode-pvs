@@ -202,7 +202,7 @@
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
-				"title": "Evaluate in PVSio"
+				"title": "PVSio Evaluator"
 			},
 			{
 				"command": "proof-mate.exec-proof-command",
@@ -498,11 +498,6 @@
 					"group": "y_commands"
 				},
 				{
-					"command": "vscode-pvs.pvsio-evaluator",
-					"when": "resourceScheme == file && resourceExtname == .pvs",
-					"group": "y_commands"
-				},
-				{
 					"command": "vscode-pvs.show-tccs",
 					"when": "resourceScheme == file && resourceExtname == .pvs",
 					"group": "y_commands"
@@ -511,6 +506,11 @@
 					"command": "vscode-pvs.discharge-tccs",
 					"when": "resourceScheme == file && resourceExtname == .tccs",
 					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.pvsio-evaluator",
+					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"group": "yy_commands"
 				}
 			],
 			"editor/context": [
@@ -552,7 +552,7 @@
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceScheme == file && resourceExtname == .pvs",
-					"group": "y_commands"
+					"group": "yy_commands"
 				}
 			],
 			"view/title": [

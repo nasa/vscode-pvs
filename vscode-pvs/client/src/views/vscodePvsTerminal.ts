@@ -39,10 +39,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { LanguageClient } from 'vscode-languageclient';
-import { VSCodePvsWorkspaceExplorer } from './vscodePvsWorkspaceExplorer';
-import { PvsCliInterface } from '../common/serverInterface';
+import { PvsCliInterface, serverCommand, serverEvent } from '../common/serverInterface';
 import * as language from '../common/languageUtils';
-import { serverEvent } from '../common/serverInterface';
 import * as WebSocket from 'ws';
 import * as fsUtils from '../common/fsUtils';
 
@@ -53,30 +51,40 @@ class TerminalSession {
     protected cliFileName: string; // full path to the PvsCli file
     terminal: vscode.Terminal;
     protected client: LanguageClient;
-    protected active: boolean = true;
     protected channelID: string;
-    protected workspaceExplorer: VSCodePvsWorkspaceExplorer;
     protected wsClient: WebSocket;
     protected clientID: string;
-    protected proofExplorer: VSCodePvsProofExplorer;
+    protected pvsPath: string;
 
     /**
      * Constructor
      * @param client VSCode Language Client, necessary for sending requests to pvs-server
      * @param channelID Name of the channel where the terminal is listening
      */
-    constructor (client: LanguageClient, channelID: string, proofExplorer: VSCodePvsProofExplorer) {
-        this.client = client;
-        this.proofExplorer = proofExplorer;
-        this.channelID = channelID;
+    constructor (desc: { client: LanguageClient, channelID: string, pvsPath: string }) {
+        this.client = desc.client;
+        this.channelID = desc.channelID;
         this.clientID = fsUtils.get_fresh_id();
+        this.pvsPath = desc.pvsPath;
     }
-    async activate (context: vscode.ExtensionContext, typeID: string, desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName?: string, formulaName?: string }): Promise<void> {
+    async activate (
+        context: vscode.ExtensionContext, 
+        typeID: string, 
+        desc: { 
+            fileName: string, 
+            fileExtension: string, 
+            contextFolder: string, 
+            theoryName: string, 
+            formulaName?: string 
+        }
+    ): Promise<void> {
         return new Promise(async (resolve, reject) => {
             await this.subscribe(() => {
                 resolve();
             });
-            const terminalName: string = `${desc.fileName}.${desc.formulaName}` || typeID;
+            const terminalName: string = (desc) ? 
+                desc.formulaName ? `${desc.fileName}@${desc.theoryName}.${desc.formulaName}` : `${desc.fileName}@${desc.theoryName}`
+                    : typeID;
             const cliFileName: string = context.asAbsolutePath(path.join('server', 'out', PVS_CLI_FILE));
             const cliArgs: PvsCliInterface = {
                 type: typeID,
@@ -85,7 +93,8 @@ class TerminalSession {
                 contextFolder: desc.contextFolder,
                 theoryName: desc.theoryName,
                 formulaName: desc.formulaName,
-                channelID: this.channelID
+                channelID: this.channelID,
+                pvsPath: this.pvsPath
             };
             this.terminal = vscode.window.createTerminal(terminalName, 'node', [ cliFileName, JSON.stringify(cliArgs) ]);
             this.terminal.show();
@@ -139,20 +148,13 @@ class TerminalSession {
 		});
     }
     protected sendText(cmd: string): void {
-        if (this.active) {
-            this.terminal.sendText(cmd);
-        }
+        this.terminal.sendText(cmd);
     }
     quit (): void {
-        if (this.active) {
-            // close terminal
-            this.terminal.dispose();
-            // close proof explorer and proofmate
-            vscode.commands.executeCommand('setContext', 'prover-session-active', false);
-        }
-    }
-    isActive() {
-        return this.active;
+        // close terminal
+        this.terminal.dispose();
+        // close proof explorer and proofmate
+        vscode.commands.executeCommand('setContext', 'prover-session-active', false);
     }
     stepCommand (cmd: string) {
         this.sendText(cmd);
@@ -160,26 +162,23 @@ class TerminalSession {
 }
 
 import { cliSessionType } from '../common/serverInterface';
-import { VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
 
 export class VSCodePvsTerminal {
     protected client: LanguageClient;
-    protected proofExplorer: VSCodePvsProofExplorer;
     protected context: vscode.ExtensionContext;
     protected activeTerminals: { [key: string]: TerminalSession } = {};
     /**
      * Constructor
      * @param client Language client 
      */
-    constructor (client: LanguageClient, proofExplorer: VSCodePvsProofExplorer) {
+    constructor (client: LanguageClient) {
         this.client = client;
-        this.proofExplorer = proofExplorer;
-
         vscode.window.onDidCloseTerminal((terminal) => {
             const keys: string[] = Object.keys(this.activeTerminals);
             if (keys && keys.length > 0) {
                 for (const i in keys) {
                     if (this.activeTerminals[keys[i]].terminal.processId === terminal.processId) {
+                        this.client.sendRequest(serverCommand.quitProver);
                         this.activeTerminals[keys[i]].quit();
                         delete this.activeTerminals[keys[i]];
                         break;
@@ -191,7 +190,7 @@ export class VSCodePvsTerminal {
     sendProofCommand (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): void {
         if (desc) {
             const channelID: string = language.desc2id(desc);
-            if (this.activeTerminals[channelID] && this.activeTerminals[channelID].isActive()) {
+            if (this.activeTerminals[channelID]) {
                 this.activeTerminals[channelID].terminal.show();
                 this.activeTerminals[channelID].terminal.sendText(desc.cmd);
             }
@@ -206,28 +205,46 @@ export class VSCodePvsTerminal {
     protected error(msg: string) {
         vscode.window.showErrorMessage(msg);
     }
-    async startProveFormulaSession (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }) {
+    async startProverSession (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }) {
         if (desc) {
+            // !important: create a new command line interface first, so it can subscribe to events published by the server
             const channelID: string = language.desc2id(desc);
-            if (this.activeTerminals[channelID] && this.activeTerminals[channelID].isActive()) {
-                this.activeTerminals[channelID].terminal.show();
+            const pvsPath: string = vscode.workspace.getConfiguration().get("pvs.path");
+
+            const keys: string[] = Object.keys(this.activeTerminals);
+            if (keys.length > 0) {
+                if (this.activeTerminals[channelID]) {
+                    this.activeTerminals[channelID].terminal.show();
+                } else {
+                    const msg: string = `PVS currently supports only one prover session at a time.\nPlease close the other prover session before starting a new one.`;        
+                    this.activeTerminals[keys[0]].terminal.show();
+                    vscode.window.showWarningMessage(msg, { modal: true });
+                }
             } else {
-                const pvsTerminal: TerminalSession = new TerminalSession(this.client, channelID, this.proofExplorer);
+                const pvsTerminal: TerminalSession = new TerminalSession({ client: this.client, channelID, pvsPath });
                 await pvsTerminal.activate(this.context, cliSessionType.proveFormula, desc);
                 this.activeTerminals[channelID] = pvsTerminal;
+                // send prove-formula request to pvs-server
+                this.client.sendRequest(serverCommand.proveFormula, desc);
+                // the proof script will be automatically loaded on the front-end when event serverEvent.proveFormulaResponse will be fired by the server
             }
         }
     }
-    async startPvsIoEvaluatorSession (desc: { fileName: string, fileExtension: string, contextFolder: string }) {
-        // if (desc) {
-        //     const channelID: string = language.desc2id(desc);
-        //     if (this.activeTerminals[channelID] && this.activeTerminals[channelID].isActive()) {
-        //         this.activeTerminals[channelID].terminal.show();
-        //     } else {
-        //         const pvsTerminal: TerminalSession = new TerminalSession(this.client, channelID);
-        //         await pvsTerminal.activate(this.context, cliSessionType.pvsioEvaluator, desc);
-        //         this.activeTerminals[channelID] = pvsTerminal;
-        //     }
-        // }
+    async startEvaluatorSession (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string }) {
+        if (desc) {
+            // !important: create a new command line interface first, so it can subscribe to events published by the server
+            const channelID: string = language.desc2id(desc);
+            const pvsPath: string = vscode.workspace.getConfiguration().get("pvs.path");
+            if (this.activeTerminals[channelID]) {
+                this.activeTerminals[channelID].terminal.show();
+            } else {
+                const pvsioTerminal: TerminalSession = new TerminalSession({ client: this.client, channelID, pvsPath });
+                await pvsioTerminal.activate(this.context, cliSessionType.pvsioEvaluator, desc);
+                this.activeTerminals[channelID] = pvsioTerminal;
+            }
+
+            // send start-pvsio request to pvs-server
+            this.client.sendRequest(serverCommand.startEvaluator, desc);
+        }
     }
 }

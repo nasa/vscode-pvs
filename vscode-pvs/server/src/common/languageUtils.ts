@@ -306,6 +306,14 @@ export function pvsCliSyntaxHighlighting(text: string): string {
 	return text;
 }
 
+export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolean, showAction?: boolean }): string {
+	if (pvsioState) {
+		opt = opt || {};
+		return (opt.useColors) ? pvsCliSyntaxHighlighting(pvsioState) : pvsioState;
+	}
+	return pvsioState;
+}
+
 export function formatProofState (proofState: ProofState, opt?: { useColors?: boolean, showAction?: boolean }): string {
 	if (proofState) {
 		let res: string = "";
@@ -559,6 +567,19 @@ export function listSymbols(txt: string): string[] {
 	return Object.keys(symbolsMap);
 }
 
+export const pvsioBanner: string = `
++---- 
+| PVSio Evaluator
+|
+| Enter a PVS expression at the prompt, or 'help' for help, or 'exit' to exit the evaluator.
+|
+| *CAVEAT*: evaluation of expressions which depend on unproven TCCs may be 
+| unsound, and result in the evaluator crashing into Lisp, running out of 
+| stack, or worse. If you crash into Lisp, type (restore) to resume.
+|
++----
+`
+;
 
 /**
  * @function getErrorRange
@@ -829,7 +850,9 @@ export function isQuitCommand (cmd: string): boolean {
 		|| cmd === "quit;"
 		|| cmd === "(quit)"
 		|| cmd === "exit"
-		|| cmd === "exit;";
+		|| cmd === "exit;"
+		|| cmd === "(exit)"
+		;
 }
 
 export function isEmptyCommand (cmd: string): boolean {
@@ -1313,4 +1336,8 @@ export const PROVER_STRATEGIES_CORE: StrategyDescriptor[] = [
 	{ name: "typepred", description:"" },
 	{ name: "undo", description:"" },
 	{ name: "use", description:"" }
+];
+
+export const EVALUATOR_FUNCTIONS_CORE: StrategyDescriptor[] = [
+	{ name: "RANDOM", description: "generates a random number" }
 ];

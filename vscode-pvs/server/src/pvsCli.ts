@@ -41,6 +41,11 @@ import * as readline from 'readline';
 import { PvsCliInterface, SimpleConsole, StrategyDescriptor, SimpleConnection, serverEvent, serverCommand } from './common/serverInterface';
 import * as fsUtils from './common/fsUtils';
 
+import { cliSessionType } from './common/serverInterface';
+import { PvsProxy } from './pvsProxy';
+import { PvsResponse } from './common/pvs-gui';
+
+import * as WebSocket from 'ws';
 
 const usage: string = `
 ${utils.colorText("PVS Prover Command Line Interface (PVS-CLI)", utils.textColor.blue)}
@@ -92,10 +97,6 @@ class CliConnection implements SimpleConnection {
 	sendRequest (type: string, data: any): void { };
 }
 
-import { PvsProxy } from './pvsProxy';
-import { PvsResponse } from './common/pvs-gui';
-
-import * as WebSocket from 'ws';
 
 // utility function, ensures open brackets match closed brackets for commands
 function parMatch (cmd: string): string {
@@ -145,11 +146,15 @@ function showProgress (data: string) {
 	readline.moveCursor(process.stdin, 0, -1);
 }
 
+
 class PvsCli {
 	protected rl: readline.ReadLine;
 	// protected pvsProcess: PvsProcess;
 
-	protected static completions: string[] = utils.PROVER_STRATEGIES_CORE.map((strat: StrategyDescriptor) => {
+	protected static proverStrategies: string[] = utils.PROVER_STRATEGIES_CORE.map((strat: StrategyDescriptor) => {
+		return strat.name;
+	});
+	protected static evaluatorFunctions: string[] = utils.EVALUATOR_FUNCTIONS_CORE.map((strat: StrategyDescriptor) => {
 		return strat.name;
 	});
 
@@ -170,28 +175,13 @@ class PvsCli {
 	protected tabCompleteMode: boolean = false;
 
 	protected args: PvsCliInterface;
-	protected pvsPath: string;
-
-	protected prompt: string;
 
 	protected proofState: string;
 
 	protected wsClient: WebSocket;
 
-	protected notifyStartExecution (msg: string): void {
-		if (this.connection) {
-			this.connection.console.info(msg);
-		}
-	}
-	protected notifyEndExecution (): void {
-		if (this.connection) {
-			this.connection.console.info("Ready!");
-		}
-	}
-
-	protected qed (ans: PvsResponse): boolean {
-		return ans && ans.result && ans.result.result && ans.result.result === "Q.E.D.";
-	}
+	protected proverPrompt: string = " >> ";
+	protected evaluatorPrompt: string = "<PVSio> ";
 
 	/**
 	 * @constructor
@@ -199,17 +189,58 @@ class PvsCli {
 	 */
 	constructor (args?: PvsCliInterface) {
 		this.args = args;
-		this.prompt = " >> ";
 		this.clientID = fsUtils.get_fresh_id();
 	}
-	activateRepl () {
+	activateEvaluatorRepl () {
 		if (process.stdin.isTTY) {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
 		}
 		readline.emitKeypressEvents(process.stdin);
-		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.completer(line); });
-		this.rl.setPrompt(utils.colorText(this.prompt, utils.textColor.blue));
+		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.evaluatorCompleter(line); });
+		this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
+		this.rl.on("line", async (cmd: string) => {
+			if (utils.isQuitCommand(cmd)) {
+				this.wsClient.send(JSON.stringify({
+					type: serverCommand.evaluateExpression,
+					cmd: "quit",
+					fileName: this.args.fileName,
+					fileExtension: this.args.fileExtension,
+					contextFolder: this.args.contextFolder,
+					theoryName: this.args.theoryName,
+					formulaName: this.args.formulaName
+				}));	
+				console.log();
+				console.log("PVSio evaluator session terminated.");
+				console.log();
+				console.log();
+				this.rl.question("Press Enter to close the terminal.", () => {
+					this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+					this.wsClient.close();
+				});
+			} else {
+				cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
+				this.wsClient.send(JSON.stringify({
+					type: serverCommand.evaluateExpression,
+					cmd,
+					fileName: this.args.fileName,
+					fileExtension: this.args.fileExtension,
+					contextFolder: this.args.contextFolder,
+					theoryName: this.args.theoryName,
+					formulaName: this.args.formulaName
+				}));
+			}
+		});		
+		this.connection = new CliConnection();
+	}
+	activateProverRepl () {
+		if (process.stdin.isTTY) {
+			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
+			process.stdin.setRawMode(true);
+		}
+		readline.emitKeypressEvents(process.stdin);
+		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.proverCompleter(line); });
+		this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
 		this.rl.on("line", async (cmd: string) => {
 			if (utils.isSaveCommand(cmd)) {
 				console.log();
@@ -230,16 +261,16 @@ class PvsCli {
 				console.log();
 				console.log("Prover session terminated.");
 				console.log();
+				this.wsClient.send(JSON.stringify({
+					type: serverCommand.proofCommand,
+					cmd: "quit",
+					fileName: this.args.fileName,
+					fileExtension: this.args.fileExtension,
+					contextFolder: this.args.contextFolder,
+					theoryName: this.args.theoryName,
+					formulaName: this.args.formulaName
+				}));	
 				this.rl.question("Press Enter to close the terminal.", () => {
-					this.wsClient.send(JSON.stringify({
-						type: serverCommand.proofCommand,
-						cmd: "quit",
-						fileName: this.args.fileName,
-						fileExtension: this.args.fileExtension,
-						contextFolder: this.args.contextFolder,
-						theoryName: this.args.theoryName,
-						formulaName: this.args.formulaName
-					}));	
 					this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
 					this.wsClient.close();	
 				});
@@ -273,8 +304,7 @@ class PvsCli {
 			}
 		});		
 		this.connection = new CliConnection();
-	}	
-
+	}
 	async subscribe (channelID: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
 			this.wsClient = new WebSocket("ws://0.0.0.0:33445");
@@ -296,6 +326,23 @@ class PvsCli {
 								resolve(data.success);
 								break;
 							}
+							case serverEvent.evaluatorStateUpdate: {
+								const pvsResponse: PvsResponse = data.response;
+								if (pvsResponse) {
+									if (pvsResponse.result) {
+										console.log(utils.formatPvsIoState(pvsResponse.result, { useColors: true }));
+									} else if (pvsResponse.banner) {
+										console.log(pvsResponse.banner);
+									}
+								}
+								// remove the standard prompt created by PVSio
+								readline.moveCursor(process.stdin, 0, -1);
+								readline.clearScreenDown(process.stdin);
+								// show prompt
+								this.rl.prompt();
+								readline.clearLine(process.stdin, 1); // clear any previous input
+								break;
+							}
 							case serverEvent.proofStateUpdate: {
 								const pvsResponse: PvsResponse = data.response;
 								if (pvsResponse) {
@@ -309,7 +356,7 @@ class PvsCli {
 											}
 										}
 										this.proofState = utils.formatProofState(res);
-										console.log(utils.formatProofState(pvsResponse.result, { useColors: true, showAction: true })); // show proof state
+										console.log(utils.formatProofState(pvsResponse.result, { useColors: true, showAction: true })); // show proof state										
 										this.rl.prompt(); // show prompt
 										readline.clearLine(process.stdin, 1); // clear any previous input
 									} else {
@@ -353,14 +400,13 @@ class PvsCli {
 		});
     }
 
-	protected completer (line: string) {
-		let hits: string[] = null;
+	protected proverCompleter (line: string) {
+		let hits: string[] = [];
 		// console.log(`[pvs-cli] trying to auto-complete ${line}`);
 		if (line.startsWith("(expand") || line.startsWith("expand")) {
 			// autocomplete symbol names
 			const symbols: string[] = utils.listSymbols(this.proofState);
 			// console.dir(symbols, { depth: null });
-			hits = [];
 			if (symbols && symbols.length) {
 				for (let i = 0; i < symbols.length; i++) {
 					if (`(expand "${symbols[i]}"`.startsWith(line)) {
@@ -371,7 +417,7 @@ class PvsCli {
 				}
 			}
 		} else if (line.trim().startsWith("(")) {
-			hits = PvsCli.completions.map((c: string) => {
+			hits = PvsCli.proverStrategies.map((c: string) => {
 				// console.log(`(${c}`);
 				return `(${c}`;
 			}).filter((c: string) => c.startsWith(line));
@@ -379,13 +425,37 @@ class PvsCli {
 			// Show all completions if none found
 			// return [ hits.length ? hits : PvsCli.completions, line ];
 			// show nothing if no completion is found
-			hits = PvsCli.completions.filter((c: string) => c.startsWith(line));
+			hits = PvsCli.proverStrategies.filter((c: string) => c.startsWith(line));
 		}
 		return [ hits, line ];
 	}
+	protected evaluatorCompleter (line: string) {
+		let hits: string[] = [];
+		// autocomplete symbol names
+		// const symbols: string[] = utils.listSymbols(...);
+		// console.dir(symbols, { depth: null });
+		// if (symbols && symbols.length) {
+		// 	hits = symbols.filter((c: string) => c.startsWith(line));
+		// }
+		// Include also pvsio functions in the list
+		hits = hits.concat(PvsCli.evaluatorFunctions.filter((c: string) => c.startsWith(line)));
+		return [ hits, line ];
+	}
+	protected notifyStartExecution (msg: string): void {
+		if (this.connection) {
+			this.connection.console.info(msg);
+		}
+	}
+	protected notifyEndExecution (): void {
+		if (this.connection) {
+			this.connection.console.info("Ready!");
+		}
+	}
+	protected qed (ans: PvsResponse): boolean {
+		return ans && ans.result && ans.result.result && ans.result.result === "Q.E.D.";
+	}
 }
 
-import { cliSessionType } from './common/serverInterface';
 
 if (process.argv.length > 2) {
 	// ATTN: the client must not print anything on the console until it's subscribed --- vscodePvsPvsCli checks the output on the console to understand when the client is ready.
@@ -397,13 +467,14 @@ if (process.argv.length > 2) {
 		console.log(args);
 		if (success) {
 			switch (args.type) {
-				case cliSessionType.pvsioEvaluator: {
-					console.log(`\nStarting new pvsio evaluator session for ${utils.colorText(args.formulaName, utils.textColor.blue)}\n`);
-					break;
-				}
 				case cliSessionType.proveFormula: {
 					console.log(`\nStarting new prover session for ${utils.colorText(args.formulaName, utils.textColor.blue)}\n`);
-					pvsCli.activateRepl();
+					pvsCli.activateProverRepl();
+					break;
+				}
+				case cliSessionType.pvsioEvaluator: {
+					console.log(`\nStarting new PVSio evaluator session for theory ${utils.colorText(args.theoryName, utils.textColor.blue)}\n`);
+					pvsCli.activateEvaluatorRepl();
 					break;
 				}
 				default: {

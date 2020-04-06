@@ -37,9 +37,8 @@
  **/
 
 import * as WebSocket from 'ws';
-import { PvsResponse } from './common/pvs-gui';
 import { PvsLanguageServer } from './pvsLanguageServer'
-import { serverCommand } from './common/serverInterface';
+import { CliGatewayRequest, CliGatewayEvent } from './common/serverInterface';
 
 /**
  * PvsCliGateway provides a websocket gateway to the language server.
@@ -60,7 +59,7 @@ export class PvsCliGateway {
 		this.pvsLanguageServer = pvsLanguageServer;
 	}
 
-	publish (desc: { type: string, channelID: string, data: any }): void {
+	publish (desc: CliGatewayEvent): void {
 		if (desc && desc.type && desc.channelID && desc.data) {
 			if (this.pvsCli[desc.channelID]) {
 				const clientIDs: string[] = Object.keys(this.pvsCli[desc.channelID]);
@@ -87,21 +86,7 @@ export class PvsCliGateway {
 				wsClient.on('message', (msg: string) => {
 					// FIXME: declare these message types in serverInterface
 					try {
-						const data: { 
-							type: "subscribe", clientID: string, channelID: string 
-						} | { 
-							type: "subscribe-vscode", clientID: string, channelID: string 
-						} | {
-							type: "unsubscribe", clientID: string, channelID: string
-						} | { 
-							type: "pvs.proof-command", fileName: string, fileExtension: string, contextFolder: string, 
-							formulaName: string, theoryName: string, cmd: string 
-						} | {
-							type: "pvs.save-proof", fileName: string, fileExtension: string, contextFolder: string, 
-							formulaName: string, theoryName: string
-						} | {
-							type: "publish", channelID: string
-						} = JSON.parse(msg);
+						const data: CliGatewayRequest = JSON.parse(msg);
 						if (data) {
 							switch (data.type) {
 								case "subscribe-vscode": {
@@ -159,10 +144,15 @@ export class PvsCliGateway {
 									this.pvsLanguageServer.proofCommandRequest(data);
 									break;
 								}
-								case "publish": {
-									console.info('[pvs-cli-gateway] received request to forward message on channel ', data.channelID);
-									this.publish({ type: "publish", channelID: data.channelID, data: null });
+								case "pvs.evaluate-expression": {
+									console.info('[pvs-cli-gateway] received new evaluation request from pvs-cli', data.cmd);
+									this.pvsLanguageServer.evaluationRequest(data);
+									break;
 								}
+								// case "publish": {
+								// 	console.info('[pvs-cli-gateway] received request to forward message on channel ', data.channelID);
+								// 	this.publish({ type: "publish", channelID: data.channelID, data: null });
+								// }
 								default: {
 									console.error("[pvs-cli-gateway] Warning: unknown message type", msg);
 								}

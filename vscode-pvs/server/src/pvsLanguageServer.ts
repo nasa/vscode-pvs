@@ -40,7 +40,7 @@ import {
 	Connection, TextDocuments, TextDocument, CompletionItem, createConnection, ProposedFeatures, InitializeParams, 
 	TextDocumentPositionParams, Hover, CodeLens, CodeLensParams,
 	Diagnostic, Position, Range, DiagnosticSeverity, Definition,
-	Location, TextDocumentChangeEvent, TextDocumentSyncKind, TextDocumentWillSaveEvent
+	Location, TextDocumentChangeEvent, TextDocumentSyncKind
 } from 'vscode-languageserver';
 import { 
 	PvsDefinition,
@@ -48,7 +48,6 @@ import {
 	ContextDescriptor,
 	serverEvent,
 	serverCommand,
-	cliSessionType,
 	PvsDownloadDescriptor,
 	PvsFileDescriptor,
 	FormulaDescriptor,
@@ -69,7 +68,7 @@ import * as path from 'path';
 import { PvsProxy, ContextDiagnostics } from './pvsProxy';
 import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl, ShowTCCsResult, ProveTccsResult } from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
-import { TextEdit } from 'vscode';
+import { PvsIoProxy } from './pvsioProxy';
 
 export interface PvsTheoryDescriptor {
 	id?: string;
@@ -95,6 +94,7 @@ export class PvsLanguageServer {
 	protected timers: { [ key:string ]: NodeJS.Timer } = {};
 	// pvs server & proxy
 	protected pvsProxy: PvsProxy;
+	protected pvsioProxy: PvsIoProxy; // this is necessary for the moment because pvs-server does not have APIs for pvsio
 	// connection to the client
 	protected connection: Connection;
 	// list of documents opened in the editor
@@ -249,6 +249,10 @@ export class PvsLanguageServer {
 			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request });
 			return;
 		}
+		if (utils.isQuitCommand(request.cmd)) {
+			await this.pvsProxy.proofCommand({ cmd: "quit" });
+			return
+		}
 		
 		// else, relay command to pvs-server
 		const response: PvsResponse = await this.proofCommand(request);
@@ -263,7 +267,7 @@ export class PvsLanguageServer {
 				await fsUtils.writeFile(pvsLogFile, utils.formatProofState(response.result));
 				await fsUtils.writeFile(pvsTmpLogFile, "");
 
-				this.cliGateway.publish({ type: serverEvent.proofStateUpdate, channelID, data: response });
+				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response });
 				this.connection.sendRequest(serverEvent.proofCommandResponse, { response, args: request });
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
 			} else {
@@ -311,7 +315,7 @@ export class PvsLanguageServer {
 				await fsUtils.writeFile(pvsLogFile, utils.formatProofState(response.result));
 				await fsUtils.writeFile(pvsTmpLogFile, "");
 
-				this.cliGateway.publish({ type: serverEvent.proofStateUpdate, channelID, data: response });
+				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response });
 				this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request, pvsLogFile, pvsTmpLogFile });
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
 			} else {
@@ -384,17 +388,37 @@ export class PvsLanguageServer {
 	// 	}
 	// 	return null;
 	// }
-	// async pvsioEvaluatorRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<void> {
-	// 	const response: PvsResponse = await this.pvsioEvaluator(request);
-	// 	if (response) {
-	// 		// the following additional logic is necessary to create the log file and start up the interactive cli session
-	// 		const channelID: string = utils.desc2id(request);
-	// 		this.cliGateway.publish({ type: serverEvent.pvsioEvaluatorResponse, channelID, data: response });
-	// 		this.connection.sendRequest(serverEvent.pvsioEvaluatorResponse, { response, args: request });
-	// 	} else {
-	// 		console.error("[pvs-language-server] Warning: prove-formula returned null");
-	// 	}
-	// }
+	async evaluationRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd: string }): Promise<void> {
+		console.log(request);
+		const response: PvsResponse = await this.pvsioProxy.evaluateExpression(request);
+		const channelID: string = utils.desc2id(request);
+		this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: response });
+		if (response.error) {
+			const msg: string = response && response.error && response.error.message ? response.error.message : `Error: unable to evaluate expression ${request.cmd} (please check pvs-server log for details)`;
+			this.notifyError({ msg });
+		}
+	}
+	async startEvaluatorRequest (request: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string }): Promise<void> {
+		// send feedback to the front-end
+		const taskId: string = `typecheck-${request.fileName}@${request.theoryName}`;
+		this.notifyStartImportantTask({ id: taskId, msg: `Typechecking files necessary to evaluate theory ${request.theoryName}` });
+		// parse workspace files before starting the proof attempt, so stats can be updated on the status bar 
+		await this.parseWorkspaceRequest(request);
+		// start proof
+		const response: PvsResponse = await this.typecheckFile(request);
+		if (response && response.result) {
+			let pvsioResponse: PvsResponse = await this.pvsioProxy.startEvaluator(request);
+			const channelID: string = utils.desc2id(request);
+			// replace standard banner
+			pvsioResponse.result = "";
+			pvsioResponse.banner = utils.pvsioBanner;
+			this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: pvsioResponse });
+			this.connection.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: request });
+			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
+		} else {
+			this.notifyEndImportantTaskWithErrors({ id: taskId, msg: "Error: Could not start PVSio, some of the files do not typecheck correctly (see Problems). Please fix the typecheck errors first." });
+		}
+	}
 
 
 	/**
@@ -1219,6 +1243,7 @@ export class PvsLanguageServer {
 					await this.pvsProxy.restartPvsServer({ pvsPath: this.pvsPath });
 				} else {
 					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, externalServer });
+					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection })
 					this.createServiceProviders();
 					const success: boolean = await this.pvsProxy.activate({ debugMode: false });
 					if (!success) {
@@ -1410,6 +1435,9 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.saveProof, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, proofDescriptor: ProofDescriptor }) => {
 				this.saveProofRequest(args); // async call
 			});			
+			this.connection.onRequest(serverCommand.quitProver, async () => {
+				this.pvsProxy.proofCommand({ cmd: "quit" }); // async call
+			});
 
 			this.connection.onRequest(serverCommand.listDownloadableVersions, async () => {
 				const versions: PvsDownloadDescriptor[] = await PvsPackageManager.listDownloadableVersions();
@@ -1420,11 +1448,18 @@ export class PvsLanguageServer {
 				this.connection.sendRequest(serverEvent.downloadPvsResponse, { response: fname });
 			});
 			this.connection.onRequest(serverCommand.downloadLicensePage, async () => {
-				const lpage: string = await PvsPackageManager.downloadPvsLicensePage();
-				this.connection.sendRequest(serverEvent.downloadLicensePageResponse, { response: lpage });
+				const licensePage: string = await PvsPackageManager.downloadPvsLicensePage();
+				this.connection.sendRequest(serverEvent.downloadLicensePageResponse, { response: licensePage });
 			});
 			this.connection.onRequest("kill-parser", async (args: { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.pvsProxy.killParser(); // async call
+			});
+
+			this.connection.onRequest(serverCommand.startEvaluator, async (args: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string }) => {
+				this.startEvaluatorRequest(args);
+			});
+			this.connection.onRequest(serverCommand.evaluateExpression, async (args: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string, cmd: string }) => {
+				this.evaluationRequest(args);
 			});
 
 		});

@@ -232,7 +232,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.proofExplorer.activate(this.context);
 			this.outlineProvider = new VSCodePvsFileOutlineProvider(this.client);
 			this.outlineProvider.activate(this.context);
-			this.vscodePvsTerminal = new VSCodePvsTerminal(this.client, this.proofExplorer);
+			this.vscodePvsTerminal = new VSCodePvsTerminal(this.client);
 			this.vscodePvsTerminal.activate(this.context);
 			this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');
 			this.proofMate.activate(this.context);
