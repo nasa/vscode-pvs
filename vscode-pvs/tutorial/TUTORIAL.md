@@ -71,7 +71,7 @@ helloworld: THEORY
 2. Typecheck the specification. The system will report that the specification typechecks correctly and two TCCs were generated
 3. To inspect the TCCs: right-click in the editor window. A contextual menu will be shown, Select `Show TCCs` from the contextual menu. The editor will open a new file `helloworld.tccs` that allows you to check the TCCs.
 4. To discharge all TCCS: right-click in the editor window showing the TCCs. A contextual menu will be displayed. Select `Discharge all TCCs` from the contextual menu.
-> Hint: Check out `PVS Workspace Explorer` located in the side panel, under file explorer. It shows all theories defined in the context and, for each theory, all formulas and TCCs.
+> Hint: Check the functionalities of `PVS Workspace Explorer` located in the side panel, under file explorer. It shows all theories defined in the context and, for each theory, all formulas and TCCs.
 ---
 
 ## Example 4: Testing
@@ -139,23 +139,23 @@ always_positive :
  >> 
 ```
 4. To prove the theorem, enter the following proof command at the prover prompt: `grind`
-> Hint 1: Try to formulate a theorem expressing a property that is not true of the specification. For example, edit theorem `always_positive` by changing the condition from `>=` to `>`. The theorem should look as follows:  
-```pvs
-    always_positive: THEOREM
-      FORALL (x: real): abs(x) > 0
-```
-This new formulation of the theorem is not true. The theorem prover will not be able to complete the proof, and returns the following diagnostic information:
-```
-{-1}   real_pred(x!1)
-  ├───────
-{1}   x!1 > 0
-{2}   -x!1 > 0
-```
-Formula `{-1}` (called antecedent) indicates that `x` is a real number (`x!1` is a skolem constant representing a generic `x`).
-Formulas `{1} and {2}` (called succedents) indicate that the theorem is true when `x > 0` and `x < 0`.
-Based on the above diagnostics, one can precisely identify the problem: the theorem therefore fails when `x` is `0`.
+> Hint 1: Formulate a theorem that is not true, and check how the theorem prover is able to provide useful diagnostics that can help fix the formulation. For example, try to prove the following theorem `always_positive_alt`, where the condition expressed in `always_positive` has been changed from `>=` to `>`:  
+> ```pvs
+> always_positive_alt: THEOREM
+>   FORALL (x: real): abs(x) > 0
+> ```
+> The proof of this theorem cannot be completed with `grind`, and the theorem prover returns the following diagnostic information:
+> ```
+> {-1}   real_pred(x!1)
+>   ├───────
+> {1}   x!1 > 0
+> {2}   -x!1 > 0
+> ```
+> Formula `{-1}` (called antecedent) indicates that `x` is a real number (`x!1` is a skolem constant representing a generic `x`).
+> Formulas `{1}` and `{2}` (called succedents) indicate that the theorem is true when `x > 0` and `x < 0`, respectively.
+> Based on these diagnostics, one can deduce that the theorem prover was unable to complete the proof when `x = 0`, as it is the only missing case.
 
-> Hint 2: Check out `PVS Proof Explorer` located in the side panel, under file explorer. It shows the proof steps and provides functions for proof playback and proof editing.
+> Hint 2: Check the functionalities of `PVS Proof Explorer` located in the side panel, under file explorer. It shows the proof steps and provides functions for proof playback and proof editing.
 
 ---
 
