@@ -5,7 +5,10 @@ The environment redefines the way developers interact with PVS, and better align
 ![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.16](releases/vscode-pvs-1.0.16.vsix)
+[vscode-pvs-1.0.17-alpha](releases/vscode-pvs-1.0.17-alpha.vsix)
+
+## Getting started
+New to VSCode-PVS and the PVS verification system? Try out our [tutorial](vscode-pvs/tutorial/TUTORIAL.md)!
 
 ## Functionalities
 The main functionalities provided by the environment are as follows:
@@ -48,9 +51,6 @@ When a new release of VSCode-PVS is available in the [github repository](release
 - Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
 
 All settings and preferences from the previous version of VSCode-PVS will be maintained.
-
-## Getting started
-New to the PVS verification system? Try out our [tutorial](vscode-pvs/tutorial/TUTORIAL.md)!
 
 
 ## Notices
