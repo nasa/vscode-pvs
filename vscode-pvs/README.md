@@ -2,6 +2,9 @@
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
+## Getting started
+New to VSCode-PVS and the PVS verification system? Try out our [tutorial](tutorial/TUTORIAL.md)!
+
 ## Functionalities
 The main functionalities provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
@@ -23,19 +26,16 @@ The main functionalities provided by the environment are as follows:
 - PVS Allegro (7.1 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots
 
 ## Installation instructions
-1. Download the latest release of VSCode-PVS from the [github repository](releases)
+1. Download the latest release of VSCode-PVS from the [github repository](../releases)
 2. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
 3. Have fun using the extension!
 
 ## Updating VSCode-PVS
-When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
+When a new release of VSCode-PVS is available in the [github repository](../releases), download the new release and install it in Visual Studio Code:
 
 - Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
 
 All settings and preferences from the previous version of VSCode-PVS will be maintained.
-
-## Getting started
-New to the PVS verification system? Try out our [tutorial](tutorial/TUTORIAL.md)!
 
 ## Structure
 ```
@@ -69,6 +69,10 @@ New to the PVS verification system? Try out our [tutorial](tutorial/TUTORIAL.md)
 
 
 ## ChangeLog
+### 1.0.17-alpha (2020.04.09)
+- Improved Proof Mate functionalities (recommended commands)
+- Improved Prover CLI (autocompletion for lemmas)
+
 ### 1.0.16 (2020.04.06)
 - Improved Proof Explorer functionalities (tooltips, proof-stepper)
 - Improved Editor functionalities (autocompletion, codelens)
