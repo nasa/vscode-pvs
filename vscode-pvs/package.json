@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.16",
+	"version": "1.0.17-alpha",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -154,137 +154,154 @@
 		"commands": [
 			{
 				"command": "vscode-pvs.typecheck-file",
-				"title": "Typecheck"
+				"title": "Typecheck",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.generate-tccs",
-				"title": "Generate TCCs"
+				"title": "Generate TCCs",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.show-tccs",
-				"title": "Show TCCs"
+				"title": "Show TCCs",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.show-tccs-alt",
-				"title": "Show"
+				"title": "Show",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.parse-file",
-				"title": "Parse File"
+				"title": "Parse File",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.parse-workspace",
-				"title": "Parse Workspace"
+				"title": "Parse Workspace",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.hp2pvs",
-				"title": "Generate PVS file"
+				"title": "Generate PVS file",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.prove-formula",
-				"title": "Prove"
+				"title": "Prove",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.command-palette",
-				"title": "Command Palette..."
+				"title": "Command Palette...",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs-alt",
-				"title": "Discharge"
+				"title": "Discharge",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.discharge-theorems-alt",
-				"title": "Discharge"
+				"title": "Discharge",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs",
-				"title": "Discharge all TCCs"
+				"title": "Discharge all TCCs",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
-				"title": "PVSio Evaluator"
+				"title": "PVSio Evaluator",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "proof-mate.exec-proof-command",
-				"title": "Execute"
+				"title": "Execute",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "proof-mate.exec-proof-command-with-parameters",
-				"title": "Execute with parameters..."
+				"title": "Execute with parameters...",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.delete-node",
 				"title": "Delete",
-				"enablement": "view == proof-explorer-view"
+				"enablement": "view == proof-explorer-view && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.trim-subtree",
 				"title": "Trim",
-				"enablement": "view == proof-explorer-view"
+				"enablement": "view == proof-explorer-view && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.create-proof-branch",
 				"title": "New branch",
-				"enablement": "view == proof-explorer-view && viewItem != proof-branch"
+				"enablement": "view == proof-explorer-view && viewItem != proof-branch && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.append-node",
 				"title": "New proof command",
-				"enablement": "view == proof-explorer-view"
+				"enablement": "view == proof-explorer-view && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.mark-as-pending",
 				"title": "Mark as pending",
-				"enablement": "view == proof-explorer-view && viewItem === proof-branch"
+				"enablement": "view == proof-explorer-view && viewItem === proof-branch && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.mark-as-visited",
 				"title": "Mark as visited",
-				"enablement": "view == proof-explorer-view && viewItem != root"
+				"enablement": "view == proof-explorer-view && viewItem != root && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.mark-as-not-visited",
 				"title": "Mark as not visited",
-				"enablement": "view == proof-explorer-view && viewItem != root"
+				"enablement": "view == proof-explorer-view && viewItem != root && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.mark-as-active",
 				"title": "Mark as active",
-				"enablement": "view == proof-explorer-view && viewItem != root"
+				"enablement": "view == proof-explorer-view && viewItem != root && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.show-sequent",
 				"title": "Open sequent in the editor",
-				"enablement": "view == proof-explorer-view",
+				"enablement": "view == proof-explorer-view && pvs-language-active == true",
 				"icon": "icons/browser-arrow-icon.png"
 			},
 			{
 				"command": "proof-explorer.rename-node",
-				"title": "Rename"
+				"title": "Rename",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.cut-node",
 				"title": "Cut",
-				"enablement": "view == proof-explorer-view && viewItem != root"
+				"enablement": "view == proof-explorer-view && viewItem != root && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.copy-node",
 				"title": "Copy proof command",
-				"enablement": "view == proof-explorer-view && viewItem != root"
+				"enablement": "view == proof-explorer-view && viewItem != root && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.copy-subtree",
 				"title": "Copy",
-				"enablement": "view == proof-explorer-view"
+				"enablement": "view == proof-explorer-view && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.paste-node",
 				"title": "Paste",
-				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node"
+				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node && pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.save-proof",
-				"title": "Save"
+				"title": "Save",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.save-proof-as",
@@ -298,34 +315,38 @@
 			},
 			{
 				"command": "proof-explorer.quit-proof",
-				"title": "Quit"
+				"title": "Quit",
+				"enablement": "pvs-language-active == true"
 			},
 			{
 				"command": "proof-explorer.back",
 				"title": "Back one step",
-				"icon": "icons/prev-icon.png"
+				"icon": "icons/prev-icon.png",
+				"enablement": "prover-session-active == true"
 			},
 			{
 				"command": "proof-explorer.forward",
 				"title": "Step proof",
-				"icon": "icons/next-icon.png"
+				"icon": "icons/next-icon.png",
+				"enablement": "prover-session-active == true"
 			},
 			{
 				"command": "proof-explorer.run-proof",
 				"title": "️️Run proof",
 				"icon": "icons/play-circle-1-icon.png",
-				"enablement": "view == proof-explorer-view"
+				"enablement": "view == proof-explorer-view && prover-session-active == true"
 			},
 			{
 				"command": "proof-explorer.fast-forward",
 				"title": "️️Fast forward",
 				"icon": "icons/fast-forward-icon.png",
-				"enablement": "view == proof-explorer-view && viewItem != root"
+				"enablement": "view == proof-explorer-view && viewItem != root && prover-session-active == true"
 			},
 			{
 				"command": "proof-mate.show-sequent",
-				"title": "️️Show sequent",
-				"icon": "icons/browser-arrow-icon.png"
+				"title": "️️Open current sequent in the editor",
+				"icon": "icons/browser-arrow-icon.png",
+				"enablement": "prover-session-active == true"
 			},
 			{
 				"command": "workspace-explorer.typecheck-all",
@@ -457,17 +478,17 @@
 				},
 				{
 					"command": "proof-mate.exec-proof-command",
-					"when": "view == proof-mate-view && viewItem == proofmate-suggestion",
+					"when": "view == proof-mate-view && viewItem == proofmate-item",
 					"group": "inline"
 				},
 				{
 					"command": "proof-mate.exec-proof-command",
-					"when": "view == proof-mate-view && viewItem == proofmate-suggestion",
+					"when": "view == proof-mate-view && viewItem == proofmate-item",
 					"group": "context-menu/exec"
 				},
 				{
 					"command": "proof-mate.exec-proof-command-with-parameters",
-					"when": "view == proof-mate-view && viewItem == proofmate-suggestion",
+					"when": "view == proof-mate-view && viewItem == proofmate-item",
 					"group": "context-menu/exec"
 				}
 			],

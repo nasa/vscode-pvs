@@ -158,7 +158,7 @@ export class PvsLanguageServer {
 	}
 	protected notifyEndExecution (desc?: { msg?: string }): void {
 		if (this.connection) {
-			this.connection.sendNotification("server.status.ready", desc);
+			this.connection.sendNotification("server.important-notification", desc);
 		}
 	}
 	protected notifyStartImportantTask (desc: { id: string, msg: string }): void {
@@ -191,6 +191,12 @@ export class PvsLanguageServer {
 		// error shown in the status bar
 		if (this.connection) {
 			this.connection.sendNotification("server.status.error", desc);
+		}
+	}
+	protected notifyMessage (desc: { msg: string }): void {
+		// error shown in the status bar
+		if (this.connection) {
+			this.connection.sendNotification("server.important-notification", desc);
 		}
 	}
 	//--
@@ -267,7 +273,7 @@ export class PvsLanguageServer {
 				await fsUtils.writeFile(pvsLogFile, utils.formatProofState(response.result));
 				await fsUtils.writeFile(pvsTmpLogFile, "");
 
-				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response });
+				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response, cmd: request.cmd });
 				this.connection.sendRequest(serverEvent.proofCommandResponse, { response, args: request });
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
 			} else {
@@ -316,6 +322,7 @@ export class PvsLanguageServer {
 				await fsUtils.writeFile(pvsTmpLogFile, "");
 
 				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response });
+				this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() })
 				this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request, pvsLogFile, pvsTmpLogFile });
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
 			} else {
@@ -638,31 +645,35 @@ export class PvsLanguageServer {
 					const response: PvsResponse = await this.showTccs({
 						fileName: args.fileName, fileExtension: args.fileExtension, contextFolder: args.contextFolder, theoryName
 					});
-					if (response && response.result) {
-						const tccResult: ShowTCCsResult = <ShowTCCsResult> response.result;
-						let line: number = TCC_START_OFFSET;
-						res.theories.push({
-							fileName: args.fileName,
-							fileExtension: args.fileExtension,
-							contextFolder: args.contextFolder,
-							theoryName,
-							position: null,
-							theorems: (tccResult) ? tccResult.map(tcc => {
-								line += (tcc.comment && tcc.comment.length) ? tcc.comment[0].split("\n").length + 1 : 1;
-								const res: FormulaDescriptor = {
-									fileName: args.fileName,
-									fileExtension: ".tccs",
-									contextFolder: args.contextFolder,
-									theoryName,
-									formulaName: tcc.id,
-									position: { line, character: 0 },
-									status: (tcc.proved) ? "proved" : "unproved",
-									isTcc: true
-								};
-								line += (tcc.definition) ? tcc.definition.split("\n").length + 2 : 2;
-								return res;
-							}): null
-						});
+					if (response && !response.error) {
+						if (response.result) {
+							const tccResult: ShowTCCsResult = <ShowTCCsResult> response.result;
+							let line: number = TCC_START_OFFSET;
+							res.theories.push({
+								fileName: args.fileName,
+								fileExtension: args.fileExtension,
+								contextFolder: args.contextFolder,
+								theoryName,
+								position: null,
+								theorems: (tccResult) ? tccResult.map(tcc => {
+									line += (tcc.comment && tcc.comment.length) ? tcc.comment[0].split("\n").length + 1 : 1;
+									const res: FormulaDescriptor = {
+										fileName: args.fileName,
+										fileExtension: ".tccs",
+										contextFolder: args.contextFolder,
+										theoryName,
+										formulaName: tcc.id,
+										position: { line, character: 0 },
+										status: (tcc.proved) ? "proved" : "unproved",
+										isTcc: true
+									};
+									line += (tcc.definition) ? tcc.definition.split("\n").length + 2 : 2;
+									return res;
+								}): null
+							});
+						} else {
+							console.info(`[pvs-language-server.showTccs] No TCCs generated`, response);	
+						}
 					} else {
 						this.notifyError({ msg: `Error: tccs could not be generated (please check pvs-server console for details)` });
 						console.error(`[pvs-language-server.showTccs] Error: tccs could not be generated`, response);
@@ -1370,7 +1381,7 @@ export class PvsLanguageServer {
 				}
 			});
 
-			this.connection.onRequest(serverCommand.startPvsLanguageServer, async (request: { pvsPath: string, contextFolder?: string, externalServer?: boolean }) => {
+			this.connection.onRequest(serverCommand.startPvsServer, async (request: { pvsPath: string, contextFolder?: string, externalServer?: boolean }) => {
 				// this should be called just once at the beginning
 				const success: boolean = await this.startPvsServerRequest(request);
 				if (success) {

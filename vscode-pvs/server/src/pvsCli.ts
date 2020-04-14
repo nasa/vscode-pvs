@@ -37,8 +37,9 @@
  **/
 
 import * as utils from './common/languageUtils';
+import { CORE_PROOF_COMMANDS, EVALUATOR_COMMANDS } from './common/commandUtils';
 import * as readline from 'readline';
-import { PvsCliInterface, SimpleConsole, StrategyDescriptor, SimpleConnection, serverEvent, serverCommand } from './common/serverInterface';
+import { PvsCliInterface, SimpleConsole, SimpleConnection, serverCommand, CliGatewaySubscriberEvent } from './common/serverInterface';
 import * as fsUtils from './common/fsUtils';
 
 import { cliSessionType } from './common/serverInterface';
@@ -151,12 +152,14 @@ class PvsCli {
 	protected rl: readline.ReadLine;
 	// protected pvsProcess: PvsProcess;
 
-	protected static proverStrategies: string[] = utils.PROVER_STRATEGIES_CORE.map((strat: StrategyDescriptor) => {
-		return strat.name;
-	});
-	protected static evaluatorFunctions: string[] = utils.EVALUATOR_FUNCTIONS_CORE.map((strat: StrategyDescriptor) => {
-		return strat.name;
-	});
+	protected mathObjects: { lemmas: string[], types: string[], definitions: string[] } = {
+		lemmas: [],
+		types: [],
+		definitions: []
+	};
+
+	protected static proofCommands: string[] = Object.keys(CORE_PROOF_COMMANDS);
+	protected static evaluatorFunctions: string[] = Object.keys(EVALUATOR_COMMANDS);
 
 	// protected pvsPath: string;
 	protected contextFolder: string;
@@ -317,17 +320,17 @@ class PvsCli {
 			this.wsClient.on("message", (msg: string) => {
 				// console.log(msg);
 				try {
-					const data = JSON.parse(msg);
-					if (data) {
-						switch (data.type) {
+					const evt: CliGatewaySubscriberEvent = JSON.parse(msg);
+					if (evt) {
+						switch (evt.type) {
 							case "subscribe-response": {
 								// this.wsClient.send(JSON.stringify({ type: "publish", channelID: "event.cli-ready", clientID: this.clientID }));
 								// console.log(`Client ${this.clientID} ready to receive events ${channelID}`);
-								resolve(data.success);
+								resolve(evt.success);
 								break;
 							}
-							case serverEvent.evaluatorStateUpdate: {
-								const pvsResponse: PvsResponse = data.response;
+							case "pvs.event.evaluator-state": {
+								const pvsResponse: PvsResponse = evt.data;
 								if (pvsResponse) {
 									if (pvsResponse.result) {
 										console.log(utils.formatPvsIoState(pvsResponse.result, { useColors: true }));
@@ -343,20 +346,27 @@ class PvsCli {
 								readline.clearLine(process.stdin, 1); // clear any previous input
 								break;
 							}
-							case serverEvent.proofStateUpdate: {
-								const pvsResponse: PvsResponse = data.response;
+							case "pvs.event.proof-state": {
+								const pvsResponse: PvsResponse = evt.data;
 								if (pvsResponse) {
 									if (pvsResponse.result) {
 										const res: utils.ProofState = pvsResponse.result;
-										// print commentary in the CLI
-										if (res.commentary && typeof res.commentary === "object" && res.commentary.length > 0) {
-											// the last line of the commentary is the sequent, dont' print it!
-											for (let i = 0; i < res.commentary.length - 1; i++) {
-												console.log(res.commentary[i]);
+										const showHidden: boolean = utils.isShowHiddenCommand(evt.cmd);
+										if (showHidden) {
+											console.log(utils.formatHiddenFormulas(pvsResponse.result, { useColors: true, showAction: true })); // show proof state
+										} else {
+											// print commentary in the CLI
+											if (res.commentary && typeof res.commentary === "object" && res.commentary.length > 0) {
+												// the last line of the commentary is the sequent, dont' print it!
+												for (let i = 0; i < res.commentary.length - 1; i++) {
+													console.log(res.commentary[i]);
+												}
 											}
+											// update proof state -- for the completer
+											this.proofState = utils.formatProofState(res);
+											// print proof state using syntax highlighting 
+											console.log(utils.formatProofState(pvsResponse.result, { useColors: true, showAction: true })); // show proof state										
 										}
-										this.proofState = utils.formatProofState(res);
-										console.log(utils.formatProofState(pvsResponse.result, { useColors: true, showAction: true })); // show proof state										
 										this.rl.prompt(); // show prompt
 										readline.clearLine(process.stdin, 1); // clear any previous input
 									} else {
@@ -364,6 +374,13 @@ class PvsCli {
 									}
 								} else {
 									console.warn(`[pvs-cli] Warning: received null response from pvs-server`);
+								}
+								break;
+							}
+							case "gateway.publish.math-objects": {
+								const pvsResponse: { lemmas: string[], types: string[], definitions: string[] } = evt.data;
+								if (pvsResponse) {
+									this.mathObjects = pvsResponse;
 								}
 								break;
 							}
@@ -382,7 +399,7 @@ class PvsCli {
 							// 	break;
 							// }
 							default: {
-								console.error("[pvs-cli] Warning: received unknown message type", data);
+								console.error("[pvs-cli] Warning: received unknown message type", evt);
 							}
 						}
 					} else {
@@ -398,12 +415,13 @@ class PvsCli {
                 resolve(false);
             });
 		});
-    }
-
+	}
+	
 	protected proverCompleter (line: string) {
 		let hits: string[] = [];
 		// console.log(`[pvs-cli] trying to auto-complete ${line}`);
-		if (line.startsWith("(expand") || line.startsWith("expand")) {
+		if (line.startsWith("(expand") || line.startsWith("expand")
+			|| line.startsWith("(rewrite") || line.startsWith("rewrite")) {
 			// autocomplete symbol names
 			const symbols: string[] = utils.listSymbols(this.proofState);
 			// console.dir(symbols, { depth: null });
@@ -413,11 +431,33 @@ class PvsCli {
 						hits.push(`(expand "${symbols[i]}"`);
 					} else if (`expand "${symbols[i]}"`.startsWith(line)) {
 						hits.push(`expand "${symbols[i]}"`);
+					} else if (`(rewrite "${symbols[i]}"`.startsWith(line)) {
+						hits.push(`(rewrite "${symbols[i]}"`);
+					} else if (`rewrite "${symbols[i]}"`.startsWith(line)) {
+						hits.push(`rewrite "${symbols[i]}"`);
+					}
+				}
+			}
+		} else if (line.startsWith("(lemma") || line.startsWith("lemma")
+					|| line.startsWith("(apply-lemma") || line.startsWith("apply-lemma")) {
+			if (this.mathObjects) {
+				const symbols: string[] = this.mathObjects.lemmas;
+				if (symbols && symbols.length) {
+					for (let i = 0; i < symbols.length; i++) {
+						if (`(lemma "${symbols[i]}"`.startsWith(line)) {
+							hits.push(`(lemma "${symbols[i]}"`);
+						} else if (`lemma "${symbols[i]}"`.startsWith(line)) {
+							hits.push(`lemma "${symbols[i]}"`);
+						} else if (`(apply-lemma "${symbols[i]}"`.startsWith(line)) {
+							hits.push(`(apply-lemma "${symbols[i]}"`);
+						} else if (`apply-lemma "${symbols[i]}"`.startsWith(line)) {
+							hits.push(`apply-lemma "${symbols[i]}"`);
+						}
 					}
 				}
 			}
 		} else if (line.trim().startsWith("(")) {
-			hits = PvsCli.proverStrategies.map((c: string) => {
+			hits = PvsCli.proofCommands.map((c: string) => {
 				// console.log(`(${c}`);
 				return `(${c}`;
 			}).filter((c: string) => c.startsWith(line));
@@ -425,7 +465,7 @@ class PvsCli {
 			// Show all completions if none found
 			// return [ hits.length ? hits : PvsCli.completions, line ];
 			// show nothing if no completion is found
-			hits = PvsCli.proverStrategies.filter((c: string) => c.startsWith(line));
+			hits = PvsCli.proofCommands.filter((c: string) => c.startsWith(line));
 		}
 		return [ hits, line ];
 	}

@@ -39,17 +39,9 @@
 import * as fsUtils from './fsUtils';
 import * as path from 'path';
 import * as language from '../common/languageKeywords';
-import { StrategyDescriptor, FileList, FormulaDescriptor, SimpleConnection, ContextDescriptor, 
-			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus } from '../common/serverInterface';
+import { ProofCommandDescriptor, FileList, FormulaDescriptor, SimpleConnection, ContextDescriptor, 
+			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range } from '../common/serverInterface';
 
-export interface Position {
-	line: number;
-	character: number;
-}
-export interface Range {
-	start: Position,
-	end: Position
-};
 			
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -314,10 +306,37 @@ export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolea
 	return pvsioState;
 }
 
+export function formatHiddenFormulas (proofState: ProofState, opt?: { useColors?: boolean, showAction?: boolean, showHidden?: boolean }) {
+	if (proofState) {
+		opt = opt || {};
+		let res: string = "";
+		if (proofState.sequent) {
+			if (proofState.sequent["hidden-antecedents"] || proofState.sequent["hidden-succedents"]) {
+				res += "\nHidden sequents\n-----------------\n";
+				if (proofState.sequent["hidden-antecedents"]) {
+					res += sequentToString(proofState.sequent["hidden-antecedents"], opt);
+				}
+				// res += "  |-------\n";
+				res += "  ├───────\n";
+				if (proofState.sequent["hidden-succedents"]) {
+					res += sequentToString(proofState.sequent["hidden-succedents"], opt);
+				}
+				res += "-----------------\n";
+			} else {
+				res += "The current sequent does not have any hidden sequent.\n";
+			}
+		}
+		return res;
+	} else {
+		console.error("[language-utils.show-hidden-formulas] Error: proof state is null :/");
+	}
+	return null;
+}
+
 export function formatProofState (proofState: ProofState, opt?: { useColors?: boolean, showAction?: boolean }): string {
 	if (proofState) {
-		let res: string = "";
 		opt = opt || {};
+		let res: string = "";
 		if (proofState.action && opt.showAction) {
 			const action: string = proofState.action.endsWith(",") ? proofState.action.substr(0, proofState.action.length - 1) : proofState.action;
 			res += `\n${action}.\n`;
@@ -873,6 +892,11 @@ export function isPostponeCommand (cmd: string): boolean {
 					|| cmd === "postpone");
 }
 
+export function isShowHiddenCommand (cmd: string): boolean {
+	return cmd && (cmd === "(show-hidden)" 
+					|| cmd === "show-hidden");
+}
+
 export function isSaveCommand (cmd: string): boolean {
 	return cmd && (cmd === "(save)" 
 					|| cmd === "save");
@@ -905,8 +929,8 @@ export function isQED (result: { result: string }): boolean {
 
 export const icons: { [name:string]: string } = {
 	"check": "✅",
-	"bang": "❗",
-	"snow": "❄️",
+	"bang" : "❗",
+	"snow" : "❄️",
 	"stars": "✨"
 };
 
@@ -928,416 +952,3 @@ export function getIcon (proofStatus: ProofStatus): string {
 		return icons.stars;
 	}
 }
-
-
-/**
- * Lists all theories in a given context foder
- * @param contextFolder Current context folder
- * @param connection Connection to the client, useful for sending status updates about what the function is doing (the function may take some time to complete for large files)
- */
-// export async function listTheories (contextFolder: string, connection?: SimpleConnection): Promise<ContextDescriptor> {
-// 	let response: ContextDescriptor = {
-// 		theories: [],
-// 		contextFolder
-// 	};
-// 	// send the empty response to trigger a refresh of the view
-// 	sendTheories(response, connection);
-// 	const fileList: FileList = await fsUtils.listPvsFiles(contextFolder);
-// 	for (let i in fileList.fileNames) {
-// 		let uri: string = path.join(contextFolder, fileList.fileNames[i]);
-// 		let theories: TheoryDescriptor[] = await listTheoriesInFile(uri);
-// 		response.theories.concat(theories);
-// 	}
-// 	sendTheories(response, connection);
-// 	return Promise.resolve(response);
-// }
-
-// export function sendTheories (desc: ContextDescriptor, connection?: SimpleConnection): void {
-// 	if (connection && connection.sendRequest) {
-// 		// send the response incrementally, as soon as another bit of information is available
-// 		connection.sendRequest("server.response.get-context-descriptor", desc);
-// 	}
-// }
-
-
-
-// list obtained with collect-strategy-names
-export const PROVER_STRATEGIES_FULL_SET: StrategyDescriptor[] = [
-	{ name: "abs-simp", description:""},
-	{ name: "abstract", description:""},
-	{ name: "abstract-and-mc", description:""},
-	{ name: "add-formulas", description:""},
-	{ name: "all-implicit-typepreds", description:""},
-	{ name: "all-typepreds", description:""},
-	{ name: "apply", description:""},
-	{ name: "apply-eta", description:""},
-	{ name: "apply-ext", description:""},
-	{ name: "apply-extensionality", description:""},
-	{ name: "apply-lemma", description:""},
-	{ name: "apply-rewrite", description:""},
-	{ name: "assert", description:""},
-	{ name: "auto-rewrite", description:""},
-	{ name: "auto-rewrite!", description:""},
-	{ name: "auto-rewrite!!", description:""},
-	{ name: "auto-rewrite-defs", description:""},
-	{ name: "auto-rewrite-explicit", description:""},
-	{ name: "auto-rewrite-expr", description:""},
-	{ name: "auto-rewrite-theories", description:""},
-	{ name: "auto-rewrite-theory", description:""},
-	{ name: "auto-rewrite-theory-with-importings", description:""},
-	{ name: "bash", description:""},
-	{ name: "bddsimp", description:""},
-	{ name: "beta", description:""},
-	{ name: "both-sides", description:""},
-	{ name: "both-sides-f", description:""},
-	{ name: "branch", description:""},
-	{ name: "branch-back", description:""},
-	{ name: "cancel", description:""},
-	{ name: "cancel-add", description:""},
-	{ name: "cancel-add!", description:""},
-	{ name: "cancel-by", description:""},
-	{ name: "cancel-formula", description:""},
-	{ name: "cancel-terms", description:""},
-	{ name: "canon-tms", description:""},
-	{ name: "case", description:""},
-	{ name: "case*", description:""},
-	{ name: "case-if", description:""},
-	{ name: "case-if*", description:""},
-	{ name: "case-old-lift-if", description:""},
-	{ name: "case-replace", description:""},
-	{ name: "checkpoint", description:""},
-	{ name: "claim", description:""},
-	{ name: "comment", description:""},
-	{ name: "commentf", description:""},
-	{ name: "contra-eqs", description:""},
-	{ name: "copy", description:""},
-	{ name: "copy*", description:""},
-	{ name: "cross-add", description:""},
-	{ name: "cross-mult", description:""},
-	{ name: "cut", description:""},
-	{ name: "decide", description:""},
-	{ name: "decompose-equality", description:""},
-	{ name: "default-strategy", description:""},
-	{ name: "deftactic", description:""},
-	{ name: "delabel", description:""},
-	{ name: "delete", description:""},
-	{ name: "demod-lin", description:""},
-	{ name: "demod-num", description:""},
-	{ name: "detuple-boundvars", description:""},
-	{ name: "discriminate", description:""},
-	{ name: "distrib", description:""},
-	{ name: "distrib!", description:""},
-	{ name: "div-by", description:""},
-	{ name: "do-rewrite", description:""},
-	{ name: "elim-unary", description:""},
-	{ name: "elim-unary!", description:""},
-	{ name: "else", description:""},
-	{ name: "else*", description:""},
-	{ name: "equate", description:""},
-	{ name: "eta", description:""},
-	{ name: "eval", description:""},
-	{ name: "eval-expr", description:""},
-	{ name: "eval-formula", description:""},
-	{ name: "expand", description:""},
-	{ name: "expand*", description:""},
-	{ name: "expand-names", description:""},
-	{ name: "extensionality", description:""},
-	{ name: "extra-tcc-step", description:""},
-	{ name: "extrategies-about", description:""},
-	{ name: "factor", description:""},
-	{ name: "factor!", description:""},
-	{ name: "fail", description:""},
-	{ name: "fert-tsos", description:""},
-	{ name: "field", description:""},
-	{ name: "field-about", description:""},
-	{ name: "finalize", description:""},
-	{ name: "flatten", description:""},
-	{ name: "flatten-disjunct", description:""},
-	{ name: "flip-ineq", description:""},
-	{ name: "for", description:""},
-	{ name: "for-each", description:""},
-	{ name: "for-each-rev", description:""},
-	{ name: "for@", description:""},
-	{ name: "forward-chain", description:""},
-	{ name: "forward-chain*", description:""},
-	{ name: "forward-chain-theory", description:""},
-	{ name: "forward-chain@", description:""},
-	{ name: "gen-ex-cad", description:""},
-	{ name: "generalize", description:""},
-	{ name: "generalize-skolem-constants", description:""},
-	{ name: "grind", description:""},
-	{ name: "grind-reals", description:""},
-	{ name: "grind-with-ext", description:""},
-	{ name: "grind-with-lemmas", description:""},
-	{ name: "ground", description:""},
-	{ name: "ground-eval", description:""},
-	{ name: "group", description:""},
-	{ name: "group!", description:""},
-	{ name: "has-sign", description:""},
-	{ name: "help", description:""},
-	{ name: "hide", description:""},
-	{ name: "hide-all-but", description:""},
-	{ name: "if", description:""},
-	{ name: "if-label", description:""},
-	{ name: "iff", description:""},
-	{ name: "induct", description:""},
-	{ name: "induct-and-rewrite", description:""},
-	{ name: "induct-and-rewrite!", description:""},
-	{ name: "induct-and-simplify", description:""},
-	{ name: "inst", description:""},
-	{ name: "inst!", description:""},
-	{ name: "inst*", description:""},
-	{ name: "inst-cp", description:""},
-	{ name: "inst?", description:""},
-	{ name: "install-rewrites", description:""},
-	{ name: "instantiate", description:""},
-	{ name: "instantiate-one", description:""},
-	{ name: "insteep", description:""},
-	{ name: "insteep*", description:""},
-	{ name: "int-dom-zpb", description:""},
-	{ name: "invoke", description:""},
-	{ name: "isolate", description:""},
-	{ name: "isolate-mult", description:""},
-	{ name: "isolate-replace", description:""},
-	{ name: "just-install-proof", description:""},
-	{ name: "label", description:""},
-	{ name: "lazy-grind", description:""},
-	{ name: "lemma", description:""},
-	{ name: "let", description:""},
-	{ name: "let-name-replace", description:""},
-	{ name: "lift-if", description:""},
-	{ name: "lisp", description:""},
-	{ name: "mapstep", description:""},
-	{ name: "mapstep@", description:""},
-	{ name: "match", description:""},
-	{ name: "measure-induct+", description:""},
-	{ name: "measure-induct-and-simplify", description:""},
-	{ name: "merge-fnums", description:""},
-	{ name: "model-check", description:""},
-	{ name: "move-terms", description:""},
-	{ name: "move-to-front", description:""},
-	{ name: "mult-by", description:""},
-	{ name: "mult-cases", description:""},
-	{ name: "mult-eq", description:""},
-	{ name: "mult-extract", description:""},
-	{ name: "mult-extract!", description:""},
-	{ name: "mult-ineq", description:""},
-	{ name: "musimp", description:""},
-	{ name: "name", description:""},
-	{ name: "name-case-replace", description:""},
-	{ name: "name-distrib", description:""},
-	{ name: "name-extract", description:""},
-	{ name: "name-induct-and-rewrite", description:""},
-	{ name: "name-label", description:""},
-	{ name: "name-label*", description:""},
-	{ name: "name-mult", description:""},
-	{ name: "name-mult!", description:""},
-	{ name: "name-replace", description:""},
-	{ name: "name-replace*", description:""},
-	{ name: "neg-formula", description:""},
-	{ name: "op-ident", description:""},
-	{ name: "op-ident!", description:""},
-	{ name: "open-ex-inf-cad", description:""},
-	{ name: "open-frag-ex-inf-cad", description:""},
-	{ name: "permute-mult", description:""},
-	{ name: "permute-mult!", description:""},
-	{ name: "permute-terms", description:""},
-	{ name: "permute-terms!", description:""},
-	{ name: "postpone", description:""},
-	{ name: "presburger", description:""},
-	{ name: "presburger-to-ws1s", description:""},
-	{ name: "printf", description:""},
-	{ name: "prop", description:""},
-	{ name: "propax", description:""},
-	{ name: "protect", description:""},
-	{ name: "pvsio-about", description:""},
-	{ name: "query*", description:""},
-	{ name: "quit", description:""},
-	{ name: "quote", description:""},
-	{ name: "rahd", description:""},
-	{ name: "rahd-simp", description:""},
-	{ name: "rahd-waterfall", description:""},
-	{ name: "random-test", description:""},
-	{ name: "rcr-ineqs", description:""},
-	{ name: "rcr-svars", description:""},
-	{ name: "real-props", description:""},
-	{ name: "recip-mult", description:""},
-	{ name: "recip-mult!", description:""},
-	{ name: "record", description:""},
-	{ name: "redlet", description:""},
-	{ name: "redlet*", description:""},
-	{ name: "reduce", description:""},
-	{ name: "reduce-with-ext", description:""},
-	{ name: "relabel", description:""},
-	{ name: "repeat", description:""},
-	{ name: "repeat*", description:""},
-	{ name: "replace", description:""},
-	{ name: "replace*", description:""},
-	{ name: "replace-eta", description:""},
-	{ name: "replace-ext", description:""},
-	{ name: "replace-extensionality", description:""},
-	{ name: "replaces", description:""},
-	{ name: "rerun", description:""},
-	{ name: "residue-class-ring-ineqs", description:""},
-	{ name: "reveal", description:""},
-	{ name: "rewrite", description:""},
-	{ name: "rewrite*", description:""},
-	{ name: "rewrite-expr", description:""},
-	{ name: "rewrite-lemma", description:""},
-	{ name: "rewrite-msg-off", description:""},
-	{ name: "rewrite-msg-on", description:""},
-	{ name: "rewrite-with-fnum", description:""},
-	{ name: "rewrites", description:""},
-	{ name: "rotate++", description:""},
-	{ name: "rotate--", description:""},
-	{ name: "rule-induct", description:""},
-	{ name: "rule-induct-step", description:""},
-	{ name: "same-name", description:""},
-	{ name: "set-print-depth", description:""},
-	{ name: "set-print-length", description:""},
-	{ name: "set-print-lines", description:""},
-	{ name: "set-right-margin", description:""},
-	{ name: "show-parens", description:""},
-	{ name: "show-subst", description:""},
-	{ name: "simp-arith", description:""},
-	{ name: "simp-gls", description:""},
-	{ name: "simp-real-null", description:""},
-	{ name: "simp-tvs", description:""},
-	{ name: "simp-zrhs", description:""},
-	{ name: "simple-induct", description:""},
-	{ name: "simple-measure-induct", description:""},
-	{ name: "simplify", description:""},
-	{ name: "simplify-with-rewrites", description:""},
-	{ name: "skeep", description:""},
-	{ name: "skeep*", description:""},
-	{ name: "skip", description:""},
-	{ name: "skip-msg", description:""},
-	{ name: "skip-steps", description:""},
-	{ name: "sklisp", description:""},
-	{ name: "skodef", description:""},
-	{ name: "skodef*", description:""},
-	{ name: "skolem", description:""},
-	{ name: "skolem!", description:""},
-	{ name: "skolem-typepred", description:""},
-	{ name: "skoletin", description:""},
-	{ name: "skoletin*", description:""},
-	{ name: "skosimp", description:""},
-	{ name: "skosimp*", description:""},
-	{ name: "smash", description:""},
-	{ name: "splash", description:""},
-	{ name: "split", description:""},
-	{ name: "split-ineq", description:""},
-	{ name: "spread", description:""},
-	{ name: "spread!", description:""},
-	{ name: "spread@", description:""},
-	{ name: "sq-simp", description:""},
-	{ name: "stop-rewrite", description:""},
-	{ name: "stop-rewrite-theory", description:""},
-	{ name: "sub-formulas", description:""},
-	{ name: "suffices", description:""},
-	{ name: "swap", description:""},
-	{ name: "swap!", description:""},
-	{ name: "swap-group", description:""},
-	{ name: "swap-group!", description:""},
-	{ name: "swap-rel", description:""},
-	{ name: "tccs-expression", description:""},
-	{ name: "tccs-formula", description:""},
-	{ name: "tccs-formula*", description:""},
-	{ name: "tccs-step", description:""},
-	{ name: "then", description:""},
-	{ name: "then*", description:""},
-	{ name: "then@", description:""},
-	{ name: "time", description:""},
-	{ name: "touch", description:""},
-	{ name: "trace", description:""},
-	{ name: "track-all-current-rewrites", description:""},
-	{ name: "track-rewrite", description:""},
-	{ name: "transform-both", description:""},
-	{ name: "triv-ideals", description:""},
-	{ name: "trust", description:""},
-	{ name: "trust!", description:""},
-	{ name: "try", description:""},
-	{ name: "try-branch", description:""},
-	{ name: "try-rewrites", description:""},
-	{ name: "typepred", description:""},
-	{ name: "typepred!", description:""},
-	{ name: "undo", description:""},
-	{ name: "univ-sturm-ineqs", description:""},
-	{ name: "unlabel", description:""},
-	{ name: "unlabel*", description:""},
-	{ name: "unless", description:""},
-	{ name: "unless-label", description:""},
-	{ name: "unless-label@", description:""},
-	{ name: "unless@", description:""},
-	{ name: "untrace", description:""},
-	{ name: "untrack-rewrite", description:""},
-	{ name: "unwind-protect", description:""},
-	{ name: "use", description:""},
-	{ name: "use*", description:""},
-	{ name: "use-with", description:""},
-	{ name: "when", description:""},
-	{ name: "when-label", description:""},
-	{ name: "when-label@", description:""},
-	{ name: "when@", description:""},
-	{ name: "with-focus-on", description:""},
-	{ name: "with-focus-on@", description:""},
-	{ name: "with-fresh-labels", description:""},
-	{ name: "with-fresh-labels@", description:""},
-	{ name: "with-fresh-names", description:""},
-	{ name: "with-fresh-names@", description:""},
-	{ name: "with-labels", description:""},
-	{ name: "with-tccs", description:""},
-	{ name: "wrap-formula", description:""},
-	{ name: "wrap-manip", description:""},
-	{ name: "ws1s", description:""},
-	{ name: "ws1s-simp", description:""},
-	{ name: "y2grind", description:""},
-	{ name: "y2simp", description:""},
-	{ name: "ygrind", description:""},
-	{ name: "yices", description:""},
-	{ name: "yices-with-rewrites", description:""},
-	{ name: "yices2", description:""},
-	{ name: "yices2-with-rewrites", description:""}
-];
-
-export const PROVER_STRATEGIES_CORE: StrategyDescriptor[] = [
-	{ name: "all-typepreds", description:"make type constraints of subexpressions explicit" },
-	{ name: "apply-extensionality", description:"use extensionality to prove equality" },
-	{ name: "apply-lemma", description:"automatically determines the required substitutions in a lemma" },
-	{ name: "apply-rewrite", description:"" },
-	{ name: "assert", description:"" },
-	{ name: "auto-rewrite", description:"" },
-	{ name: "bash", description:"" },
-	{ name: "bddsimp", description:"" },
-	{ name: "beta", description:"" },
-	{ name: "both-sides", description:"" },
-	{ name: "branch", description:"" },
-	{ name: "cancel", description:"" },
-	{ name: "case", description:"" },
-	{ name: "comment", description:"" },
-	{ name: "expand", description:"" },
-	{ name: "flatten", description:"" },
-	{ name: "grind", description:"" },
-	{ name: "grind-reals", description:"" },
-	{ name: "ground", description:"" },
-	{ name: "hide", description:"" },
-	{ name: "hide-all-but", description:"" },
-	{ name: "iff", description:"" },
-	{ name: "inst?", description:"" },
-	{ name: "lemma", description:"introduces an instance of a lemma" },
-	{ name: "lift-if", description:"" },
-	{ name: "postpone", description:"" },
-	{ name: "prop", description:"" },
-	{ name: "reveal", description:"" },
-	{ name: "rewrite", description:"" },
-	{ name: "skeep", description:"" },
-	{ name: "skosimp*", description:"" },
-	{ name: "split", description:"" },
-	{ name: "typepred", description:"" },
-	{ name: "undo", description:"" },
-	{ name: "use", description:"" }
-];
-
-export const EVALUATOR_FUNCTIONS_CORE: StrategyDescriptor[] = [
-	{ name: "RANDOM", description: "generates a random number" }
-];

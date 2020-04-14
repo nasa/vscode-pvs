@@ -133,11 +133,14 @@ export declare interface PvsListDeclarationsRequest {
 // 	error?: ErrorType;
 // }[];
 
-export declare interface StrategyDescriptor {
-	name: string,
-	description?: string
-}
-
+export declare interface ProofCommandDescriptor {
+	// name: string,
+	description?: string,
+	syntax: string,
+	optionals?: string[],
+	effect: string,
+	examples: { [key:string]: string }
+};
 
 // export declare interface PvsErrorType {
 // 	msg: string,
@@ -196,7 +199,7 @@ export declare interface ProofDescriptor {
 }
 export declare interface PvsListProofStrategies extends PvsResponseType {
 	error: ErrorType,
-	res: StrategyDescriptor[],
+	res: ProofCommandDescriptor[],
 	raw: string
 }
 // export interface FindDeclarationResponseType {
@@ -451,7 +454,7 @@ export const serverCommand = {
 	listContext: "pvs.list-context",
 	generateTccs: "pvs.generate-tccs",
 	showTccs: "pvs.show-tccs",
-	startPvsLanguageServer: "pvs.start-pvs-server",
+	startPvsServer: "pvs.start-pvs-server",
 	rebootPvsServer: "pvs.reboot-pvs-server",
 	hp2pvs: "pvs.hp-to-pvs-file",
 	startEvaluator: "pvs.start-evaluator",
@@ -524,19 +527,31 @@ export declare type CliGatewayRequest = {
 };
 
 export declare type CliGatewayEvent = {  
-	type: "pvs.event.proof-state", // proofStateUpdate
+	type: "pvs.event.proof-state" | "pvs.event.evaluator-state",
 	channelID: string,
-	data: PvsResponse
-} | { 
-	type: "pvs.event.evaluator-state", // evaluatorStateUpdate
+	data: PvsResponse,
+	cmd?: string // the command that produced this state
+} | {
+	type: "gateway.publish.math-objects",
 	channelID: string,
-	data: PvsResponse
+	data: { lemmas: string[], types: string[], definitions: string[] }
 };
 //  | { 
 // 	type: "publish",
 // 	channelID: string
 // };
 
+export declare type CliGatewaySubscriberEvent = {  
+	type: "pvs.event.proof-state" | "pvs.event.evaluator-state",
+	data: PvsResponse,
+	cmd?: string // the command that produced this state
+} | {
+	type: "gateway.publish.math-objects",
+	data: { lemmas: string[], types: string[], definitions: string[] }
+} | {
+	type: "subscribe-response",
+	success: boolean
+}
 
 export interface PvsDownloadDescriptor { url: string, fileName: string, version: string };
 

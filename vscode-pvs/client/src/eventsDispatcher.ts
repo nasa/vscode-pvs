@@ -47,7 +47,6 @@ import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
 import * as fsUtils from './common/fsUtils';
-import { PVSioTerminal } from "./views/vscodePVSioTerminal";
 import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 import * as utils from './common/languageUtils';
 
@@ -112,12 +111,6 @@ export class EventsDispatcher {
     }
 	activate (context: ExtensionContext): void {
         // -- handlers for server responses
-        this.client.onRequest(serverEvent.pvsServerReady, (info: PvsVersionDescriptor) => {
-            // parse file opened in the editor
-            if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
-                this.client.sendRequest(serverCommand.parseFile, vscode.window.activeTextEditor.document.fileName);
-            }
-		});
 		this.client.onRequest(serverEvent.pvsVersionInfo, (version: PvsVersionDescriptor) => {
 			if (version) {
                 this.statusBar.pvsReady(version);
@@ -126,7 +119,7 @@ export class EventsDispatcher {
 		});
 		this.client.onRequest(serverEvent.contextUpdate, (desc: ContextDescriptor) => {
 			if (this.workspaceExplorer) {
-				this.workspaceExplorer.updateView(desc, { ignoreTccs: true });
+				this.workspaceExplorer.updateView(desc, { skipTccs: true });
 			}
 		});
 		this.client.onRequest(serverEvent.typecheckFileResponse, (desc: { 
@@ -533,7 +526,7 @@ export class EventsDispatcher {
                 this.statusBar.progress(desc.msg);
             }
         });
-        this.client.onNotification("server.status.ready", (desc?: { msg?: string }) => {
+        this.client.onNotification("server.important-notification", (desc?: { msg?: string }) => {
             this.statusBar.ready();
             if (desc && desc.msg) {
                 window.showInformationMessage(desc.msg);

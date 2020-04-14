@@ -39,23 +39,80 @@
 import { TreeItem, TreeItemCollapsibleState, TreeDataProvider, EventEmitter, Event, ExtensionContext, TreeView, window, commands } from "vscode";
 import { ProofState, SFormula } from "../common/languageUtils";
 import { LanguageClient } from "vscode-languageclient";
-import * as vscode from 'vscode';
+import { CORE_PROOF_COMMANDS, PROOF_COMMANDS } from '../common/commandUtils';
+
+declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
 
  /**
  * Definition of tree items
  */
 class ProofMateItem extends TreeItem {
-	contextValue: string = "proofmate-suggestion";
+	contextValue: string = "proofmate-item";
 	name: string; // prover command
 	// command: Command; // vscode action
 
-    constructor (name: string, tooltip: string) {
-		super(name, TreeItemCollapsibleState.None);
-		this.name = name;
-		this.contextValue = "proofmate-suggestion";
-		this.tooltip = tooltip;
+    constructor (desc: ProofMateItemDescriptor) {
+		super(desc.name, TreeItemCollapsibleState.None);
+		this.name = desc.name;
+		this.tooltip = desc.tooltip || PROOF_COMMANDS[desc.name].description;
 	}
 }
+abstract class ProofMateGroup extends TreeItem {
+	recommendations: ProofMateItem[] = [];
+	contextValue: string = "proofmate-group";
+
+    constructor (label: string, contextValue: string, collapsibleState: TreeItemCollapsibleState, tooltip: string) {
+		super(label, collapsibleState);
+		this.contextValue = contextValue;
+		this.tooltip = tooltip;
+	}
+	clear (): void {
+		this.recommendations = [];
+	}
+	getChildren (): ProofMateItem[] {
+		return this.recommendations;
+	}
+}
+class ProofMateRecommendedCommands extends ProofMateGroup {
+	constructor () {
+		super("Recommended proof commands", "proofmate-recommended-commands", TreeItemCollapsibleState.Expanded, "Recommended proof commands");
+	}
+}
+class ProofMateCoreCommands extends ProofMateGroup {
+	constructor () {
+		super("────────────────", "proofmate-core-commands", TreeItemCollapsibleState.Expanded, "More proof commands...");
+		const commands: string[] = Object.keys(CORE_PROOF_COMMANDS);
+		try {
+			for (let i = 0; i < commands.length; i++) {
+				this.recommendations.push(new ProofMateItem({
+					name: commands[i],
+					tooltip: CORE_PROOF_COMMANDS[commands[i]].description
+				}));
+			}
+		} catch (init_error) {
+			console.error(`[proof-mate] Error: could not initialise core commands`, init_error)
+		}
+	}
+}
+class ProofMateAllCommands extends ProofMateGroup {
+	constructor () {
+		super("────────────────", "proofmate-all-commands", TreeItemCollapsibleState.Expanded, "Even more proof commands...");
+		const commands: string[] = Object.keys(PROOF_COMMANDS);
+		try {
+			for (let i = 0; i < commands.length; i++) {
+				if (!CORE_PROOF_COMMANDS[commands[i]]) {
+					this.recommendations.push(new ProofMateItem({
+						name: commands[i], 
+						tooltip: PROOF_COMMANDS[commands[i]].description
+					}));
+				}
+			}
+		} catch (init_error) {
+			console.error(`[proof-mate] Error: could not initialise full command list`, init_error)
+		}
+	}
+}
+
 
 export type RecommendationRule = {
 	name: string, 
@@ -176,44 +233,58 @@ const r5: TestFunction = (sequent: { succedents?: SFormula[], antecedents?: SFor
 	return false;
 }
 
+
 /**
  * Data provider for PVS Proof Mate view
  */
 export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
-	protected recommendationRules: RecommendationRule[];
-
-	// proof descriptor
-	protected desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string };
-	
-	protected client: LanguageClient;
-	protected providerView: string;
-	protected view: TreeView<TreeItem>;
-
-	constructor(client: LanguageClient, providerView: string) {
-		this.client = client;
-		this.providerView = providerView;
-		// register data provider
-		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
-		// initialise recommendations
-		this.recommendationRules = [
-			{ name: "forall", description: "Remove universal quantifier in succedent formula", test: r1a, commands: [ "skosimp*", "skeep" ] },
-			{ name: "forall", description: "Remove existential quantifier in antecedent formula", test: r1b, commands: [ "skosimp*", "skeep" ] },
-			{ name: "exists", description: "Remove universal quantifier in antecedent formula", test: r2a, commands: [ "inst?", "insteep" ] },
-			{ name: "exists", description: "Remove existential quantifier in succedent formula", test: r2b, commands: [ "inst?", "insteep" ] },
-			{ name: "let-in", description: "Remove let-in", test: r3, commands: [ "beta", "skoletin" ] },
-			{ name: "lift-if", description: "Brings if-then-else to the top level", test: r4, commands: [ "lift-if" ] },
-			{ name: "split", description: "Split cases", test: r5, commands: [ "split", "ground" ] }
-		];
-	}
-
-    /**
+	/**
 	 * Events for updating the tree structure
 	 */
 	protected _onDidChangeTreeData: EventEmitter<TreeItem> = new EventEmitter<TreeItem>();
     readonly onDidChangeTreeData: Event<TreeItem> = this._onDidChangeTreeData.event;
-    
-    protected nodes: ProofMateItem[] = [];
-	protected context: ExtensionContext;
+
+	protected context: ExtensionContext;	
+	protected client: LanguageClient;
+	protected providerView: string;
+	protected view: TreeView<TreeItem>;
+
+	// proof descriptor
+	protected desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string };
+
+	// elements in the view
+	protected recommended: ProofMateRecommendedCommands;
+	protected core: ProofMateCoreCommands;
+	protected all: ProofMateAllCommands;
+
+	// rules for computing hints
+	protected recommendationRules: RecommendationRule[] = [
+		{ name: "forall", description: "Remove universal quantifier in succedent formula", test: r1a, commands: [ "skosimp*", "skeep" ] },
+		{ name: "forall", description: "Remove existential quantifier in antecedent formula", test: r1b, commands: [ "skosimp*", "skeep" ] },
+		{ name: "exists", description: "Remove universal quantifier in antecedent formula", test: r2a, commands: [ "inst?", "insteep" ] },
+		{ name: "exists", description: "Remove existential quantifier in succedent formula", test: r2b, commands: [ "inst?", "insteep" ] },
+		{ name: "let-in", description: "Remove let-in", test: r3, commands: [ "beta", "skoletin" ] },
+		{ name: "lift-if", description: "Brings if-then-else to the top level", test: r4, commands: [ "lift-if" ] },
+		{ name: "split", description: "Split cases", test: r5, commands: [ "split", "ground" ] }
+	]
+
+	/**
+	 * Constructor
+	 * @param client Language client for exchanging data and command with the language server
+	 * @param providerView Name of the VSCode view associated to this data provider
+	 */
+	constructor(client: LanguageClient, providerView: string) {
+		this.client = client;
+		this.providerView = providerView;
+
+		// initialise groups in the view
+		this.recommended = new ProofMateRecommendedCommands();
+		this.core = new ProofMateCoreCommands();
+		this.all = new ProofMateAllCommands();
+
+		// register data provider
+		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
+	}
 	
 	/**
 	 * Refresh tree view
@@ -225,11 +296,9 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	 * Reset tree view
 	 */
 	resetView (): void {
-		this.nodes = [];
+		this.recommended.clear();
 		this.refreshView();
 	}
-
-
 
     /**
 	 * Handler activation function
@@ -271,7 +340,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	updateRecommendations (proofState: ProofState): void {
 		if (proofState) {
 			this.resetView();
-			const recs: { cmd: string, tooltip: string }[] = this.getRecommendations(proofState);
+			const recs: { cmd: string, tooltip?: string }[] = this.getRecommendations(proofState);
 			if (recs) {
 				for (let i in recs) {
 					this.addRecommendation(recs[i]);
@@ -283,48 +352,58 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 			console.warn(`[proof-mate] Warning: null sequent`);
 		}
 	}
-	getRecommendations (proofState: ProofState): { cmd: string, tooltip: string }[] {
-		const ans: { cmd: string, tooltip: string }[] = [];
+	getRecommendations (proofState: ProofState): { cmd: string, tooltip?: string }[] {
+		const ans: { cmd: string, tooltip?: string }[] = [];
 		if (proofState && proofState.sequent) {
 			for (let i in this.recommendationRules) {
 				if (this.recommendationRules[i].test(proofState.sequent)) {
 					for (let j in this.recommendationRules[i].commands) {
-						ans.push({ cmd: this.recommendationRules[i].commands[j], tooltip: this.recommendationRules[i].description });
+						ans.push({
+							cmd: this.recommendationRules[i].commands[j]//, 
+							// tooltip: this.recommendationRules[i].description
+						});
 					}
 				}	
 			}
 		}
+		if (ans.length === 0) {
+			ans.push({ cmd: "assert", tooltip: "Simplify using a combination of decision procedures"})
+			ans.push({ cmd: "grind", tooltip: "Install rewrites and repeatedly simplify"});
+		}
 		return ans;
 	}
     
-    protected addRecommendations (recs: { cmd: string, tooltip: string }[]): void {
-        if (recs) {
-            this.nodes = recs.map(rec => {
-                return new ProofMateItem(rec.cmd, rec.tooltip);
-            });
-		}
-    }
-    protected addRecommendation (rec: { cmd: string, tooltip: string }): void {
+    // protected addRecommendations (recs: { cmd: string, tooltip: string }[]): void {
+    //     if (recs) {
+    //         this.nodes.rec = recs.map(rec => {
+    //             return new ProofMateItem(rec.cmd, rec.tooltip);
+    //         });
+	// 	}
+    // }
+    protected addRecommendation (rec: { cmd: string, tooltip?: string }): void {
         if (rec) {
-			this.nodes = this.nodes || [];
-			this.nodes.push(new ProofMateItem(rec.cmd, rec.tooltip));
+			this.recommended.recommendations.push(new ProofMateItem({
+				name: rec.cmd, 
+				tooltip: rec.tooltip
+			}));
         }
     }
 	
 	/**
 	 * Returns the list of theories defined in the active pvs file
-	 * @param element Element clicked by the user 
+	 * @param item Element clicked by the user 
 	 */
-	getChildren(element: TreeItem): Thenable<TreeItem[]> {
-		if (element) {
-			return Promise.resolve(null);
+	getChildren(item: TreeItem): Thenable<TreeItem[]> {
+		if (item) {
+			const group: ProofMateGroup = <ProofMateGroup> item;
+			return Promise.resolve(group.getChildren());
 		}
 		// root node
-		return Promise.resolve(this.nodes);
+		return Promise.resolve([ this.recommended, this.core, this.all ]);
 	}
 
-	getTreeItem(element: TreeItem): TreeItem {
-		return element;
+	getTreeItem(item: TreeItem): TreeItem {
+		return item;
     }
 
 

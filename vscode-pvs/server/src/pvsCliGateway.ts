@@ -38,7 +38,7 @@
 
 import * as WebSocket from 'ws';
 import { PvsLanguageServer } from './pvsLanguageServer'
-import { CliGatewayRequest, CliGatewayEvent } from './common/serverInterface';
+import { CliGatewayRequest, CliGatewayEvent, CliGatewaySubscriberEvent } from './common/serverInterface';
 
 /**
  * PvsCliGateway provides a websocket gateway to the language server.
@@ -60,14 +60,19 @@ export class PvsCliGateway {
 	}
 
 	publish (desc: CliGatewayEvent): void {
-		if (desc && desc.type && desc.channelID && desc.data) {
-			if (this.pvsCli[desc.channelID]) {
-				const clientIDs: string[] = Object.keys(this.pvsCli[desc.channelID]);
-				for (let i = 0; i < clientIDs.length; i++) {
-					this.pvsCli[desc.channelID][clientIDs[i]].send(JSON.stringify({ type: desc.type, response: desc.data }));
+		if (desc && desc.channelID && desc.data) {
+			if (desc.type === "pvs.event.proof-state" || desc.type === "pvs.event.evaluator-state" || desc.type === "gateway.publish.math-objects") {
+				if (this.pvsCli[desc.channelID]) {
+					const clientIDs: string[] = Object.keys(this.pvsCli[desc.channelID]);
+					for (let i = 0; i < clientIDs.length; i++) {
+						const subscriberEvent: CliGatewaySubscriberEvent = desc;
+						this.pvsCli[desc.channelID][clientIDs[i]].send(JSON.stringify(subscriberEvent));
+					}
+				} else {
+					console.error(`[pvs-cli-gateway] Warning: message could not be forwarded on channel ${desc.channelID}`)
 				}
 			} else {
-				console.error(`[pvs-cli-gateway] Warning: message could not be forwarded on channel ${desc.channelID}`)
+				console.error(`[pvs-cli-gateway] Warning: trying to publish on channel ${desc.channelID} (allowed channels are only "pvs.event.proof-state", "pvs.event.evaluator-state", and "gateway.publish.math-objects")`)
 			}
 		} else {
 			console.error("[pvs-cli-gateway] Warning: received null descriptor");

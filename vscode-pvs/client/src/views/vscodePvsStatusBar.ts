@@ -183,6 +183,18 @@ export class VSCodePvsStatusBar {
         this.versionInfoBar.show();
     }
 
+    show (): void {
+        this.pvsStatus.show();
+        this.workspaceStatus.show();
+        this.versionInfoBar.show();
+    }
+
+    hide (): void {
+        this.pvsStatus.hide();
+        this.workspaceStatus.hide();
+        this.versionInfoBar.hide();
+    }
+
     /**
      * Internal function, returns the content of the tooltip for PVS
      */

@@ -64,6 +64,8 @@ import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
 import { getErrorRange } from './common/languageUtils';
+import * as utils from './common/languageUtils';
+
 
 //----------------------------
 // constants introduced for dev purposes, while waiting for the new pvs snapshot
@@ -136,9 +138,18 @@ export declare interface ContextDiagnostics {
 // 	result?: string;
 // }
 
+
 export class PvsProxy {
 	protected parserCache: { [ filename: string ]: { hash: string, diags: ParserDiagnostics } } = {};
 	protected activeParsers: { [ filename: string ]: boolean } = {};
+	// mathObjetcsCache stores identifiers known to the parser, grouped by kind (lemma, types, definitions). 
+	// The utility of matchObjectsCache if for autocompletion functions.
+	// The actual definition can be searched with declarationProvider.
+	protected mathObjectsCache: { lemmas: string[], types: string[], definitions: string[] } = {
+		lemmas: [],
+		types: [],
+		definitions: []
+	};
 
 	protected debugMode: boolean = false;
 	// protected isActive: boolean = false;
@@ -329,6 +340,30 @@ export class PvsProxy {
 		return ans;
 	}
 	/**
+	 * Utility function, returns the list of known math objects
+	 */
+	listMathObjects (): { lemmas: string[], types: string[], definitions: string[] } {
+		return this.mathObjectsCache;
+	} 
+	/**
+	 * Utility function, returns the list of known lemmas
+	 */
+	listLemmas (): string[] {
+		return this.mathObjectsCache.lemmas;
+	} 
+	/**
+	 * Utility function, returns the list of known definitions
+	 */
+	listDefinitions (): string[] {
+		return this.mathObjectsCache.definitions;
+	} 
+	/**
+	 * Utility function, returns the list of known types
+	 */
+	listTypes (): string[] {
+		return this.mathObjectsCache.types;
+	} 
+	/**
 	 * Parse a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
 	 */
@@ -387,15 +422,18 @@ export class PvsProxy {
 												case "type":
 												case "datatype":
 													mathObjects.types++;
+													this.mathObjectsCache.types.push(decl.id);
 													break;
 												case "formula":
 												case "judgement":
 													mathObjects.lemmas++;
+													this.mathObjectsCache.lemmas.push(decl.id);
 													break;
 												case "expr":
 												case "conversion":
 												case "auto-rewrite":
 													mathObjects.definitions++;
+													this.mathObjectsCache.definitions.push(decl.id);
 													break;
 												default: // do nothing
 											}
@@ -667,14 +705,26 @@ export class PvsProxy {
 	}
 
 	/**
-	 * Executes a proof command
+	 * Executes a proof command. The command is always adorned with round parentheses, e.g., (skosimp*)
 	 * @param desc Descriptor of the proof command
 	 */
 	async proofCommand(desc: { cmd: string }): Promise<PvsResponse> {
 		if (desc) {
 			this.notifyStartExecution(`Executing ${desc.cmd}`);
 			// console.dir(desc, { depth: null });
-			const res: PvsResponse =  await this.pvsRequest('proof-command', [ desc.cmd ]);
+			const showHidden: boolean = utils.isShowHiddenCommand(desc.cmd);
+			// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
+			// the front-end will handle the command, and reveal the hidden sequents.
+			const cmd: string = showHidden ? "(skip)" : desc.cmd; 
+			const res: PvsResponse =  await this.pvsRequest('proof-command', [ cmd ]);
+			if (showHidden) {
+				if (res.result) {
+					res.result.action = "Showing list of hidden sequents";
+					if (res.result.commentary && res.result.commentary.length) {
+						res.result.commentary[0] = "No change on: (show-hidden)";
+					} 
+				}
+			}
 			// --- to invoke more commands, just do as follows (no need to use then, just use await)
 			// const stat: PvsResponse = await this.pvsRequest('prover-status', []);
 			// console.dir(stat);
@@ -776,7 +826,7 @@ export class PvsProxy {
 	}
 	protected notifyEndExecution (msg?: string): void {
 		if (this.connection) {
-			this.connection.sendNotification("server.status.ready", msg);
+			this.connection.sendNotification("server.important-notification", msg);
 		}
 	}
 	protected notifyStartImportantTask (id: string, msg: string): void {

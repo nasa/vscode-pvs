@@ -37,12 +37,11 @@
  **/
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, WorkspaceConfiguration, TextDocumentWillSaveEvent, TextEditorVisibleRangesChangeEvent, languages } from 'vscode';
-import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
+import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, WorkspaceConfiguration, TextDocumentWillSaveEvent, TextEditorVisibleRangesChangeEvent, languages, ConfigurationChangeEvent } from 'vscode';
+import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, StateChangeEvent } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
-import { VSCodePVSioTerminal } from './views/vscodePVSioTerminal'; 
 import { VSCodePvsTerminal } from './views/vscodePvsTerminal';
 import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 import * as fsUtils from './common/fsUtils';
@@ -81,7 +80,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	protected outlineProvider: VSCodePvsFileOutlineProvider;
 
 	// integrated command line interfaces
-	protected pvsioTerminal: VSCodePVSioTerminal;
 	protected vscodePvsTerminal: VSCodePvsTerminal;
 
 	// status bar
@@ -130,12 +128,17 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		window.onDidChangeActiveTextEditor((event: TextEditor) => {
 			const editor: TextEditor = window.activeTextEditor; //event || window.activeTextEditor;
 			if (editor && editor.document && fsUtils.isPvsFile(editor.document.fileName)) {
+				// show status bar
+				this.statusBar.show();
 				// update decorations
 				this.decorationProvider.updateDecorations(editor);
 				// trigger file parsing to get syntax diagnostics
 				this.client.sendRequest(comm.serverCommand.parseFile, editor.document.fileName);
 				// const context: string = fsUtils.getContextFolder(editor.document.fileName);
-				// this.client.sendRequest(comm.serverCommand.parseWorkspace, context);
+				// this.client.sendRequest(comm.serverCommand.parseWorkspace, context);				
+			} else {
+				// hide status bar
+				this.statusBar.hide();
 			}
 		}, null, this.context.subscriptions);
 
@@ -149,7 +152,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		}, null, this.context.subscriptions);
 
 		// onDidChangeConfiguration is emitted when the configuration file changes
-		workspace.onDidChangeConfiguration(() => {
+		workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
 			// re-initialise pvs if the executable is different
 			const pvsPath: string = workspace.getConfiguration().get("pvs.path");
 			if (pvsPath !== this.pvsPath) {
@@ -157,7 +160,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				const msg: string = `Restarting PVS from ${pvsPath}`;
 				this.statusBar.progress(msg);
 				window.showInformationMessage(msg);
-				this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
+				this.client.sendRequest(comm.serverCommand.startPvsServer, { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
 			}
 		}, null, this.context.subscriptions);
 	}
@@ -178,10 +181,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	 * Client activation function.
 	 * @param context 
 	 */
-	activate (context: ExtensionContext): void {
-		// set vscode context variable pvs-language-active to true
-		commands.executeCommand('setContext', 'pvs-language-active', true);
-		
+	activate (context: ExtensionContext): void {		
 		// save pointer to extension context
 		this.context = context;
 		
@@ -221,7 +221,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		
 		// start client, which in turn will also start the server
 		this.client.start();
-		this.client.onReady().then(() => {		
+		this.client.onReady().then(() => {
 			// initialise service providers defined on the client-side
 			this.statusBar.progress("Activating vscode-pvs components...");	
 			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
@@ -236,8 +236,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.vscodePvsTerminal.activate(this.context);
 			this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');
 			this.proofMate.activate(this.context);
-			this.pvsioTerminal = new VSCodePVSioTerminal();
-			this.pvsioTerminal.activate(this.context);
 			this.packageManager = new VSCodePvsPackageManager(this.client, this.statusBar);
 	
 			// enable decorations for pvs syntax
@@ -257,6 +255,17 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				proofMate: this.proofMate
 			});
 			this.eventsDispatcher.activate(context);
+
+			// create handler for server ready event
+			this.client.onRequest(serverEvent.pvsServerReady, (info: comm.PvsVersionDescriptor) => {
+				// set vscode context variable pvs-language-active to true
+				commands.executeCommand('setContext', 'pvs-language-active', true);
+
+				// parse file opened in the editor
+				if (window.activeTextEditor && window.activeTextEditor.document) {
+					this.client.sendRequest(comm.serverCommand.parseFile, window.activeTextEditor.document.fileName);
+				}
+			});
 		
 			// define error handlers
 			this.client.onRequest(serverEvent.pvsNotPresent, () => {
@@ -269,7 +278,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			// start PVS
 			const contextFolder = vscodeUtils.getEditorContextFolder();
 			this.pvsPath = workspace.getConfiguration().get("pvs.path");
-			this.client.sendRequest(comm.serverCommand.startPvsLanguageServer, {
+			// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
+			this.client.sendRequest(comm.serverCommand.startPvsServer, {
 				pvsPath: this.pvsPath, 
 				contextFolder
 			});

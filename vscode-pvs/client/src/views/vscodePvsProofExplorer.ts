@@ -323,6 +323,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 				return;
 			}
+			// if command was show-hidden, then pvsCli will reveal hidden sequents when the proof state comes back; 
+			// the proof script remains unchanged.
+			if (utils.isShowHiddenCommand(cmd)) {
+				this.running = false;
+				return;
+			}
 			// if command produced no change, provide feedback to the user, stop any running proof
 			// move the indicator forward (keep same proof branch) if the command was in the proof tree 
 			if (utils.noChange(proofState)) {
@@ -336,6 +342,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 				return;
 			}
+
 
 			const previousBranch: string = activeNode.branchId;
 			const newBranch: string = utils.getBranchId(proofState.label);
