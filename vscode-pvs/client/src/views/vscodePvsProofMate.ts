@@ -39,7 +39,9 @@
 import { TreeItem, TreeItemCollapsibleState, TreeDataProvider, EventEmitter, Event, ExtensionContext, TreeView, window, commands } from "vscode";
 import { ProofState, SFormula } from "../common/languageUtils";
 import { LanguageClient } from "vscode-languageclient";
-import { CORE_PROOF_COMMANDS, PROOF_COMMANDS } from '../common/commandUtils';
+import { PROOF_COMMANDS, printHelp, PROOF_TACTICS, ProofMateProfile, getCommands } from '../common/commandUtils';
+import * as vscode from 'vscode';
+import { ProofCommandDescriptor } from "../common/serverInterface";
 
 declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
 
@@ -54,7 +56,7 @@ class ProofMateItem extends TreeItem {
     constructor (desc: ProofMateItemDescriptor) {
 		super(desc.name, TreeItemCollapsibleState.None);
 		this.name = desc.name;
-		this.tooltip = desc.tooltip || PROOF_COMMANDS[desc.name].description;
+		this.tooltip = desc.tooltip || printHelp(desc.name);
 	}
 }
 abstract class ProofMateGroup extends TreeItem {
@@ -75,35 +77,42 @@ abstract class ProofMateGroup extends TreeItem {
 }
 class ProofMateRecommendedCommands extends ProofMateGroup {
 	constructor () {
-		super("Recommended proof commands", "proofmate-recommended-commands", TreeItemCollapsibleState.Expanded, "Recommended proof commands");
+		super("─ Recommended ────────", "proofmate-recommended-commands", TreeItemCollapsibleState.Expanded, "Recommended proof commands");
 	}
 }
 class ProofMateCoreCommands extends ProofMateGroup {
 	constructor () {
-		super("────────────────", "proofmate-core-commands", TreeItemCollapsibleState.Expanded, "More proof commands...");
-		const commands: string[] = Object.keys(CORE_PROOF_COMMANDS);
+		super("─ Frequently used ────────", "proofmate-core-commands", TreeItemCollapsibleState.Expanded, "Frequently used proof commands");
+	}
+	setProfile (profile: ProofMateProfile): void {
+		const commands: string[] = Object.keys(getCommands(profile));
 		try {
+			this.recommendations = [];
 			for (let i = 0; i < commands.length; i++) {
 				this.recommendations.push(new ProofMateItem({
 					name: commands[i],
-					tooltip: CORE_PROOF_COMMANDS[commands[i]].description
+					tooltip: printHelp(commands[i]) //CORE_PROOF_COMMANDS[commands[i]].description
 				}));
 			}
 		} catch (init_error) {
-			console.error(`[proof-mate] Error: could not initialise core commands`, init_error)
+			console.error(`[proof-mate] Error: could not initialise frequent commands list`, init_error)
 		}
 	}
 }
 class ProofMateAllCommands extends ProofMateGroup {
 	constructor () {
-		super("────────────────", "proofmate-all-commands", TreeItemCollapsibleState.Expanded, "Even more proof commands...");
+		super("─ More... ────────", "proofmate-all-commands", TreeItemCollapsibleState.Collapsed, "More proof commands...");
+	}
+	setProfile (profile: ProofMateProfile): void {
 		const commands: string[] = Object.keys(PROOF_COMMANDS);
+		const coreCommands: { [cmd:string]: ProofCommandDescriptor } = getCommands(profile);
 		try {
+			this.recommendations = [];
 			for (let i = 0; i < commands.length; i++) {
-				if (!CORE_PROOF_COMMANDS[commands[i]]) {
+				if (!coreCommands[commands[i]]) {
 					this.recommendations.push(new ProofMateItem({
 						name: commands[i], 
-						tooltip: PROOF_COMMANDS[commands[i]].description
+						tooltip: printHelp(commands[i]) // PROOF_COMMANDS[commands[i]].description
 					}));
 				}
 			}
@@ -112,6 +121,54 @@ class ProofMateAllCommands extends ProofMateGroup {
 		}
 	}
 }
+class ProofMateProofCommands extends TreeItem {
+	protected recommended: ProofMateRecommendedCommands;
+	protected core: ProofMateCoreCommands;
+	protected all: ProofMateAllCommands;
+	constructor () {
+		super("Proof commands", TreeItemCollapsibleState.Expanded);
+		this.contextValue = "proofmate-proof-commands";
+		this.tooltip = "Proof commands";
+		this.recommended = new ProofMateRecommendedCommands();
+		this.core = new ProofMateCoreCommands();
+		this.all = new ProofMateAllCommands();
+	}
+	getChildren (): TreeItem[] {
+		return [ this.recommended, this.core, this.all ];
+	}
+	addRecommendation (rec: { cmd: string, tooltip?: string }): void {
+        if (rec) {
+			this.recommended.recommendations.push(new ProofMateItem({
+				name: rec.cmd, 
+				tooltip: rec.tooltip
+			}));
+        }
+	}
+	clearRecommendations (): void {
+		this.recommended.clear();
+	}
+	setProfile (profile: ProofMateProfile): void {
+		this.core.setProfile(profile);
+		this.all.setProfile(profile);
+	}
+}
+class ProofMateTactic extends ProofMateGroup {
+	constructor () {
+		super("Proof tactics", "proofmate-tactics", TreeItemCollapsibleState.Collapsed, "Proof tactics");
+		const commands: string[] = Object.keys(PROOF_TACTICS);
+		try {
+			for (let i = 0; i < commands.length; i++) {
+				this.recommendations.push(new ProofMateItem({
+					name: commands[i],
+					tooltip: PROOF_TACTICS[commands[i]].description
+				}));
+			}
+		} catch (init_error) {
+			console.error(`[proof-mate] Error: could not initialise proof tactics list`, init_error)
+		}
+	}
+}
+
 
 
 export type RecommendationRule = {
@@ -244,6 +301,8 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	protected _onDidChangeTreeData: EventEmitter<TreeItem> = new EventEmitter<TreeItem>();
     readonly onDidChangeTreeData: Event<TreeItem> = this._onDidChangeTreeData.event;
 
+	protected mode: ProofMateProfile;
+
 	protected context: ExtensionContext;	
 	protected client: LanguageClient;
 	protected providerView: string;
@@ -253,9 +312,11 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	protected desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string };
 
 	// elements in the view
-	protected recommended: ProofMateRecommendedCommands;
-	protected core: ProofMateCoreCommands;
-	protected all: ProofMateAllCommands;
+	// protected recommended: ProofMateRecommendedCommands;
+	// protected core: ProofMateCoreCommands;
+	// protected all: ProofMateAllCommands;
+	protected proofCommands: ProofMateProofCommands;
+	protected tactics: ProofMateTactic;
 
 	// rules for computing hints
 	protected recommendationRules: RecommendationRule[] = [
@@ -277,13 +338,40 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		this.client = client;
 		this.providerView = providerView;
 
-		// initialise groups in the view
-		this.recommended = new ProofMateRecommendedCommands();
-		this.core = new ProofMateCoreCommands();
-		this.all = new ProofMateAllCommands();
+		this.proofCommands = new ProofMateProofCommands();
+		this.tactics = new ProofMateTactic();
+
+		// enable basic profile by default
+		this.mode = "basic";
 
 		// register data provider
-		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
+		this.view = window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
+	}
+
+	enableProfile(profile: ProofMateProfile): void {
+		switch (profile) {
+			case "basic": {
+				// enable basic profile
+				this.mode = "basic";
+				vscode.commands.executeCommand('setContext', 'basic-profile-active', true);
+				vscode.commands.executeCommand('setContext', 'advanced-profile-active', false);
+				this.proofCommands.setProfile(this.mode);
+				this.refreshView();
+				break;
+			}
+			case "advanced": {
+				// enable advanced profile
+				this.mode = "advanced";
+				vscode.commands.executeCommand('setContext', 'basic-profile-active', false);
+				vscode.commands.executeCommand('setContext', 'advanced-profile-active', true);
+				this.proofCommands.setProfile(this.mode);
+				this.refreshView();
+				break;
+			}
+			default: {
+				console.warn(`[proof-mate] Warning: trying to activate unknown profile ${profile}`);
+			}
+		}
 	}
 	
 	/**
@@ -296,7 +384,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	 * Reset tree view
 	 */
 	resetView (): void {
-		this.recommended.clear();
+		this.proofCommands.clearRecommendations();
 		this.refreshView();
 	}
 
@@ -306,6 +394,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	 */
 	activate(context: ExtensionContext) {
 		this.context = context;
+		this.enableProfile("basic");
 		context.subscriptions.push(commands.registerCommand("proof-mate.exec-proof-command", (resource: ProofMateItem) => {
 			if (resource && resource.name) {
 				this.sendProofCommand(resource.name);
@@ -316,6 +405,12 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		context.subscriptions.push(commands.registerCommand("proof-mate.show-sequent", () => {
 			commands.executeCommand("proof-explorer.show-active-sequent");
         }));
+		context.subscriptions.push(commands.registerCommand("proof-mate.activate-basic-profile", () => {
+			this.enableProfile("basic");
+        }));
+		context.subscriptions.push(commands.registerCommand("proof-mate.activate-advanced-profile", () => {
+			this.enableProfile("advanced");
+		}));
 	}
 
 	setProofDescriptor (desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }): void {
@@ -343,7 +438,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 			const recs: { cmd: string, tooltip?: string }[] = this.getRecommendations(proofState);
 			if (recs) {
 				for (let i in recs) {
-					this.addRecommendation(recs[i]);
+					this.proofCommands.addRecommendation(recs[i]);
 				}
 			}
 			this.refreshView();
@@ -372,22 +467,6 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		}
 		return ans;
 	}
-    
-    // protected addRecommendations (recs: { cmd: string, tooltip: string }[]): void {
-    //     if (recs) {
-    //         this.nodes.rec = recs.map(rec => {
-    //             return new ProofMateItem(rec.cmd, rec.tooltip);
-    //         });
-	// 	}
-    // }
-    protected addRecommendation (rec: { cmd: string, tooltip?: string }): void {
-        if (rec) {
-			this.recommended.recommendations.push(new ProofMateItem({
-				name: rec.cmd, 
-				tooltip: rec.tooltip
-			}));
-        }
-    }
 	
 	/**
 	 * Returns the list of theories defined in the active pvs file
@@ -399,12 +478,10 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 			return Promise.resolve(group.getChildren());
 		}
 		// root node
-		return Promise.resolve([ this.recommended, this.core, this.all ]);
+		return Promise.resolve([ this.proofCommands, this.tactics ]);
 	}
-
 	getTreeItem(item: TreeItem): TreeItem {
 		return item;
     }
-
 
 }

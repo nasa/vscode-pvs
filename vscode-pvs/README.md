@@ -20,7 +20,7 @@ The main functionalities provided by the environment are as follows:
 - **Proof Mate**: Helper designed to suggest proof commands that can be used to make progress with the current proof.
 
 ## Requirements
-- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
+- Visual Studio Code (v1.37.1 or greater) https://code.visualstudio.com
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
 - Java JDK (1.8 or greater) https://openjdk.java.net
 - PVS Allegro (7.1 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots
@@ -69,8 +69,8 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
-### 1.0.17-alpha (2020.04.09)
-- Improved Proof Mate functionalities (recommended commands)
+### 1.0.17 (2020.04.20)
+- Improved Proof Mate functionalities (profiles, recommended commands, inline help)
 - Improved Prover CLI (autocompletion for lemmas)
 
 ### 1.0.16 (2020.04.06)

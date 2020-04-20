@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.17-alpha",
+	"version": "1.0.17",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -220,12 +220,8 @@
 			{
 				"command": "proof-mate.exec-proof-command",
 				"title": "Execute",
-				"enablement": "pvs-language-active == true"
-			},
-			{
-				"command": "proof-mate.exec-proof-command-with-parameters",
-				"title": "Execute with parameters...",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-language-active == true",
+				"icon": "icons/play-icon.png"
 			},
 			{
 				"command": "proof-explorer.delete-node",
@@ -347,6 +343,16 @@
 				"title": "️️Open current sequent in the editor",
 				"icon": "icons/browser-arrow-icon.png",
 				"enablement": "prover-session-active == true"
+			},
+			{
+				"command": "proof-mate.activate-basic-profile",
+				"title": "Switch to Basic Profile",
+				"enablement": "prover-session-active == true && !basic-profile-active"
+			},
+			{
+				"command": "proof-mate.activate-advanced-profile",
+				"title": "Switch to Advanced Profile",
+				"enablement": "prover-session-active == true && !advanced-profile-active"
 			},
 			{
 				"command": "workspace-explorer.typecheck-all",
@@ -485,11 +491,6 @@
 					"command": "proof-mate.exec-proof-command",
 					"when": "view == proof-mate-view && viewItem == proofmate-item",
 					"group": "context-menu/exec"
-				},
-				{
-					"command": "proof-mate.exec-proof-command-with-parameters",
-					"when": "view == proof-mate-view && viewItem == proofmate-item",
-					"group": "context-menu/exec"
 				}
 			],
 			"editor/title/context": [
@@ -616,6 +617,16 @@
 					"command": "proof-mate.show-sequent",
 					"when": "view == proof-mate-view",
 					"group": "navigation"
+				},
+				{
+					"command": "proof-mate.activate-basic-profile",
+					"when": "view == proof-mate-view",
+					"group": "profile-0"
+				},
+				{
+					"command": "proof-mate.activate-advanced-profile",
+					"when": "view == proof-mate-view",
+					"group": "profile-1"
 				},
 				{
 					"command": "workspace-explorer.parse-all",

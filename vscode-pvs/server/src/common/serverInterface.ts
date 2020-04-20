@@ -137,9 +137,8 @@ export declare interface ProofCommandDescriptor {
 	// name: string,
 	description?: string,
 	syntax: string,
-	optionals?: string[],
-	effect: string,
-	examples: { [key:string]: string }
+	note?: string,
+	optionals?: { [key:string]: string }
 };
 
 // export declare interface PvsErrorType {

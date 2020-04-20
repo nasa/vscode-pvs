@@ -1,4 +1,8 @@
 ## ChangeLog
+### 1.0.17 (2020.04.20)
+- Improved Proof Mate functionalities (profiles, recommended commands, inline help)
+- Improved Prover CLI (autocompletion for lemmas)
+
 ### 1.0.16 (2020.04.06)
 - Improved Proof Explorer functionalities (tooltips, proof-stepper)
 - Improved Editor functionalities (autocompletion, codelens)

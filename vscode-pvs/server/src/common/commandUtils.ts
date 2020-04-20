@@ -2,6 +2,28 @@
 
 import { ProofCommandDescriptor } from "./serverInterface";
 
+export function printHelp (cmd: string, opt?: { optionals?: boolean, note?: boolean }): string {
+    opt = opt || {};
+    let help: string = cmd;
+    const desc: ProofCommandDescriptor = PROOF_COMMANDS[cmd];
+    if (desc) {
+        if (desc.description) { help = desc.description; }
+        if (desc.syntax) { help += `\n\nSyntax: (${desc.syntax})`; }
+        if (desc.optionals && opt.optionals) {
+            help += `\n\nOptionals:`;
+            const keys: string[] = Object.keys(desc.optionals);
+            for (let i = 0; i < keys.length; i++) {
+                help += `\n\t${keys[i]}: ${desc.optionals[keys[i]]}`;
+            } 
+        }
+        if (desc.note && opt.note) {
+            help += `\n\nNote:`;
+            help += `\n${desc.note}`; 
+        };
+    }
+    return help;
+}
+
 
 // the following list of commands obtained from pvs-server with collect-strategy-names
 // the descriptions are based on those illustrated in the pvs prover guide
@@ -28,94 +50,54 @@ export const PROOF_COMMANDS: { [key:string]: ProofCommandDescriptor } = {
         // "all-implicit-typepreds": { description:""},
     
     "all-typepreds": {
-        description: `Make all type expressions explicit.`,
-        syntax: `all-typepreds FNUMS*`,
-        effect: `Provides type predicates information for all subexpressions FNUMS,
-meaning those that are not already dealt with by the prover. A
-typepred is deemed useful if it has an expandable definition or is
-propositional, since these will have been treated as uninterpreted in the
-prover until they are exposed.`,
-        examples: {
-            "all-typepreds": `Show type predicates for all sequent formulas in the current proof node`,
-            "all-typepreds 1": `Show types predicates for sequent formula 1`,
-            "all-typepreds -1 2": `Show type predicates for sequent formulas -1 and 2`,
-            "all-typepreds +": `Show type predicates for all succedent formulas`
+        description: `Provide type predicate information that are not already dealt with by the prover`,
+        syntax: `all-typepreds`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
         }
     },
     "apply-eta": { 
-        description: `Apply the eta form of extensionality.`,
-        syntax: `apply-eta TERM TYPE?`,
-        effect: `This rule is an extension of the extensionality rule. Given a succedent in
-the form of an equation l = r, where the type of l and r has a corresponding
-extensionality axiom scheme, apply-extensionality will generate a new
-succedent that is the result of using replace-extensionality on l and r.`,
-        examples: {}
+        description: `Apply the eta axiom scheme of extensionality`,
+        syntax: `apply-eta TERM`,
     },
-    // 	"apply-ext": { description:`
-    // apply-ext: use extensionality to prove equality
-    
-    // This rule is an extension of the extensionality rule. Given a succedent in
-    // the form of an equation l = r, where the type of l and r has a corresponding
-    // extensionality axiom scheme, apply-extensionality will generate a new
-    // succedent that is the result of using replace-extensionality on l and r.
-    
-    // If the keep? flag is set to T, the antecedent equality introduced by the
-    // apply-extensionality command is retained in the resulting goal sequent.
-    
-    // Syntax: apply-ext FNUMS* keep?
-    
-    // Examples:
-    // 	apply-ext
-    // 	apply-ext 1 3
-    // 	apply-ext keep
-    
-    // `},
-    "apply-extensionality": {
-        description: `Use extensionality to prove equality.`,
-        syntax: `apply-extensionality FNUMS* keep?`,
-        effect: `this rule is an extension of the extensionality rule. Given a succedent in
-the form of an equation l = r, where the type of l and r has a corresponding
-extensionality axiom scheme, apply-extensionality will generate a new
-succedent that is the result of using replace-extensionality on l and r.\n
-If the keep flag is specified, the antecedent equality introduced by the
-apply-extensionality command is retained in the resulting goal sequent.`,
-        examples: {
-            "apply-extensionality": ``,
-            "apply-extensionality 1 3": ``,
-            "apply-extensionality keep:": ``
+    "apply-ext": {
+        description: `Try to prove equality via extensionality`,
+        syntax: `apply-ext`,
+        optionals: {
+            "FNUMS": `Apply the command to the given sequent formula numbers. If FNUM is not given, then the first consequent that is an equation is used.`,
+            "(keep? t)": `Keep the equality as an antecedent, rather than hiding it.`
         }
     },
-    // 	"apply-lemma": { description: `
-    // apply-lemma: try applying a lemma with explicit instantiations using
-    // an implicit variable list.  In PVS, lemma variables appear in alphabetical
-    // order when introduced by the LEMMA rule.  That order needs to be observed
-    // when entering EXPR-SPECS.
-    // ` 
+    // "apply-extensionality": {
+    //     description: `Try to prove equality via extensionality ** SUPERSEEDED BY apply-ext **`,
+    //     syntax: `apply-extensionality`,
+    //     optionals: {
+    //         "FNUMS": `Apply the command to the given sequent formula numbers, e.g., (apply-extensionality "-1 2") applies the commmand to sequents -1 and 2. If FNUM is not given, then the first consequent that is an equation is used.`,
+    //         "(keep? t)": `Keep the equality as an antecedent, rather than deleting it.`,
+    //         "(hide t)": `Hide the equality formula to which extensionality is applied, rather than deleting the formula.` 
+    //     }
     // },
-    // 	"apply-rewrite": {
-    // 		description:`
-    // apply-rewrite:  Try applying a (purely equational) rewrite rule with explicit
-    // instantiations using an implicit variable list.  In PVS, lemma variables
-    // appear in alphabetical order when introduced by the LEMMA rule.  That
-    // order needs to be observed when entering EXPR-SPECS
-    // `
+    // "apply-lemma": { 
+    //     description: `Apply a lemma`,
+    //     syntax: ``,
+    //     optionals: { 
+    //         "EXPR-SPECS": ``
+    //     }
+    // },
+    // "apply-rewrite": {
+    //     description:`Apply a purely equational rewrite rule`,
+    //     syntax: `apply-rewrite`,
+    //     optionals: {
+    //         "EXPR-SPECS": ``
+    //     }
     // },
     "assert": { 
-        description: `Simplify expressions using decision procedures.`,
-        syntax: `assert FNUMS* lr?`,
-        effect: `This rule is a combination of four other rules (record, simplify, beta, 
-do-rewrite). The use of decision procedures for equalities and linear inequalities
-is perhaps the most signicant and pervasive part of PVS. These procedures
-are invoked to prove trivial theorems, to simplify complex expressions (particularly
-definitions), and even to perform matching. These decision procedures,
-originally due to Shostak, employ congruence closure for equality reasoning,
-and they also perform linear arithmetic reasoning over the natural numbers
-and reals.\n
-When the rewrite flag lr is specified, only the right-hand side of any equality formula
-is simplied.\n`,
-        examples: {
-            "assert": ``,
-            "assert -1 lr": ``
+        description: `Simplify expressions using decision procedures`,
+        syntax: `assert`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`,
+            ":rewrite-flag rl": `Apply the command only to the right-hand side of the equality.`,
+            ":rewrite-flag lr": `Apply the command only to the left-hand side of the equality.`
         }
     },
     // "auto-rewrite": { description:""},
@@ -127,89 +109,58 @@ is simplied.\n`,
     // "auto-rewrite-theories": { description:""},
     // "auto-rewrite-theory": { description:""},
     // "auto-rewrite-theory-with-importings": { description:""},
-    //         "bash": { description: `
-    // bash: executes assert, bddsimp, inst?, skolem-typepred, flatten, and lift-if.
-    // `},
+    // "bash": { description: `Executes assert, bddsimp, inst?, skolem-typepred, flatten, and lift-if.`},
     "bddsimp": {
-        description: `Propositional simplification.`,
-        syntax: `bddsimp FNUMS*`,
-        effect: `Repeatedly applies the propositional rules to all the formulas in the sequent to generate zero or more subgoals.`,
-        examples: {
-            "bddsimp": ``,
-            "bddsimp +": ``
+        description: `Propositional simplification using binary decision diagrams`,
+        syntax: `bddsimp FNUMS`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`,
         }
     },
     "beta": { 
-        description: `Applies beta reduction.`,
-        syntax: `beta FNUMS*`,
-        effect: `Rewrites redex expressions to their reduced form. 
-Common redex expressions and their reduced forms are:
-- LAMBDA (x1 .. xn: e)(t1 .. tn) reduces to e[t1=x1 .. tn=xn]. Note that LET and
-WHERE expressions are syntactic sugar for redexes and will also be beta-reduced
-by beta.
-- ai((# a1:=t1 .. an:=tn#)) reduces to ai.
-- f WITH [..., (i) := e, ...])(j) reduces to e if it can be shown that i = j, and the assignments following (i) := e do not affect f(j).
-- CASES c(t1 .. tn) OF ..., c(x1 .. xn) : e, ... ENDCASES reduces to e[t1=x1 .. tn=xn], where c is a constructor for some datatype.`,
-        examples: {
-            "beta": ``,
-            "beta +": ``
+        description: `Rewrites redex expressions to their reduced form`,
+        note: `LET and WHERE expressions are syntactic sugar for redexes`,
+        syntax: `beta`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
         }
     },
     "both-sides": { 
-        description: `Applies an operand uniformly over a conjunction of inequalities`,
-        syntax: `both-sides OP TERM FNUM?`,
-        effect: `Given a sequent formula in the form 
-e1 ≤ e2 AND e2 ≤ e3 AND e3 ≤ e4, both-sides replaces the chain with 
-e1 OP TERM ≤ e2 OP TERM AND e2 OP TERM ≤ e3 OP TERM AND e3 OP TERM ≤ e4 OP TERM.
-If the equivalence between this chain and the previous one doesn't simplify to 
-TRUE using assert and do-rewrite with respect to the prelude theory real props, 
-then a proof obligation is generated.\n
-The optional argument FNUM can be used to specify the sequent formula.`,
-        examples: {
-            'both-sides "*" "2"': ``
-        }
+        description: `Apply an operand uniformly over a conjunction of inequalities.
+            For example, given a sequent formula 'e1 ≤ e2 AND e2 ≤ e3 AND e3 ≤ e4', 
+            both-sides replaces the chain with 'e1 OP TERM ≤ e2 OP TERM AND e2 OP TERM ≤ e3 OP TERM AND e3 OP TERM ≤ e4 OP TERM'.`,
+        syntax: `both-sides OP TERM`
     },
     "both-sides-f": { 
-        description: `Applies a function to both sides of the relational expression`,
-        syntax: `both-sides FNUM F :postfix? t`,
-        effect: `Given a sequent formula FNUM in the form e1 = e2,
-both-sides-f replaces the formula with F(e1) = F(e2).\n
-TCCs generated during the execution of the command are
-discharged with the proof command tcc-step. At the end, the strategy
-tries to discharge the current branch using the proof command
-auto-step.\n
-The optional setting :postfix? t can be used to add the function as a postfix string to the expressions.`,
-        examples: {
-            'both-sides-f 1 "abs"': ``, 
-            'both-sides-f 1 "^2" :postfix? t': ``
+        description: `Apply a function to both sides of a relational expression,
+            For example, given a sequent formula FNUM in the form 'e1 = e2',
+            both-sides-f replaces the formula with 'F(e1) = F(e2)'.`,
+        syntax: `both-sides FNUM F`,
+        optionals: {
+            ':postfix? t': `Add the function as a postfix string.`
         }
     },
-//         "cancel": { description: `
-// cancel: cancel terms from both sides of relational formulas involving arithmetic expressions.\n
-// Syntax: cancel FNUMS*
-// `},
-//         "cancel-add": { description:""},
-//         "cancel-add!": { description:""},
-//         "cancel-by": { description:""},
-//         "cancel-formula": { description:""},
-//         "cancel-terms": { description:""},
-//         "canon-tms": { description:""},
+    // "cancel": { description: `Cancel terms from both sides of relational formulas involving arithmetic expressions.`},
+    // "cancel-add": { description:""},
+    // "cancel-add!": { description:""},
+    // "cancel-by": { description:""},
+    // "cancel-formula": { description:""},
+    // "cancel-terms": { description:""},
+    // "canon-tms": { description:""},
     "case": {
-        description: `Case analysis on a series of formulas.`,
-        syntax: `case FORMULAS+`,
-        effect: `Splits according to the truth or falsity of FORMULAS.
-Given a sequent A ⊢ B, CASE a b c generates four subgoals:\n
-a, b, c, A ⊢ B\n
-a, b, A ⊢ c, B\n
-a, A ⊢ b, B\n
-A ⊢ a, B.`,
-        examples: {}
+        description: `Case analysis based on given formulas`,
+        syntax: `case FORMULAS`,
+        note: `Sequents are split according to the truth or falsity of FORMULAS.
+            For example, given a sequent 'A ⊢ B', the command 'case "a" "b" "c"' generates four subgoals:\n
+            a, b, c, A ⊢ B\n
+            a, b, A ⊢ c, B\n
+            a, A ⊢ b, B\n
+            A ⊢ a, B.`
     },
     "case*": {
-        description: `Full case analysis on formulas.`,
-        syntax: `case FORMULAS+`,
-        effect: `Splits along every branch, according to the truth or falsity of FORMULAS.`,
-        examples: {}
+        description: `Full case analysis based on given FORMULAS`,
+        syntax: `case* FORMULAS`,
+        note: `Splits along every branch, according to the truth or falsity of FORMULAS.`
     },
     // "case-if": { description:""},
     // "case-if*": { description:""},
@@ -217,434 +168,299 @@ A ⊢ a, B.`,
     // "case-replace": { description:""},
     // "checkpoint": { description:""},
     // "claim": { description:""},
-    "comment": { 
-        description: `Attaches a comment to the sequent.`,
-        syntax: `comment LABEL`,
-        effect: `COMMENT is attached to the sequent. Formulas remain unchanged.`,
-        examples: {}
-    },
     // "commentf": { description:""},
-//         "contra-eqs": { description: `
-// contra-eqs: simple equality reasoning\n
-// `},
+    // "contra-eqs": { description: `simple equality reasoning`},
     "copy": {
-        description: `Copy a formula`,
+        description: `Copy a sequent formula`,
         syntax: `copy FNUM`,
-        effect: `Inserts a copy of sequent formula FNUM. If the formula is an antecedent, 
-then the copy becomes the first antecedent. If the formula is a succedent, 
-then the copy becomes the first succedent.`,
-        examples: {}
+        note: `The command inserts a copy of sequent formula FNUM. 
+            If the formula is an antecedent, then the copy becomes the first antecedent.
+            If the formula is a succedent, then the copy becomes the first succedent.`
     },
     "copy*": { 
         description: `Copy a series of formulas`,
-        syntax: `copy* FNUMS+`,
-        effect: `Iterative version of copy. Inserts a copy of sequent formulas FNUMS into the sequent.`,
-        examples: {}
+        syntax: `copy* FNUMS`,
+        note: `This command is an iterative version of 'copy'.`,
     },
     "cross-add": {
-        description: `Apply cross addition to relational formulas.`,
-        syntax: `cross-add FNUMS*`,
-        effect: `Add to both sides of a formula the respective subtrahend of each side and then simplify.
-Applies cross addition recursively until all outermost subtraction operators are gone.`,
-        examples: {}
+        description: `Apply cross addition to relational sequent formulas`,
+        syntax: `cross-add`,
+        note: `Add to both sides of a formula the respective subtrahend of each side 
+            and then simplify. The operation is applied recursively until all outermost 
+            subtraction operators are gone.`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
     },
     "cross-mult": {
-        description: `Apply cross multiplication to relational expressions.`,
-        syntax: `cross-mul FNUMS*`,
-        effect: `Multiply both sides of a formula by the respective divisors of each side and
-then simplify.  Checks for negative real divisors and invokes suitable
-lemmas as needed.  Applies cross multiplication recursively until all
-outermost division operators are gone.`,
-        examples: {}
+        description: `Apply cross multiplication to relational expressions`,
+        syntax: `cross-mul`,
+        note: `Multiply both sides of a formula by the respective divisors of each side 
+            and then simplify. Checks for negative real divisors and invokes suitable
+            lemmas as needed.  Applies cross multiplication recursively until all
+            outermost division operators are gone.`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }    
     },
     "cut": { 
         description: `Case analysis on a series of formulas. Equivalent to the 'case' command.`,
-        syntax: `cut FORMULAS+`,
-        effect: `Splits along every branch, according to the truth or falsity of FORMULAS.
-TCCs generated during the execution of the command are discharged with the proof command TCC-STEP.`,
-        examples: {}
+        syntax: `cut FORMULAS+`
     },
     "decide": {
-        description: `Invokes the decision procedure, without simplification.`,
-        syntax: `decide FNUMS*`,
-        effect: ``,
-        examples: {}
+        description: `Invoke the decision procedure, without simplification.`,
+        syntax: `decide`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
     },
     "decompose-equality": {
-        description: `Decomposes an equality or disequality to the component equalities.`,
-        syntax: ``,
-        effect: `If it is an equality in the consequents or a disequality in the antecedents then this simply
-invokes apply-extensionality. Otherwise it decomposes the (dis)equality into its component equalities.
-This command only works for equalities between functions, records, or tuples.`,
-        examples: {}
+        description: `Decompose an expression into a series of equalities`,
+        syntax: `decompose-equality`,
+        note: `This command only works for equalities between functions, records, or tuples.`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
     },
     "delabel": {
-        description: `Deletes a labelled formula from the current sequent.`,
+        description: `Delete a labelled sequent formula`,
         syntax: `delabel LABEL`,
-        effect: `Deletes a labelled formula from the current sequent. 
-If hide? is t, LABEL becomes a hidden sequent formula.
-If hidden? is t, LABEL is removed from both visible and hidden sequent formulas.`,
-        examples: {}
+        optionals: {
+            "(hide? t)": `Sequent formula LABEL becomes a hidden sequent formula.`,
+            "(hidden? t)": `Sequent formula LABEL is also removed from hidden formulas.`
+        }
     },
     "delete": { 
-        description: `Delete formulas from a given sequent`,
-        syntax: `delete FNUMS*`,
-        effect: `Returns the subgoal that is the result of deleting all of the sequent formulas
-in the current goal that are indicated by FNUMS. If there are no formulas in the
-sequent corresponding to those indicated in FNUMS, then the command has no effect.`,
-        examples: {}
+        description: `Delete sequent formulas`,
+        syntax: `delete FNUMS`,
+        note: `This command is useful to remove sequent formulas that may have become irrelevant in the current goal.`
     },
     "demod-lin": {
-        description: `Partial linear demodulator derivation and application.`,
-        syntax: `demod-lin FNUMS*`,
-        effect: ``,
-        examples: {}
+        description: `Partial linear demodulator derivation and application`,
+        syntax: `demod-lin`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
     },
     "demod-num": {
-        description: `Numerical demodulation,`,
-        syntax: `demod-num FNUMS*`,
-        effect: ``,
-        examples: {}
+        description: `Numerical demodulation`,
+        syntax: `demod-num`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
     },
     "detuple-boundvars": { 
-        description: `Distributes tuple and record quantication.`,
-        syntax: ``,
-        effect: `A top-level formula of the form FORALL (x: [S1, S2, S3]): g(x) 
-is replaced by FORALL (x1: S1), (x2: S2), (x3: S3): g(x1, x2, x3). 
-Similarly, a top-level formula or FORALL (x: [# s : S, t : T #]) : g(x) 
-is replaced by FORALL (x1: S), (x2: T)): g((# s := x1, t := x2 #)). This decomposition of
-tuple and record quantication is needed, for example, to carry out an induction
-over one of the components. Tuple quantication can be introduced when instantiating
-parameterized theories such as the function theory in the prelude`,
-        examples: {}
-    },
-    "discriminate": {
-        description: `Labels formulas generated by a proof step.`,
-        syntax: `discriminate STEP LABEL strict?`,
-        effect: `Labels formulas generated by STEP as LABEL(s).
-When strict? is set to t, all formulas that are considered new by PVS are also labeled.`,
-        examples: {}
+        description: `Distribute tuple and record quantication`,
+        syntax: `detuple-boundvars`,
+        note: `A top-level formula of the form 'FORALL (x: [S1, S2, S3]): g(x)' 
+            is replaced by 'FORALL (x1: S1), (x2: S2), (x3: S3): g(x1, x2, x3)'. 
+            Similarly, a top-level formula 'FORALL (x: [# s : S, t : T #]) : g(x)' 
+            is replaced by 'FORALL (x1: S), (x2: T)): g((# s := x1, t := x2 #))'.
+            This decomposition of tuple and record quantication is usually needed
+            to carry out an induction over one of the components. Tuple quantication 
+            can be introduced when instantiating parameterized theories.`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }    
     },
     "distrib": {
-        description: `Distribute multiplication operators`,
-        syntax: `distrib fnums+ SIDE* TERM-NUMS*`,
-        effect: `Distribute multiplication operators over factors having the form
-of additive subexpressions.  Apply this action to the top-level additive
-terms given by TERM-NUMS for the expression found on SIDE of each
-relational formula in FNUMS.`,
-        examples: {}
+        description: `Distribute multiplication over additive terms`,
+        syntax: `distrib FNUMS`,
+        optionals: {
+            ":side l": `Apply the command to the left-hand side of the formula.`,
+            ":side r": `Apply the command to the right-hand side of the formula.`,
+            "TERM-NUMS": `Indexes specifying which terms the command should be applied to.` 
+        }
     },
     "distrib!": {
-        description: `Distribute multiplication operands`,
-        syntax: `distrib! EXPR-LOC`,
-        effect: `Distribute multiplication operators over factors having the
-form of additive subexpressions. Apply this action to the multiplicative
-expression found at EXPR-LOC.`,
-        examples: {}
+        description: `Distribute multiplication over additive terms`,
+        syntax: `distrib! EXPR-LOC`
     },
     "div-by": { 
-        description: `Divide both sides of a relational formula`,
-        syntax: `div-by FNUMS+ TERM (sign [+ | - | *])`,
-        effect: `Divide both sides of a relational formula by the factor TERM.
-        If TERM is known to be positive or negative, use + or - as the SIGN
-        argument. Otherwise, use *, which introduces a conditional expression
-        to handle the two cases.`,
-        examples: {}
+        description: `Divide both sides of a sequent formula by a factor EXPR`,
+        syntax: `div-by FNUMS EXPR`,
+        optionals: {
+            ":sign +": `EXPR is known to be positive.`,
+            ":sign -": `EXPR is known to be negative.`,
+            ":sign *": `Introduce conditional expressions to handle the cases EXPR > 0 and EXPR < 0.`
+        }
     },
     "do-rewrite": {
-        description: `Uses decision procedures to rewrite sequent formulas.`,
-        syntax: `de-rewrite FNUMS*`,
-        optionals: [
-            `rewrite-flag`,
-            `flush?`,
-            `linear?`,
-            `cases-rewrite?`
-        ],
-        effect: `Uses decision procedures to rewrite the formulas in FNUMS.
-If rewrite-flag is RL (LR) then only lhs (rhs) is simplified.
-If flush? is T then the current asserted facts are deleted for efficiency.
-If linear? is T, then multiplication and division are uninterpreted.
-If cases-rewrite? is T, then the selections and else parts of a CASES expression are simplified.`,
-        examples: {
-            '(do-rewrite :rewrite-flag RL :linear? T)': ``
+        description: `Use decision procedures to rewrite sequent formulas`,
+        syntax: `do-rewrite`,
+        optionals: {
+            "FNUMS": `Apply the command to the given sequent formula numbers, e.g., (do-rewrite "-1 2") applies the command to sequents -1 and 2.`,
+            ":rewrite-flag rl": `Apply the command only to the right-hand side of the formula.`,
+            ":rewrite-flag lr": `Apply the command only to the left-hand side of the formula.`,
+            ":linear? t": `Multiplication and division are uninterpreted.`
         }
     },
     "elim-unary": {
-        description: `Eliminate unary minus functions in additive expressions.`,
+        description: `Eliminate unary minus functions in additive expressions`,
         syntax: `elim-unary FNUM`,
-        optionals: [
-            "side"
-        ],
-        effect: `Convert expressions of the form x +/- -y to the form x -/+ y. Also convert -x + y to y - x.`,
-        examples: {}
+        note: `This command converts sequent formulas of the form x +/- -y to the form x -/+ y. Also converts -x + y to y - x.`
     },
     "elim-unary!": {
         description: `Eliminate unary minus functions in additive expressions.`,
-        syntax: `elim-unary EXPR-LOC`,
-        effect: `Convert expressions of the form x +/- -y to the form x -/+ y. Also convert -x + y to y - x.`,
-        examples: {}
+        syntax: `elim-unary EXPR-LOC`
     },
     "eta": { 
-        description: `Introduces Eta version of extensionality axiom for given TYPE`,
-        syntax: `eta TYPE`,
-        effect: ``,
-        examples: {}
+        description: `Introduces Eta version of extensionality axiom for a given TYPE`,
+        syntax: `eta TYPE`
     },
     "eval": {
-        description: `Evaluate an expression.`,
+        description: `Print the evaluation of a given expression`,
         syntax: `eval EXPR`,
-        optionals: [
-            "safe?",
-            "quiet?",
-            "timing?"
-        ],
-        effect: `Prints the evaluation of expression EXPR. If SAFE? is t and EXPR 
-        generates TCCs, the expression is not evaluated. This strategy evaluates
-        semantic attachments. Therefore, it may not terminate properly. When QUIET? 
-        is t, the strategy fails silently.`,
-        examples: {}
+        note: `This command may use semantic attachments for the evaluation of uninterpreted terms.`,
     },
     "eval-expr": {
-        description: "Defines the ground value of an uninterpreted expression.",
-        syntax: ``,
-        optionals: [
-            "safe?",
-            "auto?",
-            "quiet?",
-            "timing?"
-        ],
-        effect: `Adds the hypothesis expr=eval(EXPR) to the current goal,
-where eval(EXPR) is the ground evaluation of EXPR. If SAFE? is t and
-EXPR generates TCCs, the expression is not evaluated. Otherwise, TCCs
-are added as subgoals and the expression is evaluated. If AUTO? is t,
-TCCs are ground evaluated. The strategy is sound in the sense that
-user-defined semantic attachments are not evaluated. However, if SAFE?
-is nil, the strategy may not terminate properly in the presence of
-unproven TCCs. When QUIET? is t, the strategy fails silently. When
-TIMING? is t, strategy prints timing information of the ground
-evaluation.`,
-        examples: {}
+        description: "Adds a new antecedent formula given by the evaluation of the given expression",
+        syntax: `eval-expr EXPR`,
+        note: `This command may use semantic attachments for the evaluation of uninterpreted terms.`,
     },
     "eval-formula": {
         description: "",
         syntax: `eval-formula FNUM`,
-        optionals: [
-            "safe?",
-            "quiet?",
-            "timing?"
-        ],
-        effect: `Evaluates formula FNUM in Common Lisp and adds the
-result to the antecedent of the current goal. If SAFE? is t and FNUM
-generates TCCs, the expression is not evaluated. The strategy is safe
-in the sense that user-defined semantic attachments are not
-evaluated. However, if SAFE? is nil, the strategy may not terminate
-properly in the presence of unproven TCCs.  When QUIET? is t, the
-strategy fails silently. When TIMING? is t, strategy prints timing
-information of the ground evaluation.`,
-        examples: {}
+        note: `This command may use semantic attachments for the evaluation of uninterpreted terms.`,
     },
     "expand": {
-        description: "Expand a name and simplify.",
-        syntax: `expand NAME`,
-        effect: ``,
-        examples: {}
+        description: "Expand a name and simplify",
+        syntax: `expand NAME`
     },
     "expand*": {
-        description: "Expand names and simplify.",
-        syntax: `expand* NAMES+`,
-        effect: ``,
-        examples: {}
+        description: "Expand a series of names and simplify",
+        syntax: `expand* NAMES`
     },
     "expand-names": {
-        description: "???",
-        syntax: "???",
-        effect: "???",
-        examples: {}
+        description: "Apply 'expand*' to sequents FNUMS",
+        syntax: "expand-names FNUMS NAMES+"
     },
     "extensionality": {
-        description: `Axiom scheme for functions, records, tuples and abstract datatypes.`,
+        description: `Apply extensionality axiom scheme for functions types, records types, tuple types and abstract datatypes`,
         syntax: `extensionality TYPE`,
-        effect: `The extensionality rule is similar to the lemma rule in that it introduces
-an extensionality axiom for the given type as an antecedent formula. An extensionality
-axiom can be generated corresponding to function, record, and tuple
-types, and constructor subtypes of PVS abstract datatypes.`,
-        examples: {
-            'extensionality "[nat, nat -> nat]"': ``
-        }
+        note: `The extensionality rule is similar to the 'lemma' rule in that 
+            it introduces an extensionality axiom for the given type as an 
+            antecedent formula. An extensionality axiom can be generated 
+            corresponding to function, record, and tuple types, and constructor 
+            subtypes of abstract datatypes.`
     },
     "factor": {
-        description: `Extract common multiplicative factors from the additive terms.`,
-        syntax: `factor FNUMS+`,
-        optionals: [
-            "side",
-            "term-nums",
-            "id?"
-        ],
-        effect: `Extract common multiplicative factors from the additive terms
-given by TERM-NUMS for the expression found on SIDE (L or R) of each
-relational formula in FNUMS, then rearrange.  ID? = T indicates the factor
-made of summed terms should be embedded in a call to the identity function
-to prevent later distribution.`,
-        examples: {}
+        description: `Extract common multiplicative factors from additive terms, and then re-arrange the expression`,
+        syntax: `factor FNUMS`,
+        optionals: {
+            ":side l": `Apply the command to the left-hand side of the formula.`,
+            ":side r": `Apply the command to the right-hand side of the formula.`,
+            "TERM-NUMS": `Indexes specifying which terms the command should be applied to.` 
+        }
     },
     "factor!": {
-        description: `Extract common multiplicative factors from the additive terms.`,
-        syntax: `factor! EXPR-LOC`,
-        optionals: [
-            "term-nums",
-            "id?"
-        ],
-        effect: ` Extract common multiplicative factors from the additive terms
-given by TERM-NUMS for the expressions found at EXPR-LOC, then rearrange.
-ID? = T indicates the factor made of summed terms should be embedded in
-a call to the identity function to prevent later distribution`,
-        examples: {}
+        description: `Extract common multiplicative factors from the additive terms, and then re-arrange the expression`,
+        syntax: `factor! EXPR-LOC`
     },
     "fert-tsos": {
-        description: `???`,
-        syntax: `???`,
-        effect: `???`,
-        examples: {}
+        description: `Inequality fertilization for trivial sums of squares`,
+        syntax: `fert-tsos`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
     },
     "field": {
-        description: `Removes divisions`,
+        description: `Remove divisions and apply simplification heuristics`,
         syntax: `field`,
-        effect: `Removes divisions and apply simplification heuristics to the relational
-formula on real numbers FNUM. It autorewrites with THEORIES when possible. If CANCEL?
-is t, then it tries to cancel common terms once the expression is free of divisions.
-TCCs generated during the execution of the command are discharged with the proof command TCC-STEP`,
-        optionals: [
-            "FNUM",
-            "theories",
-            "cancel?"
-        ],
-        examples: {}
+        optionals: {
+            "FNUM": `Apply the command to given sequent formula number.`,
+            ":cancel? t": `Try to cancel common terms once the expression is free of divisions.`
+        }
     },
-    // "field-about": {
-    //     description: ` Prints Field's about information`,
-    //     syntax: ``,
-    //     effect: `???`,
-    //     examples: {}
-    // },
+    // "field-about": { description: `Prints Field's about information` },
     "flatten": { 
-        description: `Disjunctive simplification.`,
-        syntax: `flatten FNUMS*`,
-        effect: `The flatten rule yields a subgoal where the indicated formulas in the current
-goal are disjunctively simplied.`,
-        examples: {
-            "flatten": ``,
-            "flatten 1 2": ``
+        description: `Apply disjunctive simplification`,
+        syntax: `flatten`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
         }
     },
     "flatten-disjunct": {
-        description: "Controlled disjunctive simplification.",
-        syntax: ``,
-        effect: ``,
-        examples: {}
+        description: "Apply controlled disjunctive simplification",
+        syntax: `flatten-disjunct`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
     },
     "flip-ineq": {
-        description: `Move formula from antecedent to succedent and vice-versa.`,
-        syntax: ``,
-        effect: ` Negate the inequality formulas and move the resulting formulas
-by exchanging between antecedents and consequents.  Conjunctions and
-disjunctions of inequalities are also accepted, causing each conjunct
-or disjunct in the form of an inequality to be negated and moved.
-If HIDE? is set to NIL, the original formulas are left intact.`,
-        examples: {}
+        description: `Negate the inequality formulas and move the resulting formulas by exchanging between antecedents and succedents`,
+        syntax: `flip-ineq FNUMS`
     },
     "gen-ex-cad": {
         description: `Generic cylindrical algebraic decomposition via QEPCAD-B.`,
-        syntax: `gen-ex-cad FNUMS*`,
-        effect: ``,
-        examples: {}
+        syntax: `gen-ex-cad`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
     },
     "generalize": {
-        description: `Generalizes term by universal quantication.`,
-        syntax: ``,
-        effect: `If the sequent is of the form a1(t), a2(t) ├─ c1(t), c2(t), then applying
-the generalize term t with variable x yields a sequent of the form FORALL x: (a1(x) AND a2(x)) IMPLIES (c1(x) OR c2(x)).`,
-        examples: {}
+        description: `Generalize terms`,
+        syntax: `generalize TERM VAR`,
+        note: `If the sequent is of the form a1(t), a2(t) ├─ c1(t), c2(t), 
+            then applying 'generalize "t" "x"' yields a sequent of the form 
+            FORALL x: (a1(x) AND a2(x)) IMPLIES (c1(x) OR c2(x)).`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
     },
     "generalize-skolem-constants": {
-        description: `Generalize skolem constants.`,
-        syntax: ``,
-        effect: `Applies universal generalization to the Skolem constants that occur in the
-given FNUMS. Such a step is useful in rearranging quantiers by introducing
-skolem constants and generalizing them over selected formulas.`,
-        examples: {}
+        description: `Generalize skolem constants`,
+        syntax: `generalize-skolem-constants`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
     },
     "grind": {
-        description: `Install rewrites and repeatedly simplify.`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
+        description: `Install rewrites and repeatedly simplify`,
+        syntax: `grind`,
+        optionals: {
+            ":if-match nil": "This option prevents the automatic instantiation of terms."
+        }
     },
     "grind-reals": {
-        description: `Apply grind with "real_props".`,
-        syntax: ``,
-        effect: `This strategy supports the same
-options as grind. Additionally, grind-reals blocks distribution laws in main level
-expressions in the list of formulas DONTDISTRIB and protects formulas in PROTECT.`,
-        examples: {}
+        description: `Apply grind with real_props`,
+        syntax: `grind-reals`
     },
-    "grind-with-ext": {
-        description: `Like GRIND, but calls REDUCE-EXT, which also uses APPLY-EXTENSIONALITY.  See GRIND for an explanation of the arguments.`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "grind-with-lemmas": {
-        description: `Does a combination of (lemma) and (grind); if lazy-match? is t, postpones instantiations to follow a first round of simplification.`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
+    // "grind-with-ext": {
+    //     description: `Like 'grind', but calls 'reduce-ext', which also uses 'apply-extensionality'`
+    // },
+    // "grind-with-lemmas": {
+    //     description: `Does a combination of (lemma) and (grind); if lazy-match? is t, postpones instantiations to follow a first round of simplification.`,
+    // },
     "ground": {
-        description: `Propositional simplification followed by the use of decision procedures.`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
+        description: `Apply propositional simplification`,
+        syntax: `ground`
     },
     "ground-eval": {
-        description: `Ground evaluation of expression EXPR.`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
+        description: `Prints the evaluation of a given ground expression`,
+        syntax: `ground-eval EXPR`
     },
     "group": { 
-        description: `Try associatively regrouping three terms toward SIDE (L or R)
-        and replacing.  Set INFIX? to nil for prefix applications.  Associativity
-        proof for operator will be tried automatically.`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
+        description: `Associatively grouping three terms`,
+        syntax: `group TERM1 OPERATOR TERM2 TERM3`
     },
     "group!": {
-        description: `Try associatively regrouping the three subexpressions of the
-        function applications found at EXPR-LOC toward SIDE (L or R).  Associativity
-        proof for operator will be tried automatically.`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
+        description: `Associatively grouping three terms of the function application found at EXPR-LOC`,
+        syntax: `group! EXPR-LOC`
     },
     "has-sign": {
-        description: `Try claiming that a TERM has the designated SIGN (relationship to 0).`,
-        syntax: ``,
-        effect: `Symbols for SIGN are (+ - 0 0+ 0- +-), which have meanings positive,
-negative, zero, nonnegative, nonpositive, and nonzero.  Proof of the
-justification step can be tried or deferred.  Use TRY-JUST to supply
-a step for the justification proof or T for the default rule (GRIND).`,
-        examples: {}
+        description: `Try claiming that a given expression is either > 0 or < 0`,
+        syntax: `has-sign EXPR`,
+        optionals: {
+            ":sign +": `Claim that a given expression is positive.`,
+            ":sign -": `Claim that a given expression is negative.`
+        }
     },
     // "help": { description:""},
     "hide": { 
-        description: `Hide formulas.`,
-        syntax: ``,
-        effect: `Hides sequent formulas that are indicated by FNUMS. Hidden formulas are saved,
-so that they can be restored to a descendant of the current sequent by the reveal rule.`,
-        examples: {
-            '(hide -2)': ``
-        }
+        description: `Hide sequent formulas`,
+        syntax: `hide FNUMS`,
+        note: `Hidden sequents can be restored using the 'reveal' command. Use (show-hidden) to see the list of hidden sequents.`
     },
     // "hide-all-but": {
     // 	description: `Hide Selected Formulas: this is a variant of the hide rule that hides all the formulas indicated by
@@ -653,654 +469,498 @@ so that they can be restored to a descendant of the current sequent by the revea
     // 	by the reveal rule.`
     // },
     "iff": {
-        description: `Convert boolean equality to equivalence.`,
-        syntax: `iff FNUMS*`,
-        effect: `Yields a subgoal where any boolean equalities of the form A = B, among the
-formulas in the current sequent that are indicated by FNUMS are converted to A ⇔ B.`, 
-        examples: {
-            'iff (4  2  -1)': ``
+        description: `Convert boolean equality to equivalence`,
+        syntax: `iff`,
+        note: `Yields a subgoal where boolean equalities of the form A = B are converted to A ⇔ B.`, 
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
         }
     },
     "induct": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Perform an induction on VAR`,
+        syntax: `induct VAR`
+    },
     "induct-and-rewrite": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Perform an induction on VAR and then simplify using rewrites`,
+        syntax: `induct-and-rewrite VAR`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`,
+            "REWRITES": `Simplify using the given rewrite rules.`
+        },
+        note: `An example invocation is (induct-and-rewrite "x" 1 "append" "reverse"). This invocation 
+            inducts on "x" in formula 1, then simplifies the base and induction using the definitions 
+            "append" and "reverse".`
+    },
     "induct-and-rewrite!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Perform an induction on VAR and then simplify using rewrites while expanding all definitions`,
+        syntax: `induct-and-rewrite! VAR`
+    },
     "induct-and-simplify": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Perform an induction on VAR and then simplify using rewrites rules defined in the given theories`,
+        syntax: `induct-and-simplify VAR :theories THEORIES`,
+        optionals: {
+            ":rewrites REWRITES": `Simplify using the given rewrite rules.`
+        }
+    },
     "inst": {
-        description: `Instante existential quantiers`,
-        effect: `As the sequent calculus rules indicate, the universally quantied formulas in
-        the antecedent and the existentially quantied formulas in the consequent are
-        reduced by instantiating the quantied variables with the terms that are being
-        existentially generalized in the proof. In an application of the instantiate
-        rule, FNUM is used to select the suitable quantied formula that is either an
-        antecedent formula of the form FORALL (x1 ... xn:A) or a succedent formula of the
-        form EXISTS (x1 .. xn:A). The argument exprs provides the list of n terms t1..tn
-        so that the chosen quantied formula is replaced by A[t1=x1 .. tn=xn] in the
-        generated subgoal. Note that each term ti is typechecked to be of the type of xi, and
-        this typechecking could generate additional goals corresponding to the type
-        correctness conditions.`,
-        syntax: `inst FNUM EXPR`,
-        examples: {
-            '(inst 1 ("x + 3" "y - z"))': ``
-        }
+        description: `Instante existential quantifiers using the given terms`,
+        syntax: `inst FNUM TERMS`
     },
-    "inst!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "inst*": {
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "inst-cp": { 
-        description: `Copy and instantiate existentially quantified formula`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "inst?": {
-        description: `Automatic instantiation of existentially quantified formula`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "install-rewrites": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "instantiate": {
-        description: `Instantiate existentially quantified formula`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "instantiate-one": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "insteep": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "insteep*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "int-dom-zpb": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "invoke": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "isolate": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "isolate-mult": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "isolate-replace": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "just-install-proof": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "label": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "lazy-grind": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "lemma": { 
-        description: `Introduce a lemma and automatically instantiate the lemma`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "let": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "let-name-replace": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "lift-if": {
-        description: `Lift embedded IF connectives.`,
-        effect: `This command lifts the leftmost-innermost contiguous IF or CASES branching structure out to the top level.`,
-        syntax: `lift-if FNUMS*`,
-        examples: {
-            'lift-if': ``,
-            'lift-if 1': ``,
-            'lift-if (-1 2 3)': ``,
-            'lift-if +': ``
-        }
-    },
-    "lisp": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "mapstep": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "mapstep@": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "match": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "measure-induct+": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "measure-induct-and-simplify": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    // "merge-FNUMS": {
-    // 	description: "Combine Sequent Formulas" 
+    // "inst!": { 
+    //     description: ``
     // },
-    "model-check": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+    // "inst*": {
+    //     description: ``
+    // },
+    // "inst-cp": { 
+    //     description: `Copy and instantiate existentially quantified formula`
+    // },
+    "inst?": {
+        description: `Use heuristic instantiation to remove existential quantifiers`,
+        syntax: `inst?`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`,
+            ":subst VAR EXPR": `List of substitutions for variable names.`
+        }
+    },
+    // "install-rewrites": { 
+    //     description: ``,
+    //     syntax: ``,
+    //     effect: ``,
+    //     examples: {}
+    // },
+    // "instantiate": {
+    //     description: `Same as 'inst`
+    // },
+    // "instantiate-one": { 
+    //     description: `Same as 'inst', but has not effect if the instantiation would introduce a duplicate formula`
+    // },
+    "insteep": { 
+        description: `Instantiate existentially quantified formula with constants that have the same name of the quantified variables`,
+        syntax: `insteep FNUM`
+    },
+    "insteep*": { 
+        description: `Iterates N times 'insteep'`,
+        syntax: `insteep* FNUM`
+    },
+    "int-dom-zpb": { 
+        description: `Integral domain zero product branching for explicit zero indeterminate products`,
+        syntax: `int-dom-zpb`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`,
+        }
+    },
+    "isolate": { 
+        description: `Move all additive terms except that numbered TERM-NUM in relational formula FNUM from SIDE (l or r) to the other side`,
+        syntax: `isolate FNUM SIDE TERM-NUM`
+    },
+    "isolate-mult": { 
+        description: `Select the first factor from the left side of formula FNUM and divide both sides as needed to leave the selected term isolated.`,
+        syntax: `isolate-mult FNUM`,
+        note: "A case split to generate the appropriate condition on the divisor is automatically introduced.",
+        optionals: {
+            ":side r": `Apply the command to the right-hand side of the formula.`,
+            ":sign +": `Claim that the product of the selected factors is positive.`,
+            ":sign -": `Claim that the product of the selected factors is negative.`,
+            ":term-num TERM-NUM": `Apply the formula to the term whose index is TERM-NUM.`
+        }
+    },
+    "isolate-replace": { 
+        description: `Isolate term TERM-NUM on SIDE (l or r) of relational formula FNUM, then replace and hide it.`,
+        syntax: `isolate-replace FNUM SIDE TERM-NUM`
+    },
+    "label": { 
+        description: `Define a label to a sequent formula`,
+        syntax: `label LABEL FNUM`
+    },
+    "lazy-grind": { 
+        description: `Install rewrites and repeatedly simplify`,
+        syntax: `lazy-grind`,
+        note: `Equivalent to (grind) with the instantiations postponed until after simplification.`
+    },
+    "lemma": { 
+        description: `Import a lemma and add it as first antecedent`,
+        syntax: `lemma LEMMA`
+    },
+    "lift-if": {
+        description: `Lift embedded IF connectives to the top level`,
+        note: `This command lifts the leftmost-innermost contiguous IF or CASES branching structure out to the top level.`,
+        syntax: `lift-if`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`,
+        }
+    },
+    "measure-induct+": { 
+        description: `Suitably instantiates and uses the measure induction scheme`,
+        syntax: `measure-induct+ MEASURE VARS`,
+    },
+    "measure-induct-and-simplify": { 
+        description: `Invokes MEASURE-INDUCT+ then repeatedly expands definitions`,
+        syntax: `measure-induct-and-simplify MEASURE VARS`
+    },
+    "merge-fnums": {
+        description: "Merges indicated FNUMS into a single formula",
+        syntax: "merge-fnums FNUMS" 
+    },
+    // "model-check": { 
+    //     description: `THIS COMMAND IS BROKEN DON'T USE IT`,
+    // },
     "move-terms": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Move additive terms from one side (l or r) of a relational formula to the other side, adding or substracting as needed.`,
+        syntax: `move-term FNUM SIDE`,
+        optionals: {
+            "TERM-NUMS": `Indexes specifying which terms the command should be applied to.` 
+        }
+    },
     "move-to-front": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Moves sequent formulas FNUMS to the front of the antecedent or consequent lists as appropriate.`,
+        syntax: `move-to-front FNUMS`,
+    },
     "mult-by": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Multiply both sides of a sequent formula by a factor EXPR`,
+        syntax: `mult-by FNUMS EXPR`,
+        optionals: {
+            ":sign +": `EXPR is known to be positive.`,
+            ":sign -": `EXPR is known to be negative.`,
+            ":sign *": `Introduce conditional expressions to handle the cases EXPR > 0 and EXPR < 0.`
+        }
+    },
     "mult-cases": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Generate case analyses for relational formulas containing products`,
+        syntax: `mult-cases FNUM`
+    },
     "mult-eq": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Given two formulas, one a relation 'a R b', and the other an antecedent equality 'x = y', introduce a new formula relating the products, 'a * x R b * y'`,
+        syntax: `mult-eq REL-FNUM EQ-FNUM`
+    },
     "mult-extract": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Extract additive terms from a relational formula, and treat the extracted terms as a product of factors`,
+        syntax: `mult-extract NAME FNUM`
+    },
     "mult-extract!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Extract additive terms from a relational formula, and treat the extracted terms as a product of factors`,
+        syntax: `mult-extract! NAME EXPR-LOC`
+    },
     "mult-ineq": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Given two antecedent inequalities 'a R1 b' and 'x R2 y', form an inequality on their products 'a * x R3 b * y'`,
+        syntax: `mult-ineq FNUM1 FNUM2`
+    },
     "musimp": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `MU calculus simplification`,
+        syntax: `musimp`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`,
+        }
+    },
     "name": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Introduces an antecedent EXPR = NAME.`,
+        note: `This command is useful for generalizing the goal, and 
+            replacing EXPR with bound variables, so that the prover 
+            can be applied to them.`,
+        syntax: `name NAME EXPR`
+    },
     "name-case-replace": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Replace A with B, then name B as X`,
+        syntax: `name-case-replace A B X`
+    },
     "name-distrib": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Introduces new names to block the automatic application of distributive laws in sequent formulas`,
+        syntax: `name-distrib`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`,
+        }
+    },
     "name-extract": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Extract expressions`,
+        syntax: `name-extract NAME`
+    },
     "name-induct-and-rewrite": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Perform induction on VAR and then simplify using rewrites`,
+        syntax: `name-induct-and-rewrite VAR`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`,
+            "INDUCTION-NAME": `Name of the induction scheme to be used.`,
+            "REWRITES": `Simplify using the given rewrite rules.`
+        }
+    },
     "name-label": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Adds formula EXPR = NAME, where NAME is a new name, as an antecedent and replaces EXPR by NAME in FNUMS`,
+        syntax: `name-label NAME EXPR`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
     "name-label*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Iterates 'name-label' over a list NAMES-AND-EXPRS, which is assumed to be a list of the form (NAME1 EXPR1 NAME2 EXPR2 ... NAMEn EXPRn).`,
+        syntax: `name-label* NAMES-AND_EXPRS`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
     "name-mult": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Select a list of factors (indicated by TERM-NUMS) from the expression found on SIDE (l or r) of relational formula FNUM.
+            Assign NAME to the product of the selected factors and replace the product by NAME`,
+        syntax: `name-mult NAME FNUM SIDE`,
+        optionals: {
+            "TERM-NUMS": `Indexes specifying which terms the command should be applied to.` 
+        }
+    },
     "name-mult!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Select a list of factors (indicated by TERM-NUMS) from the expression found at EXPR-LOC.
+            Assign a NAME to the product of the selected factors and replace the product by NAME.
+            Can only handle first expression that results from EXPR-LOC.`,
+        syntax: `name-mult! NAME EXPR-LOC`,
+        optionals: {
+            "TERM-NUMS": `Indexes specifying which terms the command should be applied to.` 
+        }
+    },
     "name-replace": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Replace an expression with a given name`,
+        syntax: `name-replace NAME EXPR`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
     "name-replace*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Iterates 'name-replace' over a list NAMES-AND-EXPRS, which is assumed to be a list of the form (NAME1 EXPR1 NAME2 EXPR2 ... NAMEn EXPRn).`,
+        syntax: `name-replace* NAMES-AND_EXPRS`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
     "neg-formula": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Negates both sides of a relational formula`,
+        syntax: `neg-formula`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
     "op-ident": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Apply the identity operator to rewrite the expressions in a relational formula`,
+        syntax: `op-ident FNUM`,
+        note: `This command is useful for removing unnecessary terms in arithmetic expressions, e.g., 'x + 0' and and 'x * 1' will become 'x'.`,
+        optionals: {
+            ":side l": `Apply the command to the left-hand side of the formula.`,
+            ":side r": `Apply the command to the right-hand side of the formula.`
+        }
+    },
     "op-ident!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Apply the identity operator to rewrite the expressions found at EXPR-LOC`,
+        syntax: `op-ident! EXPR-LOC`
+    },
     "open-ex-inf-cad": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Cylindrical algebraic decomposition with EX-INF-MANY relaxation for open predicates via QEPCAD-B`,
+        syntax: `open-ex-inf-cad`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
     "open-frag-ex-inf-cad": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Fragmented cylindrical algebraic decomposition with EX-INF-MANY relaxation for open predicates via QEPCAD-B`,
+        syntax: `open-frag-ex-inf-cad`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
     "permute-mult": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Reorder multiplicative terms`,
+        syntax: `permute-mult FNUMS`,
+        optionals: {
+            ":side l": `Apply the command to the left-hand side of the formula.`,
+            ":side r": `Apply the command to the right-hand side of the formula.`,
+            "TERM-NUMS": `Indexes specifying which terms the command should be applied to.`     
+        }
+    },
     "permute-mult!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Reorder multiplicative terms found at EXPR-LOC`,
+        syntax: `permute-mult! EXPR-LOC`
+    },
     "permute-terms": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Reorder additive terms on a side (l or r) of relational formula FNUM`,
+        syntax: `permute-terms FNUM SIDE`
+    },
     "permute-terms!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Reorder additive terms found at EXPR-LOC`,
+        syntax: `permute-terms! EXPR-LOC`
+    },
     "postpone": {
         description: `Postpone current goal`,
-        effect: `Marks the current goal as pending to be proved and shifts the focus to the next remaining goal.`,
-        syntax: `postpone`,
-        examples: {
-            'postpone': ``
-        }
+        note: `Marks the current goal as pending to be proved and shifts the focus to the next remaining goal.`,
+        syntax: `postpone`
     },
     "presburger": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "presburger-to-ws1s": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "printf": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "prop": { 
-        description: `Propositional simplification.`,
-        effect: `Carries out propositional simplication. This command is effective on small formulas. For larger formulas, please use bddsimp.`,
-        syntax: `prop`,
-        examples: {}
-    },
-    // "propax": { description: `It is important to note that the propax step is automatically applied to every
-    // sequent that is ever generated in a proof, so that there is never any need to
-    // actively invoke it. It is simply included here for the sake of completeness.`},
-    "protect": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "pvsio-about": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "query*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "quit": {
-        description: `Terminates the current proof session.`,
-        effect: ``,
-        syntax: ``,
-        examples: {}
-    },
-    "quote": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "rahd": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "rahd-simp": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "rahd-waterfall": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "random-test": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "rcr-ineqs": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "rcr-svars": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "real-props": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "recip-mult": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "recip-mult!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "record": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "redlet": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "redlet*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "reduce": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "reduce-with-ext": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "relabel": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "repeat": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "repeat*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "replace": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "replace*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "replace-eta": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "replace-ext": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "replace-extensionality": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "replaces": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "rerun": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "residue-class-ring-ineqs": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "reveal": {
-        description: `Reveal hidden formulas.`,
-        effect: `Reintroduces the hidden formulas numbered FNUMS. The list of hidden formulas can be viewed with show-hidden.
-        The formulas revealed are not removed from the list of hidden formulas.`,
-        syntax: ``,
-        examples: {
-            '(reveal -2)': ``
+        description: `Decision procedure for Presburger arithmetic by reduction to WS1S`,
+        syntax: `presburger`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formula FNUMS.`
         }
     },
+    "presburger-to-ws1s": { 
+        description: `Translate Presburger formulas into WS1S`,
+        syntax: `presburger-to-ws1s`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "prop": { 
+        description: `Apply propositional simplification`,
+        syntax: `prop`
+    },
+    // "propax": { description: `propax is automatically applied to every sequent that is ever generated in a proof, and there is never any need to actively invoke it.`},
+    // "pvsio-about": { description: `` },
+    // "quit": {
+    //     description: `Terminates the current proof session without saving it`,
+    //     syntax: `quit`
+    // },
+    "rahd": { 
+        description: `Real algebra in high dimensions`,
+        syntax: `rahd`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "rahd-simp": { 
+        description: `Real algebra in high dimensions`,
+        syntax: `rahd-simp`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "rahd-waterfall": { 
+        description: `Emulates the RAHD waterfall`,
+        syntax: `rahd-waterfall`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "random-test": { 
+        description: `Runs a random test by creating random values for the skolem constants and running the ground evaluator on those values.`,
+        note: `This command is useful for checking if the given sequent is worth proving.
+            If it comes back with a counter example, then it may not be worth trying to prove.
+            Of course, it may just be that a lemma is needed, or relevant formulas were
+            hidden, and that it isn't really a counter example.`,
+        syntax: `random-test`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`,
+            ":count N": `Number of test runs to be executed.`,
+            ":size MAX": `Generate random numbers between (-MAX ... +MAX).` 
+        }
+    },
+    "rcr-ineqs": { 
+        description: `Reduction of terms in inequalities to canonical rep's in residue class ring induced by equational constraints`,
+        syntax: `rcr-ineqs`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "rcr-svars": { 
+        description: `Scalar-valued indeterminate fertilization via bounded indeterminate power sequence reduction over residue class ring induced by equational constraints`,
+        syntax: `rcr-svars`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "real-props": { 
+        description: `Autorewrite with 'real-props'`,
+        syntax: `real-props`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "recip-mult": { 
+        description: `Convert the top-level division operation on a side (l or r) of a relational formula to a multiplication by the reciprocal of the divisor.`,
+        syntax: `recip-mult FNUMS SIDE`
+    },
+    "recip-mult!": { 
+        description: `Convert the top-level division operation found at EXPR-LOC to a multiplication by the reciprocal of the divisor.`,
+        syntax: `recip-mult! EXPR-LOC`
+    },
+    "redlet": { 
+        description: `Reduces a let-in expression`,
+        syntax: `redlet`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    "redlet*": { 
+        description: `Iteratively reduce let-in expressions`,
+        syntax: `redlet*`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    // "reduce": { 
+    //     description: `Core of GRIND (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN, LIFT-IF, i.e., BASH then REPLACE*) without reestablishing all the rewrites`
+    // },
+    // "reduce-with-ext": { 
+    //     description: `Core of GRIND-WITH-EXT (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN, LIFT-IF, i.e., BASH then REPLACE*), like REDUCE, but includes APPLY-EXTENSIONALITY.`
+    // },
+    "replace": { 
+        description: `Apply left-to-right rewrite using formula FNUM`,
+        syntax: `replace FNUM`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "replace*": { 
+        description: `Apply left-to-right rewrites`,
+        syntax: `replace*`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "replace-eta": { 
+        description: `Instantiates Eta axiom scheme with a given TERM`,
+        syntax: `replace-eta TERM`
+    },
+    "replace-ext": { 
+        description: `Use extensionality axiom to replace F by G`,
+        syntax: `replace-ext F G`
+    },
+    // "replace-extensionality": { 
+    //     description: `** Command superseeded by replace-ext`
+    // },
+    "replaces": { 
+        description: `Iterates the proof command replace`,
+        syntax: `replaces`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "residue-class-ring-ineqs": { 
+        description: `Reduction of terms in inequalities to canonical rep's in residue class ring induced by equational constraints`,
+        syntax: `residue-class-ring-ineqs`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "reveal": {
+        description: `Reveal hidden formulas`,
+        note: `The list of hidden formulas can be viewed with 'show-hidden'.`,
+        syntax: `reveal FNUMS`
+    },
     "rewrite": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Use lemmas or sequent formula FNUMS to rewrite expressions`,
+        syntax: `rewrite LEMMA-OR-FNUM`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
     "rewrite*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Recursively use LEMMAS-OR-FNUMS to rewrite expressions`,
+        syntax: `rewrite* LEMMA-OR-FNUM`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
     "rewrite-expr": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Use lemmas to rewrite the expressions located at EXPR-LOC`,
+        syntax: `rewrite-expre LEMMAS EXPR-LOC`
+    },
     "rewrite-lemma": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Use lemma as a conditional rewrite rule relative to the given substitutions`,
+        syntax: `rewrite-lemma LEMMA SUBST`
+    },
     // "rewrite-msg-off": {
     // 	description: `In the default mode, automatic rewriting by commands such as assert and
     // 	do-rewrite generate a fairly verbose commentary. This can be entirely shut off
@@ -1310,48 +970,519 @@ examples: {}
     // 	description: `The rewriting commentary turned off by rewrite-msg-off can be restored by
     // 	this command. Behaves like a skip otherwise.`
     // },
-    "rewrite-with-FNUM": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+    "rewrite-with-fnum": { 
+        description: `Use sequent formula FNUM to rewrite expressions`,
+        syntax: `rewrite-with-fnum FNUM`
+    },
     "rewrites": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "rotate++": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "rotate--": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "rule-induct": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "rule-induct-step": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Rewrites with a list of lemmas or fnums. LEMMAS-OR-FNUMS has the form (LEMMAS-OR-FNUMS1 ... LEMMAS-OR-FNUMS).`,
+        syntax: `rewrites LEMMAS-OR-FNUMS`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
     "same-name": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: `Assume given constants are identical if their actuals are equal`,
+        note: `This command is used to indicate that names are equal even if their actuals are not syntactically equal.`,
+        syntax: `same-name NAME1 NAME2`
+    },
+    // "save": { 
+    //     description: `Save current proof`,
+    //     syntax: `save`
+    // },
+    "show-hidden": {
+        description: `Show the list of hidden sequent formulas.`,
+        syntax: `show-hidden`
+    },
+    // "show-parens": { 
+    //     description: `Show how infix operators and operands are associated by displaying formulas with full parenthesization`
+    // },
+    // "show-subst": { 
+    //     description: `Tests command formation with substitutions extracted from extended expression specifications.`
+    // },
+    "simp-arith": { 
+        description: `Polynomial arithmetic simplification`,
+        syntax: `simp-arith`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "simp-gls": { 
+        description: `Ground literal simplification`,
+        syntax: `simp-gls`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "simp-real-null": { 
+        description: `Extraction of simple real nullstellensatz refutation certificates from equational constraints`,
+        syntax: `simp-real-null`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "simp-tvs": { 
+        description: `Truth value simplification`,
+        syntax: `simp-tvs`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "simp-zrhs": { 
+        description: `RHS zeroing with polynomial canonicalization`,
+        syntax: `simp-zrhs`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "simple-induct": { 
+        description: `Selects an induction scheme according to the type of VAR in FORMULA and uses FORMULA to formulate an induction predicate`,
+        syntax: `simple-induct VAR FORMULA`
+    },
+    "simple-measure-induct": { 
+        description: `Selects and insert an instance of measure induction as an antecedent formula`,
+        syntax: `simple-measure-induct MEASURE VARS`
+    },
+    "simplify": { 
+        description: `Simplify using decision procedures`,
+        syntax: `simplify`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "simplify-with-rewrites": { 
+        description: `Install rewrites and then simplify`,
+        syntax: `simplify-and-rewrite`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "skeep": { 
+        description: `Skolemize using the names of the bounded variables as the names of the skolem constants`,
+        syntax: `skeep`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    "skeep*": { 
+        description: `Iteratively skolemize a universally quantified formula using the names of the bounded variables as the names of the skolem constants`,
+        syntax: `skeep*`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    // "skodef": { 
+    //     description: ``
+    // },
+    // "skodef*": { 
+    //     description: ``
+    // },
+    "skolem": { 
+        description: `Replace universally quantified variables in sequent fomula FNUM with SKOLEM-CONSTANTS`,
+        syntax: `skolem FNUM SKOLEM-CONSTANTS`
+    },
+    "skolem!": { 
+        description: `Skolemize a universally quantified formula`,
+        syntax: `skolem!`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    "skolem-typepred": { 
+        description: `Skolemize and then introduces type-constraints of the Skolem constants`,
+        syntax: `skolem-typepred`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formula FNUMS.`
+        }
+    },
+    "skoletin": { 
+        description: `Decompose a let-in expression`,
+        syntax: `skoletin`
+    },
+    "skoletin*": { 
+        description: `Iteratively decompose a let-in expression`,
+        syntax: `skoletin*`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formula FNUMS.`
+        }
+    },
+    "skosimp": { 
+        description: `Skolemize and then simplify`,
+        syntax: `skosimp`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formula FNUMS.`
+        }
+    },
+    "skosimp*": { 
+        description: `Iteratively skolemize and then simplify`,
+        syntax: `skosimp*`
+    },
+    // "smash": { 
+    //     description: `Repeatedly tries BDDSIMP, ASSERT, and LIFT-IF`
+    // },
+    "splash": { 
+        description: `Asymmetrically split sequent fomulas`,
+        syntax: `splash`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formula FNUMS.`
+        }
+    },
+    "split": {
+        description: `Split conjunctive sequent formulas`,
+        syntax: `split`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "split-ineq": { 
+        description: `Split non-strict antecedent inequality (<= or >=) into two cases`,
+        syntax: `split-ineq FNUM`
+    },
+    "sq-simp": { 
+        description: `Simplify using lemmas from theories 'sq' and 'sqrt'`,
+        syntax: `sq-simp`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    "sub-formulas": { 
+        description: `Subtract two sequent formulas`,
+        syntax: `sub-formulas FNUM1 FNUM2`
+    },
+    "suffices": { 
+        description: `Introduces a given expression in a universally quantified formula`,
+        syntax: `suffices FNUM EXPR`
+    },
+    "swap": { 
+        description: `Try commutatively swapping two terms and replacing`,
+        syntax: `swap TERM1 OP TERM2`
+    },
+    "swap!": { 
+        description: `Try commutatively swapping the two arguments of the function application found at EXPR-LOC`,
+        syntax: `swap! EXPR-LOC`
+    },
+    "swap-group": { 
+        description: `Try associatively regrouping and swapping three terms`,
+        syntax: `swap-group TERM1 OP TERM2 TERM3`
+    },
+    "swap-group!": { 
+        description: ` Try associatively regrouping the three subexpressions of the function applications found at EXPR-LOC`,
+        syntax: `swap-group! EXPR-LOC`
+    },
+    "swap-rel": { 
+        description: `Swap the two sides of relational formulas`,
+        syntax: `swap-rel FNUMS`
+    },
+    "triv-ideals": { 
+        description: `Ideal triviality checking via reduced Groebner bases`,
+        syntax: `triv-ideals`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    "typepred": { 
+        description: `Make subtype constraints explicit for given expressions`,
+        syntax: `typepred EXPRS`
+    },
+    // "typepred!": {
+    //     description: `Make subtype constraints explicit for given expressions`,
+    //     syntax: `typepred! EXPRS`
+    // },
+    "univ-sturm-ineqs": { 
+        description: `Sturm sequence sign-change analysis for univariate open-interval systems`,
+        syntax: `univ-sturm-ineqs`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    "use": { 
+        description: `Import a lemma and use heuristic instantiation and then beta-reduction`,
+        syntax: `use LEMMA`,
+        optionals: {
+            ":subst VAR EXPR": `List of substitutions for variable names.`
+        }
+    },
+    "use*": { 
+        description: `Iternatively import a series of lemmas and use heuristic instantiation and then beta-reduction`,
+        syntax: `use* LEMMAS`
+    },
+    "use-with": { 
+        description: `Import a lemma and use given sequent formulas for heuristic instantiation`,
+        syntax: `use-with LEMMA FNUMS`
+    },
+    "ws1s": { 
+        description: `Decision procedure for Weak Second-order monadic logic of 1 Successor`,
+        syntax: `ws1s`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    "ws1s-simp": { 
+        description: `Decision procedure for Weak Second-order monadic logic of 1 Successor`,
+        syntax: `ws1s-simp`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    // "y2grind": { 
+    //     description: `Core of GRIND: Installs rewrites, repeatedly applies BASH, and then invokes YICES`
+    // },
+    "y2simp": { 
+        description: `Repeatedly skolemizes and flattens, and then applies the Yices2 SMT solver`,
+        syntax: `y2simp`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    // "ygrind": { 
+    //     description: `Core of GRIND: Installs rewrites, repeatedly applies BASH, and then invokes YICES`
+    // },
+    // "yices": { 
+    //     description: `Invokes Yices as an endgame SMT solver to prove that the conjunction of the negations of the selected formulas is unsatisfiable`,
+    //     syntax: `yices`,
+    //     optionals: {
+    //         "FNUM": `Apply the command to sequent formula FNUM.`
+    //     }
+    // },
+    // "yices-with-rewrites": { description: `` },
+    "yices2": { 
+        description: `Invokes Yices2 as an endgame SMT solver to prove that the conjunction of the negations of the selected formulas is unsatisfiable`,
+        syntax: `yices2`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    // "yices2-with-rewrites": { description: `` }
+};
+
+
+export const PROOF_TACTICS: { [key:string]: ProofCommandDescriptor } = {
+    "apply": {
+        description: `In-line definition of user-defined strategies.`,
+        syntax: `apply strategy COMMENT`,
+        note: `Applies a user-defined strategy as if it were a primitive proof rule, and prints COMMENT.
+            An example is as follows:
+            'apply (then (skosimp*)(flatten)(inst?)) "Skolemizing, flattening, and instantiating"': 
+        `
+    },
+    "branch": {
+        description: `In-line definition of proof strategies for multiple branches.`,
+        syntax: `branch STEP TACTIC+`,
+        note: `Performs a branching STEP and then applies the i'th tactic to the i'th subgoal.
+            If the number of subgoals is larger than the number of tactics, then the n'th tactic is applied to the remaining subgoals.\n  
+            This command is typically used when step splits the proof into multiple branches
+            where a different strategy is required for each of the branches.`
+    },
+    "branch-back": { 
+        description: `In-line definition of proof multiple proof tactics.`,
+        syntax: `branch-back STEP TACTIC+`,
+        note: `Perform a branching STEP and then applies the i'th tactic to the i'th subgoal.
+            Automatic backtracking is performed for branches that fail to prove their goals.
+            That is, if a tactic for a branch fails to prove its goal, the proof state for that branch 
+            is rolled back to the point before the step was invoked.`
+    },
+    "comment": { 
+        description: `Attach a comment to a a proof node`,
+        syntax: `comment LABEL`,
+        note: `COMMENT is attached to the sequent. Formulas remain unchanged.`
+    },
+    // "default-strategy": { description:""},
+    "deftactic": { 
+        description: `Defines a labelled proof tactic.`,
+        syntax: `deftactic TACTIC_NAME TACTIC`,
+        note: `Defines a labelled proof tactic. 
+            The tactic is local to the current branch of the proof. 
+            TACTIC_NAME needs to be a valid identifier in PVS.
+            An example is as follows:
+                '(deftactic foo (then (flatten) (assert) (grind)))': 
+            `
+    },
+    "discriminate": {
+        description: `Label formulas generated by a proof step`,
+        syntax: `discriminate STEP LABEL`,
+        note: `Labels formulas generated by STEP as LABEL(s).`
+    },
+    "else": { 
+        description: `Try STEPS in sequence until the first one succeeds.`,
+        syntax: `else STEPS`
+    },
+    "else*": { 
+        description: `Try STEPS in sequence until the first one succeeds.`,
+        syntax: `else* STEPS`
+    },
+    "equate": {
+        description: `Try equating two expressions and replacing the LHS by the
+            RHS in FNUMS.  Proof of the justification step can be tried or deferred.
+            Use TRY-JUST to supply the rule for the justification proof or T for
+            the default rule (GRIND).`,
+        syntax: `equate lhs rhs`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    "extra-tcc-step": {
+        description: " Tries to prove TCCs by first using (assert) and then (subtype-tcc)",
+        syntax: `extra-tcc-step`
+    },
+    // "extrategies-about": { 
+    //     description: ``,
+    //     syntax: ``,
+    //     effect: ``,
+    //     examples: {}
+    // },
+    "fail": { 
+        description: `Propagate failure to the parent`,
+        syntax: `fail`,
+        note: `A failure signal is propagated to the parent proof goal. If the parent goal is
+            not able to act on this signal, it further propagates the failure to its parent.
+            This rule, like skip, is mainly employed in constructing strategies where it is
+            used to control backtracking. Applying fail to the root sequent causes the
+            proof to be unsuccessfully terminated.`
+    },
+    "finalize": {
+        description: `Either finishes the current goal with STEP or does nothing.`,
+        syntax: `field STEP`
+    },
+    "for": { 
+        description: ``,
+        syntax: ``
+    },
+    "for-each": { 
+        description: ``,
+        syntax: ``
+    },
+    "for-each-rev": { 
+        description: ``,
+        syntax: ``
+    },
+    "for@": { 
+        description: ``,
+        syntax: ``
+    },
+    "forward-chain": { 
+        description: ``,
+        syntax: ``
+    },
+    "forward-chain*": { 
+        description: ``,
+        syntax: ``
+    },
+    "forward-chain-theory": { 
+        description: ``,
+        syntax: ``
+    },
+    "forward-chain@": { 
+        description: ``,
+        syntax: ``
+    },
+    "if": {
+        description: `Evaluates the condition (in Lisp) and if it evaluates to nil, step2 is applied, otherwise step1 is applied.`,
+        syntax: ``
+    },
+    "if-label": {
+        description: `Applies THEN-STEP if at least one formula in the sequent is labeled LABEL. Otherwise, applies ELSE-STEP.`,
+        syntax: ``
+    },
+    "invoke": { 
+        description: `Invoke a rule or strategy by instantiating COMMAND with substitutions extracted from the extended expression specifications EXPR-SPECS`,
+        syntax: `invoke COMMAND`,
+        note: `Example: suppose formula 1 is f(x+y) = f(a*(z+1)).
+            Then (invoke (case "%1 = %2") (? 1 "f(%1) = f(%2)"))
+            would match and create the bindings %1='x+y' and %2='a*(z+1)', 
+            which results in the prover command (case "x+y = a*(z+1)") being invoked.`
+    },
+    "just-install-proof": { 
+        description: `Installs an edited PROOF without actually checking it, declares the subgoal as finished, but then marks the proof as unfinished`,
+        syntax: "just-install-proof PROOF"
+    },
+    "let": { 
+        description: `Allows variables in body to be bound to the results of Lisp computations.`,
+        note: `Example: (let ((x (car *new-fmla-nums*))) (then (inst? x)(split x)))`,
+        syntax: `let BINDING BODY`
+    },
+    "let-name-replace": { 
+        description: `For each LET expressions of the current sequent, create local definitions corresponding to the LET bindings using the NAME strategy, substituting these names into the rest of the LET expr`,
+        syntax: `let-name-replace`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent FNUMS.`
+        }
+    },
+    "lisp": { 
+        description: `Evaluate a Lisp expression`,
+        syntax: `lisp LISP-EXPR`
+    },
+    "mapstep": { 
+        description: `Sequentially applies FUNSTEP to each element of LIST.`,
+        syntax: `mapstep FUNSTEP LIST`
+    },
+    "mapstep@": { 
+        description: `Sequentially applies FUNSTEP to each element of LIST.`,
+        syntax: `mapstep@ FUNSTEP LIST`
+    },
+    "match": { 
+        description: `Try matching syntax patterns against formulas in the sequent`,
+        syntax: `match SPEC-ITEMS`
+    },
+    "printf": { 
+        description: `Print a Lisp formatted string`,
+        syntax: `printf MSG`
+    },
+    "protect": { 
+        description: `Protects formulas FNUMS so that they are not affected by STEP`,
+        syntax: `protect FNUMS STEP`
+    },
+    "query*": { 
+        description: `Query the user for the next step.`,
+        syntax: `query*`
+    },
+    // "quote": { 
+    //     description: `This command is used by the let strategy to ensure that the values for variables are not evaluated again after substitution.`
+    // },
+    "record": { 
+        description: `Uses decision procedures to simplify and record the formulas in FNUMS for further simplification`,
+        syntax: `record`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "relabel": { 
+        description: `Create a new label for sequent formulas and keep the old labels`,
+        syntax: `relabel LABEL FNUMS`
+    },
+    "repeat": { 
+        description: `Successively apply STEP along main branch until it does nothing`,
+        syntax: `repeat STEP`
+    },
+    "repeat*": { 
+        description: `Successively apply STEP along main branch until it does nothing`,
+        syntax: `repeat* STEP`
+    },
+    "rerun": { 
+        description: `Strategy to rerun existing or supplied proof`,
+        syntax: `rerun`
+    },
+    "rotate++": {
+        description: `Move the first succedent formula to the end of the succedents`,
+        syntax: `rotate++`
+    },
+    "rotate--": { 
+        description: `Moves the first antecedent formula to the end of the antecedents.`,
+        syntax: `rotate--`
+    },
+    "rule-induct": { 
+        description: `Applies co-induction over an inductive relation REL`,
+        syntax: `rule-induct REL`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
+    "rule-induct-step": { 
+        description: `Applies co-induction over an inductive relation REL`,
+        syntax: `rule-induct-step REL`,
+        optionals: {
+            "FNUMS": `Apply the command to sequent formulas FNUMS.`
+        }
+    },
     // "set-print-depth": {
     // 	description: `Sets the print depth for displaying formulas. Num must be a number. 0
     // 	means print the entire formula, any other number causes terms below the given
@@ -1368,96 +1499,9 @@ examples: {}
     // 	num lines of each formula of the sequent to be displayed. Behaves like a skip
     // 	otherwise.`
     // },
-    "set-right-margin": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "show-hidden": {
-        description: `Show List of hidden formulas.`,
-        effect: `Shows formulas hidden in the current sequent.`,
-        syntax: ``,
-        examples: {}
-    },
-    "show-parens": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "show-subst": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "simp-arith": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "simp-gls": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "simp-real-null": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "simp-tvs": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "simp-zrhs": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "simple-induct": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "simple-measure-induct": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "simplify": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "simplify-with-rewrites": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "skeep": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "skeep*": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
+    // "set-right-margin": { 
+    //     description: `Sets the print right margin`
+    // },
     // "skip": { 
     // 	description: `Has no effect on the proof. The primary utility of skip is in writing strategies
     // 	where a step is required to have no effect unless some condition holds. Typing
@@ -1469,710 +1513,274 @@ examples: {}
     // 	skip-msg is in generating error messages from within strategies, typically as:
     // 	(if good?(input) ...(skip-msg "Bad input.")).`
     // },
-    "skip-steps": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "sklisp": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "skodef": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "skodef*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "skolem": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "skolem!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "skolem-typepred": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "skoletin": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "skoletin*": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "skosimp": { 
-        description: `Generate Skolem names then flatten`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "skosimp*": { 
-        description: `Repeatedly generate Skolem names then flatten`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "smash": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "splash": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "split": {
-        description: `Conjunctive splitting.`,
-        effect: `Selects and splits a conjunctive formula in the current goal sequent based 
-on the information given in FNUM. When the depth argument is given, the top-level conjuncts are only split to that
-given depth.`,
-        syntax: `split FNUMS* depth?`,
-        examples: {
-            'split': ``,
-            'split +': ``,
-            'split + :depth 2': ``
-        }
-    },
-    "split-ineq": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "sq-simp": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "stop-rewrite": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "stop-rewrite-theory": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "sub-formulas": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "suffices": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "swap": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "swap!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "swap-group": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "swap-group!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "swap-rel": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "tccs-expression": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "tccs-formula": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "tccs-formula*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "tccs-step": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "then": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "then*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "then@": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "time": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "touch": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    // "trace": {
-    // 	description: `Turns on the tracing of the proof commands named in names so that any
-    // 	time any one of the named rules or strategies is used in a proof, the entry into
-    // 	and exit out of such commands is traced. This makes it possible to check if the
-    // 	command is being properly invoked and has the desired effect. Behaves like a
-    // 	skip otherwise.`
+    // "skip-steps": { 
+    //     description: `This strategy is used for debugging purposes`
     // },
-    // "track-all-current-rewrites": { description: "" },
-    // "track-rewrite": {
-    // 	description: `Explains why the attempt to apply a rewrite rule named in names was not
-    // 	applied. Other than setting up the names of the rewrite rules to be tracked during
-    // 	simplication, track-rewrite behaves like a skip. It has no effect on the current
-    // 	proof sequent and is not saved as part of the partial or completed proof.`
+    // "sklisp": { 
+    //     description: `Evaluates lispexpr and skips`
     // },
-    "transform-both": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "triv-ideals": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "trust": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "trust!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "try": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "try-branch": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "try-rewrites": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "typepred": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "typepred!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "undo": {
-        description: `Undo the last proof command.`,
-        effect: `The prover steps back to the ancestor node of the current proof node.`,
-        syntax: ``,
-        examples: {}
-    },
-    "univ-sturm-ineqs": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "unlabel": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "unlabel*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "unless": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "unless-label": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "unless-label@": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "unless@": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    // "untrace": {
-    // 	description: `Turns off the tracing of proof commands named in names, as initiated by
-    // 	(trace). Behaves like a skip otherwise.`
-    // },
-    // "untrack-rewrite": { 
-    // 	description: `Disables the tracking of rewrite rules invoked by track-rewrite. When
-    // 	untrack-rewrite is invoked with no arguments, then tracking is discontinued
-    // 	for all currently tracked rewrite rules. Other than removing the given names
-    // 	from list of rewrite rules to be tracked during simplication, untrack-rewrite
-    // 	behaves like a skip. It has no effect on the current proof sequent and is not
-    // 	saved as part of the partial or completed proof.`
-    // },
-    "unwind-protect": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "use": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "use*": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "use-with": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "when": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "when-label": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "when-label@": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "when@": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "with-focus-on": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "with-focus-on@": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "with-fresh-labels": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "with-fresh-labels@": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "with-fresh-names": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "with-fresh-names@": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "with-labels": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "with-tccs": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "wrap-formula": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "wrap-manip": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "ws1s": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "ws1s-simp": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "y2grind": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "y2simp": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "ygrind": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "yices": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "yices-with-rewrites": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "yices2": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-    "yices2-with-rewrites": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-}
-};
-
-export const CORE_PROOF_COMMANDS: { [key: string]: ProofCommandDescriptor } = {
-    "all-typepreds": PROOF_COMMANDS["all-typepreds"],
-    "apply-extensionality": PROOF_COMMANDS["apply-extensionality"],
-    "assert": PROOF_COMMANDS["assert"],
-    "bddsimp": PROOF_COMMANDS["bddsimp"],
-    "beta": PROOF_COMMANDS["beta"],
-    "both-sides": PROOF_COMMANDS["both-sides"],
-    "case": PROOF_COMMANDS["case"],
-    "comment": PROOF_COMMANDS["comment"],
-    "expand": PROOF_COMMANDS["expand"],
-    "flatten": PROOF_COMMANDS["flatten"],
-    "grind": PROOF_COMMANDS["grind"],
-    "grind-reals": PROOF_COMMANDS["grind-reals"],
-    "ground": PROOF_COMMANDS["ground"],
-    "iff": PROOF_COMMANDS["iff"],
-    "inst?": PROOF_COMMANDS["inst?"],
-    "lemma": PROOF_COMMANDS["lemma"],
-    "lift-if": PROOF_COMMANDS["lift-if"],
-    "prop": PROOF_COMMANDS["prop"],
-    "rewrite": PROOF_COMMANDS["rewrite"],
-    "skeep": PROOF_COMMANDS["skeep"],
-    "skosimp*": PROOF_COMMANDS["skosimp*"],
-    "split": PROOF_COMMANDS["split"],
-    "use": PROOF_COMMANDS["use"]
-};
-
-export const PROOF_STRATEGIES: { [key:string]: ProofCommandDescriptor } = {
-    "apply": {
-        description: `In-line definition of user-defined strategies.`,
-        syntax: `apply strategy COMMENT`,
-        effect: `Applies a user-defined strategy as if it were a primitive proof rule, and prints COMMENT.`,
-        examples: {
-            'apply (then (skosimp*)(flatten)(inst?)) "Skolemizing, flattening, and instantiating"': ``
-        }
-    },
-    "branch": {
-        description: `In-line definition of proof strategies for multiple branches.`,
-        syntax: `branch STEP TACTIC+`,
-        effect: `Performs a branching STEP and then applies the i'th tactic to the i'th subgoal.
-If the number of subgoals is larger than the number of tactics, then the n'th tactic is applied to the remaining subgoals.\n  
-This command is typically used when step splits the proof into multiple branches
-where a different strategy is required for each of the branches.`,
-        examples: {}
-    },
-    "branch-back": { 
-        description: `In-line definition of proof multiple proof tactics.`,
-        syntax: `branch-back STEP TACTIC+`,
-        effect: `Perform a branching STEP and then applies the i'th tactic to the i'th subgoal.
-Automatic backtracking is performed for branches that fail to prove their goals.
-That is, if a tactic for a branch fails to prove its goal, the proof state for that branch 
-is rolled back to the point before the step was invoked.`,
-        examples: {}
-    },
-    // "default-strategy": { description:""},
-    "deftactic": { 
-        description: `Defines a labelled proof tactic.`,
-        syntax: `deftactic TACTIC_NAME TACTIC`,
-        effect: `Defines a labelled proof tactic. The tactic is local to the current branch of the proof. 
-TACTIC_NAME needs to be a valid identifier in PVS.`,
-        examples: {
-            '(deftactic foo (then (flatten) (assert) (grind)))': ``
-        }
-    },
-    "else": { 
-        description: `Try STEPS in sequence until the first one succeeds.`,
-        syntax: `else STEPS+`,
-        effect: ``,
-        examples: {}
-    },
-    "else*": { 
-        description: `Try STEPS in sequence until the first one succeeds.`,
-        syntax: `else* STEPS+`,
-        effect: ``,
-        examples: {}
-    },
-    "equate": {
-        description: `Try equating two expressions and replacing the LHS by the
-        RHS in FNUMS.  Proof of the justification step can be tried or deferred.
-        Use TRY-JUST to supply the rule for the justification proof or T for
-        the default rule (GRIND).`,
-        syntax: `equate lhs rhs`,
-        effect: ``,
-        optionals: [ "try-just", "FNUMS*" ],
-        examples: {}
-    },
-    "extra-tcc-step": {
-        description: "???",
-        syntax: `???`,
-        effect: `???`,
-        examples: {}
-    },
-    // "extrategies-about": { 
-    //     description: ``,
-    //     syntax: ``,
-    //     effect: ``,
-    //     examples: {}
-    // },
-    "fail": { 
-        description: `Propagate failure to the parent`,
-        syntax: `fail`,
-        effect: `A failure signal is propagated to the parent proof goal. If the parent goal is
-not able to act on this signal, it further propagates the failure to its parent.
-This rule, like skip, is mainly employed in constructing strategies where it is
-used to control backtracking. Applying fail to the root sequent causes the
-proof to be unsuccessfully terminated.`,
-        examples: {}
-    },
-    "finalize": {
-        description: `Either finishes the current goal with STEP or does nothing.`,
-        syntax: `field STEP`,
-        effect: ``,
-        examples: {}
-    },
-    "for": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "for-each": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "for-each-rev": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "for@": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "forward-chain": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "forward-chain*": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "forward-chain-theory": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "forward-chain@": { 
-        description: ``,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "if": {
-        description: ` Evaluates the condition (in Lisp) and if it evaluates to nil, step2 is applied, otherwise step1 is applied.`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
-    "if-label": {
-        description: `Applies THEN-STEP if at least one formula in the sequent is labeled LABEL. Otherwise, applies ELSE-STEP.`,
-        syntax: ``,
-        effect: ``,
-        examples: {}
-    },
     "spread": { 
         description: `Define proof strategies for branching steps.`, 
         syntax: `spread STEP STEPLIST`,
-        effect: `Performs a branching STEP and then applies the i'th element of STEPLIST to the i'th subgoal. 
-This command is typically used when step splits the proof into multiple branches
-where a different strategy is required for each of the branches.`,
-        examples: {}
+        note: `Performs a branching STEP and then applies the i'th element of STEPLIST to the i'th subgoal. 
+            This command is typically used when step splits the proof into multiple branches
+            where a different strategy is required for each of the branches.`
     },
     "spread!": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
+        description: ``,
+        syntax: ``
+    },
     "spread@": { 
-description: ``,
-syntax: ``,
-effect: ``,
-examples: {}
-},
-
+        description: ``,
+        syntax: ``
+    },
+    "stop-rewrite": { 
+        description: `Turn off automatic rewrites`,
+        syntax: `stop-rewrite NAMES`
+    },
+    "stop-rewrite-theory": { 
+        description: `Turn off all automatic rewrites defined in given theories`,
+        syntax: `stop-rewrite-theory THEORY-NAMES`
+    },
+    // "tccs-expression": { 
+    //     description: ``
+    // },
+    // "tccs-formula": { 
+    //     description: ``
+    // },
+    // "tccs-formula*": { 
+    //     description: ``
+    // },
+    // "tccs-step": { 
+    //     description: ``
+    // },
+    "then": { 
+        description: ``,
+        syntax: ``
+    },
+    "then*": { 
+        description: ``,
+        syntax: ``
+    },
+    "then@": { 
+        description: ``,
+        syntax: ``
+    },
+    "time": { 
+        description: ``,
+        syntax: ``
+        },
+    "touch": { 
+        description: ``,
+        syntax: ``
+    },
+// "trace": {
+// 	description: `Turns on the tracing of the proof commands named in names so that any
+// 	time any one of the named rules or strategies is used in a proof, the entry into
+// 	and exit out of such commands is traced. This makes it possible to check if the
+// 	command is being properly invoked and has the desired effect. Behaves like a
+// 	skip otherwise.`
+// },
+// "track-all-current-rewrites": { description: "" },
+// "track-rewrite": {
+// 	description: `Explains why the attempt to apply a rewrite rule named in names was not
+// 	applied. Other than setting up the names of the rewrite rules to be tracked during
+// 	simplication, track-rewrite behaves like a skip. It has no effect on the current
+// 	proof sequent and is not saved as part of the partial or completed proof.`
+// },    
+    "transform-both": { 
+        description: `Apply TRANSFORM to both sides of relational formula FNUM`,
+        syntax: `transform-both FNUM TRANSFORM`
+    },
+    // "trust": { 
+    //     description: ``
+    // },
+    // "trust!": { 
+    //     description: `This strategy performs a miracle on behalf of trusted orcale ORCL`
+    // },
+    "try": { 
+        description: ``,
+        syntax: ``
+    },
+    "try-branch": { 
+        description: ``,
+        syntax: ``
+    },
+    "try-rewrites": { 
+        description: ``,
+        syntax: ``
+    },
+    "undo": {
+        description: `Undo the last proof command.`,
+        note: `The prover steps back to the ancestor node of the current proof node.`,
+        syntax: "undo"
+    },
+    "unlabel": { 
+        description: `Remove labels attached to sequent formulas`,
+        syntax: `unlabel`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    "unlabel*": { 
+        description: `Remove labels attached to sequent formulas`,
+        syntax: `unlabel*`,
+        optionals: {
+            "FNUM": `Apply the command to sequent formula FNUM.`
+        }
+    },
+    "unless": { 
+        description: `Behaves as (if (not FLAG) (then STEP1 ... STEPn) (skip))`,
+        syntax: `unless FLAG STEPS`
+    },
+    "unless-label": { 
+        description: `Sequentially applies STEPS to all branches as long as no formula in the sequent is labeled LABEL`,
+        syntax: `unless-label LABEL STEPS`
+    },
+    "unless-label@": { 
+        description: `Sequentially applies STEPS to the main branch as long as no formula in the sequent is labeled LABEL`,
+        syntax: `unless-label@ LABEL STEPS`
+    },
+    "unless@": { 
+        description: `Behaves as (if (not FLAG) (then@ STEP1 ... STEPn) (skip))`,
+        syntax: `unless@ FLAG STEPS`
+    },
+    "untrace": {
+        description: `Turns off the tracing of proof commands named in names, as initiated by (trace).`,
+        syntax: "untrace"
+    },
+    "untrack-rewrite": { 
+        description: `Disables the tracking of rewrite rules invoked by track-rewrite.`,
+        syntax: "untrack-rewrite"
+    },
+    "unwind-protect": { 
+        description: `Invoke MAIN-STEP followed by CLEANUP-STEP, which is performed even if MAIN-STEP leads to a proof of the current goal.`,
+        syntax: `unwind-protect MAIN-STEP CLEANUP-STEP`
+    },
+    "when": { 
+        description: ``,
+        syntax: ``
+    },
+    "when-label": { 
+        description: ``,
+        syntax: ``
+    },
+    "when-label@": { 
+        description: ``,
+        syntax: ``
+    },
+    "when@": { 
+        description: ``,
+        syntax: ``
+    },
+    "with-focus-on": { 
+        description: ``,
+        syntax: ``
+    },
+    "with-focus-on@": { 
+        description: ``,
+        syntax: ``
+    },
+    "with-fresh-labels": { 
+        description: ``,
+        syntax: ``
+    },
+    "with-fresh-labels@": { 
+        description: ``,
+        syntax: ``
+    },
+    "with-fresh-names": { 
+        description: ``,
+        syntax: ``
+    },
+    "with-fresh-names@": { 
+        description: ``,
+        syntax: ``
+    },
+    "with-labels": { 
+        description: ``,
+        syntax: ``
+    },
+    "with-tccs": { 
+        description: ``,
+        syntax: ``
+    },
+    "wrap-formula": { 
+        description: ``,
+        syntax: ``
+    },
+    "wrap-manip": { 
+        description: ``,
+        syntax: ``
+    },
 };
     
 export const EVALUATOR_COMMANDS: { [key:string]: ProofCommandDescriptor } = {
     "RANDOM": {
         description: `Generate a random number.`,
-        syntax: `RANDOM`,
-        effect: ``,
-        examples: {}
+        syntax: `RANDOM`
     }
 };
 
+// a selection of 32 useful commands for advanced users. The selection has been based on statistics from nasalib and feedback from experienced pvs users
+export const PROOF_COMMANDS_ADVANCED_PROFILE: { [key: string]: ProofCommandDescriptor } = {
+    "all-typepreds": PROOF_COMMANDS["all-typepreds"],
+    "apply-ext": PROOF_COMMANDS["apply-ext"],
+    "assert": PROOF_COMMANDS["assert"],
+    "beta": PROOF_COMMANDS["beta"],
+    "bddsimp": PROOF_COMMANDS["bddsimp"],
+    "case": PROOF_COMMANDS["case"],
+    "decompose-equality": PROOF_COMMANDS["decompose-equality"],
+    "expand": PROOF_COMMANDS["expand"],
+    "eval-expr": PROOF_COMMANDS["eval-expr"],
+    "flatten": PROOF_COMMANDS["flatten"],
+    "grind": PROOF_COMMANDS["grind"],
+    "grind-reals": PROOF_COMMANDS["grind-reals"],
+    "ground": PROOF_COMMANDS["ground"],
+    "hide": PROOF_COMMANDS["hide"],
+    "iff": PROOF_COMMANDS["iff"],
+    "induct": PROOF_COMMANDS["induct"],
+    "inst?": PROOF_COMMANDS["inst?"],
+    "insteep": PROOF_COMMANDS["insteep"],
+    "label": PROOF_COMMANDS["label"],
+    "lemma": PROOF_COMMANDS["lemma"],
+    "lift-if": PROOF_COMMANDS["lift-if"],
+    "name": PROOF_COMMANDS["name"],
+    "prop": PROOF_COMMANDS["prop"],
+    "replace": PROOF_COMMANDS["replace"],
+    "rewrite": PROOF_COMMANDS["rewrite"],
+    "random-test": PROOF_COMMANDS["random-test"],
+    "skeep": PROOF_COMMANDS["skeep"],
+    "skoletin": PROOF_COMMANDS["skoletin"],
+    "skosimp*": PROOF_COMMANDS["skosimp*"],
+    "split": PROOF_COMMANDS["split"],
+    "typepred": PROOF_COMMANDS["typepred"],
+    "use": PROOF_COMMANDS["use"]
+};
+
+export const PROOF_COMMANDS_BASIC_PROFILE: { [key: string]: ProofCommandDescriptor } = {
+    "all-typepreds": PROOF_COMMANDS["all-typepreds"],
+    "assert": PROOF_COMMANDS["assert"],
+    "beta": PROOF_COMMANDS["beta"],
+    "case": PROOF_COMMANDS["case"],
+    "expand": PROOF_COMMANDS["expand"],
+    "flatten": PROOF_COMMANDS["flatten"],
+    "grind": PROOF_COMMANDS["grind"],
+    "inst?": PROOF_COMMANDS["inst?"],
+    "lemma": PROOF_COMMANDS["lemma"],
+    "lift-if": PROOF_COMMANDS["lift-if"],
+    "prop": PROOF_COMMANDS["prop"],
+    "replace": PROOF_COMMANDS["replace"],
+    "skosimp*": PROOF_COMMANDS["skosimp*"],
+    "split": PROOF_COMMANDS["split"]
+};
+
+export function getCommands(profile: ProofMateProfile): { [key: string]: ProofCommandDescriptor } {
+    switch (profile) {
+        case "basic": { return PROOF_COMMANDS_BASIC_PROFILE; }
+        case "advanced": { return PROOF_COMMANDS_ADVANCED_PROFILE; }
+        default: return {};
+    }
+}
+
+export declare type ProofMateProfile = "basic" | "advanced";
