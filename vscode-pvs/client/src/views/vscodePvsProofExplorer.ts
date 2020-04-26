@@ -136,8 +136,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	protected moveIndicatorBack (): void {
 		if (this.activeNode) {
 			const prev: ProofItem = this.activeNode.moveIndicatorBack();
-			// this.revealNode({ selected: prev }); // commented for now, sometimes triggers exceptions from TreeView
-			this.markAsActive({ selected: prev }, { force: true });
+			if (prev.contextValue !== "root") {
+				// this.revealNode({ selected: prev }); // commented for now, sometimes triggers exceptions from TreeView
+				this.markAsActive({ selected: prev }, { force: true });
+			}
 		} else {
 			console.warn("[vscode-pvs-proof-explorer] Warning: active node is null");
 		}
@@ -863,7 +865,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					this.markAsActive({ selected: this.root });
 				} else {
 					const wasActive: boolean = selected.isActive();
-					if (wasActive) {
+					if (wasActive || this.ghostNode.realNode === selected) {
 						const sibling: ProofItem = selected.getNextSibling() || this.ghostNode;
 						if (sibling === this.ghostNode) {
 							this.ghostNode.parent = selected.parent;
@@ -1120,13 +1122,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// initialise
 		this.root = null;
 		this.refreshView();
-		if (desc && desc.info && desc.proof) {
+		if (desc && desc.info) {
 			this.root = new RootNode({ 
-				name: desc.proof.name, 
+				name: desc.info.formula, //(desc.proof) ? desc.proof.name : desc.info.formula, 
 				proofStatus: desc.info.status
 			});
 			this.ghostNode = new GhostNode({ parent: this.root, node: this.root });
-			if (desc.proof.rules && desc.proof.rules.length) {
+			if (desc.proof && desc.proof.rules && desc.proof.rules.length
+					// when proof is simply (postpone), this is an empty proof, don't append postpone
+					&& !(desc.proof.rules.length === 1 && desc.proof.rules[0].name === "(postpone)")) {
 				desc.proof.rules.forEach((child: ProofNode) => {
 					createTree(child, this.root);
 				});
@@ -1140,8 +1144,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.root.setProofStatus(desc.info.status);
 			// select either the first child or the root if children are not present
 			const selected: ProofItem = (this.root.children && this.root.children.length) ? this.root.children[0] : this.root;
-			this.initActiveNode({ selected });
-			this.markAsActive({ selected }, { force: true });
+			// initialise this.activeNode
+			this.initActiveNode({ selected }); 
+			// update the interface
+			this.markAsActive({ selected: this.activeNode }, { force: true });
+			// start the proof
 			this.startProof();
 			this.dirtyFlag = false;
 		}
@@ -1375,6 +1382,16 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			cmd: string 
 		}) => {
 			this.saveProof({ confirm: false });		
+		});
+		this.client.onRequest(serverEvent.quitProofEvent, (request: { 
+			fileName: string, 
+			fileExtension: string, 
+			contextFolder: string, 
+			theoryName: string, 
+			formulaName: string, 
+			cmd: string 
+		}) => {
+			this.saveProof({ confirm: true });		
 		});
 		// -- handlers for proof explorer commands
 		context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof", () => {

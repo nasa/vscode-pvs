@@ -604,22 +604,34 @@ export const pvsioBanner: string = `
  * @function getErrorRange
  * @description Utility function, identifies the range of a syntax error at the cursor position.
  * @param txt The document that contains the word
- * @param position Position in the document
+ * @param start Position in the document where the error starts
+ * @param end Position in the document where the error ends
  */
-export function getErrorRange(txt: string, position: Position): Range {
-	let character: number = position.character;
-	let len: number = 0;
-	let lines: string[] = txt.split("\n");
-	if (lines && lines.length > position.line) {
-		let txt: string = lines[position.line];
-		if (txt) {
-			len = txt.length - position.character;
+export function getErrorRange(txt: string, start: Position, end: Position): Range {
+	if (end) {
+		return {
+			start,
+			end: {
+				line: end.line,
+				// indicate at least 2 characters otherwise the underlined error is hard to find in the text
+				character: (start.line === end.line && start.character === end.character) ? end.character + 2 : end.character
+			}
+		};
+	} else {
+		let character: number = start.character;
+		let len: number = 2; // indicate at least 2 characters otherwise the underlined error is hard to find in the text
+		let lines: string[] = txt.split("\n");
+		if (lines && (start.line - 1) < lines.length) {
+			let txt: string = lines[start.line - 1];
+			if (txt) {
+				len = txt.length - start.character;
+			}
 		}
+		return {
+			start: { line: start.line, character: character },
+			end: { line: start.line, character: character + len }
+		};
 	}
-	return {
-		start: { line: position.line, character: character },
-		end: { line: position.line, character: character + len }
-	};
 }
 
 // based on the 256 color scheme, see colors at https://misc.flogisoft.com/bash/tip_colors_and_formatting

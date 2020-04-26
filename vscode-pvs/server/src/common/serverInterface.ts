@@ -450,6 +450,7 @@ export const serverCommand = {
 	parseFileWithFeedback: "pvs.parse-file.with-feedback",
 	parseWorkspace: "pvs.parse-workspace",
 	parseWorkspaceWithFeedback: "pvs.parse-workspace.with-feedback",
+	typecheckWorkspace: "pvs.typecheck-workspace",
 	listContext: "pvs.list-context",
 	generateTccs: "pvs.generate-tccs",
 	showTccs: "pvs.show-tccs",
@@ -482,7 +483,7 @@ export const serverEvent = {
 	generateTccsResponse: "pvs.response.generate-tccs",
 	showTccsResponse: "pvs.response.show-tccs",
 	startEvaluatorResponse: "pvs.response.start-evaluator",
-
+	hp2pvsResponse: "pvs.response.hp-to-pvs-file",
 
 	getContextDescriptorResponse: "pvs.response.get-context-descriptor",
 	getFileDescriptorResponse: "pvs.response.get-file-descriptor",
@@ -497,7 +498,8 @@ export const serverEvent = {
 	proofStateUpdate: "pvs.event.proof-state",
 	evaluatorStateUpdate: "pvs.event.evaluator-state",
 	workspaceStats: "pvs.event.workspace-stats",
-	saveProofEvent: "pvs.event.quit-proof",
+	saveProofEvent: "pvs.event.save-proof",
+	quitProofEvent: "pvs.event.quit-proof",
 
 	pvsVersionInfo: "pvs.event.version-info",
 	pvsNotPresent: "pvs.event.pvs-not-present",

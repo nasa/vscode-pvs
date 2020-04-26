@@ -37,7 +37,7 @@
  **/
 
 import * as utils from './common/languageUtils';
-import { PROOF_COMMANDS_ADVANCED_PROFILE, EVALUATOR_COMMANDS } from './common/commandUtils';
+import { PROOF_COMMANDS_BASIC_PROFILE, EVALUATOR_COMMANDS } from './common/commandUtils';
 import * as readline from 'readline';
 import { PvsCliInterface, SimpleConsole, SimpleConnection, serverCommand, CliGatewaySubscriberEvent } from './common/serverInterface';
 import * as fsUtils from './common/fsUtils';
@@ -158,7 +158,7 @@ class PvsCli {
 		definitions: []
 	};
 
-	protected static proofCommands: string[] = Object.keys(PROOF_COMMANDS_ADVANCED_PROFILE);
+	protected static proofCommands: string[] = ["undo", "save", "quit"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
 	protected static evaluatorFunctions: string[] = Object.keys(EVALUATOR_COMMANDS);
 
 	// protected pvsPath: string;
@@ -384,6 +384,8 @@ class PvsCli {
 								}
 								break;
 							}
+							// TODO: add event for changing profile
+							
 							// case serverEvent.typecheckFileResponse: {
 							// 	const pvsResponse: PvsResponse = data.response;
 							// 	if (pvsResponse.error) {

@@ -80,8 +80,8 @@ export class VSCodePvsStatusBar {
     constructor (client: LanguageClient) {
         this.client = client;
         // create status bar elements
-        this.pvsStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
         this.workspaceStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
+        this.pvsStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
         this.versionInfoBar = window.createStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
     }
 
@@ -177,21 +177,21 @@ export class VSCodePvsStatusBar {
      * Activates the service provider
      */
     activate (context: ExtensionContext) {
-        this.pvsStatus.show();
         this.resetStats();
         this.workspaceStatus.show();
+        this.pvsStatus.show();
         this.versionInfoBar.show();
     }
 
     show (): void {
-        this.pvsStatus.show();
         this.workspaceStatus.show();
+        this.pvsStatus.show();
         this.versionInfoBar.show();
     }
 
     hide (): void {
-        this.pvsStatus.hide();
         this.workspaceStatus.hide();
+        this.pvsStatus.hide();
         this.versionInfoBar.hide();
     }
 

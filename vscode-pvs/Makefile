@@ -60,6 +60,8 @@ test-typechecker:
 	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-typechecker.json
 test-prover:
 	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-prover.json
+test-proofscript:
+	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-proofscript.json
 test-workspace:
 	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-workspace.json
 test:

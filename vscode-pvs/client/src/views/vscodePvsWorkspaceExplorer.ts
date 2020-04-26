@@ -112,17 +112,22 @@ class TheoryItem extends TreeItem {
 		return this.tccsOverview;
 	}
 }
-class OverviewItem extends TreeItem {
-	contextValue: string = "OverviewItem";
-	contextFolder: string;
-	constructor(type: string, desc: { contextFolder: string }, collapsibleState?: TreeItemCollapsibleState) {
+abstract class OverviewItem extends TreeItem {
+	contextValue: string = "abstract-overview";
+	protected contextFolder: string;
+	name: string;
+	constructor(type: string, desc: { contextFolder?: string }, collapsibleState?: TreeItemCollapsibleState) {
 		super(type, collapsibleState | TreeItemCollapsibleState.None);
 		this.contextValue = type;
-		this.label = type.toLowerCase();
-		this.contextFolder = desc.contextFolder;
+		this.label = this.name = type.replace("-overview", "");
+		this.contextFolder = (desc && desc.contextFolder) ? desc.contextFolder : "";
+	}
+	getContextFolder (): string {
+		return this.contextFolder;
 	}
 }
-class FormulaOverviewItem extends OverviewItem {
+export class FormulaOverviewItem extends OverviewItem {
+	contextValue: string = "formula-overview";
 	theorems: FormulaItem[] = [];
 	fileName: string;
 	fileExtension: string;
@@ -144,7 +149,7 @@ class FormulaOverviewItem extends OverviewItem {
 		return this.theorems;
 	}
 	protected refreshLabel (opt?: { keepCollapsibleState?: boolean }) {
-		this.label = `${this.contextValue.toLowerCase()} ( ${this.theorems.length} )`;
+		this.label = `${this.name} ( ${this.theorems.length} )`;
 		opt = opt || {};
 		if (opt.keepCollapsibleState) {
 			if (this.theorems.length > 0 && this.collapsibleState === TreeItemCollapsibleState.None) {
@@ -223,47 +228,66 @@ export class FormulaItem extends TreeItem {
 }
 //-- overviews
 class TheoremsOverviewItem extends FormulaOverviewItem {
+	contextValue: string = "theorems-overview";
 	constructor(desc: { contextFolder: string, fileName: string, fileExtension: string }) {
-		super("THEOREMS", desc);
+		super("theorems-overview", desc);
 	}
 }
 class TccsOverviewItem extends FormulaOverviewItem {
+	contextValue: string = "tccs-overview";
 	constructor(desc: { contextFolder: string, fileName: string, fileExtension: string }) {
-		super("TCCS", desc);
+		super("tccs-overview", desc);
 	}
 	// @overrides
 	updateStatus (desc: FormulaDescriptor): void {
 		super.updateStatus(desc, { keepCollapsibleState: true });
 	}
 }
-class ContextItem extends OverviewItem {
+class TheoriesOverviewItem extends TreeItem {
+	contextValue = "theories-overview";
 	theories: TheoryItem[] = [];
+	constructor() {
+		super("theories-overview", TreeItemCollapsibleState.Expanded);
+		this.theories = [];
+	}
+	getChildren (): TreeItem[] {
+		return this.theories;
+	}
+}
+export class WorkspaceOverviewItem extends OverviewItem {
+	contextValue: string = "workspace-overview";
+	
+	theoriesOverview: TheoriesOverviewItem;
+
 	constructor(desc: { contextFolder: string }) {
-		super("CONTEXT", desc, TreeItemCollapsibleState.Expanded);
-		this.label = (desc && desc.contextFolder) ? desc.contextFolder : this.contextValue;
+		super("workspace-overview", desc, TreeItemCollapsibleState.Expanded);
+		this.theoriesOverview = new TheoriesOverviewItem();
+		this.updateLabel();
 	}
 	setContextFolder (contextFolder: string) {
 		if (this.contextFolder !== contextFolder) {
 			this.contextFolder = contextFolder;
-			this.label = fsUtils.getContextFolderName(this.contextFolder);
-			this.theories = [];
+			this.updateLabel();
 		}
 	}
-	getChildren (): OverviewItem[] {
-		return this.theories;
+	protected updateLabel () {
+		this.label = "[ " + fsUtils.getContextFolderName(this.contextFolder) + " ]";
+	}
+	getChildren (): TreeItem[] {
+		return [ this.theoriesOverview ];
 	}
 }
 //-- Items
-class TheoremItem extends FormulaItem {
-	constructor(desc: FormulaDescriptor) {
-		super("theorem", desc);
-	}
-}
-class TccItem extends FormulaItem {
-	constructor(desc: FormulaDescriptor) {
-		super("tcc", desc);
-	}
-}
+// class TheoremItem extends FormulaItem {
+// 	constructor(desc: FormulaDescriptor) {
+// 		super("theorem", desc);
+// 	}
+// }
+// class TccItem extends FormulaItem {
+// 	constructor(desc: FormulaDescriptor) {
+// 		super("tcc", desc);
+// 	}
+// }
 
 
 /**
@@ -289,7 +313,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	protected providerView: string;
 	
 	protected view: TreeView<TreeItem>;
-	protected root: ContextItem;
+	protected root: WorkspaceOverviewItem;
 
 	protected getPvsPath (): string {
 		return workspace.getConfiguration().get("pvs.path");
@@ -339,7 +363,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		if (desc) {
 			opt = opt || {};
 			// update the list of theories
-			if (desc && desc.contextFolder !== this.root.contextFolder) {
+			if (desc && desc.contextFolder !== this.root.getContextFolder()) {
 				this.setContextFolder(desc.contextFolder);
 			}
 			if (desc && desc.theories) {
@@ -368,9 +392,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 					theoryItem.refreshLabel({ keepCollapsibleState: true });
 					theoryItems.push(theoryItem);
 				}
-				const diff: TheoryItem[] = this.diff(this.root.theories, theoryItems);
+				const diff: TheoryItem[] = this.diff(this.root.theoriesOverview.theories, theoryItems);
 				const items: TheoryItem[] = theoryItems.concat(diff);
-				this.root.theories = items.sort((a: TheoryItem, b: TheoryItem): number => {
+				this.root.theoriesOverview.theories = items.sort((a: TheoryItem, b: TheoryItem): number => {
 					return (a.theoryName > b.theoryName) ? 1 : -1;
 				});
 			}
@@ -380,7 +404,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		this.refreshView();
 	}
 	protected loading (): void {
-		this.root = new ContextItem({ contextFolder: "Loading content..." });
+		this.root = new WorkspaceOverviewItem({ contextFolder: "Loading content..." });
 	}
 	/**
 	 * Internal function, used to refresh the tree view
@@ -402,8 +426,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		return res;
 	}
 	getTheoryItem (theoryName: string): TheoryItem {
-		if (this.root && this.root.theories) {
-			let candidates: TheoryItem[] = this.root.theories.filter((item: TheoryItem) => {
+		if (this.root && this.root.theoriesOverview.theories) {
+			let candidates: TheoryItem[] = this.root.theoriesOverview.theories.filter((item: TheoryItem) => {
 				return item.theoryName === theoryName;
 			});
 			if (candidates && candidates.length === 1) {
@@ -413,8 +437,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		return null;
 	}
 	getTheoryDescriptor (theoryName: string): TheoryDescriptor {
-		if (this.root && this.root.theories) {
-			let candidates: TheoryItem[] = this.root.theories.filter((item: TheoryItem) => {
+		if (this.root && this.root.theoriesOverview.theories) {
+			let candidates: TheoryItem[] = this.root.theoriesOverview.theories.filter((item: TheoryItem) => {
 				return item.theoryName === theoryName;
 			});
 			if (candidates && candidates.length === 1) {
@@ -496,7 +520,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	getChildren(element: TreeItem): Thenable<TreeItem[]> {
 		if (element) {
 			let children: TreeItem[] = null;
-			if (element.contextValue === "CONTEXT") {
+			if (element.contextValue === "workspace-overview") {
 				children = this.root.getChildren();
 			} else if (element.contextValue === "theory") {
 				// pvs theory
@@ -505,7 +529,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 					desc.getTccsOverview(),
 					desc.getTheoremsOverview()
 				];
-			} else if (element.contextValue === "TCCS") {
+			} else if (element.contextValue === "tccs-overview") {
 				// tcc list
 				const desc: TccsOverviewItem = <TccsOverviewItem> element;
 				children = desc.getChildren();
@@ -513,9 +537,11 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				// console.log('tcc');
 			} else if (element.contextValue === "theorem") {
 				// console.log('theorem');
-			} else if (element.contextValue === "THEOREMS") {
+			} else if (element.contextValue === "theorems-overview") {
 				const desc: TheoremsOverviewItem = <TheoremsOverviewItem> element;
 				children = desc.getChildren();
+			} else if (element.contextValue === "theories-overview") {
+				children = (<TheoriesOverviewItem> element).getChildren();
 			}
 			return Promise.resolve(children);
 		}

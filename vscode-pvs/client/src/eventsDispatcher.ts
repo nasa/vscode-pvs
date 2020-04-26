@@ -76,24 +76,39 @@ export class EventsDispatcher {
         this.vscodePvsTerminal = handlers.vscodePvsTerminal;
         this.proofMate = handlers.proofMate;
     }
-    protected resource2desc (resource: any): { 
-        fileName: string, fileExtension: string, contextFolder: string 
-    } | { 
-        fileName: string, fileExtension: string, contextFolder: string, 
-        theoryName: string, formulaName: string
+    protected resource2desc (resource: string | { 
+        fileName?: string, fileExtension?: string, contextFolder?: string, theoryName?: string, formulaName?: string,
+        path?: string,
+        contextValue?: string
+    }): { 
+        contextFolder?: string,
+        fileName?: string, fileExtension?: string,
+        theoryName?: string, 
+        formulaName?: string
     } {
         if (resource) {
-            if (resource.fileName && resource.fileExtension && resource.contextFolder) {
+            if (typeof resource === "string") {
+                return {
+                    fileName: fsUtils.getFileName(resource),
+                    fileExtension: fsUtils.getFileExtension(resource),
+                    contextFolder: fsUtils.getContextFolder(resource)
+                };
+            } else if (resource.fileName && resource.fileExtension && resource.contextFolder) {
                 return resource;
             } else if (resource.contextValue) {
                 // resource coming from explorer
-                // resource is of type FormulaItem
+                // resource is of type FormulaItem or OverviewItem
+                if (resource.contextValue.endsWith("-overview")) {
+                    return {
+                        contextFolder: resource["getContextFolder"](),
+                    };    
+                }
                 return {
-                    fileName: fsUtils.getFileName(resource.getFileName()),
+                    fileName: fsUtils.getFileName(resource["getFileName"]()),
                     fileExtension: ".pvs",
-                    contextFolder: resource.getContextFolder(),
-                    formulaName: resource.getFormulaName(),
-                    theoryName: resource.getTheoryName()
+                    contextFolder: resource["getContextFolder"](),
+                    formulaName: resource["getFormulaName"](),
+                    theoryName: resource["getTheoryName"]()
                     //, line: resource.getPosition().line
                 };
             } else if (resource.path) {
@@ -495,6 +510,24 @@ export class EventsDispatcher {
             }
 		}));
 
+        // vscode-pvs.typecheck-workspace
+		context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-workspace", async (resource: string | { path: string } | { contextValue: string }) => {
+            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
+                resource = { path: window.activeTextEditor.document.fileName };
+            }
+			if (resource) {
+                let desc = <{ 
+                    fileName: string, fileExtension: string, contextFolder: string
+                }> this.resource2desc(resource);
+                if (desc) {
+                    // send parse request to pvs-server
+                    this.client.sendRequest(serverCommand.typecheckWorkspace, desc);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
+            }
+        }));
+        
         // vscode-pvs.hp2pvs
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.hp2pvs", async (resource: string | { path: string } | { contextValue: string }) => {
             if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
@@ -558,18 +591,18 @@ export class EventsDispatcher {
                             }
                         });
                         this.client.onNotification(`server.status.end-important-task-${desc.id}`, (desc: { msg?: string }) => {
+                            this.statusBar.ready();
+                            resolve(null);
                             if (desc && desc.msg) {
                                 window.showInformationMessage(desc.msg);
                             }
-                            this.statusBar.ready();
-                            resolve(null);
                         });
                         this.client.onNotification(`server.status.end-important-task-${desc.id}-with-errors`, (desc: { msg: string }) => {
+                            this.statusBar.ready();
+                            resolve(null);
                             if (desc && desc.msg) {
                                 window.showErrorMessage(desc.msg);
                             }
-                            this.statusBar.ready();
-                            resolve(null);
                         });
                     });
                 });

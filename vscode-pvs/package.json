@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.17",
+	"version": "1.0.18-alpha",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -154,7 +154,7 @@
 		"commands": [
 			{
 				"command": "vscode-pvs.typecheck-file",
-				"title": "Typecheck",
+				"title": "Typecheck File",
 				"enablement": "pvs-language-active == true"
 			},
 			{
@@ -180,6 +180,11 @@
 			{
 				"command": "vscode-pvs.parse-workspace",
 				"title": "Parse Workspace",
+				"enablement": "pvs-language-active == true"
+			},
+			{
+				"command": "vscode-pvs.typecheck-workspace",
+				"title": "Typecheck Workspace",
 				"enablement": "pvs-language-active == true"
 			},
 			{
@@ -355,16 +360,6 @@
 				"enablement": "prover-session-active == true && !advanced-profile-active"
 			},
 			{
-				"command": "workspace-explorer.typecheck-all",
-				"title": "Typecheck All",
-				"enablement": "false"
-			},
-			{
-				"command": "workspace-explorer.parse-all",
-				"title": "Parse All",
-				"enablement": "false"
-			},
-			{
 				"command": "workspace-explorer.prove-all",
 				"title": "Prove All",
 				"enablement": "false"
@@ -374,7 +369,7 @@
 			"explorer/context": [
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs"
+					"when": "resourceExtname == .pvs || resourceExtname == .hpvs"
 				},
 				{
 					"command": "vscode-pvs.generate-tccs",
@@ -399,8 +394,23 @@
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs-alt",
-					"when": "view == workspace-explorer-view && viewItem == TCCS",
+					"when": "view == workspace-explorer-view && viewItem == tccs-overview",
 					"group": "inline"
+				},
+				{
+					"command": "vscode-pvs.parse-workspace",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "context-menu/ctrl-1"
+				},
+				{
+					"command": "vscode-pvs.typecheck-workspace",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "context-menu/ctrl-2"
+				},
+				{
+					"command": "workspace-explorer.prove-all",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "context-menu/ctrl-3"
 				},
 				{
 					"command": "proof-explorer.fast-forward",
@@ -496,17 +506,12 @@
 			"editor/title/context": [
 				{
 					"command": "vscode-pvs.parse-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs",
-					"group": "x_commands"
-				},
-				{
-					"command": "vscode-pvs.parse-file",
-					"when": "resourceScheme == file && resourceExtname == .hpvs",
+					"when": "resourceExtname == .pvs || resourceExtname == .hpvs",
 					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
-					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"when": "pvs-language-active",
 					"group": "x_commands"
 				},
 				{
@@ -516,65 +521,70 @@
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"when": "resourceExtname == .pvs || resourceExtname == .hpvs",
+					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.typecheck-workspace",
+					"when": "pvs-language-active",
 					"group": "y_commands"
 				},
 				{
 					"command": "vscode-pvs.show-tccs",
 					"when": "resourceScheme == file && resourceExtname == .pvs",
-					"group": "y_commands"
+					"group": "yy_commands"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs",
 					"when": "resourceScheme == file && resourceExtname == .tccs",
-					"group": "y_commands"
+					"group": "yy_commands"
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceScheme == file && resourceExtname == .pvs",
-					"group": "yy_commands"
+					"group": "yyy_commands"
 				}
 			],
 			"editor/context": [
 				{
 					"command": "vscode-pvs.parse-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"when": "resourceExtname == .pvs || resourceExtname == .hpvs",
 					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
-					"when": "resourceScheme == file && resourceExtname == .pvs",
-					"group": "x_commands"
-				},
-				{
-					"command": "vscode-pvs.parse-file",
-					"when": "resourceScheme == file && resourceExtname == .hpvs",
+					"when": "pvs-language-active",
 					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.hp2pvs",
 					"when": "resourceScheme == file && resourceExtname == .hpvs",
-					"group": "x_commands"
+					"group": "y_commands"
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs",
+					"when": "resourceExtname == .pvs || resourceExtname == .hpvs",
+					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.typecheck-workspace",
+					"when": "pvs-language-active",
 					"group": "y_commands"
 				},
 				{
 					"command": "vscode-pvs.show-tccs",
 					"when": "resourceScheme == file && resourceExtname == .pvs",
-					"group": "y_commands"
+					"group": "yy_commands"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs",
 					"when": "resourceScheme == file && resourceExtname == .tccs",
-					"group": "y_commands"
+					"group": "yy_commands"
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceScheme == file && resourceExtname == .pvs",
-					"group": "yy_commands"
+					"group": "yyy_commands"
 				}
 			],
 			"view/title": [
@@ -629,19 +639,19 @@
 					"group": "profile-1"
 				},
 				{
-					"command": "workspace-explorer.parse-all",
+					"command": "vscode-pvs.parse-workspace",
 					"when": "view == workspace-explorer-view",
-					"group": "ctrl-0"
+					"group": "ctrl-1"
 				},
 				{
-					"command": "workspace-explorer.typecheck-all",
+					"command": "vscode-pvs.typecheck-workspace",
 					"when": "view == workspace-explorer-view",
-					"group": "ctrl-0"
+					"group": "ctrl-2"
 				},
 				{
 					"command": "workspace-explorer.prove-all",
 					"when": "view == workspace-explorer-view",
-					"group": "ctrl-1"
+					"group": "ctrl-3"
 				}
 			]
 		},
@@ -773,6 +783,10 @@
 					".jprf",
 					".pr",
 					".hpvs"
+				],
+				"firstLine": "\\s*((%+\\w+)|((\\w+)\\s*(?:\\[([\\w\\W\\s]*)\\])?\\s*\\:\\s*(THEORY|theory|Theory)\\b))",
+				"filenames": [
+					"\\w+.pvs"
 				],
 				"configuration": "./syntax/pvs-language-configuration.json",
 				"aliases": [

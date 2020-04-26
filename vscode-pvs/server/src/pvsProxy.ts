@@ -140,7 +140,7 @@ export declare interface ContextDiagnostics {
 
 
 export class PvsProxy {
-	protected parserCache: { [ filename: string ]: { hash: string, diags: ParserDiagnostics } } = {};
+	protected parserCache: { [ filename: string ]: { hash: string, diags: ParserDiagnostics, isTypecheckError?: boolean } } = {};
 	protected activeParsers: { [ filename: string ]: boolean } = {};
 	// mathObjetcsCache stores identifiers known to the parser, grouped by kind (lemma, types, definitions). 
 	// The utility of matchObjectsCache if for autocompletion functions.
@@ -151,7 +151,9 @@ export class PvsProxy {
 		definitions: []
 	};
 
+	protected showBanner: boolean = true;
 	protected debugMode: boolean = false;
+
 	// protected isActive: boolean = false;
 	readonly MAXTIME: number = 2000; // millis
 	readonly MAX_PORT_ATTEMPTS: number = 200;
@@ -235,7 +237,10 @@ export class PvsProxy {
 				const jsonReq: string = JSON.stringify(req);
 				// console.log(jsonReq);
 				return this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
-					if (error) { console.error("[pvs-proxy] Error returned by pvs-server: "); console.dir(error, { depth: null }); }
+					if (error) {
+						console.error("[pvs-proxy] Error returned by pvs-server: "); 
+						console.dir(error, { depth: null }); 
+					}
 					// console.log("[pvs-proxy] Value returned by pvs-server: ");
 					// console.dir(value);
 					if (value) {
@@ -314,10 +319,10 @@ export class PvsProxy {
 	}
 
 	/**
-	 * Utility function, creates a PvsResponse out of parse diagnostic messages
+	 * Utility function, creates a PvsResponse out of parse/typecheck diagnostic messages
 	 * @param diags Diagnostic messages from the parser
 	 */
-	protected makeDiags (diags: ParserDiagnostics, opt?: { id?: string }): PvsResponse {
+	protected makeDiags (diags: ParserDiagnostics, opt?: { id?: string, isTypecheckError?: boolean }): PvsResponse {
 		opt = opt || {};
 		const id: string = opt.id || this.get_fresh_id();
 		let ans: PvsResponse = {
@@ -332,7 +337,7 @@ export class PvsProxy {
 			if (diags.errors && diags.errors.length > 0) {
 				ans.error = {
 					code: 1,
-					message: 'Parse error',
+					message: 'Error',
 					data: diags.errors
 				};
 			}
@@ -367,18 +372,20 @@ export class PvsProxy {
 	 * Parse a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
 	 */
-	async parseFile(desc: { contextFolder: string, fileName: string, fileExtension: string }): Promise<PvsResponse> {
+	async parseFile(desc: { contextFolder: string, fileName: string, fileExtension: string }, opt?: { test?: boolean }): Promise<PvsResponse> {
+		opt = opt || {};
 		if (desc) {
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 			const content: string = await fsUtils.readFile(fname);
 			const hash: string = crypto.createHash('sha256').update(content.replace(/\s/g, "")).digest('hex'); // do not consider white spaces when creating the hash
-			if (this.parserCache[fname] && hash === this.parserCache[fname].hash) {
+			if (!opt.test && this.parserCache[fname] && hash === this.parserCache[fname].hash) {
 				// console.log("[pvs-proxy] Parser diagnostics loaded from cache.");
 				const diags: ParserDiagnostics = this.parserCache[fname].diags;
+				const isTypecheckError: boolean = this.parserCache[fname].isTypecheckError;
 				if (diags) {
 					const stats: string = JSON.stringify(this.parserCache[fname].diags["math-objects"]);
 					if (diags.errors && diags.errors.length > 0) {
-						const msg: string = `${desc.fileName}${desc.fileExtension} contains parse errors.`;
+						const msg: string = `${desc.fileName}${desc.fileExtension} contains errors.`;
 						// console.log(`[pvs-proxy] ${msg}`);
 					} else {
 						const msg: string = `${desc.fileName}${desc.fileExtension} parsed successfully!`;
@@ -386,9 +393,9 @@ export class PvsProxy {
 					}
 					// console.log(`[pvs-proxy] ${desc.fileName}${desc.fileExtension} | ${stats}`);
 				}
-				return this.makeDiags(diags);
+				return this.makeDiags(diags, { isTypecheckError });
 			} else {
-				if (ENABLE_NEW_PARSER) {
+				if (desc.fileExtension === ".hpvs") {
 					if (!this.activeParsers[fname]) {
 						// using new parser
 						// console.log("[pvs-proxy] Updating parser cache.");
@@ -407,6 +414,7 @@ export class PvsProxy {
 					}
 					const startTime: number = Date.now();
 					const res: PvsResponse = await this.pvsRequest('parse', [fname]);
+					if (opt.test) { return res; }
 					if (res) {
 						let range: languageserver.Range = null;
 						let message: string = `File ${desc.fileName} parsed successfully`;
@@ -452,12 +460,16 @@ export class PvsProxy {
 							message
 						};
 						if (res.error && res.error.data) {
-							const errorPosition: languageserver.Position = { 
+							const errorStart: languageserver.Position = { 
 								line: res.error.data.place[0], 
 								character: res.error.data.place[1]
 							};
+							const errorEnd: languageserver.Position = (res.error.data.place.length > 3) ? { 
+								line: res.error.data.place[2], 
+								character: res.error.data.place[3]
+							} : null;	
 							const txt: string = await fsUtils.readFile(fname);
-							const error_range: languageserver.Range = getErrorRange(txt, errorPosition);
+							const error_range: languageserver.Range = getErrorRange(txt, errorStart, errorEnd);
 							const error: languageserver.Diagnostic = {
 								range: error_range,
 								message: res.error.data.error_string,
@@ -465,6 +477,10 @@ export class PvsProxy {
 							};
 							diags.message = `File ${desc.fileName} contains errors`;
 							diags.errors = [ error ];
+
+							// send also a request to the antlr parser, as it may report more errors (the standard pvs parser stops at the first error)
+							// const antlrdiags: ParserDiagnostics = await this.parser.parseFile(desc);
+							// diags.errors = diags.errors.concat(antlrdiags.errors);
 						} 
 						this.parserCache[fname] = { hash, diags };
 						// console.info('parseFile:');
@@ -483,46 +499,44 @@ export class PvsProxy {
 		return null;
 	}
 
+	async prettyPrintDdl(desc: { fileName: string, fileExtension: string, contextFolder: string, expr: string }): Promise<string> {
+		if (desc && desc.expr) {
+			return await this.parser.prettyPrintDdl(desc);
+		}
+		return null;
+	}
 	/**
 	 * Translates a hybrid program into a standard pvs file
 	 * @param desc File descriptor for the hybrid program
 	 */
 	async hp2pvs(desc: { contextFolder: string, fileName: string, fileExtension: string }): Promise<PvsResponse> {
 		if (desc) {
-			if (ENABLE_NEW_PARSER) {
-				this.notifyStartExecution(`Generating PVS file ${desc.fileName}.hpvs`);
-				const id: string = this.get_fresh_id();
+			this.notifyStartExecution(`Generating PVS file ${desc.fileName}.hpvs`);
+			const id: string = this.get_fresh_id();
 
-				let ans: PvsResponse = {
-					jsonrpc: "2.0",
-					id
-				}
-				const diags: ParserDiagnostics = await this.parser.hp2pvs(desc);
-				if (diags) {
-					ans["math-objects"] = diags["math-objects"];
-					ans.contextFolder = diags.contextFolder;
-					ans.fileName = diags.fileName;
-					ans.fileExtension = diags.fileExtension;
-					if (diags.errors && diags.errors.length > 0) {
-						const msg: string = `PVS file could not be generated (${desc.fileName}.hpvs contains parse errors)`;
-						this.reportError(msg);
-						ans.error = {
-							code: 1,
-							message: msg,
-							data: diags.errors
-						};
-					} else {
-						this.notifyEndExecution(`${desc.fileName}.pvs generated successfully!`);
-					}
-					return ans;
-				}
-			} else {
-				// do nothing
-				this.notifyStartExecution(`PVS could not be generated (functionality not available in this version of vscode-pvs)`);
-				setTimeout(() => {
-					this.notifyEndExecution();
-				}, 4000);
+			let ans: PvsResponse = {
+				jsonrpc: "2.0",
+				id
 			}
+			const diags: ParserDiagnostics = await this.parser.hp2pvs(desc);
+			if (diags) {
+				ans["math-objects"] = diags["math-objects"];
+				ans.contextFolder = diags.contextFolder;
+				ans.fileName = diags.fileName;
+				ans.fileExtension = diags.fileExtension;
+				if (diags.errors && diags.errors.length > 0) {
+					const msg: string = `PVS file could not be generated (${desc.fileName}.hpvs contains errors)`;
+					this.reportError(msg);
+					ans.error = {
+						code: 1,
+						message: msg,
+						data: diags.errors
+					};
+				} else {
+					this.notifyEndExecution(`${desc.fileName}.pvs generated successfully!`);
+				}
+			}
+			return ans;
 		}
 		return null;
 	}
@@ -532,24 +546,75 @@ export class PvsProxy {
 	 * @param desc pvs file descriptor: context folder, file name, file extension
 	 * @param opt 
 	 */
-  	async typecheckFile (desc: { contextFolder: string, fileName: string, fileExtension: string,  }): Promise<PvsResponse> {
+  	async typecheckFile (desc: { contextFolder: string, fileName: string, fileExtension: string }): Promise<PvsResponse> {
 		if (desc) {
-			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+			let fname: string = fsUtils.desc2fname(desc);
 			const taskId: string = `typecheck-${fname}`;
 			this.notifyStartImportantTask(taskId, `Typechecking file ${desc.fileName}${desc.fileExtension}`);
 			if (this.isProtectedFolder(desc.contextFolder)) {
 				this.info(`${desc.fileName}${desc.fileExtension} is already typechecked`);
 				return null;
 			}
+			if (desc.fileExtension === ".hpvs") {
+				// translate file to .pvs and then typecheck
+				await this.hp2pvs(desc);
+				fname = path.join(desc.contextFolder, `${desc.fileName}.pvs`);
+			}
 			const res: PvsResponse = await this.pvsRequest('typecheck', [ fname ]);
 			if (res && (res.error && res.error.data) || res.result) {
 				if (res.result) {
 					this.notifyEndImportantTask(taskId, `Typechecking successful for ${desc.fileName}${desc.fileExtension}`);
 				} else {
+					// the typecheck error might be generated from an imported file --- we need to check res.error.file_name
+					fname = (res.error && res.error.data && res.error.data.file_name) ? res.error.data.file_name : fname;
+					if (res.error && res.error.data && this.parserCache[fname]) {
+						const errorStart: languageserver.Position = { 
+							line: res.error.data.place[0], 
+							character: res.error.data.place[1]
+						};
+						const errorEnd: languageserver.Position = (res.error.data.place.length > 3) ? { 
+							line: res.error.data.place[2], 
+							character: res.error.data.place[3]
+						} : null;
+						const txt: string = await fsUtils.readFile(fname);
+						const error_range: languageserver.Range = getErrorRange(txt, errorStart, errorEnd);
+						const error: languageserver.Diagnostic = {
+							range: error_range,
+							message: res.error.data.error_string,
+							severity: languageserver.DiagnosticSeverity.Error
+						};
+						// update parser stats in cache
+						this.parserCache[fname].diags.errors = [ error ];
+						if (desc.fileExtension === ".hpvs") {
+							const hpvs_fname: string = fsUtils.desc2fname(desc);
+							if (this.parserCache[hpvs_fname]) {
+								this.parserCache[hpvs_fname].diags.errors = [ error ]
+								this.parserCache[hpvs_fname].isTypecheckError = true;
+							}
+						}
+					}
 					this.notifyEndImportantTaskWithErrors(taskId, `Typecheck error in file ${desc.fileName}${desc.fileExtension}: ${res.error.data.error_string}`);
 				}
 			} else {
-				console.log(`[pvs-proxy] Warning: received pvs-server error while typechecking file ${desc.fileName}${desc.fileExtension}`, res);
+				const msg: string = `Typechecker was unable to process file ${desc.fileName}${desc.fileExtension}: ${res}`;
+				console.error(`[pvs-proxy] Error: ${msg}`);
+				this.notifyEndImportantTaskWithErrors(taskId, msg);
+				if (typeof res === "string") {
+					const error: languageserver.Diagnostic = {
+						range: { start: { line: 1, character: 0 }, end: { line: 1, character: 100 } },
+						message: res,
+						severity: languageserver.DiagnosticSeverity.Error
+					};
+					// update parser cache
+					this.parserCache[fname].diags.errors = [ error ];
+					this.parserCache[fname].isTypecheckError = true;
+					// return error
+					return {
+						jsonrpc: "2.0",
+						id: this.get_fresh_id(),
+						error
+					};
+				}
 			}
 			return res;
 		}
@@ -869,7 +934,9 @@ export class PvsProxy {
 	protected checkPort (p: number, retry: boolean): Promise<boolean> {
 		// console.info(`checking port ${p}`);
 		return new Promise((resolve, reject) => {
-			console.log(`[pvs-proxy] Checking port ${p}...`);
+			if (this.showBanner) {
+				console.log(`[pvs-proxy] Checking port ${p}...`);
+			}
 			const server: net.Server = net.createServer();
 			const timeout: number = 1000; // msec
 			server.once('error', (error: Error) => {
@@ -997,7 +1064,9 @@ export class PvsProxy {
 			if (this.guiServer) {
 				// console.dir(this.guiServer, { depth: null });
 				this.guiServer.httpServer.once("close", () => {
-					console.log("[pvs-proxy] Closed pvs-proxy");
+					if (this.showBanner) {
+						console.log("[pvs-proxy] Closed pvs-proxy");
+					}
 					this.guiServer = null;
 					this.client = null;
 					resolve();
@@ -1102,7 +1171,7 @@ export class PvsProxy {
 	 */
 	async activate(opt?: { debugMode?: boolean, showBanner?: boolean }): Promise<boolean> {
 		opt = opt || {};
-		opt.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
+		this.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
 		this.debugMode = !!opt.debugMode;
 		if (this.pvsServer) {
 			return Promise.resolve(true);
