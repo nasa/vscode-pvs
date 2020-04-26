@@ -1,10 +1,10 @@
 // import { ContextDiagnostics } from "./server/pvsProcess";
 //import { PvsFindDeclaration, PvsParserResponse, PvsTypecheckerResponse, XmlRpcResponse } from "./server/common/serverInterface";
-import * as fsUtils from "./server/common/fsUtils";
+import * as fsUtils from "../src/common/fsUtils";
 import * as test from "./test-constants";
 import * as path from 'path';
-import { ParseResult, ListMethodsResult, PvsError, PvsResponse, PvsResult, FindDeclarationResult } from "./server/common/pvs-gui";
-import { PvsProxy, ContextDiagnostics } from './server/pvsProxy'; // XmlRpcSystemMethods
+import { PvsResponse, FindDeclarationResult } from "../src/common/pvs-gui";
+import { PvsProxy } from '../src/pvsProxy'; // XmlRpcSystemMethods
 import { label, log, dir, configFile, sandboxExamples } from './test-utils';
 
 //----------------------------
@@ -19,7 +19,7 @@ describe("pvs-proxy", () => {
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
 		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
-		await pvsProxy.activate({ debugMode: true }); // this will also start pvs-server
+		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
@@ -28,7 +28,7 @@ describe("pvs-proxy", () => {
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
 
-		if (test.EXTERNAL_SERVER) {
+		if (!test.EXTERNAL_SERVER) {
 			// kill pvs server & proxy
 			console.log(" killing pvs server...")
 			await pvsProxy.killPvsServer();

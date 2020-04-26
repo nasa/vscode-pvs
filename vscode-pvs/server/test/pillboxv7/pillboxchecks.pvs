@@ -1,0 +1,413 @@
+pillbox_checks: THEORY
+BEGIN
+IMPORTING pilldispenser_th[]
+state_transitions(pre, post: state): boolean =
+   (pre`action(key1) AND post = select(key1, pre)) OR
+   (pre`action(key2) AND post = select(key2, pre)) OR
+   (pre`action(key3) AND post = select(key3, pre)) OR
+   (pre`action(confirm) AND post = select(confirm, pre)) OR
+   (pre`action(create) AND post = select(create, pre)) OR
+   (pre`action(quit) AND post = select(quit, pre)) OR
+   (pre`action(bottom) AND post = select(bottom, pre)) OR
+   (pre`action(scan_action) AND post = select(scan_action, pre)) OR
+   (pre`action(tick) AND post = select(tick, pre)) OR
+   (pre`action(medicines) AND post = select(medicines, pre)) OR
+   (pre`action(drug_id_line) AND post = select(drug_id_line, pre)) OR
+   (pre`action(database) AND post = select(database, pre)) OR
+   (pre`action(reload) AND post = select(reload, pre)) OR
+   (pre`action(unload) AND post = select(unload, pre)) OR
+   (pre`action(prescriptions) AND post = select(prescriptions, pre))
+
+state_comp_no_temps(st1, st2: state): boolean =
+(mode(st1) = mode(st2)) AND (action(st1) = action(st2)) AND
+ (patient_id_line(st1) = patient_id_line(st2)) AND (med_id_line(st1) = med_id_line(st2)) AND
+ (script_line(st1) = script_line(st2)) AND
+ (patients_db(st1) = patients_db(st2)) AND (meds_db(st1) = meds_db(st2)) AND
+ (p_max(st1) = p_max(st2)) AND 
+ (p_current(st1) = p_current(st2)) AND (m_max(st1) = m_max(st2)) AND 
+(m_current(st1) = m_current(st2)) AND (s_max(st1) = s_max(st2)) AND
+(s_current(st1) = s_current(st2)) AND (scan_counter(st1) = scan_counter(st2)) 
+
+%QED Run time  = 0.16 secs. 25/11/19
+state_extension: LEMMA
+FORALL (st1, st2: state):
+ ((mode(st1) = mode(st2)) AND (path_mode(st1) = path_mode(st2)) AND 
+ (path_mode_set(st1) = path_mode_set(st2)) AND (action(st1) = action(st2)) AND
+ (vis_field(st1) = vis_field(st2)) AND (sel_field(st1) = sel_field(st2)) AND 
+(ent_field(st1) = ent_field(st2)) AND (action(st1) = action(st2)) AND
+ (patient_id_line(st1) = patient_id_line(st2)) AND (med_id_line(st1) = med_id_line(st2)) AND
+ (script_line(st1) = script_line(st2)) AND
+ (patients_db(st1) = patients_db(st2)) AND (meds_db(st1) = meds_db(st2)) AND
+ (temp_patient(st1) = temp_patient(st2)) AND (temp_script(st1) = temp_script(st2)) AND
+ (temp_med(st1) = temp_med(st2)) AND
+ (p_max(st1) = p_max(st2)) AND 
+ (p_current(st1) = p_current(st2)) AND (m_max(st1) = m_max(st2)) AND 
+(m_current(st1) = m_current(st2)) AND (s_max(st1) = s_max(st2)) AND
+(s_current(st1) = s_current(st2)) AND (scan_counter(st1) = scan_counter(st2))) IMPLIES
+  st1 = st2
+% QED 25/11/19 0.23 secs
+patient_db_cont: LEMMA
+FORALL (lp: patient_db_type):
+  null?(lp) OR (car(lp)`p_name = p_null) OR (car(lp)`p_name <= plimit)
+
+pathway_mode_thm: THEOREM
+FORALL (pre, post: state):
+  (path_mode(pre) = path_mode_set(pre) AND state_transitions(pre, post))
+                         => (path_mode(post) = path_mode_set(post))
+
+%QED 25/11/18 Run Time = 0.87 secs.
+first_check: THEOREM
+FORALL (st: state):
+   init?(st) => ((select(key2, st) = pwd_screen(st)) AND
+                (select(key3, st) = db_pwd_screen(st)))
+% QED Run time  = 5.29 secs. 25/11/19
+second_check: THEOREM
+FORALL (st: state):
+LET st1 = pwd_screen(st), st3 = st WITH [path_mode_set := scripts_path] IN
+  (select(key1, st1) = init_screen(st) AND
+  (select(key3, st1) = db_pwd_screen(st) AND
+   (LET st2 = select(password, st1) IN
+       (LET st2 =
+           enter(password, st2) IN
+            select(confirm, st2) = patient_list_screen(st3)))))
+%QED Run time  = 1.43 secs. 25/11/19
+check21: THEOREM
+FORALL (st: state):
+LET st1 = patient_list_screen(st) IN
+   act(create, st1) = new_patient_details_screen(st)
+% QED Run time  = 5.33 secs. 25/11/19
+check21prime: THEOREM
+FORALL (st: state):
+LET st1 = patient_list_screen(st) IN
+   ((select(key1, st1) = init_screen(st)) AND
+     (select(key3, st1) = db_menu_screen(st)) AND
+    (select(create, st1) = new_patient_details_screen(st)) AND
+     FORALL (s: s_index): 
+         patient_id_line(st1)(s) /= p_null IMPLIES
+         (act_patient(s, st1) = 
+             LET st1 = st1 WITH [p_current := patient_id_line(st1)(s)] IN
+                  patient_details_screen(st1)))
+
+% QED Run time  =  4.77 secs. 25/11/19
+entering_field_npd_lemma: LEMMA
+  FORALL (f: fields_type, st: state):
+    LET st1 = new_patient_details_screen(st) IN
+    ( st1`vis_field(f) implies (enter(f, select(f, st1))`ent_field =
+       LAMBDA (x: fields_type):
+          x = f OR st1`ent_field(x)))
+
+
+%QED Run time  = 17.75 secs. 25/11/19
+check211: THEOREM
+ FORALL (st: state):
+ ((p_current(st) = next_pid(p_max(st))) AND (p_max(st) < plimit))
+  IMPLIES
+ LET st1 = new_patient_details_screen(st) IN
+   ((select(key1, st1) = init_screen(st)) AND
+   (select(key2, st1) = patient_list_screen(st)) AND
+   (select(key3, st1) = db_menu_screen(st)) AND
+   (LET stinit = st WITH 
+           [ temp_patient := 
+                (# p_name := p_current(st), 
+                   p_fields := LAMBDA(x: fields_type):
+                               (x = name) OR (x=dob) OR (x=id_card) OR (x=carer) OR (x=mob),
+                   scripts_index := s_null,
+                   scripts := LAMBDA (s: s_index): nil_script #),
+             temp_script := nil_script,
+             temp_med := nil_med,
+             m_current := m_null,
+             scan_counter := max_scan ],
+             st2 = enter(name, select(name, st1)) IN
+              (LET st2 = enter(dob, select(dob, st2)) IN
+               (LET st2 = enter(id_card, select(id_card, st2)) IN
+                (LET st2 = enter(carer, select(carer, st2)) IN
+                 (LET st2 = enter(mob, select(mob, st2)) IN
+                  (select(confirm, st2) = scan_screen(stinit))))))) AND           
+   (select(quit, st1) = patient_list_screen(st)))
+% QED Run time  = 19.19 secs. 25/11/19 
+check212: THEOREM
+ FORALL (st: state):
+ ((p_current(st) < p_max(st)) AND (p_max(st) < plimit))
+  IMPLIES
+ LET st1 = patient_details_screen(st) IN
+   ((select(key1, st1) = init_screen(st)) AND
+   (select(key3, st1) = db_menu_screen(st)) AND
+   (LET st2 = enter(name, select(name, st1)) IN
+              (LET st2 = enter(dob, select(dob, st2)) IN
+               (LET st2 = enter(id_card, select(id_card, st2)) IN
+                (LET st2 = enter(carer, select(carer, st2)) IN
+                 (LET st2 = enter(mob, select(mob, st2)) IN
+                  (select(confirm, st2) = 
+                     patient_list_screen(st2 WITH [patients_db :=
+	                               p_insert(st2`p_current, st2`temp_patient, st2`patients_db)]
+		                                         ) )))))) AND   
+   (select(prescriptions, st1) = 
+             LET tp = p_find(st`p_current, st`patients_db), stx = st WITH [patients_db :=
+	                               p_insert(st`p_current, tp, st`patients_db),
+                                temp_patient := tp]
+                  IN script_list_screen(stx))  AND        
+   (select(quit, st1) = patient_list_screen(st)))
+%QED Run time  = 0.67 secs. 26/11/19
+check2111: THEOREM
+FORALL (st: state):
+LET st1 = scan_screen(st), 
+st2 = st WITH [scan_counter :=
+                 IF (scan_counter(st) > 0) AND 
+                           (scan_counter(st) <= max_scan)
+                 THEN scan_counter(st) - 1
+                 ELSE scan_counter(st) ENDIF] IN
+(select(scan_action, st1) = scan_enabled_screen(st2))
+% QED Run time  = 0.58 secs. 26/11/19
+check21111: THEOREM 
+FORALL (st: state):
+LET st1 = scan_enabled_screen(st) IN
+(select(tick, st1) =
+      IF scan_counter(st1) = 0 THEN scan_successful_screen(st)
+      ELSE scan_screen(st) ENDIF)
+
+%QED Run time  = 3.22 secs. 26/11/19
+third_check: THEOREM
+FORALL (st: state):
+LET st1 = db_pwd_screen(st) IN
+( select(key1, st1) = init_screen(st) AND
+  select(key2, st1) = pwd_screen(st) AND
+  LET st2 = select(password, st1) IN
+     (LET st2 =
+         enter(password, st2) IN
+          select(confirm, st2) = db_menu_screen(st WITH [path_mode_set := meds_path])))
+%QED Run time  = 23.71 secs. 26/11/19
+check31: THEOREM
+FORALL (st: state):
+LET st1 = db_menu_screen(st) IN
+(( select(key1, st1) = init_screen(st)) 
+% following not permitted from db-menu-screen
+%AND select(key2, st1)`mode = patient_list_screen(st)`mode
+%AND select(key2, st1)`vis_field = patient_list_screen(st)`vis_field
+%AND select(key2, st1)`sel_field = patient_list_screen(st)`sel_field
+%AND select(key2, st1)`ent_field = patient_list_screen(st)`ent_field
+%AND select(key2, st1)`action = patient_list_screen(st)`action
+% AND select(key2, st1)`patient_id_line = patient_list_screen(st)`patient_id_line
+%AND select(key2, st1)`med_id_line = patient_list_screen(st)`med_id_line
+%AND select(key2, st1)`script_line = patient_list_screen(st)`script_line
+%AND select(key2, st1)`patients_db = patient_list_screen(st)`patients_db
+%AND select(key2, st1)`meds_db = patient_list_screen(st)`meds_db
+%AND select(key2, st1)`temp_patient = patient_list_screen(st)`temp_patient
+%AND select(key2, st1)`temp_script = patient_list_screen(st)`temp_script
+%AND select(key2, st1)`temp_med = patient_list_screen(st)`temp_med
+%AND select(key2, st1)`p_max = patient_list_screen(st)`p_max
+%AND select(key2, st1)`p_current = patient_list_screen(st)`p_current
+%AND select(key2, st1)`m_max = patient_list_screen(st)`m_max
+%AND select(key2, st1)`m_current = patient_list_screen(st)`m_current
+%AND select(key2, st1)`s_current = patient_list_screen(st)`s_current
+%AND select(key2, st1)`s_max = patient_list_screen(st)`s_max
+%AND select(key2, st1)`scan_counter = patient_list_screen(st)`scan_counter
+AND select(medicines, st1)`mode = db_med_list_screen(st)`mode
+AND select(medicines, st1)`vis_field = db_med_list_screen(st)`vis_field
+AND select(medicines, st1)`sel_field = db_med_list_screen(st)`sel_field
+AND select(medicines, st1)`ent_field = db_med_list_screen(st)`ent_field
+AND select(medicines, st1)`action = db_med_list_screen(st)`action
+AND select(medicines, st1)`patient_id_line = db_med_list_screen(st)`patient_id_line
+AND select(medicines, st1)`med_id_line = db_med_list_screen(st)`med_id_line
+AND select(medicines, st1)`script_line = db_med_list_screen(st)`script_line
+AND select(medicines, st1)`patients_db = db_med_list_screen(st)`patients_db
+AND select(medicines, st1)`meds_db = db_med_list_screen(st)`meds_db
+AND select(medicines, st1)`temp_patient = db_med_list_screen(st)`temp_patient
+AND select(medicines, st1)`temp_script = db_med_list_screen(st)`temp_script
+AND select(medicines, st1)`temp_med = db_med_list_screen(st)`temp_med
+AND select(medicines, st1)`p_max = db_med_list_screen(st)`p_max
+% AND select(medicines, st1)`p_current = db_med_list_screen(st)`p_current
+AND select(medicines, st1)`m_max = db_med_list_screen(st)`m_max
+AND select(medicines, st1)`m_current = db_med_list_screen(st)`m_current
+AND select(medicines, st1)`s_current = db_med_list_screen(st)`s_current
+AND select(medicines, st1)`s_max = db_med_list_screen(st)`s_max
+AND select(medicines, st1)`scan_counter = db_med_list_screen(st)`scan_counter)
+%(select(medicines, st1) = db_med_list_screen(st)))
+
+%QED Run time  = 0.99 secs. 26/11/19
+quit_consistency_thm: THEOREM
+   FORALL (st: state): 
+          mode(st) /= creation_success 
+         IMPLIES
+         LET st1 = select(quit, st) IN
+          (st`meds_db = st1`meds_db AND
+           st`patients_db = st1`patients_db)
+
+%
+
+attempt_quit_consistency_thm: THEOREM
+   FORALL (st: state): 
+         LET st1 = select(quit, st) IN
+          (st`meds_db = st1`meds_db AND
+           st`patients_db = st1`patients_db)
+
+%
+
+
+key1_consistency_fn(st: state): boolean =
+    per_act_key1(st) implies select(key1, st) = init_screen(st)
+
+% QED Run time  = 11.02 secs. 26/11/19
+key1_consistency_thm: THEOREM
+    FORALL (pre, post: state):
+       init?(pre) IMPLIES key1_consistency_fn(pre) AND
+       (state_transitions(pre, post) AND key1_consistency_fn(pre) IMPLIES
+       key1_consistency_fn(post))
+%QED 0.21 26/11/19
+select_inv_theorem: THEOREM
+     FORALL (st: state, f: fields_type): state_comp_no_temps(st, select_field(f, st))
+
+% QED Run time  = 0.75 secs. 26/11/19
+enter_inv_theorem: THEOREM
+     FORALL (st: state, f: fields_type): state_comp_no_temps(st, enter(f, st))
+
+% QED Run time  = 1.34 secs. 26/11/19
+enter_except_theorem: THEOREM
+     FORALL (st: state, f: fields_type, c: upto(col_limit), m: m_index, p: pill_no_type, 
+             pt: period_type, t: time_type): 
+           (per_enter_column(st) IMPLIES state_comp_no_temps(st, enter_column(c, st))) AND
+           (per_enter_med_name(st) IMPLIES state_comp_no_temps(st, enter_med_name(m, st))) AND
+           (per_enter_quant(st) IMPLIES state_comp_no_temps(st, enter_quant(p, st))) AND
+           (per_enter_script_time(st) IMPLIES 
+               state_comp_no_temps(st, enter_script_time(f, t, st))) AND
+           (per_enter_dose_frequency(pt, st) IMPLIES 
+               state_comp_no_temps(st, enter_dose_frequency(pt, st)))
+           
+
+
+key2_consistency_fn(st: state): boolean =
+          per_act_key2(st) IMPLIES
+             IF ((mode(st) = initial) OR (mode(st) = db_pwd)) THEN select(key2, st) = pwd_screen(st)
+             ELSE select(key2, st) = patient_list_screen(st) ENDIF
+%QED Run time  = 10.96 secs. 26/11/19
+key2_consistency_thm: THEOREM
+    FORALL (pre, post: state):
+       init?(pre) IMPLIES key2_consistency_fn(pre) AND
+       (state_transitions(pre, post) AND key2_consistency_fn(pre) IMPLIES
+       key2_consistency_fn(post))
+
+key3_consistency_fn(st: state): boolean =
+          per_act_key3(st) IMPLIES
+             IF ((mode(st) = initial) OR (mode(st) = pwd)) THEN select(key3, st) = db_pwd_screen(st)
+             ELSE select(key3, st) = db_menu_screen(st) ENDIF
+%QED Run time  = 9.30 secs. 26/11/19
+key3_consistency_thm: THEOREM
+    FORALL (pre, post: state):
+       init?(pre) IMPLIES key3_consistency_fn(pre) AND
+       (state_transitions(pre, post) AND key3_consistency_fn(pre) IMPLIES
+       key3_consistency_fn(post))
+
+
+
+% not sure what I meant to do here
+%pt_retrieval_fn(st: state): boolean =
+%    ((mode(st) = creation_success) AND (null(patients_db(st))) AND st`action(quit)) IMPLIES
+%       LET st1 = select(quit, st) IN
+%        temp_patient(st1) = temp_patient(act_patient(0, st))
+
+
+
+% QED Run time  = 3.56 secs. 26/11/19 need to check not trivially true.
+%pt_retrieval_thm: THEOREM
+%    FORALL (pre, post: state):
+%       init?(pre) IMPLIES pt_retrieval_fn(pre) AND
+%       (state_transitions(pre, post) AND pt_retrieval_fn(pre) IMPLIES
+%       pt_retrieval_fn(post))
+% QED Run time  = 4.13 secs. 26/12/19
+script_path_check: THEOREM
+     FORALL (pre, post: state):
+       (path_mode_set(pre) = scripts_path AND state_transitions(pre, post)) IMPLIES
+         (meds_db(pre) = meds_db(post))
+
+path_function(m: mode_type): path_mode_type =
+                              COND
+                                m = initial -> no_path, 
+                                m = pwd -> scripts_path, 
+                                m = db_pwd -> meds_path, 
+                                m = db_menu -> meds_path,
+                                m = patient_list -> scripts_path, 
+                                m = db_med_list -> meds_path, 
+                                m = new_patient_details -> scripts_path,
+	                        m = patient_details -> scripts_path, 
+                                m = db_med_details -> meds_path, 
+                                m = new_med -> meds_path,
+	                        m = patient_scripts_list -> scripts_path,
+	                        m = patient_script -> scripts_path, 
+                                m = new_patient_script -> scripts_path,
+	                        m = dose -> scripts_path, 
+                                m = new_dose -> scripts_path, 
+                                m = scan -> scripts_path, 
+                                m = scan_enabled -> scripts_path,
+                                m = creation_success -> no_path
+                              ENDCOND
+
+% QED Run time  = 16.17 secs. 27/11/19
+
+med_path_check: THEOREM
+      FORALL (pre, post: state):
+         ((path_mode_set(pre) = meds_path) AND (path_function(pre`mode) = meds_path)
+          AND (pre /= post) AND 
+         state_transitions(pre, post) AND (mode(post) /= pwd)) IMPLIES
+          ((path_mode(post) = meds_path) OR (path_mode(post) = no_path))
+
+confirm_update_patient_fn(st: state): boolean =
+    ((mode(st) = patient_details) OR (mode(st) = patient_script))
+       IMPLIES
+        (select(confirm, st)`patients_db =
+              LET tp = temp_patient(st) IN
+                 p_insert(tp`p_name, tp, st`patients_db))
+
+% QED Run time  = 5.50 secs. 26/11/19
+
+confirm_update_patient_thm: THEOREM
+    FORALL (pre, post: state):
+       init?(pre) IMPLIES confirm_update_patient_fn(pre) AND
+       (state_transitions(pre, post) AND confirm_update_patient_fn(pre) IMPLIES
+       confirm_update_patient_fn(post))
+
+confirm_update_med_fn(st: state): boolean =
+    ((mode(st) = new_med) OR (mode(st) = db_med_details))
+       IMPLIES
+        (select(confirm, st)`meds_db =
+              LET tm = temp_med(st) IN
+                 m_insert(tm`med_name, tm, st`meds_db))
+
+% QED Run time  = 5.76 secs. 26/11/19
+
+confirm_update_med_thm: THEOREM
+    FORALL (pre, post: state):
+       init?(pre) IMPLIES confirm_update_med_fn(pre) AND
+       (state_transitions(pre, post) AND confirm_update_med_fn(pre) IMPLIES
+       confirm_update_med_fn(post))
+
+confirm_du_scroll_fn(st: state): boolean =
+     (mode(st) = patient_list
+       IMPLIES
+        scroll_up_patient_list(scroll_down_patient_list(st)) = st)
+     AND
+      (mode(st) = db_med_list
+        IMPLIES
+         scroll_up_med_list(scroll_down_med_list(st)) = st)
+% QED Run time  = 4.94 secs. 26/11/19
+confirm_du_scroll_thm: THEOREM
+    FORALL (pre, post: state):
+       init?(pre) IMPLIES confirm_du_scroll_fn(pre) AND
+       (state_transitions(pre, post) AND confirm_du_scroll_fn(pre) IMPLIES
+       confirm_du_scroll_fn(post))
+
+confirm_ud_scroll_fn(st: state): boolean =
+     (mode(st) = patient_list
+       IMPLIES
+        scroll_down_patient_list(scroll_up_patient_list(st)) = st)
+     AND
+      (mode(st) = db_med_list
+        IMPLIES
+         scroll_down_med_list(scroll_up_med_list(st)) = st)
+% QED Run time  = 6.16 secs. 26/11/19
+confirm_ud_scroll_thm: THEOREM
+    FORALL (pre, post: state):
+       init?(pre) IMPLIES confirm_ud_scroll_fn(pre) AND
+       (state_transitions(pre, post) AND confirm_ud_scroll_fn(pre) IMPLIES
+       confirm_ud_scroll_fn(post))
+
+
+END pillbox_checks

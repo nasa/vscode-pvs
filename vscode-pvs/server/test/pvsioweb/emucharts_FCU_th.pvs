@@ -1,0 +1,317 @@
+% ---------------------------------------------------------------
+%  Theory: emucharts_FCU_th
+%  Author: Paolo Masci
+%          HASLab/INESC TEC and Universidade do Minho
+%          http://haslab.uminho.pt/masci/
+% ---------------------------------------------------------------
+
+emucharts_FCU_th: THEORY
+ BEGIN IMPORTING FCUDataEntry
+
+  %-- constants
+  MAX_ELAPSE: int = 60
+
+  %-- machine states
+  MachineState: TYPE = { EDIT_PRESSURE, QNH, STD }
+
+  %-- emuchart state
+  State: TYPE = [#
+    current_state: MachineState,
+    previous_state: MachineState,
+    data_entry: [# decimalDigits: integer,
+        display: string,
+        dispval: double,
+        integerDigits: nat,
+        msg: string,
+        pointEntered: bool,
+        programmedValue: double,
+        units: UnitsType #],
+    editbox_selected: bool,
+    elapse: int
+  #]
+
+  %-- initial state
+  init(x: real): State = (#
+    current_state := STD,
+    previous_state := STD,
+    data_entry := (# decimalDigits := 0,
+        display := STD_INHG,
+        dispval := STD_INHG,
+        integerDigits := 0,
+        msg := "",
+        pointEntered := FALSE,
+        programmedValue := STD_INHG,
+        units := inHg #),
+    editbox_selected := FALSE,
+    elapse := MAX_ELAPSE
+  #)
+  %-- utility functions
+  enter_into(ms: MachineState)(st: State): State = st WITH [ current_state := ms ]
+  leave_state(ms: MachineState)(st: State): State = st WITH [ previous_state := ms ]
+
+  %-- transition functions
+  per_click_CLR(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_CLR(st: (per_click_CLR)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_CLR,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_digit_0(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_digit_0(st: (per_click_digit_0)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_0,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_digit_1(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_digit_1(st: (per_click_digit_1)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_1,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_digit_2(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_digit_2(st: (per_click_digit_2)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_2,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_digit_3(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_digit_3(st: (per_click_digit_3)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_3,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_digit_4(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_digit_4(st: (per_click_digit_4)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_4,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_digit_5(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_digit_5(st: (per_click_digit_5)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_5,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_digit_6(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_digit_6(st: (per_click_digit_6)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_6,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_digit_7(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_digit_7(st: (per_click_digit_7)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_7,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_digit_8(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_digit_8(st: (per_click_digit_8)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_8,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_digit_9(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_digit_9(st: (per_click_digit_9)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_9,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_editbox_pressure(st: State): bool = ((current_state(st) = QNH) AND (NOT editbox_selected(st)))
+  click_editbox_pressure(st: (per_click_editbox_pressure)): State =
+    COND
+    (current_state(st) = QNH) AND (NOT editbox_selected(st))
+     -> LET new_st = leave_state(QNH)(st),
+            new_st = new_st WITH [ editbox_selected := TRUE ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ],
+            new_st = new_st WITH [ data_entry := clear_data_entry(data_entry(st)) ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_ESC(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_ESC(st: (per_click_ESC)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_ESC,data_entry(st)) ],
+            new_st = new_st WITH [ editbox_selected := FALSE ]
+         IN enter_into(QNH)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_hPa(st: State): bool = ((current_state(st) = QNH) AND (data_entry(st)`units /= hPa)) OR ((current_state(st) = EDIT_PRESSURE) AND (data_entry(st)`units /= hPa)) OR ((current_state(st) = STD))
+  click_hPa(st: (per_click_hPa)): State =
+    COND
+    (current_state(st) = QNH) AND (data_entry(st)`units /= hPa)
+     -> LET new_st = leave_state(QNH)(st),
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ units := hPa ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ dispval := data_entry(st)`programmedValue * 33.86 ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ display := trim(data_entry(st)`programmedValue*33.86) ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ programmedValue := data_entry(st)`programmedValue * 33.86 ]]
+         IN enter_into(QNH)(new_st),
+    (current_state(st) = EDIT_PRESSURE) AND (data_entry(st)`units /= hPa)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ units := hPa ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ programmedValue := data_entry(st)`programmedValue * 33.86 ]]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    (current_state(st) = STD)
+     -> LET new_st = leave_state(STD)(st),
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ units := hPa ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ programmedValue := STD_HPA ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ dispval := STD_HPA ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ display := trim(STD_HPA) ]]
+         IN enter_into(STD)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_inHg(st: State): bool = ((current_state(st) = QNH) AND (data_entry(st)`units /= inHg)) OR ((current_state(st) = EDIT_PRESSURE) AND (data_entry(st)`units /= inHg)) OR ((current_state(st) = STD))
+  click_inHg(st: (per_click_inHg)): State =
+    COND
+    (current_state(st) = QNH) AND (data_entry(st)`units /= inHg)
+     -> LET new_st = leave_state(QNH)(st),
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ units := inHg ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ dispval := data_entry(st)`programmedValue / 33.86 ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ display := trim(data_entry(st)`programmedValue/33.86) ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ programmedValue := data_entry(st)`programmedValue / 33.86 ]]
+         IN enter_into(QNH)(new_st),
+    (current_state(st) = EDIT_PRESSURE) AND (data_entry(st)`units /= inHg)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ units := inHg ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ programmedValue := data_entry(st)`programmedValue / 33.46 ]]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    (current_state(st) = STD)
+     -> LET new_st = leave_state(STD)(st),
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ units := inHg ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ programmedValue := STD_INHG ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ dispval := STD_INHG ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ display := trim(STD_INHG) ]]
+         IN enter_into(STD)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_OK(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_OK(st: (per_click_OK)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_OK,data_entry(st)) ],
+            new_st = new_st WITH [ editbox_selected := FALSE ]
+         IN enter_into(QNH)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_point(st: State): bool = ((current_state(st) = EDIT_PRESSURE))
+  click_point(st: (per_click_point)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processKey(KEY_POINT,data_entry(st)) ],
+            new_st = new_st WITH [ elapse := MAX_ELAPSE ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_QNH_RADIO(st: State): bool = ((current_state(st) = STD))
+  click_QNH_RADIO(st: (per_click_QNH_RADIO)): State =
+    COND
+    (current_state(st) = STD)
+     -> LET new_st = leave_state(STD)(st),
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ dispval := data_entry(st)`programmedValue ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ display := trim(data_entry(st)`programmedValue) ]]
+         IN enter_into(QNH)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_STD_RADIO(st: State): bool = ((current_state(st) = QNH) AND (data_entry(st)`units = hPa)) OR ((current_state(st) = QNH) AND (data_entry(st)`units = inHg))
+  click_STD_RADIO(st: (per_click_STD_RADIO)): State =
+    COND
+    (current_state(st) = QNH) AND (data_entry(st)`units = hPa)
+     -> LET new_st = leave_state(QNH)(st),
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ programmedValue := STD_HPA ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ dispval := STD_HPA ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ display := trim(STD_HPA) ]]
+         IN enter_into(STD)(new_st),
+    (current_state(st) = QNH) AND (data_entry(st)`units = inHg)
+     -> LET new_st = leave_state(QNH)(st),
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ programmedValue := STD_INHG ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ dispval := STD_INHG ]],
+            new_st = new_st WITH [ data_entry := data_entry(new_st) WITH [ display := trim(STD_INHG) ]]
+         IN enter_into(STD)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_tick(st: State): bool = ((current_state(st) = EDIT_PRESSURE) AND (elapse(st) = 0)) OR ((current_state(st) = EDIT_PRESSURE) AND (elapse(st) > 0))
+  tick(st: (per_tick)): State =
+    COND
+    (current_state(st) = EDIT_PRESSURE) AND (elapse(st) = 0)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ data_entry := processEvent(EVT_TIMEOUT,data_entry(st)) ]
+         IN enter_into(QNH)(new_st),
+    (current_state(st) = EDIT_PRESSURE) AND (elapse(st) > 0)
+     -> LET new_st = leave_state(EDIT_PRESSURE)(st),
+            new_st = new_st WITH [ elapse := elapse(st) - 1 ]
+         IN enter_into(EDIT_PRESSURE)(new_st),
+    ELSE -> st
+    ENDCOND
+
+ END emucharts_FCU_th
+
+% ---------------------------------------------------------------
+%  PVS theory generated using PVSio-web PVSPrinter ver 0.1
+%  Tool freely available at http://www.pvsioweb.org
+% ---------------------------------------------------------------

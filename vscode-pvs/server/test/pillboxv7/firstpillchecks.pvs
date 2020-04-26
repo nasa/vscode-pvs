@@ -1,0 +1,57 @@
+first_pillbox_checks: THEORY
+BEGIN
+IMPORTING pill_disp[]
+state_transitions(pre, post: state): boolean =
+(per_I_pwd(pre) & post = I_pwd(pre)) OR  
+(per_I_take_med(pre) & post = I_take_med(pre)) OR
+(per_I_db_pwd(pre) & post = I_db_pwd(pre)) OR
+(per_I_patient_list(pre) & post = I_patient_list(pre)) OR  
+(per_I_initial(pre) & post = I_initial(pre)) OR 
+(per_I_patient_details(pre) & post = I_patient_details(pre)) OR
+(per_I_db_menu(pre) & post = I_db_menu(pre)) OR 
+(per_I_new_patient_details(pre) & post = I_new_patient_details(pre)) OR
+(per_I_new_patient_script(pre) & post = I_new_patient_script(pre)) OR
+(per_I_db_med_list(pre) & post = I_db_med_list(pre)) OR  
+(per_I_db_med_details(pre) & post = I_db_med_details(pre)) OR 
+(per_I_dose(pre) & post = I_dose(pre)) OR 
+(per_I_patient_scripts_list(pre) & post = I_patient_scripts_list(pre)) OR
+(per_I_pill_dispensed(pre) & post = I_pill_dispensed(pre)) OR  
+(per_I_db_med_list(pre) & post = I_db_med_list(pre)) OR  
+(per_I_db_med_details(pre) & post = I_db_med_details(pre)) OR
+(per_I_scan1(pre) & post = I_scan1(pre)) OR 
+(per_I_scan1_success(pre) & post = I_scan1_success(pre)) OR
+(per_I_scan2(pre) & post = I_scan2(pre)) OR 
+(per_I_scan2_success(pre) & post = I_scan2_success(pre)) OR
+(per_I_scan3(pre) & post = I_scan3(pre)) OR 
+(per_I_creation_success(pre) & post = I_creation_success(pre)) OR
+(per_I_new_patient_list(pre) & post = I_new_patient_list(pre))
+
+pathway_mode_thm: THEOREM
+FORALL (pre, post: state):
+  (path_function(current_mode(pre)) = path_mode_set(pre) AND state_transitions(pre, post))
+                         => (path_mode(post) = path_mode_set(post))
+
+pathway_mode_thm1: THEOREM
+FORALL (pre, post: state):
+  (path_mode(pre) = path_mode_set(pre) AND state_transitions(pre, post))
+                         => (path_mode(post) = path_mode_set(post))
+			 
+% QED 15/11/19 1.98 secs
+pathway_thm: THEOREM
+FORALL (pre, post: state):
+  ((current_mode(pre) /= db_pwd) AND (current_mode(pre) /= pwd) AND (current_mode(pre) /= initial) AND state_transitions(pre, post))
+                         => (path_mode(pre) = path_mode(post))
+pwd_pathway_thm: THEOREM
+FORALL (pre, post: state):
+  (state_transitions(pre, post) AND (current_mode(pre) = pwd)) => (path_mode(post) = scripts_path)
+  
+db_pwd_pathway_thm: THEOREM
+  FORALL (pre, post: state):
+  (state_transitions(pre, post) AND (current_mode(pre) = db_pwd)) => (path_mode(post) = meds_path)
+  
+patient_pathway_thm: THEOREM
+FORALL (pre, post: state):
+(state_transitions(pre, post) AND (current_mode(pre) = initial)) => (path_mode(post) = no_path)
+  
+
+END first_pillbox_checks

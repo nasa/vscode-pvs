@@ -1,0 +1,37 @@
+pump_rc: THEORY
+ BEGIN
+  PumpCommand: TYPE = { keep, pause }
+  iline    : TYPE = { holding, infusing, volume, dispvtbi, attention, 
+                      vtbidone, dispkvo, setvtbi, setrate, setnotfitted,
+                      lockrate, locked, options, dispinfo, 
+                      vtbitime, dispblank, clearsetup, batterylow }
+  PumpState: TYPE = [#
+    %-- outputs
+    id: string,
+    rate: real,
+    vtbi: real,
+    volume: real,
+    time: real,
+    isOn: bool,
+    topline: iline
+  #]
+  init_pump_alt(p: string): PumpState = (#
+    id := p,
+    rate := 4,
+    vtbi := 50,
+    volume := 0,
+    time := 120.5,
+    isOn := true,
+    topline := holding
+  #)
+  init_pump(p: string): PumpState = (#
+    id := p,
+    rate := 0,
+    vtbi := 0,
+    volume := 0,
+    time := 0,
+    isOn := false,
+    topline := dispblank
+  #)
+
+ END pump_rc

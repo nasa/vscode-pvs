@@ -6,6 +6,7 @@
     "test-find-declaration.ts",
     "test-typechecker.ts",
     "test-prover.ts",
+    "test-proofscript.ts",
     "test-workspace.ts"
   ],
   "stopSpecOnExpectationFailure": false,

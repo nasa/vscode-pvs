@@ -1,0 +1,389 @@
+gpcaUI: THEORY
+ BEGIN IMPORTING GPCA_Simulink_Controller_Bridge, drugLib
+
+  %---------- GPCA User Interface ---------------------------------------------------------------------------------------------------------
+  alarmType: TYPE = {silent, beep, muted}
+
+
+  DisplayMode: TYPE = { DataEntryModeVTBI, DataEntryModeDoseRate, SettingsSummaryMode, DrivenByControllerMode, 
+  	       	        DisplayVTBIMode, DisplayDoseRATEMode, DisplayDrugInfoMode, InfusionNormalOperation, BolusInProgress, PowerOff }
+
+  gpcaui_state: TYPE = [#
+     %-- Controller bus
+     ctrl_cmd    : ControllerCMD, % Command to be sent to the GPCA controller
+     ctrl_state  : ControllerState, % Message received from the GPCA controller - reports the controller state
+     ctrl_isBolusInProgress : boolean,
+     ctrl_totalVolumeInfused: device_real,
+     ctrl_remainingVolumeInReservoir: device_real,
+     %-- drug library bus
+     dlib: DrugLibraryBus,
+     %-- programmed values
+     doseRATE_val: device_real, % dose rate
+     doseRATE_unit: DoseRATE_unit,
+     VTBI_val    : device_real, % volume to be infused
+     VTBI_unit   : VTBI_unit,
+     %-- display mode
+     dispMode    : DisplayMode,
+     %-- virtual display for controller messages
+     primaryMsg  : PrimaryNotification,
+     secondaryMsg: SecondaryNotification,
+     %-- data entry
+     display     : device_real, % display
+     cursor      : Cursor, % cursor
+     displayUnit	 : number_unit, % display unit
+     dePrimaryMsg  : (dataEntryPrimaryNotification?),
+     deSecondaryMsg: (dataEntrySecondaryNotification?),
+     block_interaction: boolean
+   #]
+
+
+  init(x: device_real): gpcaui_state = (#
+	  ctrl_cmd    := CMD_NULL,
+	  ctrl_state  := NULL,
+	  ctrl_isBolusInProgress := FALSE,
+	  ctrl_totalVolumeInfused:= 0,
+	  ctrl_remainingVolumeInReservoir:= 0,
+	  primaryMsg := Welcome_to_the_Generic_PCA_Pump_prototype_V2,
+	  secondaryMsg := Please_press_On_to_begin,
+	  %
+	  dlib := initDrugLibraryBus,
+	  %
+	  dispMode := DrivenByControllerMode,
+	  doseRATE_val:= 0,
+	  doseRATE_unit := mg_per_hour,
+	  VTBI_val    := 0,
+	  VTBI_unit   := mL,
+	  dePrimaryMsg := Empty,
+	  deSecondaryMsg := Empty,
+	  %
+	  display     := x,
+	  cursor      := 0,
+	  displayUnit	      := NA,
+	  block_interaction := FALSE
+  #)
+
+  init?(st: gpcaui_state): boolean =
+	  ctrl_cmd(st)    = CMD_NULL         AND
+	  ctrl_state(st)  = NULL         AND
+	  ctrl_isBolusInProgress(st) = FALSE AND
+	  ctrl_totalVolumeInfused(st) = 0    AND
+	  ctrl_remainingVolumeInReservoir(st) = 0 AND
+	  primaryMsg(st)   = Welcome_to_the_Generic_PCA_Pump_prototype_V2 AND
+	  secondaryMsg(st) = Please_press_On_to_begin AND
+	  %
+	  dlib(st) = initDrugLibraryBus AND
+	  %
+	  dispMode(st) = DrivenByControllerMode	     AND
+	  doseRATE_val(st) = 0               AND
+	  doseRATE_unit(st) = mg_per_hour    AND
+	  VTBI_val(st)     = 0               AND
+	  VTBI_unit(st)    = mL		     AND
+	  dePrimaryMsg(st)   = Empty AND
+	  deSecondaryMsg(st) = Empty AND
+	  %
+	  display(st)      = 0               AND
+	  cursor(st)       = 0               AND
+	  displayUnit(st)	   = mL              AND
+	  block_interaction(st) = FALSE
+
+
+
+
+  %-- utility functions ------------------------------------------------------------------------------------------  
+  is_on?(st: gpcaui_state): boolean = (ctrl_state(st) /= PowerOff)
+  is_infusing?(st: gpcaui_state): boolean = (ctrl_state(st) = INFUSION_NORMAL_OPERATION)
+
+  infusion_parameters_valid?(st: gpcaui_state): boolean =
+     VTBI_val(st) > 0 AND doseRATE_val(st) > 0
+       AND VTBI_unit(st) /= NA AND doseRATE_unit(st) /= NA
+
+
+  
+  %-- interactive data entry sub-system
+  pow10(i: Cursor): device_real = ^(10,i);
+
+  min_value(st: gpcaui_state): device_real = 
+   LET i = cursor(st), val = display(st) 
+    IN IF i >= 3 AND val >= 1          THEN 1
+       ELSIF (i >= 0 AND i < 3) 
+             OR (i < 0 AND val >= 0.1) THEN 0.1 ELSE 0 ENDIF
+
+  min_position(st: gpcaui_state): Cursor = -2
+
+  limit(min_val: device_real): [real -> real] =
+    LAMBDA (val: real): IF val > 0 AND val < min_val THEN min_val ELSE val ENDIF
+
+  %-- down button
+  dn(st: gpcaui_state): gpcaui_state =
+        LET val = display(st),
+            i = cursor(st),
+            min_val = min_value(st),
+            temp1 = val - pow10(i),
+            temp2 = COND val - pow10(i) <= 0 -> 0,
+                         val - pow10(i)  > 0 -> val - pow10(i) ENDCOND
+          IN
+          IF temp1 /= temp2
+            THEN st WITH [ block_interaction := TRUE, dePrimaryMsg := WARNING___Exceeding_minimum_legal_value, deSecondaryMsg := Please_press_Cancel_to_resume_editing ]
+          ELSE st WITH [ display := temp2 ]
+          ENDIF
+
+  %-- up button
+  up(st: gpcaui_state): gpcaui_state =
+        LET val = display(st),
+            i = cursor(st),
+	    temp1 = val + pow10(i),
+            temp2 = COND val + pow10(i) > max  -> val,
+                         val + pow10(i) <= max -> val + pow10(i) ENDCOND
+          IN
+          IF temp1 /= temp2
+            THEN st WITH [ block_interaction := TRUE, dePrimaryMsg := WARNING___Exceeding_maximum_legal_value, deSecondaryMsg := Please_press_Cancel_to_resume_editing ]
+          ELSE st WITH [ display := temp2 ]
+          ENDIF
+
+  %-- left button
+  lf(st: gpcaui_state): gpcaui_state =
+     LET val = display(st), i = cursor(st) IN
+      COND
+        i < 4 -> st WITH [ display := val, cursor := i + 1 ],
+        i = 4 -> st WITH [ block_interaction := TRUE, dePrimaryMsg := WARNING___Exceeding_maximum_legal_value, deSecondaryMsg := Please_press_Cancel_to_resume_editing ]
+      ENDCOND
+
+  %-- right button
+  rt(st: gpcaui_state): gpcaui_state =
+      LET val = display(st), i = cursor(st), min_pos = min_position(st) IN
+       COND
+         i > min_pos  -> st WITH [ display := val, cursor := i - 1 ],
+         i <= min_pos -> st WITH [ block_interaction := TRUE, dePrimaryMsg := WARNING___Exceeding_maximum_decimal_precision, deSecondaryMsg := Please_press_Cancel_to_resume_editing ]
+       ENDCOND
+
+
+
+  %-- navigation key clicks ------------------------------------------------------------------------------------------
+
+  click_up(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st)
+    THEN IF dispMode(st) = DataEntryModeVTBI OR dispMode(st) = DataEntryModeDoseRate
+    	 THEN up(st)
+	 ELSE st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_UpButtonClick, display(st)) ] ENDIF
+    ELSE st ENDIF
+  press_up(st: gpcaui_state): gpcaui_state = click_up(st)
+  release_up(st: gpcaui_state): gpcaui_state = st
+
+  click_dn(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st)
+    THEN IF dispMode(st) = DataEntryModeVTBI OR dispMode(st) = DataEntryModeDoseRate
+    	 THEN dn(st)
+	 ELSE st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_DownButtonClick, display(st)) ] ENDIF
+    ELSE st ENDIF
+  press_dn(st: gpcaui_state): gpcaui_state = click_dn(st)
+  release_dn(st: gpcaui_state): gpcaui_state = st
+
+  click_lf(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st)
+    THEN IF dispMode(st) = DataEntryModeVTBI OR dispMode(st) = DataEntryModeDoseRate
+    	 THEN lf(st)
+	 ELSE st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_LeftButtonClick, display(st)) ] ENDIF
+    ELSE st ENDIF
+  press_lf(st: gpcaui_state): gpcaui_state = click_lf(st)
+  release_lf(st: gpcaui_state): gpcaui_state = st
+
+  click_rt(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st)
+    THEN IF dispMode(st) = DataEntryModeVTBI OR dispMode(st) = DataEntryModeDoseRate
+    	 THEN rt(st)
+	 ELSE st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_RightButtonClick, display(st)) ] ENDIF
+    ELSE st ENDIF
+  press_rt(st: gpcaui_state): gpcaui_state = click_rt(st)
+  release_rt(st: gpcaui_state): gpcaui_state = st 
+
+  %-- Chevron keys -----------------------------------------------------------------------------------------
+  click_fastUp(st: gpcaui_state): gpcaui_state =
+     click_up(st WITH [ cursor := 0 ])
+%    IF NOT block_interaction(st)
+%    THEN LET st = st WITH [ cursor := 0 ] IN
+%    	 IF dispMode(st) = DataEntryModeVTBI OR dispMode(st) = DataEntryModeDoseRate
+%    	 THEN up(st)
+%	 ELSE st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_UpButtonClick, display(st)) ] ENDIF
+%    ELSE st ENDIF
+  press_fastUp(st: gpcaui_state): gpcaui_state = click_fastUp(st)
+  release_fastUp(st: gpcaui_state): gpcaui_state = st
+
+  click_fastDown(st: gpcaui_state): gpcaui_state =
+     click_dn(st WITH [ cursor := 0 ])
+%    IF NOT block_interaction(st)
+%    THEN LET st = st WITH [ cursor := 0 ] IN
+%    	 IF dispMode(st) = DataEntryModeVTBI OR dispMode(st) = DataEntryModeDoseRate
+%    	 THEN dn(st)
+%	 ELSE st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_DownButtonClick, display(st)) ] ENDIF
+%    ELSE st ENDIF
+  press_fastDown(st: gpcaui_state): gpcaui_state = click_fastDown(st)
+  release_fastDown(st: gpcaui_state): gpcaui_state = st
+
+  click_slowUp(st: gpcaui_state): gpcaui_state =
+     click_up(st WITH [ cursor := -2 ])
+%    IF NOT block_interaction(st)
+%    THEN LET st = st WITH [ cursor := -2 ] IN
+%    	 IF dispMode(st) = DataEntryModeVTBI OR dispMode(st) = DataEntryModeDoseRate
+%    	 THEN up(st)
+%	 ELSE st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_UpButtonClick, display(st)) ] ENDIF
+%    ELSE st ENDIF
+  press_slowUp(st: gpcaui_state): gpcaui_state = click_fastUp(st)
+  release_slowUp(st: gpcaui_state): gpcaui_state = st
+
+  click_slowDown(st: gpcaui_state): gpcaui_state =
+     click_dn(st WITH [ cursor := -2 ])
+%    IF NOT block_interaction(st)
+%    THEN LET st = st WITH [ cursor := -2 ] IN
+%    	 IF dispMode(st) = DataEntryModeVTBI OR dispMode(st) = DataEntryModeDoseRate
+%    	 THEN dn(st)
+%	 ELSE st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_DownButtonClick, display(st)) ] ENDIF
+%    ELSE st ENDIF
+  press_slowDown(st: gpcaui_state): gpcaui_state = click_fastDown(st)
+  release_slowDown(st: gpcaui_state): gpcaui_state = st
+
+
+  %-- control key clicks ------------------------------------------------------------------------------------------
+
+  click_ok(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st)
+    THEN LET st = IF displayVTBIMode?(ctrl_state(st)) 
+    	     	  THEN st WITH [ display := dlib_vtbiTyp, displayUnit := dlib_vtbiUnit, 
+    	     	     		 VTBI_val := dlib_vtbiTyp, VTBI_unit := dlib_vtbiUnit ]
+    	     	  ELSIF changingVTBI?(ctrl_state(st)) AND VTBI_unit?(displayUnit(st)) 
+		  THEN st WITH [ VTBI_val := display(st), VTBI_unit := dlib_vtbiUnit ]
+		  ELSIF displayDoseRATEMode?(ctrl_state(st)) 
+ 		  THEN st WITH [ display := dlib_doseRateTyp, displayUnit := dlib_doseRateUnit,
+		     	     	 doseRATE_val := dlib_doseRateTyp, doseRATE_unit := dlib_doseRateUnit ] 
+                  ELSIF changingDoseRate?(ctrl_state(st)) AND DoseRATE_unit?(displayUnit(st)) 
+		  THEN st WITH [ doseRATE_val := display(st), 
+				 doseRATE_unit := dlib_doseRateUnit ]
+	          ELSE st ENDIF
+	  % send message to the controller
+          IN st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_OkButtonClick, display(st)) ]
+    ELSE st ENDIF
+
+  click_cancel(st: gpcaui_state): gpcaui_state =
+    IF block_interaction(st)
+    THEN st WITH [ block_interaction := FALSE, dePrimaryMsg := Empty, deSecondaryMsg := Empty ]
+    ELSE st WITH [ ctrl_cmd   := toCMD(ctrl_state(st), E_CancelButtonClick, display(st)) ] ENDIF
+
+  click_pause(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st) AND is_on?(st)
+    THEN st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_PauseButtonClick, display(st)) ]
+    ELSE st ENDIF
+
+  % the stop button overloads pause & stop
+  click_stop(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st) AND is_on?(st)
+    THEN IF infusionNormalOperation?(ctrl_state(st)) THEN st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_PauseButtonClick, display(st)) ]
+         ELSE st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_StopButtonClick, display(st)) ] ENDIF
+    ELSE st ENDIF
+
+
+  click_edit(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st) AND is_on?(st)
+    THEN LET
+        st = IF ctrl_state(st) = DISPLAY_VTBI THEN st WITH [ display := dlib_vtbiTyp, 
+	     		       	 	      	             displayUnit := dlib_vtbiUnit,
+							     VTBI_val := dlib_vtbiTyp,
+							     VTBI_unit := dlib_vtbiUnit ]
+             ELSIF ctrl_state(st) = DISPLAY_DOSE_RATE THEN st WITH [ display := dlib_doseRateTyp, 
+	                                                             displayUnit := dlib_doseRateUnit,
+								     doseRATE_val := dlib_doseRateTyp,
+								     doseRATE_unit := dlib_doseRateUnit ]
+	     ELSIF ctrl_state(st) = INFUSION_NORMAL_OPERATION THEN st WITH [ display := doseRATE_val(st), % there is an issue here: when reprogramming during infusion, if the rate is out of hard limits, we lose information about what was the actual programmed rate. Need an extra field that maintains the rate programmed in the controller
+	     	   		    			      	             displayUnit := doseRATE_unit(st) ]
+             ELSE st ENDIF IN
+        st WITH [ cursor := 0, ctrl_cmd := toCMD(ctrl_state(st), E_EditButtonClick, display(st)) ]
+    ELSE st ENDIF
+
+
+  click_bolus(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st) AND is_on?(st) AND is_infusing?(st) 
+    THEN st WITH [ ctrl_cmd := toCMD(ctrl_state(st), E_BolusButtonClick, display(st)) ]
+    ELSE st ENDIF
+
+  click_start(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st) AND is_on?(st)
+    THEN st WITH [ ctrl_cmd  := toCMD(ctrl_state(st), E_StartButtonClick, display(st)) ]
+    ELSE st ENDIF
+
+
+  click_on(st: gpcaui_state): gpcaui_state =
+    IF NOT block_interaction(st)
+    THEN st WITH [ ctrl_cmd   := toCMD(ctrl_state(st), E_OnButtonClick, display(st)) ]
+    ELSE st ENDIF
+
+
+  %-- this function is used to receive messages from the controller
+  controller_response(cb: ControllerBus)(st: gpcaui_state): gpcaui_state =
+   IF ctrl_state(st) /= cb`controller_state OR ctrl_isBolusInProgress(st) /= cb`isBolusInProgress
+       OR ctrl_totalVolumeInfused(st) /= cb`totalVolumeInfused OR ctrl_remainingVolumeInReservoir(st) /= cb`remainingVolumeInReservoir
+   THEN LET
+        % update relevant state variables with the new controller state
+        st = st  WITH [ ctrl_state              := cb`controller_state,
+                        ctrl_isBolusInProgress  := cb`isBolusInProgress,
+    	                ctrl_totalVolumeInfused := IF cb`totalVolumeInfused < 0 THEN 0
+						   ELSIF cb`totalVolumeInfused > max THEN max
+						   ELSE cb`totalVolumeInfused ENDIF,
+		        ctrl_remainingVolumeInReservoir := IF cb`remainingVolumeInReservoir < 0 THEN 0
+							   ELSIF cb`remainingVolumeInReservoir > max THEN max
+							   ELSE cb`remainingVolumeInReservoir ENDIF,
+			ctrl_cmd := CMD_NULL ],
+	% identify UI mode
+        st = st WITH [ dispMode := IF infusionNormalOperation?(ctrl_state(st))
+	     	                        AND NOT ctrl_isBolusInProgress(st)  THEN InfusionNormalOperation
+				   ELSIF infusionNormalOperation?(ctrl_state(st))
+	     	                        AND ctrl_isBolusInProgress(st)  THEN BolusInProgress
+	     	       		   ELSIF displayDrugInfoMode?(ctrl_state(st)) THEN DisplayDrugInfoMode
+	     	       		   ELSIF changingVTBI?(ctrl_state(st)) AND NOT block_interaction(st) THEN DataEntryModeVTBI
+	     	       		   ELSIF changingDoseRate?(ctrl_state(st)) AND NOT block_interaction(st) THEN DataEntryModeDoseRate
+	                           ELSIF settingsSummaryMode?(ctrl_state(st)) THEN SettingsSummaryMode
+				   ELSIF displayVTBIMode?(ctrl_state(st)) THEN DisplayVTBIMode
+				   ELSIF displayDoseRATEMode?(ctrl_state(st)) THEN DisplayDoseRATEMode
+				   ELSE DrivenByControllerMode ENDIF ],
+        % initialise programmed value when loading the drug library
+        st = IF ctrl_state(st) = DISPLAY_DRUG_INFORMATION 
+             THEN st WITH [ VTBI_val := dlib_vtbiTyp, 
+	       	            VTBI_unit := dlib_vtbiUnit,
+	     		    doseRATE_val := dlib_doseRateTyp,
+			    doseRATE_unit := dlib_doseRateUnit ] ELSE st ENDIF,
+        % always show dlib default for unit
+	st = IF ctrl_state(st) = CHANGE_VTBI THEN st WITH [ displayUnit := dlib_vtbiUnit ]
+	     ELSIF ctrl_state(st) = CHANGE_DOSE_RATE THEN st WITH [ displayUnit := dlib_doseRateUnit ]
+	     ELSE st ENDIF,
+	% display volume infused when infusing
+        st = IF infusionNormalOperation?(ctrl_state(st))
+             THEN st WITH [ display := ctrl_totalVolumeInfused(st),
+	     	     	    displayUnit := mL ] ELSE st ENDIF,
+	% fail safe condition for when the UI is reloaded while the controller is active
+	st = IF settingsSummaryMode?(ctrl_state(st)) 
+		  THEN st WITH [ VTBI_val := IF VTBI_val(st) = 0 THEN dlib_vtbiTyp ELSE VTBI_val(st) ENDIF, 
+				 VTBI_unit := dlib_vtbiUnit,
+				 doseRATE_val := IF doseRATE_val(st) = 0 THEN dlib_doseRateTyp ELSE doseRATE_val(st) ENDIF,
+				 doseRATE_unit := dlib_doseRateUnit ] ELSE st ENDIF
+        % always show notifications from the controller
+     IN st WITH [ primaryMsg   := getNotifications(cb`controller_state)`1, 
+     	   	  secondaryMsg := getNotifications(cb`controller_state)`2 ]
+   ELSE st ENDIF
+
+   
+   gpcaui_init(x: real): gpcaui_state =
+    % invoke functions to avoid lazy code generation (which may create unnecessary waits during interactive data entry)
+    LET 
+	% Controls
+	st = click_on(init(0)),
+	% NavKeys
+    	st = click_up(init(0)),
+    	st = click_dn(st),
+    	st = click_lf(st),
+    	st = click_rt(st),
+	% ChevKeys
+    	st = click_fastUp(init(0)),
+    	st = click_fastDown(st),
+    	st = click_slowUp(st),
+    	st = click_slowDown(st)
+     IN init(0)
+ 
+ END gpcaUI
+

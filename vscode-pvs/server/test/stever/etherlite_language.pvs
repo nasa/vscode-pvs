@@ -1,0 +1,78 @@
+% This is the start of formalising the Etherlite work in PVS
+% Uses two main sources: Nikolic et al. "Finding the Greedy...." for the
+% errors detectable when we consider traces
+% and Luu et al. ""Making Smart Contracts Smarter" for the original Etherlite definition
+
+% My aim is to extend the trace considerations to the full Etherlite definition
+
+% Also...show a refinement relation between the simple BCtheory.pvs and this????
+
+etherlite_language : THEORY
+
+ BEGIN
+
+ Id : TYPE = { i0, i1, i2, i3 ,i4, i5 }
+
+
+% The following nine types probably need making more "realistic" at some point :-)
+ Values : TYPE = nat
+
+ Ether : TYPE = nat
+
+ Number : TYPE = nat
+
+ Label : TYPE = nat
+
+ Address : TYPE = nat
+
+ Data : TYPE = nat
+
+ AuxMem : TYPE = nat
+
+ Names : TYPE = nat
+
+ Counter : TYPE = nat
+
+% From "Making Smart Contracts Smarter"
+% An "operand" is either a numeric constant, a code label,
+% a memory address (for either auxiliary memory or contract memory),
+% or a contract/receipient address, a special flag
+
+ Operand : DATATYPE BEGIN
+ num(v : Number) : num?
+ label(l : Label) : label?
+ maddress(a : Address) : maddress?
+ caddress(a : Address) : caddress?
+ END Operand
+
+ NonPush : TYPE = { pop, op, bne, mload, mstore, sload, sstore, call, return, suicide, create, getstate }
+
+ Code: DATATYPE BEGIN
+     push(v: Operand): push?
+     np(n : NonPush): np?
+ END Code
+
+% Message is needed when considering *traces*, i.e. sequences of uses of a contract
+% Relevant to the "Finding The Greedy..." paper
+ Message : TYPE = [# sender : Id, value : Ether, data : Data  #]
+
+% Not yet with exceptions on the stack s
+ ActivationRecord : TYPE = [# M : list[Code],
+			      pc : Counter,
+			      l : AuxMem,
+			      s : list[Operand]
+		           #]
+ Transaction : TYPE = [# id : Id, v : Ether, l : Data #]
+
+ AccountState : TYPE = [# balance : Ether, code : list[Code], localState : [Names -> Values] #]
+
+ VMState : TYPE = [# activations : list[ActivationRecord], state : [Id -> AccountState] #]
+
+% Simplified!!!! :-)
+ Block : TYPE = [# blockid : nat, timestamp : nat, TXs : list[Transaction] #]
+
+ Blockchain : TYPE = list[Block]
+
+ GlobalState : TYPE = [# BC : Blockchain, state : [Id -> AccountState] #]
+
+ END etherlite_language

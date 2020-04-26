@@ -1,0 +1,23 @@
+refined_model_th: THEORY
+ BEGIN   
+  IMPORTING gpcaUI 
+
+  IMPORTING reference_model_th
+                {{ ui_state := gpcaUI.gpcaui_state,
+                   init? := gpcaui_init?,
+                   trans
+                     := LAMBDA (st, st_prime: gpcaui_state):
+                          st_prime = gpcaui_on(st) OR
+                           st_prime = gpcaui_start(st) OR
+                            st_prime = gpcaui_tick(st),
+		   vmin := 0,
+		   vmax := max,
+                   vtbi_settings_in_range?
+                     := LAMBDA (vmin,vmax: nonneg_real):
+                         LAMBDA (st: gpcaui_state):
+                           FORALL (st_prime: gpcaui_state):
+                            vmin <= display(st) AND
+                              display(st) <= vmax AND
+                                vmin <= vtbi(st) AND vtbi(st) <= vmax }}
+
+ END refined_model_th

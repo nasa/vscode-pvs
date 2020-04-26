@@ -1,0 +1,69 @@
+% Michael Harrison and Paolo Masci (Braga and Newcastle University) January 2017
+pd_t_and_c_th[
+framedepth: posnat,
+p_limit: posnat,
+m_limit: posnat,
+s_limit: posnat
+]: THEORY
+ BEGIN
+
+%-------------- Constants Definitions
+
+scan_count: nat = 3
+plimit: posnat = p_limit
+mlimit: posnat = m_limit
+slimit: posnat = s_limit
+frame_depth: posnat = framedepth
+max_scan: posnat = 3
+%-------------- Type Definitions
+
+mode_type: TYPE = {initial, pwd, db_pwd, db_menu,
+                   patient_list, db_med_list, new_patient_details,
+		   patient_details, db_med_details, new_med,
+		   patient_scripts_list,
+		   patient_scripts_list_new,
+		   patient_script, new_patient_script,
+		   dose, new_dose, 
+		   patient_finger, scan,
+		   scan_enabled, creation_success, patient_list_new}
+
+actions_type : TYPE = {key1, key2, key3, confirm, create, quit, bottom, scan_action,
+                       tick, medicines, drug_id_line, database,
+                       reload, unload, prescriptions}
+
+fields_type : TYPE = {password, dob, medicine, dosage,
+                      id_card,
+                      mob, carer, prescription,
+		      name, dose, validity, quantity, column,
+		      monthly, weekly, daily, bidaily, time1, time2}
+
+
+field_status_type : TYPE = [# visible: boolean,
+                              selected: boolean,
+			      entered: boolean #]
+
+available_actions_type : TYPE = [actions_type -> boolean]
+available_fields_type : TYPE = [fields_type -> field_status_type]
+
+
+m_index: TYPE = upto(mlimit)
+
+med_db_type: TYPE = [m_index -> available_fields_type]
+med_id_line_type: TYPE = [m_index -> boolean]
+
+p_index: TYPE = upto(plimit)
+
+patient_db_type: TYPE = [p_index ->available_fields_type]
+
+patient_id_line_type: TYPE = [p_index -> boolean]
+
+s_index: TYPE = upto(slimit)
+list_script_type: TYPE = [s_index -> available_fields_type]
+script_patient_type: TYPE = [# s_max: s_index, s_lines: list_script_type,
+                               s_doses: list_script_type #]
+script_db_type: TYPE = [p_index -> script_patient_type]
+
+script_line_type: TYPE = [s_index -> boolean]
+
+ 
+ END pd_t_and_c_th

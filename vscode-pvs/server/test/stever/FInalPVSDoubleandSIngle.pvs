@@ -1,0 +1,399 @@
+% This file follows the development in the" Z^{Ac}" paper, but does it all in PVS
+% following the method in the "From Z to PVS" paper
+
+accounting : THEORY
+
+BEGIN
+
+DATE, TEXT, ACCOUNT, MONEY : TYPE
+
+blank : MONEY
+
+% We still have the basic idea of schemas a sets of bindings which turns up in PVS
+% models for schemas being sets of records.
+% When the schemas are simply schema types
+% (as Z calls them, i.e. schemas with predicate part "true") then the schemas
+% are just record types, because these types are sets of records, i.e. sets of bindings
+% in Z
+
+% Then, when the predicate part of a schema is not just "true", i.e. when not
+% every binding is in the set denoted by the schema, i.e. when not every record in
+% the corresponding PVS type is in the set, then we use dependent subtyping with the
+% counterpart to a Z predicate part
+% to restrict the records in the set, just as Z does
+
+% Sadly we cannot use "primes" in identifiers in PVS :( so we use underscore
+
+% Now, hiding of types in PVS.....!!!!!
+% It's already apparent that there's no counterpart to the schema calculus in PVS
+% (which is OK since there are no schemas :) ) so hiding (existential quantification
+% over schemas) needs to be modelled inside the set brackets in the predicate part...
+% There is a certain amount of regularity to this, given the above...
+
+TType : TYPE = [# date : DATE,
+                  description : TEXT,
+		  account : ACCOUNT,
+		  income : MONEY,
+		  expenditure : MONEY #]
+
+TType_ : TYPE = [# date_ : DATE,
+                   description_ : TEXT,
+		   account_ : ACCOUNT,
+		   income_ : MONEY,
+		   expenditure_ : MONEY #]
+
+TransactionAsType : TYPE = {t : TType | (t`income = blank AND t`expenditure /= blank) XOR
+                                          (t`income /= blank AND t`expenditure = blank)}
+				   
+Transaction : setof[TransactionAsType] = {t : TransactionAsType | TRUE}
+
+TransactionAsType_ : TYPE = { t : TType_ | (t`income_  = blank AND t`expenditure_ /= blank) XOR
+                                     (t`income_ /= blank AND t`expenditure_ = blank)}
+
+Transaction_ : setof[TransactionAsType_] = {t : TransactionAsType_ | TRUE}
+
+SingleState : TYPE = [# saccount :  finseq[TransactionAsType] #]
+
+InitSingleState : setof[SingleState] = {s : SingleState | s`saccount = empty_seq}
+
+Inputs : TYPE = [# date? : DATE,
+                   description? : TEXT,
+		   account? : ACCOUNT,
+                   income? : MONEY,
+		   expenditure? : MONEY #]
+
+NTType : TYPE = TransactionAsType_ WITH Inputs
+
+NewTransactionAsType : TYPE = {nt : NTType | nt`date_ = nt`date? AND
+                                        nt`description_ = nt`description? AND
+					nt`account_ = nt`account? AND
+					nt`income_ = nt`income? AND
+					nt`expenditure_ = nt`expenditure?}
+					
+NewTransaction : setof[NewTransactionAsType] = {t : NewTransactionAsType | TRUE}
+
+SingleState_ : TYPE = [# saccount_ :  finseq[TransactionAsType] #]
+
+DeltaSingleState : TYPE = SingleState WITH SingleState_
+
+PhiDSB_Type : TYPE = DeltaSingleState WITH TransactionAsType_
+
+singfs[T : TYPE](elem : T) : finseq[T] =
+      (# length := 1, seq := LAMBDA (x : nat) : elem #)
+      
+PhiDoSomeBusiness : TYPE = {phidsb : PhiDSB_Type | phidsb`saccount_ =
+                                             o(phidsb`saccount,
+                                                 singfs((# date := phidsb`date_,
+						           description := phidsb`description_,
+							   account := phidsb`account_,
+							   income := phidsb`income_,
+							   expenditure := phidsb`expenditure_ #)))}
+
+DSBType : TYPE = DeltaSingleState WITH Inputs
+
+DoSomeBusiness : setof[DSBType] = {dsb : DSBType |
+                           EXISTS (d : DATE, desc : TEXT, acc : ACCOUNT, i : MONEY, e : MONEY) :
+                                d = dsb`date? AND
+				desc = dsb`description? AND
+				acc = dsb`account? AND
+				i = dsb`income? AND
+				e = dsb`expenditure? AND
+				dsb`saccount_ =
+				    o(dsb`saccount, singfs((# date := d,
+						              description := desc,
+							      account := acc,
+						              income := i,
+							      expenditure := e #)))}
+preDSBType : TYPE = SingleState WITH Inputs							      
+
+preDoSomeBusiness : setof[preDSBType] = {dsb : preDSBType | ((dsb`income? = blank AND dsb`expenditure? /= blank) XOR
+	                                                   (dsb`income? /= blank AND dsb`expenditure? = blank)) AND
+	                                                FORALL (i : below[dsb`saccount`length]) :
+			                                      ((dsb`saccount(i)`income = blank AND
+	                                                           dsb`saccount(i)`expenditure /= blank) XOR
+	                                                       (dsb`saccount(i)`income /= blank AND
+						                   dsb`saccount(i)`expenditure = blank))}
+
+% What properties must single-entry accounting have?......
+
+
+						 
+% ********** Now this all needs doing for the double-entry case...
+
+DoubleTransactionType : TYPE = [# date : DATE,
+                                  description : TEXT,
+			          account1, account2 : ACCOUNT,
+			          debit1, debit2 : MONEY,
+			          credit1, credit2 : MONEY #]
+
+DoubleTransactionType_ : TYPE = [# date_ : DATE,
+                                   description_ : TEXT,
+			           account1_, account2_ : ACCOUNT,
+			           debit1_, debit2_ : MONEY,
+			           credit1_, credit2_ : MONEY #]
+
+DoubleTransactionAsType : TYPE = {dt : DoubleTransactionType |
+                           (dt`debit1 = dt`credit2 AND dt`debit1 /= blank AND
+			    dt`debit2 = dt`credit1 AND dt`credit1 = blank) XOR
+                           (dt`debit2 = dt`credit1 AND dt`debit2 /= blank AND
+			    dt`debit1 = dt`credit2 AND dt`credit2 = blank)}
+
+DoubleTransaction : setof[DoubleTransactionAsType] = { t : DoubleTransactionAsType | TRUE}
+
+DoubleTransactionAsType_ : TYPE = {dt : DoubleTransactionType_ |
+                           (dt`debit1_ = dt`credit2_ AND dt`debit1_ /= blank AND
+			    dt`debit2_ = dt`credit1_ AND dt`credit1_ = blank) XOR
+                           (dt`debit2_ = dt`credit1_ AND dt`debit2_ /= blank AND
+			    dt`debit1_ = dt`credit2_ AND dt`credit2_ = blank)}
+
+DoubleTransaction_ : setof[DoubleTransactionAsType_] = { t : DoubleTransactionAsType_ | TRUE}
+
+DoubleState : TYPE = [# daccount :  finseq[DoubleTransactionAsType] #]
+
+DoubleState_ : TYPE = [# daccount_ :  finseq[DoubleTransactionAsType] #]
+
+InitDoubleState : setof[DoubleState] = {d : DoubleState | d`daccount = empty_seq}
+
+DInputs : TYPE = [# ddate? : DATE,
+                    ddescription? : TEXT,
+		    daccount1?, daccount2? : ACCOUNT,
+		    ddebit1?, ddebit2? : MONEY,
+		    dcredit1?, dcredit2? : MONEY #]
+
+DNTType : TYPE = DoubleTransactionAsType_ WITH DInputs
+
+% **** Not setified yet (doesn't get used...)
+
+DoubleNewTransaction : TYPE = {dnt : DNTType | dnt`date_ = dnt`ddate? AND
+                                               dnt`description_ = dnt`ddescription? AND
+					       dnt`account1_ = dnt`daccount1? AND
+					       dnt`account2_ = dnt`daccount2? AND
+					       dnt`debit1_ = dnt`ddebit1? AND
+					       dnt`debit2_ = dnt`ddebit2? AND
+					       dnt`credit1_ = dnt`dcredit1? AND
+					       dnt`credit2_ = dnt`dcredit2? }
+
+DeltaDoubleState : TYPE = DoubleState WITH DoubleState_
+
+PhiDSDB_Type : TYPE = DeltaDoubleState WITH DoubleTransactionAsType_
+      
+PhiDoSomeDoubleBusiness : TYPE = {phidsdb : PhiDSDB_Type | phidsdb`daccount_ =
+                                             o(phidsdb`daccount,
+                                                 singfs((# date := phidsdb`date_,
+						           description := phidsdb`description_,
+							   account1 := phidsdb`account1_,
+							   account2 := phidsdb`account2_,
+							   debit1 := phidsdb`debit1_,
+							   debit2 := phidsdb`debit2_,
+							   credit1 := phidsdb`credit1_,
+							   credit2 := phidsdb`credit2_ #)))}
+
+DSDB_Type : TYPE = DeltaDoubleState WITH DInputs
+
+DoSomeDoubleBusiness : setof[DSDB_Type] = {dsdb : DSDB_Type |
+                                    EXISTS (d : DATE, desc : TEXT, acc1, acc2 : ACCOUNT,
+				            d1, d2 : MONEY, c1, c2 : MONEY) :
+                                d = dsdb`ddate? AND
+				desc = dsdb`ddescription? AND
+				acc1 = dsdb`daccount1? AND
+				acc2 = dsdb`daccount2? AND
+				d1 = dsdb`ddebit1? AND
+				d2 = dsdb`ddebit2? AND
+				c1 = dsdb`dcredit1? AND
+				c2 = dsdb`dcredit2? AND
+				dsdb`daccount_ =
+				    o(dsdb`daccount, singfs((# date := d,
+						               description := desc,
+							       account1 := acc1,
+							       account2 := acc2,
+							       debit1 := d1,
+							       debit2 := d2,
+							       credit1 := c1,
+							       credit2 := c2 #)))}
+
+pDSDB_Type : TYPE = DoubleState WITH DInputs
+
+preDoSomeDoubleBusiness : setof[pDSDB_Type] = {dsdb : pDSDB_Type |
+                                                 ((dsdb`ddebit1? = blank AND dsdb`dcredit2? = blank AND
+                                                   dsdb`ddebit2? /= blank AND dsdb`dcredit1? /= blank AND
+						                             dsdb`ddebit2? = dsdb`dcredit1?) XOR
+                                                  (dsdb`ddebit1? /= blank AND dsdb`dcredit2? /= blank AND
+						                             dsdb`ddebit1? = dsdb`dcredit2? AND
+                                                   dsdb`ddebit2? = blank AND dsdb`dcredit1? = blank)) AND
+	                                          FORALL (i : below[dsdb`daccount`length]) :
+						         ((dsdb`daccount(i)`debit1 = blank AND
+							          dsdb`daccount(i)`credit2 = blank AND
+	                                                   dsdb`daccount(i)`debit2 /= blank AND
+							          dsdb`daccount(i)`credit1 /= blank AND
+					                   dsdb`daccount(i)`debit2 = dsdb`daccount(i)`credit1) XOR
+	                                                  (dsdb`daccount(i)`debit1 /= blank AND
+							          dsdb`daccount(i)`credit2 /= blank AND
+					                   dsdb`daccount(i)`debit1 = dsdb`daccount(i)`credit2 AND
+	                                                   dsdb`daccount(i)`debit2 = blank AND
+							          dsdb`daccount(i)`credit1 = blank))}
+%****** Now we start to consider the refinement
+
+% Here's the retrieve relation R
+RType : TYPE = SingleState WITH DoubleState
+
+R : setof[RType] =
+         {r : RType | r`saccount`length = r`daccount`length AND
+             FORALL (i : below[r`saccount`length]) :
+                r`saccount(i)`date = r`daccount(i)`date AND
+                r`saccount(i)`description = r`daccount(i)`description AND
+		r`saccount(i)`account = r`daccount(i)`account1 AND
+	        r`saccount(i)`account = r`daccount(i)`account2 AND
+		r`saccount(i)`income = r`daccount(i)`debit2 AND
+	        r`saccount(i)`income = r`daccount(i)`credit1 AND
+		r`saccount(i)`expenditure = r`daccount(i)`credit2 AND
+		r`saccount(i)`expenditure = r`daccount(i)`debit1
+	 }
+
+% We also need a schema (representative) for the inputs which takes the place of
+% AOp? and includes the equalities that make sure we are being conformal in inputs
+% as required by the Boiten and Derrick results
+% We can use the input types we have so far, and add the required equalities
+
+%**** Note: this conformality is rather strong since it makes sure that the two accounts
+% in double-entry terms are the same. This is what makes the refinement work in both directions.
+% If that were not so (accounts could be different) then refinement from double to single would
+% no longer be possible (not yet proved, though...)
+
+ConfInputsType : TYPE = Inputs WITH DInputs
+
+ConfInputs : setof[ConfInputsType] = {i : ConfInputsType |
+                                           i`date? = i`ddate? AND
+                                           i`description? = i`ddescription? AND
+					   i`account? = i`daccount1? AND
+                                           i`account? = i`daccount2? AND
+					   i`income? = i`dcredit1? AND
+					   i`income? =  i`ddebit2? AND 
+					   i`expenditure? = i`ddebit1? AND
+					   i`expenditure? = i`dcredit2?}
+
+% And now the standard Z obligations to show double is a refinement of single
+% Proved
+initialisation_drs : THEOREM
+ FORALL (ds : finseq[DoubleTransactionAsType]) :
+            InitDoubleState((# daccount := ds #))
+	    IMPLIES
+            EXISTS (ss : finseq[TransactionAsType]) :
+	               InitSingleState((# saccount := ss #)) AND R((# saccount := ss, daccount := ds #))
+
+% Applicability is:
+% Proved                                 
+applicability_drs: THEOREM
+  FORALL (saccount : finseq[TransactionAsType], daccount : finseq[DoubleTransactionAsType], date? : DATE,
+          description? : TEXT, account? : ACCOUNT,income?, expenditure? : MONEY,
+	  ddate? : DATE, ddescription? : TEXT, daccount1?, daccount2? : ACCOUNT,
+          ddebit1?, ddebit2? : MONEY, dcredit1?, dcredit2? : MONEY) :
+	  
+  ConfInputs((# date? := date?, description? := description?, account? := account?, income? := income?,
+                expenditure? := expenditure?, ddate? := ddate?, ddescription? := ddescription?, daccount1? := daccount1?,
+                daccount2? := daccount2?, dcredit1? := dcredit1?, dcredit2? := dcredit2?,
+                ddebit1? := ddebit1?, ddebit2? := ddebit2? #))
+IMPLIES
+  R((# saccount := saccount, daccount := daccount #)) AND
+
+  preDoSomeBusiness((# saccount := saccount, income? := income?, expenditure? := expenditure?,
+                       date? := date?, description? := description?, account? := account? #))
+          
+  IMPLIES
+  preDoSomeDoubleBusiness((# daccount := daccount, ddate? := ddate?, ddescription? := ddescription?,
+                             daccount1? := daccount1?, daccount2? := daccount2?, ddebit1? := ddebit1?,
+			     ddebit2? := ddebit2?, dcredit1? := dcredit1?, dcredit2? := dcredit2? #))
+                
+% Finally we need correctness
+% Proved
+correctness_drs : THEOREM
+  FORALL (saccount : finseq[TransactionAsType], daccount, daccount_ : finseq[DoubleTransactionAsType], 
+          date? : DATE, description? : TEXT, account? : ACCOUNT,income?, expenditure? : MONEY,
+	  ddate? : DATE, ddescription? : TEXT, daccount1?, daccount2? : ACCOUNT,
+          ddebit1?, ddebit2? : MONEY, dcredit1?, dcredit2? : MONEY) :
+
+ ConfInputs((# date? := date?, description? := description?, account? := account?, income? := income?,
+               expenditure? := expenditure?, ddate? := ddate?, ddescription? := ddescription?, daccount1? := daccount1?,
+	       daccount2? := daccount2?, dcredit1? := dcredit1?, dcredit2? := dcredit2?, ddebit1? := ddebit1?,
+	       ddebit2? := ddebit2? #))
+IMPLIES
+  R((# saccount := saccount, daccount := daccount #)) AND
+
+  preDoSomeBusiness((# saccount := saccount, income? := income?, expenditure? := expenditure?,
+                       date? := date?, description? := description?, account? := account? #)) AND
+			    
+  DoSomeDoubleBusiness((# daccount := daccount, daccount_ := daccount_, ddate? := ddate?, ddescription? := ddescription?,
+                          daccount1? := daccount1?, daccount2? := daccount2?, dcredit1? := dcredit1?,
+			  dcredit2? := dcredit2?, ddebit1? := ddebit1?, ddebit2? := ddebit2? #))
+ IMPLIES
+ EXISTS (saccount_ : finseq[TransactionAsType]) :
+    DoSomeBusiness((# saccount := saccount, saccount_ := saccount_, income? := income?, expenditure? := expenditure?,
+                      date? := date?, description? := description?, account? := account? #)) AND
+
+    R((# saccount := saccount_, daccount := daccount_ #))
+
+
+% And now the standard Z obligations to show single is a refinement of double
+% Proved
+initialisation_srd : THEOREM
+ FORALL (ss : finseq[TransactionAsType]) :
+            InitSingleState((# saccount := ss #))
+	    IMPLIES
+            EXISTS (ds : finseq[DoubleTransactionAsType]) :
+	               InitDoubleState((# daccount := ds #)) AND R((# saccount := ss, daccount := ds #))
+
+% Applicability is:
+% Proved                               
+applicability_srd: THEOREM
+  FORALL (saccount : finseq[TransactionAsType], daccount : finseq[DoubleTransactionAsType], date? : DATE,
+          description? : TEXT, account? : ACCOUNT,income?, expenditure? : MONEY,
+	  ddate? : DATE, ddescription? : TEXT, daccount1?, daccount2? : ACCOUNT,
+          ddebit1?, ddebit2? : MONEY, dcredit1?, dcredit2? : MONEY) :
+	  
+  ConfInputs((# date? := date?, description? := description?, account? := account?, income? := income?,
+                expenditure? := expenditure?, ddate? := ddate?, ddescription? := ddescription?, daccount1? := daccount1?,
+                daccount2? := daccount2?, dcredit1? := dcredit1?, dcredit2? := dcredit2?,
+                ddebit1? := ddebit1?, ddebit2? := ddebit2? #))
+IMPLIES
+  R((# saccount := saccount, daccount := daccount #)) AND
+
+  preDoSomeDoubleBusiness((# daccount := daccount, ddate? := ddate?, ddescription? := ddescription?,
+                             daccount1? := daccount1?, daccount2? := daccount2?, ddebit1? := ddebit1?,
+			     ddebit2? := ddebit2?, dcredit1? := dcredit1?, dcredit2? := dcredit2? #))
+          
+  IMPLIES
+  preDoSomeBusiness((# saccount := saccount, income? := income?, expenditure? := expenditure?,
+                       date? := date?, description? := description?, account? := account? #))
+  
+                
+% Finally we need correctness
+% Proved
+correctness_srd : THEOREM
+  FORALL (saccount, saccount_ : finseq[TransactionAsType], daccount : finseq[DoubleTransactionAsType], 
+          date? : DATE, description? : TEXT, account? : ACCOUNT,income?, expenditure? : MONEY,
+	  ddate? : DATE, ddescription? : TEXT, daccount1?, daccount2? : ACCOUNT,
+          ddebit1?, ddebit2? : MONEY, dcredit1?, dcredit2? : MONEY) :
+
+ ConfInputs((# date? := date?, description? := description?, account? := account?, income? := income?,
+               expenditure? := expenditure?, ddate? := ddate?, ddescription? := ddescription?, daccount1? := daccount1?,
+	       daccount2? := daccount2?, dcredit1? := dcredit1?, dcredit2? := dcredit2?, ddebit1? := ddebit1?,
+	       ddebit2? := ddebit2? #))
+IMPLIES
+  R((# saccount := saccount, daccount := daccount #)) AND
+
+  preDoSomeDoubleBusiness((# daccount := daccount, ddate? := ddate?, ddescription? := ddescription?,
+                             daccount1? := daccount1?, daccount2? := daccount2?, ddebit1? := ddebit1?,
+			     ddebit2? := ddebit2?, dcredit1? := dcredit1?, dcredit2? := dcredit2? #)) AND
+			    
+  DoSomeBusiness((# saccount := saccount, saccount_ := saccount_, income? := income?, expenditure? := expenditure?,
+                      date? := date?, description? := description?, account? := account? #)) 
+		      
+ IMPLIES
+ EXISTS (daccount_ : finseq[DoubleTransactionAsType]) :
+    DoSomeDoubleBusiness((# daccount := daccount, daccount_ := daccount_, ddate? := ddate?, ddescription? := ddescription?,
+                          daccount1? := daccount1?, daccount2? := daccount2?, dcredit1? := dcredit1?,
+			  dcredit2? := dcredit2?, ddebit1? := ddebit1?, ddebit2? := ddebit2? #)) AND
+
+    R((# saccount := saccount_, daccount := daccount_ #))
+
+
+END accounting

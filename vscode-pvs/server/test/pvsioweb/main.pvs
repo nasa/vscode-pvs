@@ -1,0 +1,318 @@
+main: THEORY
+ BEGIN IMPORTING gpcaUI, GPCA_StateChanger_th, GPCA_Hardware_emulation
+
+  GPCA: TYPE = [#
+  	ui: gpcaui_state,
+	controller: IController_State,
+	bus: ControllerBus,
+	tick_enabled: boolean % true when tick transitions are enabled in the controller or in the alarming component
+  #]
+
+  IControllerMachine2ControllerState(st: IController_MachineState): ControllerState =
+       COND
+         %-- StateChanger
+         Init?(st)                                     -> NULL,
+	 PowerOff?(st)                                 -> PowerOff,
+	 POST?(st)                                     -> POWER_ON_SELF_TEST,
+	 POSTDONE?(st)                                 -> POST_SUCCESSFUL,
+	 ALM_POSTFailed?(st)                           -> POST_FAILED,
+	 ConfirmPowerDown?(st)                         -> CONFIRM_POWER_DOWN,
+	 LEVELONEALARM?(st)                            -> HARDWARE_FAILURE_LEVEL_ONE,
+	 %-- ConfigureInfusionProgram
+	 DisplayVTBI?(st)			       -> DISPLAY_VTBI,
+	 ChangeVTBI?(st)			       -> CHANGE_VTBI,
+	 WRN_VTBIOutBound?(st)		     	       -> VTBI_SOFT_LIMITS_VIOLATED,
+	 ALM_VTBIOutBound?(st)		     	       -> VTBI_HARD_LIMITS_VIOLATED,
+	 CheckVTBI?(st)				       -> CHECK_VTBI,
+	 DisplayDoseRate?(st)		     	       -> DISPLAY_DOSE_RATE,
+	 ChangeDoseRate?(st)		     	       -> CHANGE_DOSE_RATE,
+	 ALM_DoseRateOutBound?(st)	     	       -> DOSE_RATE_HARD_LIMITS_VIOLATED,
+	 CheckDoseRate?(st)			       -> CHECK_DOSE_RATE,
+	 WRN_DOSERATEOUTSOFTLIMITS?(st)		       -> DOSE_RATE_SOFT_LIMITS_VIOLATED,
+	 DisplaySettings?(st)			       -> DISPLAY_SETTINGS,
+	 ReadyToStart?(st)			       -> READY_TO_START,
+	 %-- InfusionSubMachine
+	 Infusing?(st)				       -> INFUSION_NORMAL_OPERATION,
+	 ChangeRate?(st) 			       -> CHANGE_DOSE_RATE_WHEN_INFUSING,
+	 ALM_NewRateOutBound?(st)		       -> NEW_DOSE_RATE_OUT_OF_BOUNDS,
+	 CheckNewRate?(st)			       -> CHECK_NEW_DOSE_RATE,
+	 ConfirmStop?(st)			       -> CONFIRM_STOP,
+         ConfirmPause?(st)			       -> CONFIRM_PAUSE,
+	 BolusRequest?(st)			       -> BOLUS_REQUEST,
+	 %-- InfusionInSession
+	 LevelTwoAlarming?(st)			       -> FAILURE_LEVEL_TWO,
+	 InfusionPaused?(st)			       -> INFUSION_PAUSED,
+	 PausedTooLong?(st)			       -> INFUSION_PAUSED_TOO_LONG,
+   	 PausedStopConfirm?(st)			       -> PAUSED_STOP_CONFIRM,
+	 InfusionStopped?(st)			       -> INFUSION_STOPPED,
+	 ALMWrongDrug?(st)			       -> WRONG_DRUG_DURING_INFUSION,
+	 CheckDrugWhileInfusing?(st)		       -> CHECK_DRUG_WHEN_INFUSING,
+	 EmptyReservoir?(st)			       -> EMPTY_RESERVOIR,
+	 %-- CheckDrugRoutine
+	 DisplayDrugInfo?(st)			       -> DISPLAY_DRUG_INFORMATION,
+	 CheckDrug_CheckType?(st)		       -> CHECK_DRUG_TYPE,
+	 CheckPrime?(st)			       -> CHECK_PRIME,
+	 PrimeFailed?(st)			       -> PRIME_FAILED,
+	 CheckAdminSet?(st)			       -> CHECK_ADMIN_SET,
+	 ALM_WrongAdminCheck?(st)		       -> INCORRECT_ADMIN_SETUP,
+	 UnknownDrug?(st)			       -> UNKNOWN_DRUG,
+	 Check_DrugUnits?(st)			       -> CHECK_DOSE_UNIT,
+	 Check_Concen?(st)			       -> CHECK_CONCENTRATION,
+	 IncorrectDrugUnits?(st)		       -> INCORRECT_DOSE_UNIT,
+	 WrongConcentration?(st)		       -> CONC_HARD_LIMITS_VIOLATED,
+	 WRN_DangerCon?(st)			       -> CONC_SOFT_LIMITS_VIOLATED,
+	 DisplayPatientProfile?(st)		       -> DISPLAY_PATIENT_PROFILE
+        ENDCOND
+    CONVERSION IControllerMachine2ControllerState
+
+
+  ControllerState2IControllerMachine(st: ControllerState): IController_MachineState =
+       COND
+         %-- StateChanger
+         NULL?(st)                                     -> Init,
+	 PowerOff?(st)                                 -> PowerOff,
+	 POWER_ON_SELF_TEST?(st)                       -> POST,
+	 POST_SUCCESSFUL?(st)                          -> POSTDONE,
+	 POST_FAILED?(st)                              -> ALM_POSTFailed,
+	 CONFIRM_POWER_DOWN?(st)                       -> ConfirmPowerDown,
+	 HARDWARE_FAILURE_LEVEL_ONE?(st)               -> LEVELONEALARM,
+	 %-- ConfigureInfusionProgram
+	 DISPLAY_VTBI?(st)			       -> DisplayVTBI,
+	 CHANGE_VTBI?(st)			       -> ChangeVTBI,
+	 VTBI_SOFT_LIMITS_VIOLATED?(st)		       -> WRN_VTBIOutBound,
+	 VTBI_HARD_LIMITS_VIOLATED?(st)		       -> ALM_VTBIOutBound,
+	 CHECK_VTBI?(st)			       -> CheckVTBI,
+	 DISPLAY_DOSE_RATE?(st)		     	       -> DisplayDoseRate,
+	 CHANGE_DOSE_RATE?(st)		     	       -> ChangeDoseRate,
+	 DOSE_RATE_HARD_LIMITS_VIOLATED?(st)	       -> ALM_DoseRateOutBound,
+	 CHECK_DOSE_RATE?(st)			       -> CheckDoseRate,
+	 DOSE_RATE_SOFT_LIMITS_VIOLATED?(st)	       -> WRN_DOSERATEOUTSOFTLIMITS,
+	 DISPLAY_SETTINGS?(st)			       -> DisplaySettings,
+	 READY_TO_START?(st)			       -> ReadyToStart,
+	 %-- InfusionSubMachine
+	 INFUSION_NORMAL_OPERATION?(st)		       -> Infusing,
+	 CHANGE_DOSE_RATE_WHEN_INFUSING?(st)	       -> ChangeRate,
+	 NEW_DOSE_RATE_OUT_OF_BOUNDS?(st)	       -> ALM_NewRateOutBound,
+	 CHECK_NEW_DOSE_RATE?(st)		       -> CheckNewRate,
+	 CONFIRM_STOP?(st)			       -> ConfirmStop,
+         CONFIRM_PAUSE?(st)			       -> ConfirmPause,
+	 BOLUS_REQUEST?(st)			       -> BolusRequest,
+	 %-- InfusionInSession
+	 FAILURE_LEVEL_TWO?(st)			       -> LevelTwoAlarming,
+	 INFUSION_PAUSED?(st)			       -> InfusionPaused,
+	 INFUSION_PAUSED_TOO_LONG?(st)		       -> PausedTooLong,
+   	 PAUSED_STOP_CONFIRM?(st)		       -> PausedStopConfirm,
+	 INFUSION_STOPPED?(st)			       -> InfusionStopped,
+	 WRONG_DRUG_DURING_INFUSION?(st)	       -> ALMWrongDrug,
+	 CHECK_DRUG_WHEN_INFUSING?(st)		       -> CheckDrugWhileInfusing,
+	 EMPTY_RESERVOIR?(st)			       -> EmptyReservoir,
+	 %-- CheckDrugRoutine
+	 DISPLAY_DRUG_INFORMATION?(st)		       -> DisplayDrugInfo,
+	 CHECK_DRUG_TYPE?(st)		               -> CheckDrug_CheckType,
+	 CHECK_PRIME?(st)			       -> CheckPrime,
+	 PRIME_FAILED?(st)			       -> PrimeFailed,
+	 CHECK_ADMIN_SET?(st)			       -> CheckAdminSet,
+	 INCORRECT_ADMIN_SETUP?(st)		       -> ALM_WrongAdminCheck,
+	 UNKNOWN_DRUG?(st)			       -> UnknownDrug,
+	 CHECK_DOSE_UNIT?(st)			       -> Check_DrugUnits,
+	 CHECK_CONCENTRATION?(st)		       -> Check_Concen,
+	 INCORRECT_DOSE_UNIT?(st)		       -> IncorrectDrugUnits,
+	 CONC_HARD_LIMITS_VIOLATED?(st)		       -> WrongConcentration,
+	 CONC_SOFT_LIMITS_VIOLATED?(st)		       -> WRN_DangerCon,
+	 DISPLAY_PATIENT_PROFILE?(st)		       -> DisplayPatientProfile,
+         %-- need to check whether the following state is one of the simulink controller states
+         STOP_PAUSE?(st) -> Init
+        ENDCOND
+    CONVERSION ControllerState2IControllerMachine
+
+
+  ControllerState2String(st: ControllerState): string =
+       COND
+         %-- StateChanger
+         NULL?(st)                                     -> "NULL",
+	 PowerOff?(st)                                 -> "PowerOff",
+	 POWER_ON_SELF_TEST?(st)                       -> "POWER_ON_SELF_TEST",
+	 POST_SUCCESSFUL?(st)                          -> "POST_SUCCESSFUL",
+	 POST_FAILED?(st)                              -> "POST_FAILED",
+	 CONFIRM_POWER_DOWN?(st)                       -> "CONFIRM_POWER_DOWN",
+	 HARDWARE_FAILURE_LEVEL_ONE?(st)               -> "HARDWARE_FAILURE_LEVEL_ONE",
+	 %-- ConfigureInfusionProgram
+	 DISPLAY_VTBI?(st)			       -> "DISPLAY_VTBI",
+	 CHANGE_VTBI?(st)			       -> "CHANGE_VTBI",
+	 VTBI_SOFT_LIMITS_VIOLATED?(st)		       -> "VTBI_SOFT_LIMITS_VIOLATED",
+	 VTBI_HARD_LIMITS_VIOLATED?(st)		       -> "VTBI_HARD_LIMITS_VIOLATED",
+	 CHECK_VTBI?(st)			       -> "CHECK_VTBI",
+	 DISPLAY_DOSE_RATE?(st)		     	       -> "DISPLAY_DOSE_RATE",
+	 CHANGE_DOSE_RATE?(st)		     	       -> "CHANGE_DOSE_RATE",
+	 DOSE_RATE_HARD_LIMITS_VIOLATED?(st)	       -> "DOSE_RATE_HARD_LIMITS_VIOLATED",
+	 CHECK_DOSE_RATE?(st)			       -> "CHECK_DOSE_RATE",
+	 DOSE_RATE_SOFT_LIMITS_VIOLATED?(st)	       -> "DOSE_RATE_SOFT_LIMITS_VIOLATED",
+	 DISPLAY_SETTINGS?(st)			       -> "DISPLAY_SETTINGS",
+	 READY_TO_START?(st)			       -> "READY_TO_START",
+	 %-- InfusionSubMachine
+	 INFUSION_NORMAL_OPERATION?(st)		       -> "INFUSION_NORMAL_OPERATION",
+	 CHANGE_DOSE_RATE_WHEN_INFUSING?(st)	       -> "CHANGE_DOSE_RATE_WHEN_INFUSING",
+	 NEW_DOSE_RATE_OUT_OF_BOUNDS?(st)	       -> "NEW_DOSE_RATE_OUT_OF_BOUNDS",
+	 CHECK_NEW_DOSE_RATE?(st)		       -> "CHECK_NEW_DOSE_RATE",
+	 CONFIRM_STOP?(st)			       -> "CONFIRM_STOP",
+         CONFIRM_PAUSE?(st)			       -> "CONFIRM_PAUSE",
+	 BOLUS_REQUEST?(st)			       -> "BOLUS_REQUEST",
+	 %-- InfusionInSession
+	 FAILURE_LEVEL_TWO?(st)			       -> "FAILURE_LEVEL_TWO",
+	 INFUSION_PAUSED?(st)			       -> "INFUSION_PAUSED",
+	 INFUSION_PAUSED_TOO_LONG?(st)		       -> "INFUSION_PAUSED_TOO_LONG",
+   	 PAUSED_STOP_CONFIRM?(st)		       -> "PAUSED_STOP_CONFIRM",
+	 INFUSION_STOPPED?(st)			       -> "INFUSION_STOPPED",
+	 WRONG_DRUG_DURING_INFUSION?(st)	       -> "WRONG_DRUG_DURING_INFUSION",
+	 CHECK_DRUG_WHEN_INFUSING?(st)		       -> "CHECK_DRUG_WHEN_INFUSING",
+	 EMPTY_RESERVOIR?(st)			       -> "EMPTY_RESERVOIR",
+	 %-- CheckDrugRoutine
+	 DISPLAY_DRUG_INFORMATION?(st)		       -> "DISPLAY_DRUG_INFORMATION",
+	 CHECK_DRUG_TYPE?(st)		               -> "CHECK_DRUG_TYPE",
+	 CHECK_PRIME?(st)			       -> "CHECK_PRIME",
+	 PRIME_FAILED?(st)			       -> "PRIME_FAILED",
+	 CHECK_ADMIN_SET?(st)			       -> "CHECK_ADMIN_SET",
+	 INCORRECT_ADMIN_SETUP?(st)		       -> "INCORRECT_ADMIN_SETUP",
+	 UNKNOWN_DRUG?(st)			       -> "UNKNOWN_DRUG",
+	 CHECK_DOSE_UNIT?(st)			       -> "CHECK_DOSE_UNIT",
+	 CHECK_CONCENTRATION?(st)		       -> "CHECK_CONCENTRATION",
+	 INCORRECT_DOSE_UNIT?(st)		       -> "INCORRECT_DOSE_UNIT",
+	 CONC_HARD_LIMITS_VIOLATED?(st)		       -> "CONC_HARD_LIMITS_VIOLATED",
+	 CONC_SOFT_LIMITS_VIOLATED?(st)		       -> "CONC_SOFT_LIMITS_VIOLATED",
+	 DISPLAY_PATIENT_PROFILE?(st)		       -> "DISPLAY_PATIENT_PROFILE",
+         %-- need to check whether the following state is one of the simulink controller states
+         STOP_PAUSE?(st) -> "STOP_PAUSE"
+        ENDCOND
+    CONVERSION ControllerState2String
+
+  exec_ctrl_event(gpca: GPCA): GPCA =
+     LET cmd: ControllerCMD = ui(gpca)`ctrl_cmd,
+         ctrl: IController_State = controller(gpca) IN
+        COND
+	 PowerButton?(cmd)              -> IF per_CE_PowerButton(ctrl) THEN gpca WITH [ controller := CE_PowerButton(ctrl) ] ELSE gpca ENDIF,
+	 StartNewInfusion?(cmd)         -> IF per_CE_NewInfusion(ctrl) THEN gpca WITH [ controller := CE_NewInfusion(ctrl) ] ELSE gpca ENDIF,
+	 CheckAdminSet?(cmd)            -> IF per_CE_CheckAdminSet(ctrl) THEN gpca WITH [ controller := CE_CheckAdminSet(ctrl) ] ELSE gpca ENDIF,
+	 PrimePump?(cmd)                -> IF per_CE_Prime(ctrl) THEN gpca WITH [ controller := CE_Prime(ctrl) ] ELSE gpca ENDIF,
+	 CheckDrug?(cmd)                -> IF per_CE_CheckDrug(ctrl) THEN gpca WITH [ controller := CE_CheckDrug(ctrl) ] ELSE gpca ENDIF,
+	 ConfigureInfusionProgram?(cmd) -> IF per_CE_ConfigureInfusionProgram(ctrl) THEN gpca WITH [ controller := CE_ConfigureInfusionProgram(ctrl) ] ELSE gpca ENDIF,
+	 ConfigureConcentration?(cmd)   -> IF per_CE_ConfirmConcentration(ctrl) THEN gpca WITH [ controller := CE_ConfirmConcentration(ctrl) ] ELSE gpca ENDIF,
+	 ConfirmDoseRate?(cmd)          -> IF per_CE_ConfirmDoseRate(ctrl) 
+	 				   THEN gpca WITH [ controller := CE_ConfirmDoseRate(ctrl WITH [ infuParameters := infuParameters(ctrl)
+					   	     	                                          WITH [ programmedDoseRate := val(cmd) ]]) ] ELSE gpca ENDIF,
+	 ConfirmVTBI?(cmd)              -> IF per_CE_ConfirmVTBI(ctrl) 
+                                           THEN gpca WITH [ controller := CE_ConfirmVTBI(ctrl WITH [ infuParameters := infuParameters(ctrl)
+					   	     	                                      WITH [ programmedVTBI := val(cmd) ]]) ] ELSE gpca ENDIF,
+	 StartInfusion?(cmd)            -> IF per_CE_StartInfusion(ctrl) THEN gpca WITH [ controller := CE_StartInfusion(ctrl) ] ELSE gpca ENDIF,
+	 ChangeDoseRate?(cmd)           -> IF per_CE_ChangeDoseRate(ctrl) THEN gpca WITH [ controller := CE_ChangeDoseRate(ctrl) ] ELSE gpca ENDIF,
+	 ChangeVTBI?(cmd)               -> IF per_CE_ChangeVTBI(ctrl) THEN gpca WITH [ controller := CE_ChangeVTBI(ctrl) ] ELSE gpca ENDIF,
+	 PauseInfusion?(cmd)            -> IF per_CE_PauseInfusion(ctrl) THEN gpca WITH [ controller := CE_PauseInfusion(ctrl) ] ELSE gpca ENDIF,
+	 ConfirmPauseInfusion?(cmd)     -> IF per_CE_ConfirmPauseInfusion(ctrl) THEN gpca WITH [ controller := CE_ConfirmPauseInfusion(ctrl) ] ELSE gpca ENDIF,
+	 StopInfusion?(cmd)             -> IF per_CE_StopInfusion(ctrl) THEN gpca WITH [ controller := CE_StopInfusion(ctrl) ] ELSE gpca ENDIF,
+	 ConfirmStopInfusion?(cmd)      -> IF per_CE_ConfirmStopInfusion(ctrl) THEN gpca WITH [ controller := CE_ConfirmStopInfusion(ctrl) ] ELSE gpca ENDIF,
+	 RequestBolus?(cmd)             -> IF per_CE_RequestBolus(ctrl) THEN gpca WITH [ controller := CE_RequestBolus(ctrl) ] ELSE gpca ENDIF,
+	 ClearAlarm?(cmd)               -> IF per_CE_ClearAlarm(ctrl) THEN gpca WITH [ controller := CE_ClearAlarm(ctrl) ] ELSE gpca ENDIF,
+	 ConfirmPowerDown?(cmd)         -> IF per_CE_ConfirmPowerDown(ctrl) THEN gpca WITH [ controller := CE_ConfirmPowerDown(ctrl) ] ELSE gpca ENDIF,
+	 Cancel?(cmd)                   -> IF per_CE_Cancel(ctrl) THEN gpca WITH [ controller := CE_Cancel(ctrl) ] ELSE gpca ENDIF,
+	 CMD_NULL?(cmd)                 -> gpca
+	ENDCOND
+
+
+  gpca_tick(gpca: GPCA): GPCA =
+    % the alarming component has priority over other components
+    IF per_AE_Clock(controller(gpca)) % hardware clock of the alarming component
+    THEN LET gpca = gpca WITH [ controller := AE_Clock(controller(gpca)) ],
+             gpca = gpca WITH [ bus := bus(gpca) 
+	     	    	 WITH [ controller_state := O_CurrentState(controller(gpca)),
+			        totalVolumeInfused := controller(gpca)`infuStatus`totalVolumeInfused ]],
+	     gpca = gpca WITH [ ui := controller_response(bus(gpca))(ui(gpca)) ],
+	     gpca = IF per_E_Pump_tick(controller(gpca)) THEN gpca WITH [ controller := E_Pump_tick(controller(gpca)) ] ELSE gpca ENDIF % this is used to emulate the hardware
+    	  IN gpca WITH [ tick_enabled := per_C_tick(controller(gpca)) OR per_A_tick(controller(gpca)) OR per_AE_Clock(controller(gpca)) ]
+    ELSIF per_A_tick(controller(gpca)) % internal transitions of the alarming component
+    THEN LET gpca = gpca WITH [ controller := A_tick(controller(gpca)) ],
+             gpca = gpca WITH [ bus := bus(gpca) 
+	     	         WITH [ controller_state := O_CurrentState(controller(gpca)),
+			        totalVolumeInfused := controller(gpca)`infuStatus`totalVolumeInfused ]],
+	     gpca = gpca WITH [ ui := controller_response(bus(gpca))(ui(gpca)) ],
+	     gpca = IF per_E_Pump_tick(controller(gpca)) THEN gpca WITH [ controller := E_Pump_tick(controller(gpca)) ] ELSE gpca ENDIF % this is used to emulate the hardware
+    	  IN gpca WITH [ tick_enabled := per_C_tick(controller(gpca)) OR per_A_tick(controller(gpca)) OR per_AE_Clock(controller(gpca)) ]
+    ELSIF per_C_tick(controller(gpca)) % internal transitions of the controller
+    THEN LET gpca = gpca WITH [ controller := C_tick(controller(gpca)) ],
+             gpca = gpca WITH [ bus := bus(gpca) 
+	     	    	 WITH [ controller_state := O_CurrentState(controller(gpca)),
+			        totalVolumeInfused := controller(gpca)`infuStatus`totalVolumeInfused ]],
+	     gpca = gpca WITH [ ui := controller_response(bus(gpca))(ui(gpca)) ],
+	     gpca = IF per_E_Pump_tick(controller(gpca)) THEN gpca WITH [ controller := E_Pump_tick(controller(gpca)) ] ELSE gpca ENDIF % this is used to emulate the hardware
+          IN gpca WITH [ tick_enabled := per_C_tick(controller(gpca)) OR per_A_tick(controller(gpca)) OR per_AE_Clock(controller(gpca)) ]
+    ELSE gpca WITH [ tick_enabled := FALSE ] ENDIF
+
+
+  exec(gpca: GPCA): GPCA =
+    LET gpca = exec_ctrl_event(gpca), % execute one step of the controller
+        gpca = gpca WITH [ bus := bus(gpca) WITH [ controller_state := O_CurrentState(controller(gpca)) ]],
+        gpca = gpca WITH [ ui := controller_response(bus(gpca))(ui(gpca)) ]
+     IN gpca WITH [ tick_enabled := per_C_tick(controller(gpca)) OR per_A_tick(controller(gpca)) OR per_AE_Clock(controller(gpca)) ]
+
+  gpca_click_on(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_on(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_up(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_up(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_dn(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_dn(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_lf(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_lf(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_rt(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_rt(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_ok(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_ok(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_cancel(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_cancel(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_pause(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_pause(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_stop(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_stop(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_edit(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_edit(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_bolus(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ ui := click_bolus(ui(gpca)) ]
+     IN exec(gpca)
+
+  gpca_click_start(gpca: GPCA): GPCA =
+    LET gpca = gpca WITH [ controller := resetTotalVolumeInfused(controller(gpca)) ],
+        gpca = gpca WITH [ ui := click_start(ui(gpca)) ]
+     IN exec(gpca)
+
+  
+
+  GPCA_init(x: real): GPCA = 
+    % the LET-IN is used to trigger code generation and avoid lags during interactions
+    LET initial: GPCA = (# ui := gpcaui_init(x) WITH [ ctrl_state := PowerOff ],
+    		      	   controller := initialControllerState,
+			   bus := (# controller_state := PowerOff, 
+	       	  	       	     isBolusInProgress := FALSE,
+		  		     totalVolumeInfused := 0,
+		  		     remainingVolumeInReservoir := 0 #),
+		           tick_enabled := FALSE  #),
+        codeGen: GPCA = gpca_click_on(initial)
+     IN initial
+
+ END main

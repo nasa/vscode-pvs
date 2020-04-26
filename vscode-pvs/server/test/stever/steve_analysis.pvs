@@ -1,0 +1,409 @@
+ % The configurations SC2 and SC4 and the channges (with "S" in their names) that
+ % flow from those are Steve's modificiations. Basically it all came from uncommenting
+ % the last part of the state that Paolo had as C2.
+
+analysis: THEORY
+ BEGIN
+  IMPORTING MDNumberpad
+
+  %-------------------------------------------------------------------------------------  
+  % Consistency: Are number pad key clicks consistently registered by the software?
+  %-------------------------------------------------------------------------------------
+  basic_consistency(st: state): bool =
+      LET st_prime = pointClicked(st) IN
+        (pointRegistered(st_prime) OR errorMode(st_prime))
+
+  %-- Proof using configuration diagrams -----------------------------------------------
+  trans(pre, post: state): boolean =
+      post = pointClicked(pre)
+      OR post = digitClicked(KEY_0)(pre)
+      OR post = digitClicked(KEY_1)(pre)
+      OR post = digitClicked(KEY_2)(pre)
+      OR post = digitClicked(KEY_3)(pre)
+      OR post = digitClicked(KEY_4)(pre)
+      OR post = digitClicked(KEY_5)(pre)
+      OR post = digitClicked(KEY_6)(pre)
+      OR post = digitClicked(KEY_7)(pre)
+      OR post = digitClicked(KEY_8)(pre)
+      OR post = digitClicked(KEY_9)(pre)
+      OR post = clearClicked(pre)
+
+  C1(st: state): bool =
+    NOT pointRegistered(st) AND NOT errorMode(st) AND dispval(st) < 100
+
+  % Q.E.D. Run time  = 0.07 secs.
+  initiality: THEOREM
+    FORALL (st: state):
+      (initial_state?(st) IMPLIES C1(st)) 
+
+  % Q.E.D. Run time  = 0.13 secs.
+  C1_IMPLIES_BC: THEOREM
+    FORALL (st: state):
+      C1(st) IMPLIES basic_consistency(st)
+
+  % FAILS for pointClicked
+  % {-1}  dispval(pre!1) < 100
+  % |-------
+  % {1}   pointRegistered(pre!1)
+  % {2}   errorMode(pre!1)
+  % 
+  % FAILS for digitClicked
+  C1_IMPLIES_C1: THEOREM
+    FORALL (pre, post: state):
+      C1(pre) AND trans(pre,post) IMPLIES C1(post)
+
+  C2(st: state): boolean =
+    pointRegistered(st) AND NOT errorMode(st) %AND dispval(st) < 100
+
+% SC2 is just C2 with the dispval(st) < 100 retained. Should give complete
+% analogue to C2 as in the config. diagram
+
+  SC2(st: state): boolean =
+    pointRegistered(st) AND NOT errorMode(st) AND dispval(st) < 100
+
+  % Q.E.D. Run time  = 0.14 secs.
+  pointClicked_C1_IMPLIES_C2: LEMMA
+    FORALL (pre, post: state):
+      C1(pre) AND post = pointClicked(pre) IMPLIES C2(post)
+
+ % Q.E.D. Run time  = 0.12 secs.
+  pointClicked_C1_IMPLIES_SC2: LEMMA
+    FORALL (pre, post: state):
+      C1(pre) AND post = pointClicked(pre) IMPLIES SC2(post)
+
+
+  COND1(st: state, key: (digit?)): bool = key + 10*dispval(st) >= 100
+
+  % Q.E.D. Run time  = 7.28 secs.
+  digitClicked_C1_IMPLIES_C1: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      C1(pre) AND NOT COND1(pre, key) AND post = digitClicked(key)(pre) IMPLIES C1(post)
+
+% Missing from configuration diagram in the paper?
+ % Q.E.D. Run time  = 0.63 secs.
+  clearClicked_C1_IMPLIES_C1: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      C1(pre) AND post = clearClicked(pre) IMPLIES C1(post)
+
+  C3(st: state): boolean =
+    NOT pointRegistered(st) AND NOT errorMode(st) AND dispval(st) >= 100
+
+  % Q.E.D. Run time  = 8.46 secs.
+  digitClicked_C1_IMPLIES_C3: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      C1(pre) AND COND1(pre, key) AND post = digitClicked(key)(pre) IMPLIES C3(post)
+      
+ % Run time  = 17.13 secs
+  C1_closed: THEOREM
+    FORALL (pre, post: state):
+      C1(pre) AND trans(pre,post) IMPLIES (C1(post) OR C2(post) OR SC2(post) OR C3(post))
+
+ % Run time  = 15.03 secs
+  SC1_closed: THEOREM
+    FORALL (pre, post: state):
+      C1(pre) AND trans(pre,post) IMPLIES (C1(post) OR SC2(post) OR C3(post))
+
+
+  %-------------
+
+  % Q.E.D. Run time  = 0.12 secs.
+  C2_IMPLIES_BC: THEOREM
+    FORALL (st: state):
+      C2(st) IMPLIES basic_consistency(st)
+
+ % Q.E.D. Run time  = 0.12 secs.
+  SC2_IMPLIES_BC: THEOREM
+    FORALL (st: state):
+      SC2(st) IMPLIES basic_consistency(st)
+
+  % FAILS for digitClicked when key > 0
+  % {-1}  pointRegistered(pre!1)
+  % {-2}  dispval(pre!1) < 100
+  % {-3}  0 < 2
+  % {-4}  decimalDigits(pre!1) = 0
+  %  |-------
+  % {1}   errorMode(pre!1)
+  % {2}   dispval(pre!1) + 1/10 < 100
+  %
+  % FAILS for clear
+  % {-1}  pointRegistered(pre!1)
+  % {-2}  dispval(pre!1) < 100
+  %  |-------
+  % {1}   errorMode(pre!1)
+  C2_IMPLIES_C2: THEOREM
+    FORALL (pre, post: state):
+      C2(pre) AND trans(pre,post) IMPLIES C2(post)
+
+  SC2_IMPLIES_SC2: THEOREM
+    FORALL (pre, post: state):
+      SC2(pre) AND trans(pre,post) IMPLIES SC2(post)
+
+  C4(st: state): boolean =
+      errorMode(st)
+
+ % C4 strengthened since the only way in is from C3 and there
+ % no point has been registered
+  SC4(st: state): boolean =
+      errorMode(st) AND NOT pointRegistered(st)
+
+  COND2(st: state): bool = dispval(st) > 1200
+
+  % Q.E.D. Run time = 8.30 secs. 
+  digitClicked_C2_IMPLIES_C2: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      C2(pre) AND NOT COND2(pre) AND post = digitClicked(key)(pre) IMPLIES C2(post)
+
+% Some easy facts about numbers
+% A real with no decimal digits is an integer
+% expressed in PVS as saying that if a real is equal to its integer part then
+% it's an integer
+
+nodecimals(r : real): bool = r = floor(r)
+
+nodecimals_IMPLIES_int: THEOREM
+    FORALL (r : real):
+       r = floor(r) IMPLIES EXISTS (n : int) : n = r
+
+intninetynine: THEOREM
+    FORALL (n : int):
+        n < 100 IMPLIES n <= 99
+
+% Just spelling out what the information in a state means....
+nodecmeansint: AXIOM
+    FORALL (st:state):
+        decimalDigits(st) = 0 IMPLIES nodecimals(dispval(st))
+      
+% These taken together prove....
+%( Needed crucially for "new_digitClicked_SC2_IMPLIES_SC2"...)
+ninetynine : THEOREM
+   FORALL  (st : state):
+       decimalDigits(st) = 0 AND dispval(st) < 100 IMPLIES dispval(st) <= 99
+
+%%% I started with this to get the "new_digitClicked_SC2_IMPLIES_SC2" theorem to be proved,
+%%% and subsequently narrowed down what was needed to "ninetynine" above
+% The SC2 theorems need this lemma...
+fractions : LEMMA
+    FORALL  (pre, post: state, key: (digit?)):
+       decimalDigits(pre) = 0 AND NOT errorMode(pre) AND dispval(pre) < 100 AND post = digitClicked(key)(pre) AND pointRegistered(pre) IMPLIES dispval(post) < 100
+%%%
+%%%
+
+% Fails without "ninetynine"
+% But the CON2 is irrelevant anyhow since SC2 already has a stronger condition
+% QED Run time  = 50.20 secs
+ digitClicked_SC2_IMPLIES_SC2: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      SC2(pre) AND NOT COND2(pre) AND post = digitClicked(key)(pre) IMPLIES SC2(post)
+
+% Fails without "ninetynine"
+% QED Run time  = 48.89 secs
+ new_digitClicked_SC2_IMPLIES_SC2: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      SC2(pre) AND post = digitClicked(key)(pre) IMPLIES SC2(post)
+       
+  % Q.E.D. Run time  = 3.07 secs.
+  digitClicked_C2_IMPLIES_C4: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      C2(pre) AND COND2(pre) AND 
+         post = digitClicked(key)(pre) IMPLIES C4(post)
+
+  % Q.E.D. Run time  = 26.09 secs. BUT!!! The antecedent here is FALSE!!!
+  % So it's trivially valid!! And uninteresting therefore
+  digitClicked_SC2_IMPLIES_C4: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      SC2(pre) AND COND2(pre) AND 
+         post = digitClicked(key)(pre) IMPLIES C4(post)
+
+ % Fails. As expected since from SC2 there are no possible error modes
+  new_digitClicked_SC2_IMPLIES_C4: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      SC2(pre) AND post = digitClicked(key)(pre) IMPLIES C4(post)
+
+  % Q.E.D. Run time  = 0.46 secs.
+  clearClicked_C2_IMPLIES_C1: THEOREM
+    FORALL (pre, post: state):
+      C2(pre) AND post = clearClicked(pre) IMPLIES C1(post)
+
+ % Q.E.D. Run time  = 0.48 secs.
+  clearClicked_SC2_IMPLIES_C1: THEOREM
+    FORALL (pre, post: state):
+      SC2(pre) AND post = clearClicked(pre) IMPLIES C1(post)
+
+ % Not in original version of this file, though in configuration diagram in the FASE paper
+ % QED Run time  = 0.13 secs
+ pointClicked_C2_IMPLIES_C2: THEOREM
+    FORALL (pre, post: state):
+      C2(pre) AND post = pointClicked(pre) IMPLIES C2(post)
+      
+% QED Run time  = 0.12 secs
+ pointClicked_SC2_IMPLIES_SC2: THEOREM
+    FORALL (pre, post: state):
+      SC2(pre) AND post = pointClicked(pre) IMPLIES SC2(post)
+
+  % Q.E.D. Run time  = 0.33 secs.
+  C2_closed: THEOREM
+    FORALL (pre, post: state):
+      C2(pre) AND trans(pre,post) IMPLIES (C1(post) OR C2(post) OR C4(post))
+      
+ % Needs ninetynine
+  % Q.E.D. Run time  = 65.30 secs.
+  SC2_closed: THEOREM
+    FORALL (pre, post: state):
+      SC2(pre) AND trans(pre,post) IMPLIES (C1(post) OR SC2(post))
+
+  %--------------------
+
+  % FAILS: decimal points are ignored
+  C3_IMPLIES_BC: THEOREM
+    FORALL (st: state):
+      C3(st) IMPLIES basic_consistency(st)
+  
+
+  % FAILS for digitClicked
+  % {-1}  dispval(pre!1) >= 100
+  % {-2}  (10 * dispval(pre!1) > 1200.0)
+  %  |-------
+  % {1}   pointRegistered(pre!1)
+  % {2}   errorMode(pre!1)
+  %
+  % FAILS for clearClicked
+  % {-1}  dispval(pre!1) >= 100
+  %  |-------
+  % {1}   pointRegistered(pre!1)
+  % {2}   errorMode(pre!1)
+  C3_IMPLIES_C3: THEOREM
+    FORALL (pre, post: state):
+      C3(pre) AND trans(pre,post) IMPLIES C3(post)
+
+  % Q.E.D. Run time  = 0.43 secs.
+  clearClicked_C3_IMPLIES_C1: THEOREM
+    FORALL (pre, post: state):
+      C3(pre) AND post = clearClicked(pre) IMPLIES C1(post)
+
+  % On diagram but not in this file originally
+  % Q.E.D. Run time  = 0.12 secs.
+  pointClicked_C3_IMPLIES_C3: THEOREM
+    FORALL (pre, post: state):
+      C3(pre) AND post = pointClicked(pre) IMPLIES C3(post)
+
+  COND3(st: state, key: (digit?)): bool = key + 10 * dispval(st) > 1200
+
+  % Q.E.D. Run time  = 3.15 secs.
+  digitClicked_C3_IMPLIES_C4: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      C3(pre) AND COND3(pre,key) AND post = digitClicked(key)(pre) IMPLIES C4(post)
+
+  % Q.E.D. Run time  = 3.15 secs.
+  digitClicked_C3_IMPLIES_SC4: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      C3(pre) AND COND3(pre,key) AND post = digitClicked(key)(pre) IMPLIES SC4(post)
+
+  % Q.E.D. Run time  = 8.29 secs.
+  digitClicked_C3_IMPLIES_C3: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      C3(pre) AND NOT COND3(pre,key) AND post = digitClicked(key)(pre) IMPLIES C3(post)
+
+  % Q.E.D. Run time  =  0.35 secs.
+  C3_closed: THEOREM
+    FORALL (pre, post: state):
+      C3(pre) AND trans(pre,post) IMPLIES (C1(post) OR C3(post) OR C4(post))
+
+  %---------------
+
+  % Q.E.D. Run time  = 0.10 secs.
+  C4_IMPLIES_BC: THEOREM
+    FORALL (st: state):
+      C4(st) IMPLIES basic_consistency(st)
+
+ % Q.E.D. Run time  = 0.11 secs.
+ SC4_IMPLIES_BC: THEOREM
+    FORALL (st: state):
+      SC4(st) IMPLIES basic_consistency(st)
+
+  % FAILS for clearClicked
+  % {-1}  errorMode(pre!1)
+  %  |-------
+  C4_IMPLIES_C4: THEOREM
+    FORALL (pre, post: state):
+      C4(pre) AND trans(pre,post) IMPLIES C4(post)
+
+ % FAILS for clearClicked
+  % {-1}  errorMode(pre!1)
+  %  |-------
+  SC4_IMPLIES_SC4: THEOREM
+    FORALL (pre, post: state):
+       SC4(pre) AND trans(pre,post) IMPLIES SC4(post)
+
+
+  COND4(st: state): bool = NOT pointRegistered(st) AND dispval(st) >= 100
+  COND5(st: state): bool = NOT pointRegistered(st) AND dispval(st) < 100
+  COND6(st: state): bool = pointRegistered(st)
+
+  % Q.E.D. Run time  = 0.23 secs.
+  clearClicked_C4_IMPLIES_C3: THEOREM
+    FORALL (pre, post: state):
+      C4(pre) AND COND4(pre) AND post = clearClicked(pre) IMPLIES C3(post)
+
+ % Q.E.D. Run time  = 0.74 secs.
+  clearClicked_SC4_IMPLIES_C3: THEOREM
+    FORALL (pre, post: state):
+      SC4(pre) AND COND4(pre) AND post = clearClicked(pre) IMPLIES C3(post)
+   
+  % Q.E.D. Run time  = 0.71 secs.
+  clearClicked_C4_IMPLIES_C1: THEOREM
+    FORALL (pre, post: state):
+      C4(pre) AND COND5(pre) AND post = clearClicked(pre) IMPLIES C1(post)
+
+ % Q.E.D. Run time  = 0.71 secs.
+  clearClicked_SC4_IMPLIES_C1: THEOREM
+    FORALL (pre, post: state):
+      SC4(pre) AND COND5(pre) AND post = clearClicked(pre) IMPLIES C1(post)
+
+  % Q.E.D. Run time  = 0.69 secs.
+  clearClicked_C4_IMPLIES_C2: THEOREM
+    FORALL (pre, post: state):
+      C4(pre) AND COND6(pre) AND post = clearClicked(pre) IMPLIES C2(post)
+      
+ % This fails. And can never be in C4 with pointRegistered anyhow
+  clearClicked_C4_IMPLIES_SC2: THEOREM
+    FORALL (pre, post: state):
+      C4(pre) AND COND6(pre) AND post = clearClicked(pre) IMPLIES SC2(post)
+
+ % QED Run time  = 0.43 secs. Trivially true since antecedent is False, so irrelevant
+ % And can never be in SC4 with pointRegistered anyhow, as SC$ now says (cf C4)
+  clearClicked_SC4_IMPLIES_SC2: THEOREM
+    FORALL (pre, post: state):
+      SC4(pre) AND COND6(pre) AND post = clearClicked(pre) IMPLIES SC2(post)
+
+ % QED Run time  = 25.02 secs.
+  digitClicked_C4_IMPLIES_C4: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      C4(pre) AND post = digitClicked(key)(pre) IMPLIES C4(post)
+      
+ % QED Run time  = 25.15 secs.
+  digitClicked_SC4_IMPLIES_SC4: THEOREM
+    FORALL (pre, post: state, key: (digit?)):
+      SC4(pre) AND post = digitClicked(key)(pre) IMPLIES SC4(post)
+
+% QED Run time = 0.11 secs
+  pointClicked_C4_IMPLIES_C4: THEOREM
+    FORALL (pre, post: state):
+      C4(pre) AND post = pointClicked(pre) IMPLIES C4(post)
+
+% QED Run time = 0.11 secs
+  pointClicked_SC4_IMPLIES_SC4: THEOREM
+    FORALL (pre, post: state):
+      SC4(pre) AND post = pointClicked(pre) IMPLIES SC4(post)
+
+  % Q.E.D. Run time  = 6.97 secs.
+  C4_closed: THEOREM
+    FORALL (pre, post: state):
+      C4(pre) AND trans(pre,post) IMPLIES (C1(post) OR C2(post) OR C3(post) OR C4(post))
+
+  % QED Run time  = 10.32 secs
+  SC4_closed: THEOREM
+    FORALL (pre, post: state):
+      SC4(pre) AND trans(pre,post) IMPLIES (C1(post) OR SC2(post) OR C3(post) OR SC4(post))
+
+
+ END analysis

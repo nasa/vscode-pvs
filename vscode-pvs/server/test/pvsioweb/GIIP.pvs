@@ -1,0 +1,230 @@
+GIIP: THEORY
+ BEGIN IMPORTING basal_profiles
+  %-- user-defined constants
+  MAX_VOLUME: real = 500
+
+  %-- operating modes
+  Mode: TYPE = { ACTIVATE_BASAL_PROFILES, BASAL_MANAGEMENT, BOLUS_MANAGEMENT, CONFIRM_POWER_OFF, EDIT_BASAL_PROFILES, EVENT_DATA_MANAGEMENT, LONEALARM, LTWOALARM, NORMAL_OPERATION, POST, POWER_ON, POWERED_OFF, PRIME, PUMP_CONFIGURATION, TEMPORARY_BASAL_MANAGEMENT, TIME_SETTING }
+
+  %-- state attributes
+  State: TYPE = [#
+    mode: Mode,
+    battery_level: int,
+    bps: basal_profiles,
+    flag_alarm: bool,
+    flag_level_two_alarm: bool,
+    flag_post_success: bool,
+    flag_prime_success: bool,
+    flag_set_time: bool,
+    volume: real
+  #]
+
+  %-- init function
+  init: State = (#
+    mode := POWERED_OFF, 
+    battery_level := 80, 
+    bps := STANDARD_PROFILES, 
+    flag_alarm := false, 
+    flag_level_two_alarm := false, 
+    flag_post_success := true, 
+    flag_prime_success := true, 
+    flag_set_time := false, 
+    volume := 300
+  #)
+
+  %-- leave/enter functions
+  enter(m: Mode)(st: State): State = st WITH [ mode := m ]
+  leave(m: Mode)(st: State): State = st
+
+  %-- triggers
+  per_tick(st: State): bool = (mode(st) = POWER_ON)
+    OR (mode(st) = POST AND ( NOT flag_post_success(st) ))
+    OR (mode(st) = PUMP_CONFIGURATION AND ( flag_alarm(st) AND NOT flag_level_two_alarm(st) ))
+    OR (mode(st) = BOLUS_MANAGEMENT AND ( flag_alarm(st) AND NOT flag_level_two_alarm(st) ))
+    OR (mode(st) = BASAL_MANAGEMENT AND ( flag_alarm(st) AND NOT flag_level_two_alarm(st) ))
+    OR (mode(st) = NORMAL_OPERATION AND ( flag_alarm(st) AND NOT flag_level_two_alarm(st) ))
+    OR (mode(st) = EVENT_DATA_MANAGEMENT AND ( flag_alarm(st) AND NOT flag_level_two_alarm(st) ))
+    OR (mode(st) = NORMAL_OPERATION AND ( flag_level_two_alarm(st) ))
+    OR (mode(st) = BOLUS_MANAGEMENT AND ( flag_level_two_alarm(st) ))
+    OR (mode(st) = PUMP_CONFIGURATION AND ( flag_level_two_alarm(st) ))
+    OR (mode(st) = EVENT_DATA_MANAGEMENT AND ( flag_level_two_alarm(st) ))
+    OR (mode(st) = BASAL_MANAGEMENT AND ( flag_level_two_alarm(st) ))
+    OR (mode(st) = POST AND ( flag_post_success(st) ))
+    OR (mode(st) = PRIME AND ( flag_prime_success(st) ))
+    OR (mode(st) = NORMAL_OPERATION AND ( flag_set_time(st) AND NOT flag_alarm(st) AND NOT flag_level_two_alarm(st) ))
+  tick(st: (per_tick)): State =
+    COND
+     mode(st) = POWER_ON
+      -> LET st = leave(POWER_ON)(st)
+          IN enter(POST)(st),
+     mode(st) = POST AND ( NOT flag_post_success(st) )
+      -> LET st = leave(POST)(st)
+          IN enter(LONEALARM)(st),
+     mode(st) = PUMP_CONFIGURATION AND ( flag_alarm(st) AND NOT flag_level_two_alarm(st) )
+      -> LET st = leave(PUMP_CONFIGURATION)(st)
+          IN enter(LONEALARM)(st),
+     mode(st) = BOLUS_MANAGEMENT AND ( flag_alarm(st) AND NOT flag_level_two_alarm(st) )
+      -> LET st = leave(BOLUS_MANAGEMENT)(st)
+          IN enter(LONEALARM)(st),
+     mode(st) = BASAL_MANAGEMENT AND ( flag_alarm(st) AND NOT flag_level_two_alarm(st) )
+      -> LET st = leave(BASAL_MANAGEMENT)(st)
+          IN enter(LONEALARM)(st),
+     mode(st) = NORMAL_OPERATION AND ( flag_alarm(st) AND NOT flag_level_two_alarm(st) )
+      -> LET st = leave(NORMAL_OPERATION)(st)
+          IN enter(LONEALARM)(st),
+     mode(st) = EVENT_DATA_MANAGEMENT AND ( flag_alarm(st) AND NOT flag_level_two_alarm(st) )
+      -> LET st = leave(EVENT_DATA_MANAGEMENT)(st)
+          IN enter(LONEALARM)(st),
+     mode(st) = NORMAL_OPERATION AND ( flag_level_two_alarm(st) )
+      -> LET st = leave(NORMAL_OPERATION)(st)
+          IN enter(LTWOALARM)(st),
+     mode(st) = BOLUS_MANAGEMENT AND ( flag_level_two_alarm(st) )
+      -> LET st = leave(BOLUS_MANAGEMENT)(st)
+          IN enter(LTWOALARM)(st),
+     mode(st) = PUMP_CONFIGURATION AND ( flag_level_two_alarm(st) )
+      -> LET st = leave(PUMP_CONFIGURATION)(st)
+          IN enter(LTWOALARM)(st),
+     mode(st) = EVENT_DATA_MANAGEMENT AND ( flag_level_two_alarm(st) )
+      -> LET st = leave(EVENT_DATA_MANAGEMENT)(st)
+          IN enter(LTWOALARM)(st),
+     mode(st) = BASAL_MANAGEMENT AND ( flag_level_two_alarm(st) )
+      -> LET st = leave(BASAL_MANAGEMENT)(st)
+          IN enter(LTWOALARM)(st),
+     mode(st) = POST AND ( flag_post_success(st) )
+      -> LET st = leave(POST)(st)
+          IN enter(PRIME)(st),
+     mode(st) = PRIME AND ( flag_prime_success(st) )
+      -> LET st = leave(PRIME)(st)
+          IN enter(NORMAL_OPERATION)(st),
+     mode(st) = NORMAL_OPERATION AND ( flag_set_time(st) AND NOT flag_alarm(st) AND NOT flag_level_two_alarm(st) )
+      -> LET st = leave(NORMAL_OPERATION)(st)
+          IN enter(TIME_SETTING)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_click_activate_basal_profiles(st: State): bool = (mode(st) = BASAL_MANAGEMENT)
+  click_activate_basal_profiles(st: (per_click_activate_basal_profiles)): State =
+    COND
+     mode(st) = BASAL_MANAGEMENT
+      -> LET st = leave(BASAL_MANAGEMENT)(st)
+          IN enter(ACTIVATE_BASAL_PROFILES)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_click_back(st: State): bool = (mode(st) = TEMPORARY_BASAL_MANAGEMENT)
+    OR (mode(st) = EDIT_BASAL_PROFILES)
+    OR (mode(st) = ACTIVATE_BASAL_PROFILES)
+  click_back(st: (per_click_back)): State =
+    COND
+     mode(st) = TEMPORARY_BASAL_MANAGEMENT
+      -> LET st = leave(TEMPORARY_BASAL_MANAGEMENT)(st)
+          IN enter(BASAL_MANAGEMENT)(st),
+     mode(st) = EDIT_BASAL_PROFILES
+      -> LET st = leave(EDIT_BASAL_PROFILES)(st)
+          IN enter(BASAL_MANAGEMENT)(st),
+     mode(st) = ACTIVATE_BASAL_PROFILES
+      -> LET st = leave(ACTIVATE_BASAL_PROFILES)(st)
+          IN enter(BASAL_MANAGEMENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_click_cancel(st: State): bool = (mode(st) = CONFIRM_POWER_OFF)
+  click_cancel(st: (per_click_cancel)): State =
+    COND
+     mode(st) = CONFIRM_POWER_OFF
+      -> LET st = leave(CONFIRM_POWER_OFF)(st)
+          IN enter(NORMAL_OPERATION)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_click_edit_basal_profiles(st: State): bool = (mode(st) = BASAL_MANAGEMENT)
+  click_edit_basal_profiles(st: (per_click_edit_basal_profiles)): State =
+    COND
+     mode(st) = BASAL_MANAGEMENT
+      -> LET st = leave(BASAL_MANAGEMENT)(st)
+          IN enter(EDIT_BASAL_PROFILES)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_click_manage_temporary_basal(st: State): bool = (mode(st) = BASAL_MANAGEMENT)
+  click_manage_temporary_basal(st: (per_click_manage_temporary_basal)): State =
+    COND
+     mode(st) = BASAL_MANAGEMENT
+      -> LET st = leave(BASAL_MANAGEMENT)(st)
+          IN enter(TEMPORARY_BASAL_MANAGEMENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_click_next_screen(st: State): bool = (mode(st) = BASAL_MANAGEMENT)
+    OR (mode(st) = BOLUS_MANAGEMENT)
+    OR (mode(st) = PUMP_CONFIGURATION)
+    OR (mode(st) = NORMAL_OPERATION)
+  click_next_screen(st: (per_click_next_screen)): State =
+    COND
+     mode(st) = BASAL_MANAGEMENT
+      -> LET st = leave(BASAL_MANAGEMENT)(st)
+          IN enter(BOLUS_MANAGEMENT)(st),
+     mode(st) = BOLUS_MANAGEMENT
+      -> LET st = leave(BOLUS_MANAGEMENT)(st)
+          IN enter(PUMP_CONFIGURATION)(st),
+     mode(st) = PUMP_CONFIGURATION
+      -> LET st = leave(PUMP_CONFIGURATION)(st)
+          IN enter(EVENT_DATA_MANAGEMENT)(st),
+     mode(st) = NORMAL_OPERATION
+      -> LET st = leave(NORMAL_OPERATION)(st)
+          IN enter(BASAL_MANAGEMENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_click_ok(st: State): bool = (mode(st) = CONFIRM_POWER_OFF)
+  click_ok(st: (per_click_ok)): State =
+    COND
+     mode(st) = CONFIRM_POWER_OFF
+      -> LET st = leave(CONFIRM_POWER_OFF)(st)
+          IN enter(POWERED_OFF)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_click_on_off(st: State): bool = (mode(st) = LONEALARM)
+    OR (mode(st) = NORMAL_OPERATION)
+    OR (mode(st) = POWERED_OFF)
+    OR (mode(st) = LTWOALARM)
+  click_on_off(st: (per_click_on_off)): State =
+    COND
+     mode(st) = LONEALARM
+      -> LET st = leave(LONEALARM)(st)
+          IN enter(POWERED_OFF)(st),
+     mode(st) = NORMAL_OPERATION
+      -> LET st = leave(NORMAL_OPERATION)(st)
+          IN enter(CONFIRM_POWER_OFF)(st),
+     mode(st) = POWERED_OFF
+      -> LET st = leave(POWERED_OFF)(st)
+          IN enter(POWER_ON)(st),
+     mode(st) = LTWOALARM
+      -> LET st = leave(LTWOALARM)(st)
+          IN enter(POWERED_OFF)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_click_previous_screen(st: State): bool = (mode(st) = BASAL_MANAGEMENT)
+    OR (mode(st) = PUMP_CONFIGURATION)
+    OR (mode(st) = EVENT_DATA_MANAGEMENT)
+    OR (mode(st) = BOLUS_MANAGEMENT)
+  click_previous_screen(st: (per_click_previous_screen)): State =
+    COND
+     mode(st) = BASAL_MANAGEMENT
+      -> LET st = leave(BASAL_MANAGEMENT)(st)
+          IN enter(NORMAL_OPERATION)(st),
+     mode(st) = PUMP_CONFIGURATION
+      -> LET st = leave(PUMP_CONFIGURATION)(st)
+          IN enter(BOLUS_MANAGEMENT)(st),
+     mode(st) = EVENT_DATA_MANAGEMENT
+      -> LET st = leave(EVENT_DATA_MANAGEMENT)(st)
+          IN enter(PUMP_CONFIGURATION)(st),
+     mode(st) = BOLUS_MANAGEMENT
+      -> LET st = leave(BOLUS_MANAGEMENT)(st)
+          IN enter(BASAL_MANAGEMENT)(st),
+     ELSE -> st
+    ENDCOND
+
+ END GIIP

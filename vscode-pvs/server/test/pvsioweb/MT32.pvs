@@ -1,0 +1,677 @@
+MT32: THEORY
+ BEGIN
+  %-- user-defined datatypes
+  OperatingMode: TYPE = { NONE, HUB, HOLTER }
+  Gain: TYPE = { GAIN_5, GAIN_10, GAIN_20 }
+  BatteryStatus: TYPE = { ON_BATTERY, CHARGING, FULLY_CHARGED, CHARGING_ERROR, OFF }
+  Trace: TYPE = { onetwothree, v1v2v3, v2 }
+  UmtsStatus: TYPE = { UMTS_ON, UMTS_OFF, UMTS_TX }
+  
+  %-- operating modes
+  Mode: TYPE = { ACKNOWLEDGE_TERMINATION, CENTRAL, CHECK_PATIENT, CHOOSE_PHYSIO, CONFIRM_POWER_OFF, CONFIRM_REC, DATA, DOWNLOADING_UPDATES, EDIT_PATIENT, EDIT_PHYSIO, EXAMS, HOME, INTERPRETATION, MONITORING, NEW_PATIENT, NOTIFY_HOLTER_COMPLETE, OFF, POWERING_OFF, RCORDING_HOLTER, RECORDING, RESULTS, RESULTS_SENT, SAVE_RESULTS, SENDING_RESULTS, SETTINGS, STOP_HOLTER, SYNC_DONE, TERMINATE_OPERATING_MODE, TEST, VIEW_ALERTS, VOICE_RECORDER }
+  
+  %-- MTState attributes
+  MTState: TYPE = [#
+    mode: Mode,
+    alerts: bool,
+    battery_status: BatteryStatus,
+    ct64_link_ready: bool,
+    dataentry: string,    
+    gain: Gain,
+    hpfilter: bool,
+    lpfilter: bool,    
+    mo: OperatingMode,
+    physio_data: bool,
+    rec: int,    
+    results_saved: bool,
+    speed: int,
+    trace: Trace,
+    umts: UmtsStatus
+  #]
+
+  %-- init function
+  mtinit: MTState = (#
+    mode := HOME,
+    alerts := false, 
+    battery_status := ON_BATTERY,    
+    ct64_link_ready := false,
+    dataentry := "",     
+    gain := GAIN_20,
+    hpfilter := false, 
+    lpfilter := false, 
+    mo := NONE,
+    physio_data := false,
+    rec := 0,
+    results_saved := false,     
+    speed := 25, 
+    trace := onetwothree, 
+    umts := UMTS_OFF
+  #)
+
+  %-- leave/enter functions
+  enter(m: Mode)(st: MTState): MTState = st WITH [ mode := m ]
+  leave(m: Mode)(st: MTState): MTState = st
+
+  %-- triggers
+  per_mt32_back(st: MTState): bool = (mode(st) = TEST)
+    OR (mode(st) = NEW_PATIENT)
+    OR (mode(st) = CENTRAL)
+    OR (mode(st) = EDIT_PATIENT)
+    OR (mode(st) = SETTINGS)
+    OR (mode(st) = EXAMS)
+    OR (mode(st) = CHECK_PATIENT)
+    OR (mode(st) = INTERPRETATION)
+  mt32_back(st: (per_mt32_back)): MTState =
+    COND
+     mode(st) = TEST
+      -> LET st = leave(TEST)(st)
+          IN enter(EXAMS)(st),
+     mode(st) = NEW_PATIENT
+      -> LET st = leave(NEW_PATIENT)(st)
+          IN enter(CHECK_PATIENT)(st),
+     mode(st) = CENTRAL
+      -> LET st = leave(CENTRAL)(st)
+          IN enter(HOME)(st),
+     mode(st) = EDIT_PATIENT
+      -> LET st = leave(EDIT_PATIENT)(st)
+          IN enter(CHECK_PATIENT)(st),
+     mode(st) = SETTINGS
+      -> LET st = leave(SETTINGS)(st)
+          IN enter(HOME)(st),
+     mode(st) = EXAMS
+      -> LET st = leave(EXAMS)(st)
+          IN enter(HOME)(st),
+     mode(st) = CHECK_PATIENT
+      -> LET st = leave(CHECK_PATIENT)(st)
+          IN enter(EXAMS)(st),
+     mode(st) = INTERPRETATION
+      -> LET st = leave(INTERPRETATION)(st)
+          IN enter(RESULTS)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_cancel(st: MTState): bool = (mode(st) = STOP_HOLTER)
+    OR (mode(st) = DATA)
+    OR (mode(st) = CONFIRM_POWER_OFF)
+    OR (mode(st) = DOWNLOADING_UPDATES)
+    OR (mode(st) = SENDING_RESULTS)
+  mt32_cancel(st: (per_mt32_cancel)): MTState =
+    COND
+     mode(st) = STOP_HOLTER
+      -> LET st = leave(STOP_HOLTER)(st)
+          IN enter(RCORDING_HOLTER)(st),
+     mode(st) = DATA
+      -> LET st = leave(DATA)(st)
+          IN enter(RESULTS)(st),
+     mode(st) = CONFIRM_POWER_OFF
+      -> LET st = leave(CONFIRM_POWER_OFF)(st)
+          IN enter(HOME)(st),
+     mode(st) = DOWNLOADING_UPDATES
+      -> LET st = leave(DOWNLOADING_UPDATES)(st)
+          IN enter(CENTRAL)(st),
+     mode(st) = SENDING_RESULTS
+      -> LET st = leave(SENDING_RESULTS)(st)
+          IN enter(CENTRAL)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_central(st: MTState): bool = (mode(st) = HOME)
+  mt32_central(st: (per_mt32_central)): MTState =
+    COND
+     mode(st) = HOME
+      -> LET st = leave(HOME)(st)
+          IN enter(CENTRAL)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_choose_physio(st: MTState): bool = (mode(st) = CHOOSE_PHYSIO)
+    OR (mode(st) = EDIT_PHYSIO)
+  mt32_choose_physio(st: (per_mt32_choose_physio)): MTState =
+    COND
+     mode(st) = CHOOSE_PHYSIO
+      -> LET st = leave(CHOOSE_PHYSIO)(st)
+          IN enter(EDIT_PHYSIO)(st),
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st)
+          IN enter(CHOOSE_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_0(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_0(st: (per_mt32_dataentry_0)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "0" ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_1(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_1(st: (per_mt32_dataentry_1)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "1" ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_2(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_2(st: (per_mt32_dataentry_2)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "2" ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_3(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_3(st: (per_mt32_dataentry_3)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "3" ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_4(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_4(st: (per_mt32_dataentry_4)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "4" ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_5(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_5(st: (per_mt32_dataentry_5)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "5" ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_6(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_6(st: (per_mt32_dataentry_6)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "6" ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_7(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_7(st: (per_mt32_dataentry_7)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "7" ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_8(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_8(st: (per_mt32_dataentry_8)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "8" ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_9(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_9(st: (per_mt32_dataentry_9)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "9" ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_dataentry_POINT(st: MTState): bool = (mode(st) = EDIT_PHYSIO)
+  mt32_dataentry_POINT(st: (per_mt32_dataentry_POINT)): MTState =
+    COND
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ dataentry := dataentry(st) + "." ]
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_confirm(st: MTState): bool = (mode(st) = VIEW_ALERTS)
+    OR (mode(st) = STOP_HOLTER)
+    OR (mode(st) = CHECK_PATIENT)
+    OR (mode(st) = CONFIRM_POWER_OFF)
+    OR (mode(st) = EDIT_PHYSIO)
+    OR (mode(st) = CONFIRM_REC)
+    OR (mode(st) = RESULTS)
+    OR (mode(st) = ACKNOWLEDGE_TERMINATION)
+    OR (mode(st) = SYNC_DONE)
+    OR (mode(st) = RESULTS_SENT)
+  mt32_confirm(st: (per_mt32_confirm)): MTState =
+    COND
+     mode(st) = VIEW_ALERTS
+      -> LET st = leave(VIEW_ALERTS)(st)
+          IN enter(HOME)(st),
+     mode(st) = STOP_HOLTER
+      -> LET st = leave(STOP_HOLTER)(st)
+          IN enter(NOTIFY_HOLTER_COMPLETE)(st),
+     mode(st) = CHECK_PATIENT
+      -> LET st = leave(CHECK_PATIENT)(st)
+          IN enter(MONITORING)(st),
+     mode(st) = CONFIRM_POWER_OFF
+      -> LET st = leave(CONFIRM_POWER_OFF)(st)
+          IN enter(POWERING_OFF)(st),
+     mode(st) = EDIT_PHYSIO
+      -> LET st = leave(EDIT_PHYSIO)(st),
+             st = st WITH [ physio_data := true ]
+          IN enter(RESULTS)(st),
+     mode(st) = CONFIRM_REC
+      -> LET st = leave(CONFIRM_REC)(st),
+             st = st WITH [ results_saved := false ]
+          IN enter(RCORDING_HOLTER)(st),
+     mode(st) = RESULTS
+      -> LET st = leave(RESULTS)(st),
+             st = st WITH [ results_saved := false ]
+          IN enter(SAVE_RESULTS)(st),
+     mode(st) = ACKNOWLEDGE_TERMINATION
+      -> LET st = leave(ACKNOWLEDGE_TERMINATION)(st),
+             st = st WITH [ umts := UMTS_OFF ]
+          IN enter(CENTRAL)(st),
+     mode(st) = SYNC_DONE
+      -> LET st = leave(SYNC_DONE)(st),
+             st = st WITH [ umts := UMTS_OFF ]
+          IN enter(CENTRAL)(st),
+     mode(st) = RESULTS_SENT
+      -> LET st = leave(RESULTS_SENT)(st),
+             st = st WITH [ umts := UMTS_OFF ]
+          IN enter(CENTRAL)(st),
+     ELSE -> st
+    ENDCOND
+
+
+  per_mt32_device_selected(st: MTState): bool = (mode(st) = DOWNLOADING_UPDATES AND ( ct64_link_ready(st) = TRUE ))
+  mt32_device_selected(st: (per_mt32_device_selected)): MTState =
+    COND
+     mode(st) = DOWNLOADING_UPDATES AND ( ct64_link_ready(st) = TRUE )
+      -> LET st = leave(DOWNLOADING_UPDATES)(st)
+          IN enter(SYNC_DONE)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_download_updates(st: MTState): bool = (mode(st) = CENTRAL)
+  mt32_download_updates(st: (per_mt32_download_updates)): MTState =
+    COND
+     mode(st) = CENTRAL
+      -> LET st = leave(CENTRAL)(st),
+             st = st WITH [ ct64_link_ready := false ]
+          IN enter(DOWNLOADING_UPDATES)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_ecg12d(st: MTState): bool = (mode(st) = EXAMS)
+  mt32_ecg12d(st: (per_mt32_ecg12d)): MTState =
+    COND
+     mode(st) = EXAMS
+      -> LET st = leave(EXAMS)(st)
+          IN enter(CHECK_PATIENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_edit_patient(st: MTState): bool = (mode(st) = CHECK_PATIENT)
+  mt32_edit_patient(st: (per_mt32_edit_patient)): MTState =
+    COND
+     mode(st) = CHECK_PATIENT
+      -> LET st = leave(CHECK_PATIENT)(st)
+          IN enter(EDIT_PATIENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_holter(st: MTState): bool = (mode(st) = EXAMS)
+  mt32_holter(st: (per_mt32_holter)): MTState =
+    COND
+     mode(st) = EXAMS
+      -> LET st = leave(EXAMS)(st)
+          IN enter(CHECK_PATIENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_home(st: MTState): bool = (mode(st) = CENTRAL)
+  mt32_home(st: (per_mt32_home)): MTState =
+    COND
+     mode(st) = CENTRAL
+      -> LET st = leave(CENTRAL)(st)
+          IN enter(HOME)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_new_exam(st: MTState): bool = (mode(st) = HOME)
+  mt32_new_exam(st: (per_mt32_new_exam)): MTState =
+    COND
+     mode(st) = HOME
+      -> LET st = leave(HOME)(st)
+          IN enter(EXAMS)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_new_patient(st: MTState): bool = (mode(st) = CHECK_PATIENT)
+  mt32_new_patient(st: (per_mt32_new_patient)): MTState =
+    COND
+     mode(st) = CHECK_PATIENT
+      -> LET st = leave(CHECK_PATIENT)(st)
+          IN enter(NEW_PATIENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_physio(st: MTState): bool = (mode(st) = RESULTS)
+  mt32_physio(st: (per_mt32_physio)): MTState =
+    COND
+     mode(st) = RESULTS
+      -> LET st = leave(RESULTS)(st)
+          IN enter(EDIT_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_quit(st: MTState): bool = (mode(st) = MONITORING)
+  mt32_quit(st: (per_mt32_quit)): MTState =
+    COND
+     mode(st) = MONITORING
+      -> LET st = leave(MONITORING)(st)
+          IN enter(CHECK_PATIENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_results_ready(st: MTState): bool = (mode(st) = RECORDING)
+  mt32_results_ready(st: (per_mt32_results_ready)): MTState =
+    COND
+     mode(st) = RECORDING
+      -> LET st = leave(RECORDING)(st)
+          IN enter(RESULTS)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_rec(st: MTState): bool = (mode(st) = MONITORING AND ( mo(st) = HUB ))
+    OR (mode(st) = MONITORING AND ( mo(st) = HOLTER ))
+  mt32_rec(st: (per_mt32_rec)): MTState =
+    COND
+     mode(st) = MONITORING AND ( mo(st) = HUB )
+      -> LET st = leave(MONITORING)(st)
+          IN enter(RECORDING)(st),
+     mode(st) = MONITORING AND ( mo(st) = HOLTER )
+      -> LET st = leave(MONITORING)(st)
+          IN enter(CONFIRM_REC)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_record_btn(st: MTState): bool = (mode(st) = RCORDING_HOLTER)
+  mt32_record_btn(st: (per_mt32_record_btn)): MTState =
+    COND
+     mode(st) = RCORDING_HOLTER
+      -> LET st = leave(RCORDING_HOLTER)(st)
+          IN enter(VOICE_RECORDER)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_repeat(st: MTState): bool = (mode(st) = RESULTS)
+  mt32_repeat(st: (per_mt32_repeat)): MTState =
+    COND
+     mode(st) = RESULTS
+      -> LET st = leave(RESULTS)(st)
+          IN enter(MONITORING)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_settings(st: MTState): bool = (mode(st) = HOME)
+  mt32_settings(st: (per_mt32_settings)): MTState =
+    COND
+     mode(st) = HOME
+      -> LET st = leave(HOME)(st)
+          IN enter(SETTINGS)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_tick(st: MTState): bool = (mode(st) = POWERING_OFF)
+    OR (mode(st) = RCORDING_HOLTER)
+    OR (mode(st) = VOICE_RECORDER)
+    OR (mode(st) = SAVE_RESULTS AND ( NOT results_saved(st) ))
+    OR (mode(st) = RECORDING AND ( rec(st) < 100 ))
+    OR (mode(st) = RECORDING AND ( rec(st) >= 100 ))
+    OR (mode(st) = SAVE_RESULTS AND ( results_saved(st) ))
+    OR (mode(st) = TERMINATE_OPERATING_MODE AND ( umts(st) = UMTS_OFF ))
+    OR (mode(st) = DOWNLOADING_UPDATES AND ( umts(st) = UMTS_OFF ))
+    OR (mode(st) = SENDING_RESULTS AND ( umts(st) = UMTS_OFF ))
+    OR (mode(st) = DOWNLOADING_UPDATES AND ( umts(st) = UMTS_ON ))
+    OR (mode(st) = SENDING_RESULTS AND ( umts(st) = UMTS_ON ))
+    OR (mode(st) = TERMINATE_OPERATING_MODE AND ( umts(st) = UMTS_ON ))
+    OR (mode(st) = TERMINATE_OPERATING_MODE AND ( umts(st) = UMTS_TX ))
+    OR (mode(st) = DOWNLOADING_UPDATES AND ( umts(st) = UMTS_TX ))
+    OR (mode(st) = SENDING_RESULTS AND ( umts(st) = UMTS_TX ))
+    OR (mode(st) = NOTIFY_HOLTER_COMPLETE)
+  mt32_tick(st: (per_mt32_tick)): MTState =
+    COND
+     mode(st) = POWERING_OFF
+      -> LET st = leave(POWERING_OFF)(st)
+          IN enter(OFF)(st),
+     mode(st) = RCORDING_HOLTER
+      -> LET st = leave(RCORDING_HOLTER)(st)
+          IN enter(NOTIFY_HOLTER_COMPLETE)(st),
+     mode(st) = VOICE_RECORDER
+      -> LET st = leave(VOICE_RECORDER)(st)
+          IN enter(RCORDING_HOLTER)(st),
+     mode(st) = SAVE_RESULTS AND ( NOT results_saved(st) )
+      -> LET st = leave(SAVE_RESULTS)(st),
+             st = st WITH [ results_saved := true ]
+          IN enter(SAVE_RESULTS)(st),
+     mode(st) = RECORDING AND ( rec(st) < 100 )
+      -> LET st = leave(RECORDING)(st),
+             st = st WITH [ rec := rec(st) + 20 ]
+          IN enter(RECORDING)(st),
+     mode(st) = RECORDING AND ( rec(st) >= 100 )
+      -> LET st = leave(RECORDING)(st),
+             st = st WITH [ rec := 100 ]
+          IN enter(RESULTS)(st),
+     mode(st) = SAVE_RESULTS AND ( results_saved(st) )
+      -> LET st = leave(SAVE_RESULTS)(st)
+          IN enter(HOME)(st),
+     mode(st) = TERMINATE_OPERATING_MODE AND ( umts(st) = UMTS_OFF )
+      -> LET st = leave(TERMINATE_OPERATING_MODE)(st),
+             st = st WITH [ umts := UMTS_ON ]
+          IN enter(TERMINATE_OPERATING_MODE)(st),
+     mode(st) = DOWNLOADING_UPDATES AND ( umts(st) = UMTS_OFF )
+      -> LET st = leave(DOWNLOADING_UPDATES)(st),
+             st = st WITH [ umts := UMTS_ON ]
+          IN enter(DOWNLOADING_UPDATES)(st),
+     mode(st) = SENDING_RESULTS AND ( umts(st) = UMTS_OFF )
+      -> LET st = leave(SENDING_RESULTS)(st),
+             st = st WITH [ umts := UMTS_ON ]
+          IN enter(SENDING_RESULTS)(st),
+     mode(st) = DOWNLOADING_UPDATES AND ( umts(st) = UMTS_ON )
+      -> LET st = leave(DOWNLOADING_UPDATES)(st),
+             st = st WITH [ umts := UMTS_TX ]
+          IN enter(DOWNLOADING_UPDATES)(st),
+     mode(st) = SENDING_RESULTS AND ( umts(st) = UMTS_ON )
+      -> LET st = leave(SENDING_RESULTS)(st),
+             st = st WITH [ umts := UMTS_TX ]
+          IN enter(SENDING_RESULTS)(st),
+     mode(st) = TERMINATE_OPERATING_MODE AND ( umts(st) = UMTS_ON )
+      -> LET st = leave(TERMINATE_OPERATING_MODE)(st),
+             st = st WITH [ umts := UMTS_TX ]
+          IN enter(TERMINATE_OPERATING_MODE)(st),
+     mode(st) = TERMINATE_OPERATING_MODE AND ( umts(st) = UMTS_TX )
+      -> LET st = leave(TERMINATE_OPERATING_MODE)(st)
+          IN enter(ACKNOWLEDGE_TERMINATION)(st),
+     mode(st) = DOWNLOADING_UPDATES AND ( umts(st) = UMTS_TX )
+      -> LET st = leave(DOWNLOADING_UPDATES)(st),
+             st = st WITH [ ct64_link_ready := true ]
+          IN enter(DOWNLOADING_UPDATES)(st),
+     mode(st) = SENDING_RESULTS AND ( umts(st) = UMTS_TX )
+      -> LET st = leave(SENDING_RESULTS)(st),
+             st = st WITH [ results_saved := FALSE ]
+          IN enter(RESULTS_SENT)(st),
+     mode(st) = NOTIFY_HOLTER_COMPLETE
+      -> LET st = leave(NOTIFY_HOLTER_COMPLETE)(st),
+             st = st WITH [ results_saved := true ]
+          IN enter(HOME)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_test_electrodes(st: MTState): bool = (mode(st) = EXAMS)
+  mt32_test_electrodes(st: (per_mt32_test_electrodes)): MTState =
+    COND
+     mode(st) = EXAMS
+      -> LET st = leave(EXAMS)(st)
+          IN enter(TEST)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_view_data(st: MTState): bool = (mode(st) = RESULTS)
+  mt32_view_data(st: (per_mt32_view_data)): MTState =
+    COND
+     mode(st) = RESULTS
+      -> LET st = leave(RESULTS)(st)
+          IN enter(DATA)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_view_interpretation(st: MTState): bool = (mode(st) = RESULTS)
+  mt32_view_interpretation(st: (per_mt32_view_interpretation)): MTState =
+    COND
+     mode(st) = RESULTS
+      -> LET st = leave(RESULTS)(st)
+          IN enter(INTERPRETATION)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_terminate_operating_mode(st: MTState): bool = (mode(st) = CENTRAL)
+  terminate_operating_mode(st: (per_terminate_operating_mode)): MTState =
+    COND
+     mode(st) = CENTRAL
+      -> LET st = leave(CENTRAL)(st),
+             st = st WITH [ mo := NONE ]
+          IN enter(TERMINATE_OPERATING_MODE)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_power_btn(st: MTState): bool = (mode(st) = CENTRAL)
+    OR (mode(st) = OFF)
+    OR (mode(st) = HOME)
+  mt32_power_btn(st: (per_mt32_power_btn)): MTState =
+    COND
+     mode(st) = CENTRAL
+      -> LET st = leave(CENTRAL)(st)
+          IN enter(CONFIRM_POWER_OFF)(st),
+     mode(st) = OFF
+      -> LET st = leave(OFF)(st)
+          IN enter(HOME)(st),
+     mode(st) = HOME
+      -> LET st = leave(HOME)(st)
+          IN enter(CONFIRM_POWER_OFF)(st),
+     ELSE -> st
+    ENDCOND
+
+
+  per_mt32_view_alerts(st: MTState): bool = (mode(st) = HOME)
+  mt32_view_alerts(st: (per_mt32_view_alerts)): MTState =
+    COND
+     mode(st) = HOME
+      -> LET st = leave(HOME)(st)
+          IN enter(VIEW_ALERTS)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_upload_results(st: MTState): bool = (mode(st) = CENTRAL)
+  mt32_upload_results(st: (per_mt32_upload_results)): MTState =
+    COND
+     mode(st) = CENTRAL
+      -> LET st = leave(CENTRAL)(st)
+          IN enter(SENDING_RESULTS)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_toggleHP(st: MTState): bool = (mode(st) = MONITORING)
+  mt32_toggleHP(st: (per_mt32_toggleHP)): MTState =
+    COND
+     mode(st) = MONITORING
+      -> LET st = leave(MONITORING)(st),
+             st = st WITH [ hpfilter := NOT hpfilter(st) ]
+          IN enter(MONITORING)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_toggleLP(st: MTState): bool = (mode(st) = MONITORING)
+  mt32_toggleLP(st: (per_mt32_toggleLP)): MTState =
+    COND
+     mode(st) = MONITORING
+      -> LET st = leave(MONITORING)(st),
+             st = st WITH [ lpfilter := NOT lpfilter(st) ]
+          IN enter(MONITORING)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_toggle_gain(st: MTState): bool = (mode(st) = MONITORING AND ( gain(st) = GAIN_10 ))
+    OR (mode(st) = MONITORING AND ( gain(st) = GAIN_20 ))
+    OR (mode(st) = MONITORING AND ( gain(st) = GAIN_5 ))
+  mt32_toggle_gain(st: (per_mt32_toggle_gain)): MTState =
+    COND
+     mode(st) = MONITORING AND ( gain(st) = GAIN_10 )
+      -> LET st = leave(MONITORING)(st),
+             st = st WITH [ gain := GAIN_20 ]
+          IN enter(MONITORING)(st),
+     mode(st) = MONITORING AND ( gain(st) = GAIN_20 )
+      -> LET st = leave(MONITORING)(st),
+             st = st WITH [ gain := GAIN_5 ]
+          IN enter(MONITORING)(st),
+     mode(st) = MONITORING AND ( gain(st) = GAIN_5 )
+      -> LET st = leave(MONITORING)(st),
+             st = st WITH [ gain := GAIN_10 ]
+          IN enter(MONITORING)(st),
+     ELSE -> st
+    ENDCOND
+
+
+  per_mt32_toggle_speed(st: MTState): bool = (mode(st) = MONITORING AND ( speed(st) = 25 ))
+    OR (mode(st) = MONITORING AND ( speed(st) = 50 ))
+  mt32_toggle_speed(st: (per_mt32_toggle_speed)): MTState =
+    COND
+     mode(st) = MONITORING AND ( speed(st) = 25 )
+      -> LET st = leave(MONITORING)(st),
+             st = st WITH [ speed := 50 ]
+          IN enter(MONITORING)(st),
+     mode(st) = MONITORING AND ( speed(st) = 50 )
+      -> LET st = leave(MONITORING)(st),
+             st = st WITH [ speed := 25 ]
+          IN enter(MONITORING)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_mt32_toggle_trace(st: MTState): bool = (mode(st) = MONITORING AND ( trace(st) = onetwothree ))
+    OR (mode(st) = MONITORING AND ( trace(st) = v1v2v3 ))
+    OR (mode(st) = MONITORING AND ( trace(st) = v2 ))
+  mt32_toggle_trace(st: (per_mt32_toggle_trace)): MTState =
+    COND
+     mode(st) = MONITORING AND ( trace(st) = onetwothree )
+      -> LET st = leave(MONITORING)(st),
+             st = st WITH [ trace := v1v2v3 ]
+          IN enter(MONITORING)(st),
+     mode(st) = MONITORING AND ( trace(st) = v1v2v3 )
+      -> LET st = leave(MONITORING)(st),
+             st = st WITH [ trace := v2 ]
+          IN enter(MONITORING)(st),
+     mode(st) = MONITORING AND ( trace(st) = v2 )
+      -> LET st = leave(MONITORING)(st),
+             st = st WITH [ trace := v1v2v3 ]
+          IN enter(MONITORING)(st),
+     ELSE -> st
+    ENDCOND
+
+
+ END MT32

@@ -1,0 +1,236 @@
+% ---------------------------------------------------------------
+%  Theory: emucharts_prototype_2016_11_21_th
+%  Author: xxxx
+%          xxxx
+%          xxx
+% ---------------------------------------------------------------
+
+emucharts_prototype_2016_11_21_th: THEORY
+ BEGIN
+
+  %-- machine states
+  MachineState: TYPE = { BatteryStatus, ConfirmSettings, Info, Infusing, InfusionSummary, Init, LoadSyringe, Paused, RateConfirm, RateSet, SetDuration, SetVolume, StartInfusionConfirm, Timeout }
+
+  %-- emuchart state
+  State: TYPE = [#
+    current_state: MachineState,
+    previous_state: MachineState
+  #]
+
+  %-- initial state
+  init(x: real): State = (#
+    current_state := LoadSyringe,
+    previous_state := LoadSyringe
+  #)
+  %-- utility functions
+  enter_into(ms: MachineState)(st: State): State = st WITH [ current_state := ms ]
+  leave_state(ms: MachineState)(st: State): State = st WITH [ previous_state := ms ]
+
+  %-- transition functions
+  per_IBatteryStatus(st: State): bool = ((current_state(st) = InfusionSummary))
+  IBatteryStatus(st: (per_IBatteryStatus)): State =
+    COND
+    (current_state(st) = InfusionSummary)
+     -> LET new_st = leave_state(InfusionSummary)(st)
+         IN enter_into(BatteryStatus)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_IConfirmSettings(st: State): bool = ((current_state(st) = StartInfusionConfirm)) OR ((current_state(st) = RateConfirm))
+  IConfirmSettings(st: (per_IConfirmSettings)): State =
+    COND
+    (current_state(st) = StartInfusionConfirm)
+     -> LET new_st = leave_state(StartInfusionConfirm)(st)
+         IN enter_into(ConfirmSettings)(new_st),
+    (current_state(st) = RateConfirm)
+     -> LET new_st = leave_state(RateConfirm)(st)
+         IN enter_into(ConfirmSettings)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_IConfirmStart(st: State): bool = ((current_state(st) = ConfirmSettings))
+  IConfirmStart(st: (per_IConfirmStart)): State =
+    COND
+    (current_state(st) = ConfirmSettings)
+     -> LET new_st = leave_state(ConfirmSettings)(st)
+         IN enter_into(StartInfusionConfirm)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_IInfo(st: State): bool = ((current_state(st) = LoadSyringe)) OR ((current_state(st) = SetDuration)) OR ((current_state(st) = ConfirmSettings)) OR ((current_state(st) = Timeout)) OR ((current_state(st) = RateConfirm)) OR ((current_state(st) = Paused)) OR ((current_state(st) = Init)) OR ((current_state(st) = SetVolume)) OR ((current_state(st) = RateSet)) OR ((current_state(st) = StartInfusionConfirm)) OR ((current_state(st) = StartInfusionConfirm))
+  IInfo(st: (per_IInfo)): State =
+    COND
+    (current_state(st) = LoadSyringe)
+     -> LET new_st = leave_state(LoadSyringe)(st)
+         IN enter_into(Info)(new_st),
+    (current_state(st) = SetDuration)
+     -> LET new_st = leave_state(SetDuration)(st)
+         IN enter_into(Info)(new_st),
+    (current_state(st) = ConfirmSettings)
+     -> LET new_st = leave_state(ConfirmSettings)(st)
+         IN enter_into(Info)(new_st),
+    (current_state(st) = Timeout)
+     -> LET new_st = leave_state(Timeout)(st)
+         IN enter_into(Info)(new_st),
+    (current_state(st) = RateConfirm)
+     -> LET new_st = leave_state(RateConfirm)(st)
+         IN enter_into(Info)(new_st),
+    (current_state(st) = Paused)
+     -> LET new_st = leave_state(Paused)(st)
+         IN enter_into(Info)(new_st),
+    (current_state(st) = Init)
+     -> LET new_st = leave_state(Init)(st)
+         IN enter_into(Info)(new_st),
+    (current_state(st) = SetVolume)
+     -> LET new_st = leave_state(SetVolume)(st)
+         IN enter_into(Info)(new_st),
+    (current_state(st) = RateSet)
+     -> LET new_st = leave_state(RateSet)(st)
+         IN enter_into(Info)(new_st),
+    (current_state(st) = StartInfusionConfirm)
+     -> LET new_st = leave_state(StartInfusionConfirm)(st)
+         IN enter_into(Info)(new_st),
+    (current_state(st) = StartInfusionConfirm)
+     -> LET new_st = leave_state(StartInfusionConfirm)(st)
+         IN enter_into(Info)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_IInfusing(st: State): bool = ((current_state(st) = InfusionSummary)) OR ((current_state(st) = BatteryStatus)) OR ((current_state(st) = StartInfusionConfirm)) OR ((current_state(st) = Paused))
+  IInfusing(st: (per_IInfusing)): State =
+    COND
+    (current_state(st) = InfusionSummary)
+     -> LET new_st = leave_state(InfusionSummary)(st)
+         IN enter_into(Infusing)(new_st),
+    (current_state(st) = BatteryStatus)
+     -> LET new_st = leave_state(BatteryStatus)(st)
+         IN enter_into(Infusing)(new_st),
+    (current_state(st) = StartInfusionConfirm)
+     -> LET new_st = leave_state(StartInfusionConfirm)(st)
+         IN enter_into(Infusing)(new_st),
+    (current_state(st) = Paused)
+     -> LET new_st = leave_state(Paused)(st)
+         IN enter_into(Infusing)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_IInfusionSummary(st: State): bool = ((current_state(st) = Infusing))
+  IInfusionSummary(st: (per_IInfusionSummary)): State =
+    COND
+    (current_state(st) = Infusing)
+     -> LET new_st = leave_state(Infusing)(st)
+         IN enter_into(InfusionSummary)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_IInit(st: State): bool = ((current_state(st) = Paused)) OR ((current_state(st) = ConfirmSettings)) OR ((current_state(st) = Info)) OR ((current_state(st) = Timeout)) OR ((current_state(st) = SetDuration)) OR ((current_state(st) = SetVolume)) OR ((current_state(st) = StartInfusionConfirm)) OR ((current_state(st) = LoadSyringe)) OR ((current_state(st) = RateSet)) OR ((current_state(st) = RateConfirm))
+  IInit(st: (per_IInit)): State =
+    COND
+    (current_state(st) = Paused)
+     -> LET new_st = leave_state(Paused)(st)
+         IN enter_into(Init)(new_st),
+    (current_state(st) = ConfirmSettings)
+     -> LET new_st = leave_state(ConfirmSettings)(st)
+         IN enter_into(Init)(new_st),
+    (current_state(st) = Info)
+     -> LET new_st = leave_state(Info)(st)
+         IN enter_into(Init)(new_st),
+    (current_state(st) = Timeout)
+     -> LET new_st = leave_state(Timeout)(st)
+         IN enter_into(Init)(new_st),
+    (current_state(st) = SetDuration)
+     -> LET new_st = leave_state(SetDuration)(st)
+         IN enter_into(Init)(new_st),
+    (current_state(st) = SetVolume)
+     -> LET new_st = leave_state(SetVolume)(st)
+         IN enter_into(Init)(new_st),
+    (current_state(st) = StartInfusionConfirm)
+     -> LET new_st = leave_state(StartInfusionConfirm)(st)
+         IN enter_into(Init)(new_st),
+    (current_state(st) = LoadSyringe)
+     -> LET new_st = leave_state(LoadSyringe)(st)
+         IN enter_into(Init)(new_st),
+    (current_state(st) = RateSet)
+     -> LET new_st = leave_state(RateSet)(st)
+         IN enter_into(Init)(new_st),
+    (current_state(st) = RateConfirm)
+     -> LET new_st = leave_state(RateConfirm)(st)
+         IN enter_into(Init)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_IPaused(st: State): bool = ((current_state(st) = Infusing)) OR ((current_state(st) = BatteryStatus)) OR ((current_state(st) = InfusionSummary))
+  IPaused(st: (per_IPaused)): State =
+    COND
+    (current_state(st) = Infusing)
+     -> LET new_st = leave_state(Infusing)(st)
+         IN enter_into(Paused)(new_st),
+    (current_state(st) = BatteryStatus)
+     -> LET new_st = leave_state(BatteryStatus)(st)
+         IN enter_into(Paused)(new_st),
+    (current_state(st) = InfusionSummary)
+     -> LET new_st = leave_state(InfusionSummary)(st)
+         IN enter_into(Paused)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_IRateConfirm(st: State): bool = ((current_state(st) = SetDuration)) OR ((current_state(st) = ConfirmSettings))
+  IRateConfirm(st: (per_IRateConfirm)): State =
+    COND
+    (current_state(st) = SetDuration)
+     -> LET new_st = leave_state(SetDuration)(st)
+         IN enter_into(RateConfirm)(new_st),
+    (current_state(st) = ConfirmSettings)
+     -> LET new_st = leave_state(ConfirmSettings)(st)
+         IN enter_into(RateConfirm)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_IRateSet(st: State): bool = ((current_state(st) = Info))
+  IRateSet(st: (per_IRateSet)): State =
+    COND
+    (current_state(st) = Info)
+     -> LET new_st = leave_state(Info)(st)
+         IN enter_into(RateSet)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_ISetDuration(st: State): bool = ((current_state(st) = RateConfirm)) OR ((current_state(st) = SetVolume))
+  ISetDuration(st: (per_ISetDuration)): State =
+    COND
+    (current_state(st) = RateConfirm)
+     -> LET new_st = leave_state(RateConfirm)(st)
+         IN enter_into(SetDuration)(new_st),
+    (current_state(st) = SetVolume)
+     -> LET new_st = leave_state(SetVolume)(st)
+         IN enter_into(SetDuration)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_ISetVolume(st: State): bool = ((current_state(st) = Init)) OR ((current_state(st) = SetDuration))
+  ISetVolume(st: (per_ISetVolume)): State =
+    COND
+    (current_state(st) = Init)
+     -> LET new_st = leave_state(Init)(st)
+         IN enter_into(SetVolume)(new_st),
+    (current_state(st) = SetDuration)
+     -> LET new_st = leave_state(SetDuration)(st)
+         IN enter_into(SetVolume)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_ITimeOut(st: State): bool = ((current_state(st) = Init))
+  ITimeOut(st: (per_ITimeOut)): State =
+    COND
+    (current_state(st) = Init)
+     -> LET new_st = leave_state(Init)(st)
+         IN enter_into(Timeout)(new_st),
+    ELSE -> st
+    ENDCOND
+
+ END emucharts_prototype_2016_11_21_th
+
+% ---------------------------------------------------------------
+%  PVS theory generated using PVSio-web PVSPrinter ver 0.1
+%  Tool freely available at http://www.pvsioweb.org
+% ---------------------------------------------------------------

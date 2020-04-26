@@ -1,0 +1,12 @@
+utils: THEORY
+ BEGIN
+
+  % computes 10^i for natural numbers
+  pow10(i: nat): RECURSIVE posnat =
+   IF i = 0 THEN 1
+   ELSE pow10(i-1) * 10 ENDIF
+  MEASURE i
+
+  real2string(n: nat): string = "" + n
+
+ END utils

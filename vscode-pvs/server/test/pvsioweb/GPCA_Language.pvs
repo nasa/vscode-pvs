@@ -1,0 +1,108 @@
+GPCA_Language: THEORY
+ BEGIN
+
+  PrimaryNotification: TYPE = { 
+  		       	     Press_Ok_to_confirm_stop,
+  		       	     Press_Ok_to_confirm_pause,
+			     Empty,
+			     Powering_up_the_Generic_PCA_Pump_prototype_V2,
+			     Welcome_to_the_Generic_PCA_Pump_prototype_V2,
+			     Power_on_self_test,
+  		       	     Power_on_self_test_successful,
+  	   	       	     Please_press_Ok_to_confirm_patient_profile,
+                             Please_press_Ok_to_confirm_VTBI,
+			     Please_press_Ok_to_confirm_Dose_Rate,
+			     Please_press_Start_to_start_the_infusion,
+			     Patient_is_Jane_Doe, % dummy, still not connected to patient library
+			     DataEntry,
+			     SettingsSummary,
+			     Controller_error,
+			     Power_down_requested,
+			     Power_on_self_test_in_progress,
+			     Power_on_self_test_FAILED,
+			     Checking_administration_set,
+			     Incorrect_administration_set,
+			     Priming,
+			     Prime_FAILED,
+			     Checking_drug_information,
+			     Unknown_drug,
+			     Checking_dose_unit,
+			     Incorrect_dose_unit,
+			     Checking_concentration,
+			     Concentration_HIGH_LIMITS_VIOLATED,
+			     Concentration_SOFT_LIMITS_VIOLATED,
+			     Change_VTBI,
+			     Checking_VTBI,
+			     VTBI_HARD_LIMITS_VIOLATED,
+			     Change_dose_rate,
+			     Checking_dose_rate,
+			     Dose_rate_HARD_LIMITS_VIOLATED,
+			     Infusing,
+			     Bolus_request,
+			     Change_dose_rate_when_infusing,
+			     Checking_new_dose_rate,
+			     New_dose_rate_out_of_bounds,
+			     Stop_pause,
+			     Confirm_stop,
+			     Confirm_pause,
+			     Infusion_paused,
+			     Infusion_paused_too_long,
+			     Infusion_stopped,
+			     Empty_reservoir,
+			     Check_drug_when_infusing,
+			     Wrong_drug_during_infusion,
+			     Hardware_failure_level_one,
+			     Hardware_failure_level_two,
+			     VTBI_SOFT_LIMITS_VIOLATED,
+			     Dose_rate_SOFT_LIMITS_VIOLATED,
+			     Starting_infusion,
+			     Unknown_controller_state,
+			     Press_Ok_to_confirm_pause_infusion___or_press_Cancel_to_cancel_request,
+			     Press_Ok_to_confirm_stop_infusion___or_press_Cancel_to_cancel_request,
+			     % error messages for number entry system
+			     WARNING___Exceeding_maximum_legal_value,
+			     WARNING___Exceeding_minimum_legal_value,
+			     WARNING___Exceeding_maximum_decimal_precision }			     
+  SecondaryNotification: TYPE = {
+  			     Press_CLR_to_confirm_decimal_point_and_continue,
+  			     Press_Cancel_to_cancel_request,
+			     Empty,
+  			     Please_establish_connection_with_Simulink_controller,
+			     Please_press_On_to_begin,
+			     Please_press_Ok_to_load_settings_from_drug_library,
+			     Please_press_Cancel_to_resume_editing,
+			     Please_load_administration_set_and_press_Ok,
+			     Please_reload_administration_set_and_press_Ok,
+  	   	       	     Press_Ok_to_setup_infusion___or_press_Cancel_to_change_profile,
+			     Press_Ok_to_proceed_or_press_Edit_to_edit_value,
+			     Press_Start_to_start_infusion_or_press_Edit_to_edit,
+			     Please_disconnect_patient_and_power_down_pump,
+			     Please_press_Ok_to_confirm_power_down,
+			     Please_press_Off_to_power_down_the_pump,
+			     Press_Stop_to_pause_infusion,
+			     Please_press_Ok_to_retry_prime,
+			     Please_update_drug_library___and_press_Edit,
+			     Please_check_Drug_limits___and_press_Edit_to_edit_value,
+			     Please_press_Edit_to_edit_dose_rate,
+			     Press_Cancel_to_resume_infusion___or_press_Stop_to_stop_infusion,
+			     Press_Stop_to_stop_infusion_or_Cancel_to_resume_infusion,
+			     Please_press_Ok_to_setup_a_new_infusion,
+			     Please_press_Off_to_power_off_the_pump,
+			     Press_Ok_to_confirm_OUT_OF_RANGE_value___or_press_Edit,
+			     Press_Stop_to_stop_infusion___or_press_Cancel_to_resume_infusion,
+			     Please_press_Ok_to_confirm_power_down___or_press_Cancel_to_cancel_power_down_request,
+			     Please_wait }
+
+
+  dataEntryPrimaryNotification?(note: PrimaryNotification): boolean =
+     note = WARNING___Exceeding_maximum_legal_value
+	OR note = WARNING___Exceeding_minimum_legal_value
+	OR note = WARNING___Exceeding_maximum_decimal_precision
+    	OR note = Empty
+
+  dataEntrySecondaryNotification?(note: SecondaryNotification): boolean =
+     note = Please_press_Cancel_to_resume_editing
+     OR note = Empty
+  
+
+ END GPCA_Language

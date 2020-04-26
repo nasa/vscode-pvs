@@ -1,0 +1,204 @@
+utility_functions_th: THEORY
+ BEGIN
+  IMPORTING types_and_constants_th
+
+   %-----------------------------------------------------------------------------------------------------------------------------
+   %-- State Controller ---------------------------------------------------------------------------------------------------------
+   %-----------------------------------------------------------------------------------------------------------------------------
+   State: TYPE = IController_State
+   current_state(st: State): IController_MachineState = O_CurrentState(st)
+   leave_state(m: IController_MachineState)(st: State): State = st WITH [ previous_state := m ]
+
+   alrmLevel(st: State): AlarmLevel =
+      COND
+	ErrCond(st) = 0 -> ALM_LEVEL_0,
+        ErrCond(st) > 0 AND ErrCond(st) < 7 -> ALM_LEVEL_1,
+        ErrCond(st) >= 7 AND ErrCond(st) < 16 -> ALM_LEVEL_2,
+	ErrCond(st) >= 16 -> ALM_LEVEL_3
+      ENDCOND
+
+   calcFlowRate(iRate: real)(st: { st: State | drugInfo(st)`drugConcentration /= 0 }): real = 
+      iRate / drugInfo(st)`drugConcentration
+
+   checkDoseRate(iRate: real)(st: State): CheckResult =
+       LET upperHard = drugLibInfo(st)`doseRateUpperHardLimit,
+           upperSoft = drugLibInfo(st)`doseRateUpperSoftLimit,
+           lowerHard = drugLibInfo(st)`doseRateLowerHardLimit,
+           lowerSoft = drugLibInfo(st)`doseRateLowerSoftLimit
+         IN
+         COND iRate > upperHard OR iRate < lowerHard        -> CHECK_ERR_2,
+              (iRate > upperSoft OR iRate < lowerSoft) AND
+               NOT (iRate > upperHard OR iRate < lowerHard) -> CHECK_ERR_1,
+              iRate <= upperSoft AND iRate >= lowerSoft     -> CHECK_OK
+         ENDCOND
+
+   checkDrugConcentration(st: State): CheckResult =
+     LET actualCon = drugInfo(st)`drugConcentration,
+         upperHard = drugLibInfo(st)`drugConcentrationUpperHardLimit,
+	 upperSoft = drugLibInfo(st)`drugConcentrationUpperSoftLimit,
+	 lowerHard = drugLibInfo(st)`drugConcentrationLowerHardLimit,
+	 lowerSoft = drugLibInfo(st)`drugConcentrationLowerSoftLimit
+      IN COND 
+          actualCon > upperHard OR actualCon < lowerHard 
+           -> CHECK_ERR_2,
+           (actualCon > upperSoft OR actualCon < lowerSoft)
+             AND NOT (actualCon > upperHard OR actualCon < lowerHard)
+	   -> CHECK_ERR_1,
+          actualCon <= upperSoft AND actualCon >= lowerSoft
+	   -> CHECK_OK
+	 ENDCOND
+
+   % what is the difference between drugID and drugName? drugName seems to be not used in the model, maybe it's a typo/leftover?
+   checkDrugType(st: State): CheckResult =
+     IF drugInfo(st)`drugID = drugLibInfo(st)`drugID
+         AND drugInfo(st)`drugDoseAmount = drugLibInfo(st)`amount
+     THEN CHECK_OK
+     ELSE CHECK_ERR_1 ENDIF
+
+   checkDrugUnits(st: State): CheckResult =
+     IF drugInfo(st)`drugDoseUnit = drugLibInfo(st)`doseRateUnit
+         AND drugInfo(st)`drugVolumeUnit = drugLibInfo(st)`vtbiUnit
+     THEN CHECK_OK
+     ELSE CHECK_ERR_1 ENDIF
+
+   %-- NB. This function is not checking "drugDoseAmount" and "drugDiluentVolume"
+   checkDrug(st: State): CheckResult =
+     IF checkDrugType(st) = CHECK_ERR_1 
+         OR checkDrugUnits(st) = CHECK_ERR_1 THEN CHECK_ERR_1
+     ELSIF checkDrugConcentration(st) = CHECK_ERR_1 
+     	    OR checkDrugConcentration(st) = CHECK_ERR_2
+     THEN CHECK_ERR_1 % why are we assimilating CHECK_ERR_1 and CHECK_ERR_2?
+     ELSE CHECK_OK ENDIF
+
+   checkVTBI(inputVal: real)(st: State): CheckResult =
+       LET upperHard = drugLibInfo(st)`vtbiUpperHardLimit,
+           upperSoft = drugLibInfo(st)`vtbiUpperSoftLimit,
+           lowerHard = drugLibInfo(st)`vtbiLowerHardLimit,
+           lowerSoft = drugLibInfo(st)`vtbiLowerSoftLimit
+         IN
+         COND inputVal > upperHard OR inputVal < lowerHard        -> CHECK_ERR_2,
+              (inputVal > upperSoft OR inputVal < lowerSoft) AND
+               NOT (inputVal > upperHard OR inputVal < lowerHard) -> CHECK_ERR_1,
+              inputVal <= upperSoft AND inputVal >= lowerSoft     -> CHECK_OK
+         ENDCOND
+
+   clearLevel2Alarm(st: State): State
+
+   copyInfuStatus(st: State): State =
+     st WITH [ O_InfuStatus := O_InfuStatus(st)
+        WITH [ isBolusInProgress := infuStatus(st)`isBolusInProgress,
+	       totalVolumeInfused:= infuStatus(st)`totalVolumeInfused,
+	       remainingVolumeInReservoir := infuStatus(st)`remainingVolumeInReservoir ]]
+
+   displayBolusInfo(st: State): State =
+      IF infuStatus(st)`isBolusInProgress
+      THEN st WITH [ bolusing := TRUE ]
+      ELSE st ENDIF
+
+   infusionDone(expectedVolume: real)(st: State): boolean =
+     infuStatus(st)`totalVolumeInfused >= expectedVolume
+
+   initInfuStatus(st: State): State =
+      st WITH [ O_InfuStatus := infuStatus(st)
+         WITH [ isBolusInProgress := FALSE, 
+	        totalVolumeInfused := 0 ]]
+
+   stopInfusion(st: State): State =
+      st WITH [ infusing := FALSE,
+      	        bolusing := FALSE,
+		O_InfusionInProgress := FALSE,
+		O_InfusionPaused := FALSE,
+		O_BolusRequested := FALSE,
+		O_ProgrammedVTBI := 0,
+		O_ProgrammedFlowRate := 0 ]
+
+   resetInfusionInstructions(st: State): State = stopInfusion(st)
+
+%   where is this used? Coundn't find any invocation in the stateflow model
+%   initInfusion(st: State): State =
+%      LET new_st = st WITH [ bolusing := FALSE,
+%      	                     infusing := FALSE,
+%			     doseRate := 0,
+%			     vtbi := 0 ]
+%       IN resetInfusionInstructions(st)
+
+   pauseInfusion(st: State): State =
+      st WITH [ infusing := FALSE,
+       	        bolusing := FALSE,
+		O_InfusionInProgress := TRUE, % NB: this is set to TRUE when paused!
+		O_InfusionPaused := TRUE,
+		O_BolusRequested := FALSE ]
+
+   resumeInfusion(st: State): State =
+      st WITH [ infusing := TRUE,
+                bolusing := FALSE,
+		O_InfusionInProgress := TRUE,
+		O_InfusionPaused := FALSE,
+		O_BolusRequested := FALSE ]
+
+   setDoseRate(iRate: real)(st: State): State =
+      st WITH [ doseRate := iRate ]
+
+   % NB: this function does not update "diluentVolume" -- is this intended?
+   setDrugLibInfo(st: State): State =
+      st WITH [ O_DrugLibInfo := O_DrugLibInfo(st)
+         WITH [ drugID := drugLibInfo(st)`drugID,
+	        amount := drugLibInfo(st)`amount,
+		doseRateTypical := drugLibInfo(st)`doseRateTypical,
+		doseRateUnit := drugLibInfo(st)`doseRateUnit,
+		doseRateUpperHardLimit := drugLibInfo(st)`doseRateUpperHardLimit,
+		doseRateUpperSoftLimit := drugLibInfo(st)`doseRateUpperSoftLimit,
+		doseRateLowerHardLimit := drugLibInfo(st)`doseRateLowerHardLimit,
+		doseRateLowerSoftLimit := drugLibInfo(st)`doseRateLowerSoftLimit,
+		vtbiTypical := drugLibInfo(st)`vtbiTypical,
+		vtbiUnit := drugLibInfo(st)`vtbiUnit,
+		vtbiUpperHardLimit := drugLibInfo(st)`vtbiUpperHardLimit,
+		vtbiUpperSoftLimit := drugLibInfo(st)`vtbiUpperSoftLimit,
+		vtbiLowerHardLimit := drugLibInfo(st)`vtbiLowerHardLimit,
+		vtbiLowerSoftLimit := drugLibInfo(st)`vtbiLowerSoftLimit,
+		drugConcentrationTypical := drugLibInfo(st)`drugConcentrationTypical,
+		drugConcentrationUpperHardLimit := drugLibInfo(st)`drugConcentrationUpperHardLimit,
+		drugConcentrationUpperSoftLimit := drugLibInfo(st)`drugConcentrationUpperSoftLimit,
+		drugConcentrationLowerHardLimit := drugLibInfo(st)`drugConcentrationLowerHardLimit,
+		drugConcentrationLowerSoftLimit := drugLibInfo(st)`drugConcentrationLowerSoftLimit ]]
+
+   setLOneMsg(fcond: nat)(st: State): State = 
+      st WITH [ O_AlarmCond := fcond ]
+
+   setLTwoMsg(fcond: nat)(st: State): State =
+      st WITH [ O_AlarmCond := fcond ]
+
+   setVTBI(iVTBI: real)(st: State): State =
+      st WITH [ vtbi := iVTBI ]
+   
+   setPatientInfo(st: State): State =
+      st WITH [ O_PatientInfo := O_PatientInfo(st)
+         WITH [ patientID     := patientInfo(st)`patientID,
+	        patientAge    := patientInfo(st)`patientAge,
+		patientGender := patientInfo(st)`patientGender,
+		patientWeight := patientInfo(st)`patientWeight ]]
+
+   startInfusion(st: {st: State | drugInfo(st)`drugConcentration /= 0}): State = 
+      st WITH [ O_ProgrammedFlowRate := calcFlowRate(doseRate(st))(st),
+                O_ProgrammedVTBI := vtbi(st),
+		O_InfusionInProgress := TRUE,
+		O_InfusionPaused := FALSE,
+		O_BolusRequested := FALSE,
+		infusing := TRUE,
+		bolusing := FALSE ]
+
+   warning(msg: AlarmCondition)(st: State): State = st
+
+
+   %-----------------------------------------------------------------------------------------------------------------------------
+   %-- Alarming Component :: Check Ready ----------------------------------------------------------------------------------------
+   %-----------------------------------------------------------------------------------------------------------------------------
+   CheckReady_current_state(st: State): CheckReady_MachineState = CheckReady_CurrentState(st)
+   CheckReady_leave_state(m: CheckReady_MachineState)(st: State): State = st WITH [ CheckReady_previous_state := m ]
+
+   isPumpReady(st: State): boolean =
+     NOT (infuSenData(st)`isReservoirEmpty
+           AND hardwareSenData(st)`isReservoirDoorOpen
+	    AND infuSenData(st)`isFlowRateOverPumpCapacity)
+
+ END utility_functions_th

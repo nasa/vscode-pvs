@@ -1,11 +1,12 @@
 // import { ContextDiagnostics } from "./server/pvsProcess";
 //import { PvsFindDeclaration, PvsParserResponse, PvsTypecheckerResponse, XmlRpcResponse } from "./server/common/serverInterface";
-import * as fsUtils from "./server/common/fsUtils";
+import * as fsUtils from "../src/common/fsUtils";
 import * as test from "./test-constants";
+import { PvsResponse } from "../src/common/pvs-gui";
+import { PvsProxy } from '../src/pvsProxy'; // XmlRpcSystemMethods
+import { label, log, dir, configFile, safeSandboxExamples, sandboxExamples, radixExamples,
+	stever, steverFiles, pillbox, pillboxFiles, pvsioweb, pvsiowebFiles } from './test-utils';
 import * as path from 'path';
-import { ParseResult, ListMethodsResult, PvsError, PvsResponse, PvsResult, FindDeclarationResult } from "./server/common/pvs-gui";
-import { PvsProxy, ContextDiagnostics } from './server/pvsProxy'; // XmlRpcSystemMethods
-import { label, log, dir, configFile, safeSandboxExamples, sandboxExamples, radixExamples } from './test-utils';
 
 //----------------------------
 //   Test cases for typechecker
@@ -19,7 +20,7 @@ describe("pvs-typechecker", () => {
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
 		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
-		await pvsProxy.activate({ debugMode: true }); // this will also start pvs-server
+		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
@@ -28,13 +29,55 @@ describe("pvs-typechecker", () => {
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
 
-		if (test.EXTERNAL_SERVER) {
+		if (!test.EXTERNAL_SERVER) {
 			// kill pvs server & proxy
 			console.log(" killing pvs server...")
 			await pvsProxy.killPvsServer();
 		}
 		await pvsProxy.killPvsProxy();
 	});
+
+	// on Linux, this test fails for alaris2lnewmodes
+	// the error reported is "No methods applicable for generic function #<standard-generic-function id> with args (#<IMPORTING pump_th..."
+	it(`can generate .tcc file content`, async () => {
+		label(`can generate the .tcc file content`);
+		// const response: PvsResponse = await pvsProxy.showTccs({ 
+		// 	fileName: "sqrt", 
+		// 	fileExtension: ".pvs", 
+		// 	theoryName: "sqrt", 
+		// 	contextFolder: sandboxExamples 
+		// });
+		// dir("response", response);
+		// expect(response.error).not.toBeDefined();
+		// expect(response.result).not.toBeNull();
+
+		const response1: PvsResponse = await pvsProxy.showTccs({
+			fileName:"alaris2lnewmodes", 
+			fileExtension:".pvs", 
+			theoryName: "alaris_th", 
+			contextFolder: sandboxExamples
+		});
+		dir("response", response1);
+		expect(response1.error).not.toBeDefined();
+		expect(response1.result).not.toBeNull();
+	}, 20000);
+
+	// OK
+	it(`can discharge tccs`, async () => {
+		label(`can discharge tccs`);
+		const fname: string = path.join(sandboxExamples, "sq.pvs");
+
+		const response: PvsResponse = await pvsProxy.pvsRequest('prove-tccs', [ fname ]);
+		dir("response", response);
+		expect(response.error).not.toBeDefined();
+		expect(response.result).toBeDefined();
+		expect(response.result.totals).toEqual(2);
+		expect(response.result.proved).toEqual(2);
+		expect(response.result.unproved).toEqual(0);
+		expect(response.result.subsumed).toEqual(0);
+		expect(response.result.simplified).toEqual(0);
+	}, 4000);
+	
 
 	// on Mac, pvs-server crashes without informative messages when performing this test
 	it(`can typecheck pvs files`, async () => {
@@ -66,7 +109,7 @@ describe("pvs-typechecker", () => {
 	}, 10000);
 
 
-	return; // the following tests are completed successfully -- remove the return statement if you want to run them
+	// return; // the following tests are completed successfully -- remove the return statement if you want to run them
 
 	// OK
 	it(`can typecheck files that import other files`, async () => {
@@ -105,5 +148,65 @@ describe("pvs-typechecker", () => {
 		});
 		expect(res_decls).toEqual(exp_decls);
 	}, 100000);
+
+
+	//-----------------------
+	// additional test cases
+	//-----------------------
+
+	for (let i = 0; i < steverFiles.length; i++) {
+		it(`can parse stever/${steverFiles[i]}.pvs`, async () => {
+			label(`can parse stever example ${steverFiles[i]}`);
+			// Need to clear-theories, in case rerunning with the same server.
+			await pvsProxy.lisp("(clear-theories t)");
+
+			const response: PvsResponse = await pvsProxy.typecheckFile({
+				fileName: steverFiles[i],
+				fileExtension: ".pvs", 
+				contextFolder: stever
+			});
+			dir(response); // set VERBOSE to true in test-utils if you want to see the output
+			expect(response).toBeDefined();
+			expect(response.error).not.toBeDefined();
+			
+		}, 20000);
+
+	}
+	for (let i = 0; i < pillboxFiles.length; i++) {
+		it(`can parse pillbox/${pillboxFiles[i]}.pvs`, async () => {
+			label(`can parse pillbox example ${pillboxFiles[i]}`);
+			// Need to clear-theories, in case rerunning with the same server.
+			await pvsProxy.lisp("(clear-theories t)");
+
+			const response: PvsResponse = await pvsProxy.typecheckFile({
+				fileName: pillboxFiles[i],
+				fileExtension: ".pvs", 
+				contextFolder: pillbox
+			});
+			dir(response); // set VERBOSE to true in test-utils if you want to see the output
+			expect(response).toBeDefined();
+			expect(response.error).not.toBeDefined();
+			
+		}, 20000);
+	}
+
+	for (let i = 0; i < pvsiowebFiles.length; i++) {
+		it(`can parse pvsioweb/${pvsiowebFiles[i]}.pvs`, async () => {
+			label(`can parse pvsioweb example ${pvsiowebFiles[i]}`);
+			// Need to clear-theories, in case rerunning with the same server.
+			await pvsProxy.lisp("(clear-theories t)");
+
+			const response: PvsResponse = await pvsProxy.typecheckFile({
+				fileName: pvsiowebFiles[i],
+				fileExtension: ".pvs", 
+				contextFolder: pvsioweb
+			});
+			dir(response); // set VERBOSE to true in test-utils if you want to see the output
+			expect(response).toBeDefined();
+			expect(response.error).not.toBeDefined();
+
+		}, 60000);
+	}
+
 
 });

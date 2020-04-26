@@ -1,0 +1,1192 @@
+%-----------------------------------------------------------------------------------------------------------------------------
+%-- Controller :: Check Drug Routine -----------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------------
+
+CheckDrugRoutine_th: THEORY
+ BEGIN
+  IMPORTING types_and_constants_th, utility_functions_th, AlarmingComponent_th
+
+   State: TYPE = IController_State
+
+  %-- CheckDrugRoutine Events ------------------------------------------------------------------------------------------------
+  per_enter_into(m: IController_MachineState): boolean =
+    CheckDrugRoutineMachine?(m) OR DisplayVTBI?(m)
+  enter_into(m: (per_enter_into))(st: State): State =
+    LET new_st =
+      COND
+        DisplayVTBI?(m)     -> setVTBI(drugLibInfo(st)`vtbiTypical)(st),
+        ELSE -> st 
+      ENDCOND
+     IN new_st WITH [ O_CurrentState := m ]
+
+
+  per_E_Cancel(st: State): boolean =
+      current_state(st) = DisplayPatientProfile
+  E_Cancel(st: (per_E_Cancel)): State =
+      COND
+       current_state(st) = DisplayPatientProfile
+        -> LET new_st = leave_state(DisplayPatientProfile)(st)
+	    IN enter_into(DisplayDrugInfo)(new_st)
+      ENDCOND
+
+
+  per_E_CheckAdminSet(st: State): boolean =
+      current_state(st) = ALM_WrongAdminCheck
+  E_CheckAdminSet(st: (per_E_CheckAdminSet)): State =
+      COND
+       current_state(st) = ALM_WrongAdminCheck
+        -> LET new_st = leave_state(ALM_WrongAdminCheck)(st)
+	    IN enter_into(CheckAdminSet)(new_st)
+      ENDCOND
+
+
+  per_E_CheckDrug(st: State): boolean =
+      current_state(st) = DisplayDrugInfo OR current_state(st) = UnknownDrug
+       OR current_state(st) = IncorrectDrugUnits OR current_state(st) = WrongConcentration
+  E_CheckDrug(st: (per_E_CheckDrug)): State =
+      COND
+       current_state(st) = DisplayDrugInfo
+        -> LET new_st = leave_state(DisplayDrugInfo)(st)
+	    IN enter_into(CheckDrug_CheckType)(new_st),
+       current_state(st) = UnknownDrug
+        -> LET new_st = leave_state(UnknownDrug)(st)
+	    IN enter_into(CheckDrug_CheckType)(new_st),
+       current_state(st) = IncorrectDrugUnits
+        -> LET new_st = leave_state(IncorrectDrugUnits)(st)
+	    IN enter_into(CheckDrug_CheckType)(new_st),
+       current_state(st) = WrongConcentration
+        -> LET new_st = leave_state(WrongConcentration)(st)
+	    IN enter_into(CheckDrug_CheckType)(new_st),
+       current_state(st) = WRN_DangerCon
+        -> LET new_st = leave_state(WRN_DangerCon)(st)
+	    IN enter_into(CheckDrug_CheckType)(new_st)
+      ENDCOND
+
+
+  per_E_ConfigureInfusionProgram(st: State): boolean = 
+     current_state(st) = DisplayPatientProfile
+  E_ConfigureInfusionProgram(st: (per_E_ConfigureInfusionProgram)): State =
+      COND
+        current_state(st) = DisplayPatientProfile
+  	 -> LET new_st = leave_state(DisplayPatientProfile)(st),
+	   	new_st = setDrugLibInfo(new_st)
+	     IN enter_into(DisplayVTBI)(new_st) % the transition is wired up with this state of ConfigureInfusionProgram
+      ENDCOND
+
+
+  per_E_ConfirmConcentration(st: State): boolean =
+     current_state(st) = WRN_DangerCon
+  E_ConfirmConcentration(st: (per_E_ConfirmConcentration)): State =
+     COND
+      current_state(st) = WRN_DangerCon
+       -> LET new_st = leave_state(WRN_DangerCon)(st),
+              new_st = setPatientInfo(new_st)
+           IN enter_into(DisplayPatientProfile)(new_st)
+     ENDCOND 
+
+
+  per_E_Prime(st: State): boolean =
+      current_state(st) = PrimeFailed
+  E_Prime(st: (per_E_Prime)): State =
+      COND
+       current_state(st) = PrimeFailed
+        -> LET new_st = leave_state(PrimeFailed)(st)
+	    IN enter_into(CheckPrime)(new_st)
+      ENDCOND
+
+
+  per_tick(st: State): boolean =
+      alrmLevel(st) = ALM_LEVEL_0 AND
+       (current_state(st) = CheckPrime OR
+         current_state(st) = CheckAdminSet OR
+          current_state(st) = CheckDrug_CheckType OR
+           current_state(st) = Check_DrugUnits OR
+            current_state(st) = Check_Concen)
+  tick(st: (per_tick)): State =
+     COND
+       current_state(st) = CheckPrime
+        -> IF pumpConfigData(st)`isPumpPrimed
+	   THEN LET new_st = leave_state(CheckPrime)(st),
+	            new_st = setDrugLibInfo(new_st)
+	         IN enter_into(DisplayDrugInfo)(new_st)
+	   ELSE LET new_st = leave_state(CheckPrime)(st)
+	   	 IN enter_into(PrimeFailed)(new_st) ENDIF,
+       current_state(st) = CheckAdminSet
+        -> IF pumpConfigData(st)`isAdminSetCheckPassed
+	   THEN LET new_st = leave_state(CheckAdminSet)(st),
+	            new_st = IF per_E_Restart(new_st) THEN E_Restart(new_st) ELSE new_st ENDIF
+		 IN enter_into(CheckPrime)(new_st)
+           ELSE LET new_st = leave_state(CheckAdminSet)(st)
+	         IN enter_into(ALM_WrongAdminCheck)(new_st) ENDIF,
+       current_state(st) = CheckDrug_CheckType
+        -> IF checkDrugType(st) = CHECK_OK
+	   THEN LET new_st = leave_state(CheckDrug_CheckType)(st)
+	         IN enter_into(Check_DrugUnits)(new_st)
+           ELSE LET new_st = leave_state(CheckDrug_CheckType)(st)
+	         IN enter_into(UnknownDrug)(new_st) ENDIF,
+       current_state(st) = Check_DrugUnits
+        -> IF checkDrugUnits(st) = CHECK_OK
+	   THEN LET new_st = leave_state(Check_DrugUnits)(st)
+	         IN enter_into(Check_Concen)(new_st)
+           ELSE LET new_st = leave_state(Check_DrugUnits)(st)
+	         IN enter_into(IncorrectDrugUnits)(new_st) ENDIF,
+       current_state(st) = Check_Concen
+        -> LET tempx = checkDrugConcentration(st)
+	   IN COND
+               tempx = CHECK_OK
+	        -> LET new_st = leave_state(Check_Concen)(st),
+	               new_st = setPatientInfo(new_st)
+		    IN enter_into(DisplayPatientProfile)(new_st),
+               tempx = CHECK_ERR_1
+	        -> LET new_st = leave_state(Check_Concen)(st)
+	            IN enter_into(WRN_DangerCon)(new_st),
+               tempx = CHECK_ERR_2
+	        -> LET new_st = leave_state(Check_Concen)(st)
+	            IN enter_into(WrongConcentration)(new_st) 
+	      ENDCOND
+      ENDCOND
+
+
+  per_E_Warning(st: State): boolean = 
+      current_state(st) = DisplayDrugInfo OR current_state(st) = IncorrectDrugUnits
+       OR current_state(st) = WrongConcentration OR current_state(st) = UnknownDrug
+        OR current_state(st) = PrimeFailed OR current_state(st) = ALM_WrongAdminCheck
+         OR current_state(st) = WRN_DangerCon OR current_state(st) = DisplayPatientProfile
+  E_Warning(st: (per_E_Warning)): State =
+      COND
+        current_state(st) = DisplayDrugInfo
+	 -> LET new_st = warning(MSG_DRUGINFO)(st)
+	     IN enter_into(DisplayDrugInfo)(new_st),
+	current_state(st) = IncorrectDrugUnits
+	 -> LET new_st = warning(MSG_WRONGDU)(st)
+	     IN enter_into(IncorrectDrugUnits)(new_st),
+	current_state(st) = WrongConcentration
+	 -> LET new_st = warning(MSG_WRONGCON)(st)
+	     IN enter_into(WrongConcentration)(new_st),
+	current_state(st) = UnknownDrug
+	 -> LET new_st = warning(MSG_WRONGDRUG)(st)
+	     IN enter_into(UnknownDrug)(new_st),
+	current_state(st) = PrimeFailed
+	 -> LET new_st = warning(MSG_PRIMEFAIL)(st)
+	     IN enter_into(PrimeFailed)(new_st),
+	current_state(st) = ALM_WrongAdminCheck
+	 -> LET new_st = warning(MSG_ADMINFAIL)(st)
+	     IN enter_into(ALM_WrongAdminCheck)(new_st),
+	current_state(st) = WRN_DangerCon
+	 -> LET new_st = warning(MSG_DANGECON)(st)
+	     IN enter_into(WRN_DangerCon)(new_st),
+	current_state(st) = DisplayPatientProfile
+	 -> LET new_st = warning(MSG_PATIENTINFO)(st)
+	     IN enter_into(DisplayPatientProfile)(new_st)
+      ENDCOND
+
+ END CheckDrugRoutine_th
+
+
+
+
+%-----------------------------------------------------------------------------------------------------------------------------
+%-- Controller :: Configure Infusion Program ---------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------------
+
+ConfigureInfusionProgram_th: THEORY
+ BEGIN
+  IMPORTING types_and_constants_th, utility_functions_th, AlarmingComponent_th
+
+   State: TYPE = IController_State
+
+  IMPORTING StartInfusionEvents_th
+  %-- The following functions are defined in theory StartInfusionEvents_th; this allows to share the definitions with AlarmingComponent_th ----------
+%  per_enter_into(m: IController_MachineState): boolean = StartInfusionEvents_th.per_enter_into(m)
+%  enter_into(m: (per_enter_into))(st: State): State = StartInfusionEvents_th.enter_into(m)(st)
+%  per_E_NotReady(st: State): boolean = StartInfusionEvents_th.per_E_NotReady(st)
+%  E_NotReady(st: (per_E_NotReady)): State = StartInfusionEvents_th.E_NotReady(st)
+%  per_E_Ready(st: State): boolean = StartInfusionEvents_th.per_E_Ready(st)
+%  E_Ready(st: (per_E_Ready)): State = StartInfusionEvents_th.E_Ready(st)
+  %--------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+  %-- ConfigureInfusionProgram Events --------------------------------------------------------------------------------------------------------------
+  per_E_Cancel(st: State): boolean =
+      current_state(st) = ChangeVTBI OR current_state(st) = ChangeDoseRate
+  E_Cancel(st: (per_E_Cancel)): State =
+      COND
+       current_state(st) = ChangeVTBI
+        -> LET new_st = leave_state(ChangeVTBI)(st)
+	    IN enter_into(DisplayVTBI)(new_st),
+       current_state(st) = ChangeDoseRate
+        -> LET new_st = leave_state(ChangeDoseRate)(st)
+	    IN enter_into(DisplayDoseRate)(new_st)
+      ENDCOND
+
+
+  per_E_ChangeDoseRate(st: State): boolean =
+      current_state(st) = DisplayDoseRate OR current_state(st) = ALM_DoseRateOutBound
+       OR current_state(st) = WRN_DOSERATEOUTSOFTLIMITS
+  E_ChangeDoseRate(st: (per_E_ChangeDoseRate)): State =
+      COND
+       current_state(st) = DisplayDoseRate
+        -> LET new_st = leave_state(DisplayDoseRate)(st)
+	    IN enter_into(ChangeDoseRate)(new_st),
+       current_state(st) = ALM_DoseRateOutBound
+        -> LET new_st = leave_state(ALM_DoseRateOutBound)(st)
+	    IN enter_into(ChangeDoseRate)(new_st),
+       current_state(st) = WRN_DOSERATEOUTSOFTLIMITS
+        -> LET new_st = leave_state(WRN_DOSERATEOUTSOFTLIMITS)(st)
+	    IN enter_into(ChangeDoseRate)(new_st)
+      ENDCOND
+
+
+  per_E_ChangeVTBI(st: State): boolean =
+      current_state(st) = DisplayVTBI OR current_state(st) = WRN_VTBIOutBound
+       OR current_state(st) = ALM_VTBIOutBound
+  E_ChangeVTBI(st: (per_E_ChangeVTBI)): State =
+      COND
+       current_state(st) = DisplayVTBI
+        -> LET new_st = leave_state(DisplayVTBI)(st)
+	    IN enter_into(ChangeVTBI)(new_st),
+       current_state(st) = WRN_VTBIOutBound
+        -> LET new_st = leave_state(WRN_VTBIOutBound)(st)
+	    IN enter_into(ChangeVTBI)(new_st),
+       current_state(st) = ALM_VTBIOutBound
+        -> LET new_st = leave_state(ALM_VTBIOutBound)(st)
+	    IN enter_into(ChangeVTBI)(new_st)
+      ENDCOND
+
+
+   per_E_ConfigureInfusionProgram(st: State): boolean =
+       current_state(st) = DisplaySettings
+   E_ConfigureInfusionProgram(st: (per_E_ConfigureInfusionProgram)): State =
+       COND
+        current_state(st) = DisplaySettings
+	 -> LET new_st = leave_state(DisplaySettings)(st)
+	     IN enter_into(DisplayVTBI)(new_st)
+       ENDCOND
+
+
+  per_E_ConfirmDoseRate(st: State): boolean = 
+     current_state(st) = ChangeDoseRate OR current_state(st) = DisplayDoseRate
+      OR current_state(st) = WRN_DOSERATEOUTSOFTLIMITS
+  E_ConfirmDoseRate(st: (per_E_ConfirmDoseRate)): State =
+      COND
+       current_state(st) = ChangeDoseRate
+        -> LET new_st = leave_state(ChangeDoseRate)(st)
+	    IN enter_into(CheckDoseRate)(new_st),
+       current_state(st) = DisplayDoseRate
+        -> LET new_st = leave_state(DisplayDoseRate)(st)
+	    IN enter_into(DisplaySettings)(new_st),
+       current_state(st) = WRN_DOSERATEOUTSOFTLIMITS
+        -> LET new_st = leave_state(WRN_DOSERATEOUTSOFTLIMITS)(st),
+	       new_st = setDoseRate(infuParameters(st)`programmedDoseRate)(new_st)
+	    IN enter_into(DisplaySettings)(new_st)
+      ENDCOND
+
+
+  per_E_ConfirmVTBI(st: State): boolean = 
+     current_state(st) = ChangeVTBI OR current_state(st) = DisplayVTBI
+      OR current_state(st) = WRN_VTBIOutBound
+  E_ConfirmVTBI(st: (per_E_ConfirmVTBI)): State =
+      COND
+       current_state(st) = ChangeVTBI
+        -> LET new_st = leave_state(ChangeVTBI)(st)
+	    IN enter_into(CheckVTBI)(new_st),
+       current_state(st) = DisplayVTBI
+        -> LET new_st = leave_state(DisplayVTBI)(st)
+	    IN enter_into(DisplayDoseRate)(new_st),
+       current_state(st) = WRN_VTBIOutBound
+        -> LET new_st = leave_state(WRN_VTBIOutBound)(st),
+	       new_st = setVTBI(infuParameters(st)`programmedVTBI)(new_st)
+	    IN enter_into(DisplayDoseRate)(new_st)
+      ENDCOND
+  
+
+   per_E_StartInfusion(st: State): boolean =
+       current_state(st) = DisplaySettings
+   E_StartInfusion(st: (per_E_StartInfusion)): State =
+       COND
+        current_state(st) = DisplaySettings
+	 -> LET new_st = leave_state(DisplaySettings)(st),
+	        new_st = IF per_E_RequestToStart(new_st) THEN E_RequestToStart(new_st) ELSE new_st ENDIF
+	     IN enter_into(ReadyToStart)(new_st)
+       ENDCOND
+
+
+  per_tick(st: State): boolean =
+    alrmLevel(st) = ALM_LEVEL_0 AND
+      (current_state(st) = CheckVTBI OR current_state(st) = CheckDoseRate)
+  tick(st: (per_tick)): State =
+      COND
+       current_state(st) = CheckVTBI
+        AND alrmLevel(st) = ALM_LEVEL_0
+        -> LET tempx = checkVTBI(infuParameters(st)`programmedVTBI)(st)
+	    IN COND 
+	        tempx = CHECK_ERR_2 
+	         -> LET new_st = leave_state(CheckVTBI)(st)
+	             IN enter_into(ALM_VTBIOutBound)(new_st),
+	        tempx = CHECK_ERR_1
+	         -> LET new_st = leave_state(CheckVTBI)(st)
+	             IN enter_into(WRN_VTBIOutBound)(new_st),
+	        tempx = CHECK_OK
+                 -> LET new_st = leave_state(CheckVTBI)(st),
+	                new_st = setVTBI(infuParameters(st)`programmedVTBI)(new_st)
+	             IN enter_into(DisplayDoseRate)(new_st) 
+	       ENDCOND,
+        current_state(st) = CheckDoseRate
+	 AND alrmLevel(st) = ALM_LEVEL_0
+	 -> LET tempx = checkDoseRate(infuParameters(st)`programmedDoseRate)(st)
+	     IN COND 
+                 tempx = CHECK_OK 
+	          -> LET new_st = leave_state(CheckDoseRate)(st),
+		         new_st = setDoseRate(infuParameters(st)`programmedDoseRate)(new_st)
+		      IN enter_into(DisplaySettings)(new_st),
+		 tempx = CHECK_ERR_1 
+		  -> LET new_st = leave_state(CheckDoseRate)(st)
+		      IN enter_into(WRN_DOSERATEOUTSOFTLIMITS)(new_st),
+		 tempx = CHECK_ERR_2 
+		  -> LET new_st = leave_state(CheckDoseRate)(st)
+		      IN enter_into(ALM_DoseRateOutBound)(new_st) ENDCOND
+      ENDCOND
+
+
+  per_E_Warning(st: State): boolean = 
+      current_state(st) = DisplayVTBI OR current_state(st) = ChangeVTBI
+       OR current_state(st) = DisplayDoseRate OR current_state(st) = ALM_VTBIOutBound
+        OR current_state(st) = WRN_VTBIOutBound OR current_state(st) = ALM_DoseRateOutBound
+         OR current_state(st) = ChangeDoseRate OR current_state(st) = DisplaySettings
+          OR current_state(st) = ReadyToStart
+  E_Warning(st: (per_E_Warning)): State =
+      COND
+        current_state(st) = DisplayVTBI
+	 -> LET new_st = warning(MSG_VTBI)(st)
+	     IN enter_into(DisplayVTBI)(new_st),
+        current_state(st) = ChangeVTBI
+         -> LET new_st = warning(MSG_CHANGEVTBI)(st)
+	     IN enter_into(ChangeVTBI)(new_st),
+	current_state(st) = DisplayDoseRate
+	 -> LET new_st = warning(MSG_DISPLAYDR)(st)
+	     IN enter_into(DisplayDoseRate)(new_st),
+	current_state(st) = ALM_VTBIOutBound
+	 -> LET new_st = warning(MSG_ALMVTBI)(st)
+	     IN enter_into(ALM_VTBIOutBound)(new_st),
+	current_state(st) = WRN_VTBIOutBound
+	 -> LET new_st = warning(MSG_WRNVTBI)(st)
+	     IN enter_into(WRN_VTBIOutBound)(new_st),
+	current_state(st) = ALM_DoseRateOutBound
+	 -> LET new_st = warning(MSG_ALRMDR)(st)
+	     IN enter_into(ALM_DoseRateOutBound)(new_st),
+	current_state(st) = ChangeDoseRate
+	 -> LET new_st = warning(MSG_CHANGEDR)(st)
+	     IN enter_into(ChangeDoseRate)(new_st),
+	current_state(st) = DisplaySettings
+	 -> LET new_st = warning(MSG_DISPLAYSET)(st)
+	     IN enter_into(DisplaySettings)(new_st),
+	current_state(st) = ReadyToStart
+	 -> enter_into(ReadyToStart)(st) % the simulink model does not specify a message for this state -- why?
+      ENDCOND
+
+  END ConfigureInfusionProgram_th
+
+
+
+%-----------------------------------------------------------------------------------------------------------------------------
+%-- Controller :: Infusion In Session ----------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------------
+
+InfusionInSession_th: THEORY
+ BEGIN
+  IMPORTING types_and_constants_th, utility_functions_th, AlarmingComponent_th
+
+  State: TYPE = IController_State
+
+  %-- InfusionInSession Events ------------------------------------------------------------------------------------------------------
+  per_enter_into(m: IController_MachineState): boolean =
+   InfusionInSessionMachine?(m) OR CheckAdminSet?(m)
+  enter_into(m: (per_enter_into))(st: State): State =
+   LET new_st =
+    COND
+     LevelTwoAlarming?(m) -> setLTwoMsg(ErrCond(st))(st),
+     InfusionStopped?(m)  -> stopInfusion(copyInfuStatus(st)),
+     InfusionPaused?(m)   -> pauseInfusion(st),
+     ELSE -> st
+    ENDCOND
+     IN new_st WITH [ O_CurrentState := m ]
+
+
+  per_E_Alarm(st: State): boolean =
+      current_state(st) = InfusionPaused
+  E_Alarm(st: (per_E_Alarm)): State =
+      COND
+       current_state(st) = InfusionPaused
+        -> IF ErrCond(st) = Err_RateExceedCapacity
+	   THEN LET new_st = leave_state(InfusionPaused)(st)
+	         IN enter_into(PausedTooLong)(new_st)
+           ELSE st ENDIF
+      ENDCOND
+
+
+  per_E_Cancel(st: State): boolean =
+      current_state(st) = InfusionPaused OR current_state(st) = PausedStopConfirm
+  E_Cancel(st: (per_E_Cancel)): State =
+      COND
+       current_state(st) = InfusionPaused
+        -> LET new_st = leave_state(InfusionPaused)(st)
+	    IN enter_into(Infusing)(new_st), % transition wired up with this state of InfusionSubMachine
+       current_state(st) = PausedStopConfirm
+        -> LET new_st = leave_state(PausedStopConfirm)(st)
+	    IN enter_into(InfusionPaused)(new_st)
+      ENDCOND
+
+
+   per_E_CheckDrug(st: State): boolean =
+       current_state(st) = ALMWrongDrug OR current_state(st) = EmptyReservoir
+   E_CheckDrug(st: (per_E_CheckDrug)): State =
+        COND
+         current_state(st) = ALMWrongDrug
+	  -> LET new_st = leave_state(ALMWrongDrug)(st)
+	      IN enter_into(CheckDrugWhileInfusing)(new_st),
+         current_state(st) = EmptyReservoir
+ 	  -> LET new_st = leave_state(EmptyReservoir)(st)
+ 	      IN enter_into(CheckDrugWhileInfusing)(new_st)
+        ENDCOND
+
+
+  per_E_ClearAlarm(st: State): boolean =
+      current_state(st) = LevelTwoAlarming OR current_state(st) = PausedTooLong
+  E_ClearAlarm(st: (per_E_ClearAlarm)): State =
+      COND
+       current_state(st) = LevelTwoAlarming % why is it resuming the infusion without asking anything after cancelling the alarm?
+        -> LET new_st = leave_state(LevelTwoAlarming)(st),
+	       new_st = clearLevel2Alarm(new_st),
+	       new_st = resumeInfusion(new_st)
+	    IN enter_into(Infusing)(new_st), % transition wired up with this state of InfusionSubMachine
+       current_state(st) = PausedTooLong % why is it resuming the infusion without asking anything after cancelling the alarm?
+        -> LET new_st = leave_state(PausedTooLong)(st),
+	       new_st = new_st WITH [ ClearCond := Err_RateExceedCapacity ],
+	       new_st = resumeInfusion(new_st),
+	       new_st = E_AlarmClear(new_st)
+	    IN enter_into(Infusing)(new_st) % transition wired up with this state of InfusionSubMachine
+      ENDCOND
+
+
+  per_E_ConfirmStopInfusion(st: State): boolean =
+      current_state(st) = PausedStopConfirm
+  E_ConfirmStopInfusion(st: (per_E_ConfirmStopInfusion)): State =
+      COND
+       current_state(st) = PausedStopConfirm
+        -> LET new_st = leave_state(PausedStopConfirm)(st)
+	    IN enter_into(InfusionStopped)(new_st)
+      ENDCOND
+
+
+   per_E_NewInfusion(st: State): boolean =
+        current_state(st) = InfusionStopped
+   E_NewInfusion(st: (per_E_NewInfusion)): State =
+        COND
+         current_state(st) = InfusionStopped
+	  -> LET new_st = leave_state(InfusionStopped)(st),
+	         new_st = resetInfusionInstructions(new_st),
+		 new_st = initInfuStatus(new_st)
+	      IN enter_into(CheckAdminSet)(new_st) % the transition is wired up with this state of CheckDrugRoutine
+	ENDCOND
+
+
+  per_E_StopInfusion(st: State): boolean =
+      current_state(st) = InfusionPaused OR current_state(st) = PausedTooLong
+       OR current_state(st) = ALMWrongDrug OR current_state(st) = LevelTwoAlarming
+        OR current_state(st) = EmptyReservoir
+  E_StopInfusion(st: (per_E_StopInfusion)): State =
+      COND
+       current_state(st) = InfusionPaused
+        -> LET new_st = leave_state(InfusionPaused)(st)
+	    IN enter_into(PausedStopConfirm)(new_st),
+       current_state(st) = PausedTooLong
+        -> LET new_st = leave_state(PausedTooLong)(st)
+	    IN enter_into(InfusionStopped)(new_st),
+       current_state(st) = ALMWrongDrug
+        -> LET new_st = leave_state(ALMWrongDrug)(st)
+	    IN enter_into(InfusionStopped)(new_st),
+       current_state(st) = LevelTwoAlarming
+        -> LET new_st = leave_state(LevelTwoAlarming)(st),
+	       new_st = clearLevel2Alarm(new_st)
+	    IN enter_into(InfusionStopped)(new_st),
+       current_state(st) = EmptyReservoir
+        -> LET new_st = leave_state(EmptyReservoir)(st)
+	    IN enter_into(InfusionStopped)(new_st)
+      ENDCOND
+
+
+  per_tick(st: State): boolean =
+    (alrmLevel(st) /= ALM_LEVEL_1 AND
+      (current_state(st) = CheckDrugWhileInfusing OR current_state(st) = LevelTwoAlarming
+        OR current_state(st) = InfusionPaused OR current_state(st) = PausedStopConfirm))
+     OR (alrmLevel(st) = ALM_LEVEL_2 AND 
+           InfusionSubMachine?(current_state(st)))
+  tick(st: (per_tick)): State =
+      COND
+    current_state(st) = CheckDrugWhileInfusing
+     AND alrmLevel(st) /= ALM_LEVEL_1
+     -> IF checkDrug(st) = CHECK_OK
+            THEN LET new_st = leave_state(CheckDrugWhileInfusing)(st),
+                 new_st = resumeInfusion(new_st)
+              IN enter_into(Infusing)(new_st) % transition wired up with this state of InfusionSubMachine
+            ELSE LET new_st = leave_state(CheckDrugWhileInfusing)(st)
+              IN enter_into(ALMWrongDrug)(new_st) ENDIF,
+    current_state(st) = LevelTwoAlarming
+     AND alrmLevel(st) /= ALM_LEVEL_1
+     -> IF ErrCond(st) = Err_DoorOpen
+        THEN LET new_st = leave_state(LevelTwoAlarming)(st)
+              IN enter_into(EmptyReservoir)(new_st)
+        ELSE st ENDIF,
+    current_state(st) = InfusionPaused
+     AND alrmLevel(st) /= ALM_LEVEL_1
+         -> IF alrmLevel(st) = ALM_LEVEL_2
+        THEN LET new_st = leave_state(InfusionPaused)(st),
+                     new_st = pauseInfusion(new_st)
+                  IN enter_into(LevelTwoAlarming)(new_st)
+            ELSE st ENDIF,
+    current_state(st) = PausedStopConfirm
+         AND alrmLevel(st) /= ALM_LEVEL_1
+         -> IF alrmLevel(st) = ALM_LEVEL_2
+        THEN LET new_st = leave_state(PausedStopConfirm)(st),
+                     new_st = pauseInfusion(new_st)
+                  IN enter_into(LevelTwoAlarming)(new_st)
+            ELSE st ENDIF,
+    InfusionSubMachine?(current_state(st))
+     AND alrmLevel(st) = ALM_LEVEL_2
+     -> LET current_state: IController_MachineState = current_state(st),
+            new_st = leave_state(current_state)(st),
+            new_st = pauseInfusion(new_st)
+        IN enter_into(LevelTwoAlarming)(new_st)
+      ENDCOND
+
+
+  per_E_Warning(st: State): boolean = 
+      current_state(st) = LevelTwoAlarming OR current_state(st) = InfusionPaused
+       OR current_state(st) = PausedStopConfirm OR current_state(st) = PausedTooLong
+        OR current_state(st) = InfusionStopped OR current_state(st) = ALMWrongDrug
+         OR current_state(st) = EmptyReservoir 
+  E_Warning(st: (per_E_Warning)): State =
+      COND
+        current_state(st) = LevelTwoAlarming
+	 -> LET new_st = warning(ErrCond(st))(st)
+	     IN enter_into(LevelTwoAlarming)(new_st),
+        current_state(st) = InfusionPaused
+         -> LET new_st = warning(MSG_INFUSIONPAUSED)(st)
+	     IN enter_into(InfusionPaused)(new_st),
+        current_state(st) = PausedStopConfirm
+         -> LET new_st = warning(MSG_SPCHOOSE)(st)
+	     IN enter_into(PausedStopConfirm)(new_st),
+	current_state(st) = PausedTooLong
+	 -> LET new_st = warning(MSG_PAUSETOOLONG)(st)
+	     IN enter_into(PausedTooLong)(new_st),
+	current_state(st) = InfusionStopped
+	 -> LET new_st = warning(MSG_INFUSIONSTOP)(st)
+	     IN enter_into(InfusionStopped)(new_st),
+	current_state(st) = ALMWrongDrug
+	 -> LET new_st = warning(MSG_WRONGDRUG)(st)
+	     IN enter_into(ALMWrongDrug)(new_st),
+	current_state(st) = EmptyReservoir
+	 -> LET new_st = warning(MSG_EMPTYRESERVOIR)(st)
+	     IN enter_into(EmptyReservoir)(new_st)
+      ENDCOND
+
+
+ END InfusionInSession_th
+
+
+
+%-----------------------------------------------------------------------------------------------------------------------------
+%-- Controller :: Infusion SubMachine ----------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------------
+
+InfusionSubMachine_th: THEORY
+ BEGIN
+  IMPORTING types_and_constants_th, utility_functions_th
+
+  State: TYPE = IController_State
+
+  %-- InfusionSubMachine Events ------------------------------------------------------------------------------------------------------
+  per_enter_into(m: IController_MachineState): boolean =
+   InfusionSubMachine?(m) OR InfusionStopped?(m) OR ConfirmPowerDown?(m) OR InfusionPaused?(m)
+  enter_into(m: (per_enter_into))(st: State): State =
+   LET new_st =
+    COND
+     BolusRequest?(m) -> st,
+     ELSE -> copyInfuStatus(st)
+    ENDCOND
+     IN new_st WITH [ O_CurrentState := m ]
+
+
+  per_E_Cancel(st: State): boolean = 
+      current_state(st) = ALM_NewRateOutBound OR current_state(st) = ChangeRate
+       OR current_state(st) = ConfirmStop OR current_state(st) = ChangeRate
+        OR current_state(st) = ConfirmPause OR current_state(st) = Infusing
+  E_Cancel(st: (per_E_Cancel)): State =
+      COND
+        current_state(st) = ALM_NewRateOutBound
+	 -> LET new_st = leave_state(ALM_NewRateOutBound)(st)
+	     IN enter_into(Infusing)(new_st),
+        current_state(st) = ChangeRate
+	 -> LET new_st = leave_state(ChangeRate)(st)
+	     IN enter_into(Infusing)(new_st),
+       current_state(st) = ConfirmStop
+        -> LET new_st = leave_state(ConfirmStop)(st)
+	    IN enter_into(Infusing)(new_st),
+       current_state(st) = ConfirmPause
+        -> LET new_st = leave_state(ConfirmPause)(st)
+	    IN enter_into(Infusing)(new_st),
+       current_state(st) = Infusing % this transition is in the StateChanger model
+        -> LET new_st = leave_state(Infusing)(st)
+	    IN enter_into(ConfirmPowerDown)(new_st)
+      ENDCOND
+        
+  per_E_ChangeDoseRate(st: State): boolean = 
+      current_state(st) = Infusing OR current_state(st) = ALM_NewRateOutBound
+  E_ChangeDoseRate(st: (per_E_ChangeDoseRate)): State =
+      COND
+        current_state(st) = Infusing
+	 -> LET new_st = leave_state(Infusing)(st)
+	     IN enter_into(ChangeRate)(new_st),
+        current_state(st) = ALM_NewRateOutBound
+	 -> LET new_st = leave_state(ALM_NewRateOutBound)(st)
+	     IN enter_into(ChangeRate)(new_st)
+      ENDCOND
+
+  per_E_ConfirmDoseRate(st: State): boolean = 
+      current_state(st) = ChangeRate
+  E_ConfirmDoseRate(st: (per_E_ConfirmDoseRate)): State =
+      COND
+        current_state(st) = ChangeRate
+	 -> LET new_st = leave_state(ChangeRate)(st)
+	     IN enter_into(CheckNewRate)(new_st)
+      ENDCOND
+
+
+  per_E_ConfirmPauseInfusion(st: State): boolean =
+      current_state(st) = ConfirmPause
+  E_ConfirmPauseInfusion(st: (per_E_ConfirmPauseInfusion)): State =
+      COND
+       current_state(st) = ConfirmPause
+        -> LET new_st = leave_state(ConfirmPause)(st)
+	    IN enter_into(InfusionPaused)(new_st)  % transition wired up with this state of InfusionInSession
+      ENDCOND
+
+
+  per_E_ConfirmStopInfusion(st: State): boolean = 
+      current_state(st) = ConfirmStop
+  E_ConfirmStopInfusion(st: (per_E_ConfirmStopInfusion)): State =
+      COND
+       current_state(st) = ConfirmStop
+        -> LET new_st = leave_state(ConfirmStop)(st)
+	    IN enter_into(InfusionStopped)(new_st) % transition wired up to this state of InfusionInSession
+      ENDCOND
+
+
+  per_E_PauseInfusion(st: State): boolean = 
+      current_state(st) = Infusing
+  E_PauseInfusion(st: (per_E_PauseInfusion)): State =
+      COND
+       current_state(st) = Infusing
+        -> LET new_st = leave_state(Infusing)(st)
+	    IN enter_into(ConfirmPause)(new_st)
+      ENDCOND
+
+
+  per_E_RequestBolus(st: State): boolean = 
+      current_state(st) = Infusing
+  E_RequestBolus(st: (per_E_RequestBolus)): State =
+      COND
+       current_state(st) = Infusing
+        -> IF infuStatus(st)`isBolusInProgress
+	   THEN LET new_st = warning(MSG_BOLUSDENIED)(st)
+	         IN enter_into(Infusing)(new_st)
+           ELSE LET new_st = leave_state(Infusing)(st)
+	         IN enter_into(BolusRequest)(new_st WITH [ O_BolusRequested := TRUE ]) ENDIF
+      ENDCOND
+
+
+  per_E_StopInfusion(st: State): boolean = 
+      current_state(st) = Infusing
+  E_StopInfusion(st: (per_E_StopInfusion)): State =
+      COND
+       current_state(st) = Infusing
+        -> LET new_st = leave_state(Infusing)(st)
+	    IN enter_into(ConfirmStop)(new_st)
+      ENDCOND
+
+
+  per_tick(st: State): boolean = 
+    InfusionSubMachine?(current_state(st))
+	 AND alrmLevel(st) = ALM_LEVEL_0
+  tick(st: (per_tick)): State =
+    % copyInfuStatus is executed at every clock in every state
+    LET st = copyInfuStatus(st) IN
+      COND
+       (current_state(st) = ChangeRate
+        OR current_state(st) = ALM_NewRateOutBound
+         OR current_state(st) = ConfirmStop
+          OR current_state(st) = ConfirmPause)
+	 AND alrmLevel(st) = ALM_LEVEL_0
+        -> IF infusionDone(vtbi(st))(st)
+	   THEN LET new_st = leave_state(current_state(st))(st)
+	         IN enter_into(Infusing)(new_st)
+           ELSIF infusing(st) = TRUE 
+                   AND bolusing(st) = TRUE 
+                    AND infuStatus(st)`isBolusInProgress = FALSE
+	   THEN LET new_st = st WITH [ bolusing := FALSE ]
+	         IN enter_into(current_state(st))(new_st)
+	   ELSE st ENDIF,
+       current_state(st) = Infusing
+	 AND alrmLevel(st) = ALM_LEVEL_0
+        -> IF infusionDone(vtbi(st))(st)
+	   THEN LET new_st = leave_state(Infusing)(st)
+	         IN enter_into(InfusionStopped)(new_st)
+           ELSIF infusing(st) = TRUE 
+                   AND bolusing(st) = TRUE 
+                    AND infuStatus(st)`isBolusInProgress = FALSE
+	   THEN LET new_st = st WITH [ bolusing := FALSE ]
+	         IN enter_into(Infusing)(new_st)
+	   ELSE st ENDIF,
+       current_state(st) = CheckNewRate
+	 AND alrmLevel(st) = ALM_LEVEL_0
+        -> LET tempx = checkDoseRate(infuParameters(st)`programmedDoseRate)(st),
+	       temp  = infuParameters(st)`programmedDoseRate
+    	    IN IF tempx = CHECK_OK
+	       THEN LET new_st = leave_state(CheckNewRate)(st)
+	             IN enter_into(Infusing)(new_st)
+	       ELSE LET new_st = leave_state(CheckNewRate)(st)
+	             IN enter_into(ALM_NewRateOutBound)(new_st) ENDIF,
+       current_state(st) = BolusRequest
+	 AND alrmLevel(st) = ALM_LEVEL_0
+        ->  LET new_st = leave_state(BolusRequest)(st),
+	        new_st = displayBolusInfo(st WITH [ O_BolusRequested := FALSE ])
+	     IN enter_into(Infusing)(new_st)
+      ENDCOND
+
+
+  per_E_Warning(st: State): boolean = 
+      current_state(st) = Infusing OR current_state(st) = ALM_NewRateOutBound
+       OR current_state(st) = ConfirmStop OR current_state(st) = ConfirmPause
+  E_Warning(st: (per_E_Warning)): State =
+      COND
+        current_state(st) = Infusing
+	 -> LET new_st = warning(MSG_INFUSING)(st)
+	     IN enter_into(Infusing)(new_st),
+        current_state(st) = ChangeRate
+	 -> LET new_st = warning(MSG_CHANGEDR)(st)
+	     IN enter_into(ChangeRate)(new_st),
+        current_state(st) = ALM_NewRateOutBound
+	 -> LET new_st = warning(MSG_ALRMDR)(st)
+	     IN enter_into(ALM_NewRateOutBound)(new_st),
+        current_state(st) = ConfirmStop
+	 -> LET new_st = warning(MSG_CONFIRMSTOP)(st)
+	     IN enter_into(ConfirmStop)(new_st),
+        current_state(st) = ConfirmPause
+	 -> LET new_st = warning(MSG_CONFIRMPAUSE)(st)
+	     IN enter_into(ConfirmPause)(new_st)
+      ENDCOND
+  
+
+ END InfusionSubMachine_th
+
+
+
+%-----------------------------------------------------------------------------------------------------------------------------
+%-- Controller :: Infusion State Machine -------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------------
+
+InfusionStateMachine_th: THEORY
+ BEGIN
+   IMPORTING types_and_constants_th, utility_functions_th
+
+   MachineState: TYPE = IController_MachineState
+   State: TYPE = IController_State
+
+   %-- Infusion State Machine Events --------------------------------------------------------------------------------------------------
+   per_enter_into(m: MachineState): boolean =
+     StateChangerMachine?(m)
+   enter_into(m: (per_enter_into))(st: State): State =
+     st WITH [ O_CurrentState := m ]
+
+
+   per_E_Cancel(st: State): boolean = 
+      current_state(st) = ConfirmPowerDown
+   E_Cancel(st: (per_E_Cancel)): State =
+       COND
+         current_state(st) = ConfirmPowerDown
+	  -> IF previous_state(st) = POSTDONE 
+             THEN LET new_st = leave_state(ConfirmPowerDown)(st)
+	           IN enter_into(POSTDONE)(new_st)
+             ELSIF % the History Junction in the stateflow model restores the last active state
+                   InfusionInSessionMachine?(previous_state(st))
+	            OR CheckDrugRoutineMachine?(previous_state(st))
+		     OR ConfigureInfusionProgramMachine?(previous_state(st))  
+             THEN LET new_st = leave_state(ConfirmPowerDown)(st)
+	           IN enter_into(previous_state(st))(new_st)
+	     ELSE st ENDIF
+       ENDCOND
+
+
+   per_E_CheckAdminSet(st: State): boolean = 
+      current_state(st) = POSTDONE
+   E_CheckAdminSet(st: (per_E_CheckAdminSet)): State =
+       COND
+         current_state(st) = POSTDONE
+	  -> LET new_st = leave_state(POSTDONE)(st),
+	         new_st = resetInfusionInstructions(new_st),
+		 new_st = initInfuStatus(new_st)
+	      IN enter_into(CheckAdminSet)(new_st) % the transition is wired up with this state of CheckDrugRoutine 
+       ENDCOND
+
+
+   per_E_ConfirmPowerDown(st: State): boolean = 
+      current_state(st) = ConfirmPowerDown
+   E_ConfirmPowerDown(st: (per_E_ConfirmPowerDown)): State =
+       COND
+         current_state(st) = ConfirmPowerDown
+	  -> LET new_st = leave_state(ConfirmPowerDown)(st),
+	         new_st = new_st WITH [ O_AlarmCond := 0 ]
+	      IN enter_into(PowerOff)(new_st)
+       ENDCOND
+
+
+   per_E_PowerButton(st: State): boolean =
+       current_state(st) = PowerOff OR current_state(st) = ALM_POSTFailed
+        OR current_state(st) = LEVELONEALARM OR current_state(st) = POSTDONE
+         OR ConfigureInfusionProgramMachine?(current_state(st)) 
+	  OR InfusionInSessionMachine?(current_state(st)) 
+	   OR CheckDrugRoutineMachine?(current_state(st))
+   E_PowerButton(st: (per_E_PowerButton)): State =
+       COND
+         current_state(st) = PowerOff
+	  -> LET new_st = leave_state(PowerOff)(st),
+	         new_st = init(new_st)
+              IN enter_into(POST)(new_st), % NB. this implementation resets everything when the pump is turned off!
+	 current_state(st) = ALM_POSTFailed
+	  -> LET new_st = leave_state(ALM_POSTFailed)(st)
+	      IN enter_into(PowerOff)(new_st),
+	 current_state(st) = LEVELONEALARM
+	  -> LET new_st = leave_state(LEVELONEALARM)(st),
+	         new_st = new_st WITH [ O_AlarmCond := 0 ]
+	      IN enter_into(PowerOff)(new_st),
+	 current_state(st) = POSTDONE
+	  -> LET new_st = leave_state(POSTDONE)(st)
+	      IN enter_into(ConfirmPowerDown)(new_st),
+	 ConfigureInfusionProgramMachine?(current_state(st)) 
+	  OR InfusionInSessionMachine?(current_state(st))
+	   OR CheckDrugRoutineMachine?(current_state(st))
+	  -> LET new_st = leave_state(current_state(st))(st)
+	      IN enter_into(ConfirmPowerDown)(new_st)
+       ENDCOND
+   
+   per_tick(st: State): boolean =
+       current_state(st) = POST OR
+        alrmLevel(st) = ALM_LEVEL_1 AND
+         (CheckDrugRoutineMachine?(current_state(st)) OR
+           ConfigureInfusionProgramMachine?(current_state(st)) OR
+            InfusionInSessionMachine?(current_state(st)))
+   tick(st: (per_tick)): State =
+       COND
+         current_state(st) = POST
+	  -> IF pumpConfigData(st)`isPostSuccessful
+	     THEN LET new_st = leave_state(POST)(st) IN enter_into(POSTDONE)(new_st)
+	     ELSE LET new_st = leave_state(POST)(st) IN enter_into(ALM_POSTFailed)(new_st) ENDIF,
+         (CheckDrugRoutineMachine?(current_state(st))
+	   OR ConfigureInfusionProgramMachine?(current_state(st)))
+          AND alrmLevel(st) = ALM_LEVEL_1
+	  -> LET new_st = leave_state(current_state(st))(st) % this behaviour is due to the History Junction in the stateflow model
+	      IN enter_into(LEVELONEALARM)(new_st),
+         InfusionInSessionMachine?(current_state(st))
+          AND alrmLevel(st) = ALM_LEVEL_1
+          -> LET new_st = leave_state(current_state(st))(st), % this behaviour is due to the History Junction in the stateflow model
+	         new_st = resetInfusionInstructions(new_st)
+	      IN enter_into(LEVELONEALARM)(new_st)
+       ENDCOND
+
+   per_E_Warning(st: State): boolean = 
+      current_state(st) = ALM_POSTFailed 
+       OR current_state(st) = POSTDONE
+        OR current_state(st) = ConfirmPowerDown
+   E_Warning(st: (per_E_Warning)): State =
+       COND
+         current_state(st) = ALM_POSTFailed
+	  -> warning(MSG_POSTFAIL)(st),
+	 current_state(st) = POSTDONE
+	  -> warning(MSG_POSTDONE)(st),
+	 current_state(st) = ConfirmPowerDown
+	  -> warning(MSG_PowerOff)(st)
+       ENDCOND
+
+ END InfusionStateMachine_th
+
+
+
+%-----------------------------------------------------------------------------------------------------------------------------
+%-- Controller :: State Changer ----------------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------------
+
+GPCA_StateChanger_th: THEORY
+ BEGIN
+  IMPORTING InfusionStateMachine_th, CheckDrugRoutine_th, ConfigureInfusionProgram_th, InfusionInSession_th, InfusionSubMachine_th
+
+  State: TYPE = IController_State
+
+  per_CE_Alarm(st: State): boolean = InfusionInSession_th.per_E_Alarm(st)
+  CE_Alarm(st: (per_CE_Alarm)): State =
+   COND
+     InfusionInSession_th.per_E_Alarm(st)  -> InfusionInSession_th.E_Alarm(st)
+   ENDCOND
+
+  per_CE_Cancel(st: State): boolean =
+     InfusionStateMachine_th.per_E_Cancel(st) OR CheckDrugRoutine_th.per_E_Cancel(st)
+      OR ConfigureInfusionProgram_th.per_E_Cancel(st) OR InfusionInSession_th.per_E_Cancel(st)
+       OR InfusionSubMachine_th.per_E_Cancel(st)
+  CE_Cancel(st: (per_CE_Cancel)): State =
+    COND
+     InfusionStateMachine_th.per_E_Cancel(st)	  -> InfusionStateMachine_th.E_Cancel(st),
+     CheckDrugRoutine_th.per_E_Cancel(st)         -> CheckDrugRoutine_th.E_Cancel(st),
+     ConfigureInfusionProgram_th.per_E_Cancel(st) -> ConfigureInfusionProgram_th.E_Cancel(st),
+     InfusionInSession_th.per_E_Cancel(st)        -> InfusionInSession_th.E_Cancel(st),
+     InfusionSubMachine_th.per_E_Cancel(st)       -> InfusionSubMachine_th.E_Cancel(st)
+   ENDCOND
+
+  per_CE_ChangeDoseRate(st: State): boolean =
+     ConfigureInfusionProgram_th.per_E_ChangeDoseRate(st) OR InfusionSubMachine_th.per_E_ChangeDoseRate(st)
+  CE_ChangeDoseRate(st: (per_CE_ChangeDoseRate)): State =
+    COND
+     ConfigureInfusionProgram_th.per_E_ChangeDoseRate(st) -> ConfigureInfusionProgram_th.E_ChangeDoseRate(st),
+     InfusionSubMachine_th.per_E_ChangeDoseRate(st)       -> InfusionSubMachine_th.E_ChangeDoseRate(st)
+    ENDCOND
+
+  per_CE_ChangeVTBI(st: State): boolean = ConfigureInfusionProgram_th.per_E_ChangeVTBI(st)
+  CE_ChangeVTBI(st: (per_CE_ChangeVTBI)): State =
+   COND
+     ConfigureInfusionProgram_th.per_E_ChangeVTBI(st) -> ConfigureInfusionProgram_th.E_ChangeVTBI(st)
+   ENDCOND
+
+  per_CE_CheckAdminSet(st: State): boolean = 
+     InfusionStateMachine_th.per_E_CheckAdminSet(st) OR CheckDrugRoutine_th.per_E_CheckAdminSet(st)
+  CE_CheckAdminSet(st: (per_CE_CheckAdminSet)): State =
+   COND
+     InfusionStateMachine_th.per_E_CheckAdminSet(st) -> InfusionStateMachine_th.E_CheckAdminSet(st),
+     CheckDrugRoutine_th.per_E_CheckAdminSet(st)     -> CheckDrugRoutine_th.E_CheckAdminSet(st)
+   ENDCOND
+
+  per_CE_CheckDrug(st: State): boolean = 
+     CheckDrugRoutine_th.per_E_CheckDrug(st) OR InfusionInSession_th.per_E_CheckDrug(st)
+  CE_CheckDrug(st: (per_CE_CheckDrug)): State =
+   COND
+     CheckDrugRoutine_th.per_E_CheckDrug(st)   -> CheckDrugRoutine_th.E_CheckDrug(st),
+     InfusionInSession_th.per_E_CheckDrug(st)  -> InfusionInSession_th.E_CheckDrug(st)
+   ENDCOND
+
+  per_CE_ClearAlarm(st: State): boolean = 
+     InfusionInSession_th.per_E_ClearAlarm(st)
+  CE_ClearAlarm(st: (per_CE_ClearAlarm)) : State =
+   COND
+     InfusionInSession_th.per_E_ClearAlarm(st)  -> InfusionInSession_th.E_ClearAlarm(st)
+   ENDCOND
+
+  per_CE_ConfigureInfusionProgram(st: State): boolean =
+     CheckDrugRoutine_th.per_E_ConfigureInfusionProgram(st) OR ConfigureInfusionProgram_th.per_E_ConfigureInfusionProgram(st)
+  CE_ConfigureInfusionProgram(st: (per_CE_ConfigureInfusionProgram)): State =
+   COND
+     CheckDrugRoutine_th.per_E_ConfigureInfusionProgram(st)         -> CheckDrugRoutine_th.E_ConfigureInfusionProgram(st),
+     ConfigureInfusionProgram_th.per_E_ConfigureInfusionProgram(st) -> ConfigureInfusionProgram_th.E_ConfigureInfusionProgram(st)
+   ENDCOND
+
+  per_CE_ConfirmConcentration(st: State): boolean =
+     CheckDrugRoutine_th.per_E_ConfirmConcentration(st)
+  CE_ConfirmConcentration(st: (per_CE_ConfirmConcentration)): State =
+   COND
+     CheckDrugRoutine_th.per_E_ConfirmConcentration(st)   -> CheckDrugRoutine_th.E_ConfirmConcentration(st)
+   ENDCOND
+
+  per_CE_ConfirmDoseRate(st: State): boolean =
+     ConfigureInfusionProgram_th.per_E_ConfirmDoseRate(st) OR InfusionSubMachine_th.per_E_ConfirmDoseRate(st)
+  CE_ConfirmDoseRate(st: (per_CE_ConfirmDoseRate)): State =
+   COND
+     ConfigureInfusionProgram_th.per_E_ConfirmDoseRate(st) -> ConfigureInfusionProgram_th.E_ConfirmDoseRate(st),
+     InfusionSubMachine_th.per_E_ConfirmDoseRate(st)       -> InfusionSubMachine_th.E_ConfirmDoseRate(st)
+   ENDCOND
+
+  per_CE_ConfirmPauseInfusion(st: State): boolean = InfusionSubMachine_th.per_E_ConfirmPauseInfusion(st)
+  CE_ConfirmPauseInfusion(st: (per_CE_ConfirmPauseInfusion)): State =
+   COND
+     InfusionSubMachine_th.per_E_ConfirmPauseInfusion(st) -> InfusionSubMachine_th.E_ConfirmPauseInfusion(st)
+   ENDCOND
+
+  per_CE_ConfirmPowerDown(st: State): boolean = InfusionStateMachine_th.per_E_ConfirmPowerDown(st)
+  CE_ConfirmPowerDown(st: (per_CE_ConfirmPowerDown)): State =
+    COND
+     InfusionStateMachine_th.per_E_ConfirmPowerDown(st) -> InfusionStateMachine_th.E_ConfirmPowerDown(st)
+    ENDCOND
+
+  per_CE_ConfirmStopInfusion(st: State): boolean =
+     InfusionInSession_th.per_E_ConfirmStopInfusion(st) OR InfusionSubMachine_th.per_E_ConfirmStopInfusion(st)
+  CE_ConfirmStopInfusion(st: (per_CE_ConfirmStopInfusion)): State =
+   COND
+     InfusionInSession_th.per_E_ConfirmStopInfusion(st)  -> InfusionInSession_th.E_ConfirmStopInfusion(st),
+     InfusionSubMachine_th.per_E_ConfirmStopInfusion(st) -> InfusionSubMachine_th.E_ConfirmStopInfusion(st)
+   ENDCOND
+
+  per_CE_ConfirmVTBI(st: State): boolean = ConfigureInfusionProgram_th.per_E_ConfirmVTBI(st)
+  CE_ConfirmVTBI(st: (per_CE_ConfirmVTBI)): State =
+   COND
+     ConfigureInfusionProgram_th.per_E_ConfirmVTBI(st)     -> ConfigureInfusionProgram_th.E_ConfirmVTBI(st)
+   ENDCOND
+
+  per_CE_NewInfusion(st: State): boolean = InfusionInSession_th.per_E_NewInfusion(st)
+  CE_NewInfusion(st: (per_CE_NewInfusion)): State =
+   COND
+     InfusionInSession_th.per_E_NewInfusion(st)  -> InfusionInSession_th.E_NewInfusion(st)
+   ENDCOND
+
+  per_CE_NotReady(st: State): boolean = StartInfusionEvents_th.per_E_NotReady(st)
+  CE_NotReady(st: (per_CE_NotReady)): State =
+   COND
+     StartInfusionEvents_th.per_E_NotReady(st) -> StartInfusionEvents_th.E_NotReady(st)
+   ENDCOND
+
+  per_CE_Prime(st: State): boolean = CheckDrugRoutine_th.per_E_Prime(st)
+  CE_Prime(st: (per_CE_Prime)): State =
+   COND
+     CheckDrugRoutine_th.per_E_Prime(st)   -> CheckDrugRoutine_th.E_Prime(st)
+   ENDCOND
+
+  per_CE_PowerButton(st: State): boolean = InfusionStateMachine_th.per_E_PowerButton(st)
+  CE_PowerButton(st: (per_CE_PowerButton)): State =
+    COND
+     InfusionStateMachine_th.per_E_PowerButton(st) -> InfusionStateMachine_th.E_PowerButton(st)
+    ENDCOND
+
+  per_CE_Ready(st: State): boolean = StartInfusionEvents_th.per_E_Ready(st)
+  CE_Ready(st: (per_CE_Ready)): State =
+   COND
+     StartInfusionEvents_th.per_E_Ready(st) -> StartInfusionEvents_th.E_Ready(st)
+   ENDCOND
+
+  per_CE_StartInfusion(st: State): boolean = ConfigureInfusionProgram_th.per_E_StartInfusion(st)
+  CE_StartInfusion(st: (per_CE_StartInfusion)): State =
+   COND
+     ConfigureInfusionProgram_th.per_E_StartInfusion(st) -> ConfigureInfusionProgram_th.E_StartInfusion(st)
+   ENDCOND
+
+  per_CE_StopInfusion(st: State): boolean =
+     InfusionInSession_th.per_E_StopInfusion(st) OR InfusionSubMachine_th.per_E_StopInfusion(st)
+  CE_StopInfusion(st: (per_CE_StopInfusion)): State =
+   COND
+     InfusionInSession_th.per_E_StopInfusion(st)  -> InfusionInSession_th.E_StopInfusion(st),
+     InfusionSubMachine_th.per_E_StopInfusion(st) -> InfusionSubMachine_th.E_StopInfusion(st)
+   ENDCOND
+   
+  per_CE_PauseInfusion(st: State): boolean = InfusionSubMachine_th.per_E_PauseInfusion(st)
+  CE_PauseInfusion(st: (per_CE_PauseInfusion)): State =
+   COND
+     InfusionSubMachine_th.per_E_PauseInfusion(st) -> InfusionSubMachine_th.E_PauseInfusion(st)
+   ENDCOND
+
+  per_CE_RequestBolus(st: State): boolean = InfusionSubMachine_th.per_E_RequestBolus(st)
+  CE_RequestBolus(st: (per_CE_RequestBolus)): State =
+   COND
+     InfusionSubMachine_th.per_E_RequestBolus(st) -> InfusionSubMachine_th.E_RequestBolus(st)
+   ENDCOND
+
+  per_C_tick(st: State): boolean =
+     InfusionStateMachine_th.per_tick(st) OR CheckDrugRoutine_th.per_tick(st)
+      OR ConfigureInfusionProgram_th.per_tick(st) OR InfusionInSession_th.per_tick(st)
+       OR InfusionSubMachine_th.per_tick(st)
+  C_tick(st: (per_C_tick)): State =
+   COND
+     InfusionStateMachine_th.per_tick(st) -> InfusionStateMachine_th.tick(st),
+     CheckDrugRoutine_th.per_tick(st)     -> CheckDrugRoutine_th.tick(st),
+     ConfigureInfusionProgram_th.per_tick(st) -> ConfigureInfusionProgram_th.tick(st),
+     InfusionInSession_th.per_tick(st)    -> InfusionInSession_th.tick(st),
+     InfusionSubMachine_th.per_tick(st)   -> InfusionSubMachine_th.tick(st)
+   ENDCOND
+
+  per_CE_Warning(st: State): boolean =
+     InfusionStateMachine_th.per_E_Warning(st) OR CheckDrugRoutine_th.per_E_Warning(st)
+      OR ConfigureInfusionProgram_th.per_E_Warning(st) OR InfusionInSession_th.per_E_Warning(st)
+       OR InfusionSubMachine_th.per_E_Warning(st)
+  CE_Warning(st: (per_CE_Warning)): State =
+    COND
+     InfusionStateMachine_th.per_E_Warning(st) -> InfusionStateMachine_th.E_Warning(st),
+     CheckDrugRoutine_th.per_E_Warning(st)     -> CheckDrugRoutine_th.E_Warning(st),
+     ConfigureInfusionProgram_th.per_E_Warning(st) -> ConfigureInfusionProgram_th.E_Warning(st),
+     InfusionInSession_th.per_E_Warning(st)    -> InfusionInSession_th.E_Warning(st),
+     InfusionSubMachine_th.per_E_Warning(st)   -> InfusionSubMachine_th.E_Warning(st)
+   ENDCOND
+
+
+  %-----------------------------------------------------------------------------------------------------------------------------
+  %-- Alarming Component :: CheckReady -----------------------------------------------------------------------------------------
+  %-----------------------------------------------------------------------------------------------------------------------------
+  per_AE_Clock(st: State): boolean = AlarmingComponent_th.per_E_Clock(st)
+  AE_Clock(st: (per_AE_Clock)): State =
+    COND
+     AlarmingComponent_th.per_E_Clock(st) -> AlarmingComponent_th.E_Clock(st)
+    ENDCOND
+
+  per_AE_RequestToStart(st: State): boolean = AlarmingComponent_th.per_E_RequestToStart(st)
+  AE_RequestToStart(st: (per_AE_RequestToStart)): State =
+    COND
+     AlarmingComponent_th.per_E_RequestToStart(st) -> AlarmingComponent_th.E_RequestToStart(st)
+    ENDCOND
+
+  per_AE_Restart(st: State): boolean = AlarmingComponent_th.per_E_Restart(st)
+  AE_Restart(st: (per_AE_Restart)): State =
+    COND
+     AlarmingComponent_th.per_E_Restart(st) -> AlarmingComponent_th.E_Restart(st)
+    ENDCOND
+
+  per_A_tick(st: State): boolean = AlarmingComponent_th.per_tick(st)
+  A_tick(st: (per_A_tick)): State =
+    COND
+     AlarmingComponent_th.per_tick(st) -> AlarmingComponent_th.tick(st)
+    ENDCOND
+
+  AE_AlarmClear(st: State): State = AlarmingComponent_th.E_AlarmClear(st)
+
+
+  %-----------------------------------------------------------------------------------------------------------------------------
+  %-- FDA Controller transitions -----------------------------------------------------------------------------------------------
+  %-----------------------------------------------------------------------------------------------------------------------------
+  GPCA_ControllerUserActions(pre, post: State): bool = 
+    (per_CE_PowerButton(pre) AND post = CE_PowerButton(pre)) OR (per_CE_Prime(pre) AND post = CE_Prime(pre)) 
+     OR (per_CE_CheckAdminSet(pre) AND post = CE_CheckAdminSet(pre)) OR (per_CE_CheckDrug(pre) AND post = CE_CheckDrug(pre))
+      OR (per_CE_ConfigureInfusionProgram(pre) AND post = CE_ConfigureInfusionProgram(pre))
+       OR (per_CE_ConfirmConcentration(pre) AND post = CE_ConfirmConcentration(pre)) 
+        OR (per_CE_ConfirmVTBI(pre) AND post = CE_ConfirmVTBI(pre)) 
+         OR (per_CE_ConfirmDoseRate(pre) AND post = CE_ConfirmDoseRate(pre))
+          OR (per_CE_NewInfusion(pre) AND post = CE_NewInfusion(pre)) 
+           OR (per_CE_StartInfusion(pre) AND post = CE_StartInfusion(pre)) 
+            OR (per_CE_StopInfusion(pre) AND post = CE_StopInfusion(pre)) 
+             OR (per_CE_ConfirmStopInfusion(pre) AND post = CE_ConfirmStopInfusion(pre))
+              OR (per_CE_PauseInfusion(pre) AND post = CE_PauseInfusion(pre)) 
+               OR (per_CE_ConfirmPauseInfusion(pre) AND post = CE_ConfirmPauseInfusion(pre)) 
+                OR (per_CE_ChangeDoseRate(pre) AND post = CE_ChangeDoseRate(pre))  
+                 OR (per_CE_ChangeVTBI(pre) AND post = CE_ChangeVTBI(pre))
+	          OR (per_CE_ClearAlarm(pre) AND post = CE_ClearAlarm(pre))
+                   OR (per_CE_RequestBolus(pre) AND post = CE_RequestBolus(pre)) 
+                    OR (per_CE_ConfirmPowerDown(pre) AND post = CE_ConfirmPowerDown(pre))
+                     OR (per_CE_Cancel(pre) AND post = CE_Cancel(pre))
+
+  GPCA_Controller_transitions(pre, post: State): bool = 
+   % user actions
+   GPCA_ControllerUserActions(pre,post)
+   % machine events
+    OR (per_CE_Alarm(pre) AND post = CE_Alarm(pre)) 
+     OR (per_C_tick(pre) AND post = C_tick(pre)) 
+      OR (per_CE_Warning(pre) AND post = CE_Warning(pre)) 
+       OR (per_AE_Clock(pre) AND post = AE_Clock(pre))
+        OR (per_AE_RequestToStart(pre) AND post = AE_RequestToStart(pre))
+         OR (per_AE_Restart(pre) AND post = AE_Restart(pre))
+          OR (per_A_tick(pre) AND post = A_tick(pre))
+           OR post = AE_AlarmClear(pre)
+   % these two events are generated by the alarming component in response to specific commands of the state changer
+   % OR post = CE_NotReady(pre) OR post = CE_Ready(pre)
+  
+
+
+ END GPCA_StateChanger_th

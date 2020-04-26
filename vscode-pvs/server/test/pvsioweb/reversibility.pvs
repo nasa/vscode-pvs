@@ -1,0 +1,66 @@
+reversibility: THEORY
+ BEGIN IMPORTING emucharts_fcusoftware
+
+%-- transition system
+init?(st: State): bool = (st = init(0))
+trans(pre, post: State): bool = 
+   (per_click_CLR(pre) AND post = click_CLR(pre)) OR
+   (per_click_digit_0(pre) AND post = click_digit_0(pre)) OR
+   (per_click_digit_1(pre) AND post = click_digit_1(pre)) OR
+   (per_click_digit_2(pre) AND post = click_digit_2(pre)) OR
+   (per_click_digit_3(pre) AND post = click_digit_3(pre)) OR
+   (per_click_digit_4(pre) AND post = click_digit_4(pre)) OR
+   (per_click_digit_5(pre) AND post = click_digit_5(pre)) OR
+   (per_click_digit_6(pre) AND post = click_digit_6(pre)) OR
+   (per_click_digit_7(pre) AND post = click_digit_7(pre)) OR
+   (per_click_digit_8(pre) AND post = click_digit_8(pre)) OR
+   (per_click_digit_9(pre) AND post = click_digit_9(pre)) OR
+   (per_click_editbox_pressure(pre) AND post = click_editbox_pressure(pre)) OR
+   (per_click_ESC(pre) AND post = click_ESC(pre)) OR
+   (per_click_hPa(pre) AND post = click_hPa(pre)) OR
+   (per_click_inHg(pre) AND post = click_inHg(pre)) OR
+   (per_click_OK(pre) AND post = click_OK(pre)) OR
+   (per_click_point(pre) AND post = click_point(pre)) OR
+   (per_click_QNH_RADIO(pre) AND post = click_QNH_RADIO(pre)) OR
+   (per_click_STD_RADIO(pre) AND post = click_STD_RADIO(pre)) OR
+   (per_tick(pre) AND post = tick(pre))
+
+reversibility(st: State): bool =
+    (per_click_editbox_pressure(st) IMPLIES
+      (per_click_ESC(click_editbox_pressure(st)) AND click_ESC(click_editbox_pressure(st))`current_state = st`current_state))
+
+%-- guard predicate for excluding irrelevant states from the proof
+guard(pre, post: State): bool = true
+
+%-- PVS theorem formulated using structural induction
+REVERSIBILITY: THEOREM
+  FORALL (pre, post: State):
+    (init?(pre) IMPLIES reversibility(pre))
+       AND
+    ((reversibility(pre) AND guard(pre, post) AND trans(pre, post)) IMPLIES reversibility(post))
+%|-----------------------------------------------------------------
+%|- Proof strategy for proving REVERSIBILITY.
+%|- Performs skolemization, expansions, case-splitting, then grind.
+%|- To install the proof strategy in PVS Emacs, type in Emacs:
+%|-       M-x install-prooflite-scripts-theory!
+%|- To run the proofs in batch mode, type from the command line:
+%|-       proveit consistency
+%|-----------------------------------------------------------------
+%|- REVERSIBILITY: PROOF
+%|-   (then
+%|-     (rewrite-msg-off)
+%|-     (skosimp*)
+%|-     (branch (prop)
+%|- 	 ((then (comment "induction base")
+%|- 	        (try (grind :if-match nil) (propax) (postpone)))
+%|- 	  (then (comment "inductive step")
+%|- 	        (expand "trans")
+%|- 	        (expand "per_click_editbox_pressure")
+%|- 	        (prop)
+%|- 	        (try (grind :if-match nil) (propax) (postpone))))))
+%|- QED
+%|-----------------------------------------------------------------
+%|- Date = 2017.02.03
+%|- Run time =  28.56 secs
+%|-----------------------------------------------------------------
+ END reversibility

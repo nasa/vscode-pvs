@@ -1,0 +1,145 @@
+alarisGH_AsenaCC: THEORY
+ BEGIN
+
+  %-- constants & type definitions --------------------------------------------------------------------------------
+  max: nonneg_real = 1200
+  min: nonneg_real = 0.01
+  alaris_real: TYPE = {x: nonneg_real | x <= max}
+
+  % note: the tick rate accelerates when timer = 0 -- we are not modelling this for now.
+  tick: TYPE = nat
+  max_timer: tick = 5
+  alaris_timer: TYPE = upto(max_timer)
+  decrement(t: alaris_timer, n: tick): alaris_timer = IF t - n >= 0 THEN t - n ELSE t ENDIF
+
+  time: TYPE = nonneg_real % milliseconds
+  quick: time = 1/120
+  slow: time = 1/250
+  alaris_tick_frequency: TYPE = { x: time | x = quick OR x = slow }
+
+  small_step: alaris_real = 1
+  big_step: alaris_real = 10
+  alaris_step: TYPE = {x: alaris_real | x = small_step OR x = big_step}
+
+  state: TYPE =
+        [# left_display: alaris_real,
+           timer: alaris_timer,
+           step: alaris_step #]
+%	   tick_frequency: alaris_tick_frequency #] % this field is not used at the moment
+  init(x: alaris_real): state =
+      (# left_display := x, timer := max_timer, step := small_step #)
+%, tick_frequency := slow #)
+  %----------------------------------------------------------------------------------------------------------------
+
+
+  %-- utility functions -------------------------------------------------------------------------------------------
+  trim(x: real): alaris_real = IF x > max THEN max ELSIF x < 0 THEN 0 ELSE x ENDIF
+  ceil(x: real): real = ceiling(x)
+  %----------------------------------------------------------------------------------------------------------------
+
+
+  %-- alaris' chevron (UP,up,dn,DN) -------------------------------------------------------------------------------
+  alaris_up(delta: alaris_step, val: alaris_real): alaris_real = 
+     IF    val < 10 		     THEN trim( floor((val*100) + delta) / 100 )
+     ELSIF val >= 10  AND val < 100  THEN trim( floor((val*10) + delta) / 10 )
+     ELSIF val >= 100 AND val < 1000 THEN trim( floor((val) + delta) )
+     ELSE                                 trim( (floor(val/10) + delta) * 10 ) ENDIF
+
+  alaris_UP(delta: alaris_step, val: alaris_real): alaris_real = 
+     IF    val < 10		     THEN trim( floor((val*10) + delta) / 10 )
+     ELSIF val >= 10 AND val < 100   THEN trim( floor(val) + delta )
+     ELSIF val >= 100 AND val < 1000 THEN trim( (floor(val/10) + delta) * 10 )
+     ELSE                                 trim( (floor(val/100) + delta) * 100 ) ENDIF
+
+  %-- note: dn(100) = 99 (and not 99.9)
+  alaris_dn(delta: alaris_step, val: alaris_real): alaris_real = 
+     IF    val < 10                   THEN trim( (ceil(val*100) - delta) / 100 )
+     ELSIF val >= 10 AND val < 100    THEN trim( (ceil(val*10) - delta) / 10 )
+     ELSIF val >= 100 AND val < 1000  THEN trim( ceil(val - delta) )
+     ELSE                                 trim( (ceil(val/10) - delta) * 10 ) ENDIF
+
+  %-- the conditions for DN are apparently slightly different from those of the other buttons...
+  alaris_DN(delta: alaris_step, val: alaris_real): alaris_real = 
+     IF    val < 10                   THEN trim( (ceil(val*10) - delta) / 10 )
+     ELSIF val >= 10 AND val < 100    THEN trim( ceil(val) - delta)
+     ELSIF val >= 100 AND val < 1000  THEN trim( (ceil(val/10) - delta) * 10 )
+     ELSE                                 trim( (ceil(val/100) - delta) * 100 ) ENDIF
+  %----------------------------------------------------------------------------------------------------------------
+
+  %-- release key--------------------------------------------------------------------------------------------------
+  release_key(st: state): state =
+       st WITH [ timer := max_timer, step := small_step ]
+  %----------------------------------------------------------------------------------------------------------------
+
+
+  %-- UP ----------------------------------------------------------------------------------------------------------
+  % This is the behaviour of the old firmware. In the new firmware, the current step depends on the previous step.
+  press_UP(st: state): state =
+      LET t: alaris_timer = decrement(timer(st), 1),
+          s: alaris_step  =
+	    IF t = 0 AND step(st) = small_step
+                 AND ((left_display(st) < 10 AND fractional(left_display(st)) = 0) 
+		       OR (left_display(st) > 10 AND left_display(st) < 100 AND fractional(left_display(st) / 10 ) = 0) 
+                        OR (left_display(st) > 100 AND fractional(left_display(st) / 100 ) = 0))
+              THEN big_step
+            ELSE step(st) ENDIF,
+          d: alaris_real = alaris_UP(s, left_display(st))
+        IN st WITH [left_display := d, timer := t, step := s]
+
+  release_UP(st: state): state = release_key(st)
+
+  click_UP(st: state): state = release_key(press_UP(st))
+  %----------------------------------------------------------------------------------------------------------------
+
+
+  %-- up ----------------------------------------------------------------------------------------------------------
+  % This is the behaviour of the old firmware. In the new firmware, the current step depends on the previous step.
+  press_up(st: state): state =
+      LET d: alaris_real = alaris_up(small_step, left_display(st))
+        IN st WITH [ left_display := d ]
+
+  release_up(st: state): state = release_key(st)
+
+  click_up(st: state): state = release_key(press_up(st))
+  %----------------------------------------------------------------------------------------------------------------
+
+
+  %-- DN ----------------------------------------------------------------------------------------------------------
+  % This is the behaviour of the old firmware. In the new firmware, the current step depends on the previous step.
+  press_DN(st: state): state =
+      LET t: alaris_timer = decrement(timer(st), 1),
+          s: alaris_step  =
+            COND
+               t = 0 AND step(st) = small_step 
+                 AND ((left_display(st) < 10 AND fractional(left_display(st)) = 0) 
+                      OR (left_display(st) > 10 AND left_display(st) < 100 AND fractional(left_display(st) / 10 ) = 0) 
+                        OR (left_display(st) > 100 AND fractional(left_display(st) / 100 ) = 0))
+                    -> big_step,
+
+               t /= max_timer AND step(st) = big_step AND (left_display(st) = 1 OR left_display(st) = 10 OR left_display(st) = 100)
+                    -> small_step,
+
+               ELSE -> step(st) ENDCOND,
+          d: alaris_real = alaris_DN(s, left_display(st))
+        IN st WITH [left_display := d, timer := t, step := s]
+
+  release_DN(st: state): state = release_key(st)
+
+  click_DN(st: state): state = release_key(press_DN(st))
+  %----------------------------------------------------------------------------------------------------------------
+
+
+  %-- dn ----------------------------------------------------------------------------------------------------------
+  % This is the behaviour of the old firmware. In the new firmware, the current step depends on the previous step.
+  press_dn(st: state): state =
+      LET d: alaris_real = alaris_dn(small_step, left_display(st))
+        IN st WITH [ left_display := d ]
+
+  release_dn(st: state): state = release_key(st)
+
+  click_dn(st: state): state = release_key(press_dn(st))
+  %----------------------------------------------------------------------------------------------------------------
+
+ END alarisGH_AsenaCC
+
+

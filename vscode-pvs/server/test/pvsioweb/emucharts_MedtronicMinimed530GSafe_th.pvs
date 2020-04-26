@@ -1,0 +1,83 @@
+% ---------------------------------------------------------------
+%  Theory: emucharts_MedtronicMinimed530GSafe_th
+%  Author: Paolo Masci
+%          Queen Mary University of London, United Kingdom
+%          http://www.eecs.qmul.ac.uk/~masci/
+% ---------------------------------------------------------------
+
+emucharts_MedtronicMinimed530GSafe_th: THEORY
+ BEGIN
+
+  %-- machine states
+  MachineState: TYPE = { off, on }
+
+  %-- emuchart state
+  State: TYPE = [#
+    current_state: MachineState,
+    previous_state: MachineState,
+    display: real
+  #]
+
+  %-- initial state
+  init(x: real): State = (#
+    current_state := off,
+    previous_state := off,
+    display := 0
+  #)
+  %-- utility functions
+  enter_into(ms: MachineState)(st: State): State = st WITH [ current_state := ms ]
+  leave_state(ms: MachineState)(st: State): State = st WITH [ previous_state := ms ]
+
+  %-- transition functions
+  per_click_DOWN(st: State): bool = ((current_state(st) = on) AND (display(st) = 0)) OR ((current_state(st) = on) AND (display(st) > 0))
+  click_DOWN(st: (per_click_DOWN)): State =
+    COND
+    (current_state(st) = on) AND (display(st) = 0)
+     -> LET new_st = leave_state(on)(st),
+            new_st = new_st WITH [ display := 0 ]
+         IN enter_into(on)(new_st),
+    (current_state(st) = on) AND (display(st) > 0)
+     -> LET new_st = leave_state(on)(st),
+            new_st = new_st WITH [ display := display(st) - 0.1 ]
+         IN enter_into(on)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_click_UP(st: State): bool = ((current_state(st) = on) AND (display(st) < 10)) OR ((current_state(st) = on) AND (display(st) = 10))
+  click_UP(st: (per_click_UP)): State =
+    COND
+    (current_state(st) = on) AND (display(st) < 10)
+     -> LET new_st = leave_state(on)(st),
+            new_st = new_st WITH [ display := display(st) + 0.1 ]
+         IN enter_into(on)(new_st),
+    (current_state(st) = on) AND (display(st) = 10)
+     -> LET new_st = leave_state(on)(st),
+            new_st = new_st WITH [ display := 10 ]
+         IN enter_into(on)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_tick(st: State): bool = ((current_state(st) = off))
+  tick(st: (per_tick)): State =
+    COND
+    (current_state(st) = off)
+     -> LET new_st = leave_state(off)(st)
+         IN enter_into(on)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_turn_off(st: State): bool = ((current_state(st) = on))
+  turn_off(st: (per_turn_off)): State =
+    COND
+    (current_state(st) = on)
+     -> LET new_st = leave_state(on)(st)
+         IN enter_into(off)(new_st),
+    ELSE -> st
+    ENDCOND
+
+ END emucharts_MedtronicMinimed530GSafe_th
+
+% ---------------------------------------------------------------
+%  PVS theory generated using PVSio-web PVSPrinter ver 0.1
+%  Tool freely available at http://www.pvsioweb.org
+% ---------------------------------------------------------------

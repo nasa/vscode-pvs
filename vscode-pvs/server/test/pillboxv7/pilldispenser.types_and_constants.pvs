@@ -1,0 +1,106 @@
+% Michael Harrison and Paolo Masci (Braga and Newcastle University) January 2017
+pd_t_and_c_th[
+p_limit: posnat,
+m_limit: posnat,
+time_limit: posnat
+]: THEORY
+ BEGIN
+
+%-------------- Constants Definitions
+col_limit: nat = 4
+slimit: nat = 4
+pill_limit: nat = 25
+scan_count: nat = 3
+p_null: nat = 0
+m_null: nat = 0
+s_null :nat = 0
+t_null: nat = 0
+q_null: nat = 0
+plimit: posnat = p_limit
+mlimit: posnat = m_limit
+
+
+%-------------- Type Definitions
+
+mode_type: TYPE = {initial, pwd, db_pwd, db_menu,
+                   patient_list, db_med_list, new_patient_details,
+		   patient_details, db_med_details, new_med,
+		   patient_scripts_list,
+		   patient_script, new_patient_script,
+		   dose, new_dose, 
+		   scan,
+		   scan_enabled, creation_success}
+
+path_mode_type: TYPE = 
+    {scripts_path, meds_path, no_path}
+
+actions_type : TYPE = {key1, key2, key3, confirm, create, quit, bottom, scan_action,
+                       tick, medicines, drug_id_line, database,
+                       reload, unload, prescriptions}
+
+fields_type : TYPE = {password, dob, dosage,
+                      id_card,
+                      mob, carer, prescription,
+		      name, validity, quantity, column,
+		      period, time1, time2}
+
+period_type : TYPE = {period_null, monthly, weekly, daily, bidaily}
+fields_set: TYPE = [fields_type -> boolean]
+
+pill_no_type : TYPE = upto(pill_limit)
+time_type : TYPE = upto(time_limit)
+
+
+available_actions_type : TYPE = [actions_type -> boolean]
+
+m_index: TYPE = upto(mlimit)
+
+med_type: TYPE = [# med_name: m_index,
+                    med_db_fields: fields_set,
+                    quant: pill_no_type,
+                    col: upto(col_limit)
+                  #]
+
+med_db_type: TYPE = list[med_type]
+s_index: TYPE = upto(slimit)
+
+med_id_line_type: TYPE = [s_index -> m_index]
+
+
+% occur_type: TYPE = {mes, semana, dia, bidia}
+
+
+script_type: TYPE = [# med_name: m_index,
+                       s_fields: fields_set,
+                       s_period: period_type,
+                      % dos: boolean,
+                      % scrip: boolean,
+                       quant: pill_no_type,
+                      % occur: occur_type,
+                       t1: time_type,
+                       t2: time_type #]
+
+
+list_script_type: TYPE = [s_index -> script_type]
+
+p_index: TYPE = upto(plimit)
+
+patient_type: TYPE = [# p_name : p_index, 
+                        p_fields : fields_set,
+                       % birthday : boolean,
+                       %  p_id: boolean,
+                       % care_taker: boolean,
+                       % celular: boolean,
+                        scripts_index: s_index,
+                        scripts: list_script_type #]
+
+patient_db_type: TYPE = list[patient_type] %[p_index ->patient_type]
+
+patient_id_line_type: TYPE = [s_index -> p_index]
+
+script_line_type: TYPE = [s_index -> boolean]
+
+
+
+ 
+ END pd_t_and_c_th

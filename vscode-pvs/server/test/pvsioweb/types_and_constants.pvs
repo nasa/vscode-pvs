@@ -1,0 +1,480 @@
+types_and_constants_th: THEORY
+ BEGIN
+  IMPORTING simulatorConstants_th % this is used for simulations
+  %IMPORTING theoremProvingConstants_th % this is used for theorem proving
+
+  %-----------------------------------------------------------------------------------------------------------------------------
+  %-- Controller :: State Changer ----------------------------------------------------------------------------------------------
+  %-----------------------------------------------------------------------------------------------------------------------------
+  IController_MachineState: DATATYPE BEGIN
+         %-- StateChanger
+         Init: Init?                                         : StateChangerMachine
+	 PowerOff: PowerOff?                                 : StateChangerMachine
+	 POST: POST?                                         : StateChangerMachine
+	 POSTDONE: POSTDONE?                                 : StateChangerMachine
+	 ALM_POSTFailed: ALM_POSTFailed?                     : StateChangerMachine
+	 ConfirmPowerDown: ConfirmPowerDown?                 : StateChangerMachine
+	 LEVELONEALARM: LEVELONEALARM?                       : StateChangerMachine
+	 %-- ConfigureInfusionProgram
+	 DisplayVTBI: DisplayVTBI?			     : ConfigureInfusionProgram
+	 ChangeVTBI: ChangeVTBI?			     : ConfigureInfusionProgram
+	 WRN_VTBIOutBound: WRN_VTBIOutBound?		     : ConfigureInfusionProgram
+	 ALM_VTBIOutBound: ALM_VTBIOutBound?		     : ConfigureInfusionProgram
+	 CheckVTBI: CheckVTBI?				     : ConfigureInfusionProgram
+	 DisplayDoseRate: DisplayDoseRate?		     : ConfigureInfusionProgram
+	 ChangeDoseRate: ChangeDoseRate?		     : ConfigureInfusionProgram
+	 ALM_DoseRateOutBound: ALM_DoseRateOutBound?	     : ConfigureInfusionProgram
+	 CheckDoseRate: CheckDoseRate?			     : ConfigureInfusionProgram
+	 WRN_DOSERATEOUTSOFTLIMITS: WRN_DOSERATEOUTSOFTLIMITS?: ConfigureInfusionProgram
+	 DisplaySettings: DisplaySettings?		     : ConfigureInfusionProgram
+	 ReadyToStart: ReadyToStart?			     : ConfigureInfusionProgram
+	 %-- InfusionSubMachine
+	 Infusing: Infusing?				     : InfusionSubMachine
+	 ChangeRate: ChangeRate? 			     : InfusionSubMachine
+	 ALM_NewRateOutBound: ALM_NewRateOutBound? 	     : InfusionSubMachine
+	 CheckNewRate: CheckNewRate? 			     : InfusionSubMachine
+	 ConfirmStop: ConfirmStop? 			     : InfusionSubMachine
+         ConfirmPause: ConfirmPause? 			     : InfusionSubMachine
+	 BolusRequest: BolusRequest? 			     : InfusionSubMachine
+	 %-- InfusionInSession
+	 LevelTwoAlarming: LevelTwoAlarming?                 : InfusionInSessionMachine
+	 InfusionPaused: InfusionPaused? 		     : InfusionInSessionMachine
+	 PausedTooLong: PausedTooLong?			     : InfusionInSessionMachine
+   	 PausedStopConfirm: PausedStopConfirm? 		     : InfusionInSessionMachine
+	 InfusionStopped: InfusionStopped? 		     : InfusionInSessionMachine
+	 ALMWrongDrug: ALMWrongDrug? 			     : InfusionInSessionMachine
+	 CheckDrugWhileInfusing: CheckDrugWhileInfusing?     : InfusionInSessionMachine
+	 EmptyReservoir: EmptyReservoir? 		     : InfusionInSessionMachine
+	 %-- CheckDrugRoutine
+	 DisplayDrugInfo: DisplayDrugInfo?		     : CheckDrugRoutine
+	 CheckDrug_CheckType: CheckDrug_CheckType?	     : CheckDrugRoutine
+	 CheckPrime: CheckPrime?			     : CheckDrugRoutine
+	 PrimeFailed: PrimeFailed?			     : CheckDrugRoutine
+	 CheckAdminSet: CheckAdminSet?			     : CheckDrugRoutine
+	 ALM_WrongAdminCheck: ALM_WrongAdminCheck?	     : CheckDrugRoutine
+	 UnknownDrug: UnknownDrug?			     : CheckDrugRoutine
+	 Check_DrugUnits: Check_DrugUnits?		     : CheckDrugRoutine
+	 Check_Concen: Check_Concen?			     : CheckDrugRoutine
+	 IncorrectDrugUnits: IncorrectDrugUnits?	     : CheckDrugRoutine
+	 WrongConcentration: WrongConcentration?	     : CheckDrugRoutine
+	 WRN_DangerCon: WRN_DangerCon?			     : CheckDrugRoutine
+	 DisplayPatientProfile: DisplayPatientProfile?	     : CheckDrugRoutine
+   END IController_MachineState
+
+
+  InfusionSubMachine?(st: IController_MachineState): boolean =
+   Infusing?(st) OR ChangeRate?(st) OR ALM_NewRateOutBound?(st)
+    OR CheckNewRate?(st) OR ConfirmStop?(st) OR ConfirmPause?(st)
+     OR BolusRequest?(st)
+
+  InfusionInSessionMachine?(st: IController_MachineState): boolean =
+   InfusionSubMachine?(st) OR LevelTwoAlarming?(st) OR InfusionPaused?(st) OR PausedTooLong?(st)
+    OR PausedStopConfirm?(st) OR InfusionStopped?(st) OR ALMWrongDrug?(st) OR CheckDrugWhileInfusing?(st)
+     OR EmptyReservoir?(st) OR InfusionSubMachine?(st)
+
+  CheckDrugRoutineMachine?(st: IController_MachineState): boolean =
+      DisplayDrugInfo?(st) OR CheckDrug_CheckType?(st) OR CheckPrime?(st)
+       OR PrimeFailed?(st) OR CheckAdminSet?(st) OR ALM_WrongAdminCheck?(st)
+	OR UnknownDrug?(st) OR Check_DrugUnits?(st) OR Check_Concen?(st) 
+	 OR IncorrectDrugUnits?(st) OR WrongConcentration?(st) OR WRN_DangerCon?(st)
+	  OR DisplayPatientProfile?(st)
+
+  ConfigureInfusionProgramMachine?(st: IController_MachineState): boolean =
+      DisplayVTBI?(st) OR ChangeVTBI?(st) OR WRN_VTBIOutBound?(st) OR ALM_VTBIOutBound?(st)
+       OR CheckVTBI?(st) OR DisplayDoseRate?(st) OR ChangeDoseRate?(st) OR ALM_DoseRateOutBound?(st)
+        OR CheckDoseRate?(st) OR WRN_DOSERATEOUTSOFTLIMITS?(st) OR DisplaySettings?(st)
+	 OR ReadyToStart?(st)
+
+  StateChangerMachine?(st: IController_MachineState): boolean =
+   Init?(st) OR PowerOff?(st) OR POST?(st) OR POSTDONE?(st) OR ALM_POSTFailed?(st)
+    OR ConfirmPowerDown?(st) OR LEVELONEALARM?(st) OR CheckDrugRoutineMachine?(st) OR ConfigureInfusionProgramMachine?(st)
+     OR InfusionInSessionMachine?(st)
+
+  Event: TYPE = {MSG_BOLUSGRANT, MSG_BOLUSDENIED}
+
+  AlarmCondition: TYPE = nat
+  MSG_POSTFAIL      : AlarmCondition
+  MSG_POSTDONE      : AlarmCondition
+  MSG_PowerOff      : AlarmCondition
+  MSG_INFUSIONPAUSED: AlarmCondition
+  MSG_SPCHOOSE      : AlarmCondition
+  MSG_PAUSETOOLONG  : AlarmCondition
+  MSG_INFUSIONSTOP  : AlarmCondition
+  MSG_WRONGDRUG     : AlarmCondition
+  MSG_EMPTYRESERVOIR: AlarmCondition
+  MSG_INFUSING      : AlarmCondition
+  MSG_CHANGEDR      : AlarmCondition
+  MSG_ALRMDR	    : AlarmCondition
+  MSG_CONFIRMSTOP   : AlarmCondition
+  MSG_CONFIRMPAUSE  : AlarmCondition
+  MSG_VTBI	    : AlarmCondition
+  MSG_CHANGEVTBI    : AlarmCondition
+  MSG_DISPLAYDR	    : AlarmCondition
+  MSG_ALMVTBI	    : AlarmCondition
+  MSG_WRNVTBI	    : AlarmCondition
+  MSG_DISPLAYSET    : AlarmCondition
+  MSG_DRUGINFO	    : AlarmCondition
+  MSG_WRONGDU	    : AlarmCondition
+  MSG_WRONGCON	    : AlarmCondition
+  MSG_WRONDRUG	    : AlarmCondition
+  MSG_PRIMEFAIL	    : AlarmCondition
+  MSG_ADMINFAIL	    : AlarmCondition
+  MSG_DANGECON	    : AlarmCondition
+  MSG_PATIENTINFO   : AlarmCondition
+  MSG_BOLUSDENIED   : AlarmCondition
+
+  ErrorCondition: TYPE = upto(15)
+  %-- Level 1 Alarm
+  Err_null         : ErrorCondition = 0
+  Err_OutOfPower   : ErrorCondition = 1
+  Err_RealTimeClock: ErrorCondition = 2
+  Err_CPUFailure   : ErrorCondition = 3
+  Err_MemoryCorrupt: ErrorCondition = 4
+  Err_PumpTooHot   : ErrorCondition = 5
+  Err_WatchdogAlert: ErrorCondition = 6
+  %-- Level 2 Alarm
+  Err_DoorOpen     : ErrorCondition = 7
+  Err_EmptyReservoir: ErrorCondition = 8
+  Err_Occlusion    : ErrorCondition = 9
+  Err_OverInfusion : ErrorCondition = 10
+  Err_UnderInfusion: ErrorCondition = 11
+  Err_LessThanKVO  : ErrorCondition = 12
+  Err_RateExceedCapacity: ErrorCondition = 13
+  Err_PauseTooLong : ErrorCondition = 14
+  Err_AirInLine    : ErrorCondition = 15
+
+  AlarmLevel: TYPE = { ALM_LEVEL_0, ALM_LEVEL_1, ALM_LEVEL_2, ALM_LEVEL_3 }
+
+  %-- Drug Library ----------------------------------------------------------------------------------------
+  % Fields in DrugLibraryBus:
+  %  previous_state - The variable recording the state that the state machine resides in before it transitions to the current state
+  %  O_InfusionInProgress - The flag, which when set to TRUE, indicates that the user instructs the current infusion to proceed
+  %  O_InfusionPaused - The flag, which when set to TRUE, indicates that the user instructs the current infusion to pause
+  %  O_BolusRequested - The flag, which when set to TRUE, indicates that the user requests a bolus infusion to be administered
+  %  O_AlarmCond - Used to transmit the alarm condition to the UI
+  %  O_CurrentState - Used to indicate the state that the state machine is currently residing in
+  %  O_ProgrammedVTBI - Used to transmit the programmed VTBI to the system model
+  %  O_ProgrammedFlowRate - Used to transmit the programmed dose rate to the system model
+  %  O_DrugLibInfo - Used to transmit drug library information to the UI
+  %  O_DrugInfo - Used to transmit the drug label information to the UI
+  %  O_PatientInfo - Used to transmit the patient information to the UI
+  %  bolusing - A flag indicating whether a bolus infusion is underway
+  %  drugLibInfo - Drug library information received from the drug library component in the system model
+  %  infuParameters - The parameters that UI inputs for the pending infusion session
+  %  infuStatus - Information regarding the status of the current infusion
+  %  pumpConfigData - Information on the pump's configuration settings
+  %  ErrCond - Assigned with the ErrCond output from the Alarm Detection State Machine
+  %
+  DrugLibraryBus: TYPE = [#
+  	drugID: nat,
+	amount: real,
+	diluentVolume: real,
+	doseRateTypical: real,
+	doseRateUpperHardLimit: real,
+	doseRateUpperSoftLimit: {r: real | r <= doseRateUpperHardLimit},
+	doseRateLowerHardLimit: real,
+	doseRateLowerSoftLimit: {r: real | r >= doseRateLowerHardLimit},
+	doseRateUnit: nat,
+	vtbiTypical: real,
+	vtbiUpperHardLimit: real,
+	vtbiUpperSoftLimit: {r: real | r <= vtbiUpperHardLimit},
+	vtbiLowerHardLimit: real,
+	vtbiLowerSoftLimit: {r: real | r >= vtbiLowerHardLimit},
+	vtbiUnit: nat,
+	drugConcentrationTypical: real,
+	drugConcentrationUpperHardLimit: real,
+	drugConcentrationUpperSoftLimit: {r: real | r <= drugConcentrationUpperHardLimit},
+	drugConcentrationLowerHardLimit: real,
+	drugConcentrationLowerSoftLimit: {r: real | r >= drugConcentrationLowerHardLimit}
+  #]
+
+  initDrugLibraryBus: DrugLibraryBus = (#
+  	drugID := dlib_drugID,
+	amount := dlib_amount,
+	diluentVolume := dlib_diluentVolume,
+	doseRateTypical := dlib_doseRateTypical,
+	doseRateUpperHardLimit := dlib_doseRateUpperHardLimit,
+	doseRateUpperSoftLimit := dlib_doseRateUpperSoftLimit,
+	doseRateLowerHardLimit := dlib_doseRateLowerHardLimit,
+	doseRateLowerSoftLimit := dlib_doseRateLowerSoftLimit,
+	doseRateUnit := dlib_doseRateUnit,
+	vtbiTypical := dlib_vtbiTypical,
+	vtbiUpperHardLimit := dlib_vtbiUpperHardLimit,
+	vtbiUpperSoftLimit := dlib_vtbiUpperSoftLimit,
+	vtbiLowerHardLimit := dlib_vtbiLowerHardLimit,
+	vtbiLowerSoftLimit := dlib_vtbiLowerSoftLimit,
+	vtbiUnit := dlib_vtbiUnit,
+	drugConcentrationTypical := dlib_drugConcentrationTypical,
+	drugConcentrationUpperHardLimit := dlib_drugConcentrationUpperHardLimit,
+	drugConcentrationUpperSoftLimit := dlib_drugConcentrationUpperSoftLimit,
+	drugConcentrationLowerHardLimit := dlib_drugConcentrationLowerHardLimit,
+	drugConcentrationLowerSoftLimit := dlib_drugConcentrationLowerSoftLimit
+  #)
+
+  initDrugLib: DrugLibraryBus = (#
+  	drugID := 0,
+	amount := 0,
+	diluentVolume := 0,
+	doseRateTypical := 0,
+	doseRateUpperHardLimit := 0,
+	doseRateUpperSoftLimit := 0,
+	doseRateLowerHardLimit := 0,
+	doseRateLowerSoftLimit := 0,
+	doseRateUnit := 0,
+	vtbiTypical := 0,
+	vtbiUpperHardLimit := 0,
+	vtbiUpperSoftLimit := 0,
+	vtbiLowerHardLimit := 0,
+	vtbiLowerSoftLimit := 0,
+	vtbiUnit := 0,
+	drugConcentrationTypical := 0,
+	drugConcentrationUpperHardLimit := 0,
+	drugConcentrationUpperSoftLimit := 0,
+	drugConcentrationLowerHardLimit := 0,
+	drugConcentrationLowerSoftLimit := 0
+  #)
+
+  CheckResult: TYPE = { CHECK_OK, CHECK_ERR_1, CHECK_ERR_2 }
+
+  %-- Patient Information -------------------------------------------------------------------------------------------
+  PatientInformationBus: TYPE = [#
+  	patientID: nat,
+	patientAge: nat,
+	patientGender: nat,
+	patientWeight: nat
+  #]
+
+  initPatientInfo: PatientInformationBus = (#
+  	patientID := 0,
+	patientAge := 0,
+	patientGender := 0,
+	patientWeight := 0
+  #)
+
+  %-- Pump Configuration Status -------------------------------------------------------------------------------------
+  PumpConfigurationStatusBus: TYPE = [#
+  	isPostSuccessful: boolean,
+	isPumpPrimed: boolean,
+	isAdminSetCheckPassed: boolean
+  #]
+
+  initPumpConfigurationStatusBus: 
+    PumpConfigurationStatusBus = (#
+  	isPostSuccessful := sb_isPostSuccessful,
+	isPumpPrimed     := sb_isPumpPrimed,
+	isAdminSetCheckPassed := sb_isAdminSetCheckPassed
+  #)
+
+  %-- Infusion Status -----------------------------------------------------------------------------------------------
+  InfusionStatusBus: TYPE = [#
+  	isBolusInProgress: boolean,
+	totalVolumeInfused: real,
+	remainingVolumeInReservoir: real
+  #]
+
+  initInfusionStatusBus: InfusionStatusBus = (#
+  	isBolusInProgress := sb_isBolusInProgress,
+	totalVolumeInfused := sb_totalVolumeInfused,
+	remainingVolumeInReservoir := sb_remainingVolumeInReservoir
+  #)
+
+  %-- Drug Information ----------------------------------------------------------------------------------------------
+  DrugInformationBus: TYPE = [#
+  	drugID: nat, % the model has also drugName, but it seems that it's not used at all, maybe it's a typo/leftover
+	drugDoseAmount: real,
+	drugDiluentVolume: real,
+	drugConcentration: real,
+	drugDoseUnit: nat,
+	drugVolumeUnit: nat
+  #]
+
+  initDrugInformationBus: DrugInformationBus = (#
+  	drugID := dlib_drugID, % the model has also drugName, but it seems that it's not used at all, maybe it's a typo/leftover
+	drugDoseAmount := dlib_drugDoseAmount,
+	drugDiluentVolume := dlib_drugDiluentVolume,
+	drugConcentration := dlib_drugConcentration,
+	drugDoseUnit := dlib_drugDoseUnit,
+	drugVolumeUnit := dlib_drugVolumeUnit
+  #)
+
+  %-- Infusion Parameters ----------------------------------------------------------------------------------------------
+  InfusionParametersBus: TYPE = [#
+  	programmedVTBI: real,
+	programmedDoseRate: real
+  #]
+
+  initInfusionParametersBus: InfusionParametersBus = (#
+  	programmedVTBI     := 0,
+	programmedDoseRate := 0
+  #)
+
+  %-----------------------------------------------------------------------------------------------------------------------------
+  %-- Alarming Component :: CheckReady -----------------------------------------------------------------------------------------
+  %-----------------------------------------------------------------------------------------------------------------------------
+  InfusionSensorSignals: TYPE = [#
+    	isReservoirEmpty	  : boolean,
+	isReservoirLow		  : boolean,
+	isOcclusionDetected	  : boolean,
+	isInfusionRateTooHigh	  : boolean,
+	isInfusionRateTooLow	  : boolean,
+	isInfusionRateLessThanKVO : boolean,
+	isFlowRateNotStable	  : boolean,
+	isFlowRateOverPumpCapacity: boolean,
+	isInfusionPausedLong	  : boolean,
+	isInfusionPausedTooLong	  : boolean,
+	isAirInLineDetected	  : boolean
+  #]
+
+  initInfusionSensorSignals: InfusionSensorSignals = (#
+    	isReservoirEmpty	  := iss_isReservoirEmpty,
+	isReservoirLow		  := iss_isReservoirLow,
+	isOcclusionDetected	  := iss_isOcclusionDetected,
+	isInfusionRateTooHigh	  := iss_isInfusionRateTooHigh,
+	isInfusionRateTooLow	  := iss_isInfusionRateTooLow,
+	isInfusionRateLessThanKVO := iss_isInfusionRateLessThanKVO,
+	isFlowRateNotStable	  := iss_isFlowRateNotStable,
+	isFlowRateOverPumpCapacity:= iss_isFlowRateOverPumpCapacity,
+	isInfusionPausedLong	  := iss_isInfusionPausedLong,
+	isInfusionPausedTooLong	  := iss_isInfusionPausedTooLong,
+	isAirInLineDetected	  := iss_isAirInLineDetected
+  #)
+
+  HardwareSensorSignals: TYPE = [#
+  	isLoggingFailed	      	   : boolean,
+	isWatchDogInterruptDetected: boolean,
+  	isReservoirDoorOpen	   : boolean,
+	isBatteryDepleted	   : boolean,
+	isBatteryLow		   : boolean,
+	isBatteryUnableToCharge	   : boolean,
+	isSupplyVoltageOutOfRange  : boolean,
+	isCPUInError		   : boolean,
+	isRTCInError		   : boolean,
+	isMemoryCorrupted	   : boolean,
+	isPumpTooHot		   : boolean,
+	isPumpOverheated	   : boolean
+  #]
+
+  initHardwareSensorSignals: HardwareSensorSignals = (#
+  	isLoggingFailed	      	   := hss_isLoggingFailed,
+	isWatchDogInterruptDetected:= hss_isWatchDogInterruptDetected,
+  	isReservoirDoorOpen	   := hss_isReservoirDoorOpen,
+	isBatteryDepleted	   := hss_isBatteryDepleted,
+	isBatteryLow		   := hss_isBatteryLow,
+	isBatteryUnableToCharge	   := hss_isBatteryUnableToCharge,
+	isSupplyVoltageOutOfRange  := hss_isSupplyVoltageOutOfRange,
+	isCPUInError		   := hss_isCPUInError,
+	isRTCInError		   := hss_isRTCInError,
+	isMemoryCorrupted	   := hss_isMemoryCorrupted,
+	isPumpTooHot		   := hss_isPumpTooHot,
+	isPumpOverheated	   := hss_isPumpOverheated
+  #)
+
+  CheckReady_MachineState: DATATYPE BEGIN
+         Normal	  : Normal?    : CheckReady
+	 s1  	  : s1?        : CheckReady
+	 s2  	  : s2?        : CheckReady
+	 Checking : Checking?  : CheckReady
+   END CheckReady_MachineState
+
+  CheckReady_State: TYPE = [#
+  	 O_CurrentState     : CheckReady_MachineState,
+	 previous_state     : CheckReady_MachineState,
+  	 infusionInProgress : boolean,
+	 infuSenData	    : InfusionSensorSignals,
+	 hardwareSenData    : HardwareSensorSignals
+  #]
+
+
+  %-- Infusion Controller State ----------------------------------------------------------------------------------------------------
+  IController_State: TYPE = [# 
+  	 previous_state: IController_MachineState,   
+	 O_InfusionInProgress: boolean, 
+	 O_InfusionPaused: boolean,
+	 O_BolusRequested: boolean,
+	 O_AlarmCond: AlarmCondition,
+	 O_CurrentState: IController_MachineState,
+	 O_ProgrammedVTBI: real,
+	 O_ProgrammedFlowRate: real,
+	 O_DrugLibInfo: DrugLibraryBus,
+	 O_InfuStatus: InfusionStatusBus,
+	 O_PatientInfo: PatientInformationBus,
+	 infusing: boolean,
+	 bolusing: boolean,
+	 drugLibInfo: DrugLibraryBus,
+	 drugInfo: DrugInformationBus,
+	 infuParameters: InfusionParametersBus,
+	 patientInfo: PatientInformationBus,
+	 doseRate: real,
+	 vtbi: real,
+	 infuStatus: InfusionStatusBus,
+	 pumpConfigData: PumpConfigurationStatusBus,
+	 ErrCond: ErrorCondition,
+	 ClearCond: ErrorCondition,
+	 %-- Alarming Component :: CheckReady
+  	 CheckReady_CurrentState     : CheckReady_MachineState,
+	 CheckReady_previous_state   : CheckReady_MachineState,
+	 infuSenData	    	     : InfusionSensorSignals,
+	 hardwareSenData    	     : HardwareSensorSignals #]
+
+  init(st: IController_State): IController_State = st WITH [
+	 O_InfusionInProgress := FALSE, 
+	 O_InfusionPaused := FALSE,
+	 O_BolusRequested := FALSE,
+	 O_AlarmCond := 0,
+	 O_ProgrammedVTBI := 0,
+	 O_ProgrammedFlowRate := 0,
+	 O_DrugLibInfo := initDrugLib,
+%	 O_InfuStatus  := initInfusionStatus,      %-- this is initialised at a later stage in the FDA model, thorugh the initInfuStatus utility function
+	 O_PatientInfo := initPatientInfo,
+	 infusing := FALSE,
+	 bolusing := FALSE,
+%	 drugLibInfo := initDrugLib,               %-- this is not initialised in the FDA model
+%	 drugInfo := initDrugInformation,	   %-- this is not initialised in the FDA model
+%	 infuParameters := initInfusionParameters, %-- this is not initialised in the FDA model
+%        patientInfo := initPatientInfo,           %-- this is not initialised in the FDA model
+%        doseRate := 0, 			   %-- this is initialised at a later stage in the FDA model, through the initInfusion utility function
+%	 vtbi     := 0, 			   %-- this is initialised at a later stage in the FDA model, through the initInfusion utility function
+%	 infuStatus := initInfusionStatus, 	   %-- this is not initialised in the FDA model
+%	 pumpConfigData := initPumpConfigurationStatus, %-- this is not initialised in the FDA model
+	 ErrCond   := 0,
+	 ClearCond := 0,
+	 %-- Alarming Component :: CheckReady
+  	 CheckReady_CurrentState     := Normal,
+	 CheckReady_previous_state   := Normal,
+	 infuSenData	    	     := initInfusionSensorSignals,
+	 hardwareSenData    	     := initHardwareSensorSignals ]
+
+
+  initialControllerState: IController_State = (#
+  	 previous_state   	     := PowerOff,
+	 O_InfusionInProgress 	     := FALSE, 
+	 O_InfusionPaused 	     := FALSE,
+	 O_BolusRequested 	     := FALSE,
+	 O_AlarmCond 		     := 0,
+	 O_CurrentState 	     := PowerOff,
+	 O_ProgrammedVTBI 	     := 0,
+	 O_ProgrammedFlowRate 	     := 0,
+	 O_DrugLibInfo 		     := initDrugLib,
+	 O_InfuStatus  		     := initInfusionStatusBus,
+	 O_PatientInfo 		     := initPatientInfo,
+	 infusing 		     := FALSE,
+	 bolusing 		     := FALSE,
+	 drugLibInfo 		     := initDrugLibraryBus,
+	 drugInfo 		     := initDrugInformationBus,
+	 infuParameters 	     := initInfusionParametersBus,
+         patientInfo 		     := initPatientInfo,
+         doseRate 		     := 0,
+	 vtbi     		     := 0,
+	 infuStatus 		     := initInfusionStatusBus,
+	 pumpConfigData 	     := initPumpConfigurationStatusBus,
+	 ErrCond   		     := 0,
+	 ClearCond		     := 0,
+  	 CheckReady_CurrentState     := Normal,
+	 CheckReady_previous_state   := Normal,
+	 infuSenData	    	     := initInfusionSensorSignals,
+	 hardwareSenData    	     := initHardwareSensorSignals #)
+
+
+  GPCA_init?(st: IController_State): boolean = st = initialControllerState
+
+ END types_and_constants_th

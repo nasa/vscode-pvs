@@ -1,0 +1,264 @@
+% ---------------------------------------------------------------
+% Theory: emucharts_NikiT34
+% Author: xxxx
+%         xxxx
+%         xxx
+% ---------------------------------------------------------------
+
+emucharts_NikiT34: THEORY
+ BEGIN
+  %-- utility functions
+  %- automatic conversion from real to string
+  real2string(x: real): string = "" + x
+  CONVERSION real2string
+  %- get today's date and time in compact format DD.MM.YYYY hh:mm
+  get_todays_date: string = get_time`day + "." + get_time`month + "." + get_time`year + " " + get_time`hour + ":" + get_time`minute
+
+  %-- user defined constants
+  blank: string = ""
+  ConfirmPressYes: string = "Confirm; Press YES"
+  Event2635: string = "Event No. : 2635"
+  InfusionComplete: string = "Infusion Complete!"
+  NoForNewProgram: string = "NO for New Program"
+  plungerStep: int = 45
+  Preloading: string = "Pre-Loading"
+  PressInfo: string = "Press INFO - Details"
+  PressOff: string = "Press OFF"
+  PressYes: string = "Press YES"
+  PressYesToResume: string = "Press YES to Resume"
+  PumpDelivering: string = "<<<<< Pump Delivering"
+  rateUnits: string = "ml/h"
+  Ready: string = "Ready!"
+  StartInfusion: string = "Start infusion?"
+  SwitchedOn: string = "Switched ON"
+  syringeBrand: string = "BD Plastipak"
+  syringeSize: int = 10
+  UseNoToInterrupt: string = "Use NO to Interrupt..."
+  volumeUnits: string = "ml"
+
+  %-- machine states
+  MachineState: TYPE = { ask_resume, check_syringe, info, infusing, infusing_disp_syringe, infusion_complete, new_regime, off, on, preloading, ready, UNDEF }
+
+  %-- emuchart state
+  State: TYPE = [#
+    current_state: MachineState,
+    previous_state: MachineState,
+    batteryCharge: int,
+    botline: string,
+    disp_message_1: string,
+    disp_message_2: string,
+    disp_numeric: real,
+    display: string,
+    end_program_reached: bool,
+    hoursduration: int,
+    infusionrate: real,
+    minutesduration: int,
+    plunger: int,
+    syringeOK: bool,
+    timetick: real,
+    topline: string,
+    volume: real,
+    volumeLeft: real
+  #]
+
+  %-- initialisation function
+  init(x: real): State = (#
+    previous_state := UNDEF, 
+    current_state := off, 
+    batteryCharge := 90, 
+    botline := blank, 
+    disp_message_1 := blank, 
+    disp_message_2 := blank, 
+    disp_numeric := 0, 
+    display := blank, 
+    end_program_reached := true, 
+    hoursduration := 0, 
+    infusionrate := 0.5, 
+    minutesduration := 0, 
+    plunger := 100, 
+    syringeOK := false, 
+    timetick := 1, 
+    topline := blank, 
+    volume := 12, 
+    volumeLeft := 0
+  #)
+
+  %-- utility functions
+  enter_into(ms: MachineState)(st: State): State = st WITH [ current_state := ms ]
+  leave_state(ms: MachineState)(st: State): State = st WITH [ previous_state := ms ]
+
+  %-- transition functions
+  per_tick(st: State): bool = ((current_state(st) = preloading) AND (NOT syringeOK(st) AND plunger(st) <= syringeSize)) OR ((current_state(st) = preloading) AND (NOT syringeOK(st) AND plunger(st) > syringeSize)) OR ((current_state(st) = preloading) AND (syringeOK(st))) OR ((current_state(st) = infusing) AND (volumeLeft(st) = 0)) OR ((current_state(st) = infusing_disp_syringe) AND (volumeLeft(st) = 0)) OR ((current_state(st) = infusing_disp_syringe) AND (volumeLeft(st) > 0)) OR ((current_state(st) = infusing) AND (volumeLeft(st) > 0))
+  tick(st: (per_tick)): State =
+    COND
+    (current_state(st) = preloading) AND (NOT syringeOK(st) AND plunger(st) <= syringeSize)
+     -> LET st = leave_state(preloading)(st),
+            st = st WITH [ syringeOK := true ]
+         IN enter_into(preloading)(st),
+    (current_state(st) = preloading) AND (NOT syringeOK(st) AND plunger(st) > syringeSize)
+     -> LET st = leave_state(preloading)(st),
+            st = st WITH [ plunger := plunger(st) - plungerStep ]
+         IN enter_into(preloading)(st),
+    (current_state(st) = preloading) AND (syringeOK(st))
+     -> LET st = leave_state(preloading)(st),
+            st = st WITH [ display := syringeSize + volumeUnits + " " + syringeBrand ],
+            st = st WITH [ topline := blank ],
+            st = st WITH [ disp_message_1 := blank ],
+            st = st WITH [ disp_message_1 := blank ],
+            st = st WITH [ botline := PressYes ]
+         IN enter_into(check_syringe)(st),
+    (current_state(st) = infusing) AND (volumeLeft(st) = 0)
+     -> LET st = leave_state(infusing)(st),
+            st = st WITH [ display := InfusionComplete ],
+            st = st WITH [ disp_message_1 := blank ],
+            st = st WITH [ disp_message_2 := blank ],
+            st = st WITH [ topline := blank ],
+            st = st WITH [ botline := PressOff ]
+         IN enter_into(infusion_complete)(st),
+    (current_state(st) = infusing_disp_syringe) AND (volumeLeft(st) = 0)
+     -> LET st = leave_state(infusing_disp_syringe)(st),
+            st = st WITH [ display := InfusionComplete ],
+            st = st WITH [ disp_message_1 := blank ],
+            st = st WITH [ disp_message_2 := blank ],
+            st = st WITH [ topline := blank ],
+            st = st WITH [ botline := PressOff ]
+         IN enter_into(infusion_complete)(st),
+    (current_state(st) = infusing_disp_syringe) AND (volumeLeft(st) > 0)
+     -> LET st = leave_state(infusing_disp_syringe)(st),
+            st = st WITH [ topline := "Time Remaining: " + hoursduration(st) + ":" + minutesduration(st) ],
+            st = st WITH [ volumeLeft := volumeLeft(st) - ( infusionrate(st) * timetick(st) ) ],
+            st = st WITH [ hoursduration := floor(volumeLeft(st)/infusionrate(st)) ],
+            st = st WITH [ botline := PumpDelivering ]
+         IN enter_into(infusing)(st),
+    (current_state(st) = infusing) AND (volumeLeft(st) > 0)
+     -> LET st = leave_state(infusing)(st),
+            st = st WITH [ topline := "Time Remaining: " + hoursduration(st) + ":" + minutesduration(st) ],
+            st = st WITH [ volumeLeft := volumeLeft(st) - ( infusionrate(st) * timetick(st) ) ],
+            st = st WITH [ hoursduration := floor(volumeLeft(st)/infusionrate(st)) ],
+            st = st WITH [ botline := PumpDelivering ]
+         IN enter_into(infusing_disp_syringe)(st),
+     ELSE -> st
+    ENDCOND
+  per_click_info(st: State): bool = ((current_state(st) = on))
+  click_info(st: (per_click_info)): State =
+    COND
+    (current_state(st) = on)
+     -> LET st = leave_state(on)(st),
+            st = st WITH [ display := "Battery Level: " + batteryCharge(st) + "%" ],
+            st = st WITH [ topline := blank ],
+            st = st WITH [ disp_message_1 := blank ],
+            st = st WITH [ disp_message_2 := blank ],
+            st = st WITH [ botline := PressYes ]
+         IN enter_into(info)(st),
+     ELSE -> st
+    ENDCOND
+  per_click_no(st: State): bool = ((current_state(st) = preloading)) OR ((current_state(st) = ready)) OR ((current_state(st) = ask_resume))
+  click_no(st: (per_click_no)): State =
+    COND
+    (current_state(st) = preloading)
+     -> LET st = leave_state(preloading)(st),
+            st = st WITH [ display := Ready ],
+            st = st WITH [ topline := blank ],
+            st = st WITH [ disp_message_1 := blank ],
+            st = st WITH [ disp_message_2 := blank ],
+            st = st WITH [ botline := PressYes ]
+         IN enter_into(on)(st),
+    (current_state(st) = ready)
+     -> LET st = leave_state(ready)(st),
+            st = st WITH [ topline := "Volume " + volume(st) + " " + volumeUnits ],
+            st = st WITH [ disp_message_1 := "Duration " + hoursduration(st) + ":" + minutesduration(st) ],
+            st = st WITH [ disp_message_2 := "Rate " + infusionrate(st) + " " + rateUnits ],
+            st = st WITH [ botline := ConfirmPressYes ],
+            st = st WITH [ display := blank ]
+         IN enter_into(new_regime)(st),
+    (current_state(st) = ask_resume)
+     -> LET st = leave_state(ask_resume)(st),
+            st = st WITH [ topline := "Volume " + volume(st) + " " + volumeUnits ],
+            st = st WITH [ disp_message_1 := "Duration " + hoursduration(st) + ":" + minutesduration(st) ],
+            st = st WITH [ disp_message_2 := "Rate " + infusionrate(st) + " " + rateUnits ],
+            st = st WITH [ botline := ConfirmPressYes ],
+            st = st WITH [ display := blank ]
+         IN enter_into(new_regime)(st),
+     ELSE -> st
+    ENDCOND
+  per_click_on_off(st: State): bool = ((current_state(st) = on)) OR ((current_state(st) = infusion_complete)) OR ((current_state(st) = off))
+  click_on_off(st: (per_click_on_off)): State =
+    COND
+    (current_state(st) = on)
+     -> LET st = leave_state(on)(st)
+         IN enter_into(off)(st),
+    (current_state(st) = infusion_complete)
+     -> LET st = leave_state(infusion_complete)(st)
+         IN enter_into(off)(st),
+    (current_state(st) = off)
+     -> LET st = leave_state(off)(st),
+            st = st WITH [ display := blank ],
+            st = st WITH [ topline := Event2635 ],
+            st = st WITH [ disp_message_1 := get_todays_date ],
+            st = st WITH [ disp_message_2 := SwitchedOn ],
+            st = st WITH [ botline := PressInfo ]
+         IN enter_into(on)(st),
+     ELSE -> st
+    ENDCOND
+  per_click_yes(st: State): bool = ((current_state(st) = check_syringe) AND (NOT end_program_reached(st))) OR ((current_state(st) = check_syringe) AND (end_program_reached(st))) OR ((current_state(st) = on)) OR ((current_state(st) = info)) OR ((current_state(st) = new_regime)) OR ((current_state(st) = ready))
+  click_yes(st: (per_click_yes)): State =
+    COND
+    (current_state(st) = check_syringe) AND (NOT end_program_reached(st))
+     -> LET st = leave_state(check_syringe)(st),
+            st = st WITH [ disp_message_1 := PressYesToResume ],
+            st = st WITH [ disp_message_2 := NoForNewProgram ],
+            st = st WITH [ display := blank ],
+            st = st WITH [ topline := blank ],
+            st = st WITH [ botline := blank ]
+         IN enter_into(ask_resume)(st),
+    (current_state(st) = check_syringe) AND (end_program_reached(st))
+     -> LET st = leave_state(check_syringe)(st),
+            st = st WITH [ topline := "Volume " + volume(st) + " " + volumeUnits ],
+            st = st WITH [ disp_message_1 := "Duration " + hoursduration(st) + ":" + minutesduration(st) ],
+            st = st WITH [ disp_message_2 := "Rate " + infusionrate(st) + " " + rateUnits ],
+            st = st WITH [ botline := ConfirmPressYes ],
+            st = st WITH [ display := blank ]
+         IN enter_into(new_regime)(st),
+    (current_state(st) = on)
+     -> LET st = leave_state(on)(st),
+            st = st WITH [ display := Preloading ],
+            st = st WITH [ topline := blank ],
+            st = st WITH [ disp_message_1 := blank ],
+            st = st WITH [ disp_message_2 := blank ],
+            st = st WITH [ botline := UseNoToInterrupt ]
+         IN enter_into(preloading)(st),
+    (current_state(st) = info)
+     -> LET st = leave_state(info)(st),
+            st = st WITH [ display := Ready ],
+            st = st WITH [ topline := blank ],
+            st = st WITH [ disp_message_1 := blank ],
+            st = st WITH [ disp_message_2 := blank ],
+            st = st WITH [ botline := PressYes ]
+         IN enter_into(on)(st),
+    (current_state(st) = new_regime)
+     -> LET st = leave_state(new_regime)(st),
+            st = st WITH [ display := StartInfusion ],
+            st = st WITH [ topline := blank ],
+            st = st WITH [ botline := blank ],
+            st = st WITH [ disp_message_1 := blank ],
+            st = st WITH [ disp_message_2 := blank ],
+            st = st WITH [ end_program_reached := false ]
+         IN enter_into(ready)(st),
+    (current_state(st) = ready)
+     -> LET st = leave_state(ready)(st),
+            st = st WITH [ topline := "Time Remaining: " + hoursduration(st) + ":" + minutesduration(st) ],
+            st = st WITH [ display := "Rate " + infusionrate(st) + " " + rateUnits ],
+            st = st WITH [ botline := PumpDelivering ],
+            st = st WITH [ disp_message_1 := blank ],
+            st = st WITH [ disp_message_2 := blank ],
+            st = st WITH [ volumeLeft := volume(st) ]
+         IN enter_into(infusing)(st),
+     ELSE -> st
+    ENDCOND
+
+ END emucharts_NikiT34
+% ---------------------------------------------------------------
+%  PVS theory generated using Emucharts PVSPrinter ver 2.0
+%  Tool freely available at http://www.pvsioweb.org
+% ---------------------------------------------------------------
+

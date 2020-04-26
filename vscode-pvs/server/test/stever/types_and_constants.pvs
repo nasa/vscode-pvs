@@ -1,0 +1,134 @@
+types_and_constants : THEORY
+
+  BEGIN IMPORTING Maybe
+
+  Message : TYPE = string
+
+  Gas : TYPE = nat
+
+  Cash : TYPE = nat
+
+% All possible account numbers
+  AccountNo : TYPE = {a0, a1, a2, a3, a4, a5, a6, a7, a8, a9}
+
+% Of the possible accounts, these are the currently used ones
+ LiveAccounts : TYPE = finseq[AccountNo]
+
+% This is the state of the blockchain abstracted to just a note on which accounts are "live"
+% (for convenience) and for each account how much cash it has in it
+  
+  BCstatetype : TYPE = [# liveaccounts : LiveAccounts,
+                          accounts : [AccountNo -> Cash] 
+                        #]
+                       
+% Representing a transaction just as how much gas it needs and who is requesting it
+  Transaction : TYPE = [# gas : Gas, deployer : AccountNo #]
+
+  TQtype : TYPE = list[Transaction]
+
+% Then we have the idea of configuration, which is the state as above plus a queue of transactions
+% This is as in the model in the "Greedy etc." paper
+  Configtype : TYPE = [# transactions : TQtype,
+                         state : BCstatetype 
+                      #]
+
+% For shadowing the accounts function  
+   Accounts: TYPE = [# a0: Cash, a1: Cash, a2: Cash, a3: Cash, a4 : Cash, a5 : Cash, 
+                                        a6 : Cash, a7 : Cash, a8 : Cash, a9 : Cash #]
+   conv1(accounts: [AccountNo -> Cash]): Accounts =
+       (# a0 := accounts(a0),
+          a1 := accounts(a1),
+          a2 := accounts(a2),
+          a3 := accounts(a3),
+          a4 := accounts(a4),
+          a5 := accounts(a5),
+          a6 := accounts(a6),
+          a7 := accounts(a7),
+          a8 := accounts(a8),
+          a9 := accounts(a9) #)
+   CONVERSION conv1
+   
+   conv2(accounts: Accounts): [AccountNo -> Cash] =
+       LAMBDA (x: AccountNo):
+         COND
+	   x = a0 -> accounts`a0,
+	   x = a1 -> accounts`a1,
+	   x = a2 -> accounts`a2,
+	   x = a3 -> accounts`a3,
+           x = a4 -> accounts`a4,
+           x = a5 -> accounts`a5,
+           x = a6 -> accounts`a6,
+           x = a7 -> accounts`a7,
+           x = a8 -> accounts`a8,
+           x = a9 -> accounts`a9
+	 ENDCOND
+   CONVERSION conv2
+
+% And this is its shadow (for PVSio purposes)
+ ValidAccounts: TYPE = list[AccountNo]
+
+
+% The shadowing type for state
+  bcstatetype: TYPE = [# liveaccounts : ValidAccounts,
+                          accounts : Accounts 
+                        #]
+
+% Need a conversion from Maybe BCstatetype to BCstatetype
+
+conv3(m : Maybe[BCstatetype]) : BCstatetype =
+    CASES m OF
+       Some(st) : st,
+       None     : (# liveaccounts  := empty_seq,
+                     accounts      := LAMBDA (x : AccountNo) : 0
+                  #)
+    ENDCASES
+ CONVERSION conv3
+
+			
+% For displaying the state
+  display_state(st : Maybe[BCstatetype]) : bcstatetype = conv3(st)
+
+
+% For the simulator we need a shadow
+  configtype : TYPE = [# transactions : TQtype,
+                         state : bcstatetype 
+                      #]
+
+% And a display function for the configuration too when trying things out
+  display_config(c : Configtype) : configtype = c
+
+% Need to program a "member" function for finite sequences
+ memberfs[T : TYPE](item : T, sequence : finseq[T]) : RECURSIVE bool =
+   IF sequence = empty_seq
+   THEN FALSE
+   ELSE
+     IF item = sequence(0)
+     THEN TRUE
+     ELSE memberfs(item, ^^(sequence, (1, sequence`length)))
+     ENDIF
+  ENDIF
+     MEASURE sequence`length
+     
+% And a singleton too
+ singfs[T : TYPE](elem : T) : finseq[T] =  (# length := 1, seq := LAMBDA (x : nat) : elem #)
+
+% display_singfs[T : TYPE](elem : T) : list[T] = singfs[T](elem)
+
+% display_fs[T : TYPE](f : finseq[T]) : list[T] = f
+ 
+% Now finally we can initialise....
+                                  
+% The state...with some values added initially
+  BCstate_init : BCstatetype = (# liveaccounts := o(singfs(a0),o(singfs(a9),empty_seq)),
+		                  accounts := LAMBDA (x : AccountNo) : 10
+			       #)
+			      
+% And some initial transactions
+  TQ_init : TQtype = cons((# gas := 2, deployer := a9 #), null)
+
+% And an initial configuration
+  Config_init : Configtype =  (# transactions := TQ_init,
+		                 state := BCstate_init
+                               #)
+
+END types_and_constants

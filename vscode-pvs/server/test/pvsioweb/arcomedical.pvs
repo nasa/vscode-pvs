@@ -1,0 +1,125 @@
+arcomedical: THEORY
+ BEGIN
+ 
+  %-- constants
+  max: posreal = 9999;
+  min: posreal = 0.1;
+  threshold: posreal = 999;
+  alarmType: TYPE = {silent, beep, muted}
+
+  %-- type definitions
+  %-- data entry
+  device_real: TYPE = {r: nonneg_real | r <= max}
+  keyID: TYPE = {i: nat | i < 4}
+  Cursor: TYPE = {i: int | i >= -1 AND i < 4}
+
+  State: TYPE = [#
+     on    : int, % on flag
+     inf   : int, % infusing flag
+     r     : device_real, % rate
+     v     : device_real, % vtbi
+     %-- data etry state
+     d     : device_real, % display value
+     disp0 : string,
+     disp1 : string,
+     disp2 : string,
+     disp3 : string
+   #]
+
+  int2boolean(i: int): boolean = IF i > 0 THEN TRUE ELSE FALSE ENDIF
+  CONVERSION int2boolean
+
+  toString(x: device_real): string = "" + x
+  CONVERSION toString
+
+  pow10(i: Cursor): device_real = ^(10,i);
+
+  updateDisplay(dispID: upto(3))(x: device_real): string =
+    IF (x <= threshold) 
+    THEN mod(floor(x * 10 / pow10(dispID)), 10) + IF (dispID = 1) THEN "." ELSE "" ENDIF
+    ELSE mod(floor(x / pow10(dispID)), 10) ENDIF
+
+  init(x: device_real): State = (#
+          on := 0,
+          inf:= 0,
+          r  := 0,
+          v  := 0,
+          d  := x,
+	  disp0 := updateDisplay(0)(x),
+	  disp1 := updateDisplay(1)(x),
+	  disp2 := updateDisplay(2)(x),
+	  disp3 := updateDisplay(3)(x)
+  #)
+  CONVERSION init
+  
+
+
+  %-- On Off button
+  %      - when the pump is on, you can switch it off, unless it's infusing
+  %      - when the pump is off, you can only switch it on
+  click_on(st: State): State =
+    IF     on(st)  THEN IF NOT inf(st) THEN init(0) WITH [ on := FALSE ] ELSE st ENDIF
+    ELSE   init(0) WITH [ on := TRUE ] ENDIF
+
+
+  %-- Start-Stop button
+  click_start(st: State): State =
+    IF    on(st) AND d(st) > 0 AND v(st) > 0 AND r(st) > 0 
+    THEN  IF inf(st) THEN st WITH [ inf := false ] ELSE st WITH [ inf := true ] ENDIF
+    ELSE  st ENDIF
+
+  %-- tick
+  device_tick(st: State): State =
+    IF     on(st) AND inf(st)
+     THEN  IF d(st) > 0 AND v(st) > 0 AND r(st) > 0
+           THEN  LET new_vtbi: real = IF v(st) - r(st) > 0 THEN v(st) - r(st) ELSE 0 ENDIF %floor(v(st) - r(st) / 100)
+                  IN st WITH [ v := new_vtbi, d := new_vtbi, inf := IF new_vtbi = 0 THEN false ELSE inf(st) ENDIF ]
+           ELSE st WITH [ inf := false ] ENDIF
+    ELSE  st ENDIF
+
+  
+  %-- interactive data entry sub-system
+  %-- down button
+  dn(i: Cursor)(st: State): State = 
+        LET new_val = d(st) - pow10(i),
+	    ans = COND
+	    	    new_val >= 0 -> new_val,
+		    new_val < 0  -> d(st)
+	    	  ENDCOND
+         IN st WITH [ d := ans,
+	       	      disp0 := updateDisplay(0)(ans),
+		      disp1 := updateDisplay(1)(ans),
+		      disp2 := updateDisplay(2)(ans),
+		      disp3 := updateDisplay(3)(ans) ]
+
+  %-- up button
+  up(i: Cursor)(st: State): State =
+        LET new_val = d(st) + pow10(i),
+	    ans = COND 
+	    	    new_val <= threshold -> new_val,
+		    new_val > threshold 
+		      & new_val <= max   -> floor(new_val),
+                    new_val > max        -> max 
+		  ENDCOND
+         IN st WITH [ d := ans,
+       	       	      disp0 := updateDisplay(0)(ans),
+		      disp1 := updateDisplay(1)(ans),
+		      disp2 := updateDisplay(2)(ans),
+		      disp3 := updateDisplay(3)(ans) ]
+
+  click_dn(key: keyID)(st: State): State =
+    IF d(st) <= threshold 
+    THEN dn(key - 1)(st) 
+    ELSE dn(key)(st) ENDIF
+
+  click_up(key: keyID)(st: State): State =
+    IF d(st) <= threshold 
+    THEN up(key - 1)(st) 
+    ELSE up(key)(st) ENDIF
+
+  click_ok(st: State): State =
+    IF on(st) AND d(st) > 0 
+    THEN st WITH [ v := d(st), r := 0.1 ] 
+    ELSE st ENDIF
+
+ END arcomedical

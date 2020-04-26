@@ -1,0 +1,870 @@
+% Michael Harrison and Paolo Masci (Braga and Newcastle University) January 2017
+
+pilldispenser_th: THEORY
+ BEGIN
+
+  %IMPORTING pd_t_and_c_th[5, 20, 20, 5]
+  IMPORTING pd_t_and_c_th[2, 3, 3, 2] % framedepth: posnat,p_limit: posnat, m_limit: posnat, s_limit: posnat
+
+  state: TYPE = [#
+   mode: mode_type,
+   action: available_actions_type,
+   field: available_fields_type,
+   new_patient_record: available_fields_type,
+   patient_id_line: patient_id_line_type,
+   med_id_line: med_id_line_type,
+   script_line: script_line_type,
+   scripts_db: script_db_type,
+   patients_db: patient_db_type,
+   meds_db: med_db_type,
+   p_max: p_index,
+   p_lower: p_index,
+   p_upper: p_index,
+   p_current: p_index,
+   m_max: m_index,
+   m_lower: m_index,
+   m_upper: m_index,
+   m_current: m_index,
+   s_lower: s_index,
+   s_upper: s_index,
+   s_current: s_index,
+   scan_counter: upto(max_scan)
+  #]
+
+next_pid(p: p_index, st: state): p_index =
+     IF (p < plimit) THEN p + 1
+     ELSE p ENDIF
+
+next_mid(m: m_index, st: state): m_index =
+     IF m < mlimit THEN m + 1
+     ELSE m ENDIF
+
+clear_screen(st: state): state =
+  st WITH
+    [  patient_id_line :=
+       LAMBDA (x: p_index): false,
+       med_id_line :=
+       LAMBDA (x: m_index): false,
+       script_line :=
+       LAMBDA (x: s_index): false,
+    field :=
+       LAMBDA (x: fields_type): (# visible := false, selected := false, entered := false #)
+      ]
+
+init?(st: state): bool =
+   LET rec = (LAMBDA (f: fields_type): 
+                     (# visible := false, selected := false, entered := false #)),    
+      dos = (LAMBDA(s: s_index): rec),
+      pat_script = (LAMBDA (p: p_index):                   
+                    (# s_max := 0, s_lines := dos, s_doses := dos #))
+  IN
+   (mode(st) = initial &
+   (action(st) = LAMBDA(x: actions_type):
+             (x = key1) OR (x = key2) OR (x = key3)) &
+   (field(st) = rec) &
+   (new_patient_record(st) = rec) &
+   (patient_id_line(st) =
+       LAMBDA (x: p_index): false) &
+   (med_id_line(st) =
+       LAMBDA (x: m_index): false) &
+   (script_line(st) =
+       LAMBDA (x: s_index): false) & 
+   (scripts_db(st) = pat_script) &
+   (meds_db(st) = LAMBDA(m: m_index): rec) &
+    (patients_db(st) = LAMBDA(p: p_index): rec) &
+    p_max(st) = 0 &
+    p_lower(st) = 0 &
+    p_upper(st) = 0 &
+    p_current(st) = 0 & 
+    m_max(st) = 0 &
+    m_lower(st) = 0 &
+    m_upper(st) = 0 &
+    m_current(st) = 0 &
+    s_lower(st) = 0 &
+    s_upper(st) = 0 &
+    s_current(st) = 0 &
+    scan_counter(st) = 3)
+
+init_screen(st: state): state =
+   clear_screen(st) WITH
+             [mode := initial,
+	      action :=
+                 LAMBDA (x: actions_type):
+                      (x= key1) OR (x=key2) OR (x=key3)]
+% init is necessary for PVSIO-web
+init_pillbox(x: real): state =
+  LET rec = (LAMBDA (f: fields_type): 
+                     (# visible := false, selected := false, entered := false #)),    
+      dos = (LAMBDA(s: s_index): rec),
+      pat_script = (LAMBDA (p: p_index):                   
+                    (# s_max := 0, s_lines := dos, s_doses := dos #))
+  IN 
+  (# mode := initial,
+     action := LAMBDA(x: actions_type):
+             (x = key1) OR (x = key2) OR (x = key3),
+     field := rec,
+     new_patient_record := rec,
+   patient_id_line :=
+       LAMBDA (x: p_index): false,
+   med_id_line :=
+       LAMBDA (x: m_index): false,
+   script_line :=
+       LAMBDA (x: s_index): false, 
+   scripts_db := pat_script,
+   meds_db := LAMBDA(m: m_index): rec,
+    patients_db := LAMBDA(p: p_index): rec,
+    p_max := 0,
+    p_lower := 0,
+    p_upper := 0,
+    p_current := 0, 
+    m_max := 0,
+    m_lower := 0,
+    m_upper := 0,
+    m_current := 0,
+    s_lower := 0,
+    s_upper := 0,
+    s_current := 0,
+    scan_counter := 3 #)
+
+
+pwd_screen(st: state): state =
+   clear_screen(st) WITH
+       [mode := pwd,
+        action := LAMBDA(x: actions_type):
+		     x = key1 OR x = key2 OR x = key3 OR x = confirm,
+        field := LAMBDA(x: fields_type):
+	           COND
+		     x = password -> (# visible := true, selected := false, entered := false #),
+		     ELSE -> st`field(x)
+		    ENDCOND
+       ]
+
+db_pwd_screen(st: state): state =
+   clear_screen(st) WITH
+       [mode := db_pwd,
+        action := LAMBDA(x: actions_type):
+                     (x= key1) OR (x=key2) OR (x=key3) OR (x=confirm),
+        field := LAMBDA(x: fields_type):
+	           COND
+		     x = password -> (# visible := true, selected := false, entered := false #),
+		     ELSE -> st`field(x)
+		    ENDCOND
+       ]
+
+db_menu_screen(st: state): state =
+   clear_screen(st) WITH
+       [mode := db_menu,
+        action := LAMBDA(x: actions_type):
+                     (x= key1) OR (x=key2) OR (x=key3) OR (x=medicines)
+       ]
+
+patient_list_screen(st: state): state =
+   LET st1 = st WITH
+         [p_lower := 1,
+	  p_upper :=
+	    IF st`p_max >= frame_depth THEN frame_depth
+	    ELSE st`p_max ENDIF
+	  ] IN clear_screen(st1) WITH
+       [mode := patient_list,
+        patient_id_line :=
+	          LAMBDA (p: p_index):
+		     (p >= st`p_lower) AND (p <= st`p_upper),
+        action :=
+            LAMBDA (x: actions_type):
+               (x= key1) OR (x=key2) OR (x=key3) OR (x=create)
+		    ]
+
+patient_details_screen(st: state): state =
+     clear_screen(st) WITH
+        [mode := patient_details,
+        action := LAMBDA(x: actions_type):
+                (x = key1) OR (x = key2) OR (x = key3) OR
+	        (x = prescriptions) OR (x = confirm) OR (x = quit),
+        field := LET record = st`patients_db(st`p_current) IN
+	          LAMBDA(x: fields_type):
+	           COND
+		     (x = name) OR (x = dob) OR (x = id_card) OR (x = carer)
+		     OR (x = mob) -> (# visible := true, selected := false,
+		                    entered := record(x)`entered #),
+		     ELSE -> st`field(x)
+		    ENDCOND
+       ]
+
+new_patient_details_screen(st: state): state =
+     clear_screen(st) WITH
+        [mode := new_patient_details,
+        action := LAMBDA(x: actions_type):
+	        (x = key1) OR (x = key2) OR (x = key3) OR
+               (x = confirm) OR (x = quit),
+        field := LAMBDA(x: fields_type):
+	           COND
+		     (x = name) OR (x = dob) OR (x = id_card) OR (x = carer)
+		     OR (x = mob) -> (# visible := true, selected := false,
+		                    entered := false #),
+		     ELSE -> (# visible := false, selected := false,
+		                    entered := false #)
+		    ENDCOND
+       ]
+
+
+script_list_screen(st: state): state =
+LET pre_script = scripts_db(st)(st`p_current),
+    st = st WITH
+    [s_lower := 1,
+     s_upper := IF pre_script`s_max <= frame_depth THEN pre_script`s_max
+                ELSE frame_depth ENDIF ] IN
+     clear_screen(st) WITH
+        [mode := patient_scripts_list,
+        action := LAMBDA(x: actions_type): 
+                      (x = key1) OR (x = key2) OR (x = key3) OR
+                       (x = quit) OR (x = create),
+	script_line :=
+                 LAMBDA(s: s_index):
+		    (s >= st`s_lower) AND (s <= st`s_upper)]
+        
+
+old_script_details_screen(st: state): state =
+LET p_script_detail = scripts_db(st)(st`p_current)`s_lines(st`s_current) IN
+     clear_screen(st) WITH
+        [mode := patient_script,
+        action := LAMBDA(x: actions_type): (x = key1) OR (x = key2) OR (x = key3) OR
+                                           (x = quit) OR (x = confirm),
+	           
+        field := LAMBDA(x: fields_type):
+	           COND
+		     (x = name) OR (x = dosage) OR (x = quantity)
+		     OR (x = prescription) ->
+		     (# visible := true, selected := false,
+		                     entered := p_script_detail(x)`entered #),
+		     ELSE -> st`field(x)
+		    ENDCOND
+       ]
+
+dosage_screen(st: state): state =
+LET p_script_detail = scripts_db(st)(st`p_current)`s_doses(st`s_current) IN
+     clear_screen(st) WITH
+        [mode := dose,
+        action := LAMBDA(x: actions_type): (x = key1) OR (x = key2) OR (x = key3) OR
+                                           (x = quit) OR (x = confirm),
+	           
+        field := LAMBDA(x: fields_type):
+	           COND
+		     (x = monthly) OR (x = weekly) OR (x = daily)
+		     OR (x = bidaily) OR (x = time1) OR (x = time2) ->
+		     (# visible := true, selected := false,
+		                     entered := p_script_detail(x)`entered #),
+		     ELSE -> (# visible := false, selected := false,
+		                     entered := false #)
+		    ENDCOND
+       ]
+
+new_script_details_screen(st: state): state =
+    LET new_smax = s_max(scripts_db(st)(st`p_current)),
+    st1 = st with [scripts_db := LAMBDA (p: p_index):
+                                 COND
+				  p = st`p_current ->
+                                   (# s_max := IF new_smax = slimit THEN slimit ELSE new_smax + 1 ENDIF,
+				      s_lines := scripts_db(st)(p)`s_lines,
+				      s_doses := scripts_db(st)(p)`s_doses #),
+				  ELSE -> scripts_db(st)(p)
+                                 ENDCOND] in
+     clear_screen(st1) WITH
+        [mode := new_patient_script,
+        action := LAMBDA(x: actions_type): (x = key1) OR (x = key2) OR (x = key3)
+                    OR (x = quit) OR (x = create),
+	           
+        field := LAMBDA(x: fields_type):
+	           COND
+		     (x = name) OR (x = dosage) OR (x = quantity)
+		     OR (x = prescription) ->
+		     (# visible := true, selected := false,
+		                     entered := false #),
+		     ELSE -> st`field(x)
+		    ENDCOND
+       ]
+
+script_details_screen(st: state): state =
+   LET p_script = scripts_db(st)(st`p_current) IN
+    IF p_script`s_max = 0 THEN new_script_details_screen(st)
+    ELSE old_script_details_screen(st) ENDIF
+
+new_dosage_screen(st: state): state =
+     clear_screen(st) WITH
+        [mode := new_dose,
+        action := LAMBDA(x: actions_type): (x = key1) OR (x = key2) OR (x = key3) OR
+                                           (x = quit) OR (x = create),
+	           
+        field := LAMBDA(x: fields_type):
+	           COND
+		     (x = monthly) OR (x = weekly) OR (x = daily)
+		     OR (x = bidaily) OR (x = time1) OR (x = time2) ->
+		     (# visible := true, selected := false,
+		                     entered := false #),
+		     ELSE -> (# visible := false, selected := false,
+		                     entered := false #)
+		    ENDCOND
+       ]
+
+
+
+db_med_details_screen(st: state): state =
+     clear_screen(st) WITH
+        [mode := db_med_details,
+        action := LAMBDA(x: actions_type): (x = key1) OR (x = key2) OR (x = database) OR
+	                  (x = reload) OR (x = unload),
+	           
+        field := LET record = st`meds_db(st`m_current) IN
+	          LAMBDA(x: fields_type):
+		    COND
+	             (x = name) OR (x = dosage) OR (x = validity) OR
+		     (x = quantity) OR (x = column) ->
+		            (# visible := true, selected := false,
+		                    entered := record(x)`entered #),
+		     ELSE -> st`field(x)
+		    ENDCOND
+       ]
+
+new_med_screen(st: state): state =
+     clear_screen(st) WITH
+        [mode := new_med,
+        action := LAMBDA(x: actions_type):
+	              x = key1 OR x = key2 OR x = key3 OR
+		      x = quit OR x = confirm,
+        field := LAMBDA(x: fields_type):
+	           COND
+		     %-- EDITED BY PAOLO
+		     %(x = name) I believe you meant medicine?
+                     (x = medicine)
+		     %-------
+		     OR (x = dosage) OR (x = validity) OR
+		     (x = quantity) OR (x = column) ->
+		         (# visible := true, selected := false,
+		                             entered := false #),
+		     ELSE -> (# visible := false, selected := false,
+		                             entered := false #)
+		    ENDCOND
+       ]
+
+db_med_list_screen(st: state): state =
+   LET st1 = st WITH
+         [m_lower := 1,
+	  m_upper :=
+	    IF st`m_max >= frame_depth THEN frame_depth
+	    ELSE st`m_max ENDIF
+	  ] IN clear_screen(st1) WITH
+       [mode := db_med_list,
+        med_id_line :=
+	          LAMBDA (m: m_index):
+		        (m >= st`m_lower) AND (m <= st`m_upper),
+       action :=
+            LAMBDA (x: actions_type):
+               (x= key1) OR (x=key2) OR (x=create)
+	       %--- EDITED BY PAOLO
+	       OR x = key3
+	       %------
+		    ]      
+
+
+
+
+scan_screen(st: state): state =
+      clear_screen(st) WITH
+       [mode := scan,
+       scan_counter := IF scan_counter(st) > 0 THEN scan_counter(st) - 1
+                        ELSE scan_counter(st) ENDIF,
+       action := LAMBDA(x: actions_type): x = scan_action 
+       ]
+
+scan_enabled_screen(st: state): state =
+      clear_screen(st) WITH
+       [mode := scan_enabled,
+        action := LAMBDA(x: actions_type): x = tick	           
+       ]
+
+scan_successful_screen(st: state): state =
+      clear_screen(st) WITH
+       [mode := creation_success,
+        action := LAMBDA(x: actions_type): x = quit
+       ]
+
+per_act_key1(st: state): boolean =
+  (mode(st) = pwd) OR (mode(st) = db_pwd) OR (mode(st) = patient_details) OR
+  (mode(st) = patient_scripts_list) OR
+  (mode(st) = new_patient_script) OR (mode(st) = patient_script) OR
+  (mode(st) = db_menu) OR (mode(st) = patient_list) OR
+  (mode(st) = patient_list_new) OR
+  (mode(st) = db_med_list) OR (mode(st) = new_patient_details) OR
+  (mode(st) = db_med_details)
+
+act_key1(st: (per_act_key1)): state =
+     init_screen(st)
+
+per_act_key2(st: state): boolean =
+  (mode(st) = initial) OR (mode(st) = db_pwd) OR
+  (mode(st) = db_menu) OR 
+  (mode(st) = db_med_list) OR
+  (mode(st) = db_med_details) OR (mode(st) = new_patient_details)
+
+act_key2(st: (per_act_key2)): state =
+  COND
+    (mode(st) = initial) OR (mode(st) = db_pwd)
+            -> pwd_screen(st),
+    (mode(st) = db_menu) OR (mode(st) = db_med_list) OR
+    (mode(st) = db_med_details) OR (mode(st) = new_patient_details)
+            -> patient_list_screen(st),
+    ELSE -> st
+  ENDCOND
+
+per_act_key3(st: state): boolean =
+  (mode(st) = initial) OR
+  (mode(st) = pwd) OR (mode(st) = patient_list) OR
+  (mode(st) = patient_scripts_list) OR
+  (mode(st) = patient_scripts_list_new) OR 
+  (mode(st) = patient_script) OR (mode(st) = new_patient_script) OR
+  (mode(st) = db_med_list) OR
+  (mode(st) = new_patient_details) OR (mode(st) = patient_details)
+
+act_key3(st: (per_act_key3)): state =
+  COND
+    (mode(st) = initial) -> db_pwd_screen(st),
+    (mode(st) = pwd) -> db_pwd_screen(st),
+    (mode(st) = db_med_list) -> db_med_list_screen(st),
+    (mode(st) = new_patient_script) OR (mode(st) = patient_script) OR
+    (mode(st) = patient_list) OR
+    (mode(st) = new_patient_details) OR (mode(st) = patient_details) OR
+    (mode(st) = patient_scripts_list) OR (mode(st) = patient_scripts_list_new) ->
+                    db_menu_screen(st),
+    ELSE -> st
+  ENDCOND
+
+per_act_confirm(st: state): boolean =
+    (mode(st) = pwd) OR (mode(st) = db_pwd) OR (mode(st) = new_patient_details) OR
+    (mode(st) = patient_script) OR (mode(st) = dose) OR
+    (mode(st) = patient_details)
+    %--- EDITED BY PAOLO
+    OR mode(st) = new_med
+    %--------
+    
+
+act_confirm(st : (per_act_confirm)): state =
+   COND
+    (mode(st) = pwd) AND field(st)(password)`entered
+          -> patient_list_screen(st),
+    (mode(st) = db_pwd) AND field(st)(password)`entered
+          -> db_menu_screen(st),
+    (mode(st) = patient_details) ->
+       LET st1 = st
+           WITH
+	    [patients_db :=
+	       LAMBDA(p: p_index):
+		     COND
+		     p = st`p_current -> new_patient_record(st),
+		     ELSE -> patients_db(st)(p)
+		     ENDCOND ]
+                 IN patient_list_screen(st1),
+    (mode(st) = new_patient_details) AND
+      (field(st)(name)`entered AND field(st)(dob)`entered AND
+       field(st)(id_card)`entered AND field(st)(carer)`entered AND
+       field(st)(mob)`entered) ->
+          LET st1 = st WITH [ scan_counter := max_scan,
+	      	       	      %--- EDITED BY PAOLO
+	                      % p_max := next_pid(st`p_max, st), -- you need to execute next_pid when storing the record in the database (i.e., in act_quit), otherwise you will select the wrong index
+			      %--------
+			      new_patient_record := field(st)]
+                                       IN scan_screen(st1),
+     (mode(st) = patient_script) AND
+       (field(st)(name)`entered AND field(st)(dosage)`entered AND
+       field(st)(quantity)`entered AND field(st)(prescription)`entered)
+           -> LET new_scripts =
+	        LAMBDA (s: s_index):
+		COND
+		 s = st`s_current -> field(st),
+		 ELSE -> s_lines(scripts_db(st)(st`p_current))(s)
+		ENDCOND,
+		st1 = st WITH
+		   [ scripts_db :=
+		     LAMBDA (p: p_index):
+		      COND
+		        p = st`p_current -> (# s_max:= st`scripts_db(p)`s_max,
+			                    s_lines := new_scripts,
+					    s_doses := st`scripts_db(p)`s_doses #),
+			ELSE -> scripts_db(st)(p)
+		      ENDCOND
+		    ] IN dosage_screen(st1),
+
+       (mode(st) = dose) AND
+       ((field(st)(monthly)`entered AND field(st)(time1)`entered) XOR
+       (field(st)(weekly)`entered AND field(st)(time1)`entered) XOR
+       (field(st)(daily)`entered AND field(st)(time1)`entered) XOR
+       (field(st)(bidaily)`entered AND field(st)(time1)`entered
+           AND field(st)(time2)`entered))->
+        LET new_doses =
+	        LAMBDA (s: s_index):
+		COND
+		 s = st`s_current -> field(st),
+		 ELSE -> (scripts_db(st)(st`p_current))`s_doses(s)
+		ENDCOND,
+		st1 = st WITH
+		   [ scripts_db :=
+		     LAMBDA (p: p_index):
+		      COND
+		        p = st`p_current -> (# s_max:= st`scripts_db(p)`s_max,
+			                    s_lines := st`scripts_db(p)`s_lines,
+					    s_doses := new_doses #),
+			ELSE -> scripts_db(st)(p)
+		      ENDCOND
+		    ] IN script_list_screen(st1),
+    (mode(st) = new_med) AND
+      %--- EDITED BY PAOLO
+      % (field(st)(name)`entered -- I believe you meant medicine?
+      (field(st)(medicine)`entered
+      %----
+      AND field(st)(dosage)`entered AND
+       field(st)(validity)`entered AND field(st)(quantity)`entered AND
+       field(st)(column)`entered) ->
+          LET st1 = st WITH [ m_max := next_mid(st`m_max, st),
+			     meds_db :=
+			         LAMBDA (m: m_index):
+				    COND
+				      m = st`m_max -> field(st),
+				      ELSE -> meds_db(st)(m)
+				     ENDCOND]
+                                       IN db_med_list_screen(st1),
+				       
+    ELSE -> st
+  ENDCOND
+
+per_act_create(st: state): boolean =
+    (mode(st) = patient_list) OR
+    (mode(st) = patient_scripts_list) OR
+    (mode(st) = db_med_list) OR
+    (mode(st) = new_patient_script) OR
+    (mode(st) = new_dose)
+
+act_create(st: (per_act_create)): state =
+COND
+  (mode(st) = patient_list) -> new_patient_details_screen(st),
+  (mode(st) = db_med_list) -> new_med_screen(st),
+  (mode(st) = new_patient_script) AND
+       (field(st)(name)`entered AND field(st)(dosage)`entered AND
+       field(st)(quantity)`entered AND field(st)(prescription)`entered)
+           -> LET smax = st`scripts_db(st`p_current)`s_max,
+	       new_scripts =
+	        LAMBDA (s: s_index):
+		COND
+		 s = smax -> field(st),
+		 ELSE -> (scripts_db(st)(st`p_current))`s_lines(s)
+		ENDCOND,
+		st1 = st WITH
+		   [ scripts_db :=
+		     LAMBDA (p: p_index):
+		      COND
+		        p = st`p_current -> (# s_max:= smax,
+			                    s_lines := new_scripts,
+					    s_doses := st`scripts_db(p)`s_doses #),
+			ELSE -> scripts_db(st)(p)
+		      ENDCOND
+		    ] IN new_dosage_screen(st1),
+    (mode(st) = patient_scripts_list) -> db_med_list_screen(st),
+    (mode(st) = new_dose) AND
+       ((field(st)(monthly)`entered AND field(st)(time1)`entered) XOR
+       (field(st)(weekly)`entered AND field(st)(time1)`entered) XOR
+       (field(st)(daily)`entered AND field(st)(time1)`entered) XOR
+       (field(st)(bidaily)`entered AND field(st)(time1)`entered
+           AND field(st)(time2)`entered)) ->
+         LET      old_smax = st`scripts_db(st`p_current)`s_max,
+	          new_smax = IF old_smax = slimit THEN slimit
+	                  ELSE old_smax + 1 ENDIF,
+	     new_doses =
+	        LAMBDA (s: s_index):
+		COND
+		 s = new_smax -> field(st),
+		 ELSE -> s_doses(scripts_db(st)(st`p_current))(s)
+		ENDCOND,
+		st1 = st WITH
+		   [ scripts_db :=
+		     LAMBDA (p: p_index):
+		      COND
+		        p = st`p_current -> (# s_max:= new_smax,
+			                    s_lines := st`scripts_db(p)`s_lines,
+					    s_doses := new_doses #),
+			ELSE -> scripts_db(st)(p)
+		      ENDCOND
+		    ] IN script_list_screen(st1),
+    ELSE -> st
+ENDCOND
+      
+
+per_act_quit(st: state): boolean =
+   (mode(st) = new_patient_details) OR (mode(st) = creation_success) OR
+   (mode(st) = patient_scripts_list) OR
+   (mode(st) = patient_details) OR (mode(st) = patient_script) OR
+   (mode(st) = new_patient_script) OR (mode(st) = dose) OR
+   (mode(st) = new_dose)
+
+act_quit(st: (per_act_quit)): state =
+COND
+ (mode(st) = new_patient_details) OR (mode(st) = patient_details) 
+            -> patient_list_screen(st),
+ (mode(st) = patient_scripts_list) -> init_screen(st),
+ (mode(st) = patient_script) OR (mode(st) = new_patient_script)
+              -> script_list_screen(st),
+ (mode(st) = new_med) -> db_med_list_screen(st),
+ (mode(st) = creation_success) ->
+                LET st1 = st WITH
+		  [patient_id_line :=
+		     LAMBDA(p: p_index):
+		     COND
+		      p = st`p_max -> true,
+		      ELSE -> patient_id_line(st)(p)
+		     ENDCOND,
+		    %-- EDITED BY PAOLO
+		    p_max := next_pid(st`p_max, st),
+		    %----
+		    patients_db :=
+		     LAMBDA(p: p_index):
+		     COND
+		     p = st`p_max -> new_patient_record(st),
+		     ELSE -> patients_db(st)(p)
+		     ENDCOND		       
+		   ] IN patient_list_screen(st1),
+  (mode(st) = dose) -> patient_details_screen(st),
+  (mode(st) = new_dose) -> new_patient_details_screen(st),
+  ELSE -> st
+ENDCOND
+
+    
+    
+per_act_medicines(st: state): boolean =
+      (mode(st) = db_menu)
+
+act_medicines(st: (per_act_medicines)): state =
+  COND
+    (mode(st) = db_menu) -> db_med_list_screen(st),
+    ELSE -> st    
+   ENDCOND  
+
+per_database_action(st: state): boolean =
+       (mode(st) = db_med_details)
+
+database_action(st: (per_database_action)): state =
+     st WITH
+     [mode := db_med_details]
+
+per_act_prescriptions(st: state): boolean =
+       (mode(st) = patient_details)
+
+act_prescriptions(st :(per_act_prescriptions)): state =
+       IF s_max(scripts_db(st)(st`p_current)) = 0 THEN
+            db_med_list_screen(st) ELSE
+            script_list_screen(st) ENDIF
+
+per_act_patient(st: state): boolean =
+       (mode(st) = patient_list)
+
+act_patient(p: p_index, st: (per_act_patient)): state =
+       COND
+         patient_id_line(st)(p) ->
+	     LET st1 = st WITH [p_current := p]
+	        IN patient_details_screen(st1),
+	 ELSE -> st
+       ENDCOND
+
+per_act_med(st: state): boolean =
+       (mode(st) = db_med_list)
+
+act_med(m: m_index, st: (per_act_med)): state =
+       COND
+         med_id_line(st)(m) ->
+	   LET st1 = st WITH [m_current := m]
+	        IN db_med_details_screen(st1),
+	 ELSE -> st
+       ENDCOND
+
+per_act_script(st: state): boolean =
+       (mode(st) = patient_scripts_list)
+
+act_script(s: s_index, st: (per_act_script)): state =
+       COND
+        script_line(st)(s) ->
+	   LET st1 = st WITH [s_current := s]
+	         IN script_details_screen(st1),
+	ELSE -> st
+       ENDCOND
+
+per_act(a: actions_type, st: state): boolean =
+     (a = key1) OR (a = key2) OR (a=key3) OR (a = medicines) OR
+     (a = prescriptions) OR (a = database) OR (a = create) OR
+     (a = scan_action) OR (a = tick) OR (a = confirm) OR
+     (a = quit)
+
+act(a: actions_type, st: state): state =
+     COND
+       a = key1 & per_act_key1(st) -> act_key1(st),
+       a = key2 & per_act_key2(st) -> act_key2(st),
+       a = key3 & per_act_key3(st) -> act_key3(st),
+       a = medicines & per_act_medicines(st) -> act_medicines(st),
+       a = prescriptions & per_act_prescriptions(st) -> act_prescriptions(st),
+       (a = database) AND (mode(st) = db_med_details) ->
+               LET st1 = st
+                   WITH
+	             [meds_db :=
+	                LAMBDA(m: m_index):
+		     COND
+		        m = st`m_current -> field(st),
+		        ELSE -> meds_db(st)(m)
+		     ENDCOND ]
+                 IN db_med_list_screen(st1),
+       a = create & per_act_create(st) -> act_create(st),
+       (a = scan_action) AND (mode(st) = scan) -> scan_enabled_screen(st),
+       (a = tick) AND (mode(st) = scan_enabled) AND (st`scan_counter /= 0) ->
+                            scan_screen(st),
+       (a = confirm) & per_act_confirm(st)  -> act_confirm(st),
+       (a = tick) AND (mode(st) = scan_enabled) AND (st`scan_counter = 0) ->
+                             scan_successful_screen(st),
+       (a = quit) & per_act_quit(st) -> act_quit(st),
+       ELSE -> st
+     ENDCOND
+
+select(a: actions_type, st: state): state =
+   IF st`action(a) THEN act(a, st)
+   ELSE st
+   ENDIF
+
+select(f: fields_type, st: state): state =
+    IF visible(st`field(f)) THEN
+        st WITH
+	[ field :=
+	    LAMBDA(x: fields_type):
+	     COND
+	       x = f -> (# visible := true, selected := true, entered := field(st)(f)`entered #),
+	       ELSE -> field(st)(x)
+	     ENDCOND
+	]
+   ELSE st
+   ENDIF
+
+
+
+scroll_up_patient_list(st: state): state =
+   st WITH
+   [ p_lower := IF p_lower(st) = 0 THEN p_lower(st)
+                ELSE p_lower(st) - 1 ENDIF,
+     p_upper := If (p_upper(st) = p_lower(st) + frame_depth) AND (p_lower(st) /= 0)
+                 THEN p_upper(st) -1 ELSE p_upper(st) ENDIF,
+     patient_id_line :=
+         IF st`p_lower /= 0 THEN
+         LAMBDA(i: p_index):
+	    COND
+	      (i >= p_lower(st)-1) AND (i < p_upper(st)) -> TRUE,
+	      (i = p_upper(st)) AND (p_upper(st) - p_lower(st)) < frame_depth -> TRUE,
+	      ELSE -> FALSE
+	    ENDCOND
+	  ELSE patient_id_line(st) ENDIF ]
+
+scroll_down_patient_list(st: state): state =
+   st WITH
+   [ p_lower := IF p_lower(st) < plimit THEN p_lower(st) + 1 ELSE p_lower(st) ENDIF,
+     p_upper := If (p_upper(st) = p_lower(st) + frame_depth) AND (p_upper(st) < plimit)
+                 THEN p_upper(st) + 1 ELSE p_upper(st) ENDIF,
+     patient_id_line :=
+        IF p_upper(st) < plimit THEN
+         LAMBDA(i: p_index):  (i > p_lower(st)) AND (i <= (p_upper(st)+1))
+	  ELSE
+	 LAMBDA(i: p_index): (i > p_lower(st)) AND (i <= plimit)
+	ENDIF
+    ]
+
+scroll_up_med_list(st: state): state =
+   st WITH
+   [ m_lower := IF m_lower(st) = 0 THEN m_lower(st)
+                ELSE m_lower(st) - 1 ENDIF,
+     m_upper := If (m_upper(st) = m_lower(st) + frame_depth)
+                   AND (m_lower(st) /= 0)
+                 THEN m_upper(st) -1 ELSE m_upper(st) ENDIF,
+     med_id_line :=
+         IF st`m_lower /= 0 THEN
+         LAMBDA(i: m_index):
+	    COND
+	      (i >= m_lower(st)-1) AND (i < m_upper(st)) -> TRUE,
+	      (i = m_upper(st)) AND (m_upper(st) - m_lower(st)) < frame_depth -> TRUE,
+	      ELSE -> FALSE
+	    ENDCOND
+	  ELSE med_id_line(st) ENDIF ]
+
+scroll_down_med_list(st: state): state =
+   st WITH
+   [ m_lower := IF m_lower(st) < mlimit THEN m_lower(st) + 1 ELSE m_lower(st) ENDIF,
+     m_upper := If (m_upper(st) = m_lower(st) + frame_depth) AND (m_upper(st) < mlimit)
+                 THEN m_upper(st) + 1 ELSE m_upper(st) ENDIF,
+     med_id_line :=
+        IF m_upper(st) < mlimit THEN
+         LAMBDA(i: m_index):  (i > m_lower(st)) AND (i <= (m_upper(st)+1))
+	  ELSE
+	 LAMBDA(i: m_index): (i > m_lower(st)) AND (i <= mlimit)
+	ENDIF
+    ]
+
+scroll_up_script_list(st: state): state =
+   st WITH
+   [ s_lower := IF s_lower(st) = 0 THEN s_lower(st)
+                ELSE s_lower(st) - 1 ENDIF,
+     s_upper := If (s_upper(st) = s_lower(st) + frame_depth) AND (s_lower(st) /= 0)
+                 THEN s_upper(st) -1 ELSE s_upper(st) ENDIF,
+     script_line :=
+         IF st`s_lower /= 0 THEN
+         LAMBDA(i: s_index):
+	    COND
+	      (i >= s_lower(st)-1) AND (i < s_upper(st)) -> TRUE,
+	      (i = s_upper(st)) AND (s_upper(st) - s_lower(st)) < frame_depth -> TRUE,
+	      ELSE -> FALSE
+	    ENDCOND
+	  ELSE script_line(st) ENDIF ]
+
+scroll_down_script_list(st: state): state =
+   LET pre_script = scripts_db(st)(st`p_current) IN st WITH
+   [ s_lower := IF s_lower(st) < pre_script`s_max THEN s_lower(st) + 1 ELSE s_lower(st) ENDIF,
+     s_upper := If (s_upper(st) = s_lower(st) + frame_depth) AND
+                      (s_upper(st) < pre_script`s_max)
+                 THEN s_upper(st) + 1 ELSE s_upper(st) ENDIF,
+     script_line :=
+        IF s_upper(st) < pre_script`s_max THEN
+         LAMBDA(i: s_index):  (i > s_lower(st)) AND (i <= (s_upper(st)+1))
+	  ELSE
+	 LAMBDA(i: s_index): (i > s_lower(st)) AND (i <= pre_script`s_max)
+	ENDIF
+    ]	           
+	     
+
+enter(f: fields_type, st: state): state =
+    IF visible(st`field(f)) & selected(st`field(f)) THEN
+        st WITH
+	  [field :=
+	      LAMBDA(x: fields_type):
+	        COND
+		 x = f -> (# visible := true, selected := false, entered := true #),
+		 ELSE -> st`field(x)
+		ENDCOND
+          ]
+    ELSE st
+    ENDIF
+
+
+
+
+select_field(f: fields_type, st: state): state =
+    st WITH
+      [field :=
+       LAMBDA(x: fields_type):
+       COND
+          x = f  AND visible(field(st)(f)) ->
+	     (# visible := true, selected := true,
+	        entered := entered(field(st)(f)) #),
+            ELSE -> field(st)(x)
+	   ENDCOND
+        ]
+
+
+	
+
+ END pilldispenser_th

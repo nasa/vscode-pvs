@@ -1,0 +1,237 @@
+medfusion3500: THEORY
+ BEGIN IMPORTING constants 
+
+  dataEntryMode: TYPE = {VTBI, RATE, NONE}
+
+  state: TYPE = [#
+    mode          : dataEntryMode,
+    display       : { s: string | s`length <= MAIN_DISPLAY_SIZE },
+    editStart     : boolean,
+    dispval       : float,
+    units	  : string,
+
+    dotEntered    : bool,
+    decimalDigits : { x: integer | x >= 0 },
+    displayError  : string, % Value xxx. Exceeds MAX RATE 999 (VTBI 9999)
+    dispHigh	  : float,
+    dispLow	  : float,
+    dispHIGH	  : string,
+    dispLOW	  : string,
+    dispInfo	  : string,
+
+    label0	  : string,
+    label1	  : string,
+    label2	  : string,
+    label3	  : string,
+
+    programmedRate: float,
+    programmedVTBI: float
+  #]
+
+
+  digitClicked(key: KEY_CODE)(st: state): state = 
+    LET st = if mode(st) = NONE then st WITH [ mode := RATE ] else st endif IN
+    if(strlen(display(st)) >= MAIN_DISPLAY_SIZE & editStart(st) = TRUE) then st 
+    else
+      if(strlen(display(st)) = 0 & key = KEY_0) 
+      then st WITH [ display := if editStart(st) = FALSE then "" else display(st) endif + "0",
+      	             editStart := TRUE ]
+      else 
+      LET tmp: float = dispval(st),
+          (tmp, st) =
+          if(dotEntered(st)) %{ 
+	  then	LET PPdecimalDigits = decimalDigits(st) + 1
+		 IN (tmp + key * pow10(-1 * PPdecimalDigits), st WITH [ decimalDigits := PPdecimalDigits])
+	  %}
+	  else (tmp * 10 + key, st) endif
+	  %}
+       IN st WITH [ display := if editStart(st) = FALSE then "" else display(st) endif + key,
+		    editStart := TRUE,
+		    dispval := tmp ]
+       endif
+     endif
+
+  dotClicked(st: state): state =
+     if(strlen(display(st)) >= MAIN_DISPLAY_SIZE & editStart(st) = TRUE) then st 
+     else
+     LET st = if editStart(st) = FALSE then st WITH [ display := "", editStart := TRUE ] else st endif IN
+	if(NOT dotEntered(st)) %{
+	then LET st = st WITH [ dotEntered := true ]
+	      IN st WITH [ display := if dispval(st) = 0 then "0." else display(st) + "." endif ]
+	%}
+	% else ignore decimal point
+	else st endif
+     endif
+
+  enterClicked(st: state): state =
+	if(mode(st) = VTBI) then 
+		  if(dispval(st) >= MIN_VTBI) then
+                        st WITH [ programmedVTBI := dispval(st),
+			   	  mode := NONE,
+			   	  display := "",
+				  units := "",
+			          displayError := "",
+				  editStart := FALSE,
+				  label0 := "CHG VTBI",
+				  label1 := "",
+				  label2 := "",
+				  label3 := "",
+				  dotEntered := FALSE ]
+			   	  % secondaryDisplay := render(st) ]
+		  else %{
+			st WITH [ displayError := "" + dispval(st) + ". is less than MIN VTBI " + MIN_VTBI ] endif
+		  %}
+	elsif(mode(st) = RATE) then
+		  if(dispval(st) >= MIN_RATE) then
+                        st WITH [ programmedRate := dispval(st),
+			   	  mode := NONE,
+			   	  display := "",
+				  units := "",
+			          displayError := "",
+				  editStart := FALSE,
+				  label0 := "CHG RATE",
+				  label1 := "",
+				  label2 := "",
+				  label3 := "",
+				  dotEntered := FALSE ]
+			   	  % secondaryDisplay := render(st) ]
+		  else %{
+			st WITH [ displayError := "" + dispval(st) + ". is less than MIN RATE " + MIN_RATE ] endif
+		  %}
+	else st endif
+	%}
+
+  cancelClicked(st: state): state =
+	if(mode(st) = VTBI) 
+	     then st WITH [ dispval := 0,
+		       	    display := "" + programmedVTBI(st),
+		       	    dotEntered := false,
+		       	    decimalDigits := 0 ]
+	elsif(mode(st) = RATE)
+	     then st WITH [ dispval := 0,
+		       	    display := "" + programmedRate(st),
+		       	    dotEntered := false,
+		       	    decimalDigits := 0 ]
+	else st endif
+
+
+  clearClicked(st: state): state = 
+    st WITH [
+        display := "",
+	displayError := if mode(st) = RATE then "Enter RATE"
+		        elsif mode(st) = VTBI then "Enter VTBI"
+			else "" endif,
+        dispval := 0,
+	dotEntered := false,
+	decimalDigits := 0 ]
+
+  backspaceClicked(st: state): state =
+    if strlen(display(st)) <= 0 then st
+    else st WITH [ display := substr(display(st), 0, strlen(display(st)) - 2) ] endif
+  
+  selectRate(st: state): state = 
+    LET % if current mode is VTBI, changing the selection automatically confirms the VTBI value (if valid)
+        st = if(mode(st) = VTBI & dispval(st) > 0) then enterClicked(st) else st endif
+	% if rejectKeys is true, then the VTBI value could not be confirmed -- an error is displayed, the selection is not changed, and keys can be clicked only to modify VTBI
+     IN LET st = if(programmedRate(st) = 0) then st
+    	         else st WITH [ display := "" + programmedRate(st) ] endif
+         IN st WITH [ dotEntered := FALSE,
+     	              decimalDigits := 0,
+	              mode := RATE,
+		      dispval := 0,
+		      displayError := "Enter RATE",
+		      label0 := "",
+		      label1 := "CLEAR",
+		      label2 := "",
+		      label3 := "ENTER",
+		      units := "ML/HR" ]
+
+  selectVTBI(st: state): state = 
+    LET % if current mode is RATE, changing the selection automatically confirms the RATE value (if valid)
+        st = if(mode(st) = RATE & dispval(st) > 0) then enterClicked(st) else st endif
+	% if rejectKeys is true, then the VTBI value could not be confirmed -- an error is displayed, the selection is not changed, and keys can be clicked only to modify VTBI
+     IN LET st = if(programmedVTBI(st) = 0) then st
+    	         else st WITH [ display := "" + programmedVTBI(st) ] endif
+         IN st WITH [ dotEntered := FALSE,
+     	              decimalDigits := 0,
+	              mode := VTBI,
+		      dispval := 0,
+		      displayError := "Enter VTBI",
+		      label0 := "",
+		      label1 := "CLEAR",
+		      label2 := "",
+		      label3 := "ENTER",
+		      units := "ML" ]
+
+
+  processKey(key: KEY_CODE)(st: state): state =
+    COND
+	 key = KEY_0 OR key = KEY_1 OR key = KEY_2 OR key = KEY_3 OR key = KEY_4
+	  or key = KEY_5 OR key = KEY_6 OR key = KEY_7 OR key = KEY_8 OR key = KEY_9
+               -> digitClicked(key)(st),
+
+         key = KEY_DOT 
+               -> dotClicked(st),
+
+	 key = KEY_ENTER  
+	       -> enterClicked(st),
+	
+	 key = KEY_CANCEL
+	       -> cancelClicked(st),
+
+	 key = KEY_RESET
+               -> clearClicked(st),
+
+	 key = KEY_RATE
+	       -> selectRate(st),
+
+	 key = KEY_VTBI
+	       -> selectVTBI(st),
+         ELSE 
+	       -> st 
+   ENDCOND
+
+   init_numberpad: state = (#
+        mode := RATE,
+   	dispval := 0,
+	display := "",
+	dotEntered := false,
+	decimalDigits := 0,
+	programmedVTBI := 0,
+	programmedRate := 0,
+	displayError := "Enter RATE",
+	dispHigh := MAX_RATE,
+	dispLow := MIN_RATE,
+	editStart := FALSE,
+	label0 := "",
+	label1 := "CLEAR", % CHGRATE
+	label2 := "", 
+	label3 := "ENTER",
+	units := "ML/HR",
+	dispHIGH := "HIGH:",
+	dispLOW := "LOW:",
+	dispInfo := "CURRENT SETTINGS"
+   #)
+
+
+   click_0(st: state): state = processKey(KEY_0)(st)
+   click_1(st: state): state = processKey(KEY_1)(st)
+   click_2(st: state): state = processKey(KEY_2)(st)
+   click_3(st: state): state = processKey(KEY_3)(st)
+   click_4(st: state): state = processKey(KEY_4)(st)
+   click_5(st: state): state = processKey(KEY_5)(st)
+   click_6(st: state): state = processKey(KEY_6)(st)
+   click_7(st: state): state = processKey(KEY_7)(st)
+   click_8(st: state): state = processKey(KEY_8)(st)
+   click_9(st: state): state = processKey(KEY_9)(st)
+   click_CLEAR(st: state): state = processKey(KEY_RESET)(st)
+   click_CANCEL(st: state): state = processKey(KEY_CANCEL)(st)
+   click_ENTER(st: state): state = processKey(KEY_ENTER)(st)
+   click_POINT(st: state): state = processKey(KEY_DOT)(st)
+   click_SELECT_RATE(st: state): state = processKey(KEY_RATE)(st)
+   click_SELECT_VTBI(st: state): state = processKey(KEY_VTBI)(st)
+   init(x: real): state = init_numberpad
+   click_ON(st: state): state = init(0) WITH [ mode := RATE ]
+   click_BACKSPACE(st: state): state = st % backspaceClicked(st) need to implement a string parser
+
+ END medfusion3500

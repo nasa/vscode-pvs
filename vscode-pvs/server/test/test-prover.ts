@@ -1,10 +1,10 @@
 // import { ContextDiagnostics } from "./server/pvsProcess";
 //import { PvsFindDeclaration, PvsParserResponse, PvsTypecheckerResponse, XmlRpcResponse } from "./server/common/serverInterface";
-import * as fsUtils from "./server/common/fsUtils";
+import * as fsUtils from "../src/common/fsUtils";
 import * as test from "./test-constants";
 import * as path from 'path';
-import { PvsResponse } from "./server/common/pvs-gui";
-import { PvsProxy } from './server/pvsProxy'; // XmlRpcSystemMethods
+import { PvsResponse } from "../src/common/pvs-gui";
+import { PvsProxy } from '../src/pvsProxy'; // XmlRpcSystemMethods
 import { label, log, dir, configFile, sandboxExamples, safeSandboxExamples, radixExamples } from './test-utils';
 
 
@@ -16,11 +16,11 @@ describe("pvs-prover", () => {
 	beforeAll(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
-		log(content);
+		// log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
 		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
-		await pvsProxy.activate({ debugMode: true }); // this will also start pvs-server
+		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
@@ -29,14 +29,36 @@ describe("pvs-prover", () => {
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
 
-		if (test.EXTERNAL_SERVER) {
+		if (!test.EXTERNAL_SERVER) {
 			// kill pvs server & proxy
 			console.log(" killing pvs server...")
 			await pvsProxy.killPvsServer();
 		}
 		await pvsProxy.killPvsProxy();
 	});
-	
+
+
+
+	// on Linux, pvs-server fails with the following error:  { code: 1, message: '"No methods applicable for generic function #<standard-generic-function all-declarations> with args (nil) of classes (null)"' }
+	it(`prove-formula is robust to invocations with incorrect theory names`, async () => {
+		label(`prove-formula is robust to invocations with incorrect theory names`);
+
+		const desc = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "alaris2lnewmodes",
+			formulaName: "check_chev_fup_permission",
+			theoryName: "pump_th" // pump_th exists, but check_chev_fup_permission is in alaris_th
+		};
+		let response: PvsResponse = await pvsProxy.proveFormula(desc);
+		expect(response.result).not.toBeDefined();
+		expect(response.error).not.toBeDefined();
+		expect(response.error.message.startsWith("No methods applicable to generic function")).toBeFalse();
+
+		response = await pvsProxy.proofCommand({ cmd: 'quit' });
+		expect(response.result).toEqual({ result: 'Unfinished' });
+	}, 60000);
+
 
 	// on MacOs, pvs-server returns the following message: '"Value #<unknown object of type number 12 @ #x70000001003fc> is not of a type which can be encoded by encode-json."'
 	it(`returns proverStatus = inactive after quitting a prover session`, async () => {
@@ -59,7 +81,6 @@ describe("pvs-prover", () => {
 		const proverStatus: PvsResponse = await pvsProxy.proverStatus();
 		expect(proverStatus.result).toEqual("inactive");
 	}, 4000);
-	
 
 
 	// on Mac, pvs-server returns the following message: '"No methods applicable for generic function #<standard-generic-function id> with args (nil) of classes (null)"' }) not to be defined.
@@ -76,8 +97,7 @@ describe("pvs-prover", () => {
 		expect(response.error.data.error_string).toMatch(/(.*) does not have a proof/);
 	});
 
-
-	// on Mac, pvs-server returns the following error: { code: 1, message: '"the assertion oplace failed."' },
+	// on Mac, pvs-server fails with the following error: { code: 1, message: '"the assertion oplace failed."' },
 	it(`can start prover session while parsing files in other contexts`, async () => {
 		label(`can start prover session while parsing files in other contexts`);
 
@@ -98,7 +118,7 @@ describe("pvs-prover", () => {
 
 		response = await pvsProxy.proofCommand({ cmd: 'quit' });
 		expect(response.result).toEqual({ result: 'Unfinished' });
-	}, 10000);
+	}, 60000);
 
 	// on Mac, pvs-server does not send a response back to the proxy, and pvs shows an error #<pvs-error @ #x1008b7da82> [condition type: pvs-error]
 	it(`reports typecheck error when the prove command is executed but the theory does not typecheck`, async () => {
@@ -167,7 +187,7 @@ describe("pvs-prover", () => {
 			theoryName: "mergesort"
 		};
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
-		console.info('After proveFormula');
+		// console.info('After proveFormula');
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
 		// the following command should have no effect
@@ -207,25 +227,44 @@ describe("pvs-prover", () => {
 		};
 
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
-		console.dir(response);
+		// console.dir(response);
 		expect(response.result.label).toEqual(test.sq_neg_prove_formula.label);
 		expect(response.result.sequent).toEqual(test.sq_neg_prove_formula.sequent);
 
 		// send proof command (skosimp*)
 		response = await pvsProxy.proofCommand({ cmd: '(sko)'});
-		console.dir(response);
+		// console.dir(response);
 		expect(response.result.commentary).toBeDefined();
 		expect(response.result.commentary[0].endsWith("not a valid prover command")).toBeTruthy();
 		response = await pvsProxy.proofCommand({ cmd: '(sko'});
-		console.dir(response);
+		// console.dir(response);
 		expect(response.result.commentary).toBeDefined();
-		console.info(response.result.commentary);
+		// console.info(response.result.commentary);
 		expect(response.result.commentary[0]).toContain("eof encountered");
 		// quit the proof attempt
 		await pvsProxy.proofCommand({ cmd: 'quit'});
 	});
 
-	return; // the following tests are completed successfully -- remove the return statement if you want to run them
+	// return; // the following tests are completed successfully -- remove the return statement if you want to run them
+	
+	//OK
+	it(`can start prover session`, async () => {
+		label(`can start prover session`);
+
+		const desc = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "alaris2lnewmodes",
+			formulaName: "check_chev_fup_permission",
+			theoryName: "alaris_th"
+		};
+		let response: PvsResponse = await pvsProxy.proveFormula(desc);
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+
+		response = await pvsProxy.proofCommand({ cmd: 'quit' });
+		expect(response.result).toEqual({ result: 'Unfinished' });
+	}, 60000);
 
 	// OK
 	it(`can start interactive proof session when the formula has already been proved`, async () => {
@@ -241,14 +280,14 @@ describe("pvs-prover", () => {
 		};
 
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
-		console.dir(response);
+		// console.dir(response);
 		expect(response.result.label).toEqual(test.sq_neg_prove_formula.label);
 		expect(response.result.sequent).toEqual(test.sq_neg_prove_formula.sequent);
 
 		try {
 			// send proof command (skosimp*)
 			response = await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
-			console.dir(response);
+			// console.dir(response);
 			expect(response.result.commentary[0].trim()).toEqual(test.sq_neg_proof_command_skosimp_star.commentary[0].trim());
 			expect(response.result.label).toEqual(test.sq_neg_proof_command_skosimp_star.label);
 			expect(response.result.action).toEqual(test.sq_neg_proof_command_skosimp_star.action);
@@ -256,7 +295,7 @@ describe("pvs-prover", () => {
 
 			// send proof command (expand "sq")
 			response = await pvsProxy.proofCommand({ cmd: '(expand "sq")'});
-			console.dir(response);
+			// console.dir(response);
 			// expect(response.result.commentary[0].trim()).toEqual(test.sq_neg_expand.commentary[0].trim());
 			expect(response.result.label).toEqual(test.sq_neg_expand.label);
 			expect(response.result.action).toEqual(test.sq_neg_expand.action);
@@ -264,18 +303,18 @@ describe("pvs-prover", () => {
 
 			// send proof command (assert) to complete the proof
 			response = await pvsProxy.proofCommand({ cmd: '(assert)'});
-			console.dir(response);
+			// console.dir(response);
 			expect(response.result).toEqual({ result: 'Q.E.D.' });
 
 			// try to re-start the proof
 			response = await pvsProxy.proveFormula(desc);
-			console.dir(response);
+			// console.dir(response);
 			expect(response.result.label).toEqual(test.sq_neg_prove_formula.label);
 			expect(response.result.sequent).toEqual(test.sq_neg_prove_formula.sequent);
 
 			// send proof command (skosimp*)
 			response = await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
-			console.dir(response);
+			// console.dir(response);
 			expect(response.result.commentary[0].trim()).toEqual(test.sq_neg_proof_command_skosimp_star.commentary[0].trim());
 			expect(response.result.label).toEqual(test.sq_neg_proof_command_skosimp_star.label);
 			expect(response.result.action).toEqual(test.sq_neg_proof_command_skosimp_star.action);
@@ -339,42 +378,23 @@ describe("pvs-prover", () => {
 	}, 4000);
 
 	// OK
-	it(`can generate .tcc file content`, async () => {
-		label(`can generate the .tcc file content`);
-		const response: PvsResponse = await pvsProxy.showTccs({ fileName: "sqrt", fileExtension: ".pvs", theoryName: "sqrt", contextFolder: sandboxExamples });
-		dir("response", response);
-		expect(response.error).not.toBeDefined();
-		expect(response.result).not.toBeNull();
-	});
-	
-	// OK
-	it(`can discharge tccs`, async () => {
-		label(`can discharge tccs`);
-		const fname: string = path.join(sandboxExamples, "sq.pvs");
+	it(`can invoke prove-formula on theories with parameters`, async () => {
+		label(`can invoke prove-formula on theories with parameters`);
 
-		const response: PvsResponse = await pvsProxy.pvsRequest('prove-tccs', [ fname ]);
-		dir("response", response);
-		expect(response.error).not.toBeDefined();
+		const desc = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "alaris2lnewmodes",
+			formulaName: "check_chev_fup_permission",
+			theoryName: "alaris_th" // pump_th exists, but check_chev_fup_permission is in alaris_th
+		};
+		let response: PvsResponse = await pvsProxy.proveFormula(desc);
 		expect(response.result).toBeDefined();
-		expect(response.result.totals).toEqual(2);
-		expect(response.result.proved).toEqual(2);
-		expect(response.result.unproved).toEqual(0);
-		expect(response.result.subsumed).toEqual(0);
-		expect(response.result.simplified).toEqual(0);
-	}, 4000);
-
-	// OK 
-	it(`can show proof script`, async () => {
-		label(`show proof script`);
-		const fname: string = path.join(sandboxExamples, "sq.pvs");
-
-		const response: PvsResponse = await pvsProxy.pvsRequest('proof-script', [ fname, "sq_neg" ]);
-		dir("response", response);
 		expect(response.error).not.toBeDefined();
-		expect(response.result).toBeDefined();
-		const proof_header: string = response.result.split("\n")[0];
-		expect(proof_header).toEqual(`;;; Proof sq_neg-1 for formula sq.sq_neg`);
-	});
+
+		response = await pvsProxy.proofCommand({ cmd: 'quit' });
+		expect(response.result).toEqual({ result: 'Unfinished' });
+	}, 60000);	
 
 	// OK
 	it(`can start prover sessions in theories with parameters`, async () => {

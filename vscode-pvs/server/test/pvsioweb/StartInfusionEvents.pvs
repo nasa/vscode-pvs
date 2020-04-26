@@ -1,0 +1,37 @@
+StartInfusionEvents_th: THEORY
+ BEGIN
+   IMPORTING types_and_constants_th, utility_functions_th
+
+   per_enter_into(m: IController_MachineState): boolean =
+     ConfigureInfusionProgramMachine?(m) OR Infusing?(m) OR DisplayPatientProfile?(m)
+   enter_into(m: (per_enter_into))(st: IController_State): State =
+     LET new_st =
+       COND
+        DisplayVTBI?(m)     -> LET dbg = println("setVTBI" + drugLibInfo(st)`vtbiTypical) IN setVTBI(drugLibInfo(st)`vtbiTypical)(st),
+        DisplayDoseRate?(m) -> setDoseRate(drugLibInfo(st)`doseRateTypical)(st),
+        ELSE 	            -> st
+       ENDCOND
+      IN new_st WITH [ O_CurrentState := m ]
+
+   per_E_NotReady(st: IController_State): boolean = 
+      current_state(st) = ReadyToStart
+   E_NotReady(st: (per_E_NotReady)): State =
+      COND
+       current_state(st) = ReadyToStart
+        -> LET new_st = leave_state(ReadyToStart)(st)
+	    IN enter_into(DisplaySettings)(new_st)
+      ENDCOND
+
+
+   per_E_Ready(st: IController_State): boolean = 
+      current_state(st) = ReadyToStart 
+       AND drugInfo(st)`drugConcentration /= 0 % this constraint is needed to avoid division by zero in the other state machine
+   E_Ready(st: (per_E_Ready)): State =
+       COND
+         current_state(st) = ReadyToStart
+	  -> LET new_st = leave_state(ReadyToStart)(st),
+	         new_st = startInfusion(new_st)
+	      IN enter_into(Infusing)(new_st) % the transition is wired up with this state of InfusionSubMachine
+       ENDCOND
+
+ END StartInfusionEvents_th

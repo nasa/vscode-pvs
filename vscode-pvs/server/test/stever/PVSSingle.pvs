@@ -1,0 +1,125 @@
+% This file follows the development in the" Z^{Ac}" paper, but does it all in PVS
+% following the method in the "From Z to PVS" paper
+
+singleaccounting : THEORY
+
+BEGIN
+
+DATE, TEXT, MONEY : TYPE
+ACCOUNT : TYPE
+
+% We still have the basic idea of schemas a sets of bindings which turns up in PVS
+% models for schemas being sets of records.
+% When the schemas are simply schema types
+% (as Z calls them, i.e. schemas with predicate part "true") then the schemas
+% are just record types, because these types are sets of records, i.e. sets of bindings
+% in Z
+
+% Then, when the predicate part of a schema is not just "true", i.e. when not
+% every binding is in the set denoted by the schema, i.e. when not every record in
+% the corresponding PVS type is in the set, then we use dependent subtyping with the
+% counterpart to a Z predicate part
+% to restrict the records in the set, just as Z does
+
+% Sadly we cannot use "primes" in identifiers in PVS :( so we use underscore
+
+% Now, hiding of types in PVS.....!!!!!
+% It's already apparent that there's no counterpart to the schema calculus in PVS
+% (which is OK since there are no schemas :) ) so hiding (existential quantification
+% over schemas) needs to be modelled inside the set brackets in the predicate part...
+% There is a certain amount of regularity to this, given the above...
+
+TType : TYPE = [# date : DATE,
+                  description : TEXT,
+		  account : ACCOUNT,
+		  income : MONEY,
+		  expenditure : MONEY #]
+
+TType_ : TYPE = [# date_ : DATE,
+                   description_ : TEXT,
+		   account_ : ACCOUNT,
+		   income_ : MONEY,
+		   expenditure_ : MONEY #]
+
+Transaction : TYPE = {t : TType | t`income = t`expenditure}
+
+Transaction_ : TYPE = {t : TType_ | t`income_ = t`expenditure_}
+
+SingleState : TYPE = [# saccount :  finseq[Transaction] #]
+
+InitSingleState : TYPE = {s : SingleState | s`saccount = empty_seq}
+
+NTType : TYPE = Transaction_ WITH [# date? : DATE,
+                                    description? : TEXT,
+				    account? : ACCOUNT,
+                                    income? : MONEY,
+				    expenditure? : MONEY #]
+
+NewTransaction : TYPE = {nt : NTType | nt`date_ = nt`date? AND
+                                        nt`description_ = nt`description? AND
+					nt`account_ = nt`account? AND
+					nt`income_ = nt`income? AND
+					nt`expenditure_ = nt`expenditure?}
+
+SingleState_ : TYPE = [# saccount_ :  finseq[Transaction] #]
+
+DeltaSingleState : TYPE = SingleState WITH SingleState_
+
+PhiDSB_Type : TYPE = DeltaSingleState WITH Transaction_
+
+singfs[T : TYPE](elem : T) : finseq[T] =
+      (# length := 1, seq := LAMBDA (x : nat) : elem #)
+      
+PhiDoSomeBusiness : TYPE = {phidsb : PhiDSB_Type | phidsb`saccount_ =
+                                             o(phidsb`saccount,
+                                                 singfs((# date := phidsb`date_,
+						           description := phidsb`description_,
+							   account := phidsb`account_,
+							   income := phidsb`income_,
+							   expenditure := phidsb`expenditure_#)))}
+
+DSB_Type : TYPE = DeltaSingleState WITH [# date? : DATE,
+                                             description? : TEXT,
+				             account? : ACCOUNT,
+                                             income? : MONEY,
+				             expenditure? : MONEY #]
+
+
+DoSomeBusiness : TYPE = {dsb : DSB_Type |
+                           EXISTS (d : DATE, desc : TEXT, acc : ACCOUNT, i : MONEY, e : MONEY) :
+                                d = dsb`date? AND
+				desc = dsb`description? AND
+				acc = dsb`account? AND
+				i = dsb`income? AND
+				e = dsb`expenditure? AND
+				dsb`saccount_ =
+				    o(dsb`saccount, singfs((# date := d,
+						               description := desc,
+							       account := acc,
+						               income := i,
+							       expenditure := e #)))}
+% And the one-point simplification still works!!! :)
+one_point : THEOREM
+ FORALL (dsb : DSB_Type) :
+      EXISTS (d : DATE, desc : TEXT, acc : ACCOUNT, i : MONEY, e : MONEY) :
+                                d = dsb`date? AND
+				desc = dsb`description? AND
+				acc = dsb`account? AND
+				i = dsb`income? AND
+				e = dsb`expenditure? AND
+				dsb`saccount_ =
+				    o(dsb`saccount, singfs((# date := d,
+						               description := desc,
+							       account := acc,
+						               income := i,
+							       expenditure := e #)))
+     IFF
+     dsb`saccount_ = o(dsb`saccount, singfs((# date := dsb`date?,
+                                                 description := dsb`description?,
+						 account := dsb`account?,
+						 income := dsb`income?,
+						 expenditure := dsb`expenditure? #)))
+
+% What properties must single-entry accounting have?......
+
+END singleaccounting

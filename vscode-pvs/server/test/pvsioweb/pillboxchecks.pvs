@@ -1,0 +1,235 @@
+pillbox_checks: THEORY
+BEGIN
+IMPORTING pilldispenser_th[]
+%QED 10/3/17
+state_extension: LEMMA
+FORALL (st1, st2: state):
+ ((mode(st1) = mode(st2)) AND (action(st1) = action(st2)) AND
+ (field(st1) = field(st2)) AND (new_patient_record(st1) = new_patient_record(st2)) AND
+ (patient_id_line(st1) = patient_id_line(st2)) AND (med_id_line(st1) = med_id_line(st2)) AND
+ (script_line(st1) = script_line(st2)) AND (scripts_db(st1) = scripts_db(st2)) AND
+ (patients_db(st1) = patients_db(st2)) AND (meds_db(st1) = meds_db(st2)) AND
+ (p_max(st1) = p_max(st2)) AND (p_lower(st1) = p_lower(st2)) AND (p_upper(st1) = p_upper(st2)) AND
+ (p_current(st1) = p_current(st2)) AND (m_max(st1) = m_max(st2)) AND (m_lower(st1) = m_lower(st2)) AND
+ (m_upper(st1) = m_upper(st2)) AND (m_current(st1) = m_current(st2)) AND (s_lower(st1) = s_lower(st2)) AND
+ (s_upper(st1) = s_upper(st2)) AND (s_current(st1) = s_current(st2)) AND (scan_counter(st1) = scan_counter(st2))) IMPLIES
+  st1 = st2
+%QED 3/3/17
+first_check: THEOREM
+FORALL (st: state):
+   init?(st) => ((select(key2, st) = pwd_screen(st)) AND
+                (select(key3, st) = db_pwd_screen(st)))
+% QED Run time  = 3.85 secs. 7/3/17
+second_check: THEOREM
+FORALL (st: state):
+LET st1 = pwd_screen(st) IN
+  (select(key1, st1) = init_screen(st) AND
+  (select(key3, st1) = db_pwd_screen(st) AND
+   (LET st2 = select(password, st1) IN
+       (LET st2 =
+           enter(password, st2) IN
+            select(confirm, st2) = patient_list_screen(st)))))
+%QED Run time  = 4.16 secs. 8/3/17
+check21: THEOREM
+FORALL (st: state):
+LET st1 = patient_list_screen(st) IN
+   (((st`p_current <= st`p_max) AND (st`p_lower = 1)
+    AND (st`p_upper = IF st`p_max > frame_depth THEN frame_depth
+                      ELSE st`p_max ENDIF))  IMPLIES
+   select(create, st1) = new_patient_details_screen(st))
+% QED Run time  = 6.19 secs. 8/3/17
+check21prime: THEOREM
+FORALL (st: state):
+(((st`p_current <= st`p_max) AND (st`p_lower = 1) AND
+    (st`p_upper = IF st`p_max > frame_depth THEN frame_depth
+                      ELSE st`p_max ENDIF)) IMPLIES
+  LET st1 = patient_list_screen(st) IN
+   ((select(key1, st1) = init_screen(st)) AND
+     (select(key3, st1) = db_menu_screen(st)) AND
+    ((select(create, st1) = new_patient_details_screen(st)) AND
+    (FORALL (p: p_index):
+           (st`p_lower <= p) AND (p <= st`p_upper) IMPLIES
+            act_patient(p, st1) = 
+             LET st1 = st1 WITH [p_current := p] IN
+                  patient_details_screen(st1)))))
+% QED Run time  = 0.96 secs. 10/3/17
+entering_field_npd_lemma: LEMMA
+  FORALL (f: fields_type, st: state):
+    LET st1 = new_patient_details_screen(st) IN
+      enter(f, select(f, st1))`field =
+       (LAMBDA (x: fields_type):
+          IF x = f AND visible(field(st1)(f))
+            THEN (# entered := TRUE, selected := FALSE, visible := TRUE #)
+          ELSE field(st1)(x)
+          ENDIF)
+
+
+%QED Run time  = 18.13 secs. 10/3/17
+check211: THEOREM
+ FORALL (st: state):
+ ((p_current(st) < p_max(st)) AND (p_max(st) < plimit))
+  IMPLIES
+ LET st1 = new_patient_details_screen(st) IN
+   ((select(key1, st1) = init_screen(st)) AND
+   (select(key2, st1) = patient_list_screen(st)) AND
+   (select(key3, st1) = db_menu_screen(st)) AND
+   (LET stinit = st WITH 
+           [ new_patient_record := 
+                 LAMBDA(x: fields_type):
+                   IF
+                    ((x=name) OR (x=dob) OR (x=id_card) OR (x=carer) OR (x=mob)) THEN
+                          (# visible:=true, selected:=false, entered:=true #)
+                    ELSE  (# visible:=false, selected:=false, entered:=false #)
+                   ENDIF,
+             p_max := IF p_max(st) < plimit THEN p_max(st) + 1 
+                      ELSE p_max(st) ENDIF,
+             scan_counter := max_scan ],
+             st2 = enter(name, select(name, st1)) IN
+              (LET st2 = enter(dob, select(dob, st2)) IN
+               (LET st2 = enter(id_card, select(id_card, st2)) IN
+                (LET st2 = enter(carer, select(carer, st2)) IN
+                 (LET st2 = enter(mob, select(mob, st2)) IN
+                  (select(confirm, st2) = scan_screen(stinit))))))) AND           
+   (select(quit, st1) = patient_list_screen(st1)))
+% QED Run time  = 15.85 secs. 13/3/17 
+check212: THEOREM
+ FORALL (st: state):
+ ((p_current(st) < p_max(st)) AND (p_max(st) < plimit))
+  IMPLIES
+ LET st1 = patient_details_screen(st) IN
+   ((select(key1, st1) = init_screen(st)) AND
+   (select(key3, st1) = db_menu_screen(st)) AND
+   (LET st2 = enter(name, select(name, st1)),
+        st2 = enter(dob, select(dob, st2)),
+        st2 = enter(id_card, select(id_card, st2)),
+        st2 = enter(carer, select(carer, st2)),
+        st2 = enter(mob, select(mob, st2)),
+        st2 = st2 WITH [new_patient_record := field(st2)] IN
+                  (select(confirm, st2) = 
+                     patient_list_screen(st2 WITH [patients_db :=
+	                                             LAMBDA(p: p_index):
+		                                         COND
+		                                           p = st2`p_current -> new_patient_record(st2),
+		                                           ELSE -> patients_db(st2)(p)
+		                                         ENDCOND]) )) AND   
+   (select(prescriptions, st1) = 
+             IF s_max(scripts_db(st)(st`p_current)) = 0 THEN
+                    db_med_list_screen(st) ELSE script_list_screen(st) ENDIF) AND        
+   (select(quit, st1) = patient_list_screen(st)))
+%QED Run time  = 0.38 secs. 13/3/17
+check2111: THEOREM
+FORALL (st: state):
+LET st1 = scan_screen(st), 
+st2 = st WITH [scan_counter :=
+                 IF scan_counter(st) > 0 THEN scan_counter(st) - 1
+                 ELSE scan_counter(st) ENDIF] IN
+(select(scan_action, st1) = scan_enabled_screen(st2))
+% QED Run time  = 0.54 secs. 13/3/17
+check21111: THEOREM 
+FORALL (st: state):
+LET st1 = scan_enabled_screen(st) IN
+(select(tick, st1) =
+      IF scan_counter(st1) = 0 THEN scan_successful_screen(st)
+      ELSE scan_screen(st) ENDIF)
+%QED Run time  = 3.15 secs. 14/3/17
+check211111: THEOREM 
+FORALL (st: state):
+ ((p_current(st) < p_max(st)) AND (p_max(st) < plimit))
+  IMPLIES
+LET st1 = st WITH [new_patient_record := 
+            LAMBDA (f: fields_type): 
+             COND
+             (f = name) OR (f = dob) OR (f = id_card) OR
+             (f = carer) OR (f = mob) -> (# visible := TRUE, selected := FALSE, entered := TRUE #),
+             ELSE -> (# visible := FALSE, selected := FALSE, entered := FALSE #)
+             ENDCOND,
+             p_current := p_max(st)],
+    st2 = scan_successful_screen(st1),
+    st3 = st1 WITH [patients_db :=
+                        LAMBDA (p: p_index):
+                         IF p = p_max(st) THEN new_patient_record(st1)
+                         ELSE patients_db(st)(p) ENDIF] IN
+    (select(quit, st2) = patient_list_screen(st3))
+% QED Run time  = 6.95 secs. 15/3/17
+check2121: THEOREM
+FORALL (st: state):
+((p_current(st) >= 1) AND (p_current(st) <= p_max(st))) IMPLIES
+ LET p_script_detail = scripts_db(st)(st`p_current), 
+    stinit = st WITH
+         [s_lower := 1,
+          s_upper := IF p_script_detail`s_max > frame_depth THEN frame_depth
+                      ELSE p_script_detail`s_max ENDIF],
+    st1 = script_list_screen(stinit) IN
+  ( (select(key1, st1) = init_screen(stinit)) AND
+    (select(key3, st1) = db_menu_screen(stinit)) AND
+    (select(create, st1) = db_med_list_screen(stinit)) AND
+    (select(quit, st1) = init_screen(stinit)) AND
+    (FORALL (s: s_index):
+           (stinit`s_lower <= s) AND (s <= stinit`s_upper) IMPLIES
+            act_script(s, st1) = 
+             LET st1 = st1 WITH [s_current := s] IN
+                  script_details_screen(st1)))
+
+check21211: THEOREM
+FORALL (st: state):
+LET p_script = scripts_db(st)(st`p_current),
+st1 = script_details_screen(st),
+nfield = LAMBDA(x: fields_type):
+	           COND
+		     (x = name) OR (x = dosage) OR (x = quantity)
+		     OR (x = prescription) ->
+		     (# visible := true, selected := false,
+		                     entered := true #),
+		     ELSE -> (# visible := false, selected := false, entered := false #)
+		    ENDCOND,
+stinit = st1 WITH [field := nfield] IN
+((select(key1, st1) = init_screen(stinit)) AND
+(select(key3, st1) = db_menu_screen(stinit)) AND
+(LET st2 = enter(name, select(name, st1)),
+  st2 = enter(dosage, select(dosage, st2)),
+  st2 = enter(quantity, select(quantity, st2)),
+  st2 = enter(prescription, select(prescription, st2)) IN
+   ((p_script`s_max = 0) IMPLIES
+      select(create, st2) = new_dosage_screen(stinit)) AND
+    ((p_script`s_max /= 0) IMPLIES
+      select(confirm, st1) = dosage_screen(st))) AND
+  (select(quit, st1) = init_screen(stinit)))
+
+                   
+
+%QED Run time  = 3.69 secs. 8/3/17
+third_check: THEOREM
+FORALL (st: state):
+LET st1 = db_pwd_screen(st) IN
+( select(key1, st1) = init_screen(st) AND
+  select(key2, st1) = pwd_screen(st) AND
+  LET st2 = select(password, st1) IN
+     (LET st2 =
+         enter(password, st2) IN
+          select(confirm, st2) = db_menu_screen(st)))
+%QED Run time  = 5.26 secs. 8/3/17
+check31: THEOREM
+FORALL (st: state):
+LET st1 = db_menu_screen(st) IN
+( select(key1, st1) = init_screen(st) AND
+   ((st`p_current <= st`p_max) IMPLIES select(key2, st1) = patient_list_screen(st)) AND
+  ((st`m_current <= st`m_max) IMPLIES select(medicines, st1) = db_med_list_screen(st))
+)
+% QED Run time  = 5.77 secs. 8/3/17
+check311: THEOREM
+FORALL (st: state):
+(((st`m_current <= st`m_max) AND (st`m_lower = 1) AND
+    (st`m_upper = IF st`m_max > frame_depth THEN frame_depth
+                      ELSE st`m_max ENDIF)) IMPLIES
+  LET st1 = db_med_list_screen(st) IN
+   ((select(key1, st1) = init_screen(st)) AND
+     (select(key2, st1) = patient_list_screen(st)) AND
+    ((select(create, st1) = new_med_screen(st)) AND
+    (FORALL (m: m_index):
+           (st`m_lower <= m) AND (m <= st`m_upper) IMPLIES
+            act_med(m, st1) = 
+             LET st1 = st1 WITH [m_current := m] IN
+                  db_med_details_screen(st1)))))
+
+
+END pillbox_checks

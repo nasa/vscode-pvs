@@ -1,0 +1,1975 @@
+% Michael Harrison and Paolo Masci (QMUL and Newcastle University) December 2014
+% includes reals, accelerators and only updates vtbi and time as exits vtbi mode - bug found when checking properties
+% relating to visibility of vtbi and time and when switching off
+
+alaris_th [
+   maxrate  : posnat, %{maxrate: posnat | maxrate > 1000},
+   maxinfuse: posnat, %{maxinfuse: posnat |  maxinfuse >= 3000 }, % maxtime = maxinfuse needed for proving maxinfuse_over_time_lemma and vtbi_over_time_lemma   
+   infusemin: { infusemin: posreal | infusemin <= maxinfuse },
+   timeout  : posnat,
+   shorttimeout : {shorttimeout: posnat | shorttimeout < timeout},
+   maxtime  : { maxtime: posnat | maxtime > timeout AND maxtime >= maxinfuse },
+   bat_max : {bat_max: posnat | bat_max+1 < maxtime},
+   bat_min: {bat_min: posnat | bat_min < bat_max}
+]: THEORY
+ BEGIN
+%  ASSUMING
+%    timeoutLTmaxtime: ASSUMPTION timeout < maxtime
+%    shorttimeoutLTtimeout: ASSUMPTION shorttimeout < timeout
+%    maxinfuseVal: ASSUMPTION maxinfuse >= 3000
+%  ENDASSUMING
+  IMPORTING pump_th[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]
+% maxtime is actually 1680
+  % Interactor main
+  % aggregates
+  % pump via device
+  %  attributes
+  alaris: TYPE = [#
+    id: string,
+    device : pump,
+    topline: iline, % [vis]
+    middisp: imid,  % [vis]
+    optionsmenu: o_menu,
+    bagscursor: ibagscursor, % [vis]
+    qcursor: qcurse, % [vis]
+    bagsval: abags, % [vis]
+    fndisp1: ifunctions, % [vis]
+    fndisp2: ifunctions, % [vis]
+    fndisp3: ifunctions, % [vis]
+    runlight: boolean, % [vis]
+    pauselight: boolean, % [vis]
+    ac_light: boolean, % [vis]
+    battery_light: boolean,
+    entrymode: emodes,
+    rlock: boolean,
+    rdisabled: boolean,
+    newvtbi: ivols,
+    newrate: irates,
+    newtime: itimes,
+% for the new treatment of chevron keys
+    pressed: presstime,
+    current_sr: steprate,
+    current_sv: stepvol,
+    current_st: steptime,
+    which_press: chev_buttons
+  #] 
+
+%utilities
+decrement(t: presstime, n: delta): presstime =
+     IF t-n>=0 THEN t-n ELSE t ENDIF
+trim_rate(x: real): irates = IF x>maxrate THEN maxrate ELSIF x<0 THEN 0 ELSE x ENDIF
+trim_vtbi(x: real): ivols = IF x>maxinfuse THEN maxinfuse ELSIF x<0 THEN 0 ELSE x ENDIF
+trim_time(x: real): itimes = IF x>maxtime THEN maxtime ELSIF x<0 THEN 0 ELSE x ENDIF
+
+ceil_rate(x: irates): irates = ceiling(x)
+ceil_vtbi(x: ivols): ivols = ceiling(x)
+ceil_time(x: itimes): itimes = ceiling(x)
+
+init?(st: alaris): bool =
+    init?(st`device) and 
+    topline(st) = dispblank and
+    middisp(st)(drate) = FALSE and
+    middisp(st)(dvtbi) = FALSE and
+    middisp(st)(dtime) = FALSE and
+    middisp(st)(dvol) = FALSE and
+    middisp(st)(dbags) = FALSE and
+    middisp(st)(dkvorate) = FALSE and
+    middisp(st)(dquery) = FALSE and
+    middisp(st)(dnewvtbi) = FALSE and
+    middisp(st)(dnewrate) = FALSE and
+    middisp(st)(dnewtime) = FALSE and
+    bagscursor(st) = midbag and
+    qcursor(st) = dlock and
+    bagsval(st)(0) = 0 and
+    bagsval(st)(1) = 50 and
+    bagsval(st)(2) = 100 and
+    bagsval(st)(3) = 200 and
+    bagsval(st)(4) = 250 and
+    bagsval(st)(5) = 500 and
+    bagsval(st)(6) = 1000 and
+    bagsval(st)(7) = 1500 and
+    bagsval(st)(8) = 2000 and
+    bagsval(st)(9) = 3000 and
+    fndisp1(st) = fnull and
+    fndisp2(st) = fnull and
+    fndisp3(st) = fnull and
+    runlight(st) = FALSE and
+    pauselight(st) = FALSE and
+    ac_light(st) = FALSE and
+    battery_light(st) = FALSE and
+    entrymode(st) = nullmode and
+    rlock(st) = false and
+    rdisabled(st) = false and
+    newvtbi(st) = 0 and % these don't need to be initialised
+    newrate(st) = 0 and
+    newtime(st) = 0 and
+    which_press(st) = nob and
+    current_sv(st) = small_step and
+    current_sr(st) = small_step and
+    current_st(st) = small_step and
+    pressed(st) = maxpress
+
+ no_button_down(st: alaris): bool =
+    which_press(st) = nob AND pressed(st) = maxpress
+ 
+ release_key(st:alaris): alaris = 
+    st WITH [ which_press := nob,
+              current_sr := small_step,
+              current_sv := small_step,
+              current_st := small_step,
+              pressed := maxpress ]
+
+dispblank?(st: alaris): bool = st`topline = dispblank <=> NOT device(st)`powered_on?
+
+per_switch(st: alaris): boolean =
+         device(st)`powered_on? AND no_button_down(st) AND
+              ((device(st)`ac_connect AND ac_light(st)) OR
+               (NOT device(st)`ac_connect AND battery_light(st)))
+
+
+switch_from_battery_low(st: alaris): alaris = 
+      st WITH [ topline := COND device(st)`infusing? AND NOT device(st)`kvoflag -> infusing,
+                                device(st)`infusing? AND device(st)`kvoflag -> dispkvo,
+                                NOT device(st)`infusing? & device(st)`infusionrate = 0
+                                        -> setrate,
+                                ELSE -> holding
+                           ENDCOND,
+                middisp := 
+                  COND NOT device(st)`infusing? -> 
+                           LAMBDA(x: imid_type):
+		            COND x = drate -> TRUE,
+			         x = dvtbi -> device(st)`vtbi /= 0,
+			         x = dtime -> device(st)`vtbi /= 0,
+				 x = dvol -> TRUE,
+                  		 ELSE -> FALSE ENDCOND,
+                        ELSE ->
+                          LAMBDA(x: imid_type):
+                           COND x = drate -> NOT device(st)`kvoflag,
+                                x = dkvorate -> device(st)`kvoflag,
+                                x = dvtbi -> TRUE,
+				x = dvol  -> TRUE,
+				x = dtime -> TRUE,
+				ELSE -> FALSE ENDCOND
+                        ENDCOND,
+                fndisp1 := fvol,
+		fndisp2 := fvtbi,
+                fndisp3 := fnull,
+		entrymode  := COND NOT device(st)`infusing? -> rmode,
+                                   ELSE -> infusemode
+                              ENDCOND
+	        ]
+
+switch_battery_low(st: alaris): alaris =
+       st WITH [ topline := batterylow,
+                middisp := LAMBDA(x: imid_type): FALSE,
+                fndisp1 := fnull,
+                fndisp2 := fnull,
+		fndisp3 := fcancel,
+              	entrymode   := nullmode ]
+
+switch(st: (per_switch)): alaris =
+     COND
+       device(st)`ac_connect -> switch_battery_low(st),
+       NOT device(st)`ac_connect & (topline(st) = batterylow) ->
+                    switch_from_battery_low(st),
+        ELSE -> st
+      ENDCOND WITH [device := mains_switch(st`device),
+                    ac_light := NOT device(st)`ac_connect,
+                    battery_light := device(st)`ac_connect]
+per_fit_set(st: alaris): boolean =
+      device(st)`powered_on? AND no_button_down(st)
+fit_to_hold(st: alaris): alaris =
+   st WITH [ topline := COND device(st)`infusionrate = 0 -> setrate,
+                           ELSE -> holding ENDCOND,
+             middisp := LAMBDA(x: imid_type): (x = drate) OR ( x = dvol),
+             fndisp1 := fvol,
+	     fndisp2 := fvtbi,
+             fndisp3 := fnull,
+	     entrymode  := rmode,
+	     device  := resetElapsed(device(st))]
+
+fit_set(st: (per_fit_set)): alaris =
+      COND
+        topline(st) = setnotfitted & NOT device(st)`infusing? -> 
+                    fit_to_hold(st),
+        ELSE -> st
+      ENDCOND WITH [ device := connect_set(st`device)]
+
+   
+  on_case_infusionstatusblank(st: alaris): alaris =
+         st WITH [ device := on(st`device),
+                   topline := COND 
+                               device(st)`vtbi /= 0 OR device(st)`infusionrate /= 0 
+                                    OR device(st)`time /= 0 -> clearsetup,
+                               ELSE -> setrate
+                              ENDCOND,
+                   middisp := LAMBDA(x: imid_type): 
+                                COND x = drate -> TRUE,
+                                     x = dvtbi -> device(st)`vtbi /= 0,
+                                     x = dtime -> (device(st)`vtbi /= 0) OR
+                                                  (device(st)`infusionrate /= 0),
+                                     x = dvol  -> TRUE,
+                                    ELSE -> FALSE ENDCOND,
+                   fndisp1 := COND
+                               device(st)`vtbi /= 0 OR device(st)`infusionrate /= 0 
+                                    OR device(st)`time /= 0 -> fclear,
+                               ELSE -> fvol
+                              ENDCOND,
+                   fndisp2 := COND
+                                device(st)`vtbi /= 0 OR device(st)`infusionrate /= 0
+                                     OR device(st)`time /= 0 -> fnull,
+                                ELSE -> fvtbi
+                              ENDCOND,
+                   fndisp3 := COND
+                                device(st)`vtbi /= 0 OR device(st)`infusionrate /= 0 
+                                     OR device(st)`time /= 0 -> fkeep,
+                                ELSE -> fnull
+                              ENDCOND,
+                   entrymode := COND
+                                  device(st)`vtbi /= 0 OR device(st)`infusionrate /= 0 
+                                      OR device(st)`time /= 0 -> nullmode,
+                                  ELSE -> rmode
+                                ENDCOND,
+                   rdisabled := FALSE,
+                   ac_light := device(st)`ac_connect,
+                   battery_light := NOT device(st)`ac_connect,
+                   pauselight := TRUE,
+                   runlight := FALSE,
+                   which_press := nob,
+                   current_sv := small_step,
+                   current_sr := small_step,
+                   current_st := small_step,
+                   pressed := maxpress ]
+
+  on_case_infusionstatusNOTblank(st: alaris): alaris = 
+     st WITH [
+        device := on(st`device),
+        topline := dispblank,
+        middisp := LAMBDA(x: imid_type): FALSE,
+        bagscursor := midbag,
+        entrymode  := nullmode,
+        ac_light := FALSE,
+        battery_light := FALSE,
+        pauselight := FALSE,
+        runlight   := FALSE,
+        fndisp1    := fnull,
+        fndisp2    := fnull,
+        fndisp3    := fnull ]
+
+
+  on(st: alaris): alaris =
+   COND 
+     NOT device(st)`powered_on? -> on_case_infusionstatusblank(st),
+     device(st)`powered_on? -> on_case_infusionstatusNOTblank(st)
+   ENDCOND
+
+
+  per_run(st: alaris): bool = per_start(st`device) AND 
+                              topline(st) = holding AND 
+                              entrymode(st) = rmode AND no_button_down(st)
+                             
+
+  run_cond_NZ(st: {st: alaris | per_run(st)}): alaris =
+    st WITH [ device := start(st`device),
+              topline := infusing,
+              middisp := LAMBDA(x: imid_type):
+                           COND x = drate -> TRUE,
+                                x = dvtbi -> TRUE,
+				x = dvol  -> TRUE,
+				x = dtime -> TRUE,
+				ELSE -> FALSE ENDCOND,
+              fndisp1 := fvol,
+              fndisp2 := fvtbi,
+              fndisp3 := fnull,
+              entrymode  := infusemode,
+              runlight := TRUE,
+              pauselight := FALSE ]
+
+  run_check_rlock(st: (per_run)): alaris =
+     st WITH [topline := lockrate,
+              middisp := LAMBDA (x: imid_type): FALSE,
+              fndisp1 := fyes,
+              fndisp2 := fnull,
+              fndisp3 := fno,
+              entrymode := nullmode]
+
+  run_cond_vtbi0_kvoflag(st: {st: alaris | per_run(st)}): alaris = 
+     st WITH [ device := start(st`device),
+               topline := vtbidone,
+               middisp := LAMBDA(x: imid_type): FALSE,
+               fndisp1 := fnull,
+               fndisp2 := fnull,
+               fndisp3 := fcancel,
+               runlight := true,
+               pauselight := false,
+               entrymode  := nullmode]
+
+  run_cond_vtbi0_NOTkvoflag(st: {st: alaris | per_run(st)}): alaris =
+       st WITH [ device := start(st`device),
+                 topline := setvtbi,
+                 middisp := LAMBDA(x: imid_type): FALSE,
+                 fndisp1 := fnull,
+                 fndisp2 := fvtbi,
+                 fndisp3 := fcancel,
+                 entrymode  := nullmode]
+
+  
+
+  run_cond_setnotfitted(st: {st: alaris | per_run(st)}): alaris =
+       st WITH [ topline := setnotfitted,
+                 middisp := LAMBDA(x: imid_type): FALSE,
+                 fndisp1 := fnull,
+                 fndisp2 := fnull,
+                 fndisp3 := fcancel,
+                 entrymode  := nullmode]
+
+  run(st: {st: alaris | per_run(st)}): alaris =
+      COND device(st)`vtbi /= 0	& 
+                device(st)`infusionrate /= 0 & rlock(st) & 
+                device(st)`set_fitted	        
+                     -> run_cond_NZ(st),
+           device(st)`vtbi /= 0	& 
+                device(st)`infusionrate /= 0 & NOT rlock(st) & 
+                 device(st)`set_fitted	        
+                     -> run_check_rlock(st),
+           device(st)`vtbi = 0 & device(st)`kvoflag & 
+                  device(st)`set_fitted     -> run_cond_vtbi0_kvoflag(st),
+           device(st)`vtbi = 0 & NOT device(st)`kvoflag & 
+                 device(st)`set_fitted -> run_cond_vtbi0_NOTkvoflag(st),
+           NOT device(st)`set_fitted -> run_cond_setnotfitted(st)
+      ENDCOND
+  
+
+   per_pause(st: alaris): bool =
+       per_pause(st`device) AND
+      ((((topline(st) = infusing) OR (topline(st) = dispkvo)) & entrymode(st) = infusemode) OR
+       ((topline(st) = dispvtbi) & ((entrymode(st) = vtmode) OR (entrymode(st) = bagmode))) OR
+       (topline(st) = volume & entrymode(st) = nullmode) OR (topline(st) = locked)) AND device(st)`infusing? AND device(st)`powered_on?
+
+
+   pause(st: {st: alaris | per_pause(st)}): alaris =
+       st
+         WITH [device := pause(st`device),
+               topline := holding,
+               middisp
+                 := LAMBDA (x: imid_type):
+                      COND x = drate -> TRUE,
+                           x = dvtbi ->
+                             COND device(st)`vtbi = 0 -> FALSE,
+                                  device(st)`vtbi /= 0 -> TRUE
+                             ENDCOND,
+                           x = dtime ->
+                             COND device(st)`vtbi = 0 -> FALSE,
+                                  device(st)`vtbi /= 0 -> TRUE
+                             ENDCOND,
+                           x = dvol -> TRUE,
+                           ELSE -> FALSE
+                      ENDCOND,
+               fndisp1 := fvol,
+               fndisp2 := fvtbi,
+               fndisp3 := fnull,
+               entrymode := rmode,
+               pauselight := TRUE,
+               runlight := FALSE]
+
+
+  per_query(st: alaris): bool = 
+         ((((topline(st) = holding OR topline(st) = setrate) & entrymode(st) = rmode) & NOT device(st)`infusing?) OR
+                                ((topline(st) = infusing & entrymode(st) = infusemode) & device(st)`infusing? & 
+                                  NOT device(st)`kvoflag)) AND 
+                                device(st)`powered_on? AND no_button_down(st)
+
+  query(st: {st: alaris | per_query(st)}): alaris = 
+          st WITH [ qcursor := 0,
+                    topline := options,
+                    middisp := LAMBDA(x: imid_type):
+                                COND x = dquery -> TRUE,
+                                     ELSE -> FALSE ENDCOND,
+		    fndisp1 := fok,
+          	    fndisp2 := fnull,
+		    fndisp3 := fquit,
+		    entrymode   := qmode,
+                    optionsmenu := 
+                      COND
+                        device(st)`infusing? AND NOT rdisabled(st) AND 
+                        rlock(st)->
+                         LAMBDA(x: qcurse):
+                           COND
+                             x=0 -> ratelock,
+                             x=1 -> dosingsumm,
+                             x=2 -> adjalarm,
+                             x=3 -> pumpdetails,
+                             ELSE -> optionblank
+                           ENDCOND,
+                        device(st)`infusing? AND NOT rdisabled(st) AND
+                        NOT rlock(st) ->
+                         LAMBDA(x: qcurse):
+                           COND
+                             x=0 -> rateunlock,
+                             x=1 -> dosingsumm,
+                             x=2 -> adjalarm,
+                             x=3 -> pumpdetails,
+                             ELSE -> optionblank
+                           ENDCOND, 
+                         device(st)`infusing? AND rdisabled(st) ->
+                         LAMBDA(x: qcurse):
+                           COND
+                             x=0 -> dosingsumm,
+                             x=1 -> adjalarm,
+                             x=2 -> pumpdetails,
+                             ELSE -> optionblank
+                           ENDCOND,
+                          NOT device(st)`infusing? AND NOT rdisabled(st) AND
+                          NOT rlock(st) ->
+                         LAMBDA(x: qcurse):
+                           COND
+                             x=0 -> ratelock,
+                             x=1 -> dosingsumm,
+                             x=2 -> infusionsetup,
+                             x=3 -> setvtbiovertime,
+                             x=4 -> adjalarm,
+                             x=5 -> disableratelock,
+                             x=6 -> pumpdetails
+                           ENDCOND,
+                          NOT device(st)`infusing? AND NOT rdisabled(st) AND
+                          rlock(st) ->
+                         LAMBDA(x: qcurse):
+                           COND
+                             x=0 -> rateunlock,
+                             x=1 -> dosingsumm,
+                             x=2 -> infusionsetup,
+                             x=3 -> setvtbiovertime,
+                             x=4 -> adjalarm,
+                             x=5 -> disableratelock,
+                             x=6 -> pumpdetails
+                           ENDCOND,
+                          NOT device(st)`infusing? AND rdisabled(st)  ->
+                         LAMBDA(x: qcurse):
+                           COND
+                             x=0 -> dosingsumm,
+                             x=1 -> infusionsetup,
+                             x=2 -> setvtbiovertime,
+                             x=3 -> adjalarm,
+                             x=4 -> enableratelock,
+                             x=5 -> pumpdetails,
+                             ELSE -> optionblank
+                           ENDCOND
+                      ENDCOND,
+                    device  := resetElapsed(device(st)) ]
+
+% this is wrong because the infusion does not continue while the button is down which is not what
+% is implemented
+  per_tick(st: alaris): bool =
+      per_tick(device(st)) AND
+% not infusing
+        ((NOT device(st)`infusing? AND no_button_down(st) AND
+           (((entrymode(st) = rmode) & 
+             (((topline(st) = holding OR topline(st) = setrate) & middisp(st)(dvol)) OR 
+              (topline(st) = locked))) OR
+             (middisp(st)(dnewvtbi) & middisp(st)(dnewtime) & middisp(st)(dnewrate) &
+               ((entrymode(st) = vttmode) OR (entrymode(st) = ttmode)) & 
+                 (topline(st) = vtbitime)) OR
+             (topline(st) = setvtbi) OR (topline(st) = setnotfitted) OR
+           ((((entrymode(st) = vtmode) & middisp(st)(dnewvtbi)) OR 
+              (entrymode(st) = bagmode) OR 
+              (entrymode(st) = tbagmode)) & (topline(st) = dispvtbi)) OR
+           ((topline(st) = attention) & (entrymode(st) = nullmode)) OR ((entrymode(st) = nullmode) & ((topline(st) = volume) OR
+                                        (topline(st) = dispinfo) )) OR
+         ((entrymode(st) = qmode) & (topline(st) = options)))) OR
+% infusing
+         (device(st)`infusing? AND no_button_down(st) AND
+               ((entrymode(st) = infusemode) & 
+               (((topline(st) = infusing) & middisp(st)(dtime) & middisp(st)(dvtbi) & 
+                                            middisp(st)(drate) & middisp(st)(dvol)) OR 
+               ((((entrymode(st) = vtmode) & middisp(st)(dnewvtbi))) & (topline(st) = dispvtbi)) OR
+               (topline(st) = locked) OR 
+               ((topline(st) = dispkvo) & middisp(st)(dtime) & middisp(st)(dkvorate) & 
+                                  middisp(st)(dvol) & middisp(st)(dvtbi)) OR 
+               ((topline(st) = vtbidone) AND (entrymode(st) = nullmode))
+              OR ((entrymode(st) = nullmode) & ((topline(st) = volume) OR
+                                        (topline(st) = dispinfo) )) OR
+         ((entrymode(st) = qmode) & (topline(st) = options))))))
+         
+
+  
+
+    tick_case_holding_volume_etc_elapseLTtimeout
+     (st: {st: alaris | per_tick(device(st))}): alaris =
+      st WITH [ device := tick(st`device)]
+
+    tick_case_holding_volume_etc_elapseLTtimeoutlocked
+     (st: {st: alaris | per_tick(device(st))}): alaris =
+      st WITH [ device := tick(st`device),
+                topline := COND 
+                             entrymode(st) = qmode -> options,
+                             entrymode(st) /= qmode & 
+                              device(st)`infusionrate = 0
+                                  -> setrate,
+                             ELSE -> holding
+                           ENDCOND,
+                middisp
+                 := LAMBDA (x: imid_type):
+                      COND x = drate -> TRUE,
+                           x = dvtbi ->
+                             COND device(st)`vtbi = 0 -> FALSE,
+                                  device(st)`vtbi /= 0 -> TRUE
+                             ENDCOND,
+                           x = dtime ->
+                             COND device(st)`vtbi = 0 -> FALSE,
+                                  device(st)`vtbi /= 0 -> TRUE
+                             ENDCOND,
+                           x = dvol -> TRUE,
+                           ELSE -> FALSE
+                      ENDCOND,
+               fndisp1 := COND 
+                             entrymode(st) = qmode -> fok,
+                             ELSE -> fvol
+                           ENDCOND,
+               fndisp2 := COND 
+                             entrymode(st) = qmode -> fnull,
+                             ELSE -> fvtbi
+                           ENDCOND,
+               fndisp3 := COND 
+                             entrymode(st) = qmode -> fquit,
+                             ELSE -> fnull
+                           ENDCOND]
+
+    tick_case_holding_volume_etc_elapseEQtimeout
+      (st: {st: alaris | per_tick(device(st))}): alaris = 
+      st WITH [ device := tick(st`device),
+                topline := attention,
+                middisp := LAMBDA(x: imid_type): FALSE,
+                fndisp1 := fnull,
+                fndisp2 := fnull,
+		fndisp3 := fcancel,
+              	entrymode   := nullmode ]
+
+    tick_case_battery_warning
+      (st: {st: alaris | per_tick(device(st))}): alaris = 
+      st WITH [ device := tick(st`device),
+                topline := batterylow,
+                middisp := LAMBDA(x: imid_type): FALSE,
+                fndisp1 := fnull,
+                fndisp2 := fnull,
+		fndisp3 := fcancel,
+              	entrymode   := nullmode ]
+
+tick_case_holding_volume_etc_elapseEQshorttimeout
+      (st: {st: alaris | per_tick(device(st))}): alaris = 
+      LET newdevice = tick(device(st)) IN
+      st WITH [ device := newdevice,
+                topline := COND
+                           device(st)`infusionrate = 0 -> setrate,
+                           ELSE -> holding
+                           ENDCOND,
+                middisp := LAMBDA(x: imid_type):
+ 		             COND x = drate -> TRUE,
+			          x = dvtbi ->newdevice`vtbi /= 0,
+				  x = dvol  -> TRUE,
+              			  x = dtime -> newdevice`vtbi /= 0,
+				  ELSE -> FALSE ENDCOND,
+                fndisp1 := fvol,
+                fndisp2 := fvtbi,
+		fndisp3 := fnull,
+              	entrymode   := rmode ]
+
+    tick_case_infuse_infusionrateLTvtbi(st: {st: alaris | per_tick(device(st))}): alaris =
+       st WITH [device := tick(st`device)]
+
+     tick_case_infuse_infusionrateLTvtbilocked(st: {st: alaris | per_tick(device(st))}): alaris =
+       st WITH [device := tick(st`device),
+                topline := infusing,
+                middisp := LAMBDA(x: imid_type):
+                            COND x = drate -> TRUE,
+                                 x = dvtbi -> TRUE,
+				 x = dvol  -> TRUE,
+				 x = dtime -> TRUE,
+				 ELSE -> FALSE ENDCOND,
+                fndisp1 := fvol,
+                fndisp2 := fvtbi,
+                fndisp3 := fnull,
+                entrymode  := infusemode]
+
+tick_case_infuse_infusionrateEQvtbi_kvoflag(st: {st: alaris | per_tick(device(st))}): alaris = 
+      st WITH [device := tick(st`device)]
+
+    tick_case_infuse_infusionrateEQvtbi_notkvoflag(st: {st: alaris | per_tick(device(st))}): alaris = 
+      release_key(st) WITH [ device := tick(st`device),
+                topline := vtbidone,
+                middisp := LAMBDA(x: imid_type): FALSE,
+                fndisp1 := fnull,
+                fndisp2 := fnull,
+		fndisp3 := fcancel,
+              	entrymode   := nullmode ]
+
+    tick(st: (per_tick)): alaris =
+      IF
+       NOT device(st)`ac_connect AND 
+               device(st)`battery <= bat_min THEN tick_case_battery_warning(st)
+      ELSE
+        IF NOT device(st)`infusing? THEN
+           COND
+            (device(st)`elapse >= timeout)
+                    -> tick_case_holding_volume_etc_elapseEQtimeout(st),
+            (device(st)`elapse >= shorttimeout) & 
+                    (device(st)`elapse < timeout)
+                    -> tick_case_holding_volume_etc_elapseEQshorttimeout(st),
+            (device(st)`elapse < shorttimeout) ->
+               COND
+                topline(st) = locked -> 
+                   tick_case_holding_volume_etc_elapseLTtimeoutlocked(st),
+                topline(st) /= locked -> 
+                   tick_case_holding_volume_etc_elapseLTtimeout(st)
+               ENDCOND
+             ENDCOND
+         ELSE
+          COND (device(st)`infusionrate < device(st)`vtbi) 
+                    -> 
+                  COND
+                   topline(st) = locked -> 
+                       tick_case_infuse_infusionrateLTvtbilocked(st),
+                   topline(st) /= locked -> 
+                        tick_case_infuse_infusionrateLTvtbi(st)
+                  ENDCOND,
+               (device(st)`infusionrate >= device(st)`vtbi) & 
+                    NOT device(st)`kvoflag
+	            -> tick_case_infuse_infusionrateEQvtbi_notkvoflag(st),
+               (device(st)`infusionrate >= device(st)`vtbi) & 
+                   device(st)`kvoflag
+	            -> tick_case_infuse_infusionrateEQvtbi_kvoflag(st)
+           ENDCOND
+         ENDIF
+       ENDIF
+
+
+
+  per_key1(st: alaris): bool = 
+   (fndisp1(st) /= fnull) & device(st)`powered_on? & no_button_down(st) &
+    (( NOT device(st)`infusing? &
+       ((topline(st) = holding AND entrymode(st) = rmode) OR 
+        (((topline(st) = clearsetup) OR 
+          (topline(st) = lockrate & device(st)`vtbi /= 0 & device(st)`infusionrate /= 0)) & entrymode(st)=nullmode) OR
+       ((topline(st) = dispvtbi) & (entrymode(st) = tbagmode)) OR
+       ((topline(st) = vtbitime) & (((entrymode(st) = vttmode) & (device(st)`vtbi /= 0)) OR
+                                    (entrymode(st) = ttmode))) OR
+       ((topline(st) = options) & (entrymode(st) = qmode)))) OR
+    (device(st)`infusing? & ((((topline(st) = dispkvo) OR (topline(st) = infusing)) AND (entrymode(st) = infusemode)) OR
+                        ((topline(st) = options) & (entrymode(st) = qmode) & 
+                          NOT device(st)`kvoflag &
+                          ((optionsmenu(st)(qcursor(st)) /= optionblank) AND
+                           (optionsmenu(st)(qcursor(st)) /= setvtbiovertime) AND
+                           (optionsmenu(st)(qcursor(st)) /= disableratelock) AND
+                           (optionsmenu(st)(qcursor(st)) /= enableratelock))))) OR
+    (device(st)`powered_on? & ((topline(st) = dispvtbi) & ((entrymode(st) = vtmode) OR (entrymode(st) = bagmode)))))
+  
+  key1_case_clearsetup(st: (per_key1)):alaris =
+     st WITH [ topline := 
+              COND
+                device(st)`infusionrate = 0 -> setrate,
+                 ELSE -> holding
+               ENDCOND,
+      	        middisp := LAMBDA(x: imid_type):
+                             COND x = drate -> TRUE,
+			          x = dvtbi -> FALSE,
+				  x = dvol  -> TRUE,
+				  ELSE -> FALSE ENDCOND,
+                device := reset(device(st)),
+                fndisp1 := fvol,
+		fndisp2 := fvtbi,
+		fndisp3 := fnull,
+                entrymode  := rmode ]
+
+  key1_case_infuselocked(st: (per_key1)): alaris =
+       st WITH [ device := 
+                  IF per_start(st`device) THEN start(st`device)
+                  ELSE st`device
+                  ENDIF,
+              rlock := TRUE,
+              topline := infusing,
+              middisp := LAMBDA(x: imid_type):
+                           COND x = drate -> TRUE,
+                                x = dvtbi -> TRUE,
+				x = dvol  -> TRUE,
+				x = dtime -> TRUE,
+				ELSE -> FALSE ENDCOND,
+              fndisp1 := fvol,
+              fndisp2 := fvtbi,
+              fndisp3 := fnull,
+              entrymode  := infusemode,
+              runlight := TRUE,
+              pauselight := FALSE ]
+
+  key1_case_holdinginfusingdispkvo(st: (per_key1)): alaris =
+      st WITH [ topline := volume,
+      	        middisp := LAMBDA(x: imid_type):
+                             COND x = drate -> FALSE,
+			          x = dvtbi -> FALSE,
+				  x = dvol  -> TRUE,
+				  ELSE -> FALSE ENDCOND,
+                device := resetElapsed(device(st)),
+                fndisp1 := fnull,
+		fndisp2 := fclear,
+		fndisp3 := fquit,
+                entrymode  := nullmode ]
+
+ 
+  key1_case_dispvtbi_vtmode(st: (per_key1)): alaris =
+                 st WITH [ topline := COND NOT device(st)`infusing? & 
+                                           device(st)`infusionrate /= 0 -> holding,
+                                           NOT device(st)`infusing? & 
+                                           device(st)`infusionrate = 0 -> setrate,
+                                           device(st)`infusing? -> infusing
+                                      ENDCOND,
+                    	   entrymode := COND NOT device(st)`infusing? -> rmode,
+                                           device(st)`infusing? -> infusemode
+                                      ENDCOND,
+                    	   middisp := LAMBDA(x: imid_type):
+			   	       COND x = dvtbi -> newvtbi(st) /= 0,
+				            x = dtime -> newvtbi(st) /= 0,
+                                	    x = drate -> TRUE,
+                    			    x = dvol  -> TRUE,
+                                            ELSE -> FALSE ENDCOND,
+                    	   fndisp1 := fvol,
+			   fndisp2 := fvtbi,
+			   fndisp3 := fnull,
+			   device  := aug_vtbi(device(st), newvtbi(st)) ]
+
+  key1_case_dispvtbi_bagmode(st: (per_key1)): alaris =
+                  st WITH [ topline := dispvtbi,
+	       	            middisp := LAMBDA(x: imid_type): x = dnewvtbi,
+                            fndisp1 := fok,
+			    fndisp2 := fbags,
+			    fndisp3 := fquit,
+			    entrymode  := vtmode,
+ %-- This has been modified to the actual settings on the Alaris GP
+			    newvtbi  := COND bagscursor(st) = 0 -> 0,
+                                            bagscursor(st) = 1 -> 50,
+                                            bagscursor(st) = 2 -> 100,
+                                            bagscursor(st) = 3 -> 200,
+                                            bagscursor(st) = 4 -> 250,
+                                            bagscursor(st) = 5 -> 500,
+                                            bagscursor(st) = 6 -> 1000,
+                                            bagscursor(st) = 7 -> 1500,
+                                            bagscursor(st) = 8 -> 2000,
+                                            bagscursor(st) = mbags -> 3000 ENDCOND, 
+                            device := resetElapsed(device(st))]
+
+  key1_case_dispvtbi_tbagmode(st: (per_key1)): alaris =
+         LET nvtbi: nonneg_real = COND bagscursor(st) = 0 -> 0,
+                                            bagscursor(st) = 1 -> 50,
+                                            bagscursor(st) = 2 -> 100,
+                                            bagscursor(st) = 3 -> 200,
+                                            bagscursor(st) = 4 -> 250,
+                                            bagscursor(st) = 5 -> 500,
+                                            bagscursor(st) = 6 -> 1000,
+                                            bagscursor(st) = 7 -> 1500,
+                                            bagscursor(st) = 8 -> 2000,
+                                            bagscursor(st) = mbags -> 3000 ENDCOND
+          IN
+                   st WITH [ topline := vtbitime,
+		             middisp := LAMBDA(x: imid_type): 
+                                          COND
+                                            x = dnewvtbi -> TRUE,
+                                            x = dnewrate -> TRUE,
+                                            x = dnewtime -> TRUE,
+                                            ELSE -> FALSE
+                                           ENDCOND,
+                             fndisp1 := fok,
+			     fndisp2 := fbags,
+			     fndisp3 := fquit,
+			     entrymode  := vttmode,
+			     newvtbi  := nvtbi,
+                             newrate := IF newtime(st) = 0 THEN 0
+			     	     	% >>new edit<<
+                                        %ELSE floor(nvtbi / newtime(st)) ENDIF,
+					ELSE nvtbi / newtime(st) ENDIF,
+                             device := resetElapsed(device(st))
+                           ]
+
+
+ 
+  key1_case_options_dlock(st: (per_key1)): alaris =
+     st WITH [ rlock := NOT rlock(st),
+               topline := COND NOT device(st)`infusing? & 
+                            device(st)`infusionrate /= 0 -> holding,
+                               NOT device(st)`infusing? & 
+                            device(st)`infusionrate = 0 -> holding,
+                               device(st)`infusing? -> infusing
+                          ENDCOND,
+	       entrymode := COND NOT device(st)`infusing? -> rmode,
+                               device(st)`infusing? -> infusemode
+                          ENDCOND,
+               middisp := LAMBDA(x: imid_type):
+	       	            COND x = drate -> TRUE,
+			         x = dvtbi -> COND device(st)`vtbi = 0 -> FALSE,
+				                   device(st)`vtbi /= 0 -> TRUE ENDCOND,
+                                 x = dtime -> COND device(st)`vtbi = 0 -> FALSE,
+				                   device(st)`vtbi /= 0 -> TRUE ENDCOND,
+                    		 x = dvol  -> TRUE,
+                    		 ELSE -> FALSE ENDCOND,
+               fndisp1 := fvol,
+	       fndisp2 := fvtbi,
+	       fndisp3 := fnull,
+	       device  := resetElapsed(device(st)) ]
+
+  key1_case_options_dsetvtbi(st: (per_key1)): alaris = 
+     st WITH [ topline := vtbitime,
+               newvtbi := 0,
+               newtime := 1,
+               device  := resetElapsed(device(st)),
+               middisp := LAMBDA(x: imid_type):
+	                    COND x = dnewrate -> TRUE,
+			         x = dnewvtbi -> TRUE,
+                    		 x = dnewtime -> TRUE,
+				 ELSE -> FALSE ENDCOND,
+               fndisp1 := fok,
+	       fndisp2 := fbags,
+               fndisp3 := fquit,
+	       entrymode  := vttmode ]
+
+key1_case_options_dsetvtbilocked(st: (per_key1)): alaris = 
+     st WITH [ topline := locked,
+               middisp := LAMBDA(x: imid_type): FALSE,
+               fndisp1 := fnull,
+	       fndisp2 := fnull,
+               fndisp3 := fnull,
+	       entrymode  := qmode ]
+
+  key1_case_options_ddosing_dsetup_dadjustav_dpdtls(st: (per_key1)): alaris =
+     st WITH [ topline := dispinfo,
+               middisp := LAMBDA(x: imid_type): FALSE,
+               fndisp1 := fnull,
+	       fndisp2 := fnull,
+               fndisp3 := fquit,
+	       entrymode  := nullmode,
+               device  := resetElapsed(device(st)) ]
+
+  key1_case_options_ddisablerate(st: (per_key1)): alaris =
+      st WITH [ rdisabled := NOT rdisabled(st),
+                topline := COND NOT device(st)`infusing? & 
+                               device(st)`infusionrate /= 0 -> holding,
+                               NOT device(st)`infusing? & 
+                               device(st)`infusionrate = 0 -> setrate,
+                               device(st)`infusing? -> infusing
+                          ENDCOND,
+	        entrymode := COND NOT device(st)`infusing? -> rmode,
+                               device(st)`infusing? -> infusemode
+                          ENDCOND,
+                middisp := LAMBDA(x: imid_type):
+	       	            COND x = drate -> TRUE,
+			         x = dvtbi -> device(st)`vtbi /= 0,
+                                 x = dtime -> device(st)`vtbi /= 0,
+                    		 x = dvol  -> TRUE,
+				 ELSE -> FALSE ENDCOND,
+                fndisp1 := fvol,
+	        fndisp2 := fvtbi,
+	        fndisp3 := fnull,
+	        device  := resetElapsed(device(st)) ]
+
+  key1_case_vtbitime_vttmode(st: (per_key1)): alaris =
+      st WITH [ topline := vtbitime,
+                middisp := LAMBDA(x: imid_type):
+		             COND x = dnewrate -> TRUE,
+			          x = dnewvtbi -> TRUE,
+				  x = dnewtime -> TRUE,
+                  		  ELSE -> FALSE ENDCOND,
+                device  := resetElapsed(device(st)),
+                fndisp1 := fok,
+		fndisp2 := fnull,
+                fndisp3 := fback,
+		entrymode  := ttmode ]
+
+  key1_case_vtbitime_vttmode_vtbiZ(st: (per_key1)): alaris =
+      st WITH [ topline :=
+                    COND
+                      device(st)`infusionrate = 0 -> setrate,
+                      ELSE -> holding
+                    ENDCOND,
+      	        middisp := LAMBDA(x: imid_type):
+                             COND x = drate -> TRUE,
+				  x = dvol  -> TRUE,
+				  ELSE -> FALSE ENDCOND,
+                device := reset(device(st)),
+                fndisp1 := fvol,
+		fndisp2 := fvtbi,
+		fndisp3 := fnull,
+                entrymode  := rmode ]
+
+  key1_case_vtbitime_ttmode_rateNZ(st: (per_key1)): alaris =
+     st WITH [ topline :=  holding,
+               middisp := LAMBDA(x: imid_type):
+	                   COND x = drate -> TRUE,
+			        x = dvtbi -> TRUE,
+				x = dtime -> TRUE,
+				x = dvol  -> TRUE,
+                  		ELSE -> FALSE ENDCOND,
+               fndisp1 := fvol,
+	       fndisp2 := fvtbi,
+               fndisp3 := fnull,
+	       entrymode  := rmode,
+	       device  := modvtbitime(newvtbi(st), newtime(st))(device(st)) ]
+
+   key1_case_vtbitime_ttmode(st: (per_key1)): alaris =
+     LET newdevice = modvtbitime(newvtbi(st), newtime(st))(device(st))
+      IN st WITH [ 
+               topline :=  
+                     COND newdevice`infusionrate = 0 -> setrate,
+                          ELSE -> holding ENDCOND,
+               middisp := LAMBDA(x: imid_type):
+	                   COND x = drate -> TRUE,
+			        x = dvtbi -> TRUE,
+				x = dtime -> TRUE,
+				x = dvol  -> TRUE,
+                  		ELSE -> FALSE ENDCOND,
+               fndisp1 := fvol,
+	       fndisp2 := fvtbi,
+               fndisp3 := fnull,
+	       entrymode  := rmode,
+	       device  := newdevice ]
+
+  key1(st:  (per_key1)): alaris =
+        COND
+         (topline(st) = holding OR topline(st) = setrate) OR (topline(st) = infusing) OR
+         (topline(st) = dispkvo)  
+               -> key1_case_holdinginfusingdispkvo(st),
+         topline(st) = clearsetup ->
+                  key1_case_clearsetup(st),
+         topline(st) = lockrate ->
+                   key1_case_infuselocked(st),
+	 topline(st) = dispvtbi ->  
+               COND entrymode(st) = vtmode    -> key1_case_dispvtbi_vtmode(st),
+		    entrymode(st) = bagmode   -> key1_case_dispvtbi_bagmode(st),
+                    entrymode(st) = tbagmode  -> key1_case_dispvtbi_tbagmode(st)
+        	   ENDCOND,
+         topline(st) = options  -> 
+             COND (optionsmenu(st)(qcursor(st)) = ratelock) OR 
+                   (optionsmenu(st)(qcursor(st)) = rateunlock)            
+                        -> key1_case_options_dlock(st),
+	 	 (optionsmenu(st)(qcursor(st)) = setvtbiovertime) & 
+                 NOT rlock(st)          
+                        -> key1_case_options_dsetvtbi(st),
+                  (optionsmenu(st)(qcursor(st)) = setvtbiovertime) & rlock(st)          
+                        -> key1_case_options_dsetvtbilocked(st),
+                   (optionsmenu(st)(qcursor(st)) = disableratelock) OR
+                      (optionsmenu(st)(qcursor(st)) = enableratelock)      
+                        -> key1_case_options_ddisablerate(st),
+                    ELSE -> 
+                     key1_case_options_ddosing_dsetup_dadjustav_dpdtls(st)
+         ENDCOND,
+         topline(st) = vtbitime & entrymode(st)=vttmode & newvtbi(st) /= 0      
+                        -> key1_case_vtbitime_vttmode(st),
+         topline(st) = vtbitime & entrymode(st)=vttmode & newvtbi(st) = 0      
+                        -> key1_case_vtbitime_vttmode_vtbiZ(st),
+         topline(st) = vtbitime & entrymode(st)=ttmode
+                        ->  key1_case_vtbitime_ttmode(st)
+        ENDCOND
+
+
+
+   per_key2(st: alaris): bool =
+   	NOT(fndisp2(st) = fnull)  & no_button_down(st) &
+               (((topline(st) = holding OR topline(st) = setrate) & 
+                     entrymode(st) = rmode) OR 
+                (topline(st) = infusing & entrymode(st) = infusemode) OR 
+                (topline(st) = volume & entrymode(st) = nullmode) OR 
+                 ((topline(st) = dispvtbi) AND (entrymode(st) = vtmode)) OR
+                 ((topline(st) = setvtbi) AND (entrymode(st) = nullmode)))
+               & (device(st)`powered_on?)
+
+
+
+  key2_case_holding_infusing(st: (per_key2)): alaris =
+      st WITH [ topline := dispvtbi,
+                newvtbi := device(st)`vtbi,
+                middisp := LAMBDA(x: imid_type):
+		            COND x = dnewvtbi -> TRUE,
+			         ELSE -> FALSE ENDCOND,
+                fndisp1 := fok,
+		fndisp2 := fbags,
+		fndisp3 := fquit,
+		entrymode := vtmode,
+                device  := resetElapsed(device(st)) ]
+
+ 
+  key2_case_volume(st: (per_key2)): alaris = 
+   st WITH [ topline := COND device(st)`infusing? AND device(st)`powered_on? AND
+                                     NOT device(st)`kvoflag -> infusing,
+                             device(st)`infusing? AND device(st)`powered_on? AND
+                                     device(st)`kvoflag -> dispkvo,
+      	     	     	     NOT device(st)`infusing? AND 
+                                 device(st)`powered_on? AND 
+                                 device(st)`infusionrate /= 0 -> holding,
+                             NOT device(st)`infusing? AND 
+                                 device(st)`powered_on? AND 
+                                 device(st)`infusionrate = 0 -> setrate,
+                             NOT device(st)`powered_on? -> dispblank ENDCOND,
+             entrymode   := COND device(st)`infusing? AND device(st)`powered_on? -> infusemode,
+	     	                 NOT device(st)`infusing? AND device(st)`powered_on? -> rmode,
+                                 NOT device(st)`powered_on? -> nullmode ENDCOND,
+
+             middisp := LAMBDA(x: imid_type):
+	                  COND x = dvtbi -> device(st)`vtbi /= 0,
+                               x = dtime -> device(st)`vtbi /= 0,
+                               x = dvol -> TRUE,
+			       x = drate -> TRUE,
+			      ELSE -> FALSE ENDCOND,
+
+             device  := clearVolumeinfused(device(st)),
+             
+             fndisp1 := fvol,
+             fndisp2 := COND device(st)`infusing? AND device(st)`powered_on? AND
+                                     device(st)`kvoflag -> fnull, 
+                             ELSE -> fvtbi ENDCOND,
+	     fndisp3 := fnull ]
+
+  key2_case_dispvtbiORvtbitime(st: (per_key2)): alaris =
+      st WITH [ topline := dispvtbi,
+                middisp := LAMBDA(x: imid_type): x = dbags,
+                bagscursor := midbag,
+                fndisp1 := fok,
+                fndisp2 := fnull,
+		fndisp3 := fback,
+		device  := resetElapsed(device(st)),
+                entrymode := IF (topline(st) = dispvtbi) THEN bagmode
+                             ELSIF topline(st) = vtbitime THEN tbagmode
+                             ELSE nullmode ENDIF ]
+
+
+
+  key2(st: (per_key2)): alaris =
+        COND
+          (topline(st) = holding OR topline(st) = setrate OR topline(st) = infusing OR topline(st) = setvtbi)   
+                 -> key2_case_holding_infusing(st),
+          (topline(st) = volume)                             
+                 -> key2_case_volume(st),
+          (topline(st) = dispvtbi OR topline(st) = vtbitime) 
+                 -> key2_case_dispvtbiORvtbitime(st)
+        ENDCOND
+
+
+  per_key3(st: alaris): bool =
+     (fndisp3(st) /= fnull) & device(st)`powered_on? & no_button_down(st) &
+     (((((topline(st) = vtbidone) AND (entrymode(st) = nullmode) AND device(st)`kvoflag) OR
+        ((topline(st) = dispvtbi) AND ((entrymode(st) = vtmode) AND NOT device(st)`kvoflag)) OR
+          ((topline(st) = dispinfo) & (NOT device(st)`kvoflag) & (entrymode(st) = nullmode)) OR
+           ((topline(st) = options) & (entrymode(st) = qmode) & NOT device(st)`kvoflag)) & device(st)`infusing?) OR
+       ((((topline(st) = attention) & (entrymode(st) = nullmode)) OR (topline(st) = clearsetup & entrymode(st) = nullmode) OR
+        (((topline(st) = setvtbi) OR 
+           (topline(st) = lockrate & NOT device(st)`infusing? & 
+             device(st)`vtbi /= 0 & device(st)`infusionrate /= 0) OR
+          (topline(st) = setnotfitted))  
+            & entrymode(st) = nullmode) OR 
+        (topline(st) = vtbitime & ((entrymode(st) = vttmode) 
+                                                               OR (entrymode(st) = ttmode) )) OR
+       ((topline(st) = dispvtbi) & ((entrymode(st) = tbagmode) OR (entrymode(st) = vtmode)) ) OR
+        (topline(st) = dispinfo & entrymode(st) = nullmode) OR 
+        ((topline(st) = options) & (entrymode(st) = qmode))) & NOT device(st)`infusing?) OR
+       (topline(st) = volume & entrymode(st) = nullmode) OR 
+       (topline(st) = batterylow & entrymode(st) = nullmode) OR 
+        ((topline(st) = dispvtbi) & (entrymode(st) = bagmode)))
+   
+  key3_case_attention_clearsetup(st: (per_key3)): alaris = 
+      st WITH [ topline := 
+                 COND device(st)`infusionrate = 0 -> setrate,
+                      ELSE -> holding ENDCOND,
+                middisp := LAMBDA(x: imid_type):
+		            COND x = drate -> TRUE,
+			         x = dvtbi -> device(st)`vtbi /= 0,
+			         x = dtime -> device(st)`vtbi /= 0,
+				 x = dvol -> TRUE,
+                  		 ELSE -> FALSE ENDCOND,
+                fndisp1 := fvol,
+		fndisp2 := fvtbi,
+                fndisp3 := fnull,
+		entrymode  := rmode,
+		device  := resetElapsed(device(st)) ]
+
+   key3_case_battery_low(st: (per_key3)): alaris = 
+      st WITH [ topline := COND device(st)`infusing? AND NOT device(st)`kvoflag -> infusing,
+                                device(st)`infusing? AND device(st)`kvoflag -> dispkvo,
+                                NOT device(st)`infusing? & device(st)`infusionrate = 0
+                                        -> setrate,
+                                ELSE -> holding
+                           ENDCOND,
+                middisp := 
+                  COND NOT device(st)`infusing? -> 
+                           LAMBDA(x: imid_type):
+		            COND x = drate -> TRUE,
+			         x = dvtbi -> device(st)`vtbi /= 0,
+			         x = dtime -> device(st)`vtbi /= 0,
+				 x = dvol -> TRUE,
+                  		 ELSE -> FALSE ENDCOND,
+                        ELSE ->
+                          LAMBDA(x: imid_type):
+                           COND x = drate -> NOT device(st)`kvoflag,
+                                x = dkvorate -> device(st)`kvoflag,
+                                x = dvtbi -> TRUE,
+				x = dvol  -> TRUE,
+				x = dtime -> TRUE,
+				ELSE -> FALSE ENDCOND
+                        ENDCOND,
+                fndisp1 := fvol,
+		fndisp2 := fvtbi,
+                fndisp3 := fnull,
+		entrymode  := COND NOT device(st)`infusing? -> rmode,
+                                   ELSE -> infusemode
+                              ENDCOND,
+		device  := resetElapsed(device(st)) ]
+
+  key3_case_infuse(st: (per_key3)): alaris =
+         st WITH [ device := 
+                  IF per_start(st`device) THEN start(st`device)
+                  ELSE st`device
+                  ENDIF,
+              topline := infusing,
+              middisp := LAMBDA(x: imid_type):
+                           COND x = drate -> TRUE,
+                                x = dvtbi -> TRUE,
+				x = dvol  -> TRUE,
+				x = dtime -> TRUE,
+				ELSE -> FALSE ENDCOND,
+              fndisp1 := fvol,
+              fndisp2 := fvtbi,
+              fndisp3 := fnull,
+              entrymode  := infusemode,
+              runlight := TRUE,
+              pauselight := FALSE ]
+
+  key3_case_volume(st: (per_key3)): alaris =
+       st WITH [ topline := COND
+                              device(st)`infusing? AND device(st)`powered_on? ->
+                                        COND NOT device(st)`kvoflag  -> infusing,
+       	                                          device(st)`kvoflag -> dispkvo ENDCOND,
+                              NOT device(st)`infusing? AND 
+                                  device(st)`powered_on? & device(st)`infusionrate = 0 -> 
+                                         setrate,
+                              NOT device(st)`infusing? AND device(st)`powered_on? 
+                                 & device(st)`infusionrate /= 0 -> holding,
+                              NOT device(st)`powered_on? -> dispblank
+                            ENDCOND,
+       	         middisp := LAMBDA(x: imid_type):
+		 	      COND x = dvtbi -> device(st)`vtbi /= 0,
+                                   x = dtime -> device(st)`vtbi /= 0,
+				   x = drate -> NOT(device(st)`infusing? AND device(st)`kvoflag),
+				   x = dvol  -> TRUE,
+				   x = dkvorate -> device(st)`infusing? AND device(st)`kvoflag,
+                                   ELSE -> FALSE
+                              ENDCOND,
+                 entrymode := COND
+                                device(st)`infusing? AND device(st)`powered_on? -> infusemode,
+                                NOT device(st)`infusing?  AND device(st)`powered_on? -> rmode,
+                                NOT device(st)`powered_on?  -> nullmode
+                            ENDCOND,
+
+                 fndisp1 := COND 
+                              device(st)`powered_on? -> fvol,
+                              ELSE -> fnull
+                            ENDCOND,
+                 fndisp2 := COND 
+                             device(st)`infusing? AND device(st)`powered_on? AND
+                                   NOT device(st)`kvoflag -> fvtbi, 
+                             NOT device(st)`infusing? AND device(st)`powered_on?  
+                                         -> fvtbi,
+                             ELSE -> fnull   
+                            ENDCOND,    
+		 fndisp3 := fnull,
+              	 device  := resetElapsed(device(st)) ]
+
+  key3_case_vtbidone(st: (per_key3)): alaris =
+   st WITH [ topline := dispkvo,
+             middisp := LAMBDA(x: imid_type):
+	                 COND x = dkvorate -> TRUE,
+			      x = dvtbi -> TRUE,
+			      x = dvol  -> TRUE,
+			      x = dtime -> TRUE,
+			      ELSE -> FALSE ENDCOND,
+             fndisp1 := fvol,
+	     fndisp2 := fnull,
+	     fndisp3 := fnull,
+             entrymode := infusemode,
+             device  := resetElapsed(device(st)) ]
+
+  key3_case_dispvtbi_vtmode(st: (per_key3)): alaris =    
+        st WITH [ topline := COND
+                              NOT device(st)`infusing? AND 
+                                  device(st)`powered_on? & 
+                                     device(st)`infusionrate = 0 -> setrate,
+                              NOT device(st)`infusing? AND 
+                                  device(st)`powered_on? & 
+                                     device(st)`infusionrate /= 0 -> holding,
+                              NOT device(st)`kvoflag AND device(st)`infusing? AND 
+                                  device(st)`powered_on? -> infusing,
+                              device(st)`kvoflag AND device(st)`infusing? AND 
+                                  device(st)`powered_on? -> dispkvo,
+                              NOT device(st)`powered_on? -> dispblank
+                             ENDCOND,
+                  device  := resetElapsed(device(st)),
+                  middisp := LAMBDA(x: imid_type):
+		               COND (x = dvtbi AND (NOT device(st)`kvoflag)) -> 
+                                         (device(st)`vtbi /= 0),
+                                    (x = dvtbi AND device(st)`kvoflag) -> FALSE,
+			            x = dtime -> device(st)`vtbi /= 0,
+				    x = drate -> TRUE,
+				    x = dvol  -> TRUE,
+                                    x = dkvorate -> device(st)`kvoflag,
+       				    ELSE -> FALSE ENDCOND,
+                  fndisp1 := fvol,
+		  fndisp2 := fvtbi,
+		  fndisp3 := fnull,
+		  entrymode := COND
+                                NOT device(st)`infusing? AND device(st)`powered_on? -> rmode,
+                                device(st)`infusing? AND device(st)`powered_on? -> infusemode,
+                                NOT device(st)`powered_on? -> nullmode
+                               ENDCOND ]
+
+  key3_case_dispvtbi_bagmode(st: (per_key3)): alaris =
+   st WITH [ topline := dispvtbi,
+             middisp := LAMBDA(x: imid_type): x = dnewvtbi,
+             fndisp1 := fok,
+	     fndisp2 := fbags,
+	     fndisp3 := fquit,
+	     entrymode := vtmode,
+	     device  := resetElapsed(device(st)) ]
+
+ key3_case_dispvtbi_tbagmode(st: (per_key3)): alaris =
+   st WITH [ topline := vtbitime,
+             middisp := LAMBDA(x: imid_type): (x = dnewtime) OR (x = dnewrate) OR (x = dnewvtbi),
+             fndisp1 := fok,
+	     fndisp2 := fbags,
+	     fndisp3 := fquit,
+	     entrymode := vttmode,
+	     device  := resetElapsed(device(st)) ]
+
+  key3_case_setvtbi_rate_notfitted(st: (per_key3)): alaris =
+   st WITH [ topline := COND device(st)`infusionrate /= 0 -> holding,
+                             ELSE -> setrate ENDCOND,
+              middisp := LAMBDA(x: imid_type):
+		            COND x = drate -> TRUE,
+			         x = dvtbi -> device(st)`vtbi /= 0,
+			         x = dtime -> device(st)`vtbi /= 0,
+				 x = dvol -> TRUE,
+                  		 ELSE -> FALSE ENDCOND,
+             fndisp1 := fvol,
+	     fndisp2 := fvtbi,
+             fndisp3 := fnull,
+	     entrymode  := rmode,
+	     device  := resetElapsed(device(st))]
+
+  key3_case_optionsORdispinfo(st: (per_key3)): alaris = 
+   st WITH [ topline := COND NOT device(st)`infusing? & 
+                              device(st)`infusionrate /= 0-> holding,
+                             NOT device(st)`infusing? & 
+                              device(st)`infusionrate = 0-> setrate,
+                             device(st)`infusing? -> infusing
+                        ENDCOND,
+             middisp := LAMBDA(x: imid_type):
+	                 COND x = drate -> TRUE,
+			      x = dvtbi -> device(st)`vtbi /= 0,
+			      x = dtime -> device(st)`vtbi /= 0,
+			      x = dvol -> TRUE,
+                  	      ELSE -> FALSE ENDCOND,
+              fndisp1 := fvol,
+	      fndisp2 := fvtbi,
+	      fndisp3 := fnull,
+	      entrymode :=  COND NOT device(st)`infusing? AND device(st)`powered_on? -> rmode,
+                             device(st)`infusing? AND device(st)`powered_on? -> infusemode,
+                             NOT device(st)`powered_on? -> nullmode
+                            ENDCOND,
+	      device  := resetElapsed(device(st)) ]
+
+
+  key3_case_vtbitime_vttmode(st: (per_key3)): alaris =
+    st WITH [ topline := COND device(st)`infusionrate /= 0 -> holding,
+                              ELSE -> setrate ENDCOND,
+              middisp := LAMBDA(x: imid_type):
+	                  COND x = drate -> TRUE,
+                  	       x = dvtbi -> device(st)`vtbi /= 0,
+                  	       x = dtime -> device(st)`vtbi /= 0,
+			       x = dvol  -> TRUE,
+                  	       ELSE -> FALSE ENDCOND,
+               fndisp1 := fvol,
+	       fndisp2 := fvtbi,
+               fndisp3 := fnull,
+	       entrymode  := rmode,
+	       device  := resetElapsed(device(st)) ]
+
+
+  key3_case_vtbitime_ttmode(st: (per_key3)): alaris =
+    st WITH [ topline := vtbitime,
+              middisp := LAMBDA(x: imid_type): x = dnewrate OR x = dnewvtbi OR x = dnewtime,
+              fndisp1 := fok,
+	      fndisp2 := fbags,
+	      fndisp3 := fquit,
+	      entrymode := vttmode ]
+
+
+  key3(st: (per_key3)): alaris =
+         COND
+            (topline(st) = attention OR topline(st) = clearsetup)               
+                  ->  key3_case_attention_clearsetup(st),
+            (topline(st) = batterylow) -> key3_case_battery_low(st),
+            (topline(st) = lockrate) ->
+                    key3_case_infuse(st),
+	    topline(st) = volume                     
+                  ->  key3_case_volume(st),
+            topline(st) = vtbidone
+                  ->  key3_case_vtbidone(st),
+            topline(st) = dispvtbi                  
+                  ->  COND entrymode(st) = vtmode  
+                             ->  key3_case_dispvtbi_vtmode(st),
+	    		   entrymode(st) = bagmode 
+                             ->  key3_case_dispvtbi_bagmode(st),
+                           entrymode(st) = tbagmode 
+                             -> key3_case_dispvtbi_tbagmode(st) ENDCOND,
+            ((topline(st) = setvtbi) OR
+                (topline(st) = setnotfitted))                    
+                  ->  key3_case_setvtbi_rate_notfitted(st),
+	    topline(st) = options OR topline(st) = dispinfo              
+                  ->  key3_case_optionsORdispinfo(st),
+	    topline(st) = vtbitime & entrymode(st) = vttmode     
+                  ->  key3_case_vtbitime_vttmode(st),
+	    topline(st) = vtbitime & entrymode(st) = ttmode      
+                  ->  key3_case_vtbitime_ttmode(st)
+        ENDCOND
+   
+
+
+  per_chevron(st: alaris): bool =
+             device(st)`powered_on? & 
+      (NOT device(st)`infusing? &
+         (topline(st) = holding OR topline(st) = setrate) & (entrymode(st) = rmode) & 
+            middisp(st)(drate) &
+            (middisp(st)(dvtbi) = (device(st)`vtbi /= 0)) &
+            (middisp(st)(dtime) = (device(st)`vtbi /= 0)) &
+           (fndisp1(st) = fvol & fndisp2(st) = fvtbi & 
+            fndisp3(st) = fnull)) OR
+       (device(st)`infusing? &
+           (topline(st) = infusing & entrymode(st) = infusemode & 
+            middisp(st)(drate) & middisp(st)(dtime) & middisp(st)(dvtbi) &
+            fndisp1(st) = fvol & fndisp2(st) = fvtbi & fndisp3(st) = fnull)) OR
+       ((topline(st) = dispvtbi) & 
+           (((entrymode(st) = vtmode) & middisp(st)(dnewvtbi) AND 
+            (fndisp1(st) = fok) & (fndisp2(st) = fbags) & 
+            (fndisp3(st) = fquit)) OR 
+           ((entrymode(st) = bagmode) & 
+           (fndisp1(st) = fok) & (fndisp2(st) = fnull) & 
+           (fndisp3(st) = fback)))) OR
+        (NOT device(st)`infusing? &
+           (((topline(st) = dispvtbi) & (entrymode(st) = tbagmode) &
+            (fndisp1(st) = fok) & (fndisp2(st) = fnull) & 
+            (fndisp3(st) = fback)) OR
+            ((topline(st) = vtbitime) & 
+               (((entrymode(st) = vttmode) & 
+                (fndisp1(st) = fok) & (fndisp2(st) = fbags) & 
+                (fndisp3(st) = fquit)) OR 
+               ((entrymode(st) = ttmode) & (fndisp1(st) = fok) & 
+                (fndisp2(st) = fnull) &  (fndisp3(st) = fback))) & 
+               (middisp(st)(dnewvtbi) & middisp(st)(dnewtime) & 
+               middisp(st)(dnewrate))))) OR 
+            ((topline(st) = options) & (entrymode(st) = qmode) & 
+               (fndisp1(st) = fok) & (fndisp2(st) = fnull) & 
+               (fndisp3(st) = fquit)) 
+               
+  per_fup(st:alaris): bool = (no_button_down(st) OR 
+                                       (which_press(st) = fupb AND pressed(st) < maxpress)) &
+                              per_chevron(st)
+  per_sup(st: alaris): bool = (no_button_down(st) OR 
+                              (which_press(st) = supb AND pressed(st) < maxpress)) & 
+                              per_chevron(st)
+  per_fdown(st: alaris): bool = (no_button_down(st) OR 
+                                       (which_press(st) = fdownb AND pressed(st) < maxpress)) &
+                              per_chevron(st)
+  per_sdown(st: alaris): bool = (no_button_down(st) OR 
+                                       (which_press(st) = sdownb AND pressed(st) < maxpress)) &
+                              per_chevron(st)
+
+  alaris_UP_rate(d: steprate, v: irates): irates =
+    IF v<100 THEN trim_rate(floor(v) + d)
+    ELSIF v>=100 AND v<1000 THEN trim_rate((floor(v/10) + d)*10)
+    ELSE trim_rate((floor(v/100) + d) * 100) ENDIF
+
+  fup_case_holding_NOTrlock(d: presstime, st: (per_fup)): alaris =
+    LET v: irates = device(st)`infusionrate,
+        s: steprate = 
+            IF d=0 AND current_sr(st) = small_step AND
+               ((v<100 AND fractional(v/10)=0) OR
+                (v>100 AND fractional(v/100)=0)) THEN big_step ELSE
+                current_sr(st) ENDIF,
+        r: irates = alaris_UP_rate(s, v)
+        IN
+          st WITH [device := aug_rate(device(st), r),
+                   topline := COND r = 0 -> setrate,
+                                   ELSE -> holding ENDCOND,
+                   current_sr := s]
+
+   fup_case_infusing_NOTrlock(d: presstime, st: (per_fup)): alaris =
+    LET v: irates = device(st)`infusionrate,
+        s: steprate = 
+            IF d=0 AND current_sr(st) = small_step AND
+               ((v<100 AND fractional(v/10)=0) OR
+                (v>100 AND fractional(v/100)=0)) THEN big_step ELSE
+                current_sr(st) ENDIF,
+        r: irates = alaris_UP_rate(s, v)
+        IN
+          st WITH [device := aug_rate(device(st), r),
+                   current_sr := s]
+
+    
+
+  fup_case_infusingORholding_rlock(st: (per_fup)): alaris =
+    st WITH [ topline := locked,
+              middisp := LAMBDA(x: imid_type): FALSE,
+             fndisp1 := fnull,
+	     fndisp2 := fnull,
+             fndisp3 := fnull,
+             device  := resetElapsed(device(st)) ]
+
+  alaris_UP_vtbi(d: stepvol, v: ivols): ivols =
+    IF v<100 THEN trim_vtbi(floor(v) + d)
+    ELSIF v>=100 AND v<1000 THEN trim_vtbi((floor(v/10) + d)*10)
+    ELSE trim_vtbi((floor(v/100) + d) * 100) ENDIF
+
+  fup_case_dispvtbi_vtmode(d: presstime, st: (per_fup)): alaris =
+    LET s: stepvol = 
+            IF d=0 AND current_sv(st) = small_step AND
+               ((newvtbi(st) < 100 AND fractional(newvtbi(st)/10)=0) OR
+                (newvtbi(st)>100 AND fractional(newvtbi(st)/100)=0)) THEN big_step ELSE
+                current_sv(st) ENDIF
+        IN
+          st WITH [newvtbi := alaris_UP_vtbi(s, newvtbi(st)),
+                   current_sv := s,
+                   device  := resetElapsed(device(st))]
+   
+
+  fup_case_vtbitime_vttmode(d: presstime, st: (per_fup)): alaris =
+   LET s: stepvol = 
+            IF d=0 AND current_sv(st) = small_step AND
+               ((newvtbi(st)<100 AND fractional(newvtbi(st)/10)=0) OR
+                (newvtbi(st)>100 AND fractional(newvtbi(st)/100)=0)) THEN big_step ELSE
+                current_sv(st) ENDIF,
+       nv: ivols = alaris_UP_vtbi(s, newvtbi(st))
+        IN
+          st WITH [newvtbi := nv,
+                   newrate := IF
+                               newtime(st) = 0 THEN 0
+			      % >>new edit<<
+                              %ELSE floor(nv / newtime(st))
+			      ELSE nv / newtime(st)
+                              ENDIF,
+                   current_sv := s,
+                   device  := resetElapsed(device(st))]
+
+  alaris_UP_time(s: steptime, v: itimes): itimes =
+    trim_time(floor(v/s)*s + s)
+    
+    
+
+  fup_case_vtbitime_ttmode(d: presstime, st: (per_fup)): alaris = 
+  LET s: steptime = 
+            COND d=4 -> 10*small_step,
+                 d=3 -> 60,
+                 ELSE -> 600
+            ENDCOND,
+      nt: itimes =  alaris_UP_time(s, newtime(st))
+        IN
+          st WITH [newtime := nt,
+                   newrate := IF
+                               nt = 0 THEN 0
+			      % >>new edit<<
+                              %ELSE floor(newvtbi(st) / nt)
+			      ELSE newvtbi(st) / nt
+                              ENDIF,
+                   current_st := s,
+                   device := resetElapsed(device(st))]
+    
+  fup_case_dispvtbi_bagmode(st: (per_fup)): alaris = 
+    st WITH [ bagscursor := mbags,
+              device := resetElapsed(device(st)) ]
+
+  fup_case_dispvtbi_tbagmode(st: (per_fup)): alaris = 
+    st WITH [ bagscursor := mbags,
+              device := resetElapsed(device(st)) ]
+
+  fup_case_options(st: (per_fup)): alaris =
+   st WITH [ qcursor := 0,
+             device := resetElapsed(device(st)) ]
+
+  fup(st: (per_fup)): alaris =
+         LET d: presstime = decrement(pressed(st), 1) IN
+         (COND
+           (topline(st) = holding OR topline(st) = setrate) & 
+                NOT rlock(st) 
+                   -> fup_case_holding_NOTrlock(d, st),
+           (topline(st) = infusing) & 
+                NOT rlock(st) 
+                   -> fup_case_infusing_NOTrlock(d, st),
+           (topline(st) = infusing OR topline(st) = holding OR topline(st) = setrate) & 
+                    rlock(st)     
+                   -> fup_case_infusingORholding_rlock(st),
+           topline(st) = dispvtbi & entrymode(st) = vtmode                         
+                   -> fup_case_dispvtbi_vtmode(d, st),
+           topline(st) = vtbitime & entrymode(st) = vttmode                              
+                   -> fup_case_vtbitime_vttmode(d, st),
+           topline(st) = vtbitime & entrymode(st) = ttmode                                            
+                   -> fup_case_vtbitime_ttmode(d, st),
+           topline(st) = dispvtbi & entrymode(st) = bagmode                                           
+                   -> fup_case_dispvtbi_bagmode(st),
+           topline(st) = dispvtbi & entrymode(st) = tbagmode                                           
+                   -> fup_case_dispvtbi_tbagmode(st),
+           topline(st) = options                                             
+                   -> fup_case_options(st)
+
+        ENDCOND) WITH [pressed := d,
+                      which_press := fupb]
+
+  alaris_up_rate(d: steprate, v: irates): irates = 
+     IF    v < 100                 THEN trim_rate( floor((v*10) + d) / 10 )
+     ELSIF v >= 100 AND v < 1000 THEN trim_rate( floor((v) + d) )
+     ELSE                                 trim_rate( (floor(v/10) + d) * 10 ) ENDIF
+  
+
+  sup_case_holding_NOTrlock(st: (per_sup)): alaris =
+   LET v: irates = device(st)`infusionrate,
+       r: irates = alaris_up_rate(small_step, v)
+        IN
+          st WITH [device := aug_rate(device(st), r),
+                   topline := COND r = 0 -> setrate,
+                                ELSE -> holding ENDCOND,
+                   current_sr := small_step]
+
+  sup_case_infusing_NOTrlock(st: (per_sup)): alaris =
+   LET v: irates = device(st)`infusionrate,
+       r: irates = alaris_up_rate(small_step, v)
+        IN
+          st WITH [device := aug_rate(device(st), r),
+                   current_sr := small_step]
+
+  sup_case_infusingORholding_rlock(st: (per_sup)): alaris =
+    st WITH [ topline := locked,
+	      middisp := LAMBDA(x: imid_type): FALSE,
+              fndisp1 := fnull,
+	      fndisp2 := fnull,
+              fndisp3 := fnull,
+              device := resetElapsed(device(st))]
+
+ 
+
+ alaris_up_vtbi(d: stepvol, v: ivols): ivols = 
+     IF    v < 100                 THEN trim_vtbi( floor((v*10) + d) / 10 )
+     ELSIF v >= 100 AND v < 1000 THEN trim_vtbi( floor((v) + d) )
+     ELSE                                 trim_vtbi( (floor(v/10) + d) * 10 ) ENDIF
+  
+sup_case_dispvtbi_vtmode(st: (per_sup)): alaris =
+          st WITH [newvtbi := alaris_up_vtbi(small_step, newvtbi(st)),
+                   current_sv := small_step,
+                   device  := resetElapsed(device(st))]
+
+  sup_case_vtbitime_vttmode(st: (per_sup)): alaris =
+    LET nv: ivols = alaris_up_vtbi(small_step, newvtbi(st))
+        IN
+          st WITH [newvtbi := nv,
+                   newrate := IF
+                               newtime(st) = 0 THEN 0
+			      % >>new edit<<
+			      %ELSE floor(nv / newtime(st))
+                              ELSE nv / newtime(st)
+                              ENDIF,
+                   current_sv := small_step,
+                   device  := resetElapsed(device(st))]
+
+  alaris_up_time(s: steptime, v: itimes): itimes = 
+     trim_time(floor(v/s)*s + s)
+   
+  sup_case_vtbitime_ttmode(d: presstime, st: {st: alaris | per_sup(st)}): alaris =
+     LET s: steptime = 
+            COND
+              d=4 -> small_step,
+              d=3 -> 10*small_step,
+              d=2 -> 60,
+              ELSE -> 600
+             ENDCOND,
+        nt: itimes = alaris_up_time(s, newtime(st))
+        IN
+          st WITH [newtime := nt,
+                   newrate := IF
+                               nt = 0 THEN 0
+			      % >>new edit<<
+                              %ELSE floor(newvtbi(st) / nt)
+                              ELSE newvtbi(st) / nt
+                              ENDIF,
+                   current_st := small_step,
+                   device  := resetElapsed(device(st))]
+   
+  sup_case_dispvtbi_bagmode(st: (per_sup)): alaris =
+    st WITH [ bagscursor := COND bagscursor(st) < mbags -> bagscursor(st) + 1,
+                                 bagscursor(st) >= mbags -> bagscursor(st) ENDCOND,
+              device := resetElapsed(device(st)) ]
+
+  sup_case_dispvtbi_tbagmode(st: (per_sup)): alaris =
+    st WITH [ bagscursor := COND bagscursor(st) < mbags -> bagscursor(st) + 1,
+                                 bagscursor(st) >= mbags -> bagscursor(st) ENDCOND,
+              device := resetElapsed(device(st)) ]
+
+  sup_case_options(st: (per_sup)): alaris =
+    st WITH [ qcursor := 
+                IF qcursor(st) = 0 THEN 0
+                ELSE qcursor(st) -1
+                ENDIF,  
+              device := resetElapsed(device(st)) ]
+
+  sup(st: (per_sup)): alaris =
+      LET d: presstime = decrement(pressed(st), 1) IN 
+        (COND
+          (topline(st) = holding OR topline(st) = setrate) & 
+            NOT rlock(st) 
+               ->  sup_case_holding_NOTrlock(st),
+           (topline(st) = infusing) & 
+            NOT rlock(st) 
+               ->  sup_case_infusing_NOTrlock(st),
+          (topline(st) = infusing OR topline(st) = holding OR topline(st) = setrate)  & 
+              rlock(st)     
+               ->  sup_case_infusingORholding_rlock(st),
+          (topline(st) = dispvtbi) & 
+                (entrymode(st) = vtmode)                            
+               ->  sup_case_dispvtbi_vtmode(st),
+          (topline(st) = vtbitime) & 
+             (entrymode(st) = vttmode)                                
+               ->  sup_case_vtbitime_vttmode(st),
+          (topline(st) = vtbitime) & 
+                (entrymode(st) = ttmode)                                        
+               ->  sup_case_vtbitime_ttmode(d, st),
+          (topline(st) = dispvtbi) & 
+            (entrymode(st) = bagmode)                                           
+               ->  sup_case_dispvtbi_bagmode(st),
+          (topline(st) = dispvtbi) & (entrymode(st) = tbagmode)                 
+               ->  sup_case_dispvtbi_tbagmode(st),
+          topline(st) = options                                               
+               ->  sup_case_options(st)
+        ENDCOND) WITH [pressed := d, which_press := supb]
+
+ %-- the conditions for DN are apparently slightly different from those of the other buttons...
+  alaris_DN_rate(d: steprate, v: irates): irates = 
+     IF    v < 100                THEN trim_rate( ceil_rate(v) - d)
+     ELSIF v >= 100 AND v < 1000  THEN trim_rate( (ceil_rate(v/10) - d) * 10 )
+     ELSE                                 trim_rate( (ceil_rate(v/100) - d) * 100 ) ENDIF
+
+  fdown_case_holding_NOTrlock(d: presstime, st: (per_fdown)): alaris =
+    LET v: irates = device(st)`infusionrate,
+        s: steprate = 
+            COND
+              d=0 AND current_sr(st) = small_step AND
+               ((v>10 AND v<100 AND fractional(v/10)=0) OR
+                (v>100 AND fractional(v/100)=0)) -> big_step, 
+              d/=maxpress AND current_sr(st) = big_step AND (v=10 OR v=100) -> small_step,
+              ELSE ->  current_sr(st) ENDCOND,
+        r: irates = alaris_DN_rate(s, v)
+        IN
+          st WITH [device := aug_rate(device(st), r),
+                   topline := COND r = 0 -> setrate,
+                                ELSE -> holding ENDCOND,
+                   current_sr := s]
+
+  fdown_case_infusing_NOTrlock(d: presstime, st: (per_fdown)): alaris =
+    LET v: irates = device(st)`infusionrate,
+        s: steprate = 
+            COND
+              d=0 AND current_sr(st) = small_step AND
+               ((v>10 AND v<100 AND fractional(v/10)=0) OR
+                (v>100 AND fractional(v/100)=0)) -> big_step, 
+              d/=maxpress AND current_sr(st) = big_step AND (v=10 OR v=100) -> small_step,
+              ELSE ->  current_sr(st) ENDCOND,
+        r: irates = alaris_DN_rate(s, v)
+        IN
+          st WITH [device := aug_rate(device(st), r),
+                   current_sr := s]
+
+  fdown_case_infusingORholding_rlock(st: (per_fdown)): alaris =
+    st WITH [ topline := locked,
+              middisp := LAMBDA(x: imid_type): FALSE,
+              fndisp1 := fnull,
+	      fndisp2 := fnull,
+              fndisp3 := fnull,
+              device  := resetElapsed(device(st)) ]
+
+   alaris_DN_vtbi(d: stepvol, v: ivols): ivols = 
+     IF    v < 100                THEN trim_vtbi( ceil_vtbi(v) - d)
+     ELSIF v >= 100 AND v < 1000  THEN trim_vtbi( (ceil_vtbi(v/10) - d) * 10 )
+     ELSE                                 trim_vtbi( (ceil_vtbi(v/100) - d) * 100 ) ENDIF
+
+ fdown_case_dispvtbi_vtmode(d: presstime, st: (per_fdown)): alaris =
+   LET s: stepvol = 
+            COND
+              d=0 AND current_sv(st) = small_step AND
+               ((newvtbi(st)>10 AND newvtbi(st)<100 AND fractional(newvtbi(st)/10)=0) OR
+                (newvtbi(st)>100 AND fractional(newvtbi(st)/100)=0)) -> big_step, 
+              d/=maxpress AND current_sv(st) = big_step AND (newvtbi(st)=10 OR newvtbi(st)=100) -> small_step,
+              ELSE ->  current_sv(st) ENDCOND
+        IN
+          st WITH [newvtbi := alaris_DN_vtbi(s, newvtbi(st)),
+                   current_sv := s,
+                   device  := resetElapsed(device(st))]
+
+   
+  fdown_case_vtbitime_vttmode(d: presstime, st: (per_fdown)): alaris =
+     LET s: stepvol = 
+            COND
+              d=0 AND current_sv(st) = small_step AND
+               ((newvtbi(st)>10 AND newvtbi(st)<100 AND fractional(newvtbi(st)/10)=0) OR
+                (newvtbi(st)>100 AND fractional(newvtbi(st)/100)=0)) -> big_step, 
+              d/=maxpress AND current_sv(st) = big_step AND (newvtbi(st)=10 OR newvtbi(st)=100) -> small_step,
+              ELSE ->  current_sv(st) ENDCOND,
+          nv: ivols = alaris_DN_vtbi(s, newvtbi(st))
+        IN
+          st WITH [newvtbi := nv,
+                   newrate := IF
+                               newtime(st) = 0 THEN 0
+			      % >>new edit<<
+			      %ELSE floor(nv / newtime(st))
+                              ELSE nv / newtime(st)
+                              ENDIF,
+                   current_sv := s,
+                   device  := resetElapsed(device(st))]
+
+alaris_DN_time(s: steptime, v: itimes): itimes = 
+     trim_time(ceiling(v/s)*s - s)
+
+alaris_dn_time(s: steptime, v: itimes): itimes = 
+     trim_time(ceiling(v/s)*s - s)
+
+  fdown_case_vtbitime_ttmode(d: presstime, st: (per_fdown)): alaris =
+   LET s: steptime = 
+            COND
+              d=4 -> 10*small_step,
+              d=3 -> 60,
+              ELSE -> 600
+             ENDCOND,
+         nt: itimes = alaris_DN_time(s, newtime(st))
+        IN
+          st WITH [newtime := nt,
+                   newrate := IF
+                               nt = 0 THEN 0
+			      % >>new edit<<
+			      %ELSE floor(newvtbi(st) / nt)
+                              ELSE newvtbi(st) / nt
+                              ENDIF,
+                   current_st := s,
+                   device  := resetElapsed(device(st))]
+
+
+  fdown_case_dispvtbi_bagmode(st: (per_fdown)): alaris =
+   st WITH [ bagscursor := 0,
+             device := resetElapsed(device(st)) ]
+  
+  fdown_case_dispvtbi_tbagmode(st: (per_fdown)): alaris =
+   st WITH [ bagscursor := 0,
+             device := resetElapsed(device(st)) ]
+
+  fdown_case_options(st: (per_fdown)): alaris =
+   st WITH [ qcursor := 
+               COND device(st)`infusing? AND NOT rdisabled(st) AND 
+                        rlock(st) -> 3,
+                    device(st)`infusing? AND NOT rdisabled(st) AND
+                        NOT rlock(st) -> 3,
+                    device(st)`infusing? AND rdisabled(st) -> 2,
+                    NOT device(st)`infusing? AND rdisabled(st)  -> 5,
+                    ELSE -> dpdtls
+               ENDCOND,
+             device  := resetElapsed(device(st)) ]
+
+  fdown(st: (per_fdown)): alaris =
+        LET d: presstime = decrement(pressed(st), 1) IN
+        (COND
+          ((topline(st)=holding) OR (topline(st)=setrate)) & 
+                   NOT rlock(st) 
+               -> fdown_case_holding_NOTrlock(d, st),
+          (topline(st) = infusing) & 
+                   NOT rlock(st) 
+               -> fdown_case_infusing_NOTrlock(d, st),
+          ((topline(st) = infusing) OR (topline(st)=holding) OR 
+               (topline(st)=setrate)) & rlock(st)     
+               -> fdown_case_infusingORholding_rlock(st),
+          (topline(st) = dispvtbi) & (entrymode(st) = vtmode)                   
+               -> fdown_case_dispvtbi_vtmode(d, st),
+          (topline(st) = vtbitime) & (entrymode(st) = vttmode)                 
+               -> fdown_case_vtbitime_vttmode(d, st),
+          (topline(st) = vtbitime) & (entrymode(st) = ttmode)                   
+               -> fdown_case_vtbitime_ttmode(d, st),
+          (topline(st) = dispvtbi) & (entrymode(st) = bagmode)                  
+               -> fdown_case_dispvtbi_bagmode(st),
+          (topline(st) = dispvtbi) & (entrymode(st) = tbagmode)                
+               -> fdown_case_dispvtbi_tbagmode(st),
+          topline(st) = options                                               
+               -> fdown_case_options(st)
+       ENDCOND) WITH [pressed := d,
+                      which_press := fdownb]
+
+ %-- note: dn(100) = 99 (and not 99.9)
+  alaris_dn_rate(d: steprate, v: irates): irates = 
+     IF    v < 100                THEN trim_rate( (ceil_rate(v*10) - d) / 10 )
+     ELSIF v >= 100 AND v < 1000  THEN trim_rate( ceil_rate(v - d) )
+     ELSE                                 trim_rate( (ceil_rate(v/10) - d) * 10 ) ENDIF
+
+  sdown_case_holding_NOTrlock(st: (per_sdown)): alaris =
+    LET v: irates = device(st)`infusionrate,
+        r: irates = alaris_dn_rate(small_step, v)
+        IN
+          st WITH [device := aug_rate(device(st), r),
+                   topline := COND r = 0 -> setrate,
+                                   ELSE -> holding ENDCOND,
+                   current_sr := small_step]
+
+  sdown_case_infusing_NOTrlock(st: (per_sdown)): alaris =
+    LET v: irates = device(st)`infusionrate,
+        r: irates = alaris_dn_rate(small_step, v)
+        IN
+          st WITH [device := aug_rate(device(st), r),
+                   current_sr := small_step]
+
+  sdown_case_infusingORholding_rlock(st: (per_sdown)): alaris =
+   st WITH [ topline := locked,
+             middisp := LAMBDA(x: imid_type): FALSE,
+             fndisp1 := fnull,
+	     fndisp2 := fnull,
+             fndisp3 := fnull,
+             device   := resetElapsed(device(st)) ]
+
+ %-- note: dn(100) = 99 (and not 99.9)
+  alaris_dn_vtbi(d: stepvol, v: ivols): ivols = 
+     IF    v < 100                THEN trim_vtbi( (ceil_vtbi(v*10) - d) / 10 )
+     ELSIF v >= 100 AND v < 1000  THEN trim_vtbi( ceil_vtbi(v - d) )
+     ELSE                                 trim_vtbi( (ceil_vtbi(v/10) - d) * 10 ) ENDIF
+
+
+  sdown_case_dispvtbi_vtmode(st: (per_sdown)): alaris =
+          st WITH [newvtbi := alaris_dn_vtbi(small_step, newvtbi(st)),
+                   current_sv := small_step,
+                   device  := resetElapsed(device(st))]
+
+  sdown_case_vtbitime_vttmode(st: (per_sdown)): alaris =
+    LET nv: ivols = alaris_dn_vtbi(small_step, newvtbi(st))
+        IN
+          st WITH [newvtbi := nv,
+                   newrate := IF
+                               newtime(st) = 0 THEN 0
+			      % >>new edit<<
+			      %ELSE floor(nv / newtime(st))
+                              ELSE nv / newtime(st)
+                              ENDIF,
+                   current_sv := small_step,
+                   device  := resetElapsed(device(st))]
+
+
+  sdown_case_vtbitime_ttmode(d: presstime, st: (per_sdown)): alaris =
+    LET s: steptime = 
+            COND
+              d=4 -> small_step,
+              d=3 -> 10*small_step,
+              d=2 -> 60,
+              ELSE -> 600
+             ENDCOND,
+        nt: itimes = alaris_dn_time(s, newtime(st))
+        IN
+          st WITH [newtime := nt,
+                   newrate := IF
+                               nt = 0 THEN 0
+			      % >>new edit<<
+			      %ELSE floor(newvtbi(st) / nt)
+                              ELSE newvtbi(st) / nt
+                              ENDIF,
+                   current_st := s,
+                   device  := resetElapsed(device(st))]
+
+  sdown_case_dispvtbi_bagmode(st: (per_sdown)): alaris =
+   st WITH [ bagscursor := COND bagscursor(st) > 0 -> bagscursor(st) - 1,
+                                bagscursor(st) = 0 -> bagscursor(st) ENDCOND,
+             device := resetElapsed(device(st)) ]
+
+  sdown_case_dispvtbi_tbagmode(st: (per_sdown)): alaris =
+   st WITH [ bagscursor := COND bagscursor(st) > 0 -> bagscursor(st) - 1,
+                                bagscursor(st) = 0 -> bagscursor(st) ENDCOND,
+             device := resetElapsed(device(st)) ]
+
+  sdown_case_options(st: (per_sdown)): alaris =
+   st WITH [ qcursor := COND 
+                          qcursor(st) = dpdtls -> qcursor(st),
+                          qcursor(st) < dpdtls AND 
+                             (optionsmenu(st)(qcursor(st)+1) = optionblank)                                     -> qcursor(st),
+                             ELSE -> qcursor(st)+1 ENDCOND,
+              device := resetElapsed(device(st)) ]
+
+
+
+  sdown(st: (per_sdown)): alaris =
+       LET d: presstime = decrement(pressed(st), 1) IN
+        (COND
+         ((topline(st) = holding) OR (topline(st) = setrate)) & 
+               NOT rlock(st) 
+               -> sdown_case_holding_NOTrlock(st),
+         (topline(st) = infusing) & 
+               NOT rlock(st) 
+               -> sdown_case_infusing_NOTrlock(st),
+         ((topline(st) = infusing) OR (topline(st) = holding) OR (topline(st) = setrate)) & 
+                   rlock(st)     
+               -> sdown_case_infusingORholding_rlock(st),
+         (topline(st) = dispvtbi) & (entrymode(st) = vtmode)                            
+               -> sdown_case_dispvtbi_vtmode(st),
+         (topline(st) = vtbitime) & (entrymode(st) = vttmode)                               
+               -> sdown_case_vtbitime_vttmode(st),
+         (topline(st) = vtbitime) & (entrymode(st) = ttmode)                                              
+               -> sdown_case_vtbitime_ttmode(d, st),
+	 (topline(st) = dispvtbi) & (entrymode(st) = bagmode)                                             
+               -> sdown_case_dispvtbi_bagmode(st),
+         (topline(st) = dispvtbi) & (entrymode(st) = tbagmode)                                             
+               -> sdown_case_dispvtbi_tbagmode(st),
+         (topline(st) = options)                                               
+               -> sdown_case_options(st)
+	ENDCOND) WITH [pressed := d,
+                       which_press := sdownb]
+  
+ 
+
+ per_release_chevron(st: alaris): boolean =
+            per_chevron(st) OR (topline(st) = locked AND 
+                   ((entrymode(st) = rmode) OR (entrymode(st) = infusemode)) AND
+                   rlock(st))
+
+ per_release_fup(st: alaris): boolean = 
+      which_press(st) = fupb AND pressed(st) < maxpress AND per_release_chevron(st)
+
+ release_fup(st:(per_release_fup)): alaris =
+     release_key(st)
+
+ per_release_sup(st: alaris): boolean = 
+      which_press(st) = supb AND pressed(st) < maxpress AND per_release_chevron(st)
+
+ release_sup(st:(per_release_sup)): alaris =
+     release_key(st)
+
+
+ per_release_fdown(st: alaris): boolean = 
+      which_press(st) = fdownb AND pressed(st) < maxpress AND per_release_chevron(st)
+
+ release_fdown(st:(per_release_fdown)): alaris =
+     release_key(st)
+
+per_release_sdown(st: alaris): boolean = 
+      which_press(st) = sdownb AND pressed(st) < maxpress AND per_release_chevron(st)
+
+ release_sdown(st:(per_release_sdown)): alaris =
+     release_key(st)
+
+%--- unable to prove these theorem within a reasonable time using grind
+% QED Run time  = 42.03 secs. 22/4/15
+check_chev_fup_permission: THEOREM
+   FORALL (st: alaris):
+      per_fup(st) IMPLIES per_release_fup(fup(st))
+% QED Run time  = 29.46 secs. 22/4/15
+check_chev_sdown_permission: THEOREM
+   FORALL (st: alaris):
+      per_sdown(st) IMPLIES per_release_sdown(sdown(st))
+% QED Run time  = 48.74 secs. 22/4/15
+check_chev_fdown_permission: THEOREM
+   FORALL (st: alaris):
+      per_fdown(st) IMPLIES per_release_fdown(fdown(st))
+
+ END alaris_th

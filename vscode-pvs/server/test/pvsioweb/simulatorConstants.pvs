@@ -1,0 +1,84 @@
+simulatorConstants_th: THEORY
+ BEGIN IMPORTING drugLib
+
+  %-- DrugLibraryBus
+  dlib_drugID: nat = 10
+  dlib_amount: real = 2000
+  dlib_diluentVolume: real = 0.3
+
+  dlib_doseRateUpperHardLimit: real = morphINE_doseRate_max
+  dlib_doseRateUpperSoftLimit: {r: real | r <= dlib_doseRateUpperHardLimit} = 20
+  dlib_doseRateLowerHardLimit: real = 10
+  dlib_doseRateLowerSoftLimit: {r: real | r >= dlib_doseRateLowerHardLimit} = 10
+  dlib_doseRateTypical: {r: real | r <= dlib_doseRateUpperSoftLimit
+  			    AND r >= dlib_doseRateLowerSoftLimit} = dlib_doseRateTyp
+  dlib_doseRateUnit: nat = 0
+
+  dlib_vtbiTypical: real = dlib_vtbiTyp
+  dlib_vtbiUpperHardLimit: real = morphINE_VTBI_max
+  dlib_vtbiUpperSoftLimit: {r: real | r <= dlib_vtbiUpperHardLimit} = 300
+  dlib_vtbiLowerHardLimit: real = 40
+  dlib_vtbiLowerSoftLimit: {r: real | r >= dlib_vtbiLowerHardLimit} = 200
+  dlib_vtbiUnit: nat = 1
+
+  dlib_drugConcentrationUpperHardLimit: real = 8
+  dlib_drugConcentrationUpperSoftLimit: {r: real | r <= dlib_drugConcentrationUpperHardLimit} = 8
+  dlib_drugConcentrationLowerHardLimit: real = 8
+  dlib_drugConcentrationLowerSoftLimit: {r: real | r >= dlib_drugConcentrationLowerHardLimit} = 8
+  dlib_drugConcentrationTypical: {r: real | r >= dlib_drugConcentrationLowerSoftLimit
+  				     	    AND r <= dlib_drugConcentrationUpperSoftLimit } = 8
+
+  %-- DrugInformationBus
+  dlib_drugDoseAmount: real = dlib_amount
+  dlib_drugDiluentVolume: real = dlib_diluentVolume
+  dlib_drugConcentration: real = dlib_drugConcentrationTypical
+  dlib_drugDoseUnit: nat = dlib_doseRateUnit
+  dlib_drugVolumeUnit: nat = dlib_vtbiUnit
+  
+  %-- InfusionStatusBus
+  sb_isBolusInProgress: boolean = FALSE
+  sb_totalVolumeInfused: real = 0
+  sb_remainingVolumeInReservoir: real = 0
+
+  %-- PumpConfigurationStatusBus
+  sb_isPostSuccessful:  boolean = TRUE
+  sb_isPumpPrimed: boolean = TRUE
+  sb_isAdminSetCheckPassed: boolean = TRUE
+
+  %-- State
+  ErrCond   : upto(15) = 0
+  ClearCond : upto(15) = 0
+
+  %-- Infusion Sensor Signals
+  iss_isReservoirEmpty		  : boolean = FALSE
+  iss_isReservoirLow		  : boolean = FALSE
+  iss_isOcclusionDetected	  : boolean = FALSE
+  iss_isInfusionRateTooHigh	  : boolean = FALSE
+  iss_isInfusionRateTooLow	  : boolean = FALSE
+  iss_isInfusionRateLessThanKVO   : boolean = FALSE
+  iss_isFlowRateNotStable	  : boolean = FALSE
+  iss_isFlowRateOverPumpCapacity  : boolean = FALSE
+  iss_isInfusionPausedLong	  : boolean = FALSE
+  iss_isInfusionPausedTooLong	  : boolean = FALSE
+  iss_isAirInLineDetected	  : boolean = FALSE
+  
+
+  %-- Hardware Sensor Signals
+  hss_isLoggingFailed	      	   : boolean = FALSE
+  hss_isWatchDogInterruptDetected  : boolean = FALSE
+  hss_isReservoirDoorOpen	   : boolean = FALSE
+  hss_isBatteryDepleted	   	   : boolean = FALSE
+  hss_isBatteryLow		   : boolean = FALSE
+  hss_isBatteryUnableToCharge	   : boolean = FALSE
+  hss_isSupplyVoltageOutOfRange    : boolean = FALSE
+  hss_isCPUInError		   : boolean = FALSE
+  hss_isRTCInError		   : boolean = FALSE
+  hss_isMemoryCorrupted	   	   : boolean = FALSE
+  hss_isPumpTooHot		   : boolean = FALSE
+  hss_isPumpOverheated	   	   : boolean = FALSE
+
+  %-- bolus information
+  bolusVolumeTypical: real = 2000
+  bolusTimeTypical  : real = 12
+
+ END simulatorConstants_th

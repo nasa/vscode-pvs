@@ -1,0 +1,17 @@
+reference_model_th: THEORY
+ BEGIN
+
+  ui_state: TYPE
+  st, st0, st1: VAR ui_state
+
+  init?(st): boolean
+  vtbi_settings_in_range?(vmin,vmax: nonneg_real)(st): boolean
+  vmin, vmax: nonneg_real
+  trans(st0, st1): boolean
+
+  R1_Axiom: AXIOM
+      (init?(st) => vtbi_settings_in_range?(vmin,vmax)(st)) AND
+       ((vtbi_settings_in_range?(vmin,vmax)(st0) AND trans(st0, st1)) =>
+         vtbi_settings_in_range?(vmin,vmax)(st1))
+
+ END reference_model_th

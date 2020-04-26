@@ -1,0 +1,285 @@
+alarisPC8100PumpModule: THEORY
+ BEGIN IMPORTING constants 
+
+  dataEntryMode: TYPE = {VTBI, RATE, NONE}
+
+  state: TYPE = [#
+    mode          : dataEntryMode,
+    displayRate   : { s: string | s`length <= MAIN_DISPLAY_SIZE_RATE },
+    displayVTBI   : { s: string | s`length <= MAIN_DISPLAY_SIZE_VTBI },
+
+    totalDigits   : upto(MAIN_DISPLAY_SIZE_VTBI),
+    dispval       : float,
+    dotEntered    : bool,
+    decimalDigits : { x: integer | x >= 0 },
+    rejectKeys    : bool,
+    displayError  : string, % Value xxx. Exceeds MAX RATE 999 (VTBI 9999)
+
+    programmedRate: float,
+    programmedVTBI: float
+  #]
+
+  % rate has 1 decimal digit between (0,100), maxrate is 999, minrate is 0.1
+  % vtbi has 2 decimal digits between (1, 10), one decimal digit between [10, 999.9], zero decimal digits between [1000, 9999]
+
+  padding(n: nat): RECURSIVE string = 
+    IF n <= 0 THEN ""
+    ELSE "_" + padding(n-1) ENDIF
+   MEASURE n
+
+  space(n: nat): RECURSIVE string = 
+    IF n <= 0 THEN ""
+    ELSE "  " + space(n-1) ENDIF
+   MEASURE n
+
+
+  render(val: float, MAX_LEN: nat)(st: state): { s: string | s`length < MAX_LEN } =
+   LET val = dispval(st) 
+    IN padding(MAX_LEN - totalDigits(st))
+         + floor(val) 
+         + LET firstDecimal = mod(floor(val*10),10),
+	       secondDecimal = mod(floor(val*100),10)
+            IN COND 
+ 	     dotEntered(st) AND decimalDigits(st) = 2 -> "." + firstDecimal + secondDecimal,
+ 	     dotEntered(st) AND decimalDigits(st) = 1 -> "." + firstDecimal,
+	     dotEntered(st) AND decimalDigits(st) = 0 -> ".",
+	     NOT dotEntered(st) -> "" ENDCOND
+
+
+  countDigits(val: float): nat =
+   LET nIntegerDigits = if mod(floor(val/1000), 10) /= 0 then 4
+       		      	elsif mod(floor(val/100), 10) /= 0 then 3
+			elsif mod(floor(val/10), 10) /= 0 then 2
+			elsif mod(floor(val), 10) /= 0 then 1
+			else 0 endif,
+       nDecimals = if mod(floor(val*100), 10) /= 0 then 3 % this is to include the decimal point
+       		   elsif mod(floor(val*10), 10) /= 0 then 2
+		   else 0 endif
+    IN nIntegerDigits + nDecimals
+
+
+  render_alt(val: float, MAX_LEN: nat, whiteSpaces: boolean): { s: string | s`length < MAX_LEN } =
+   if val = 0 then if whiteSpaces then space(MAX_LEN) else padding(MAX_LEN) endif
+   else
+       if whiteSpaces then space(MAX_LEN - countDigits(val)) + val
+       else padding(MAX_LEN - countDigits(val)) + val endif
+   endif
+
+
+  digitClicked(key: KEY_CODE)(st: state): state = 
+    if(rejectKeys(st)) then st else
+    if(dispval(st) = 0 & key = KEY_0 & not dotEntered(st)) then st % 0 is not allowed as first integer digit
+    else
+    LET tmp: float = dispval(st),
+        (tmp, st) =
+        if(dotEntered(st)) %{ 
+	then	if(decimalDigits(st) < IF mode(st) = VTBI then MAX_DECIMAL_DIGITS_VTBI else MAX_DECIMAL_DIGITS_RATE endif) %{
+		then	if(NOT(tmp >= THRESHOLD_ONE_DECIMAL AND decimalDigits(st) = 0
+			      OR tmp >= THRESHOLD_TWO_DECIMALS AND decimalDigits(st) = 1)) 
+			then %{
+			      LET PPdecimalDigits = decimalDigits(st) + 1
+			       IN (tmp + key * pow10(-1 * PPdecimalDigits), st WITH [ decimalDigits := PPdecimalDigits])
+			%}
+			else (tmp, st) endif
+		%}
+		% else ignore digits and block input
+		else (tmp, st WITH [ rejectKeys := TRUE ]) endif
+	%}
+	else %{ 
+	     if(tmp = 0 & key = KEY_0) then (tmp, st) % do nothing, integer numbers cannot start with 0
+	     else (tmp * 10 + key, st) endif endif
+	%}
+     IN
+	if(tmp >= 0 AND tmp <= if (mode(st) = RATE) then MAX_RATE else MAX_VTBI endif) %{
+	then	LET st = st WITH [ dispval := tmp,
+		       	    	   totalDigits := if rejectKeys(st) then totalDigits(st) else totalDigits(st) + 1 endif,
+				   rejectKeys := FALSE ]
+		 IN      if mode(st) = RATE then st WITH [ displayRate := render(tmp, MAIN_DISPLAY_SIZE_RATE)(st) ]
+		 	 else st WITH [ displayVTBI := render(tmp, MAIN_DISPLAY_SIZE_VTBI)(st) ] endif
+	%}
+	else %{ 
+		st WITH [ displayError := "" + tmp + ". Exceeds MAX RATE " + if (mode(st) = RATE) then MAX_RATE else MAX_VTBI endif,
+		          rejectKeys := true ] endif
+	%} 
+     endif endif
+
+  dotClicked(st: state): state =
+	if(NOT rejectKeys(st) AND NOT dotEntered(st) AND dispval(st) < THRESHOLD_ONE_DECIMAL) %{
+	then LET st = st WITH [ dotEntered := true ],
+	         st = st WITH [ totalDigits := totalDigits(st) + if dispval(st) = 0 & dotEntered(st) then 2 else 1 endif ]
+	      IN if mode(st) = RATE 
+	      	 then st WITH [ displayRate := render(dispval(st), MAIN_DISPLAY_SIZE_RATE)(st) ]
+	         else st WITH [ displayVTBI := render(dispval(st), MAIN_DISPLAY_SIZE_VTBI)(st) ] endif
+	%}
+	% else ignore decimal point
+	else st endif
+
+  enterClicked(st: state): state =
+	if(NOT rejectKeys(st)) %{
+	then	if( (dispval(st) = 0 & ((mode(st) = RATE & programmedRate(st) > 0) or (mode(st) = VTBI & programmedVTBI(st) > 0))) )
+		then if(mode(st) = VTBI) then 
+                        st WITH [ displayVTBI := render_alt(programmedVTBI(st), MAIN_DISPLAY_SIZE_VTBI, true),
+			          displayError := "" ]
+			   	  % secondaryDisplay := render(st) ]
+		     else 
+                        st WITH [ displayRate := render_alt(programmedRate(st), MAIN_DISPLAY_SIZE_RATE, true),
+			          displayError := "" ]
+			   	  % secondaryDisplay := render(st) ]
+		     endif
+                elsif(dispval(st) >= if (mode(st) = RATE) then MIN_RATE else MIN_VTBI endif) %{
+		then if(mode(st) = VTBI) then 
+                        st WITH [ programmedVTBI := dispval(st),
+			   	  displayVTBI := render_alt(dispval(st), MAIN_DISPLAY_SIZE_VTBI, true),
+			          displayError := "" ]
+			   	  % secondaryDisplay := render(st) ]
+		     else 
+                        st WITH [ programmedRate := dispval(st),
+			          displayRate := render_alt(dispval(st), MAIN_DISPLAY_SIZE_RATE, true),
+			          displayError := "" ]
+			   	  % secondaryDisplay := render(st) ]
+		     endif
+		%}
+		else %{
+			st WITH [ displayError := "" + dispval(st) + ". is less than MIN RATE " + if (mode(st) = RATE) then MIN_RATE else MIN_VTBI endif,
+			          rejectKeys := true ] endif
+		%}
+	else    st endif
+	%}
+
+  cancelClicked(st: state): state =
+	if(NOT rejectKeys(st)) % restore the value already programmed in the pump module
+	then if(mode(st) = VTBI) 
+	     then st WITH [ dispval := 0,
+		       	    displayVTBI := render_alt(programmedVTBI(st), MAIN_DISPLAY_SIZE_VTBI, false),
+		       	    dotEntered := false,
+		       	    decimalDigits := 0,
+			    totalDigits := 0 ]
+	     elsif(mode(st) = RATE)
+	     then st WITH [ dispval := 0,
+		       	    displayRate := render_alt(programmedRate(st), MAIN_DISPLAY_SIZE_RATE, false),
+		       	    dotEntered := false,
+		       	    decimalDigits := 0,
+			    totalDigits := 0 ]
+	     else st endif
+	else % cancel error message and restore programmed value
+    	     if(mode(st) = VTBI)
+	     then st WITH [ dispval := programmedVTBI(st),
+	     	     	    displayError := "",
+		       	    displayVTBI := render_alt(programmedVTBI(st), MAIN_DISPLAY_SIZE_VTBI, false),
+	                    rejectKeys := FALSE ]
+	     else st WITH [ dispval := programmedRate(st),
+	     	     	    displayError := "",
+		       	    displayRate := render_alt(programmedRate(st), MAIN_DISPLAY_SIZE_RATE, false),
+	                    rejectKeys := FALSE ] endif endif
+
+
+
+  clearClicked(st: state): state = 
+   LET st = if(mode(st) = RATE) then st WITH [ displayRate := "", programmedRate := 0 ]
+            elsif(mode(st) = VTBI) then st WITH [ displayVTBI := "", programmedVTBI := 0 ]
+	    else st endif
+    IN st WITH [
+        dispval := 0,
+	dotEntered := false,
+	decimalDigits := 0,
+	totalDigits := 0,
+	rejectKeys := FALSE,
+	displayError := "" ]
+  
+  selectRate(st: state): state = 
+    LET % if current mode is VTBI, changing the selection automatically confirms the VTBI value (if valid)
+        st = if(mode(st) = VTBI & dispval(st) > 0) then enterClicked(st) else st endif
+	% if rejectKeys is true, then the VTBI value could not be confirmed -- an error is displayed, the selection is not changed, and keys can be clicked only to modify VTBI
+     IN if(rejectKeys(st)) then st
+        else % change mode to rate, render programmed rate value, and reset data entry variables
+             LET st = if(programmedRate(st) = 0) then st WITH [ displayRate := padding(MAIN_DISPLAY_SIZE_RATE) ]
+    	              else st WITH [ displayRate := render_alt(programmedRate(st), MAIN_DISPLAY_SIZE_RATE, false) ] endif
+              IN st WITH [ dotEntered := FALSE,
+	      	    	   displayVTBI := if programmedVTBI(st) > 0 then render_alt(programmedVTBI(st), MAIN_DISPLAY_SIZE_VTBI, true) else "" endif,
+     	                   decimalDigits := 0,
+	               	   mode := RATE,
+		           dispval := 0,
+			   totalDigits := 0,
+			   displayError := "Enter RATE" ] endif
+
+  selectVTBI(st: state): state = 
+    LET % if current mode is RATE, changing the selection automatically confirms the RATE value (if valid)
+        st = if(mode(st) = RATE & dispval(st) > 0) then enterClicked(st) else st endif
+	% if rejectKeys is true, then the VTBI value could not be confirmed -- an error is displayed, the selection is not changed, and keys can be clicked only to modify VTBI
+     IN if(rejectKeys(st)) then st
+        else % change mode to rate, render programmed rate value, and reset data entry variables
+             LET st = if(programmedVTBI(st) = 0) then st WITH [ displayVTBI := padding(MAIN_DISPLAY_SIZE_VTBI) ]
+    	              else st WITH [ displayVTBI := render_alt(programmedVTBI(st), MAIN_DISPLAY_SIZE_VTBI, false) ] endif
+              IN st WITH [ dotEntered := FALSE,
+	      	    	   displayRate := if programmedRate(st) > 0 then render_alt(programmedRate(st), MAIN_DISPLAY_SIZE_RATE, true) else "" endif,
+     	                   decimalDigits := 0,
+	               	   mode := VTBI,
+		           dispval := 0,
+			   totalDigits := 0,
+			   displayError := "Enter VTBI" ] endif
+
+
+  EXCEPTION(errType: int, key: int, val: unsigned_long_int)(st: state): state =
+	st WITH [ rejectKeys := true ]
+
+  processKey(key: KEY_CODE)(st: state): state =
+    COND
+	 key = KEY_0 OR key = KEY_1 OR key = KEY_2 OR key = KEY_3 OR key = KEY_4
+	  or key = KEY_5 OR key = KEY_6 OR key = KEY_7 OR key = KEY_8 OR key = KEY_9
+               -> digitClicked(key)(st),
+
+         key = KEY_DOT 
+               -> dotClicked(st),
+
+	 key = KEY_ENTER  
+	       -> enterClicked(st),
+	
+	 key = KEY_CANCEL
+	       -> cancelClicked(st),
+
+	 key = KEY_RESET
+               -> clearClicked(st),
+
+	 key = KEY_RATE
+	       -> selectRate(st),
+
+	 key = KEY_VTBI
+	       -> selectVTBI(st),
+         ELSE % unrecognised key - call exception handler
+	       -> EXCEPTION(INVALID_KEY, key, dispval(st))(st)
+   ENDCOND
+
+   init_numberpad: state = (#
+        mode := NONE,
+        totalDigits := 0,
+   	dispval := 0,
+	displayRate := "",
+	displayVTBI := "",
+	dotEntered := false,
+	decimalDigits := 0,
+	rejectKeys := false,
+	programmedVTBI := 0,
+	programmedRate := 0,
+	displayError := " "
+   #)
+
+
+   click_0(st: state): state = processKey(KEY_0)(st)
+   click_1(st: state): state = processKey(KEY_1)(st)
+   click_2(st: state): state = processKey(KEY_2)(st)
+   click_3(st: state): state = processKey(KEY_3)(st)
+   click_4(st: state): state = processKey(KEY_4)(st)
+   click_5(st: state): state = processKey(KEY_5)(st)
+   click_6(st: state): state = processKey(KEY_6)(st)
+   click_7(st: state): state = processKey(KEY_7)(st)
+   click_8(st: state): state = processKey(KEY_8)(st)
+   click_9(st: state): state = processKey(KEY_9)(st)
+   click_CLEAR(st: state): state = processKey(KEY_RESET)(st)
+   click_CANCEL(st: state): state = processKey(KEY_CANCEL)(st)
+   click_ENTER(st: state): state = processKey(KEY_ENTER)(st)
+   click_POINT(st: state): state = processKey(KEY_DOT)(st)
+   click_SELECT_RATE(st: state): state = processKey(KEY_RATE)(st)
+   click_SELECT_VTBI(st: state): state = processKey(KEY_VTBI)(st)
+   init(x: real): state = init_numberpad
+
+ END alarisPC8100PumpModule

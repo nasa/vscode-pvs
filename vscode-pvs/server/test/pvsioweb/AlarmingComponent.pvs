@@ -1,0 +1,87 @@
+AlarmingComponent_th: THEORY
+ BEGIN
+  IMPORTING types_and_constants_th, utility_functions_th, StartInfusionEvents_th
+
+  MachineState: TYPE = CheckReady_MachineState
+  current_state(st: State): MachineState = CheckReady_current_state(st)
+  leave_state(m: MachineState)(st: State): State = CheckReady_leave_state(m)(st)
+
+  enter_state(m: MachineState)(st: State): State =
+     st WITH [ CheckReady_CurrentState := m ]
+
+
+  per_E_Clock(st: State): boolean =
+    current_state(st) = s1 OR current_state(st) = s2
+  E_Clock(st: (per_E_Clock)): State =
+    COND
+     current_state(st) = s1
+      -> IF O_InfusionInProgress(st) = FALSE
+         THEN IF per_E_Ready(st) THEN E_Ready(st) ELSE st ENDIF
+	 ELSE LET new_st = leave_state(s1)(st)
+	       IN enter_state(Normal)(new_st) ENDIF,
+     current_state(st) = s2
+      -> IF O_InfusionInProgress(st)
+         THEN IF per_E_NotReady(st) THEN E_NotReady(st) ELSE st ENDIF
+	 ELSE st ENDIF
+    ENDCOND
+
+
+  % RequestToStart is invoked by ConfigureInfusionProgram in E_StartInfusiong
+  per_E_RequestToStart(st: State): boolean =
+    current_state(st) = Normal OR current_state(st) = s1 OR current_state(st) = s2
+  E_RequestToStart(st: (per_E_RequestToStart)): State =
+    COND
+     current_state(st) = Normal
+      -> LET new_st = leave_state(Normal)(st)
+      	  IN enter_state(Checking)(new_st),
+     current_state(st)= s1
+      -> LET new_st = leave_state(s1)(st)
+          IN enter_state(Checking)(new_st),
+     current_state(st)= s2
+      -> LET new_st = leave_state(s2)(st)
+          IN enter_state(Checking)(new_st)
+    ENDCOND
+
+  
+  % Restart is invoked by CheckDrugRoutine in tick -- this event starts up the controller of the Alarming Component
+  per_E_Restart(st: State): boolean = 
+    current_state(st) = Checking OR current_state(st) = s1 OR current_state(st) = s2
+  E_Restart(st: (per_E_Restart)): State =
+    COND
+     current_state(st) = Checking
+      -> LET new_st = leave_state(Checking)(st)
+          IN enter_state(Normal)(new_st),
+     current_state(st) = s1
+      -> LET new_st = leave_state(s1)(st)
+          IN enter_state(Normal)(new_st),
+     current_state(st) = s2
+      -> LET new_st = leave_state(s2)(st)
+          IN enter_state(Normal)(new_st)
+    ENDCOND
+
+   per_tick(st: State): boolean =
+     current_state(st) = Checking
+   tick(st: (per_tick)): State =
+     COND
+      current_state(st) = Checking
+       -> IF isPumpReady(st)
+          THEN LET new_st = leave_state(Checking)(st)
+	        IN enter_state(s1)(new_st)
+	  ELSE LET new_st = leave_state(Checking)(st)
+	        IN enter_state(s2)(new_st) ENDIF
+     ENDCOND
+
+  %-- need to define the abstract behaviour of this function
+  E_AlarmClear(st: State): State = st
+%   LET dbg = println(">> AlarmingComponent.Controller.E_AlarmClear <<")
+%    IN st % need to check -> WITH [ ErrCond := 0 ]
+
+%  E_RequestToStart(st: State): State =
+%   LET dbg = println(">> AlarmingComponent.CheckReady.E_RequestToStart <<")
+%    IN st
+
+%  E_Restart(st: State): State =
+%   LET dbg = println(">> AlarmingComponent.Controller.E_Restart <<")
+%    IN st
+
+ END AlarmingComponent_th

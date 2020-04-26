@@ -1,4 +1,8 @@
 ## ChangeLog
+### 1.0.18-alpha (2020.04.26)
+- Improved Workspace Explorer
+- Improved editor feedback for parsing/typechecking
+
 ### 1.0.17 (2020.04.20)
 - Improved Proof Mate functionalities (profiles, recommended commands, inline help)
 - Improved Prover CLI (autocompletion for lemmas)

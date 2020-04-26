@@ -1,0 +1,16 @@
+GPCA_Hardware_emulation: THEORY
+ BEGIN IMPORTING types_and_constants_th, utility_functions_th
+
+   % updates totalVolumeInfused
+   per_E_Pump_tick(st: IController_State): boolean = 
+      infusing(st) = TRUE AND doseRate(st) > 0
+   E_Pump_tick(st: (per_E_Pump_tick)): State =
+      st WITH [ infuStatus := infuStatus(st) 
+         WITH [ totalVolumeInfused := infuStatus(st)`totalVolumeInfused + drugInfo(st)`drugConcentration / doseRate(st) / 60 ]]
+
+   resetTotalVolumeInfused(st: IController_State): IController_State =
+      st WITH [ infuStatus := infuStatus(st) 
+         WITH [ totalVolumeInfused := 0 ]]
+
+
+ END GPCA_Hardware_emulation

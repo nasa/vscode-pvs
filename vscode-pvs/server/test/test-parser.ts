@@ -1,10 +1,11 @@
 // import { ContextDiagnostics } from "./server/pvsProcess";
 //import { PvsFindDeclaration, PvsParserResponse, PvsTypecheckerResponse, XmlRpcResponse } from "./server/common/serverInterface";
-import * as fsUtils from "./server/common/fsUtils";
+import * as fsUtils from "../src/common/fsUtils";
 import * as test from "./test-constants";
-import { PvsResponse, PvsResult } from "./server/common/pvs-gui";
-import { PvsProxy } from './server/pvsProxy'; // XmlRpcSystemMethods
-import { label, log, dir, configFile, sandboxExamples, safeSandboxExamples } from './test-utils';
+import { PvsResponse, PvsResult } from "../src/common/pvs-gui";
+import { PvsProxy } from '../src/pvsProxy'; // XmlRpcSystemMethods
+import { label, log, dir, configFile, sandboxExamples, safeSandboxExamples, 
+	stever, steverFiles, pillbox, pillboxFiles, pvsioweb, pvsiowebFiles } from './test-utils';
 
 //----------------------------
 //   Test cases for parser
@@ -18,7 +19,7 @@ describe("pvs-parser", () => {
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
 		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
-		await pvsProxy.activate({ debugMode: true }); // this will also start pvs-server
+		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
@@ -27,7 +28,7 @@ describe("pvs-parser", () => {
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
 
-		if (test.EXTERNAL_SERVER) {
+		if (!test.EXTERNAL_SERVER) {
 			// kill pvs server & proxy
 			console.log(" killing pvs server...")
 			await pvsProxy.killPvsServer();
@@ -40,32 +41,18 @@ describe("pvs-parser", () => {
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
-		const response: PvsResponse = await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
-		// dir(response); // Uncomment this to see the whole ans
-		expect(response).not.toBeNull();
+		const response: PvsResponse = await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples }, { test: true });
+		dir(response); // set VERBOSE to true in test-utils if you want to see the output
+		expect(response).toBeDefined();
+		expect(response.result).toBeDefined();
 		expect(response.result).toEqual(test.parse1_result);
-	}, 100000);
-
-	// it(`can parse multiple files in parallel`, async () => {
-	// 	label(`can parse multiple files in parallel`);
-	// 	// Need to clear-theories, in case rerunning with the same server.
-	// 	await pvsProxy.lisp("(clear-theories t)");
-
-	// 	// async calls
-	// 	pvsProxy.parseFile({ fileName: "alaris2lnewmodes", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
-	// 	pvsProxy.parseFile({ fileName: "alaris2lnewmodes_pump", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
-	// 	pvsProxy.parseFile({ fileName: "alaris2lnewmodes_types_and_constants", fileExtension: ".pvs", contextFolder: safeSandboxExamples });
-
-	// 	const response: PvsResponse = await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
-	// 	// dir(response); // Uncomment this to see the whole ans
-	// 	expect(response).not.toBeNull();
-	// 	expect(response.result).toEqual(test.parse1_result);
-	// }, 100000);
+		expect(response.error).not.toBeDefined();
+	}, 4000);
 
 	it(`can report parse errors`, async () => {
 		label(`can report parse errors`);
 
-		const response: PvsResult = await pvsProxy.parseFile({ fileName: "lib0", fileExtension: ".pvs", contextFolder: sandboxExamples });
+		const response: PvsResult = await pvsProxy.parseFile({ fileName: "lib0", fileExtension: ".pvs", contextFolder: sandboxExamples }, { test: true });
 		dir(response);
 		const exp = {
 		code: 1,
@@ -88,21 +75,79 @@ describe("pvs-parser", () => {
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
-		const response: PvsResponse = await pvsProxy.parseFile({ fileName: "test", fileExtension: ".pvs", contextFolder: sandboxExamples });
-		dir(response); // Uncomment this to see the whole ans
-		expect(response).not.toBeNull();
+		const response: PvsResponse = await pvsProxy.parseFile({ fileName: "test", fileExtension: ".pvs", contextFolder: sandboxExamples }, { test: true });
+		dir(response); // set VERBOSE to true in test-utils if you want to see the output
+		expect(response).toBeDefined();
 	}, 100000);
 
 	it(`can parse file when filename contains '.'`, async () => {
 		label(`can parse file when filename contains '.'`);
 
-		let response: PvsResponse = await pvsProxy.parseFile({ fileName: "alaris2lnewmodes.pump", fileExtension: ".pvs", contextFolder: sandboxExamples });
+		let response: PvsResponse = await pvsProxy.parseFile({ fileName: "alaris2lnewmodes.pump", fileExtension: ".pvs", contextFolder: sandboxExamples }, { test: true });
 		dir(response);
-		expect(response).not.toBeNull();
-		expect(response.result).not.toBeNull();
+		expect(response).toBeDefined();
+		expect(response.result).toBeDefined();
 		expect(response.result.length).toEqual(1);
 		expect(response.result).toEqual(test.parse2_result);
+		expect(response.error).not.toBeDefined();
 	}, 100000);
 
+	//-----------------------
+	// additional test cases
+	//-----------------------
+
+	for (let i = 0; i < steverFiles.length; i++) {
+		it(`can parse stever/${steverFiles[i]}.pvs`, async () => {
+			label(`can parse stever/${steverFiles[i]}.pvs`);
+			// Need to clear-theories, in case rerunning with the same server.
+			await pvsProxy.lisp("(clear-theories t)");
+
+			const response: PvsResponse = await pvsProxy.parseFile({
+				fileName: steverFiles[i],
+				fileExtension: ".pvs", 
+				contextFolder: stever
+			}, { test: true });
+			dir(response); // set VERBOSE to true in test-utils if you want to see the output
+			expect(response).toBeDefined();
+			expect(response.result).toBeDefined();
+			expect(response.error).not.toBeDefined();
+		}, 8000);
+	}
+
+	for (let i = 0; i < pillboxFiles.length; i++) {
+		it(`can parse pillbox/${pillboxFiles[i]}.pvs`, async () => {
+			label(`can parse pillbox/${pillboxFiles[i]}.pvs`);
+			// Need to clear-theories, in case rerunning with the same server.
+			await pvsProxy.lisp("(clear-theories t)");
+
+			const response: PvsResponse = await pvsProxy.parseFile({
+				fileName: pillboxFiles[i],
+				fileExtension: ".pvs", 
+				contextFolder: pillbox
+			}, { test: true });
+			dir(response); // set VERBOSE to true in test-utils if you want to see the output
+			expect(response).toBeDefined();
+			expect(response.result).toBeDefined();
+			expect(response.error).not.toBeDefined();
+		}, 8000);
+	}
+
+	for (let i = 0; i < pvsiowebFiles.length; i++) {
+		it(`can parse pvsioweb/${pvsiowebFiles[i]}.pvs`, async () => {
+			label(`can parse pvsioweb/${pvsiowebFiles[i]}.pvs`);
+			// Need to clear-theories, in case rerunning with the same server.
+			await pvsProxy.lisp("(clear-theories t)");
+
+			const response: PvsResponse = await pvsProxy.parseFile({
+				fileName: pvsiowebFiles[i],
+				fileExtension: ".pvs", 
+				contextFolder: pvsioweb
+			}, { test: true });
+			dir(response); // set VERBOSE to true in test-utils if you want to see the output
+			expect(response).toBeDefined();
+			expect(response.result).toBeDefined();
+			expect(response.error).not.toBeDefined();
+		}, 8000);
+	}
 });
 

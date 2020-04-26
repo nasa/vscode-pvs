@@ -1,0 +1,291 @@
+GPCA_Simulink_Controller_Bridge: THEORY
+ BEGIN IMPORTING GPCA_Language, GPCA_Limits
+
+  ControllerCMD: DATATYPE BEGIN
+       CMD_NULL: CMD_NULL?
+       PowerButton: PowerButton?
+       StartNewInfusion: StartNewInfusion?
+       CheckAdminSet: CheckAdminSet?
+       PrimePump: PrimePump?
+       CheckDrug: CheckDrug?
+       ConfigureInfusionProgram: ConfigureInfusionProgram?
+       ConfigureConcentration: ConfigureConcentration?
+       ConfirmDoseRate(val: device_real): ConfirmDoseRate?
+       ConfirmVTBI(val: device_real): ConfirmVTBI?
+       StartInfusion: StartInfusion?
+       ChangeDoseRate: ChangeDoseRate?
+       ChangeVTBI: ChangeVTBI?
+       PauseInfusion: PauseInfusion?
+       ConfirmPauseInfusion: ConfirmPauseInfusion?
+       StopInfusion: StopInfusion?
+       ConfirmStopInfusion: ConfirmStopInfusion?
+       RequestBolus: RequestBolus?
+       ClearAlarm: ClearAlarm?
+       ConfirmPowerDown: ConfirmPowerDown?
+       Cancel: Cancel?
+       END ControllerCMD
+
+  ControllerState: DATATYPE BEGIN
+       NULL: NULL?
+       PowerOff: PowerOff?
+       CONFIRM_POWER_DOWN: CONFIRM_POWER_DOWN?
+       POWER_ON_SELF_TEST: POWER_ON_SELF_TEST?
+       POST_FAILED: POST_FAILED?
+       CHECK_ADMIN_SET: CHECK_ADMIN_SET?
+       INCORRECT_ADMIN_SETUP: INCORRECT_ADMIN_SETUP?
+       CHECK_PRIME: CHECK_PRIME?
+       PRIME_FAILED: PRIME_FAILED?
+       DISPLAY_DRUG_INFORMATION: DISPLAY_DRUG_INFORMATION?
+       CHECK_DRUG_TYPE: CHECK_DRUG_TYPE?
+       UNKNOWN_DRUG: UNKNOWN_DRUG?
+       CHECK_DOSE_UNIT: CHECK_DOSE_UNIT?
+       INCORRECT_DOSE_UNIT: INCORRECT_DOSE_UNIT?
+       CHECK_CONCENTRATION: CHECK_CONCENTRATION?
+       CONC_HARD_LIMITS_VIOLATED: CONC_HARD_LIMITS_VIOLATED?
+       CONC_SOFT_LIMITS_VIOLATED: CONC_SOFT_LIMITS_VIOLATED?
+       DISPLAY_PATIENT_PROFILE: DISPLAY_PATIENT_PROFILE?
+       DISPLAY_VTBI: DISPLAY_VTBI?
+       CHANGE_VTBI: CHANGE_VTBI?
+       CHECK_VTBI: CHECK_VTBI?
+       VTBI_HARD_LIMITS_VIOLATED: VTBI_HARD_LIMITS_VIOLATED?
+       DISPLAY_DOSE_RATE: DISPLAY_DOSE_RATE?
+       CHANGE_DOSE_RATE: CHANGE_DOSE_RATE?
+       CHECK_DOSE_RATE: CHECK_DOSE_RATE?
+       DOSE_RATE_HARD_LIMITS_VIOLATED: DOSE_RATE_HARD_LIMITS_VIOLATED?
+       DISPLAY_SETTINGS: DISPLAY_SETTINGS?
+       INFUSION_NORMAL_OPERATION: INFUSION_NORMAL_OPERATION?
+       BOLUS_REQUEST: BOLUS_REQUEST?
+       CHANGE_DOSE_RATE_WHEN_INFUSING: CHANGE_DOSE_RATE_WHEN_INFUSING?
+       CHECK_NEW_DOSE_RATE: CHECK_NEW_DOSE_RATE?
+       NEW_DOSE_RATE_OUT_OF_BOUNDS: NEW_DOSE_RATE_OUT_OF_BOUNDS?
+       STOP_PAUSE: STOP_PAUSE?
+       CONFIRM_PAUSE: CONFIRM_PAUSE?
+       CONFIRM_STOP: CONFIRM_STOP?
+       INFUSION_PAUSED: INFUSION_PAUSED?
+       INFUSION_PAUSED_TOO_LONG: INFUSION_PAUSED_TOO_LONG?
+       PAUSED_STOP_CONFIRM: PAUSED_STOP_CONFIRM?
+       INFUSION_STOPPED: INFUSION_STOPPED?
+       EMPTY_RESERVOIR: EMPTY_RESERVOIR?
+       CHECK_DRUG_WHEN_INFUSING: CHECK_DRUG_WHEN_INFUSING?
+       WRONG_DRUG_DURING_INFUSION: WRONG_DRUG_DURING_INFUSION?
+       HARDWARE_FAILURE_LEVEL_ONE: HARDWARE_FAILURE_LEVEL_ONE?
+       FAILURE_LEVEL_TWO: FAILURE_LEVEL_TWO?
+       POST_SUCCESSFUL: POST_SUCCESSFUL?
+       VTBI_SOFT_LIMITS_VIOLATED: VTBI_SOFT_LIMITS_VIOLATED?
+       DOSE_RATE_SOFT_LIMITS_VIOLATED: DOSE_RATE_SOFT_LIMITS_VIOLATED?
+       READY_TO_START: READY_TO_START?
+    END ControllerState
+
+  ControllerBus: TYPE = [# 
+    controller_state  : ControllerState,
+    isBolusInProgress : boolean,
+    totalVolumeInfused: real,
+    remainingVolumeInReservoir: real 
+  #]
+
+
+  changingVTBI?(cs: ControllerState): boolean = cs = CHANGE_VTBI
+  changingDoseRate?(cs: ControllerState): boolean = cs = CHANGE_DOSE_RATE OR cs = CHANGE_DOSE_RATE_WHEN_INFUSING
+  infusionNormalOperation?(cs: ControllerState): boolean = cs = INFUSION_NORMAL_OPERATION
+
+  displayVTBIMode?(cs: ControllerState): boolean = cs = DISPLAY_VTBI
+  displayDoseRATEMode?(cs: ControllerState): boolean = cs = DISPLAY_DOSE_RATE
+  displayDrugInfoMode?(cs: ControllerState): boolean = cs = DISPLAY_DRUG_INFORMATION
+  settingsSummaryMode?(cs: ControllerState): boolean = cs = DISPLAY_SETTINGS
+
+  powerOffMode?(cs: ControllerState): boolean = cs = PowerOff
+
+  UI_Event: TYPE = { E_UpButtonClick, E_DownButtonClick, E_LeftButtonClick, E_RightButtonClick, E_OkButtonClick,
+  	             E_CancelButtonClick, E_PauseButtonClick, E_StopButtonClick, 
+		     E_EditButtonClick, E_BolusButtonClick, E_StartButtonClick, 
+                     E_OnButtonClick }
+
+
+
+  toCMD(cs: ControllerState, evt: UI_Event, val: device_real): ControllerCMD =
+    COND cs = PowerOff                 -> IF evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = POWER_ON_SELF_TEST       -> CMD_NULL,
+	 cs = POST_FAILED	       -> IF evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+         cs = POST_SUCCESSFUL          -> IF    evt = E_OnButtonClick THEN PowerButton
+                                          ELSIF evt = E_OkButtonClick THEN CheckAdminSet
+			                  ELSE  CMD_NULL ENDIF,
+	 cs = CHECK_ADMIN_SET	       -> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+         cs = DISPLAY_DRUG_INFORMATION -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN CheckDrug ELSE CMD_NULL ENDIF,
+	 cs = CHECK_DRUG_TYPE	       -> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = DISPLAY_PATIENT_PROFILE  -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN ConfigureInfusionProgram
+	      			          ELSIF evt = E_CancelButtonClick THEN Cancel
+				          ELSE  CMD_NULL ENDIF,
+	 cs = DISPLAY_VTBI             -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN ConfirmVTBI(val)
+	                                  ELSIF evt = E_EditButtonClick THEN ChangeVTBI
+			                  ELSE CMD_NULL ENDIF,
+	 cs = DISPLAY_DOSE_RATE        -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN ConfirmDoseRate(val)
+	                                  ELSIF evt = E_EditButtonClick THEN ChangeDoseRate
+				          ELSE CMD_NULL ENDIF,
+	 cs = DISPLAY_SETTINGS         -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_EditButtonClick THEN ConfigureInfusionProgram
+	      		                  ELSIF evt = E_StartButtonClick THEN StartInfusion
+				          ELSE CMD_NULL ENDIF,
+	 cs = CONFIRM_POWER_DOWN       -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN ConfirmPowerDown
+	      			       	  ELSIF evt = E_CancelButtonClick THEN Cancel ELSE CMD_NULL ENDIF,
+	 cs = INCORRECT_ADMIN_SETUP    -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN CheckAdminSet ELSE CMD_NULL ENDIF,
+	 cs = CHECK_PRIME	       -> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = PRIME_FAILED	       -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN PrimePump ELSE CMD_NULL ENDIF,
+	 cs = UNKNOWN_DRUG	       -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_EditButtonClick THEN CheckDrug ELSE CMD_NULL ENDIF,
+	 cs = CHECK_DOSE_UNIT	       -> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = INCORRECT_DOSE_UNIT      -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN CheckDrug ELSE CMD_NULL ENDIF,
+	 cs = CHECK_CONCENTRATION      -> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = CONC_HARD_LIMITS_VIOLATED-> IF    evt = E_OnButtonClick THEN PowerButton
+	      				  ELSIF evt = E_EditButtonClick THEN CheckDrug ELSE CMD_NULL ENDIF,
+	 cs = CONC_SOFT_LIMITS_VIOLATED-> IF    evt = E_OnButtonClick THEN PowerButton
+	      				  ELSIF evt = E_EditButtonClick THEN CheckDrug ELSE CMD_NULL ENDIF,
+	 cs = CHANGE_VTBI	       -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN ConfirmVTBI(val)
+	      		                  ELSIF evt = E_CancelButtonClick THEN Cancel
+			                  ELSE CMD_NULL ENDIF,
+	 cs = CHECK_VTBI	       -> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = VTBI_HARD_LIMITS_VIOLATED-> IF    evt = E_OnButtonClick THEN PowerButton
+	      				  ELSIF evt = E_EditButtonClick THEN ChangeVTBI ELSE CMD_NULL ENDIF,
+	 cs = CHANGE_DOSE_RATE	       -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN ConfirmDoseRate(val)
+			   	          ELSIF evt = E_CancelButtonClick THEN Cancel
+				          ELSE CMD_NULL ENDIF,
+	 cs = CHECK_DOSE_RATE	       -> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = DOSE_RATE_HARD_LIMITS_VIOLATED -> IF    evt = E_OnButtonClick THEN PowerButton
+	      				     	ELSIF evt = E_EditButtonClick THEN ChangeDoseRate ELSE CMD_NULL ENDIF,
+	 cs = INFUSION_NORMAL_OPERATION -> IF    evt = E_OnButtonClick THEN PowerButton
+	      				   ELSIF evt = E_EditButtonClick THEN ChangeDoseRate
+	      				   ELSIF evt = E_StopButtonClick THEN StopInfusion 
+					   ELSIF evt = E_PauseButtonClick THEN PauseInfusion
+					   ELSIF evt = E_BolusButtonClick THEN RequestBolus
+					   ELSE CMD_NULL ENDIF,
+	 cs = BOLUS_REQUEST	       -> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = CHANGE_DOSE_RATE_WHEN_INFUSING -> IF    evt = E_OnButtonClick THEN PowerButton
+	      				     	ELSIF evt = E_OkButtonClick THEN ConfirmDoseRate(val)
+	      				     	ELSIF evt = E_CancelButtonClick THEN Cancel
+						ELSE CMD_NULL ENDIF,
+	 cs = CHECK_NEW_DOSE_RATE      -> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = NEW_DOSE_RATE_OUT_OF_BOUNDS -> IF    evt = E_OnButtonClick THEN PowerButton
+	      				     ELSIF evt = E_EditButtonClick THEN ChangeDoseRate
+	      				     ELSIF evt = E_CancelButtonClick THEN Cancel
+					     ELSE CMD_NULL ENDIF,
+
+	 cs = STOP_PAUSE	       -> IF evt = E_OkButtonClick THEN ConfirmStopInfusion %????
+	      			       	  ELSIF evt = E_CancelButtonClick THEN Cancel
+					  ELSE CMD_NULL ENDIF,
+
+	 cs = CONFIRM_PAUSE	       -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN ConfirmPauseInfusion
+	      			       	  ELSIF evt = E_CancelButtonClick THEN Cancel
+					  ELSE CMD_NULL ENDIF,
+	 cs = CONFIRM_STOP	       -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN ConfirmStopInfusion
+	      			       	  ELSIF evt = E_CancelButtonClick THEN Cancel
+					  ELSE CMD_NULL ENDIF,
+	 cs = INFUSION_PAUSED	       -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_StopButtonClick THEN StopInfusion
+	      			       	  ELSIF evt = E_CancelButtonClick THEN Cancel % <<<<<< Maybe here the Start button would have been more adequate?
+					  ELSE CMD_NULL ENDIF,
+	 cs = INFUSION_PAUSED_TOO_LONG -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_StopButtonClick THEN StopInfusion
+	      			       	  ELSIF evt = E_CancelButtonClick THEN ClearAlarm
+					  ELSE CMD_NULL ENDIF,
+	 cs = PAUSED_STOP_CONFIRM      -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN ConfirmStopInfusion
+	      			       	  ELSIF evt = E_CancelButtonClick THEN Cancel
+					  ELSE CMD_NULL ENDIF,
+	 cs = INFUSION_STOPPED	       -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_OkButtonClick THEN StartNewInfusion
+	      			       	  ELSE CMD_NULL ENDIF,
+	 cs = EMPTY_RESERVOIR	       -> IF    evt = E_OnButtonClick THEN PowerButton
+	      			       	  ELSIF evt = E_StopButtonClick THEN StopInfusion
+	      			          ELSIF evt = E_CancelButtonClick THEN CheckDrug
+					  ELSE CMD_NULL ENDIF,
+	 cs = CHECK_DRUG_WHEN_INFUSING -> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = WRONG_DRUG_DURING_INFUSION-> IF    evt = E_OnButtonClick THEN PowerButton
+	      				   ELSIF evt = E_StopButtonClick THEN StopInfusion
+ 	      			       	   ELSIF evt = E_CancelButtonClick THEN CheckDrug
+					   ELSE CMD_NULL ENDIF,
+	 cs = HARDWARE_FAILURE_LEVEL_ONE-> IF    evt = E_OnButtonClick THEN PowerButton
+	      				   ELSIF evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 cs = FAILURE_LEVEL_TWO		-> IF    evt = E_OnButtonClick THEN PowerButton
+	      				   ELSIF evt = E_CancelButtonClick THEN ClearAlarm
+	      				   ELSIF evt = E_StopButtonClick THEN StopInfusion
+					   ELSE CMD_NULL ENDIF,
+	 cs = VTBI_SOFT_LIMITS_VIOLATED -> IF    evt = E_OnButtonClick THEN PowerButton
+	      				   ELSIF evt = E_OkButtonClick THEN ConfirmVTBI(val)
+	      				   ELSIF evt = E_EditButtonClick THEN ChangeVTBI
+					   ELSE CMD_NULL ENDIF,
+	 cs = DOSE_RATE_SOFT_LIMITS_VIOLATED -> IF    evt = E_OnButtonClick THEN PowerButton
+	      				     	ELSIF evt = E_OkButtonClick THEN ConfirmDoseRate(val)
+	      				        ELSIF evt = E_EditButtonClick THEN ChangeDoseRate
+					        ELSE CMD_NULL ENDIF,
+	 cs = READY_TO_START		-> IF    evt = E_OnButtonClick THEN PowerButton ELSE CMD_NULL ENDIF,
+	 ELSE -> CMD_NULL ENDCOND
+
+
+  %-- overloading does not work well in PVSio... the following triggers an error at execution time
+  % toCMD(cs: ControllerState, evt: UI_Event): ControllerCMD = toCMD(cs, evt, 0)
+
+
+  getNotifications(cs: ControllerState): [ PrimaryNotification, SecondaryNotification ] =
+    COND cs = NULL                     -> ( Controller_error, Please_disconnect_patient_and_power_down_pump ),
+         cs = PowerOff                 -> ( Welcome_to_the_Generic_PCA_Pump_prototype_V2, Please_press_On_to_begin),
+	 cs = POWER_ON_SELF_TEST       -> ( Power_on_self_test, Empty ),
+	 cs = POST_FAILED	       -> ( Power_on_self_test_FAILED, Please_press_Off_to_power_down_the_pump),
+         cs = POST_SUCCESSFUL          -> ( Power_on_self_test_successful, Please_load_administration_set_and_press_Ok ),
+	 cs = CHECK_ADMIN_SET	       -> ( Checking_administration_set, Empty ),
+         cs = DISPLAY_DRUG_INFORMATION -> ( Empty, Please_press_Ok_to_load_settings_from_drug_library ),
+	 cs = CHECK_DRUG_TYPE	       -> ( Checking_drug_information, Empty ),
+	 cs = DISPLAY_PATIENT_PROFILE  -> ( Patient_is_Jane_Doe, Press_Ok_to_setup_infusion___or_press_Cancel_to_change_profile),
+	 cs = DISPLAY_VTBI             -> ( Empty, Press_Ok_to_proceed_or_press_Edit_to_edit_value),
+	 cs = DISPLAY_DOSE_RATE        -> ( Empty, Press_Ok_to_proceed_or_press_Edit_to_edit_value),
+	 cs = DISPLAY_SETTINGS         -> ( Empty, Press_Start_to_start_infusion_or_press_Edit_to_edit), % main message is settings summary
+	 cs = CONFIRM_POWER_DOWN       -> ( Power_down_requested, Please_press_Ok_to_confirm_power_down___or_press_Cancel_to_cancel_power_down_request ),
+	 cs = INCORRECT_ADMIN_SETUP    -> ( Incorrect_administration_set, Please_reload_administration_set_and_press_Ok ),
+	 cs = CHECK_PRIME	       -> ( Priming, Empty ),
+	 cs = PRIME_FAILED	       -> ( Prime_FAILED, Please_press_Ok_to_retry_prime ),
+	 cs = UNKNOWN_DRUG	       -> ( Unknown_drug, Please_update_drug_library___and_press_Edit ), %NB: what should we do here? update the drug library? otherwise there is an infinite loop in the controller between CheckDrug and UnknownDrug
+	 cs = CHECK_DOSE_UNIT	       -> ( Checking_dose_unit, Empty ),
+	 cs = INCORRECT_DOSE_UNIT      -> ( Incorrect_dose_unit, Empty ),
+	 cs = CHECK_CONCENTRATION      -> ( Checking_concentration, Empty ),
+	 cs = CONC_HARD_LIMITS_VIOLATED-> ( Concentration_HIGH_LIMITS_VIOLATED, Please_check_Drug_limits___and_press_Edit_to_edit_value ),
+	 cs = CONC_SOFT_LIMITS_VIOLATED-> ( Concentration_SOFT_LIMITS_VIOLATED, Please_check_Drug_limits___and_press_Edit_to_edit_value ),
+	 cs = CHANGE_VTBI	       -> ( Empty, Empty ), % data entry mode
+	 cs = CHECK_VTBI	       -> ( Checking_VTBI, Empty ),
+	 cs = VTBI_HARD_LIMITS_VIOLATED-> ( VTBI_HARD_LIMITS_VIOLATED, Please_check_Drug_limits___and_press_Edit_to_edit_value),
+	 cs = CHANGE_DOSE_RATE	       -> ( Empty, Empty ), % data entry mode
+	 cs = CHECK_DOSE_RATE	       -> ( Checking_dose_rate, Empty ),
+	 cs = DOSE_RATE_HARD_LIMITS_VIOLATED -> ( Dose_rate_HARD_LIMITS_VIOLATED, Please_press_Edit_to_edit_dose_rate ),
+	 cs = INFUSION_NORMAL_OPERATION -> ( Empty, Press_Stop_to_pause_infusion ),
+	 cs = BOLUS_REQUEST	       -> ( Bolus_request, Empty ),
+	 cs = CHANGE_DOSE_RATE_WHEN_INFUSING -> ( Empty, Empty ), % data entry mode
+	 cs = CHECK_NEW_DOSE_RATE      -> ( Checking_new_dose_rate, Empty ),
+	 cs = NEW_DOSE_RATE_OUT_OF_BOUNDS -> ( New_dose_rate_out_of_bounds, Please_press_Edit_to_edit_dose_rate ),
+	 cs = STOP_PAUSE	       -> ( Stop_pause, Empty ), % ????
+	 cs = CONFIRM_PAUSE	       -> ( Press_Ok_to_confirm_pause, Press_Cancel_to_cancel_request ),
+	 cs = CONFIRM_STOP	       -> ( Press_Ok_to_confirm_stop, Press_Cancel_to_cancel_request ),
+	 cs = INFUSION_PAUSED	       -> ( Infusion_paused, Press_Cancel_to_resume_infusion___or_press_Stop_to_stop_infusion ), % this is a bad mapping
+	 cs = INFUSION_PAUSED_TOO_LONG -> ( Infusion_paused_too_long, Press_Stop_to_stop_infusion_or_Cancel_to_resume_infusion ),
+	 cs = PAUSED_STOP_CONFIRM      -> ( Press_Ok_to_confirm_stop, Press_Cancel_to_cancel_request ),
+	 cs = INFUSION_STOPPED	       -> ( Infusion_stopped, Please_press_Ok_to_setup_a_new_infusion ),
+	 cs = EMPTY_RESERVOIR	       -> ( Empty_reservoir, Press_Stop_to_stop_infusion___or_press_Cancel_to_resume_infusion ),  % this is a bad mapping
+	 cs = CHECK_DRUG_WHEN_INFUSING -> ( Check_drug_when_infusing, Empty ),
+	 cs = WRONG_DRUG_DURING_INFUSION-> ( Wrong_drug_during_infusion, Press_Stop_to_stop_infusion___or_press_Cancel_to_resume_infusion ),
+	 cs = HARDWARE_FAILURE_LEVEL_ONE-> ( Hardware_failure_level_one, Please_press_Off_to_power_off_the_pump ),
+	 cs = FAILURE_LEVEL_TWO		-> ( Hardware_failure_level_two, Press_Cancel_to_resume_infusion___or_press_Stop_to_stop_infusion),
+	 cs = VTBI_SOFT_LIMITS_VIOLATED -> ( VTBI_SOFT_LIMITS_VIOLATED, Press_Ok_to_confirm_OUT_OF_RANGE_value___or_press_Edit ), % todo: show the VTBI value in the message
+	 cs = DOSE_RATE_SOFT_LIMITS_VIOLATED -> ( Dose_rate_SOFT_LIMITS_VIOLATED, Press_Ok_to_confirm_OUT_OF_RANGE_value___or_press_Edit ),
+	 cs = READY_TO_START		-> ( Starting_infusion, Please_wait ),
+	 ELSE -> ( Unknown_controller_state, Empty ) ENDCOND
+    			    
+
+ END GPCA_Simulink_Controller_Bridge

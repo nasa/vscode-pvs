@@ -1,0 +1,48 @@
+display[N: posnat, MAX_DIGITS: upto(N)]: THEORY
+  BEGIN IMPORTING utils
+
+  Display: TYPE = [#
+    d: string,   % actual content of the display
+    val: nat,    % display value
+    len: upto(N) % max number of digits
+  #]
+  init_display: Display = (# d := "", val := 0, len := 0 #)
+
+  %-- concatenates a digit to the current display value
+  concat_digit(x: upto(9))(disp: Display): Display =
+      COND len(disp) < MAX_DIGITS ->
+             (# d := d(disp) + x,
+                val := val(disp) * 10 + x,
+                len := len(disp) + 1 #),
+           ELSE -> disp
+      ENDCOND
+
+  %-- concatenates a blank space to the current display value
+  concat_blank(n: nat)(disp: Display): RECURSIVE Display =
+    COND n = 0 OR len(disp) >= N -> disp,
+         ELSE ->
+           LET new_disp =
+                 (# d := d(disp) + IF len(disp) < MAX_DIGITS THEN "0"ELSE " " ENDIF,
+                    val := val(disp) * 10,
+                    len := len(disp) + 1 #)
+             IN concat_blank(n - 1)(new_disp)
+    ENDCOND
+     MEASURE n
+      
+  %-- removes the rightmost digit
+  remove_digit(disp: Display): Display =
+      COND
+       len(disp) = 0 -> disp,
+       len(disp) = 1 ->
+             (# d := "",
+                val := floor(val(disp) / 10),
+                len := len(disp) - 1 #),
+       len(disp) > 1 ->
+             LET dd = substr(d(disp), 0, len(disp) - 2) IN
+             (# d := dd,
+                val := floor(val(disp) / 10),
+                len := len(disp) - 1 #),
+       ELSE -> disp
+      ENDCOND
+
+ END display

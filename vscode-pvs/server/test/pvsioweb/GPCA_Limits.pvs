@@ -1,0 +1,20 @@
+GPCA_Limits: THEORY
+ BEGIN
+
+  max: real = 99999.99
+  min_cursor: int = -2
+  max_cursor: int = 4
+
+  %-- data entry
+  device_real: TYPE = {r: nonneg_real | r <= max}
+  Cursor: TYPE = {i: int | i >= min_cursor  AND i <= max_cursor}
+
+  number_unit: TYPE = { mL, mg_per_hour, minutes, seconds, NA }
+  DoseRATE_unit: TYPE = { x: number_unit | x = mg_per_hour }
+  DoseRATE_unit?(x: number_unit): boolean = x = mg_per_hour
+  Time_unit: TYPE = { x: number_unit | x = minutes OR x = seconds }
+  Time_unit?(x: number_unit): boolean = x = minutes OR x = seconds
+  VTBI_unit: TYPE = { x: number_unit | x = mL }
+  VTBI_unit?(x: number_unit): boolean = x = mL
+
+ END GPCA_Limits

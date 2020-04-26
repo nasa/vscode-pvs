@@ -1,0 +1,414 @@
+pill_disp: THEORY BEGIN
+% -- operating modes
+mode_type: TYPE = 
+    {initial, pwd, db_pwd, db_menu,
+     new_patient_list,
+     patient_list, db_med_list, new_patient_details,
+	 patient_details, db_med_details, new_med,
+	 patient_scripts_list,
+	 patient_script, new_patient_script,
+	 dose, new_dose, 
+     scan, scan1, scan2, scan3,
+     scan1_success, scan2_success,
+     scan_enabled, creation_success,
+     pill_dispensed, take_med}
+path_mode_type: TYPE = 
+    {scripts_path, meds_path, no_path}
+%pm_set_type: TYPE =
+%    {patient_path_set, scripts_path_set, meds_path_set, no_path_set}
+% -- state attributes
+state: TYPE = [# current_mode: mode_type,
+                 previous_mode: mode_type,
+                 path_mode: path_mode_type,
+                 path_mode_set: path_mode_type #]
+% -- init FUNCTION
+init(x: real): state = (# current_mode := initial,
+                          previous_mode := initial,
+                          path_mode := no_path,
+                          path_mode_set := no_path #)
+
+path_function(m: mode_type): path_mode_type =
+                              COND
+                                m = initial -> no_path, 
+                                m = pwd -> scripts_path, 
+                                m = db_pwd -> meds_path, 
+                                m = db_menu -> meds_path,
+                                m = new_patient_list -> scripts_path,
+                                m = patient_list -> scripts_path, 
+                                m = db_med_list -> meds_path, 
+                                m = new_patient_details -> scripts_path,
+	                        m = patient_details -> scripts_path, 
+                                m = db_med_details -> meds_path, 
+                                m = new_med -> meds_path,
+	                        m = patient_scripts_list -> scripts_path,
+	                        m = patient_script -> scripts_path, 
+                                m = new_patient_script -> scripts_path,
+	                        m = dose -> scripts_path, 
+                                m = new_dose -> scripts_path, 
+                                m = scan OR m = scan1 OR m = scan2 OR m = scan3 OR
+                                m = scan1_success OR m = scan2_success OR
+                                m = scan_enabled -> scripts_path, 
+                                m = creation_success OR
+                                m = pill_dispensed OR m = take_med -> no_path
+                              ENDCOND
+
+%-- utility functions
+enter_into(m: mode_type)(st: state): state = 
+       st WITH [ current_mode := m,
+                  path_mode_set := 
+                             COND 
+                               m = pwd -> scripts_path,
+                               m = db_pwd -> meds_path,
+                               m = initial -> no_path,
+                               ELSE ->  path_mode_set(st)
+                              ENDCOND,
+                  path_mode := path_function(m)
+                 ]
+leave_state(m: mode_type)(st: state): state = 
+       st WITH [ previous_mode := m ]
+
+
+% -- transition functions
+per_I_pwd(st: state): boolean =
+((current_mode(st) = initial)) OR 
+((current_mode(st) = pill_dispensed)) OR 
+((current_mode(st) = db_pwd))
+I_pwd(st: (per_I_pwd)): state =
+    COND
+    (current_mode(st) = initial)
+     -> LET new_st = leave_state(initial)(st)
+         IN enter_into(pwd)(new_st),
+    (current_mode(st) = pill_dispensed)
+     -> LET new_st = leave_state(pill_dispensed)(st)
+         IN enter_into(pwd)(new_st),
+    (current_mode(st) = db_pwd)
+     -> LET new_st = leave_state(db_pwd)(st)
+         IN enter_into(pwd)(new_st),
+    ELSE -> st
+    ENDCOND
+per_I_take_med(st: state): boolean = 
+ ((current_mode(st) = initial))
+  
+I_take_med(st: (per_I_take_med)): state =
+    COND
+    (current_mode(st) = initial)
+     -> LET new_st = leave_state(initial)(st)
+         IN enter_into(take_med)(new_st),
+    ELSE -> st
+    ENDCOND
+
+ per_I_db_pwd(st: state): boolean = 
+ ((current_mode(st) = initial)) OR 
+ ((current_mode(st) = pwd)) OR 
+ ((current_mode(st) = take_med))
+  I_db_pwd(st: (per_I_db_pwd)): state =
+    COND
+    (current_mode(st) = initial)
+     -> LET new_st = leave_state(initial)(st)
+         IN enter_into(db_pwd)(new_st),
+    (current_mode(st) = pwd)
+     -> LET new_st = leave_state(pwd)(st)
+         IN enter_into(db_pwd)(new_st),
+    (current_mode(st) = take_med)
+     -> LET new_st = leave_state(take_med)(st)
+         IN enter_into(db_pwd)(new_st),
+    ELSE -> st
+    ENDCOND
+ per_I_patient_list(st: state): boolean = 
+   ((current_mode(st) = pwd)) OR ((current_mode(st) = db_menu)) OR ((current_mode(st) = db_med_list)) OR ((current_mode(st) = db_med_details)) OR ((current_mode(st) = new_patient_details))
+  I_patient_list(st: (per_I_patient_list)): state =
+    COND
+    (current_mode(st) = pwd)
+     -> LET new_st = leave_state(pwd)(st)
+         IN enter_into(patient_list)(new_st),
+    (current_mode(st) = db_menu)
+     -> LET new_st = leave_state(db_menu)(st)
+         IN enter_into(patient_list)(new_st),
+    (current_mode(st) = db_med_list)
+     -> LET new_st = leave_state(db_med_list)(st)
+         IN enter_into(patient_list)(new_st),
+    (current_mode(st) = db_med_details)
+     -> LET new_st = leave_state(db_med_details)(st)
+         IN enter_into(patient_list)(new_st),
+    (current_mode(st) = new_patient_details)
+     -> LET new_st = leave_state(new_patient_details)(st)
+         IN enter_into(patient_list)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_initial(st: state): bool = ((current_mode(st) = pwd)) OR 
+                     ((current_mode(st) = patient_list)) OR 
+                     ((current_mode(st) = patient_details)) OR 
+                     ((current_mode(st) = new_patient_script)) OR 
+                     ((current_mode(st) = db_med_list)) OR 
+                     ((current_mode(st) = db_med_details)) OR 
+                     ((current_mode(st) = dose)) OR 
+                     ((current_mode(st) = patient_scripts_list)) OR 
+                     ((current_mode(st) = pill_dispensed)) OR 
+                     ((current_mode(st) = db_pwd)) OR 
+                     ((current_mode(st) = db_menu)) OR 
+                     ((current_mode(st) = db_med_list)) OR 
+                     ((current_mode(st) = db_med_details)) OR 
+                     ((current_mode(st) = new_patient_details)) OR 
+                     ((current_mode(st) = new_patient_list))
+  I_initial(st: (per_I_initial)): state =
+    COND
+    (current_mode(st) = pwd)
+     -> LET new_st = leave_state(pwd)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = patient_list)
+     -> LET new_st = leave_state(patient_list)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = patient_details)
+     -> LET new_st = leave_state(patient_details)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = new_patient_script)
+     -> LET new_st = leave_state(new_patient_script)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = db_med_list)
+     -> LET new_st = leave_state(db_med_list)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = db_med_details)
+     -> LET new_st = leave_state(db_med_details)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = dose)
+     -> LET new_st = leave_state(dose)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = patient_scripts_list)
+     -> LET new_st = leave_state(patient_scripts_list)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = pill_dispensed)
+     -> LET new_st = leave_state(pill_dispensed)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = db_pwd)
+     -> LET new_st = leave_state(db_pwd)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = db_menu)
+     -> LET new_st = leave_state(db_menu)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = db_med_list)
+     -> LET new_st = leave_state(db_med_list)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = db_med_details)
+     -> LET new_st = leave_state(db_med_details)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) = new_patient_details)
+     -> LET new_st = leave_state(new_patient_details)(st)
+         IN enter_into(initial)(new_st),
+    (current_mode(st) =new_patient_list)
+     -> LET new_st = leave_state(new_patient_list)(st)
+         IN enter_into(initial)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_patient_details(st: state): bool = ((current_mode(st) = patient_list)) OR 
+                                          ((current_mode(st) = new_patient_list))
+  I_patient_details(st: (per_I_patient_details)): state =
+    COND
+    (current_mode(st) = patient_list)
+     -> LET new_st = leave_state(patient_list)(st)
+         IN enter_into(patient_details)(new_st),
+    (current_mode(st) = new_patient_list)
+     -> LET new_st = leave_state(new_patient_list)(st)
+         IN enter_into(patient_details)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_db_menu(st: state): bool = 
+  ((current_mode(st) = patient_list)) OR 
+  ((current_mode(st) = patient_details)) OR 
+  ((current_mode(st) = new_patient_script)) OR 
+  ((current_mode(st) = db_med_list)) OR 
+  ((current_mode(st) = db_med_details)) OR ((current_mode(st) = dose)) OR 
+  ((current_mode(st) = patient_scripts_list)) OR 
+  ((current_mode(st) = db_pwd)) OR 
+  ((current_mode(st) = new_patient_details)) OR 
+  ((current_mode(st) = new_patient_list))
+  I_db_menu(st: (per_I_db_menu)): state =
+    COND
+    (current_mode(st) = patient_list)
+     -> LET new_st = leave_state(patient_list)(st)
+         IN enter_into(db_menu)(new_st),
+    (current_mode(st) = patient_details)
+     -> LET new_st = leave_state(patient_details)(st)
+         IN enter_into(db_menu)(new_st),
+    (current_mode(st) = new_patient_script)
+     -> LET new_st = leave_state(new_patient_script)(st)
+         IN enter_into(db_menu)(new_st),
+    (current_mode(st) = db_med_list)
+     -> LET new_st = leave_state(db_med_list)(st)
+         IN enter_into(db_menu)(new_st),
+    (current_mode(st) = db_med_details)
+     -> LET new_st = leave_state(db_med_details)(st)
+         IN enter_into(db_menu)(new_st),
+    (current_mode(st) = dose)
+     -> LET new_st = leave_state(dose)(st)
+         IN enter_into(db_menu)(new_st),
+    (current_mode(st) = patient_scripts_list)
+     -> LET new_st = leave_state(patient_scripts_list)(st)
+         IN enter_into(db_menu)(new_st),
+    (current_mode(st) = db_pwd)
+     -> LET new_st = leave_state(db_pwd)(st)
+         IN enter_into(db_menu)(new_st),
+    (current_mode(st) = new_patient_details)
+     -> LET new_st = leave_state(new_patient_details)(st)
+         IN enter_into(db_menu)(new_st),
+    (current_mode(st) = new_patient_list)
+     -> LET new_st = leave_state(new_patient_list)(st)
+         IN enter_into(db_menu)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_new_patient_details(st: state): bool = ((current_mode(st) = patient_list))
+  I_new_patient_details(st: (per_I_new_patient_details)): state =
+    COND
+    (current_mode(st) = patient_list)
+     -> LET new_st = leave_state(patient_list)(st)
+         IN enter_into(new_patient_details)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_new_patient_script(st: state): bool = ((current_mode(st) = patient_details))
+  I_new_patient_script(st: (per_I_new_patient_script)): state =
+    COND
+    (current_mode(st) = patient_details)
+     -> LET new_st = leave_state(patient_details)(st)
+         IN enter_into(new_patient_script)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_dose(st: state): bool = 
+  ((current_mode(st) = db_med_details))
+  I_dose(st: (per_I_dose)): state =
+    COND
+    (current_mode(st) = db_med_details)
+     -> LET new_st = leave_state(db_med_details)(st)
+         IN enter_into(dose)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_patient_scripts_list(st: state): bool = ((current_mode(st) = dose))
+  I_patient_scripts_list(st: (per_I_patient_scripts_list)): state =
+    COND
+    (current_mode(st) = dose)
+     -> LET new_st = leave_state(dose)(st)
+         IN enter_into(patient_scripts_list)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_pill_dispensed(st: state): bool = 
+  ((current_mode(st) = take_med))
+  I_pill_dispensed(st: (per_I_pill_dispensed)): state =
+    COND
+    (current_mode(st) = take_med)
+     -> LET new_st = leave_state(take_med)(st)
+         IN enter_into(pill_dispensed)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_db_med_list(st: state): bool = 
+  ((current_mode(st) = new_patient_script)) OR
+  ((current_mode(st) = db_menu)) OR 
+  ((current_mode(st) = db_med_details))
+  I_db_med_list(st: (per_I_db_med_list)): state =
+    COND
+    (current_mode(st) = new_patient_script)
+     -> LET new_st = leave_state(new_patient_script)(st)
+         IN enter_into(db_med_list)(new_st),
+    (current_mode(st) = db_menu)
+     -> LET new_st = leave_state(db_menu)(st)
+         IN enter_into(db_med_list)(new_st),
+    (current_mode(st) = db_med_details)
+     -> LET new_st = leave_state(db_med_details)(st)
+         IN enter_into(db_med_list)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_db_med_details(st: state): bool = 
+  ((current_mode(st) = db_med_list))
+  I_db_med_details(st: (per_I_db_med_details)): state =
+    COND
+    (current_mode(st) = db_med_list)
+     -> LET new_st = leave_state(db_med_list)(st)
+         IN enter_into(db_med_details)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_scan1(st: state): bool = ((current_mode(st) = new_patient_details))
+  I_scan1(st: (per_I_scan1)): state =
+    COND
+    (current_mode(st) = new_patient_details)
+     -> LET new_st = leave_state(new_patient_details)(st)
+         IN enter_into(scan1)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_scan1_success(st: state): bool = 
+  ((current_mode(st) = scan1))
+  I_scan1_success(st: (per_I_scan1_success)): state =
+    COND
+    (current_mode(st) = scan1)
+     -> LET new_st = leave_state(scan1)(st)
+         IN enter_into(scan1_success)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_scan2(st: state): bool = 
+  ((current_mode(st) = scan1_success))
+  I_scan2(st: (per_I_scan2)): state =
+    COND
+    (current_mode(st) = scan1_success)
+     -> LET new_st = leave_state(scan1_success)(st)
+         IN enter_into(scan2)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_scan2_success(st: state): bool = 
+  ((current_mode(st) = scan2))
+  I_scan2_success(st: (per_I_scan2_success)): state =
+    COND
+    (current_mode(st) = scan2)
+     -> LET new_st = leave_state(scan2)(st)
+         IN enter_into(scan2_success)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_scan3(st: state): bool = 
+  ((current_mode(st) = scan2_success))
+  I_scan3(st: (per_I_scan3)): state =
+    COND
+    (current_mode(st) = scan2_success)
+     -> LET new_st = leave_state(scan2_success)(st)
+         IN enter_into(scan3)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_creation_success(st: state): bool = 
+  ((current_mode(st) = scan3))
+  I_creation_success(st: (per_I_creation_success)): state =
+    COND
+    (current_mode(st) = scan3)
+     -> LET new_st = leave_state(scan3)(st)
+         IN enter_into(creation_success)(new_st),
+    ELSE -> st
+    ENDCOND
+
+  per_I_new_patient_list(st: state): bool = 
+  ((current_mode(st) = creation_success))
+  I_new_patient_list(st: (per_I_new_patient_list)): state =
+    COND
+    (current_mode(st) = creation_success)
+     -> LET new_st = leave_state(creation_success)(st)
+         IN enter_into(new_patient_list)(new_st),
+    ELSE -> st
+    ENDCOND
+END pill_disp
+
+ % END emucharts_pill_dispenser
+
+% ---------------------------------------------------------------
+%  PVS theory generated using PVSio-web PVSPrinter ver 0.1
+%  Tool freely available at http://www.pvsioweb.org
+% ---------------------------------------------------------------
+
+%END pill_disp

@@ -1,0 +1,391 @@
+conversions: THEORY
+ BEGIN
+
+  IMPORTING pilldispenser_th
+
+  %-- AVAILABLE ACTIONS
+  available_actions_exectype : TYPE = [#
+         key1: bool,
+         key2: bool,
+         key3: bool,
+         confirm: bool,
+         create: bool,
+         quit: bool,
+         bottom: bool,
+         scan_action: bool,
+         tick: bool,
+         medicines: bool,
+         drug_id_line: bool,
+         database: bool,
+         reload: bool,
+         unload: bool,
+         prescriptions: bool
+  #]
+  available_actions_T2X(a: available_actions_type): available_actions_exectype = (#
+    key1 := a(key1),
+    key2 := a(key2),
+    key3 := a(key3),
+    confirm := a(confirm),
+    create := a(create),
+    quit := a(quit),
+    bottom := a(bottom),
+    scan_action := a(scan_action),
+    tick := a(tick),
+    medicines := a(medicines),
+    drug_id_line := a(drug_id_line),
+    database := a(database),
+    reload := a(reload),
+    unload := a(unload),
+    prescriptions := a(prescriptions) #)
+  CONVERSION available_actions_T2X
+  test_actions: available_actions_exectype = LAMBDA(x: actions_type): (x = key1) OR (x = key2) OR (x = key3)
+  available_actions_X2T(f: available_actions_exectype): available_actions_type =
+    LAMBDA(x: actions_type):
+       COND
+         x = key1 -> f`key1,
+         x = key2 -> f`key2,
+         x = key3 -> f`key3,
+         x = confirm -> f`confirm,
+         x = create -> f`create,
+         x = quit -> f`quit,
+         x = bottom -> f`bottom,
+         x = scan_action -> f`scan_action,
+         x = tick -> f`tick,
+         x = medicines -> f`medicines,
+         x = drug_id_line -> f`drug_id_line,
+         x = database -> f`database,
+         x = reload -> f`reload,
+         x = unload -> f`unload,
+         x = prescriptions -> f`prescriptions
+       ENDCOND
+%  CONVERSION available_actions_X2T
+
+  %-- AVAILABLE FIELDS
+  available_fields_exectype: TYPE = [#
+      password: field_status_type,
+      dob: field_status_type,
+      medicine: field_status_type,
+      dosage: field_status_type,
+      id_card: field_status_type,
+      mob: field_status_type,
+      carer: field_status_type,
+      prescription: field_status_type,
+      name: field_status_type,
+      dose: field_status_type,
+      validity: field_status_type,
+      quantity: field_status_type,
+      column: field_status_type,
+      monthly: field_status_type,
+      weekly: field_status_type,
+      daily: field_status_type,
+      bidaily: field_status_type,
+      time1: field_status_type,
+      time2: field_status_type
+  #]
+
+  available_fields_T2X(f: available_fields_type): available_fields_exectype = (#
+      password := f(password),
+      dob := f(dob),
+      medicine := f(medicine),
+      dosage := f(dosage),
+      id_card := f(id_card),
+      mob := f(mob),
+      carer := f(carer),
+      prescription := f(prescription),
+      name := f(name),
+      dose := f(dose),
+      validity := f(validity),
+      quantity := f(quantity),
+      column := f(column) ,
+      monthly := f(monthly),
+      weekly := f(weekly),
+      daily := f(daily),
+      bidaily := f(bidaily),
+      time1 := f(time1),
+      time2 := f(time1)      
+  #)
+  CONVERSION available_fields_T2X
+  
+  available_fields_X2T(f: available_fields_exectype): available_fields_type =
+    LAMBDA(x: fields_type):
+      COND
+       x = password -> f`password,
+       x = dob -> f`dob,
+       x = medicine -> f`medicine,
+       x = dosage -> f`dosage,
+       x = id_card -> f`id_card,
+       x = mob -> f`mob,
+       x = carer -> f`carer,
+       x = prescription -> f`prescription,
+       x = name -> f`name,
+       x = dose -> f`dose,
+       x = validity -> f`validity,
+       x = quantity -> f`quantity,
+       x = column -> f`column,
+       x = monthly -> f`monthly,
+       x = weekly -> f`weekly,
+       x = daily -> f`daily,
+       x = bidaily -> f`bidaily,
+       x = time1 -> f`time1,
+       x = time2 -> f`time1
+      ENDCOND
+%  CONVERSION available_fields_X2T
+
+  %-- sanity check
+  test_fields: available_fields_exectype =
+    LAMBDA (f: fields_type):
+    	    IF f = dob THEN (# visible := true, selected := false, entered := false #)
+	    ELSE (# visible := false, selected := false, entered := false #) ENDIF
+  test_reverse_fields: bool =
+    LET rec = LAMBDA (f: fields_type):
+    	    IF f = dob THEN (# visible := true, selected := false, entered := false #)
+	    ELSE (# visible := false, selected := false, entered := false #) ENDIF
+    IN FORALL(x: fields_type): available_fields_X2T(available_fields_T2X(rec))(x) = rec(x)
+  
+  
+  %-- MEDICINE DATABASE
+  med_db_exectype: TYPE = list[[#
+    pos: m_index,
+    val: available_fields_exectype
+  #]]
+  
+  med_db_type2exectype_aux(m: med_db_type, n: m_index): RECURSIVE { l: med_db_exectype | length(l) = n + 1 } =
+    LET v: available_fields_exectype = m(n) IN
+    IF n = 0 THEN (: (# pos:= n, val:= v #) :)
+    ELSE  med_db_type2exectype_aux(m, n-1) o (: (# pos:= n, val:= v #) :) ENDIF
+  MEASURE n
+  med_db_T2X(m: med_db_type): med_db_exectype = med_db_type2exectype_aux(m, mlimit)
+  CONVERSION med_db_T2X
+
+  med_db_X2T(m: { l: med_db_exectype | length(l) = mlimit + 1 }): med_db_type =
+    LAMBDA(x: m_index): available_fields_X2T(nth(m, x)`val)
+%  CONVERSION med_db_X2T
+
+  %-- MEDICINE ID LINE
+  med_id_line_exectype: TYPE = list[[#
+    pos: m_index,
+    val: bool
+  #]]
+  med_id_line_type2exectype_aux(m: med_id_line_type, n: m_index): RECURSIVE med_id_line_exectype =
+    IF n = 0 THEN (: (# pos:= n, val:= m(n) #) :)
+    ELSE (: (# pos:= n, val:= m(n) #) :) o med_id_line_type2exectype_aux(m, n-1) ENDIF
+  MEASURE n
+  med_id_line_T2X(m: med_id_line_type): med_id_line_exectype = med_id_line_type2exectype_aux(m, mlimit)
+  CONVERSION med_id_line_T2X
+
+  med_id_line_X2T(m: med_id_line_exectype): med_id_line_type = LAMBDA(x: m_index): nth(m, x)`val
+
+  %-- SCRIPT LINE
+  script_line_exectype: TYPE = list[[#
+    pos: s_index,
+    val: bool
+  #]]
+  script_line_type2exectype_aux(m: script_line_type, n: s_index): RECURSIVE script_line_exectype =
+    IF n = 0 THEN (: (# pos:= n, val:= m(n) #) :)
+    ELSE (: (# pos:= n, val:= m(n) #) :) o script_line_type2exectype_aux(m, n-1) ENDIF
+  MEASURE n
+  script_line_T2X(m: script_line_type): script_line_exectype = script_line_type2exectype_aux(m, slimit)
+  CONVERSION script_line_T2X
+
+  script_line_X2T(m: script_line_exectype): script_line_type = LAMBDA(x: s_index): nth(m, x)`val
+
+  %-- SCRIPT DB
+  list_script_exectype: TYPE = list[[#
+    pos: s_index,
+    val: available_fields_exectype
+  #]]
+  list_script_type2exectype_aux(m: list_script_type, n: s_index): RECURSIVE list_script_exectype =
+    IF n = 0 THEN (: (# pos:= n, val:= available_fields_T2X(m(n)) #) :)
+    ELSE (: (# pos:= n, val:= available_fields_T2X(m(n)) #) :) o list_script_type2exectype_aux(m, n-1) ENDIF
+  MEASURE n
+  list_script_T2X(m: list_script_type): list_script_exectype = list_script_type2exectype_aux(m, slimit)
+  CONVERSION list_script_T2X
+
+  list_script_X2T(m: list_script_exectype): list_script_type = LAMBDA(x: s_index): available_fields_X2T(nth(m, x)`val)
+  
+  script_patient_exectype: TYPE = [#
+    s_max: s_index,
+    s_lines: list_script_exectype,
+    s_doses: list_script_exectype
+  #]
+  script_patient_T2X(s: script_patient_type): script_patient_exectype = (#
+    s_max := s_max(s),
+    s_lines := list_script_T2X(s_lines(s)),
+    s_doses := list_script_T2X(s_doses(s))
+  #)
+  CONVERSION script_patient_T2X
+  
+  script_patient_X2T(s: script_patient_exectype): script_patient_type = (#
+    s_max := s_max(s),
+    s_lines := list_script_X2T(s_lines(s)),
+    s_doses := list_script_X2T(s_doses(s))
+  #)
+  CONVERSION script_patient_X2T
+
+  script_db_exectype: TYPE = list[[#
+    pos: p_index,
+    val: script_patient_exectype
+  #]]
+  script_db_type2exectype_aux(m: script_db_type, n: p_index): RECURSIVE script_db_exectype =
+    IF n = 0 THEN (: (# pos:= n, val:= script_patient_T2X(m(n)) #) :)
+    ELSE (: (# pos:= n, val:= script_patient_T2X(m(n)) #) :) o script_db_type2exectype_aux(m, n-1) ENDIF
+  MEASURE n
+  script_db_T2X(m: script_db_type): script_db_exectype = script_db_type2exectype_aux(m, plimit)
+  CONVERSION script_db_T2X
+
+  script_db_X2T(m: script_db_exectype): script_db_type = LAMBDA(x: p_index): nth(m, x)`val
+
+
+
+  %-- sanity checks
+  test_med_db: med_db_exectype =
+    LET rec = (LAMBDA (f: fields_type): (# visible := false, selected := false, entered := false #))
+     IN LAMBDA(m: m_index): rec
+  test_reverse_med_db: bool =
+    LET rec = LAMBDA (f: fields_type): (# visible := false, selected := false, entered := false #),
+        db = LAMBDA(m: m_index): rec
+    IN FORALL(m: m_index, f: fields_type): med_db_X2T(med_db_T2X(db))(m)(f) = db(m)(f)
+
+
+  %-- PATIENT DATABASE
+  patient_db_exectype: TYPE = list[[#
+    pos: p_index,
+    val: available_fields_exectype
+  #]]
+  
+  patient_db_type2exectype_aux(p: patient_db_type, n: p_index): RECURSIVE patient_db_exectype =
+    LET v: available_fields_exectype = p(n) IN
+    IF n = 0 THEN (: (# pos:= n, val:= v #) :)
+    ELSE patient_db_type2exectype_aux(p, n-1) o (: (# pos:= n, val:= v #) :) ENDIF
+  MEASURE n
+  patient_db_T2X(p: patient_db_type): patient_db_exectype = patient_db_type2exectype_aux(p, plimit)
+  CONVERSION patient_db_T2X
+
+  patient_db_X2T(p: patient_db_exectype): patient_db_type = LAMBDA(x: p_index): available_fields_X2T(nth(p, x)`val)
+%  CONVERSION patient_db_X2T
+
+  %-- sanity check
+  test_patient_db: patient_db_exectype =
+    LET rec = (LAMBDA (f: fields_type): (# visible := false, selected := false, entered := false #))
+     IN LAMBDA(p: p_index): rec
+  test_reverse_patient_db: bool =
+    LET rec = LAMBDA (f: fields_type): (# visible := false, selected := false, entered := false #),
+        db = LAMBDA(p: p_index): rec
+    IN FORALL(p: p_index, f: fields_type): patient_db_X2T(patient_db_T2X(db))(p)(f) = db(p)(f)
+
+  %-- PATIENT ID LINE
+  patient_id_line_exectype: TYPE = list[[#
+    pos: p_index,
+    val: bool
+  #]]
+  patient_id_line_type2exectype_aux(p: patient_id_line_type, n: p_index): RECURSIVE patient_id_line_exectype =
+    IF n = 0 THEN (: (# pos:= n, val:= p(n) #) :)
+    ELSE (: (# pos:= n, val:= p(n) #) :) o patient_id_line_type2exectype_aux(p, n-1) ENDIF
+  MEASURE n
+  patient_id_line_T2X(p: patient_id_line_type): patient_id_line_exectype = patient_id_line_type2exectype_aux(p, plimit)
+  CONVERSION patient_id_line_T2X
+
+  patient_id_line_X2T(p: patient_id_line_exectype): patient_id_line_type = LAMBDA(x: p_index): nth(p, x)`val
+%  CONVERSION patient_id_line_X2T
+
+
+  test_patient_id_line: patient_id_line_exectype = LAMBDA (x: p_index): false
+  test_reverse_patient_id_line: bool =
+    LET line = LAMBDA (x: p_index): false
+     IN FORALL(p: p_index, f: fields_type): patient_id_line_X2T(patient_id_line_T2X(line))(p) = line(p)
+
+
+  execState: TYPE = [#
+   mode: mode_type,
+   action: available_actions_exectype,
+   field: available_fields_exectype,
+   new_patient_record: available_fields_exectype,
+   patient_id_line: patient_id_line_exectype,
+   med_id_line: med_id_line_exectype,
+   script_line: script_line_exectype,
+   scripts_db: script_db_exectype,
+   patients_db: patient_db_exectype,
+   meds_db: med_db_exectype,
+   p_max: p_index,
+   p_lower: p_index,
+   p_upper: p_index,
+   p_current: p_index,
+   m_max: m_index,
+   m_lower: m_index,
+   m_upper: m_index,
+   m_current: m_index,
+   s_lower: s_index,
+   s_upper: s_index,
+   s_current: s_index,
+   scan_counter: upto(max_scan)
+  #]
+  state2execState(st: state): execState = (#
+   mode:= mode(st),
+   action:= action(st),
+   field:= field(st),
+   new_patient_record:= new_patient_record(st),
+   patient_id_line:= patient_id_line(st),
+   med_id_line:= med_id_line(st),
+   script_line:= script_line(st),
+   scripts_db:= scripts_db(st),
+   patients_db:= patients_db(st),
+   meds_db:= meds_db(st),
+   p_max:= p_max(st),
+   p_lower:= p_lower(st),
+   p_upper:= p_upper(st),
+   p_current:= p_current(st),
+   m_max:= m_max(st),
+   m_lower:= m_lower(st),
+   m_upper:= m_upper(st),
+   m_current:= m_current(st),
+   s_lower:= s_lower(st),
+   s_upper:= s_upper(st),
+   s_current:= s_current(st),
+   scan_counter:= scan_counter(st)
+  #)
+  CONVERSION state2execState
+  exec(st: state): execState = state2execState(st)
+
+  execState2state(st: execState): state = (#
+   mode:= mode(st),
+   action:= available_actions_X2T(action(st)),
+   field:= available_fields_X2T(field(st)),
+   new_patient_record:= available_fields_X2T(new_patient_record(st)),
+   patient_id_line:= patient_id_line_X2T(patient_id_line(st)),
+   med_id_line := med_id_line_X2T(med_id_line(st)),
+   script_line := script_line_X2T(script_line(st)),
+   scripts_db := script_db_X2T(scripts_db(st)),
+   patients_db:= patient_db_X2T(patients_db(st)),
+   meds_db:= med_db_X2T(meds_db(st)),
+   p_max:= p_max(st),
+   p_lower:= p_lower(st),
+   p_upper:= p_upper(st),
+   p_current:= p_current(st),
+   m_max:= m_max(st),
+   m_lower:= m_lower(st),
+   m_upper:= m_upper(st),
+   m_current:= m_current(st),
+   s_lower:= s_lower(st),
+   s_upper:= s_upper(st),
+   s_current:= s_current(st),
+   scan_counter:= scan_counter(st)
+  #)
+  CONVERSION execState2state
+
+
+  %-- NOTES
+  % A FIELD CAN BE SELECTED ONLY IF THE FIELD IS VISIBLE
+  st0: state = init_pillbox(0);
+  b1: available_fields_exectype = exec(select(dob, st0))`field; %-- field dob is not selected
+  
+  b2: available_fields_exectype = exec(select(dob, st0 WITH [
+      	field := LAMBDA (f: fields_type):
+	      	     IF f = dob THEN (# visible := true, selected := false, entered := false #)
+                     ELSE (# visible := false, selected := false, entered := false #) ENDIF
+	]))`field; %-- field dob is correctly selected in this case because the field is visible
+
+  b3: available_fields_exectype = exec(new_patient_details_screen(st0))`field
+  st1: state = new_patient_details_screen(st0) %-- dob is visible
+  b4: available_fields_exectype = exec(enter(dob, select(dob, st1)))`field %-- dob selected correctly
+
+ END conversions

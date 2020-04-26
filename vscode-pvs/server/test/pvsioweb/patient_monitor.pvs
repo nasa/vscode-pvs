@@ -1,0 +1,57 @@
+patient_monitor: THEORY
+ BEGIN
+  min_spo2: nonneg_real = 88
+  max_spo2: nonneg_real = 100
+  min_rra: nonneg_real = 6
+  max_rra: nonneg_real = 30
+  Alarm: TYPE = { off, mute, alarm }
+  MonitorState: TYPE = [#
+    id: string,
+    spo2: real, % sensor data - blood oxigenation level (percentage)
+    spo2_max: nonneg_real,
+    spo2_min: nonneg_real,
+    spo2_label: string,
+    spo2_alarm: Alarm,
+    spo2_fail: bool,
+    rra: real, % sensor data - acoustic respiratory rate (breaths per minute, bpm)
+    rra_max: nonneg_real,
+    rra_min: nonneg_real,
+    rra_label: string,
+    rra_alarm: Alarm,
+    rra_fail: bool,
+    isOn: bool
+  #]
+  init_monitor_alt(m: string): MonitorState = (#
+    id := m,
+    spo2 := 99, % sensor data - blood oxigenation level (percentage)
+    spo2_max := 0,
+    spo2_min := 88,
+    spo2_label := "SpO2",
+    spo2_alarm := off,
+    spo2_fail := false,
+    rra := 23, % sensor data - acoustic respiratory rate (breaths per minute, bpm)
+    rra_max := 30,
+    rra_min := 6,
+    rra_label := "RRa",
+    rra_alarm := off,
+    rra_fail := false,
+    isOn := true
+  #)
+  init_monitor(m: string): MonitorState = (#
+    id := m,
+    spo2 := 0, % sensor data - blood oxigenation level (percentage)
+    spo2_max := 0,
+    spo2_min := 0,
+    spo2_label := "SpO2",
+    spo2_alarm := off,
+    spo2_fail := false,
+    rra := 0, % sensor data - acoustic respiratory rate (breaths per minute, bpm)
+    rra_max := 0,
+    rra_min := 0,
+    rra_label := "RRa",
+    rra_alarm := off,
+    rra_fail := false,
+    isOn := false
+  #)
+
+ END patient_monitor

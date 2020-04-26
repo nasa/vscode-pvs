@@ -1,0 +1,209 @@
+FCUDataEntry: THEORY
+ BEGIN IMPORTING constants
+
+  DOUBLE_MAX_BIG: AXIOM
+    DOUBLE_MAX >= 9999.99
+
+
+  UnitsType: TYPE = { inHg, hPa }
+  STD_INHG: double = 29.92
+  STD_HPA: double = 29.92 * 33.86 
+
+  state: TYPE = [#
+    decimalDigits: {x: nat | x <= MAX_DECIMAL_DIGITS},
+    integerDigits: {x: nat | x <= MAX_INTEGER_DIGITS},
+    display: string,
+    dispval: { x: double | x >= 0 AND x <= 9999.99 } ,
+    msg: string,
+    pointEntered: bool,
+    units: UnitsType,
+    programmedValue: {x: double | IF units = inHg THEN x >= MIN_inHg AND x <= MAX_inHg ELSE x >= MIN_hPa AND x <= MAX_hPa ENDIF }
+  #]
+
+  %-- initial state
+  init_data_entry(x: real): state = (#
+    decimalDigits := 0,
+    integerDigits := 0,
+    display := STD_INHG,
+    dispval := STD_INHG,
+    msg := "",
+    pointEntered := FALSE,
+    programmedValue := STD_INHG,
+    units := inHg
+  #)
+
+  dispmsg(dispval: real, units: UnitsType, decimalDigits: int): string =
+    IF (decimalDigits > MAX_DECIMAL_DIGITS)   THEN message(PRECISION_EXCEEDED)
+    ELSIF units = inHg AND dispval < MIN_inHg THEN message(TOO_LOW)
+    ELSIF units = inHg AND dispval > MAX_inHg THEN message(TOO_HIGH)
+    ELSIF units = hPa AND dispval < MIN_hPa   THEN message(TOO_LOW)
+    ELSIF units = hPa AND dispval > MAX_hPa   THEN message(TOO_HIGH)
+    ELSE "" ENDIF
+
+  val_AXIOM: AXIOM
+    FORALL (st: state):
+      ((integerDigits(st) < 4 AND decimalDigits(st) = 2) IMPLIES (pointEntered(st) AND dispval(st) <= 999.99))
+      AND
+      ((integerDigits(st) < 4 AND decimalDigits(st) = 1) IMPLIES (pointEntered(st) AND dispval(st) <= 999.9))
+      AND
+      ((integerDigits(st) < 4 AND decimalDigits(st) = 0) IMPLIES dispval(st) <= 999)
+
+  click_digit(key: {key : KEY_CODE | key = KEY_0 OR key = KEY_1 OR key = KEY_2 OR key = KEY_3 OR key = KEY_4
+	  or key = KEY_5 OR key = KEY_6 OR key = KEY_7 OR key = KEY_8 OR key = KEY_9})(st: state): state =
+    if integerDigits(st) < MAX_INTEGER_DIGITS AND decimalDigits(st) < MAX_DECIMAL_DIGITS THEN
+       LET (tmp, st) = if (pointEntered(st))
+	   	       then LET decimalDigitsPP = decimalDigits(st) + 1
+		             IN (dispval(st) + key * pow10(-1 * decimalDigitsPP),
+		       	      	 st WITH [ decimalDigits := decimalDigitsPP ])
+		       else LET integerDigitsPP = integerDigits(st) + 1
+	          	     IN (dispval(st) * 10 + key,
+	               	         st WITH [ integerDigits := integerDigitsPP ]) endif
+        IN st WITH [ dispval := tmp,
+	    	     display := snprintf(tmp, MAIN_DISPLAY_SIZE)(pointEntered(st), decimalDigits(st)),
+                         msg := dispmsg(tmp, units(st), decimalDigits(st)) ]
+    else st endif
+
+
+  click_POINT(st: state): state =
+	if (NOT pointEntered(st))
+	then st WITH [ pointEntered := true,
+		       display := strcat(display(st),".") ]
+	else st endif
+
+  validate_data_entry(st: state): state =
+     COND
+       (units(st) = inHg AND dispval(st) < MIN_inHg)
+         -> st WITH [ dispval := MIN_inHg, display := MIN_inHg, programmedValue := MIN_inHg ],
+       (units(st) = inHg AND dispval(st) > MAX_inHg)
+         -> st WITH [ dispval := MAX_inHg, display := MAX_inHg, programmedValue := MAX_inHg ],
+       (units(st) = hPa AND dispval(st) < MIN_hPa)
+         -> st WITH [ dispval := MIN_hPa, display := MIN_hPa, programmedValue := MIN_hPa ],
+       (units(st) = hPa AND dispval(st) > MAX_hPa)
+         -> st WITH [ dispval := MAX_hPa, display := MAX_hPa, programmedValue := MAX_hPa ],
+       (units(st) = hPa AND dispval(st) >= MIN_hPa AND dispval(st) <= MAX_hPa) OR
+              (units(st) = inHg AND dispval(st) >= MIN_inHg AND dispval(st) <= MAX_inHg)
+         -> st WITH [ programmedValue := dispval(st) ]
+     ENDCOND
+
+  %-- clear display value
+  clear_data_entry(st: state): state =
+     st WITH [ display := "0",
+	       dispval := 0,
+	       pointEntered := false,
+	       decimalDigits := 0,
+	       integerDigits := 0,
+	       msg := ""]
+
+  trim(x: real): real =
+     floor(x * 100) / 100
+
+  %-- restore (previous) programmed value
+  restore_display(st: state): state =
+        clear_data_entry(st) WITH [
+		display := trim(programmedValue(st)),
+	        dispval := programmedValue(st)
+		]
+
+  EXCEPTION(errType: int, key: int, val: unsigned_long_int)(st: state): state =
+	st WITH [ display := snprintf(errType + ":" + key + ":" + val) ]
+
+  processKey(key: KEY_CODE, st: state): state =
+    COND
+	 key = KEY_0 OR key = KEY_1 OR key = KEY_2 OR key = KEY_3 OR key = KEY_4
+	  or key = KEY_5 OR key = KEY_6 OR key = KEY_7 OR key = KEY_8 OR key = KEY_9
+               -> click_digit(key)(st),
+
+         key = KEY_POINT 
+               -> click_POINT(st),
+
+	 key = KEY_OK  
+	       -> validate_data_entry(st),
+	
+	 key = KEY_CLR
+	       -> clear_data_entry(st),
+
+         key = KEY_ESC
+	       -> restore_display(st),
+	       
+         ELSE % unrecognised key - call exception handler
+	       -> EXCEPTION(INVALID_KEY, key, dispval(st))(st)
+   ENDCOND
+
+  processEvent(evt: EVT_CODE, st: state): state =
+    COND
+         evt = EVT_TIMEOUT 
+	       -> restore_display(st),
+	       
+         ELSE % unrecognised key - call exception handler
+	       -> EXCEPTION(INVALID_EVENT, evt, dispval(st))(st)
+   ENDCOND
+
+
+ END FCUDataEntry
+
+
+constants: THEORY
+ BEGIN IMPORTING limits
+  MAIN_DISPLAY_SIZE     : int = 16;
+  MAX_DECIMAL_DIGITS    : int = 2;
+  MAX_INTEGER_DIGITS    : int = 4;
+  MAX_inHg              : double = 32.48;
+  MIN_inHg		: double = 22; 
+  MAX_hPa               : double = 1100;
+  MIN_hPa		: double = 745; 
+
+  N_MESSAGES: int = 4;
+  message(i: below(N_MESSAGES)): { s: string | s`length <= MAIN_DISPLAY_SIZE } =
+   COND i = 0 -> "Too High",
+        i = 1 -> "Too Low",
+        i = 2 -> "Out of Range",
+        i = 3 -> "Invalid Key" ENDCOND
+
+  KEY_CODE: TYPE = { KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_POINT, KEY_OK, KEY_CLR, KEY_ESC };
+  KEY_CODE_TO_INT(k: KEY_CODE): int =
+   COND k = KEY_0 -> 0,
+        k = KEY_1 -> 1,
+	k = KEY_2 -> 2,
+	k = KEY_3 -> 3,
+	k = KEY_4 -> 4,
+	k = KEY_5 -> 5,
+	k = KEY_6 -> 6,
+	k = KEY_7 -> 7,
+	k = KEY_8 -> 8,
+	k = KEY_9 -> 9,
+	k = KEY_POINT -> 10,
+	k = KEY_OK -> 11,
+	k = KEY_CLR -> 12,
+	k = KEY_ESC -> 13 ENDCOND
+   CONVERSION KEY_CODE_TO_INT
+
+  EVT_CODE: TYPE = { EVT_TIMEOUT };
+  EVT_CODE_TO_INT(evt: EVT_CODE): int =
+    COND evt = EVT_TIMEOUT -> 1000
+    ENDCOND
+  CONVERSION EVT_CODE_TO_INT
+
+  messageID: TYPE = { TOO_HIGH, TOO_LOW, PRECISION_EXCEEDED };
+  messageID_TO_INT(m: messageID): int =
+   COND m = TOO_HIGH -> 0,
+        m = TOO_LOW  -> 1,
+	m = PRECISION_EXCEEDED -> 2 ENDCOND
+   CONVERSION messageID_TO_INT
+
+  FAILURE_CODES: TYPE = { NULL_POINTER_ASSIGNMENT, ARRAY_INDEX_OUT_OF_BOUNDS, KEYPROCESS_DEFAULT, DIVISION_BY_ZERO, MATH_ERROR, 
+                            FLOATING_POINT_ERROR, OUT_OF_MEMORY, INVALID_KEY, INVALID_VALUE, INVALID_EVENT };
+  FAILURE_CODES_TO_INT(f: FAILURE_CODES): int =
+   COND f = NULL_POINTER_ASSIGNMENT   -> 0, 
+        f = ARRAY_INDEX_OUT_OF_BOUNDS -> 1, 
+	f = KEYPROCESS_DEFAULT        -> 2, 
+	f = DIVISION_BY_ZERO          -> 3, 
+	f = MATH_ERROR		      -> 4, 
+        f = FLOATING_POINT_ERROR      -> 5, 
+	f = OUT_OF_MEMORY	      -> 6, 
+	f = INVALID_KEY		      -> 100, 
+	f = INVALID_VALUE	      -> 101,
+	f = INVALID_EVENT	      -> 102 ENDCOND
+   CONVERSION FAILURE_CODES_TO_INT
+
+
+ END constants

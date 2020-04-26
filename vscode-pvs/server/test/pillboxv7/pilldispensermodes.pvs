@@ -1,0 +1,1119 @@
+% Michael Harrison and Paolo Masci (Braga and Newcastle University) January 2017
+
+pilldispenser_th: THEORY
+ BEGIN
+
+  IMPORTING pd_t_and_c_th[20, 20, 5]
+  max_scan: posnat = 3
+  state: TYPE = [#
+   mode: mode_type,
+   path_mode: path_mode_type,
+   path_mode_set: path_mode_type,
+   vis_field: fields_set,
+   sel_field: fields_set,
+   ent_field: fields_set,
+   action: available_actions_type,
+   patient_id_line: patient_id_line_type,
+   med_id_line: med_id_line_type,
+   script_line: script_line_type,
+   patients_db: patient_db_type,
+   meds_db: med_db_type,
+   temp_patient: patient_type,
+   temp_script: script_type,
+   temp_med: med_type,
+   p_max: p_index,
+   p_current: p_index,
+   m_max: m_index,
+   m_current: m_index,
+   s_current: s_index,
+   s_max: s_index,
+   scan_counter: upto(max_scan)
+  #]
+
+
+nil_script: script_type = (# med_name := m_null,
+                                   s_fields
+                                     := LAMBDA (x: fields_type): FALSE,
+                                   s_period := period_null,
+                                   quant := q_null,
+                                   t1 := t_null,
+                                   t2 := t_null #)
+
+nil_list_script: list_script_type = LAMBDA (s: s_index): nil_script
+
+
+nil_patient: patient_type = (# p_name := p_null,
+                                   p_fields
+                                     := LAMBDA (x: fields_type): FALSE,
+                                   scripts_index := s_null,
+                                   scripts
+                                     := nil_list_script #)
+nil_med: med_type = (# med_name := m_null,
+                                   med_db_fields
+                                     := LAMBDA (x: fields_type): FALSE,
+                                   quant := q_null,
+                                   col := 0
+                                      #)
+
+
+
+% length(l): RECURSIVE nat =
+%    CASES l OF
+%      null: 0,
+%      cons(x, y): length(y) + 1
+%    ENDCASES
+%   MEASURE reduce_nat(0, (LAMBDA (x: T), (n: nat): n + 1))
+
+next_pid(p: p_index): p_index =
+     IF (p < plimit) THEN p + 1
+     ELSE p ENDIF
+
+next_mid(m: m_index): m_index =
+     IF m < mlimit THEN m + 1
+     ELSE m ENDIF
+
+next_sid(s: s_index): s_index =
+     IF s < slimit THEN s + 1
+     ELSE s ENDIF
+
+clear_screen(st: state): state =
+  st WITH
+    [  patient_id_line :=
+       LAMBDA (x: s_index): p_null,
+       med_id_line :=
+       LAMBDA (x: s_index): m_null,
+       script_line :=
+       LAMBDA (x: s_index): false,
+       sel_field :=
+       LAMBDA(x: fields_type): false,
+       ent_field := 
+       LAMBDA(x: fields_type): false
+      ]
+
+init?(st: state): bool =
+  
+   (mode(st) = initial &
+    path_mode(st) = no_path &
+    path_mode_set(st) = no_path &
+   (action(st) = LAMBDA(x: actions_type):
+             (x = key1) OR (x = key2) OR (x = key3)) &
+   vis_field(st) = LAMBDA(x: fields_type): false &
+   sel_field(st) = LAMBDA(x: fields_type): false &
+   ent_field(st) = LAMBDA(x: fields_type): false &
+   (patient_id_line(st) =
+       LAMBDA (x: s_index): p_null) &
+   (med_id_line(st) =
+       LAMBDA (x: s_index): m_null) &
+   (script_line(st) =
+       LAMBDA (x: s_index): false) & 
+   null(meds_db(st)) &
+   null(patients_db(st))  & 
+   temp_patient(st) = nil_patient &
+   temp_med(st) = nil_med &
+   temp_script(st) = nil_script &
+    p_max(st) = 0 &
+    p_current(st) = 0 & 
+    m_max(st) = 0 &
+    m_current(st) = 0 &
+    s_current(st) = 0 &
+    s_max(st) = 0 &
+    scan_counter(st) = 3)
+
+init_screen(st: state): state =
+   clear_screen(st) WITH
+             [mode := initial,
+              path_mode := no_path,
+              path_mode_set := no_path,
+	      action :=
+                 LAMBDA (x: actions_type):
+                      (x= key1) OR (x=key2) OR (x=key3),
+              vis_field := LAMBDA (x: fields_type): false,
+              temp_patient := nil_patient,
+              temp_med := nil_med,
+              temp_script := nil_script,
+              p_current := p_null,
+              m_current := m_null]
+
+% init is necessary for PVSIO-web
+init(x: real): state =
+   (# 
+   mode := initial,
+   path_mode := no_path,
+   path_mode_set := no_path,
+   action := LAMBDA(x: actions_type):
+             (x = key1) OR (x = key2) OR (x = key3),
+   vis_field := LAMBDA(x: fields_type): false,
+   sel_field := LAMBDA(x: fields_type): false,
+   ent_field := LAMBDA(x: fields_type): false,
+   patient_id_line :=
+       LAMBDA (x: s_index): p_null,
+   med_id_line :=
+       LAMBDA (x: s_index): m_null,
+   script_line :=
+       LAMBDA (x: s_index): false,
+   meds_db := null,
+   patients_db := null,
+   temp_patient := nil_patient,
+   temp_script := nil_script,
+   temp_med := nil_med,
+    p_max := 0,
+    p_current := 0, 
+    m_max := 0,
+    m_current := 0,
+    s_current := 0,
+    s_max := 0,
+    scan_counter := 3 #)
+
+
+pwd_screen(st: state): state =
+   clear_screen(st) WITH
+       [mode := pwd,
+        path_mode := scripts_path,
+        path_mode_set := scripts_path,
+        action := LAMBDA(x: actions_type):
+		     x = key1 OR x = key2 OR x = key3 OR x = confirm,
+        vis_field := LAMBDA(x: fields_type): x = password
+       ]
+
+db_pwd_screen(st: state): state =
+   clear_screen(st) WITH
+       [mode := db_pwd,
+        path_mode := meds_path,
+        path_mode_set := meds_path,
+        action := LAMBDA(x: actions_type):
+                     (x= key1) OR (x=key2) OR (x=key3) OR (x=confirm),
+        vis_field := LAMBDA(x: fields_type): x = password	          
+       ]
+
+db_menu_screen(st: state): state =
+   clear_screen(st) WITH
+       [mode := db_menu,
+        path_mode := meds_path,
+        action := LAMBDA(x: actions_type):
+                     (x= key1) OR (x=key2) OR (x=key3) OR (x=medicines),
+        vis_field := LAMBDA(x: fields_type): false,
+        p_current := p_null,
+        m_current := m_null,
+        temp_patient := nil_patient,
+        temp_script := nil_script,
+        temp_med := nil_med
+       ]
+
+
+
+p_locate(p: p_index, pdb: patient_db_type): RECURSIVE boolean = 
+       p /= p_null AND 
+      CASES pdb OF
+        null: FALSE,
+        cons(hd, tl): p = hd`p_name OR p_locate(p,tl)
+       ENDCASES
+       MEASURE length(pdb)
+
+p_next(p: p_index, pdb: patient_db_type): RECURSIVE patient_db_type =
+      IF p = p_null THEN null ELSE
+       CASES pdb OF
+         null: null,
+         cons(hd, tl):
+            IF (p = hd`p_name) THEN tl ELSE p_next(p, tl) ENDIF
+        ENDCASES
+       ENDIF
+        MEASURE length(pdb)
+
+p_find(p: p_index, pdb: patient_db_type): RECURSIVE patient_type =
+       IF p = p_null THEN nil_patient ELSE
+       CASES pdb OF
+         null: nil_patient,
+         cons(hd, tl):
+            IF (p = hd`p_name) THEN hd ELSE p_find(p, tl) ENDIF
+       ENDCASES
+       ENDIF
+       MEASURE length(pdb)
+
+patient_list_screen(st: state): state =
+    clear_screen(st) WITH
+       [mode := patient_list,
+        path_mode := scripts_path,
+        patient_id_line :=
+          LAMBDA (s: s_index):
+	           IF  s < length(st`patients_db)
+                        THEN nth(st`patients_db, s)`p_name
+                        ELSE p_null ENDIF,
+        action :=
+            LAMBDA (x: actions_type):
+               (x= key1) OR (x=key2) OR (x=key3) OR (x=create),
+        vis_field := LAMBDA (x: fields_type): false,
+        p_current := p_null,
+        m_current := m_null,
+        temp_patient := nil_patient,
+        temp_script := nil_script,
+        temp_med := nil_med
+                    ]
+
+patient_details_screen(st: state): state =
+     LET tp = p_find(st`p_current, st`patients_db) IN clear_screen(st) WITH
+        [mode := patient_details,
+        path_mode := scripts_path,
+        action := LAMBDA(x: actions_type):
+                (x = key1) OR (x = key2) OR (x = key3) OR
+	        (x = prescriptions) OR (x = confirm) OR (x = quit),
+        temp_patient := tp,
+        vis_field := 
+	          LAMBDA(x: fields_type):
+		     (x = name) OR (x = dob) OR (x = id_card) OR (x = carer)
+		     OR (x = mob),
+        sel_field := LAMBDA(x: fields_type): false,
+        ent_field := LAMBDA(x: fields_type): 
+                      COND
+                       x = name -> (tp`p_name /= p_null),
+                       x = dob -> (tp`p_fields)(dob),
+                       x = id_card -> tp`p_fields(id_card),
+                       x = carer -> tp`p_fields(carer),
+                       x = mob -> tp`p_fields(mob),
+                       ELSE -> false
+                      ENDCOND
+       ]
+
+new_patient_details_screen(st: state): state =
+     LET np = next_pid(st`p_max) IN clear_screen(st) WITH
+        [mode := new_patient_details,
+        path_mode := scripts_path,
+        action := LAMBDA(x: actions_type):
+	        (x = key1) OR (x = key2) OR (x = key3) OR
+               (x = confirm) OR (x = quit),
+        temp_patient := (# p_name := np, p_fields :=  LAMBDA(x: fields_type): false,
+                           scripts_index := s_null,
+                            scripts := LAMBDA (s: s_index): nil_script #),
+        temp_script := nil_script,
+        temp_med := nil_med,
+        m_current := m_null,
+        p_current := np,
+        vis_field := LAMBDA(x: fields_type):
+		     (x = name) OR (x = dob) OR (x = id_card) OR (x = carer)
+		     OR (x = mob),
+        sel_field := LAMBDA(x: fields_type): false,
+        ent_field := LAMBDA(x: fields_type): x = name
+       ]
+
+
+script_list_screen(st: state): state =
+     clear_screen(st) WITH
+        [mode := patient_scripts_list,
+        path_mode := scripts_path,
+        action := LAMBDA(x: actions_type): 
+                      (x = key1) OR (x = key2) OR (x = key3) OR
+                       (x = quit) OR (x = create),
+	script_line :=
+                 let sl = p_find(st`p_current, st`patients_db)
+                  in 
+                    IF null(sl) THEN LAMBDA (s: s_index): false
+                    ELSE 
+                      LAMBDA (s: s_index):
+                        sl`scripts(s) /= nil_script ENDIF,
+         vis_field := LAMBDA (x: fields_type): false
+        ]
+                       
+        
+
+script_details_screen(st: state): state =
+     clear_screen(st) WITH
+        [mode := patient_script,
+        path_mode := scripts_path,
+        temp_script := (st`temp_patient)`scripts(s_current(st)),
+        action := LAMBDA(x: actions_type): (x = quit) OR (x = confirm),
+	           
+        vis_field := LAMBDA(x: fields_type):
+		     (x = name) OR (x = dosage) OR (x = quantity)
+		     OR (x = prescription),
+        ent_field :=  LAMBDA(x: fields_type):
+		     (x = name) OR (x = dosage) OR (x = quantity)
+		     OR (x = prescription)		     
+       ]
+
+dosage_screen(st: state): state =
+  clear_screen(st) WITH
+        [mode := dose,
+        path_mode := scripts_path,
+        action := LAMBDA(x: actions_type): (x = quit) OR (x = confirm),
+	           
+        vis_field := LAMBDA(f: fields_type):
+                     COND
+                       f = period -> true,
+                       f = time1 -> true,
+                       f = time2 -> (temp_script(st)`s_period = bidaily),
+		       ELSE -> false
+                     ENDCOND,
+        ent_field :=  LAMBDA(f: fields_type):
+                     COND
+                       f = period -> (temp_script(st)`s_period /= period_null),
+                       f = time1 -> temp_script(st)`t1 /= t_null,
+                       f = time2 -> temp_script(st)`t2 /= t_null,
+                       ELSE -> false
+                     ENDCOND
+       ]
+
+new_script_details_screen(st: state): state =
+    LET cs = p_find(st`p_current, st`patients_db) IN
+     clear_screen(st) WITH
+        [mode := new_patient_script,
+        path_mode := scripts_path,
+        action := LAMBDA(x: actions_type): (x = quit) OR (x = create),	           
+        vis_field := LAMBDA(x: fields_type):
+		     (x = name) OR (x = dosage) OR (x = quantity)
+		     OR (x = prescription),
+        ent_field :=  LAMBDA (x: fields_type): false,
+        temp_script := nil_script,
+        s_current := cs`scripts_index,
+        s_max := cs`scripts_index
+       ]
+
+new_dosage_screen(st: state): state =
+     clear_screen(st) WITH
+        [mode := new_dose,
+        path_mode := scripts_path,
+        action := LAMBDA(x: actions_type): (x = quit) OR (x = create),	           
+        vis_field := LAMBDA(x: fields_type):
+		     (x = period),
+        ent_field :=  LAMBDA (x: fields_type): false
+       ]
+
+m_locate(m: m_index, mdb: med_db_type): RECURSIVE boolean = 
+     m /= m_null AND
+       CASES mdb OF
+        null: FALSE,
+        cons(hd, tl): m = hd`med_name OR m_locate(m,tl)
+       ENDCASES
+       MEASURE length(mdb)
+
+m_next(m: m_index, mdb: med_db_type): RECURSIVE med_db_type =
+       IF m = m_null THEN null ELSE
+       CASES mdb OF
+         null: null,
+         cons(hd, tl):
+            IF (m = hd`med_name) THEN tl ELSE m_next(m, tl) ENDIF
+        ENDCASES
+        ENDIF
+        MEASURE length(mdb)
+
+m_find(m: m_index, mdb: med_db_type): RECURSIVE med_type =
+       IF m = m_null THEN nil_med
+       ELSE CASES mdb OF
+         null: nil_med,
+         cons(hd, tl):
+            IF (m = hd`med_name) THEN hd ELSE m_find(m, tl) ENDIF
+       ENDCASES
+       ENDIF
+       MEASURE length(mdb)
+
+db_med_details_screen(st: state): state =
+     LET mf = m_find(st`m_current, st`meds_db),
+         tm = IF null(mf) THEN nil_med ELSE mf ENDIF IN
+     clear_screen(st) WITH
+        [mode := db_med_details,
+        path_mode := meds_path,
+        action := LAMBDA(x: actions_type): (x = key1) OR (x = key2) OR (x = database) OR
+	                  (x = reload) OR (x = unload) OR (x = confirm),
+        temp_med := tm,         
+        vis_field := LAMBDA(x: fields_type):
+	             (x = name) OR (x = dosage) OR (x = validity) OR
+		     (x = quantity) OR (x = column),
+        ent_field := IF tm = nil_med THEN 
+                       LAMBDA (x: fields_type): false ELSE
+                       LAMBDA(x: fields_type):
+	             ((x = name) AND (tm`med_name /= m_null)) OR 
+                     ((x = dosage) AND tm`med_db_fields(dosage)) OR 
+                     ((x = validity) AND tm`med_db_fields(validity)) OR
+		     ((x = quantity) AND (tm`quant /= 0)) OR
+                     ((x = column) AND (tm`col /= 0)) ENDIF
+
+       ]
+
+new_med_screen(st: state): state =
+     LET mp = next_mid(st`m_max) IN clear_screen(st) WITH
+        [mode := new_med,
+        path_mode := meds_path,
+        action := LAMBDA(x: actions_type):
+	              x = key1 OR x = key2 OR x = key3 OR
+		      x = quit OR x = confirm,
+        vis_field := LAMBDA(x: fields_type):
+		     (x = name) OR (x = dosage) OR (x = validity) OR
+		     (x = quantity) OR (x = column),
+        ent_field :=  LAMBDA (x: fields_type): x = name,
+        sel_field := LAMBDA(x: fields_type): false,
+        temp_patient := nil_patient,
+        temp_script := nil_script,
+        temp_med := (# med_name := mp,
+                       med_db_fields := LAMBDA(x: fields_type): false, 
+        quant := q_null, col := 0 #),
+        m_current := mp
+       ]
+
+db_med_list_screen(st: state): state =
+    clear_screen(st) WITH
+       [mode := db_med_list,
+        path_mode := meds_path,
+        med_id_line :=
+          LAMBDA (s: s_index):
+	           IF  s < length(st`meds_db)
+                        THEN nth(st`meds_db, s)`med_name
+                        ELSE m_null ENDIF,
+        action :=
+            LAMBDA (x: actions_type):
+               (x= key1) OR (x=key2) OR ((path_mode_set(st) = meds_path) AND (x=create)),
+        vis_field := LAMBDA (x: fields_type): false,
+        temp_patient := nil_patient,
+        temp_script := nil_script,
+        temp_med := nil_med,
+        m_current := m_null
+                    ]
+
+
+
+
+
+scan_screen(st: state): state =
+      clear_screen(st) WITH
+       [mode := scan,
+        path_mode := scripts_path,
+        scan_counter := IF (scan_counter(st) > 0) AND 
+                           (scan_counter(st) <= max_scan) THEN scan_counter(st) - 1
+                        ELSE scan_counter(st) ENDIF,
+       action := LAMBDA(x: actions_type): x = scan_action,
+       vis_field := LAMBDA (x: fields_type): false
+       ]
+
+scan_enabled_screen(st: state): state =
+      clear_screen(st) WITH
+       [mode := scan_enabled,
+        path_mode := scripts_path,
+        action := LAMBDA(x: actions_type): x = tick,
+        vis_field := LAMBDA (x: fields_type): false	           
+       ]
+
+scan_successful_screen(st: state): state =
+      clear_screen(st) WITH
+       [mode := creation_success,
+        path_mode := scripts_path,
+        action := LAMBDA(x: actions_type): x = quit,
+        vis_field := LAMBDA (x: fields_type): false
+       ]
+
+per_act_key1(st: state): boolean =
+  (mode(st) = pwd) OR (mode(st) = db_pwd) OR (mode(st) = patient_details) OR
+  (mode(st) = db_menu) OR (mode(st) = patient_list) OR
+  (mode(st) = db_med_list) OR (mode(st) = new_patient_details) OR
+  (mode(st) = db_med_details) OR (mode(st) = patient_scripts_list)
+
+act_key1(st: (per_act_key1)): state =
+     init_screen(st)
+
+per_act_key2(st: state): boolean =
+  (mode(st) = initial) OR (mode(st) = db_pwd) OR
+  (mode(st) = db_menu) OR 
+  (mode(st) = db_med_list) OR
+  (mode(st) = db_med_details) OR (mode(st) = new_patient_details)
+
+% I assume that key2 does not update the database it is the equivalent of quit?
+act_key2(st: (per_act_key2)): state =
+  COND
+    (mode(st) = initial) OR (mode(st) = db_pwd)
+            -> pwd_screen(st),
+    (((mode(st) = db_menu) OR (mode(st) = db_med_list) OR
+    (mode(st) = db_med_details)) AND (path_mode_set(st) = scripts_path)) OR 
+    (mode(st) = new_patient_details)
+            -> patient_list_screen(st),
+    ELSE -> st
+  ENDCOND
+
+per_act_key3(st: state): boolean =
+  (mode(st) = initial) OR
+  (mode(st) = pwd) OR (mode(st) = patient_list) OR
+  (mode(st) = new_patient_details) OR (mode(st) = patient_details) OR
+  (mode(st) = patient_scripts_list)
+
+act_key3(st: (per_act_key3)): state =
+  COND
+    (mode(st) = initial) -> db_pwd_screen(st),
+    (mode(st) = pwd) -> db_pwd_screen(st),
+    (mode(st) = new_patient_script) OR
+    (mode(st) = patient_list) OR
+    (mode(st) = new_patient_details) OR (mode(st) = patient_details) OR
+    (mode(st) = patient_scripts_list) ->
+                    db_menu_screen(st),
+    ELSE -> st
+  ENDCOND
+
+update_scripts(p: patient_type, s: list_script_type): patient_type =
+   p WITH [scripts := s]
+
+%update_scripts_and_limit(p: patient_type, si: s_index, sc: list_script_type): patient_type =
+%    p WITH [scripts_index := si, scripts := sc]
+
+per_act_confirm(st: state): boolean =
+    (mode(st) = pwd) OR (mode(st) = db_pwd) OR (mode(st) = new_patient_details) OR
+    (mode(st) = patient_script) OR (mode(st) = dose) OR
+    (mode(st) = patient_details) OR 
+    ((mode(st) = new_med) AND (path_mode_set(st) = meds_path)) OR 
+    ((mode(st) = db_med_details) AND (path_mode_set(st) = meds_path))
+
+p_insert(p:p_index, tp: patient_type, pdb: patient_db_type): RECURSIVE patient_db_type =
+     CASES pdb OF
+      null: cons(tp, null),
+      cons(x, y):
+       IF null?(y) THEN
+        COND
+          p = x`p_name -> cons(tp, null),
+          p < x`p_name -> cons(tp, pdb),
+          p > x`p_name -> cons(x, cons(tp, y))
+         ENDCOND ELSE
+       COND
+        p < x`p_name -> cons(tp, pdb),
+        p = x`p_name -> cons(tp, y),
+        ELSE -> cons(x, p_insert(p, tp, y)) 
+       ENDCOND
+      ENDIF
+     ENDCASES
+     MEASURE length(pdb)
+
+m_insert(m:m_index, tm: med_type, mdb: med_db_type): RECURSIVE med_db_type =
+     CASES mdb OF
+      null: cons(tm, null),
+      cons(x, y):
+       IF null?(y) THEN
+        COND
+          m = x`med_name -> cons(tm, null),
+          m < x`med_name -> cons(tm, mdb),
+          m > x`med_name -> cons(x, cons(tm, y))
+         ENDCOND ELSE
+       COND
+        m < x`med_name -> cons(tm, mdb),
+        m = x`med_name -> cons(tm, y),
+        ELSE -> cons(x, m_insert(m, tm, y)) 
+       ENDCOND
+      ENDIF
+     ENDCASES
+     MEASURE length(mdb)
+    
+
+act_confirm(st : (per_act_confirm)): state =
+   COND
+% password and db passowrd
+    (mode(st) = pwd) AND ent_field(st)(password)
+          -> patient_list_screen(st),
+    (mode(st) = db_pwd) AND ent_field(st)(password)
+          -> db_menu_screen(st),
+% entering patient details, when edited old details
+    (mode(st) = patient_details) ->
+       LET st1 = st
+           WITH
+	    [patients_db := p_insert(st`p_current, st`temp_patient, st`patients_db)
+	    ]
+            IN patient_list_screen(st1),
+% entering patient details, new patient
+    ((mode(st) = new_patient_details) AND
+      (temp_patient(st)`p_name /= p_null) AND temp_patient(st)`p_fields(dob) AND
+       temp_patient(st)`p_fields(id_card) AND temp_patient(st)`p_fields(carer) AND
+       temp_patient(st)`p_fields(mob)) ->
+          LET st1 = st WITH [ scan_counter := max_scan]
+                                       IN scan_screen(st1),
+% entering patient prescription
+     (mode(st) = patient_script) AND
+       (temp_script(st)`med_name /= m_null) AND temp_script(st)`s_fields(dosage) AND
+       temp_script(st)`s_fields(prescription) AND (temp_script(st)`quant /= 0)
+           -> dosage_screen(st),
+       ((mode(st) = dose) AND
+       ((((temp_script(st)`s_period = monthly) OR
+        (temp_script(st)`s_period = weekly) OR
+        (temp_script(st)`s_period = daily))
+        AND temp_script(st)`t1 /= t_null
+             AND temp_script(st)`t2 = t_null) OR
+        ((temp_script(st)`s_period = bidaily) AND
+         temp_script(st)`t1 /= t_null AND
+             temp_script(st)`t2 /= t_null)))->
+        LET sl = LAMBDA(s: s_index):
+          IF s = s_current(st) THEN temp_script(st)
+          ELSE temp_patient(st)`scripts(s) ENDIF,
+         tp = temp_patient(st) WITH [scripts := sl, scripts_index := st`s_max],
+         st1 = st WITH [patients_db := p_insert(p_current(st), tp, patients_db(st))] IN
+         script_list_screen(st1),
+% entering new medicine or editing existing medicine in the database
+   ((mode(st) = new_med) OR (mode(st) = db_med_details)) AND
+      (ent_field(st)(name) AND ent_field(st)(dosage) AND
+       ent_field(st)(validity) AND ent_field(st)(quantity) AND
+       ent_field(st)(column)) -> 
+          LET st1 = st WITH [ 
+              m_max := IF (mode(st) = new_med) THEN m_current(st) ELSE m_max(st) ENDIF,
+              meds_db := m_insert(m_current(st), temp_med(st), meds_db(st))] IN
+			                         db_med_list_screen(st1),
+				       
+    ELSE -> st
+  ENDCOND
+
+per_act_create(st: state): boolean =
+    (mode(st) = patient_list) OR
+    (mode(st) = db_med_list) OR
+    (mode(st) = new_patient_script) OR
+    (mode(st) = new_dose) OR
+    (mode(st) = patient_scripts_list)
+
+act_create(st: (per_act_create)): state =
+COND
+  (mode(st) = patient_list) -> new_patient_details_screen(st),
+  (mode(st) = db_med_list) -> new_med_screen(st),
+  (mode(st) = new_patient_script) AND
+        (temp_script(st)`med_name /= m_null) AND temp_script(st)`s_fields(dosage) AND
+       temp_script(st)`s_fields(prescription) AND (temp_script(st)`quant /= q_null)
+           ->  new_dosage_screen(st),
+  (mode(st) = patient_scripts_list) -> new_script_details_screen(st),
+  ((mode(st) = new_dose) AND
+       ((((temp_script(st)`s_period = monthly) OR
+        (temp_script(st)`s_period = weekly) OR
+        (temp_script(st)`s_period = daily))
+        AND temp_script(st)`t1 /= t_null
+             AND temp_script(st)`t2 = t_null) OR
+        ((temp_script(st)`s_period = bidaily) AND
+         temp_script(st)`t1 /= t_null AND
+             temp_script(st)`t2 /= t_null))) ->
+        LET sl = LAMBDA(s: s_index):
+          IF s = s_current(st) THEN temp_script(st)
+          ELSE temp_patient(st)`scripts(s) ENDIF,
+         tp = temp_patient(st) WITH 
+           [scripts := sl,
+            scripts_index := next_sid(st`s_max)],
+         st1 = st WITH 
+           [s_max := st`s_current, 
+            patients_db := p_insert(p_current(st), tp, patients_db(st)),
+            temp_patient := tp]
+        IN script_list_screen(st1) WITH [s_max := next_sid(st`s_max)],
+    ELSE -> st
+ENDCOND
+      
+
+per_act_quit(st: state): boolean =
+   (mode(st) = new_patient_details) OR (mode(st) = creation_success) OR
+   (mode(st) = patient_details) OR (mode(st) = patient_script) OR
+   (mode(st) = new_patient_script) OR (mode(st) = dose) OR
+   (mode(st) = new_dose) OR (mode(st) = patient_scripts_list)
+
+
+ % p_append(pdb1, pdb2: patient_db_type): RECURSIVE patient_db_type =
+ %   CASES pdb1 OF
+ %     null: pdb2,
+ %     cons(x, y): cons(x, append(y, pdb2))
+ %   ENDCASES
+ %   MEASURE length(pdb1)
+
+%  p_reverse(pdb: patient_db_type): RECURSIVE patient_db_type =
+%    CASES pdb OF
+%      null: pdb,
+%      cons(x, y): append(p_reverse(y), cons(x, null))
+%    ENDCASES
+%    MEASURE length(pdb)
+
+
+act_quit(st: (per_act_quit)): state =
+COND
+ (mode(st) = new_patient_details) OR (mode(st) = patient_details) 
+            -> patient_list_screen(st),
+ (mode(st) = patient_script) OR (mode(st) = new_patient_script)
+              -> script_list_screen(st),
+ (mode(st) = patient_scripts_list) -> init_screen(st),
+ (mode(st) = new_med) -> db_med_list_screen(st),
+ (mode(st) = creation_success) ->
+                LET   st1 = st
+                   WITH
+		  [p_max := p_current(st),
+		   patients_db := p_insert(st`p_current, temp_patient(st), patients_db(st))
+		   ] 
+                 IN patient_list_screen(st1),
+  (mode(st) = dose) -> patient_details_screen(st),
+  (mode(st) = new_dose) -> new_patient_details_screen(st),
+  ELSE -> st
+ENDCOND
+
+    
+    
+per_act_medicines(st: state): boolean =
+      (mode(st) = db_menu)
+
+act_medicines(st: (per_act_medicines)): state =
+  COND
+    (mode(st) = db_menu) -> db_med_list_screen(st),
+    ELSE -> st    
+   ENDCOND  
+
+per_database_action(st: state): boolean =
+       (mode(st) = db_med_details)
+
+database_action(st: (per_database_action)): state =
+     st WITH
+     [mode := db_med_details]
+
+per_act_prescriptions(st: state): boolean =
+       (mode(st) = patient_details)
+
+act_prescriptions(st :(per_act_prescriptions)): state =
+    LET st1 = st
+           WITH
+	    [patients_db := p_insert(st`p_current, st`temp_patient, st`patients_db)
+	    ]
+            IN script_list_screen(st1)
+
+per_act_patient(st: state): boolean =
+       (mode(st) = patient_list)
+
+act_patient(s: s_index, st: (per_act_patient)): state =
+       IF
+         (patient_id_line(st)(s) /= p_null) THEN
+	     LET st1 = st WITH [p_current := patient_id_line(st)(s)]
+	        IN patient_details_screen(st1)
+	 ELSE  st
+       ENDIF
+
+per_act_med(st: state): boolean =
+       (mode(st) = db_med_list)
+
+act_med(s: s_index, st: (per_act_med)): state =
+       IF
+         med_id_line(st)(s) /= m_null THEN
+	   LET st1 = st WITH [m_current := med_id_line(st)(s)]
+	        IN db_med_details_screen(st1)
+	 ELSE st
+       ENDIF
+
+per_act_script(st: state): boolean =
+       (mode(st) = patient_scripts_list)
+
+act_script(s: s_index, st: (per_act_script)): state =
+       COND
+        script_line(st)(s) ->
+	   LET st1 = st WITH [s_current := s]
+	         IN script_details_screen(st1),
+	ELSE -> st
+       ENDCOND
+
+per_act(a: actions_type, st: state): boolean =
+     (a = key1) OR (a = key2) OR (a=key3) OR (a = medicines) OR
+     (a = prescriptions) OR (a = database) OR (a = create) OR
+     (a = scan_action) OR (a = tick) OR (a = confirm) OR
+     (a = quit)
+
+act(a: actions_type, st: state): state =
+     COND
+       a = key1 & per_act_key1(st) -> act_key1(st),
+       a = key2 & per_act_key2(st) -> act_key2(st),
+       a = key3 & per_act_key3(st) -> act_key3(st),
+       a = medicines & per_act_medicines(st) -> act_medicines(st),
+       a = prescriptions & per_act_prescriptions(st) -> act_prescriptions(st),
+       (a = database) AND (mode(st) = db_med_details) AND (path_mode_set(st) = meds_path) ->
+               LET st1 = st
+                   WITH
+	             [meds_db :=
+	                m_insert(st`m_current, st`temp_med, meds_db(st))]
+                 IN db_med_list_screen(st1),
+       a = create & per_act_create(st) -> act_create(st),
+       (a = scan_action) AND (mode(st) = scan) -> scan_enabled_screen(st),
+       (a = tick) AND (mode(st) = scan_enabled) AND (st`scan_counter /= 0) ->
+                            scan_screen(st),
+       (a = confirm) & per_act_confirm(st)  -> act_confirm(st),
+       (a = tick) AND (mode(st) = scan_enabled) AND (st`scan_counter = 0) ->
+                             scan_successful_screen(st),
+       (a = quit) & per_act_quit(st) -> act_quit(st),
+       ELSE -> st
+     ENDCOND
+
+select(a: actions_type, st: state): state =
+   IF st`action(a) THEN act(a, st)
+   ELSE st
+   ENDIF
+
+select(f: fields_type, st: state): state =
+    IF st`vis_field(f) THEN
+        st WITH
+	[ sel_field :=
+	    LAMBDA(x: fields_type): x = f
+	]
+   ELSE st
+   ENDIF
+
+
+
+scroll_up_patient_list(st: state): state =
+   LET rpdb = reverse(patients_db(st)),
+       lp = p_next(st`patient_id_line(0), rpdb),
+       ln = IF null?(lp) THEN p_null ELSE car(lp)`p_name ENDIF,
+       curr_patient_id_line = st`patient_id_line
+     IN
+       st WITH
+       [ % patients_db := rpdb, % diagnosis
+        patient_id_line :=
+             IF ln = p_null THEN patient_id_line(st) 
+             ELSE
+                LAMBDA(s: s_index):
+                  COND
+                   s = 0 -> ln,
+                   s = 1 -> curr_patient_id_line(0),
+                   s = 2 -> curr_patient_id_line(1),
+                   s = 3 -> curr_patient_id_line(2),
+                   s = 4 -> curr_patient_id_line(3)
+                  ENDCOND
+              ENDIF
+        ] 
+
+scroll_down_patient_list(st: state): state =
+   LET pn = p_next(st`patient_id_line(4), patients_db(st)), 
+       lp = IF null?(pn) THEN p_null else car(pn)`p_name ENDIF,
+       curr_patient_id_line = st`patient_id_line
+     IN
+      st WITH
+       [patient_id_line :=
+         LAMBDA(s: s_index):
+           COND
+            s = 0 -> curr_patient_id_line(1),
+            s = 1 -> curr_patient_id_line(2),
+            s = 2 -> curr_patient_id_line(3),
+            s = 3 -> curr_patient_id_line(4),
+            s = 4 -> lp
+           ENDCOND
+        ] 
+  
+
+% m_append(mdb1, mdb2: med_db_type): RECURSIVE med_db_type =
+%    CASES mdb1 OF
+%      null: mdb2,
+%      cons(x, y): cons(x, append(y, mdb2))
+%    ENDCASES
+%    MEASURE length(mdb1)
+
+%  m_reverse(mdb: med_db_type): RECURSIVE med_db_type =
+%    CASES mdb OF
+%      null: mdb,
+%      cons(x, y): append(m_reverse(y), cons(x, null))
+%    ENDCASES
+%    MEASURE length(mdb)
+
+scroll_up_med_list(st: state): state =
+   LET rmdb = reverse(meds_db(st)),
+       lm = m_next(st`med_id_line(0), rmdb),
+       nm = IF null?(lm) THEN m_null ELSE car(lm)`med_name ENDIF,
+       curr_med_id_line = st`med_id_line
+     IN
+     st
+      WITH
+       [med_id_line :=
+          IF nm = m_null THEN med_id_line(st) 
+             ELSE
+          LAMBDA(s: s_index):
+           COND
+            s = 0 -> nm,
+            s = 1 -> curr_med_id_line(0),
+            s = 2 -> curr_med_id_line(1),
+            s = 3 -> curr_med_id_line(2),
+            s = 4 -> curr_med_id_line(3)
+           ENDCOND
+          ENDIF
+        ] 
+
+scroll_down_med_list(st: state): state =
+   LET lm = m_next(st`med_id_line(4), meds_db(st)),
+       mn = IF null?(lm) THEN m_null ELSE car(lm)`med_name ENDIF,
+       curr_med_id_line = st`med_id_line
+     IN
+     st WITH
+       [med_id_line :=
+         LAMBDA(s: s_index):
+           COND
+            s = 0 -> curr_med_id_line(1),
+            s = 1 -> curr_med_id_line(2),
+            s = 2 -> curr_med_id_line(3),
+            s = 3 -> curr_med_id_line(4),
+            s = 4 -> mn
+           ENDCOND
+        ] 
+
+per_enter_column(st: state): boolean =
+     ((mode(st) = db_med_details) OR (mode(st) = new_med)) AND sel_field(st)(column)
+
+enter_column(c: upto(col_limit), st: (per_enter_column)): state =
+     st WITH [temp_med := temp_med(st) WITH [col := c],
+              ent_field := 
+                 LAMBDA (x: fields_type):
+                    x = column OR ent_field(st)(x),
+              sel_field :=
+                  LAMBDA(x: fields_type): false ]
+
+
+
+emn(m: m_index, ts: script_type): script_type =
+    ts WITH [med_name := m]
+
+% enter the med name when used in a script
+per_enter_med_name(st: state): boolean =
+   ((mode(st) = patient_script) OR (mode(st) = new_patient_script)) AND st`sel_field(name)
+
+enter_med_name(m: m_index, st: (per_enter_med_name)): state
+   = st WITH [temp_script := emn(m, temp_script(st)),
+              ent_field := 
+                 LAMBDA (x: fields_type):
+                    x = name OR ent_field(st)(x),
+              sel_field :=
+                  LAMBDA(x: fields_type): false
+              ]     
+
+epno(pno: pill_no_type, ts: script_type): script_type =
+    ts WITH [quant := pno]
+
+per_enter_med_quant(st: state): boolean =
+   ((mode(st) = db_med_details) OR (mode(st) = new_med)) AND sel_field(st)(quantity)
+
+per_enter_script_quant(st: state): boolean =
+   ((mode(st) = patient_script) OR (mode(st) = new_patient_script)) AND sel_field(st)(quantity)
+
+per_enter_quant(st: state): boolean =
+      per_enter_script_quant(st) OR per_enter_med_quant(st)
+
+
+enter_quant(pno: pill_no_type, st: (per_enter_quant)): state
+   = st WITH [
+      temp_script := IF per_enter_script_quant(st) THEN epno(pno, temp_script(st)) ELSE temp_script(st) ENDIF,
+      temp_med := IF per_enter_med_quant(st) THEN temp_med(st) WITH [quant := pno] ELSE temp_med(st)
+                  ENDIF,
+      ent_field := 
+                 LAMBDA (x: fields_type):
+                    x = quantity OR ent_field(st)(x),
+      sel_field :=
+                  LAMBDA(x: fields_type): false
+              ]    
+
+etime(f: fields_type, t: time_type, ts: script_type): script_type =
+  COND
+   f = time1 -> ts WITH [t1 := t],
+   f = time2 -> ts WITH [t2 := t],
+   ELSE -> ts
+  ENDCOND
+
+escript_period(p: period_type, ts: script_type): script_type =
+    ts WITH [s_period := p] 
+
+per_enter_script_time(st: state): boolean =
+    ((mode(st) = patient_script) OR (mode(st) = new_patient_script)) AND 
+     (sel_field(st)(time1) OR sel_field(st)(time2))
+
+
+enter_script_time(f: fields_type, t: time_type, st: (per_enter_script_time)): state
+  = IF sel_field(st)(f) THEN
+    st WITH [temp_script := etime(f, t, temp_script(st)),
+              ent_field := 
+                 LAMBDA (x: fields_type):
+                   (x = f) OR ent_field(st)(x),
+              sel_field :=
+                  LAMBDA(x: fields_type): false
+              ]  
+     ELSE st  ENDIF
+
+
+enter_script_field(f: fields_type, sc: script_type): script_type =
+        sc WITH
+           [ s_fields :=
+               LAMBDA (x: fields_type):
+                 (x = f) OR sc`s_fields(x)
+           ]
+          
+
+per_enter_patient_field(f: fields_type, st: state): boolean =
+        ((mode(st) = patient_details) OR (mode(st) = new_patient_details)) &
+         ((f = name) OR (f = dob) OR (f = id_card) OR (f = carer) OR (f = mob))
+
+
+enter_patient_field(f: fields_type, ps: patient_type): patient_type =
+    ps WITH [p_fields := LAMBDA (x: fields_type): (x = f) OR ps`p_fields(x)]
+
+per_enter_med_field(f: fields_type, st: state): boolean =
+          ((mode(st) = db_med_details) OR (mode(st) = new_med)) &
+         ((f = dosage) OR (f = validity))
+
+enter_med_field(f: fields_type, tm: med_type): med_type = 
+      tm WITH [med_db_fields :=
+                  LAMBDA (x: fields_type): (x = f) OR tm`med_db_fields(x)]
+
+
+
+% note that per_enter needs to exclude per_enter_med_name and per_enter_quantity
+
+
+
+
+per_enter_patient_script(f: fields_type, st: state): boolean =
+      st`vis_field(f) & st`sel_field(f) &
+     (((mode(st) = patient_script) OR (mode(st) = new_patient_script)) & ((f = dosage) OR (f = prescription)))
+
+per_enter_dose_frequency(p: period_type, st: state): boolean =
+     (st`vis_field(period) & st`sel_field(period) &  ((mode(st) = dose) OR (mode(st) = new_dose)) & 
+     ((p = monthly) OR (p = weekly) OR (p = daily) OR (p = bidaily))) 
+
+%per_enter_pwd(f: fields_type, st: state): boolean =
+%      (f = password) AND st`vis_field(f) AND st`sel_field(f) AND (mode(st) = pwd)
+%
+%per_enter_db_pwd(f: fields_type, st: state): boolean =
+%      (f = password) AND st`vis_field(f) AND st`sel_field(f) AND (mode(st) = db_pwd)
+
+enter_dose_frequency(p: period_type, st: state): state =
+          If per_enter_dose_frequency(p, st) THEN
+               st WITH [
+              temp_script := escript_period(p, st`temp_script),
+              vis_field := LAMBDA (f: fields_type):
+               COND
+                 f = time1 -> true,
+                 f = time2 -> (p = bidaily),
+                 ELSE -> st`vis_field(f)
+               ENDCOND,
+              ent_field := LAMBDA (f: fields_type):
+               COND
+                 f = time1 -> temp_script(st)`t1 /= t_null,
+                 (f = time2) -> (p = bidaily) & (temp_script(st)`t2 /= t_null),
+                 (f = period) -> true,
+                 ELSE -> st`ent_field(f)
+               ENDCOND,
+               sel_field :=
+                  LAMBDA(x: fields_type): false ]
+          ELSE st ENDIF
+                 
+    
+	     
+
+enter(f: fields_type, st: state): state =
+      IF sel_field(st)(f)
+      THEN st
+       WITH [ temp_script := 
+                 IF per_enter_patient_script(f, st) THEN  enter_script_field(f, st`temp_script) 
+                 ELSE st`temp_script ENDIF,
+              temp_patient := 
+                 IF per_enter_patient_field(f,st) THEN  enter_patient_field(f, st`temp_patient)
+                 ELSE st`temp_patient ENDIF,
+              temp_med :=
+                 IF per_enter_med_field(f, st) THEN enter_med_field(f, st`temp_med)
+                 ELSE st`temp_med ENDIF,
+	      ent_field :=
+	         LAMBDA(x: fields_type):
+		     x = f OR st`ent_field(x),
+               sel_field :=
+                  LAMBDA(x: fields_type): false
+		     
+          ]
+       ELSE st
+      ENDIF
+
+
+
+
+select_field(f: fields_type, st: state): state =
+   IF vis_field(st)(f) AND 
+      NOT ((mode(st) = db_med_details) AND (path_mode_set(st) = scripts_path)) THEN
+    st WITH
+      [sel_field :=
+       LAMBDA(x: fields_type):
+          x = f 
+        ]
+    ELSE st ENDIF
+	
+
+ END pilldispenser_th

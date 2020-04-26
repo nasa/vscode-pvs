@@ -1,0 +1,46 @@
+drugLib: THEORY
+ BEGIN IMPORTING GPCA_Limits
+
+  DrugID: TYPE = { morphINE }
+
+  DrugLibraryBus: TYPE = [#
+  	drugID: DrugID,
+	doseRateTypical: real,
+	doseRateUpperHardLimit: real,
+	doseRateUpperSoftLimit: {r: real | r <= doseRateUpperHardLimit},
+	doseRateLowerHardLimit: real,
+	doseRateLowerSoftLimit: {r: real | r >= doseRateLowerHardLimit},
+	doseRateUnit: DoseRATE_unit,
+	vtbiTypical: real,
+	vtbiUpperHardLimit: real,
+	vtbiUpperSoftLimit: {r: real | r <= vtbiUpperHardLimit},
+	vtbiLowerHardLimit: real,
+	vtbiLowerSoftLimit: {r: real | r >= vtbiLowerHardLimit},
+	vtbiUnit: VTBI_unit
+  #]
+
+  morphINE_VTBI_max: real = 300
+  morphINE_doseRate_max: real = 24
+
+  dlib_doseRateUnit: DoseRATE_unit = mg_per_hour
+  dlib_doseRateTyp: real = 10
+  dlib_vtbiUnit: VTBI_unit = mL
+  dlib_vtbiTyp: real = 250
+
+  initDrugLibraryBus: DrugLibraryBus = (#
+  	drugID := morphINE,
+	doseRateTypical := dlib_doseRateTyp,
+	doseRateUpperHardLimit := morphINE_doseRate_max,
+	doseRateUpperSoftLimit := 20,
+	doseRateLowerHardLimit := 10,
+	doseRateLowerSoftLimit := 10,
+	doseRateUnit := dlib_doseRateUnit,
+	vtbiTypical := dlib_vtbiTyp,
+	vtbiUpperHardLimit := morphINE_VTBI_max,
+	vtbiUpperSoftLimit := 300,
+	vtbiLowerHardLimit := 40,
+	vtbiLowerSoftLimit := 200,
+	vtbiUnit := dlib_vtbiUnit
+  #)
+
+ END drugLib

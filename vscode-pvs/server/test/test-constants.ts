@@ -1,5 +1,4 @@
-import * as pvsgui from "./server/common/pvs-gui.d";
-import { ProofTree } from "./server/common/serverInterface";
+import * as pvsgui from "../src/common/pvs-gui.d";
 
 export const EXTERNAL_SERVER: boolean = true;
 
@@ -1058,43 +1057,6 @@ export const find_declaration_result: pvsgui.FindDeclarationResult =
 
 export const proof_script_result: string =
   ';;; Proof sq_ge-1 for formula sq.sq_ge\n(""\n (skosimp)\n (ground)\n (("1"\n   (expand "sq")\n   (case "forall (x,y:real): x>=y iff not x<y")\n   (("1" (auto-rewrite -1) (grind-arith)) ("2" (skosimp) (ground))))\n  ("2" (grind-arith))))'
-
-export const proof_script_json_result: ProofTree = {
-	proofStructure: { 
-		id: 'sq_ge-1', type: 'root',
-		children: [
-			{ id: '(skosimp)', type: 'proof-command', children: [] },
-			{ id: '(ground)', type: 'proof-command', 
-				children: [
-					{ id: '1', type: 'proof-branch',
-						children: [ 
-							{ id: '(expand "sq")', type: 'proof-command', children: [] },
-							{ id: '(case "forall (x,y:real): x>=y iff not x<y")', type: 'proof-command',
-								children: [
-									{ id: '1', type: 'proof-branch', 
-										children: [ 
-											{ id: '(auto-rewrite -1)', children: [], type: 'proof-command' },
-											{ id: '(grind-arith)', children: [], type: 'proof-command' } 
-										] },
-									{ id: '2', type: 'proof-branch',
-										children: [ 
-											{ id: '(skosimp)', children: [], type: 'proof-command' },
-											{ id: '(ground)', children: [], type: 'proof-command' } 
-										] } 
-								]
-							}
-						]
-					},
-					{ id: '2', type: 'proof-branch', children: [ { id: '(grind-arith)', children: [], type: 'proof-command' } ] } 
-				]
-			}
-		]
-	},
-	proofName: 'sq_ge-1',
-	formulaName: 'sq.sq_ge',
-	prf: ';;; Proof sq_ge-1 for formula sq.sq_ge\n(""\n (skosimp)\n (ground)\n (("1"\n   (expand "sq")\n   (case "forall (x,y:real): x>=y iff not x<y")\n   (("1" (auto-rewrite -1) (grind-arith)) ("2" (skosimp) (ground))))\n  ("2" (grind-arith))))',
-	proverVersion: '7.0-1020' };
-
 
 export const seq1_result: any =
     { commentary: 

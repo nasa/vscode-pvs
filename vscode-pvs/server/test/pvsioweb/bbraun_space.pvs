@@ -1,0 +1,206 @@
+bbraun_space: THEORY
+ BEGIN
+ 
+  %-- constants
+  max: posreal = 99999;
+  alarmType: TYPE = {silent, beep, muted}
+
+  %-- type definitions
+  %-- data entry
+  bbraun_real: TYPE = {r: nonneg_real | r <= max}
+  Cursor: TYPE = {i: int | i >= -2 AND i <= 4}
+  Memory: DATATYPE
+   BEGIN
+     mem(value: bbraun_real): valid?
+     NA: NA?   
+   END Memory
+
+  State: TYPE = [#
+     on    : int, % on flag
+     inf   : int, % infusing flag
+     r     : bbraun_real, % rate
+     v     : bbraun_real, % vtbi
+     %-- data etry state
+     d     : bbraun_real, % display
+     c     : Cursor, % cursor
+     m     : Memory  % memory
+   #]
+
+  int2boolean(i: int): boolean = IF i > 0 THEN TRUE ELSE FALSE ENDIF
+  CONVERSION int2boolean
+
+  init(x: bbraun_real): State = (#
+            on := 1,
+          inf:= 0,
+          r  := 0,
+          v  := 0,
+          d  := x,
+          c  := 0,
+          m  := NA
+  #)
+  CONVERSION init
+  
+
+
+  %-- On Off button
+  %      - when the pump is on, you can switch it off, unless it's infusing
+  %      - when the pump is off, you can only switch it on
+  bbraun_on(st: State): State =
+    IF     on(st)  THEN IF NOT inf(st) THEN init(0) WITH [ on := FALSE ] ELSE st ENDIF
+    ELSE   init(0) WITH [ on := TRUE ] ENDIF
+
+
+  %-- Start-Stop button
+  bbraun_start(st: State): State =
+    IF    on(st) AND d(st) > 0 AND v(st) > 0 AND r(st) > 0 
+    THEN  IF inf(st) THEN st WITH [ inf := false ] ELSE st WITH [ inf := true ] ENDIF
+    ELSE  st ENDIF
+
+  %-- tick
+  bbraun_tick(st: State): State =
+    IF     on(st) AND inf(st)
+     THEN  IF d(st) > 0 AND v(st) > 0 AND r(st) > 0
+           THEN  LET new_vtbi: real = IF v(st) - r(st) > 0 THEN v(st) - r(st) ELSE 0 ENDIF %floor(v(st) - r(st) / 100)
+                  IN st WITH [ v := new_vtbi, d := new_vtbi, inf := IF new_vtbi = 0 THEN false ELSE inf(st) ENDIF ]
+           ELSE st WITH [ inf := false ] ENDIF
+    ELSE  st ENDIF
+
+  
+  %-- interactive data entry sub-system
+  pow10(i: Cursor): bbraun_real = ^(10,i);
+
+  min_value(st: State): bbraun_real = 
+   LET i = c(st), val = d(st) 
+    IN IF i >= 3 AND val >= 1          THEN 1
+       ELSIF (i >= 0 AND i < 3) 
+             OR (i < 0 AND val >= 0.1) THEN 0.1 ELSE 0 ENDIF
+
+  min_position(st: State): Cursor = 
+   LET val = d(st) IN
+    COND
+      val < 100        -> -2,
+      val >= 100 
+        AND val < 1000 -> -1,
+      val >= 1000      -> 0
+    ENDCOND
+
+  limit(min_val: bbraun_real): [real -> real] =
+    LAMBDA (val: real): IF val > 0 AND val < min_val THEN min_val ELSE val ENDIF
+
+  %-- down button
+  dn: [State -> State] =
+      LAMBDA (st: State):
+        LET val = d(st),
+            i = c(st),
+            mem = m(st),
+            min_val = min_value(st),
+            new_val = val - pow10(i),
+            new_mem = IF i >= 0 THEN mem(pow10(i)) ELSE mem ENDIF
+          IN
+          COND val <= min_val -> st WITH [ d := 0, c := i, m := NA ],
+               val > min_val  ->
+                 COND new_val = 0 -> st WITH [ d := 0, c := i, m := NA ],
+                      new_val /= 0 AND new_val >= min_val ->
+                       LET new_val = limit(min_val)(new_val) IN
+                        IF valid?(mem) THEN st WITH [ d := value(mem), c := i, m := NA ]
+                        ELSE st WITH [ d := new_val, c := i, m := NA ]
+                        ENDIF,
+                      new_val /= 0 AND new_val < min_val ->
+                        IF valid?(mem) THEN st WITH [ d := min_val, c := i, m := NA ]
+                        ELSE st WITH [ d := min_val, c := i, m := new_mem ]
+                        ENDIF
+                 ENDCOND
+          ENDCOND
+
+  %-- up button
+  up: [State -> State] =
+      LAMBDA (st: State):
+        LET val = d(st),
+            i = c(st),
+            mem = m(st),
+            new_val =
+              COND
+                val + pow10(i) < 0.1                            -> 0.1,
+                val + pow10(i) >= 0.1 AND val + pow10(i) < 100  -> val + pow10(i),
+                val + pow10(i) >= 100 AND val + pow10(i) < 1000 -> floor((val + pow10(i)) * 10) / 10,
+                val + pow10(i) >= 1000                          -> floor(val + pow10(i))
+              ENDCOND,
+            new_mem = mem(val),
+	    new_i = IF i = -2 AND new_val = 100 THEN -1
+	            ELSIF i = -1 AND new_val = 1000 THEN 0
+		    ELSE i ENDIF
+          IN
+          COND val = max -> st,
+               val < max ->
+               COND
+                 new_val > max ->
+                   IF valid?(mem) THEN st WITH [ d := max, c := i, m := mem ]
+                   ELSE st WITH [ d := max, c := i, m := new_mem ]
+                   ENDIF,
+                 new_val <= max ->
+                   IF valid?(mem) THEN st WITH [ d := value(mem), c := i, m := NA ]
+                   ELSE st WITH [ d := new_val, c := new_i, m := NA ]
+                   ENDIF
+               ENDCOND
+          ENDCOND
+
+  %-- left button
+  lf: [State -> State] =
+   LAMBDA(st: State):
+     LET val = d(st), i = c(st), mem = m(st) IN
+      COND
+        i < 4 -> st WITH [ d := val, c := i + 1, m := NA ],
+        i = 4 -> st WITH [ d := val, c := i    , m := mem ]
+      ENDCOND
+
+  %-- right button
+  rt: [State -> State] =
+    LAMBDA(st: State): 
+      LET val = d(st), i = c(st), mem = m(st), min_pos = min_position(st) IN
+       COND
+         i > min_pos  -> st WITH [ d := val, c := i - 1, m := NA ],
+         i <= min_pos -> st WITH [ d := val, c := i    , m := mem ]
+       ENDCOND
+
+
+  bbraun_dn(st: State): State =
+    IF on(st) THEN dn(st)
+    ELSE st ENDIF
+
+  bbraun_up(st: State): State =
+    IF on(st) THEN up(st)
+    ELSE st ENDIF
+
+  bbraun_lf(st: State): State =
+    IF on(st) THEN lf(st)
+    ELSE st ENDIF
+
+  bbraun_rt(st: State): State =
+    IF on(st) THEN rt(st)
+    ELSE st ENDIF
+
+  bbraun_ok(st: State): State =
+    IF on(st) AND d(st) > 0 
+    THEN st WITH [ v := d(st), r := 0.1 ] 
+    ELSE st ENDIF
+
+  %-- for the pvsio-web demo
+  press_up(st: State): State = bbraun_up(st) WITH [ on := 1 ]
+  release_up(st: State): State = st
+  click_up(st: State): State = release_up(press_up(st))
+
+  press_dn(st: State): State = bbraun_dn(st) WITH [ on := 1 ]
+  release_dn(st: State): State = st
+  click_dn(st: State): State = release_dn(press_dn(st))
+
+  press_lf(st: State): State = bbraun_lf(st) WITH [ on := 1 ]
+  release_lf(st: State): State = st
+  click_lf(st: State): State = release_lf(press_lf(st))
+
+  press_rt(st: State): State = bbraun_rt(st) WITH [ on := 1 ]
+  release_rt(st: State): State = st
+  click_rt(st: State): State = release_rt(press_rt(st))
+
+  click_clear(st: State): State = init(0) WITH [ on := 1 ]
+
+ END bbraun_space

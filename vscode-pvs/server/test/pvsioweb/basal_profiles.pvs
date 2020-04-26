@@ -1,0 +1,60 @@
+basal_profiles: THEORY
+ BEGIN
+   %-- type definitions
+   time: TYPE = [# hh: upto(24), mm: below(60) #]
+   segment: TYPE = [#
+     start_time: time,
+     end_time: time,
+     units: nonneg_real     
+   #]
+   basal_profile: TYPE = [#
+     name: string,
+     segs: list[segment]
+   #]
+   MAX_PROFILES: posnat = 4
+   INVALID_INDEX: int = -1
+   basal_profiles: TYPE = [#
+     db: list[basal_profile],
+     selected: { x: int | x >= INVALID_INDEX AND x < db`length },
+     size: upto(db`length)
+   #]
+
+   %-- constants
+   EMPTY_DB: list[basal_profile] = null[basal_profile]
+   EMPTY_PROFILES: basal_profiles = (#
+     db := EMPTY_DB,
+     selected := INVALID_INDEX,
+     size := 0
+   #)
+   STANDARD_PROFILES: basal_profiles = (#
+     db := (:
+     	     (# name := "Workday",
+	        segs := (:
+	           (# start_time := (# hh := 0, mm := 0 #), end_time := (# hh := 8, mm := 0 #), units := 0.08 #),
+		   (# start_time := (# hh := 8, mm := 0 #), end_time := (# hh := 18, mm := 0 #), units := 0.02 #),
+		   (# start_time := (# hh := 18, mm := 0 #), end_time := (# hh := 24, mm := 0 #), units := 0.06 #)
+		         :) #),
+	     (# name := "Weekend",
+	        segs := (:
+	           (# start_time := (# hh := 0, mm := 0 #), end_time := (# hh := 10, mm := 0 #), units := 0.08 #),
+		   (# start_time := (# hh := 10, mm := 0 #), end_time := (# hh := 22, mm := 0 #), units := 0.02 #),
+		   (# start_time := (# hh := 22, mm := 0 #), end_time := (# hh := 24, mm := 0 #), units := 0.06 #)
+		         :) #),
+	     (# name := "Workout",
+	        segs := (:
+	           (# start_time := (# hh := 0, mm := 0 #), end_time := (# hh := 8, mm := 0 #), units := 0.08 #),
+		   (# start_time := (# hh := 8, mm := 0 #), end_time := (# hh := 18, mm := 0 #), units := 0.02 #),
+		   (# start_time := (# hh := 18, mm := 0 #), end_time := (# hh := 24, mm := 0 #), units := 0.06 #)
+		         :) #)
+	   :),
+     selected := 0,
+     size := 3
+   #)
+
+   %-- APIs
+   length(bps: basal_profiles): nat = db(bps)`length
+   get_profile(bps: basal_profiles)(i: below(db(bps)`length)): basal_profile = nth(db(bps),i)
+
+
+
+ END basal_profiles

@@ -20,7 +20,8 @@ Try the following actions in VSCode-PVS:
 1. Create a new file `helloworld.pvs` in the current workspace.
 2. Enter the following specification:
 ```pvs
-helloworld: THEORY
+helloworld
+: THEORY
   BEGIN 
     abs (x: real): real = IF x > 0 THEN x ELSE -x ENDIF
   END helloworld
@@ -120,7 +121,8 @@ The following example demonstrates:
 Try the following actions in VSCode-PVS:
 1. Edit theory `helloworld.pvs` so as to introduce a theorem `always_positive`. The specification should look as follows:
 ```pvs
-helloworld: THEORY
+helloworld
+: THEORY
   BEGIN 
     posreal: TYPE = { r: real | r >=0 }
     abs (x: real): posreal = IF x > 0 THEN x ELSE -x ENDIF

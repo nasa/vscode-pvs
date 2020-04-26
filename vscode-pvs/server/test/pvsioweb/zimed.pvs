@@ -1,0 +1,149 @@
+zimed: THEORY
+ BEGIN
+ 
+  %-- constants
+  max: posreal = 99.99;
+  alarmType: TYPE = {silent, beep, muted}
+  maxCursor: posreal = 2
+  minCursor: negreal = -2
+
+  %-- type definitions
+  %-- data entry
+  zimed_real: TYPE = {r: nonneg_real | r <= max}
+  Cursor: TYPE = {i: int | i >= minCursor AND i <= maxCursor}
+
+  State: TYPE = [#
+     on    : int, % on flag
+     inf   : int, % infusing flag
+     r     : zimed_real, % rate
+     v     : zimed_real, % vtbi
+     %-- data etry state
+     d     : zimed_real, % display
+     c     : Cursor % cursor
+   #]
+
+  int2boolean(i: int): boolean = IF i > 0 THEN TRUE ELSE FALSE ENDIF
+  CONVERSION int2boolean
+
+  init(x: zimed_real): State = (#
+            on := 1, % 0, just for simulation purposes
+          inf:= 0,
+          r  := 0,
+          v  := 0,
+          d  := x,
+          c  := 0
+  #)
+  CONVERSION init
+  
+
+
+  %-- On Off button
+  %      - when the pump is on, you can switch it off, unless it's infusing
+  %      - when the pump is off, you can only switch it on
+  zimed_on(st: State): State =
+    IF     on(st)  THEN IF NOT inf(st) THEN init(0) WITH [ on := FALSE ] ELSE st ENDIF
+    ELSE   init(0) WITH [ on := TRUE ] ENDIF
+
+
+  %-- Start-Stop button
+  zimed_start(st: State): State =
+    IF    on(st) AND d(st) > 0 AND v(st) > 0 AND r(st) > 0 
+    THEN  IF inf(st) THEN st WITH [ inf := false ] ELSE st WITH [ inf := true ] ENDIF
+    ELSE  st ENDIF
+
+  %-- tick
+  zimed_tick(st: State): State =
+    IF     on(st) AND inf(st)
+     THEN  IF d(st) > 0 AND v(st) > 0 AND r(st) > 0
+           THEN  LET new_vtbi: real = IF v(st) - r(st) > 0 THEN v(st) - r(st) ELSE 0 ENDIF %floor(v(st) - r(st) / 100)
+                  IN st WITH [ v := new_vtbi, d := new_vtbi, inf := IF new_vtbi = 0 THEN false ELSE inf(st) ENDIF ]
+           ELSE st WITH [ inf := false ] ENDIF
+    ELSE  st ENDIF
+
+  
+  %-- interactive data entry sub-system
+  pow10(i: Cursor): zimed_real = ^(10,i);
+
+
+  %-- down button
+  dn: [State -> State] =
+      LAMBDA (st: State):
+        LET val = d(st),
+            i = c(st),
+            digit = mod(floor( val / pow10(i) ), 10)
+          IN
+          COND digit = 0 -> st WITH [ d := val + (9 * pow10(i)) ],
+               digit > 0 -> st WITH [ d := val - pow10(i) ]
+          ENDCOND
+
+  %-- up button
+  up: [State -> State] =
+      LAMBDA (st: State):
+        LET val = d(st),
+            i = c(st),
+            digit = mod(floor( val / pow10(i) ), 10)
+          IN
+          COND digit = 9 -> st WITH [ d := val - (9 * pow10(i)) ],
+               digit < 9 -> st WITH [ d := val + pow10(i) ]
+          ENDCOND
+
+  %-- left button
+  lf: [State -> State] =
+   LAMBDA(st: State):
+     LET i = c(st) IN
+      COND
+        i < maxCursor -> st WITH [ c := i + 1 ],
+        i = maxCursor -> st WITH [ c := minCursor ]
+      ENDCOND
+
+  %-- right button
+  rt: [State -> State] =
+    LAMBDA(st: State): 
+      LET i = c(st) IN
+       COND
+         i > minCursor -> st WITH [ c := i - 1 ],
+         i = minCursor -> st WITH [ c := maxCursor]
+       ENDCOND
+
+
+  zimed_dn(st: State): State =
+    IF on(st) THEN dn(st)
+    ELSE st ENDIF
+
+  zimed_up(st: State): State =
+    IF on(st) THEN up(st)
+    ELSE st ENDIF
+
+  zimed_lf(st: State): State =
+    IF on(st) THEN lf(st)
+    ELSE st ENDIF
+
+  zimed_rt(st: State): State =
+    IF on(st) THEN rt(st)
+    ELSE st ENDIF
+
+  zimed_ok(st: State): State =
+    IF on(st) AND d(st) > 0 
+    THEN st WITH [ v := d(st), r := 0.1 ] 
+    ELSE st ENDIF
+
+  %-- for the pvsio-web demo
+  press_up(st: State): State = zimed_up(st)
+  release_up(st: State): State = st
+  click_up(st: State): State = release_up(press_up(st))
+
+  press_dn(st: State): State = zimed_dn(st)
+  release_dn(st: State): State = st
+  click_dn(st: State): State = release_dn(press_dn(st))
+
+  press_lf(st: State): State = zimed_lf(st)
+  release_lf(st: State): State = st
+  click_lf(st: State): State = release_lf(press_lf(st))
+
+  press_rt(st: State): State = zimed_rt(st)
+  release_rt(st: State): State = st
+  click_rt(st: State): State = release_rt(press_rt(st))
+  
+  click_ON(st: State): State = init(0) WITH [ on := 1 ]
+
+ END zimed
