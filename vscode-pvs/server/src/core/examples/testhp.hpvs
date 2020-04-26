@@ -10,7 +10,7 @@ BEGIN
 
   % Single assignment
   test1: PROBLEM
-   x>=0 |- [x:=x + 1] (x>=0)
+   x>=0 |- [x:=2x + 1] (x>=0)
 
  % % Assignment with star
   test2: PROBLEM
@@ -26,7 +26,7 @@ BEGIN
 
   % % % Unions
   test5: PROBLEM
-   (x > 0) AND (y > 0) |- [(a:=1 ++ a:=-1 ++ a:=1; x := x +1; y:= y + 1)*] (x > 0 AND y > 0)
+   (x > 0) AND (y > 0) |- [(a:=1 ++ a:=-1 ++ a:=1; x := x +1; y:= 3y + 1)*] (x > 0 AND y > 0)
 
   % % Differential equations
   test6: PROBLEM

@@ -11,6 +11,6 @@ hpEmbedding
 	: identifier ':' K_PROBLEM dlProblem
 	;
 
-hpTheoryPart
-	: (importing | declaration)*
-	;
+// hpTheoryPart
+// 	: (importing | declaration)*
+// 	;

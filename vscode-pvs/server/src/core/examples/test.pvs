@@ -1,6 +1,6 @@
 test: theory begin
 
-
+foo: T = (LAMBDA(X:real):val(x) >= X+cnst(1)) 
 
 lem1: LEMMA FORALL (v1,v2:Vect2): norm(v1) = 1 AND norm(v2) = 1
     IMPLIES ((v1*v2>=0 IFF norm(v1-v2)<=sqrt(2)) AND

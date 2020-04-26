@@ -1,6 +1,17 @@
 testhp: THEORY
 BEGIN
 
+  IMPORTING dynamic_logic
+
+  %-- Definition of syntactic sugar for variables and assignments
+  a: nat = 0
+  w: nat = 1
+  x: nat = 2
+  y: nat = 3
+  %--
+
+
+
   A:VAR real
   B:VAR real
 
@@ -11,11 +22,11 @@ BEGIN
   % Single assignment
   %---------------------------------
   % test1: PROBLEM
-  %    x>=0 |- [x:=x + 1] (x>=0)
+  %    x>=0 |- [x:=2x + 1] (x>=0)
   %---------------------------------
   test1: LEMMA
    val(x) >= cnst(0)
-   |- ALLRUNS(ASSIGN((: (x, val(x) + cnst(1)) :)), (val(x) >= cnst(0)))
+   |- ALLRUNS(ASSIGN((: (x, cnst(2) * x + cnst(1)) :)), (val(x) >= cnst(0)))
 
 
  % % Assignment with star
@@ -25,7 +36,7 @@ BEGIN
   %---------------------------------
   test2: LEMMA
       (val(x) >= cnst(0))
-      |- ALLRUNS(ASSIGN((: (x, val(x) + cnst(1)) :)), (val(x) >= cnst(0)))
+      |- ALLRUNS(STAR(ASSIGN((: (x, val(x) + cnst(1)) :))), (val(x) >= cnst(0)))
 
 
   % % Assignment with test
@@ -51,11 +62,11 @@ BEGIN
   % % % Unions
   %---------------------------------
   % test5: PROBLEM
-  %    (x > 0) AND (y > 0) |- [(a:=1 ++ a:=-1 ++ a:=1; x := x +1; y:= y + 1)*] (x > 0 AND y > 0)
+  %    (x > 0) AND (y > 0) |- [(a:=1 ++ a:=-1 ++ a:=1; x := x +1; y:= 3y + 1)*] (x > 0 AND y > 0)
   %---------------------------------
   test5: LEMMA
                (val(x) > cnst(0)) AND (val(y) > cnst(0))
-               |- ALLRUNS(SEQ(UNION(ASSIGN((: (a, cnst(1)) :)), UNION(ASSIGN((: (a, cnst(-1)) :)), ASSIGN((: (a, cnst(1)) :)))), SEQ(ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, val(y) + cnst(1)) :)))), (val(x) > cnst(0) AND val(y) > cnst(0)))
+               |- ALLRUNS(STAR(SEQ(UNION(ASSIGN((: (a, cnst(1)) :)), UNION(ASSIGN((: (a, cnst(-1)) :)), ASSIGN((: (a, cnst(1)) :)))), SEQ(ASSIGN((: (x, val(x) + cnst(1)) :)), ASSIGN((: (y, cnst(3) * y + cnst(1)) :))))), (val(x) > cnst(0) AND val(y) > cnst(0)))
 
 
   % % Differential equations

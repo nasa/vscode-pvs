@@ -42,6 +42,7 @@ import * as fsUtils from '../../../common/fsUtils';
 import { Diagnostic } from 'vscode-languageserver';
 import * as path from 'path';
 import { ParserDiagnostics } from '../../pvs-parser/javaTarget/pvsParser';
+import * as os from 'os';
 
 export class DdlParser {
 
@@ -53,7 +54,7 @@ export class DdlParser {
         const ofname: string = (opt && opt.output) ? opt.output : "";
 
         const ifname: string = fsUtils.desc2fname(desc);
-        console.info(`[vscode-pvs-parser] Parsing ${ifname}`);
+        console.info(`[ddl-parser] Parsing ${ifname}`);
 
         let diags: ParserDiagnostics = null;
         const libFolder: string = path.join(__dirname, "../../../../out/core/lib");
@@ -69,11 +70,17 @@ export class DdlParser {
             // const stats: number = Date.now() - start;
             if (ans) {
                 const res: string = ans.toLocaleString();
-                diags = JSON.parse(res);
-                if (diags && diags.errors && diags.errors.length > 0) {
-                    console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${diags["parse-time"].ms}ms`);
-                } else {
-                    console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${diags["parse-time"].ms}ms`);
+                if (res) {
+                    diags = JSON.parse(res);
+                    if (diags && diags.errors && diags.errors.length > 0) {
+                        let msg: string = `File ${desc.fileName}${desc.fileExtension} parsed with errors`;
+                        if (diags["parse-time"]) { msg += ` in ${diags["parse-time"].ms}ms`; }
+                        console.log(`[vscode-pvs-parser] ${msg}`);
+                    } else {
+                        let msg: string = `File ${desc.fileName}${desc.fileExtension} parsed successfully`;
+                        if (diags && diags["parse-time"]) { msg += ` in ${diags["parse-time"].ms}ms`; }
+                        console.log(`[vscode-pvs-parser] ${msg}`);
+                    }
                 }
             }
         } catch (parserError) {
@@ -85,5 +92,32 @@ export class DdlParser {
             // }
             return diags;
         }
+    }
+    
+    /**
+     * Pretty prints a pvs expressions to ddl
+     * @param desc File descriptor, includes file name, file extension, and context folder
+     */
+    async prettyPrint (desc: { fileName: string, fileExtension: string, contextFolder: string, expr: string }): Promise<string> {
+        if (desc && desc.expr) {
+            console.info(`[ddl-parser] Pretty printing pvs expression ${desc.expr}`);
+
+            const ddlFile: string = path.join(os.tmpdir(), "ddlFile.tmp");
+            fsUtils.writeFile(ddlFile, desc.expr);
+            const libFolder: string = path.join(__dirname, "../../../../out/core/lib");
+            // const start: number = Date.now();
+            let cmd: string = `cd ${libFolder} && java -jar DdlPrettyPrinter.jar ${ddlFile}`; // this command will produce a JSON object of type Diagnostic[] on stdout
+            let res: string = "";
+            try {
+                const ans: Buffer = execSync(cmd);
+                // const stats: number = Date.now() - start;
+                if (ans) {
+                    res = ans.toLocaleString();
+                }
+            } finally {
+                return res;
+            }
+        }
+        return "";
 	}
 }

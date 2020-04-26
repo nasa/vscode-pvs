@@ -3,7 +3,7 @@ all:
 	make ddl-parser
 	make pvs-typechecker
 
-pvs: download
+test-pvs-parser: download
 	# java
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./pvs-parser/javaTarget/out
 	cd pvs-parser/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../../..
@@ -51,10 +51,10 @@ pvs-parser-js: download
 
 test: download
 	# java
-	java -jar antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./out/java
-	cd out/java && javac -Xlint -classpath ../../antlr-4.7.2-complete.jar:./ *.java && cd ../..
-	#@cd out/java && java -classpath ../../antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ../../../../server/test/sandbox/alaris2lnewmodes.pvs -gui
-	cd out/java && java -classpath ../../antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ../../../../../../../../pvs-snapshots/PVS-6/nasalib/ACCoRD/line_solutions.pvs -gui
+	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./out/java
+	cd out/java && javac -Xlint -classpath ../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../..
+	cd out/java && java -classpath ../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ../../../../server/test/sandbox/alaris2lnewmodes.pvs -gui
+	# cd out/java && java -classpath ../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ../../../../../../../../pvs-snapshots/PVS-6/nasalib/ACCoRD/line_solutions.pvs -gui
 
 ddl: download
 	# java
@@ -62,7 +62,7 @@ ddl: download
 	cd ddl-parser/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../../..
 	cd ddl-parser/javaTarget/out && java -classpath ../../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig DdlEmbedding testDDL ../../../examples/test.hp -gui
 
-ddl-embedding: download
+test-ddl-parser: download
 	# java
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java DdlEmbedding.g4 -o ./ddl-parser/javaTarget/out
 	cd ddl-parser/javaTarget && cp DdlParser.java ./out && cp MANIFEST.MF ./out && cd ../..
@@ -86,7 +86,28 @@ ddl-parser: download
 	cd ../../out/core/lib && java -jar DdlParser.jar ../../../src/core/examples/testhp.hpvs -test
 	cd ../../out/core/lib && java -jar DdlParser.jar ../../../src/core/examples/testhp.hpvs -out ../../../src/core/examples/testhp.pvs
 
-	
+ddl-pretty-printer:
+	# generating java target
+	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java DdlPrettyPrinter.g4 -o ./ddl-pretty-printer/javaTarget/out
+	cd ddl-pretty-printer/javaTarget && cp DdlPrettyPrinter.java ./out && cp MANIFEST.MF ./out && cd ../..
+	cd ddl-pretty-printer/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../../..
+	# creating ddl-pretty-printer
+	cd ddl-pretty-printer/javaTarget/out && jar -cfm DdlPrettyPrinter.jar ./MANIFEST.MF *.class && rm *.class && cd ../../..
+	# completing installation in parser/lib
+	@-mkdir ../../out/core/lib
+	cp ddl-pretty-printer/javaTarget/out/DdlPrettyPrinter.jar ../../out/core/lib
+	cp lib/antlr-4.7.2-complete.jar ../../out/core/lib
+	@-rm -r ddl-pretty-printer/javaTarget/out
+	@-rm -r lib
+	# testing pretty-printer
+	cd ../../out/core/lib && java -jar DdlPrettyPrinter.jar ../../../src/core/examples/test.ddl
+	# cd ../../out/core/lib && java -jar DdlPrettyPrinter.jar -translate "NOT ALLRUNS(SEQ(ANY(x,DLRANDOM),ANY(y,DLRANDOM)),val(x)=val(y))"
+
+test-ddl-pretty-printer:
+	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java DdlPrettyPrinter.g4 -o ./out/java
+	cd out/java && javac -Xlint -classpath ../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../..
+	cd out/java && java -classpath ../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig DdlPrettyPrinter prettyprintDdl ../../examples/test.ddl -gui
+
 
 download:
 	@-mkdir lib
@@ -98,5 +119,7 @@ clean:
 	@-rm -r pvs-parser/jsTarget/out
 	@-rm -r lib
 	@-rm ddl-parser/javaTarget/*.class
+	@-rm ddl-pretty-printer/javaTarget/*.class
 	@-rm pvs-parser/javaTarget/*.class
 	
+.PHONY: ddl-pretty-printer ddl-parser test-pvs-parser

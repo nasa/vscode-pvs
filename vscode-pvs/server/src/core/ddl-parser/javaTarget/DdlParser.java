@@ -19,6 +19,33 @@ public class DdlParser {
     protected static final int TAB = 2;
     protected static final int CR = 3;
 
+    // utils
+    public static String getFileName (String fname) {
+        if (fname != null) {
+            String fileName = fname.replace("file://", "");
+            fileName = (fileName.indexOf("/") >= 0) ? fileName.substring(fileName.lastIndexOf("/") + 1, fileName.length() - 1) : fileName;
+            fileName = (fileName.indexOf(".") >= 0) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
+            return fileName;
+        }
+        return "";
+    }
+    public static String getFileExtension (String fname) {
+        if (fname != null) {
+            String fileExtension = fname.replace("file://", "");
+            fileExtension = fileExtension.substring(fileExtension.lastIndexOf("."), fileExtension.length());
+            return fileExtension;
+        }
+        return "";
+    }
+    public static String getContextFolder (String fname) {
+        if (fname != null) {
+            String folder = fname.replace("file://", "");
+            folder = folder.substring(0, folder.lastIndexOf("/"));
+            return folder;
+        }
+        return "";
+    }
+
     public static void main(String[] args) throws Exception {
         // open file
         if (args != null && args.length > 0) {
@@ -26,6 +53,8 @@ public class DdlParser {
             if (test) {
                 System.out.println("Parsing file " + ifname);
             }
+            double parseStart = System.currentTimeMillis();
+
             CharStream input = CharStreams.fromFileName(ifname);
             DdlEmbeddingLexer lexer = new DdlEmbeddingLexer(input);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -34,24 +63,38 @@ public class DdlParser {
             ErrorListener el = new ErrorListener();
             parser.addErrorListener(el); // add new error listener
             ParserRuleContext tree = parser.parse(); // parse as usual
+
+            String ans = "{"
+                + "\n \"contextFolder\": \"" + getContextFolder(ifname) + "\""
+                + ",\n \"fileName\": \"" + getFileName(ifname) + "\""
+                + ",\n \"fileExtension\": \"" + getFileExtension(ifname) + "\"";
             if (el.errors.size() > 0) {
-                System.out.println(el.errors);
+                ans += ",\n \"errors\": " + el.errors;
             } else {
-                // System.out.println("Done!");
                 // walk the tree
                 ParseTreeWalker walker = new ParseTreeWalker();
                 Ddl2Pvs listener = new Ddl2Pvs(tokens);
                 walker.walk(listener, tree);
 
+                ans += ",\n \"math-objects\": " + listener.getStats();
+
+
                 if (ofname != null) {
                     // System.out.println("Writing file " + ofname);
                     PrintWriter printWriter = new PrintWriter(new BufferedWriter(new FileWriter(ofname)), true);
                     printWriter.println(listener.getPvsSpec());
+                    printWriter.close();
                 }
                 if (test) {
                     System.out.println(listener.getPvsSpec());
                 }
             }
+            double parseTime = System.currentTimeMillis() - parseStart;
+
+            // + ",\n \"filename\": \"" + ifname + "\""
+            ans += ",\n \"parse-time\": { \"ms\": " + parseTime + " }";
+            ans += "\n}";
+            System.out.println(ans);
         }
     }
 
@@ -97,26 +140,14 @@ public class DdlParser {
             }
         }
     }
-    public static String getFileName (String fname) {
-        if (fname != null) {
-            String fileName = fname.replace("file://", "");
-            fileName = (fileName.indexOf("/") >= 0) ? fileName.substring(fileName.lastIndexOf("/") + 1, fileName.length() - 1) : fileName;
-            fileName = (fileName.indexOf(".") >= 0) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
-            return fileName;
-        }
-        return null;
-    }
-    public static String getContextFolder (String fname) {
-        if (fname != null) {
-            String folder = fname.replace("file://", "");
-            folder = folder.substring(0, folder.lastIndexOf("/"));
-            return folder;
-        }
-        return null;
-    }
 
 
     public static class Ddl2Pvs extends DdlEmbeddingBaseListener {
+        // stats
+        protected int nTypes = 0;
+        protected int nDefinitions = 0;
+        protected int nFormulas = 0;
+        
         protected String pvsSpec = "";
         protected String hpComment = "";
         protected BufferedTokenStream tokens = null;
@@ -134,6 +165,14 @@ public class DdlParser {
             variablesMap = new HashSet<String>();
             localBindingsMap = new HashMap<String, String>();
         }
+
+        public String getStats () {
+            return "{"
+                    + " \"types\": " + this.nTypes + ","
+                    + " \"definitions\": " + this.nDefinitions + ","
+                    + " \"lemmas\": " + this.nFormulas
+                    + " }";
+        }    
 
         public String getSource (ParserRuleContext ctx) {
             Token start = ctx.getStart();
@@ -197,7 +236,7 @@ public class DdlParser {
         @Override public void enterTheoryBegin(DdlEmbeddingParser.TheoryBeginContext ctx) {
             this.theoryBeginContext = ctx;
         }
-        @Override public void exitHpTheoryPart(DdlEmbeddingParser.HpTheoryPartContext ctx) {
+        @Override public void enterTheoryEnd(DdlEmbeddingParser.TheoryEndContext ctx) {
             if (this.theoryBeginContext != null) {
                 // place variable declarations and importing dynamic_logic at the beginning of the theory
                 Token stop = this.theoryBeginContext.getStop();
@@ -217,6 +256,16 @@ public class DdlParser {
             this.pvsSpec = "";
             this.hpComment = "";
             // System.out.println(pvsSpec);
+        }
+        @Override public void enterDlTimesExpression(DdlEmbeddingParser.DlTimesExpressionContext ctx) {
+            String number_times_id = ctx.NUMBER_TIMES_ID().getText();
+            java.util.regex.Matcher match_number = java.util.regex.Pattern.compile("\\d+").matcher(number_times_id);
+            if (match_number.find()) {
+                String number = match_number.group(0);
+                // replace 2x with 2 * x
+                number_times_id = number_times_id.replace(number, "cnst(" + number + ") * ");
+            }
+            pvsSpec += number_times_id;
         }
         @Override public void enterDlInvariant(DdlEmbeddingParser.DlInvariantContext ctx) {
             pvsSpec += ", ";
@@ -416,6 +465,9 @@ public class DdlParser {
         }
         @Override public void exitDlAssignmentElem(DdlEmbeddingParser.DlAssignmentElemContext ctx) {
             pvsSpec += ")";
+        }
+        @Override public void enterFormulaDeclaration(DdlEmbeddingParser.FormulaDeclarationContext ctx) { 
+            nFormulas++;
         }
     }
 }

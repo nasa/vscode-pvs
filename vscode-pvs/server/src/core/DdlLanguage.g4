@@ -37,7 +37,7 @@
  */
  
 grammar DdlLanguage;
-import PvsLexer;
+import DdlLexer;
 
 testDDL
     : dlProblem+ EOF
@@ -64,7 +64,6 @@ dlStatement
     : dlDiffAssignmentElem (operatorComma dlDiffAssignmentElem)+ (O_AND dlDiffInvariant)? #dlParallelDiffStatement
     | dlAssignmentElem (operatorComma dlAssignmentElem)+ #dlParallelAssignmentStatement
     | dlStatementL1 (operatorComma dlStatementL1)+ #dlParallelStatement
-    | '(' dlStatement ')' '*' #dlStarStatement
     | parenLeft dlStatement parenRight #dlParStatement
     | dlStatementL1 #simpleStatement
     ;
@@ -78,7 +77,6 @@ dlStatementL1
     | dlAssignmentElem #dlSimpleAssignmentStatement
     | parenLeft dlStatementL1 parenRight #dlSimpleParStatement
     ;
-
 
 dlDiffAssignmentElem
     : dlDiffIdentifier operatorDiffEqual dlExpression
@@ -97,15 +95,15 @@ dlAssignmentElem
     ;
 
 dlStarProgram
-    : 
+    : '(' dlStatement ')' '*'
     ;
 
 dlAllRunsProgram
-    : '[' dlStatement ']' dlInvariant?
+    : '[' (dlStatement | dlStarProgram) ']' dlInvariant?
     ;
 
 dlSomeRunsProgram
-    : '<' dlStatement '>' dlInvariant?
+    : '<' (dlStatement | dlStarProgram) '>' dlInvariant?
     ;
 
 dlInvariant
@@ -123,7 +121,7 @@ dlExpression
 dlArithmeticExpression
     :<assoc=right> dlArithmeticExpression operatorExp dlArithmeticExpression     #dlExpExpression
     |<assoc=left> dlArithmeticExpression operatorMulDiv dlArithmeticExpression   #dlMulDivExpression
-    |<assoc=left> NUMBER dlValue                                                 #dlTimesExpression
+    |<assoc=left> NUMBER_TIMES_ID                                                 #dlTimesExpression
     |<assoc=left> dlArithmeticExpression operatorPlusMinus dlArithmeticExpression   #dlPlusMinusExpression
     | parenLeft dlArithmeticExpression parenRight                                #dlParExpression
     | dlValue  #dlValueExpression

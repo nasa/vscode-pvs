@@ -31,5 +31,4 @@ BEGIN
   test7: PROBLEM
   (x > 0) AND (y > 0) |- [w:=*; x'= x + w] (x > 0)
 
-
 END discrete_loop_hp

@@ -1,7 +1,7 @@
-/**
- * @module Parser
+ /**
+ * ANTLR4 lexer rules for the DDL embedding in PVS language
  * @author Paolo Masci
- * @date 2020.01.06
+ * @date 2020.04.20
  * @copyright 
  * Copyright 2019 United States Government as represented by the Administrator 
  * of the National Aeronautics and Space Administration. All Rights Reserved.
@@ -34,52 +34,19 @@
  * PRIOR RECIPIENT, TO THE EXTENT PERMITTED BY LAW.  RECIPIENT'S SOLE
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
- **/
+ */
 
-import { PvsParser, ParserDiagnostics } from './pvs-parser/javaTarget/pvsParser';
-import { DdlParser } from './ddl-parser/javaTarget/ddlParser';
-import * as path from 'path';
+lexer grammar DdlLexer;
+import PvsLexer;
 
-export class Parser {
-    protected pvsParser = new PvsParser();
-    protected ddlParser = new DdlParser();
+//------------------------
+// Lexer Rules
+// NOTES:
+//  - in antlr, all lexer rules and constants start with a Capital letter
+//  -  ANTLR resolves lexical ambiguities by matching the input string to the rule specified first in the grammar
+//     An example common ambiguity in programming languages is that between keywords and identifier rules.
+//     Keyword begin (followed by a nonletter) is also an identifier, at least lexically, so the lexer can match b-e-g-i-n to either rule.
+//     Because of this, it is important to place all keywords before the identifiers
+//------------------------
 
-    /**
-     * Parse a pvs file
-     * @param desc File descriptor, includes file name, file extension, and context folder
-     */
-    async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<ParserDiagnostics> {
-        if (desc) {
-            switch (desc.fileExtension) {
-                case ".pvs": { return await this.pvsParser.parseFile(desc); }
-                case ".hpvs": { return await this.ddlParser.parseFile(desc); }
-                default: {
-                    console.error(`[parser.parseFile] Error: unrecognized extension ${desc.fileExtension}`);
-                }
-            }
-        }
-        return null;
-    }
-    
-    async hp2pvs (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<ParserDiagnostics> {
-        if (desc) {
-            if (desc.fileExtension === ".hpvs") {
-                const ofname: string = path.join(desc.contextFolder, `${desc.fileName}.pvs`);
-                return await this.ddlParser.parseFile(desc, { output: `${ofname}` });
-            }
-        }
-        return null;
-    }
-
-    async prettyPrintDdl(desc: { fileName: string, fileExtension: string, contextFolder: string, expr: string }): Promise<string> {
-        if (desc && desc.expr) {
-            return await this.ddlParser.prettyPrint(desc);
-        }
-        return "";
-    }
-
-    killParser (): void {
-        if (this.pvsParser) { this.pvsParser.stop(); }
-        // if (this.ddlParser) { this.ddlParser.stop(); }
-    }
-}
+NUMBER_TIMES_ID: NUMBER ID;
