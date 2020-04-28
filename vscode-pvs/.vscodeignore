@@ -1,0 +1,9 @@
+**/*.ts
+**/*.js.map
+**/*.java
+**/*.g4
+**/*.old
+**/tsconfig.json
+test/
+LICENSE/
+screenshots/
