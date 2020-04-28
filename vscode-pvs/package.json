@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.18-alpha",
+	"version": "1.0.18-beta",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -890,7 +890,7 @@
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-		"test:server": "node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-all.json",
+		"test:server": "node_modules/jasmine-ts/lib/index.js --config=server/test/jasmine-specs/jasmine-test-all.json",
 		"lint": "eslint --ext .ts server/src && eslint --ext .ts client/src"
 	},
 	"devDependencies": {

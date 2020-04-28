@@ -69,6 +69,10 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
+### 1.0.18-beta (2020.04.28)
+- Improved Workspace Explorer
+- Improved editor feedback for parsing/typechecking
+
 ### 1.0.17 (2020.04.20)
 - Improved Proof Mate functionalities (profiles, recommended commands, inline help)
 - Improved Prover CLI (autocompletion for lemmas)

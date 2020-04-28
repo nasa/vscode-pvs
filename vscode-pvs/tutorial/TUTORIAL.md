@@ -63,7 +63,8 @@ The following example demonstrates:
 Try the following actions in VSCode-PVS:
 1. Edit function `abs` in `helloworld.pvs` so as to change the return type to `posreal`, where posnat is defined as `posreal: TYPE = { r: real | r >=0 }`. The specification should look as follows:
 ```pvs
-helloworld: THEORY
+helloworld
+: THEORY
   BEGIN 
     posreal: TYPE = { r: real | r >=0 }
     abs (x: real): posreal = IF x > 0 THEN x ELSE -x ENDIF
