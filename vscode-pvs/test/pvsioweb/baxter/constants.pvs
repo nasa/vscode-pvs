@@ -1,0 +1,52 @@
+constants: THEORY
+ BEGIN IMPORTING limits
+  MAIN_DISPLAY_SIZE_RATE  : int = 4; % max four characters
+  MAX_DECIMAL_DIGITS_RATE : int = 1;
+  MAIN_DISPLAY_SIZE_VTBI  : int = 5; % max five characters
+  MAX_DECIMAL_DIGITS_VTBI : int = 2;
+  THRESHOLD_TWO_DECIMALS: int = 10; %// numbers below this threshold have two decimal digits
+  THRESHOLD_ONE_DECIMAL : int = 100;% // numbers below this threshold have one decimal digits
+  MAX_RATE              : int = 999;
+  MIN_RATE		: float = 0.1; 
+  MAX_VTBI              : int = 9999;
+  MIN_VTBI		: float = 0.1; 
+
+
+  KEY_CODE: TYPE = { KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_DOT, KEY_ENTER, KEY_CANCEL, KEY_RESET, KEY_NULL, KEY_RATE, KEY_VTBI };
+  KEY_CODE_TO_INT(k: KEY_CODE): int =
+   COND k = KEY_0 -> 0,
+        k = KEY_1 -> 1,
+	k = KEY_2 -> 2,
+	k = KEY_3 -> 3,
+	k = KEY_4 -> 4,
+	k = KEY_5 -> 5,
+	k = KEY_6 -> 6,
+	k = KEY_7 -> 7,
+	k = KEY_8 -> 8,
+	k = KEY_9 -> 9,
+	k = KEY_DOT -> 10,
+	k = KEY_ENTER -> 11,
+	k = KEY_CANCEL -> 12,
+	k = KEY_RESET -> 13,
+	k = KEY_NULL -> 14,
+	k = KEY_RATE -> 15,
+	k = KEY_VTBI -> 16 ENDCOND
+   CONVERSION KEY_CODE_TO_INT
+
+
+  FAILURE_CODES: TYPE = { NULL_POINTER_ASSIGNMENT, ARRAY_INDEX_OUT_OF_BOUNDS, KEYPROCESS_DEFAULT, DIVISION_BY_ZERO, MATH_ERROR, 
+                            FLOATING_POINT_ERROR, OUT_OF_MEMORY, INVALID_KEY, INVALID_VALUE };
+  FAILURE_CODES_TO_INT(f: FAILURE_CODES): int =
+   COND f = NULL_POINTER_ASSIGNMENT   -> 0, 
+        f = ARRAY_INDEX_OUT_OF_BOUNDS -> 1, 
+	f = KEYPROCESS_DEFAULT        -> 2, 
+	f = DIVISION_BY_ZERO          -> 3, 
+	f = MATH_ERROR		      -> 4, 
+        f = FLOATING_POINT_ERROR      -> 5, 
+	f = OUT_OF_MEMORY	      -> 6, 
+	f = INVALID_KEY		      -> 100, 
+	f = INVALID_VALUE	      -> 101 ENDCOND
+   CONVERSION FAILURE_CODES_TO_INT
+
+
+ END constants

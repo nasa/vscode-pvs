@@ -51,21 +51,21 @@ install:
 	npm install && npm install --no-save jasmine ts-node jasmine-ts
 
 test-proxy:
-	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-proxy.json
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proxy.json
 test-parser:
-	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-parser.json
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-parser.json
 test-find-declaration:
-	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-find-declaration.json
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-find-declaration.json
 test-typechecker:
-	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-typechecker.json
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-typechecker.json
 test-prover:
-	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-prover.json
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-prover.json
 test-proofscript:
-	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-proofscript.json
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proofscript.json
 test-workspace:
-	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-workspace.json
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-workspace.json
 test:
-	node_modules/jasmine-ts/lib/index.js --config=server/test/specs/jasmine-test-all.json
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-all.json
 test-all: test
 
 core:
@@ -76,7 +76,12 @@ pvs-language:
 	-mkdir server/out && mkdir server/out/core
 	cd server/src/core/ && make pvs
 
-clean:
+clean: clean-test
 	cd client && make clean && cd .. && cd server && make clean && cd ..
 	rm -rf node_modules
 	rm -f vscode-pvs-*.vsix
+
+clean-test:
+	-rm test/**/pvsbin/*
+	-rm test/**/pvslog/*
+	-rm test/**/.pvscontext

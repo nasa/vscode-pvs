@@ -46,5 +46,4 @@ install:
 clean:
 	-rm -r node_modules
 	-rm -r out
-	-rm test/**/pvsbin/*
-	-rm test/**/pvslog/*
+	-cd src/core && make clean

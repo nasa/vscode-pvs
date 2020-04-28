@@ -1,8 +1,0 @@
-{
-  "spec_dir": "server/test",
-  "spec_files": [
-    "test-find-declaration.ts"
-  ],
-  "stopSpecOnExpectationFailure": false,
-  "random": false
-}

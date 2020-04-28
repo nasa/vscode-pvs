@@ -1,0 +1,31 @@
+{
+ "helloworld.always_positive": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "always_positive",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (International Allegro CL Enterprise Edition 10.1)"
+   },
+   "proof": {
+    "branch": "",
+    "name": "always_positive",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "skosimp*",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "grind",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,96 @@
+% PCA Interlock App -- basic version, supports 1 PCA pump and 1 patient monitor
+main: THEORY
+ BEGIN
+  IMPORTING patient_monitor, pump_rc
+
+  SupervisorMode: TYPE = { monitoring, show_vtbi, show_rate, show_volume }
+  state: TYPE = [#
+    mode: SupervisorMode,
+    monitor: MonitorState,
+    pump: PumpState,
+    isOn: bool,
+    pumpcmd: PumpCommand, % safety interlock
+    pump_connected: bool,
+    monitor_connected: bool,
+    supervisor_connected: bool
+  #]
+
+  init(x: real): state = (#
+    mode := monitoring,
+    monitor := init_monitor("Radical7"),
+    pump := init_pump("AlarisGP"),
+    isOn := true,
+    pumpcmd := keep,
+    pump_connected := false,
+    monitor_connected := false,
+    supervisor_connected := false
+  #)
+  
+  init_alt(x: real): state = (#
+    mode := monitoring,
+    monitor := init_monitor_alt("Radical7"),
+    pump := init_pump_alt("AlarisGP"),
+    isOn := true,
+    pumpcmd := keep,
+    pump_connected := true,
+    monitor_connected := true,
+    supervisor_connected := true
+  #)  
+
+  click_vtbi_touchscreen(st: state): state =
+    st WITH [ mode := show_vtbi ]
+
+  click_rate_touchscreen(st: state): state =
+    st WITH [ mode := show_rate ]
+
+  click_volume_touchscreen(st: state): state =
+    st WITH [ mode := show_volume ]
+
+  click_topline_back_touchscreen(st : state): state =
+    st WITH [ mode := monitoring ]
+
+  tick(st: state): state =
+    IF isOn(pump(st)) AND isOn(monitor(st))
+    THEN COND
+      (spo2(monitor(st)) <= min_spo2 OR spo2(monitor(st)) >= max_spo2)
+       AND (rra(monitor(st)) <= min_rra OR rra(monitor(st)) >= max_rra)
+        -> st WITH [ pumpcmd := pause ],
+      ELSE
+        -> st WITH [ pumpcmd := keep ]
+         ENDCOND
+    ELSE st ENDIF
+
+  click_onOff(st: state): state =
+    st WITH [ isOn := NOT isOn(st) ]
+
+  update_spo2(v: real)(st: state): state =
+    st WITH [ monitor := monitor(st) WITH [ spo2 := v ]]
+
+  update_rra(v: real)(st: state): state =
+    st WITH [ monitor := monitor(st) WITH [ rra := v ]]
+
+  update_monitor(m: MonitorState)(st: state): state =
+    st WITH [ monitor := m ]
+
+  update_pump(p: PumpState)(st: state): state =
+    st WITH [ pump := p ]
+
+  on_connect_pump(st: state): state =
+    st WITH [ pump_connected := true ]
+
+  on_disconnect_pump(st: state): state =
+    st WITH [ pump_connected := false ]
+
+  on_connect_monitor(st: state): state =
+    st WITH [ monitor_connected := true ]
+
+  on_disconnect_monitor(st: state): state =
+    st WITH [ monitor_connected := false ]
+
+  on_connect_supervisor(st: state): state =
+    st WITH [ supervisor_connected := true ]
+
+  on_disconnect_supervisor(st: state): state =
+    st WITH [ supervisor_connected := false ]
+
+ END main

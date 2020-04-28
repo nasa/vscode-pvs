@@ -1,0 +1,14 @@
+{
+  "spec_dir": "test",
+  "spec_files": [
+    "test-proxy.ts",
+    "test-parser.ts",
+    "test-find-declaration.ts",
+    "test-typechecker.ts",
+    "test-prover.ts",
+    "test-proofscript.ts",
+    "test-workspace.ts"
+  ],
+  "stopSpecOnExpectationFailure": false,
+  "random": false
+}

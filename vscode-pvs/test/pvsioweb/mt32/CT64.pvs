@@ -1,0 +1,396 @@
+CT64: THEORY
+ BEGIN
+  %-- user-defined constants
+  MAX_WAIT: int = 2
+
+%-- user-defined datatypes
+  MT32_Mode: TYPE = { MT32_HUB, MT32_HOLTER, MT32_NONE }
+  PatientManagementTab: TYPE = { PATIENT_PROFILE, EXAMS, ARCHIVED_MEDICAL_REPORTS }
+  Visit: TYPE = { VISIT_NONE, VISIT_ECG2D_NEW_PT }
+  
+  %-- operating modes
+  CTMode: TYPE = { CREATE_NEW_PATIENT, ECG_ANALYSIS_RESULTS, ECG_PHYSIO, ECG_RESULTS_INTERPRETATION, google, HOLTER_ANALYSIS_RESULTS, HOLTER_CONFIG, LOGIN, MEDICAL_REPORT, MONITORING, MT32_HOLTER_MODE, MT32_HUB_MODE, NEW_MONITORING_SESSION, NEW_MONITORING_SESSION_ECG2D_NEW_PT, PATIENT_MANAGEMENT, PATIENTS_SCREEN, REPORT, SELECT_HOLTER_DEVICE, SHOW_MENU_VISITS, UPLOAD_EXAMS, WAITING_RESULTS }
+
+  %-- state attributes
+  CTState: TYPE = [#
+    mode: CTMode,
+    device_selected: bool,
+    ecg_report_saved: bool,
+    holter_accelerometer_active: bool,
+    holter_derivation: string,
+    holter_duration: int,
+    holter_mode: bool,
+    hub_mode: bool,    
+    known_patient: bool,
+    mt32_mode: MT32_Mode,
+    patient_management_tab: PatientManagementTab,
+    report_auth: bool,    
+    visit: Visit,
+    wait: int
+  #]
+
+  %-- init function
+  ctinit: CTState = (#
+    mode := LOGIN, 
+    device_selected := false,
+    ecg_report_saved := false,
+    holter_accelerometer_active := true, 
+    holter_derivation := "V2", 
+    holter_duration := 24,
+    holter_mode := false, 
+    hub_mode := false,     
+    known_patient := false,
+    mt32_mode := MT32_NONE,
+    patient_management_tab := PATIENT_PROFILE, 
+    report_auth := true, 
+    visit := VISIT_NONE,
+    wait := MAX_WAIT
+  #)
+
+  %-- leave/enter functions
+  enter(m: CTMode)(st: CTState): CTState = st WITH [ mode := m ]
+  leave(m: CTMode)(st: CTState): CTState = st
+
+  %-- triggers
+  per_back(st: CTState): bool = (mode(st) = MEDICAL_REPORT)
+  back(st: (per_back)): CTState =
+    COND
+     mode(st) = MEDICAL_REPORT
+      -> LET st = leave(MEDICAL_REPORT)(st)
+          IN enter(PATIENT_MANAGEMENT)(st),
+     ELSE -> st
+    ENDCOND
+  
+  per_browse_medicaltech(st: CTState): bool = (mode(st) = google)
+  browse_medicaltech(st: (per_browse_medicaltech)): CTState =
+    COND
+     mode(st) = google
+      -> LET st = leave(google)(st)
+          IN enter(LOGIN)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_continue(st: CTState): bool = (mode(st) = HOLTER_CONFIG)
+    OR (mode(st) = SELECT_HOLTER_DEVICE AND ( device_selected(st) ))
+    OR (mode(st) = NEW_MONITORING_SESSION AND ( device_selected(st) ))
+    OR (mode(st) = NEW_MONITORING_SESSION_ECG2D_NEW_PT AND ( visit(st) = VISIT_ECG2D_NEW_PT ))
+  continue(st: (per_continue)): CTState =
+    COND
+     mode(st) = HOLTER_CONFIG
+      -> LET st = leave(HOLTER_CONFIG)(st)
+          IN enter(SELECT_HOLTER_DEVICE)(st),
+     mode(st) = SELECT_HOLTER_DEVICE AND ( device_selected(st) )
+      -> LET st = leave(SELECT_HOLTER_DEVICE)(st),
+             st = st WITH [ mt32_mode := MT32_HOLTER ]
+          IN enter(WAITING_RESULTS)(st),
+     mode(st) = NEW_MONITORING_SESSION AND ( device_selected(st) )
+      -> LET st = leave(NEW_MONITORING_SESSION)(st),
+             st = st WITH [ mt32_mode := MT32_HUB ]
+          IN enter(WAITING_RESULTS)(st),
+     mode(st) = NEW_MONITORING_SESSION_ECG2D_NEW_PT AND ( visit(st) = VISIT_ECG2D_NEW_PT )
+      -> LET st = leave(NEW_MONITORING_SESSION_ECG2D_NEW_PT)(st),
+             st = st WITH [ hub_mode := true ]
+          IN enter(NEW_MONITORING_SESSION)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_ct64_tick(st: CTState): bool = (mode(st) = WAITING_RESULTS AND ( wait(st) = 0 AND mt32_mode(st) = MT32_HOLTER ))
+    OR (mode(st) = WAITING_RESULTS AND ( wait(st) = 0 AND mt32_mode(st) = MT32_HUB ))
+    OR (mode(st) = WAITING_RESULTS AND ( wait(st) > 0 ))
+  ct64_tick(st: (per_ct64_tick)): CTState =
+    COND
+     mode(st) = WAITING_RESULTS AND ( wait(st) = 0 AND mt32_mode(st) = MT32_HOLTER )
+      -> LET st = leave(WAITING_RESULTS)(st)
+          IN enter(MT32_HOLTER_MODE)(st),
+     mode(st) = WAITING_RESULTS AND ( wait(st) = 0 AND mt32_mode(st) = MT32_HUB )
+      -> LET st = leave(WAITING_RESULTS)(st)
+          IN enter(MT32_HUB_MODE)(st),
+     mode(st) = WAITING_RESULTS AND ( wait(st) > 0 )
+      -> LET st = leave(WAITING_RESULTS)(st),
+             st = st WITH [ wait := wait(st) - 1 ]
+          IN enter(WAITING_RESULTS)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_HES(st: CTState): bool = (mode(st) = REPORT)
+    OR (mode(st) = ECG_PHYSIO)
+    OR (mode(st) = MONITORING)
+    OR (mode(st) = ECG_ANALYSIS_RESULTS)
+  HES(st: (per_HES)): CTState =
+    COND
+     mode(st) = REPORT
+      -> LET st = leave(REPORT)(st)
+          IN enter(ECG_RESULTS_INTERPRETATION)(st),
+     mode(st) = ECG_PHYSIO
+      -> LET st = leave(ECG_PHYSIO)(st)
+          IN enter(ECG_RESULTS_INTERPRETATION)(st),
+     mode(st) = MONITORING
+      -> LET st = leave(MONITORING)(st)
+          IN enter(ECG_RESULTS_INTERPRETATION)(st),
+     mode(st) = ECG_ANALYSIS_RESULTS
+      -> LET st = leave(ECG_ANALYSIS_RESULTS)(st)
+          IN enter(ECG_RESULTS_INTERPRETATION)(st),
+     ELSE -> st
+    ENDCOND
+    
+  per_login(st: CTState): bool = (mode(st) = LOGIN)
+    OR (mode(st) = LOGIN AND ( known_patient(st) ))
+  login(st: (per_login)): CTState =
+    COND
+     mode(st) = LOGIN
+      -> LET st = leave(LOGIN)(st)
+          IN enter(PATIENTS_SCREEN)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_monitoring(st: CTState): bool = (mode(st) = PATIENTS_SCREEN)
+  monitoring(st: (per_monitoring)): CTState =
+    COND
+     mode(st) = PATIENTS_SCREEN
+      -> LET st = leave(PATIENTS_SCREEN)(st)
+          IN enter(MONITORING)(st),
+     ELSE -> st
+    ENDCOND
+    
+  per_new_ecg(st: CTState): bool = (mode(st) = PATIENT_MANAGEMENT)
+  new_ecg(st: (per_new_ecg)): CTState =
+    COND
+     mode(st) = PATIENT_MANAGEMENT
+      -> LET st = leave(PATIENT_MANAGEMENT)(st),
+             st = st WITH [ hub_mode := true ]
+          IN enter(NEW_MONITORING_SESSION)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_new_holter(st: CTState): bool = (mode(st) = PATIENT_MANAGEMENT)
+  new_holter(st: (per_new_holter)): CTState =
+    COND
+     mode(st) = PATIENT_MANAGEMENT
+      -> LET st = leave(PATIENT_MANAGEMENT)(st),
+             st = st WITH [ holter_mode := true ]
+          IN enter(HOLTER_CONFIG)(st),
+     ELSE -> st
+    ENDCOND
+
+
+  per_new_monitoring_session(st: CTState): bool = (mode(st) = MONITORING)
+  new_monitoring_session(st: (per_new_monitoring_session)): CTState =
+    COND
+     mode(st) = MONITORING
+      -> LET st = leave(MONITORING)(st)
+          IN enter(NEW_MONITORING_SESSION_ECG2D_NEW_PT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_new_patient(st: CTState): bool = (mode(st) = PATIENTS_SCREEN)
+  new_patient(st: (per_new_patient)): CTState =
+    COND
+     mode(st) = PATIENTS_SCREEN
+      -> LET st = leave(PATIENTS_SCREEN)(st)
+          IN enter(CREATE_NEW_PATIENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_save(st: CTState): bool = (mode(st) = REPORT)
+  save(st: (per_save)): CTState =
+    COND
+     mode(st) = REPORT
+      -> LET st = leave(REPORT)(st),
+             st = st WITH [ ecg_report_saved := true ]
+          IN enter(REPORT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_select_derivation(st: CTState): bool = (mode(st) = HOLTER_CONFIG)
+  select_derivation(st: (per_select_derivation)): CTState =
+    COND
+     mode(st) = HOLTER_CONFIG
+      -> LET st = leave(HOLTER_CONFIG)(st),
+             st = st WITH [ holter_derivation := "V2" ]
+          IN enter(HOLTER_CONFIG)(st),
+     ELSE -> st
+    ENDCOND
+    
+  per_select_device(st: CTState): bool = (mode(st) = NEW_MONITORING_SESSION)
+    OR (mode(st) = SELECT_HOLTER_DEVICE)
+  select_device(st: (per_select_device)): CTState =
+    COND
+     mode(st) = NEW_MONITORING_SESSION
+      -> LET st = leave(NEW_MONITORING_SESSION)(st),
+             st = st WITH [ device_selected := NOT device_selected(st) ]
+          IN enter(NEW_MONITORING_SESSION)(st),
+     mode(st) = SELECT_HOLTER_DEVICE
+      -> LET st = leave(SELECT_HOLTER_DEVICE)(st),
+             st = st WITH [ device_selected := NOT device_selected(st) ]
+          IN enter(SELECT_HOLTER_DEVICE)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_select_duration(st: CTState): bool = (mode(st) = HOLTER_CONFIG)
+  select_duration(st: (per_select_duration)): CTState =
+    COND
+     mode(st) = HOLTER_CONFIG
+      -> LET st = leave(HOLTER_CONFIG)(st),
+             st = st WITH [ holter_duration := 24 ]
+          IN enter(HOLTER_CONFIG)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_select_ecg2d_new_pt(st: CTState): bool = (mode(st) = SHOW_MENU_VISITS)
+  select_ecg2d_new_pt(st: (per_select_ecg2d_new_pt)): CTState =
+    COND
+     mode(st) = SHOW_MENU_VISITS
+      -> LET st = leave(SHOW_MENU_VISITS)(st),
+             st = st WITH [ visit := VISIT_ECG2D_NEW_PT ]
+          IN enter(NEW_MONITORING_SESSION_ECG2D_NEW_PT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_select_exam_data_holter(st: CTState): bool = (mode(st) = MONITORING)
+  select_exam_data_holter(st: (per_select_exam_data_holter)): CTState =
+    COND
+     mode(st) = MONITORING
+      -> LET st = leave(MONITORING)(st)
+          IN enter(HOLTER_ANALYSIS_RESULTS)(st),
+     ELSE -> st
+    ENDCOND
+    
+  per_select_exam_data_hub(st: CTState): bool = (mode(st) = MONITORING)
+  select_exam_data_hub(st: (per_select_exam_data_hub)): CTState =
+    COND
+     mode(st) = MONITORING
+      -> LET st = leave(MONITORING)(st)
+          IN enter(ECG_ANALYSIS_RESULTS)(st),
+     ELSE -> st
+    ENDCOND
+    
+  per_select_patient(st: CTState): bool = (mode(st) = PATIENTS_SCREEN)
+  select_patient(st: (per_select_patient)): CTState =
+    COND
+     mode(st) = PATIENTS_SCREEN
+      -> LET st = leave(PATIENTS_SCREEN)(st)
+          IN enter(PATIENT_MANAGEMENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_select_visit(st: CTState): bool = (mode(st) = NEW_MONITORING_SESSION_ECG2D_NEW_PT)
+    OR (mode(st) = SHOW_MENU_VISITS)
+  select_visit(st: (per_select_visit)): CTState =
+    COND
+     mode(st) = NEW_MONITORING_SESSION_ECG2D_NEW_PT
+      -> LET st = leave(NEW_MONITORING_SESSION_ECG2D_NEW_PT)(st)
+          IN enter(SHOW_MENU_VISITS)(st),
+     mode(st) = SHOW_MENU_VISITS
+      -> LET st = leave(SHOW_MENU_VISITS)(st)
+          IN enter(NEW_MONITORING_SESSION_ECG2D_NEW_PT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_toggle_accelerometer(st: CTState): bool = (mode(st) = HOLTER_CONFIG)
+  toggle_accelerometer(st: (per_toggle_accelerometer)): CTState =
+    COND
+     mode(st) = HOLTER_CONFIG
+      -> LET st = leave(HOLTER_CONFIG)(st),
+             st = st WITH [ holter_accelerometer_active := NOT holter_accelerometer_active(st) ]
+          IN enter(HOLTER_CONFIG)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_upload_exams(st: CTState): bool = (mode(st) = PATIENTS_SCREEN)
+  upload_exams(st: (per_upload_exams)): CTState =
+    COND
+     mode(st) = PATIENTS_SCREEN
+      -> LET st = leave(PATIENTS_SCREEN)(st)
+          IN enter(UPLOAD_EXAMS)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_view_ecg(st: CTState): bool = (mode(st) = REPORT)
+    OR (mode(st) = ECG_PHYSIO)
+    OR (mode(st) = ECG_RESULTS_INTERPRETATION)
+  view_ecg(st: (per_view_ecg)): CTState =
+    COND
+     mode(st) = REPORT
+      -> LET st = leave(REPORT)(st)
+          IN enter(ECG_ANALYSIS_RESULTS)(st),
+     mode(st) = ECG_PHYSIO
+      -> LET st = leave(ECG_PHYSIO)(st)
+          IN enter(ECG_ANALYSIS_RESULTS)(st),
+     mode(st) = ECG_RESULTS_INTERPRETATION
+      -> LET st = leave(ECG_RESULTS_INTERPRETATION)(st)
+          IN enter(ECG_ANALYSIS_RESULTS)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_view_medical_report(st: CTState): bool = (mode(st) = PATIENT_MANAGEMENT)
+  view_medical_report(st: (per_view_medical_report)): CTState =
+    COND
+     mode(st) = PATIENT_MANAGEMENT
+      -> LET st = leave(PATIENT_MANAGEMENT)(st)
+          IN enter(MEDICAL_REPORT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_view_patient_profile(st: CTState): bool = (mode(st) = PATIENT_MANAGEMENT)
+  view_patient_profile(st: (per_view_patient_profile)): CTState =
+    COND
+     mode(st) = PATIENT_MANAGEMENT
+      -> LET st = leave(PATIENT_MANAGEMENT)(st),
+             st = st WITH [ patient_management_tab := PATIENT_PROFILE ]
+          IN enter(PATIENT_MANAGEMENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_view_physio(st: CTState): bool = (mode(st) = MONITORING)
+    OR (mode(st) = REPORT)
+    OR (mode(st) = ECG_ANALYSIS_RESULTS)
+    OR (mode(st) = ECG_RESULTS_INTERPRETATION)
+  view_physio(st: (per_view_physio)): CTState =
+    COND
+     mode(st) = MONITORING
+      -> LET st = leave(MONITORING)(st)
+          IN enter(ECG_PHYSIO)(st),
+     mode(st) = REPORT
+      -> LET st = leave(REPORT)(st)
+          IN enter(ECG_PHYSIO)(st),
+     mode(st) = ECG_ANALYSIS_RESULTS
+      -> LET st = leave(ECG_ANALYSIS_RESULTS)(st)
+          IN enter(ECG_PHYSIO)(st),
+     mode(st) = ECG_RESULTS_INTERPRETATION
+      -> LET st = leave(ECG_RESULTS_INTERPRETATION)(st)
+          IN enter(ECG_PHYSIO)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_view_archived_medical_reports(st: CTState): bool = (mode(st) = PATIENT_MANAGEMENT)
+  view_archived_medical_reports(st: (per_view_archived_medical_reports)): CTState =
+    COND
+     mode(st) = PATIENT_MANAGEMENT
+      -> LET st = leave(PATIENT_MANAGEMENT)(st),
+             st = st WITH [ patient_management_tab := ARCHIVED_MEDICAL_REPORTS ]
+          IN enter(PATIENT_MANAGEMENT)(st),
+     ELSE -> st
+    ENDCOND
+
+  per_write_report(st: CTState): bool = (mode(st) = ECG_RESULTS_INTERPRETATION)
+    OR (mode(st) = ECG_PHYSIO)
+    OR (mode(st) = ECG_ANALYSIS_RESULTS)
+    OR (mode(st) = MONITORING)
+  write_report(st: (per_write_report)): CTState =
+    COND
+     mode(st) = ECG_RESULTS_INTERPRETATION
+      -> LET st = leave(ECG_RESULTS_INTERPRETATION)(st)
+          IN enter(REPORT)(st),
+     mode(st) = ECG_PHYSIO
+      -> LET st = leave(ECG_PHYSIO)(st)
+          IN enter(REPORT)(st),
+     mode(st) = ECG_ANALYSIS_RESULTS
+      -> LET st = leave(ECG_ANALYSIS_RESULTS)(st)
+          IN enter(REPORT)(st),
+     mode(st) = MONITORING
+      -> LET st = leave(MONITORING)(st)
+          IN enter(REPORT)(st),
+     ELSE -> st
+    ENDCOND
+    
+ END CT64

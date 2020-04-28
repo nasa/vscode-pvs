@@ -1,0 +1,9 @@
+helloworld
+: THEORY
+  BEGIN 
+    posreal: TYPE = { r: real | r >=0 }
+    abs (x: real): posreal = IF x > 0 THEN x ELSE -x ENDIF
+
+    always_positive: THEOREM
+      FORALL (x: real): abs(x) >= 0
+  END helloworld

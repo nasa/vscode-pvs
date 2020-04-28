@@ -1,0 +1,270 @@
+MDNumberpad: THEORY
+ BEGIN IMPORTING constants 
+  
+  state: TYPE = [#
+    dispval       : float,
+    display       : { s: string | s`length <= MAIN_DISPLAY_SIZE + 1 },
+    dotEntered    : bool,
+    decimalDigits : { x: integer | x >= 0 },
+    rejectKeys    : bool,
+    programmedValue: float
+  #]
+
+  digitClicked(key: KEY_CODE)(st: state): state = 
+    LET tmp: float = dispval(st),
+
+        (tmp, st) =
+        if(dotEntered(st)) %{ 
+	then	if(decimalDigits(st) < MAX_DECIMAL_DIGITS) %{
+		then	if(NOT(tmp >= THRESHOLD_ONE_DECIMAL AND decimalDigits(st) = 0
+			      OR tmp >= THRESHOLD_TWO_DECIMALS AND decimalDigits(st) = 1)) 
+			then %{
+			      LET PPdecimalDigits = decimalDigits(st) + 1
+			       IN (tmp + key * pow10(-1 * PPdecimalDigits), st WITH [ decimalDigits := PPdecimalDigits])
+			%}
+			else (tmp, st) endif
+		%}
+		% else ignore digits
+		else (tmp, st) endif
+	%}
+	else %{ 
+	     (tmp * 10 + key, st) endif 
+	%}
+     IN
+	if(tmp >= 0 AND tmp < MAX_RATE) %{
+	then	LET st = st WITH [ dispval := tmp ]
+		 IN      st WITH [ display := snprintf(dispval(st), MAIN_DISPLAY_SIZE)(dotEntered(st), decimalDigits(st)) ]
+	%}
+	else %{ 
+		st WITH [ display := message(TOO_HIGH),
+		          rejectKeys := true ] endif
+	%}
+
+  dotClicked(st: state): state =
+	if(NOT rejectKeys(st) AND NOT dotEntered(st) AND dispval(st) < THRESHOLD_ONE_DECIMAL) %{
+	then st WITH [ dotEntered := true,
+		       display := strcat(display(st),".") ]
+	%}
+	% else ignore decimal digit
+	else st endif
+
+  okClicked(st: state): state =
+	if(NOT rejectKeys(st)) %{
+	then	if(dispval(st) >= MIN_RATE) %{
+		then	st WITH [ programmedValue := dispval(st),
+			   	  display := "Starting..." ]
+		%}
+		else %{
+			st WITH [ display := message(OUT_OF_RANGE),
+			          rejectKeys := true ] endif
+		%}
+	else    st endif
+	%}
+
+  cancelClicked(st: state): state =
+	if(NOT rejectKeys(st)) %{
+	then st WITH [ dispval := 0,
+		       display := snprintf(dispval(st), MAIN_DISPLAY_SIZE)(FALSE, 0),
+		       dotEntered := false,
+		       decimalDigits := 0 ]
+	%}
+	else %{ // cancel error message and display last valid value
+	     st WITH [ display := snprintf(dispval(st), MAIN_DISPLAY_SIZE)(dotEntered(st), decimalDigits(st)) ] endif
+	%}
+
+
+  resetClicked(st: state): state = 
+   st WITH [
+    dispval := 0,
+	display := snprintf(0, MAIN_DISPLAY_SIZE)(FALSE,0),
+	dotEntered := false,
+	decimalDigits := 0,
+	rejectKeys := false,
+	programmedValue := 0 ]
+  
+
+  EXCEPTION(errType: int, key: int, val: unsigned_long_int)(st: state): state =
+	st WITH [ display := snprintf(errType + ":" + key + ":" + val),
+	          rejectKeys := true ]
+
+  processKey(key: KEY_CODE)(st: state): state =
+   if(programmedValue(st) = 0 OR key = KEY_RESET OR key = KEY_CANCEL) then
+    COND
+	 key = KEY_0 OR key = KEY_1 OR key = KEY_2 OR key = KEY_3 OR key = KEY_4
+	  or key = KEY_5 OR key = KEY_6 OR key = KEY_7 OR key = KEY_8 OR key = KEY_9
+               -> digitClicked(key)(st),
+
+         key = KEY_DOT 
+               -> dotClicked(st),
+
+	 key = KEY_OK  
+	       -> okClicked(st),
+	
+	 key = KEY_CANCEL
+	       -> cancelClicked(st),
+
+	 key = KEY_RESET
+               -> resetClicked(st),
+
+         ELSE % unrecognised key - call exception handler
+	       -> EXCEPTION(INVALID_KEY, key, dispval(st))(st)
+   ENDCOND
+    else st endif	
+
+   init(x: real): state = (#
+   	dispval := x,
+	display := snprintf(x, MAIN_DISPLAY_SIZE)(FALSE,0),
+	dotEntered := false,
+	decimalDigits := 0,
+	rejectKeys := false,
+	programmedValue := 0
+   #)
+
+
+   %-- interface functions for pvsio-web
+   click_btn0(st: state): state = processKey(KEY_0)(st)
+   click_btn1(st: state): state = processKey(KEY_1)(st)
+   click_btn2(st: state): state = processKey(KEY_2)(st)
+   click_btn3(st: state): state = processKey(KEY_3)(st)
+   click_btn4(st: state): state = processKey(KEY_4)(st)
+   click_btn5(st: state): state = processKey(KEY_5)(st)
+   click_btn6(st: state): state = processKey(KEY_6)(st)
+   click_btn7(st: state): state = processKey(KEY_7)(st)
+   click_btn8(st: state): state = processKey(KEY_8)(st)
+   click_btn9(st: state): state = processKey(KEY_9)(st)
+   click_btnOK(st: state): state = processKey(KEY_OK)(st)
+   click_btnCLR(st: state): state = processKey(KEY_RESET)(st)
+   click_btnPOINT(st: state): state = processKey(KEY_DOT)(st)
+
+ END MDNumberpad
+
+limits: THEORY
+ BEGIN
+
+  % Two C header files float.h and limits.h define implementation-specific limits for the platform
+  SHRT_MAX: { s: int | s = 32767  }  %= 32767
+  SHRT_MIN: { s: int | s = -32767 }  %= -32767
+  USHRT_MAX: { us: int | us >= SHRT_MAX } %= 65535
+  INT_MAX  : { i: int | i >= SHRT_MAX }   % = 2147483647
+  INT_MIN  : { i: int | i <= SHRT_MIN }   % = -2147483647 - 1
+  UINT_MAX : { ui: int | ui >= INT_MAX }  % = 4294967295
+  LONG_MAX : { li: int | li >= INT_MAX }  % = 2147483647
+  LONG_MIN : { li: int | li <= INT_MIN }  % -2147483647 - 1
+  ULONG_MAX: { ul: int | ul >= LONG_MAX } % int = 4294967295
+
+  integer: TYPE = { x: int | x >= INT_MIN AND x <= INT_MAX }
+  unsigned_int: TYPE = { x: int | x >= 0 AND x <= UINT_MAX }
+  long_int: TYPE = { x: int | x >= LONG_MIN AND x <= LONG_MAX }
+  unsigned_long_int: TYPE = { x: int | x >= 0 AND x <= ULONG_MAX }
+
+  % 3.402823466 E+38
+  FLOAT_MAX: { x: nonneg_real | x >= ULONG_MAX }
+  float: TYPE = {x: real | x > -FLOAT_MAX AND x < FLOAT_MAX }
+  % 1.7976931348623158 E+308
+  DOUBLE_MAX: { x: nonneg_real | x >= FLOAT_MAX }
+  double: TYPE = {x: real | x > -DOUBLE_MAX AND x < DOUBLE_MAX}
+
+  % converts boolean to integer
+  bool2int(b: bool): int = IF b = TRUE THEN 1 ELSE 0 ENDIF
+  CONVERSION bool2int
+
+  % computes 10^i
+  pow10(i: int): RECURSIVE real =
+   IF i = 0 THEN 1
+   ELSE IF i < 0 THEN pow10(i+1) / 10 
+        ELSE pow10(i-1) * 10 ENDIF ENDIF
+  MEASURE LAMBDA(i: int): IF i > 0 THEN i ELSE -i ENDIF
+  
+  % float fmod (      float numerator,      float denominator );
+  % The remainder of a division operation is the result of subtracting 
+  % the integral quotient multiplied by the denominator from the numerator:
+  % remainder = numerator - quotient * denominator
+  % the accuracy of floating point numbers is 7 decimal digits
+  fmod(numerator: real, denominator: {x: real | x /= 0}): real = 
+    LET quotient = floor(numerator / denominator)
+     IN numerator - quotient * denominator
+
+  % float point abs
+  fabs(x: real): nonneg_real = IF x >= 0 THEN x ELSE -x ENDIF
+
+  EOS: string = "\r";
+  % counts how many characters preceed "\r" (return), which we use as EOF
+  strlen(s: string): int = strfind(EOS,s)
+  strcat(s1,s2: string): string = s1 + s2
+  strcpy(s1,s2: string): string = s2
+
+  snprintf(s: string): string = s
+  % this version supports up to two decimal digits
+  snprintf(val: float, MAX_LEN: nat)(dotEntered: bool, decimalDigits: nat): { s: string | s`length < MAX_LEN } =
+   "" + floor(val) 
+         + LET firstDecimal = mod(floor(val*10),10),
+	       secondDecimal = mod(floor(val*100),10)
+            IN COND 
+ 	     dotEntered AND decimalDigits = 2 -> "." + firstDecimal + secondDecimal,
+ 	     dotEntered AND decimalDigits = 1 -> "." + firstDecimal,
+	     dotEntered AND decimalDigits = 0 -> ".",
+	     NOT dotEntered -> "" ENDCOND
+
+  sprintf(s: string)(dotEntered: bool, decimalDigits: int): string = s
+
+ END limits
+
+
+constants: THEORY
+ BEGIN IMPORTING limits
+  MAIN_DISPLAY_SIZE     : int = 16;
+  MAX_DECIMAL_DIGITS    : int = 2;
+  THRESHOLD_TWO_DECIMALS: int = 10; %// numbers below this threshold have two decimal digits
+  THRESHOLD_ONE_DECIMAL : int = 100;% // numbers below this threshold have one decimal digits
+  MAX_RATE              : int = 1200;
+  MIN_RATE		: float = 0.1; 
+
+  N_MESSAGES: int = 4;
+  message(i: below(N_MESSAGES)): { s: string | s`length <= MAIN_DISPLAY_SIZE } =
+   COND i = 0 -> "Too High",
+        i = 1 -> "Too Low",
+        i = 2 -> "Out of Range",
+        i = 3 -> "Invalid Key" ENDCOND
+
+  KEY_CODE: TYPE = { KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_DOT, KEY_OK, KEY_CANCEL, KEY_RESET, KEY_NULL };
+  KEY_CODE_TO_INT(k: KEY_CODE): int =
+   COND k = KEY_0 -> 0,
+        k = KEY_1 -> 1,
+	k = KEY_2 -> 2,
+	k = KEY_3 -> 3,
+	k = KEY_4 -> 4,
+	k = KEY_5 -> 5,
+	k = KEY_6 -> 6,
+	k = KEY_7 -> 7,
+	k = KEY_8 -> 8,
+	k = KEY_9 -> 9,
+	k = KEY_DOT -> 10,
+	k = KEY_OK -> 11,
+	k = KEY_CANCEL -> 12,
+	k = KEY_RESET -> 13,
+	k = KEY_NULL -> 14 ENDCOND
+   CONVERSION KEY_CODE_TO_INT
+
+  messageID: TYPE = { TOO_HIGH, TOO_LOW, OUT_OF_RANGE };
+  messageID_TO_INT(m: messageID): int =
+   COND m = TOO_HIGH -> 0,
+        m = TOO_LOW  -> 1,
+	m = OUT_OF_RANGE -> 2 ENDCOND
+   CONVERSION messageID_TO_INT
+
+  FAILURE_CODES: TYPE = { NULL_POINTER_ASSIGNMENT, ARRAY_INDEX_OUT_OF_BOUNDS, KEYPROCESS_DEFAULT, DIVISION_BY_ZERO, MATH_ERROR, 
+                            FLOATING_POINT_ERROR, OUT_OF_MEMORY, INVALID_KEY, INVALID_VALUE };
+  FAILURE_CODES_TO_INT(f: FAILURE_CODES): int =
+   COND f = NULL_POINTER_ASSIGNMENT   -> 0, 
+        f = ARRAY_INDEX_OUT_OF_BOUNDS -> 1, 
+	f = KEYPROCESS_DEFAULT        -> 2, 
+	f = DIVISION_BY_ZERO          -> 3, 
+	f = MATH_ERROR		      -> 4, 
+        f = FLOATING_POINT_ERROR      -> 5, 
+	f = OUT_OF_MEMORY	      -> 6, 
+	f = INVALID_KEY		      -> 100, 
+	f = INVALID_VALUE	      -> 101 ENDCOND
+   CONVERSION FAILURE_CODES_TO_INT
+
+
+ END constants

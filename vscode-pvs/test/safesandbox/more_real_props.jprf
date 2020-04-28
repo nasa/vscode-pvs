@@ -1,0 +1,18 @@
+{
+ "more_real_props.sqrt_1_lt": [
+  {
+   "info": {
+    "theory": "more_real_props",
+    "formula": "sqrt_1_lt",
+    "status": "unchecked",
+    "prover": "PVS 7.1.0 (International Allegro CL Enterprise Edition 10.1)"
+   },
+   "proof": {
+    "branch": "",
+    "name": "sqrt_1_lt",
+    "type": "root",
+    "rules": []
+   }
+  }
+ ]
+}

@@ -1,0 +1,82 @@
+limits: THEORY
+ BEGIN
+
+  % Two C header files float.h and limits.h define implementation-specific limits for the platform
+  SHRT_MAX: { s: int | s = 32767  }  %= 32767
+  SHRT_MIN: { s: int | s = -32767 }  %= -32767
+  USHRT_MAX: { us: int | us >= SHRT_MAX } %= 65535
+  INT_MAX  : { i: int | i >= SHRT_MAX }   % = 2147483647
+  INT_MIN  : { i: int | i <= SHRT_MIN }   % = -2147483647 - 1
+  UINT_MAX : { ui: int | ui >= INT_MAX }  % = 4294967295
+  LONG_MAX : { li: int | li >= INT_MAX }  % = 2147483647
+  LONG_MIN : { li: int | li <= INT_MIN }  % -2147483647 - 1
+  ULONG_MAX: { ul: int | ul >= LONG_MAX } % int = 4294967295
+
+  integer: TYPE = { x: int | x >= INT_MIN AND x <= INT_MAX }
+  unsigned_int: TYPE = { x: int | x >= 0 AND x <= UINT_MAX }
+  long_int: TYPE = { x: int | x >= LONG_MIN AND x <= LONG_MAX }
+  unsigned_long_int: TYPE = { x: int | x >= 0 AND x <= ULONG_MAX }
+
+  % 3.402823466 E+38
+  FLOAT_MAX: { x: nonneg_real | x >= ULONG_MAX }
+  float: TYPE = {x: real | x > -FLOAT_MAX AND x < FLOAT_MAX }
+  % 1.7976931348623158 E+308
+  DOUBLE_MAX: { x: nonneg_real | x >= FLOAT_MAX }
+  double: TYPE = {x: real | x > -DOUBLE_MAX AND x < DOUBLE_MAX}
+
+  % converts boolean to integer
+  bool2int(b: bool): int = IF b = TRUE THEN 1 ELSE 0 ENDIF
+  CONVERSION bool2int
+
+  % computes 10^i
+  pow10(i: int): RECURSIVE real =
+   IF i = 0 THEN 1
+   ELSE IF i < 0 THEN pow10(i+1) / 10 
+        ELSE pow10(i-1) * 10 ENDIF ENDIF
+  MEASURE LAMBDA(i: int): IF i > 0 THEN i ELSE -i ENDIF
+  
+  % float fmod (      float numerator,      float denominator );
+  % The remainder of a division operation is the result of subtracting 
+  % the integral quotient multiplied by the denominator from the numerator:
+  % remainder = numerator - quotient * denominator
+  % the accuracy of floating point numbers is 7 decimal digits
+  fmod(numerator: real, denominator: {x: real | x /= 0}): real = 
+    LET quotient = floor(numerator / denominator)
+     IN numerator - quotient * denominator
+
+  % float point abs
+  fabs(x: real): nonneg_real = IF x >= 0 THEN x ELSE -x ENDIF
+
+  EOS: string = "\r";
+  % counts how many characters preceed "\r" (return), which we use as EOF
+  strlen_aux(s: string): int = strfind(EOS,s)
+  strlen(s: string): int = strlen_aux(s + EOS)
+  strcat(s1,s2: string): string = s1 + s2
+  strcpy(s1,s2: string): string = s2
+
+
+  snprintf(s: string): string = s
+  % this version supports up to two decimal digits
+  snprintf(val: float, MAX_LEN: nat)(dotEntered: bool, decimalDigits: nat): { s: string | s`length < MAX_LEN } =
+   "" + floor(val) 
+         + LET firstDecimal = mod(floor(val*10),10),
+	       secondDecimal = mod(floor(val*100),10)
+            IN COND 
+ 	     dotEntered AND decimalDigits = 2 -> "." + firstDecimal + secondDecimal,
+ 	     dotEntered AND decimalDigits = 1 -> "." + firstDecimal,
+	     dotEntered AND decimalDigits = 0 -> ".",
+	     NOT dotEntered -> "" ENDCOND
+
+
+  printf(val: float): string =
+   "" + floor(val) 
+         + LET firstDecimal = mod(floor(val*10),10),
+	       secondDecimal = mod(floor(val*100),10)
+            IN if secondDecimal = 0 & firstDecimal = 0 then ""
+               elsif secondDecimal = 0 & firstDecimal /= 0 then "." + firstDecimal
+               else "." + firstDecimal + secondDecimal endif
+
+  sprintf(s: string)(dotEntered: bool, decimalDigits: int): string = s
+
+
+ END limits
