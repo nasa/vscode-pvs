@@ -372,128 +372,141 @@ export class PvsProxy {
 	 * Parse a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
 	 */
-	async parseFile(desc: { contextFolder: string, fileName: string, fileExtension: string }, opt?: { test?: boolean }): Promise<PvsResponse> {
+	async parseFile(desc: { contextFolder: string, fileName: string, fileExtension: string }, opt?: { test?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
 		if (desc) {
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 			const content: string = await fsUtils.readFile(fname);
-			const hash: string = crypto.createHash('sha256').update(content.replace(/\s/g, "")).digest('hex'); // do not consider white spaces when creating the hash
-			if (!opt.test && this.parserCache[fname] && hash === this.parserCache[fname].hash) {
-				// console.log("[pvs-proxy] Parser diagnostics loaded from cache.");
-				const diags: ParserDiagnostics = this.parserCache[fname].diags;
-				const isTypecheckError: boolean = this.parserCache[fname].isTypecheckError;
-				if (diags) {
-					const stats: string = JSON.stringify(this.parserCache[fname].diags["math-objects"]);
-					if (diags.errors && diags.errors.length > 0) {
-						const msg: string = `${desc.fileName}${desc.fileExtension} contains errors.`;
-						// console.log(`[pvs-proxy] ${msg}`);
-					} else {
-						const msg: string = `${desc.fileName}${desc.fileExtension} parsed successfully!`;
-						// console.log(`[pvs-proxy] ${msg}`);
+			if (content) {
+				const hash: string = crypto.createHash('sha256').update(content.replace(/\s/g, "")).digest('hex'); // do not consider white spaces when creating the hash
+				if (!opt.test && this.parserCache[fname] && hash === this.parserCache[fname].hash) {
+					// console.log("[pvs-proxy] Parser diagnostics loaded from cache.");
+					const diags: ParserDiagnostics = this.parserCache[fname].diags;
+					const isTypecheckError: boolean = this.parserCache[fname].isTypecheckError;
+					if (diags) {
+						const stats: string = JSON.stringify(this.parserCache[fname].diags["math-objects"]);
+						if (diags.errors && diags.errors.length > 0) {
+							const msg: string = `${desc.fileName}${desc.fileExtension} contains errors.`;
+							// console.log(`[pvs-proxy] ${msg}`);
+						} else {
+							const msg: string = `${desc.fileName}${desc.fileExtension} parsed successfully!`;
+							// console.log(`[pvs-proxy] ${msg}`);
+						}
+						// console.log(`[pvs-proxy] ${desc.fileName}${desc.fileExtension} | ${stats}`);
 					}
-					// console.log(`[pvs-proxy] ${desc.fileName}${desc.fileExtension} | ${stats}`);
-				}
-				return this.makeDiags(diags, { isTypecheckError });
-			} else {
-				if (desc.fileExtension === ".hpvs") {
-					if (!this.activeParsers[fname]) {
-						// using new parser
-						// console.log("[pvs-proxy] Updating parser cache.");
-						this.activeParsers[fname] = true;
-						const diags: ParserDiagnostics = await this.parser.parseFile(desc);
-						this.parserCache[fname] = { hash, diags };
-						delete this.activeParsers[fname];
-						return this.makeDiags(diags);
-					}
+					return this.makeDiags(diags, { isTypecheckError });
 				} else {
-					// TODO: create a separate module ParserWrapper
-					if (this.isProtectedFolder(desc.contextFolder)) {
-						this.info(`${desc.contextFolder} is already parsed`);
-						// return resolve(null);
-						return null;
-					}
-					const startTime: number = Date.now();
-					const res: PvsResponse = await this.pvsRequest('parse', [fname]);
-					if (opt.test) { return res; }
-					if (res) {
-						let range: languageserver.Range = null;
-						let message: string = `File ${desc.fileName} parsed successfully`;
-						let mathObjects: { types: number, definitions: number, lemmas: number } = { types: 0, definitions: 0, lemmas: 0 };
-						if (res.result) {
-							const result: ParseResult = res.result;
-							if (result && result.length) {
-								for (let i = 0; i < result.length; i++) {
-									const theoryStats = result[i];
-									if (theoryStats && theoryStats.decls && theoryStats.decls.length) {
-										theoryStats.decls.forEach(decl => {
-											switch (decl.kind) {
-												case "type":
-												case "datatype":
-													mathObjects.types++;
-													this.mathObjectsCache.types.push(decl.id);
-													break;
-												case "formula":
-												case "judgement":
-													mathObjects.lemmas++;
-													this.mathObjectsCache.lemmas.push(decl.id);
-													break;
-												case "expr":
-												case "conversion":
-												case "auto-rewrite":
-													mathObjects.definitions++;
-													this.mathObjectsCache.definitions.push(decl.id);
-													break;
-												default: // do nothing
-											}
-										});
+					if (desc.fileExtension === ".hpvs") {
+						if (!this.activeParsers[fname]) {
+							// using new parser
+							// console.log("[pvs-proxy] Updating parser cache.");
+							this.activeParsers[fname] = true;
+							const diags: ParserDiagnostics = await this.parser.parseFile(desc);
+							this.parserCache[fname] = { hash, diags };
+							delete this.activeParsers[fname];
+							return this.makeDiags(diags);
+						}
+					} else {
+						// TODO: create a separate module ParserWrapper
+						if (this.isProtectedFolder(desc.contextFolder)) {
+							this.info(`${desc.contextFolder} is already parsed`);
+							// return resolve(null);
+							return null;
+						}
+						const startTime: number = Date.now();
+						const res: PvsResponse = await this.pvsRequest('parse', [fname]);
+						if (opt.test) { return res; }
+						if (res) {
+							let range: languageserver.Range = null;
+							let message: string = `File ${desc.fileName} parsed successfully`;
+							let mathObjects: { types: number, definitions: number, lemmas: number } = { types: 0, definitions: 0, lemmas: 0 };
+							if (res.result) {
+								const result: ParseResult = res.result;
+								if (result && result.length) {
+									for (let i = 0; i < result.length; i++) {
+										const theoryStats = result[i];
+										if (theoryStats && theoryStats.decls && theoryStats.decls.length) {
+											theoryStats.decls.forEach(decl => {
+												switch (decl.kind) {
+													case "type":
+													case "datatype":
+														mathObjects.types++;
+														this.mathObjectsCache.types.push(decl.id);
+														break;
+													case "formula":
+													case "judgement":
+														mathObjects.lemmas++;
+														this.mathObjectsCache.lemmas.push(decl.id);
+														break;
+													case "expr":
+													case "conversion":
+													case "auto-rewrite":
+														mathObjects.definitions++;
+														this.mathObjectsCache.definitions.push(decl.id);
+														break;
+													default: // do nothing
+												}
+											});
+										}
 									}
 								}
 							}
-						}
-						const diags: ParserDiagnostics = {
-							fileName: desc.fileName,
-							fileExtension: desc.fileExtension,
-							contextFolder: desc.contextFolder,
-							"math-objects": mathObjects,
-							"parse-time": { ms: Date.now() - startTime },
-							range,
-							message
-						};
-						if (res.error && res.error.data) {
-							const errorStart: languageserver.Position = { 
-								line: res.error.data.place[0], 
-								character: res.error.data.place[1]
+							const diags: ParserDiagnostics = {
+								fileName: desc.fileName,
+								fileExtension: desc.fileExtension,
+								contextFolder: desc.contextFolder,
+								"math-objects": mathObjects,
+								"parse-time": { ms: Date.now() - startTime },
+								range,
+								message
 							};
-							const errorEnd: languageserver.Position = (res.error.data.place.length > 3) ? { 
-								line: res.error.data.place[2], 
-								character: res.error.data.place[3]
-							} : null;	
-							const txt: string = await fsUtils.readFile(fname);
-							const error_range: languageserver.Range = getErrorRange(txt, errorStart, errorEnd);
-							const error: languageserver.Diagnostic = {
-								range: error_range,
-								message: res.error.data.error_string,
-								severity: languageserver.DiagnosticSeverity.Error
-							};
-							diags.message = `File ${desc.fileName} contains errors`;
-							diags.errors = [ error ];
+							if (res.error && res.error.data) {
+								const errorStart: languageserver.Position = { 
+									line: res.error.data.place[0], 
+									character: res.error.data.place[1]
+								};
+								const errorEnd: languageserver.Position = (res.error.data.place.length > 3) ? { 
+									line: res.error.data.place[2], 
+									character: res.error.data.place[3]
+								} : null;	
+								const txt: string = await fsUtils.readFile(fname);
+								const error_range: languageserver.Range = getErrorRange(txt, errorStart, errorEnd);
+								const error: languageserver.Diagnostic = {
+									range: error_range,
+									message: res.error.data.error_string,
+									severity: languageserver.DiagnosticSeverity.Error
+								};
+								diags.message = `File ${desc.fileName} contains errors`;
+								diags.errors = [ error ];
 
-							// send also a request to the antlr parser, as it may report more errors (the standard pvs parser stops at the first error)
-							// const antlrdiags: ParserDiagnostics = await this.parser.parseFile(desc);
-							// diags.errors = diags.errors.concat(antlrdiags.errors);
-						} 
-						this.parserCache[fname] = { hash, diags };
-						// console.info('parseFile:');
-						// console.dir(res, { depth: null });
-						// return resolve(res);
-						return this.makeDiags(diags, { id: res.id });
-					} else {
-						console.error(`[pvs-proxy] Error: received pvs-server error while parsing file ${desc.fileName}${desc.fileExtension}`, res);
-						this.notifyError(JSON.stringify(res, null, " "));
-						// return resolve(null);
-						return null;
+								// send also a request to the antlr parser, as it may report more errors (the standard pvs parser stops at the first error)
+								// const antlrdiags: ParserDiagnostics = await this.parser.parseFile(desc);
+								// diags.errors = diags.errors.concat(antlrdiags.errors);
+							} 
+							this.parserCache[fname] = { hash, diags };
+							// console.info('parseFile:');
+							// console.dir(res, { depth: null });
+							// return resolve(res);
+							return this.makeDiags(diags, { id: res.id });
+						} else {
+							console.error(`[pvs-proxy] Error: received pvs-server error while parsing file ${desc.fileName}${desc.fileExtension}`, res);
+							this.notifyError(JSON.stringify(res, null, " "));
+							// return resolve(null);
+							return null;
+						}
 					}
 				}
+			} else {
+				// empty content
+				return this.makeDiags({
+					fileName: desc.fileName,
+					fileExtension: desc.fileExtension,
+					contextFolder: desc.contextFolder,
+					"math-objects": { types: 0, definitions: 0, lemmas: 0 },
+					"parse-time": { ms: 0 },
+					range: null,
+					message: `File ${desc.fileName} is empty`
+				});
 			}
 		}
 		return null;

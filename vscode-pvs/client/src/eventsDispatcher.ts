@@ -292,6 +292,40 @@ export class EventsDispatcher {
             console.log(desc);
         });
 
+		this.client.onRequest(serverEvent.saveProofEvent, (request: { 
+			fileName: string, 
+			fileExtension: string, 
+			contextFolder: string, 
+			theoryName: string, 
+			formulaName: string, 
+			cmd: string 
+		}) => {
+			this.proofExplorer.saveProof();		
+		});
+		this.client.onRequest(serverEvent.quitProofEvent, (request: { 
+			fileName: string, 
+			fileExtension: string, 
+			contextFolder: string, 
+			theoryName: string, 
+			formulaName: string, 
+			cmd: string 
+		}) => {
+            this.proofExplorer.saveProof();
+            this.vscodePvsTerminal.deactivate();
+		});
+		this.client.onRequest(serverEvent.QED, (request: { 
+			fileName: string, 
+			fileExtension: string, 
+			contextFolder: string, 
+			theoryName: string, 
+			formulaName: string, 
+			cmd: string 
+		}) => {
+            this.proofExplorer.saveProof();
+            this.vscodePvsTerminal.deactivate();
+		});
+
+
 
 
         //---------------------------------------------------------

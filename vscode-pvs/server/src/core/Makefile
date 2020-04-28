@@ -23,7 +23,7 @@ pvs-parser: download
 	cp pvs-parser/javaTarget/out/PvsParser.jar ../../out/core/lib
 	cp lib/antlr-4.7.2-complete.jar ../../out/core/lib
 	@-rm -r pvs-parser/javaTarget/out
-	@-rm -r lib
+	# @-rm -r lib
 	# testing parser
 	#cd ../../out/core/lib && java -jar PvsParser.jar ../../../test/sandbox/sq.pvs -test
 	cd ../../out/core/lib && java -jar PvsParser.jar ../../../src/core/examples/test.pvs -test
@@ -41,7 +41,7 @@ pvs-typechecker: download
 	cp pvs-typechecker/javaTarget/out/PvsTypechecker.jar ../../out/core/lib
 	cp lib/antlr-4.7.2-complete.jar ../../out/core/lib
 	@-rm -r pvs-typechecker/javaTarget/out
-	@-rm -r lib
+	# @-rm -r lib
 	# testing typechecker
 	# cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../test/sandbox/sq.pvs -test
 	cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../src/core/examples/test.pvs -test
@@ -81,12 +81,12 @@ ddl-parser: download
 	cp ddl-parser/javaTarget/out/DdlParser.jar ../../out/core/lib
 	cp lib/antlr-4.7.2-complete.jar ../../out/core/lib
 	@-rm -r ddl-parser/javaTarget/out
-	@-rm -r lib
+	# @-rm -r lib
 	# testing parser
 	cd ../../out/core/lib && java -jar DdlParser.jar ../../../src/core/examples/testhp.hpvs -test
 	cd ../../out/core/lib && java -jar DdlParser.jar ../../../src/core/examples/testhp.hpvs -out ../../../src/core/examples/testhp.pvs
 
-ddl-pretty-printer:
+ddl-pretty-printer: download
 	# generating java target
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java DdlPrettyPrinter.g4 -o ./ddl-pretty-printer/javaTarget/out
 	cd ddl-pretty-printer/javaTarget && cp DdlPrettyPrinter.java ./out && cp MANIFEST.MF ./out && cd ../..
@@ -98,20 +98,19 @@ ddl-pretty-printer:
 	cp ddl-pretty-printer/javaTarget/out/DdlPrettyPrinter.jar ../../out/core/lib
 	cp lib/antlr-4.7.2-complete.jar ../../out/core/lib
 	@-rm -r ddl-pretty-printer/javaTarget/out
-	@-rm -r lib
+	# @-rm -r lib
 	# testing pretty-printer
 	cd ../../out/core/lib && java -jar DdlPrettyPrinter.jar ../../../src/core/examples/test.ddl
 	# cd ../../out/core/lib && java -jar DdlPrettyPrinter.jar -translate "NOT ALLRUNS(SEQ(ANY(x,DLRANDOM),ANY(y,DLRANDOM)),val(x)=val(y))"
 
-test-ddl-pretty-printer:
+test-ddl-pretty-printer: download
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=Java DdlPrettyPrinter.g4 -o ./out/java
 	cd out/java && javac -Xlint -classpath ../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../..
 	cd out/java && java -classpath ../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig DdlPrettyPrinter prettyprintDdl ../../examples/test.ddl -gui
 
-
 download:
 	@-mkdir lib
-	cd lib && curl -O https://www.antlr.org/download/antlr-4.7.2-complete.jar
+	-cd lib && curl -O https://www.antlr.org/download/antlr-4.7.2-complete.jar
 
 clean:
 	@-rm -r ddl-parser/javaTarget/out
@@ -122,4 +121,4 @@ clean:
 	@-rm ddl-pretty-printer/javaTarget/*.class
 	@-rm pvs-parser/javaTarget/*.class
 	
-.PHONY: ddl-pretty-printer ddl-parser test-pvs-parser
+.PHONY: ddl-pretty-printer ddl-parser pvs-parser test-pvs-parser

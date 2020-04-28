@@ -309,9 +309,32 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if QED, update proof status and stop execution
 			if (utils.isQED(desc.response.result)) {
 				this.running = false;
+
+				// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
+				if (utils.isSameCommand(activeNode.name, cmd) === false || this.ghostNode.isActive()) {
+					// concatenate new command
+					const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, TreeItemCollapsibleState.None);
+					// append before selected node (the active not has not been executed yet)
+					if (activeNode.isActive()) {
+						elem.proofState = activeNode.proofState;
+						elem.updateTooltip();
+						// elem.setTooltip(activeNode.tooltip);
+						activeNode.notVisited(); // this resets the tooltip in activeNode
+						this.appendNode({ selected: activeNode, elem }, { beforeSelected: true });
+					} else {
+						elem.proofState = (this.ghostNode.isActive()) ? this.ghostNode.proofState : activeNode.proofState;
+						elem.updateTooltip();
+						// elem.setTooltip(utils.formatProofState(proofState));
+						this.appendNode({ selected: activeNode, elem });
+					}
+					this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
+					activeNode = this.activeNode; // update local variable because the following instructions are using it
+				}
+
 				this.QED();
 				return;
 			}
+			
 			// if command is quit, do nothing
 			if (utils.isQuitCommand(cmd)) {
 				this.running = false;
@@ -1026,15 +1049,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			formulaName: this.desc.formulaName,
 			contextFolder: this.desc.contextFolder
 		});
-
-		// ask the user if the proof is to be saved
-		commands.executeCommand("proof-explorer.save-proof", {
-			fileName: this.desc.fileName,
-			fileExtension: this.desc.fileExtension,
-			theoryName: this.desc.theoryName,
-			formulaName: this.desc.formulaName,
-			contextFolder: this.desc.contextFolder
-		});
 	}
 
 
@@ -1299,9 +1313,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
-	async saveProof (opt?: { confirm?: boolean }): Promise<boolean> {
+	async saveProof (): Promise<boolean> {
 		return new Promise(async (resolve, reject) => {
-			opt = opt || {};
 			// register handler
 			this.client.onRequest(serverEvent.saveProofResponse, (desc: {
 				response: { success: boolean, msg?: string }, 
@@ -1325,7 +1338,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// ask the user if the proof is to be saved
 			const yesno: string[] = [ "Yes", "No" ];
 			const msg: string = `Save ${this.root.name}?`;
-			const ans: string = (opt.confirm) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+			const ans: string = (this.dirtyFlag) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 									: yesno[0];
 			if (ans === yesno[0]) {
 				// update proof descriptor
@@ -1373,29 +1386,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param context Client context 
 	 */
 	activate(context: ExtensionContext): void {
-		this.client.onRequest(serverEvent.saveProofEvent, (request: { 
-			fileName: string, 
-			fileExtension: string, 
-			contextFolder: string, 
-			theoryName: string, 
-			formulaName: string, 
-			cmd: string 
-		}) => {
-			this.saveProof({ confirm: false });		
-		});
-		this.client.onRequest(serverEvent.quitProofEvent, (request: { 
-			fileName: string, 
-			fileExtension: string, 
-			contextFolder: string, 
-			theoryName: string, 
-			formulaName: string, 
-			cmd: string 
-		}) => {
-			this.saveProof({ confirm: true });		
-		});
 		// -- handlers for proof explorer commands
 		context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof", () => {
-			this.saveProof({ confirm: true });
+			this.saveProof();
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", () => {
 			this.quitProof({ confirm: true });

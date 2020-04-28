@@ -151,6 +151,7 @@ function showProgress (data: string) {
 class PvsCli {
 	protected rl: readline.ReadLine;
 	// protected pvsProcess: PvsProcess;
+	protected isActive: boolean = false;
 
 	protected mathObjects: { lemmas: string[], types: string[], definitions: string[] } = {
 		lemmas: [],
@@ -199,6 +200,7 @@ class PvsCli {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
 		}
+		this.isActive = true;
 		readline.emitKeypressEvents(process.stdin);
 		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.evaluatorCompleter(line); });
 		this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
@@ -217,6 +219,7 @@ class PvsCli {
 				console.log("PVSio evaluator session terminated.");
 				console.log();
 				console.log();
+				this.isActive = false;
 				this.rl.question("Press Enter to close the terminal.", () => {
 					this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
 					this.wsClient.close();
@@ -241,10 +244,12 @@ class PvsCli {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
 		}
+		this.isActive = true;
 		readline.emitKeypressEvents(process.stdin);
 		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.proverCompleter(line); });
 		this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
 		this.rl.on("line", async (cmd: string) => {
+			if (!this.isActive) { return; }
 			if (utils.isSaveCommand(cmd)) {
 				console.log();
 				console.log("Proof saved successfully!");
@@ -266,16 +271,17 @@ class PvsCli {
 				console.log();
 				this.wsClient.send(JSON.stringify({
 					type: serverCommand.proofCommand,
-					cmd: "quit",
+					cmd: "quit-dont-save",
 					fileName: this.args.fileName,
 					fileExtension: this.args.fileExtension,
 					contextFolder: this.args.contextFolder,
 					theoryName: this.args.theoryName,
 					formulaName: this.args.formulaName
-				}));	
-				this.rl.question("Press Enter to close the terminal.", () => {
+				}));
+				this.isActive = false;
+				this.rl.question("Press Enter to close the terminal.", (answer: string) => {
 					this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
-					this.wsClient.close();	
+					this.wsClient.close();
 				});
 			} else if (isQED(cmd)) {
 				readline.moveCursor(process.stdin, 0, -1);
@@ -283,6 +289,7 @@ class PvsCli {
 				console.log();
 				console.log(utils.colorText("Q.E.D.", utils.textColor.green));
 				console.log();
+				this.isActive = false;
 				this.rl.question("Press Enter to close the terminal.", () => {
 					this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
 					this.wsClient.close();	

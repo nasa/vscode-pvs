@@ -145,13 +145,17 @@ export class PvsCliGateway {
 									break;
 								}
 								case "pvs.proof-command": {
-									console.info('[pvs-cli-gateway] received new command from pvs-cli', data.cmd);
-									this.pvsLanguageServer.proofCommandRequest(data);
+									if (data && data.cmd) {
+										console.info('[pvs-cli-gateway] received new command from pvs-cli', data.cmd);
+										this.pvsLanguageServer.proofCommandRequest(data);
+									}
 									break;
 								}
 								case "pvs.evaluate-expression": {
-									console.info('[pvs-cli-gateway] received new evaluation request from pvs-cli', data.cmd);
-									this.pvsLanguageServer.evaluationRequest(data);
+									if (data && data.cmd) {
+										console.info('[pvs-cli-gateway] received new evaluation request from pvs-cli', data.cmd);
+										this.pvsLanguageServer.evaluationRequest(data);
+									}
 									break;
 								}
 								// case "publish": {

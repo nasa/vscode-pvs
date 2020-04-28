@@ -496,10 +496,12 @@ export const serverEvent = {
 
 	contextUpdate: "pvs.event.context-update",
 	proofStateUpdate: "pvs.event.proof-state",
+	QED: "pvs.event.qed",
 	evaluatorStateUpdate: "pvs.event.evaluator-state",
 	workspaceStats: "pvs.event.workspace-stats",
 	saveProofEvent: "pvs.event.save-proof",
 	quitProofEvent: "pvs.event.quit-proof",
+	quitDontSaveProofEvent: "pvs.event.quit-dont-save-proof",
 
 	pvsVersionInfo: "pvs.event.version-info",
 	pvsNotPresent: "pvs.event.pvs-not-present",

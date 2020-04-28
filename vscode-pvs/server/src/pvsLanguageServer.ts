@@ -260,6 +260,11 @@ export class PvsLanguageServer {
 			this.connection.sendRequest(serverEvent.quitProofEvent, { args: request });
 			return
 		}
+		if (utils.isQuitDontSaveCommand(request.cmd)) {
+			await this.pvsProxy.proofCommand({ cmd: "quit" });
+			this.connection.sendRequest(serverEvent.quitDontSaveProofEvent, { args: request });
+			return
+		}
 		
 		// else, relay command to pvs-server
 		const response: PvsResponse = await this.proofCommand(request);
@@ -277,6 +282,10 @@ export class PvsLanguageServer {
 				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response, cmd: request.cmd });
 				this.connection.sendRequest(serverEvent.proofCommandResponse, { response, args: request });
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
+
+				if (utils.isQED(response.result)) {
+					this.connection.sendRequest(serverEvent.QED, { response, args: request, pvsLogFile, pvsTmpLogFile });
+				}
 			} else {
 				this.notifyError({ msg: "Error: proof-command returned error (please check pvs-server console for details)" });
 				console.error("[pvs-language-server.proofCommandRequest] Error: proof-command returned error", response);
@@ -325,7 +334,7 @@ export class PvsLanguageServer {
 				this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() })
 				this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request, pvsLogFile, pvsTmpLogFile });
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
-				this.notifyEndImportantTask({ id: taskId, msg: "Prover session ready!" });
+				this.notifyEndImportantTask({ id: taskId });
 			} else {
 				if (response.error && response.error.data && response.error.data.error_string) {
 					this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Error: ${response.error.data.error_string}` });
@@ -458,18 +467,8 @@ export class PvsLanguageServer {
 		contextFolder: string
 	}): Promise<void> {
 		const response: PvsResponse = await this.proofScript(request);
-		if (!response || response.error) {
-			if (response.error) {
-				const msg: string = "Error: pvs-server responded with error " + JSON.stringify(response.error);
-				this.notifyError({ msg });
-				console.error("[pvs-language-server] " + msg);
-			} else {
-				const msg: string = "Error: pvs-server provided null response";
-				this.notifyError({ msg });
-				console.error("[pvs-language-server] " + msg);
-			}
-		}
 		if (response && response.result) {
+			// send proof script to the front-end
 			const proofTree: ProofDescriptor = utils.proofScriptToJson({
 				prf: response.result,
 				theoryName: request.theoryName, 
@@ -478,7 +477,7 @@ export class PvsLanguageServer {
 			});
 			this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: proofTree }, args: request });
 		} else {
-			// create empty proof response template
+			// send empty proof to the front-end
 			const proofTree: ProofDescriptor = utils.proofScriptToJson({
 				prf: null,
 				theoryName: request.theoryName, 
@@ -486,7 +485,11 @@ export class PvsLanguageServer {
 				version: this.pvsVersionDescriptor
 			});			
 			this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: proofTree }, args: request });
-			console.error("[pvs-language-server] Warning: show-proof returned null");
+		}
+		// print a warning message in the console in the case pvs-server fails to respond
+		if (!response || response.error) {
+			const msg: string = `Warning: unable to load proof script for ${request.fileName} (pvs-server responded with ${JSON.stringify(response)})`;
+			console.error("[pvs-language-server] " + msg);
 		}
 	}
 

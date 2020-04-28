@@ -111,7 +111,10 @@ export function listTheoryNames (fileContent: string): string[] {
 };
 
 // match[1] is the formula name
-export const theoremRegexp: RegExp = /(\b[\w\?]+)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)\b/gim;
+export const formulaRegexp: RegExp = /(\b[\w\?]+)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT|AXIOM)\b/gim;
+
+// same as formulaRegExp, but does not include JUDGEMENT and AXIOM
+export const theoremRegexp: RegExp = /(\b[\w\?]+)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gim;
 
 
 /**
@@ -403,7 +406,7 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 			for (let i = 0; i < boundaries.length; i++) {
 				const content: string = slices.slice(boundaries[i].from - 1, boundaries[i].to - 1).join("\n");
 				if (content && content.trim()) {
-					const regex: RegExp = theoremRegexp;
+					const regex: RegExp = formulaRegexp;
 					let match: RegExpMatchArray = null;
 					while (match = regex.exec(content)) {
 						if (match.length > 1 && match[1]) {
@@ -467,7 +470,7 @@ export function findFormulaName(fileContent: string, line: number): string | nul
 		let text: string = txt.split("\n").slice(0, line + 1).join("\n");
 		let candidates: string[] = [];
 		// (?:\%.*\s)* removes comments
-		const regexp: RegExp = theoremRegexp;
+		const regexp: RegExp = formulaRegexp;
 		let match: RegExpMatchArray = null;
 		while(match = regexp.exec(text)) {
 			if (match && match.length > 1 && match[1]) {
@@ -883,6 +886,16 @@ export function isQuitCommand (cmd: string): boolean {
 		|| cmd === "exit"
 		|| cmd === "exit;"
 		|| cmd === "(exit)"
+		;
+}
+
+export function isQuitDontSaveCommand (cmd: string): boolean {
+	return cmd === "quit-dont-save" 
+		|| cmd === "quit-dont-save;"
+		|| cmd === "(quit-dont-save)"
+		|| cmd === "exit-dont-save"
+		|| cmd === "exit-dont-save;"
+		|| cmd === "(exit-dont-save)"
 		;
 }
 
