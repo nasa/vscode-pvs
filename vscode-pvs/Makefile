@@ -47,6 +47,12 @@ release:
 	make core
 	npm install --no-save vsce && node_modules/vsce/out/vsce package
 
+install-vsce:
+	npm install --no-save vsce
+
+vsce:
+	node_modules/vsce/out/vsce package
+
 install:
 	npm install && npm install --no-save jasmine ts-node jasmine-ts
 
