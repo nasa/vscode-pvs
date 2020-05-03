@@ -3,7 +3,9 @@
 **/*.java
 **/*.g4
 **/*.old
+**/*.pdf
 **/tsconfig.json
+**/@types/
 test/
-LICENSE/
+LICENSES/
 screenshots/
