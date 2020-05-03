@@ -48,11 +48,11 @@ export function tildeExpansion(path: string): string {
 	}
 	return path;
 }
-export function stat(fileName: string): Promise<fs.Stats> {
-	if (fileName) {
-		fileName = tildeExpansion(fileName);
+export function stat(fname: string): Promise<fs.Stats> {
+	if (fname) {
+		fname = tildeExpansion(fname);
 		return new Promise<fs.Stats>((resolve, reject) => {
-			fs.stat(fileName, (error, stat) => {
+			fs.stat(fname, (error, stat) => {
 				// ignore errors for now
 				resolve(stat);
 			});
@@ -72,14 +72,14 @@ export function readDir(contextFolder: string): Promise<string[]> {
 	}
 	return null;
 }
-export async function readFile(path: string): Promise<string | null> {
-	if (path) {
-		const exists: boolean = await fileExists(path);
+export async function readFile(fname: string): Promise<string | null> {
+	if (fname) {
+		fname = fname.replace("file://", "");
+		fname = tildeExpansion(fname);
+		const exists: boolean = await fileExists(fname);
 		if (exists) {
-			path = path.replace("file://", "");
-			path = tildeExpansion(path);
 			try {
-				const data: Buffer = fs.readFileSync(path);
+				const data: Buffer = fs.readFileSync(fname);
 				if (data) {
 					return data.toLocaleString();
 				}
@@ -94,7 +94,7 @@ export async function readFile(path: string): Promise<string | null> {
 				// 	});
 				// });
 			} catch (fileReadError) {
-				console.error(`[fs-utils] Error while reading file ${path}`, fileReadError);
+				console.error(`[fs-utils] Error while reading file ${fname}`, fileReadError);
 				return null;
 			}
 		}
@@ -103,6 +103,8 @@ export async function readFile(path: string): Promise<string | null> {
 }
 export async function readProofFile (fname: string): Promise<ProofFile> {
 	let proofFile: ProofFile = null;
+	fname = fname.replace("file://", "");
+	fname = tildeExpansion(fname);
 	try {
 		// check if a jprf file exists with the proof
 		const fnameExists: boolean = await fileExists(fname);
@@ -164,13 +166,13 @@ export async function createFolder(path: string): Promise<void> {
 		fs.mkdirSync(path);
 	}
 }
-export async function writeFile(path: string, content: string): Promise<boolean> {
-	if (path) {
+export async function writeFile(fname: string, content: string): Promise<boolean> {
+	if (fname) {
 		try {
-			path = tildeExpansion(path);
-			fs.writeFileSync(path, content);
+			fname = tildeExpansion(fname);
+			fs.writeFileSync(fname, content);
 		} catch (error) {
-			console.error(`[fs-utils] Error while writing file ${path}`);
+			console.error(`[fs-utils] Error while writing file ${fname}`);
 			return false;
 		}
 	}
@@ -197,6 +199,12 @@ export function getFileExtension(fname: string): string {
 	}
 	return null;
 }
+export function normalizeContextFolder(contextFolder: string): string {
+	if (contextFolder) {
+		return contextFolder.replace("file://", "");
+	}
+	return null;
+}
 export function getContextFolder(fname: string): string {
 	if (fname) {
 		const ctx: string = fname.replace("file://", "");
@@ -210,18 +218,18 @@ export function getContextFolderName(contextFolder: string): string {
 	}
 	return null;
 }
-export function isPvsFile(fileName: string): boolean {
-	if (fileName) {
-		return fileName.endsWith('.pvs') || fileName.endsWith('.tccs') || fileName.endsWith('.ppe') || fileName.endsWith('.pr')
-				|| fileName.endsWith('.hpvs');
+export function isPvsFile(fname: string): boolean {
+	if (fname) {
+		return fname.endsWith('.pvs') || fname.endsWith('.tccs') || fname.endsWith('.ppe') || fname.endsWith('.pr')
+				|| fname.endsWith('.hpvs');
 	}
 	return false;
 }
-export async function fileExists(path: string): Promise<boolean> {
-	return pathExists(path);
+export async function fileExists(fname: string): Promise<boolean> {
+	return pathExists(fname);
 }
-export async function dirExists(path: string): Promise<boolean> {
-	return pathExists(path);
+export async function dirExists(contextFolder: string): Promise<boolean> {
+	return pathExists(contextFolder);
 }
 export async function pathExists(path: string): Promise<boolean> {
 	if (path) {
@@ -239,18 +247,18 @@ export async function pathExists(path: string): Promise<boolean> {
 }
 /**
  * Utility function, returns the list of pvs files contained in a given folder
- * @param folder Path to a folder containing pvs files.
+ * @param contextFolder Path to a folder containing pvs files.
  * @returs List of pvs files, as a structure FileList. Null if the folder does not exist.
  */
-export async function listPvsFiles (folder: string): Promise<FileList> {
-	if (folder) {
-		const children: string[] = await readDir(folder);
+export async function listPvsFiles (contextFolder: string): Promise<FileList> {
+	if (contextFolder) {
+		const children: string[] = await readDir(contextFolder);
 		const fileList: FileList = {
 			fileNames: children.filter((fileName) => {
 				return (fileName.endsWith(".pvs") || fileName.endsWith(".hpvs"))
 						&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
 			}),
-			contextFolder: folder
+			contextFolder: contextFolder
 		};
 		return fileList;
 	}
@@ -315,7 +323,21 @@ export function getOs (): string {
 	return process.platform;
 }
 
-
+export function decodeURIComponents (desc) {
+	if (desc) {
+		if (typeof desc === "string") {
+			return decodeURIComponent(desc);
+		}
+		// else
+		const keys: string[] = Object.keys(desc);
+		for (let i = 0; i < keys.length; i++) {
+			if (typeof desc[keys[i]] === "string") {
+				desc[keys[i]] = decodeURIComponent(desc[keys[i]]);
+			}
+		}
+	}
+	return desc;
+}
 
 
 // constants

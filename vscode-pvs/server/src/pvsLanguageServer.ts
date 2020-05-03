@@ -65,18 +65,24 @@ import { getErrorRange } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
-import { PvsProxy, ContextDiagnostics } from './pvsProxy';
+import { PvsProxy } from './pvsProxy';
 import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl, ShowTCCsResult, ProveTccsResult } from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
 import { PvsIoProxy } from './pvsioProxy';
 
-export interface PvsTheoryDescriptor {
+export declare interface PvsTheoryDescriptor {
 	id?: string;
 	/**
 	 * an array of declarations in the given theory
 	 */
 	decls?: (ImportingDecl | TypedDecl | FormulaDecl)[];
 }
+
+export declare interface ContextDiagnostics {
+	[fileName: string]: { pvsResponse: PvsResponse, isTypecheckError: boolean }
+};
+  
+  
 
 // Example server settings, this is not used at the moment
 interface Settings {
@@ -86,13 +92,15 @@ interface Settings {
 export class PvsLanguageServer {
 	protected MAX_PARALLEL_PROCESSES: number = 1;
 
+	protected diags: ContextDiagnostics = {}; 
+
 	// pvs path, context folder, server path
 	protected pvsPath: string;
 	protected pvsVersionDescriptor: PvsVersionDescriptor;
 
 	// timers
 	protected timers: { [ key:string ]: NodeJS.Timer } = {};
-	// pvs server & proxy
+	// proxy servers
 	protected pvsProxy: PvsProxy;
 	protected pvsioProxy: PvsIoProxy; // this is necessary for the moment because pvs-server does not have APIs for pvsio
 	// connection to the client
@@ -238,6 +246,7 @@ export class PvsLanguageServer {
 	 */
 	async proofCommand (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<PvsResponse | null> {
 		if (args) {
+			args = fsUtils.decodeURIComponents(args);
 			const response: PvsResponse = await this.pvsProxy.proofCommand(args);
 			const status: PvsResponse = await this.pvsProxy.proverStatus();
 			// ATTN: when quitting the proof, pvs-server returns an object { result: string }, where the string indicates the proof status (completed, unfinished, ...)
@@ -250,6 +259,8 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async proofCommandRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
+		
 		// handle commands not supported by pvs-server
 		if (utils.isSaveCommand(request.cmd)) {
 			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request });
@@ -284,7 +295,7 @@ export class PvsLanguageServer {
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
 
 				if (utils.isQED(response.result)) {
-					this.connection.sendRequest(serverEvent.QED, { response, args: request, pvsLogFile, pvsTmpLogFile });
+					this.connection.sendRequest(serverEvent.QED, { response, args: request });
 				}
 			} else {
 				this.notifyError({ msg: "Error: proof-command returned error (please check pvs-server console for details)" });
@@ -302,6 +313,7 @@ export class PvsLanguageServer {
 	async proveFormula (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<PvsResponse | null> {
 		if (this.checkArgs("proveFormula", args)) {
 			try {
+				args = fsUtils.decodeURIComponents(args);
 				const response: PvsResponse = await this.pvsProxy.proveFormula(args);
 				return response;
 			} catch (ex) {
@@ -312,6 +324,8 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async proveFormulaRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
+		
 		// send feedback to the front-end
 		const taskId: string = `typecheck-${request.formulaName}`;
 		this.notifyStartImportantTask({ id: taskId, msg: `Typechecking files necessary to prove formula ${request.formulaName}` });
@@ -356,6 +370,7 @@ export class PvsLanguageServer {
 	async dischargeTccs (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse | null> {
 		if (this.checkArgs("prove-tccs", args)) {
 			try {
+				args = fsUtils.decodeURIComponents(args);
 				const response: PvsResponse = await this.pvsProxy.proveTccs(args);
 				// update .tccs file
 				await this.generateTccsRequest(args);
@@ -368,6 +383,8 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async dischargeTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
+		
 		// typecheck first
 		const taskId: string = `prove-tccs-${fsUtils.desc2fname(request)}`;
 		this.notifyStartImportantTask({ id: taskId, msg: `Loading theories necessary to discharge typecheck conditions in ${request.fileName}${request.fileExtension}` });
@@ -411,7 +428,7 @@ export class PvsLanguageServer {
 	// 	return null;
 	// }
 	async evaluationRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd: string }): Promise<void> {
-		console.log(request);
+		request = fsUtils.decodeURIComponents(request);
 		const response: PvsResponse = await this.pvsioProxy.evaluateExpression(request);
 		const channelID: string = utils.desc2id(request);
 		this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: response });
@@ -421,6 +438,7 @@ export class PvsLanguageServer {
 		}
 	}
 	async startEvaluatorRequest (request: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string }): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
 		// send feedback to the front-end
 		const taskId: string = `typecheck-${request.fileName}@${request.theoryName}`;
 		this.notifyStartImportantTask({ id: taskId, msg: `Typechecking files necessary to evaluate theory ${request.theoryName}` });
@@ -450,6 +468,7 @@ export class PvsLanguageServer {
 	async proofScript (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<PvsResponse | null> {
 		if (this.checkArgs("showProof", args)) {
 			try {
+				args = fsUtils.decodeURIComponents(args);
 				const response: PvsResponse = await this.pvsProxy.proofScript(args);
 				return response;
 			} catch (ex) {
@@ -466,6 +485,7 @@ export class PvsLanguageServer {
 		formulaName: string, 
 		contextFolder: string
 	}): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
 		const response: PvsResponse = await this.proofScript(request);
 		if (response && response.result) {
 			// send proof script to the front-end
@@ -505,6 +525,7 @@ export class PvsLanguageServer {
 		contextFolder: string
 	}): Promise<void> {
 		if (request) {
+			request = fsUtils.decodeURIComponents(request);
 			const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
 			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
 			const key: string = `${request.theoryName}.${request.formulaName}`;
@@ -531,6 +552,7 @@ export class PvsLanguageServer {
 		proofDescriptor: ProofDescriptor
 	}): Promise<void> {
 		if (request) {
+			request = fsUtils.decodeURIComponents(request);
 			const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
 			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
 			proofFile = proofFile || {};
@@ -552,6 +574,7 @@ export class PvsLanguageServer {
 	async typecheckFile (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse | null> {
 		if (this.checkArgs("typecheckFile", args)) {
 			try {
+				args = fsUtils.decodeURIComponents(args);
 				const response: PvsResponse = await this.pvsProxy.typecheckFile(args);
 				return response;
 			} catch (ex) {
@@ -563,6 +586,7 @@ export class PvsLanguageServer {
 	}
 	async typecheckFileRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
 		if (request) {
+			request = fsUtils.decodeURIComponents(request);
 			const desc: {
 				fileName: string, 
 				fileExtension: string, 
@@ -579,13 +603,15 @@ export class PvsLanguageServer {
 				const response: PvsResponse = await this.typecheckFile(desc);
 				this.connection.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
 				// send diagnostics
-				const diags: ContextDiagnostics = {};
 				if (response) {
 					if (response.error) {
 						if (response.error.data) {
 							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(desc);
-							diags[fname] = response;
-							this.sendDiagnostics(diags, desc.contextFolder, "Typecheck");
+							this.diags[fname] = {
+								pvsResponse: response,
+								isTypecheckError: true
+							};
+							this.sendDiagnostics("Typecheck");
 							if (fname === fsUtils.desc2fname(desc)) {
 								this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} contains errors.` });
 							} else {
@@ -597,15 +623,19 @@ export class PvsLanguageServer {
 						}
 					} else {
 						const fname: string = fsUtils.desc2fname(desc);
-						diags[fname] = response;
-						this.sendDiagnostics(diags, desc.contextFolder, "Typecheck");
+						this.diags[fname] = {
+							pvsResponse: response,
+							isTypecheckError: true
+						};
+						this.sendDiagnostics("Typecheck");
 						this.notifyEndImportantTask({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} successfully typechecked!` });
 					}
-				} else {
-					// clear diagnostics, as the typecheck error may have gone and we don't know because pvs-server failed to execute typecheckFile
-					const fname: string = fsUtils.desc2fname(desc);
-					diags[fname] = null;
-				}
+				} 
+				// else {
+				// 	// clear diagnostics, as the typecheck error may have gone and we don't know because pvs-server failed to execute typecheckFile
+				// 	const fname: string = fsUtils.desc2fname(desc);
+				// 	this.diags[fname] = null;
+				// }
 			} else {
 				console.error("[pvs-language-server] Warning: pvs.typecheck-file is unable to identify filename for ", request);
 			}
@@ -618,6 +648,7 @@ export class PvsLanguageServer {
 	 * @param args Handler arguments: filename, file extension, context folder
 	 */
 	async showTccs (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string }): Promise<PvsResponse> {
+		args = fsUtils.decodeURIComponents(args);
 		const res: PvsResponse = await this.pvsProxy.showTccs(args);
 		// create tccs files
 		try {
@@ -627,7 +658,7 @@ export class PvsLanguageServer {
 				let content: string = "";
 				for (let i = 0; i < keys.length; i++) {
 					content += result[i].comment;
-					const status: string = (result[i].proved) ? "proved" : "unproved";
+					const status: string = (result[i].proved) ? "proved" : "untried";
 					if (result[i].id) {
 						content += `\n  % ${status}\n`;
 						content += `${result[i].id}: OBLIGATION\n${result[i].definition}\n\n`;
@@ -654,6 +685,7 @@ export class PvsLanguageServer {
 	 * @param args Handler arguments: filename, file extension, context folder
 	 */
 	async generateTccs (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<ContextDescriptor> {
+		args = fsUtils.decodeURIComponents(args);
 		if (this.checkArgs("generateTccs", args)) {
 			try {
 				const res: ContextDescriptor = {
@@ -688,7 +720,7 @@ export class PvsLanguageServer {
 										theoryName,
 										formulaName: tcc.id,
 										position: { line, character: 0 },
-										status: (tcc.proved) ? "proved" : "unproved",
+										status: (tcc.proved) ? "proved" : "untried",
 										isTcc: true
 									};
 									line += (tcc.definition) ? tcc.definition.split("\n").length + 2 : 2;
@@ -712,6 +744,7 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async generateTccsRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }, opt?: { showTccsResponse?: boolean }): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
 		if (request) {
 			opt = opt || {};
 			const desc: {
@@ -738,7 +771,8 @@ export class PvsLanguageServer {
 						n += response.theories[i].theorems ? response.theories[i].theorems.length : 0;
 					}
 				}
-				this.notifyEndImportantTask({ id: taskId, msg: `${n} tccs generated for ${fname}`});
+				const msg: string = (opt.showTccsResponse) ? `${n} tccs generated for ${fname}` : null;
+				this.notifyEndImportantTask({ id: taskId, msg });
 			} else {
 				console.error("[pvs-language-server] Warning: pvs.generate-tccs is unable to identify filename for ", request);
 			}
@@ -751,6 +785,7 @@ export class PvsLanguageServer {
 	 * @param args Handler arguments: filename, file extension, context folder
 	 */
 	async dischargeTheorems (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
+		args = fsUtils.decodeURIComponents(args);
 		if (this.checkArgs("proveFile", args)) {
 			try {
 				return await this.pvsProxy.proveFile(args);
@@ -763,6 +798,7 @@ export class PvsLanguageServer {
 	}
 	async dischargeTheoremsRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
 		if (request) {
+			request = fsUtils.decodeURIComponents(request);
 			const desc: {
 				fileName: string, 
 				fileExtension: string, 
@@ -790,6 +826,7 @@ export class PvsLanguageServer {
 	 * @param args Handler arguments: filename, file extension, context folder
 	 */
 	async parseFile (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
+		args = fsUtils.decodeURIComponents(args);
 		if (this.checkArgs("parseFile", args)) {
 			try {
 				return await this.pvsProxy.parseFile(args);
@@ -801,6 +838,7 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async hp2pvs (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
+		args = fsUtils.decodeURIComponents(args);
 		if (this.checkArgs("generatePvsFile", args)) {
 			try {
 				return await this.pvsProxy.hp2pvs(args);
@@ -812,11 +850,13 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async prettyPrintDdlRequest (args: { fileName: string, fileExtension: string, contextFolder: string, expr: string }): Promise<void> {
+		args = fsUtils.decodeURIComponents(args);
 		if (args && args.expr) {
 			const res: string = await this.pvsProxy.prettyPrintDdl(args);
 		}
 	}
 	async parseFileRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }, opt?: { withFeedback?: boolean }): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
 		if (request) {
 			opt = opt || {};
 			const desc: {
@@ -847,12 +887,20 @@ export class PvsLanguageServer {
 
 				// parse file, as requested
 				const response: PvsResponse = await this.parseFile(desc);
-				const diags: ContextDiagnostics = {};
+				const source: string = "Parse";
 				if (response) {
 					// send parser response
 					this.connection.sendRequest(serverEvent.parseFileResponse, response);
 					// collect diagnostics
-					diags[fname] = response;
+					if (this.diags[fname] && this.diags[fname].isTypecheckError) {
+						// keep typecheck diags
+						source + "Typecheck";
+					} else {
+						this.diags[fname] = {
+							pvsResponse: response,
+							isTypecheckError: false
+						};
+					}
 					// send feedback to the front-end
 					if (opt.withFeedback) {
 						if (response.error) {
@@ -861,12 +909,13 @@ export class PvsLanguageServer {
 							this.notifyEndImportantTask({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} parsed successfully!` });
 						}
 					}
-				} else {
-					// clear diagnostics, as the parse error may have gone and we don't know because pvs-server failed to execute parseFile
-					diags[fname] = null;
-				}
+				} 
+				// else {
+				// 	// clear diagnostics, as the parse error may have gone and we don't know because pvs-server failed to execute parseFile
+				// 	this.diags[fname] = null;
+				// }
 				// send diagnostics
-				this.sendDiagnostics(diags, desc.contextFolder, "Parse");
+				this.sendDiagnostics(source);
 			} else {
 				console.error("[pvs-language-server] Warning: pvs.parse-file is unable to identify filename for ", request);
 			}
@@ -875,6 +924,7 @@ export class PvsLanguageServer {
 		}
 	}
 	async hp2pvsRequest (request: string | { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
 		if (request) {
 			const desc: {
 				fileName: string, 
@@ -885,22 +935,23 @@ export class PvsLanguageServer {
 				const taskId: string = `typecheck-${desc.fileName}${desc.fileExtension}`;
 				this.notifyStartImportantTask({ id: taskId, msg: `Translating hybrid program ${desc.fileName}${desc.fileExtension} to PVS` });
 
-				// const response: PvsResponse = await this.parseFile(desc);
-				// const diags: ContextDiagnostics = {};
 				const response: PvsResponse = await this.hp2pvs(desc);
-				const diags: ContextDiagnostics = {};
 				const fname: string = fsUtils.desc2fname(desc);
 				if (response) {
 					// send parser response
 					this.connection.sendRequest(serverEvent.parseFileResponse, response);
 					// collect diagnostics
-					diags[fname] = response;
-				} else {
-					// clear diagnostics, as the parse error may have gone and we don't know because pvs-server failed to execute parseFile
-					diags[fname] = null;
-				}
+					this.diags[fname] = {
+						pvsResponse: response,
+						isTypecheckError: false
+					};
+				} 
+				// else {
+				// 	// clear diagnostics, as the parse error may have gone and we don't know because pvs-server failed to execute parseFile
+				// 	this.diags[fname] = null;
+				// }
 				// send diagnostics
-				this.sendDiagnostics(diags, desc.contextFolder, "Parse");
+				this.sendDiagnostics("Parse");
 				if (response && response.error) {
 					this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Error: ${desc.fileName}.pvs could not be generated -- please check pvs-server console to view errors.` });
 				} else {
@@ -916,11 +967,23 @@ export class PvsLanguageServer {
 	protected workspaceActionRequest (
 		action: "parse-workspace" | "typecheck-workspace", 
 		request: string | { contextFolder: string }, 
-		opt?: { withFeedback?: boolean, suppressFinalMessage?: boolean, msg?: string }
+		opt?: { 
+			withFeedback?: boolean, 
+			suppressFinalMessage?: boolean, 
+			suppressDialogCreation?: boolean,
+			keepDialogOpen?: boolean,
+			msg?: string, 
+			actionId?: string }
 	): Promise<void> {
 		opt = opt || {};
 		return new Promise (async (resolve, reject) => {
+			request = fsUtils.decodeURIComponents(request);
+			// reset diagnostics for the workspace if this is a typecheck-workspace request
+			if (action === "typecheck-workspace") {
+				this.diags = {};
+			}
 			if (request) {
+				const actionId: string = opt.actionId || action;
 				const contextFolder: string = (typeof request === "string") ? request : request.contextFolder;
 				// if this is the /pvsbin folder, don't do anything 
 				if (this.isSameWorkspace(contextFolder) 
@@ -929,13 +992,18 @@ export class PvsLanguageServer {
 					return;
 				}
 				// send feedback to the front-end
+				const taskId: string = `${actionId}-${contextFolder}`;
 				const workspaceName: string = fsUtils.getContextFolderName(contextFolder);
-				const taskId: string = `${action}-${workspaceName}`;
 				if (opt.withFeedback) {
 					const msg: string = (opt.msg) ? opt.msg	
 							: (action === "parse-workspace") ? `Parsing workspace ${workspaceName}` 
 								: `Typechecking workspace ${workspaceName}`;
-					this.notifyStartImportantTask({ id: taskId, msg });
+					if (!opt.suppressDialogCreation) {
+						// this means that another task has already created the dialog
+						this.notifyStartImportantTask({ id: taskId, msg });
+					} else {
+						this.notifyProgressImportantTask ({ id: taskId, msg, increment: -1 }); 
+					}
 				}
 
 				if (contextFolder) {
@@ -949,13 +1017,14 @@ export class PvsLanguageServer {
 
 					// parse files, as requested
 					const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
-					if (contextFiles && contextFiles.fileNames) {
+					if (contextFiles && contextFiles.fileNames && contextFiles.fileNames.length) {
 						const nfiles: number = contextFiles.fileNames.length;
 						let completed: number = 0;
 
 						const msg: string = (opt.msg) ? opt.msg	
-							: (action === "parse-workspace") ? `Parsing workspace ${workspaceName} (${nfiles} files)` 
-								: `Typechecking workspace ${workspaceName} (${nfiles} files)`;
+							: (action === "parse-workspace") ? `Parsing workspace ${workspaceName} (0/${nfiles} files processed)` 
+								: `Typechecking workspace ${workspaceName} (0/${nfiles} files processed)`;
+						this.notifyProgressImportantTask ({ id: taskId, msg, increment: -1 }); 
 						console.log(msg);
 
 						this.connection.sendRequest(serverEvent.workspaceStats, { contextFolder, files: nfiles });
@@ -972,8 +1041,13 @@ export class PvsLanguageServer {
 							this[actionName](desc).then((response: PvsResponse) => {
 								completed_tasks++;
 
-								if (response.error && response.error.message) {
-									errors.push(`${response.error.message} in file ${desc.fileName}${desc.fileExtension}`);
+								// TODO: investigate why pvs is using two types of error messages to communicate errors
+								if (response.error) {
+									if (response.error.message) {
+										errors.push(`${response.error.message} in file ${desc.fileName}${desc.fileExtension}`);
+									} else if (response.error.data && response.error.data.error_string) {
+										errors.push(`${response.error.data.error_string} in file ${desc.fileName}${desc.fileExtension}`);
+									}
 								}
 								
 								// send feedback
@@ -983,7 +1057,12 @@ export class PvsLanguageServer {
 										const msg: string = (opt.msg) ? opt.msg	
 											: (action === "parse-workspace") ? `Parsing workspace ${workspaceName} (${completed}/${nfiles} files processed)` 
 												: `Typechecking workspace ${workspaceName} (${completed}/${nfiles} files processed)`;
-										this.notifyProgressImportantTask ({ id: taskId, msg, increment: 1 / nfiles * 100 }); 
+										if (opt.keepDialogOpen) {
+											// this is a pre-task, just show spinning bar
+											this.notifyProgressImportantTask ({ id: taskId, msg, increment: -1 }); 
+										} else {
+											this.notifyProgressImportantTask ({ id: taskId, msg, increment: 1 / nfiles * 100 }); 
+										}
 									}
 									this.connection.sendRequest(serverEvent.workspaceStats, {
 										contextFolder: response.contextFolder,
@@ -994,11 +1073,28 @@ export class PvsLanguageServer {
 									});
 								}
 
-								// send diagnostics
-								const diags: ContextDiagnostics = {};
 								const fname: string = fsUtils.desc2fname(desc);
-								diags[fname] = response;
-								this.sendDiagnostics(diags, desc.contextFolder, (action === "parse-workspace") ? "Parse" : "Typecheck");
+
+								// send diagnostics TODO: cleanup pvs response for error.data, sometimes is an object others is an array of objects, and file_name is sometimes not included
+								const diag_fname: string = (response && response.error && response.error.data && response.error.data.file_name) ? response.error.data.file_name : fname;
+								let source: string = (action === "parse-workspace") ? "Parse" : "Typecheck";
+								if (action === "typecheck-workspace") {
+									this.diags[diag_fname] = {
+										pvsResponse: response,
+										isTypecheckError: true
+									};
+								} else if (action === "parse-workspace") {
+									if (this.diags[diag_fname] && this.diags[fname].isTypecheckError) {
+										// keep typecheck diags
+										source = "Typecheck";
+									} else {
+										this.diags[diag_fname] = {
+											pvsResponse: response,
+											isTypecheckError: false
+										};	
+									}
+								}
+								this.sendDiagnostics(source);
 
 								// check if there are more files that need to be parsed
 								if (completed_tasks >= contextFiles.fileNames.length) {
@@ -1006,8 +1102,8 @@ export class PvsLanguageServer {
 										if (errors.length) {
 											const msg: string = (opt.suppressFinalMessage) ? ""
 												: (opt.msg) ? opt.msg 
-													: (action === "parse-workspace") ? `Workspace ${workspaceName} contains ${errors.length} errors`
-														: `Workspace ${workspaceName} contains ${errors.length} errors`;
+													: (action === "parse-workspace") ? `Workspace ${workspaceName} contains errors`
+														: `Workspace ${workspaceName} contains errors`;
 											if (errors.length === 1) {
 												this.notifyEndImportantTaskWithErrors({ id: taskId, msg: errors[0] });
 											} else {
@@ -1017,11 +1113,13 @@ export class PvsLanguageServer {
 												this.notifyEndImportantTaskWithErrors({ id: taskId, msg });
 											}
 										} else {
-											const msg: string = (opt.suppressFinalMessage) ? ""
-												: (opt.msg) ? opt.msg	
-													: (action === "parse-workspace") ? `Workspace ${workspaceName} parsed!`
-														: `Workspace ${workspaceName} typechecked!`;
-											this.notifyEndImportantTask({ id: taskId, msg });
+											if (!opt.keepDialogOpen) {
+												const msg: string = (opt.suppressFinalMessage) ? ""
+													: (opt.msg) ? opt.msg	
+														: (action === "parse-workspace") ? `Workspace ${workspaceName} parsed successfully (${completed} files processed)`
+															: `Workspace ${workspaceName} typechecked successfully (${completed} files processed)`;
+												this.notifyEndImportantTask({ id: taskId, msg });
+											}
 										}
 									}
 									resolve();
@@ -1038,12 +1136,26 @@ export class PvsLanguageServer {
 								}
 							});
 						}
-						for (let i = 0; i < this.MAX_PARALLEL_PROCESSES && i < contextFiles.fileNames.length; i++) {
-							const fname: string = path.join(contextFolder, contextFiles.fileNames[i]);
-							const fileName: string = fsUtils.getFileName(fname);
-							const fileExtension: string = fsUtils.getFileExtension(fname);
-							workspaceActionAux(actionFunction, { fileName, fileExtension, contextFolder });
+						if (contextFiles.fileNames.length) {
+							for (let i = 0; i < this.MAX_PARALLEL_PROCESSES && i < contextFiles.fileNames.length; i++) {
+								const fname: string = path.join(contextFolder, contextFiles.fileNames[i]);
+								const fileName: string = fsUtils.getFileName(fname);
+								const fileExtension: string = fsUtils.getFileExtension(fname);
+								workspaceActionAux(actionFunction, { fileName, fileExtension, contextFolder });
+							}
+						} else {
+							resolve();
 						}
+					} else {
+						console.log(`[pvs-language-server] Workspace ${workspaceName} does not contain pvs files`);
+						if (!opt.keepDialogOpen) {
+							const msg: string = (opt.suppressFinalMessage) ? ""
+								: (opt.msg) ? opt.msg	
+									: (action === "parse-workspace") ? `Workspace ${workspaceName} parsed (0 files processed)`
+										: `Workspace ${workspaceName} typechecked (0 files processed)`;
+							this.notifyEndImportantTask({ id: taskId, msg });
+						}
+						resolve();
 					}
 				} else {
 					console.warn(`[pvs-language-server] Warning: workspace name is null`);
@@ -1055,24 +1167,32 @@ export class PvsLanguageServer {
 	}
 	parseWorkspaceRequest (request: string | { contextFolder: string }, opt?: {
 		withFeedback?: boolean, 
-		suppressFinalMessage?: boolean, 
+		suppressFinalMessage?: boolean,
+		keepDialogOpen?: boolean,
+		actionId?: string,
 		msg?: string 
 	}): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
 		return this.workspaceActionRequest("parse-workspace", request, opt);
 	}
-	typecheckWorkspaceRequest (request: string | { contextFolder: string }, opt?: { withFeedback?: boolean }): Promise<void> {
+	typecheckWorkspaceRequest (request: string | { contextFolder: string }, opt?: { 
+		withFeedback?: boolean,
+		suppressDialogCreation?: boolean
+	}): Promise<void> {
 		return this.workspaceActionRequest("typecheck-workspace", request, opt);
 	}
 	/**
 	 * Returns the list of pvs files in a given context folder
 	 */
 	async listContextFiles (args: { contextFolder: string }): Promise<FileList> {
+		args = fsUtils.decodeURIComponents(args);
 		if (args && args.contextFolder) {
 			return await fsUtils.listPvsFiles(args.contextFolder);
 		}
 		return null;
 	}
 	async listContextFilesRequest (request: string | { contextFolder: string }): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
 		const args = (typeof request === "string") ? { contextFolder: request } : request;
 		if (args && args.contextFolder) {
 			const response: FileList = await this.listContextFiles(args);
@@ -1083,12 +1203,14 @@ export class PvsLanguageServer {
 	 * Returns the proof status for all theorems in a given theory
 	 */
 	async statusProofTheory (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string }): Promise<PvsResponse> {
+		args = fsUtils.decodeURIComponents(args);
 		return await this.pvsProxy.statusProofTheory(args);
 	}
 	/**
 	 * Returns the proof status for all theorems in a given file
 	 */
 	async statusProof (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<{ [ fname: string ]: PvsResponse }> {
+		args = fsUtils.decodeURIComponents(args);
 		let res: { [ fname: string ]: PvsResponse } = {};
 		// fetch theory names
 		const fname: string = fsUtils.desc2fname(args);
@@ -1120,6 +1242,7 @@ export class PvsLanguageServer {
 	 */
 	async getContextDescriptor (args: { contextFolder: string }): Promise<ContextDescriptor> {
 		if (args) {
+			args = fsUtils.decodeURIComponents(args);
 			if (this.pvsProxy) {
 				if (this.pvsProxy.isProtectedFolder(args.contextFolder)) {
 					return await this.getPreludeDescriptor();
@@ -1142,6 +1265,7 @@ export class PvsLanguageServer {
 	 */
 	async getFileDescriptor (args: { contextFolder: string, fileName: string, fileExtension: string }): Promise<ContextDescriptor> {
 		if (args) {
+			args = fsUtils.decodeURIComponents(args);
 			if (this.pvsProxy) {
 				if (this.pvsProxy.isProtectedFolder(args.contextFolder)) {
 					return await this.getPreludeDescriptor();
@@ -1171,19 +1295,18 @@ export class PvsLanguageServer {
 
 		// -- Close the file only if it has been deleted from the context?
 		this.documents.onDidClose((close: TextDocumentChangeEvent) => {
-			if (close && close.document && close.document.uri) {
-				const uri: string = close.document.uri;
-				// remove file descriptor
-				this.settings.documents.delete(close.document.uri);
-				// update diagnostics, if this is a pvs file
-				if (fsUtils.isPvsFile(uri)) {
-					const diags: ContextDiagnostics = {};
-					const fname: string = uri.replace("file://", "");
-					const contextFolder: string = fsUtils.getContextFolder(fname);
-					diags[fname] = null;
-					this.sendDiagnostics(diags, contextFolder, "** deleted file **");
-				}
-			}
+			// if (close && close.document && close.document.uri) {
+			// 	const uri: string = close.document.uri;
+			// 	// remove file descriptor
+			// 	this.settings.documents.delete(close.document.uri);
+			// 	// update diagnostics, if this is a pvs file
+			// 	if (fsUtils.isPvsFile(uri)) {
+			// 		const fname: string = uri.replace("file://", "");
+			// 		const contextFolder: string = fsUtils.getContextFolder(fname);
+			// 		this.diags[fname] = null;
+			// 		this.sendDiagnostics(this.diags, contextFolder, "** deleted file **");
+			// 	}
+			// }
 		});
 
 		// -- This event fires when the text document is first opened in the editor or when then content of the opened document has changed.
@@ -1193,14 +1316,6 @@ export class PvsLanguageServer {
 
 		// onDidOpen fires when a document is opened in the editor
 		// this.documents.onDidOpen(async (open: TextDocumentChangeEvent) => {
-		// 	if (this.pvsParser) {
-		// 		const fileName: string = fsUtils.getFilename(open.document.uri);
-		// 		const contextFolder: string = fsUtils.getContextFolder(open.document.uri);
-		// 		if (this.contextFolder !== contextFolder) {
-		// 			// parse all files in the context -- this is necessary in pvs to create the data structures for resolving names
-		// 			await this.changeContextAndParseFiles(contextFolder);
-		// 		}
-		// 	}
 		// });
 
 		// onDidSave fires when a document is saved on the editor
@@ -1210,6 +1325,10 @@ export class PvsLanguageServer {
 				const contextFolder: string = fsUtils.getContextFolder(save.document.uri);
 				const fileName: string = fsUtils.getFileName(save.document.uri);
 				const fileExtension: string = fsUtils.getFileExtension(save.document.uri);
+				// reset diagnostics for this file
+				const fname: string = fsUtils.desc2fname({ contextFolder, fileName, fileExtension });
+				delete this.diags[fname];
+				// trigger parsing
 				await this.parseFileRequest({ fileName, fileExtension, contextFolder }); // async call, will automatically send diags to the client
 			}
 		});
@@ -1234,62 +1353,61 @@ export class PvsLanguageServer {
 	 * Internal function, sends diagnostics to the client
 	 * @param data Diagnostics data
 	 */
-	protected async sendDiagnostics (diags: ContextDiagnostics, contextFolder: string, source: string): Promise<void> {
-		if (diags) {
-			const fnames: string[] = Object.keys(diags);
-			if (fnames && fnames.length > 0) {
-				for (let i = 0; i < fnames.length; i++) {
-					let fname: string = fnames[i];
-					const response: PvsResponse = diags[fname];
-					if (response && response["error"]) {
-						const info: PvsError = <PvsError> response;
+	protected async sendDiagnostics (source?: string): Promise<void> {
+		source = source || "";
+		const fnames: string[] = Object.keys(this.diags);
+		if (fnames && fnames.length > 0) {
+			for (let i = 0; i < fnames.length; i++) {
+				let fname: string = fnames[i];
+				const response: PvsResponse = this.diags[fname].pvsResponse;
+				if (response && response["error"]) {
+					const info: PvsError = <PvsError> response;
 
-						// old parser
-						if (info.error && info.error.data && info.error.data.place && info.error.data.place.length >= 2) {
-							const errorStart: Position = {
-								line: info.error.data.place[0], 
-								character: info.error.data.place[1]
+					// old parser
+					if (info.error && info.error.data && info.error.data.place && info.error.data.place.length >= 2) {
+						const errorStart: Position = {
+							line: info.error.data.place[0], 
+							character: info.error.data.place[1]
+						};
+						const errorEnd: Position = (info.error.data.place.length > 3) ? { 
+							line: info.error.data.place[2], 
+							character: info.error.data.place[3]
+						} : null;
+						const txt: string = await fsUtils.readFile(fname);
+						if (txt) {
+							const errorRange: Range = getErrorRange(txt, errorStart, errorEnd);
+							const diag: Diagnostic = {
+								severity: DiagnosticSeverity.Error,
+								range: {
+									start: { line: errorRange.start.line - 1, character: errorRange.start.character },
+									end: { line: errorRange.end.line - 1, character: errorRange.end.character },
+								},
+								message: info.error.data.error_string,
+								source: `\n${source} error`
 							};
-							const errorEnd: Position = (info.error.data.place.length > 3) ? { 
-								line: info.error.data.place[2], 
-								character: info.error.data.place[3]
-							} : null;
-							fname = fname.includes("/") ? fname : path.join(contextFolder, fname); // double check that pvs-server specifies full path name
-							const txt: string = await fsUtils.readFile(fname);
-							if (txt) {
-								const errorRange: Range = getErrorRange(txt, errorStart, errorEnd);
-								const diag: Diagnostic = {
-									severity: DiagnosticSeverity.Error,
-									range: {
-										start: { line: errorRange.start.line - 1, character: errorRange.start.character },
-										end: { line: errorRange.end.line - 1, character: errorRange.end.character },
-									},
-									message: info.error.data.error_string,
-									source: `\n${source} error`
-								};
-								this.connection.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ diag ] });
-							} else {
-								console.error(`[pvs-language-server] Warning: unable to send error diagnostics for file ${fname}`);
-							}
+							this.connection.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ diag ] });
+						} else {
+							console.error(`[pvs-language-server] Warning: unable to send error diagnostics for file ${fname}`);
 						}
-						// new parser
-						else if (info.error && info.error.data && info.error.data.length > 0) {
-							const diagnostics: Diagnostic[] = <Diagnostic[]> info.error.data.map(diag => {
-								return {
-									range: {
-										start: { line: diag.range.start.line - 1, character: diag.range.start.character }, // lines in the editor start from 0
-										end: { line: diag.range.end.line - 1, character: diag.range.end.character }
-									},
-									message: diag.message,
-									severity: diag.severity
-								}
-							});
-							this.connection.sendDiagnostics({ uri: `file://${fname}`, diagnostics });
-						}
-					} else {
-						// send clean diagnostics
-						this.connection.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ ] });
 					}
+
+					// new parser
+					else if (info.error && info.error.data && info.error.data.length > 0) {
+						const diagnostics: Diagnostic[] = <Diagnostic[]> info.error.data.map(diag => {
+							return {
+								range: {
+									start: { line: diag.range.start.line - 1, character: diag.range.start.character }, // lines in the editor start from 0
+									end: { line: diag.range.end.line - 1, character: diag.range.end.character }
+								},
+								message: diag.message,
+								severity: diag.severity
+							}
+						});
+						this.connection.sendDiagnostics({ uri: `file://${fname}`, diagnostics });
+					}
+				} else {
+					// send clean diagnostics
+					this.connection.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ ] });
 				}
 			}
 		}
@@ -1301,6 +1419,7 @@ export class PvsLanguageServer {
 	 */
 	protected async readFile (fileName: string): Promise<string> {
 		if (fileName) {
+			fileName = decodeURIComponent(fileName);
 			fileName = fileName.startsWith("file://") ? fileName = fileName.replace("file://", "") : fileName;
 			const doc: TextDocument = this.documents.get("file://" + fileName);
 			if (doc) {
@@ -1347,6 +1466,7 @@ export class PvsLanguageServer {
 	 */
 	protected async startPvsServerRequest (desc: { pvsPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
 		if (desc) {
+			desc = fsUtils.decodeURIComponents(desc);
 			this.pvsPath = desc.pvsPath || this.pvsPath;
 			const externalServer: boolean = !!desc.externalServer;
 			if (this.pvsPath) {
@@ -1362,7 +1482,7 @@ export class PvsLanguageServer {
 					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, externalServer });
 					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection })
 					this.createServiceProviders();
-					const success: boolean = await this.pvsProxy.activate({ debugMode: false });
+					const success: boolean = await this.pvsProxy.activate({ debugMode: false, verbose: true });
 					if (!success) {
 						console.error("[pvs-language-server] Error: failed to activate pvs-proxy");
 						this.connection.sendRequest(serverEvent.pvsNotPresent);
@@ -1379,12 +1499,6 @@ export class PvsLanguageServer {
 							this.pvsVersionDescriptor = desc;
 							this.connection.sendRequest(serverEvent.pvsServerReady, desc);
 							this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
-							// parse context folder after a timeout and send diagnostics to the client
-							// disabling this operation for now as the parser still lacks performance
-							// setTimeout(async () => {
-							// 	const diags: ContextDiagnostics = await this.parseContext({ contextFolder });
-							// 	this.sendDiagnostics(diags, contextFolder, "Parse");	
-							// }, 4000);
 						} else {
 							console.error(`[pvs-language-server] Error: incompatible pvs version ${desc["pvs-version"]}`);
 							this.connection.sendRequest(serverEvent.pvsIncorrectVersion, `Incorrect PVS version ${desc["pvs-version"]} (vscode-pvs requires pvs ver >= 7)`);
@@ -1513,14 +1627,23 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.parseWorkspace, async (request: string | { contextFolder: string }) => {
 				this.parseWorkspaceRequest(request); // async call
 			});
-			this.connection.onRequest(serverCommand.parseWorkspaceWithFeedback, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
+			this.connection.onRequest(serverCommand.parseWorkspaceWithFeedback, async (request: string | { contextFolder: string }) => {
 				this.parseWorkspaceRequest(request, { withFeedback: true }); // async call
 			});
-			this.connection.onRequest(serverCommand.typecheckWorkspace, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
+			this.connection.onRequest(serverCommand.typecheckWorkspace, async (request: string | { contextFolder: string }) => {
 				const workspaceName: string = (typeof request === "string") ? request : request.contextFolder;
 				const shortName: string = fsUtils.getContextFolderName(workspaceName);
-				await this.parseWorkspaceRequest(request, { withFeedback: true, suppressFinalMessage: true, msg: `Preparing to typecheck workspace ${shortName}` });
-				this.typecheckWorkspaceRequest(request, { withFeedback: true }); // async call
+				await this.parseWorkspaceRequest(request, {
+					withFeedback: true, 
+					suppressFinalMessage: true, 
+					keepDialogOpen: true,
+					actionId: "typecheck-workspace", // this is done to keep the same dialog on the front-end
+					msg: `Preparing to typecheck workspace ${shortName}` 
+				});
+				this.typecheckWorkspaceRequest(request, {
+					withFeedback: true,
+					suppressDialogCreation: true
+				}); // async call
 			});
 			this.connection.onRequest(serverCommand.hp2pvs, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.hp2pvsRequest(request); // async call

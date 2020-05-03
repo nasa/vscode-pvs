@@ -45,7 +45,7 @@ import * as utils from './common/languageUtils';
 import { PvsResponse } from './common/pvs-gui';
 
 /**
- * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
+ * Wrapper class for PVSio: spawns a PVSio process, and exposes the PVSio REPL interface as an asyncronous server.
  */
 class PvsIoProcess {
 	protected pvsioProcess: ChildProcess = null;

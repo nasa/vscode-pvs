@@ -5,7 +5,7 @@
     "theory": "helloworld",
     "formula": "always_positive",
     "status": "proved",
-    "prover": "PVS 7.1.0 (International Allegro CL Enterprise Edition 10.1)"
+    "prover": "PVS 7.0.1212 (International Allegro CL Enterprise Edition)"
    },
    "proof": {
     "branch": "",

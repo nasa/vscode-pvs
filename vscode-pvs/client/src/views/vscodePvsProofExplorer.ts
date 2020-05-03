@@ -1160,8 +1160,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const selected: ProofItem = (this.root.children && this.root.children.length) ? this.root.children[0] : this.root;
 			// initialise this.activeNode
 			this.initActiveNode({ selected }); 
-			// update the interface
+			// update the user interface
 			this.markAsActive({ selected: this.activeNode }, { force: true });
+			this.activeNode.proofState = this.initialProofState;
+			this.activeNode.updateTooltip();
 			// start the proof
 			this.startProof();
 			this.dirtyFlag = false;
@@ -1313,8 +1315,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
-	async saveProof (): Promise<boolean> {
+	async saveProof (opt?: { msg?: string }): Promise<boolean> {
 		return new Promise(async (resolve, reject) => {
+			opt = opt || {};
 			// register handler
 			this.client.onRequest(serverEvent.saveProofResponse, (desc: {
 				response: { success: boolean, msg?: string }, 
@@ -1337,7 +1340,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			});
 			// ask the user if the proof is to be saved
 			const yesno: string[] = [ "Yes", "No" ];
-			const msg: string = `Save ${this.root.name}?`;
+			const note: string = (opt.msg) ? `${opt.msg}\n` : "";
+			const msg: string = note + `Save proof ${this.root.name}?`;
 			const ans: string = (this.dirtyFlag) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 									: yesno[0];
 			if (ans === yesno[0]) {

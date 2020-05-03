@@ -30,12 +30,6 @@ pathway_mode_thm: THEOREM
 FORALL (pre, post: state):
   (path_function(current_mode(pre)) = path_mode_set(pre) AND state_transitions(pre, post))
                          => (path_mode(post) = path_mode_set(post))
-
-pathway_mode_thm1: THEOREM
-FORALL (pre, post: state):
-  (path_mode(pre) = path_mode_set(pre) AND state_transitions(pre, post))
-                         => (path_mode(post) = path_mode_set(post))
-			 
 % QED 15/11/19 1.98 secs
 pathway_thm: THEOREM
 FORALL (pre, post: state):

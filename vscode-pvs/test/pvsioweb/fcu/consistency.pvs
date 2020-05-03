@@ -37,7 +37,7 @@ guard(pre, post: State): bool =
   NOT data_entry(pre)`units = hPa
 
 %-- PVS theorem formulated using structural induction
-CONSISTENCY: THEOREM
+consistency: THEOREM
   FORALL (pre, post: State):
     (init?(pre) IMPLIES consistency(pre))
        AND

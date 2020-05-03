@@ -55,10 +55,17 @@ export class PvsProcess {
 	protected pvsPath: string = null;
 	protected pvsLibraryPath: string = null;
 
+	protected ready: boolean = false;
+	protected data: string = "";
+	protected cb: (data: string) => void;
+	protected buffer: Promise<string> = Promise.resolve("");
+
 	protected connection: SimpleConnection;
 	protected enableNotifications: boolean;
 
-	protected xmlRpcServer: { port: number; };
+	protected serverPort: number = 22334;
+	protected externalServer: boolean = false;
+	protected verbose: boolean = false;
 
 	/**
 	 * utility function for sending error messages over the connection (if any connection is available)
@@ -68,8 +75,30 @@ export class PvsProcess {
 		if (msg) {
 			if (this.connection && this.enableNotifications) {
 				this.connection.sendNotification('pvs-error', msg);
+			} else {
+				console.log(msg);
 			}
-			console.log('[pvs-process] pvs-error', msg);
+		}
+	}
+	protected warn(msg: string): void {
+		if (msg) {
+			if (this.connection && this.connection.console) {
+				this.connection.console.warn(msg);
+			} else {
+				console.warn(msg);
+			}
+		}
+	}
+	protected log(msg: string, opt?: { force?: boolean}): void {
+		opt = opt || {};
+		if (msg && (this.verbose || opt.force)) {
+			if (!msg.startsWith("127.0.0.1")) {
+				if (this.connection && this.connection.console) {
+					this.connection.console.log(msg);
+				} else {
+					console.log(msg);
+				}
+			}
 		}
 	}
 
@@ -119,67 +148,104 @@ export class PvsProcess {
 	 * @param opt Options: enableNotifications, transmits the output of the pvs process over the client connection (if any is available)
 	 * @returns true if the process has been created; false if the process could not be created.
 	 */
-	async activate (opt?: { enableNotifications?: boolean, xmlRpcServer?: boolean | { port: number } }): Promise<boolean> {
+	async activate (opt?: { 
+		enableNotifications?: boolean, 
+		serverPort?: number,
+		externalServer?: boolean,
+		verbose?: boolean
+	}): Promise<boolean> {
 		if (this.pvsProcess) {
 			// process already running, nothing to do
 			return true;
 		}
 		opt = opt || {};
-		if (!await this.relocate()) {
-			console.warn("[pvs-process] Warning: could not execute PVS relocation/install script");
-		}
-		this.enableNotifications = opt.enableNotifications || this.enableNotifications;
-		const serverPort: number = (opt.xmlRpcServer && typeof opt.xmlRpcServer === "object") ? opt.xmlRpcServer.port : 22334;
-		this.xmlRpcServer = (opt.xmlRpcServer) ? { port: serverPort } : this.xmlRpcServer;
-
+		this.enableNotifications = !!opt.enableNotifications;
+		this.externalServer = !!opt.externalServer;
+		this.verbose = !!opt.verbose;
+		this.serverPort = opt.serverPort || 22334;
+		// if (!await this.relocate()) {
+		// 	if (this.connection) {
+		// 		this.connection.console.warn("[pvs-process] Warning: could not execute PVS relocation/install script");
+		// 	} else {
+		// 		console.warn("[pvs-process] Warning: could not execute PVS relocation/install script");
+		// 	}
+		// }
 		const pvs: string = path.join(this.pvsPath, "pvs");
-		const port: string = this.xmlRpcServer.port.toString();
-		const args: string[] = (this.xmlRpcServer) ? [ "-raw", "-port", port ] : [ "-raw"];//, "-port", "22334" ];
+		const args: string[] = opt.externalServer ?  [ "-raw" ] : [ "-raw", "-port", `${this.serverPort}` ];
 		// pvs args
 		console.info(`${this.pvsPath}/pvs ${args.join(" ")}`);
 		const fileExists: boolean = await fsUtils.fileExists(pvs);
 		if (fileExists) {
-			const readyPrompt: RegExp = /\s*pvs\(\d+\):|([\w\W\s]*)\spvs\(\d+\):/g;
 			return await new Promise((resolve, reject) => {
+				if (this.pvsProcess) {
+					// process already running, nothing to do
+					return Promise.resolve(true);
+				}
 				this.pvsProcess = spawn(pvs, args);
 				// console.dir(this.pvsProcess, { depth: null });
 				this.pvsProcess.stdout.setEncoding("utf8");
 				this.pvsProcess.stderr.setEncoding("utf8");
 				this.pvsProcess.stdout.on("data", (data: string) => {
+					this.ready = false;
+					this.data += data;
+					this.log(data);
+	
 					// console.dir({ 
 					// 	type: "memory usage",
 					// 	data: process.memoryUsage()
 					// }, { depth: null });
 					// console.log(data);
-					if (this.connection && this.connection.console) {
-						this.connection.console.log(data);
-					}
+				
+					// // wait for the pvs prompt, to make sure pvs-server is operational
+					// const match: RegExpMatchArray = readyPrompt.exec(data);
+					// if (match) {
+					// 	resolve(true);
+					// }
 					// wait for the pvs prompt, to make sure pvs-server is operational
-					const match: RegExpMatchArray = readyPrompt.exec(data);
-					if (match) {
-						resolve(true);
+					const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
+					if (yesNoQuery) {
+						console.log(data);
+						this.pvsProcess.stdin.write("Yes\n");
+						this.log("Yes\n", { force: true });
+					}
+
+					const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
+					if (matchRestartAction) {
+						this.pvsProcess.stdin.write(":pop\n");
+						this.log(":pop\n", { force: true });
+					} 
+
+					const match: RegExpMatchArray = /\bpvs\(\d+\)\s*:/g.exec(data);
+					if (match && match[0]) {
+						if (!this.ready) {
+							this.ready = true;
+							resolve(true);
+						}
+						if (this.cb && typeof this.cb === "function") {
+							const res: string = this.data.replace(/\bpvs\(\d+\)\s*:/g, "");
+							this.cb(res.trim());
+						}
 					}
 				});
 				this.pvsProcess.stderr.on("data", (data: string) => {
-					console.log("[pvs-server] Error: " + data);
 					this.error(data);
-					// resolve(false);
+					console.dir(data, { depth: null });
 				});
 				this.pvsProcess.on("error", (err: Error) => {
-					console.log("[pvs-process] Process error");
-					// console.dir(err, { depth: null });
+					this.error("[pvs-process] Process error");
+					console.dir(err, { depth: null });
 				});
 				this.pvsProcess.on("exit", (code: number, signal: string) => {
-					console.log("[pvs-process] Process exited");
-					// console.dir({ code, signal });
+					this.log("[pvs-process] Process exited");
+					console.dir({ code, signal });
 				});
 				this.pvsProcess.on("message", (message: any) => {
-					console.log("[pvs-process] Process message");
+					this.log("[pvs-process] Process message");
 					// console.dir(message, { depth: null });
 				});
 			});
 		} else {
-			console.log(`\n>>> PVS executable not found at ${pvs} <<<\n`);
+			this.error(`\n>>> PVS executable not found at ${pvs} <<<\n`);
 			return false;
 		}
 	}
@@ -208,21 +274,21 @@ export class PvsProcess {
 				try {
 					const allegro_path: string = path.join(this.pvsPath);
 					const pvs_allegro: string = execSync(`ps aux | grep pvs-allegro`).toString();
-					if (pvs_allegro) {
-						const procs: string[] = pvs_allegro.trim().split("\n");
-						for (let i = 0; i < procs.length; i++) {
-							const info: string = procs[i];
-							const elems: string[] = info.replace(/\s+/g, " ").split(" ");
-							if (elems && elems.length > 2 && elems[1]) {
-								const allegro_pid: string = elems[1];
-								const cmd_path: string = elems[elems.length - 2];
-								if (cmd_path.startsWith(allegro_path)) {
-									console.log(`[pvsProcess] Killing process id ${allegro_pid}`);
-									execSync(`kill -9 ${allegro_pid}`);
-								}
-							}
-						}
-					}
+					// if (pvs_allegro) {
+					// 	const procs: string[] = pvs_allegro.trim().split("\n");
+					// 	for (let i = 0; i < procs.length; i++) {
+					// 		const info: string = procs[i];
+					// 		const elems: string[] = info.replace(/\s+/g, " ").split(" ");
+					// 		if (elems && elems.length > 2 && elems[1]) {
+					// 			const allegro_pid: string = elems[1];
+					// 			const cmd_path: string = elems[elems.length - 2];
+					// 			if (cmd_path.startsWith(allegro_path)) {
+					// 				console.log(`[pvsProcess] Killing process id ${allegro_pid}`);
+					// 				execSync(`kill -9 ${allegro_pid}`);
+					// 			}
+					// 		}
+					// 	}
+					// }
 				} finally {
 					try {
 						execSync(`kill -9 ${pvs_shell}`);
@@ -245,8 +311,8 @@ export class PvsProcess {
 		});
 	}
 	/**
-	 * Utility function. Returns a string representing the ID of the pvs process.
-	 * @returns String representation of the pvs process ID.
+	 * Utility function. Returns the ID of the pvs process.
+	 * @returns pvs process ID.
 	 */
 	protected getProcessID (): string {
 		if (this.pvsProcess && !isNaN(this.pvsProcess.pid)) {
@@ -261,5 +327,33 @@ export class PvsProcess {
 		// 	// console.info(`** clearing pvs cache for context ${currentContext} **`)
 		// 	await fsUtils.deletePvsCache(currentContext);
 		// }
+	}
+
+	//----------------------------------------------------------------------------------------------------
+	//--------------------- The following functions are used for the Emacs REPL
+	//----------------------------------------------------------------------------------------------------
+
+	/**
+	 * Sends a command the Emacs REPL of PVS
+	 * @param cmd Command to be sent 
+	 */
+	async sendText (cmd: string): Promise<string> {
+		this.buffer = this.buffer.then(() => {
+			return new Promise((resolve, reject) => {
+				this.cb = (data: string) => {
+					resolve(data);
+				}
+				this.data = "";
+				this.pvsProcess.stdin.write(cmd);
+				this.log(cmd + "\n");	
+			});	
+		});
+		return this.buffer;
+	}
+	/**
+	 * Sends the quit command (followed by a confirmation) to the Emacs REPL of PVS
+	 */
+	quit (): void {
+		this.pvsProcess.stdin.write("exit; Y");
 	}
 }

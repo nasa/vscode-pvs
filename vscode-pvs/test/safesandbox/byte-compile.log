@@ -1,0 +1,5 @@
+Byte compilation currently generates lots of warnings
+  (because of compatibility issues with older Emacs versions)
+
+/Users/pmasci/Work/pvs-snapshots/pvs-7.1.0/install-sh: line 33: cd: emacs: No such file or directory
+Cannot open load file: No such file or directory, pvs-byte-compile.el

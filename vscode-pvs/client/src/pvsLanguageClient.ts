@@ -209,7 +209,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// Create the language client and start the client.
 		this.client = new LanguageClient(
 			'PvsLanguageServer',
-			'pvs-server',
+			'*pvs*',
 			serverOptions,
 			clientOptions
 		);

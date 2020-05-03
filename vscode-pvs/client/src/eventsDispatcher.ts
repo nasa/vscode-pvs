@@ -81,20 +81,37 @@ export class EventsDispatcher {
         path?: string,
         contextValue?: string
     }): { 
-        contextFolder?: string,
+        contextFolder: string,
         fileName?: string, fileExtension?: string,
         theoryName?: string, 
         formulaName?: string
     } {
         if (resource) {
             if (typeof resource === "string") {
+                const isFolder: boolean = !fsUtils.isPvsFile(resource);
+                if (isFolder) {
+                    return { contextFolder: fsUtils.normalizeContextFolder(resource) };
+                }
                 return {
                     fileName: fsUtils.getFileName(resource),
                     fileExtension: fsUtils.getFileExtension(resource),
                     contextFolder: fsUtils.getContextFolder(resource)
                 };
-            } else if (resource.fileName && resource.fileExtension && resource.contextFolder) {
+            } else if (resource.contextFolder) {
+                //@ts-ignore
                 return resource;
+            } else if (resource.path) {
+                // resource coming from the editor
+                // resource is of type vscode.Uri
+                const isFolder: boolean = !fsUtils.isPvsFile(resource.path);
+                if (isFolder) {
+                    return { contextFolder: fsUtils.normalizeContextFolder(resource.path) };
+                }
+                return {
+                    fileName: fsUtils.getFileName(resource.path),
+                    fileExtension: fsUtils.getFileExtension(resource.path),
+                    contextFolder: fsUtils.getContextFolder(resource.path)
+                };
             } else if (resource.contextValue) {
                 // resource coming from explorer
                 // resource is of type FormulaItem or OverviewItem
@@ -110,14 +127,6 @@ export class EventsDispatcher {
                     formulaName: resource["getFormulaName"](),
                     theoryName: resource["getTheoryName"]()
                     //, line: resource.getPosition().line
-                };
-            } else if (resource.path) {
-                // resource coming from the editor
-                // resource is of type vscode.Uri
-                return {
-                    fileName: fsUtils.getFileName(resource.path),
-                    fileExtension: fsUtils.getFileExtension(resource.path),
-                    contextFolder: fsUtils.getContextFolder(resource.path)
                 };
             }
         }
@@ -293,35 +302,42 @@ export class EventsDispatcher {
         });
 
 		this.client.onRequest(serverEvent.saveProofEvent, (request: { 
-			fileName: string, 
-			fileExtension: string, 
-			contextFolder: string, 
-			theoryName: string, 
-			formulaName: string, 
-			cmd: string 
+            args: {
+                fileName: string, 
+                fileExtension: string, 
+                contextFolder: string, 
+                theoryName: string, 
+                formulaName: string, 
+                cmd: string
+            } 
 		}) => {
 			this.proofExplorer.saveProof();		
 		});
-		this.client.onRequest(serverEvent.quitProofEvent, (request: { 
-			fileName: string, 
-			fileExtension: string, 
-			contextFolder: string, 
-			theoryName: string, 
-			formulaName: string, 
-			cmd: string 
+		this.client.onRequest(serverEvent.quitProofEvent, (request: {
+            args: { 
+                fileName: string, 
+                fileExtension: string, 
+                contextFolder: string, 
+                theoryName: string, 
+                formulaName: string, 
+                cmd: string
+            } 
 		}) => {
             this.proofExplorer.saveProof();
             this.vscodePvsTerminal.deactivate();
 		});
-		this.client.onRequest(serverEvent.QED, (request: { 
-			fileName: string, 
-			fileExtension: string, 
-			contextFolder: string, 
-			theoryName: string, 
-			formulaName: string, 
-			cmd: string 
+		this.client.onRequest(serverEvent.QED, (request: {
+            args: { 
+                fileName: string, 
+                fileExtension: string, 
+                contextFolder: string, 
+                theoryName: string, 
+                formulaName: string, 
+                cmd: string
+            } 
 		}) => {
-            this.proofExplorer.saveProof();
+            const msg: string = (request && request.args && request.args.formulaName) ? `Proof completed successfully!` : null;
+            this.proofExplorer.saveProof({ msg });
             this.vscodePvsTerminal.deactivate();
 		});
 
@@ -468,6 +484,11 @@ export class EventsDispatcher {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
             }
         }));
+        // alias for vscode-pvs.typecheck-file
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck", async (resource: string | { path: string } | { contextValue: string }) => {
+            commands.executeCommand("vscode-pvs.typecheck-file", resource);
+        }));
+        
         
         // vscode-pvs.show-tccs
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.show-tccs", async (resource: string | { path: string } | { contextValue: string }) => {
@@ -532,9 +553,7 @@ export class EventsDispatcher {
                 resource = { path: window.activeTextEditor.document.fileName };
             }
 			if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string
-                }> this.resource2desc(resource);
+                let desc = this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
                     this.client.sendRequest(serverCommand.parseWorkspaceWithFeedback, desc);
@@ -550,9 +569,7 @@ export class EventsDispatcher {
                 resource = { path: window.activeTextEditor.document.fileName };
             }
 			if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string
-                }> this.resource2desc(resource);
+                let desc = this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
                     this.client.sendRequest(serverCommand.typecheckWorkspace, desc);
@@ -568,9 +585,7 @@ export class EventsDispatcher {
                 resource = { path: window.activeTextEditor.document.fileName };
             }
 			if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string
-                }> this.resource2desc(resource);
+                let desc = this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
                     this.client.sendRequest(serverCommand.hp2pvs, desc);

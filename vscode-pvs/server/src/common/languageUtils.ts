@@ -71,18 +71,27 @@ export const tccStatusRegExp: RegExp = /%\s(proved|subsumed|simplified|unproved|
 export function findTheoryName(fileContent: string, line: number): string | null {
 	if (fileContent) {
 		const txt = fileContent.replace(commentRegexp, ""); // this removes all commented text
-		const text: string = txt.split("\n").slice(0, line + 1).join("\n");
 		const regexp: RegExp = theoryRegexp;
 		let candidates: string[] = [];
+
+		// check that line number is not before keyword begin -- if so adjust line number otherwise regexp won't find theory name
+		const matchFirstTheory: RegExpMatchArray = regexp.exec(txt)
+		if (matchFirstTheory && matchFirstTheory.length > 1) {
+			const min: number = matchFirstTheory[0].split("\n").length;
+			line = (line < min) ? min : line;
+			candidates.push(matchFirstTheory[1]);
+		}
+
+		const text: string = txt.split("\n").slice(0, line + 1).join("\n");
 		let match: RegExpMatchArray = null;
 		while(match = regexp.exec(text)) {
 			if (match.length > 1 && match[1]) {
-				// the last match will be the closest to the current line number
-				candidates.push(match[1]);
+				// the first match will be the closest to the current line number
+				candidates = [ match[1] ].concat(candidates);
 			}
 		}
 		if (candidates.length > 0) {
-			return candidates[candidates.length - 1];
+			return candidates[0];
 		}
 	}
 	return null;
@@ -358,7 +367,7 @@ export function formatProofState (proofState: ProofState, opt?: { useColors?: bo
 				res += sequentToString(proofState.sequent.succedents, opt);
 			}
 		}
-		return res;
+		return res.trim();
 	} else {
 		console.error("[language-utils.format-proof-state] Error: proof state is null :/");
 	}
@@ -968,12 +977,12 @@ export function getIcon (proofStatus: ProofStatus): string {
 		// case "proved - complete": 
 		case "proved":
 			return icons.check;
-		case "unproved":
 		case "unfinished": // proof attempted but failed
 			return icons.bang;
 		case "unchecked":  // proof was successful, but needs to be checked again because of changes in the theories
 			return icons.snow;
+		case "unproved":
 		case "untried": // proof has not been attempted yet
-		return icons.stars;
+			return icons.stars;
 	}
 }

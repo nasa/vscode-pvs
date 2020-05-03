@@ -28,11 +28,7 @@ describe("pvs-proxy", () => {
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
 
-		if (!test.EXTERNAL_SERVER) {
-			// kill pvs server & proxy
-			console.log(" killing pvs server...")
-			await pvsProxy.killPvsServer();
-		}
+		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 	});
 	
@@ -47,7 +43,7 @@ describe("pvs-proxy", () => {
 
 		await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		const response: PvsResponse = await pvsProxy.findDeclaration("sqrt");
-		dir(response);
+		console.dir(response);
 		expect(response).not.toBeNull();
 		expect(response["error"]).not.toBeDefined();
 		expect(response["result"]).not.toBeNull();
@@ -61,10 +57,10 @@ describe("pvs-proxy", () => {
 		expect(result[0].place).toEqual(test.find_declaration_result[0].place);
 		expect(result[0]['decl-ppstring']).toEqual(test.find_declaration_result[0]['decl-ppstring']);
 
-	}, 10000);
+	}, 4000);
 
-	it(`can sustain workload with find-declaration`, async () => {
-		label(`can sustain workload with find-declaration`);
+	it(`is robust to heavy workload with find-declaration`, async () => {
+		label(`is robust to heavy workload with find-declaration`);
 
 		let response: PvsResponse = null;
 		for (let i = 0; i < 10; i++) {
@@ -94,10 +90,10 @@ describe("pvs-proxy", () => {
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
-	}, 40000);
+	}, 4000);
 
-	it(`can perform multiple find-declaration in parallel`, async () => {
-		label(`can perform multiple find-declaration in parallel`);
+	it(`is robust to multiple find-declaration in parallel`, async () => {
+		label(`is robust to multiple find-declaration in parallel`);
 
 		pvsProxy.findDeclaration("boolean");
 		pvsProxy.findDeclaration("T");
@@ -125,7 +121,7 @@ describe("pvs-proxy", () => {
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
-	}, 40000);
+	}, 4000);
 
 	it(`returns a full and well-formed filename in find-declaration`, async () => {
 		label(`returns a full and well-formed filename in find-declaration`);
@@ -138,7 +134,7 @@ describe("pvs-proxy", () => {
 		expect(response.result[0].filename).not.toContain("~"); // tilde should be expanded
 		expect(response.result[0].filename).toMatch(/\/.*/); // path should be absolute, i.e., start with /
 
-	}, 40000);
+	}, 4000);
 
 	it(`can execute find-declaration while parsing`, async () => {
 		label(`can execute find-declaration while parsing`);
@@ -150,12 +146,13 @@ describe("pvs-proxy", () => {
 		expect(response).not.toBeNull();
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
-	}, 40000);
+	}, 4000);
 
 	//-----------------------------------------
 	// test cases for term-at
 	//-----------------------------------------
-	it(`can invoke term-at`, async () => {
+	// this test case is skipped, because the implementation of the functionality is incomplete
+	xit(`can invoke term-at`, async () => {
 		label(`can invoke term-at`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");

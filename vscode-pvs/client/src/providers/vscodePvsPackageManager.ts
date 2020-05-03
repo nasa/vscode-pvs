@@ -40,7 +40,6 @@ import { LanguageClient } from "vscode-languageclient";
 import { window, Uri, workspace, ConfigurationTarget, Progress, CancellationToken, WorkspaceConfiguration, ProgressLocation, Terminal, ViewColumn, WebviewPanel } from "vscode";
 import { serverEvent, www_cls_sri_com, serverCommand, PvsDownloadDescriptor } from "../common/serverInterface";
 import * as os from 'os';
-import * as vscodeUtils from '../utils/vscode-utils';
 import * as path from 'path';
 import { VSCodePvsStatusBar } from "../views/vscodePvsStatusBar";
 
@@ -106,15 +105,14 @@ export class VSCodePvsPackageManager {
         return false;
     }
     
-	async extractPVS (desc: { fname: string, targetFolder: string }) {
-		const label: string = `Extracting PVS in ${desc.targetFolder}`;
+	async extractPvs (desc: { fname: string, targetFolder: string }) {
+		const label: string = `Installing PVS in ${desc.targetFolder}`;
 		const terminal = window.createTerminal({ name: label });
 
-		const extractCommand: string = `tar -C ${desc.targetFolder} -xvf ${desc.fname} && exit`;
+		const extractCommand: string = `tar -C ${desc.targetFolder} -xvf ${desc.fname} && cd ${desc.targetFolder} && ./install-sh && exit`;
 		terminal.show();
 		terminal.sendText(extractCommand);
 
-		// We register a listener, to restart the Lean extension once elan has finished.
 		return new Promise ((resolve, reject) => {
 			window.onDidCloseTerminal((t) => {
 				if (t.name === label) {
@@ -122,7 +120,7 @@ export class VSCodePvsPackageManager {
 				}
 			});	
 		});
-	}
+    }
 
 	async chooseInstallationFolder (): Promise<string> {
         const labels: { [ btn: string ]: string } = {
@@ -149,7 +147,7 @@ export class VSCodePvsPackageManager {
 	async installPvs (desc: { fname: string, targetFolder: string, version: string }): Promise<string> {
         window.showInformationMessage(`Installing PVS in ${desc.targetFolder}`);
         // extract pvs
-        await this.extractPVS(desc);
+        await this.extractPvs(desc);
         const pvsPath: string = path.join(desc.targetFolder, `pvs-${desc.version}`);
 		await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global); // the updated value is visible only at the next restart, that's why we are using pvsExecutable[0].fsPath in selectPvsPath
         return pvsPath;

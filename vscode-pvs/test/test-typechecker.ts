@@ -7,6 +7,7 @@ import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { label, log, dir, configFile, safeSandboxExamples, sandboxExamples, radixExamples,
 	stever, steverFiles, pillbox, pillboxFiles, pvsioweb, pvsiowebFiles } from './test-utils';
 import * as path from 'path';
+import * as os from 'os';
 
 //----------------------------
 //   Test cases for typechecker
@@ -29,27 +30,92 @@ describe("pvs-typechecker", () => {
 		// delete pvsbin files
 		await fsUtils.deletePvsCache(sandboxExamples);
 
-		if (!test.EXTERNAL_SERVER) {
-			// kill pvs server & proxy
-			console.log(" killing pvs server...")
-			await pvsProxy.killPvsServer();
-		}
+		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 	});
+
+	it(`can typecheck files`, async () => {
+		label(`can typecheck files`);
+
+		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
+		dir(response);
+		expect(response).not.toBeNull();
+		expect(response.result).not.toBeNull();
+
+		// on MacOS, stats are not provided because we are using the Emacs interface to interact with the parser
+		if (os.platform() !== "darwin") {
+			// has-proofscript? seems to be changing all the time for different runs, I'm removing it from the check for now
+			const res_decls = response.result[0].decls.map(elem => {
+				if (elem.kind === "formula") {
+					return {
+						id: elem.id,
+						kind: elem.kind,
+						place: elem.place,
+						"proved?": elem["proved?"],
+						"complete?": elem["complete?"]
+					};
+				}
+				return elem;
+			});
+			expect(res_decls).toEqual(test.typecheck2_result[0].decls.map(elem => {
+				if (elem.kind === "formula") {
+					return {
+						id: elem.id,
+						kind: elem.kind,
+						place: elem.place,
+						"proved?": elem["proved?"],
+						"complete?": elem["complete?"]
+					};
+				}
+				return elem;
+			}));
+		}
+	}, 100000);
+
+	// on Mac, pvs-server crashes without informative messages when performing this test
+	it(`can typecheck theories with parameters`, async () => {
+		label(`can typecheck theories with parameters`);
+
+		let desc = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "alaris2lnewmodes.pump",
+			formulaName: "vtbi_over_rate_lemma",
+			line: 28,
+			theoryName: "pump_th"
+		};
+		let response: PvsResponse = await pvsProxy.typecheckFile(desc);
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+		
+	}, 10000);
+
+	// on Mac, pvs-server crashes without informative messages when performing this test
+	it(`can typecheck pvs files that import other files`, async () => {
+		label(`can typecheck pvs files that import other files`);
+
+		// const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
+		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "main", fileExtension: ".pvs", contextFolder: sandboxExamples });
+		dir(response);
+		expect(response).toBeDefined();
+		// expect(response.result).toEqual(test.typecheck1_result);
+	}, 100000);
+
+	// return; // the following tests are completed successfully -- remove the return statement if you want to run them
 
 	// on Linux, this test fails for alaris2lnewmodes
 	// the error reported is "No methods applicable for generic function #<standard-generic-function id> with args (#<IMPORTING pump_th..."
 	it(`can generate .tcc file content`, async () => {
 		label(`can generate the .tcc file content`);
-		// const response: PvsResponse = await pvsProxy.showTccs({ 
-		// 	fileName: "sqrt", 
-		// 	fileExtension: ".pvs", 
-		// 	theoryName: "sqrt", 
-		// 	contextFolder: sandboxExamples 
-		// });
-		// dir("response", response);
-		// expect(response.error).not.toBeDefined();
-		// expect(response.result).not.toBeNull();
+		const response: PvsResponse = await pvsProxy.showTccs({ 
+			fileName: "sqrt", 
+			fileExtension: ".pvs", 
+			theoryName: "sqrt", 
+			contextFolder: sandboxExamples 
+		});
+		dir("response", response);
+		expect(response.error).not.toBeDefined();
+		expect(response.result).not.toBeNull();
 
 		const response1: PvsResponse = await pvsProxy.showTccs({
 			fileName:"alaris2lnewmodes", 
@@ -78,78 +144,6 @@ describe("pvs-typechecker", () => {
 		expect(response.result.simplified).toEqual(0);
 	}, 4000);
 	
-
-	// on Mac, pvs-server crashes without informative messages when performing this test
-	it(`can typecheck pvs files`, async () => {
-		label(`can typecheck pvs files`);
-
-		// const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
-		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "main", fileExtension: ".pvs", contextFolder: sandboxExamples });
-		dir(response);
-		expect(response).toBeDefined();
-		// expect(response.result).toEqual(test.typecheck1_result);
-	}, 100000);
-
-	// on Mac, pvs-server crashes without informative messages when performing this test
-	it(`can typecheck theories with parameters`, async () => {
-		label(`can typecheck theories with parameters`);
-
-		let desc = {
-			contextFolder: sandboxExamples,
-			fileExtension: ".pvs",
-			fileName: "alaris2lnewmodes.pump",
-			formulaName: "vtbi_over_rate_lemma",
-			line: 28,
-			theoryName: "pump_th"
-		};
-		let response: PvsResponse = await pvsProxy.typecheckFile(desc);
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-		
-	}, 10000);
-
-
-	// return; // the following tests are completed successfully -- remove the return statement if you want to run them
-
-	// OK
-	it(`can typecheck files that import other files`, async () => {
-		label(`can typecheck files that import other files`);
-
-		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
-		dir(response);
-		expect(response).not.toBeNull();
-		expect(response.result).not.toBeNull();
-		expect(response.result.length).toEqual(1);
-
-		// has-proofscript? seems to be changing all the time for different runs, I'm removing it from the check for now
-		const res_decls = response.result[0].decls.map(elem => {
-			if (elem.kind === "formula") {
-				return {
-					id: elem.id,
-					kind: elem.kind,
-					place: elem.place,
-					"proved?": elem["proved?"],
-					"complete?": elem["complete?"]
-				};
-			}
-			return elem;
-		});
-		const exp_decls = test.typecheck2_result[0].decls.map(elem => {
-			if (elem.kind === "formula") {
-				return {
-					id: elem.id,
-					kind: elem.kind,
-					place: elem.place,
-					"proved?": elem["proved?"],
-					"complete?": elem["complete?"]
-				};
-			}
-			return elem;
-		});
-		expect(res_decls).toEqual(exp_decls);
-	}, 100000);
-
-
 	//-----------------------
 	// additional test cases
 	//-----------------------
