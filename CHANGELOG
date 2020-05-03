@@ -1,7 +1,8 @@
 ## ChangeLog
-### 1.0.18-beta (2020.04.28)
+### 1.0.18 (2020.05.03)
 - Improved Workspace Explorer
 - Improved editor feedback for parsing/typechecking
+- Introduced APIs for MacOS
 
 ### 1.0.17 (2020.04.20)
 - Improved Proof Mate functionalities (profiles, recommended commands, inline help)

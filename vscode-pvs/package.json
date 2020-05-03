@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.18-beta",
+	"version": "1.0.18",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -155,6 +155,11 @@
 			{
 				"command": "vscode-pvs.typecheck-file",
 				"title": "Typecheck File",
+				"enablement": "pvs-language-active == true"
+			},
+			{
+				"command": "vscode-pvs.typecheck",
+				"title": "Typecheck",
 				"enablement": "pvs-language-active == true"
 			},
 			{
@@ -374,6 +379,14 @@
 				{
 					"command": "vscode-pvs.generate-tccs",
 					"when": "resourceScheme == file && resourceExtname == .pvs"
+				},
+				{
+					"command": "vscode-pvs.typecheck-workspace",
+					"when": "explorerResourceIsFolder && pvs-language-active == true"
+				},
+				{
+					"command": "vscode-pvs.parse-workspace",
+					"when": "explorerResourceIsFolder && pvs-language-active == true"
 				}
 			],
 			"view/item/context": [
@@ -388,7 +401,7 @@
 					"group": "inline"
 				},
 				{
-					"command": "vscode-pvs.typecheck-file",
+					"command": "vscode-pvs.typecheck",
 					"when": "view == workspace-explorer-view && viewItem == theory",
 					"group": "inline"
 				},
