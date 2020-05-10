@@ -190,7 +190,7 @@
 			{
 				"command": "vscode-pvs.typecheck-workspace",
 				"title": "Typecheck Workspace",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-language-active == true && !macOs"
 			},
 			{
 				"command": "vscode-pvs.hp2pvs",
@@ -934,6 +934,9 @@
 		"tslint": "^5.20.1"
 	},
 	"dependencies": {
+		"jasmine": "^3.5.0",
+		"jasmine-ts": "^0.3.0",
+		"ts-node": "^8.10.1",
 		"xmlrpc": "^1.3.2"
 	}
 }

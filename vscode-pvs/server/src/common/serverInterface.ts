@@ -360,6 +360,7 @@ export declare interface SimpleConnection {
 // 	}
 // }
 
+//TODO: move this declaration to fsUtils
 export declare interface FileList {
 	contextFolder: string;
 	fileNames: string[]; // TODO: FileDescriptor[]

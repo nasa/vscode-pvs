@@ -29,6 +29,9 @@ bbraun_space: THEORY
   int2boolean(i: int): boolean = IF i > 0 THEN TRUE ELSE FALSE ENDIF
   CONVERSION int2boolean
 
+  boolean2int(b: bool): int = IF b = TRUE THEN 1 ELSE 0 ENDIF
+  CONVERSION boolean2int
+
   init(x: bbraun_real): State = (#
             on := 1,
           inf:= 0,

@@ -1,11 +1,10 @@
-// import { ContextDiagnostics } from "./server/pvsProcess";
-//import { PvsFindDeclaration, PvsParserResponse, PvsTypecheckerResponse, XmlRpcResponse } from "./server/common/serverInterface";
 import * as fsUtils from "../server/src/common/fsUtils";
 import * as test from "./test-constants";
 import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
-import { label, log, dir, configFile, safeSandboxExamples, sandboxExamples, radixExamples,
-	stever, steverFiles, pillbox, pillboxFiles, pvsioweb, pvsiowebFiles } from './test-utils';
+import { label, log, dir, configFile, sandboxExamples,
+	stever, steverFiles, pillbox, pillboxFiles, pvsioweb, pvsiowebFiles, pvsiowebFolders, 
+	dependable_plus_safe } from './test-utils';
 import * as path from 'path';
 import * as os from 'os';
 
@@ -23,15 +22,30 @@ describe("pvs-typechecker", () => {
 		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
 		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
 
-		// delete pvsbin files
+		// delete pvsbin files and .pvscontext
 		await fsUtils.deletePvsCache(sandboxExamples);
+		await fsUtils.deletePvsCache(stever);
+		await fsUtils.deletePvsCache(pillbox);
+		for (let i = 0; i < pvsiowebFolders.length; i++) {
+			await fsUtils.deletePvsCache(path.join(pvsioweb, pvsiowebFolders[i]));
+		}
+		await fsUtils.deletePvsCache(dependable_plus_safe);
+
+		console.log("\n----------------------");
+		console.log("test-typechecker");
+		console.log("----------------------");
 	});
 	afterAll(async () => {
-		// delete pvsbin files
-		await fsUtils.deletePvsCache(sandboxExamples);
-
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
+		// delete pvsbin files and .pvscontext
+		await fsUtils.deletePvsCache(sandboxExamples);
+		await fsUtils.deletePvsCache(stever);
+		await fsUtils.deletePvsCache(pillbox);
+		for (let i = 0; i < pvsiowebFolders.length; i++) {
+			await fsUtils.deletePvsCache(path.join(pvsioweb, pvsiowebFolders[i]));
+		}
+		await fsUtils.deletePvsCache(dependable_plus_safe);		
 	});
 
 	it(`can typecheck files`, async () => {
@@ -72,7 +86,6 @@ describe("pvs-typechecker", () => {
 		}
 	}, 100000);
 
-	// on Mac, pvs-server crashes without informative messages when performing this test
 	it(`can typecheck theories with parameters`, async () => {
 		label(`can typecheck theories with parameters`);
 
@@ -90,7 +103,6 @@ describe("pvs-typechecker", () => {
 		
 	}, 10000);
 
-	// on Mac, pvs-server crashes without informative messages when performing this test
 	it(`can typecheck pvs files that import other files`, async () => {
 		label(`can typecheck pvs files that import other files`);
 
@@ -101,10 +113,6 @@ describe("pvs-typechecker", () => {
 		// expect(response.result).toEqual(test.typecheck1_result);
 	}, 100000);
 
-	// return; // the following tests are completed successfully -- remove the return statement if you want to run them
-
-	// on Linux, this test fails for alaris2lnewmodes
-	// the error reported is "No methods applicable for generic function #<standard-generic-function id> with args (#<IMPORTING pump_th..."
 	it(`can generate .tcc file content`, async () => {
 		label(`can generate the .tcc file content`);
 		const response: PvsResponse = await pvsProxy.showTccs({ 
@@ -128,22 +136,24 @@ describe("pvs-typechecker", () => {
 		expect(response1.result).not.toBeNull();
 	}, 20000);
 
-	// OK
-	it(`can discharge tccs`, async () => {
-		label(`can discharge tccs`);
-		const fname: string = path.join(sandboxExamples, "sq.pvs");
+	it(`can typecheck files in folders whose name contains utf8 symbols`, async () => {
+		label(`can typecheck files in folders whose name contains utf8 symbols`);
 
-		const response: PvsResponse = await pvsProxy.pvsRequest('prove-tccs', [ fname ]);
-		dir("response", response);
-		expect(response.error).not.toBeDefined();
+		const response: PvsResponse = await pvsProxy.typecheckFile({
+			fileName: "helloworld", 
+			fileExtension: ".pvs", 
+			contextFolder: dependable_plus_safe
+		});
+		// console.dir(response);
+		expect(response).toBeDefined();
 		expect(response.result).toBeDefined();
-		expect(response.result.totals).toEqual(2);
-		expect(response.result.proved).toEqual(2);
-		expect(response.result.unproved).toEqual(0);
-		expect(response.result.subsumed).toEqual(0);
-		expect(response.result.simplified).toEqual(0);
-	}, 4000);
-	
+		// on MacOS, stats are not provided because we are using the Emacs interface to interact with the parser
+		if (os.platform() !== "darwin") {
+			expect(response.result).toEqual(test.parse2_result);
+		}
+		expect(response.error).not.toBeDefined();
+	}, 100000);
+
 	//-----------------------
 	// additional test cases
 	//-----------------------
@@ -183,7 +193,6 @@ describe("pvs-typechecker", () => {
 			
 		}, 20000);
 	}
-
 	for (let i = 0; i < pvsiowebFiles.length; i++) {
 		it(`can parse pvsioweb/${pvsiowebFiles[i]}.pvs`, async () => {
 			label(`can parse pvsioweb example ${pvsiowebFiles[i]}`);

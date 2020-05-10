@@ -37,10 +37,11 @@
  **/
 // import { PvsProcessLegacy } from './pvsProcessLegacy';
 import { PvsResponse, ShowTCCsResult, PvsResult, FindDeclarationResult } from '../common/pvs-gui';
-import { SimpleConnection } from '../common/serverInterface'
+import { SimpleConnection, PvsFileDescriptor, TheoryDescriptor, FormulaDescriptor } from '../common/serverInterface'
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import { PvsProcess } from '../pvsProcess';
+import * as utils from '../common/languageUtils';
 
 export class PvsProxyLegacy {
 	protected pvsPath: string;
@@ -67,6 +68,16 @@ export class PvsProxyLegacy {
     }
     async changeContext (ctx: string): Promise<PvsResponse> {
         const response: PvsResponse = await this.sendCommand(`(change-workspace "${ctx}")`);
+        if (response.result) {
+            const matchFolder: RegExpMatchArray = /\"(.+)\"/g.exec(response.result);
+            if (matchFolder && matchFolder.length > 1) {
+                return {
+                    result: matchFolder[1],
+                    jsonrpc: "2.0",
+                    id: "pvs-process-legacy"
+                };        
+            }
+        }
         return {
             jsonrpc: "2.0",
             id: "pvs-process-legacy"
@@ -192,46 +203,93 @@ export class PvsProxyLegacy {
         const data: PvsResponse = await this.sendCommand(`(find-declaration "${symbolName}")`);
         // example result: `((("declname" . "posnat") ("type" . "type") ("theoryid" . "integers")  ("filename"   . "/Users/pmasci/Work/pvs-snapshots/pvs-7.0.1212/lib/prelude.pvs")  ("place" 2194 2 2194 32)  ("decl-ppstring" . "posnat: TYPE+ = posint")))[Current process: Initial Lisp Listener][1]`
         let result: FindDeclarationResult = [];
-        if (data && data.result) {
-            let declInfo: string[] = data.result.split(`(("declname"`).filter((elem: string) => { return elem.includes(`"place"`)});
-            if (declInfo && declInfo.length) {
-                for(let i = 0; i < declInfo.length; i++) {
-                    const info: string = `(("declname"` + declInfo[i];
-                    const matchDeclname: RegExpMatchArray = /\(\"declname\".*\.\s*\"([^\)]+)\"/g.exec(info);
-                    const matchDeclPPString: RegExpMatchArray = /\(\"decl-ppstring\"\s*\.\s*\"([\w\W\s]+)\"/g.exec(info);
-                    const matchFilename: RegExpMatchArray = /\(\"filename\"\s*\.\s*\"([^\)]+)\"/g.exec(info);
-                    const matchPlace: RegExpMatchArray = /\(\"place\"\s*([\d\s]+)/g.exec(info);
-                    const matchTheoryId: RegExpMatchArray = /\(\"theoryid\".*\.\s*\"([^\)]+)\"/g.exec(info);
-                    const matchType: RegExpMatchArray = /\(\"type\".*\.\s*\"([^\)]+)\"/g.exec(info);
-                    if (matchDeclname && matchDeclname.length > 1
-                            && matchDeclPPString && matchDeclPPString.length > 1
-                            && matchFilename && matchFilename.length > 1
-                            && matchPlace && matchPlace.length > 1
-                            && matchTheoryId && matchTheoryId.length > 1) {
-                        const place = matchPlace[1].split(" ");
-                        if (place.length > 1) {
-                            result.push({
-                                declname: matchDeclname[1],
-                                filename: matchFilename[1],
-                                "decl-ppstring": matchDeclPPString[1],
-                                place: [
-                                    +place[0], 
-                                    +place[1], 
-                                    (place.length > 2) ? +place[2] : null, 
-                                    (place.length > 3) ? +place[3] : null 
-                                ],
-                                theoryid: matchTheoryId[1],
-                                type: (matchType && matchType.length > 1) ? matchType[1] : null // what is this attribute for??
-                            });
+        try {
+            if (data && data.result) {
+                // pvs 7.1 is now generating a json object
+                result = JSON.parse(data.result);
+                if (typeof result === "string") {
+                    // pvs is erroneously returning a string encoding of a string encoding of a JSON object
+                    result = JSON.parse(result);
+                }
+                // let declInfo: string[] = data.result.split(`(("declname"`).filter((elem: string) => { return elem.includes(`"place"`)});
+                // if (declInfo && declInfo.length) {
+                //     for(let i = 0; i < declInfo.length; i++) {
+                //         const info: string = `(("declname"` + declInfo[i];
+                //         const matchDeclname: RegExpMatchArray = /\(\"declname\".*\.\s*\"([^\)]+)\"/g.exec(info);
+                //         const matchDeclPPString: RegExpMatchArray = /\(\"decl-ppstring\"\s*\.\s*\"([\w\W\s]+)\"/g.exec(info);
+                //         const matchFilename: RegExpMatchArray = /\(\"filename\"\s*\.\s*\"([^\)]+)\"/g.exec(info);
+                //         const matchPlace: RegExpMatchArray = /\(\"place\"\s*([\d\s]+)/g.exec(info);
+                //         const matchTheoryId: RegExpMatchArray = /\(\"theoryid\".*\.\s*\"([^\)]+)\"/g.exec(info);
+                //         const matchType: RegExpMatchArray = /\(\"type\".*\.\s*\"([^\)]+)\"/g.exec(info);
+                //         if (matchDeclname && matchDeclname.length > 1
+                //                 && matchDeclPPString && matchDeclPPString.length > 1
+                //                 && matchFilename && matchFilename.length > 1
+                //                 && matchPlace && matchPlace.length > 1
+                //                 && matchTheoryId && matchTheoryId.length > 1) {
+                //             const place = matchPlace[1].split(" ");
+                //             if (place.length > 1) {
+                //                 result.push({
+                //                     declname: matchDeclname[1],
+                //                     filename: matchFilename[1],
+                //                     "decl-ppstring": matchDeclPPString[1],
+                //                     place: [
+                //                         +place[0], 
+                //                         +place[1], 
+                //                         (place.length > 2) ? +place[2] : null, 
+                //                         (place.length > 3) ? +place[3] : null 
+                //                     ],
+                //                     theoryid: matchTheoryId[1],
+                //                     type: (matchType && matchType.length > 1) ? matchType[1] : null // what is this attribute for??
+                //                 });
+                //             }
+                //         }
+                //     }
+                // }
+            }
+        } finally {
+            return {
+                jsonrpc: "2.0",
+                id: "pvs-process-legacy",
+                result
+            }
+        }
+    }
+    async proofScript (desc: { contextFolder: string, fileName: string, fileExtension: string, formulaName: string, theoryName: string }): Promise<PvsResponse> {
+        const error_string: string = `${desc.theoryName}.${desc.formulaName} does not have a proof`;
+        let result: string = null; //`;;; Proof ${desc.formulaName}-1 for formula ${desc.theoryName}.${desc.formulaName}`; // this is an empty proof
+        // extension is forced to .pvs, this is necessary as the request may come for a .tccs file
+        const fname: string = fsUtils.desc2fname({ contextFolder: desc.contextFolder, fileName: desc.fileName, fileExtension: ".pvs" });
+        const fileDesc: PvsFileDescriptor = await utils.getFileDescriptor(fname, { listTheorems: true });
+        if (fileDesc && fileDesc.theories && fileDesc.theories.length) {
+            const theoryDesc: TheoryDescriptor[] = fileDesc.theories.filter(tdesc => { return tdesc.theoryName === desc.theoryName });
+            if (theoryDesc && theoryDesc.length === 1 && theoryDesc[0].theorems && theoryDesc[0].theorems.length > 0) {
+                const formulaDesc: FormulaDescriptor[] = theoryDesc[0].theorems.filter(formula => { return formula.formulaName === desc.formulaName; });
+                if (formulaDesc && formulaDesc.length === 1 && formulaDesc[0].position) {
+                    const line: number = formulaDesc[0].position.line;
+                    const cmd: string = `(edit-proof-at "${fname}" nil ${line} "pvs" "${desc.fileName}${desc.fileExtension}" 0 nil)`;
+                    const data: PvsResponse = await this.sendCommand(cmd);
+                    if (data && data.result) {
+                        const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
+                        if (matchProof && matchProof.length > 1) {
+                            result = matchProof[1];
                         }
                     }
                 }
             }
         }
-        return {
+        // the APIs of PVS are really ugly here -- if the formula does not have a proof returns an error rather than just returning an empty proof
+        return (result) ? {
             jsonrpc: "2.0",
             id: "pvs-process-legacy",
             result
-        }
+        } : {
+            jsonrpc: "2.0",
+            id: "pvs-process-legacy",
+            error: {
+                data: {
+                    error_string
+                }
+            }
+        };
     }
 }

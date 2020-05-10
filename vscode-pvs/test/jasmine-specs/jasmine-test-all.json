@@ -7,7 +7,8 @@
     "test-typechecker.ts",
     "test-prover.ts",
     "test-proofscript.ts",
-    "test-workspace.ts"
+    "test-workspace.ts",
+    "test-pvscontext.ts"
   ],
   "stopSpecOnExpectationFailure": false,
   "random": false

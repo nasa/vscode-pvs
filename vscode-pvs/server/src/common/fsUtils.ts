@@ -93,14 +93,15 @@ export async function readFile(fname: string): Promise<string | null> {
 				// 		}
 				// 	});
 				// });
-			} catch (fileReadError) {
-				console.error(`[fs-utils] Error while reading file ${fname}`, fileReadError);
+			} catch (error) {
+				console.error(`[fs-utils] Error while reading file ${fname}`, error);
 				return null;
 			}
 		}
 	}
 	return null;
 }
+// TODO: move this function to languageUtils
 export async function readProofFile (fname: string): Promise<ProofFile> {
 	let proofFile: ProofFile = null;
 	fname = fname.replace("file://", "");
@@ -119,10 +120,20 @@ export async function readProofFile (fname: string): Promise<ProofFile> {
 	} finally {
 		return proofFile;
 	}
- }
+}
 export function deleteFile(fname: string): boolean {
 	try {
 		fs.unlinkSync(fname);
+	} catch (deleteError) {
+		return false;
+	}
+	return true;
+}
+export function deleteFolder(contextFolder: string): boolean {
+	try {
+		if (fs.existsSync(contextFolder)) {
+			execSync(`rm -r ${contextFolder}`);
+		}
 	} catch (deleteError) {
 		return false;
 	}
@@ -135,11 +146,12 @@ export function deletePvsCache(contextFolder: string): Promise<boolean> {
 			contextFolder = tildeExpansion(contextFolder);
 			// console.log(`Deleting cache for context ${contextFolder}`);
 			const cacheFolder: string = path.join(contextFolder, "pvsbin");
-			const pvsBinFiles: string[] = fs.readdirSync(cacheFolder);
-			// console.log(pvsBinFiles);
-			pvsBinFiles.forEach(file => {
-				deleteFile(path.join(cacheFolder, file));
-			});
+			deleteFolder(cacheFolder);
+			// const pvsBinFiles: string[] = fs.readdirSync(cacheFolder);
+			// // console.log(pvsBinFiles);
+			// pvsBinFiles.forEach(file => {
+			// 	deleteFile(path.join(cacheFolder, file));
+			// });
 			// console.log(`removing ${path.join(contextFolder, ".pvscontext")}`);
 			deleteFile(path.join(contextFolder, ".pvscontext"));
 			// console.log(`reading folder ${contextFolder}`);
@@ -172,7 +184,7 @@ export async function writeFile(fname: string, content: string): Promise<boolean
 			fname = tildeExpansion(fname);
 			fs.writeFileSync(fname, content);
 		} catch (error) {
-			console.error(`[fs-utils] Error while writing file ${fname}`);
+			console.error(`[fs-utils] Error while writing file ${fname}`, error);
 			return false;
 		}
 	}
@@ -297,6 +309,7 @@ export function getText(txt: string, range: { start: { line: number, character?:
 }
 
 import * as crypto from 'crypto';
+import { execSync } from 'child_process';
 
 export function get_fresh_id(): string {
 	// This may be overkill, a simple call to random is probably good enough.

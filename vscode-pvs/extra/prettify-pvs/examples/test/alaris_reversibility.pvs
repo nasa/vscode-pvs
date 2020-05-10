@@ -1,0 +1,1255 @@
+%%
+% @module alaris_reversibility
+% @author Michael Harrison and Paolo Masci (QMUL, UMinho Braga and Newcastle University)
+% @date April 2017
+% @description The reversibility theorems
+%%
+
+alaris_reversibility_pattern[
+   maxrate  : posnat, %{maxrate: posnat | maxrate > 1000},
+   maxinfuse: posnat, %{maxinfuse: posnat |  maxinfuse >= 3000 }, % maxtime = maxinfuse needed for proving maxinfuse_over_time_lemma and vtbi_over_time_lemma
+   infusemin: { infusemin: posreal | infusemin <= maxinfuse },
+   timeout  : posnat,
+   shorttimeout : {shorttimeout: posnat | shorttimeout < timeout},
+   maxtime  : { maxtime: posnat | maxtime > timeout AND maxtime >= maxinfuse },
+   bat_max : {bat_max: posnat | bat_max+1 < maxtime},
+   bat_min: {bat_min: posnat | bat_min < bat_max}
+]: THEORY
+BEGIN
+  ASSUMING
+    timeoutLTmaxtime: ASSUMPTION timeout < maxtime
+    shorttimeoutLTtimeout: ASSUMPTION shorttimeout < timeout
+    maxinfuseVal: ASSUMPTION maxinfuse >= 3000
+  ENDASSUMING
+  IMPORTING alaris_th[maxrate, maxinfuse, infusemin, timeout, shorttimeout, maxtime, bat_max, bat_min]
+
+% Reversibility template
+% \forall s in S: guard(s) => \exists b : S -> S: filter(a(b(s)) = filter(s)
+
+%%
+% @lemma divbynratesx etc
+% @description set of lemmas needed to simplify proof
+% @yelds QED
+% @stats Run time  = 321.59 secs. 18/7/17
+%%
+
+%QED Run time  = 0.08 secs. 16/11/16
+divbynratesndx: LEMMA
+   FORALL (x: irates, n:posnat, d: steprate):
+      (n*(x/n) -n*d)/n = x/n - d
+%QED Run time  = 0.08 secs. 16/11/16
+divbynratespndx: LEMMA
+   FORALL (x: irates, n:posnat, d: steprate):
+      (n*(x/n) + n*d)/n = x/n + d
+%QED Run time  = 0.07 secs. 16/11/16
+divbynrealndx: LEMMA
+   FORALL (x: real, n:posnat, d: steprate):
+      (n*(x/n) -n*d)/n = x/n - d
+%QED Run time  = 0.08 secs. 16/11/16
+%@lemma divbynrealpndx
+divbynrealpndx: LEMMA
+   FORALL (x: real, n:posnat, d: steprate):
+      (n*(x/n) + n*d)/n = x/n + d
+%@lemma simplefieldlemma
+%QED
+simplefieldlemma: LEMMA
+    FORALL (x: real, n: posnat):
+        (n * x) / n = x
+
+%%
+  % @function low_range_rate
+  % @description lowest range for infusion rates for slow chevrons (to avoid anomalous step)
+  % @param {irates} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+low_range_rate(v: irates): boolean =
+  (maxrate > 1000) AND
+  (v >= small_step/10) AND v <100 AND
+  (floor(v*10) = v*10) AND (ceil_rate(v*10) = v*10)
+
+%%
+  % @function mid_range_rate
+  % @description middle range for infusion rates for slow chevrons (to avoid anomalous step)
+  % @param {irates} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+mid_range_rate(v: irates): boolean =
+  (maxrate > 1000) AND
+  (v >= (100 + small_step)) AND (v < 1000) AND
+          (ceil_rate(v) = v) AND
+          (floor(v) = v)
+
+%%
+  % @function high_range_rate
+  % @description highest range for infusion rates for slow chevrons (to avoid anomalous step)
+  % @param {irates} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+high_range_rate(v: irates): boolean =
+  (maxrate > 1000) AND
+  (v >= (1000 + small_step*10)) AND (v < maxrate) AND
+         (ceil_rate(v/10) = v/10) AND
+         (floor(v/10) = v/10)
+
+%%
+  % @function low_range_rate_f
+  % @description lowest range for infusion rates for fast chevrons (to avoid anomalous step) includes current step
+  % @param {irates} v
+  % @param {steprate} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+low_range_rate_f(v: irates, d: steprate): boolean =
+  (maxrate > 1000) AND
+ (v >= d) AND (v <100) AND
+ (floor(v) = v) AND
+ (ceil_rate(v) = v)
+
+%%
+  % @function mid_range_rate_f
+  % @description middle range for infusion rates for fast chevrons (to avoid anomalous step) includes current step
+  % @param {irates} v
+  % @param {steprate} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+mid_range_rate_f(v: irates, d: steprate): boolean =
+  (maxrate > 1000) AND
+  (v >= 100 + 10*d) AND
+  (v < 1000) AND
+  (ceil_rate(v/10) = v/10) AND
+  (floor(v/10) = v/10)
+
+%%
+  % @function high_range_rate_f
+  % @description high range for infusion rates for fast chevrons (to avoid anomalous step) includes current step
+  % @param {irates} v
+  % @param {steprate} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+high_range_rate_f(v: irates, d: steprate): boolean =
+  (maxrate > 1000) AND
+  (v>=1000 + 100*d) AND
+  (v < maxrate) AND
+  (ceil_rate(v/100) = v/100) AND
+  (floor(v/100) = v/100)
+
+%%
+  % @function low_range_rate_du
+  % @description up followed by down lowest range for infusion rates for slow chevrons (to avoid anomalous step)
+  % @param {irates} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+low_range_rate_du(v: irates): boolean =
+  (maxrate > 1000) AND
+  (v >= 0) AND ((v + small_step/10) <100) AND
+  (floor(v*10) = v*10) AND (ceil_rate(v*10) = v*10)
+
+%%
+  % @function mid_range_rate_du
+  % @description up followed by down middle range for infusion rates for slow chevrons (to avoid anomalous step)
+  % @param {irates} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+mid_range_rate_du(v: irates): boolean =
+  (maxrate > 1000) AND
+  (v >= 100) AND ((v + small_step) < 1000) AND
+          (ceil_rate(v) = v) AND
+          (floor(v) = v)
+
+%%
+  % @function high_range_rate_du
+  % @description up followed by down middle range for infusion rates for slow chevrons (to avoid anomalous step)
+  % @param {irates} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+high_range_rate_du(v: irates): boolean =
+  (maxrate > 1000) AND
+  (v >= 1000) AND ((v + small_step*10) < maxrate) AND
+         (ceil_rate(v/10) = v/10) AND
+         (floor(v/10) = v/10)
+
+%%
+  % @function low_range_rate_duf
+  % @description up followed by down lowest range for infusion rates for fast chevrons (to avoid anomalous step) includes current step
+  % @param {irates} v
+  % @param {steprate} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+low_range_rate_duf(v: irates, d: steprate): boolean =
+  (maxrate > 1000) AND
+ (v >= 0) AND (v+d <100) AND
+ (floor(v) = v) AND
+ (ceil_rate(v) = v)
+
+%%
+  % @function mid_range_rate_duf
+  % @description up followed by down mid range for infusion rates for fast chevrons (to avoid anomalous step) includes current step
+  % @param {irates} v
+  % @param {steprate} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+mid_range_rate_duf(v: irates, d: steprate): boolean =
+  (maxrate > 1000) AND
+  (v >= 100) AND
+  (v + 10*d < 1000) AND
+  (ceil_rate(v/10) = v/10) AND
+  (floor(v/10) = v/10)
+
+%%
+  % @function high_range_rate_duf
+  % @description up followed by down highest range for infusion rates for fast chevrons (to avoid anomalous step) includes current step
+  % @param {irates} v
+  % @param {steprate} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+high_range_rate_duf(v: irates, d: steprate): boolean =
+  (maxrate > 1000) AND
+  (v>=1000) AND
+  (v + 100*d < maxrate) AND
+  (ceil_rate(v/100) = v/100) AND
+  (floor(v/100) = v/100)
+
+%%
+  % @function low_range_vols
+  % @description lowest range for vols for slow chevrons (to avoid anomalous step)
+  % @param {ivols} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+low_range_vols(v: ivols): boolean =
+  (maxinfuse > 1000) AND
+  (v >= small_step/10) AND v <100 AND
+  (floor(v*10) = v*10) AND (ceil_vtbi(v*10) = v*10)
+
+%%
+  % @function mid_range_vols
+  % @description middle range for vols for slow chevrons (to avoid anomalous step)
+  % @param {ivols} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+mid_range_vols(v: ivols): boolean =
+  (maxinfuse > 1000) AND
+  (v >= (100 + small_step)) AND (v < 1000) AND
+          (ceil_vtbi(v) = v) AND
+          (floor(v) = v)
+
+%%
+  % @function high_range_vols
+  % @description highest range for vols for slow chevrons (to avoid anomalous step)
+  % @param {ivols} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+high_range_vols(v: ivols): boolean =
+  (maxinfuse > 1000) AND
+  (v >= (1000 + small_step*10)) AND (v < maxinfuse) AND
+         (ceil_vtbi(v/10) = v/10) AND
+         (floor(v/10) = v/10)
+
+%%
+  % @function low_range_vols_f
+  % @description lowest range for vols for fast chevrons (to avoid anomalous step)
+  % @param {ivols} v
+  % @param {stepvol} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+low_range_vols_f(v: ivols, d: stepvol): boolean =
+  (maxinfuse > 1000) AND
+ (v >= d) AND (v <100) AND
+ (floor(v) = v) AND
+ (ceil_vtbi(v) = v)
+
+%%
+  % @function mid_range_vols_f
+  % @description mid range for vols for fast chevrons (to avoid anomalous step)
+  % @param {ivols} v
+  % @param {stepvol} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+mid_range_vols_f(v: ivols, d: stepvol): boolean =
+  (maxinfuse > 1000) AND
+  (v >= 100 + 10*d) AND
+  (v < 1000) AND
+  (ceil_vtbi(v/10) = v/10) AND
+  (floor(v/10) = v/10)
+
+%%
+  % @function high_range_vols_f
+  % @description highest range for vols for fast chevrons (to avoid anomalous step)
+  % @param {ivols} v
+  % @param {stepvol} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+high_range_vols_f(v: ivols, d: stepvol): boolean =
+  (maxinfuse > 1000) AND
+  (v>=1000 + 100*d) AND
+  (v < maxinfuse) AND
+  (ceil_vtbi(v/100) = v/100) AND
+  (floor(v/100) = v/100)
+
+%%
+  % @function low_range_vols_du
+  % @description up followed by down mid range for infusion volumes for slow chevrons (to avoid anomalous step) includes current step
+  % @param {ivols} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+low_range_vols_du(v: ivols): boolean =
+  (maxinfuse > 1000) AND
+  (v >= 0) AND ((v + small_step/10) <100) AND
+  (floor(v*10) = v*10) AND (ceil_vtbi(v*10) = v*10)
+
+%%
+  % @function mid_range_vols_du
+  % @description up followed by down mid range for infusion volumes for slow chevrons (to avoid anomalous step) includes current step
+  % @param {ivols} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+mid_range_vols_du(v: ivols): boolean =
+  (maxinfuse > 1000) AND
+  (v >= 100) AND ((v + small_step) < 1000) AND
+          (ceil_vtbi(v) = v) AND
+          (floor(v) = v)
+
+%%
+  % @function high_range_vols_du
+  % @description up followed by down high range for infusion volumes for slow chevrons (to avoid anomalous step) includes current step
+  % @param {ivols} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+high_range_vols_du(v: ivols): boolean =
+  (maxinfuse > 1000) AND
+  (v >= 1000) AND ((v + small_step*10) < maxinfuse) AND
+         (ceil_vtbi(v/10) = v/10) AND
+         (floor(v/10) = v/10)
+
+%%
+  % @function mid_range_vols_duf
+  % @description up followed by down low range for infusion volumes for fast chevrons (to avoid anomalous step) includes current step
+  % @param {irates} v
+  % @param {stepvol} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+low_range_vols_duf(v: ivols, d: stepvol): boolean =
+  (maxinfuse > 1000) AND
+ (v >= 0) AND (v+d <100) AND
+ (floor(v) = v) AND
+ (ceil_vtbi(v) = v)
+
+%%
+  % @function mid_range_vols_duf
+  % @description up followed by down mid range for infusion volumes for fast chevrons (to avoid anomalous step) includes current step
+  % @param {irates} v
+  % @param {stepvol} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+mid_range_vols_duf(v: ivols, d: stepvol): boolean =
+  (maxinfuse > 1000) AND
+  (v >= 100) AND
+  (v + 10*d < 1000) AND
+  (ceil_vtbi(v/10) = v/10) AND
+  (floor(v/10) = v/10)
+
+%%
+  % @function high_range_vols_duf
+  % @description up followed by down high range for infusion volumes for fast chevrons (to avoid anomalous step) includes current step
+  % @param {irates} v
+  % @param {stepvol} d
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+high_range_vols_duf(v: ivols, d: stepvol): boolean =
+  (maxinfuse > 1000) AND
+  (v>=1000) AND
+  (v + 100*d < maxinfuse) AND
+  (ceil_vtbi(v/100) = v/100) AND
+  (floor(v/100) = v/100)
+
+%%
+  % @function range_time_ud
+  % @description range for time for slow chevrons, down followed by up
+  % @param {steptime} d
+  % @param {itimes} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+range_time_ud(v: itimes, d: steptime): boolean =
+    (maxtime > 1000) AND
+    (v >= d) AND (v < maxtime) AND
+        (floor(v/d) = v/d) AND (ceil_time(v/d) = v/d)
+
+%%
+  % @function range_time_ud_f
+  % @description range for time for fast chevrons, down followed by up
+  % @param {steptime} d
+  % @param {itimes} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+range_time_ud_f(v: itimes, d: steptime): boolean =
+    (maxtime > 1000) AND
+    (v >= d*10) AND v < (maxtime) AND
+        (floor(v/(d*10)) = v/(d*10)) AND (ceil_time(v/(d*10)) = v/(d*10))
+
+%%
+  % @function range_time_ud
+  % @description range for time for slow chevrons, up followed by time
+  % @param {steptime} d
+  % @param {itimes} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+range_time_du(v: itimes, d: steptime): boolean =
+    (maxtime > 1000) AND
+    (v >= 0) AND ((v + d) < maxtime) AND
+     (floor(v/d) = v/d) AND (ceil_time(v/d) = v/d)
+
+%%
+  % @function range_time_du_f
+  % @description range for time for fast chevrons, up followed by down
+  % @param {steptime} d
+  % @param {itimes} v
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+range_time_du_f(v: itimes, d: steptime): boolean =
+    (maxtime > 1000) AND
+    (v >= 0) AND ((v + d*10) < maxtime) AND
+     (floor(v/(10*d)) = v/(10*d)) AND (ceil_time(v/(10*d)) = v/(10*d))
+
+%%
+% @theorem simpleupdown
+% @description shows the relation between slow down followed by up in the ranges for rates
+% @yields QED
+% @stats Run time  = 2.01 secs. 20/7/17
+%%
+simpleupdown: THEOREM
+     FORALL (v: irates):
+     (low_range_rate(v)
+          IMPLIES  (state_up_rate(small_step, state_dn_rate(small_step, v)) = v))
+     AND
+     (mid_range_rate(v)
+          IMPLIES  (state_up_rate(small_step, state_dn_rate(small_step, v)) = v))     AND
+     (high_range_rate(v)
+          IMPLIES  (state_up_rate(small_step, state_dn_rate(small_step, v)) = v))
+
+%%
+% @theorem simpleUPDOWNd
+% @description shows the relation between fast down followed by up in the ranges for rates
+% @yields QED
+% @stats Run time  = 19.26 secs. 20/7/17
+% could also be considered consistency
+%%
+%QED Run time  = 25.74 secs. 10/7/17
+simpleUPDOWNd: THEOREM
+     FORALL (v: irates, d: steprate):
+     (low_range_rate_f(v, d)
+          IMPLIES  (state_UP_rate(d, state_DN_rate(d, v)) = v)) AND
+     (mid_range_rate_f(v, d) IMPLIES
+             (state_UP_rate(d, state_DN_rate(d, v)) = v)) AND
+     (high_range_rate_f(v, d)
+       IMPLIES
+      (state_UP_rate(d, state_DN_rate(d, v)) = v))
+
+%%
+% @theorem Simpledownup
+% @description shows the relation between slow up followed by down in the ranges for rates
+% @yields QED
+% @stats Run time  = 2.54 secs. 20/7/17
+%%
+Simpledownup: THEOREM
+     FORALL (v: irates):
+    (low_range_rate_du(v) IMPLIES
+      state_dn_rate(small_step, state_up_rate(small_step, v)) = v) AND
+    (mid_range_rate_du(v) IMPLIES
+       state_dn_rate(small_step, state_up_rate(small_step, v)) = v) AND
+    (high_range_rate_du(v)
+       IMPLIES
+      state_dn_rate(small_step, state_up_rate(small_step, v)) = v)
+
+%%
+% @theorem SimpleDOWNUPd
+% @description shows the relation between fast up followed by down in the ranges for rates
+% @yields QED
+% @stats Run time  = 9.73 secs. 20/7/17
+%%
+SimpleDOWNUPd: THEOREM
+     FORALL (d: steprate, v: irates):
+     (low_range_rate_duf(v, d) IMPLIES
+      state_DN_rate(d, state_UP_rate(d, v)) = v) AND
+     (mid_range_rate_duf(v, d) IMPLIES
+      state_DN_rate(d, state_UP_rate(d, v)) = v) AND
+      (high_range_rate_duf(v, d) IMPLIES
+      state_DN_rate(d, state_UP_rate(d, v)) = v)
+
+%%
+% @theorem simpleupdownvtbi
+% @description shows the relation between slow down followed by up in the ranges for vtbi
+% @yields QED
+% @stats Run time  = 1.75 secs. 20/7/17
+%%
+simpleupdownvtbi: THEOREM
+     FORALL (v: ivols):
+     (low_range_vols(v)
+          IMPLIES  (state_up_vtbi(small_step, state_dn_vtbi(small_step, v)) = v))
+     AND
+     (mid_range_vols(v)
+          IMPLIES  (state_up_vtbi(small_step, state_dn_vtbi(small_step, v)) = v))     AND
+     (high_range_vols(v)
+          IMPLIES  (state_up_vtbi(small_step, state_dn_vtbi(small_step, v)) = v))
+
+%%
+% @theorem simpleUPDOWNvtbi
+% @description shows the relation between fast down followed by up in the ranges for vtbi
+% @yields QED
+% @stats Run time  = 3.57 secs. 20/7/17
+%%
+simpleUPDOWNdvtbi: THEOREM
+     FORALL (v: ivols, d: steprate):
+     (low_range_vols_f(v, d)
+          IMPLIES  (state_UP_vtbi(d, state_DN_vtbi(d, v)) = v)) AND
+     (mid_range_vols_f(v, d) IMPLIES
+             (state_UP_vtbi(d, state_DN_vtbi(d, v)) = v)) AND
+     (high_range_vols_f(v, d)
+       IMPLIES
+      (state_UP_vtbi(d, state_DN_vtbi(d, v)) = v))
+
+
+%%
+% @theorem Simpledownupvtbi
+% @description shows the relation between slow up followed by down in the ranges for vtbi
+% @yields QED
+% @stats Run time  = 2.59 secs. 20/7/17
+%%
+Simpledownupvtbi: THEOREM
+     FORALL (v: ivols):
+    (low_range_vols_du(v) IMPLIES
+      state_dn_vtbi(small_step, state_up_vtbi(small_step, v)) = v) AND
+    (mid_range_vols_du(v) IMPLIES
+       state_dn_vtbi(small_step, state_up_vtbi(small_step, v)) = v) AND
+    (high_range_vols_du(v)
+       IMPLIES
+      state_dn_vtbi(small_step, state_up_vtbi(small_step, v)) = v)
+
+%%
+% @theorem SimpleDOWNUPvtbi
+% @description shows the relation between fast up followed by down in the ranges for vtbi
+% @yields QED
+% @stats Run time  = 7.63 secs. 20/7/17
+%%
+SimpleDOWNUPdvtbi: THEOREM
+     FORALL (d: steprate, v: ivols):
+     (low_range_vols_duf(v, d) IMPLIES
+      state_DN_vtbi(d, state_UP_vtbi(d, v)) = v) AND
+     (mid_range_vols_duf(v, d) IMPLIES
+      state_DN_vtbi(d, state_UP_vtbi(d, v)) = v) AND
+      (high_range_vols_duf(v, d) IMPLIES
+      state_DN_vtbi(d, state_UP_vtbi(d, v)) = v)
+
+%%
+% @theorem simpleupdowntime
+% @description shows the relation between slow down followed by up for time
+% @yields QED
+% @stats Run time  = 0.41 secs. 20/7/17
+%%
+simpleupdowntime: THEOREM
+     FORALL (v: itimes, d: steptime):
+     range_time_ud(v, d)
+          IMPLIES  (state_up_time(d, state_dn_time(d, v)) = v)
+
+%%
+% @theorem simpleUPDOWNtime
+% @description shows the relation between fast down followed by up for time
+% @yields QED
+% @stats Run time  = 8.07 secs. 20/7/17
+%%
+simpleUPDOWNdtime: THEOREM
+     FORALL (v: itimes, d: steptime):
+     range_time_ud_f(v, d)
+          IMPLIES  (state_UP_time(d, state_DN_time(d, v)) = v)
+
+%%
+% @theorem Simpledownuptime
+% @description shows the relation between slow up followed by down for time
+% @yields QED
+% @stats Run time  = 0.43 secs. 20/7/17
+%%
+Simpledownuptime: THEOREM
+     FORALL (v: itimes, d: steptime):
+    range_time_du(v, d) IMPLIES
+      (state_dn_time(d, state_up_time(d, v)) = v)
+
+%%
+% @theorem SimpleDOWNUPtime
+% @description shows the relation between fast up followed by down for time
+% @yields QED
+% @stats Run time  = 9.00 secs. 20/7/17
+%%
+SimpleDOWNUPdtime: THEOREM
+     FORALL (v: itimes, d: steptime):
+    range_time_du_f(v, d) IMPLIES
+      (state_DN_time(d, state_UP_time(d, v)) = v)
+
+
+%%
+  % @function switched on?
+  % @description Whether the device is powered on
+  % @param {state} st The state of the system
+  % @returns {bool} True when powered on
+  % @memberof module:alaris_reversibility
+  %%
+switchedon?(p: state): bool =
+     device(p)`powered_on?
+
+%%
+  % @function rate_entry_ready
+  % @description circumstances when ready to enter infusion rate
+  % @param {state} st The state of the system
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+rate_entry_ready(st: state): boolean =
+      switchedon?(st) AND NOT rlock(st) AND
+      (((entrymode(st) = rmode) AND
+         ((topline(st) = holding) OR (topline(st) = setrate))) OR
+	 ((entrymode(st) = infusemode) AND (topline(st)=infusing)))
+
+%%
+  % @function vtbi_entry_ready
+  % @description circumstances when ready to enter vtbi
+  % @param {state} st The state of the system
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+vtbi_entry_ready(st: state): boolean =
+                  switchedon?(st) AND
+                  ((topline(st) = dispvtbi AND entrymode(st) = vtmode) OR
+                   (topline(st) = vtbitime AND entrymode(st) = vttmode))
+
+%%
+  % @function time_entry_ready
+  % @description circumstances when ready to enter time
+  % @param {state} st The state of the system
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+time_entry_ready(st: state): boolean =
+                  switchedon?(st) AND
+                  NOT device(st)`infusing? AND
+                   (topline(st) = vtbitime AND entrymode(st) = ttmode)
+
+%%
+  % @function filter_rate
+  % @description extract the infusion rate parameter from the state
+  % @param {state} st The state of the system
+  % @returns {irates}
+  % @memberof module:alaris_reversibility
+  %%
+filter_rate(st: state): irates = device(st)`infusionrate
+
+%%
+  % @function filter_vtbi
+  % @description extract the vtbi parameter from the state
+  % @param {state} st The state of the system
+  % @returns {ivols}
+  % @memberof module:alaris_reversibility
+  %%
+filter_vtbi(st: state): ivols = newvtbi(st)
+
+%%
+  % @function filter_time
+  % @description extract the time parameter from the pump state
+  % @param {state} st The state of the system
+  % @returns {ivols}
+  % @memberof module:alaris_reversibility
+  %%
+filter_time(st: state): itimes = newtime(st)
+
+%%
+  % @function guard_supsdown_rate
+  % @description the guard for sdown followed by sup when entering rate, sup must be permitted after sdown has been pressed and released
+  % @param {state} st The state of the system
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_supsdown_rate(st: state): boolean = rate_entry_ready(st) & per_sdown(st) &
+                                           per_sup(release_sdown(sdown(st)))
+%%
+  % @function guard_fupfdown_rate
+  % @description the guard for fdown followed by fup when entering rate, fup must be permitted after fdown has been pressed and released
+  % @param {state} st The state of the system
+  % @param {steprate} d The current step rate as defined by the pressing of the chevron key
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_fupfdown_rate(st: state, d:steprate): boolean =
+   rate_entry_ready(st) & per_fdown(st) &
+  current_sr(st) = d AND pressed(st) = maxpress AND
+    per_fup(release_fdown(fdown(st)))
+
+%%
+  % @function guard_sdownsup_rate
+  % @description the guard for sup followed by sdown when entering rate, sdown must be permitted after sup has been pressed and released
+  % @param {state} st The state of the system
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_sdownsup_rate(st: state): boolean = rate_entry_ready(st) & per_sup(st) &
+                                           per_sdown(release_sup(sup(st)))
+
+%%
+  % @function guard_fdownfup_rate
+  % @description the guard for fup followed by fdown when entering rate, fdown must be permitted after fup has been pressed and released
+  % @param {state} st The state of the system
+  % @param {steprate} d The current step as defined by releases
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+
+guard_fdownfup_rate(st: state, d:steprate): boolean =
+   rate_entry_ready(st) & per_fup(st) &
+  current_sr(st) = d AND pressed(st) = maxpress AND
+    per_fdown(release_fup(fup(st)))
+
+%%
+  % @function guard_supsdown_vtbi
+  % @description the guard for sdown followed by sup when entering vtbi, sup must be permitted after sdown has been pressed and released
+  % @param {state} st The state of the system
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_supsdown_vtbi(st: state): boolean = vtbi_entry_ready(st) & per_sdown(st) &
+                                           per_sup(release_sdown(sdown(st)))
+
+%%
+  % @function guard_fupfdown_vtbi
+  % @description the guard for fdown followed by fup when entering vtbi, fup must be permitted after fdown has been pressed and released
+  % @param {state} st The state of the system
+  % @param {stepvol} The current step as defined by pressing
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_fupfdown_vtbi(st: state, d:stepvol): boolean =
+   vtbi_entry_ready(st) & per_fdown(st) &
+  current_sv(st) = d AND pressed(st) = maxpress AND
+    per_fup(release_fdown(fdown(st)))
+
+%%
+  % @function guard_sdownsup_vtbi
+  % @description the guard for sup followed by sdown when entering vtbi, sdown must be permitted after sup has been pressed and released
+  % @param {state} st The state of the system
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_sdownsup_vtbi(st: state): boolean = vtbi_entry_ready(st) & per_sup(st) &
+                                           per_sdown(release_sup(sup(st)))
+
+%%
+  % @function guard_fdownfup_vtbi
+  % @description the guard for fup followed by fdown when entering vtbi, fdown must be permitted after fup has been pressed and released
+  % @param {state} st The state of the system
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_fdownfup_vtbi(st: state, d:steprate): boolean =
+   vtbi_entry_ready(st) & per_fup(st) &
+  current_sv(st) = d AND pressed(st) = maxpress AND
+    per_fdown(release_fup(fup(st)))
+
+%%
+  % @function guard_supsdown_time
+  % @description the guard for sdown followed by sup when entering time, sup must be permitted after sdown has been pressed and released
+  % @param {state} st The state of the system
+  % @param {steptime} the time step as defined by pressing down chevron key
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_supsdown_time(st: state, d: steptime): boolean =
+    time_entry_ready(st) AND
+        per_sdown(st) AND per_sup(release_sdown(sdown(st))) AND
+        current_st(st) = d AND pressed(st) = maxpress
+
+%%
+  % @function guard_fupfdown_time
+  % @description the guard for fdown followed by fup when entering time, fup must be permitted after fdown has been pressed and released
+  % @param {state} st The state of the system
+  % @param {steptime} the time step as defined by pressing down chevron key
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_fupfdown_time(st: state, d: steptime): boolean =
+    time_entry_ready(st) AND
+        per_fdown(st) AND per_fup(release_fdown(fdown(st))) AND
+        current_st(st) = d AND pressed(st) = maxpress
+
+%%
+  % @function guard_sdownsup_time
+  % @description the guard for sup followed by sdown when entering time, sdown must be permitted after sup has been pressed and released
+  % @param {state} st The state of the system
+  % @param {steptime} the time step as defined by pressing down chevron key
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_sdownsup_time(st: state, d: steptime): boolean =
+    time_entry_ready(st) AND
+        per_sup(st) AND per_sdown(release_sup(sup(st))) AND
+        current_st(st) = d AND pressed(st) = maxpress
+
+%%
+  % @function guard_fdownfup_time
+  % @description the guard for fup followed by fdown when entering time, fdown must be permitted after fup has been pressed and released
+  % @param {state} st The state of the system
+  % @param {steptime} the time step as defined by pressing down chevron key
+  % @returns {boolean}
+  % @memberof module:alaris_reversibility
+  %%
+guard_fdownfup_time(st: state, d: steptime): boolean =
+    time_entry_ready(st) AND
+        per_fup(st) AND per_fdown(release_fup(fup(st))) AND
+        current_st(st) = d AND pressed(st) = maxpress
+
+%%
+% @theorem supsdown_rate
+% @description instance of reversibility template for low range, range constraint and ready to enter rate
+% @yields counter-example see below
+% @stats
+%%
+supsdown_rate: THEOREM
+  FORALL (st: state):
+  guard_supsdown_rate(st) & maxrate > 1000 IMPLIES
+    filter_rate(release_sup(sup(release_sdown(sdown(st))))) = filter_rate(st)
+
+% Trying repeated skolemization, instantiation, and if-lifting,
+% this yields  30 subgoals:
+% supsdown_rate.1.1.1.1.1 :
+%
+% {-1}  device(st!1)`powered_on?
+% {-2}  holding?(topline(st!1))
+% {-3}  rmode?(entrymode(st!1))
+% {-4}  middisp(st!1)(0)
+% {-5}  middisp(st!1)(1)
+% {-6}  middisp(st!1)(3)
+% {-7}  fvol?(fndisp1(st!1))
+% {-8}  fvtbi?(fndisp2(st!1))
+% {-9}  fnull?(fndisp3(st!1))
+% {-10} nob?(which_press(st!1))
+% {-11} pressed(st!1) = 5
+% [-12] switchedon?(st!1)
+% {-13} device(st!1)`infusionrate < 100
+% {-14} (ceiling(10 * device(st!1)`infusionrate) - 1) / 10 > maxrate
+% {-15} holding?(holding)
+%  |-------
+% {1}   device(st!1)`infusing?
+% {2}   (device(st!1)`vtbi = 0)
+% [3]   rlock(st!1)
+% {4}   maxrate = 0
+
+% Rule?
+
+%% after adding to the guard maxrate > 1000
+%%
+% @theorem supsdown_rate
+% @description instance of reversibility template for low range, range constraint and ready to enter rate with maxrate > 1000
+% @yields counter-example see below
+% @stats
+%%
+
+% Trying repeated skolemization, instantiation, and if-lifting,
+% this simplifies to:
+% supsdown_rate.1.1.1.1.1 :
+
+% {-1}  floor((ceiling(10 * device(st!1)`infusionrate) - 1)) =
+%       floor(ceiling(10 * device(st!1)`infusionrate)) - 1
+% {-2}  (10 * ceiling(10 * device(st!1)`infusionrate) - 10) / 10 =
+%       (ceiling(10 * device(st!1)`infusionrate) - 1)
+%[-3]  device(st!1)`powered_on?
+%[-4]  holding?(topline(st!1))
+%[-5]  rmode?(entrymode(st!1))
+%[-6]  middisp(st!1)(0)
+%[-7]  middisp(st!1)(1)
+%[-8]  middisp(st!1)(3)
+%[-9]  fvol?(fndisp1(st!1))
+%[-10] fvtbi?(fndisp2(st!1))
+%[-11] fnull?(fndisp3(st!1))
+%[-12] nob?(which_press(st!1))
+%[-13] pressed(st!1) = 5
+%[-14] switchedon?(st!1)
+%[-15] device(st!1)`infusionrate < 100
+%[-16] maxrate > 1000
+%  |-------
+% [1]   device(st!1)`infusing?
+% [2]   (device(st!1)`vtbi = 0)
+% [3]   rlock(st!1)
+% {4}   (ceiling(10 * device(st!1)`infusionrate) - 1) / 10 > maxrate
+% {5}   (ceiling(10 * device(st!1)`infusionrate) - 1) / 10 < 0
+% {6}   (ceiling(10 * device(st!1)`infusionrate) - 1) / 10 = 0
+% {7}   floor(ceiling(10 * device(st!1)`infusionrate)) / 10 =
+%       device(st!1)`infusionrate
+
+%%
+  % @function simple_low_range_rate
+  % @description lowest range for infusion rates for slow chevrons
+  % @param {irates} r
+  % @returns {bool}
+  % @memberof module:alaris_reversibility
+  %%
+
+simple_low_range_rate(r: irates): bool =
+   maxrate > 1000 AND r<100 AND (floor(r*10) = r*10) AND (ceil_rate(r*10) = r*10)
+
+%%
+% @theorem low_simplesupsdown_rate
+% @description instance of reversibility template for low range, range constraint and ready to enter rate with maxrate > 1000
+% @yields counter-example see below
+% @stats
+%%
+
+low_simplesupsdown_rate: THEOREM
+  FORALL (st: state):
+  guard_supsdown_rate(st) & simple_low_range_rate(filter_rate(st)) IMPLIES
+    filter_rate(release_sup(sup(release_sdown(sdown(st))))) = filter_rate(st)
+
+%{-13} (10 * device(st!1)`infusionrate - 1) / 10 < 0
+%{-14} maxrate > 1000
+%{-15} device(st!1)`infusionrate < 100
+%{-16} (floor(10 * device(st!1)`infusionrate) =
+%        10 * device(st!1)`infusionrate)
+%{-17} (ceiling(10 * device(st!1)`infusionrate) =
+%        10 * device(st!1)`infusionrate)
+%  |-------
+%{1}   device(st!1)`infusing?
+%{2}   (device(st!1)`vtbi = 0)
+%[3]   rlock(st!1)
+%{4}   floor(1) / 10 < 0
+%{5}   floor(1) / 10 = device(st!1)`infusionrate
+
+
+
+%%
+% @theorem low_supsdown
+% @description instance of reversibility template for low range, range constraint and ready to enter rate
+% @yields QED
+% @stats Run time  = 204.50 secs. 21/7/17
+%%
+low_supsdown: THEOREM
+  FORALL (st: state):
+  guard_supsdown_rate(st) AND low_range_rate(filter_rate(st)) IMPLIES
+    filter_rate(release_sup(sup(release_sdown(sdown(st))))) = filter_rate(st)
+
+%%
+% @theorem mid_supsdown
+% @description instance of reversibility template for middle range, range constraint and ready to enter rate
+% @yields QED
+% @stats Run time  = 219.89 secs. 21/7/17
+%%
+mid_supsdown_rate: THEOREM
+  FORALL (st: state):
+  guard_supsdown_rate(st) AND mid_range_rate(filter_rate(st)) IMPLIES
+    filter_rate(release_sup(sup(release_sdown(sdown(st))))) = filter_rate(st)
+
+%%
+% @theorem high_supsdown_rate
+% @description instance of reversibility template for top range, range constraint and ready to enter rate
+% @yields QED
+% @stats Run time  = 233.05 secs. 21/7/17
+%%
+high_supsdown_rate: THEOREM
+  FORALL (st: state):
+  guard_supsdown_rate(st) AND high_range_rate(filter_rate(st)) IMPLIES
+    filter_rate(release_sup(sup(release_sdown(sdown(st))))) = filter_rate(st)
+
+%%
+% @theorem low_fupfdown_rate
+% @description instance of reversibility template for low range, range constraint and ready to enter rate. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 4825.87 secs. 21/7/17
+%%
+low_fupfdown_rate: THEOREM
+  FORALL (st: state):
+  guard_fupfdown_rate(st, small_step) AND low_range_rate_f(filter_rate(st), small_step) IMPLIES
+    filter_rate(release_fup(fup(release_fdown(fdown(st))))) = filter_rate(st)
+
+%%
+% @theorem mid_fupfdown_rate
+% @description instance of reversibility template for mid range, range constraint and ready to enter rate. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 151.50 secs. 21/7/17
+%%
+mid_fupfdown_rate: THEOREM
+  FORALL (st: state):
+  guard_fupfdown_rate(st, small_step) AND mid_range_rate_f(filter_rate(st), small_step) IMPLIES
+    filter_rate(release_fup(fup(release_fdown(fdown(st))))) = filter_rate(st)
+
+%%
+% @theorem high_fupfdown_rate
+% @description instance of reversibility template for high range, range constraint and ready to enter rate. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @statsRun time  = 258.65 secs. 21/7/17
+%%
+high_fupfdown_rate: THEOREM
+  FORALL (st: state):
+  guard_fupfdown_rate(st, small_step) AND high_range_rate_f(filter_rate(st), small_step) IMPLIES
+    filter_rate(release_fup(fup(release_fdown(fdown(st))))) = filter_rate(st)
+
+%%
+% @theorem low_sdownsup_rate
+% @description instance of reversibility template for low range, range constraint and ready to enter rate. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 61.41 secs. 21/7/17
+%%
+low_sdownsup_rate: THEOREM
+  FORALL (st: state):
+  guard_sdownsup_rate(st) AND low_range_rate_du(filter_rate(st)) IMPLIES
+    filter_rate(release_sdown(sdown(release_sup(sup(st))))) = filter_rate(st)
+
+%%
+% @theorem mid_sdownsup_rate
+% @description instance of reversibility template for mid range, range constraint and ready to enter rate. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 59.41 secs. 21/7/17
+%%
+mid_sdownsup_rate: THEOREM
+  FORALL (st: state):
+  guard_sdownsup_rate(st) AND mid_range_rate_du(filter_rate(st)) IMPLIES
+    filter_rate(release_sdown(sdown(release_sup(sup(st))))) = filter_rate(st)
+
+%%
+% @theorem high_sdownsup_rate
+% @description instance of reversibility template for high range, range constraint and ready to enter rate. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 78.66 secs. 21/7/17
+%%
+high_sdownsup_rate: THEOREM
+  FORALL (st: state):
+  guard_sdownsup_rate(st) AND high_range_rate_du(filter_rate(st)) IMPLIES
+    filter_rate(release_sdown(sdown(release_sup(sup(st))))) = filter_rate(st)
+
+%%
+% @theorem low_fdownfup_rate
+% @description instance of reversibility template for low range, range constraint and ready to enter rate. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 71.63 secs. 21/7/17
+%%
+low_fdownfup_rate: THEOREM
+  FORALL (st: state):
+  guard_fdownfup_rate(st, small_step) AND low_range_rate_duf(filter_rate(st), small_step) IMPLIES
+    filter_rate(release_fdown(fdown(release_fup(fup(st))))) = filter_rate(st)
+
+%%
+% @theorem mid_fdownfup_rate
+% @description instance of reversibility template for mid range, range constraint and ready to enter rate. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 73.09 secs. 21/7/17
+%%
+mid_fdownfup_rate: THEOREM
+  FORALL (st: state):
+  guard_fdownfup_rate(st, small_step) AND mid_range_rate_duf(filter_rate(st), small_step) IMPLIES
+    filter_rate(release_fdown(fdown(release_fup(fup(st))))) = filter_rate(st)
+
+%%
+% @theorem high_fdownfup_rate
+% @description instance of reversibility template for high range, range constraint and ready to enter rate. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 64.13 secs. 21/7/17
+%%
+high_fdownfup_rate: THEOREM
+  FORALL (st: state):
+  guard_fdownfup_rate(st, small_step) AND high_range_rate_duf(filter_rate(st), small_step) IMPLIES
+    filter_rate(release_fdown(fdown(release_fup(fup(st))))) = filter_rate(st)
+
+%%
+% @theorem low_supsdown_vtbi
+% @description instance of reversibility template for low range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 8.58 secs. 21/7/17
+%%
+low_supsdown_vtbi: THEOREM
+  FORALL (st: state):
+  guard_supsdown_vtbi(st) AND low_range_vols(filter_vtbi(st)) IMPLIES
+    filter_vtbi(release_sup(sup(release_sdown(sdown(st))))) = filter_vtbi(st)
+
+%%
+% @theorem mid_supsdown_vtbi
+% @description instance of reversibility template for mid range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 12.52 secs. 21/7/17
+%%
+mid_supsdown_vtbi: THEOREM
+  FORALL (st: state):
+  guard_supsdown_vtbi(st) AND mid_range_vols(filter_vtbi(st)) IMPLIES
+    filter_vtbi(release_sup(sup(release_sdown(sdown(st))))) = filter_vtbi(st)
+
+%%
+% @theorem high_supsdown_vtbi
+% @description instance of reversibility template for high range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 13.54 secs. 21/7/17
+%%
+high_supsdown_vtbi: THEOREM
+  FORALL (st: state):
+  guard_supsdown_vtbi(st) AND high_range_vols(filter_vtbi(st)) IMPLIES
+    filter_vtbi(release_sup(sup(release_sdown(sdown(st))))) = filter_vtbi(st)
+
+%%
+% @theorem low_fupfdown_vtbi
+% @description instance of reversibility template for low range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 17.74 secs. 21/7/17
+%%
+low_fupfdown_vtbi: THEOREM
+  FORALL (st: state):
+  guard_fupfdown_vtbi(st, small_step) AND low_range_vols_f(filter_vtbi(st), small_step) IMPLIES
+    filter_vtbi(release_fup(fup(release_fdown(fdown(st))))) = filter_vtbi(st)
+
+%%
+% @theorem low_fupfdown_vtbi
+% @description instance of reversibility template for mid range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 15.78 secs. 21/7/17
+%%
+mid_fupfdown_vtbi: THEOREM
+  FORALL (st: state):
+  guard_fupfdown_vtbi(st, small_step) AND mid_range_vols_f(filter_vtbi(st), small_step) IMPLIES
+    filter_vtbi(release_fup(fup(release_fdown(fdown(st))))) = filter_vtbi(st)
+
+%%
+% @theorem high_fupfdown_vtbi
+% @description instance of reversibility template for high range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 15.70 secs. 21/7/17
+%%
+high_fupfdown_vtbi: THEOREM
+  FORALL (st: state):
+  guard_fupfdown_vtbi(st, small_step) AND high_range_vols_f(filter_vtbi(st), small_step) IMPLIES
+    filter_vtbi(release_fup(fup(release_fdown(fdown(st))))) = filter_vtbi(st)
+
+%%
+% @theorem low_sdownsup_vtbi
+% @description instance of reversibility template for low range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 9.88 secs. 21/7/17
+%%
+low_sdownsup_vtbi: THEOREM
+  FORALL (st: state):
+  guard_sdownsup_vtbi(st) AND low_range_vols_du(filter_vtbi(st)) IMPLIES
+    filter_vtbi(release_sdown(sdown(release_sup(sup(st))))) = filter_vtbi(st)
+
+%%
+% @theorem mid_sdownsup_vtbi
+% @description instance of reversibility template for mid range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 9.65 secs. 21/7/17
+%%
+mid_sdownsup_vtbi: THEOREM
+  FORALL (st: state):
+  guard_sdownsup_vtbi(st) AND mid_range_vols_du(filter_vtbi(st)) IMPLIES
+    filter_vtbi(release_sdown(sdown(release_sup(sup(st))))) = filter_vtbi(st)
+
+%%
+% @theorem high_sdownsup_vtbi
+% @description instance of reversibility template for high range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 10.19 secs. 21/7/17
+%%
+high_sdownsup_vtbi: THEOREM
+  FORALL (st: state):
+  guard_sdownsup_vtbi(st) AND high_range_vols_du(filter_vtbi(st)) IMPLIES
+    filter_vtbi(release_sdown(sdown(release_sup(sup(st))))) = filter_vtbi(st)
+
+%%
+% @theorem low_fdownfup_vtbi
+% @description instance of reversibility template for low range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 11.86 secs. 21/7/17
+%%
+low_fdownfup_vtbi: THEOREM
+  FORALL (st: state):
+  guard_fdownfup_vtbi(st, small_step) AND low_range_vols_duf(filter_vtbi(st), small_step) IMPLIES
+    filter_vtbi(release_fdown(fdown(release_fup(fup(st))))) = filter_vtbi(st)
+
+%%
+% @theorem mid_fdownfup_vtbi
+% @description instance of reversibility template for mid range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 11.86 secs. 21/7/17
+%%
+mid_fdownfup_vtbi: THEOREM
+  FORALL (st: state):
+  guard_fdownfup_vtbi(st, small_step) AND mid_range_vols_duf(filter_vtbi(st), small_step) IMPLIES
+    filter_vtbi(release_fdown(fdown(release_fup(fup(st))))) = filter_vtbi(st)
+
+%%
+% @theorem high_fdownfup_vtbi
+% @description instance of reversibility template for high range, range constraint and ready to enter vtbi. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 11.42 secs. 21/7/17
+%%
+high_fdownfup_vtbi: THEOREM
+  FORALL (st: state):
+  guard_fdownfup_vtbi(st, small_step) AND high_range_vols_duf(filter_vtbi(st), small_step) IMPLIES
+    filter_vtbi(release_fdown(fdown(release_fup(fup(st))))) = filter_vtbi(st)
+
+%%
+% @theorem supsdown_time
+% @description instance of reversibility template for range constraint and ready to enter time. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 15.61 secs. 21/7/17
+%%
+supsdown_time: THEOREM
+  FORALL (st: state):
+  guard_supsdown_time(st, small_step) AND range_time_ud(filter_time(st), small_step) IMPLIES
+    filter_time(release_sup(sup(release_sdown(sdown(st))))) = filter_time(st)
+%%
+% @theorem fupfdown_time
+% @description instance of reversibility template for range constraint and ready to enter time. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 12.21 secs. 21/7/17
+%%
+fupfdown_time: THEOREM
+  FORALL (st: state):
+  guard_fupfdown_time(st, small_step) AND range_time_ud_f(filter_time(st), small_step) IMPLIES
+    filter_time(release_fup(fup(release_fdown(fdown(st))))) = filter_time(st)
+
+%%
+% @theorem sdownsup_time
+% @description instance of reversibility template for range constraint and ready to enter time. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 15.58 secs. 21/7/17
+%%
+sdownsup_time: THEOREM
+  FORALL (st: state):
+  guard_sdownsup_time(st, small_step) AND range_time_du(filter_time(st), small_step) IMPLIES
+    filter_time(release_sdown(sdown(release_sup(sup(st))))) = filter_time(st)
+
+%%
+% @theorem fdownfup_time
+% @description instance of reversibility template for range constraint and ready to enter time. Note this version is constrained to an assumption that the chevron key is not held down.
+% @yields QED
+% @stats Run time  = 11.57 secs. 21/7/17
+%%
+fdownfup_time: THEOREM
+  FORALL (st: state):
+  guard_fdownfup_time(st, small_step) AND range_time_du_f(filter_time(st), small_step) IMPLIES
+    filter_time(release_fdown(fdown(release_fup(fup(st))))) = filter_time(st)
+
+
+END alaris_reversibility_pattern

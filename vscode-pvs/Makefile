@@ -53,6 +53,9 @@ install-vsce:
 vsce:
 	node_modules/vsce/out/vsce package
 
+install-jasmine:
+	npm install jasmine ts-node jasmine-ts
+
 install:
 	npm install && npm install --no-save jasmine ts-node jasmine-ts
 
@@ -70,6 +73,8 @@ test-proofscript:
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proofscript.json
 test-workspace:
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-workspace.json
+test-pvscontext:
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-pvscontext.json
 test:
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-all.json
 test-all: test
@@ -91,3 +96,5 @@ clean-test:
 	-rm test/**/pvsbin/*
 	-rm test/**/pvslog/*
 	-rm test/**/.pvscontext
+
+.PHONY: test

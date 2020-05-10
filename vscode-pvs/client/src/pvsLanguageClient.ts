@@ -52,6 +52,7 @@ import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsPackageManager } from './providers/vscodePvsPackageManager';
 import { VSCodePvsProofMate } from './views/vscodePvsProofMate';
 import { VSCodePvsFileOutlineProvider } from './providers/vscodsPvsOulineProvider';
+import * as os from 'os';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -209,7 +210,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// Create the language client and start the client.
 		this.client = new LanguageClient(
 			'PvsLanguageServer',
-			'*pvs*',
+			'pvs-server',
 			serverOptions,
 			clientOptions
 		);
@@ -261,6 +262,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// set vscode context variable pvs-language-active to true
 				commands.executeCommand('setContext', 'pvs-language-active', true);
 
+				// set vscode context variable macOs to the appropriate value
+				// if (os.platform() === "darwin") {
+				// 	commands.executeCommand('setContext', 'macOs', true);
+				// }
+
+				// update status bar
+				this.statusBar.ready();
+
 				// parse file opened in the editor
 				if (window.activeTextEditor && window.activeTextEditor.document) {
 					this.client.sendRequest(comm.serverCommand.parseFile, window.activeTextEditor.document.fileName);
@@ -278,6 +287,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			// start PVS
 			const contextFolder = vscodeUtils.getEditorContextFolder();
 			this.pvsPath = workspace.getConfiguration().get("pvs.path");
+
 			// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
 			this.client.sendRequest(comm.serverCommand.startPvsServer, {
 				pvsPath: this.pvsPath, 

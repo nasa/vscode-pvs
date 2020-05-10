@@ -119,25 +119,25 @@ export class PvsProcess {
 	/**
 	 * Internal function. Runs the relocate script necessary for starting pvs.
 	 */
-	protected async relocate(): Promise<boolean> {
-		let relocate: string = null;
-		if (await fsUtils.fileExists(path.join(`${this.pvsPath}`, "install-sh"))) {
-			relocate = `cd ${this.pvsPath} && ./install-sh` // pvs 7 has this new script
-		} else if (await fsUtils.fileExists(path.join(`${this.pvsPath}`, "bin/relocate"))) {
-			relocate = `cd ${this.pvsPath} && bin/relocate`; // this is for backwards compatibility
-		}
-		if (relocate) {
-			try {
-				const output: Buffer = execSync(relocate);
-				// console.log(output.toString());
-			} catch (relocateError) {
-				console.log(relocateError);
-				return false;
-			}
-			return true;
-		}
-		return false;
-	}
+	// protected async relocate(): Promise<boolean> {
+	// 	let relocate: string = null;
+	// 	if (await fsUtils.fileExists(path.join(`${this.pvsPath}`, "install-sh"))) {
+	// 		relocate = `cd ${this.pvsPath} && ./install-sh` // pvs 7 has this new script
+	// 	} else if (await fsUtils.fileExists(path.join(`${this.pvsPath}`, "bin/relocate"))) {
+	// 		relocate = `cd ${this.pvsPath} && bin/relocate`; // this is for backwards compatibility
+	// 	}
+	// 	if (relocate) {
+	// 		try {
+	// 			const output: Buffer = execSync(relocate);
+	// 			// console.log(output.toString());
+	// 		} catch (relocateError) {
+	// 			console.log(relocateError);
+	// 			return false;
+	// 		}
+	// 		return true;
+	// 	}
+	// 	return false;
+	// }
 
 	//----------------------------------------------------------------------------------------------------
 	//--------------------- The following functions are the main APIs provided by PvsProcess
@@ -209,20 +209,22 @@ export class PvsProcess {
 						this.log("Yes\n", { force: true });
 					}
 
-					const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
-					if (matchRestartAction) {
-						this.pvsProcess.stdin.write(":pop\n");
-						this.log(":pop\n", { force: true });
-					} 
-
-					const match: RegExpMatchArray = /\bpvs\(\d+\)\s*:/g.exec(data);
+					const match: RegExpMatchArray = /(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g.exec(data);
 					if (match && match[0]) {
+						// NB: avoid doing :pop, as it may trigger process exit
+						// const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
+						// if (matchRestartAction) {
+						// 	this.pvsProcess.stdin.write(":pop\n");
+						// 	this.log(":pop\n", { force: true });
+						// 	return;
+						// }
 						if (!this.ready) {
 							this.ready = true;
 							resolve(true);
 						}
 						if (this.cb && typeof this.cb === "function") {
-							const res: string = this.data.replace(/\bpvs\(\d+\)\s*:/g, "");
+							let res: string = this.data.replace(/(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g, "");
+							res = res.replace("[Current process: Initial Lisp Listener]", "");
 							this.cb(res.trim());
 						}
 					}
@@ -241,7 +243,7 @@ export class PvsProcess {
 				});
 				this.pvsProcess.on("message", (message: any) => {
 					this.log("[pvs-process] Process message");
-					// console.dir(message, { depth: null });
+					console.dir(message, { depth: null });
 				});
 			});
 		} else {
@@ -293,7 +295,7 @@ export class PvsProcess {
 					try {
 						execSync(`kill -9 ${pvs_shell}`);
 						this.pvsProcess.on("close", (code: number, signal: string) => {
-							console.log("[pvs-process] Process terminated");
+							// console.log("[pvs-process] Process terminated");
 							resolve(true);
 							// console.dir({ code, signal }, { depth: null });
 						});

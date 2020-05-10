@@ -1,0 +1,207 @@
+%%
+% @theory types_and_constants_th
+% @author Michael Harrison and Paolo Masci (QMUL and Newcastle University)
+% @date April 2014
+% @description Types and constants used generically by a range of infusion devices.
+%              Maximum infusion rate, maximum and minimum vtbi, timeouts, battery maximum and minimums are parameterised
+%%
+types_and_constants_th [
+   maxrate  : posnat,
+   maxinfuse :posnat,
+   infusemin: posreal,
+   timeout  : nat,
+   shorttimeout : nat,
+   maxtime  :posnat,
+   bat_max: posnat,
+   bat_min: posnat
+]: THEORY
+ BEGIN
+
+%-------------- Constants Definitions, relating to menus available in the device
+   %-- Specific to Alaris GP infusion pump
+   %%
+   % @const {nat} maxbag
+   % @description maximum size of infusion bags, available via bags menu
+   %%
+   maxbags  : nat = 3000
+
+   %%
+   % @const {nat} bigstep 
+   % @description used by pump device in functions that are used by the alaris pump theory
+   %%
+   bigstep  : nat = 10
+
+   %%
+   % @const {nat} drate|dvtbi|dvol|dtime|etc
+   % @description used in display and menu lists
+   %%
+   drate    : nat = 0
+   dvtbi    : nat = 1
+   dvol     : nat = 2
+   dtime    : nat = 3
+   dbags    : nat = 4
+   dquery   : nat = 5
+   dkvorate : nat = 6
+   dnewvtbi : nat = 7
+   dnewtime : nat = 8
+   dnewrate : nat = 9
+   dlock    : nat = 0
+   dpdtls   : nat = 6
+ 
+   %%
+   % @const {nat} mbags|midbags
+   % @description used as bags menu offsets
+   %%
+   mbags    : nat = 9
+   midbag   : nat = 4
+   
+   %%
+   % @const {nat} maxpress
+   % @description maximum number of times the chevron key can be pressed
+   %%
+   maxpress : nat = 5
+
+   %%
+   % @const {real} small_step|bigstep
+   % @description increment steps used during data entry
+   %%
+   small_step: real = 1
+   big_step: real = 10
+
+
+%-------------- Type Definitions  
+   %%
+   % @datatype {nonneg_real} irates
+   % @description infusion rate
+   %%
+   irates   : TYPE = nonneg_real
+
+   %%
+   % @datatype {nonneg_real} ivols
+   % @description volume infused, or to be infused
+   %%
+   ivols: TYPE = nonneg_real
+
+   %%
+   % @datatype {nonneg_real} itimes
+   % @description elapsed time
+   %%
+   itimes: TYPE = nonneg_real
+
+   %-- Specific to Alaris GP
+   %%
+   % @datatype {enum} iline
+   % @description topline display modes
+   %%
+   iline: TYPE = { holding, infusing, volume, dispvtbi, attention, 
+                       vtbidone, dispkvo, setvtbi, setrate, setnotfitted,
+                       lockrate, locked, options, dispinfo, 
+                       vtbitime, dispblank, clearsetup, batterylow }
+
+   %%
+   % @datatype {enum} options_tags
+   % @description used in effecting an appropriate action associated with the options menu
+   %%
+   option_tags: TYPE = {ratelock, rateunlock, dosingsumm, adjalarm, 
+                         pumpdetails, infusionsetup, setvtbiovertime, 
+                         disableratelock, enableratelock, optionblank}
+
+   %%
+   % @datatype {enum} imid_type
+   % @description range of possible entries in the middle part of the display
+   %%
+   imid_type: TYPE = {x: upto(dnewrate) | x >= drate}
+
+   %%
+   % @datatype {enum} imid
+   % @description functional type indicating whether a display is visible in the middle part of the display
+   %%
+   imid: TYPE = [ imid_type -> boolean ]
+
+   %%
+   % @datatype {enum} ifunctions
+   % @description information that may appear in the displays associated with key1, key2 or key3
+   %%
+   ifunctions: TYPE = { fvol, fvtbi, fcancel, fclear, fnull, fback, fok, 
+                         fbags, fquit, fkeep, fyes, fno }
+
+   %%
+   % @datatype {enum} emodes
+   % @description the range of modes that determine how a function is to be interpreted
+   %%
+   emodes: TYPE = { rmode, bagmode, tbagmode, qmode, vtmode, vttmode, 
+                         ttmode, nullmode, infusemode }
+
+   %%
+   % @datatype {upto(maxbags)} ibags
+   % @description the sizes of bags indicated by the menu
+   %%
+   ibags: TYPE = upto(maxbags)
+
+   %%
+   % @datatype {upto(mbags)} ibagscursor
+   % @description determines the range associated with movement of bags in the cursor menu
+   %%
+   ibagscursor: TYPE = upto(mbags)
+
+   %%
+   % @datatype {function} abags
+   % @description function type associated with the bags menu
+   %%
+   abags: TYPE = [ upto(mbags) -> ibags ]
+
+   %%
+   % @datatype {upto(dpdtls)} qcurse
+   % @description determines the range associated with the options menu
+   %%
+   qcurse: TYPE = { x: upto(dpdtls) | x >= dlock }
+
+   %%
+   % @datatype {function} o_menu
+   % @description the function type associated with the options menu
+   %%
+   o_menu: TYPE = [ qcurse -> option_tags ]
+
+   %%
+   % @datatype {nat} delta
+   % @description size of the step associated with a chevron key
+   %%
+   delta: TYPE = nat
+
+   %%
+   % @datatype {upto(maxpress)} presstime
+   % @description define time button pressed
+   %%
+   presstime : TYPE = upto(maxpress)
+
+   %%
+   % @datatype {upto(maxtime)} pausetime
+   % @description defines time device paused respectively
+   %%
+   pausetime: TYPE = upto(maxtime)
+
+   %%
+   % @datatype {enum} steprate
+   % @description size of the step for each of rate when using the chevron keys
+   %%
+   steprate: TYPE = {x: irates | x = small_step OR x=big_step}
+
+   %%
+   % @datatype {enum} stepvol
+   % @description size of the step for volume when using the chevron keys
+   %%
+   stepvol: TYPE = {x: ivols | x = small_step OR x=big_step}
+
+   %%
+   % @datatype {enum} steptime
+   % @description size of the step for time when using the chevron keys
+   %%
+   steptime: TYPE = {x: itimes | x = small_step OR x= 10*small_step OR x=60 OR x=600}
+
+   %%
+   % @datatype {enum} chev_buttons
+   % @description identifies and enumerates the chevron keys
+   %%
+   chev_buttons: TYPE = {fupb, fdownb, supb, sdownb, nob}
+
+ END types_and_constants_th

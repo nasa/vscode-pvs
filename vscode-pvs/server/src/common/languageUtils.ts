@@ -38,7 +38,7 @@
 
 import * as fsUtils from './fsUtils';
 import * as path from 'path';
-import * as language from '../common/languageKeywords';
+import * as language from './languageKeywords';
 import { ProofCommandDescriptor, FileList, FormulaDescriptor, SimpleConnection, ContextDescriptor, 
 			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range } from '../common/serverInterface';
 

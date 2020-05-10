@@ -1,11 +1,9 @@
-// import { ContextDiagnostics } from "./server/pvsProcess";
-//import { PvsFindDeclaration, PvsParserResponse, PvsTypecheckerResponse, XmlRpcResponse } from "./server/common/serverInterface";
 import * as fsUtils from "../server/src/common/fsUtils";
 import * as test from "./test-constants";
 import * as path from 'path';
 import { PvsResponse, FindDeclarationResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
-import { label, log, dir, configFile, sandboxExamples } from './test-utils';
+import { label, configFile, sandboxExamples } from './test-utils';
 
 //----------------------------
 //   Test cases for find-declaration
@@ -15,21 +13,24 @@ describe("pvs-proxy", () => {
 	beforeAll(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
-		log(content);
+		// console.log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
 		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
-		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
+		await pvsProxy.activate({ debugMode: false, showBanner: false }); // this will also start pvs-server
 
-		// delete pvsbin files
+		// delete pvsbin files and .pvscontext
 		await fsUtils.deletePvsCache(sandboxExamples);
+
+		console.log("\n----------------------");
+		console.log("test-find-declaration");
+		console.log("----------------------");
 	});
 	afterAll(async () => {
-		// delete pvsbin files
-		await fsUtils.deletePvsCache(sandboxExamples);
-
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
+		// delete pvsbin files and .pvscontext
+		await fsUtils.deletePvsCache(sandboxExamples);
 	});
 	
 	//-----------------------------------------
@@ -43,7 +44,7 @@ describe("pvs-proxy", () => {
 
 		await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		const response: PvsResponse = await pvsProxy.findDeclaration("sqrt");
-		console.dir(response);
+		// console.dir(response);
 		expect(response).not.toBeNull();
 		expect(response["error"]).not.toBeDefined();
 		expect(response["result"]).not.toBeNull();

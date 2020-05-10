@@ -1,0 +1,4 @@
+{
+    "description": "jsdoc configuration",
+    "plugins": [ "plugins/markdown" ]
+}

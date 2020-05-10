@@ -80,9 +80,6 @@ class PvsIoProcess {
 	constructor (desc: { pvsPath: string }, connection?: SimpleConnection) {
 		this.pvsPath = (desc && desc.pvsPath) ? fsUtils.tildeExpansion(desc.pvsPath) : __dirname
 		this.pvsLibraryPath = path.join(this.pvsPath, "lib");
-		// this.contextFolder = (desc && desc.contextFolder) ? fsUtils.tildeExpansion(desc.contextFolder) : __dirname;
-
-		// this.processType = (desc && desc.processType) ? desc.processType : "typechecker"; // this is used only for debugging
 		this.connection = connection;
 	}
 

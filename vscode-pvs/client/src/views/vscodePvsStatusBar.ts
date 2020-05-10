@@ -39,6 +39,7 @@ import { StatusBarItem, ExtensionContext, StatusBarAlignment, window } from "vsc
 import { LanguageClient } from "vscode-languageclient";
 import * as path from 'path';
 import { PvsVersionDescriptor } from "../common/serverInterface";
+import * as os from 'os';
 
 export class StatusBarPriority {
     public static Min: number = 1;
@@ -65,7 +66,10 @@ export class VSCodePvsStatusBar {
         const wName: string = this.contextFolder.substring(this.contextFolder.lastIndexOf("/") + 1, this.contextFolder.length);
         let msg: string = `[ ${wName} ] `;
         msg += (nFiles !== 1) ? `${nFiles} of ${this.nfiles} files parsed ` : `1 of ${this.nfiles} file parsed `;
-        msg += `(${this.stats["!tot!"].types} types, ${this.stats["!tot!"].lemmas} lemmas, ${this.stats["!tot!"].definitions} definitions)`;
+        if (os.platform() !== "darwin") {
+            // stats are not yet supported in macOs
+            msg += `(${this.stats["!tot!"].types} types, ${this.stats["!tot!"].lemmas} lemmas, ${this.stats["!tot!"].definitions} definitions)`;
+        }
         return msg;
     }
     protected resetStats (): void {

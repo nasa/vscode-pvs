@@ -1,10 +1,8 @@
-// import { ContextDiagnostics } from "./server/pvsProcess";
-//import { PvsFindDeclaration, PvsParserResponse, PvsTypecheckerResponse, XmlRpcResponse } from "./server/common/serverInterface";
 import * as fsUtils from "../server/src/common/fsUtils";
 import * as test from "./test-constants";
 import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
-import { label, log, dir, configFile, sandboxExamples } from './test-utils';
+import { label, configFile, sandboxExamples } from './test-utils';
 
 
 //----------------------------
@@ -15,29 +13,28 @@ describe("pvs-proxy", () => {
 	beforeAll(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
-		log(content);
+		// console.log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
 		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
-		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
+		await pvsProxy.activate({ debugMode: false, showBanner: false }); // this will also start pvs-server
 
-		// delete pvsbin files
+		// delete pvsbin files and .pvscontext
 		await fsUtils.deletePvsCache(sandboxExamples);
+
+		console.log("\n----------------------");
+		console.log("test-proxy");
+		console.log("----------------------");
 	});
 	afterAll(async () => {
-		// delete pvsbin files
-		await fsUtils.deletePvsCache(sandboxExamples);
-
-		if (!test.EXTERNAL_SERVER) {
-			// kill pvs server & proxy
-			console.log(" killing pvs server...")
-			await pvsProxy.killPvsServer();
-		}
+		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
+		// delete pvsbin files and .pvscontext
+		await fsUtils.deletePvsCache(sandboxExamples);
 	});
 
 	//-----------------------------------
-	console.info("Starting test case execution");
+	// console.info("Starting test case execution");
 	//-----------------------------------
 
 	it(`can be started correctly`, async () => {
@@ -63,7 +60,7 @@ describe("pvs-proxy", () => {
 	it(`can list pvs-server methods`, async () => {
 		label(`can list pvs-server methods`);
 		const response: PvsResponse = await pvsProxy.listMethodsRequest();
-		log(response);
+		// console.log(response);
 		const mths: string[] = [
 			'change-context',      'change-workspace',
 			'find-declaration',    'help',
@@ -83,7 +80,7 @@ describe("pvs-proxy", () => {
 	it(`knows client methods`, async () => {
 		label(`knows client methods`);
 		const response: PvsResponse = await pvsProxy.listClientMethods();
-		log(response);
+		// console.log(response);
 		// console.info("listClientMethods: ans = ", ans);
 		expect(response.result).toEqual(pvsProxy.client_methods);
 	});

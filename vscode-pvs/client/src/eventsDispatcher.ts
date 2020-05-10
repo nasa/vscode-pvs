@@ -268,7 +268,8 @@ export class EventsDispatcher {
                     this.proofExplorer.setInitialProofState(desc.response.result);
                 }
                 // request proof script
-                this.client.sendRequest(serverCommand.loadProof, desc.args);
+                // this.client.sendRequest(serverCommand.loadProof, desc.args);
+                
                 // set vscode context variable prover-session-active to true
                 vscode.commands.executeCommand('setContext', 'prover-session-active', true);
             }

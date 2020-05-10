@@ -12,27 +12,25 @@ describe("pvs-proxy", () => {
 	beforeAll(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
-		log(content);
+		// console.dir(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
 		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
-		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
+		await pvsProxy.activate({ debugMode: false, showBanner: false }); // this will also start pvs-server
 
-		// delete pvsbin files
+		// delete pvsbin files and .pvscontext
 		await fsUtils.deletePvsCache(sandboxExamples);
+
+		console.log("\n----------------------");
+		console.log("test-workspace");
+		console.log("----------------------");
 	});
 	afterAll(async () => {
-		// delete pvsbin files
-		await fsUtils.deletePvsCache(sandboxExamples);
-
-		if (!test.EXTERNAL_SERVER) {
-			// kill pvs server & proxy
-			console.log(" killing pvs server...")
-			await pvsProxy.killPvsServer();
-		}
+		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
+		// delete pvsbin files and .pvscontext
+		await fsUtils.deletePvsCache(sandboxExamples);
 	});
-
 
 	it(`can tell what is the current context and returns a well-formed path`, async () => {
 		label(`can tell what is the current context and returns a well-formed path`);
@@ -45,25 +43,20 @@ describe("pvs-proxy", () => {
 		expect(current.result).toMatch(/\/.*/); // path should be absolute, therefore it should start with /
 	});
 
-	// return; // the following tests are completed successfully -- remove the return statement if you want to run them
-
-	// OK
 	it(`can change context`, async () => {
 		label(`can change context`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
 		const home: PvsResponse = await pvsProxy.changeContext("~");
+		// console.dir(home);
 		expect(home).not.toBeNull();
 		expect(home.result).not.toContain("~"); // tilde should be expanded
 		expect(home.result).toMatch(/\/.*/); // path should be absolute, therefore it should start with /
 	});
 
-	return;
-
-	// OK
-	it(`change context is equivalent to change-workspace`, async () => {
-		label(`change context is equivalent to change-workspace`);
+	it(`change-context is equivalent to change-workspace`, async () => {
+		label(`change-context is equivalent to change-workspace`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 

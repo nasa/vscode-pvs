@@ -182,6 +182,8 @@ constants: THEORY
 	k = KEY_NULL -> 14 ENDCOND
    CONVERSION KEY_CODE_TO_INT
 
+  digit?(k: KEY_CODE): bool = k >= 0 AND k <= 9
+
   messageID: TYPE = { TOO_HIGH, TOO_LOW, OUT_OF_RANGE };
   messageID_TO_INT(m: messageID): int =
    COND m = TOO_HIGH -> 0,

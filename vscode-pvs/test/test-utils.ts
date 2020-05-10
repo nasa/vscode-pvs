@@ -22,15 +22,16 @@ export const steverFiles: string[] = [
 ];
 export const pillbox: string = path.join(__dirname, "pillboxv7"); // examples courtesy of michael harrison (newcastle university) and paolo masci (NIA/NASA LaRC)
 export const pillboxFiles: string[] = [
-	"conversions",
 	"firstpillchecks",
 	"firstpillmodel",
-	"main",
 	"pillboxchecks",
 	"pilldispenser.types_and_constants",
 	"pilldispensermodes"
 ];
 export const pvsioweb: string = path.join(__dirname, "pvsioweb"); // examples from the pvsioweb distribution
+export const pvsiowebFolders: string[] = [
+	"alaris", "baxter", "calc", "data_entry", "fcu", "giip", "gpca", "ice", "mt32"
+];
 export const pvsiowebFiles: string[] = [
 	"alaris/alarisGH_AsenaCC",
 	"alaris/alarisPC8100PumpModule",
