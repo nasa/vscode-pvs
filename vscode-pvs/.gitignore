@@ -10,4 +10,11 @@ server/.DS_Store
 *.pdf
 *.gif
 *.class
+*.prf
+*.pvs
+*.hpvs
 .antlr
+.pvscontext
+*.tccs
+*.jprf
+pvsbin/
