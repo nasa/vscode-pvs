@@ -210,7 +210,7 @@ export class PvsLanguageServer {
 	//--
 	protected isSameWorkspace (contextFolder: string): boolean {
 		return contextFolder === this.lastParsedContext
-			|| contextFolder === path.join(this.lastParsedContext, fsUtils.logFolder);
+			|| contextFolder === path.join(this.lastParsedContext, fsUtils.pvsbinFolder);
 	}
 
 	/**
@@ -282,7 +282,7 @@ export class PvsLanguageServer {
 		if (response) {
 			if (response.result) {
 				// the following additional logic is necessary to create the log file and start up the interactive cli session
-				const proofLogPath: string = path.join(request.contextFolder, fsUtils.logFolder);
+				const proofLogPath: string = path.join(request.contextFolder, fsUtils.pvsbinFolder);
 				const channelID: string = utils.desc2id(request);
 				const pvsLogFile: string = path.join(proofLogPath, `${channelID}${fsUtils.logFileExtension}`);
 				const pvsTmpLogFile: string = path.join(proofLogPath, `${channelID}-tmp${fsUtils.logFileExtension}`);
@@ -336,7 +336,7 @@ export class PvsLanguageServer {
 		if (response) {
 			if (response.result) {
 				// the following additional logic is necessary to create the log file and start up the interactive cli session
-				const proofLogPath: string = path.join(request.contextFolder, fsUtils.logFolder);
+				const proofLogPath: string = path.join(request.contextFolder, fsUtils.pvsbinFolder);
 				const channelID: string = utils.desc2id(request);
 				const pvsLogFile: string = path.join(proofLogPath, `${channelID}${fsUtils.logFileExtension}`);
 				const pvsTmpLogFile: string = path.join(proofLogPath, `${channelID}-tmp${fsUtils.logFileExtension}`);
@@ -864,8 +864,7 @@ export class PvsLanguageServer {
 				fileExtension: string, 
 				contextFolder: string 
 			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
-			if (desc && !(this.isSameWorkspace(desc.contextFolder) 
-							&& (desc.contextFolder.endsWith(`/${fsUtils.logFolder}`) || desc.contextFolder.endsWith("/pvsbin")))) {
+			if (desc && !this.isSameWorkspace(desc.contextFolder)) {
 				const fname: string = fsUtils.desc2fname(desc);
 				const taskId: string = `parse-${fname}`;
 				// send feedback to the front-end
@@ -879,10 +878,9 @@ export class PvsLanguageServer {
 				this.connection.sendRequest(serverEvent.workspaceStats, { contextFolder: desc.contextFolder, files: nfiles });
 
 				// send information to the client, to populate theory explorer on the front-end
-				if (!this.isSameWorkspace(desc.contextFolder)) {
-					this.lastParsedContext = desc.contextFolder;
-					this.connection.sendRequest(serverEvent.contextUpdate, null);
-				}
+				this.lastParsedContext = desc.contextFolder;
+				this.connection.sendRequest(serverEvent.contextUpdate, null);
+
 				const cdesc: ContextDescriptor = await this.getContextDescriptor({ contextFolder: desc.contextFolder });
 				this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 
@@ -987,18 +985,21 @@ export class PvsLanguageServer {
 				const actionId: string = opt.actionId || action;
 				const contextFolder: string = (typeof request === "string") ? request : request.contextFolder;
 				// if this is the /pvsbin folder, don't do anything 
-				if (this.isSameWorkspace(contextFolder) 
-						&& (contextFolder.endsWith(`/${fsUtils.logFolder}`) || contextFolder.endsWith(`/pvsbin`))) {
-					resolve();
-					return;
-				}
+				// if (this.isSameWorkspace(contextFolder)) {
+				// 	resolve();
+				// 	return;
+				// }
 				// send feedback to the front-end
 				const taskId: string = `${actionId}-${contextFolder}`;
 				const workspaceName: string = fsUtils.getContextFolderName(contextFolder);
+
+				// constants useful for feedback
+				const actionFriendlyName: string = action === "parse-workspace" ? "Parse" : "Typecheck";
+				const actionFriendlyNamePast: string = action === "parse-workspace" ? "Parsed" : "Typechecked";
+				const actionFriendlyNameContinuous: string = action === "parse-workspace" ? "Parsing" : "Typechecking";
+
 				if (opt.withFeedback) {
-					const msg: string = (opt.msg) ? opt.msg	
-							: (action === "parse-workspace") ? `Parsing workspace ${workspaceName}` 
-								: `Typechecking workspace ${workspaceName}`;
+					const msg: string = opt.msg	|| `${actionFriendlyNameContinuous} workspace ${workspaceName}`;
 					if (!opt.suppressDialogCreation) {
 						// this means that another task has already created the dialog
 						this.notifyStartImportantTask({ id: taskId, msg });
@@ -1016,15 +1017,13 @@ export class PvsLanguageServer {
 					const cdesc: ContextDescriptor = await this.getContextDescriptor({ contextFolder });
 					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 
-					// parse files, as requested
+					// parse/typecheck files, as requested
 					const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
 					if (contextFiles && contextFiles.fileNames && contextFiles.fileNames.length) {
 						const nfiles: number = contextFiles.fileNames.length;
 						let completed: number = 0;
 
-						const msg: string = (opt.msg) ? opt.msg	
-							: (action === "parse-workspace") ? `Parsing workspace ${workspaceName} (0/${nfiles} files processed)` 
-								: `Typechecking workspace ${workspaceName} (0/${nfiles} files processed)`;
+						const msg: string = opt.msg	|| `${actionFriendlyNameContinuous} workspace ${workspaceName} (0/${nfiles} files processed)`;
 						this.notifyProgressImportantTask ({ id: taskId, msg, increment: -1 }); 
 						console.log(msg);
 
@@ -1033,9 +1032,8 @@ export class PvsLanguageServer {
 						let next_file_index: number = this.MAX_PARALLEL_PROCESSES;
 						let completed_tasks: number = 0;
 						let errors: string[] = [];
-						const actionFunction: "parseFile" | "typecheckFile" = 
-								(action === "parse-workspace") ? "parseFile" : "typecheckFile";
 						
+						const actionFunction: "parseFile" | "typecheckFile" = (action === "parse-workspace") ? "parseFile" : "typecheckFile";
 						// worker
 						const workspaceActionAux = async (
 							actionName: "parseFile" | "typecheckFile", 
@@ -1047,19 +1045,20 @@ export class PvsLanguageServer {
 							// TODO: investigate why pvs is using two types of error messages to communicate errors
 							if (response.error) {
 								if (response.error.message) {
-									errors.push(`${response.error.message} in file ${desc.fileName}${desc.fileExtension}`);
+									errors.push(`Error in file ${desc.fileName}${desc.fileExtension}: ${response.error.message}`);
 								} else if (response.error.data && response.error.data.error_string) {
-									errors.push(`${response.error.data.error_string} in file ${desc.fileName}${desc.fileExtension}`);
+									let error_msg: string = `Error in file ${desc.fileName}${desc.fileExtension}`;
+									if (response.error.data.place && response.error.data.place.length > 1) { error_msg += ` (Ln ${response.error.data.place[0]}, Col ${response.error.data.place[1]})`; }
+									error_msg += ": " + response.error.data.error_string;
+									errors.push(error_msg);
 								}
 							}
 							
-							// send feedback
+							// update feedback every time a file has been processed
 							if (response) {
 								completed++;
 								if (opt.withFeedback) {
-									const msg: string = (opt.msg) ? opt.msg	
-										: (action === "parse-workspace") ? `Parsing workspace ${workspaceName} (${completed}/${nfiles} files processed)` 
-											: `Typechecking workspace ${workspaceName} (${completed}/${nfiles} files processed)`;
+									const msg: string = opt.msg	|| `${actionFriendlyNameContinuous} workspace ${workspaceName} (${completed}/${nfiles} files processed)`;
 									if (opt.keepDialogOpen) {
 										// this is a pre-task, just show spinning bar
 										this.notifyProgressImportantTask ({ id: taskId, msg, increment: -1 }); 
@@ -1103,8 +1102,8 @@ export class PvsLanguageServer {
 							if (completed_tasks >= contextFiles.fileNames.length) {
 								if (opt.withFeedback) {
 									if (errors.length) {
-										const msg: string = (opt.suppressFinalMessage) ? ""
-											: (opt.msg) ? opt.msg : `Workspace ${workspaceName} contains errors`;
+										let msg: string = (opt.suppressFinalMessage) ? ""
+											: opt.msg || `Workspace ${workspaceName} contains ${actionFriendlyName.toLocaleLowerCase()} errors`;
 										for (let i = 0; i < errors.length && errors.length > 1; i++) {
 											this.notifyError({ msg: errors[i] });
 										}
@@ -1112,9 +1111,7 @@ export class PvsLanguageServer {
 									} else {
 										if (!opt.keepDialogOpen) {
 											const msg: string = (opt.suppressFinalMessage) ? ""
-												: (opt.msg) ? opt.msg	
-													: (action === "parse-workspace") ? `Workspace ${workspaceName} parsed successfully (${completed} files processed)`
-														: `Workspace ${workspaceName} typechecked successfully (${completed} files processed)`;
+												: opt.msg || `Workspace ${workspaceName} ${actionFriendlyNamePast.toLocaleLowerCase()} successfully (${completed} files processed)`;
 											this.notifyEndImportantTask({ id: taskId, msg });
 										}
 									}
@@ -1146,9 +1143,7 @@ export class PvsLanguageServer {
 						console.log(`[pvs-language-server] Workspace ${workspaceName} does not contain pvs files`);
 						if (!opt.keepDialogOpen) {
 							const msg: string = (opt.suppressFinalMessage) ? ""
-								: (opt.msg) ? opt.msg	
-									: (action === "parse-workspace") ? `Workspace ${workspaceName} parsed (0 files processed)`
-										: `Workspace ${workspaceName} typechecked (0 files processed)`;
+								: (opt.msg) ? opt.msg : `Workspace ${workspaceName} ${actionFriendlyNamePast.toLocaleLowerCase()} (0 files processed)`;
 							this.notifyEndImportantTask({ id: taskId, msg });
 						}
 						resolve();

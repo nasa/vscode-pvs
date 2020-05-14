@@ -354,5 +354,5 @@ export function decodeURIComponents (desc) {
 
 
 // constants
-export const logFolder: string = "pvsbin";
+export const pvsbinFolder: string = "pvsbin";
 export const logFileExtension: string = ".pr";
