@@ -57,6 +57,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 	protected dirtyFlag: boolean = false; // indicates whether the proof has changed since the last time it was saved
 	protected pendingExecution: boolean = false; // indicates whether step() has been triggered and we need to wait for onStepExecuted before doing anything else
+	protected jprfFlag: boolean = false;
 
 	/**
 	 * Events for updating the tree structure
@@ -420,7 +421,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						this.markAsActive({ selected: targetNode });
 						// send feedback to the user
 						const msg: string = (newBranch === "") ? `moving to root branch` : `moving to branch (${newBranch})`;
-						window.showInformationMessage(msg);
+						// window.showInformationMessage(msg);
 						this.moveIndicatorForward({ keepSameBranch: true, proofState });
 					} else {
 						window.showWarningMessage(`Warning: could not find branch ${newBranch} in the proof tree`);
@@ -1074,6 +1075,24 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	startProof (): void {
 		if (this.root) {
 			this.root.pending();
+			this.root.proofState = this.initialProofState;
+			this.root.tooltip = utils.formatProofState(this.initialProofState);
+
+			this.root.proofState = this.initialProofState;
+			this.root.tooltip = utils.formatProofState(this.initialProofState);
+			this.root.pending();
+			this.root.setProofStatus(this.proofDescriptor.info.status);
+			// select either the first child or the root if children are not present
+			const selected: ProofItem = (this.root.children && this.root.children.length) ? this.root.children[0] : this.root;
+			// initialise this.activeNode
+			this.initActiveNode({ selected }); 
+			// update the user interface
+			this.markAsActive({ selected: this.activeNode }, { force: true });
+			this.activeNode.proofState = this.initialProofState;
+			this.activeNode.updateTooltip();
+			this.dirtyFlag = false;
+
+			// start the proof
 			if (this.root.children && this.root.children.length) {
 				// this.setActiveNode({ selected: this.root.children[0] });
 				this.markAsActive({ selected: this.root.children[0] });
@@ -1118,7 +1137,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Loads a proof descriptor in proof-explorer
 	 * @param desc The proof descriptor to be loaded
 	 */
-	loadProofDescriptor (desc: ProofDescriptor): void {
+	loadProofDescriptor (desc: ProofDescriptor, opt?: { jprf?: boolean }): void {
+		opt = opt || {};
+		this.jprfFlag = !!opt.jprf;
+
 		// utility function for building the proof tree
 		const createTree = (elem: ProofNode, parent: ProofItem): void => {
 			const node: ProofItem = (elem.type === "proof-command") ? 
@@ -1152,21 +1174,22 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				this.root.collapsibleState = TreeItemCollapsibleState.None;
 			}
 			this.proofDescriptor = desc;
-			this.root.proofState = this.initialProofState;
-			this.root.tooltip = utils.formatProofState(this.initialProofState);
-			this.root.pending();
-			this.root.setProofStatus(desc.info.status);
-			// select either the first child or the root if children are not present
-			const selected: ProofItem = (this.root.children && this.root.children.length) ? this.root.children[0] : this.root;
-			// initialise this.activeNode
-			this.initActiveNode({ selected }); 
-			// update the user interface
-			this.markAsActive({ selected: this.activeNode }, { force: true });
-			this.activeNode.proofState = this.initialProofState;
-			this.activeNode.updateTooltip();
-			// start the proof
-			this.startProof();
-			this.dirtyFlag = false;
+
+			// this.root.proofState = this.initialProofState;
+			// this.root.tooltip = utils.formatProofState(this.initialProofState);
+			// this.root.pending();
+			// this.root.setProofStatus(desc.info.status);
+			// // select either the first child or the root if children are not present
+			// const selected: ProofItem = (this.root.children && this.root.children.length) ? this.root.children[0] : this.root;
+			// // initialise this.activeNode
+			// this.initActiveNode({ selected }); 
+			// // update the user interface
+			// this.markAsActive({ selected: this.activeNode }, { force: true });
+			// this.activeNode.proofState = this.initialProofState;
+			// this.activeNode.updateTooltip();
+			// // start the proof
+			// // this.startProof();
+			// this.dirtyFlag = false;
 		}
 		// refresh view
 		this.refreshView();
@@ -1342,8 +1365,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const yesno: string[] = [ "Yes", "No" ];
 			const note: string = (opt.msg) ? `${opt.msg}\n` : "";
 			const msg: string = note + `Save proof ${this.root.name}?`;
-			const ans: string = (this.dirtyFlag) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
-									: yesno[0];
+			const ans: string = (!this.jprfFlag) ? yesno[0] // save proof if this theorem was not stored in the new file format jprf
+					: (this.dirtyFlag) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+						: yesno[1]; // no
 			if (ans === yesno[0]) {
 				// update proof descriptor
 				this.proofDescriptor = this.getProofDescriptor();

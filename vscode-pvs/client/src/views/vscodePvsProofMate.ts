@@ -147,7 +147,7 @@ class ProofMateProofCommands extends TreeItem {
 	clearRecommendations (): void {
 		this.recommended.clear();
 	}
-	setProfile (profile: ProofMateProfile): void {
+	selectProfile (profile: ProofMateProfile): void {
 		this.core.setProfile(profile);
 		this.all.setProfile(profile);
 	}
@@ -301,7 +301,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	protected _onDidChangeTreeData: EventEmitter<TreeItem> = new EventEmitter<TreeItem>();
     readonly onDidChangeTreeData: Event<TreeItem> = this._onDidChangeTreeData.event;
 
-	protected mode: ProofMateProfile;
+	protected profile: ProofMateProfile;
 
 	protected context: ExtensionContext;	
 	protected client: LanguageClient;
@@ -342,36 +342,10 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		this.tactics = new ProofMateTactic();
 
 		// enable basic profile by default
-		this.mode = "basic";
+		this.profile = "basic";
 
 		// register data provider
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
-	}
-
-	enableProfile(profile: ProofMateProfile): void {
-		switch (profile) {
-			case "basic": {
-				// enable basic profile
-				this.mode = "basic";
-				vscode.commands.executeCommand('setContext', 'basic-profile-active', true);
-				vscode.commands.executeCommand('setContext', 'advanced-profile-active', false);
-				this.proofCommands.setProfile(this.mode);
-				this.refreshView();
-				break;
-			}
-			case "advanced": {
-				// enable advanced profile
-				this.mode = "advanced";
-				vscode.commands.executeCommand('setContext', 'basic-profile-active', false);
-				vscode.commands.executeCommand('setContext', 'advanced-profile-active', true);
-				this.proofCommands.setProfile(this.mode);
-				this.refreshView();
-				break;
-			}
-			default: {
-				console.warn(`[proof-mate] Warning: trying to activate unknown profile ${profile}`);
-			}
-		}
 	}
 	
 	/**
@@ -394,7 +368,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	 */
 	activate(context: ExtensionContext) {
 		this.context = context;
-		this.enableProfile("basic");
+		this.selectProfile("basic");
 		context.subscriptions.push(commands.registerCommand("proof-mate.exec-proof-command", (resource: ProofMateItem) => {
 			if (resource && resource.name) {
 				this.sendProofCommand(resource.name);
@@ -406,10 +380,10 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 			commands.executeCommand("proof-explorer.show-active-sequent");
         }));
 		context.subscriptions.push(commands.registerCommand("proof-mate.activate-basic-profile", () => {
-			this.enableProfile("basic");
+			this.selectProfile("basic");
         }));
 		context.subscriptions.push(commands.registerCommand("proof-mate.activate-advanced-profile", () => {
-			this.enableProfile("advanced");
+			this.selectProfile("advanced");
 		}));
 	}
 
@@ -430,6 +404,18 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		} else {
 			console.warn(`[proof-mate] Warning: could not send proof command (please set proof descriptor before trying to send any command)`)
 		}
+	}
+
+	selectProfile (profile: ProofMateProfile): void {
+		this.profile = profile;
+		vscode.commands.executeCommand('setContext', 'basic-profile-active', profile === "basic");
+		vscode.commands.executeCommand('setContext', 'advanced-profile-active', profile === "advanced");
+		this.proofCommands.selectProfile(this.profile);
+		this.refreshView();
+		// forward the selection to PvsCli via event-dispatcher and cli-gateway
+		commands.executeCommand("vscode-pvs.select-profile", {
+			profile
+		});
 	}
 
 	updateRecommendations (proofState: ProofState): void {

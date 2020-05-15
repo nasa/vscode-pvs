@@ -657,7 +657,11 @@ export class PvsProxy {
 	 * Returns the current context
 	 */
 	async currentContext (): Promise<PvsResponse> {
-		return await this.lisp('(pvs-current-directory)');
+		const res: PvsResponse = await this.lisp('(pvs-current-directory)');
+		if (res && res.result && typeof res.result === "string") {
+			res.result = res.result.replace(/"/g, ""); // pvs returns the folder name adorned with double quotes
+		}
+		return res;
 	}
 
 	/**
@@ -686,8 +690,10 @@ export class PvsProxy {
 	 * @param symbolName Symbol name 
 	 */
 	async findDeclaration (symbolName: string): Promise<PvsResponse> {
-		const ans: PvsResponse = (this.macOs) ? await this.legacy.findDeclaration(symbolName)
-			: await this.pvsRequest('find-declaration', [ symbolName ]);
+		// we want to use the server, otherwise find-declaration won't work while in a prover session
+		// const ans: PvsResponse = (this.macOs) ? await this.legacy.findDeclaration(symbolName)
+		// 	: await this.pvsRequest('find-declaration', [ symbolName ]);
+		const ans: PvsResponse = await this.pvsRequest('find-declaration', [ symbolName ]);
 		if (ans && ans.result) {
 			if (typeof ans.result !== "object") {
 				console.error(`[pvs-proxy] Warning: pvs-server returned malformed result for find-declaration (expecting object found ${typeof ans.result})`);
@@ -1015,6 +1021,16 @@ export class PvsProxy {
 		}
 	}
 
+	protected async sendWorkspaceInfo (): Promise<void> {
+		const res: PvsResponse = await this.currentContext();
+		if (res && res.result) {
+			const contextFolder: string = res.result;
+			const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
+			const nfiles: number = contextFiles.fileNames.length;
+			this.connection.sendRequest(serverEvent.workspaceStats, { contextFolder, files: nfiles });
+		}
+	}
+
 	async restartPvsServer (desc?: { pvsPath?: string }): Promise<void> {
 		if (desc && desc.pvsPath) {
 			this.pvsPath = desc.pvsPath;
@@ -1032,7 +1048,10 @@ export class PvsProxy {
 				await this.createClient();
 			}
 		// }
-		this.sendPvsVersionInfo(); // async call
+		// // send workspace info
+		// await this.sendWorkspaceInfo();
+		// // send pvs info
+		// await this.sendPvsVersionInfo();
 	}
 
   // async xmlrpcMethodHelp (methodName: string): Promise<XmlRpcResponse> {

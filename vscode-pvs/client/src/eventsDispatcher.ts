@@ -49,6 +49,7 @@ import { PvsResponse } from "./common/pvs-gui";
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 import * as utils from './common/languageUtils';
+import * as commandUtils from './common/commandUtils';
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -268,7 +269,8 @@ export class EventsDispatcher {
                     this.proofExplorer.setInitialProofState(desc.response.result);
                 }
                 // request proof script
-                // this.client.sendRequest(serverCommand.loadProof, desc.args);
+                // this.client.sendRequest(serverCommand.loadProof, desc.args); // this operation is now performed on the server
+                this.proofExplorer.startProof();
                 
                 // set vscode context variable prover-session-active to true
                 vscode.commands.executeCommand('setContext', 'prover-session-active', true);
@@ -277,13 +279,12 @@ export class EventsDispatcher {
 		this.client.onRequest(serverEvent.dischargeTheoremsResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             // do nothing for now
         });
-        this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
+        this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor, jprf?: boolean } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             if (desc) {
                 console.log(desc);
                 if (desc.response && desc.response.result) {
                     this.proofExplorer.setProofDescriptor(desc.args);
-                    this.proofExplorer.loadProofDescriptor(desc.response.result);
-                    this.proofExplorer.startProof();
+                    this.proofExplorer.loadProofDescriptor(desc.response.result, { jprf: desc.response.jprf });
                 } else {
                     console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error`, desc);
                     window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error (please check pvs-server console for details)`);
@@ -352,6 +353,9 @@ export class EventsDispatcher {
         // vscode-pvs.send-proof-command
         context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             this.vscodePvsTerminal.sendProofCommand(desc);
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.select-profile", (desc: { profile: commandUtils.ProofMateProfile }) => {
+            this.vscodePvsTerminal.selectProfile(desc);
         }));
         
         context.subscriptions.push(commands.registerCommand("vscode-pvs.print-warning-message-in-terminal", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {

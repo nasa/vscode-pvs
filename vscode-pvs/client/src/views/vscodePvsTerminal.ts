@@ -160,6 +160,12 @@ class TerminalSession {
             });
 		});
     }
+    selectProfile (desc: { profile: ProofMateProfile }): void {
+        this.wsClient.send(JSON.stringify({
+            type: "pvs.select-profile",
+            profile: desc.profile
+        }));
+    }
     protected sendText(cmd: string): void {
         this.terminal.sendText(cmd);
     }
@@ -195,6 +201,7 @@ class TerminalSession {
 }
 
 import { cliSessionType } from '../common/serverInterface';
+import { ProofMateProfile } from '../common/commandUtils';
 
 export class VSCodePvsTerminal {
     protected client: LanguageClient;
@@ -220,6 +227,17 @@ export class VSCodePvsTerminal {
                 }
             }
         });
+    }
+    selectProfile(desc: { profile: ProofMateProfile }): void {
+        if (desc) {
+            // change profile on all open terminals
+            const keys: string[] = Object.keys(this.openTerminals);
+            if (keys && keys.length > 0) {
+                for (const i in keys) {
+                    this.openTerminals[keys[i]].selectProfile(desc);
+                }
+            }
+        }
     }
     sendProofCommand (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): void {
         if (desc) {

@@ -383,7 +383,7 @@ export async function getProofStatus (desc: { fileName: string, fileExtension: s
 		if (jprf_content) {
 			const proofFile: ProofFile = JSON.parse(jprf_content);
 			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
-			if (proofDescriptors && proofDescriptors.length) {
+			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
 				status = proofDescriptors[0].info.status;
 			}
 		}

@@ -158,20 +158,36 @@ export class PvsCliGateway {
 									}
 									break;
 								}
+								case "pvs.select-profile": {
+									if (data && data.profile) {
+										console.info('[pvs-cli-gateway] received profile change request', data.profile);
+										const channels: string[] = Object.keys(this.pvsCli);
+										for (let i = 0; i < channels.length; i++) {
+											const clients: string[] = Object.keys(this.pvsCli[channels[i]]);
+											for (let j = 0; j < clients.length; j++) {
+												this.pvsCli[channels[i]][clients[j]].send(JSON.stringify({
+													type: data.type,
+													data: { profile: data.profile }
+												}));
+											}
+										}
+										// this.pvsLanguageServer.evaluationRequest(data);
+									}
+									break;
+								}
 								// case "publish": {
 								// 	console.info('[pvs-cli-gateway] received request to forward message on channel ', data.channelID);
 								// 	this.publish({ type: "publish", channelID: data.channelID, data: null });
 								// }
 								default: {
-									console.error("[pvs-cli-gateway] Warning: unknown message type", msg);
+									console.error(`[pvs-cli-gateway] Warning: unknown message type ${data.type}`, msg);
 								}
 							}
 						} else {
 							console.error("[pvs-cli-gateway] Warning: data is null");
 						}
 					} catch (jsonError) {
-						// FIXME: investigate why this exception is being trigged from time to time
-						// console.error("[pvs-cli-gateway] Warning: error while parsing json message", msg);
+						console.error("[pvs-cli-gateway] Warning: error while parsing json message", msg);
 					}
 				});
 				wsClient.on('close', () => {

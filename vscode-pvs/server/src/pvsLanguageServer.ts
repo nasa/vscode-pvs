@@ -296,6 +296,9 @@ export class PvsLanguageServer {
 
 				if (utils.isQED(response.result)) {
 					this.connection.sendRequest(serverEvent.QED, { response, args: request });
+					// trigger a context update, so proof status will be updated on the front-end
+					const cdesc: ContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 				}
 			} else {
 				this.notifyError({ msg: "Error: proof-command returned error (please check pvs-server console for details)" });
@@ -513,6 +516,26 @@ export class PvsLanguageServer {
 		}
 	}
 
+	protected async loadProof (request: { 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		formulaName: string, 
+		contextFolder: string
+	}): Promise<ProofDescriptor> {
+		if (request) {
+			request = fsUtils.decodeURIComponents(request);
+			const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
+			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
+			const key: string = `${request.theoryName}.${request.formulaName}`;
+			if (proofFile && proofFile[key] && proofFile[key].length > 0) {
+				const pdesc: ProofDescriptor = proofFile[key][0]; // TODO: implement mechanism to allow selection of a specific proof
+				return pdesc;
+			}
+		}
+		return null;
+	}
+
 	/**
 	 * Load jprf proof file
 	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
@@ -526,12 +549,9 @@ export class PvsLanguageServer {
 	}): Promise<void> {
 		if (request) {
 			request = fsUtils.decodeURIComponents(request);
-			const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
-			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
-			const key: string = `${request.theoryName}.${request.formulaName}`;
-			if (proofFile && proofFile[key] && proofFile[key].length > 0) {
-				const pdesc: ProofDescriptor = proofFile[key][0]; // TODO: implement mechanism to allow selection of a specific proof
-				this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc }, args: request });
+			const pdesc: ProofDescriptor = await this.loadProof(request);
+			if (pdesc) {
+				this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc, jprf: true }, args: request });
 			} else {
 				// if the proof is not found in the jprf file, try to ask pvs-server, as the proof may be stored using the old .prf format
 				await this.proofScriptRequest(request);
@@ -864,7 +884,11 @@ export class PvsLanguageServer {
 				fileExtension: string, 
 				contextFolder: string 
 			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
-			if (desc && !this.isSameWorkspace(desc.contextFolder)) {
+			if (desc && desc.fileExtension === ".pvs") {
+				if (desc.contextFolder === path.join(this.lastParsedContext, fsUtils.pvsbinFolder)) {
+					// nothing to do
+					return;
+				}
 				const fname: string = fsUtils.desc2fname(desc);
 				const taskId: string = `parse-${fname}`;
 				// send feedback to the front-end
@@ -1451,6 +1475,16 @@ export class PvsLanguageServer {
 		}
 	}
 
+	protected async sendWorkspaceInfo (): Promise<void> {
+		const res: PvsResponse = await this.pvsProxy.currentContext();
+		if (res && res.result) {
+			const contextFolder: string = res.result;
+			const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
+			const nfiles: number = contextFiles.fileNames.length;
+			this.connection.sendRequest(serverEvent.workspaceStats, { contextFolder, files: nfiles });
+		}
+	}
+
 	/**
 	 * Internal function, restarts pvs-server
 	 * FIXME: create separate functions for starting pvs-server and pvs-proxy
@@ -1488,6 +1522,7 @@ export class PvsLanguageServer {
 				if (desc) {
 					const majorReleaseNumber: number = parseInt(desc["pvs-version"]);
 					if (majorReleaseNumber >= 7) {
+						await this.sendWorkspaceInfo();
 						this.pvsVersionDescriptor = desc;
 						this.connection.sendRequest(serverEvent.pvsServerReady, desc);
 						this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
@@ -1651,6 +1686,7 @@ export class PvsLanguageServer {
 				this.listContextFilesRequest(request); // async call
 			});
 			this.connection.onRequest(serverCommand.proveFormula, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
+				// in the Emacs style interaction, we need to request the proof first, otherwise the prover session starts and we won't be able to request it anymore
 				await this.loadProofRequest(args);
 				await this.proveFormulaRequest(args);
 			});

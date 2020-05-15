@@ -37,6 +37,7 @@
  **/
 
 import { PvsResponse } from "./pvs-gui";
+import { ProofMateProfile } from "./commandUtils";
 
  // import { PvsProxy } from "../pvsProxy";
 
@@ -528,6 +529,8 @@ export declare type CliGatewayRequest = {
 	theoryName: string, formulaName: string
 } | {
 	type: "publish", channelID: string
+} | {
+	type: "pvs.select-profile", profile: ProofMateProfile
 };
 
 export declare type CliGatewayEvent = {  
@@ -555,6 +558,9 @@ export declare type CliGatewaySubscriberEvent = {
 } | {
 	type: "subscribe-response",
 	success: boolean
+} | {
+	type: "pvs.select-profile",
+	data: { profile: string }
 }
 
 export interface PvsDownloadDescriptor { url: string, fileName: string, version: string };

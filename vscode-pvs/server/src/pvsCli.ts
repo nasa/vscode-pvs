@@ -37,7 +37,7 @@
  **/
 
 import * as utils from './common/languageUtils';
-import { PROOF_COMMANDS_BASIC_PROFILE, EVALUATOR_COMMANDS } from './common/commandUtils';
+import { PROOF_COMMANDS_BASIC_PROFILE, EVALUATOR_COMMANDS, ProofMateProfile, PROOF_COMMANDS_ADVANCED_PROFILE } from './common/commandUtils';
 import * as readline from 'readline';
 import { PvsCliInterface, SimpleConsole, SimpleConnection, serverCommand, CliGatewaySubscriberEvent } from './common/serverInterface';
 import * as fsUtils from './common/fsUtils';
@@ -159,9 +159,25 @@ class PvsCli {
 		definitions: []
 	};
 
-	protected static proofCommands: string[] = ["undo", "save", "quit"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
-	protected static evaluatorFunctions: string[] = Object.keys(EVALUATOR_COMMANDS);
+	protected proofCommands: string[] = ["undo", "save", "quit"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
+	protected evaluatorFunctions: string[] = Object.keys(EVALUATOR_COMMANDS);
 
+	selectProfile (desc: { profile: ProofMateProfile }): void {
+		if (desc && desc.profile) {
+			switch (desc.profile) {
+				case "advanced": {
+					this.proofCommands = ["undo", "save", "quit"].concat(Object.keys(PROOF_COMMANDS_ADVANCED_PROFILE));
+					break;
+				}
+				case "basic":
+				default:
+					{
+					this.proofCommands = ["undo", "save", "quit"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
+					break;
+				}
+			}
+		}
+	}
 	// protected pvsPath: string;
 	protected contextFolder: string;
 	protected pvsProxy: PvsProxy;
@@ -391,7 +407,13 @@ class PvsCli {
 								}
 								break;
 							}
-							// TODO: add event for changing profile
+							case "pvs.select-profile": {
+								if (evt && evt.data && evt.data.profile) {
+									const profile: ProofMateProfile = <ProofMateProfile> evt.data.profile;
+									this.selectProfile({ profile });
+								}
+								break;
+							}
 							
 							// case serverEvent.typecheckFileResponse: {
 							// 	const pvsResponse: PvsResponse = data.response;
@@ -466,7 +488,7 @@ class PvsCli {
 				}
 			}
 		} else if (line.trim().startsWith("(")) {
-			hits = PvsCli.proofCommands.map((c: string) => {
+			hits = this.proofCommands.map((c: string) => {
 				// console.log(`(${c}`);
 				return `(${c}`;
 			}).filter((c: string) => c.startsWith(line));
@@ -474,7 +496,7 @@ class PvsCli {
 			// Show all completions if none found
 			// return [ hits.length ? hits : PvsCli.completions, line ];
 			// show nothing if no completion is found
-			hits = PvsCli.proofCommands.filter((c: string) => c.startsWith(line));
+			hits = this.proofCommands.filter((c: string) => c.startsWith(line));
 		}
 		return [ hits, line ];
 	}
@@ -487,7 +509,7 @@ class PvsCli {
 		// 	hits = symbols.filter((c: string) => c.startsWith(line));
 		// }
 		// Include also pvsio functions in the list
-		hits = hits.concat(PvsCli.evaluatorFunctions.filter((c: string) => c.startsWith(line)));
+		hits = hits.concat(this.evaluatorFunctions.filter((c: string) => c.startsWith(line)));
 		return [ hits, line ];
 	}
 	protected notifyStartExecution (msg: string): void {

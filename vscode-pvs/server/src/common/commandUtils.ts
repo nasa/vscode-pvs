@@ -1714,7 +1714,8 @@ export const PROOF_TACTICS: { [key:string]: ProofCommandDescriptor } = {
         syntax: ``
     },
 };
-    
+
+// TODO: add more commands
 export const EVALUATOR_COMMANDS: { [key:string]: ProofCommandDescriptor } = {
     "RANDOM": {
         description: `Generate a random number.`,

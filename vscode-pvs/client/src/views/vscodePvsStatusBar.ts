@@ -62,9 +62,10 @@ export class VSCodePvsStatusBar {
 
     protected makeStats (): string {
         const nFiles: number = Object.keys(this.stats).length - 1; // -1 because stats includes key "!tot!" with summary info
-        const wName: string = this.contextFolder.substring(this.contextFolder.lastIndexOf("/") + 1, this.contextFolder.length);
-        let msg: string = `[ ${wName} ] `;
-        msg += (nFiles !== 1) ? `${nFiles} of ${this.nfiles} files parsed ` : `1 of ${this.nfiles} file parsed `;
+        let wName: string = this.contextFolder.endsWith("/") ? this.contextFolder.substring(0, this.contextFolder.length - 1) : this.contextFolder;
+        wName = wName.substring(wName.lastIndexOf("/") + 1, wName.length);
+        let msg: string = `[ Active workspace: ${wName} ] `;
+        // msg += (nFiles !== 1) ? `${nFiles} of ${this.nfiles} files parsed ` : `1 of ${this.nfiles} file parsed `;
         // if (os.platform() !== "darwin") {
         //     // stats are not yet supported in macOs
         //     msg += `(${this.stats["!tot!"].types} types, ${this.stats["!tot!"].lemmas} lemmas, ${this.stats["!tot!"].definitions} definitions)`;
