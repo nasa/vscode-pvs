@@ -37,7 +37,7 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { CancellationToken, CodeLens } from 'vscode-languageserver';
+import { CancellationToken, CodeLens, CodeLensRequest, Range } from 'vscode-languageserver';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 
@@ -79,13 +79,14 @@ export class PvsCodeLensProvider {
                         formulaName,
                         line
                     };
+                    const range: Range = {
+                        start: { line, character }, 
+                        end: { line, character: character + formulaName.length }
+                    };
                     codeLens.push({
-                        range: {
-                            start: { line, character },
-                            end: { line, character: character + formulaName.length }
-                        },
+                        range,
                         command: {
-                            title: `prove`,
+                            title: "prove",
                             command: "vscode-pvs.prove-formula",
                             arguments: [ args ]
                         }
@@ -94,6 +95,14 @@ export class PvsCodeLensProvider {
                         //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
                         // }
                     });
+                    // codeLens.push({
+                    //     range,
+                    //     command: {
+                    //         title: "show-proof",
+                    //         command: "vscode-pvs.display-prooflite-script",
+                    //         arguments: [ args ]
+                    //     }
+                    // });
                 }
             }
             return Promise.resolve(codeLens);

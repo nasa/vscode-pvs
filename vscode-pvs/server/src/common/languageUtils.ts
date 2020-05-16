@@ -40,7 +40,7 @@ import * as fsUtils from './fsUtils';
 import * as path from 'path';
 import * as language from './languageKeywords';
 import { ProofCommandDescriptor, FileList, FormulaDescriptor, SimpleConnection, ContextDescriptor, 
-			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range } from '../common/serverInterface';
+			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range, ProofTree } from '../common/serverInterface';
 
 			
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
@@ -750,33 +750,70 @@ export function pvsVersionToString (version: PvsVersionDescriptor): string {
 	return null;
 }
 
-/**
- * Utility function, transforms a proof tree into a json object
- * @param desc Descriptor specifying proofTree, formulaName, proofName, and parent node (keeps track of the current parent in the proof tree, used in recursive calls)
- */
-export function proofScriptToJson (desc: { prf: string, theoryName: string, formulaName: string, version: PvsVersionDescriptor }): ProofDescriptor {
-	const buildProofTree = (prf: string, proofName: string): ProofNode => {
-		if (prf) {
-			prf = prf.trim();
-			if (prf.startsWith(`(""`)) {
-				const rootNode: ProofNode = {
-					name: proofName,
-					rules: [],
-					type: "root",
-					branch: "root"
-				};
-				// root node
-				const match: RegExpMatchArray = /\(\"\"([\w\W\s]+)\s*\)/.exec(prf);
-				prf = match[1].trim();
-				buildProofTree_aux(prf, proofName, rootNode);
-				expandBranchNames(rootNode)
-				return rootNode;
-			} else {
-				console.error("[pvs-proxy] Warning: unrecognised proof structure", prf);
+export function proofTree2ProofLite (proofTree: ProofNode): string[] | null {
+	const proofTreeToProofLite_aux = (nodes: ProofNode[], currentBranch?: string, indent?: number): string => {
+		indent = indent || 0;
+		let res: string = "";
+		if (nodes && nodes.length) {
+			for (let i = 0; i < nodes.length; i++) {
+				const node: ProofNode = nodes[i];
+				switch (node.type) {
+					case "root": {
+						res += `${proofTree.name} : PROOF`;
+						res += `\n${" ".repeat(indent)}` + proofTreeToProofLite_aux(node.rules, "", indent);
+						break;
+					}
+					case "proof-command": {
+						if (node.branch === currentBranch && i === 0 && (!node.rules || node.rules.length === 0)) {
+							res += `(then `; // the parenthesis will be closed at the end of the loop
+						}
+						if (node.rules && node.rules.length) {
+							indent++;
+							if (i > 0) {
+								indent++;
+								res += `\n${" ".repeat(indent)}`;
+							}
+							res += `(spread `;
+							indent++;
+							res += node.name + `\n${" ".repeat(indent)}(` + proofTreeToProofLite_aux(node.rules, node.branch, indent);
+							res += `)`; // we need to close the extra parenthesis opened by spread
+						} else {
+							res += node.name + proofTreeToProofLite_aux(node.rules, node.branch, indent);
+						}
+						// } else {
+						// 	if (node.rules && node.rules.length) {
+						// 		indent++;
+						// 		res += `\n${" ".repeat(indent)}\n(spread `;
+						// 		res += 
+						// 	}
+						// 	res += `(${node.name}) ` + proofTreeToProofLite_aux(node.rules, node.branch, indent);
+
+						// }
+						break;
+					}
+					case "proof-branch":
+						if (i > 0) {
+							res += `\n${" ".repeat(indent + 1)}`;
+						}
+					default: {
+						res += proofTreeToProofLite_aux(node.rules, node.branch, indent);
+						break;
+					}
+				}
 			}
+			res += ")";
 		}
-		return null;
+		return res;
 	}
+	if (proofTree) {
+		let res: string = proofTreeToProofLite_aux([ proofTree ]);
+		res += "\nQED";
+		return res.split("\n").map(line => { return "%|- " + line; });
+	}
+	return null;
+}
+
+export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofTree {
 	const expandBranchNames = (node: ProofNode, branchId?: string): void => {
 		if (node) {
 			const goalId: number = +node.name;
@@ -786,56 +823,6 @@ export function proofScriptToJson (desc: { prf: string, theoryName: string, form
 			for (let i = 0; i < node.rules.length; i++) {
 				expandBranchNames(node.rules[i], branchId);
 			}
-		}
-	}
-	const buildProofTree_aux = (prf: string, proofName: string, parent: ProofNode): void => {
-		if (parent) {
-			while (prf && prf.length) {
-				// series of proof branches or a proof command
-				const expr: string = getProofCommands(prf);
-				if (expr && expr.length) {
-					if (expr.startsWith("((")) {
-						// series of proof branches
-						// remove a matching pair of parentheses and iterate
-						const match: RegExpMatchArray = /\(([\w\W\s]+)\s*\)/.exec(prf);
-						const subexpr: string = match[1];
-						const currentParent: ProofNode = parent.rules[parent.rules.length - 1];
-						buildProofTree_aux(subexpr, proofName, currentParent);
-					} else if (expr.startsWith(`("`)) {
-						// proof command from a labelled branch -- remove the label and iterate
-						const match: RegExpMatchArray = /\(\"(\d+)\"\s*([\w\W\s]+)/.exec(expr);
-						const subexpr: string = match[2].replace(/\s*\n\s*/g, " "); // remove all \n introduced by pvs in the expression
-						const currentBranch: ProofNode = {
-							name: match[1], 
-							rules:[], 
-							type: "proof-branch", 
-							branch: match[1]
-						};
-						parent.rules.push(currentBranch);
-						buildProofTree_aux(subexpr, proofName, currentBranch);
-					} else {
-						// proof command
-						parent.rules.push({
-							name: expr,
-							rules: [],
-							type: "proof-command",
-							branch: expr
-						});
-					}
-					// update prf
-					prf = prf.substr(expr.length).trim();
-				} else {
-					// ) parentheses comes before (, from parsing a series labelled branches, just ignore them and iterate
-					const match: RegExpMatchArray = /\)+([\w\W\s]*)/.exec(prf);
-					// update prf
-					prf = match[1].trim(); // remove all \n introduced by pvs in the expression
-					if (prf && prf.length) {
-						buildProofTree_aux(prf, proofName, parent);
-					}
-				}
-			}
-		} else {
-			console.error("[pvs-proxy] Warning: unable to build proof tree (parent node is null)");
 		}
 	}
 	const getProofCommands = (prf: string): string => {
@@ -854,7 +841,85 @@ export function proofScriptToJson (desc: { prf: string, theoryName: string, form
 		}
 		return "";
 	}
+	const buildProofTree_aux = (desc: { prf: string, proofName: string, parent: ProofNode }): void => {	
+		if (desc && desc.parent) {
+			while (desc.prf && desc.prf.length) {
+				// series of proof branches or a proof command
+				const expr: string = getProofCommands(desc.prf);
+				if (expr && expr.length) {
+					if (expr.startsWith("((")) {
+						// series of proof branches
+						// remove a matching pair of parentheses and iterate
+						const match: RegExpMatchArray = /\(([\w\W\s]+)\s*\)/.exec(desc.prf);
+						const subexpr: string = match[1];
+						const currentParent: ProofNode = desc.parent.rules[desc.parent.rules.length - 1];
+						buildProofTree_aux({ prf: subexpr, proofName: desc.proofName, parent: currentParent });
+					} else if (expr.startsWith(`("`)) {
+						// proof command from a labelled branch -- remove the label and iterate
+						const match: RegExpMatchArray = /\(\"(\d+)\"\s*([\w\W\s]+)/.exec(expr);
+						const subexpr: string = match[2].replace(/\s*\n\s*/g, " "); // remove all \n introduced by pvs in the expression
+						const currentBranch: ProofNode = {
+							name: match[1], 
+							rules:[], 
+							type: "proof-branch", 
+							branch: match[1]
+						};
+						desc.parent.rules.push(currentBranch);
+						buildProofTree_aux({ prf: subexpr, proofName: desc.proofName, parent: currentBranch });
+					} else {
+						// proof command
+						desc.parent.rules.push({
+							name: expr,
+							rules: [],
+							type: "proof-command",
+							branch: expr
+						});
+					}
+					// update prf
+					desc.prf = desc.prf.substr(expr.length).trim();
+				} else {
+					// ) parentheses comes before (, from parsing a series labelled branches, just ignore them and iterate
+					const match: RegExpMatchArray = /\)+([\w\W\s]*)/.exec(desc.prf);
+					// update prf
+					desc.prf = match[1].trim(); // remove all \n introduced by pvs in the expression
+					if (desc.prf && desc.prf.length) {
+						buildProofTree_aux(desc);
+					}
+				}
+			}
+		} else {
+			console.error("[pvs-proxy] Warning: unable to build proof tree (parent node is null)");
+		}
+	}
 
+	if (desc && desc.prf) {
+		desc.prf = desc.prf.trim();
+		if (desc.prf.startsWith(`(""`)) {
+			// root node
+			const rootNode: ProofNode = {
+				name: desc.proofName,
+				rules: [],
+				type: "root",
+				branch: "root"
+			};
+			const match: RegExpMatchArray = /\(\"\"([\w\W\s]+)\s*\)/.exec(desc.prf);
+			desc.prf = match[1].trim();
+			buildProofTree_aux({ prf: desc.prf, proofName: desc.proofName, parent: rootNode });
+			expandBranchNames(rootNode)
+			return rootNode;
+		} else {
+			console.error("[pvs-proxy] Warning: unrecognised proof structure", desc.prf);
+		}
+	}
+	return null;
+}
+
+
+/**
+ * Utility function, transforms a proof tree into a json object
+ * @param desc Descriptor specifying proofTree, formulaName, proofName, and parent node (keeps track of the current parent in the proof tree, used in recursive calls)
+ */
+export function prf2jprf (desc: { prf: string, theoryName: string, formulaName: string, version: PvsVersionDescriptor }): ProofDescriptor {
 	if (desc) {
 		const result: ProofDescriptor = {
 			info: {
@@ -871,15 +936,17 @@ export function proofScriptToJson (desc: { prf: string, theoryName: string, form
 			// capture group 3 is proofTree
 			const data: RegExpMatchArray = /;;; Proof\s+([\w\-\.\?]+)\s+for formula\s+([\w\-\.\?]+).*\s*(\(""[\n\w\W]+)/g.exec(script);
 			if (data && data.length > 3) {
-				const proofName: string = data[1];
+				const proofName: string =  data[2]; //data[1];
 				const formulaName: string = data[2];
 				// consistency check
 				if (formulaName !== `${desc.theoryName}.${desc.formulaName}`) {
 					console.warn(`[language-utils] Warning: proof script for ${desc.theoryName}.${desc.formulaName} has unexpected signature ${formulaName}`);
 				}
 				const prf: string = data[3];
-				const proofTree: ProofNode = buildProofTree(prf, proofName);
-				result.proof = proofTree;
+				const proof: ProofNode = prf2ProofTree({ prf, proofName });
+				const proofLite: string[] = proofTree2ProofLite(proof);
+				result.proofTree = proof;
+				result.proofLite = proofLite;
 				// console.dir(result, { depth: null });
 			}
 		}

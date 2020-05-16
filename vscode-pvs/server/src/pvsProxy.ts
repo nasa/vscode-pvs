@@ -765,6 +765,18 @@ export class PvsProxy {
 	}
 
 	/**
+	 * Returns the prooflite script for the given formula
+	 */
+	async proofLiteScript(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string }): Promise<PvsResponse> {
+		if (desc) {
+			// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
+			const fname: string = fsUtils.desc2fname({ contextFolder: desc.contextFolder, fileName: desc.fileName, fileExtension: ".pvs" });
+			const res: PvsResponse = await this.lisp(`(display-prooflite-script "${fname}#${desc.theoryName}" "${desc.formulaName}")`);
+		}
+		return null;
+	}
+
+	/**
 	 * Shows all tccs generated for the given theory
 	 * @param desc 
 	 */

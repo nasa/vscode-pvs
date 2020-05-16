@@ -184,6 +184,7 @@ export declare interface ProofNode {
 	type: ProofNodeType, // node type
 	branch: string // branch id
 }
+export declare type ProofTree = ProofNode;
 export declare type ProofStatus = "subsumed" | "simplified" | "proved" | "unproved" | "unfinished" | "unchecked" | "untried";
 export declare interface ProofFile {
 	[key: string]: [ProofDescriptor] // key is theoryName.formulaName
@@ -195,7 +196,8 @@ export declare interface ProofDescriptor {
 		status: ProofStatus, // proof status (proved, untried, unfininshed,...)
 		prover: string // prover version
 	},
-	proof?: ProofNode
+	proofTree?: ProofNode,
+	proofLite?: string[] // we are using a vector rather than a single string so it's human readable
 }
 export declare interface PvsListProofStrategies extends PvsResponseType {
 	error: ErrorType,
@@ -446,6 +448,7 @@ export const serverCommand = {
 	dischargeTheorems: "pvs.prove-file",
 	loadProof: "pvs.load-proof",
 	saveProof: "pvs.save-proof",
+	displayProofLiteScript: "pvs.display-prooflite-script",
 	proofCommand: "pvs.proof-command",
 	evaluateExpression: "pvs.evaluate-expression",
 	parseFile: "pvs.parse-file",

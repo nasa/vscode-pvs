@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, TreeView, Terminal } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { ProofNode, ProofNodeType, serverCommand, PvsVersionDescriptor, ProofDescriptor, ProofStatus, serverEvent } from '../common/serverInterface';
+import { ProofNode, ProofNodeType, serverCommand, PvsVersionDescriptor, ProofDescriptor, ProofStatus, serverEvent, ProofTree } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
 import { PvsResponse } from '../common/pvs-gui';
@@ -57,7 +57,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 	protected dirtyFlag: boolean = false; // indicates whether the proof has changed since the last time it was saved
 	protected pendingExecution: boolean = false; // indicates whether step() has been triggered and we need to wait for onStepExecuted before doing anything else
-	protected jprfFlag: boolean = false;
 
 	/**
 	 * Events for updating the tree structure
@@ -1137,10 +1136,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Loads a proof descriptor in proof-explorer
 	 * @param desc The proof descriptor to be loaded
 	 */
-	loadProofDescriptor (desc: ProofDescriptor, opt?: { jprf?: boolean }): void {
-		opt = opt || {};
-		this.jprfFlag = !!opt.jprf;
-
+	loadProofDescriptor (desc: ProofDescriptor): void {
 		// utility function for building the proof tree
 		const createTree = (elem: ProofNode, parent: ProofItem): void => {
 			const node: ProofItem = (elem.type === "proof-command") ? 
@@ -1164,10 +1160,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				proofStatus: desc.info.status
 			});
 			this.ghostNode = new GhostNode({ parent: this.root, node: this.root });
-			if (desc.proof && desc.proof.rules && desc.proof.rules.length
+			if (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length
 					// when proof is simply (postpone), this is an empty proof, don't append postpone
-					&& !(desc.proof.rules.length === 1 && desc.proof.rules[0].name === "(postpone)")) {
-				desc.proof.rules.forEach((child: ProofNode) => {
+					&& !(desc.proofTree.rules.length === 1 && desc.proofTree.rules[0].name === "(postpone)")) {
+				desc.proofTree.rules.forEach((child: ProofNode) => {
 					createTree(child, this.root);
 				});
 			} else {
@@ -1225,17 +1221,19 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 			return res;
 		}
-		const proof: ProofNode = makeProofStructure(this.root);
-		const proofTree: ProofDescriptor = {
+		const proofTree: ProofTree = makeProofStructure(this.root);
+		const proofLite: string[] = utils.proofTree2ProofLite(proofTree);
+		const proofDescriptor: ProofDescriptor = {
 			info: {
 				theory: this.desc.theoryName,
 				formula: this.desc.formulaName,
 				status: this.root.proofStatus,
 				prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "7.x"
 			},
-			proof
+			proofTree,
+			proofLite
 		};
-		return proofTree;
+		return proofDescriptor;
 	}
 
 	/**
@@ -1338,7 +1336,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
-	async saveProof (opt?: { msg?: string }): Promise<boolean> {
+	async saveProof (opt?: { msg?: string, force?: boolean }): Promise<boolean> {
 		return new Promise(async (resolve, reject) => {
 			opt = opt || {};
 			// register handler
@@ -1355,7 +1353,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}) => {
 				const fname: string = `${desc.args.fileName}.jprf`;
 				if (desc.response.success) {
-					window.showInformationMessage(`Proof ${desc.args.proofDescriptor.proof.name} saved in ${fname}`);
+					window.showInformationMessage(`Proof ${desc.args.proofDescriptor.proofTree.name} saved in file ${fname}`);
 				} else {
 					window.showErrorMessage(`Unexpected error while saving file ${fname} (please check pvs-server console for details)`);
 				}
@@ -1365,9 +1363,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const yesno: string[] = [ "Yes", "No" ];
 			const note: string = (opt.msg) ? `${opt.msg}\n` : "";
 			const msg: string = note + `Save proof ${this.root.name}?`;
-			const ans: string = (!this.jprfFlag) ? yesno[0] // save proof if this theorem was not stored in the new file format jprf
-					: (this.dirtyFlag) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
-						: yesno[1]; // no
+			const ans: string = (opt.force) ? yesno[0]
+				: (this.dirtyFlag) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+				: yesno[1]; // dont' save if the proof hasn't changed
 			if (ans === yesno[0]) {
 				// update proof descriptor
 				this.proofDescriptor = this.getProofDescriptor();
@@ -1416,7 +1414,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	activate(context: ExtensionContext): void {
 		// -- handlers for proof explorer commands
 		context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof", () => {
-			this.saveProof();
+			this.saveProof({ force: true });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", () => {
 			this.quitProof({ confirm: true });

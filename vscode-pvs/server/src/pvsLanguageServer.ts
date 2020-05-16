@@ -98,6 +98,8 @@ export class PvsLanguageServer {
 	protected pvsPath: string;
 	protected pvsVersionDescriptor: PvsVersionDescriptor;
 
+	protected proverSessionActive: boolean = false; // this flag is necessary because multi-threading is not supported under MacOs, and we need to disable functionalities when a prover session is active
+
 	// timers
 	protected timers: { [ key:string ]: NodeJS.Timer } = {};
 	// proxy servers
@@ -261,7 +263,7 @@ export class PvsLanguageServer {
 	async proofCommandRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		
-		// handle commands not supported by pvs-server
+		// handle commands not supported by pvs prover
 		if (utils.isSaveCommand(request.cmd)) {
 			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request });
 			return;
@@ -269,11 +271,13 @@ export class PvsLanguageServer {
 		if (utils.isQuitCommand(request.cmd)) {
 			await this.pvsProxy.proofCommand({ cmd: "quit" });
 			this.connection.sendRequest(serverEvent.quitProofEvent, { args: request });
+			this.proverSessionActive = false;
 			return
 		}
 		if (utils.isQuitDontSaveCommand(request.cmd)) {
 			await this.pvsProxy.proofCommand({ cmd: "quit" });
 			this.connection.sendRequest(serverEvent.quitDontSaveProofEvent, { args: request });
+			this.proverSessionActive = false;
 			return
 		}
 		
@@ -318,6 +322,9 @@ export class PvsLanguageServer {
 			try {
 				args = fsUtils.decodeURIComponents(args);
 				const response: PvsResponse = await this.pvsProxy.proveFormula(args);
+				if (response && response.result) {
+					this.proverSessionActive = true;
+				}
 				return response;
 			} catch (ex) {
 				console.error('[pvs-language-server.proveFormula] Error: pvsProxy has thrown an exception', ex);
@@ -468,20 +475,18 @@ export class PvsLanguageServer {
 	 * Request proof script to pvs-server
 	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
 	 */
-	async proofScript (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<PvsResponse | null> {
-		if (this.checkArgs("showProof", args)) {
-			try {
-				args = fsUtils.decodeURIComponents(args);
-				const response: PvsResponse = await this.pvsProxy.proofScript(args);
-				return response;
-			} catch (ex) {
-				console.error('[pvs-language-server.showProof] Error: pvsProxy has thrown an exception', ex);
-				return null;
-			}
-		}
-		return null;
+	async proofScript (request: { 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		formulaName: string, 
+		contextFolder: string
+	}): Promise<PvsResponse> {
+		request = fsUtils.decodeURIComponents(request);
+		return await this.pvsProxy.proofScript(request);
 	}
-	async proofScriptRequest (request: { 
+
+	async proofLiteScriptRequest (request: { 
 		fileName: string, 
 		fileExtension: string, 
 		theoryName: string, 
@@ -489,31 +494,32 @@ export class PvsLanguageServer {
 		contextFolder: string
 	}): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
-		const response: PvsResponse = await this.proofScript(request);
+		const response: PvsResponse = await this.pvsProxy.proofLiteScript(request);
 		if (response && response.result) {
-			// send proof script to the front-end
-			const proofTree: ProofDescriptor = utils.proofScriptToJson({
-				prf: response.result,
-				theoryName: request.theoryName, 
-				formulaName: request.formulaName, 
-				version: this.pvsVersionDescriptor
-			});
-			this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: proofTree }, args: request });
+			console.log(response);
+			// // send proof script to the front-end
+			// const proofTree: ProofDescriptor = utils.proofScriptToJson({
+			// 	prf: response.result,
+			// 	theoryName: request.theoryName, 
+			// 	formulaName: request.formulaName, 
+			// 	version: this.pvsVersionDescriptor
+			// });
+			// this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: proofTree }, args: request });
 		} else {
 			// send empty proof to the front-end
-			const proofTree: ProofDescriptor = utils.proofScriptToJson({
-				prf: null,
-				theoryName: request.theoryName, 
-				formulaName: request.formulaName, 
-				version: this.pvsVersionDescriptor
-			});			
-			this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: proofTree }, args: request });
+			// const proofTree: ProofDescriptor = utils.proofScriptToJson({
+			// 	prf: null,
+			// 	theoryName: request.theoryName, 
+			// 	formulaName: request.formulaName, 
+			// 	version: this.pvsVersionDescriptor
+			// });			
+			// this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: proofTree }, args: request });
 		}
 		// print a warning message in the console in the case pvs-server fails to respond
-		if (!response || response.error) {
-			const msg: string = `Warning: unable to load proof script for ${request.fileName} (pvs-server responded with ${JSON.stringify(response)})`;
-			console.error("[pvs-language-server] " + msg);
-		}
+		// if (!response || response.error) {
+		// 	const msg: string = `Warning: unable to load proof script for ${request.fileName} (pvs-server responded with ${JSON.stringify(response)})`;
+		// 	console.error("[pvs-language-server] " + msg);
+		// }
 	}
 
 	protected async loadProof (request: { 
@@ -525,13 +531,48 @@ export class PvsLanguageServer {
 	}): Promise<ProofDescriptor> {
 		if (request) {
 			request = fsUtils.decodeURIComponents(request);
-			const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
-			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
-			const key: string = `${request.theoryName}.${request.formulaName}`;
-			if (proofFile && proofFile[key] && proofFile[key].length > 0) {
-				const pdesc: ProofDescriptor = proofFile[key][0]; // TODO: implement mechanism to allow selection of a specific proof
-				return pdesc;
+			let proofDescriptor: ProofDescriptor = utils.prf2jprf({ // empty proof
+				prf: null,
+				theoryName: request.theoryName, 
+				formulaName: request.formulaName, 
+				version: this.pvsVersionDescriptor
+			});
+
+			try {
+				const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
+				let proofFile: ProofFile = await fsUtils.readProofFile(fname);
+				const key: string = `${request.theoryName}.${request.formulaName}`;
+				if (proofFile && proofFile[key] && proofFile[key].length > 0) {
+					proofDescriptor = proofFile[key][0]; // TODO: implement mechanism to allow selection of a specific proof
+				} else {
+					// obtain proof from prf via pvs, and update jprf
+					const response: PvsResponse = await this.proofScript(request);
+					if (response && response.result) {
+						proofDescriptor = utils.prf2jprf({
+							prf: response.result,
+							theoryName: request.theoryName, 
+							formulaName: request.formulaName, 
+							version: this.pvsVersionDescriptor
+						});
+					}
+					// save proof in the jprf file
+					await this.saveProof({
+						fileName: request.fileName,
+						fileExtension: request.fileExtension,
+						theoryName: request.theoryName,
+						formulaName: request.formulaName,
+						contextFolder: request.contextFolder,
+						proofDescriptor
+					});
+				}
+			} catch (err) {
+				console.error(`[pvs-server] Error while fetching proof information.`, err);
+			} finally {
+				// return the requested proof
+				return proofDescriptor;
 			}
+		} else {
+			console.warn(`[pvs-server] Warning: load-proof received null request`);
 		}
 		return null;
 	}
@@ -551,10 +592,10 @@ export class PvsLanguageServer {
 			request = fsUtils.decodeURIComponents(request);
 			const pdesc: ProofDescriptor = await this.loadProof(request);
 			if (pdesc) {
-				this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc, jprf: true }, args: request });
+				this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc }, args: request });
 			} else {
-				// if the proof is not found in the jprf file, try to ask pvs-server, as the proof may be stored using the old .prf format
-				await this.proofScriptRequest(request);
+				// something went wrong
+				console.warn(`[pvs-server] Warning: load-proof-request was unable to receive proof`);
 			}
 		}
 	}
@@ -572,13 +613,7 @@ export class PvsLanguageServer {
 		proofDescriptor: ProofDescriptor
 	}): Promise<void> {
 		if (request) {
-			request = fsUtils.decodeURIComponents(request);
-			const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
-			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
-			proofFile = proofFile || {};
-			const key: string = `${request.theoryName}.${request.formulaName}`;
-			proofFile[key] = [ request.proofDescriptor ]; // TODO: implement mechanism to save a specific proof
-			const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
+			const success: boolean = await this.saveProof(request);
 			this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: request });
 			// trigger a context update, so proof status will be updated on the front-end
 			const cdesc: ContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
@@ -586,6 +621,28 @@ export class PvsLanguageServer {
 		} else {
 			console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", request);
 		}
+	}
+	async saveProof (request: { 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		formulaName: string, 
+		contextFolder: string, 
+		proofDescriptor: ProofDescriptor
+	}): Promise<boolean> {
+		if (request) {
+			request = fsUtils.decodeURIComponents(request);
+			const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
+			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
+			proofFile = proofFile || {};
+			const key: string = `${request.theoryName}.${request.formulaName}`;
+			proofFile[key] = [ request.proofDescriptor ]; // TODO: implement mechanism to save a specific proof?
+			const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
+			return success;
+		}
+		// else
+		console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", request);
+		return false;
 	}
 	/**
 	 * Typecheck file
@@ -847,7 +904,7 @@ export class PvsLanguageServer {
 	 */
 	async parseFile (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
 		args = fsUtils.decodeURIComponents(args);
-		if (this.checkArgs("parseFile", args)) {
+		if (!this.proverSessionActive && this.checkArgs("parseFile", args)) {
 			try {
 				return await this.pvsProxy.parseFile(args);
 			} catch (ex) {
@@ -1701,6 +1758,9 @@ export class PvsLanguageServer {
 			// });
 			this.connection.onRequest(serverCommand.loadProof, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
 				this.loadProofRequest(args); // async call
+			});
+			this.connection.onRequest(serverCommand.displayProofLiteScript, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
+				this.proofLiteScriptRequest(args); // async call
 			});
 			this.connection.onRequest(serverCommand.proofCommand, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, cmd: string }) => {
 				this.proofCommandRequest(args); // async call

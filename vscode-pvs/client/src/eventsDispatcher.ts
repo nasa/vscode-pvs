@@ -279,12 +279,13 @@ export class EventsDispatcher {
 		this.client.onRequest(serverEvent.dischargeTheoremsResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             // do nothing for now
         });
-        this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor, jprf?: boolean } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
+        this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             if (desc) {
                 console.log(desc);
                 if (desc.response && desc.response.result) {
+                    console.dir(desc.response.result);
                     this.proofExplorer.setProofDescriptor(desc.args);
-                    this.proofExplorer.loadProofDescriptor(desc.response.result, { jprf: desc.response.jprf });
+                    this.proofExplorer.loadProofDescriptor(desc.response.result);
                 } else {
                     console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error`, desc);
                     window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error (please check pvs-server console for details)`);
@@ -366,6 +367,41 @@ export class EventsDispatcher {
         // vscode-pvs-metax
         context.subscriptions.push(commands.registerCommand("vscode-pvs.metax", () => {
             this.emacsBindings.metaxPrompt();
+        }));
+
+        // vscode-display-prooflite-script
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.display-prooflite-script", async (resource: string | { path: string } | { contextValue: string }) => {
+            if (window.activeTextEditor && window.activeTextEditor.document) {
+                // if the file is currently open in the editor, save file first
+                await window.activeTextEditor.document.save();
+                if (!resource) {
+                    resource = { path: window.activeTextEditor.document.fileName };
+                }
+            }
+            if (resource) {
+                let desc = <{ 
+                    fileName: string, fileExtension: string, contextFolder: string, 
+                    theoryName: string, formulaName: string 
+                }> this.resource2desc(resource);
+                if (desc) {
+                    if (!desc.theoryName) {
+                        const document: vscode.TextDocument = window.activeTextEditor.document;
+                        const line: number = window.activeTextEditor.selection.active.line;
+                        const theoryName: string = utils.findTheoryName(document.getText(), line);
+                        desc.theoryName = theoryName;
+                    }
+                    if (desc.theoryName) {
+                        this.client.sendRequest(serverCommand.displayProofLiteScript, desc);
+
+                    } else {
+                        window.showErrorMessage(`Error while trying to display prooflite script (could not identify theory name, please check that the file typechecks correctly)`);
+                    }
+                } else {
+                    console.error("[vscode-events-dispatcher] Error: prooflite script requested for unknown resource", resource);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Error: prooflite script request is null", resource);
+            }
         }));
 
         // pvsio-evaluator
