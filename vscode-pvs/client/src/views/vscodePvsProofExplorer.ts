@@ -1026,6 +1026,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.activeNode.moveIndicatorForward();
 		// set QED
 		this.root.QED();
+		// save proof if status has changed
+		if (this.root.proofStatusChanged() && !this.dirtyFlag) {
+			this.saveProof({ force: true });
+		}
 		// update proof descriptor
 		this.proofDescriptor = this.getProofDescriptor();
 		// refresh tree view
@@ -1964,12 +1968,15 @@ class RootNode extends ProofItem {
 	QED (): void {
 		super.visited();
 		this.icon = utils.icons.check;
-		this.initialProofStatus = QED;
+		this.proofStatus = QED;
 		this.setProofStatus(QED);
 		this.updateLabel();
 	}
 	isQED (): boolean {
 		return this.proofStatus === QED;
+	}
+	proofStatusChanged (): boolean {
+		return this.initialProofStatus !== this.proofStatus;
 	}
 	setProofStatus (proofStatus: ProofStatus): void {
 		if (proofStatus) {

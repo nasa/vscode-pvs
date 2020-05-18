@@ -442,8 +442,8 @@ export class PvsLanguageServer {
 		const response: PvsResponse = await this.pvsioProxy.evaluateExpression(request);
 		const channelID: string = utils.desc2id(request);
 		this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: response });
-		if (response.error) {
-			const msg: string = response && response.error && response.error.message ? response.error.message : `Error: unable to evaluate expression ${request.cmd} (please check pvs-server log for details)`;
+		if (response && response.error) {
+			const msg: string = response.error && response.error.message ? response.error.message : `Error: unable to evaluate expression ${request.cmd} (please check pvs-server log for details)`;
 			this.notifyError({ msg });
 		}
 	}
@@ -1124,7 +1124,7 @@ export class PvsLanguageServer {
 							completed_tasks++;
 
 							// TODO: investigate why pvs is using two types of error messages to communicate errors
-							if (response.error) {
+							if (response && response.error) {
 								if (response.error.message) {
 									errors.push(`Error in file ${desc.fileName}${desc.fileExtension}: ${response.error.message}`);
 								} else if (response.error.data && response.error.data.error_string) {

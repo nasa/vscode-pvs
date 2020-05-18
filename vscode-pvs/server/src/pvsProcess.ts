@@ -276,23 +276,25 @@ export class PvsProcess {
 				try {
 					const allegro_path: string = path.join(this.pvsPath);
 					const pvs_allegro: string = execSync(`ps aux | grep pvs-allegro`).toString();
-					// if (pvs_allegro) {
-					// 	const procs: string[] = pvs_allegro.trim().split("\n");
-					// 	for (let i = 0; i < procs.length; i++) {
-					// 		const info: string = procs[i];
-					// 		const elems: string[] = info.replace(/\s+/g, " ").split(" ");
-					// 		if (elems && elems.length > 2 && elems[1]) {
-					// 			const allegro_pid: string = elems[1];
-					// 			const cmd_path: string = elems[elems.length - 2];
-					// 			if (cmd_path.startsWith(allegro_path)) {
-					// 				console.log(`[pvsProcess] Killing process id ${allegro_pid}`);
-					// 				execSync(`kill -9 ${allegro_pid}`);
-					// 			}
-					// 		}
-					// 	}
-					// }
+					// the following is necessary to kill pvs-server -- killing the spawned process does not seem to be sufficient, it must be creating additional services under the hood
+					if (pvs_allegro) {
+						const procs: string[] = pvs_allegro.trim().split("\n");
+						for (let i = 0; i < procs.length; i++) {
+							const info: string = procs[i];
+							const elems: string[] = info.replace(/\s+/g, " ").split(" ");
+							if (elems && elems.length > 2 && elems[1]) {
+								const allegro_pid: string = elems[1];
+								const cmd_path: string = elems[elems.length - 2];
+								if (cmd_path.startsWith(allegro_path)) {
+									console.log(`[pvsProcess] Killing process id ${allegro_pid}`);
+									execSync(`kill -9 ${allegro_pid}`);
+								}
+							}
+						}
+					}
 				} finally {
 					try {
+						console.log(`[pvsProcess] Killing process id ${pvs_shell}`);
 						execSync(`kill -9 ${pvs_shell}`);
 						this.pvsProcess.on("close", (code: number, signal: string) => {
 							// console.log("[pvs-process] Process terminated");
