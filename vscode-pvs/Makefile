@@ -47,6 +47,17 @@ release:
 	make core
 	npm install --no-save vsce && node_modules/vsce/out/vsce package
 
+package:
+	node_modules/vsce/out/vsce package
+
+install-tsc:
+	cd server && npm install --no-save typescript
+	cd client && npm install --no-save typescript
+
+tsc:
+	cd server && npm run compile
+	cd client && npm run compile
+
 install-vsce:
 	npm install --no-save vsce
 
