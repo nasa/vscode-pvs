@@ -69,6 +69,9 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
+### 1.0.19 (2020.05.92)
+- Introduced support for MacOS
+
 ### 1.0.18 (2020.05.03)
 - Improved Workspace Explorer
 - Improved editor feedback for parsing/typechecking
