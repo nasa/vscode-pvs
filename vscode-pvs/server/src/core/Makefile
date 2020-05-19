@@ -27,7 +27,7 @@ pvs-parser: download
 	# testing parser
 	#cd ../../out/core/lib && java -jar PvsParser.jar ../../../test/sandbox/sq.pvs -test
 	cd ../../out/core/lib && java -jar PvsParser.jar ../../../src/core/examples/test.pvs -test
-	cd ../../out/core/lib && java -jar PvsParser.jar ../../../src/core/examples/test.pvs -decls
+
 
 pvs-typechecker: download
 	# generating java target
@@ -40,11 +40,11 @@ pvs-typechecker: download
 	@-mkdir ../../out/core/lib
 	cp pvs-typechecker/javaTarget/out/PvsTypechecker.jar ../../out/core/lib
 	cp lib/antlr-4.7.2-complete.jar ../../out/core/lib
-	@-rm -r pvs-typechecker/javaTarget/out
+	# @-rm -r pvs-typechecker/javaTarget/out
 	# @-rm -r lib
 	# testing typechecker
 	# cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../test/sandbox/sq.pvs -test
-	cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../src/core/examples/test.pvs -test
+	cd ../../out/core/lib && java -jar PvsTypechecker.jar ../../../src/core/examples/test-typechecker.pvs -outline
 
 pvs-parser-js: download
 	java -jar lib/antlr-4.7.2-complete.jar -Dlanguage=JavaScript PvsLanguage.g4 -o ./pvs-parser/jsTarget/out

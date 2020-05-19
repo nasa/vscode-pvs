@@ -7,9 +7,17 @@ import org.antlr.v4.runtime.tree.*;
 import org.antlr.v4.runtime.misc.Interval;
 
 public class PvsParser {
-    protected static Boolean test = false;
+    protected static boolean test = false;
     protected static String ifname = null;
-    protected static Boolean outlineRequest = false;
+    protected static boolean outlineRequest = false;
+
+    public static boolean outlineRequested () {
+        return outlineRequest;
+    }
+
+    public static String getInputFileName () {
+        return ifname;
+    }
 
     public static interface DiagnosticSeverity {
         int Error = 1;
@@ -18,7 +26,7 @@ public class PvsParser {
         int Hint = 4;
     }
     public static class ErrorListener extends BaseErrorListener {
-        protected ArrayList<String> errors = new ArrayList<String>(); // array of JSON strings in the form { range: { start: { line: number, character: number }, stop: { line: number, character: number } }, message: string } 
+        ArrayList<String> errors = new ArrayList<String>(); // array of JSON strings in the form { range: { start: { line: number, character: number }, stop: { line: number, character: number } }, message: string } 
 
         @Override
         public void syntaxError(Recognizer<?, ?> recognizer,
@@ -47,7 +55,7 @@ public class PvsParser {
         for (int a = 0; a < args.length; a++) {
             if (args[a].equals("--test") || args[a].equals("-test")) {
                 test = true;
-            } else if (args[a].equals("--outline") || args[a].equals("-decls")) {
+            } else if (args[a].equals("--outline") || args[a].equals("-outline") || args[a].equals("-decls")) {
                 outlineRequest = true;
             } else {
                 ifname = args[a];
@@ -77,7 +85,7 @@ public class PvsParser {
             ParserRuleContext tree = parser.parse(); // parse as usual
             // walk the tree
             ParseTreeWalker walker = new ParseTreeWalker();
-            PvsParserListener listener = new PvsParserListener(tokens);
+            PvsParserListener listener = new PvsParserListener(tokens, ifname);
             walker.walk(listener, tree);
 
             double parseTime = System.currentTimeMillis() - parseStart;
@@ -116,6 +124,7 @@ public class PvsParser {
     public static class PvsParserListener extends PvsLanguageBaseListener {
         protected BufferedTokenStream tokens = null;
         protected TokenStreamRewriter rewriter = null;
+        protected String ifname = null;
 
         // stats
         protected int nTypes = 0;
@@ -127,11 +136,13 @@ public class PvsParser {
         protected HashMap<String, ParserUtils.DeclDescriptor> formulaDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
         protected HashMap<String, ParserUtils.DeclDescriptor> functionDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
         protected HashMap<String, ParserUtils.DeclDescriptor> localBindingDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
+        protected HashMap<String, ParserUtils.DeclDescriptor> constantDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
 
-        PvsParserListener (BufferedTokenStream tokens) {
+        PvsParserListener (BufferedTokenStream tokens, String ifname) {
             super();
             this.tokens = tokens;
             rewriter = new TokenStreamRewriter(tokens);
+            this.ifname = ifname;
         }
 
         protected String printHashMap (HashMap<String, ParserUtils.DeclDescriptor> hs) {
@@ -174,28 +185,24 @@ public class PvsParser {
             return null;
         }
 
-        @Override public void enterTypeDeclaration(PvsLanguageParser.TypeDeclarationContext ctx) {
-            nTypes++;
-            ListIterator<PvsLanguageParser.TypeNameContext> it = ctx.typeName().listIterator();
-            while (it.hasNext()) {
-                PvsLanguageParser.TypeNameContext ictx = it.next();
-                Token start = ictx.getStart();
-                Token stop = ictx.getStop();
-                String id = ictx.getText();
-                ParserUtils.Range scope = ParserUtils.findScope(id, ictx);
-                this.typeDeclarations.put(id, 
-                    new ParserUtils.DeclDescriptor(
-                        id,
-                        start.getLine(),
-                        start.getCharPositionInLine(),
-                        ParserUtils.getSource(ctx),
-                        scope
-                    )
-                );
-            }
+        void saveTypeDeclaration (PvsLanguageParser.TypeDeclarationContext ctx, PvsLanguageParser.TypeNameContext ictx) {
+            Token start = ictx.getStart();
+            Token stop = ictx.getStop();
+            String id = ictx.getText();
+            ParserUtils.Range scope = ParserUtils.findScope(id, ictx);
+            this.typeDeclarations.put(id, 
+                new ParserUtils.DeclDescriptor(
+                    id,
+                    start.getLine(),
+                    start.getCharPositionInLine(),
+                    ParserUtils.getSource(ctx),
+                    scope,
+                    this.ifname,
+                    ctx
+                )
+            );
         }
-        @Override public void enterFormulaDeclaration(PvsLanguageParser.FormulaDeclarationContext ctx) {
-            nFormulas++;
+        void saveFormulaDeclaration (PvsLanguageParser.FormulaDeclarationContext ctx) {
             Token start = ctx.getStart();
             Token stop = ctx.getStop();
             String id = ctx.identifier().getText();
@@ -206,18 +213,30 @@ public class PvsParser {
                     start.getLine(), 
                     start.getCharPositionInLine(),
                     ParserUtils.getSource(ctx),
-                    scope
+                    scope,
+                    this.ifname,
+                    ctx
                 )
             );
         }
-        @Override public void enterVarDeclaration(PvsLanguageParser.VarDeclarationContext ctx) {
-            // nDefinitions++;
+        void saveConstantDeclaration (PvsLanguageParser.ConstantDeclarationContext ctx, PvsLanguageParser.ConstantNameContext ictx) {
+            Token start = ictx.getStart();
+            Token stop = ictx.getStop();
+            String id = ictx.identifierOrOperator().getText();
+            ParserUtils.Range scope = ParserUtils.findScope(id, ictx);
+            this.constantDeclarations.put(id, 
+                new ParserUtils.DeclDescriptor(
+                    id,
+                    start.getLine(), 
+                    start.getCharPositionInLine(),
+                    ParserUtils.getSource(ictx),
+                    scope,
+                    this.ifname,
+                    ctx
+                )
+            );
         }
-        @Override public void enterConstantDeclaration(PvsLanguageParser.ConstantDeclarationContext ctx) {
-            nDefinitions++;
-        }
-        @Override public void enterFunctionDeclaration(PvsLanguageParser.FunctionDeclarationContext ctx) {
-            nDefinitions++;
+        void saveFunctionDeclaration (PvsLanguageParser.FunctionDeclarationContext ctx) {
             Token start = ctx.getStart();
             Token stop = ctx.getStop();
             String id = ctx.functionName().getText();
@@ -228,9 +247,55 @@ public class PvsParser {
                     start.getLine(), 
                     start.getCharPositionInLine(),
                     ParserUtils.getSource(ctx),
-                    scope
+                    scope,
+                    this.ifname,
+                    ctx
                 )
             );
+        }
+        void saveLocalBinding (PvsLanguageParser.TypeIdContext ctx) {
+            Token start = ctx.getStart();
+            Token stop = ctx.getStop();
+            String id = ctx.localName().getText();
+            ParserUtils.Range scope = ParserUtils.findScope(id, ctx);
+            this.localBindingDeclarations.put(id, 
+                new ParserUtils.DeclDescriptor(
+                    id,
+                    start.getLine(), 
+                    start.getCharPositionInLine(),
+                    ParserUtils.getSource(ctx),
+                    scope,
+                    this.ifname,
+                    ctx
+                )
+            );
+        }
+        @Override public void enterTypeDeclaration(PvsLanguageParser.TypeDeclarationContext ctx) {
+            ListIterator<PvsLanguageParser.TypeNameContext> it = ctx.typeName().listIterator();
+            while (it.hasNext()) {
+                nTypes++;
+                PvsLanguageParser.TypeNameContext ictx = it.next();
+                saveTypeDeclaration(ctx, ictx); // this will overwrite any previous type decl with the same name -- do we want this?
+            }
+        }
+        @Override public void enterFormulaDeclaration(PvsLanguageParser.FormulaDeclarationContext ctx) {
+            nFormulas++;
+            saveFormulaDeclaration(ctx); // this will overwrite any previous formula with the same name -- do we want this?
+        }
+        @Override public void enterVarDeclaration(PvsLanguageParser.VarDeclarationContext ctx) {
+            // nDefinitions++;
+        }
+        @Override public void enterConstantDeclaration(PvsLanguageParser.ConstantDeclarationContext ctx) {
+            ListIterator<PvsLanguageParser.ConstantNameContext> it = ctx.constantName().listIterator();
+            while (it.hasNext()) {
+                nDefinitions++;
+                PvsLanguageParser.ConstantNameContext ictx = it.next();
+                saveConstantDeclaration(ctx, ictx);
+            }
+        }
+        @Override public void enterFunctionDeclaration(PvsLanguageParser.FunctionDeclarationContext ctx) {
+            nDefinitions++;
+            saveFunctionDeclaration(ctx);
         }
         @Override public void enterAssumption(PvsLanguageParser.AssumptionContext ctx) {
             nFormulas++;
@@ -245,19 +310,7 @@ public class PvsParser {
             nDefinitions++;
         }
         @Override public void enterTypeId(PvsLanguageParser.TypeIdContext ctx) {
-            Token start = ctx.getStart();
-            Token stop = ctx.getStop();
-            String id = ctx.localName().getText();
-            ParserUtils.Range scope = ParserUtils.findScope(id, ctx);
-            this.localBindingDeclarations.put(id, 
-                new ParserUtils.DeclDescriptor(
-                    id,
-                    start.getLine(), 
-                    start.getCharPositionInLine(),
-                    ParserUtils.getSource(ctx),
-                    scope
-                )
-            );
+            saveLocalBinding(ctx);
         }
 
         public String getStats () {

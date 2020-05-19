@@ -7,11 +7,10 @@ import org.antlr.v4.runtime.tree.*;
 import org.antlr.v4.runtime.misc.Interval;
 
 public class PvsTypechecker {
-    public static class ErrorListener extends BaseErrorListener {
-        protected ArrayList<String> errors = new ArrayList<String>(); // array of JSON strings in the form { range: { start: { line: number, character: number }, stop: { line: number, character: number } }, message: string } 
+    public static class TypecheckErrorListener extends PvsParser.ErrorListener {
+        // protected ArrayList<String> errors = new ArrayList<String>(); // array of JSON strings in the form { range: { start: { line: number, character: number }, stop: { line: number, character: number } }, message: string } 
 
-        @Override
-        public void syntaxError(Recognizer<?, ?> recognizer,
+        public void typecheckError(Recognizer<?, ?> recognizer,
                                 Object offendingSymbol,
                                 int line, int col,
                                 String message,
@@ -26,11 +25,6 @@ public class PvsTypechecker {
             this.errors.add(diag);
         }
 
-    }
-    public static class ErrorHandler extends DefaultErrorStrategy {
-        // @Override public void reportNoViableAlternative(Parser parser, NoViableAltException e) {
-        //     parser.notifyErrorListeners(e.getOffendingToken(), "Syntax error", e);
-        // }
     }
     public static class TccDescriptor {
         int line;
@@ -58,39 +52,169 @@ public class PvsTypechecker {
         // open file
         if (args != null && args.length > 0) {
             PvsParser.parseCliArgs(args);
+            String ifname = PvsParser.getInputFileName();
             if (PvsParser.test) {
-                System.out.println("Typechecking file " + PvsParser.ifname);
+                System.out.println("Typechecking file " + ifname);
             }
-            CharStream input = CharStreams.fromFileName(PvsParser.ifname);
+            double parseStart = System.currentTimeMillis();
+
+            CharStream input = CharStreams.fromFileName(ifname);
             PvsLanguageLexer lexer = new PvsLanguageLexer(input);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             PvsLanguageParser parser = new PvsLanguageParser(tokens);
             parser.removeErrorListeners(); // remove ConsoleErrorListener
-            ErrorListener el = new ErrorListener();
-            parser.addErrorListener(el); // add new error listener
-            ErrorHandler eh = new ErrorHandler();
+            TypecheckErrorListener tel = new TypecheckErrorListener();
+            parser.addErrorListener(tel); // add new error listener
+            PvsParser.ErrorHandler eh = new PvsParser.ErrorHandler();
             parser.setErrorHandler(eh);
             // parser.setBuildParseTree(false); // disable parse tree creation, to speed up parsing
             ParserRuleContext tree = parser.parse(); // parse as usual
-            if (el.errors.size() > 0) {
-                System.out.println(el.errors);
+            double parseEnd = System.currentTimeMillis();
+            double parseTime = parseEnd - parseStart;
+
+            if (tel.errors.size() > 0) {
+                // these are parse errors
+                System.out.println(tel.errors);
             } else {
-                if (PvsParser.test) {
-                    System.out.println(PvsParser.ifname + " typechecked successfully!");
-                }
                 // walk the tree
                 ParseTreeWalker walker = new ParseTreeWalker();
-                PvsTypecheckerListener listener = new PvsTypecheckerListener(tokens);
+                PvsTypecheckerListener listener = new PvsTypecheckerListener(tokens, ifname);
+                listener.addErrorListener(tel);
                 walker.walk(listener, tree);
+                double typecheckTime = System.currentTimeMillis() - parseEnd;
+                // if (tel.errors.size() > 0) {
+                //     // after the walker, these are typecheck errors
+                //     System.out.println(tel.errors);
+                // }
+
+                if (PvsParser.outlineRequested()) {
+                    String outline = "{" 
+                        + "\n \"contextFolder\": \"" + ParserUtils.getContextFolder(ifname) + "\""
+                        + ",\n \"fileName\": \"" + ParserUtils.getFileName(ifname) + "\""
+                        + ",\n \"fileExtension\": \"" + ParserUtils.getFileExtension(ifname) + "\""
+                        + ",\n \"declarations\": {"
+                            + "\n\t \"types\": [ " + listener.printTypes() + " ]"
+                            + ",\n\t \"functions\": [ " + listener.printFunctions() + " ]"
+                            + ",\n\t \"formulas\": [ " + listener.printFormulas() + " ]"
+                            + ",\n\t \"locals\": [ " + listener.printLocals() + " ]"
+                        + "\n}"
+                        + ",\n \"parse-time\": { \"ms\": " + parseTime + " }"
+                        + ",\n \"typecheck-time\": { \"ms\": " + typecheckTime + " }";
+                    if (tel.errors.size() > 0) {
+                        outline += ",\n \"typecheck-errors\":" + tel.errors;
+                    }
+                    System.out.println(outline);
+                    return;
+                }
+
             }
         }
     }
     public static class PvsTypecheckerListener extends PvsParser.PvsParserListener {
+        // the data structures representing the context are in PvsParser.PvsParserListener:
+        // typeDeclarations, formulaDeclarations, functionDeclarations, localBindingDeclarations
+
+        protected TypecheckErrorListener tel;
+
         protected ArrayList<TccDescriptor> tccs = new ArrayList<TccDescriptor>();
 
-        PvsTypecheckerListener (BufferedTokenStream tokens) {
-            super(tokens);
+        PvsTypecheckerListener (BufferedTokenStream tokens, String ifname) {
+            super(tokens, ifname);
         }
+
+        void addErrorListener (TypecheckErrorListener tel) {
+            this.tel = tel;
+        }
+
+        /**
+         * type-rule
+         * Types are pre-types that typecheck correctly in a given context. 
+         * A pre-type T is said to be fresh in a context Γ if it does not appear in the left-hand side 
+         * of any type declaration in Γ.
+         */
+        @Override public void enterTypeDeclaration(PvsLanguageParser.TypeDeclarationContext ctx) {            
+            ListIterator<PvsLanguageParser.TypeNameContext> it = ctx.typeName().listIterator();
+            while (it.hasNext()) {
+                PvsLanguageParser.TypeNameContext ictx = it.next();
+                Token start = ctx.getStart();
+                Token stop = ctx.getStop();
+                String id = ictx.getText();
+
+                // check if declaration is fresh
+                ParserUtils.DeclDescriptor p = typeDeclarations.get(id);
+                if (p == null) { // TODO: use full signature?
+                    // fresh declaration -> add declaration to the context
+                    saveTypeDeclaration(ctx, ictx);
+                } else {
+                    // typecheck error: duplicate identifier
+                    int line = start.getLine();
+                    int col = start.getCharPositionInLine();
+                    String msg = "Duplicate type identifier '" + id + "' \n" +
+                        "'" + id + "' was also declared at " + p.fname + " (Ln " + p.line + ", Col " + p.character + ")";
+                    tel.typecheckError(null, start, line, col, msg, null);
+                }
+            }
+        }
+        @Override public void enterFormulaDeclaration(PvsLanguageParser.FormulaDeclarationContext ctx) {
+            Token start = ctx.getStart();
+            Token stop = ctx.getStop();
+            String id = ctx.identifier().getText();
+            // check if declaration is fresh
+            ParserUtils.DeclDescriptor p = formulaDeclarations.get(id);
+            if (p == null) {
+                saveFormulaDeclaration(ctx);
+            } else {
+                // typecheck error: duplicate identifier
+                int line = start.getLine();
+                int col = start.getCharPositionInLine();
+                String msg = "Duplicate formula '" + id + "' \n" +
+                    "'" + id + "' was also declared at " + p.fname + " (Ln " + p.line + ", Col " + p.character + ")";
+                tel.typecheckError(null, start, line, col, msg, null);
+            }
+        }
+        @Override public void enterVarDeclaration(PvsLanguageParser.VarDeclarationContext ctx) {
+            // TODO: issue warning for var declarations
+        }
+        @Override public void enterConstantDeclaration(PvsLanguageParser.ConstantDeclarationContext ctx) {
+            ListIterator<PvsLanguageParser.ConstantNameContext> it = ctx.constantName().listIterator();
+            while (it.hasNext()) {
+                PvsLanguageParser.ConstantNameContext ictx = it.next();
+                Token start = ictx.getStart();
+                Token stop = ictx.getStop();
+                String id = ictx.identifierOrOperator().getText();
+                // check if declaration is fresh
+                ParserUtils.DeclDescriptor p = constantDeclarations.get(id);
+                if (p == null) {
+                    saveConstantDeclaration(ctx, ictx);
+                } else {
+                    // typecheck error: duplicate identifier
+                    int line = start.getLine();
+                    int col = start.getCharPositionInLine();
+                    String msg = "Duplicate constant declaration '" + id + "' \n" +
+                        "'" + id + "' was also declared at " + p.fname + " (Ln " + p.line + ", Col " + p.character + ")";
+                    tel.typecheckError(null, start, line, col, msg, null);
+                }
+            }
+        }
+
+        @Override public void enterFunctionDeclaration(PvsLanguageParser.FunctionDeclarationContext ctx) {
+            Token start = ctx.getStart();
+            Token stop = ctx.getStop();
+            String id = ctx.functionName().getText();
+            // check if declaration is fresh
+            ParserUtils.DeclDescriptor p = functionDeclarations.get(id);
+            if (p == null) {
+                saveFunctionDeclaration(ctx);
+            } else {
+                // typecheck error: duplicate identifier
+                int line = start.getLine();
+                int col = start.getCharPositionInLine();
+                String msg = "Duplicate function declaration '" + id + "' \n" +
+                    "'" + id + "' was also declared at " + p.fname + " (Ln " + p.line + ", Col " + p.character + ")";
+                tel.typecheckError(null, start, line, col, msg, null);
+            }
+        }
+
 
         @Override public void enterOperatorDiv(PvsLanguageParser.OperatorDivContext ctx) {
             // new subtype tcc (check division by zero)
@@ -162,18 +286,18 @@ public class PvsTypechecker {
         }
 
         @Override public void exitTheory(PvsLanguageParser.TheoryContext ctx) {
-            if (PvsParser.test) {
-                super.exitTheory(ctx);
-                if (this.tccs != null) {
-                    int n = this.tccs.size();
-                    System.out.println("------------------------------");
-                    System.out.println(n + " tccs generated");
-                    System.out.println("------------------------------");
-                    for (TccDescriptor tcc: this.tccs){
-                        System.out.println(tcc);
-                    }
-                }
-            }
+            // if (PvsParser.test) {
+            //     super.exitTheory(ctx);
+            //     if (this.tccs != null) {
+            //         int n = this.tccs.size();
+            //         System.out.println("------------------------------");
+            //         System.out.println(n + " tccs generated");
+            //         System.out.println("------------------------------");
+            //         for (TccDescriptor tcc: this.tccs){
+            //             System.out.println(tcc);
+            //         }
+            //     }
+            // }
         }
 
 

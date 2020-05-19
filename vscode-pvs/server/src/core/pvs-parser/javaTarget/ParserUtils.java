@@ -42,12 +42,16 @@ public class ParserUtils {
         String declaration;
         String identifier;
         Range scope;
-        DeclDescriptor (String identifier, int line, int character, String declaration, Range scope) {
+        String fname;
+        ParserRuleContext ctx; // this is a pointer to the original token created by the lexer
+        DeclDescriptor (String identifier, int line, int character, String declaration, Range scope, String fname, ParserRuleContext ctx) {
             this.line = line;
             this.character = character;
             this.identifier = identifier;
             this.declaration = declaration;
             this.scope = scope;
+            this.fname = fname;
+            this.ctx = ctx;
         }
         public String toString () {
             return "{ \"line\": " + this.line
