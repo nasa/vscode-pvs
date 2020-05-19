@@ -110,7 +110,7 @@ export class PvsProxy {
 	protected handlers: { [mth: string]: (params: string[]) => string[] } = {};
 	protected serverAddress: string = "0.0.0.0"; // using "0.0.0.0" instead of "localhost" because the client seems to have troubles connecting when indicating "localhost"
 	protected serverPort: number;
-	protected clientAddress: string = "127.0.0.1"; // don't use 0.0.0.0 --- the xmlrpc library doesn't seem to be able to handle that address
+	protected clientAddress: string = "0.0.0.0"; // don't use 0.0.0.0 --- the xmlrpc library doesn't seem to be able to handle that address
 	protected clientPort: number;
 	protected client: xmlrpc.Client;
 	protected guiServer: xmlrpc.Server; // GUI server, needed to receive responses sent back by pvs-server
@@ -824,34 +824,21 @@ export class PvsProxy {
 	 * The server is turned off as soon as an answer is available.
 	 */
 	protected checkPort (port: number, retry: boolean): Promise<boolean> {
-		// console.info(`checking port ${p}`);
 		return new Promise((resolve, reject) => {
 			if (this.showBanner) {
 				console.log(`[pvs-proxy] Checking port ${port}...`);
 			}
-			const server: net.Server = net.createServer();
-			const timeout: number = 1000; // msec
-			server.once('error', (error: Error) => {
-				console.error(error);
-				if (error["code"] === 'EADDRINUSE' && retry) {
-					console.log(`[pvs-proxy] port ${port} busy, retrying after timeout of ${timeout} msec`);
-					retry = false; // retry just once on the same port
-					setTimeout(() => {
-						this.checkPort(port, false);
-					}, timeout);
-				} else {
-					console.log(`[pvs-proxy] port ${port} is not available :/`);
-					resolve(false);
-				}
+			const socket: net.Socket = net.createConnection({ host: this.clientAddress, port });
+			socket.once('error', (error: Error) => {
+				// noone is serving on the given port
+				console.log(`[pvs-proxy] port ${port} is available :)`);
+				resolve(true);
 			});
-			server.once('listening', () => {
-				// console.error(`port ${p} is available :)`);
-				server.once('close', () => {
-					resolve(true);
-				});
-				server.close();
+			socket.once('connect', () => {
+				// sombody is using the port
+				console.error(`[pvs-proxy] port ${port} is not available :/`);
+				resolve(false);
 			});
-			server.listen(port);
 		});
 	}
 
@@ -1135,6 +1122,7 @@ export class PvsProxy {
 				}
 				if (portIsAvailable) {
 					this.banner = `GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
+					console.log(`[pvs-proxy] Activating GUI Server on http://${this.clientAddress}:${this.clientPort}`)
 					this.client = xmlrpc.createClient({
 						host: this.serverAddress, port: this.serverPort, path: "/RPC2"
 					});
