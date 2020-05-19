@@ -36,15 +36,13 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { spawn, ChildProcess, execSync, execFileSync, execFile } from 'child_process';
+import { spawn, ChildProcess, execSync } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
-import { 
-	PvsParserResponse, PvsVersionDescriptor,
-	SimpleConnection
-} from './common/serverInterface'
+import { PvsVersionDescriptor, SimpleConnection } from './common/serverInterface'
 import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 
+export enum ProcessCode { FAIL = 0, SUCCESS = -1, ADDRINUSE = -2 };
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
  */
@@ -153,10 +151,10 @@ export class PvsProcess {
 		serverPort?: number,
 		externalServer?: boolean,
 		verbose?: boolean
-	}): Promise<boolean> {
+	}): Promise<ProcessCode> {
 		if (this.pvsProcess) {
 			// process already running, nothing to do
-			return true;
+			return ProcessCode.SUCCESS;
 		}
 		opt = opt || {};
 		this.enableNotifications = !!opt.enableNotifications;
@@ -176,6 +174,7 @@ export class PvsProcess {
 		console.info(`${this.pvsPath}/pvs ${args.join(" ")}`);
 		const fileExists: boolean = await fsUtils.fileExists(pvs);
 		if (fileExists) {
+			let addressInUse: boolean = false;
 			return await new Promise((resolve, reject) => {
 				if (this.pvsProcess) {
 					// process already running, nothing to do
@@ -185,47 +184,54 @@ export class PvsProcess {
 				// console.dir(this.pvsProcess, { depth: null });
 				this.pvsProcess.stdout.setEncoding("utf8");
 				this.pvsProcess.stderr.setEncoding("utf8");
-				this.pvsProcess.stdout.on("data", (data: string) => {
+				
+				this.pvsProcess.stdout.on("data", async (data: string) => {
+					if (addressInUse) {
+						return; // the promise has already been resolved -- don't resolve the promise again, otherwise the caller will erroneously see another resolve
+					}
+
 					this.ready = false;
 					this.data += data;
 					this.log(data);
-	
-					// console.dir({ 
-					// 	type: "memory usage",
-					// 	data: process.memoryUsage()
-					// }, { depth: null });
-					// console.log(data);
-				
-					// // wait for the pvs prompt, to make sure pvs-server is operational
-					// const match: RegExpMatchArray = readyPrompt.exec(data);
-					// if (match) {
-					// 	resolve(true);
-					// }
-					// wait for the pvs prompt, to make sure pvs-server is operational
-					const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
-					if (yesNoQuery) {
-						console.log(data);
-						this.pvsProcess.stdin.write("Yes\n");
-						this.log("Yes\n", { force: true });
-					}
 
-					const match: RegExpMatchArray = /(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g.exec(data);
-					if (match && match[0]) {
-						// NB: avoid doing :pop, as it may trigger process exit
-						// const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
-						// if (matchRestartAction) {
-						// 	this.pvsProcess.stdin.write(":pop\n");
-						// 	this.log(":pop\n", { force: true });
-						// 	return;
-						// }
-						if (!this.ready) {
-							this.ready = true;
-							resolve(true);
+					const matchSocketAddressInUse: RegExpMatchArray = /(errno 48)/g.exec(data);
+					if (matchSocketAddressInUse) {
+						resolve(ProcessCode.ADDRINUSE)
+						addressInUse = true;
+						this.pvsProcess = null;
+					} else {
+						// console.dir({ 
+						// 	type: "memory usage",
+						// 	data: process.memoryUsage()
+						// }, { depth: null });
+						// console.log(data);
+
+						// wait for the pvs prompt, to make sure pvs-server is operational
+						const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
+						if (yesNoQuery) {
+							console.log(data);
+							this.pvsProcess.stdin.write("Yes\n");
+							this.log("Yes\n", { force: true });
 						}
-						if (this.cb && typeof this.cb === "function") {
-							let res: string = this.data.replace(/(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g, "");
-							res = res.replace("[Current process: Initial Lisp Listener]", "");
-							this.cb(res.trim());
+
+						const match: RegExpMatchArray = /(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g.exec(data);
+						if (match && match[0]) {
+							// NB: avoid doing :pop, as it may trigger process exit
+							// const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
+							// if (matchRestartAction) {
+							// 	this.pvsProcess.stdin.write(":pop\n");
+							// 	this.log(":pop\n", { force: true });
+							// 	return;
+							// }
+							if (!this.ready) {
+								this.ready = true;
+								resolve(ProcessCode.SUCCESS);
+							}
+							if (this.cb && typeof this.cb === "function") {
+								let res: string = this.data.replace(/(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g, "");
+								res = res.replace("[Current process: Initial Lisp Listener]", "");
+								this.cb(res.trim());
+							}
 						}
 					}
 				});
@@ -248,7 +254,7 @@ export class PvsProcess {
 			});
 		} else {
 			this.error(`\n>>> PVS executable not found at ${pvs} <<<\n`);
-			return false;
+			return ProcessCode.FAIL;
 		}
 	}
 	/**
@@ -264,35 +270,7 @@ export class PvsProcess {
 				// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
 				if (this.pvsProcess) {
 					this.pvsProcess.stdin.destroy();
-					// this.pvsProcess.stdin.end(() => {});
-				}
-				// try {
-				// 	execSync(`kill -9 ${pid}`);
-				// } finally {
-				// 	setTimeout(() => {
-				// 		resolve(true);
-				// 	}, 1000);
-				// }
-				try {
-					const allegro_path: string = path.join(this.pvsPath);
-					const pvs_allegro: string = execSync(`ps aux | grep pvs-allegro`).toString();
-					// the following is necessary to kill pvs-server -- killing the spawned process does not seem to be sufficient, it must be creating additional services under the hood
-					if (pvs_allegro) {
-						const procs: string[] = pvs_allegro.trim().split("\n");
-						for (let i = 0; i < procs.length; i++) {
-							const info: string = procs[i];
-							const elems: string[] = info.replace(/\s+/g, " ").split(" ");
-							if (elems && elems.length > 2 && elems[1]) {
-								const allegro_pid: string = elems[1];
-								const cmd_path: string = elems[elems.length - 2];
-								if (cmd_path.startsWith(allegro_path)) {
-									console.log(`[pvsProcess] Killing process id ${allegro_pid}`);
-									execSync(`kill -9 ${allegro_pid}`);
-								}
-							}
-						}
-					}
-				} finally {
+					this.pvsProcess.stdin.end(() => {});
 					try {
 						console.log(`[pvsProcess] Killing process id ${pvs_shell}`);
 						execSync(`kill -9 ${pvs_shell}`);

@@ -52,8 +52,8 @@
 // 'reset',               'show-tccs',
 // 'term-at',             'typecheck'
 
-import { Client, Server, createClient, createServer } from 'xmlrpc';
-import { PvsProcess } from "./pvsProcess";
+import * as xmlrpc from 'xmlrpc';
+import { PvsProcess, ProcessCode } from "./pvsProcess";
 import { PvsResponse, ParseResult } from "./common/pvs-gui.d";
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
@@ -110,17 +110,16 @@ export class PvsProxy {
 	protected handlers: { [mth: string]: (params: string[]) => string[] } = {};
 	protected serverAddress: string = "0.0.0.0"; // using "0.0.0.0" instead of "localhost" because the client seems to have troubles connecting when indicating "localhost"
 	protected serverPort: number;
-	protected clientAddress: string = "0.0.0.0";
+	protected clientAddress: string = "127.0.0.1"; // don't use 0.0.0.0 --- the xmlrpc library doesn't seem to be able to handle that address
 	protected clientPort: number;
-	protected client: Client;
-	protected guiServer: Server; // GUI server, needed to receive responses sent back by pvs-server
+	protected client: xmlrpc.Client;
+	protected guiServer: xmlrpc.Server; // GUI server, needed to receive responses sent back by pvs-server
 	protected pvsPath: string;
 	protected pvsLibraryPath: string;
 	protected pvsServer: PvsProcess;
 	protected connection: SimpleConnection; // connection to the client
 	protected externalServer: boolean;
 	protected cliListener: (data: string) => void; // useful to show progress feedback
-	protected progressInfo: PvsProgressInfo; // sends progress feedback to the front-end, in a form that can be rendered in the status bar
 
 	protected legacy: PvsProxyLegacy;
 	protected macOs: boolean = false;
@@ -128,10 +127,6 @@ export class PvsProxy {
 	 * Parser
 	 */
 	protected parser: Parser;
-
-
-	protected nReboots: number = 0;
-	readonly MAX_REBOOTS: number = 4;
 
 	/** The constructor simply sets various properties in the PvsProxy class. */
 	constructor(pvsPath: string,
@@ -156,7 +151,6 @@ export class PvsProxy {
 		this.connection = opt.connection;
 		this.externalServer = !!opt.externalServer;
 		this.cliListener = null;
-		this.progressInfo = new PvsProgressInfo();
 
 		// create antlr parser for pvs
 		this.parser = new Parser();
@@ -188,19 +182,24 @@ export class PvsProxy {
 		const req = { method: method, params: params, jsonrpc: "2.0", id: this.get_fresh_id() };
 		return new Promise((resolve, reject) => {
 			if (this.client) {
-				this.progressInfo.showProgress(method);
 				const jsonReq: string = JSON.stringify(req);
 				// console.log(jsonReq);
-				return this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
+				this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
 					if (error) {
 						console.error("[pvs-proxy] Error returned by pvs-server: "); 
 						console.dir(error, { depth: null }); 
-					}
-					// console.log("[pvs-proxy] Value returned by pvs-server: ");
-					// console.dir(value);
-					if (value) {
-						this.nReboots = 0;
-						this.progressInfo.showProgress(method);
+						if (error['code'] === 'ECONNREFUSED') {
+							// if the server refuses the connection, try to reboot
+							console.log(`[pvs-proxy] Connection refused when launching pvs from ${this.pvsPath}`);
+							resolve({
+								jsonrpc: "2.0", 
+								id: req.id,
+								error
+							});
+						}
+					} else if (value) {
+						// console.log("[pvs-proxy] Value returned by pvs-server: ");
+						// console.dir(value);
 						try {
 							const resp: PvsResponse = JSON.parse(value);
 							// console.dir(resp, { depth: null });
@@ -214,32 +213,15 @@ export class PvsProxy {
 							resolve(null);
 						}
 					} else {
-						if (error && error['code'] === 'ECONNREFUSED') {
-							// if the server refuses the connection, try to reboot
-							if (this.nReboots < this.MAX_REBOOTS) {
-								this.nReboots++;
-								console.log(`[pvs-proxy] Connection refused, trying to reboot pvs from ${this.pvsPath} (attempt #${this.nReboots})`);
-								setTimeout(() => {
-									this.restartPvsServer().then(() => {
-										resolve({ jsonrpc: "2.0", id: req.id, error });
-									});
-								}, 1000);
-							} else {
-								console.log(`[pvs-proxy] Connection refused when launching pvs from ${this.pvsPath}`);
-								resolve({ jsonrpc: "2.0", id: req.id, error });
+						console.error(`[pvs-proxy] pvs-server returned error`, error);
+						resolve({
+							jsonrpc: "2.0",
+							id: req.id,
+							error: {
+								code: 'NO_CONTENT',
+								message: "pvs-server returned null response"
 							}
-						} else {
-							const message: string = (error && error.message) ? error.message : "pvs-server returned null";
-							console.error(`[pvs-proxy] pvs-server returned error`, error);
-							resolve({
-								jsonrpc: "2.0",
-								id: req.id,
-								error: {
-									code: -1,
-									message: (error && error.message) ? error.message : "pvs-server returned null"
-								}
-							});
-						}
+						});
 					}
 				});
 			} else {
@@ -248,7 +230,7 @@ export class PvsProxy {
 					jsonrpc: "2.0",
 					id: req.id,
 					error: {
-						code: -2,
+						code: 'NO_CONTENT',
 						message: "pvs-proxy failed to initialize gui server"
 					}
 				});
@@ -841,24 +823,24 @@ export class PvsProxy {
 	 * The check works as follows. A dummy server is created at port p; if the creation of the server succeeds, an event 'listening' is triggered, otherwise an event 'error' is triggered.
 	 * The server is turned off as soon as an answer is available.
 	 */
-	protected checkPort (p: number, retry: boolean): Promise<boolean> {
+	protected checkPort (port: number, retry: boolean): Promise<boolean> {
 		// console.info(`checking port ${p}`);
 		return new Promise((resolve, reject) => {
 			if (this.showBanner) {
-				console.log(`[pvs-proxy] Checking port ${p}...`);
+				console.log(`[pvs-proxy] Checking port ${port}...`);
 			}
 			const server: net.Server = net.createServer();
 			const timeout: number = 1000; // msec
 			server.once('error', (error: Error) => {
 				console.error(error);
 				if (error["code"] === 'EADDRINUSE' && retry) {
-					console.log(`[pvs-proxy] port ${p} busy, retrying after timeout of ${timeout} msec`);
+					console.log(`[pvs-proxy] port ${port} busy, retrying after timeout of ${timeout} msec`);
 					retry = false; // retry just once on the same port
 					setTimeout(() => {
-						this.checkPort(p, false);
+						this.checkPort(port, false);
 					}, timeout);
 				} else {
-					console.log(`[pvs-proxy] port ${p} is not available :/`);
+					console.log(`[pvs-proxy] port ${port} is not available :/`);
 					resolve(false);
 				}
 			});
@@ -869,7 +851,7 @@ export class PvsProxy {
 				});
 				server.close();
 			});
-			server.listen(p);
+			server.listen(port);
 		});
 	}
 
@@ -877,7 +859,7 @@ export class PvsProxy {
 	 * Checks if pvs-server accepts connection
 	 */
 	async testServerConnectivity(): Promise<boolean> {
-		const client: Client = createClient({
+		const client: xmlrpc.Client = xmlrpc.createClient({
 			host: "0.0.0.0", port: this.clientPort, path: "/RPC2"
 		});
 		return new Promise((resolve, reject) => {
@@ -941,13 +923,22 @@ export class PvsProxy {
 		opt = opt || {};
 		const connection: SimpleConnection = (opt.enableNotifications) ? this.connection : null;
 		const proc: PvsProcess = new PvsProcess({ pvsPath: this.pvsPath, contextFolder: this.pvsPath }, connection);
-		const success: boolean = await proc.activate({
-			enableNotifications: opt.enableNotifications,
-			serverPort: this.serverPort,
-			externalServer: opt.externalServer,
-			verbose: opt.verbose
-		});
-		if (success) {
+
+		let portIsAvailable: boolean = false;
+		for (let i = 0; !portIsAvailable && i < this.MAX_PORT_ATTEMPTS; i++) {
+			const success: ProcessCode = await proc.activate({
+				enableNotifications: opt.enableNotifications,
+				serverPort: this.serverPort,
+				externalServer: opt.externalServer,
+				verbose: opt.verbose
+			});
+			portIsAvailable = success === ProcessCode.SUCCESS;
+			if (portIsAvailable === false) {
+				this.serverPort++;
+				await proc.kill();
+			}
+		}
+		if (portIsAvailable) {
 			if (!opt.externalServer) {
 				if (connection) {
 					connection.console.info(`[pvs-proxy] pvs-server active at http://${this.serverAddress}:${this.serverPort}`);
@@ -1134,7 +1125,7 @@ export class PvsProxy {
 		opt = opt || {};
 		if (this.client) { Promise.resolve(true); }
 		return new Promise(async (resolve, reject) => {
-			try {
+			// try {
 				let portIsAvailable: boolean = (this.guiServer) ? true : false;
 				for (let i = 0; !portIsAvailable && i < this.MAX_PORT_ATTEMPTS; i++) {
 					portIsAvailable = await this.checkPort(this.clientPort, true);
@@ -1143,8 +1134,8 @@ export class PvsProxy {
 					}
 				}
 				if (portIsAvailable) {
-					this.banner = `XML-RPC GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
-					this.client = createClient({
+					this.banner = `GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
+					this.client = xmlrpc.createClient({
 						host: this.serverAddress, port: this.serverPort, path: "/RPC2"
 					});
 					if (!this.client) {
@@ -1152,24 +1143,36 @@ export class PvsProxy {
 						resolve(false);
 					}
 					if (!this.guiServer) {
-						this.guiServer = createServer({
-							host: this.clientAddress, port: this.clientPort, path: "/RPC2"
-						}, () => {
-							this.serverReadyCallBack();
-							if (opt.showBanner) {
-								console.log("[pvs-proxy] " + this.banner);
-							}
-							resolve(true);
-						});
+						try {
+							this.guiServer = xmlrpc.createServer({
+								host: this.clientAddress, port: this.clientPort, path: "/RPC2"
+							}, () => {
+								this.serverReadyCallBack();
+								if (opt.showBanner) {
+									console.log("[pvs-proxy] " + this.banner);
+								}
+								resolve(true);
+							});
+							this.guiServer.once('error', (error: Error) => {
+								console.error(error);
+								if (error["code"] === 'EADDRINUSE') {
+									console.log(`[pvs-proxy] port ${this.clientPort} busy`);
+								}
+							});
+				
+						} catch (gui_server_error) {
+							console.error(`[pvs-proxy]`, gui_server_error);
+							resolve(false);
+						}
 					}
 				} else {
 					console.error(`[pvs-proxy] Error: could not start GUI-server`);
 					resolve(false);
 				}
-			} catch (err) {
-				console.error("[pvs-proxy] Error while activating XmlRpcProvider", JSON.stringify(err));
-				resolve(false);
-			}
+			// } catch (err) {
+			// 	console.error("[pvs-proxy] Error while activating XmlRpcProvider", JSON.stringify(err));
+			// 	resolve(false);
+			// }
 		});
 	}
 

@@ -1412,7 +1412,7 @@ export class PvsLanguageServer {
 	/**
 	 * Internal function, used by restartPvs
 	 */
-	protected createServiceProviders(): PvsLanguageServer {
+	protected createServiceProviders(): void {
 		// Create service providers
 		this.definitionProvider = new PvsDefinitionProvider(this.pvsProxy, this.documents);
 		this.completionProvider = new PvsCompletionProvider(this.definitionProvider);
@@ -1420,7 +1420,6 @@ export class PvsLanguageServer {
 		this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
 		this.linter = new PvsLinter();
 		this.cliGateway = new PvsCliGateway(this);
-		return this;
 	}
 	/**
 	 * Internal function, sends diagnostics to the client

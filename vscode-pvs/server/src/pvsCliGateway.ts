@@ -1,5 +1,5 @@
 /**
- * @module PvsCliProvider
+ * @module PvsCliGateway
  * @author Paolo Masci
  * @date 2019.09.06
  * @copyright 
@@ -48,12 +48,47 @@ import { CliGatewayRequest, CliGatewayEvent, CliGatewaySubscriberEvent } from '.
 export class PvsCliGateway {
     protected wsServer: WebSocket.Server;
 	protected port: number = 33445;
+	protected MAX_PORT_ATTEMPTS: number = 200;
 	
 	// websocket clients
     protected pvsCli: { [ key: string ]: { [ clientID: string ]: WebSocket } } = {};
     protected vscodeTerminal: { [ key: string ]: { [ clientID: string ]: WebSocket } } = {};
 	
 	protected pvsLanguageServer: PvsLanguageServer;
+
+	/**
+	* Checks availability of the port. Returns true if the port is available, false otherwise.
+	* The check works as follows. A dummy server is created at port p; if the creation of the server succeeds, an event 'listening' is triggered, otherwise an event 'error' is triggered.
+	* The server is turned off as soon as an answer is available.
+	*/
+    protected checkPort (port: number, retry: boolean): Promise<boolean> {
+	   // console.info(`checking port ${p}`);
+	   return new Promise((resolve, reject) => {
+		   const server: WebSocket.Server = new WebSocket.Server({ port: this.port })
+		   const timeout: number = 1000; // msec
+		   server.once('error', (error: Error) => {
+			//    console.error(error);
+			   if (error["code"] === 'EADDRINUSE' && retry) {
+				   console.log(`[pvs-cli-gateway] port ${port} busy, retrying after timeout of ${timeout} msec`);
+				   retry = false; // retry just once on the same port
+				   setTimeout(() => {
+					   this.checkPort(port, false);
+				   }, timeout);
+			   } else {
+				   console.log(`[pvs-proxy] port ${port} is not available :/`);
+				   resolve(false);
+			   }
+		   });
+		   server.once('listening', () => {
+			   console.log(`[pvs-cli-gateway] port ${port} is available :)`);
+			   server.once('close', () => {
+				   resolve(true);
+			   });
+			   server.close();
+		   });
+	   });
+	}
+
 
     constructor (pvsLanguageServer: PvsLanguageServer) {
 		this.pvsLanguageServer = pvsLanguageServer;
@@ -83,127 +118,139 @@ export class PvsCliGateway {
 		if (this.wsServer) {
 			return Promise.resolve(true);
 		}
-		return new Promise((resolve, reject) => {
-			// create websocket server
-			this.wsServer = new WebSocket.Server({ port: this.port });
-			this.wsServer.on('connection', (wsClient: WebSocket) => {
-				console.info("[pvs-cli-gateway] New terminal session started");
-				wsClient.on('message', (msg: string) => {
-					// FIXME: declare these message types in serverInterface
-					try {
-						const data: CliGatewayRequest = JSON.parse(msg);
-						if (data) {
-							switch (data.type) {
-								case "subscribe-vscode": {
-									console.info('[pvs-cli-gateway] received subscription request');
-									console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
-									console.info('[pvs-cli-gateway] client ID = ', data.clientID);
-									this.vscodeTerminal[data.channelID] = this.vscodeTerminal[data.channelID] || {};
-									this.vscodeTerminal[data.channelID][data.clientID] = wsClient;
-									wsClient.send(JSON.stringify({
-										type: "subscribe-response", success: true, channelID: data.channelID
-									}));
-									break;
-								}
-								case "subscribe": {
-									console.info('[pvs-cli-gateway] received subscription request');
-									console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
-									console.info('[pvs-cli-gateway] client ID = ', data.clientID);
-									this.pvsCli[data.channelID] = this.pvsCli[data.channelID] || {};
-									this.pvsCli[data.channelID][data.clientID] = wsClient;
-									wsClient.send(JSON.stringify({ type: "subscribe-response", success: true, channelID: data.channelID }));
-									if (this.vscodeTerminal[data.channelID]) {
-										// send cli-ready event to vscode subscribers, if any
-										const keys: string[] = Object.keys(this.vscodeTerminal[data.channelID]);
-										for (let i = 0; i < keys.length; i++) {
-											this.vscodeTerminal[data.channelID][keys[i]].send(JSON.stringify({
-												type: "cli-ready", channelID: data.channelID
-											}));
-										}
+		return new Promise(async (resolve, reject) => {
+			let portIsAvailable: boolean = false;
+			for (let i = 0; !portIsAvailable && i < this.MAX_PORT_ATTEMPTS; i++) {
+				portIsAvailable = await this.checkPort(this.port, false);
+				if (portIsAvailable === false) {
+					this.port++;
+				}
+			}
+			if (portIsAvailable) {
+				// create websocket server
+				this.wsServer = new WebSocket.Server({ port: this.port });
+				this.wsServer.on('connection', (wsClient: WebSocket) => {
+					console.info("[pvs-cli-gateway] New terminal session started");
+					wsClient.on('message', (msg: string) => {
+						// FIXME: declare these message types in serverInterface
+						try {
+							const data: CliGatewayRequest = JSON.parse(msg);
+							if (data) {
+								switch (data.type) {
+									case "subscribe-vscode": {
+										console.info('[pvs-cli-gateway] received subscription request');
+										console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
+										console.info('[pvs-cli-gateway] client ID = ', data.clientID);
+										this.vscodeTerminal[data.channelID] = this.vscodeTerminal[data.channelID] || {};
+										this.vscodeTerminal[data.channelID][data.clientID] = wsClient;
+										wsClient.send(JSON.stringify({
+											type: "subscribe-response", success: true, channelID: data.channelID
+										}));
+										break;
 									}
-									break;
-								}
-								case "unsubscribe": {
-									console.info('[pvs-cli-gateway] received unsubscription request');
-									console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
-									console.info('[pvs-cli-gateway] client ID = ', data.clientID);
-									if (this.pvsCli[data.channelID] && this.pvsCli[data.channelID][data.clientID]) {
-										this.pvsCli[data.channelID][data.clientID].close();
-										delete this.pvsCli[data.channelID][data.clientID];
+									case "subscribe": {
+										console.info('[pvs-cli-gateway] received subscription request');
+										console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
+										console.info('[pvs-cli-gateway] client ID = ', data.clientID);
+										this.pvsCli[data.channelID] = this.pvsCli[data.channelID] || {};
+										this.pvsCli[data.channelID][data.clientID] = wsClient;
+										wsClient.send(JSON.stringify({ type: "subscribe-response", success: true, channelID: data.channelID }));
 										if (this.vscodeTerminal[data.channelID]) {
-											// send cli-end event to vscode subscribers, if any
+											// send cli-ready event to vscode subscribers, if any
 											const keys: string[] = Object.keys(this.vscodeTerminal[data.channelID]);
 											for (let i = 0; i < keys.length; i++) {
 												this.vscodeTerminal[data.channelID][keys[i]].send(JSON.stringify({
-													type: "cli-end", channelID: data.channelID
-												}));
-											}
-										}	
-									} else {
-										console.error("[pvs-cli-gateway] Warning: could not find records of client that wants to unsubscribe");
-									}
-									break;
-								}
-								case "pvs.proof-command": {
-									if (data && data.cmd) {
-										console.info('[pvs-cli-gateway] received new command from pvs-cli', data.cmd);
-										this.pvsLanguageServer.proofCommandRequest(data);
-									}
-									break;
-								}
-								case "pvs.evaluate-expression": {
-									if (data && data.cmd) {
-										console.info('[pvs-cli-gateway] received new evaluation request from pvs-cli', data.cmd);
-										this.pvsLanguageServer.evaluationRequest(data);
-									}
-									break;
-								}
-								case "pvs.select-profile": {
-									if (data && data.profile) {
-										console.info('[pvs-cli-gateway] received profile change request', data.profile);
-										const channels: string[] = Object.keys(this.pvsCli);
-										for (let i = 0; i < channels.length; i++) {
-											const clients: string[] = Object.keys(this.pvsCli[channels[i]]);
-											for (let j = 0; j < clients.length; j++) {
-												this.pvsCli[channels[i]][clients[j]].send(JSON.stringify({
-													type: data.type,
-													data: { profile: data.profile }
+													type: "cli-ready", channelID: data.channelID
 												}));
 											}
 										}
-										// this.pvsLanguageServer.evaluationRequest(data);
+										break;
 									}
-									break;
+									case "unsubscribe": {
+										console.info('[pvs-cli-gateway] received unsubscription request');
+										console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
+										console.info('[pvs-cli-gateway] client ID = ', data.clientID);
+										if (this.pvsCli[data.channelID] && this.pvsCli[data.channelID][data.clientID]) {
+											this.pvsCli[data.channelID][data.clientID].close();
+											delete this.pvsCli[data.channelID][data.clientID];
+											if (this.vscodeTerminal[data.channelID]) {
+												// send cli-end event to vscode subscribers, if any
+												const keys: string[] = Object.keys(this.vscodeTerminal[data.channelID]);
+												for (let i = 0; i < keys.length; i++) {
+													this.vscodeTerminal[data.channelID][keys[i]].send(JSON.stringify({
+														type: "cli-end", channelID: data.channelID
+													}));
+												}
+											}	
+										} else {
+											console.error("[pvs-cli-gateway] Warning: could not find records of client that wants to unsubscribe");
+										}
+										break;
+									}
+									case "pvs.proof-command": {
+										if (data && data.cmd) {
+											console.info('[pvs-cli-gateway] received new command from pvs-cli', data.cmd);
+											this.pvsLanguageServer.proofCommandRequest(data);
+										}
+										break;
+									}
+									case "pvs.evaluate-expression": {
+										if (data && data.cmd) {
+											console.info('[pvs-cli-gateway] received new evaluation request from pvs-cli', data.cmd);
+											this.pvsLanguageServer.evaluationRequest(data);
+										}
+										break;
+									}
+									case "pvs.select-profile": {
+										if (data && data.profile) {
+											console.info('[pvs-cli-gateway] received profile change request', data.profile);
+											const channels: string[] = Object.keys(this.pvsCli);
+											for (let i = 0; i < channels.length; i++) {
+												const clients: string[] = Object.keys(this.pvsCli[channels[i]]);
+												for (let j = 0; j < clients.length; j++) {
+													this.pvsCli[channels[i]][clients[j]].send(JSON.stringify({
+														type: data.type,
+														data: { profile: data.profile }
+													}));
+												}
+											}
+											// this.pvsLanguageServer.evaluationRequest(data);
+										}
+										break;
+									}
+									// case "publish": {
+									// 	console.info('[pvs-cli-gateway] received request to forward message on channel ', data.channelID);
+									// 	this.publish({ type: "publish", channelID: data.channelID, data: null });
+									// }
+									default: {
+										console.error(`[pvs-cli-gateway] Warning: unknown message type ${data.type}`, msg);
+									}
 								}
-								// case "publish": {
-								// 	console.info('[pvs-cli-gateway] received request to forward message on channel ', data.channelID);
-								// 	this.publish({ type: "publish", channelID: data.channelID, data: null });
-								// }
-								default: {
-									console.error(`[pvs-cli-gateway] Warning: unknown message type ${data.type}`, msg);
-								}
+							} else {
+								console.error("[pvs-cli-gateway] Warning: data is null");
 							}
-						} else {
-							console.error("[pvs-cli-gateway] Warning: data is null");
+						} catch (jsonError) {
+							console.error("[pvs-cli-gateway] Warning: error while parsing json message", msg);
 						}
-					} catch (jsonError) {
-						console.error("[pvs-cli-gateway] Warning: error while parsing json message", msg);
-					}
+					});
+					wsClient.on('close', () => {
+						console.info('[pvs-cli-gateway] Terminal session end');
+					});
+					wsClient.on('error', (err) => {
+						console.error('[pvs-cli-gateway] Terminal session error', err);
+					});
 				});
-				wsClient.on('close', () => {
-					console.info('[pvs-cli-gateway] Terminal session end');
+				this.wsServer.on('listening', () => {
+					console.log("[pvs-cli-gateway] WebSocket server ready!");
+					resolve(true);
 				});
-				wsClient.on('error', (err) => {
-					console.error('[pvs-cli-gateway] Terminal session error', err);
+				this.wsServer.on('error', (err) => {
+					console.error('[pvs-cli-gateway] WebSocket server error ', err);
+					resolve(false);
 				});
-			});
-			this.wsServer.on('listening', () => {
-				console.log("[pvs-cli-gateway] WebSocket server ready!");
-				resolve(true);
-			});
-			this.wsServer.on('error', (err) => {
-				console.error('[pvs-cli-gateway] WebSocket server error ', err);
+			} else {
+				console.error(`[pvs-cli-gateway] WebSocket server could not find any available port after ${this.MAX_PORT_ATTEMPTS} attempts`);
 				resolve(false);
-			});
+			}
 		});
 	}}
