@@ -110,7 +110,7 @@ export class PvsProxy {
 	protected handlers: { [mth: string]: (params: string[]) => string[] } = {};
 	protected serverAddress: string = "0.0.0.0"; // using "0.0.0.0" instead of "localhost" because the client seems to have troubles connecting when indicating "localhost"
 	protected serverPort: number;
-	protected clientAddress: string = "0.0.0.0"; // don't use 0.0.0.0 --- the xmlrpc library doesn't seem to be able to handle that address
+	protected clientAddress: string = "0.0.0.0";
 	protected clientPort: number;
 	protected client: xmlrpc.Client;
 	protected guiServer: xmlrpc.Server; // GUI server, needed to receive responses sent back by pvs-server

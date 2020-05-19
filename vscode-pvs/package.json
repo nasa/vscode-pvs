@@ -913,7 +913,8 @@
 		"@typescript-eslint/eslint-plugin": "^2.25.0",
 		"@typescript-eslint/parser": "^2.25.0",
 		"eslint": "^6.8.0",
-		"typescript": "^3.7.3"
+		"typescript": "^3.7.3",
+		"vsce": "^1.75.0"
 	},
 	"eslintConfig": {
 		"env": {

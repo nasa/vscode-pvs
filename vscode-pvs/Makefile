@@ -45,7 +45,7 @@ release:
 	cd server && npm install --no-save typescript && npm run compile && npm install
 	cd client && npm install --no-save typescript && npm run compile && npm install
 	make core
-	npm install --no-save vsce && node_modules/vsce/out/vsce package
+	node_modules/vsce/out/vsce package
 
 package:
 	node_modules/vsce/out/vsce package
