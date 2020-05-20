@@ -680,17 +680,7 @@
 				"when": "resourceLangId == pvs"
 			},
 			{
-				"key": "alt+x",
-				"command": "vscode-pvs.metax",
-				"when": "resourceLangId == pvs"
-			},
-			{
-				"key": "shift+alt+x",
-				"command": "vscode-pvs.metax",
-				"when": "resourceLangId == pvs"
-			},
-			{
-				"key": "shift+ctrl+t",
+				"key": "ctrl+alt+t",
 				"command": "vscode-pvs.typecheck-file",
 				"when": "resourceLangId == pvs"
 			},
@@ -799,7 +789,7 @@
 				],
 				"firstLine": "\\s*((%+\\w+)|((\\w+)\\s*(?:\\[([\\w\\W\\s]*)\\])?\\s*\\:\\s*(THEORY|theory|Theory)\\b))",
 				"filenames": [
-					"\\w+.pvs"
+					".pvscontext"
 				],
 				"configuration": "./syntax/pvs-language-configuration.json",
 				"aliases": [
