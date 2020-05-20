@@ -156,7 +156,7 @@ export class VSCodePvsEmacsBindingsProvider {
 		}
 	}
 	metaxPrompt (): void {
-		this.statusBar.msg(this.metax);
+		this.statusBar.showMsg(this.metax);
 		// window.showInputBox({
 		// 	prompt: "M-x ",
 		// }).then((userInput: string) => {
@@ -171,7 +171,7 @@ export class VSCodePvsEmacsBindingsProvider {
 			// FIXME: VSCode does not seem to capture tabs in the input box??
 			this.userInput = this.autocompleteInput(input);
 			this.inputBox.prompt = this.metax + this.userInput;
-			this.statusBar.msg(this.inputBox.prompt);
+			this.statusBar.showMsg(this.inputBox.prompt);
 		});
 		this.inputBox.show();
 	}

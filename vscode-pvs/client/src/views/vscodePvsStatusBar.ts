@@ -50,7 +50,9 @@ export class VSCodePvsStatusBar {
     protected pvsVersionInfo: PvsVersionDescriptor;
     protected pvsStatus: StatusBarItem;
     protected workspaceStatus: StatusBarItem;
-    protected versionInfoBar: StatusBarItem;
+    protected versionInfo: StatusBarItem;
+    protected crashReport: StatusBarItem;
+    protected restartPvs: StatusBarItem;
 
     protected stats: {
         [filename: string]: { lemmas: number, definitions: number, types: number }
@@ -86,7 +88,10 @@ export class VSCodePvsStatusBar {
         // create status bar elements
         this.workspaceStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
         this.pvsStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
-        this.versionInfoBar = window.createStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
+        this.versionInfo = window.createStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
+
+        this.restartPvs = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
+        this.crashReport = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
     }
 
 
@@ -97,10 +102,11 @@ export class VSCodePvsStatusBar {
     pvsReady (desc: PvsVersionDescriptor): void {
         if (desc) {
             this.pvsVersionInfo = desc;
-            this.versionInfoBar.text = desc["pvs-version"];
-            this.versionInfoBar.tooltip = this.printfVersionInfo();
+            this.showVersionInfo();
+            this.ready();
         }
     }
+
 
     setFiles (nfiles: number): void {
         this.nfiles = nfiles;
@@ -109,7 +115,7 @@ export class VSCodePvsStatusBar {
         if (this.contextFolder !== contextFolder) {
             this.contextFolder = contextFolder;
             this.resetStats();
-            this.showStats();
+            // this.showStats();
         }
     }
     updateStats (desc: { contextFolder: string, fileName: string, fileExtension: string, stats: { types: number, definitions: number, lemmas: number }}): void {
@@ -142,39 +148,77 @@ export class VSCodePvsStatusBar {
      * Shows "ready" in the status bar for 2 secs
      */
     ready (): void {
-        this.pvsStatus.text = `$(check)  Ready!`;
+        this.pvsStatus.text = "";//`$(check)  pvs-server ready!`;
+        this.pvsStatus.show();
     };
 
     /**
      * Shows a spinning icon and a message in the status bar
      * @param msg message
      */
-    progress (msg: string): void {
-        this.pvsStatus.text = `$(sync~spin)  ${msg}`;
+    showProgress (msg: string): void {
+        this.pvsStatus.text = `$(loading~spin)  ${msg}`;
+        this.pvsStatus.show();
     }
 
     /**
      * Shows a megaphone icon and a message in the status bar
      * @param msg message
      */
-    info (msg: string): void {
+    showInfo (msg: string): void {
         this.pvsStatus.text = `$(megaphone)  ${msg}`;
+        this.pvsStatus.show();
     }
 
     /**
      * Shows a message in the status bar
      * @param msg message
      */
-    msg (msg: string): void {
+    showMsg (msg: string): void {
         this.pvsStatus.text = msg;
+        this.pvsStatus.show();
     }
     
     /**
      * Shows an error message in the status bar
      * @param msg message
      */
-    error (msg: string): void {
+    showError (msg: string): void {
         this.pvsStatus.text = msg;
+        this.pvsStatus.show();
+    }
+
+    getVersionInfo (): PvsVersionDescriptor {
+        return this.pvsVersionInfo;
+    }
+
+    showVersionInfo (): void {
+        if (this.pvsVersionInfo) {
+            this.versionInfo.text = this.pvsVersionInfo["pvs-version"];
+            this.versionInfo.command = "vscode-pvs.show-version-info";
+        }
+        this.versionInfo.show();
+    }
+    hideVersionInfo (): void {
+        this.versionInfo.hide();
+    }
+    showRestartButton (): void {
+        this.restartPvs.text = `$(debug-restart) Reboot pvs-server`;
+        this.restartPvs.command = "vscode-pvs.reboot-pvs";
+        this.restartPvs.show();
+    }
+    hideRestartButton (): void {
+        this.restartPvs.hide();
+    }
+
+    /**
+     * Shows a critical failures in the status bar -- these failures require restarting pvs
+     * @param msg message
+     */
+    failure (msg: string): void {
+        this.crashReport.text = `$(debug~spin)  ${msg}`;
+        this.crashReport.show();
+        this.pvsStatus.hide();
     }
 
     /**
@@ -182,21 +226,20 @@ export class VSCodePvsStatusBar {
      */
     activate (context: ExtensionContext) {
         this.resetStats();
-        this.workspaceStatus.show();
-        this.pvsStatus.show();
-        this.versionInfoBar.show();
+        this.show();
     }
 
     show (): void {
-        this.workspaceStatus.show();
+        // this.workspaceStatus.show();
         this.pvsStatus.show();
-        this.versionInfoBar.show();
+        this.showVersionInfo();
+        this.showRestartButton();
     }
 
     hide (): void {
-        this.workspaceStatus.hide();
+        // this.workspaceStatus.hide();
         this.pvsStatus.hide();
-        this.versionInfoBar.hide();
+        this.hideVersionInfo();
     }
 
     /**

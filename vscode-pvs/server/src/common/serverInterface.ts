@@ -508,6 +508,8 @@ export const serverEvent = {
 	quitProofEvent: "pvs.event.quit-proof",
 	quitDontSaveProofEvent: "pvs.event.quit-dont-save-proof",
 
+	pvsServerCrash: "pvs.event.server-crash",
+
 	pvsVersionInfo: "pvs.event.version-info",
 	pvsNotPresent: "pvs.event.pvs-not-present",
 	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version"

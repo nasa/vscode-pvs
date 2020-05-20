@@ -466,7 +466,7 @@ export class PvsLanguageServer {
 			this.connection.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: request });
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
 		} else {
-			this.notifyEndImportantTaskWithErrors({ id: taskId, msg: "Error: Could not start PVSio, some of the files do not typecheck correctly (see Problems). Please fix the typecheck errors first." });
+			this.notifyEndImportantTaskWithErrors({ id: taskId, msg: "Error: Could not start PVSio, some pvs files fail to typecheck (see Problems). Please fix the typecheck errors before trying to start PVSio." });
 		}
 	}
 
@@ -1431,7 +1431,7 @@ export class PvsLanguageServer {
 		if (fnames && fnames.length > 0) {
 			for (let i = 0; i < fnames.length; i++) {
 				let fname: string = fnames[i];
-				const response: PvsResponse = this.diags[fname].pvsResponse;
+				const response: PvsResponse = (this.diags && this.diags[fname]) ? this.diags[fname].pvsResponse : null;
 				if (response && response["error"]) {
 					const info: PvsError = <PvsError> response;
 
@@ -1541,6 +1541,28 @@ export class PvsLanguageServer {
 		}
 	}
 
+	protected async sendPvsVersionInfo (): Promise<boolean> {
+		const desc: PvsVersionDescriptor = await this.pvsProxy.getPvsVersionInfo();
+		if (desc) {
+			const majorReleaseNumber: number = parseInt(desc["pvs-version"]);
+			if (majorReleaseNumber >= 7) {
+				await this.sendWorkspaceInfo();
+				this.pvsVersionDescriptor = desc;
+				this.connection.sendRequest(serverEvent.pvsServerReady, desc);
+				this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
+				return true;
+			} else {
+				console.error(`[pvs-language-server] Error: incompatible pvs version ${desc["pvs-version"]}`);
+				this.connection.sendRequest(serverEvent.pvsIncorrectVersion, `Incorrect PVS version ${desc["pvs-version"]} (vscode-pvs requires pvs ver >= 7)`);
+			}
+		} else {
+			const msg: string = `PVS executable not found at ${this.pvsPath}`;
+			console.error(msg);
+			this.connection.sendRequest(serverEvent.pvsNotPresent, msg);
+		}
+		return false;
+	}
+
 	/**
 	 * Internal function, restarts pvs-server
 	 * FIXME: create separate functions for starting pvs-server and pvs-proxy
@@ -1552,7 +1574,7 @@ export class PvsLanguageServer {
 			this.pvsPath = desc.pvsPath || this.pvsPath;
 			const externalServer: boolean = !!desc.externalServer;
 			if (this.pvsPath) {
-				console.log(`[pvs-language-server] Rebooting pvs (installation folder is ${this.pvsPath})`);
+				console.log(`[pvs-language-server] Rebooting PVS (installation folder is ${this.pvsPath})`);
 				if (this.pvsProxy) {
 					if (externalServer) {
 						await this.pvsProxy.enableExternalServer();
@@ -1574,26 +1596,9 @@ export class PvsLanguageServer {
 				// activate cli gateway
 				await this.cliGateway.activate();
 				// send version info to the front-end
-				const desc: PvsVersionDescriptor = await this.pvsProxy.getPvsVersionInfo();
-				if (desc) {
-					const majorReleaseNumber: number = parseInt(desc["pvs-version"]);
-					if (majorReleaseNumber >= 7) {
-						await this.sendWorkspaceInfo();
-						this.pvsVersionDescriptor = desc;
-						this.connection.sendRequest(serverEvent.pvsServerReady, desc);
-						this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
-						return true;
-					} else {
-						console.error(`[pvs-language-server] Error: incompatible pvs version ${desc["pvs-version"]}`);
-						this.connection.sendRequest(serverEvent.pvsIncorrectVersion, `Incorrect PVS version ${desc["pvs-version"]} (vscode-pvs requires pvs ver >= 7)`);
-					}
-				} else {
-					const msg: string = `pvs executable not found at ${this.pvsPath}`;
-					console.error(msg);
-					this.connection.sendRequest(serverEvent.pvsNotPresent, msg);
-				}
+				await this.sendPvsVersionInfo();
 			} else {
-				console.error("[pvs-language-server] Error: failed to identify pvs path");
+				console.error("[pvs-language-server] Error: failed to identify PVS path");
 				this.connection.sendRequest(serverEvent.pvsNotPresent);
 			}
 		}
@@ -1697,7 +1702,9 @@ export class PvsLanguageServer {
 				}
 			});
 			this.connection.onRequest(serverCommand.rebootPvsServer, async () => {
-				this.pvsProxy.killAndRestartPvsServer(); // async call
+				await fsUtils.deletePvsCache(this.lastParsedContext, { keepTccs: true }); // this will remove .pvscontext and pvsbin
+				await this.pvsProxy.rebootPvsServer();
+				await this.sendPvsVersionInfo();
 			});
 			this.connection.onRequest(serverCommand.parseFile, async (request: string | { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.parseFileRequest(request); // async call
@@ -1783,9 +1790,9 @@ export class PvsLanguageServer {
 				const licensePage: string = await PvsPackageManager.downloadPvsLicensePage();
 				this.connection.sendRequest(serverEvent.downloadLicensePageResponse, { response: licensePage });
 			});
-			this.connection.onRequest("kill-parser", async (args: { fileName: string, fileExtension: string, contextFolder: string }) => {
-				this.pvsProxy.killParser(); // async call
-			});
+			// this.connection.onRequest("kill-parser", async (args: { fileName: string, fileExtension: string, contextFolder: string }) => {
+			// 	this.pvsProxy.killParser(); // async call
+			// });
 
 			this.connection.onRequest(serverCommand.startEvaluator, async (args: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string }) => {
 				this.startEvaluatorRequest(args);

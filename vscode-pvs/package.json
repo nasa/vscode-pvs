@@ -93,17 +93,17 @@
 				{
 					"id": "workspace-explorer-view",
 					"name": "PVS Workspace Explorer",
-					"when": "pvs-language-active"
+					"when": "pvs-server-active"
 				},
 				{
 					"id": "proof-explorer-view",
 					"name": "PVS Proof Explorer",
-					"when": "pvs-language-active && prover-session-active"
+					"when": "pvs-server-active && prover-session-active"
 				},
 				{
 					"id": "proof-mate-view",
 					"name": "PVS Proof Mate",
-					"when": "pvs-language-active && prover-session-active"
+					"when": "pvs-server-active && prover-session-active"
 				}
 			]
 		},
@@ -155,159 +155,159 @@
 			{
 				"command": "vscode-pvs.typecheck-file",
 				"title": "Typecheck File",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.typecheck",
 				"title": "Typecheck",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.generate-tccs",
 				"title": "Generate TCCs",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.show-tccs",
 				"title": "Show TCCs",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.show-tccs-alt",
 				"title": "Show",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.parse-file",
 				"title": "Parse File",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.parse-workspace",
 				"title": "Parse Workspace",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.typecheck-workspace",
 				"title": "Typecheck Workspace",
-				"enablement": "pvs-language-active == true && !macOs"
+				"enablement": "pvs-server-active == true && !macOs"
 			},
 			{
 				"command": "vscode-pvs.hp2pvs",
 				"title": "Generate PVS file",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.prove-formula",
 				"title": "Prove",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.command-palette",
 				"title": "Command Palette...",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs-alt",
 				"title": "Discharge",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.discharge-theorems-alt",
 				"title": "Discharge",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs",
 				"title": "Discharge all TCCs",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
 				"title": "PVSio Evaluator",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "proof-mate.exec-proof-command",
 				"title": "Execute",
-				"enablement": "pvs-language-active == true",
+				"enablement": "pvs-server-active == true",
 				"icon": "icons/play-icon.png"
 			},
 			{
 				"command": "proof-explorer.delete-node",
 				"title": "Delete",
-				"enablement": "view == proof-explorer-view && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.trim-subtree",
 				"title": "Trim",
-				"enablement": "view == proof-explorer-view && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.create-proof-branch",
 				"title": "New branch",
-				"enablement": "view == proof-explorer-view && viewItem != proof-branch && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && viewItem != proof-branch && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.append-node",
 				"title": "New proof command",
-				"enablement": "view == proof-explorer-view && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.mark-as-pending",
 				"title": "Mark as pending",
-				"enablement": "view == proof-explorer-view && viewItem === proof-branch && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && viewItem === proof-branch && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.mark-as-visited",
 				"title": "Mark as visited",
-				"enablement": "view == proof-explorer-view && viewItem != root && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.mark-as-not-visited",
 				"title": "Mark as not visited",
-				"enablement": "view == proof-explorer-view && viewItem != root && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.mark-as-active",
 				"title": "Mark as active",
-				"enablement": "view == proof-explorer-view && viewItem != root && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.show-sequent",
 				"title": "Open sequent in the editor",
-				"enablement": "view == proof-explorer-view && pvs-language-active == true",
+				"enablement": "view == proof-explorer-view && pvs-server-active == true",
 				"icon": "icons/browser-arrow-icon.png"
 			},
 			{
 				"command": "proof-explorer.rename-node",
 				"title": "Rename",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.cut-node",
 				"title": "Cut",
-				"enablement": "view == proof-explorer-view && viewItem != root && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.copy-node",
 				"title": "Copy proof command",
-				"enablement": "view == proof-explorer-view && viewItem != root && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.copy-subtree",
 				"title": "Copy",
-				"enablement": "view == proof-explorer-view && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.paste-node",
 				"title": "Paste",
-				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node && pvs-language-active == true"
+				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.save-proof",
 				"title": "Save",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.save-proof-as",
@@ -322,7 +322,7 @@
 			{
 				"command": "proof-explorer.quit-proof",
 				"title": "Quit",
-				"enablement": "pvs-language-active == true"
+				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.back",
@@ -382,11 +382,11 @@
 				},
 				{
 					"command": "vscode-pvs.typecheck-workspace",
-					"when": "explorerResourceIsFolder && pvs-language-active == true"
+					"when": "explorerResourceIsFolder && pvs-server-active == true"
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
-					"when": "explorerResourceIsFolder && pvs-language-active == true"
+					"when": "explorerResourceIsFolder && pvs-server-active == true"
 				}
 			],
 			"view/item/context": [
@@ -524,7 +524,7 @@
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
-					"when": "pvs-language-active",
+					"when": "pvs-server-active",
 					"group": "x_commands"
 				},
 				{
@@ -539,7 +539,7 @@
 				},
 				{
 					"command": "vscode-pvs.typecheck-workspace",
-					"when": "pvs-language-active",
+					"when": "pvs-server-active",
 					"group": "y_commands"
 				},
 				{
@@ -566,7 +566,7 @@
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
-					"when": "pvs-language-active",
+					"when": "pvs-server-active",
 					"group": "x_commands"
 				},
 				{
@@ -581,7 +581,7 @@
 				},
 				{
 					"command": "vscode-pvs.typecheck-workspace",
-					"when": "pvs-language-active",
+					"when": "pvs-server-active",
 					"group": "y_commands"
 				},
 				{

@@ -991,25 +991,24 @@ export class PvsProxy {
 		});
 	}
 
-	async killAndRestartPvsServer (desc?: { pvsPath?: string }): Promise<void> {
+	async rebootPvsServer (desc?: { pvsPath?: string }): Promise<void> {
 		if (desc && desc.pvsPath) {
 			this.pvsPath = desc.pvsPath;
-			console.log(`[pvs-proxy] New pvs path: ${this.pvsPath}`);
+			console.log(`[pvs-proxy] New PVS path: ${this.pvsPath}`);
 		}
 		await this.killPvsServer();
-		// an explicit invocation of restartServer is not necessary, pvs server will automatically be rebooted --- see pvsRequest method
-		// await this.restartPvsServer();
+		await this.restartPvsServer();
 	}
 
-	protected async sendPvsVersionInfo () : Promise<void> {
-		const desc: PvsVersionDescriptor = await this.getPvsVersionInfo();
-		if (desc) {
-			if (this.externalServer) {
-				desc["lisp-version"] += " [EXTERNAL SERVER]";
-			}
-			this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
-		}
-	}
+	// protected async sendPvsVersionInfo () : Promise<void> {
+	// 	const desc: PvsVersionDescriptor = await this.getPvsVersionInfo();
+	// 	if (desc) {
+	// 		if (this.externalServer) {
+	// 			desc["lisp-version"] += " [EXTERNAL SERVER]";
+	// 		}
+	// 		this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
+	// 	}
+	// }
 
 	protected async sendWorkspaceInfo (): Promise<void> {
 		const res: PvsResponse = await this.currentContext();
@@ -1032,12 +1031,9 @@ export class PvsProxy {
 			this.legacy.pvsProcess = this.pvsServer;
 			console.info("[pvs-proxy] Restart complete!");
 		}
-		// if (!this.macOs) {
-			// if pvs server has been created, then create the client
-			if (this.externalServer || this.pvsServer) {
-				await this.createClient();
-			}
-		// }
+		if (this.externalServer || this.pvsServer) {
+			await this.createClient();
+		}
 		// // send workspace info
 		// await this.sendWorkspaceInfo();
 		// // send pvs info
@@ -1110,7 +1106,9 @@ export class PvsProxy {
 
 	async createClient (opt?: { debugMode?: boolean, showBanner?: boolean }): Promise<boolean> {
 		opt = opt || {};
-		if (this.client) { Promise.resolve(true); }
+		if (this.client) {
+			return Promise.resolve(true);
+		}
 		return new Promise(async (resolve, reject) => {
 			// try {
 				let portIsAvailable: boolean = (this.guiServer) ? true : false;

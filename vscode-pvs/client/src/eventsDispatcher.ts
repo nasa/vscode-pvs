@@ -140,6 +140,7 @@ export class EventsDispatcher {
 			if (version) {
                 this.statusBar.pvsReady(version);
                 this.proofExplorer.pvsReady(version);
+                commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: " :: Ready! ::"});
 			}
 		});
 		this.client.onRequest(serverEvent.contextUpdate, (desc: ContextDescriptor) => {
@@ -304,6 +305,12 @@ export class EventsDispatcher {
             console.log(desc);
         });
 
+        this.client.onRequest(serverEvent.pvsServerCrash, (desc: { msg?: string }) => {
+            desc = desc || {};
+            const msg: string = desc.msg || "Ups, pvs-server just crashed :/";
+            this.statusBar.failure(msg);
+        });
+
 		this.client.onRequest(serverEvent.saveProofEvent, (request: { 
             args: {
                 fileName: string, 
@@ -359,6 +366,32 @@ export class EventsDispatcher {
             this.vscodePvsTerminal.selectProfile(desc);
         }));
         
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.show-version-info", async (opt?: { trailingNote?: string }) => {
+            opt = opt || {};
+            opt.trailingNote = opt.trailingNote || "";
+            let info: PvsVersionDescriptor = {
+                "pvs-version": "PVS version not available :/",
+                "lisp-version": ""
+            };
+            const desc: PvsVersionDescriptor = this.statusBar.getVersionInfo();
+            if (desc) {
+                if (desc["pvs-version"]) { info["pvs-version"] = desc["pvs-version"]; }
+                if (desc["lisp-version"]) { info["lisp-version"] = desc["lisp-version"]; }
+            }
+            const msg: string = `PVS ${info["pvs-version"]} (${info["lisp-version"]}) ${opt.trailingNote}`;
+            window.showInformationMessage(msg);
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.reboot-pvs", async () => {
+            // ask the user confirmation before restarting pvs
+			const yesno: string[] = [ "Yes", "No" ];
+			const msg: string = `Reboot pvs-server?\n\nThis action can resolve situations where the server crashed or is not responding.`;
+			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+			if (ans === yesno[0]) {
+                this.statusBar.showProgress("Rebooting pvs-server...");	
+                this.client.sendRequest(serverCommand.rebootPvsServer);
+            }
+        }));
+
         context.subscriptions.push(commands.registerCommand("vscode-pvs.print-warning-message-in-terminal", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             // TODO
             // this.vscodePvsTerminal.printWarningMessage(desc);
@@ -646,7 +679,7 @@ export class EventsDispatcher {
         });
         this.client.onNotification("server.status.progress", (desc: { msg: string }) => {
             if (desc && desc.msg) {
-                this.statusBar.progress(desc.msg);
+                this.statusBar.showProgress(desc.msg);
             }
         });
         this.client.onNotification("server.important-notification", (desc?: { msg?: string }) => {
@@ -698,7 +731,7 @@ export class EventsDispatcher {
                 });
 
                 // show progress on the status bar
-                this.statusBar.progress(desc.msg);
+                this.statusBar.showProgress(desc.msg);
             }
 
         });

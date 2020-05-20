@@ -128,7 +128,7 @@ export class VSCodePvsPackageManager {
             cancel: "Cancel"
         }
         const msg: string = `Please choose the installation folder`;
-        if (this.statusBar) { this.statusBar.progress(msg); }
+        if (this.statusBar) { this.statusBar.showProgress(msg); }
         const item = await window.showInformationMessage(msg, labels.browse, labels.cancel);
         if (item === labels.browse) {
             const pvsInstallationFolder: Uri[] = await window.showOpenDialog({

@@ -268,24 +268,32 @@ export class PvsProcess {
 				// before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
 				// because the destruction of the process is immediate but previous calls to write() may not have drained
 				// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
-				if (this.pvsProcess) {
-					this.pvsProcess.stdin.destroy();
-					this.pvsProcess.stdin.end(() => {});
-					try {
-						console.log(`[pvsProcess] Killing process id ${pvs_shell}`);
-						execSync(`kill -9 ${pvs_shell}`);
-						this.pvsProcess.on("close", (code: number, signal: string) => {
-							// console.log("[pvs-process] Process terminated");
-							resolve(true);
-							// console.dir({ code, signal }, { depth: null });
-						});
-					} catch (kill_error) {
-						console.log(`[pvsProcess] Warning: Could not kill process id ${pvs_shell}.`);
-						this.pvsProcess = null;
-						setTimeout(() => {
-							resolve(true);
-						}, 1000);
+				this.pvsProcess.on("close", (code: number, signal: string) => {
+					console.log("[pvs-process] Process terminated");
+					resolve(true);
+					// console.dir({ code, signal }, { depth: null });
+				});
+				this.pvsProcess.on("error", (code: number, signal: string) => {
+					console.log("[pvs-process] Process terminated");
+					resolve(true);
+					// console.dir({ code, signal }, { depth: null });
+				});
+				try {
+					if (this.pvsProcess) {
+						const sendQuitCommand = () => {
+							this.pvsProcess.stdin.write("(quit)Y\n");
+							setTimeout(() => {
+								if (this.pvsProcess) {
+									sendQuitCommand(); // eventually the process will quit
+								}
+							}, 200);
+						};
+						sendQuitCommand();
+						return;
 					}
+				} finally {
+					execSync(`kill -9 ${pvs_shell}`);
+					this.pvsProcess = null;
 				}
 			} else {
 				resolve(true);

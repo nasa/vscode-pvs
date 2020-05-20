@@ -139,7 +139,8 @@ export function deleteFolder(contextFolder: string): boolean {
 	}
 	return true;
 }
-export function deletePvsCache(contextFolder: string): Promise<boolean> {
+export function deletePvsCache(contextFolder: string, opt?: { keepTccs?: boolean }): Promise<boolean> {
+	opt = opt || {};
 	try {
 		// console.log(`Deleting cache for context ${contextFolder}`);
 		if (contextFolder) {
@@ -157,7 +158,7 @@ export function deletePvsCache(contextFolder: string): Promise<boolean> {
 			// console.log(`reading folder ${contextFolder}`);
 			const tccFiles: string[] = fs.readdirSync(contextFolder);
 			// console.log(tccFiles);
-			if (tccFiles) {
+			if (tccFiles && !opt.keepTccs) {
 				// console.log(tccFiles);
 				tccFiles.filter(name => {
 					// console.log(name);
