@@ -158,6 +158,7 @@ export class EventsDispatcher {
         }) => {
             // request tccs for the files that typecheck correctly
             if (desc && desc.response && !desc.response.error && desc.args) {
+                desc.args["opt"] = { quiet: true };
                 this.client.sendRequest(serverCommand.generateTccs, desc.args);
             }
         });
@@ -289,7 +290,7 @@ export class EventsDispatcher {
                     this.proofExplorer.loadProofDescriptor(desc.response.result);
                 } else {
                     console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error`, desc);
-                    window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error (please check pvs-server console for details)`);
+                    window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error (please check pvs-server output for details)`);
                 }
             } else {
                 console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} received null response`);
@@ -425,7 +426,6 @@ export class EventsDispatcher {
                     }
                     if (desc.theoryName) {
                         this.client.sendRequest(serverCommand.displayProofLiteScript, desc);
-
                     } else {
                         window.showErrorMessage(`Error while trying to display prooflite script (could not identify theory name, please check that the file typechecks correctly)`);
                     }
@@ -547,10 +547,8 @@ export class EventsDispatcher {
                 }
             }
 			if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string
-                }> this.resource2desc(resource);
-                if (desc) {                    
+                let desc = this.resource2desc(resource);
+                if (desc) {
                     // send typecheck request to pvs-server
                     this.client.sendRequest(serverCommand.typecheckFile, desc);
                 }
@@ -724,7 +722,8 @@ export class EventsDispatcher {
                             this.statusBar.ready();
                             resolve(null);
                             if (desc && desc.msg) {
-                                window.showErrorMessage(desc.msg);
+                                this.statusBar.showError(desc.msg); // use the status bar rather than dialogs, because we don't have APIs to close old dialogs with potentially stale information
+                                // window.showErrorMessage(desc.msg);
                             }
                         });
                     });

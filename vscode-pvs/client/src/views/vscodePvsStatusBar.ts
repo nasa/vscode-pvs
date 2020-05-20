@@ -184,7 +184,7 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     showError (msg: string): void {
-        this.pvsStatus.text = msg;
+        this.pvsStatus.text = `$(warning)  ${msg}`;
         this.pvsStatus.show();
     }
 

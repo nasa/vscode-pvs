@@ -1359,7 +1359,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				if (desc.response.success) {
 					window.showInformationMessage(`Proof ${desc.args.proofDescriptor.proofTree.name} saved in file ${fname}`);
 				} else {
-					window.showErrorMessage(`Unexpected error while saving file ${fname} (please check pvs-server console for details)`);
+					window.showErrorMessage(`Unexpected error while saving file ${fname} (please check pvs-server output for details)`);
 				}
 				resolve(desc.response.success);
 			});
