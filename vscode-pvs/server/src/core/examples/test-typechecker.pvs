@@ -1,0 +1,16 @@
+test: theory begin
+
+%-- testing ability of typechecker to identify duplicate declarations
+foo: T = (LAMBDA(X:real):val(x) >= X+cnst(1)) 
+foo: T % this should trigger a typecheck error: duplicate declaration
+
+lem1: LEMMA FORALL (v1,v2:Vect2): norm(v1) = 1 AND norm(v2) = 1
+    IMPLIES ((v1*v2>=0 IFF norm(v1-v2)<=sqrt(2)) AND
+    	    (v1*v2> 0 IFF norm(v1-v2)<sqrt(2)))
+lem1: LEMMA TRUE % this should trigger a typecheck error: duplicate declaration
+
+nat: TYPE % this should trigger a typecheck error: duplicate declaration (nat is declared in the prelude)
+  
+
+     
+end test
