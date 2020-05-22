@@ -70,6 +70,7 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 ## ChangeLog
 ### 1.0.20 (2020.05.xx)
+- Improved Workspace Explorer
 - Improved feedback & stability
 
 ### 1.0.19 (2020.05.19)
