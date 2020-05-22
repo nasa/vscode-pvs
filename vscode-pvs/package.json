@@ -91,7 +91,8 @@
 			"explorer": [
 				{
 					"id": "workspace-explorer-view",
-					"name": "PVS Workspace Explorer"
+					"name": "PVS Workspace Explorer",
+					"when": "pvs-server-active"
 				},
 				{
 					"id": "proof-explorer-view",
