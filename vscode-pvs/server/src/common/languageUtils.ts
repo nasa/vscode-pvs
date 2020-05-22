@@ -39,7 +39,7 @@
 import * as fsUtils from './fsUtils';
 import * as path from 'path';
 import * as language from './languageKeywords';
-import { ProofCommandDescriptor, FileList, FormulaDescriptor, SimpleConnection, ContextDescriptor, 
+import { FileList, FormulaDescriptor, PvsContextDescriptor, 
 			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range, ProofTree } from '../common/serverInterface';
 
 			
@@ -425,12 +425,12 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 							const line: number = boundaries[i].from + offset - 1;
 							const isTcc: boolean = desc.fileExtension === ".tccs";
 							let status: ProofStatus = (desc.prelude) ? "proved" : "untried";
-							if (isTcc) {
-								const matchStatus: RegExpMatchArray = tccStatusRegExp.exec(slice);
-								if (matchStatus && matchStatus.length > 1 && matchStatus[1]) {
-									status = <ProofStatus> matchStatus[1];
-								}
-							} else {
+							// if (isTcc) {
+							// 	const matchStatus: RegExpMatchArray = tccStatusRegExp.exec(slice);
+							// 	if (matchStatus && matchStatus.length > 1 && matchStatus[1]) {
+							// 		status = <ProofStatus> matchStatus[1];
+							// 	}
+							// } else {
 								// check if the .jprf file contains the proof status
 								const theoryName: string = boundaries[i].theoryName;
 								status = await getProofStatus({
@@ -440,7 +440,7 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 									formulaName,
 									theoryName
 								});
-							}
+							// }
 							const fdesc: FormulaDescriptor = {
 								fileName: desc.fileName,
 								fileExtension: desc.fileExtension,
@@ -663,9 +663,9 @@ export function colorText(text: string, colorCode: number): string {
 /**
  * Lists all theorems in a given context folder
  */
-export async function getContextDescriptor (contextFolder: string, opt?: { listTheorems?: boolean, includeTccs?: boolean }): Promise<ContextDescriptor> {
-	const response: ContextDescriptor = {
-		theories: [],
+export async function getContextDescriptor (contextFolder: string, opt?: { listTheorems?: boolean, includeTccs?: boolean }): Promise<PvsContextDescriptor> {
+	const response: PvsContextDescriptor = {
+		fileDescriptors: {},
 		contextFolder
 	};
 	const fileList: FileList = await fsUtils.listPvsFiles(contextFolder);
@@ -673,9 +673,7 @@ export async function getContextDescriptor (contextFolder: string, opt?: { listT
 		for (let i in fileList.fileNames) {
 			const fname: string = path.join(contextFolder, fileList.fileNames[i]);
 			const desc: PvsFileDescriptor = await getFileDescriptor(fname, opt);
-			if (desc && desc.theories) {
-				response.theories =  response.theories.concat(desc.theories);
-			}
+			response.fileDescriptors[fname] = desc;
 		}
 	}
 	return response;
@@ -1032,7 +1030,8 @@ export const icons: { [name:string]: string } = {
 	"check": "✅",
 	"bang" : "❗",
 	"snow" : "❄️",
-	"stars": "✨"
+	"stars": "✨",
+	"whitecircle": "⚪"
 };
 
 export function getIcon (proofStatus: ProofStatus): string {
@@ -1051,5 +1050,19 @@ export function getIcon (proofStatus: ProofStatus): string {
 		case "unproved":
 		case "untried": // proof has not been attempted yet
 			return icons.stars;
+	}
+}
+
+export function isProved (proofStatus: ProofStatus): boolean {
+	switch (proofStatus) {
+		case "subsumed":
+		case "simplified":
+		// case "proved - incomplete":
+		// case "proved - by mapping":
+		// case "proved - complete": 
+		case "proved":
+			return true;
+		default:
+			return false;
 	}
 }

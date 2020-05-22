@@ -42,10 +42,10 @@ import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindin
 import { VSCodePvsWorkspaceExplorer } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { ContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor } from "./common/serverInterface";
+import { PvsContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
-import { PvsResponse } from "./common/pvs-gui";
+import { PvsResponse, DischargeTccsResult } from "./common/pvs-gui";
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 import * as utils from './common/languageUtils';
@@ -143,9 +143,9 @@ export class EventsDispatcher {
                 commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: " :: Ready! ::"});
 			}
 		});
-		this.client.onRequest(serverEvent.contextUpdate, (desc: ContextDescriptor) => {
+		this.client.onRequest(serverEvent.contextUpdate, (desc: PvsContextDescriptor) => {
 			if (this.workspaceExplorer) {
-				this.workspaceExplorer.updateView(desc, { skipTccs: true });
+				this.workspaceExplorer.updateContextFolder(desc);
 			}
 		});
 		this.client.onRequest(serverEvent.typecheckFileResponse, (desc: { 
@@ -163,7 +163,7 @@ export class EventsDispatcher {
             }
         });
 		this.client.onRequest(serverEvent.showTccsResponse, (desc: { 
-            response: ContextDescriptor, 
+            response: PvsContextDescriptor, 
             args: { 
                 fileName: string, 
                 fileExtension: string, 
@@ -172,18 +172,37 @@ export class EventsDispatcher {
         }) => {
             // console.log(desc);
             if (this.workspaceExplorer && desc.response) {
-                this.workspaceExplorer.updateView(desc.response);
+                this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
             }
-            if (desc && desc.response && desc.response.theories && desc.response.theories.length) {
-                // open tcc file in the editor
-                const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
-                const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
-                const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
-                vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
+            if (desc && desc.args) {
+                const fname: string = fsUtils.desc2fname(desc.args);
+                if (desc && desc.response 
+                        &&  desc.response.fileDescriptors 
+                        && desc.response.fileDescriptors[fname] 
+                        && desc.response.fileDescriptors[fname].theories 
+                        && desc.response.fileDescriptors[fname].theories.length) {
+                    // open tcc file in the editor
+                    const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
+                    const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
+                    const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
+                    vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
+                }
             }
         });
+        this.client.onRequest(serverEvent.dischargeTccsResponse, (desc: {
+            response: DischargeTccsResult, 
+            args: { 
+                fileName: string, 
+                fileExtension: string, 
+                contextFolder: string 
+            }
+        }) => {
+            // generate tccs again
+            desc.args["opt"] = { quiet: true };
+            this.client.sendRequest(serverCommand.generateTccs, desc.args);
+        });
 		this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
-            response: ContextDescriptor, 
+            response: PvsContextDescriptor, 
             args: { 
                 fileName: string, 
                 fileExtension: string, 
@@ -192,7 +211,7 @@ export class EventsDispatcher {
         }) => {
             // console.log(desc);
             if (this.workspaceExplorer && desc.response) {
-                this.workspaceExplorer.updateView(desc.response);
+                this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
             }
             // if (desc && desc.response && desc.response.theories && desc.response.theories.length) {
             //     // open tcc file in the editor

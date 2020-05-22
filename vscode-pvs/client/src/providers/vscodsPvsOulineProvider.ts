@@ -38,7 +38,7 @@
 
 import * as vscode from 'vscode';
 import { LanguageClient } from "vscode-languageclient";
-import { serverCommand, serverEvent, ContextDescriptor, TheoryDescriptor, PvsFileDescriptor, FormulaDescriptor } from '../common/serverInterface';
+import { serverCommand, serverEvent, TheoryDescriptor, PvsFileDescriptor, FormulaDescriptor } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
 
 export class VSCodePvsFileOutlineProvider implements vscode.DocumentSymbolProvider {

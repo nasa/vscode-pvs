@@ -231,10 +231,11 @@ export function getContextFolderName(contextFolder: string): string {
 	}
 	return null;
 }
-export function isPvsFile(fname: string): boolean {
-	if (fname) {
-		return fname.endsWith('.pvs') || fname.endsWith('.tccs') || fname.endsWith('.ppe') || fname.endsWith('.pr')
-				|| fname.endsWith('.hpvs');
+export function isPvsFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
+	const ext: string = (typeof desc === "string") ? desc : (desc) ? desc.fileExtension : null;
+	if (ext) {
+		return ext.endsWith('.pvs') || ext.endsWith('.tccs') || ext.endsWith('.ppe') || ext.endsWith('.pr')
+				|| ext.endsWith('.hpvs');
 	}
 	return false;
 }

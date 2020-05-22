@@ -312,10 +312,6 @@ export declare interface PrettyPrintRegionResult {
 // 	theories: { [ theoryName: string ]: string[] } // files grouped by theoryName
 // }
 
-export declare interface PvsFileListDescriptor {
-	folder: string, // base path
-	fileNames: string[] // pvs files
-}
 
 
 
@@ -426,14 +422,28 @@ export declare interface TheoryDescriptor {
 // 	contextFolder: string;
 // 	theoriesStatusMap: TheoriesStatusMap;
 // }
-export declare interface ContextDescriptor {
-	contextFolder: string;
-	theories: TheoryDescriptor[];
-};
 
-export declare interface PvsFileDescriptor extends ContextDescriptor {
+// export declare interface ContextDescriptor {
+// 	contextFolder: string;
+// 	theories: TheoryDescriptor[];
+// };
+
+export declare interface PvsContextDescriptor {
+	contextFolder: string,
+	fileDescriptors: { [fname: string]: PvsFileDescriptor }
+}
+
+// export declare interface PvsFileListDescriptor {
+// 	folder: string, // base path
+// 	fileNames: string[] // pvs files
+// }
+
+
+export declare interface PvsFileDescriptor {
 	fileName: string;
 	fileExtension: string;
+	contextFolder: string;
+	theories: TheoryDescriptor[];
 }
 
 export const cliSessionType = {
@@ -507,6 +517,7 @@ export const serverEvent = {
 	saveProofEvent: "pvs.event.save-proof",
 	quitProofEvent: "pvs.event.quit-proof",
 	quitDontSaveProofEvent: "pvs.event.quit-dont-save-proof",
+	closeDontSaveEvent: "pvs.event.close-dont-save-proof",
 
 	pvsServerCrash: "pvs.event.server-crash",
 
@@ -566,7 +577,7 @@ export declare type CliGatewaySubscriberEvent = {
 } | {
 	type: "pvs.select-profile",
 	data: { profile: string }
-}
+};
 
 export interface PvsDownloadDescriptor { url: string, fileName: string, version: string };
 

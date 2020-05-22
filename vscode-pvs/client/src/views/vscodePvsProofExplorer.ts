@@ -89,12 +89,13 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Attributes for run-time management of the proof tree rendered in the view
 	 */
-	protected root: RootNode; // the root of the tree
-	protected ghostNode: GhostNode; // this is a floating node that follows activeNode. It is used during proof development, to signpost where the next proof command will be appended in the proof tree
-	protected activeNode: ProofCommand | ProofBranch | GhostNode;
+	protected welcome: WelcomeScreen = new WelcomeScreen();
+	protected root: RootNode = null // the root of the tree
+	protected ghostNode: GhostNode = null; // this is a floating node that follows activeNode. It is used during proof development, to signpost where the next proof command will be appended in the proof tree
+	protected activeNode: ProofCommand | ProofBranch | GhostNode = null;
 
 	protected running: boolean = false; // status flag, indicates whether we are running all proof commands, as opposed to stepping through the proof commands
-	protected stopAt: ProofItem; // indicates which node we are fast-forwarding to
+	protected stopAt: ProofItem = null; // indicates which node we are fast-forwarding to
 
 	/**
 	 * JSON representation of the proof script for the current proof.
@@ -118,8 +119,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// Register tree view; use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
-		this.root = new RootNode({ name: "Proof explorer is not active" });
-		this.ghostNode = new GhostNode({ parent: this.root, node: this.root });
 	}
 
 	/**
@@ -1424,7 +1423,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.quitProof({ confirm: true });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.forward", () => {
-			if (!this.ghostNode.isActive()) {
+			if (this.ghostNode && !this.ghostNode.isActive()) {
 				this.root.pending();
 				this.step();
 			}
@@ -1510,7 +1509,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// node
 		if (item) {
 			let children: TreeItem[] = (<ProofItem> item).getChildren();
-			if (this.ghostNode.isActive()) {
+			if (this.ghostNode && this.ghostNode.isActive()) {
 				for (let i = 0; i < children.length; i++) {
 					if (children[i] === this.ghostNode.realNode) {
 						const res: TreeItem[] = children.slice(0, i + 1).concat([this.ghostNode]).concat(children.slice(i + 1));
@@ -1519,12 +1518,13 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 			}
 			return Promise.resolve(children);
-		}
-		// root
-		if (this.ghostNode.isActive() && this.ghostNode.realNode === this.root) {
+		} else if (this.ghostNode && this.ghostNode.isActive() && this.ghostNode.realNode === this.root) {
 			return Promise.resolve([ this.root, this.ghostNode ]);
+		} else if (this.root) {
+			return Promise.resolve([ this.root ]);
+		} else {
+			return Promise.resolve([ this.welcome ]);
 		}
-		return Promise.resolve([ this.root ]);
 	}
 	/**
 	 * Returns the requested node
@@ -1926,6 +1926,12 @@ class ProofBranch extends ProofItem {
 		return c;
 	}
 
+}
+class WelcomeScreen extends TreeItem {
+	constructor () {
+		super("welcome-screen", TreeItemCollapsibleState.None);
+		this.label = "Proof Explorer will become active when starting a proof";
+	}
 }
 class RootNode extends ProofItem {
 	proofStatus: ProofStatus; // this is updated while running the proof

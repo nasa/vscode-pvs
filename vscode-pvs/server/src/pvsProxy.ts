@@ -59,7 +59,7 @@ import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, serverEvent, PvsVersionDescriptor, ContextDescriptor, PvsFileDescriptor, TheoryDescriptor, FormulaDescriptor } from './common/serverInterface';
+import { SimpleConnection, serverEvent } from './common/serverInterface';
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
@@ -759,15 +759,15 @@ export class PvsProxy {
 	}
 
 	/**
-	 * Shows all tccs generated for the given theory
+	 * Generate tccs for the given theory
 	 * @param desc 
 	 */
-	async showTccs(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponse> {
+	async generateTccs(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponse> {
 		if (desc) {
 			await this.changeContext(desc.contextFolder);
-			if (this.macOs) {
-				return await this.legacy.showTccs(fsUtils.desc2fname(desc), desc.theoryName);
-			}
+			// if (this.macOs) {
+			// 	return await this.legacy.showTccs(fsUtils.desc2fname(desc), desc.theoryName);
+			// }
 			const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
 			return await this.pvsRequest('show-tccs', [ fullName ]);
 		}

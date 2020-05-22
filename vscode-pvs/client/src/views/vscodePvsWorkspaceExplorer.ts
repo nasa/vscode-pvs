@@ -39,11 +39,66 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, ContextDescriptor, ProofStatus } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 
+//-- files
+class PvsFileItem extends TreeItem {
+	contextValue: string = "pvs-file";
+	theoryName: string;
+	command: Command;
+	fileName: string;
+	fileExtension: string;
+	path: string;
+	contextFolder: string;
+	theoriesOverview: TheoriesOverviewItem;
+	/**
+	 * Constructor
+	 */
+	constructor () {
+		super("Loading file descriptor...");
+		this.theoriesOverview = new TheoriesOverviewItem();
+	}
+	updateFileDescriptor (desc: PvsFileDescriptor, opt?: { tccDescriptor?: boolean }): void {
+		this.label = this.fileName = desc.fileName;
+		this.fileExtension = desc.fileExtension;
+		this.contextFolder = desc.contextFolder;
+		this.path = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+		this.command = {
+			title: "PVS file selected",
+			command: "explorer.didSelectPvsFile",
+			arguments: [ desc ]
+		};
+		this.theoriesOverview.updateTheories(desc.theories, opt);
+		this.refreshLabel();		
+	}
+	refreshLabel (opt?: { keepCollapsibleState?: boolean }) {
+		opt = opt || {};
+		// update label
+		this.label = `${this.fileName}${this.fileExtension}`;
+		this.tooltip = this.path;
+		// update collapsible state
+		const n: number = this.theoriesOverview.theories ? this.theoriesOverview.theories.length : 0;
+		if (opt.keepCollapsibleState) {
+			if (n > 0 && this.collapsibleState === TreeItemCollapsibleState.None) {
+				this.collapsibleState = TreeItemCollapsibleState.Collapsed;
+			}
+		} else {
+			this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
+		}
+	}
+	updateFormula (desc: FormulaDescriptor): void {
+		this.theoriesOverview.updateFormula(desc);
+	}
+	sort (): void {
+		this.theoriesOverview.sort();
+	}
+	getChildren (): TreeItem[] {
+		return this.theoriesOverview.getChildren();
+	}
+}
 //-- theories
 class TheoryItem extends TreeItem {
 	contextValue: string = "theory";
@@ -59,15 +114,14 @@ class TheoryItem extends TreeItem {
 	/**
 	 * Constructor
 	 */
-	constructor (desc: { theoryName: string, fileName: string, fileExtension: string, contextFolder: string, position: Position, collapsibleState: TreeItemCollapsibleState }) {
-		super(desc.theoryName, desc.collapsibleState);
+	constructor (desc: TheoryDescriptor, collapsibleState?: TreeItemCollapsibleState) {
+		super(desc.theoryName, collapsibleState);
 		this.theoryName = desc.theoryName;
 		this.fileName = desc.fileName;
 		this.fileExtension = desc.fileExtension;
-		this.position = desc.position;
 		this.contextFolder = desc.contextFolder;
 		this.path = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-		this.tooltip = `Click to open ${desc.theoryName}`;
+		this.position = (desc.position) ? new Position(desc.position.line, desc.position.character) : new Position(0, 0);
 		this.command = {
 			title: "Theory selected",
 			command: "explorer.didSelectTheory",
@@ -83,7 +137,8 @@ class TheoryItem extends TreeItem {
 		const nTheorems: number = this.theoremsOverview.getTotal();
 		const nTccs: number = this.tccsOverview.getTotal();
 		const n: number = nTccs + nTheorems;
-		this.label = `${this.theoryName}`;// (${this.tccsOverview.tccs.length} tccs, ${this.theoremsOverview.theorems.length} theorems)`;
+		this.label = `${this.theoryName}  (${this.fileName}${this.fileExtension}, Ln ${this.position.line})`;
+		this.tooltip = `theory ${this.theoryName}`;
 		// update collapsible state
 		if (opt.keepCollapsibleState) {
 			if (n > 0 && this.collapsibleState === TreeItemCollapsibleState.None) {
@@ -105,11 +160,41 @@ class TheoryItem extends TreeItem {
 	updateTcc (desc: FormulaDescriptor): void {
 		this.tccsOverview.updateStatus(desc);
 	}
+	setTccs (desc: FormulaDescriptor[]): void {
+		this.tccsOverview.setTccs(desc);
+	}
 	getTheoremsOverview (): TheoremsOverviewItem {
 		return this.theoremsOverview;
 	}
 	getTccsOverview (): TheoremsOverviewItem {
 		return this.tccsOverview;
+	}
+}
+class LoadingItem extends TreeItem {
+	contextValue: string = "loading-content";
+	message: string = "Loading..."
+	protected points: number = 3;
+	protected MAX_POINTS: number = 3;
+	protected timer: NodeJS.Timer;
+	constructor () {
+		super ("loading-content", TreeItemCollapsibleState.None);
+		this.label = this.message + "...";
+		this.start();
+	}
+	start (): void {
+		this.loading();
+		this.timer = setInterval(() => {
+			this.loading();
+		}, 200);
+	}
+	protected loading (): void {
+		this.label = this.message + ".".repeat(this.points);
+		this.points = this.points < this.MAX_POINTS ? this.points + 1 : 1;
+	}
+	stop (): void {
+		this.points = 1;
+		clearInterval(this.timer);
+		this.timer = null;
 	}
 }
 abstract class OverviewItem extends TreeItem {
@@ -131,7 +216,7 @@ export class FormulaOverviewItem extends OverviewItem {
 	theorems: FormulaItem[] = [];
 	fileName: string;
 	fileExtension: string;
-	constructor(type: string, desc: { contextFolder: string, fileName: string, fileExtension: string }, collapsibleState?: TreeItemCollapsibleState) {
+	constructor(type: string, desc: TheoryDescriptor, collapsibleState?: TreeItemCollapsibleState) {
 		super(type, desc, collapsibleState);
 		this.fileName = desc.fileName;
 		this.fileExtension = desc.fileExtension;
@@ -149,8 +234,16 @@ export class FormulaOverviewItem extends OverviewItem {
 		return this.theorems;
 	}
 	protected refreshLabel (opt?: { keepCollapsibleState?: boolean }) {
-		this.label = `${this.name} ( ${this.theorems.length} )`;
 		opt = opt || {};
+		const nTheorems: number = (this.theorems) ? this.theorems.length : 0;
+		const nProved: number = (this.theorems) ? this.theorems.filter((item: FormulaItem) => {
+			return item.getStatus() === "proved";
+		}).length : 0;
+		if (nProved === nTheorems) {
+			this.label = `${utils.icons.check} ${this.name}  (${nProved} proved)`
+		} else {
+			this.label = `${utils.icons.whitecircle} ${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
+		}
 		if (opt.keepCollapsibleState) {
 			if (this.theorems.length > 0 && this.collapsibleState === TreeItemCollapsibleState.None) {
 				this.collapsibleState = TreeItemCollapsibleState.Collapsed;
@@ -184,17 +277,21 @@ export class FormulaOverviewItem extends OverviewItem {
 }
 export class FormulaItem extends TreeItem {
 	contextValue: string = "formula";
-	// desc: TheoremDescriptor;
+
+	protected contextFolder: string;
 	protected fileName: string;
+	protected fileExtension: string;
 	protected theoryName: string;
 	protected formulaName: string;
+
 	protected position: Position;
 	protected status: ProofStatus;
-	protected contextFolder: string;
+
 	constructor(typeName: string, desc: FormulaDescriptor) {
 		super(typeName, TreeItemCollapsibleState.None);
 		this.contextValue = typeName;
 		this.fileName = desc.fileName;
+		this.fileExtension = desc.fileExtension;
 		this.theoryName = desc.theoryName;
 		this.formulaName = desc.formulaName;
 		this.position = new Position (desc.position.line, desc.position.character);
@@ -220,61 +317,245 @@ export class FormulaItem extends TreeItem {
 		this.status = status;
 		this.refreshLabel();
 	}
+	getStatus (): ProofStatus {
+		return this.status;
+	}
 	protected refreshLabel() {
 		this.status = this.status || "unchecked"; //'\u{2705}'
 		this.status = this.status.startsWith("proved") ? "proved" : this.status;
-		this.label = `${utils.getIcon(this.status)} ${this.formulaName} (${this.status})`;
+		this.label = `${utils.getIcon(this.status)} ${this.formulaName}  (${this.status})`;
 	}
 }
 //-- overviews
 class TheoremsOverviewItem extends FormulaOverviewItem {
 	contextValue: string = "theorems-overview";
-	constructor(desc: { contextFolder: string, fileName: string, fileExtension: string }) {
+	constructor(desc: TheoryDescriptor) {
 		super("theorems-overview", desc);
 	}
 }
 class TccsOverviewItem extends FormulaOverviewItem {
 	contextValue: string = "tccs-overview";
-	constructor(desc: { contextFolder: string, fileName: string, fileExtension: string }) {
+	constructor(desc: TheoryDescriptor) {
 		super("tccs-overview", desc);
+		this.refreshLabel({ keepCollapsibleState: true });
 	}
 	// @overrides
 	updateStatus (desc: FormulaDescriptor): void {
 		super.updateStatus(desc, { keepCollapsibleState: true });
 	}
+	// @overrides
+	protected refreshLabel (opt?: { keepCollapsibleState?: boolean }) {
+		if (this.getTotal() > 0) {
+			super.refreshLabel(opt);
+		} else {
+			this.label = "No TCCs";
+		}
+	}
+	setTccs (desc: FormulaDescriptor[]): void {
+		this.theorems = [];
+		if (desc && desc.length) {
+			for (let i = 0; i < desc.length; i++) {
+				this.updateStatus(desc[i]);
+			}
+		}
+	}
 }
 class TheoriesOverviewItem extends TreeItem {
 	contextValue = "theories-overview";
 	theories: TheoryItem[] = [];
-	constructor() {
+	constructor (desc?: TheoryDescriptor[]) {
 		super("theories-overview", TreeItemCollapsibleState.Expanded);
 		this.theories = [];
+		this.updateTheories(desc);
 	}
+	updateTheories (desc: TheoryDescriptor[], opt?: { tccDescriptor?: boolean }) {
+		if (desc) {
+			opt = opt || {};
+			if (opt.tccDescriptor) {
+				// the descriptor contains only tccs, don't touch the theorems
+				for (let i = 0; i < desc.length; i++) {
+					const candidates: TheoryItem[] = this.theories.filter((item: TheoryItem) => {
+						return item.contextFolder === desc[i].contextFolder && item.fileName === desc[i].fileName
+							&& item.fileExtension === desc[i].fileExtension && item.theoryName === desc[i].theoryName;
+					});
+					if (candidates && candidates.length === 1) {
+						candidates[0].setTccs(desc[i].theorems);
+					} else {
+						console.warn(`[workspace-explorer] Warning: could not find theory item for `, desc);
+					}
+				}
+			} else {
+				const theories: TheoryItem[] = [];
+				for (let i = 0; i < desc.length; i++) {
+					const tdesc: TheoryDescriptor = desc[i];
+					// create a new item only if the item does not already exist in the tree view
+					// this is useful, e.g., to retain the list of tccs when updating theorems
+					let theoryItem: TheoryItem = this.getTheoryItem(tdesc.theoryName);
+					let keepCollapsibleState: boolean = true;
+					if (!theoryItem) {
+						keepCollapsibleState = false;
+						theoryItem = new TheoryItem(tdesc, TreeItemCollapsibleState.Expanded);
+					}
+					for (let i = 0; i < tdesc.theorems.length; i++) {
+						const formula: FormulaDescriptor = tdesc.theorems[i];
+						if (formula.isTcc) {
+							theoryItem.updateTcc(formula);
+						} else {
+							theoryItem.updateFormula(formula);
+						}
+					}
+					theoryItem.refreshLabel({ keepCollapsibleState });
+					theories.push(theoryItem);
+				}
+				this.theories = theories;
+			}
+		}
+	}
+	// /**
+	//  * Internal function, computes the difference between two arrays of theory items.
+	//  * This is used when updating theories, to keep the collapsiblestate.
+	//  */
+	// protected diff (v1: TheoryItem[], v2: TheoryItem[]): TheoryItem[] {
+	// 	if (!v1 || v1.length === 0) { return []; }
+	// 	if (!v2 || v2.length === 0) { return v1; }
+	// 	const res: TheoryItem[] = v1.filter((item: TheoryItem) => {
+	// 		return !v2.some((elem) => {
+	// 			return elem.theoryName === item.theoryName;
+	// 		});
+	// 	});
+	// 	return res;
+	// }
+
 	getChildren (): TreeItem[] {
 		return this.theories;
+	}
+	getTheoryItem (theoryName: string): TheoryItem {
+		if (this.theories) {
+			let candidates: TheoryItem[] = this.theories.filter((item: TheoryItem) => {
+				return item.theoryName === theoryName;
+			});
+			if (candidates && candidates.length === 1) {
+				return candidates[0];
+			}
+		}
+		return null;
+	}
+	updateFormula (desc: FormulaDescriptor): void {
+		const candidates: TheoryItem[] = this.theories.filter((item: TheoryItem) => {
+			return item.contextFolder === desc.contextFolder && item.fileName === desc.fileName
+				&& item.fileExtension === desc.fileExtension && item.theoryName === desc.theoryName;
+		});
+		if (candidates && candidates.length === 1) {
+			candidates[0].updateFormula(desc);
+		}
+	}
+	sort (): void {
+		this.theories = this.theories.sort((a: TheoryItem, b: TheoryItem): number => {
+			return (a.theoryName > b.theoryName) ? 1 : -1;
+		});
+	}
+}
+class PvsFilesOverviewItem extends OverviewItem {
+	contextValue = "pvs-files-overview";
+	files: PvsFileItem[] = [];
+	constructor(desc: PvsContextDescriptor) {
+		super("pvs-files-overview", desc, TreeItemCollapsibleState.Expanded);
+		this.files = [];
+		this.updateContextFolder(desc);
+	}
+	getChildren (): TreeItem[] {
+		let children: TreeItem[] = [];
+		for (let i = 0; i < this.files.length; i++) {
+			children = children.concat(this.files[i].getChildren());
+		}
+		return children;
+	}
+	updateFormula (desc: FormulaDescriptor): void {
+		const candidates: PvsFileItem[] = this.files.filter((item: PvsFileItem) => {
+			return item.fileName === desc.fileName && item.fileExtension === desc.fileExtension
+				&& item.contextFolder === desc.contextFolder;
+		});
+		if (candidates && candidates.length === 1) {
+			candidates[0].updateFormula(desc);
+		}
+	}
+	sort (): void {
+		this.files = this.files.sort((a: PvsFileItem, b: PvsFileItem): number => {
+			return (a.fileName > b.fileName) ? 1 : -1;
+		});
+		for (let i = 0; i < this.files.length; i++) {
+			this.files[i].sort();
+		}
+	}
+	updateContextFolder (desc: PvsContextDescriptor, opt?: { tccDescriptor?: boolean }): void {
+		opt = opt || {};
+		if (opt.tccDescriptor) {
+			const fnames: string[] = Object.keys(desc.fileDescriptors);
+			for (let i = 0; i < fnames.length; i++) {
+				const candidates: PvsFileItem[] = this.files.filter((item: PvsFileItem) => {
+					return fnames[i] === fsUtils.desc2fname(item);
+				});
+				if (candidates && candidates.length === 1) {
+					candidates[0].updateFileDescriptor(desc.fileDescriptors[fnames[i]], opt);	
+				} else {
+					console.warn(`[workspace-explorer] Warning: could not find tree item for `, desc);
+				}
+			}
+		} else {
+			this.files = [];
+			this.contextFolder = desc.contextFolder;
+			if (desc.fileDescriptors) {
+				const fnames: string[] = Object.keys(desc.fileDescriptors);
+				for (let i = 0; i < fnames.length; i++) {
+					const item: PvsFileItem = new PvsFileItem();
+					item.updateFileDescriptor(desc.fileDescriptors[fnames[i]]);
+					this.files.push(item);
+				}
+				// this.sort();
+			}
+		}
 	}
 }
 export class WorkspaceOverviewItem extends OverviewItem {
 	contextValue: string = "workspace-overview";
-	
-	theoriesOverview: TheoriesOverviewItem;
 
-	constructor(desc: { contextFolder: string }) {
+	protected path: string; // full path of the workspace
+	protected pvsFilesOverview: PvsFilesOverviewItem;
+
+	constructor(desc: PvsContextDescriptor) {
 		super("workspace-overview", desc, TreeItemCollapsibleState.Expanded);
-		this.theoriesOverview = new TheoriesOverviewItem();
-		this.updateLabel();
+		this.pvsFilesOverview = new PvsFilesOverviewItem(desc);
+		this.refreshLabel();
 	}
-	setContextFolder (contextFolder: string) {
-		if (this.contextFolder !== contextFolder) {
-			this.contextFolder = contextFolder;
-			this.updateLabel();
-		}
+	protected refreshLabel (): void {
+		// const n: number = (this.pvsFilesOverview && this.pvsFilesOverview.files) ? this.pvsFilesOverview.files.length : 0;
+		// this.label = fsUtils.getContextFolderName(this.contextFolder) + ` (${n} pvs files)`;
+		this.label = fsUtils.getContextFolderName(this.contextFolder);
+		this.path = this.contextFolder;
+		this.tooltip = this.path;
 	}
-	protected updateLabel () {
-		this.label = "[ " + fsUtils.getContextFolderName(this.contextFolder) + " ]";
-	}
+	// setContextFolder (contextFolder: string) {
+	// 	if (this.contextFolder !== contextFolder) {
+	// 		this.contextFolder = contextFolder;
+	// 		this.updateLabel();
+	// 	}
+	// }
 	getChildren (): TreeItem[] {
-		return [ this.theoriesOverview ];
+		return this.pvsFilesOverview.getChildren();
+	}
+	updateFormula (desc: FormulaDescriptor): void {
+		this.pvsFilesOverview.updateFormula(desc);
+	}
+	sort (): void {
+		this.pvsFilesOverview.sort();
+	}
+	updateContextFolder (desc: PvsContextDescriptor, opt?: { tccDescriptor?: boolean, force?: boolean }): void {
+		opt = opt || {};
+		// if (desc && (desc.contextFolder !== this.contextFolder || opt.force)) {
+			this.contextFolder = desc.contextFolder;
+			this.refreshLabel();
+			this.pvsFilesOverview.updateContextFolder(desc, opt);
+		// }
 	}
 }
 //-- Items
@@ -314,6 +595,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	
 	protected view: TreeView<TreeItem>;
 	protected root: WorkspaceOverviewItem;
+	protected loading: LoadingItem = new LoadingItem();
 
 	protected getPvsPath (): string {
 		return workspace.getConfiguration().get("pvs.path");
@@ -327,7 +609,6 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	constructor(client: LanguageClient, providerView: string) {
 		this.client = client;
 		this.providerView = providerView;
-		this.loading();
 		// register tree view.
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
@@ -338,121 +619,59 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		return this.client;
 	}
 
-	setContextFolder (context: string): void {
-		if (this.root) {
-			this.root.setContextFolder(context);
-		} else {
-			console.error(`[workspace-explorer] Error: root node is null`);
+	// setContextFolder (context: string): void {
+	// 	if (this.root) {
+	// 		this.root.setContextFolder(context);
+	// 	} else {
+	// 		console.error(`[workspace-explorer] Error: root node is null`);
+	// 	}
+	// }
+
+	updateFormula (desc: FormulaDescriptor): void {
+		if (desc) {
+			this.root.updateFormula(desc);
 		}
 	}
 
-	setStatusProved(desc: { theoryName: string, formulaName: string }): void {
+	updateContextFolder (desc: PvsContextDescriptor, opt?: { tccDescriptor?: boolean }): void {
 		if (desc) {
-			const theoryItem: TheoryItem = this.getTheoryItem(desc.theoryName);
-			if (theoryItem) {
-				const formulaItem: FormulaItem = theoryItem.getFormula(desc.formulaName);
-				if (formulaItem) {
-					formulaItem.setStatus("proved");
-					this.refreshView();
-				}
-			}
-		}
-	}
-
-	updateView (desc: ContextDescriptor, opt?: { skipTccs?: boolean }): void {
-		if (desc) {
-			opt = opt || {};
-			// update the list of theories
-			if (desc && desc.contextFolder !== this.root.getContextFolder()) {
-				this.setContextFolder(desc.contextFolder);
-			}
-			if (desc && desc.theories) {
-				const theoryItems: TheoryItem[] = [];
-				for (let i = 0; i < desc.theories.length; i++) {
-					const tdesc: TheoryDescriptor = desc.theories[i];
-					// create a new item only if the item does not already exist in the tree view
-					const theoryItem: TheoryItem = this.getTheoryItem(tdesc.theoryName) || new TheoryItem({
-						theoryName: tdesc.theoryName,
-						fileName: tdesc.fileName,
-						fileExtension: tdesc.fileExtension,
-						position: tdesc.position ? new Position(tdesc.position.line, tdesc.position.character) : new Position(0, 0),
-						contextFolder: tdesc.contextFolder,
-						collapsibleState: TreeItemCollapsibleState.Collapsed
-					});
-					for (let i = 0; i < tdesc.theorems.length; i++) {
-						const formula: FormulaDescriptor = tdesc.theorems[i];
-						if (formula.isTcc) {
-							if (!opt.skipTccs) {
-								theoryItem.updateTcc(formula);
-							}
-						} else {
-							theoryItem.updateFormula(formula);
-						}
-					}
-					theoryItem.refreshLabel({ keepCollapsibleState: true });
-					theoryItems.push(theoryItem);
-				}
-				const diff: TheoryItem[] = this.diff(this.root.theoriesOverview.theories, theoryItems);
-				const items: TheoryItem[] = theoryItems.concat(diff);
-				this.root.theoriesOverview.theories = items.sort((a: TheoryItem, b: TheoryItem): number => {
-					return (a.theoryName > b.theoryName) ? 1 : -1;
-				});
+			if (this.root) {
+				this.root.updateContextFolder(desc, opt);
+			} else {
+				this.root = new WorkspaceOverviewItem(desc);
 			}
 		} else {
-			this.loading();
+			this.root = null;
 		}
 		this.refreshView();
 	}
-	protected loading (): void {
-		this.root = new WorkspaceOverviewItem({ contextFolder: "Loading content..." });
-	}
+	// protected loading (desc: PvsContextDescriptor): void {
+	// 	this.root = new WorkspaceOverviewItem(desc);
+	// }
 	/**
 	 * Internal function, used to refresh the tree view
 	 */
 	protected refreshView(): void {
 		this._onDidChangeTreeData.fire();
 	}
-	/**
-	 * Internal function, computes the difference between two arrays of theory items. This is used for incremental loading of theories.
-	 */
-	protected diff (v1: TheoryItem[], v2: TheoryItem[]): TheoryItem[] {
-		if (!v1 || v1.length === 0) { return []; }
-		if (!v2 || v2.length === 0) { return v1; }
-		const res: TheoryItem[] = v1.filter((item: TheoryItem) => {
-			return !v2.some((elem) => {
-				return elem.theoryName === item.theoryName;
-			});
-		});
-		return res;
-	}
-	getTheoryItem (theoryName: string): TheoryItem {
-		if (this.root && this.root.theoriesOverview.theories) {
-			let candidates: TheoryItem[] = this.root.theoriesOverview.theories.filter((item: TheoryItem) => {
-				return item.theoryName === theoryName;
-			});
-			if (candidates && candidates.length === 1) {
-				return candidates[0];
-			}
-		}
-		return null;
-	}
-	getTheoryDescriptor (theoryName: string): TheoryDescriptor {
-		if (this.root && this.root.theoriesOverview.theories) {
-			let candidates: TheoryItem[] = this.root.theoriesOverview.theories.filter((item: TheoryItem) => {
-				return item.theoryName === theoryName;
-			});
-			if (candidates && candidates.length === 1) {
-				return {
-					theoryName: theoryName,
-					fileName: candidates[0].fileName,
-					fileExtension: candidates[0].fileExtension,
-					contextFolder: candidates[0].contextFolder,
-					position: candidates[0].position
-				};
-			}
-		}
-		return null;
-	}
+
+	// getTheoryDescriptor (theoryName: string): TheoryDescriptor {
+	// 	if (this.root && this.root.theoriesOverview.theories) {
+	// 		let candidates: TheoryItem[] = this.root.theoriesOverview.theories.filter((item: TheoryItem) => {
+	// 			return item.theoryName === theoryName;
+	// 		});
+	// 		if (candidates && candidates.length === 1) {
+	// 			return {
+	// 				theoryName: theoryName,
+	// 				fileName: candidates[0].fileName,
+	// 				fileExtension: candidates[0].fileExtension,
+	// 				contextFolder: candidates[0].contextFolder,
+	// 				position: candidates[0].position
+	// 			};
+	// 		}
+	// 	}
+	// 	return null;
+	// }
 
 	/**
 	 * Handler activation function
@@ -522,13 +741,19 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			let children: TreeItem[] = null;
 			if (element.contextValue === "workspace-overview") {
 				children = this.root.getChildren();
+			} else if (element.contextValue === "pvs-files-overview") {
+				children = (<PvsFilesOverviewItem> element).getChildren();
+			} else if (element.contextValue === "pvs-file") {
+				children = (<PvsFileItem> element).getChildren();
 			} else if (element.contextValue === "theory") {
 				// pvs theory
 				const desc: TheoryItem = <TheoryItem> element;
-				children = [
-					desc.getTccsOverview(),
-					desc.getTheoremsOverview()
-				];
+				const nTccs: number = desc.getTccsOverview().getTotal();
+				if (nTccs > 0) {
+					children = [].concat(desc.getTheoremsOverview().getChildren()).concat([ <TreeItem> desc.getTccsOverview() ]);
+				} else {
+					children = desc.getTheoremsOverview().getChildren();
+				}
 			} else if (element.contextValue === "tccs-overview") {
 				// tcc list
 				const desc: TccsOverviewItem = <TccsOverviewItem> element;
@@ -546,7 +771,12 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			return Promise.resolve(children);
 		}
 		// root node: show context
-		return Promise.resolve([ this.root ]);
+		if (this.root) {
+			this.loading.stop();
+			return Promise.resolve([ this.root ]);
+		} else {
+			return Promise.resolve([ this.loading ])
+		}
 	}
 
 	getTreeItem(element: TreeItem): TreeItem {

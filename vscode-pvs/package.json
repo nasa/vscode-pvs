@@ -77,23 +77,22 @@
 				"path": "./icons/pvs-icons-theme.json"
 			}
 		],
-		"todo": {
-			"viewsContainers": {
-				"activitybar": [
-					{
-						"id": "pvs-commands-palette",
-						"title": "PVS Commands Palette",
-						"icon": "icons/pvs.svg"
-					}
-				]
-			}
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "pvs-container",
+					"title": "PVS",
+					"icon": "icons/pvs-icon.png"
+				}
+			]
 		},
 		"views": {
+			"pvs-container": [
+			],
 			"explorer": [
 				{
 					"id": "workspace-explorer-view",
-					"name": "PVS Workspace Explorer",
-					"when": "pvs-server-active"
+					"name": "PVS Workspace Explorer"
 				},
 				{
 					"id": "proof-explorer-view",
@@ -180,6 +179,11 @@
 			{
 				"command": "vscode-pvs.parse-file",
 				"title": "Parse File",
+				"enablement": "pvs-server-active == true"
+			},
+			{
+				"command": "vscode-pvs.new-pvs-file",
+				"title": "New PVS File",
 				"enablement": "pvs-server-active == true"
 			},
 			{
@@ -387,6 +391,10 @@
 				{
 					"command": "vscode-pvs.parse-workspace",
 					"when": "explorerResourceIsFolder && pvs-server-active == true"
+				},
+				{
+					"command": "vscode-pvs.new-pvs-file",
+					"when": "explorerResourceIsFolder && pvs-server-active == true"
 				}
 			],
 			"view/item/context": [
@@ -402,18 +410,28 @@
 				},
 				{
 					"command": "vscode-pvs.typecheck",
+					"when": "view == workspace-explorer-view && viewItem == pvs-file",
+					"group": "inline"
+				},
+				{
+					"command": "vscode-pvs.typecheck",
 					"when": "view == workspace-explorer-view && viewItem == theory",
 					"group": "inline"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs-alt",
-					"when": "view == workspace-explorer-view && viewItem == tccs-overview",
+					"when": "false && view == workspace-explorer-view && viewItem == tccs-overview",
 					"group": "inline"
+				},
+				{
+					"command": "vscode-pvs.new-pvs-file",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "context-menu/ctrl-1"
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
 					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
-					"group": "context-menu/ctrl-1"
+					"group": "context-menu/ctrl-2"
 				},
 				{
 					"command": "vscode-pvs.typecheck-workspace",
@@ -549,7 +567,7 @@
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs",
-					"when": "resourceScheme == file && resourceExtname == .tccs",
+					"when": "false && resourceScheme == file && resourceExtname == .tccs",
 					"group": "yy_commands"
 				},
 				{
@@ -591,7 +609,7 @@
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs",
-					"when": "resourceScheme == file && resourceExtname == .tccs",
+					"when": "false && resourceScheme == file && resourceExtname == .tccs",
 					"group": "yy_commands"
 				},
 				{
@@ -652,9 +670,14 @@
 					"group": "profile-1"
 				},
 				{
-					"command": "vscode-pvs.parse-workspace",
+					"command": "vscode-pvs.new-pvs-file",
 					"when": "view == workspace-explorer-view",
 					"group": "ctrl-1"
+				},
+				{
+					"command": "vscode-pvs.parse-workspace",
+					"when": "view == workspace-explorer-view",
+					"group": "ctrl-2"
 				},
 				{
 					"command": "vscode-pvs.typecheck-workspace",

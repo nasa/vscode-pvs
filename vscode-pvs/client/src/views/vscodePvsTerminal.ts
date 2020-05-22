@@ -101,16 +101,39 @@ class TerminalSession {
             this.terminal = vscode.window.createTerminal(terminalName, 'node', [ cliFileName, JSON.stringify(cliArgs) ]);
             this.terminal.show();
             this.isActive = true;
-            this.client.onRequest(serverEvent.quitDontSaveProofEvent, (request: { 
-                fileName: string, 
-                fileExtension: string, 
-                contextFolder: string, 
-                theoryName: string, 
-                formulaName: string, 
-                cmd: string 
+
+            // server events
+            this.client.onRequest(serverEvent.quitDontSaveProofEvent, (desc: {
+                args: { 
+                    fileName: string, 
+                    fileExtension: string, 
+                    contextFolder: string, 
+                    theoryName: string, 
+                    formulaName: string, 
+                    cmd: string 
+                }
             }) => {
                 this.isActive = false;
-            });    
+                vscode.commands.executeCommand('setContext', 'prover-session-active', false);
+            });
+            this.client.onRequest(serverEvent.closeDontSaveEvent, (desc: {
+                args: { 
+                    fileName: string, 
+                    fileExtension: string, 
+                    contextFolder: string, 
+                    theoryName: string, 
+                    formulaName: string, 
+                    cmd: string 
+                },
+                msg?: string
+            }) => {
+                this.isActive = false;
+                if (desc && desc.msg) {
+                    this.terminal.sendText(desc.msg);
+                }
+                this.terminal.sendText("quit");
+                vscode.commands.executeCommand('setContext', 'prover-session-active', false);
+            });
         });
     }
     async subscribe (readyCB: () => void): Promise<boolean> {

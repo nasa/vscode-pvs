@@ -184,7 +184,8 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     showError (msg: string): void {
-        this.pvsStatus.text = `$(warning)  ${msg}`;
+        const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
+        this.pvsStatus.text = `$(warning~spin)  ${shortmsg}`; // messages in the status bar should always be on one line
         this.pvsStatus.show();
     }
 
@@ -216,7 +217,8 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     failure (msg: string): void {
-        this.crashReport.text = `$(debug~spin)  ${msg}`;
+        const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
+        this.crashReport.text = `$(debug~spin)  ${shortmsg}`; // messages in the status bar should be on one line
         this.crashReport.show();
         this.pvsStatus.hide();
     }

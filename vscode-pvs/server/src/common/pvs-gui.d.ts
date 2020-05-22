@@ -76,7 +76,7 @@ export type ShowTCCsResult = {
   proved: null | boolean; // this should be a string, e.g., "proved", "unfinished", etc.
   theory: string;
 }[];
-export declare interface ProveTccsResult {
+export declare interface DischargeTccsResult {
 	proved: number,
 	simplified: number,
 	subsumed: number,
