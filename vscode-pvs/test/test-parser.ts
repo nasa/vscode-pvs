@@ -80,12 +80,12 @@ describe("pvs-parser", () => {
 		};
 		expect(response.error).toBeDefined();
 		expect(response.error.data).toBeDefined();
-		// on MacOs only the position of the error is reported (as opposed to the range) because we are using the Emacs interface for the parser
-		if (os.platform() === "darwin") {
+		// legacy apis provide only the position of the error (as opposed to the range) because they use the Emacs interface for the parser
+		// if (os.platform() === "darwin") {
 			expect(response.error.data.place).toEqual(exp.data.place.slice(0, 2));
-		} else {
-			expect(response.error.data.place).toEqual(exp.data.place);
-		}
+		// } else {
+		// 	expect(response.error.data.place).toEqual(exp.data.place);
+		// }
 		expect(response.error.data.error_string.startsWith(exp.data.error_string.split("\n")[0])).toBeTruthy();
 	}, 100000);
 

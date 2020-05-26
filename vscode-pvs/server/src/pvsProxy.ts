@@ -122,7 +122,7 @@ export class PvsProxy {
 	protected cliListener: (data: string) => void; // useful to show progress feedback
 
 	protected legacy: PvsProxyLegacy;
-	protected macOs: boolean = false;
+	protected useLegacy: boolean = true;
 	/**
 	 * Parser
 	 */
@@ -155,10 +155,10 @@ export class PvsProxy {
 		// create antlr parser for pvs
 		this.parser = new Parser();
 
+		this.legacy = new PvsProxyLegacy(pvsPath, opt);
 		if (os.platform() === "darwin") {
 			// macos
-			this.macOs = true;
-			this.legacy = new PvsProxyLegacy(pvsPath, opt);
+			this.useLegacy = true;
 		}
 	}
 
@@ -318,7 +318,7 @@ export class PvsProxy {
 							return null;
 						}
 						const startTime: number = Date.now();
-						const res: PvsResponse = (this.macOs) ? await this.legacy.parseFile(fname)
+						const res: PvsResponse = (this.useLegacy) ? await this.legacy.parseFile(fname)
 								: await this.pvsRequest('parse', [fname]);
 						if (opt.test) { return res; }
 						if (res) {
@@ -481,7 +481,7 @@ export class PvsProxy {
 				fname = path.join(desc.contextFolder, `${desc.fileName}.pvs`);
 			}
 
-			const res: PvsResponse = (this.macOs) ? await this.legacy.typecheckFile(fname)
+			const res: PvsResponse = (this.useLegacy) ? await this.legacy.typecheckFile(fname)
 					: await this.pvsRequest('typecheck', [ fname ]);
 			if (res && (res.error && res.error.data) || res.result) {
 				if (res.error) {
@@ -627,7 +627,7 @@ export class PvsProxy {
 	async changeContext (desc: string | { contextFolder: string }): Promise<PvsResponse> {
 		if (desc) {
 			const ctx: string = (typeof desc === "string") ? desc : desc.contextFolder;
-			if (this.macOs) {
+			if (this.useLegacy) {
 				return await this.legacy.changeContext(ctx);
 			}
 			return await this.pvsRequest('change-context', [ ctx ]);
@@ -651,7 +651,7 @@ export class PvsProxy {
 	 * @param cmd 
 	 */
 	async lisp(cmd: string): Promise<PvsResponse> {
-		if (this.macOs) {
+		if (this.useLegacy) {
 			return await this.legacy.sendCommand(cmd);
 		}
 		// else
@@ -737,7 +737,7 @@ export class PvsProxy {
 		if (desc) {
 			// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
 			const fname: string = fsUtils.desc2fname({ contextFolder: desc.contextFolder, fileName: desc.fileName, fileExtension: ".pvs" });
-			if (this.macOs) {
+			if (this.useLegacy) {
 				return await this.legacy.proofScript(desc);
 			} else {
 				return await this.pvsRequest('proof-script', [ fname, desc.formulaName ]);
@@ -765,9 +765,9 @@ export class PvsProxy {
 	async generateTccs(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponse> {
 		if (desc) {
 			await this.changeContext(desc.contextFolder);
-			// if (this.macOs) {
-			// 	return await this.legacy.showTccs(fsUtils.desc2fname(desc), desc.theoryName);
-			// }
+			if (this.useLegacy) {
+				return await this.legacy.showTccs(fsUtils.desc2fname(desc), desc.theoryName);
+			}
 			const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
 			return await this.pvsRequest('show-tccs', [ fullName ]);
 		}

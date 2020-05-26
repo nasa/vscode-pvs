@@ -74,20 +74,13 @@ class PvsFileItem extends TreeItem {
 		this.theoriesOverview.updateTheories(desc.theories, opt);
 		this.refreshLabel();		
 	}
-	refreshLabel (opt?: { keepCollapsibleState?: boolean }) {
-		opt = opt || {};
+	refreshLabel () {
 		// update label
 		this.label = `${this.fileName}${this.fileExtension}`;
 		this.tooltip = this.path;
 		// update collapsible state
 		const n: number = this.theoriesOverview.theories ? this.theoriesOverview.theories.length : 0;
-		if (opt.keepCollapsibleState) {
-			if (n > 0 && this.collapsibleState === TreeItemCollapsibleState.None) {
-				this.collapsibleState = TreeItemCollapsibleState.Collapsed;
-			}
-		} else {
-			this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
-		}
+		this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
 	}
 	updateFormula (desc: FormulaDescriptor): void {
 		this.theoriesOverview.updateFormula(desc);
@@ -131,8 +124,7 @@ class TheoryItem extends TreeItem {
 		this.tccsOverview = new TccsOverviewItem(desc);
 		this.refreshLabel();
 	}
-	refreshLabel (opt?: { keepCollapsibleState?: boolean }) {
-		opt = opt || {};
+	refreshLabel () {
 		// update label
 		const nTheorems: number = this.theoremsOverview.getTotal();
 		const nTccs: number = this.tccsOverview.getTotal();
@@ -140,13 +132,7 @@ class TheoryItem extends TreeItem {
 		this.label = `${this.theoryName}  (${this.fileName}${this.fileExtension}, Ln ${this.position.line})`;
 		this.tooltip = `theory ${this.theoryName}`;
 		// update collapsible state
-		if (opt.keepCollapsibleState) {
-			if (n > 0 && this.collapsibleState === TreeItemCollapsibleState.None) {
-				this.collapsibleState = TreeItemCollapsibleState.Collapsed;
-			}
-		} else {
-			this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
-		}
+		this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
 	}
 	getFormula (formulaName: string): FormulaItem {
 		return this.theoremsOverview.getFormula(formulaName);
@@ -233,8 +219,7 @@ export class FormulaOverviewItem extends OverviewItem {
 	getChildren (): FormulaItem[] {
 		return this.theorems;
 	}
-	protected refreshLabel (opt?: { keepCollapsibleState?: boolean }) {
-		opt = opt || {};
+	protected refreshLabel () {
 		const nTheorems: number = (this.theorems) ? this.theorems.length : 0;
 		const nProved: number = (this.theorems) ? this.theorems.filter((item: FormulaItem) => {
 			return item.getStatus() === "proved";
@@ -244,17 +229,11 @@ export class FormulaOverviewItem extends OverviewItem {
 		} else {
 			this.label = `${utils.icons.whitecircle} ${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
 		}
-		if (opt.keepCollapsibleState) {
-			if (this.theorems.length > 0 && this.collapsibleState === TreeItemCollapsibleState.None) {
-				this.collapsibleState = TreeItemCollapsibleState.Collapsed;
-			}
-		} else {
-			this.collapsibleState = (this.theorems.length > 0) ? 
-				TreeItemCollapsibleState.Expanded
+		this.collapsibleState = (this.theorems.length > 0) ?
+			(nProved === nTheorems) ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.Expanded
 				: TreeItemCollapsibleState.None;
-		}
 	}
-	updateStatus (desc: FormulaDescriptor, opt?: { keepCollapsibleState?: boolean }): void {
+	updateStatus (desc: FormulaDescriptor): void {
 		if (desc) {
 			const candidates: FormulaItem[] = this.theorems.filter((elem: FormulaItem) => {
 				return elem.getFormulaName() === desc.formulaName;
@@ -262,12 +241,12 @@ export class FormulaOverviewItem extends OverviewItem {
 			if (candidates && candidates.length === 1) {
 				if (desc.status) {
 					candidates[0].setStatus(desc.status);
-					this.refreshLabel(opt);
+					this.refreshLabel();
 				}
 			} else {
 				const formulaType: string = (desc.isTcc) ? "tcc" : "theorem"
 				this.theorems.push(new FormulaItem(formulaType, desc));
-				this.refreshLabel(opt);
+				this.refreshLabel();
 			} 
 		}
 	}
@@ -337,16 +316,16 @@ class TccsOverviewItem extends FormulaOverviewItem {
 	contextValue: string = "tccs-overview";
 	constructor(desc: TheoryDescriptor) {
 		super("tccs-overview", desc);
-		this.refreshLabel({ keepCollapsibleState: true });
+		this.refreshLabel();
 	}
 	// @overrides
 	updateStatus (desc: FormulaDescriptor): void {
-		super.updateStatus(desc, { keepCollapsibleState: true });
+		super.updateStatus(desc);
 	}
 	// @overrides
-	protected refreshLabel (opt?: { keepCollapsibleState?: boolean }) {
+	protected refreshLabel () {
 		if (this.getTotal() > 0) {
-			super.refreshLabel(opt);
+			super.refreshLabel();
 		} else {
 			this.label = "No TCCs";
 		}
@@ -391,9 +370,7 @@ class TheoriesOverviewItem extends TreeItem {
 					// create a new item only if the item does not already exist in the tree view
 					// this is useful, e.g., to retain the list of tccs when updating theorems
 					let theoryItem: TheoryItem = this.getTheoryItem(tdesc.theoryName);
-					let keepCollapsibleState: boolean = true;
 					if (!theoryItem) {
-						keepCollapsibleState = false;
 						theoryItem = new TheoryItem(tdesc, TreeItemCollapsibleState.Expanded);
 					}
 					for (let i = 0; i < tdesc.theorems.length; i++) {
@@ -404,7 +381,7 @@ class TheoriesOverviewItem extends TreeItem {
 							theoryItem.updateFormula(formula);
 						}
 					}
-					theoryItem.refreshLabel({ keepCollapsibleState });
+					theoryItem.refreshLabel();
 					theories.push(theoryItem);
 				}
 				this.theories = theories;

@@ -123,7 +123,7 @@ export class PvsProxyLegacy {
                         definition += matchDefinition[1] + "\n";
                     }
 
-                    if (comment) {
+                    if (id && comment) {
                         result.push({
                             comment: [ comment.trim() ],
                             definition: definition.trim(),
@@ -173,6 +173,7 @@ export class PvsProxyLegacy {
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
             const res: string = await this.pvsProcess.sendText(`(typecheck-file "${fname}" nil nil nil nil t)`);
             const match: RegExpMatchArray = /\berror\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
+            const matchSystemError: RegExpExecArray = /\bRestart actions \(select using \:continue\)\:/g.exec(res);
             if (match && match.length > 3) {
                 const error_string: string = match[1].trim().replace("\\n", "\n");
                 let file_name: string = match[2].trim();
@@ -191,6 +192,14 @@ export class PvsProxyLegacy {
                         place: [ +line, +character ],
                         error_string,
                         file_name
+                    }
+                }
+            } else if (matchSystemError) {
+                pvsResponse.error = {
+                    data: {
+                        place: [ 1, 0 ],
+                        error_string: `pvs-server was unable to typecheck ${fname} (see pvs-server output for details)`,
+                        file_name: fname
                     }
                 }
             } else {

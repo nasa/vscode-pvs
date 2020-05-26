@@ -714,13 +714,14 @@ export class PvsLanguageServer {
 					if (response.error) {
 						if (response.error.data) {
 							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(desc);
+							const msg: string = response.error.data.error_string || "";
 							this.diags[fname] = {
 								pvsResponse: response,
 								isTypecheckError: true
 							};
 							this.sendDiagnostics("Typecheck");
 							if (fname === fsUtils.desc2fname(desc)) {
-								this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} contains errors.` });
+								this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Typecheck errors in ${desc.fileName}${desc.fileExtension} (${msg})` });
 							} else {
 								this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `File ${fsUtils.getFileName(fname)}${fsUtils.getFileExtension(fname)} imported by ${desc.fileName}${desc.fileExtension} contains typecheck errors.` });
 							}
@@ -1030,14 +1031,14 @@ export class PvsLanguageServer {
 
 						// parse file, as requested
 						const response: PvsResponse = await this.parseFile(desc);
-						const source: string = "Parse";
+						let source: string = "Parse";
 						if (response) {
 							// send parser response
 							this.connection.sendRequest(serverEvent.parseFileResponse, response);
 							// collect diagnostics
 							if (this.diags[fname] && this.diags[fname].isTypecheckError) {
 								// keep typecheck diags
-								source + "Typecheck";
+								source = "Typecheck";
 							} else {
 								this.diags[fname] = {
 									pvsResponse: response,
@@ -1047,7 +1048,7 @@ export class PvsLanguageServer {
 							// send feedback to the front-end
 							if (opt.withFeedback) {
 								if (response.error) {
-									this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} contains errors` });
+									this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `${source} errors in ${desc.fileName}${desc.fileExtension}` });
 								} else {
 									this.notifyEndImportantTask({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} parsed successfully!` });
 								}

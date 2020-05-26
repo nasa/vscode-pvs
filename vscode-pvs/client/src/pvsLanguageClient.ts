@@ -130,7 +130,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		 * of a text document [has been changed](#languages.setTextDocumentLanguage).
 		*/
 		workspace.onDidOpenTextDocument((event: TextDocument) => {
-			if (event && event.languageId === "pvs") {
+			if ((event && event.languageId === "pvs") 
+				|| (window.activeTextEditor && fsUtils.isPvsFile(window.activeTextEditor.document.fileName))) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
