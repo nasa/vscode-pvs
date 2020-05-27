@@ -1044,14 +1044,14 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			cmd: "Q.E.D."
 		});
 
-		// re-generate tccs
-		commands.executeCommand("vscode-pvs.generate-tccs", {
-			fileName: this.desc.fileName,
-			fileExtension: this.desc.fileExtension,
-			theoryName: this.desc.theoryName,
-			formulaName: this.desc.formulaName,
-			contextFolder: this.desc.contextFolder
-		});
+		// // re-generate tccs
+		// commands.executeCommand("vscode-pvs.generate-tccs", {
+		// 	fileName: this.desc.fileName,
+		// 	fileExtension: this.desc.fileExtension,
+		// 	theoryName: this.desc.theoryName,
+		// 	formulaName: this.desc.formulaName,
+		// 	contextFolder: this.desc.contextFolder
+		// });
 	}
 
 

@@ -198,7 +198,7 @@ export class PvsProxyLegacy {
                 pvsResponse.error = {
                     data: {
                         place: [ 1, 0 ],
-                        error_string: `pvs-server was unable to typecheck ${fname} (see pvs-server output for details)`,
+                        error_string: `pvs-server crashed into Lisp. Please reboot pvs-server.\nThe error occurred while processing file ${fname} (see pvs-server output for details)`,
                         file_name: fname
                     }
                 }

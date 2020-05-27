@@ -304,6 +304,8 @@ export class PvsLanguageServer {
 					// trigger a context update, so proof status will be updated on the front-end
 					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
 					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+					// re-generate tccs
+					await this.showTccsRequest(request, { quiet: true });
 				}
 			} else {
 				this.notifyError({ msg: "Error: proof-command returned error (please check pvs-server output for details)" });
@@ -724,7 +726,7 @@ export class PvsLanguageServer {
 							};
 							this.sendDiagnostics("Typecheck");
 							if (fname === fsUtils.desc2fname(desc)) {
-								this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Typecheck errors in ${desc.fileName}${desc.fileExtension} (${msg})` });
+								this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Typecheck errors in ${desc.fileName}${desc.fileExtension}: ${msg}` });
 							} else {
 								this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `File ${fsUtils.getFileName(fname)}${fsUtils.getFileExtension(fname)} imported by ${desc.fileName}${desc.fileExtension} contains typecheck errors.` });
 							}
@@ -886,6 +888,7 @@ export class PvsLanguageServer {
 				contextFolder: string 
 			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
 			if (desc) {
+				desc.fileExtension = ".pvs"; // tccs can be generated only for .pvs files
 				const fname: string = fsUtils.desc2fname(desc);
 				const shortName: string = `${desc.fileName}${desc.fileExtension}`;
 				const taskId: string = `generate-tcc-for-${fname}`;

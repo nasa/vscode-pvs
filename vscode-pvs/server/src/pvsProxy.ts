@@ -297,7 +297,7 @@ export class PvsProxy {
 	 */
 	async parseFile(desc: { contextFolder: string, fileName: string, fileExtension: string }, opt?: { test?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
-		if (desc) {
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 			const fileExists: boolean = await fsUtils.fileExists(fname);
 			if (fileExists) {
@@ -468,7 +468,7 @@ export class PvsProxy {
 	 * @param opt 
 	 */
   	async typecheckFile (desc: { contextFolder: string, fileName: string, fileExtension: string }): Promise<PvsResponse> {
-		if (desc) {
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			let fname: string = fsUtils.desc2fname(desc);
 			const taskId: string = `typecheck-${fname}`;
 			if (this.isProtectedFolder(desc.contextFolder)) {
@@ -488,21 +488,26 @@ export class PvsProxy {
 					// the typecheck error might be generated from an imported file --- we need to check res.error.file_name
 					fname = (res.error && res.error.data && res.error.data.file_name) ? res.error.data.file_name : fname;
 					if (res.error && res.error.data) {// && this.parserCache[fname]) {
-						const errorStart: languageserver.Position = { 
-							line: res.error.data.place[0], 
-							character: res.error.data.place[1]
-						};
-						const errorEnd: languageserver.Position = (res.error.data.place.length > 3) ? { 
-							line: res.error.data.place[2], 
-							character: res.error.data.place[3]
-						} : null;
-						const txt: string = await fsUtils.readFile(fname);
-						const error_range: languageserver.Range = getErrorRange(txt, errorStart, errorEnd);
-						const error: languageserver.Diagnostic = {
-							range: error_range,
-							message: res.error.data.error_string,
-							severity: languageserver.DiagnosticSeverity.Error
-						};
+						// const errorStart: languageserver.Position = { 
+						// 	line: res.error.data.place[0], 
+						// 	character: res.error.data.place[1]
+						// };
+						// const errorEnd: languageserver.Position = (res.error.data.place.length > 3) ? { 
+						// 	line: res.error.data.place[2], 
+						// 	character: res.error.data.place[3]
+						// } : null;
+						// const txt: string = await fsUtils.readFile(fname);
+						// const error_range: languageserver.Range = getErrorRange(txt, errorStart, errorEnd);
+						// const error: languageserver.Diagnostic = {
+						// 	range: error_range,
+						// 	message: res.error.data.error_string,
+						// 	severity: languageserver.DiagnosticSeverity.Error
+						// };
+						return {
+							jsonrpc: "2.0",
+							id: this.get_fresh_id(),
+							error: { data: res.error.data }
+						};	
 					}
 				}
 			} else {
@@ -531,7 +536,7 @@ export class PvsProxy {
 	 * @param desc 
 	 */
 	async proveFile (desc: { contextFolder: string, fileName: string, fileExtension: string,  }): Promise<PvsResponse> {
-		if (desc) {
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			if (this.isProtectedFolder(desc.contextFolder)) {
 				this.info(`${desc.contextFolder} is already proved`);
 				return null;
@@ -548,7 +553,7 @@ export class PvsProxy {
 	 * @param desc 
 	 */
 	async proveFormula(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string }): Promise<PvsResponse> {
-		if (desc) {
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName && desc.formulaName) {
 			await this.changeContext(desc.contextFolder);
 			const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
 			const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, fullName ]);		
@@ -612,7 +617,7 @@ export class PvsProxy {
 	 * @param desc Descriptor specifying context folder and theory name
 	 */
 	async statusProofTheory (desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponse> {
-		if (desc) {
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName) {
 			await this.changeContext(desc.contextFolder);
 			const res: PvsResponse = await this.pvsRequest('lisp', [ `(status-proof-theory "${desc.theoryName}")` ]);
 			return res;
@@ -678,7 +683,8 @@ export class PvsProxy {
 		const ans: PvsResponse = await this.pvsRequest('find-declaration', [ symbolName ]);
 		if (ans && ans.result) {
 			if (typeof ans.result !== "object") {
-				console.error(`[pvs-proxy] Warning: pvs-server returned malformed result for find-declaration (expecting object found ${typeof ans.result})`);
+				// disabling this warning for now, as we know how to recover from this bug
+				// console.error(`[pvs-proxy] Warning: pvs-server returned malformed result for find-declaration (expecting object found ${typeof ans.result})`);
 			}
 			if (typeof ans.result === "string") {
 				ans.result = JSON.parse(ans.result);

@@ -292,8 +292,12 @@ export class PvsProcess {
 						return;
 					}
 				} finally {
-					execSync(`kill -9 ${pvs_shell}`);
-					this.pvsProcess = null;
+					try {
+						execSync(`kill -9 ${pvs_shell}`);
+					} finally {
+						this.pvsProcess = null;
+						resolve(true);
+					}
 				}
 			} else {
 				resolve(true);
