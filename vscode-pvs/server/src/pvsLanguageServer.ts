@@ -346,18 +346,21 @@ export class PvsLanguageServer {
 		const taskId: string = `typecheck-${request.formulaName}`;
 		this.notifyStartImportantTask({ id: taskId, msg: `Typechecking files necessary to prove formula ${request.formulaName}` });		
 		
-		// start proof
-		let response: PvsResponse = await this.typecheckFile(request);
-		if (response && response.error) {
-			const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
-			this.diags[fname] = {
-				pvsResponse: response,
-				isTypecheckError: true
-			};
-			this.sendDiagnostics("Typecheck");
-		} else {
-			response = await this.proveFormula(request);
+		// make sure pvs files are typechecked before starting a proof attempt
+		if (request.fileExtension === ".pvs") {
+			const response: PvsResponse = await this.typecheckFile(request)
+			if (response && response.error) {
+				const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
+				this.diags[fname] = {
+					pvsResponse: response,
+					isTypecheckError: true
+				};
+				this.sendDiagnostics("Typecheck");
+				return;
+			}
 		}
+		// start proof
+		const response: PvsResponse = await this.proveFormula(request);
 		if (response) {
 			const channelID: string = utils.desc2id(request);
 			if (response.result) {
@@ -756,6 +759,7 @@ export class PvsLanguageServer {
 	 * @param args Handler arguments: filename, file extension, context folder
 	 */
 	async generateTccs (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string }): Promise<PvsResponse> {
+		args.fileExtension = ".pvs"; // tccs can be generated only for .pvs files
 		args = fsUtils.decodeURIComponents(args);
 		const res: PvsResponse = await this.pvsProxy.generateTccs(args);
 		// create tccs files
@@ -776,7 +780,8 @@ export class PvsLanguageServer {
 							theoryName: args.theoryName,
 							formulaName
 						});
-						result[i]["status"] = lastKnownStatus || "unfinished"; // we are artificially adding this field because pvs-server does not provide it
+						result[i]["status"] = result[i].proved ? "proved"
+												: lastKnownStatus || "unfinished"; // we are artificially adding this field because pvs-server does not provide it
 						const status: string = result[i]["status"]; //lastKnownStatus || (result[i].proved) ? "proved" : "untried";
 						content += `\n  % ${status}\n`;
 						content += `${formulaName}: OBLIGATION\n${result[i].definition}\n\n`;
