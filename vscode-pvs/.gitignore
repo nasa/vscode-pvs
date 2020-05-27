@@ -17,4 +17,6 @@ server/.DS_Store
 .pvscontext
 *.tccs
 *.jprf
+*.old
+*.???~
 pvsbin/
