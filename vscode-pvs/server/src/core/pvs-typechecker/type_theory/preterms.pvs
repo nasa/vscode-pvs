@@ -1,0 +1,14 @@
+preterms: THEORY
+  BEGIN IMPORTING basics
+
+    % constant preterm
+    constant_preterm(name: nat): symbol = preterm(name)
+    constant_preterm(name: nat, def: nat): symbol = preterm(name, def)
+    
+    % tuple preterms have a 1 or more components
+    tuple_preterm(name: nat, components: list[nat]): symbol = preterm(name, components)
+    
+    % record preterms have a 1 or more components in the form 'name:=value'
+    record_preterm(name: nat, attributes: list[nat]): symbol = preterm(name, attributes)
+
+  END preterms

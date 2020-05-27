@@ -1,0 +1,31 @@
+pretypes: THEORY
+  BEGIN IMPORTING basics
+  
+    % pretypes include basic types and compound types  
+    % basic types are bool, nat, int, rat, string
+    bool_type: symbol = basic_type(0)
+    nat_type: symbol = basic_type(1)
+    int_type: symbol = basic_type(2)
+    rat_type: symbol = basic_type(3)
+    string_type: symbol = basic_type(4)
+
+    % compoud types are function, tuple, and record
+    % function pretypes have domain and range. 
+    % the domain is given by a list of arguments
+    % NB: only name and domain are used for creating the unique signature in the context
+    %     i.e., we cannot define two functions with same id and same domain but different return types
+    function_pretype(name: nat, domain: list[nat], range: nat): symbol = pretype(name, domain, range)
+
+    % tuple (or product) pretypes have 1 or more components of the same type
+    tuple_pretype(name: nat, components: list[nat]): symbol = pretype(name, components)
+
+    % record pretypes have 1 or more attributes, where each attribute is in the form 'name:type'
+    record_pretype(name: nat, attributes: list[nat]): symbol = pretype(name, attributes)
+    
+    % the initial context contains the basic types
+    initial_context: current_context = (#
+      types := (: bool_type, nat_type, int_type, rat_type, string_type :),
+      terms := (::)
+    #)
+
+  END pretypes

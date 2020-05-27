@@ -1,0 +1,12 @@
+test: THEORY
+  BEGIN IMPORTING context_events
+    init_test_1: boolean = member?(bool_type, initial_context) % this should be true
+    init_test_2: boolean = member?(pretype(-1), initial_context) % this should be false
+
+    fresh_test_1: boolean = fresh?(bool_type, initial_context) % this should be false
+    fresh_test_2: boolean = fresh?(pretype(-1), initial_context) % this should be true
+
+    equiv_test_1: boolean = bool_type = bool_type % this should be true
+    equiv_test_2: boolean = bool_type = int_type % this should be false
+
+  END test

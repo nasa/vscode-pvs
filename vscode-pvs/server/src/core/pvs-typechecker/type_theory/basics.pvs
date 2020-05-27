@@ -1,0 +1,60 @@
+basics: THEORY
+  BEGIN 
+    % each symbol has a kind, one of type_kind, term_kind
+    kind: TYPE = { type_kind, term_kind }
+
+    % symbols can be built-in, uninterpreted, or interpreted
+    symbol: DATATYPE
+      BEGIN 
+        builtin(kind: kind, signature: list[int]): builtin?
+        uninterpreted(kind: kind, signature: list[int]): uninterpreted?
+        interpreted(kind: kind, signature: list[int], def: int): interpreted?
+      END symbol
+
+    % a context is a partial function that assigns a kind to each symbol
+    context: [s: symbol -> kind] = LAMBDA (s: symbol): kind(s)
+    % the current context is a list of symbol definitions, types and terms are kept separate
+    current_context: TYPE = [# types: list[symbol], terms: list[symbol] #]
+    % the empty context does not contain any declaration
+    empty_context: current_context = (# types := (::), terms := (::) #)
+    % utility function for checking the content of the current context
+    member?(s: symbol, cc: current_context): boolean =
+      COND
+        kind(s) = type_kind -> member(s, cc`types),
+        kind(s) = term_kind -> member(s, cc`terms)
+      ENDCOND
+    % a symbol is fresh if it is not present in the current context
+    fresh?(s: symbol, cc: current_context): boolean = NOT member?(s, cc)
+
+    % name equivalence (synonym: weak equivalence)
+    equiv_name(s1, s2: symbol)
+      : boolean = 
+        kind(s1) = kind(s2)
+        % AND signature(s1) = signature(s2)
+        AND signature(s1)`length = signature(s2)`length 
+        AND LET n: int = signature(s1)`length 
+             IN FORALL (i: below(n)): nth(signature(s1), i) = nth(signature(s2), i)
+    ;≡(s1, s2: symbol): boolean = equiv_name(s1, s2)
+
+    % definition equivalence (synonims: equality, strong equivalence)
+    equiv_def(s1, s2: symbol)
+      : boolean = 
+        ≡(s1, s2) % why is infix notation not supported???
+        AND (interpreted?(s1) IMPLIES interpreted?(s2) AND def(s1) = def(s2))
+        AND (interpreted?(s2) IMPLIES interpreted?(s1) AND def(s1) = def(s2))
+    ;=(s1, s2: symbol): boolean = equiv_def(s1, s2)
+    
+    % pretype constructors
+    basic_type(name: int): symbol = builtin(type_kind, (: name :))
+    pretype(name: int): symbol = uninterpreted(type_kind, (: name :))
+    pretype(name: int, def: int): symbol = interpreted(type_kind, (: name :), def)
+    pretype(name: int, args: list[int]): symbol = uninterpreted(type_kind, (: name :) o args)
+    pretype(name: int, args: list[int], ret: int): symbol = uninterpreted(type_kind, (: name :) o args)
+    pretype(name: int, args: list[int], ret: int, def: int): symbol = interpreted(type_kind, (: name :) o args, def)
+
+    % preterm constructors
+    preterm(name: int): symbol = uninterpreted(term_kind, (: name :))
+    preterm(name: int, def: int): symbol = interpreted(term_kind, (: name :), def)
+    preterm(name: int, args: list[int]): symbol = uninterpreted(term_kind, (: name :) o args)
+
+  END basics
