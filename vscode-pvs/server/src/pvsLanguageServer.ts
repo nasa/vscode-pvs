@@ -1629,6 +1629,10 @@ export class PvsLanguageServer {
 	protected async startPvsServerRequest (desc: { pvsPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
 		if (desc) {
 			desc = fsUtils.decodeURIComponents(desc);
+			if (desc.pvsPath !== this.pvsPath && this.pvsProxy) {
+				// the server was already running, the user must have selected a different pvs path. Kill the existing server.
+				await this.pvsProxy.killPvsServer();
+			}
 			this.pvsPath = desc.pvsPath || this.pvsPath;
 			const externalServer: boolean = !!desc.externalServer;
 			if (this.pvsPath) {

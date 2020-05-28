@@ -38,7 +38,7 @@
 
 import { LanguageClient } from "vscode-languageclient";
 import { window, Uri, workspace, ConfigurationTarget, Progress, CancellationToken, WorkspaceConfiguration, ProgressLocation, Terminal, ViewColumn, WebviewPanel } from "vscode";
-import { serverEvent, www_cls_sri_com, serverCommand, PvsDownloadDescriptor } from "../common/serverInterface";
+import { serverEvent, sriUrl, serverCommand, PvsDownloadDescriptor } from "../common/serverInterface";
 import * as os from 'os';
 import * as path from 'path';
 import { VSCodePvsStatusBar } from "../views/vscodePvsStatusBar";
@@ -46,6 +46,11 @@ import { VSCodePvsStatusBar } from "../views/vscodePvsStatusBar";
 export class VSCodePvsPackageManager {
     protected client: LanguageClient;
     protected statusBar: VSCodePvsStatusBar;
+    readonly messages: { [ btn: string ]: string } = {
+        setPvsPath: "Select location of PVS executables",
+        downloadPvs: "Download PVS",
+        chooseInstallationFolder: "Choose PVS Installation Folder"
+    };
 
 	constructor (client: LanguageClient, statusBar: VSCodePvsStatusBar) {
         this.client = client;
@@ -53,18 +58,15 @@ export class VSCodePvsPackageManager {
 	}
 
     async installationWizard (msg: string): Promise<boolean> {
-		const labels: { [ btn: string ]: string } = {
-			setPvsPath: "Select PVS installation folder",
-			downloadPvs: "Download PVS"
-        };
-		const item = await window.showWarningMessage(msg, labels.downloadPvs, labels.setPvsPath);
-		if (item === labels.setPvsPath) {
+		const item = await window.showWarningMessage(msg, this.messages.downloadPvs, this.messages.setPvsPath);
+		if (item === this.messages.setPvsPath) {
             return this.selectPvsPath();
-		} else if (item === labels.downloadPvs) {
+		} else if (item === this.messages.downloadPvs) {
 
             // choose installation folder
             const targetFolder: string = await this.chooseInstallationFolder();
             if (!targetFolder) {
+                this.statusBar.ready();
                 // operation cancelled by the user
                 return; 
             }
@@ -83,7 +85,7 @@ export class VSCodePvsPackageManager {
                 accept: "I Accept",
                 doNotAccept: "I DO NOT Accept"
             };
-            const info: string = `The PVS version you are about to download from ${www_cls_sri_com} is freely available, 
+            const info: string = `The PVS version you are about to download from ${sriUrl} is freely available, 
                 but requires a license agreement. Please read carefully the terms of the PVS license and click "I Accept" 
                 if you agree with its terms.`;
             const item = await window.showWarningMessage(info, agreement.accept, agreement.doNotAccept);
@@ -124,10 +126,10 @@ export class VSCodePvsPackageManager {
 
 	async chooseInstallationFolder (): Promise<string> {
         const labels: { [ btn: string ]: string } = {
-            browse: "Choose PVS Installation Folder",
+            browse: this.messages.chooseInstallationFolder,
             cancel: "Cancel"
         }
-        const msg: string = `Please choose the installation folder`;
+        const msg: string = `Please choose download folder (this folder will also be used as installation folder)`;
         if (this.statusBar) { this.statusBar.showProgress(msg); }
         const item = await window.showInformationMessage(msg, labels.browse, labels.cancel);
         if (item === labels.browse) {
@@ -164,7 +166,7 @@ export class VSCodePvsPackageManager {
 						resolve(true);
 					}, 1000)
 				} else {
-					progress.report({ increment: 100, message: `Error: ${www_cls_sri_com} is not responding, please try later` });
+					progress.report({ increment: 100, message: `Error: ${sriUrl} is not responding, please try later` });
 					resolve(false);
 				}
 			});
@@ -185,7 +187,7 @@ export class VSCodePvsPackageManager {
             canSelectFiles: false,
             canSelectFolders: true,
             canSelectMany: false,
-            openLabel: "Select as PVS installation folder"
+            openLabel: this.messages.setPvsPath
         });
         if (pvsExecutable && pvsExecutable.length === 1) {
             this.updateVscodeConfiguration(pvsExecutable[0].fsPath);
@@ -201,7 +203,7 @@ export class VSCodePvsPackageManager {
         }, async (progress, token) => {
             let terminal: Terminal = null;
 
-            progress.report({ increment: -1, message: `Checking PVS versions from ${www_cls_sri_com}` });
+            progress.report({ increment: -1, message: `Checking PVS versions from ${sriUrl}` });
 
             return new Promise((resolve, reject) => {
                 token.onCancellationRequested(() => {
@@ -233,7 +235,7 @@ export class VSCodePvsPackageManager {
                             }
                         });	
                     } else {
-                        progress.report({ increment: 100, message: `Error: ${www_cls_sri_com} is not responding, please try again later.` });
+                        progress.report({ increment: 100, message: `Error: ${sriUrl} is not responding, please try again later.` });
                         resolve(null);
                     }
                 });
@@ -248,7 +250,7 @@ export class VSCodePvsPackageManager {
         }, async (progress, token) => {
             let terminal: Terminal = null;
 
-            progress.report({ increment: -1, message: `Loading PVS license page from ${www_cls_sri_com}` });
+            progress.report({ increment: -1, message: `Loading PVS license page from ${sriUrl}` });
 
             return new Promise((resolve, reject) => {
                 token.onCancellationRequested(() => {
@@ -264,7 +266,7 @@ export class VSCodePvsPackageManager {
                     if (desc && desc.response && desc.response) {
                         resolve(desc.response);
                     } else {
-                        progress.report({ increment: 100, message: `Error: ${www_cls_sri_com} is not responding, please try again later.` });
+                        progress.report({ increment: 100, message: `Error: ${sriUrl} is not responding, please try again later.` });
                         resolve(null);
                     }
                 });

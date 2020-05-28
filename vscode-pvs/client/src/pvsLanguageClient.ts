@@ -177,7 +177,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				this.pvsPath = pvsPath;
 				const msg: string = `Restarting PVS from ${pvsPath}`;
 				this.statusBar.showProgress(msg);
-				window.showInformationMessage(msg);
+				// window.showInformationMessage(msg);
 				this.client.sendRequest(comm.serverCommand.startPvsServer, { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
 			}
 		}, null, this.context.subscriptions);
@@ -295,7 +295,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		
 			// define error handlers
 			this.client.onRequest(serverEvent.pvsNotPresent, () => {
-				this.packageManager.installationWizard("Could not find PVS executable");
+				this.packageManager.installationWizard(`Could not find PVS executable in folder '${this.pvsPath}'\nPlease choose the correct location of the PVS executables, or download PVS.`);
 			});
 			this.client.onRequest(serverEvent.pvsIncorrectVersion, (msg: string) => {
 				this.packageManager.installationWizard(msg);

@@ -2,6 +2,7 @@ import { Connection } from "vscode-languageserver";
 import { PvsError } from "./common/pvs-gui";
 import { serverEvent } from "./common/serverInterface";
 import * as fsUtils from './common/fsUtils';
+import { ProcessCode } from "./pvsProcess";
 
 export class PvsErrorManager {
     // connection to the client
@@ -84,6 +85,11 @@ export class PvsErrorManager {
     }): void {
         if (desc) {
             this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: desc.msg });
+        }
+    }
+    handleStartPvsServerError (success: ProcessCode): void {
+        if (success === ProcessCode.PVSNOTFOUND) {
+            this.connection.sendRequest(serverEvent.pvsNotPresent);
         }
     }
     

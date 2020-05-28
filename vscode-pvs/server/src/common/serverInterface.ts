@@ -581,6 +581,6 @@ export declare type CliGatewaySubscriberEvent = {
 
 export interface PvsDownloadDescriptor { url: string, fileName: string, version: string };
 
-export const www_cls_sri_com: string = "www.csl.sri.com";
-export const www_pvs_snapshots: string = `http://${www_cls_sri_com}/users/owre/drop/pvs-snapshots/`;
-export const www_pvs_allegro_license: string = `http://pvs.csl.sri.com/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;
+export const sriUrl: string = "www.csl.sri.com";
+export const pvsSnapshotsUrl: string = `http://${sriUrl}/users/owre/drop/pvs-snapshots/`;
+export const allegroLicenseUrl: string = `http://pvs.csl.sri.com/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;

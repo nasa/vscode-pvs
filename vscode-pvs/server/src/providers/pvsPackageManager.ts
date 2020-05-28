@@ -39,13 +39,13 @@
 import { execSync } from 'child_process';
 import * as os from 'os';
 import * as fsUtils from '../common/fsUtils';
-import { www_pvs_snapshots, PvsDownloadDescriptor, www_pvs_allegro_license } from '../common/serverInterface';
+import { pvsSnapshotsUrl, PvsDownloadDescriptor, allegroLicenseUrl } from '../common/serverInterface';
 
 export class PvsPackageManager {
 
     static async listDownloadableVersions (): Promise<PvsDownloadDescriptor[]> {
         const osName: string = fsUtils.getOs();
-        const lsCommand: string = `curl -s -L ${www_pvs_snapshots} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${osName} | grep allegro`;
+        const lsCommand: string = `curl -s -L ${pvsSnapshotsUrl} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${osName} | grep allegro`;
         const ls: Buffer = execSync(lsCommand);
         if (ls) {
             const res: string = ls.toLocaleString();
@@ -73,7 +73,7 @@ export class PvsPackageManager {
     }
 
     static async downloadPvsLicensePage (): Promise<string> {
-        const downloadCommand: string = `curl -s -L ${www_pvs_allegro_license}`;
+        const downloadCommand: string = `curl -s -L ${allegroLicenseUrl}`;
         const dnl: Buffer = execSync(downloadCommand);
         if (dnl) {
             return dnl.toLocaleString()
