@@ -758,11 +758,19 @@ export class EventsDispatcher {
 
         });
 
-        this.client.onNotification("server.status.report-error", (desc: { msg: string }) => {
-            if (desc && desc.msg) {
-                window.showErrorMessage(desc.msg);
+        this.client.onNotification("server.status.pvs-failure", (opt?: { msg?: string, fname?: string, method?: string }) => {
+            opt = opt || {};
+            let msg: vscode.MarkedString = opt.msg || `pvs-server crashed into Lisp. Please reboot pvs-server.`;
+            if (opt.fname) {
+                // msg += `\nThe error occurred while processing file [${opt.fname}](file://${opt.fname})`; // vscode is unable to render marked strings in dialogs
+                msg += `\nThe error occurred while processing file ${opt.fname}`;
+            } else if (opt.method) {
+                // msg += `\nThe error occurred while executing method [${opt.method}](${opt.method})`; // vscode is unable to render marked strings in dialogs
+                msg += `\nThe error occurred while executing method ${opt.method}`;
             }
-            this.statusBar.ready();
+            msg += ` (see pvs-server output for details)`;
+            window.showErrorMessage("Error: " + msg);
+            this.statusBar.showError(msg);
         });
     }
 }

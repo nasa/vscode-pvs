@@ -67,6 +67,7 @@ import { getErrorRange } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import * as os from 'os';
+import { PvsErrorManager } from './pvsErrorManager';
 
 
 export class PvsProgressInfo {
@@ -120,6 +121,8 @@ export class PvsProxy {
 	protected connection: SimpleConnection; // connection to the client
 	protected externalServer: boolean;
 	protected cliListener: (data: string) => void; // useful to show progress feedback
+
+	protected pvsErrorManager: PvsErrorManager;
 
 	protected legacy: PvsProxyLegacy;
 	protected useLegacy: boolean = true;
@@ -196,6 +199,9 @@ export class PvsProxy {
 								id: req.id,
 								error
 							});
+						}
+						if (this.pvsErrorManager) {
+							this.pvsErrorManager.notifyPvsFailure({ method });
 						}
 					} else if (value) {
 						// console.log("[pvs-proxy] Value returned by pvs-server: ");
@@ -915,7 +921,7 @@ export class PvsProxy {
 	}): Promise<PvsProcess | null> {
 		opt = opt || {};
 		const connection: SimpleConnection = (opt.enableNotifications) ? this.connection : null;
-		const proc: PvsProcess = new PvsProcess({ pvsPath: this.pvsPath, contextFolder: this.pvsPath }, connection);
+		const proc: PvsProcess = new PvsProcess(this.pvsPath, { connection, pvsErrorManager: this.pvsErrorManager });
 
 		let portIsAvailable: boolean = false;
 		for (let i = 0; !portIsAvailable && i < this.MAX_PORT_ATTEMPTS; i++) {
@@ -1031,12 +1037,19 @@ export class PvsProxy {
 			this.pvsPath = desc.pvsPath;
 			console.log(`[pvs-proxy] New pvs path: ${this.pvsPath}`);
 		}
-		if (!this.externalServer) {
+		// if (!this.externalServer) {
 			console.info("[pvs-proxy] Restarting pvs-server...");
-			this.pvsServer = await this.createPvsServer({ enableNotifications: true });
-			this.legacy.pvsProcess = this.pvsServer;
+			this.pvsServer = await this.createPvsServer({
+				enableNotifications: true,
+				externalServer: this.externalServer,
+				verbose: this.verbose
+			});
+			await this.legacy.activate(this.pvsServer, {
+				pvsErrorManager: this.pvsErrorManager
+			})
+			// this.legacy.pvsProcess = this.pvsServer;
 			console.info("[pvs-proxy] Restart complete!");
-		}
+		// }
 		if (this.externalServer || this.pvsServer) {
 			await this.createClient();
 		}
@@ -1087,11 +1100,12 @@ export class PvsProxy {
 	 * pvs-proxy activation function
 	 * @param opt 
 	 */
-	async activate(opt?: { debugMode?: boolean, showBanner?: boolean, verbose?: boolean }): Promise<boolean> {
+	async activate(opt?: { debugMode?: boolean, showBanner?: boolean, verbose?: boolean, pvsErrorManager?: PvsErrorManager }): Promise<boolean> {
 		opt = opt || {};
 		this.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
 		this.debugMode = !!opt.debugMode;
 		this.verbose = !!opt.verbose;
+		this.pvsErrorManager = opt.pvsErrorManager;
 		if (this.pvsServer) {
 			return Promise.resolve(true);
 		}
@@ -1101,7 +1115,10 @@ export class PvsProxy {
 			externalServer: this.externalServer,
 			verbose: this.verbose
 		});
-		this.legacy.pvsProcess = this.pvsServer;
+		await this.legacy.activate(this.pvsServer, {
+			pvsErrorManager: this.pvsErrorManager
+		});
+		// this.legacy.pvsProcess = this.pvsServer;
 		// if pvs server has been created, then create the client
 		if (this.externalServer || this.pvsServer) {
 			const success: boolean = await this.createClient(opt);

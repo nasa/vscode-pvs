@@ -42,12 +42,14 @@ import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import { PvsProcess } from '../pvsProcess';
 import * as utils from '../common/languageUtils';
+import { PvsErrorManager } from '../pvsErrorManager';
 
 export class PvsProxyLegacy {
 	protected pvsPath: string;
 	protected pvsLibraryPath: string;
-	protected connection: SimpleConnection; // connection to the client
-	pvsProcess: PvsProcess;
+    protected connection: SimpleConnection; // connection to the client
+    protected pvsErrorManager: PvsErrorManager;
+	protected pvsProcess: PvsProcess;
 	constructor (pvsPath: string, opt?: { connection?: SimpleConnection }) {
 		opt = opt || {};
 		this.pvsPath = pvsPath;
@@ -58,6 +60,13 @@ export class PvsProxyLegacy {
 	// async startPvs (): Promise<boolean> {
     //     return await this.pvsProcess.activate();
     // }
+    async activate (pvsProcess: PvsProcess, opt?: {
+        pvsErrorManager?: PvsErrorManager
+    }): Promise<void> {
+        opt = opt || {};
+        this.pvsProcess = pvsProcess;
+        this.pvsErrorManager = opt.pvsErrorManager;
+    }
     async sendCommand (cmd: string): Promise<PvsResponse> {
         const data: string = await this.pvsProcess.sendText(cmd);
         return {
@@ -193,14 +202,17 @@ export class PvsProxyLegacy {
                         error_string,
                         file_name
                     }
-                }
+                };
             } else if (matchSystemError) {
                 pvsResponse.error = {
                     data: {
                         place: [ 1, 0 ],
-                        error_string: `pvs-server crashed into Lisp. Please reboot pvs-server.\nThe error occurred while processing file ${fname} (see pvs-server output for details)`,
+                        error_string: `pvs-server crashed into Lisp. Please reboot pvs-server.`,
                         file_name: fname
                     }
+                };
+                if (this.pvsErrorManager) {
+                    this.pvsErrorManager.notifyPvsFailure({ fname });
                 }
             } else {
                 pvsResponse.result = res;

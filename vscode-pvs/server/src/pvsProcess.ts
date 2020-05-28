@@ -41,6 +41,7 @@ import { spawn, ChildProcess, execSync } from 'child_process';
 import { PvsVersionDescriptor, SimpleConnection } from './common/serverInterface'
 import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
+import { PvsErrorManager } from './pvsErrorManager';
 
 export enum ProcessCode { FAIL = 0, SUCCESS = -1, ADDRINUSE = -2 };
 /**
@@ -60,6 +61,8 @@ export class PvsProcess {
 
 	protected connection: SimpleConnection;
 	protected enableNotifications: boolean;
+
+	protected pvsErrorManager: PvsErrorManager;
 
 	protected serverPort: number = 22334;
 	protected externalServer: boolean = false;
@@ -105,13 +108,12 @@ export class PvsProcess {
 	 * @param desc Information on the PVS execution environment.
 	 * @param connection Connection with the language client
 	 */
-	constructor (desc: { pvsPath: string, contextFolder?: string, processType?: string }, connection?: SimpleConnection) {
-		this.pvsPath = (desc && desc.pvsPath) ? fsUtils.tildeExpansion(desc.pvsPath) : __dirname
+	constructor (pvsPath: string, opt?: { connection?: SimpleConnection, pvsErrorManager?: PvsErrorManager }) {
+		opt = opt || {};
+		this.pvsPath = pvsPath ? fsUtils.tildeExpansion(pvsPath) : __dirname
 		this.pvsLibraryPath = path.join(this.pvsPath, "lib");
-		// this.contextFolder = (desc && desc.contextFolder) ? fsUtils.tildeExpansion(desc.contextFolder) : __dirname;
-
-		// this.processType = (desc && desc.processType) ? desc.processType : "typechecker"; // this is used only for debugging
-		this.connection = connection;
+		this.connection = opt.connection;
+		this.pvsErrorManager = opt.pvsErrorManager;
 	}
 
 	/**
@@ -196,9 +198,9 @@ export class PvsProcess {
 
 					const matchSocketAddressInUse: RegExpMatchArray = /(errno 48)/g.exec(data);
 					if (matchSocketAddressInUse) {
-						resolve(ProcessCode.ADDRINUSE)
-						addressInUse = true;
 						this.pvsProcess = null;
+						addressInUse = true;
+						resolve(ProcessCode.ADDRINUSE)
 					} else {
 						// console.dir({ 
 						// 	type: "memory usage",
@@ -229,7 +231,7 @@ export class PvsProcess {
 							}
 							if (this.cb && typeof this.cb === "function") {
 								let res: string = this.data.replace(/(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g, "");
-								res = res.replace("[Current process: Initial Lisp Listener]", "");
+								res = res.replace("[Current process: Initial Lisp Listener]", ""); // clean up pvs output by removing unnecessary text
 								this.cb(res.trim());
 							}
 						}
