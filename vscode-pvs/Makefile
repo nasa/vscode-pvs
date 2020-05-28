@@ -34,32 +34,28 @@
  # REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  # TERMINATION OF THIS AGREEMENT.
  
-all:
-	make install
-	cd server && npm install --no-save typescript && npm run compile && npm install
-	cd client && npm install --no-save typescript && npm run compile && npm install
+all: install-tsc install-vsce
+	npm install
+	cd server && npm run compile && npm install
+	cd client && npm run compile && npm install
 	make core
 
-release:
-	npm install
-	cd server && npm install --no-save typescript && npm run compile && npm install
-	cd client && npm install --no-save typescript && npm run compile && npm install
-	make core
+release: all
 	node_modules/vsce/out/vsce package
 
 package:
 	node_modules/vsce/out/vsce package
 
 install-tsc:
-	cd server && npm install --no-save typescript
-	cd client && npm install --no-save typescript
+	cd server && npm install typescript
+	cd client && npm install typescript
 
 tsc:
 	cd server && npm run compile
 	cd client && npm run compile
 
 install-vsce:
-	npm install --no-save vsce
+	npm install vsce
 
 vsce:
 	node_modules/vsce/out/vsce package
@@ -68,7 +64,7 @@ install-jasmine:
 	npm install jasmine ts-node jasmine-ts
 
 install:
-	npm install && npm install --no-save jasmine ts-node jasmine-ts
+	npm install
 
 test-proxy:
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proxy.json

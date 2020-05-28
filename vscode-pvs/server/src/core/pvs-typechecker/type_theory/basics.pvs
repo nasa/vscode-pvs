@@ -11,21 +11,6 @@ basics: THEORY
         interpreted(kind: kind, signature: list[int], def: int): interpreted?
       END symbol
 
-    % a context is a partial function that assigns a kind to each symbol
-    context: [s: symbol -> kind] = LAMBDA (s: symbol): kind(s)
-    % the current context is a list of symbol definitions, types and terms are kept separate
-    current_context: TYPE = [# types: list[symbol], terms: list[symbol] #]
-    % the empty context does not contain any declaration
-    empty_context: current_context = (# types := (::), terms := (::) #)
-    % utility function for checking the content of the current context
-    member?(s: symbol, cc: current_context): boolean =
-      COND
-        kind(s) = type_kind -> member(s, cc`types),
-        kind(s) = term_kind -> member(s, cc`terms)
-      ENDCOND
-    % a symbol is fresh if it is not present in the current context
-    fresh?(s: symbol, cc: current_context): boolean = NOT member?(s, cc)
-
     % name equivalence (synonym: weak equivalence)
     equiv_name(s1, s2: symbol)
       : boolean = 

@@ -648,7 +648,7 @@ export class PvsProxy {
 	async changeContext (desc: string | { contextFolder: string }): Promise<PvsResponse> {
 		if (desc) {
 			const ctx: string = (typeof desc === "string") ? desc : desc.contextFolder;
-			if (this.useLegacy) {
+			if (this.useLegacy && !this.externalServer) {
 				return await this.legacy.changeContext(ctx);
 			}
 			return await this.pvsRequest('change-context', [ ctx ]);

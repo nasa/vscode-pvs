@@ -384,7 +384,7 @@ describe("pvs-prover", () => {
 
 	// on Mac and Linux, the following test fails and the prover crashes into Lisp
 	// to activate the test case, change 'xit(...)' to 'it(...)'
-	xit(`is robust to prover commands with incorrect arguments`, async () => {
+	it(`is robust to prover commands with incorrect arguments`, async () => {
 		label(`is robust to prover commands with incorrect arguments`);
 
 		const desc = {
@@ -411,7 +411,7 @@ describe("pvs-prover", () => {
 
 	// on Mac and Linux, pvs-server fails with the following error:  { code: 1, message: '"No methods applicable for generic function #<standard-generic-function all-declarations> with args (nil) of classes (null)"' }
 	// to activate the test case, change 'xit(...)' to 'it(...)'
-	xit(`prove-formula is robust to invocations with incorrect theory names`, async () => {
+	it(`prove-formula is robust to invocations with incorrect theory names`, async () => {
 		label(`prove-formula is robust to invocations with incorrect theory names`);
 
 		const desc = {

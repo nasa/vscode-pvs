@@ -1,5 +1,5 @@
 test: THEORY
-  BEGIN IMPORTING context_events
+  BEGIN IMPORTING context
     init_test_1: boolean = member?(bool_type, initial_context) % this should be true
     init_test_2: boolean = member?(pretype(-1), initial_context) % this should be false
 

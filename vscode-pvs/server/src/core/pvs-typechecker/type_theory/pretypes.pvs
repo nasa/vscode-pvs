@@ -22,10 +22,4 @@ pretypes: THEORY
     % record pretypes have 1 or more attributes, where each attribute is in the form 'name:type'
     record_pretype(name: nat, attributes: list[nat]): symbol = pretype(name, attributes)
     
-    % the initial context contains the basic types
-    initial_context: current_context = (#
-      types := (: bool_type, nat_type, int_type, rat_type, string_type :),
-      terms := (::)
-    #)
-
   END pretypes
