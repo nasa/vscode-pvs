@@ -327,6 +327,10 @@ export class PvsProxy {
 						const res: PvsResponse = (this.useLegacy) ? await this.legacy.parseFile(fname)
 								: await this.pvsRequest('parse', [fname]);
 						if (opt.test) { return res; }
+
+						// testing antlr parser
+						// this.parser.parseFile(desc); // async call
+						
 						if (res) {
 							let range: languageserver.Range = null;
 							let message: string = `File ${desc.fileName} parsed successfully`;
@@ -394,6 +398,9 @@ export class PvsProxy {
 								const antlrdiags: ParserDiagnostics = await this.parser.parseFile(desc);
 								if (antlrdiags && antlrdiags.errors) {
 									diags.errors = diags.errors.concat(antlrdiags.errors);
+									if (antlrdiags["parse-time"]) {
+										console.log(`[pvs-parser] antlr completed parsing in ${antlrdiags["parse-time"].ms}ms`)
+									}
 								}
 							} 
 							return this.makeDiags(diags, { id: res.id });

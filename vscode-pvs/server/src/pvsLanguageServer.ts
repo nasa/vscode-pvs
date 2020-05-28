@@ -1124,6 +1124,7 @@ export class PvsLanguageServer {
 								completed++;
 								if (opt.withFeedback) {
 									const msg: string = opt.msg	|| `${actionFriendlyNameContinuous} workspace ${workspaceName} (${completed}/${nfiles} files processed)`;
+									console.log(msg);
 									if (opt.keepDialogOpen) {
 										// this is a pre-task, just show spinning bar
 										this.notifyProgressImportantTask ({ id: taskId, msg, increment: -1 }); 
