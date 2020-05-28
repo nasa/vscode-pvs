@@ -1066,3 +1066,17 @@ export function isProved (proofStatus: ProofStatus): boolean {
 			return false;
 	}
 }
+
+export function makeEmptyTheory (theoryName: string): string {
+	return `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% @theory: ${theoryName}
+% @author: xxx
+% @date: ${new Date().toUTCString()}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+${theoryName}: THEORY
+  BEGIN 
+    
+  END ${theoryName}
+`;
+}

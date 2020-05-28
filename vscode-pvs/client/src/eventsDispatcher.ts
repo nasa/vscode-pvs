@@ -50,6 +50,7 @@ import * as fsUtils from './common/fsUtils';
 import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 import * as utils from './common/languageUtils';
 import * as commandUtils from './common/commandUtils';
+import * as path from 'path';
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -384,6 +385,9 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.select-profile", (desc: { profile: commandUtils.ProofMateProfile }) => {
             this.vscodePvsTerminal.selectProfile(desc);
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.new-pvs-file", async () => {
+            this.workspaceExplorer.newPvsFile(); // async method
         }));
         
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-version-info", async (opt?: { trailingNote?: string }) => {

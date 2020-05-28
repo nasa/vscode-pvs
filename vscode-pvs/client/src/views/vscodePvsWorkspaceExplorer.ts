@@ -37,7 +37,7 @@
  **/
 import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
-			TreeDataProvider, workspace, TreeView, ViewColumn } from 'vscode';
+			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextDocument, TextEditor, FileStat } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor } from '../common/serverInterface';
 import * as path from 'path';
@@ -574,8 +574,77 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	protected root: WorkspaceOverviewItem;
 	protected loading: LoadingItem = new LoadingItem();
 
+	/**
+	 * Returns the full path of the pvs executable
+	 */
 	protected getPvsPath (): string {
 		return workspace.getConfiguration().get("pvs.path");
+	}
+
+	/**
+	 * Returns the full path of the current workspace folder
+	 */
+	getCurrentWorkspace (): string {
+		if (this.root) {
+			return this.root.getContextFolder();
+		}
+		return null;
+	}
+
+	/**
+	 * Creates a new pvs file in the current workspace folder
+	 */
+	async newPvsFile (): Promise<void> {
+		const fileName: string = await window.showInputBox({
+			prompt: `Please enter PVS file name`,
+			placeHolder: ``,
+			value: ``,
+			ignoreFocusOut: true 
+		});
+		if (fileName) {
+			const theoryName = fsUtils.getFileName(fileName); // this will remove the extension
+			const contextFolder: string = this.getCurrentWorkspace() || workspace.rootPath;
+			const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
+			const uri: Uri = Uri.parse(fname);
+
+			let stats: FileStat = null;
+			try {
+				stats = await workspace.fs.stat(uri);
+			} catch (fileNotFound) {
+				window.showWarningMessage(`Could not create ${theoryName}.pvs (file already exists in current workspace). Please choose a different file name.`);
+			} finally {
+				if (!stats) {
+					const content: string = utils.makeEmptyTheory(theoryName);
+					const edit: WorkspaceEdit = new WorkspaceEdit();
+	
+					edit.createFile(uri, { overwrite: false, ignoreIfExists: true });
+	
+					edit.insert(uri, new Position(0, 0), content);
+					await workspace.applyEdit(edit);	
+				}
+				const editors: TextEditor[] = window.visibleTextEditors.filter((editor: TextEditor) => {
+					return editor.document.fileName === fname;
+				});
+				const fileAlreadyOpen: boolean = (editors && editors.length > 0);
+				const viewColumn: number = fileAlreadyOpen ? editors[0].viewColumn : ViewColumn.One;
+				await window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
+	
+			}
+			// const theoryName = fsUtils.getFileName(fileName); // this will remove the extension
+			// const contextFolder: string = this.getCurrentWorkspace() || workspace.rootPath;
+			// const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
+			// const file: Uri = Uri.parse(`untitled:${theoryName}.pvs`);
+			// const edit = new WorkspaceEdit();
+			// const content: string = utils.makeEmptyTheory(theoryName);
+			// edit.insert(file, new Position(0, 0), content);
+			// const success: boolean = await workspace.applyEdit(edit);
+			// if (success) {
+			// 	const document: TextDocument = await workspace.openTextDocument(file);
+			// 	window.showTextDocument(document, ViewColumn.Beside, true);
+			// } else {
+			// 	window.showInformationMessage(`Error: Unable to create file ${fname}`);
+			// }
+		}
 	}
 
 	/**
