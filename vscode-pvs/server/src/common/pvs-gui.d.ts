@@ -69,11 +69,12 @@ export type FindDeclarationResult = {
 export type LispResult = StringResult;
 export type StringResult = string;
 export type ShowTCCsResult = {
-  comment: string[];
-  definition: string;
-  "from-decl": string; // declaration associated with the tcc
-  id: string; // TCC identifier
-  proved: null | boolean; // this should be a string, e.g., "proved", "unfinished", etc.
+  "subsumed-tccs"?: string; // when subsumed-tccs is non-null, the other attributes should be ignored
+  id?: string; // TCC identifier
+  comment?: string[];
+  definition?: string;
+  "from-decl"?: string; // declaration associated with the tcc
+  proved?: null | boolean; // this should be a string, e.g., "proved", "unfinished", etc.
   theory: string;
 }[];
 export declare interface DischargeTccsResult {

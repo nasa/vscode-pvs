@@ -742,29 +742,31 @@ export class PvsLanguageServer {
 				const keys: string[] = Object.keys(result);
 				let content: string = "";
 				for (let i = 0; i < keys.length; i++) {
-					content += result[i].comment;
-					if (result[i].id) {
-						const formulaName: string = result[i].id;
-						// try to fetch the last know status from  the .jprf file
-						const lastKnownStatus: ProofStatus = await utils.getProofStatus({
-							fileName: args.fileName,
-							fileExtension: args.fileExtension,
-							contextFolder: args.contextFolder,
-							theoryName: args.theoryName,
-							formulaName
-						});
-						result[i]["status"] = result[i].proved ? "proved"
-												: lastKnownStatus || "unfinished"; // we are artificially adding this field because pvs-server does not provide it
-						const status: string = result[i]["status"]; //lastKnownStatus || (result[i].proved) ? "proved" : "untried";
-						content += `\n  % ${status}\n`;
-						content += `${formulaName}: OBLIGATION\n${result[i].definition}\n\n`;
+					if (result[i]["subsumed-tccs"]) {
+						content += result[i]["subsumed-tccs"] + "\n\n";
 					} else {
-						content += "\n\n";
+						content += result[i].comment;
+						if (result[i].id) {
+							const formulaName: string = result[i].id;
+							// try to fetch the last know status from  the .jprf file
+							const lastKnownStatus: ProofStatus = await utils.getProofStatus({
+								fileName: args.fileName,
+								fileExtension: args.fileExtension,
+								contextFolder: args.contextFolder,
+								theoryName: args.theoryName,
+								formulaName
+							});
+							result[i]["status"] = result[i].proved ? "proved"
+													: lastKnownStatus || "unfinished"; // we are artificially adding this field because pvs-server does not provide it
+							const status: string = result[i]["status"]; //lastKnownStatus || (result[i].proved) ? "proved" : "untried";
+							content += `\n  % ${status}\n`;
+							content += `${formulaName}: OBLIGATION\n${result[i].definition}\n\n`;
+						}
 					}
 				}
 				if (content.trim()) {
 					// indent lines
-					content = "\n" + content.split("\n").map(line => { return `\t${line}`; }).join("\n") + "\n";
+					content = "\n" + content.split("\n").map(line => { return `\t${line}`; }).join("\n").trim() + "\n";
 				} else {
 					content = `%-- No TCC was generated for theory ${args.theoryName}`;
 				}

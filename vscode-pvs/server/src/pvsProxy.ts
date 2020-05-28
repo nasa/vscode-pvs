@@ -391,8 +391,10 @@ export class PvsProxy {
 								diags.errors = [ error ];
 
 								// send also a request to the antlr parser, as it may report more errors (the standard pvs parser stops at the first error)
-								// const antlrdiags: ParserDiagnostics = await this.parser.parseFile(desc);
-								// diags.errors = diags.errors.concat(antlrdiags.errors);
+								const antlrdiags: ParserDiagnostics = await this.parser.parseFile(desc);
+								if (antlrdiags && antlrdiags.errors) {
+									diags.errors = diags.errors.concat(antlrdiags.errors);
+								}
 							} 
 							return this.makeDiags(diags, { id: res.id });
 						} else {

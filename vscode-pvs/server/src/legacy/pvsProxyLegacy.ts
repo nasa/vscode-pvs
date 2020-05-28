@@ -105,12 +105,13 @@ export class PvsProxyLegacy {
                 const ans: string = response.result;    
                 const tccs: string[] = ans.split(";");
                 for (let i = 0; i < tccs.length; i++) {
+                    const info: string = tccs[i];
                     let comment: string = ""; 
                     let matchComment: RegExpMatchArray = null;
                     let proved: boolean = false;
                     const regexpComment: RegExp = /(%\s*.+)/g;
                     const regexpStatus: RegExp = /%\s*(?:is\s+)?(subsumed|simplified|proved|unproved|unfinished|unchecked|untried)/g;
-                    while (matchComment = regexpComment.exec(tccs[i])) {
+                    while (matchComment = regexpComment.exec(info)) {
                         const matchStatus: RegExpMatchArray = regexpStatus.exec(matchComment[1]);
                         if (matchStatus) {
                             proved = matchStatus[1] === "subsumed" || matchStatus[1] === "simplified" || matchStatus[1] === "proved";
@@ -120,7 +121,7 @@ export class PvsProxyLegacy {
                     }
 
                     let id: string = "";
-                    const matchId: RegExpMatchArray = /(.+): OBLIGATION/g.exec(tccs[i]);
+                    const matchId: RegExpMatchArray = /(.+): OBLIGATION/g.exec(info);
                     if (matchId) {
                         id = matchId[1];            
                     }
@@ -128,8 +129,18 @@ export class PvsProxyLegacy {
                     let definition: string = "";
                     let matchDefinition: RegExpMatchArray = null;
                     const regexpDefinition: RegExp = /: OBLIGATION\b([\w\W\s]+)/g;
-                    while (matchDefinition = regexpDefinition.exec(tccs[i])) {
+                    while (matchDefinition = regexpDefinition.exec(info)) {
                         definition += matchDefinition[1] + "\n";
+                    }
+
+                    // add subsumed tccs
+                    let subsumed: string = "";
+                    let matchSubsumed: RegExpMatchArray = null;
+                    const regexpSubsumed: RegExp = /%\s*The subtype TCC [\w\W\s]* is subsumed by .*\s/g;
+                    while(matchSubsumed = regexpSubsumed.exec(tccs[i])) {
+                        if (matchSubsumed && matchSubsumed.length > 0) {
+                            subsumed += matchSubsumed[0].trim();
+                        }
                     }
 
                     if (id && comment) {
@@ -142,6 +153,14 @@ export class PvsProxyLegacy {
                             "from-decl": null
                         });
                     }
+                    
+                    if (subsumed) {
+                        result.push({
+                            "subsumed-tccs": subsumed,
+                            theory: theoryName
+                        });
+                    }
+
                 }
             }
             pvsResponse.result = result;
