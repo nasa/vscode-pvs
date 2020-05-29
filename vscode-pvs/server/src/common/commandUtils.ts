@@ -1720,7 +1720,55 @@ export const EVALUATOR_COMMANDS: { [key:string]: ProofCommandDescriptor } = {
     "RANDOM": {
         description: `Generate a random number.`,
         syntax: `RANDOM`
-    }
+    },
+    "quit": {
+        description: `Exit the evaluator with confirmation`,
+        syntax: `quit`
+    },
+    "exit": {
+        description: `Exit the evaluator without confirmation`,
+        syntax: `exit`
+    },
+    "help": {
+        description: `Shows evaluator commands`,
+        syntax: `help`
+    },
+    "debug": {
+        description: "Turn on printing of debugging information",
+        syntax: "debug"
+    },
+    "nodebug": {
+        description: "Turn off printing of debugging information",
+        syntax: "nodebug"
+    },
+    "timing": {
+        description: "Turn on timing information per evaluation",
+        syntax: "timing"
+    },
+    "notiming": {
+        description: "Turn off timing information per evaluation",
+        syntax: "notiming"
+    },
+    "tccs": {
+        description: "Turn on TCCs generation per evaluation",
+        syntax: "tccs"
+    },
+    "notccs": {
+        description: "Turn off TCCs generation per evaluation",
+        syntax: "notccs"
+    },
+    "load_pvs_attachments": {
+        description: "Force a reload .pvs-attachments and pvs-attachments",
+        syntax: "load_pvs_attachments"
+    },
+    "list_pvs_attachments": {
+        description: "List semantic attachments loaded in the current context",
+        syntax: "list_pvs_attachments"
+    },
+    "pvsio_version": {
+        description: "Show current version of PVSio",
+        syntax: "pvsio_version"
+    } 
 };
 
 // a selection of 32 useful commands for advanced users. The selection has been based on statistics from nasalib and feedback from experienced pvs users

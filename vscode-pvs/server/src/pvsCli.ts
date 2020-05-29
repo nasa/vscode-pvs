@@ -198,6 +198,8 @@ class PvsCli {
 
 	protected proofState: string;
 
+	protected mainContent: string = "";
+
 	protected wsClient: WebSocket;
 
 	protected proverPrompt: string = " >> ";
@@ -211,7 +213,9 @@ class PvsCli {
 		this.args = args;
 		this.clientID = fsUtils.get_fresh_id();
 	}
-	activateEvaluatorRepl () {
+	async activateEvaluatorRepl (): Promise<void> {
+		// read input file so we can autocomplete symbol names
+		this.mainContent = await fsUtils.readFile(fsUtils.desc2fname(this.args));
 		if (process.stdin.isTTY) {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
@@ -255,7 +259,7 @@ class PvsCli {
 		});		
 		this.connection = new CliConnection();
 	}
-	activateProverRepl () {
+	async activateProverRepl (): Promise<void> {
 		if (process.stdin.isTTY) {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
@@ -503,11 +507,11 @@ class PvsCli {
 	protected evaluatorCompleter (line: string) {
 		let hits: string[] = [];
 		// autocomplete symbol names
-		// const symbols: string[] = utils.listSymbols(...);
+		const symbols: string[] = utils.listSymbols(this.mainContent);
 		// console.dir(symbols, { depth: null });
-		// if (symbols && symbols.length) {
-		// 	hits = symbols.filter((c: string) => c.startsWith(line));
-		// }
+		if (symbols && symbols.length) {
+			hits = symbols.filter((c: string) => c.startsWith(line));
+		}
 		// Include also pvsio functions in the list
 		hits = hits.concat(this.evaluatorFunctions.filter((c: string) => c.startsWith(line)));
 		return [ hits, line ];
@@ -534,18 +538,18 @@ if (process.argv.length > 2) {
 	readline.cursorTo(process.stdout, 0, 0);
 	readline.clearScreenDown(process.stdout);
 	const pvsCli: PvsCli = new PvsCli(args);
-	pvsCli.subscribe(args.channelID).then((success: boolean) => {
+	pvsCli.subscribe(args.channelID).then(async (success: boolean) => {
 		console.log(args);
 		if (success) {
 			switch (args.type) {
 				case cliSessionType.proveFormula: {
 					console.log(`\nStarting new prover session for ${utils.colorText(args.formulaName, utils.textColor.blue)}\n`);
-					pvsCli.activateProverRepl();
+					await pvsCli.activateProverRepl();
 					break;
 				}
 				case cliSessionType.pvsioEvaluator: {
 					console.log(`\nStarting new PVSio evaluator session for theory ${utils.colorText(args.theoryName, utils.textColor.blue)}\n`);
-					pvsCli.activateEvaluatorRepl();
+					await pvsCli.activateEvaluatorRepl();
 					break;
 				}
 				default: {

@@ -57,11 +57,10 @@ function regExpSource(v: Array<string>): string {
 				const op: string = elem.includes("?") ? "?"
 									: elem.includes("+") ? "+" 
 									: elem.includes("!") ? "!" : null;
-				return (op) ? "\\b" + elem.replace(op, "\\" + op)
+				return (op) ? "\\b" + elem.replace(op, `\\${op}`)
 							: "\\b" + elem + "\\b";
 			});
-			let ans: string = v.join("|");
-			return ans;
+			return v.join("|");
 		}
 	}
 	return "";

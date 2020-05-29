@@ -577,25 +577,28 @@ export function getWordRange(txt: string, position: Position): Range {
  */
 export function listSymbols(txt: string): string[] {
 
-	const symbols: RegExp = /(\w+\??)/g; // TODO: negative lookahead to remove strings
-	const keywords: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
+	if (txt) {
+		const symbols: RegExp = /(\w+\??)/g; // TODO: negative lookahead to remove strings
+		const keywords: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
 
-	let symbolsMap: { [ symbol: string ]: { line: number, character: number } } = {};
-	let match: RegExpMatchArray = null;
-	const lines: string[] = txt.split("\n");
-	const maxIterations: number = 100;
-	if (lines && lines.length) {
-		for (let i = 0; i < lines.length; i++) {
-			const txt: string = lines[i];
-			for(let n = 0; n < maxIterations && (match = symbols.exec(txt)); n++) {
-				if (!keywords.test(match[0]) && isNaN(+match[0])) {
-					symbolsMap[match[0]] = { line: i, character: match.index }; // position is used for debugging purposes here
+		let symbolsMap: { [ symbol: string ]: { line: number, character: number } } = {};
+		let match: RegExpMatchArray = null;
+		const lines: string[] = txt.split("\n");
+		const maxIterations: number = 100;
+		if (lines && lines.length) {
+			for (let i = 0; i < lines.length; i++) {
+				const txt: string = lines[i];
+				for(let n = 0; n < maxIterations && (match = symbols.exec(txt)); n++) {
+					if (match && !keywords.test(match[0]) && isNaN(+match[0])) { //isNaN(match[0]) is used to exclude numbers -- we don't want to include numbers in the list of symbols
+						symbolsMap[match[0]] = { line: i, character: match.index }; // position is used for debugging purposes here
+					}
 				}
 			}
 		}
-	}
 
-	return Object.keys(symbolsMap);
+		return Object.keys(symbolsMap);
+	}
+	return [];
 }
 
 export const pvsioBanner: string = `
@@ -603,12 +606,14 @@ export const pvsioBanner: string = `
 | PVSio Evaluator
 |
 | Enter a PVS expression at the prompt, or 'help' for help, or 'exit' to exit the evaluator.
+| You can use TAB to complete commands at the PVSio prompt.
 |
-| *CAVEAT*: evaluation of expressions which depend on unproven TCCs may be 
-| unsound, and result in the evaluator crashing into Lisp, running out of 
-| stack, or worse. If you crash into Lisp, type (restore) to resume.
+| Note: evaluation of expressions which depend on unproven TCCs may be unsound,
+| and result in the evaluator becoming unresponsive or crashing into Lisp. 
+| If that happens, please close the evaluator session and start a new one.
 |
 +----
+
 `
 ;
 
