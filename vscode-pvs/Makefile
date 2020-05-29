@@ -98,4 +98,4 @@ clean-test:
 	-rm test/**/pvslog/*
 	-rm test/**/.pvscontext
 
-.PHONY: test
+.PHONY: test test-proxy test-parser test-find-declaration test-typechecker test-prover test-workspace test-pvs-context
