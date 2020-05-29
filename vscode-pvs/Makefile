@@ -98,4 +98,8 @@ clean-test:
 	-rm test/**/pvslog/*
 	-rm test/**/.pvscontext
 
-.PHONY: test test-proxy test-parser test-find-declaration test-typechecker test-prover test-workspace test-pvs-context
+resolutions:
+	npm install -no-save npm-force-resolutions
+	node node_modules/npm-force-resolutions/index.js
+
+.PHONY: test test-proxy test-parser test-find-declaration test-typechecker test-prover test-workspace test-pvs-context resolutions

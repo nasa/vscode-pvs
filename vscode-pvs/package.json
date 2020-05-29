@@ -945,7 +945,6 @@
 		"ts-node": "^7.0.0"
 	},
 	"resolutions": {
-		"npm-force-resolutions": "^0.0.3",
 		"mem": "^6.1.0",
 		"yargs-parser": "^18.1.3"
 	}
