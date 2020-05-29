@@ -34,13 +34,11 @@
  # REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  # TERMINATION OF THIS AGREEMENT.
  
-all: install-tsc install-vsce
-	npm install
-	cd server && npm run compile && npm install
-	cd client && npm run compile && npm install
+all: install
+	npm run compile
 	make core
 
-release: all
+release: all install-vsce
 	node_modules/vsce/out/vsce package
 
 package:
@@ -50,10 +48,6 @@ install-tsc:
 	cd server && npm install typescript
 	cd client && npm install typescript
 
-tsc:
-	cd server && npm run compile
-	cd client && npm run compile
-
 install-vsce:
 	npm install vsce
 
@@ -61,28 +55,28 @@ vsce:
 	node_modules/vsce/out/vsce package
 
 install-jasmine:
-	npm install jasmine ts-node jasmine-ts
+	npm install --no-save jasmine ts-node jasmine-ts
 
-install:
+install: install-tsc
 	npm install
 
-test-proxy:
+test-proxy: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proxy.json
-test-parser:
+test-parser: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-parser.json
-test-find-declaration:
+test-find-declaration: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-find-declaration.json
-test-typechecker:
+test-typechecker: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-typechecker.json
-test-prover:
+test-prover: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-prover.json
-test-proofscript:
+test-proofscript: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proofscript.json
-test-workspace:
+test-workspace: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-workspace.json
-test-pvscontext:
+test-pvscontext: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-pvscontext.json
-test:
+test: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-all.json
 test-all: test
 
