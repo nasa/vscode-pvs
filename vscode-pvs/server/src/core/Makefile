@@ -108,9 +108,11 @@ test-ddl-pretty-printer: download
 	cd out/java && javac -Xlint -classpath ../../lib/antlr-4.7.2-complete.jar:./ *.java && cd ../..
 	cd out/java && java -classpath ../../lib/antlr-4.7.2-complete.jar:./ org.antlr.v4.gui.TestRig DdlPrettyPrinter prettyprintDdl ../../examples/test.ddl -gui
 
+
 download:
 	@-mkdir lib
-	-cd lib && curl -O https://www.antlr.org/download/antlr-4.7.2-complete.jar
+	-cd lib && $(if $(shell which curl), curl, wget) -O https://www.antlr.org/download/antlr-4.7.2-complete.jar
+	
 
 clean:
 	@-rm -r ddl-parser/javaTarget/out

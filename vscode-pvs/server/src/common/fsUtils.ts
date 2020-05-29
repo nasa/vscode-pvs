@@ -311,7 +311,7 @@ export function getText(txt: string, range: { start: { line: number, character?:
 }
 
 import * as crypto from 'crypto';
-import { execSync } from 'child_process';
+import { execSync, exec } from 'child_process';
 
 export function get_fresh_id(): string {
 	// This may be overkill, a simple call to random is probably good enough.
@@ -354,7 +354,25 @@ export function decodeURIComponents (desc) {
 	return desc;
 }
 
-
 // constants
 export const pvsbinFolder: string = "pvsbin";
 export const logFileExtension: string = ".pr";
+
+export function getDownloader (): string {
+	const candidates: string[] = [ "curl", "wget" ];
+	for (let i = 0; i < candidates.length; i++) {
+		if (execSync(`which ${candidates[i]}`)) {
+			return candidates[i];
+		}
+	}
+	return null;
+} 
+
+export function downloadCommand(url: string, opt?: { out?: string }): string {
+	opt = opt || {};
+	const downloader: string = getDownloader();
+	if (downloader) {
+		return opt.out ? `${downloader} -o ${opt.out} ${url}` : `${downloader} ${url}`;
+	}
+	return null;
+}

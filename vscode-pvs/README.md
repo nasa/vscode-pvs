@@ -24,7 +24,6 @@ The main functionalities provided by the environment are as follows:
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
 - Java JDK (1.8 or greater) https://openjdk.java.net
 - PVS Allegro (7.1 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots
-- curl (7.x or greater) https://curl.haxx.se/download.html
 
 ## Installation instructions
 1. Download the latest release of VSCode-PVS from the [github repository](../releases)
@@ -70,7 +69,10 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
-### 1.0.20 (2020.05.xx)
+### 1.0.21 (2020.06.xx)
+- Improved feedback & stability
+
+### 1.0.20 (2020.05.26)
 - Improved Workspace Explorer
 - Improved feedback & stability
 

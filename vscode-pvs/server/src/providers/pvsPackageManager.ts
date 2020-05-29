@@ -45,7 +45,7 @@ export class PvsPackageManager {
 
     static async listDownloadableVersions (): Promise<PvsDownloadDescriptor[]> {
         const osName: string = fsUtils.getOs();
-        const lsCommand: string = `curl -s -L ${pvsSnapshotsUrl} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${osName} | grep allegro`;
+        const lsCommand: string = `${fsUtils.downloadCommand(pvsSnapshotsUrl)} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${osName} | grep allegro`;
         const ls: Buffer = execSync(lsCommand);
         if (ls) {
             const res: string = ls.toLocaleString();
@@ -64,7 +64,7 @@ export class PvsPackageManager {
 
     static async downloadPvsExecutable (desc: PvsDownloadDescriptor): Promise<string> {
         const fname: string = `${os.tmpdir()}/${desc.fileName}`;
-        const downloadCommand: string = `curl -o ${fname} ${desc.url}`;
+        const downloadCommand: string = fsUtils.downloadCommand(desc.url, { out: fname });
         const dnl: Buffer = execSync(downloadCommand);
         if (dnl) {
             return fname;
@@ -73,7 +73,7 @@ export class PvsPackageManager {
     }
 
     static async downloadPvsLicensePage (): Promise<string> {
-        const downloadCommand: string = `curl -s -L ${allegroLicenseUrl}`;
+        const downloadCommand: string = fsUtils.downloadCommand(allegroLicenseUrl);
         const dnl: Buffer = execSync(downloadCommand);
         if (dnl) {
             return dnl.toLocaleString()

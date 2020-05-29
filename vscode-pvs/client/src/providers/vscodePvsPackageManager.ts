@@ -42,6 +42,7 @@ import { serverEvent, sriUrl, serverCommand, PvsDownloadDescriptor } from "../co
 import * as os from 'os';
 import * as path from 'path';
 import { VSCodePvsStatusBar } from "../views/vscodePvsStatusBar";
+import * as fsUtils from '../common/fsUtils';
 
 export class VSCodePvsPackageManager {
     protected client: LanguageClient;
@@ -107,11 +108,11 @@ export class VSCodePvsPackageManager {
         return false;
     }
     
-	async extractPvs (desc: { fname: string, targetFolder: string }) {
+	async extractPvs (desc: { fname: string, targetFolder: string, version: string }) {
 		const label: string = `Installing PVS in ${desc.targetFolder}`;
 		const terminal = window.createTerminal({ name: label });
 
-		const extractCommand: string = `tar -C ${desc.targetFolder} -xvf ${desc.fname} && cd ${desc.targetFolder} && ./install-sh && exit`;
+		const extractCommand: string = `tar -C ${desc.targetFolder} -xvf ${desc.fname} && cd ${desc.targetFolder}/pvs-${desc.version} && ./install-sh && exit`;
 		terminal.show();
 		terminal.sendText(extractCommand);
 
@@ -129,7 +130,7 @@ export class VSCodePvsPackageManager {
             browse: this.messages.chooseInstallationFolder,
             cancel: "Cancel"
         }
-        const msg: string = `Please choose download folder (this folder will also be used as installation folder)`;
+        const msg: string = `Please choose PVS installation folder. A sub-folder with the PVS release will be automatically created by the installation wizard.`;
         if (this.statusBar) { this.statusBar.showProgress(msg); }
         const item = await window.showInformationMessage(msg, labels.browse, labels.cancel);
         if (item === labels.browse) {
@@ -137,7 +138,7 @@ export class VSCodePvsPackageManager {
                 canSelectFiles: false,
                 canSelectFolders: true,
                 canSelectMany: false,
-                openLabel: "Select PVS installation folder"
+                openLabel: this.messages.chooseInstallationFolder
             });
             if (pvsInstallationFolder && pvsInstallationFolder.length === 1) {
                 return pvsInstallationFolder[0].fsPath;
@@ -217,13 +218,13 @@ export class VSCodePvsPackageManager {
                 this.client.sendRequest(serverCommand.listDownloadableVersions);
                 this.client.onRequest(serverEvent.listDownloadableVersionsResponse, (desc: { response: PvsDownloadDescriptor[] }) => {
                     if (desc && desc.response && desc.response && desc.response.length > 0) {
-                        progress.report({ increment: -1, message: `Downloading ${desc.response[0].version}` });
+                        progress.report({ increment: -1, message: `Downloading PVS ${desc.response[0].version} from ${sriUrl}` });
 
-                        // download PVS with curl in terminal
+                        // download PVS with curl or wget in terminal
                         const label: string = `Downloading PVS`;
                         const fname: string = `${os.tmpdir()}/${desc.response[0].fileName}`;
                         const version: string = desc.response[0].version;
-                        const downloadCommand: string = `curl -o ${fname} ${desc.response[0].url} && exit`;
+                        const downloadCommand: string = fsUtils.downloadCommand(desc.response[0].url, { out: fname }) + ` && exit`;
 
                         terminal = window.createTerminal({ name: label });
                         terminal.show();
