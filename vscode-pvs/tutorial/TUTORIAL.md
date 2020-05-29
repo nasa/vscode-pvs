@@ -20,8 +20,7 @@ Try the following actions in VSCode-PVS:
 1. Create a new file `helloworld.pvs` in the current workspace.
 2. Enter the following specification:
 ```pvs
-helloworld
-: THEORY
+helloworld: THEORY
   BEGIN 
     abs (x: real): real = IF x > 0 THEN x ELSE -x ENDIF
   END helloworld
@@ -63,8 +62,7 @@ The following example demonstrates:
 Try the following actions in VSCode-PVS:
 1. Edit function `abs` in `helloworld.pvs` so as to change the return type to `posreal`, where posnat is defined as `posreal: TYPE = { r: real | r >=0 }`. The specification should look as follows:
 ```pvs
-helloworld
-: THEORY
+helloworld: THEORY
   BEGIN 
     posreal: TYPE = { r: real | r >=0 }
     abs (x: real): posreal = IF x > 0 THEN x ELSE -x ENDIF
@@ -89,17 +87,13 @@ Try the following actions in VSCode-PVS:
 3. VSCode-PVS will open an integrated terminal window with the PVSio prompt. The content of the terminal window should look as follows:
 ```
 +---- 
-| PVSio-7.0.0 (11/15/19)
+| PVSio Evaluator
 |
-| Enter a PVS ground expression followed by ';' at the prompt '<PVSio> '.
-| Enter a Lisp expression followed by '!' at the prompt '<PVSio> '.
+| Enter a PVS expression at the prompt, or 'help' for help, or 'exit' to exit the evaluator.
 |
-| Enter 'help' for help and 'exit' to exit the evaluator. Follow
-| these commands with either ';' or '!'.
-|
-| *CAVEAT*: evaluation of expressions which depend on unproven TCCs may be 
-| unsound, and result in the evaluator crashing into Lisp, running out of 
-| stack, or worse. If you crash into Lisp, type (restore) to resume.
+| Note: evaluation of expressions which depend on unproven TCCs may be unsound,
+| and result in the evaluator becoming unresponsive or crashing into Lisp. 
+| If that happens, please close the evaluator session and start a new one.
 |
 +----
 
