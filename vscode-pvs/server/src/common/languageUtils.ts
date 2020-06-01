@@ -381,10 +381,15 @@ export async function getProofStatus (desc: { fileName: string, fileExtension: s
 		const jprf: string = fsUtils.desc2fname({ fileName: desc.fileName, fileExtension: ".jprf", contextFolder: desc.contextFolder });
 		const jprf_content: string = await fsUtils.readFile(jprf);
 		if (jprf_content) {
-			const proofFile: ProofFile = JSON.parse(jprf_content);
-			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
-			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
-				status = proofDescriptors[0].info.status;
+			try {
+				const proofFile: ProofFile = JSON.parse(jprf_content);
+				const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
+				if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
+					status = proofDescriptors[0].info.status;
+				}
+			} catch (jprf_parse_error) {
+				console.warn(`[language-utils] Warning: malformed jprf file: `, jprf_parse_error );
+				return status;
 			}
 		}
 		return status;

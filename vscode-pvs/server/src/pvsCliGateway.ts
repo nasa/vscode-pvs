@@ -104,7 +104,7 @@ export class PvsCliGateway {
 						this.pvsCli[desc.channelID][clientIDs[i]].send(JSON.stringify(subscriberEvent));
 					}
 				} else {
-					console.error(`[pvs-cli-gateway] Warning: message could not be forwarded on channel ${desc.channelID}`)
+					console.error(`[pvs-cli-gateway] Warning: message could not be forwarded on channel ${desc.channelID} (channel is null)`)
 				}
 			} else {
 				console.error(`[pvs-cli-gateway] Warning: trying to publish on channel ${desc.channelID} (allowed channels are only "pvs.event.proof-state", "pvs.event.evaluator-state", and "gateway.publish.math-objects")`)

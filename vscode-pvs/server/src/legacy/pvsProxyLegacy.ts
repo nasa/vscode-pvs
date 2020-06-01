@@ -66,6 +66,11 @@ export class PvsProxyLegacy {
         opt = opt || {};
         this.pvsProcess = pvsProcess;
         this.pvsErrorManager = opt.pvsErrorManager;
+        if (!this.pvsProcess) {
+            console.log(`[pvs-proxy-legacy] Activation performed with stand-alone pvs-process`);
+            this.pvsProcess = new PvsProcess(this.pvsPath, opt);
+            await this.pvsProcess.activate({ externalServer: true });
+        }
     }
     async sendCommand (cmd: string): Promise<PvsResponse> {
         const data: string = await this.pvsProcess.sendText(cmd);
@@ -234,7 +239,7 @@ export class PvsProxyLegacy {
                     this.pvsErrorManager.notifyPvsFailure({ fname });
                 }
             } else {
-                pvsResponse.result = res;
+                pvsResponse.result = res || `File ${fname} typechecked successfully`;
             }
         }
         return pvsResponse;

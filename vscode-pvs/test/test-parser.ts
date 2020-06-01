@@ -197,9 +197,12 @@ describe("pvs-parser", () => {
 				contextFolder: pvsioweb
 			}, { test: true });
 			// console.dir(response);
-			expect(response).toBeDefined();
-			expect(response.result).toBeDefined();
-			expect(response.error).not.toBeDefined();
+			if (pvsiowebFiles[i].endsWith("MDNumberpad")) {
+				expect(response.error).toBeDefined(); // theory 'limits' declared in twice in the same workspace
+			} else {
+				expect(response.result).toBeDefined();
+				expect(response.error).not.toBeDefined();
+			}
 		}, 8000);
 	}
 

@@ -2,7 +2,7 @@ import * as fsUtils from "../server/src/common/fsUtils";
 import * as test from "./test-constants";
 import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
-import { label, log, dir, configFile, sandboxExamples,
+import { label, configFile, sandboxExamples,
 	stever, steverFiles, pillbox, pillboxFiles, pvsioweb, pvsiowebFiles, pvsiowebFolders, 
 	dependable_plus_safe } from './test-utils';
 import * as path from 'path';
@@ -16,7 +16,7 @@ describe("pvs-typechecker", () => {
 	beforeAll(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
-		log(content);
+		// console.log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
 		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
@@ -52,7 +52,7 @@ describe("pvs-typechecker", () => {
 		label(`can typecheck files`);
 
 		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
-		dir(response);
+		// console.dir(response);
 		expect(response).not.toBeNull();
 		expect(response.result).not.toBeNull();
 
@@ -86,6 +86,7 @@ describe("pvs-typechecker", () => {
 		}
 	}, 100000);
 
+
 	it(`can typecheck theories with parameters`, async () => {
 		label(`can typecheck theories with parameters`);
 
@@ -98,6 +99,7 @@ describe("pvs-typechecker", () => {
 			theoryName: "pump_th"
 		};
 		let response: PvsResponse = await pvsProxy.typecheckFile(desc);
+		// console.dir(response);
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 		
@@ -108,30 +110,30 @@ describe("pvs-typechecker", () => {
 
 		// const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "main", fileExtension: ".pvs", contextFolder: sandboxExamples });
-		dir(response);
+		// console.dir(response);
 		expect(response).toBeDefined();
 		// expect(response.result).toEqual(test.typecheck1_result);
 	}, 100000);
 
 	it(`can generate .tcc file content`, async () => {
 		label(`can generate the .tcc file content`);
-		const response: PvsResponse = await pvsProxy.showTccs({ 
+		const response: PvsResponse = await pvsProxy.generateTccs({ 
 			fileName: "sqrt", 
 			fileExtension: ".pvs", 
 			theoryName: "sqrt", 
 			contextFolder: sandboxExamples 
 		});
-		dir("response", response);
+		// console.dir("response", response);
 		expect(response.error).not.toBeDefined();
 		expect(response.result).not.toBeNull();
 
-		const response1: PvsResponse = await pvsProxy.showTccs({
+		const response1: PvsResponse = await pvsProxy.generateTccs({
 			fileName:"alaris2lnewmodes", 
 			fileExtension:".pvs", 
 			theoryName: "alaris_th", 
 			contextFolder: sandboxExamples
 		});
-		dir("response", response1);
+		// console.dir("response", response1);
 		expect(response1.error).not.toBeDefined();
 		expect(response1.result).not.toBeNull();
 	}, 20000);
@@ -159,8 +161,8 @@ describe("pvs-typechecker", () => {
 	//-----------------------
 
 	for (let i = 0; i < steverFiles.length; i++) {
-		it(`can parse stever/${steverFiles[i]}.pvs`, async () => {
-			label(`can parse stever example ${steverFiles[i]}`);
+		it(`can typecheck stever/${steverFiles[i]}.pvs`, async () => {
+			label(`can typecheck stever example ${steverFiles[i]}`);
 			// Need to clear-theories, in case rerunning with the same server.
 			await pvsProxy.lisp("(clear-theories t)");
 
@@ -169,7 +171,7 @@ describe("pvs-typechecker", () => {
 				fileExtension: ".pvs", 
 				contextFolder: stever
 			});
-			dir(response); // set VERBOSE to true in test-utils if you want to see the output
+			// console.dir(response); // set VERBOSE to true in test-utils if you want to see the output
 			expect(response).toBeDefined();
 			expect(response.error).not.toBeDefined();
 			
@@ -177,8 +179,8 @@ describe("pvs-typechecker", () => {
 
 	}
 	for (let i = 0; i < pillboxFiles.length; i++) {
-		it(`can parse pillbox/${pillboxFiles[i]}.pvs`, async () => {
-			label(`can parse pillbox example ${pillboxFiles[i]}`);
+		it(`can typechecke pillbox/${pillboxFiles[i]}.pvs`, async () => {
+			label(`can typecheck pillbox example ${pillboxFiles[i]}`);
 			// Need to clear-theories, in case rerunning with the same server.
 			await pvsProxy.lisp("(clear-theories t)");
 
@@ -187,15 +189,15 @@ describe("pvs-typechecker", () => {
 				fileExtension: ".pvs", 
 				contextFolder: pillbox
 			});
-			dir(response); // set VERBOSE to true in test-utils if you want to see the output
+			// console.dir(response); // set VERBOSE to true in test-utils if you want to see the output
 			expect(response).toBeDefined();
 			expect(response.error).not.toBeDefined();
 			
 		}, 20000);
 	}
 	for (let i = 0; i < pvsiowebFiles.length; i++) {
-		it(`can parse pvsioweb/${pvsiowebFiles[i]}.pvs`, async () => {
-			label(`can parse pvsioweb example ${pvsiowebFiles[i]}`);
+		it(`can typecheck pvsioweb/${pvsiowebFiles[i]}.pvs`, async () => {
+			label(`can typecheck pvsioweb example ${pvsiowebFiles[i]}`);
 			// Need to clear-theories, in case rerunning with the same server.
 			await pvsProxy.lisp("(clear-theories t)");
 
@@ -204,9 +206,14 @@ describe("pvs-typechecker", () => {
 				fileExtension: ".pvs", 
 				contextFolder: pvsioweb
 			});
-			dir(response); // set VERBOSE to true in test-utils if you want to see the output
+			// console.dir(response); // set VERBOSE to true in test-utils if you want to see the output
 			expect(response).toBeDefined();
-			expect(response.error).not.toBeDefined();
+			if (pvsiowebFiles[i].endsWith("MDNumberpad")) {
+				expect(response.error).toBeDefined(); // theory 'limits' declared in twice in the same workspace
+			} else {
+				expect(response.result).toBeDefined();
+				expect(response.error).not.toBeDefined();
+			}
 
 		}, 60000);
 	}

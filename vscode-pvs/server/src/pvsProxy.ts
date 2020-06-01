@@ -1125,7 +1125,7 @@ export class PvsProxy {
 		if (this.pvsServer) {
 			return Promise.resolve(true);
 		}
-		return this.restartPvsServer();
+		return await this.restartPvsServer();
 		// if (!this.externalServer) {
 		// 	// try to create pvs server
 		// 	const success: ProcessCode = await this.createPvsServer({

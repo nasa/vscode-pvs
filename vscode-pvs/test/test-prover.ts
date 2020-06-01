@@ -267,7 +267,7 @@ describe("pvs-prover", () => {
 			theoryName: "mergesort"
 		};
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
-		// console.info('After proveFormula');
+		// https://linkprotect.cudasvc.com/url?a=https%3a%2f%2fconsole.info&c=E,1,NoM5mYjxGeDV1TOA0t-WiaDqmrw8n1-kQHjHMTR6JZpVPSkgCt_XpTIuw7teYXJmPFlYrfOH8WI0FLyzi2Uhs4Jh4xh7tDl6uDnClWqO40Xj7sqi8a0,&typo=1('After proveFormula');
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
 		// the following command should have no effect
@@ -284,12 +284,14 @@ describe("pvs-prover", () => {
 			theoryName: "mergesort"
 		};
 		response = await pvsProxy.proveFormula(desc);
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response.result).not.toBeDefined();
+		expect(response.error).toBeDefined();
 
 		response = await pvsProxy.proofCommand({ cmd: 'quit' });
-		expect(response.result).toEqual({ result: 'Unfinished' });
-		expect(response.error).not.toBeDefined();
+		// expect(response.result).toEqual({ result: 'Unfinished' });
+		// expect(response.error).not.toBeDefined();
+		expect(response.result).not.toBeDefined();
+		expect(response.error).toBeDefined();
 
 	}, 2000);
 
@@ -349,7 +351,7 @@ describe("pvs-prover", () => {
 		response = await pvsProxy.proofCommand({ cmd: '(sko'});
 		// console.dir(response);
 		expect(response.result.commentary).toBeDefined();
-		// console.info(response.result.commentary);
+		// https://linkprotect.cudasvc.com/url?a=https%3a%2f%2fconsole.info&c=E,1,AT7dakqqXVu-FHSlFH9Hrjw1zlt284-jW7jXrzA6uc3Seyz6RugQ4bcG35MiOg69oMQWw6ry09NL58ETaefyoyb0cWxWkQkZKNd2clvLrSnA3SQTA0MD&typo=1(response.result.commentary);
 		expect(response.result.commentary[0]).toContain("eof encountered");
 
 		// quit the proof attempt
@@ -402,9 +404,11 @@ describe("pvs-prover", () => {
 		expect(response.result.sequent).toEqual(test.sq_neg_prove_formula.sequent);
 
 		response = await pvsProxy.proofCommand({ cmd: '(expand "as <")'});
-		console.dir(response);
+		// console.dir(response);
 		expect(response.result.commentary).toBeDefined();
-		// console.info(response.result.commentary);
+		//expect(response.result.commentary.startsWith("Found 'AS' when expecting 'EXPR'")).toBeTrue();
+
+		// https://linkprotect.cudasvc.com/url?a=https%3a%2f%2fconsole.info&c=E,1,uoDpzuRE51RlQA1ExGIoQ8MktvIbqQctW4uzJY1w5MgnCqUOvQAvptgATnlEiq3KdlnuiTRokFGmsAroekZRP978OpCh3AqqQWrGsG4xTo3306Cb1sBdMJwCzQ,,&typo=1(response.result.commentary);
 		// quit the proof attempt
 		await pvsProxy.proofCommand({ cmd: 'quit'});
 	});
@@ -422,13 +426,15 @@ describe("pvs-prover", () => {
 			theoryName: "pump_th" // pump_th exists, but check_chev_fup_permission is in alaris_th
 		};
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
-		console.dir(response);
 		expect(response.result).not.toBeDefined();
-		expect(response.error).not.toBeDefined();
-		expect(response.error.message.startsWith("No methods applicable to generic function")).toBeFalse();
+		expect(response.error).toBeDefined();
+		expect(response.error.message.startsWith("Typecheck-error")).toBeTrue();
 
 		response = await pvsProxy.proofCommand({ cmd: 'quit' });
-		expect(response.result).toEqual({ result: 'Unfinished' });
+		//console.dir(response);
+		expect(response.result).not.toBeDefined();
+		expect(response.error).toBeDefined();
+		expect(response.error.message.startsWith('Proof-command error')).toBeTrue();
 	}, 60000);
 
 });
