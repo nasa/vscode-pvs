@@ -334,7 +334,9 @@ class TccsOverviewItem extends FormulaOverviewItem {
 		this.theorems = [];
 		if (desc && desc.length) {
 			for (let i = 0; i < desc.length; i++) {
-				this.updateStatus(desc[i]);
+				if (desc[i].formulaName) {
+					this.updateStatus(desc[i]);
+				}
 			}
 		}
 	}
