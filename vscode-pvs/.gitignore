@@ -18,5 +18,7 @@ server/.DS_Store
 *.tccs
 *.jprf
 *.old
+*.log
 *.???~
 pvsbin/
+**/javaTarget/out/
