@@ -72,6 +72,7 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 ## ChangeLog
 ### 1.0.21 (2020.06.xx)
+- Added troubleshooting guide
 - Improved feedback & stability
 
 ### 1.0.20 (2020.05.26)
