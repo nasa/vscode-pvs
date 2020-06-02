@@ -7,7 +7,12 @@ This tutorial provides a series of simple examples suitable to demonstrate the f
 
 ## Pre-requisites
 - Familiarity with [Visual Studio Code](https://code.visualstudio.com)
-- [VSCode-PVS](https://github.com/nasa/vscode-pvs) extension installed in Visual Studio Code (see installation instructions in [README.md](README.md))
+- [VSCode-PVS](https://github.com/nasa/vscode-pvs) extension installed and enabled in Visual Studio Code (see installation instructions in [README.md](README.md))
+
+---
+
+## Troubleshooting
+Please check our [FAQs](FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.  
 
 ---
 
@@ -90,6 +95,7 @@ Try the following actions in VSCode-PVS:
 | PVSio Evaluator
 |
 | Enter a PVS expression at the prompt, or 'help' for help, or 'exit' to exit the evaluator.
+| You can use TAB to complete commands at the PVSio prompt.
 |
 | Note: evaluation of expressions which depend on unproven TCCs may be unsound,
 | and result in the evaluator becoming unresponsive or crashing into Lisp. 
@@ -116,8 +122,7 @@ The following example demonstrates:
 Try the following actions in VSCode-PVS:
 1. Edit theory `helloworld.pvs` so as to introduce a theorem `always_positive`. The specification should look as follows:
 ```pvs
-helloworld
-: THEORY
+helloworld: THEORY
   BEGIN 
     posreal: TYPE = { r: real | r >=0 }
     abs (x: real): posreal = IF x > 0 THEN x ELSE -x ENDIF
@@ -157,4 +162,5 @@ always_positive :
 ---
 
 ## Further reading
-For more information on the PVS language and theorem proving system, please refer to the [PVS documentation](http://pvs.cls.sri.com)
+- For more information on the PVS language and theorem proving system, please refer to the [PVS documentation](http://pvs.cls.sri.com)
+- Additional examples can be found in the [NASA PVS Class]()

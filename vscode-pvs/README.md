@@ -3,7 +3,7 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
 ## Getting started
-New to VSCode-PVS and the PVS verification system? Try out our [tutorial](tutorial/TUTORIAL.md)!
+New to VSCode-PVS and the PVS verification system? Try out our [tutorial](docs/TUTORIAL.md)!
 
 ## Functionalities
 The main functionalities provided by the environment are as follows:
@@ -22,13 +22,15 @@ The main functionalities provided by the environment are as follows:
 ## Requirements
 - Visual Studio Code (v1.37.1 or greater) https://code.visualstudio.com
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
-- Java JDK (1.8 or greater) https://openjdk.java.net
-- PVS Allegro (7.1 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots
+- Java JDK (v1.8 or greater) https://openjdk.java.net
+- PVS Allegro (v7.1 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots
 
 ## Installation instructions
 1. Download the latest release of VSCode-PVS from the [github repository](../releases)
-2. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
+2. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded `.vsix` file
 3. Have fun using the extension!
+
+> Note: Having troubles with the extension? Check our [FAQs](docs/FAQ).
 
 ## Updating VSCode-PVS
 When a new release of VSCode-PVS is available in the [github repository](../releases), download the new release and install it in Visual Studio Code:
