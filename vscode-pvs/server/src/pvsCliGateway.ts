@@ -197,7 +197,7 @@ export class PvsCliGateway {
 									case "pvs.evaluate-expression": {
 										if (data && data.cmd) {
 											console.info('[pvs-cli-gateway] received new evaluation request from pvs-cli', data.cmd);
-											this.pvsLanguageServer.evaluateExpression(data);
+											this.pvsLanguageServer.evaluateExpressionRequest(data);
 										}
 										break;
 									}

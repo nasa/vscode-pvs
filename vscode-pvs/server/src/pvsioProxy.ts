@@ -138,7 +138,11 @@ class PvsIoProcess {
 				this.pvsioProcess.stdout.setEncoding("utf8");
 				this.pvsioProcess.stderr.setEncoding("utf8");
 				this.pvsioProcess.stdout.on("data", (data: string) => {
-					this.connection.console.log(data);
+					if (this.connection) {
+						this.connection.console.log(data);
+					} else {
+						console.log(data);
+					}
 					this.data += data;
 					// console.dir({ 
 					// 	type: "memory usage",
@@ -262,6 +266,11 @@ export class PvsIoProxy {
 				id: processId,
 				result: data
 			};
+		}
+		return {
+			jsonrpc: "2.0",
+			id: processId,
+			error: "Failed to start PVSio"
 		}
 	}
 	async evaluateExpression (desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, cmd: string }): Promise<PvsResponse> {

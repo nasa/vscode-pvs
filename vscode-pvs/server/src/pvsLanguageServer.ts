@@ -455,7 +455,7 @@ export class PvsLanguageServer {
 	// 	}
 	// 	return null;
 	// }
-	async evaluateExpression (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd: string }): Promise<void> {
+	async evaluateExpressionRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd: string }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		const response: PvsResponse = await this.pvsioProxy.evaluateExpression(request);
 		const channelID: string = utils.desc2id(request);
@@ -486,7 +486,6 @@ export class PvsLanguageServer {
 			this.pvsErrorManager.handleEvaluationError({ request, response: <PvsError> response, taskId });
 		}
 	}
-
 
 	/**
 	 * Request proof script to pvs-server
@@ -1860,7 +1859,7 @@ export class PvsLanguageServer {
 				this.startEvaluatorRequest(args);
 			});
 			this.connection.onRequest(serverCommand.evaluateExpression, async (args: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string, cmd: string }) => {
-				this.evaluateExpression(args);
+				this.evaluateExpressionRequest(args);
 			});
 
 		});
