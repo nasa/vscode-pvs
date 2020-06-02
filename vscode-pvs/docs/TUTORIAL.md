@@ -163,4 +163,4 @@ always_positive :
 
 ## Further reading
 - For more information on the PVS language and theorem proving system, please refer to the [PVS documentation](http://pvs.cls.sri.com)
-- Additional examples can be found in the [NASA PVS Class]()
+- Additional examples can be found in the [NASA PVS Class](https://shemesh.larc.nasa.gov/PVSClass2012/)

@@ -15,7 +15,7 @@ If this is not happening, please go through the following checklist, to make sur
 - [VSCode-PVS](https://github.com/nasa/vscode-pvs) is installed and enabled in Visual Studio Code
 
 ## I'm new to PVS, is there a tutorial I can use to get started?
-Yes, you we have a [5-minutes crash course](TUTORIAL.md) on VSCode-PVS, that introduces the basics functions of PVS, and a [NASA PVS Class]() that covers a broader range of topics.
+Yes, you we have a [5-minutes crash course](TUTORIAL.md) on VSCode-PVS, that introduces the basics functions of PVS, and a [NASA PVS Class](https://shemesh.larc.nasa.gov/PVSClass2012/) that covers a broader range of topics.
 
 ## Can I use the PVS hot-keys combinations?
 Yes, you can use the following basic set PVS hot-keys combinations in VSCode-PVS:
