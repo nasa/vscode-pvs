@@ -55,15 +55,15 @@ describe("pvs-proxy", () => {
 		expect(home.result).toMatch(/\/.*/); // path should be absolute, therefore it should start with /
 	});
 
-	it(`change-context is equivalent to change-workspace`, async () => {
-		label(`change-context is equivalent to change-workspace`);
-		// Need to clear-theories, in case rerunning with the same server.
-		await pvsProxy.lisp("(clear-theories t)");
+	// it(`change-context is equivalent to change-workspace`, async () => {
+	// 	label(`change-context is equivalent to change-workspace`);
+	// 	// Need to clear-theories, in case rerunning with the same server.
+	// 	await pvsProxy.lisp("(clear-theories t)");
 
-		const home1: PvsResponse = await pvsProxy.pvsRequest("change-context", [ "~" ]);
-		const home2: PvsResponse = await pvsProxy.changeContext("~");
-		expect(home1.result).toEqual(home2.result);
-	});
+	// 	const home1: PvsResponse = await pvsProxy.pvsRequest("change-context", [ "~" ]);
+	// 	const home2: PvsResponse = await pvsProxy.changeContext("~");
+	// 	expect(home1.result).toEqual(home2.result);
+	// });
 
 });
 
