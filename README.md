@@ -43,7 +43,7 @@ The main functionalities provided by the environment are as follows:
 2. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded `.vsix` file
 3. Have fun using the extension!
 
-> Note: Having troubles with the extension? Check our [FAQs](vscode-pvs/docs/FAQ).
+> Note: Having troubles with the extension? Check our [FAQs](vscode-pvs/docs/FAQ.md).
 
 ## Updating VSCode-PVS
 When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
