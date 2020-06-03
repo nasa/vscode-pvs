@@ -248,7 +248,7 @@ export class EventsDispatcher {
                 }
             }
         });
-        this.client.onRequest(serverEvent.proofCommandResponse, (desc: {
+        this.client.onRequest(serverEvent.proofCommandResponse, async (desc: {
             response: PvsResponse, 
             args: { 
                 fileName: string, 
@@ -278,11 +278,14 @@ export class EventsDispatcher {
                 contextFolder: string 
             }, 
             pvsLogFile: string,
-            pvsTmpLogFile: string
+            pvsTmpLogFile: string,
+            shasum: string
         }) => {
             if (desc) {
-                // initialise sequent viewer
+                // initialise proof explorer
                 this.proofExplorer.setLogFileName(desc);
+                this.proofExplorer.setShasum(desc.shasum);
+
                 if (desc.response && desc.response.result) {
                     // update proof mate
                     this.proofMate.setProofDescriptor(desc.args);
@@ -290,11 +293,10 @@ export class EventsDispatcher {
                     // save initial proof state in proof explorer
                     this.proofExplorer.setInitialProofState(desc.response.result);
                 }
-                // request proof script
-                // this.client.sendRequest(serverCommand.loadProof, desc.args); // this operation is now performed on the server
+                // start proof
                 this.proofExplorer.startProof();
                 
-                // set vscode context variable prover-session-active to true
+                // set vscode context variable prover-session-active to true, to indicate a proof is now in progress
                 vscode.commands.executeCommand('setContext', 'prover-session-active', true);
             }
         });
@@ -318,7 +320,7 @@ export class EventsDispatcher {
             }
         });
         // proof-state handler
-        this.client.onRequest(serverEvent.proofStateUpdate, async (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, pvsLogFile: string, pvsTmpLogFile: string }) => {
+        this.client.onRequest(serverEvent.proofStateUpdate, async (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, pvsLogFile: string, pvsTmpLogFile: string, shasum: string }) => {
             // do nothing for now
         });
 
@@ -342,7 +344,7 @@ export class EventsDispatcher {
                 cmd: string
             } 
 		}) => {
-			this.proofExplorer.saveProof();		
+			this.proofExplorer.saveProof({ force: true });		
 		});
 		this.client.onRequest(serverEvent.quitProofEvent, (request: {
             args: { 

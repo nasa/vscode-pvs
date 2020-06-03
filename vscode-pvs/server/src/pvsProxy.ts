@@ -769,7 +769,7 @@ export class PvsProxy {
 	}
 
 	/**
-	 * Returns the prooflite script for the given formula
+	 * Returns the prooflite script for the given formula -- FIXME: display-prooflite-script is not working, we need to use languageUtils.proofTree2ProofLite()
 	 */
 	async proofLiteScript(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string }): Promise<PvsResponse> {
 		if (desc) {

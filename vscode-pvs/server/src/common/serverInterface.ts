@@ -194,7 +194,8 @@ export declare interface ProofDescriptor {
 		theory: string, // theory name
 		formula: string, // formula name
 		status: ProofStatus, // proof status (proved, untried, unfininshed,...)
-		prover: string // prover version
+		prover: string, // prover version
+		shasum: string // digest, obtained from the file content after removing all spaces
 	},
 	proofTree?: ProofNode,
 	proofLite?: string[] // we are using a vector rather than a single string so it's human readable

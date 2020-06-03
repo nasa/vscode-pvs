@@ -374,18 +374,42 @@ export function formatProofState (proofState: ProofState, opt?: { useColors?: bo
 	return null;
 }
 
-export async function getProofStatus (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<ProofStatus> {
+export async function getProofStatus (desc: { 
+	fileName: string, 
+	fileExtension: string, 
+	contextFolder: string, 
+	theoryName: string, 
+	formulaName: string
+}): Promise<ProofStatus> {
+	const getCurrentProofStatus = (desc: ProofDescriptor, shasum: string): ProofStatus => {
+		if (desc) {
+			if (shasum === desc.info.shasum) {
+				return desc.info.status;
+			} else {
+				return (desc.info.status === "proved") ? "unchecked"
+					: (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length) ?
+						"unfinished" : "untried";
+			}
+		}
+		return "untried";
+	}
 	if (desc) {
 		let status: ProofStatus = "untried";
 		// check if the .jprf file contains the proof status
-		const jprf: string = fsUtils.desc2fname({ fileName: desc.fileName, fileExtension: ".jprf", contextFolder: desc.contextFolder });
+		const jprf: string = fsUtils.desc2fname({
+			fileName: desc.fileName, 
+			fileExtension: ".jprf", 
+			contextFolder: desc.contextFolder
+		});
 		const jprf_content: string = await fsUtils.readFile(jprf);
 		if (jprf_content) {
 			try {
 				const proofFile: ProofFile = JSON.parse(jprf_content);
 				const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
 				if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
-					status = proofDescriptors[0].info.status;
+					// compute shasum for the file, and check it with the shasum saved in the proof descriptor. If the two differ, then the file has changed and the proof status is not valid anymore
+					const shasum: string = await fsUtils.shasumFile(desc);
+					status = getCurrentProofStatus(proofDescriptors[0], shasum);
 				}
 			} catch (jprf_parse_error) {
 				console.warn(`[language-utils] Warning: malformed jprf file: `, jprf_parse_error );
@@ -429,13 +453,16 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 							const offset: number = (slice) ? slice.split("\n").length : 0;
 							const line: number = boundaries[i].from + offset - 1;
 							const isTcc: boolean = desc.fileExtension === ".tccs";
-							let status: ProofStatus = (desc.prelude) ? "proved" : "untried";
+							let status: ProofStatus = "untried";
 							// if (isTcc) {
 							// 	const matchStatus: RegExpMatchArray = tccStatusRegExp.exec(slice);
 							// 	if (matchStatus && matchStatus.length > 1 && matchStatus[1]) {
 							// 		status = <ProofStatus> matchStatus[1];
 							// 	}
 							// } else {
+							if (desc.prelude) {
+								status = "proved";
+							} else {
 								// check if the .jprf file contains the proof status
 								const theoryName: string = boundaries[i].theoryName;
 								status = await getProofStatus({
@@ -445,7 +472,7 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 									formulaName,
 									theoryName
 								});
-							// }
+							}
 							const fdesc: FormulaDescriptor = {
 								fileName: desc.fileName,
 								fileExtension: desc.fileExtension,
@@ -775,6 +802,7 @@ export function proofTree2ProofLite (proofTree: ProofNode): string[] | null {
 						if (node.branch === currentBranch && i === 0 && (!node.rules || node.rules.length === 0)) {
 							res += `(then `; // the parenthesis will be closed at the end of the loop
 						}
+						const cmd: string = node.name.startsWith("(") ? node.name : `(${node.name})`;
 						if (node.rules && node.rules.length) {
 							indent++;
 							if (i > 0) {
@@ -783,20 +811,11 @@ export function proofTree2ProofLite (proofTree: ProofNode): string[] | null {
 							}
 							res += `(spread `;
 							indent++;
-							res += node.name + `\n${" ".repeat(indent)}(` + proofTreeToProofLite_aux(node.rules, node.branch, indent);
+							res += cmd + `\n${" ".repeat(indent)}(` + proofTreeToProofLite_aux(node.rules, node.branch, indent);
 							res += `)`; // we need to close the extra parenthesis opened by spread
 						} else {
-							res += node.name + proofTreeToProofLite_aux(node.rules, node.branch, indent);
+							res += cmd + proofTreeToProofLite_aux(node.rules, node.branch, indent);
 						}
-						// } else {
-						// 	if (node.rules && node.rules.length) {
-						// 		indent++;
-						// 		res += `\n${" ".repeat(indent)}\n(spread `;
-						// 		res += 
-						// 	}
-						// 	res += `(${node.name}) ` + proofTreeToProofLite_aux(node.rules, node.branch, indent);
-
-						// }
 						break;
 					}
 					case "proof-branch":
@@ -927,14 +946,15 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
  * Utility function, transforms a proof tree into a json object
  * @param desc Descriptor specifying proofTree, formulaName, proofName, and parent node (keeps track of the current parent in the proof tree, used in recursive calls)
  */
-export function prf2jprf (desc: { prf: string, theoryName: string, formulaName: string, version: PvsVersionDescriptor }): ProofDescriptor {
+export function prf2jprf (desc: { prf: string, theoryName: string, formulaName: string, version: PvsVersionDescriptor, shasum: string }): ProofDescriptor {
 	if (desc) {
 		const result: ProofDescriptor = {
 			info: {
 				theory: desc.theoryName,
 				formula: desc.formulaName,
 				status: "untried", // the prf file does not include the proof status
-				prover: pvsVersionToString(desc.version) || "7.x"
+				prover: pvsVersionToString(desc.version) || "7.x",
+				shasum: desc.shasum
 			}
 		};
 		if (desc.prf) {

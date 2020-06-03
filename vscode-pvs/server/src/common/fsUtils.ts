@@ -311,11 +311,26 @@ export function getText(txt: string, range: { start: { line: number, character?:
 }
 
 import * as crypto from 'crypto';
-import { execSync, exec } from 'child_process';
+import { execSync } from 'child_process';
 
 export function get_fresh_id(): string {
-	// This may be overkill, a simple call to random is probably good enough.
-	return crypto.createHash('sha256').update(Math.random().toString(36)).digest('hex');
+	return shasum(Math.random().toString(36));
+}
+
+export function shasum (txt: string): string {
+	if (txt) {
+		const spaceless: string = txt.replace(/%.*/g, "").replace(/\s+/g, ""); // removes comments and white spaces in the pvs file
+		return crypto.createHash('sha256').update(spaceless).digest('hex');
+	}
+	return "";
+}
+
+export async function shasumFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<string> {
+	const content: string = await readFile(desc2fname(desc));
+	if (content) {
+		return shasum(content);
+	}
+	return "";
 }
 
 export function fname2desc (fname: string): { fileName: string, fileExtension: string, contextFolder: string } {

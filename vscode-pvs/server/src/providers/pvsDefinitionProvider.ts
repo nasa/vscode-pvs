@@ -239,6 +239,19 @@ export class PvsDefinitionProvider {
 						response.comment = `User-defined symbol ${symbolName}`
 					}
 					return [ response ];
+				} else {
+					// more than one candidate -- return the definition from the current file as best guess
+					const uriFolder: string = fsUtils.getContextFolder(uri);
+					const uriFileName: string = fsUtils.getFileName(uri);
+					const currentFile: PvsDefinition[] = candidates.filter(elem => {
+						return fsUtils.getContextFolder(elem.symbolDeclarationFile) === uriFolder
+							&& fsUtils.getFileName(elem.symbolDeclarationFile) === uriFileName;
+					});
+					if (currentFile && currentFile.length) {
+						return currentFile.concat(candidates.filter(elem => {
+							elem.file !== uri;
+						}));
+					}
 				}
 				return candidates;
 			}

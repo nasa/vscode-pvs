@@ -255,7 +255,7 @@ export class PvsLanguageServer {
 		
 		// handle commands not supported by pvs prover
 		if (utils.isSaveCommand(request.cmd)) {
-			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request });
+			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request }); // we are generating an event because the proof is currently being edited, so we need the current proof descriptor from proof explorer, othewise we'd save a stale proof
 			return;
 		}
 		if (utils.isQuitCommand(request.cmd)) {
@@ -349,6 +349,12 @@ export class PvsLanguageServer {
 				return;
 			}
 		}
+		const shasum: string = await fsUtils.shasumFile(request);
+		// load proof
+		const pdesc: ProofDescriptor = await this.loadProof(request);
+		if (pdesc) {
+			this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc }, args: request });
+		}
 		// start proof
 		const response: PvsResponse = await this.proveFormula(request);
 		if (response) {
@@ -364,8 +370,8 @@ export class PvsLanguageServer {
 
 				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response });
 				this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() })
-				this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request, pvsLogFile, pvsTmpLogFile });
-				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
+				this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request, pvsLogFile, pvsTmpLogFile, shasum });
+				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile, shasum });
 				this.notifyEndImportantTask({ id: taskId });
 			}
 		} else {
@@ -547,11 +553,14 @@ export class PvsLanguageServer {
 	}): Promise<ProofDescriptor> {
 		if (request) {
 			request = fsUtils.decodeURIComponents(request);
+			const shasum: string = await fsUtils.shasumFile(request);
+
 			let proofDescriptor: ProofDescriptor = utils.prf2jprf({ // empty proof
 				prf: null,
 				theoryName: request.theoryName, 
 				formulaName: request.formulaName, 
-				version: this.pvsVersionDescriptor
+				version: this.pvsVersionDescriptor,
+				shasum
 			});
 
 			try {
@@ -559,7 +568,11 @@ export class PvsLanguageServer {
 				let proofFile: ProofFile = await fsUtils.readProofFile(fname);
 				const key: string = `${request.theoryName}.${request.formulaName}`;
 				if (proofFile && proofFile[key] && proofFile[key].length > 0) {
-					proofDescriptor = proofFile[key][0]; // TODO: implement mechanism to allow selection of a specific proof
+					proofDescriptor = proofFile[key][0];
+					proofDescriptor.info.status = await utils.getProofStatus(request);
+					if (proofDescriptor.info && proofDescriptor.info.shasum !== shasum) {
+						proofDescriptor.info.shasum = shasum;
+					}
 				} else {
 					// obtain proof from prf via pvs, and update jprf
 					const response: PvsResponse = await this.proofScript(request);
@@ -568,7 +581,8 @@ export class PvsLanguageServer {
 							prf: response.result,
 							theoryName: request.theoryName, 
 							formulaName: request.formulaName, 
-							version: this.pvsVersionDescriptor
+							version: this.pvsVersionDescriptor,
+							shasum
 						});
 					}
 					// save proof in the jprf file
@@ -750,7 +764,7 @@ export class PvsLanguageServer {
 							// try to fetch the last know status from  the .jprf file
 							const lastKnownStatus: ProofStatus = await utils.getProofStatus({
 								fileName: args.fileName,
-								fileExtension: args.fileExtension,
+								fileExtension: ".tccs",
 								contextFolder: args.contextFolder,
 								theoryName: args.theoryName,
 								formulaName
@@ -1814,8 +1828,6 @@ export class PvsLanguageServer {
 				this.listContextFilesRequest(request); // async call
 			});
 			this.connection.onRequest(serverCommand.proveFormula, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
-				// in the Emacs style interaction, we need to request the proof first, otherwise the prover session starts and we won't be able to request it anymore
-				await this.loadProofRequest(args);
 				await this.proveFormulaRequest(args);
 			});
 			this.connection.onRequest(serverCommand.dischargeTccs, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {

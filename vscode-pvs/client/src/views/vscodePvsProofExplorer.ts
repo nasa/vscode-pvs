@@ -52,6 +52,7 @@ import * as vscode from 'vscode';
  */
 export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	protected pvsVersionDescriptor: PvsVersionDescriptor;
+	protected shasum: string;
 	protected logFileName: string;
 	protected tmpLogFileName: string;
 
@@ -187,7 +188,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * indicated in the proof tree)
 	 */
 	run (): void {
-		if (!this.root.isQED()) {
+		if (!this.running) {
 			this.running = true;
 			this.step();
 		}
@@ -228,7 +229,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param cmd Optional parameter, specifying the command to be executed.
 	 */
 	step (cmd?: string): void {
-		if (this.root.isQED() || this.stopAt === this.activeNode || this.pendingExecution) {
+		if (this.stopAt === this.activeNode || this.pendingExecution) {
 			this.stopAt = null;
 			this.running = false;
 			return;
@@ -1231,7 +1232,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				theory: this.desc.theoryName,
 				formula: this.desc.formulaName,
 				status: this.root.proofStatus,
-				prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "7.x"
+				prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "7.x",
+				shasum: this.shasum
 			},
 			proofTree,
 			proofLite
@@ -1252,6 +1254,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			console.warn("[proof-explorer] Warning: could not set log file name (descriptor is null)");
 		}
     }
+
+	setShasum (shasum: string): void {
+		this.shasum = shasum;
+	}
 
 	/**
 	 * Utility function, opens as text document in the editor the proof state associated to the selected node.
@@ -1957,7 +1963,7 @@ class RootNode extends ProofItem {
 
 	// @overrides
 	notVisited (): void {
-		this.proofStatus = "untried";
+		// this.proofStatus = "untried";
 		super.notVisited();
 		this.updateLabel();
 	}
@@ -1967,7 +1973,9 @@ class RootNode extends ProofItem {
 	}
 	// @overrides
 	pending (): void {
-		this.proofStatus = "unchecked";
+		if (this.proofStatus === "untried") {
+			this.proofStatus = "unfinished";
+		}
 		super.pending();
 		this.updateLabel();
 	}
@@ -1991,15 +1999,16 @@ class RootNode extends ProofItem {
 		}
 	}
 	resetProofStatus (): void {
-		this.proofStatus = "untried";
+		this.proofStatus = this.initialProofStatus;
 		this.updateLabel();
 	}
 	protected updateLabel (): void {
-		if (this.initialProofStatus === this.proofStatus) {
-			this.label = `${this.icon}${this.name} (${this.proofStatus})`;
-		} else {
-			this.label = `${this.icon}${this.name} (${this.initialProofStatus} - ${this.proofStatus})`;
-		}
+		this.label = `${this.icon}${this.name} (${this.proofStatus})`;
+		// if (this.initialProofStatus === this.proofStatus) {
+		// 	this.label = `${this.icon}${this.name} (${this.proofStatus})`;
+		// } else {
+		// 	this.label = `${this.icon}${this.name} (${this.initialProofStatus} - ${this.proofStatus})`;
+		// }
 	}
 }
 class GhostNode extends ProofItem {
