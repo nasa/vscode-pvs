@@ -52,11 +52,6 @@
 						"default": true,
 						"description": "Inline actionable commands"
 					},
-					"pvs.settings.hoverProvider": {
-						"type": "boolean",
-						"default": true,
-						"description": "Hover information for symbol definitions"
-					},
 					"pvs.settings.completionProvider": {
 						"type": "boolean",
 						"default": true,
@@ -66,6 +61,16 @@
 						"type": "boolean",
 						"default": true,
 						"description": "Automatic search of symbol definitions"
+					},
+					"pvs.settings.hoverProvider": {
+						"type": "boolean",
+						"default": true,
+						"description": "Hover information for symbol definitions"
+					},
+					"pvs.settings.parser.errorTolerant": {
+						"type": "boolean",
+						"default": false,
+						"description": "Enable error tolerant parser"
 					}
 				}
 			}

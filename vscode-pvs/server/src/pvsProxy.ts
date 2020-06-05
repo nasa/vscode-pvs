@@ -302,7 +302,14 @@ export class PvsProxy {
 	 * Parse a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
 	 */
-	async parseFile(desc: { contextFolder: string, fileName: string, fileExtension: string }, opt?: { test?: boolean }): Promise<PvsResponse | null> {
+	async parseFile(desc: { 
+		contextFolder: string, 
+		fileName: string, 
+		fileExtension: string 
+	}, opt?: { 
+		test?: boolean,
+		enableEParser?: boolean
+	}): Promise<PvsResponse | null> {
 		opt = opt || {};
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
@@ -395,12 +402,14 @@ export class PvsProxy {
 								diags.message = `File ${desc.fileName} contains errors`;
 								diags.errors = [ error ];
 
-								// send also a request to the antlr parser, as it may report more errors (the standard pvs parser stops at the first error)
-								const antlrdiags: ParserDiagnostics = await this.parser.parseFile(desc);
-								if (antlrdiags && antlrdiags.errors) {
-									diags.errors = diags.errors.concat(antlrdiags.errors);
-									if (antlrdiags["parse-time"]) {
-										console.log(`[pvs-parser] antlr completed parsing in ${antlrdiags["parse-time"].ms}ms`)
+								if (opt.enableEParser) {
+									// send also a request to the antlr parser, as it may report more errors (the standard pvs parser stops at the first error)
+									const antlrdiags: ParserDiagnostics = await this.parser.parseFile(desc);
+									if (antlrdiags && antlrdiags.errors) {
+										diags.errors = diags.errors.concat(antlrdiags.errors);
+										if (antlrdiags["parse-time"]) {
+											console.log(`[pvs-parser] antlr completed parsing in ${antlrdiags["parse-time"].ms}ms`)
+										}
 									}
 								}
 							} 
@@ -692,10 +701,33 @@ export class PvsProxy {
 	 }
 	 * @param symbolName Symbol name 
 	 */
+	// protected findDeclarationQueue: Promise<PvsResponse> = null; // we are using this queue to reduce the strain on the server --- pvs-server tends to crash on MacOS if too many requests are sent in a short time frame
 	async findDeclaration (symbolName: string): Promise<PvsResponse> {
 		// we want to use the server, otherwise find-declaration won't work while in a prover session
 		// const ans: PvsResponse = (this.macOs) ? await this.legacy.findDeclaration(symbolName)
 		// 	: await this.pvsRequest('find-declaration', [ symbolName ]);
+
+		// const promiseFindDeclaration: Promise<PvsResponse> = new Promise ((resolve, reject) => {
+		// 	setTimeout(async () => {
+		// 		const ans: PvsResponse = await this.pvsRequest('find-declaration', [ symbolName ]);
+		// 		// console.log(ans);
+		// 		if (ans && ans.result) {
+		// 			if (typeof ans.result !== "object") {
+		// 				// disabling this warning for now, as we know how to recover from this bug
+		// 				// console.error(`[pvs-proxy] Warning: pvs-server returned malformed result for find-declaration (expecting object found ${typeof ans.result})`);
+		// 			}
+		// 			if (typeof ans.result === "string") {
+		// 				ans.result = JSON.parse(ans.result);
+		// 			}
+		// 		}
+		// 		resolve(ans);
+		// 	}, 200);
+		// })
+		// this.findDeclarationQueue = (this.findDeclarationQueue) ? this.findDeclarationQueue.then(() => {
+		// 	return promiseFindDeclaration;
+		// }): promiseFindDeclaration;
+		// return this.findDeclarationQueue;
+
 		const ans: PvsResponse = await this.pvsRequest('find-declaration', [ symbolName ]);
 		if (ans && ans.result) {
 			if (typeof ans.result !== "object") {

@@ -968,8 +968,9 @@ export class PvsLanguageServer {
 	async parseFile (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
 		args = fsUtils.decodeURIComponents(args);
 		if (!this.proverSessionActive && this.checkArgs("parseFile", args)) {
+			const enableEParser: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.settings.parser.errorTolerant"));
 			try {
-				return await this.pvsProxy.parseFile(args);
+				return await this.pvsProxy.parseFile(args, { enableEParser });
 			} catch (ex) {
 				console.error('[pvs-language-server.parseFile] Error: pvsProxy has thrown an exception', ex);
 				return null;
