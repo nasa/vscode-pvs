@@ -3,7 +3,7 @@ preterms: THEORY
 
     % constant preterm
     constant_preterm(name: nat): symbol = preterm(name)
-    constant_preterm(name: nat, def: nat): symbol = preterm(name, def)
+    constant_preterm(name: nat, def: string): symbol = preterm(name, def)
     
     % tuple preterms have a 1 or more components
     tuple_preterm(name: nat, components: list[nat]): symbol = preterm(name, components)

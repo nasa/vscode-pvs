@@ -14,7 +14,7 @@ pretypes: THEORY
     % the domain is given by a list of arguments
     % NB: only name and domain are used for creating the unique signature in the context
     %     i.e., we cannot define two functions with same id and same domain but different return types
-    function_pretype(name: nat, domain: list[nat], range: nat): symbol = pretype(name, domain, range)
+    function_pretype(name: nat, domain: list[nat], range: nat): symbol = pretype(name, domain)
 
     % tuple (or product) pretypes have 1 or more components of the same type
     tuple_pretype(name: nat, components: list[nat]): symbol = pretype(name, components)

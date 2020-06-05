@@ -1,12 +1,40 @@
 test: THEORY
-  BEGIN IMPORTING context
-    init_test_1: boolean = member?(bool_type, initial_context) % this should be true
-    init_test_2: boolean = member?(pretype(-1), initial_context) % this should be false
+  BEGIN IMPORTING typechecker
 
+    foo_type: symbol = pretype(-1)
+    foo_constant: symbol = preterm(-1)
+    foo2_function: symbol = preterm(-2)
+
+    %--------------------
+    % example sequence of events processed by the typechecker
+    %--------------------
+    cc1: typecheck_context = enter_type_declaration(foo_type, initial_context)
+
+    % note: terms can have the same name of types declared in the context
+    cc2: typecheck_context = enter_constant_declaration(foo_constant, cc1)
+
+    % note: function arguments may have the same name of symbols declared in the context
+    cc3: typecheck_context = enter_function_declaration(foo2_function, cc2)
+    cc4: typecheck_context = enter_function_arguments((: preterm(-1), preterm(-3) :), cc3)
+
+    %--------------------
+    % test cases
+    %--------------------
+
+    init_test_1: boolean = member?(bool_type, initial_context) % this should be true
     fresh_test_1: boolean = fresh?(bool_type, initial_context) % this should be false
-    fresh_test_2: boolean = fresh?(pretype(-1), initial_context) % this should be true
 
     equiv_test_1: boolean = bool_type = bool_type % this should be true
     equiv_test_2: boolean = bool_type = int_type % this should be false
+
+    % foo type can be defined in the initial context
+    cc1_typechecks: boolean = typechecks?(cc1) AND member?(foo_type, cc1)
+    % redefinition is rejected
+    cc1_red: boolean = LET cc1 = enter_type_declaration(foo_type, cc1) IN NOT typechecks?(cc1)
+
+    % foo constant can be defined in cc1
+    cc2_typechecks: boolean = typechecks?(cc2) AND member?(foo_constant, cc2)
+    % redefinition is rejected
+    cc2_red: boolean = LET cc2 = enter_constant_declaration(foo_constant, cc2) IN NOT typechecks?(cc2)
 
   END test

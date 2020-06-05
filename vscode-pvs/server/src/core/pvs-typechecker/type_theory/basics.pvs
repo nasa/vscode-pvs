@@ -1,15 +1,11 @@
 basics: THEORY
   BEGIN 
-    % each symbol has a kind, one of type_kind, term_kind
+    % each symbol has a kind (one of type_kind, term_kind), a signature, and a definition (if the symbol is interpreted)
     kind: TYPE = { type_kind, term_kind }
-
-    % symbols can be built-in, uninterpreted, or interpreted
-    symbol: DATATYPE
-      BEGIN 
-        builtin(kind: kind, signature: list[int]): builtin?
-        uninterpreted(kind: kind, signature: list[int]): uninterpreted?
-        interpreted(kind: kind, signature: list[int], def: int): interpreted?
-      END symbol
+    symbol: TYPE = [# kind: kind, signature: list[int], def: string #]
+    % symbol constructors
+    symbol(k: kind, signature: list[int]): symbol = (# kind := k, signature := signature, def := "" #)
+    symbol(k: kind, signature: list[int], def: string): symbol = (# kind := k, signature := signature, def := def #)
 
     % name equivalence (synonym: weak equivalence)
     equiv_name(s1, s2: symbol)
@@ -25,21 +21,20 @@ basics: THEORY
     equiv_def(s1, s2: symbol)
       : boolean = 
         ≡(s1, s2) % why is infix notation not supported???
-        AND (interpreted?(s1) IMPLIES interpreted?(s2) AND def(s1) = def(s2))
-        AND (interpreted?(s2) IMPLIES interpreted?(s1) AND def(s1) = def(s2))
+        AND def(s1) = def(s2)
     ;=(s1, s2: symbol): boolean = equiv_def(s1, s2)
     
     % pretype constructors
-    basic_type(name: int): symbol = builtin(type_kind, (: name :))
-    pretype(name: int): symbol = uninterpreted(type_kind, (: name :))
-    pretype(name: int, def: int): symbol = interpreted(type_kind, (: name :), def)
-    pretype(name: int, args: list[int]): symbol = uninterpreted(type_kind, (: name :) o args)
-    pretype(name: int, args: list[int], ret: int): symbol = uninterpreted(type_kind, (: name :) o args)
-    pretype(name: int, args: list[int], ret: int, def: int): symbol = interpreted(type_kind, (: name :) o args, def)
+    basic_type(name: int): symbol = symbol(type_kind, (: name :))
+    pretype(name: int): symbol = symbol(type_kind, (: name :))
+    pretype(name: int, def: string): symbol = symbol(type_kind, (: name :), def )
+    pretype(name: int, args: list[int]): symbol = symbol(type_kind, (: name :) o args)
+    pretype(name: int, args: list[int], def: string): symbol = symbol(type_kind, (: name :) o args, def )
 
     % preterm constructors
-    preterm(name: int): symbol = uninterpreted(term_kind, (: name :))
-    preterm(name: int, def: int): symbol = interpreted(term_kind, (: name :), def)
-    preterm(name: int, args: list[int]): symbol = uninterpreted(term_kind, (: name :) o args)
+    preterm(name: int): symbol = symbol(term_kind, (: name :))
+    preterm(name: int, def: string): symbol = symbol(term_kind, (: name :), def )
+    preterm(name: int, args: list[int]): symbol = symbol(term_kind, (: name :) o args)
+    preterm(name: int, args: list[int], def: string): symbol = symbol(term_kind, (: name :) o args, def )
 
   END basics
