@@ -480,7 +480,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						}
 						window.showWarningMessage(`Warning: Proof script might be broken (PVS generated ${nSubGoals} sub goals, but proof script contains ${this.activeNode.children.length} sub goals). Stopping execution of proof script.`);
 					} else {
-						window.showInformationMessage(`Proof command ${cmd} generated ${proofState["num-subgoals"]} sub-goals, but PVS has automatically discharged them`);
+						if (showMsg) {
+							window.showInformationMessage(`Proof command ${cmd} generated ${proofState["num-subgoals"]} sub-goals, but PVS has automatically discharged them`);
+						}
 					}
 				} else {
 					// append missing branches and provide feedback
