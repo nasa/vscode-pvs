@@ -2,7 +2,7 @@ import * as fsUtils from "../server/src/common/fsUtils";
 import * as test from "./test-constants";
 import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
-import { label, dir, configFile, sandboxExamples, safeSandboxExamples, radixExamples } from './test-utils';
+import { label, configFile, sandboxExamples, safeSandboxExamples, radixExamples } from './test-utils';
 
 
 //----------------------------
@@ -45,7 +45,7 @@ describe("pvs-prover", () => {
 			fileExtension: ".pvs",
 			contextFolder: sandboxExamples
 		});
-		dir("response", response);
+		// console.dir(response);
 		expect(response.error).not.toBeDefined();
 		expect(response.result).toBeDefined();
 		expect(response.result.totals).toEqual(2);
@@ -94,7 +94,6 @@ describe("pvs-prover", () => {
 			// send proof command (skosimp*)
 			response = await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
 			// console.dir(response);
-			expect(response.result.commentary[0].trim()).toEqual(test.sq_neg_proof_command_skosimp_star.commentary[0].trim());
 			expect(response.result.label).toEqual(test.sq_neg_proof_command_skosimp_star.label);
 			expect(response.result.action).toEqual(test.sq_neg_proof_command_skosimp_star.action);
 			expect(response.result.sequent).toEqual(test.sq_neg_proof_command_skosimp_star.sequent);
@@ -102,7 +101,6 @@ describe("pvs-prover", () => {
 			// send proof command (expand "sq")
 			response = await pvsProxy.proofCommand({ cmd: '(expand "sq")'});
 			// console.dir(response);
-			// expect(response.result.commentary[0].trim()).toEqual(test.sq_neg_expand.commentary[0].trim());
 			expect(response.result.label).toEqual(test.sq_neg_expand.label);
 			expect(response.result.action).toEqual(test.sq_neg_expand.action);
 			expect(response.result.sequent).toEqual(test.sq_neg_expand.sequent);
@@ -121,7 +119,6 @@ describe("pvs-prover", () => {
 			// send proof command (skosimp*)
 			response = await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
 			// console.dir(response);
-			expect(response.result.commentary[0].trim()).toEqual(test.sq_neg_proof_command_skosimp_star.commentary[0].trim());
 			expect(response.result.label).toEqual(test.sq_neg_proof_command_skosimp_star.label);
 			expect(response.result.action).toEqual(test.sq_neg_proof_command_skosimp_star.action);
 			expect(response.result.sequent).toEqual(test.sq_neg_proof_command_skosimp_star.sequent);

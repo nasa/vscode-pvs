@@ -1189,7 +1189,7 @@ export const sq_neg_prove_formula = {
                  'decl-file': 'prelude.pvs',
                  'decl-place': [ 1850, 2, 1850, 39 ] } ] } ] } };
 
-export const sq_neg_proof_command_skosimp_star = { commentary: [ '\nsq_neg :  \n\n  |-------\n{1}   sq(-a!1) = sq(a!1)\n' ],
+export const sq_neg_proof_command_skosimp_star = { 
 action: 'Repeatedly Skolemizing and flattening,',
 'num-subgoals': 1,
 label: 'sq_neg',

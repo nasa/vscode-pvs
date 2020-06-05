@@ -37,6 +37,18 @@ describe("pvs-proxy", () => {
 	// test cases for find-declaration
 	//-----------------------------------------
 
+	// this test case fails under MacOS -- the server crashes into Lisp
+	it(`can provide the definition of pred`, async () => {
+		label(`can provide the definition of pred`);
+
+		const response: PvsResponse = await pvsProxy.findDeclaration("pred");
+		expect(response).not.toBeNull();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+
+	}, 2000);
+
+	// this test case fails under MacOS --- the parser seems unable to populate the data structures necessary for find-declaration
 	it(`can invoke find-declaration`, async () => {
 		label(`can invoke find-declaration`);
 		// Need to clear-theories, in case rerunning with the same server.
@@ -44,7 +56,7 @@ describe("pvs-proxy", () => {
 
 		await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		const response: PvsResponse = await pvsProxy.findDeclaration("sqrt");
-		// console.dir(response);
+		console.dir(response);
 		expect(response).not.toBeNull();
 		expect(response["error"]).not.toBeDefined();
 		expect(response["result"]).not.toBeNull();
@@ -85,44 +97,42 @@ describe("pvs-proxy", () => {
 			response = await pvsProxy.findDeclaration("forall_and");
 			response = await pvsProxy.findDeclaration("forall_not");
 			response = await pvsProxy.findDeclaration("forall_or");
-			response = await pvsProxy.findDeclaration("pred");
 		}
 		expect(response).not.toBeNull();
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
-	}, 4000);
+	}, 10000);
 
-	it(`is robust to multiple find-declaration in parallel`, async () => {
-		label(`is robust to multiple find-declaration in parallel`);
+	// xit(`is robust to multiple find-declaration in parallel`, async () => {
+	// 	label(`is robust to multiple find-declaration in parallel`);
 
-		pvsProxy.findDeclaration("boolean");
-		pvsProxy.findDeclaration("T");
-		pvsProxy.findDeclaration("if_def");
-		pvsProxy.findDeclaration("not_def");
-		pvsProxy.findDeclaration("and_def");
-		pvsProxy.findDeclaration("syand_def");
-		pvsProxy.findDeclaration("or_def");
-		pvsProxy.findDeclaration("implies_def");
-		pvsProxy.findDeclaration("syimplies_def");
-		pvsProxy.findDeclaration("when_def");
-		pvsProxy.findDeclaration("syiff_def");
-		pvsProxy.findDeclaration("excluded_middle");
-		pvsProxy.findDeclaration("not_exists");
-		pvsProxy.findDeclaration("exists_not");
-		pvsProxy.findDeclaration("exists_or");
-		pvsProxy.findDeclaration("exists_implies");
-		pvsProxy.findDeclaration("exists_and");
-		pvsProxy.findDeclaration("forall_and");
-		pvsProxy.findDeclaration("forall_not");
-		pvsProxy.findDeclaration("forall_or");
+	// 	pvsProxy.findDeclaration("boolean");
+	// 	pvsProxy.findDeclaration("T");
+	// 	pvsProxy.findDeclaration("if_def");
+	// 	pvsProxy.findDeclaration("not_def");
+	// 	pvsProxy.findDeclaration("and_def");
+	// 	pvsProxy.findDeclaration("syand_def");
+	// 	pvsProxy.findDeclaration("or_def");
+	// 	pvsProxy.findDeclaration("implies_def");
+	// 	pvsProxy.findDeclaration("syimplies_def");
+	// 	pvsProxy.findDeclaration("when_def");
+	// 	pvsProxy.findDeclaration("syiff_def");
+	// 	pvsProxy.findDeclaration("excluded_middle");
+	// 	pvsProxy.findDeclaration("not_exists");
+	// 	pvsProxy.findDeclaration("exists_not");
+	// 	pvsProxy.findDeclaration("exists_or");
+	// 	pvsProxy.findDeclaration("exists_implies");
+	// 	pvsProxy.findDeclaration("exists_and");``
+	// 	pvsProxy.findDeclaration("forall_and");
+	// 	pvsProxy.findDeclaration("forall_not");
+	// 	const response: PvsResponse = await pvsProxy.findDeclaration("forall_or");
 
-		const response: PvsResponse = await pvsProxy.findDeclaration("pred");
-		expect(response).not.toBeNull();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+	// 	expect(response).not.toBeNull();
+	// 	expect(response.result).toBeDefined();
+	// 	expect(response.error).not.toBeDefined();
 
-	}, 4000);
+	// }, 4000);
 
 	it(`returns a full and well-formed filename in find-declaration`, async () => {
 		label(`returns a full and well-formed filename in find-declaration`);
@@ -152,20 +162,21 @@ describe("pvs-proxy", () => {
 	//-----------------------------------------
 	// test cases for term-at
 	//-----------------------------------------
+
 	// this test case is skipped, because the implementation of the functionality is incomplete
-	xit(`can invoke term-at`, async () => {
-		label(`can invoke term-at`);
-		// Need to clear-theories, in case rerunning with the same server.
-		await pvsProxy.lisp("(clear-theories t)");
+	// xit(`can invoke term-at`, async () => {
+	// 	label(`can invoke term-at`);
+	// 	// Need to clear-theories, in case rerunning with the same server.
+	// 	await pvsProxy.lisp("(clear-theories t)");
 
-		const fname: string = path.join(sandboxExamples, "sqrt.pvs");
-		const response: PvsResponse = await pvsProxy.pvsRequest("term-at", [ fname, `(23 2)`, 't' ]); 
-		// dir(response);
-		expect(response).not.toBeNull();
-		expect(response["error"]).not.toBeDefined();
-		expect(response["result"]).not.toBeNull();
-		expect(typeof response["result"]).toEqual("object");
+	// 	const fname: string = path.join(sandboxExamples, "sqrt.pvs");
+	// 	const response: PvsResponse = await pvsProxy.pvsRequest("term-at", [ fname, `(23 2)`, 't' ]); 
+	// 	// dir(response);
+	// 	expect(response).not.toBeNull();
+	// 	expect(response["error"]).not.toBeDefined();
+	// 	expect(response["result"]).not.toBeNull();
+	// 	expect(typeof response["result"]).toEqual("object");
 
-	}, 10000);
+	// }, 10000);
 
 });
