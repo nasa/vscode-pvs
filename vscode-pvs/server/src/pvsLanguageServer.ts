@@ -346,6 +346,7 @@ export class PvsLanguageServer {
 					isTypecheckError: true
 				};
 				this.sendDiagnostics("Typecheck");
+				this.pvsErrorManager.handleTypecheckError({ request, response: <PvsError> response, taskId });
 				return;
 			}
 		}
@@ -837,6 +838,7 @@ export class PvsLanguageServer {
 									position: null,
 									theorems: (tccResult) ? tccResult.map(tcc => {
 										line += (tcc.comment && tcc.comment.length) ? tcc.comment[0].split("\n").length + 1 : 1;
+										const content: string = tcc.definition || "";
 										const res: FormulaDescriptor = {
 											fileName: args.fileName,
 											fileExtension: ".tccs",
@@ -845,7 +847,8 @@ export class PvsLanguageServer {
 											formulaName: tcc.id,
 											position: { line, character: 0 },
 											status: tcc["status"], //(tcc.proved) ? "proved" : "untried",
-											isTcc: true
+											isTcc: true//,
+											// shasum: fsUtils.shasum(content)
 										};
 										line += (tcc.definition) ? tcc.definition.split("\n").length + 2 : 2;
 										return res;

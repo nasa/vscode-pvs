@@ -205,7 +205,7 @@ export class PvsProxyLegacy {
         };
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
             const res: string = await this.pvsProcess.sendText(`(typecheck-file "${fname}" nil nil nil nil t)`);
-            const match: RegExpMatchArray = /\berror\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
+            const match: RegExpMatchArray = /\b(?:pvs)?error\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
             const matchSystemError: RegExpExecArray = /\bRestart actions \(select using \:continue\)\:/g.exec(res);
             if (match && match.length > 3) {
                 const error_string: string = match[1].trim().replace("\\n", "\n");
