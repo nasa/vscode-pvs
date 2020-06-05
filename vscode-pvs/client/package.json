@@ -2,7 +2,7 @@
 	"name": "vscode-pvs-client",
 	"description": "PVS client for Visual Studio Code",
 	"author": "Paolo Masci",
-	"version": "1.0.21-gamma",
+	"version": "1.0.21-delta",
 	"publisher": "paolomasci",
 	"license": "NASA-1.3",
 	"notices": {
@@ -20,7 +20,7 @@
 		"vscode": "*"
 	},
 	"dependencies": {
-		"typescript": "^3.9.3",
+		"typescript": "^3.9.5",
 		"vscode-languageclient": "^5.2.1",
 		"ws": "^7.2.0"
 	},
