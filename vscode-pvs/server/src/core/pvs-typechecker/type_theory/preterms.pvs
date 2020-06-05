@@ -2,13 +2,17 @@ preterms: THEORY
   BEGIN IMPORTING basics
 
     % constant preterm
-    constant_preterm(name: nat): symbol = preterm(name)
-    constant_preterm(name: nat, def: string): symbol = preterm(name, def)
+    constant_preterm(name: string, tp: string): symbol = preterm(name, tp)
+    constant_preterm(name: string, tp: string, def: string): symbol = preterm(name, tp, def)
     
+    % function preterm -- the type is given by the argument types
+    function_preterm(name: string, tp: list[string]): symbol = preterm(name, tp)
+    function_preterm(name: string, tp: list[string], def: string): symbol = preterm(name, tp, def)
+
     % tuple preterms have a 1 or more components
-    tuple_preterm(name: nat, components: list[nat]): symbol = preterm(name, components)
+    tuple_preterm(name: string, components: list[string]): symbol = preterm(name, components)
     
     % record preterms have a 1 or more components in the form 'name:=value'
-    record_preterm(name: nat, attributes: list[nat]): symbol = preterm(name, attributes)
+    record_preterm(name: string, attributes: list[string]): symbol = preterm(name, attributes)
 
   END preterms

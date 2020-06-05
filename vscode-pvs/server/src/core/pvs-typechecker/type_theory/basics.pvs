@@ -1,40 +1,50 @@
 basics: THEORY
   BEGIN 
     % each symbol has a kind (one of type_kind, term_kind), a signature, and a definition (if the symbol is interpreted)
-    kind: TYPE = { type_kind, term_kind }
-    symbol: TYPE = [# kind: kind, signature: list[int], def: string #]
+    kind: DATATYPE
+      BEGIN
+        type_kind: type_kind?
+        term_kind: term_kind? % we are using a list so we can store information for tuple components, record attributes, and function arguments
+      END kind
+    symbol: TYPE = [# name: string, kind: kind, signature: list[string], def: string #]
     % symbol constructors
-    symbol(k: kind, signature: list[int]): symbol = (# kind := k, signature := signature, def := "" #)
-    symbol(k: kind, signature: list[int], def: string): symbol = (# kind := k, signature := signature, def := def #)
+    symbol(name: string, k: kind, signature: list[string]): symbol = (# name := name, kind := k, signature := signature, def := "" #)
+    symbol(name: string, k: kind, signature: list[string], def: string): symbol = (# name := name, kind := k, signature := signature, def := def #)
 
-    % name equivalence (synonym: weak equivalence)
-    equiv_name(s1, s2: symbol)
+    % type name equivalence (synonym: weak equivalence)
+    typename_equiv(s1, s2: symbol)
       : boolean = 
         kind(s1) = kind(s2)
         % AND signature(s1) = signature(s2)
         AND signature(s1)`length = signature(s2)`length 
         AND LET n: int = signature(s1)`length 
              IN FORALL (i: below(n)): nth(signature(s1), i) = nth(signature(s2), i)
-    ;≡(s1, s2: symbol): boolean = equiv_name(s1, s2)
+    ;≡(s1, s2: symbol): boolean = typename_equiv(s1, s2)
 
-    % definition equivalence (synonims: equality, strong equivalence)
-    equiv_def(s1, s2: symbol)
+    % type definition equivalence (synonims: equality, strong equivalence)
+    typedef_equiv(s1, s2: symbol)
       : boolean = 
         ≡(s1, s2) % why is infix notation not supported???
         AND def(s1) = def(s2)
-    ;=(s1, s2: symbol): boolean = equiv_def(s1, s2)
+    ;=(s1, s2: symbol): boolean = typedef_equiv(s1, s2)
     
     % pretype constructors
-    basic_type(name: int): symbol = symbol(type_kind, (: name :))
-    pretype(name: int): symbol = symbol(type_kind, (: name :))
-    pretype(name: int, def: string): symbol = symbol(type_kind, (: name :), def )
-    pretype(name: int, args: list[int]): symbol = symbol(type_kind, (: name :) o args)
-    pretype(name: int, args: list[int], def: string): symbol = symbol(type_kind, (: name :) o args, def )
+    basic_type(name: string): symbol = symbol(name, type_kind, (: name :))
+    pretype(name: string): symbol = symbol(name, type_kind, (: name :))
+    pretype(name: string, def: string): symbol = symbol(name, type_kind, (: name :), def )
+    pretype(name: string, args: list[string]): symbol = symbol(name, type_kind, (: name :) o args)
+    pretype(name: string, args: list[string], def: string): symbol = symbol(name, type_kind, (: name :) o args, def )
 
     % preterm constructors
-    preterm(name: int): symbol = symbol(term_kind, (: name :))
-    preterm(name: int, def: string): symbol = symbol(term_kind, (: name :), def )
-    preterm(name: int, args: list[int]): symbol = symbol(term_kind, (: name :) o args)
-    preterm(name: int, args: list[int], def: string): symbol = symbol(term_kind, (: name :) o args, def )
+    preterm(name: string, tp: string): symbol = symbol(name, term_kind, (: tp :))
+    preterm(name: string, tp: string, def: string): symbol = symbol(name, term_kind, (: tp :), def )
+
+    % these constructors are used for tuples and records -- they store type information for each component / attribute
+    preterm(name: string, tp: list[string]): symbol = symbol(name, term_kind, tp)
+    preterm(name: string, tp: list[string], def: string): symbol = symbol(name, term_kind, tp, def )
+
+    % these constructors are used for functions -- they store type information for each function argument 
+    % preterm(name: int, args: list[int], tp: list[int]): symbol = symbol(term_kind(tp), (: name :) o args)
+    % preterm(name: int, args: list[int], def: string, tp: list[int]): symbol = symbol(term_kind(tp), (: name :) o args, def )
 
   END basics
