@@ -180,8 +180,9 @@ export class PvsCliGateway {
 													this.vscodeTerminal[data.channelID][keys[i]].send(JSON.stringify({
 														type: "cli-end", channelID: data.channelID
 													}));
+													delete this.vscodeTerminal[data.channelID][keys[i]];
 												}
-											}	
+											}
 										} else {
 											console.error("[pvs-cli-gateway] Warning: could not find records of client that wants to unsubscribe");
 										}

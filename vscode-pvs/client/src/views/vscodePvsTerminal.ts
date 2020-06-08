@@ -174,7 +174,7 @@ class TerminalSession {
 						console.error("[vscode-pvs-terminal] Error: received empty message");
 					}
 				} catch (jsonError) {
-					console.error("[vscode-pvs-terminal] Error: received malformed json string", msg);
+					console.error("[vscode-pvs-terminal] Error: ", jsonError);
 				}
             });
             this.wsClient.on("error", (err: Error) => {
@@ -193,10 +193,18 @@ class TerminalSession {
         this.terminal.sendText(cmd);
     }
     disposeTerminal (): void {
-        // close terminal
+        // hide all other terminals?
+        // if (vscode.window.terminals && vscode.window.terminals.length) {
+        //     for (let i = 0; i < vscode.window.terminals.length; i++) {
+        //         vscode.window.terminals[i].hide();
+        //     }
+        // }
+        // hide terminal
+        this.terminal.hide();
+        // dispose this terminal
         this.terminal.dispose();
         // close proof explorer and proofmate
-        vscode.commands.executeCommand('setContext', 'prover-session-active', false);
+        vscode.commands.executeCommand('setContext', 'prover-session-active', false);        
     }
     sendCommand (cmd: string) {
         this.sendText(cmd);
