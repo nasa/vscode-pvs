@@ -1,0 +1,8 @@
+foo_th: THEORY
+  BEGIN 
+
+    foo: TYPE
+    foo: nat              %-- terms can have the same name of types declared in the context
+    foo2(x: int): nat = x %-- this function definition will generate a subtype tcc for x
+
+  END foo_th

@@ -1,0 +1,23 @@
+context: THEORY
+  BEGIN IMPORTING preterms, pretypes
+
+    % the context is a list of symbol definitions. types and terms are kept separate
+    context: TYPE = [# types: list[symbol], terms: list[symbol] #]
+    % the empty context does not contain any declaration
+    empty_context: context = (# types := (::), terms := (::) #)
+    % utility function for checking the content of the current context
+    member?(s: symbol, cc: context): boolean =
+      COND
+        type_kind?(kind(s)) -> member(s, cc`types),
+        term_kind?(kind(s)) -> member(s, cc`terms)
+      ENDCOND
+    % a symbol is fresh if it is not present in the current context
+    fresh?(s: symbol, cc: context): boolean = NOT member?(s, cc)
+
+    % the initial context contains the basic types
+    initial_context: context = (#
+      types := (: builtin_type("bool"), builtin_type("nat"), builtin_type("int"), builtin_type("rat"), builtin_type("string") :),
+      terms := (::)
+    #)
+
+  END context
