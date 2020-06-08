@@ -1,13 +1,17 @@
 preterms: THEORY
   BEGIN IMPORTING basics
 
+    % generic preterm constructors
+    preterm(name: string, signature: string): symbol = uninterpreted_term(name, signature)
+    preterm(name: string, signature: string, def: string): symbol = interpreted_term(name, signature, def)
+
     % constant preterm
     constant_preterm(name: string, tp: string): symbol = preterm(name, tp)
     constant_preterm(name: string, tp: string, def: string): symbol = preterm(name, tp, def)
     
-    % function preterm -- the type is given by the argument types
-    function_preterm(name: string, tp: list[string]): symbol = preterm(name, tp)
-    function_preterm(name: string, tp: list[string], def: string): symbol = preterm(name, tp, def)
+    % function preterm -- the signature includes the arguments types
+    function_preterm(name: string, sig: [# args: list[string], ret: string #]): symbol = preterm(name, make_signature(sig`args) + ":" + sig`ret)
+    function_preterm(name: string, sig: [# args: list[string], ret: string #], def: string): symbol = preterm(name, make_signature(sig`args) + ":" + sig`ret, def)
 
     % tuple preterms have a 1 or more components
     tuple_preterm(name: string, components: list[string]): symbol = preterm(name, components)

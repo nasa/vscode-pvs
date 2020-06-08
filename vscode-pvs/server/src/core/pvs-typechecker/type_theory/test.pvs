@@ -1,29 +1,33 @@
 %--------------------
 % Example sequence for testing the operational semantics of the typechecker
 % The sequence would be generated when typechecking the following theory
-% test: THEORY BEGIN
+% foo_th: THEORY BEGIN
 %   foo: TYPE
-%   foo: nat   %-- note: terms can have the same name of types declared in the context
-%   foo2(x: nat, y: nat): nat = LET z: nat = x + y IN z
-% END test
+%   foo: nat              %-- terms can have the same name of types declared in the context
+%   foo2(x: int): nat = x %-- this function definition will generate a subtype tcc for x
+% END foo_th
 %--------------------
 test: THEORY
   BEGIN IMPORTING typechecker
 
-    cc1: typecheck_context = enter_type_declaration(pretype("foo"), initial_context)
-    cc2: typecheck_context = enter_constant_declaration(constant_preterm("foo", "nat"), cc1)
-    cc3: typecheck_context = enter_function_declaration(function_preterm("foo2", (: "nat", "nat" :)), cc2)
-    cc4: typecheck_context = enter_function_arguments((: preterm("x", "nat"), preterm("y", "nat") :), cc3)
+    % the following definitions define the sequence of events triggered when typechecking foo_th
+    % enter/exit functions are omitted when they are not changing the context 
+    cc1: typechecker_context = enter_type_declaration(pretype("foo"), initial_context)
+    cc2: typechecker_context = enter_constant_declaration(constant_preterm("foo", "nat"), cc1)
+    cc3: typechecker_context = enter_function_declaration(function_preterm("foo2", (# args := (: "int" :), ret := "nat" #)), cc2)
+    cc4: typechecker_context = enter_function_argument(preterm("x", "int"), cc3)
+    cc5: typechecker_context = enter_function_return(builtin_type("nat"), cc4)
+    cc6: typechecker_context = exit_function_definition(builtin_type("int"), cc5)
 
     %--------------------
     % test cases
     %--------------------
 
-    init_test_1: boolean = member?(pretype("bool"), initial_context) % this should be true
-    fresh_test_1: boolean = fresh?(pretype("bool"), initial_context) % this should be false
+    init_test_1: boolean = member?(builtin_type("bool"), initial_context) % this should be true
+    fresh_test_1: boolean = fresh?(builtin_type("bool"), initial_context) % this should be false
 
-    equiv_test_1: boolean = pretype("bool") = pretype("bool") % this should be true
-    equiv_test_2: boolean = pretype("bool") = pretype("int") % this should be false
+    equiv_test_1: boolean = builtin_type("bool") = builtin_type("bool") % this should be true
+    equiv_test_2: boolean = builtin_type("bool") = builtin_type("int") % this should be false
 
     % foo type can be defined in the initial context
     cc1_typechecks: boolean = typechecks?(cc1) AND member?(pretype("foo"), cc1)
