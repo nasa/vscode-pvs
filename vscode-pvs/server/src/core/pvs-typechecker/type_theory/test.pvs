@@ -5,6 +5,7 @@
 %   foo: TYPE
 %   foo: nat              %-- terms can have the same name of types declared in the context
 %   foo2(x: int): nat = x %-- this function definition will generate a subtype tcc for x
+%   foo3(x: nat): { x: nat | x > 2 } % this function declaration generates an existance tcc for the return type
 % END foo_th
 %--------------------
 test: THEORY
@@ -14,10 +15,15 @@ test: THEORY
     % enter/exit functions are omitted when they are not changing the context 
     cc1: typechecker_context = enter_type_declaration(pretype("foo"), initial_context)
     cc2: typechecker_context = enter_constant_declaration(constant_preterm("foo", "nat"), cc1)
+
     cc3: typechecker_context = enter_function_declaration(function_preterm("foo2", (# args := (: "int" :), ret := "nat" #)), cc2)
     cc4: typechecker_context = enter_function_argument(preterm("x", "int"), cc3)
     cc5: typechecker_context = enter_function_return(builtin_type("nat"), cc4)
     cc6: typechecker_context = exit_function_definition(builtin_type("int"), cc5)
+
+    cc7: typechecker_context = enter_function_declaration(function_preterm("foo3", (# args := (: "nat" :), ret := "{ x: nat | x > 2 }" #)), cc5)
+    cc8: typechecker_context = enter_function_argument(preterm("x", "nat"), cc7)
+    cc9: typechecker_context = enter_function_return(inline_pretype("{ x: nat | x > 2 }"), cc8)
 
     %--------------------
     % test cases

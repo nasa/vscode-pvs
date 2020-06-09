@@ -4,5 +4,6 @@ foo_th: THEORY
     foo: TYPE
     foo: nat              %-- terms can have the same name of types declared in the context
     foo2(x: int): nat = x %-- this function definition will generate a subtype tcc for x
+    foo3(x: nat): { x: nat | x > 2 } % this function declaration generates an existance tcc for the return type
 
   END foo_th

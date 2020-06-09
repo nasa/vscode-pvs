@@ -9,10 +9,11 @@ basics: THEORY
     symbol: TYPE = [# name: string, kind: kind, signature: string, def: string #]
 
     % utility function for recognizing builtin types
-    builtin?(name: string): boolean = name = "bool" OR name = "nat" OR name = "int" OR name = "rat" OR name = "string"
+    builtin_type?(name: string): boolean = name = "bool" OR name = "nat" OR name = "int" OR name = "rat" OR name = "string"
+    builtin?(s: symbol): boolean = s`def = "builtin"
 
     % symbol constructors
-    builtin_type(name: (builtin?)): symbol = (# name := name, kind := type_kind, signature := name, def := "builtin" #)
+    builtin_type(name: (builtin_type?)): symbol = (# name := name, kind := type_kind, signature := name, def := "builtin" #)
     uninterpreted_type(name: string): symbol = (# name := name, kind := type_kind, signature := name, def := "uninterpreted" #)
     interpreted_type(name: string, def: string): symbol = (# name := name, kind := type_kind, signature := name, def := def #)
     uninterpreted_term(name: string, signature: string): symbol = (# name := name, kind := term_kind, signature := signature, def := "uninterpreted" #)

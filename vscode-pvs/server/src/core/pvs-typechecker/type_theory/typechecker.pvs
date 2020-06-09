@@ -81,7 +81,10 @@ typechecker: THEORY
     % enter function return type
     % a new local binding is created for the function return type
     enter_function_return(ret: { s: symbol | type_kind?(kind(s)) }, cc: typechecker_context): typechecker_context =
-      cc WITH [ ret := (: ret :) ]
+      cc WITH [
+        ret := (: ret :),
+        tccs := IF builtin?(ret) THEN cc`tccs ELSE cons(existance_tcc(ret), cc`tccs) ENDIF
+      ]
 
     % exit function definition
     % the type of the result produced by the function is compared with the return type declared in the function signature

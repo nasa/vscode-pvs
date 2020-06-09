@@ -3,9 +3,10 @@ pretypes: THEORY
   
     % generic pretype constructors
     void: symbol = builtin_type("void")
-    basic_type(name: (builtin?)): symbol = builtin_type(name)
+    basic_type(name: (builtin_type?)): symbol = builtin_type(name)
     pretype(name: string): symbol = uninterpreted_type(name)
     pretype(name: string, def: string): symbol = interpreted_type(name, def)
+    inline_pretype(def: string): symbol = interpreted_type("<inline-typedef>" + def, def)
 
     % compoud types are function, tuple, and record
     % function pretypes have domain and range. 
