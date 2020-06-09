@@ -34,3 +34,12 @@ This situation tipically occurs when the reasoning engine crashes into Lisp. You
 >Note 1: If VSCode-PVS became not responsive during a prover session, you can still save the current proof using the 'Save' command from the menu in Proof Explorer.
 
 >Note 2: There is an output channel 'pvs-server' in Visual Studio Code. You can use it to inspect the raw output of PVS, including errors thrown by the reasoning engine.
+
+## A pop-up message indicates "Typechecking files necessary to prove formula", and VSCode-PVS seems to be stuck on it?
+An unexpected error might have occurred while processing one of the files. Please restart the reasoning engine with the **Reboot pvs-server** button located in the status bar and try again. If the problem persists, please open an issue on [github](https://github.com/nasa/vscode-pvs/issues) or [get in touch with us](mailto:paolo.masci@nianet.org).
+
+## Can I save more than one proof for a theorem?
+No, the current version of VSCode-PVS allows you to save only one proof for each theorem.
+
+## Is there a way to delete a proof?
+Yes, using the functionalities of PVS Proof Explorer you can delete a proof. PVS Proof Explorer is located in the side panel, and shows the current proof tree. Right click on the root node of the proof tree, and select 'Delete'. Then, save the proof to make the change permanent.
