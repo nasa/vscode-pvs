@@ -49,3 +49,6 @@ Yes, PVS Proof Explorer is also a proof editor. You can right click anywhere in 
 
 ## Can I develop my pvs theories on my Desktop?
 No, that's a bad idea. Please create a subfolder in your home directory, and develop your pvs theories in it.
+
+## I am unable to start vscode-pvs, and the terminal reports an error "node does not exist", what shall I do?
+The error indicates that one of the required software packages is not installed on your system --- you need to install [NodeJS](https://nodejs.org/en/download).
