@@ -47,5 +47,5 @@ Yes, using the functionalities of PVS Proof Explorer you can delete a proof. PVS
 ## Can I edit a proof tree, e.g., copy/paste proof branches?
 Yes, PVS Proof Explorer is also a proof editor. You can right click anywhere in the proof tree, and perform the following operations: rename, cut, copy, paste, trim, delete, cut branch, paste branch.
 
-## Can I develop pvs theories in my Home folder?
-No, that's a bad idea. You should always create a subfolder and develop your pvs theories in it.
+## Can I develop my pvs theories on my Desktop?
+No, that's a bad idea. Please create a subfolder in your home directory, and develop your pvs theories in it.
