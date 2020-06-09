@@ -43,3 +43,9 @@ No, the current version of VSCode-PVS allows you to save only one proof for each
 
 ## Is there a way to delete a proof?
 Yes, using the functionalities of PVS Proof Explorer you can delete a proof. PVS Proof Explorer is located in the side panel, and shows the current proof tree. Right click on the root node of the proof tree, and select 'Delete'. Then, save the proof to make the change permanent.
+
+## Can I edit a proof tree, e.g., copy/paste proof branches?
+Yes, PVS Proof Explorer is also a proof editor. You can right click anywhere in the proof tree, and perform the following operations: rename, cut, copy, paste, trim, delete, cut branch, paste branch.
+
+## Can I develop pvs theories in my Home folder?
+No, that's a bad idea. You should always create a subfolder and develop your pvs theories in it.
