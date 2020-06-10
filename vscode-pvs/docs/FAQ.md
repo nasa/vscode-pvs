@@ -47,8 +47,8 @@ Yes, using the functionalities provided by PVS Proof Explorer you can delete a p
 ## Can I edit a proof tree, e.g., copy/paste proof branches?
 Yes, PVS Proof Explorer is also a proof editor. You can right click anywhere in the proof tree, and perform the following operations: rename, cut, copy, paste, trim, delete, cut branch, paste branch.
 
-## Can I develop my pvs theories on my `Desktop`?
-No, that's a bad idea. PVS may be unable to operate in that folder. The recommended way to proceed is to create a subfolder in your home directory, and develop your pvs theories in such subfolder.
+## Can I develop my pvs theories on my `Desktop`, or in my pvs installation folder?
+No, that's a bad idea. The recommended way to proceed is to create a subfolder in your home directory, and develop your pvs theories in such subfolder.
 
 ## The terminal reports an error "node does not exist", what does it mean?
 The error indicates that one of the required software packages is not installed on your system --- you need to install [NodeJS](https://nodejs.org/en/download).
