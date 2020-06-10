@@ -52,3 +52,6 @@ No, that's a bad idea. The recommended way to proceed is to create a subfolder i
 
 ## The terminal reports an error "node does not exist", what does it mean?
 The error indicates that one of the required software packages is not installed on your system --- you need to install [NodeJS](https://nodejs.org/en/download).
+
+## How do I change the current workspace?
+The easiest way is to open a new Visual Studio Code window (File -> New Window). Alternatively, you can add a folder to the current workspace: right-click with the mouse in Explorer, and choose 'Add Folder to Workspace...'
