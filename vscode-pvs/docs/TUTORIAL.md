@@ -22,8 +22,13 @@ This first example demonstrates the following functionalities of VSCode-PVS:
 - Navigation of PVS definitions
 
 Try the following actions in VSCode-PVS:
-1. Create a new file `helloworld.pvs` in the current workspace.
-2. Enter the following specification:
+
+1. Create a new folder `pvs-tutorial` under your Home folder. You will be storing all your pvs files in this folder.
+> Important: Please do not store your `pvs` files on your `Desktop`, because PVS may be unable to operate in that folder.  
+
+2. Open the folder in Visual Studio Code, and then create a new file `helloworld.pvs` in it.
+
+3. Enter the following specification:
 ```pvs
 helloworld: THEORY
   BEGIN 
@@ -31,7 +36,8 @@ helloworld: THEORY
   END helloworld
 ```
 The specification defines a module (`theory` in the PVS language) called `helloworld`, and a function `abs` that computes the absolute value of a number. The function has one argument `x` of type `real`, and its return type is of type `real`.
-3. Place the cursor over the return type `real`. A hover box will pop up and show the type definition.
+
+4. Place the cursor over the return type `real`. A hover box will pop up and show the type definition.
 > Hint 1: The box contains a clickable link to jump to the type definition.
 
 > Hint 2: Try to type the specification rather than doing copy-paste: you will be able to see autocompletion in action.
@@ -49,7 +55,9 @@ The following example demonstrates:
 
 Try the following actions in VSCode-PVS:
 1. Open the pvs file `helloworld.pvs` created in the previous example.
+
 2. To typecheck the file: right-click in the editor window. A contextual menu will be shown, Select `Typecheck` from the contextual menu.
+
 3. VSCode-PVS will display a message box indicating whether the file typechecks correctly or contains errors.
 > Hint 1: Try to introduce type errors in the specification, e.g., change the return type of the function from `real` to `bool`. Typecheck again the file, and see what errors are detected. 
 
@@ -65,6 +73,7 @@ The following example demonstrates:
 - How to inspect and discharge proof obligations (TCCs)
 
 Try the following actions in VSCode-PVS:
+
 1. Edit function `abs` in `helloworld.pvs` so as to change the return type to `posreal`, where posnat is defined as `posreal: TYPE = { r: real | r >=0 }`. The specification should look as follows:
 ```pvs
 helloworld: THEORY
@@ -73,8 +82,11 @@ helloworld: THEORY
     abs (x: real): posreal = IF x > 0 THEN x ELSE -x ENDIF
   END helloworld
 ```
+
 2. Typecheck the specification. The system will report that the specification typechecks correctly and two TCCs were generated
+
 3. To inspect the TCCs: right-click in the editor window. A contextual menu will be shown, Select `Show TCCs` from the contextual menu. The editor will open a new file `helloworld.tccs` that allows you to check the TCCs.
+
 4. To discharge all TCCS: right-click in the editor window showing the TCCs. A contextual menu will be displayed. Select `Discharge all TCCs` from the contextual menu.
 > Hint: Check the functionalities of `PVS Workspace Explorer` located in the side panel, under file explorer. It shows all theories defined in the context and, for each theory, all formulas and TCCs.
 ---
@@ -87,8 +99,11 @@ The following example demonstrates:
 - How to evaluate a PVS specification in the interactive `PVSio` (pronounced `PVS`-`io`) evaluator.
 
 Try the following actions in VSCode-PVS:
+
 1. Open a pvs file (e.g., `helloworld.pvs`). Make sure the file typechecks correctly.
+
 2. To start the `PVSio` evaluator: right-click in the editor window. A contextual menu will be shown, Select `Evaluate in PVSio` from the contextual menu.
+
 3. VSCode-PVS will open an integrated terminal window with the PVSio prompt. The content of the terminal window should look as follows:
 ```
 +---- 
@@ -107,6 +122,7 @@ Try the following actions in VSCode-PVS:
 ```
 4. To evaluate an executable PVS expression, enter the expression at the `<PVSio>` prompt, followed by `;` 
 > Hint: If you are evaluating `helloworld.pvs`, you can enter the following expression: `abs(-7);`
+
 5. To exit the PVSio evaluator, enter the following command at the `<PVSio>` prompt: `exit;` 
 
 ---
@@ -120,6 +136,7 @@ The following example demonstrates:
 - How to prove the theorem in the interactive PVS theorem prover
 
 Try the following actions in VSCode-PVS:
+
 1. Edit theory `helloworld.pvs` so as to introduce a theorem `always_positive`. The specification should look as follows:
 ```pvs
 helloworld: THEORY
@@ -131,6 +148,7 @@ helloworld: THEORY
       FORALL (x: real): abs(x) >= 0
   END helloworld
 ```
+
 2. VSCode-PVS will automatically create an in-line command `prove` above the theorem name. Click it to start an interactive prover session in the  integrated terminal. The content of the terminal window should look as follows:
 ```
 always_positive :
@@ -140,7 +158,8 @@ always_positive :
 
  >> 
 ```
-4. To prove the theorem, enter the following proof command at the prover prompt: `grind`
+
+3. To prove the theorem, enter the following proof command at the prover prompt: `grind`
 > Hint 1: Formulate a theorem that is not true, and check how the theorem prover is able to provide useful diagnostics that can help fix the formulation. For example, try to prove the following theorem `always_positive_alt`, where the condition expressed in `always_positive` has been changed from `>=` to `>`:  
 > ```pvs
 > always_positive_alt: THEOREM

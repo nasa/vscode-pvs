@@ -28,27 +28,27 @@ Yes, you can use the following basic set PVS hot-keys combinations in VSCode-PVS
 ## Is the Emacs plugin for Visual Studio Code compatible with VSCode-PVS?
 The Emacs plugin is compatible with VSCode-PVS, **but** the PVS hot-keys won't work because the Emacs plugin captures the initial sequence M-x. We are working on a solution to this problem. Please stay tuned for updates.
 
-## VSCode-PVS became not responsive, what can I do?
-This situation tipically occurs when the reasoning engine crashes into Lisp. You can try to restart the reasoning engine with the **Reboot pvs-server** button located in the status bar. If the problem persists, please try restarting Visual Studio Code.
+## VSCode-PVS became not responsive, or is taking forever to complete typechecking, what can I do?
+These situations may occur when the reasoning engine has crashed. You can try to restart the reasoning engine with the **Reboot pvs-server** button located in the status bar. If the problem persists, please try restarting Visual Studio Code.
 
->Note 1: If VSCode-PVS became not responsive during a prover session, you can still save the current proof using the 'Save' command from the menu in Proof Explorer.
+>Note 1: If VSCode-PVS became not responsive during a prover session, you can still save the current proof using the `Save` command from the menu in Proof Explorer.
 
->Note 2: There is an output channel 'pvs-server' in Visual Studio Code. You can use it to inspect the raw output of PVS, including errors thrown by the reasoning engine.
+>Note 2: There is an output channel `pvs-server` in Visual Studio Code. You can use it to inspect the raw output of PVS, including errors thrown by the reasoning engine.
 
-## A pop-up message indicates "Typechecking files necessary to prove formula", and VSCode-PVS seems to be stuck on it?
-An unexpected error might have occurred while processing one of the files. Please restart the reasoning engine with the **Reboot pvs-server** button located in the status bar and try again. If the problem persists, please open an issue on [github](https://github.com/nasa/vscode-pvs/issues) or [get in touch with us](mailto:paolo.masci@nianet.org).
+## I can't start a proof because a pop-up message "Typechecking files necessary to prove formula" does not go away, what can I do?
+An unexpected error might have occurred while processing one of the files necessary for running the proof. Please restart the reasoning engine with the **Reboot pvs-server** button located in the status bar and try again. If the problem persists, please open an issue on [github](https://github.com/nasa/vscode-pvs/issues) or [get in touch with us](mailto:paolo.masci@nianet.org).
 
-## Can I save more than one proof for a theorem?
+## Can I save multiple proofs for the same theorem?
 No, the current version of VSCode-PVS allows you to save only one proof for each theorem.
 
 ## Is there a way to delete a proof?
-Yes, using the functionalities of PVS Proof Explorer you can delete a proof. PVS Proof Explorer is located in the side panel, and shows the current proof tree. Right click on the root node of the proof tree, and select 'Delete'. Then, save the proof to make the change permanent.
+Yes, using the functionalities provided by PVS Proof Explorer you can delete a proof. PVS Proof Explorer is located in the side panel, and shows the current proof tree. Place the mouse on the root node of the proof tree, right click, and select 'Delete'. Then, save the proof to make the change permanent.
 
 ## Can I edit a proof tree, e.g., copy/paste proof branches?
 Yes, PVS Proof Explorer is also a proof editor. You can right click anywhere in the proof tree, and perform the following operations: rename, cut, copy, paste, trim, delete, cut branch, paste branch.
 
-## Can I develop my pvs theories on my Desktop?
-No, that's a bad idea. Please create a subfolder in your home directory, and develop your pvs theories in it.
+## Can I develop my pvs theories on my `Desktop`?
+No, that's a bad idea. PVS may be unable to operate in that folder. The recommended way to proceed is to create a subfolder in your home directory, and develop your pvs theories in such subfolder.
 
-## I am unable to start vscode-pvs, and the terminal reports an error "node does not exist", what shall I do?
+## The terminal reports an error "node does not exist", what does it mean?
 The error indicates that one of the required software packages is not installed on your system --- you need to install [NodeJS](https://nodejs.org/en/download).
