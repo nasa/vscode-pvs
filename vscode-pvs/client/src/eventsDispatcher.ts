@@ -141,7 +141,22 @@ export class EventsDispatcher {
 			if (version) {
                 this.statusBar.pvsReady(version);
                 this.proofExplorer.pvsReady(version);
-                commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: " :: Ready! ::"});
+                // make sure a valid workspace is open in vscode
+                if (!vscode.workspace.name) {
+                    const fname: string = (vscode.window && vscode.window.activeTextEditor 
+                                                && vscode.window.activeTextEditor.document
+                                                && vscode.window.activeTextEditor.document.fileName) ? vscode.window.activeTextEditor.document.fileName : null;
+                    const cc: string = fsUtils.getContextFolder(fname);
+                    const uri: vscode.Uri = vscode.Uri.file(cc);
+                    commands.executeCommand('vscode.openFolder', uri).then(async () => {
+                        await window.showTextDocument(uri, { preserveFocus: true, preview: true });
+                        commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: " :: Ready! ::"});
+                        // commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: ` :: ${cc} ::`});
+                    });
+                } else {
+                    commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: " :: Ready! ::"});
+                    // commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: ` :: ${vscode.workspace.name} ::`});
+                }
 			}
 		});
 		this.client.onRequest(serverEvent.contextUpdate, (desc: PvsContextDescriptor) => {
