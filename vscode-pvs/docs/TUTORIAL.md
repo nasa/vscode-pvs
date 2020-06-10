@@ -24,7 +24,7 @@ This first example demonstrates the following functionalities of VSCode-PVS:
 Try the following actions in VSCode-PVS:
 
 1. Create a new folder `pvs-tutorial` under your Home folder. You will be storing all your pvs files in this folder.
-> Important: Please do not store your `pvs` files on your `Desktop`, because PVS may be unable to operate in that folder.  
+> Important: Please do not store your `pvs` files on your `Desktop`, because PVS may be unable to operate in that folder. Do not use your `pvs installation folder` either.  
 
 2. Open the folder in Visual Studio Code, and then create a new file `helloworld.pvs` in it.
 
