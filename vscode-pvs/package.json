@@ -71,6 +71,11 @@
 						"type": "boolean",
 						"default": false,
 						"description": "Enable error tolerant parser"
+					},
+					"pvs.settings.prover.watchdog": {
+						"type": "number",
+						"default": 8,
+						"description": "Proof commands are aborted if they don't produce results within this timeout (time is in seconds, 0 means timeout disabled)"
 					}
 				}
 			}

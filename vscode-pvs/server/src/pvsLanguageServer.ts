@@ -239,7 +239,8 @@ export class PvsLanguageServer {
 	async proofCommand (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<PvsResponse | null> {
 		if (args) {
 			args = fsUtils.decodeURIComponents(args);
-			const response: PvsResponse = await this.pvsProxy.proofCommand(args);
+			const timeout: number = await this.connection.workspace.getConfiguration("pvs.settings.prover.watchdog");
+			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: args.cmd, timeout });
 			const status: PvsResponse = await this.pvsProxy.proverStatus();
 			// ATTN: when quitting the proof, pvs-server returns an object { result: string }, where the string indicates the proof status (completed, unfinished, ...)
 			if (response && response.result) {
@@ -252,6 +253,7 @@ export class PvsLanguageServer {
 	}
 	async proofCommandRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
+		const timeout: number = await this.connection.workspace.getConfiguration("pvs.settings.prover.watchdog");
 		
 		// handle commands not supported by pvs prover
 		if (utils.isSaveCommand(request.cmd)) {
@@ -259,13 +261,13 @@ export class PvsLanguageServer {
 			return;
 		}
 		if (utils.isQuitCommand(request.cmd)) {
-			await this.pvsProxy.proofCommand({ cmd: "quit" });
+			await this.pvsProxy.proofCommand({ cmd: "quit", timeout });
 			this.connection.sendRequest(serverEvent.quitProofEvent, { args: request });
 			this.proverSessionActive = false;
 			return
 		}
 		if (utils.isQuitDontSaveCommand(request.cmd)) {
-			await this.pvsProxy.proofCommand({ cmd: "quit" });
+			await this.pvsProxy.proofCommand({ cmd: "quit", timeout });
 			this.connection.sendRequest(serverEvent.quitDontSaveProofEvent, { args: request });
 			this.proverSessionActive = false;
 			return
@@ -1855,7 +1857,8 @@ export class PvsLanguageServer {
 				this.saveProofRequest(args); // async call
 			});			
 			this.connection.onRequest(serverCommand.quitProver, async () => {
-				this.pvsProxy.proofCommand({ cmd: "quit" }); // async call
+				const timeout: number = await this.connection.workspace.getConfiguration("pvs.settings.prover.watchdog");
+				this.pvsProxy.proofCommand({ cmd: "quit", timeout }); // async call
 			});
 
 			this.connection.onRequest(serverCommand.listDownloadableVersions, async () => {

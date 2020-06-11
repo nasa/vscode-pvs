@@ -1026,6 +1026,19 @@ export function isShowHiddenCommand (cmd: string): boolean {
 					|| cmd === "show-hidden");
 }
 
+export function applyTimeout (cmd: string, sec: number): string {
+	if (cmd && sec) {
+		const c: string = cmd.startsWith('(') && cmd.endsWith(')') ? cmd : `(${cmd})`
+		return `(apply ${c} :timeout ${sec})`;
+	}
+	return cmd;
+}
+
+export function isGrindCommand (cmd: string): boolean {
+	return cmd && (cmd.startsWith("(grind") 
+					|| cmd.startsWith("grind"));
+}
+
 export function isSaveCommand (cmd: string): boolean {
 	return cmd && (cmd === "(save)" 
 					|| cmd === "save");

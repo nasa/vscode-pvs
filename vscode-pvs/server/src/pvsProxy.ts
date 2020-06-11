@@ -762,13 +762,16 @@ export class PvsProxy {
 	 * Executes a proof command. The command is always adorned with round parentheses, e.g., (skosimp*)
 	 * @param desc Descriptor of the proof command
 	 */
-	async proofCommand(desc: { cmd: string }): Promise<PvsResponse> {
+	async proofCommand(desc: { cmd: string, timeout: number }): Promise<PvsResponse> {
 		if (desc) {
 			// console.dir(desc, { depth: null });
 			const showHidden: boolean = utils.isShowHiddenCommand(desc.cmd);
+			const isGrind: boolean = utils.isGrindCommand(desc.cmd);
 			// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
 			// the front-end will handle the command, and reveal the hidden sequents.
-			const cmd: string = showHidden ? "(skip)" : desc.cmd; 
+			const cmd: string = showHidden ? "(skip)"
+				: isGrind ? utils.applyTimeout(desc.cmd, desc.timeout)
+					: desc.cmd;
 			const res: PvsResponse =  await this.pvsRequest('proof-command', [ cmd ]);
 			if (showHidden) {
 				if (res.result) {
@@ -776,6 +779,16 @@ export class PvsProxy {
 					if (res.result.commentary && res.result.commentary.length) {
 						res.result.commentary[0] = "No change on: (show-hidden)";
 					} 
+				}
+			}
+			if (isGrind && desc.timeout) {
+				if (res.result && res.result.commentary 
+						&& res.result.commentary.length 
+						&& res.result.commentary[res.result.commentary.length - 1].startsWith("No change on")) {
+					res.result.action = `No change on: ${desc.cmd}\nThe command did not produce a new proof state within a timeout of ${desc.timeout} seconds`;
+					res.result.commentary = [
+						res.result.action
+					];
 				}
 			}
 			return res;
