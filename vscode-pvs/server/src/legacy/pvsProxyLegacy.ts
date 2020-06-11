@@ -73,7 +73,17 @@ export class PvsProxyLegacy {
         }
     }
     async sendCommand (cmd: string): Promise<PvsResponse> {
-        const data: string = await this.pvsProcess.sendText(cmd);
+        let data: string = await this.pvsProcess.sendText(cmd);
+        if (data) {
+            data = data.split("\n").filter(line => { 
+                return !line.startsWith("127.0.0")
+                        && !(line.trim() === "nil")
+                        && line.trim();
+            }).join("\n");
+            if (data && data.startsWith(`"`) && data.endsWith(`"`)) {
+                data = data.substring(1, data.length - 1);
+            }
+        }
         return {
             jsonrpc: "2.0",
             id: "pvs-process-legacy",

@@ -741,6 +741,13 @@ export class PvsProxy {
 		return ans;
 	}
 
+	async findTheory (theoryName: string): Promise<PvsResponse> {
+		const ans: PvsResponse = await this.lisp(`(let ((th (get-theory "${theoryName}")))
+(when th
+(format nil "~a~a.pvs" (context-path th) (filename th))))`);
+		return ans;
+	}
+
 	/**
 	 * @SAM: FIXME: this function should not automatically invoke the typechecker
 	 * @param desc 

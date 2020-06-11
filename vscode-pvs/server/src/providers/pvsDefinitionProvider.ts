@@ -36,7 +36,7 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { PvsDefinition, ProofStatus } from '../common/serverInterface';
+import { PvsDefinition, ProofStatus, TheoryDescriptor } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
 import { Connection, Position, Range, CancellationToken, TextDocuments } from 'vscode-languageserver';
 import { findTheoryName, getWordRange } from '../common/languageUtils';
@@ -142,7 +142,8 @@ export class PvsDefinitionProvider {
 		// else
 		// const fileName: string = fsUtils.getFilename(document.uri);
 		// find-declaration works even if a pvs file does not parse correctly 
-		let ans: PvsResponse = await this.pvsProxy.findDeclaration(symbolName); //await this.pvsProcess.findDeclaration(symbolName);
+		const ans: PvsResponse = await this.pvsProxy.findDeclaration(symbolName); //await this.pvsProcess.findDeclaration(symbolName);
+		const importedTheory: PvsResponse = await this.pvsProxy.findTheory(symbolName);
 
 		// const fileName: string = fsUtils.getFileName(uri);
 		// const fileExtension: string = fsUtils.getFileExtension(uri);
@@ -156,10 +157,10 @@ export class PvsDefinitionProvider {
 		// find-declaration may return more than one result -- the file is not typechecked
 		// we can narrow down the results by traversing the importchain
 		// part of this extra logic can be removed when Sam completes the implementation of find-object
+		const candidates: PvsDefinition[] = [];
 		if (ans && ans.result) {
 			const declarations: FindDeclarationResult = ans.result;
 			if (declarations && typeof declarations === "object" && declarations.length > 0) {
-				const candidates: PvsDefinition[] = [];
 				for (let i = 0; i < declarations.length; i++) {
 					const info: {
 						declname?: string;
@@ -192,7 +193,7 @@ export class PvsDefinitionProvider {
 							});
 							comment += `Formula ${info.declname} (${utils.getIcon(proofStatus)} ${proofStatus})`;
 						}
-						const ans: PvsDefinition = {
+						const def: PvsDefinition = {
 							theory: currentTheory,
 							line: (position) ? position.line : null,
 							character: (position) ? position.character : null,
@@ -208,55 +209,75 @@ export class PvsDefinitionProvider {
 							symbolDoc: null,
 							comment,
 							error: null
-						}
-						candidates.push(ans);
+						};
+						candidates.push(def);
 					}
 				}
-			
-				// // remove VAR from prelude
-				// candidates = candidates.filter(desc => {
-				// 	return !(desc.symbolDeclarationFile == PRELUDE_FILE && 
-				// 				/^\w+\s*:\s*VAR\s+\w+/gi.test(desc.symbolDeclaration)); // VAR declarations from the prelude
-				// });
-				// // remove obsolete prelude theories
-				// candidates = candidates.filter(desc => {
-				// 	return !(desc.symbolDeclarationFile == PRELUDE_FILE && 
-				// 				new RegExp(language.PVS_PRELUDE_OBSOLETE_THEORIES_REGEXP_SOURCE, "g").test(desc.symbolTheory));
-				// });
-				if (candidates.length === 0) {
-					this.printWarning("Warning: Could not find declaration :/");
-					return null;
-				}
-				if (candidates.length === 1) {
-					response = candidates[0];
-					const isBuiltinType: boolean = new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g").test(symbolName);
-					const isTrueFalse: boolean = new RegExp(language.PVS_TRUE_FALSE_REGEXP_SOURCE, "gi").test(symbolName);
-					if (isBuiltinType) {
-						response.comment = `Builtin type ${symbolName}`;
-					} else if (isTrueFalse) {
-						response.comment = `Builtin constant ${symbolName}`;
-					} else if (!response.comment) {
-						response.comment = `User-defined symbol ${symbolName}`
-					}
-					return [ response ];
-				} else {
-					// more than one candidate -- return the definition from the current file as best guess
-					const uriFolder: string = fsUtils.getContextFolder(uri);
-					const uriFileName: string = fsUtils.getFileName(uri);
-					const currentFile: PvsDefinition[] = candidates.filter(elem => {
-						return fsUtils.getContextFolder(elem.symbolDeclarationFile) === uriFolder
-							&& fsUtils.getFileName(elem.symbolDeclarationFile) === uriFileName;
-					});
-					if (currentFile && currentFile.length) {
-						return currentFile.concat(candidates.filter(elem => {
-							elem.file !== uri;
-						}));
-					}
-				}
-				return candidates;
 			}
 		}
-		return null;
+		if (importedTheory && importedTheory.result) {
+			const fname: string = importedTheory.result;
+			let desc: TheoryDescriptor[] = await utils.listTheoriesInFile(fname);
+			desc = desc.filter(tdesc => {
+				return tdesc.theoryName = symbolName;
+			});
+			const start: Position = (desc && desc.length) ? desc[0].position : { line: 0, character: 0 };
+			let decl: string = "";
+			if (desc && desc.length) {
+				decl = await fsUtils.readFile(fname);
+				decl = decl.split("\n").slice(start.line - 1).join("\n");
+			}
+			const def: PvsDefinition = {
+				theory: symbolName,
+				line: null,
+				character: null,
+				file: fname,
+				symbolName: symbolName,
+				symbolTheory: symbolName,
+				symbolDeclaration: decl,
+				symbolDeclarationRange: { 
+					start, 
+					end: start
+				},
+				symbolDeclarationFile: fname,
+				symbolDoc: null,
+				comment: `Imported theory ${symbolName}`,
+				error: null
+			};
+			candidates.push(def);
+		}
+
+		if (candidates.length === 0) {
+			this.printWarning("Warning: Could not find declaration :/");
+			return null;
+		}
+		if (candidates.length === 1) {
+			response = candidates[0];
+			const isBuiltinType: boolean = new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g").test(symbolName);
+			const isTrueFalse: boolean = new RegExp(language.PVS_TRUE_FALSE_REGEXP_SOURCE, "gi").test(symbolName);
+			if (isBuiltinType) {
+				response.comment = `Builtin type ${symbolName}`;
+			} else if (isTrueFalse) {
+				response.comment = `Builtin constant ${symbolName}`;
+			} else if (!response.comment) {
+				response.comment = `User-defined symbol ${symbolName}`
+			}
+			return [ response ];
+		} else {
+			// more than one candidate -- return the definition from the current file as best guess
+			const uriFolder: string = fsUtils.getContextFolder(uri);
+			const uriFileName: string = fsUtils.getFileName(uri);
+			const currentFile: PvsDefinition[] = candidates.filter(elem => {
+				return fsUtils.getContextFolder(elem.symbolDeclarationFile) === uriFolder
+					&& fsUtils.getFileName(elem.symbolDeclarationFile) === uriFileName;
+			});
+			if (currentFile && currentFile.length) {
+				return currentFile.concat(candidates.filter(elem => {
+					elem.file !== uri;
+				}));
+			}
+		}
+		return candidates;
 	}
 
 	/**
