@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.21-iota",
+	"version": "1.0.21",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -70,7 +70,7 @@
 					"pvs.settings.parser.errorTolerant": {
 						"type": "boolean",
 						"default": false,
-						"description": "Enable error tolerant parser"
+						"description": "Enable error tolerant parser. Requires Java JDK v1.8 or greater (https://openjdk.java.net)"
 					},
 					"pvs.settings.prover.watchdog": {
 						"type": "number",
