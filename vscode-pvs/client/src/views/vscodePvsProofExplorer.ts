@@ -203,13 +203,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	fastForwardTo (desc: { selected: ProofItem }): void {
 		if (desc && desc.selected) {
-			if (!this.root.isQED()) {
-				this.stopAt = desc.selected;
-				this.running = true;
-				this.step();
-			} else {
-				console.warn(`[proof-explorer] Warning: trying to fast forward to node ${desc.selected.name} when the proof is already completed`);
-			}
+			this.stopAt = desc.selected;
+			this.running = true;
+			this.step();
 		} else {
 			console.warn(`[proof-explorer] Warning: failed to fast forward (selected node is null)`);
 		}
