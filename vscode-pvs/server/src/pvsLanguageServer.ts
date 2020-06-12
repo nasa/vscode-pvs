@@ -359,6 +359,7 @@ export class PvsLanguageServer {
 			this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc }, args: request });
 		}
 		// start proof
+		console.log("prove-formula", request);
 		const response: PvsResponse = await this.proveFormula(request);
 		if (response) {
 			const channelID: string = utils.desc2id(request);

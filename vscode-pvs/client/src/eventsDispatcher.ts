@@ -430,6 +430,8 @@ export class EventsDispatcher {
 			if (ans === yesno[0]) {
                 this.statusBar.showProgress("Rebooting pvs-server...");	
                 this.client.sendRequest(serverCommand.rebootPvsServer);
+                // terminate any prover session
+                this.vscodePvsTerminal.quitAll(); // async call
             }
         }));
 
