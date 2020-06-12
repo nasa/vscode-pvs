@@ -466,7 +466,7 @@
 				{
 					"command": "proof-explorer.show-sequent",
 					"when": "view == proof-explorer-view && viewItem != root",
-					"group": "inline"
+					"group": "context-menu/ctrl-1"
 				},
 				{
 					"command": "proof-explorer.create-proof-branch",
