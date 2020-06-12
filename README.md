@@ -40,7 +40,7 @@ The main functionalities provided by the environment are as follows:
 
 ## Installation instructions
 1. Download the latest release of VSCode-PVS from the [github repository](releases)
-2. Install VSCode-PVS in Visual Studio Code: Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded `.vsix` file
+2. Install VSCode-PVS in Visual Studio Code: `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
 3. Have fun using the extension!
 
 ## Troubleshooting
@@ -49,7 +49,7 @@ Having troubles with the extension? Check our [FAQs](vscode-pvs/docs/FAQ.md).
 ## Updating VSCode-PVS
 When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
 
-- Extensions tab -> "..." menu -> "Install from VSIX”, and select the downloaded .vsix file
+- `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
 
 All settings and preferences from the previous version of VSCode-PVS will be maintained.
 
