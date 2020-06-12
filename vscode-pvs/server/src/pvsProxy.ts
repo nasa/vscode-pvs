@@ -165,6 +165,21 @@ export class PvsProxy {
 		}
 	}
 
+	setClientPort (p: number): boolean {
+		if (p) {
+			this.clientPort = p;
+			return true;
+		}
+		return false;
+	}
+	setClientAddress (addr: string): boolean {
+		if (addr) {
+			this.clientAddress = addr;
+			return true;
+		}
+		return false;
+	}
+
 	async enableExternalServer (): Promise<void> {
 		console.info("[pvs-proxy] Enabling external server...");
 		await this.killPvsServer();
@@ -1105,6 +1120,8 @@ export class PvsProxy {
 		}
 		if (!this.externalServer) {
 			console.info("[pvs-proxy] Rebooting pvs-server...");
+			const serverPort: number = this.serverPort;
+			const serverAddress: string = this.serverAddress;
 			const success: ProcessCode = await this.createPvsServer({
 				enableNotifications: true,
 				externalServer: this.externalServer,
@@ -1112,6 +1129,16 @@ export class PvsProxy {
 			});
 			if (success !== ProcessCode.SUCCESS) {
 				this.pvsErrorManager.handleStartPvsServerError(success);
+			}
+			if (this.serverPort !== serverPort || this.serverAddress !== serverAddress) {
+				// port has changed, we need to update the client
+				this.client = xmlrpc.createClient({
+					host: this.serverAddress, port: this.serverPort, path: "/RPC2"
+				});
+				if (!this.client) {
+					console.error(`[pvs-proxy] Error: could not create client necessary to connect to pvs-server`);
+					this.pvsErrorManager.handleStartPvsServerError(ProcessCode.COMMFAILURE);
+				}
 			}
 		}
 		await this.legacy.activate(this.pvsServer, {

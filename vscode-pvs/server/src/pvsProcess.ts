@@ -43,7 +43,7 @@ import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import { PvsErrorManager } from './pvsErrorManager';
 
-export enum ProcessCode { PVSNOTFOUND = 0, SUCCESS = -1, ADDRINUSE = -2 };
+export enum ProcessCode { PVSNOTFOUND = 0, SUCCESS = -1, ADDRINUSE = -2, COMMFAILURE = -3 };
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
  */
@@ -264,9 +264,9 @@ export class PvsProcess {
 	 * @returns The ID of the process that was killed. Null if no process was killed.
 	 */
 	async kill (): Promise<boolean> {
-		return new Promise((resolve, reject) => {
+		return new Promise(async (resolve, reject) => {
 			if (this.pvsProcess) {
-				const pvs_shell: string = this.getProcessID();
+				const pid: number = this.getProcessID();
 				// before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
 				// because the destruction of the process is immediate but previous calls to write() may not have drained
 				// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
@@ -282,24 +282,30 @@ export class PvsProcess {
 				});
 				try {
 					if (this.pvsProcess) {
-						const sendQuitCommand = () => {
+						// const sendQuitCommand = () => {
+						// 	// this.pvsProcess.stdin.write("(quit)Y\n");
+						// 	// setTimeout(() => {
+						// 	// 	if (this.pvsProcess) {
+						// 	// 		sendQuitCommand(); // eventually the process will quit
+						// 	// 	}
+						// 	// }, 200);
+						// };
+						// sendQuitCommand();
+						// return;
+						await new Promise((resolve, reject) => {
 							this.pvsProcess.stdin.write("(quit)Y\n");
 							setTimeout(() => {
-								if (this.pvsProcess) {
-									sendQuitCommand(); // eventually the process will quit
-								}
+								resolve();
 							}, 200);
-						};
-						sendQuitCommand();
-						return;
-					}
+						});
+						// this.pvsProcess.kill("SIGTERM");
+					} else {
+						execSync(`kill -9 ${pid}`);
+						// process.kill(pid, "SIGTERM");
+					} 
 				} finally {
-					try {
-						execSync(`kill -9 ${pvs_shell}`);
-					} finally {
-						this.pvsProcess = null;
-						resolve(true);
-					}
+					this.pvsProcess = null;
+					resolve(true);
 				}
 			} else {
 				resolve(true);
@@ -310,9 +316,9 @@ export class PvsProcess {
 	 * Utility function. Returns the ID of the pvs process.
 	 * @returns pvs process ID.
 	 */
-	protected getProcessID (): string {
+	protected getProcessID (): number {
 		if (this.pvsProcess && !isNaN(this.pvsProcess.pid)) {
-			return this.pvsProcess.pid.toString();
+			return this.pvsProcess.pid;
 		}
 		return null;
 	}
