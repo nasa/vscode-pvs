@@ -71,6 +71,9 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
+### 1.0.22 (2020.06.xx)
+- Improved usability
+
 ### 1.0.21 (2020.06.11)
 - Added watchdog to prevent runaway situations with grind
 - Improved hover tooltips
