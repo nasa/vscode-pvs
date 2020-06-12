@@ -1601,7 +1601,7 @@ class ProofItem extends TreeItem {
 		this.name = name;
 		this.branchId = branchId;
 		this.parent = parent;
-		this.tooltip = " "; // this is used to show the proof state before the execution of the proof command when hovering the mouse on the proof command
+		this.tooltip = ""; // the tooltip shows the sequent before the execution of the proof command
 		this.notVisited();
 	}
 	clone (parent?: ProofItem): ProofItem {

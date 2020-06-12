@@ -279,16 +279,26 @@ export class VSCodePvsTerminal {
             }
         }
     }
-    activate (context: vscode.ExtensionContext) {
+    activate (context: vscode.ExtensionContext): void {
         this.context = context;
     }
-    deactivate () {
+    deactivate (): void {
         const keys: string[] = Object.keys(this.openTerminals);
         if (keys.length > 0) {
             // close all prover sessions first -- the current version of pvs-server supports one prover session at a time
             for (let i = 0; i < keys.length; i++) {
                 const openTerminal: TerminalSession = this.openTerminals[keys[i]];
                 openTerminal.deactivate();
+            }
+        }
+    }
+    async quitAll (): Promise<void> {
+        const keys: string[] = Object.keys(this.openTerminals);
+        if (keys.length > 0) {
+            // close all prover sessions first -- the current version of pvs-server supports one prover session at a time
+            for (let i = 0; i < keys.length; i++) {
+                const openTerminal: TerminalSession = this.openTerminals[keys[i]];
+                await openTerminal.quitCommand();
             }
         }
     }

@@ -539,7 +539,7 @@ if (process.argv.length > 2) {
 	readline.clearScreenDown(process.stdout);
 	const pvsCli: PvsCli = new PvsCli(args);
 	pvsCli.subscribe(args.channelID).then(async (success: boolean) => {
-		console.log(args);
+		// console.log(args);
 		if (success) {
 			switch (args.type) {
 				case cliSessionType.proveFormula: {
