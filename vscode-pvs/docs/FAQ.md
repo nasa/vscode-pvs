@@ -25,8 +25,8 @@ Yes, you can use the following basic set PVS hot-keys combinations in VSCode-PVS
 - M-x pr *(start an interactive Prover session for the formula at the cursor location)*
 - M-x pvsio *(start an interactive PVSio evaluator session for the theory at the cursor location)*
 
-## Is the Emacs plugin for Visual Studio Code compatible with VSCode-PVS?
-The Emacs plugin is compatible with VSCode-PVS, **but** the PVS hot-keys won't work because the Emacs plugin captures the initial sequence M-x. We are working on a solution to this problem. Please stay tuned for updates.
+## VSCode-PVS just reported an error "pvs-server crashed", is there an easy way to restart the server without closing Visual Studio Code?
+Yes, just press the "Restart pvs-server" button located on the status bar.
 
 ## VSCode-PVS became not responsive, or is taking forever to complete typechecking, what can I do?
 These situations may occur when the reasoning engine has crashed. You can try to restart the reasoning engine with the **Reboot pvs-server** button located in the status bar. If the problem persists, please try restarting Visual Studio Code.
@@ -53,5 +53,9 @@ No, that's a bad idea. The recommended way to proceed is to create a subfolder i
 ## The terminal reports an error "node does not exist", what does it mean?
 The error indicates that one of the required software packages is not installed on your system --- you need to install [NodeJS](https://nodejs.org/en/download).
 
-## How do I change the current workspace?
-The easiest way is to open a new Visual Studio Code window (File -> New Window). Alternatively, you can add a folder to the current workspace: right-click with the mouse in Explorer, and choose 'Add Folder to Workspace...'
+## How do I open folders if they are not shown in Visual Studio Code Explorer?
+The easiest way is to open a new Visual Studio Code window (File -> New Window) and then press 'Open Folder' from the Explorer. Alternatively, you can add a folder to Explorer (File -> Add Folder to Workspace...).
+
+## Is the Emacs plugin for Visual Studio Code compatible with VSCode-PVS?
+The Emacs plugin is compatible with VSCode-PVS, **but** the PVS hot-keys won't work because the Emacs plugin captures the initial sequence M-x. We are working on a solution to this problem. Please stay tuned for updates.
+
