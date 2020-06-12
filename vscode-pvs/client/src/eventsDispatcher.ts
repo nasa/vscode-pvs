@@ -513,6 +513,13 @@ export class EventsDispatcher {
 
         // vscode-pvs.prove-formula
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula", async (resource) => {
+            if (window.activeTextEditor && window.activeTextEditor.document) {
+                // if the file is currently open in the editor, save file first
+                await window.activeTextEditor.document.save();
+                if (!resource) {
+                    resource = { path: window.activeTextEditor.document.fileName };
+                }
+            }
             if (resource) {
                 let desc = <{ 
                     fileName: string, fileExtension: string, contextFolder: string, 
