@@ -404,7 +404,7 @@
 				},
 				{
 					"command": "vscode-pvs.new-pvs-file",
-					"when": "explorerResourceIsFolder && pvs-server-active == true"
+					"when": "explorerResourceIsFolder"
 				}
 			],
 			"view/item/context": [
