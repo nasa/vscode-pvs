@@ -39,7 +39,7 @@
 import { LanguageClient } from "vscode-languageclient";
 import { VSCodePvsStatusBar } from "./views/vscodePvsStatusBar";
 import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindingsProvider";
-import { VSCodePvsWorkspaceExplorer } from "./views/vscodePvsWorkspaceExplorer";
+import { VSCodePvsWorkspaceExplorer, TheoryItem, FormulaItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
 import { PvsContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor } from "./common/serverInterface";
@@ -306,7 +306,7 @@ export class EventsDispatcher {
                     this.proofMate.setProofDescriptor(desc.args);
                     this.proofMate.updateRecommendations(desc.response.result);
                     // save initial proof state in proof explorer
-                    this.proofExplorer.setInitialProofState(desc.response.result);
+                    this.proofExplorer.loadInitialProofState(desc.response.result);
                 }
                 // start proof
                 this.proofExplorer.startProof();
@@ -318,12 +318,12 @@ export class EventsDispatcher {
 		this.client.onRequest(serverEvent.dischargeTheoremsResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             // do nothing for now
         });
-        this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
+        this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, autorun?: boolean }, proofFile: string }) => {
             if (desc) {
                 console.log(desc);
                 if (desc.response && desc.response.result) {
                     console.dir(desc.response.result);
-                    this.proofExplorer.setProofDescriptor(desc.args);
+                    this.proofExplorer.loadFormulaDescriptor(desc.args);
                     this.proofExplorer.loadProofDescriptor(desc.response.result);
                 } else {
                     console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error`, desc);
@@ -529,6 +529,13 @@ export class EventsDispatcher {
                 }> this.resource2desc(resource);
                 if (desc) {
                     if (desc.theoryName) {
+                        // the sequence of events triggered by this command is:
+                        // 1. vscodePvsTerminal.startProverSession(desc) 
+                        // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
+                        // 3. pvsLanguageServer.proveFormulaRequest(desc)
+                        //      3.1 typecheck
+                        //      3.2 loadProofDescriptor
+                        //      3.3 proveFormula
                         await this.vscodePvsTerminal.startProverSession(desc);
                     } else {
                         console.error("[vscode-events-dispatcher] Error: theory name is null", desc);
@@ -537,7 +544,29 @@ export class EventsDispatcher {
                     console.error("[vscode-events-dispatcher] Error: unknown vscode-pvs.prove-formula resource", resource);
                 }
             } else {
-                console.error("[vscode-events-dispatcher] Error: prove-formula invoked with null resource", resource);
+                console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-formula invoked with null resource", resource);
+            }
+        }));
+
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-formula", async (resource) => {
+            resource["autorun"] = true;
+            commands.executeCommand("vscode-pvs.prove-formula", resource);
+        }));
+
+        // vscode-pvs.autorun-theory
+        // the sequence of events triggered by this command is:
+        // 1. vscodePvsTerminal.startProverSession(desc) 
+        // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
+        // 3. pvsLanguageServer.proveFormulaRequest(desc)
+        //      3.1 typecheck
+        //      3.2 loadProofDescriptor
+        //      3.3 proveFormula
+        // <loop over all theorems>
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory", async (resource: TheoryItem) => {
+            if (resource) {
+                this.workspaceExplorer.autorun(resource);
+            } else {
+                console.error("[vscode-events-dispatcher] Error: vscode-pvs.autorun-theory invoked with null resource", resource);
             }
         }));
 

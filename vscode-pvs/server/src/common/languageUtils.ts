@@ -1110,6 +1110,10 @@ export function isProved (proofStatus: ProofStatus): boolean {
 	}
 }
 
+export function isUnchecked (proofStatus: ProofStatus): boolean {
+	return proofStatus === "unchecked";
+}
+
 export function makeEmptyTheory (theoryName: string): string {
 	return `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % @theory: ${theoryName}

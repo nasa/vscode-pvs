@@ -79,7 +79,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Descriptor with information on the active proof
 	 **/
-	protected desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string };
+	protected formulaDescriptor: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string, autorun?: boolean };
+	protected autorunCallback: () => void;
 
 	/**
 	 * Name of the view associated with the data provider
@@ -120,6 +121,22 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// Register tree view; use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
+	}
+
+	/**
+	 * Automatic re-run of a proof
+	 * @param desc Descriptor of the formula whose proof is to be re-run
+	 */
+	async autorun (desc: { 
+		fileName: string, fileExtension: string, contextFolder: string, 
+		theoryName: string, formulaName: string 
+	}): Promise<void> {
+		return new Promise((resolve, reject) => {
+			this.autorunCallback = () => {
+				resolve();
+			};
+			commands.executeCommand("vscode-pvs.autorun-formula", desc);
+		});
 	}
 
 	/**
@@ -243,11 +260,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					} else {
 						this.pendingExecution = true;
 						commands.executeCommand("vscode-pvs.send-proof-command", {
-							fileName: this.desc.fileName,
-							fileExtension: this.desc.fileExtension,
-							theoryName: this.desc.theoryName,
-							formulaName: this.desc.formulaName,
-							contextFolder: this.desc.contextFolder,
+							fileName: this.formulaDescriptor.fileName,
+							fileExtension: this.formulaDescriptor.fileExtension,
+							theoryName: this.formulaDescriptor.theoryName,
+							formulaName: this.formulaDescriptor.formulaName,
+							contextFolder: this.formulaDescriptor.contextFolder,
 							cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
 						});
 					}
@@ -258,6 +275,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 			case "ghost": {
 				this.running = false;
+				if (this.formulaDescriptor.autorun) {
+					// automatically quit the proof attempt
+					this.quitProof({ confirm: false }); // async call
+				}
 				break;
 			}
 			case "root":
@@ -267,11 +288,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					if (this.activeNode.contextValue === "proof-branch") {
 						this.pendingExecution = true;
 						commands.executeCommand("vscode-pvs.send-proof-command", {
-							fileName: this.desc.fileName,
-							fileExtension: this.desc.fileExtension,
-							theoryName: this.desc.theoryName,
-							formulaName: this.desc.formulaName,
-							contextFolder: this.desc.contextFolder,
+							fileName: this.formulaDescriptor.fileName,
+							fileExtension: this.formulaDescriptor.fileExtension,
+							theoryName: this.formulaDescriptor.theoryName,
+							formulaName: this.formulaDescriptor.formulaName,
+							contextFolder: this.formulaDescriptor.contextFolder,
 							cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
 						});
 					}
@@ -342,19 +363,25 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				if (utils.isInvalidCommand(proofState)) {
 					window.showWarningMessage(proofState.commentary[0]);
 				}
+				if (this.formulaDescriptor.autorun) {
+					this.quitProof({ confirm: false });
+				}
 				return;
 			}
 			// if command was show-hidden, then pvsCli will reveal hidden sequents when the proof state comes back; 
 			// the proof script remains unchanged.
 			if (utils.isShowHiddenCommand(cmd)) {
 				this.running = false;
+				if (this.formulaDescriptor.autorun) {
+					this.quitProof({ confirm: false });
+				}
 				return;
 			}
 			// if command produced no change, provide feedback to the user, stop any running proof
 			// move the indicator forward (keep same proof branch) if the command was in the proof tree 
-			if (utils.noChange(proofState)) {
+			if (utils.noChange(proofState) && !this.formulaDescriptor.autorun) {
 				this.running = false;
-				window.showWarningMessage(proofState.commentary.join("\n"));
+				window.showWarningMessage(proofState.commentary.join("\n"));	
 				if (utils.isSameCommand(activeNode.name, cmd) && !this.ghostNode.isActive()) {
 					this.moveIndicatorForward({ keepSameBranch: true, proofState });
 					// mark the tree rooted at the previous active node as not visited
@@ -401,6 +428,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if command is postpone, move to the new branch
 			if (utils.isPostponeCommand(cmd)) {
 				this.running = false;
+				if (this.formulaDescriptor.autorun) {
+					this.quitProof({ confirm: false });
+					return;
+				}
 				if (this.branchHasChanged(newBranch, previousBranch)) {
 					this.ghostNode.notActive();
 					const targetBranch: ProofBranch = this.findProofBranch(newBranch);
@@ -431,6 +462,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
 			if (utils.isSameCommand(activeNode.name, cmd) === false || this.ghostNode.isActive()) {
 				this.running = false;
+				if (this.formulaDescriptor.autorun) {
+					this.quitProof({ confirm: false });
+					return;
+				}
 				// concatenate new command
 				const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, TreeItemCollapsibleState.None);
 				// append before selected node (the active not has not been executed yet)
@@ -463,7 +498,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 			if (nSubGoals) {
 				const targetBranch: ProofItem = this.findProofBranch(newBranch);
-				if (this.running) {
+				if (this.running && !this.formulaDescriptor.autorun) {
 					// double check that the new branch is a sub-branch of the old one -- pvs may have proved all sub-branches silently
 					if (this.branchHasChanged(newBranch, previousBranch) === false || !targetBranch) {
 						// stop execution, there's a mismatch between the proof tree and the sub goals generated by the proof command
@@ -474,7 +509,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 								this.appendBranch({ selected: activeNode }, { firstBranch: newBranch, proofState });
 							}
 						}
-						window.showWarningMessage(`Warning: Proof script might be broken (PVS generated ${nSubGoals} sub goals, but proof script contains ${this.activeNode.children.length} sub goals). Stopping execution of proof script.`);
+						if (utils.isProved(this.root.proofStatus) || utils.isUnchecked(this.root.proofStatus)) {
+							window.showWarningMessage(`Warning: Proof script might be broken (PVS generated ${nSubGoals} sub goals, but proof script contains ${this.activeNode.children.length} sub goals). Stopping execution of proof script.`);
+						}
 					} else {
 						if (showMsg) {
 							window.showInformationMessage(`Proof command ${cmd} generated ${proofState["num-subgoals"]} sub-goals, but PVS has automatically discharged them`);
@@ -526,8 +563,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (this.running) {
 				// unless we have reached the end of the proof
 				if (this.ghostNode.isActive()) {
-					//  and so we need to stop the execution
+					// and so we need to stop the execution
 					this.running = false;
+					if (this.formulaDescriptor.autorun) {
+						this.quitProof({ confirm: false });
+					}
 				} else {
 					this.step();
 				}
@@ -1044,22 +1084,22 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 		// send QED to the terminal
 		commands.executeCommand("vscode-pvs.send-proof-command", {
-			fileName: this.desc.fileName,
-			fileExtension: this.desc.fileExtension,
-			theoryName: this.desc.theoryName,
-			formulaName: this.desc.formulaName,
-			contextFolder: this.desc.contextFolder,
+			fileName: this.formulaDescriptor.fileName,
+			fileExtension: this.formulaDescriptor.fileExtension,
+			theoryName: this.formulaDescriptor.theoryName,
+			formulaName: this.formulaDescriptor.formulaName,
+			contextFolder: this.formulaDescriptor.contextFolder,
 			cmd: "Q.E.D."
 		});
 
-		// // re-generate tccs
-		// commands.executeCommand("vscode-pvs.generate-tccs", {
-		// 	fileName: this.desc.fileName,
-		// 	fileExtension: this.desc.fileExtension,
-		// 	theoryName: this.desc.theoryName,
-		// 	formulaName: this.desc.formulaName,
-		// 	contextFolder: this.desc.contextFolder
-		// });
+		// run the other proofs if desc.autorun === true
+		if (this.formulaDescriptor.autorun) {
+			// commands.executeCommand("vscode-pvs.autorun-formula-end", this.desc);
+			// we need a timeout otherwise proof explorer is unable to refresh the view because update events get delayed in the event queue 
+			setTimeout(() => {
+				this.autorunCallback();
+			}, 400);
+		}
 	}
 
 
@@ -1067,15 +1107,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Utility function, used to identify which formula is being proved in the proof tree session
 	 * @param desc 
 	 */
-	setProofDescriptor (desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }): void {
-		this.desc = desc;
+	loadFormulaDescriptor (desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, autorun?: boolean }): void {
+		this.formulaDescriptor = desc;
 	}
 
 	/**
 	 * Utility function, used to set the initial proof state.
 	 * @param proofState 
 	 */
-	setInitialProofState (proofState: ProofState): void {
+	loadInitialProofState (proofState: ProofState): void {
 		this.initialProofState = proofState;
 	}
 
@@ -1109,6 +1149,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				// propagate tooltip
 				this.activeNode.proofState = this.root.proofState;
 				this.activeNode.tooltip = this.root.tooltip;	
+			}
+
+			if (this.formulaDescriptor.autorun) {
+				this.run();
 			}
 		} else {
 			console.warn(`[proof-explorer] Warning: unable to activate selected proof (root node is null)`);
@@ -1203,7 +1247,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 		// register handler for terminal closed events
 		const handler: vscode.Disposable = window.onDidCloseTerminal((e: Terminal) => {
-			if (e && e.name === `${this.desc.theoryName}.${this.desc.formulaName}`) {
+			if (e && e.name === `${this.formulaDescriptor.theoryName}.${this.formulaDescriptor.formulaName}`) {
 				// don't save the proof if the user types quit in the command prompt
 				// @TODO: add a command to save the proof from the command prompt
 				
@@ -1236,8 +1280,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		const proofLite: string[] = utils.proofTree2ProofLite(proofTree);
 		const proofDescriptor: ProofDescriptor = {
 			info: {
-				theory: this.desc.theoryName,
-				formula: this.desc.formulaName,
+				theory: this.formulaDescriptor.theoryName,
+				formula: this.formulaDescriptor.formulaName,
 				status: this.root.proofStatus,
 				prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "7.x",
 				shasum: this.shasum
@@ -1387,11 +1431,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				this.proofDescriptor = this.getProofDescriptor();
 				// save proof descriptor to file
 				this.client.sendRequest(serverCommand.saveProof, { 
-					fileName: this.desc.fileName,
-					fileExtension: this.desc.fileExtension,
-					contextFolder: this.desc.contextFolder,
-					theoryName: this.desc.theoryName,
-					formulaName: this.desc.formulaName,
+					fileName: this.formulaDescriptor.fileName,
+					fileExtension: this.formulaDescriptor.fileExtension,
+					contextFolder: this.formulaDescriptor.contextFolder,
+					theoryName: this.formulaDescriptor.theoryName,
+					formulaName: this.formulaDescriptor.formulaName,
 					proofDescriptor: this.proofDescriptor
 				});
 			}
@@ -1401,27 +1445,41 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Quit the current proof
 	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
 	 */
-	async quitProof (opt?: { confirm?: boolean }): Promise<boolean> {
-		return new Promise(async (resolve, reject) => {
-			opt = opt || {};
-			opt.confirm = (opt.confirm === undefined || opt.confirm === null) ? true : opt.confirm;
-			// ask the user if the proof is to be saved
-			const yesno: string[] = [ "Yes", "No" ];
-			const msg: string = `Quit proof session?`;
-			const ans: string = (opt.confirm) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
-									: yesno[0];
-			if (ans === yesno[0]) {
-				// send quit to the terminal
-				commands.executeCommand("vscode-pvs.send-proof-command", {
-					fileName: this.desc.fileName,
-					fileExtension: this.desc.fileExtension,
-					theoryName: this.desc.theoryName,
-					formulaName: this.desc.formulaName,
-					contextFolder: this.desc.contextFolder,
-					cmd: "quit"
-				});
-			}
-		});
+	async quitProof (opt?: { confirm?: boolean }): Promise<void> {
+		this.running = false;
+		const auto: boolean = this.formulaDescriptor.autorun;
+		opt = opt || {};
+		opt.confirm = (opt.confirm === undefined || opt.confirm === null) ? true : opt.confirm;
+		// ask the user if the proof is to be saved
+		const yesno: string[] = [ "Yes", "No" ];
+		const msg: string = `Quit proof session?`;
+		const ans: string = (opt.confirm) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+								: yesno[0];
+		if (ans === yesno[0]) {
+			// send quit to the terminal
+			commands.executeCommand("vscode-pvs.send-proof-command", {
+				fileName: this.formulaDescriptor.fileName,
+				fileExtension: this.formulaDescriptor.fileExtension,
+				theoryName: this.formulaDescriptor.theoryName,
+				formulaName: this.formulaDescriptor.formulaName,
+				contextFolder: this.formulaDescriptor.contextFolder,
+				cmd: "quit"
+			});
+			// delete data structures
+			this.root = null;
+			this.ghostNode = null;
+			this.activeNode = null;
+			this.formulaDescriptor = null;
+		}
+
+		// run the other proofs if desc.autorun === true
+		if (auto) {
+			// we need to use a small delay to give pvs-server the time to quit
+			setTimeout(() => {
+				// commands.executeCommand("vscode-pvs.autorun-formula-end", this.desc);
+				this.autorunCallback();
+			}, 1000);
+		}
 	}
 	/**
 	 * Activation function, installs all proof-explorer command handlers.
@@ -1951,8 +2009,9 @@ class RootNode extends ProofItem {
 	initialProofStatus: ProofStatus; // this is set at the beginning (and at the end of the proof attempt if the proof succeeds)
 	constructor (desc: { name: string, proofStatus?: ProofStatus }) {
 		super("root", desc.name, "", null, TreeItemCollapsibleState.Expanded);
-		this.parent = this; // the parent of the root is the root itself	
-		this.initialProofStatus = desc.proofStatus || "untried";
+		this.parent = this; // the parent of the root is the root itself
+		this.proofStatus = desc.proofStatus || "untried"
+		this.initialProofStatus = this.proofStatus;
 		this.notVisited();
 		this.command = {
 			title: this.contextValue,
@@ -2010,7 +2069,8 @@ class RootNode extends ProofItem {
 		this.updateLabel();
 	}
 	protected updateLabel (): void {
-		this.label = `${this.icon}${this.name} (${this.proofStatus})`;
+		const proofStatus: ProofStatus = this.proofStatus || "untried";
+		this.label = `${this.icon}${this.name} (${proofStatus})`;
 		// if (this.initialProofStatus === this.proofStatus) {
 		// 	this.label = `${this.icon}${this.name} (${this.proofStatus})`;
 		// } else {

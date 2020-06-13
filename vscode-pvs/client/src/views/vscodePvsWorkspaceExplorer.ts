@@ -37,12 +37,13 @@
  **/
 import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
-			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextDocument, TextEditor, FileStat } from 'vscode';
+			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
+import { VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
 
 //-- files
 class PvsFileItem extends TreeItem {
@@ -93,7 +94,7 @@ class PvsFileItem extends TreeItem {
 	}
 }
 //-- theories
-class TheoryItem extends TreeItem {
+export class TheoryItem extends TreeItem {
 	contextValue: string = "theory";
 	theoryName: string;
 	command: Command;
@@ -151,6 +152,9 @@ class TheoryItem extends TreeItem {
 	}
 	getTheoremsOverview (): TheoremsOverviewItem {
 		return this.theoremsOverview;
+	}
+	getTheorems (): FormulaItem[] {
+		return (this.theoremsOverview) ? this.theoremsOverview.getChildren() : [];
 	}
 	getTccsOverview (): TheoremsOverviewItem {
 		return this.tccsOverview;
@@ -289,6 +293,7 @@ export class FormulaItem extends TreeItem {
 	}
 	getPosition(): Position { return this.position; }
 	getFileName(): string { return this.fileName; }
+	getFileExtension(): string { return this.fileExtension; }
 	getTheoryName(): string { return this.theoryName; }
 	getFormulaName(): string { return this.formulaName; }
 	getContextFolder(): string { return this.contextFolder; }
@@ -554,8 +559,6 @@ export class WorkspaceOverviewItem extends OverviewItem {
  * Data provider for PVS Explorer view
  */
 export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
-	// protected pvsLibrariesPath: string = null;
-
 	/**
 	 * Events for updating the tree structure
 	 */
@@ -566,6 +569,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	 * Language client for communicating with the server
 	 */
 	protected client: LanguageClient;
+	protected proofExplorer: VSCodePvsProofExplorer;
 
 	/**
 	 * Name of the view associated with the data provider
@@ -654,9 +658,10 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	 * @param client Language client 
 	 * @param providerView VSCode view served by the data provider
 	 */
-	constructor(client: LanguageClient, providerView: string) {
+	constructor(client: LanguageClient, proofExplorer: VSCodePvsProofExplorer, providerView: string) {
 		this.client = client;
 		this.providerView = providerView;
+		this.proofExplorer = proofExplorer;
 		// register tree view.
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
@@ -720,6 +725,25 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	// 	}
 	// 	return null;
 	// }
+
+	// event dispatcher invokes this function with the command vscode-pvs.autorun-theory
+	async autorun (theory: TheoryItem): Promise<void> {
+		if (theory) {
+			const theorems: FormulaItem[] = theory.getTheorems();
+			if (theorems && theorems.length) {
+				for (let i = 0; i < theorems.length; i ++) {
+					const next: FormulaItem = theorems[i];
+					await this.proofExplorer.autorun({
+						contextFolder: next.getContextFolder(),
+						fileName: next.getFileName(),
+						fileExtension: next.getFileExtension(),
+						theoryName: next.getTheoryName(),
+						formulaName: next.getFormulaName()
+					});
+				}
+			}
+		}
+	}
 
 	/**
 	 * Handler activation function

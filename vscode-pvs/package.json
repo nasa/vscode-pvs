@@ -172,6 +172,11 @@
 				"enablement": "pvs-server-active == true"
 			},
 			{
+				"command": "vscode-pvs.autorun-theory",
+				"title": "Re-run all proofs",
+				"enablement": "pvs-server-active == true"
+			},
+			{
 				"command": "vscode-pvs.generate-tccs",
 				"title": "Generate TCCs",
 				"enablement": "pvs-server-active == true"
@@ -427,6 +432,11 @@
 					"command": "vscode-pvs.typecheck",
 					"when": "view == workspace-explorer-view && viewItem == theory",
 					"group": "inline"
+				},
+				{
+					"command": "vscode-pvs.autorun-theory",
+					"when": "view == workspace-explorer-view && viewItem == theory",
+					"group": "context-menu/ctrl-1"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs-alt",

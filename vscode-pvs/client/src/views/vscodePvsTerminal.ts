@@ -163,7 +163,7 @@ class TerminalSession {
                                 if (data.channelID !== this.channelID) {
                                     console.error(`[vscode-pvs-terminal] Error: received message on channel ${data.channelID} (was expecting on channel ${this.channelID})`);
                                 }
-                                this.disposeTerminal();
+                                this.close();
                                 break;
                             }
 							default: {
@@ -192,7 +192,7 @@ class TerminalSession {
     protected sendText(cmd: string): void {
         this.terminal.sendText(cmd);
     }
-    disposeTerminal (): void {
+    close (): void {
         // hide all other terminals?
         // if (vscode.window.terminals && vscode.window.terminals.length) {
         //     for (let i = 0; i < vscode.window.terminals.length; i++) {
@@ -308,7 +308,14 @@ export class VSCodePvsTerminal {
     protected error(msg: string) {
         vscode.window.showErrorMessage(msg);
     }
-    async startProverSession (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }) {
+    async startProverSession (desc: { 
+        fileName: string, 
+        fileExtension: string, 
+        contextFolder: string, 
+        theoryName: string, 
+        formulaName: string,
+        autorun?: boolean // this flag is used to trigger automatic run of the theorem
+    }) {
         if (desc) {
             // !important: create a new command line interface first, so it can subscribe to events published by the server
             const channelID: string = language.desc2id(desc);
@@ -320,7 +327,7 @@ export class VSCodePvsTerminal {
                 for (let i = 0; i < keys.length; i++) {
                     const openTerminal: TerminalSession = this.openTerminals[keys[i]];
                     await openTerminal.quitCommand();
-                    openTerminal.disposeTerminal();
+                    openTerminal.close();
                 }
             }
             const pvsTerminal: TerminalSession = new TerminalSession({ client: this.client, channelID, pvsPath });

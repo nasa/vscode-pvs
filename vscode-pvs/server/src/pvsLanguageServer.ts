@@ -327,7 +327,7 @@ export class PvsLanguageServer {
 		}
 		return null;
 	}
-	async proveFormulaRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<void> {
+	async proveFormulaRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, autorun?: boolean }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		
 		// parse workspace files before starting the proof attempt if you want stats to be updated on the status bar 
@@ -1834,7 +1834,7 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.listContext, async (request: { contextFolder: string }) => {
 				this.listContextFilesRequest(request); // async call
 			});
-			this.connection.onRequest(serverCommand.proveFormula, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
+			this.connection.onRequest(serverCommand.proveFormula, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, autorun?: boolean }) => {
 				await this.proveFormulaRequest(args);
 			});
 			this.connection.onRequest(serverCommand.dischargeTccs, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
