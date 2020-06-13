@@ -282,26 +282,16 @@ export class PvsProcess {
 				});
 				try {
 					if (this.pvsProcess) {
-						// const sendQuitCommand = () => {
-						// 	// this.pvsProcess.stdin.write("(quit)Y\n");
-						// 	// setTimeout(() => {
-						// 	// 	if (this.pvsProcess) {
-						// 	// 		sendQuitCommand(); // eventually the process will quit
-						// 	// 	}
-						// 	// }, 200);
-						// };
-						// sendQuitCommand();
-						// return;
+						// try to exit the process gracefully
 						await new Promise((resolve, reject) => {
 							this.pvsProcess.stdin.write("(quit)Y\n");
 							setTimeout(() => {
 								resolve();
-							}, 200);
+							}, 400);
 						});
-						// this.pvsProcess.kill("SIGTERM");
 					} else {
-						execSync(`kill -9 ${pid}`);
-						// process.kill(pid, "SIGTERM");
+						// execSync(`kill -9 ${pid}`);
+						process.kill(pid, "SIGTERM");
 					} 
 				} finally {
 					this.pvsProcess = null;
