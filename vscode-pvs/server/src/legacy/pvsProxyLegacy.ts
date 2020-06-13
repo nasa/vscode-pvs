@@ -72,7 +72,7 @@ export class PvsProxyLegacy {
             await this.pvsProcess.activate({ externalServer: true });
         }
     }
-    async sendCommand (cmd: string): Promise<PvsResponse> {
+    async lisp (cmd: string): Promise<PvsResponse> {
         let data: string = await this.pvsProcess.sendText(cmd);
         if (data) {
             data = data.split("\n").filter(line => { 
@@ -91,7 +91,7 @@ export class PvsProxyLegacy {
         };
     }
     async changeContext (ctx: string): Promise<PvsResponse> {
-        const response: PvsResponse = await this.sendCommand(`(change-workspace "${ctx}")`);
+        const response: PvsResponse = await this.lisp(`(change-workspace "${ctx}")`);
         if (response.result) {
             const matchFolder: RegExpMatchArray = /\"(.+)\"/g.exec(response.result);
             if (matchFolder && matchFolder.length > 1) {
@@ -114,7 +114,7 @@ export class PvsProxyLegacy {
         };
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
             const fullName: string = path.join(fname + "#" + theoryName)
-            const response: PvsResponse = await this.sendCommand(`(show-tccs "${fullName}")`);
+            const response: PvsResponse = await this.lisp(`(show-tccs "${fullName}")`);
             const result: ShowTCCsResult = [];
             if (response && response.result) { 
                 const ans: string = response.result;    
@@ -255,7 +255,7 @@ export class PvsProxyLegacy {
         return pvsResponse;
     }
     async findDeclaration (symbolName: string): Promise<PvsResponse> {
-        const data: PvsResponse = await this.sendCommand(`(find-declaration "${symbolName}")`);
+        const data: PvsResponse = await this.lisp(`(find-declaration "${symbolName}")`);
         // example result: `((("declname" . "posnat") ("type" . "type") ("theoryid" . "integers")  ("filename"   . "/Users/pmasci/Work/pvs-snapshots/pvs-7.0.1212/lib/prelude.pvs")  ("place" 2194 2 2194 32)  ("decl-ppstring" . "posnat: TYPE+ = posint")))[Current process: Initial Lisp Listener][1]`
         let result: FindDeclarationResult = [];
         try {
@@ -322,7 +322,7 @@ export class PvsProxyLegacy {
                 if (formulaDesc && formulaDesc.length === 1 && formulaDesc[0].position) {
                     const line: number = formulaDesc[0].position.line;
                     const cmd: string = `(edit-proof-at "${fname}" nil ${line} "pvs" "${desc.fileName}${desc.fileExtension}" 0 nil)`;
-                    const data: PvsResponse = await this.sendCommand(cmd);
+                    const data: PvsResponse = await this.lisp(cmd);
                     if (data && data.result) {
                         const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
                         if (matchProof && matchProof.length > 1) {

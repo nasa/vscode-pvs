@@ -684,7 +684,8 @@ export class PvsProxy {
 	 * Returns the current context
 	 */
 	async currentContext (): Promise<PvsResponse> {
-		const res: PvsResponse = await this.lisp('(pvs-current-directory)');
+		// const res: PvsResponse = await this.lisp('(pvs-current-directory)');
+		const res: PvsResponse = await this.legacy.lisp('(pvs-current-directory)');
 		if (res && res.result && typeof res.result === "string") {
 			res.result = res.result.replace(/"/g, ""); // pvs returns the folder name adorned with double quotes
 		}
@@ -696,9 +697,10 @@ export class PvsProxy {
 	 * @param cmd 
 	 */
 	async lisp(cmd: string): Promise<PvsResponse> {
-		if (this.useLegacy) {
-			return await this.legacy.sendCommand(cmd);
-		}
+		// don't use legacy apis here --- this command might be used during a prover session, and pvs process is unable to process requests during prover sessions
+		// if (this.useLegacy) {
+		// 	return await this.legacy.sendCommand(cmd);
+		// }
 		// else
 		return await this.pvsRequest('lisp', [ cmd ]);
 	}
@@ -880,7 +882,8 @@ export class PvsProxy {
 	 * Returns pvs version information
 	 */
 	async getPvsVersionInfo(): Promise<{ "pvs-version": string, "lisp-version": string }> {
-		const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
+		// const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
+		const res: PvsResponse = await this.legacy.lisp(`(get-pvs-version-information)`);
 		if (res && res.result) {
 			const regexp: RegExp = /\(\"?(\d+(?:.?\d+)*)\"?[\s|nil]*\"?([\w\s\d\.]*)\"?/g; // group 1 is pvs version, group 2 is lisp version
 			const info: RegExpMatchArray = regexp.exec(res.result);

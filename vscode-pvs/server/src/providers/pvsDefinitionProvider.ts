@@ -143,7 +143,6 @@ export class PvsDefinitionProvider {
 		// const fileName: string = fsUtils.getFilename(document.uri);
 		// find-declaration works even if a pvs file does not parse correctly 
 		const ans: PvsResponse = await this.pvsProxy.findDeclaration(symbolName); //await this.pvsProcess.findDeclaration(symbolName);
-		const importedTheory: PvsResponse = await this.pvsProxy.findTheory(symbolName);
 
 		// const fileName: string = fsUtils.getFileName(uri);
 		// const fileExtension: string = fsUtils.getFileExtension(uri);
@@ -214,37 +213,39 @@ export class PvsDefinitionProvider {
 					}
 				}
 			}
-		}
-		if (importedTheory && importedTheory.result) {
-			const fname: string = importedTheory.result;
-			let desc: TheoryDescriptor[] = await utils.listTheoriesInFile(fname);
-			desc = desc.filter(tdesc => {
-				return tdesc.theoryName = symbolName;
-			});
-			const start: Position = (desc && desc.length) ? desc[0].position : { line: 0, character: 0 };
-			let decl: string = "";
-			if (desc && desc.length) {
-				decl = await fsUtils.readFile(fname);
-				decl = decl.split("\n").slice(start.line - 1).join("\n");
+		} else {
+			const importedTheory: PvsResponse = await this.pvsProxy.findTheory(symbolName);
+			if (importedTheory && importedTheory.result) {
+				const fname: string = importedTheory.result;
+				let desc: TheoryDescriptor[] = await utils.listTheoriesInFile(fname);
+				desc = desc.filter(tdesc => {
+					return tdesc.theoryName = symbolName;
+				});
+				const start: Position = (desc && desc.length) ? desc[0].position : { line: 0, character: 0 };
+				let decl: string = "";
+				if (desc && desc.length) {
+					decl = await fsUtils.readFile(fname);
+					decl = decl.split("\n").slice(start.line - 1).join("\n");
+				}
+				const def: PvsDefinition = {
+					theory: symbolName,
+					line: null,
+					character: null,
+					file: fname,
+					symbolName: symbolName,
+					symbolTheory: symbolName,
+					symbolDeclaration: decl,
+					symbolDeclarationRange: { 
+						start, 
+						end: start
+					},
+					symbolDeclarationFile: fname,
+					symbolDoc: null,
+					comment: `Imported theory ${symbolName}`,
+					error: null
+				};
+				candidates.push(def);
 			}
-			const def: PvsDefinition = {
-				theory: symbolName,
-				line: null,
-				character: null,
-				file: fname,
-				symbolName: symbolName,
-				symbolTheory: symbolName,
-				symbolDeclaration: decl,
-				symbolDeclarationRange: { 
-					start, 
-					end: start
-				},
-				symbolDeclarationFile: fname,
-				symbolDoc: null,
-				comment: `Imported theory ${symbolName}`,
-				error: null
-			};
-			candidates.push(def);
 		}
 
 		if (candidates.length === 0) {
