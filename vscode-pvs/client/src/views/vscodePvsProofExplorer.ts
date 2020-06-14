@@ -276,8 +276,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			case "ghost": {
 				this.running = false;
 				if (this.formulaDescriptor.autorun) {
+					// mark proof as unfinished
+					if (this.root.proofStatus !== "untried") {
+						this.root.setProofStatus("unfinished");
+					}
 					// automatically quit the proof attempt
-					this.quitProof({ confirm: false }); // async call
+					this.quitProof({ confirm: false, save: true }); // async call
 				}
 				break;
 			}
@@ -364,7 +368,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					window.showWarningMessage(proofState.commentary[0]);
 				}
 				if (this.formulaDescriptor.autorun) {
-					this.quitProof({ confirm: false });
+					// mark proof as unfinished
+					if (this.root.proofStatus !== "untried") {
+						this.root.setProofStatus("unfinished");
+					}
+					// save and quit proof
+					this.quitProof({ confirm: false, save: true });
 				}
 				return;
 			}
@@ -373,7 +382,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (utils.isShowHiddenCommand(cmd)) {
 				this.running = false;
 				if (this.formulaDescriptor.autorun) {
-					this.quitProof({ confirm: false });
+					// mark proof as unfinished
+					if (this.root.proofStatus !== "untried") {
+						this.root.setProofStatus("unfinished");
+					}
+					// save and quit proof					
+					this.quitProof({ confirm: false, save: true });
 				}
 				return;
 			}
@@ -429,7 +443,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (utils.isPostponeCommand(cmd)) {
 				this.running = false;
 				if (this.formulaDescriptor.autorun) {
-					this.quitProof({ confirm: false });
+					// mark proof as unfinished
+					if (this.root.proofStatus !== "untried") {
+						this.root.setProofStatus("unfinished");
+					}
+					// save and quit proof					
+					this.quitProof({ confirm: false, save: true });
 					return;
 				}
 				if (this.branchHasChanged(newBranch, previousBranch)) {
@@ -463,7 +482,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (utils.isSameCommand(activeNode.name, cmd) === false || this.ghostNode.isActive()) {
 				this.running = false;
 				if (this.formulaDescriptor.autorun) {
-					this.quitProof({ confirm: false });
+					// mark proof as unfinished
+					if (this.root.proofStatus !== "untried") {
+						this.root.setProofStatus("unfinished");
+					}
+					// save and quit proof
+					this.quitProof({ confirm: false, save: true });
 					return;
 				}
 				// concatenate new command
@@ -566,7 +590,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					// and so we need to stop the execution
 					this.running = false;
 					if (this.formulaDescriptor.autorun) {
-						this.quitProof({ confirm: false });
+						// mark proof as unfinished
+						if (this.root.proofStatus !== "untried") {
+							this.root.setProofStatus("unfinished");
+						}
+						// save and quit proof
+						this.quitProof({ confirm: false, save: true });
 					}
 				} else {
 					this.step();
@@ -1445,7 +1474,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Quit the current proof
 	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
 	 */
-	async quitProof (opt?: { confirm?: boolean }): Promise<void> {
+	async quitProof (opt?: { confirm?: boolean, save?: boolean }): Promise<void> {
 		this.running = false;
 		const auto: boolean = this.formulaDescriptor.autorun;
 		opt = opt || {};
@@ -1456,6 +1485,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		const ans: string = (opt.confirm) ? await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 								: yesno[0];
 		if (ans === yesno[0]) {
+			if (opt.save) {
+				await this.saveProof({ force: !opt.confirm });
+			}
 			// send quit to the terminal
 			commands.executeCommand("vscode-pvs.send-proof-command", {
 				fileName: this.formulaDescriptor.fileName,
