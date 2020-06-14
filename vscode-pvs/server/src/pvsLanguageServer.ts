@@ -516,7 +516,11 @@ export class PvsLanguageServer {
 		return await this.pvsProxy.proofScript(request);
 	}
 
-	async proofLiteScriptRequest (request: { 
+	/**
+	 * Sends to the client the prooflite script associated with the formula indicated in the request
+	 * @param request 
+	 */
+	async showProofLiteRequest (request: { 
 		fileName: string, 
 		fileExtension: string, 
 		theoryName: string, 
@@ -524,34 +528,18 @@ export class PvsLanguageServer {
 		contextFolder: string
 	}): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
-		const response: PvsResponse = await this.pvsProxy.proofLiteScript(request);
-		if (response && response.result) {
-			console.log(response);
-			// // send proof script to the front-end
-			// const proofTree: ProofDescriptor = utils.proofScriptToJson({
-			// 	prf: response.result,
-			// 	theoryName: request.theoryName, 
-			// 	formulaName: request.formulaName, 
-			// 	version: this.pvsVersionDescriptor
-			// });
-			// this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: proofTree }, args: request });
-		} else {
-			// send empty proof to the front-end
-			// const proofTree: ProofDescriptor = utils.proofScriptToJson({
-			// 	prf: null,
-			// 	theoryName: request.theoryName, 
-			// 	formulaName: request.formulaName, 
-			// 	version: this.pvsVersionDescriptor
-			// });			
-			// this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: proofTree }, args: request });
-		}
-		// print a warning message in the console in the case pvs-server fails to respond
-		// if (!response || response.error) {
-		// 	const msg: string = `Warning: unable to load proof script for ${request.fileName} (pvs-server responded with ${JSON.stringify(response)})`;
-		// 	console.error("[pvs-language-server] " + msg);
-		// }
+		// first, convert proofs stored in .prf format to .jprf format
+		await this.proofScript(request);
+		// load prooflite script from the .jprf file
+		const proofScript: string = await utils.getProofLiteScript(request);
+		// send response to the client
+		this.connection.sendRequest(serverEvent.showProofLiteResponse, { response: proofScript, args: request });
 	}
 
+	/**
+	 * Internal function, loads the proof script for the formula indicated in the request
+	 * @param request 
+	 */
 	protected async loadProof (request: { 
 		fileName: string, 
 		fileExtension: string, 
@@ -1852,8 +1840,8 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.loadProof, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
 				this.loadProofRequest(args); // async call
 			});
-			this.connection.onRequest(serverCommand.displayProofLiteScript, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
-				this.proofLiteScriptRequest(args); // async call
+			this.connection.onRequest(serverCommand.showProofLite, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
+				this.showProofLiteRequest(args); // async call
 			});
 			this.connection.onRequest(serverCommand.proofCommand, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, cmd: string }) => {
 				this.proofCommandRequest(args); // async call

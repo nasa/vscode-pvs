@@ -37,6 +37,7 @@
  **/
 import * as vscode from 'vscode';
 import * as fsUtils from '../common/fsUtils';
+import * as path from 'path';
 
 /**
  * Returns the context folder of the editor
@@ -49,12 +50,23 @@ export function getEditorContextFolder () : string {
  * Utility function, shows a text document in the editor
  * @param content 
  */
-export function showTextDocument (content: string, opt?: { viewColumn?: vscode.ViewColumn }): void {
+export async function previewTextDocument (name: string, content: string, opt?: { viewColumn?: vscode.ViewColumn }): Promise<boolean> {
     opt = opt || {};
-    vscode.workspace.openTextDocument({ language: 'pvs', content: content }).then((document: vscode.TextDocument) => {
-        // vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);
-        const viewColumn: vscode.ViewColumn = opt.viewColumn || vscode.ViewColumn.Active;
-        vscode.window.showTextDocument(document.uri, { preserveFocus: true, preview: true, viewColumn });
-    });
+    const viewColumn: vscode.ViewColumn = opt.viewColumn || vscode.ViewColumn.Active;
+    // vscode.workspace.openTextDocument({ language: 'pvs', content: content }).then((document: vscode.TextDocument) => {
+    //     // vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);
+    //     vscode.window.showTextDocument(document.uri, { preserveFocus: true, preview: true, viewColumn });
+    // });
+    const preview: vscode.Uri = vscode.Uri.parse(`untitled:${path.join(vscode.workspace.rootPath, "pvsbin", "preview")}`);
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(preview, new vscode.Range(new vscode.Position(0, 0), new vscode.Position(10000, 0)), content);
+    const success: boolean = await vscode.workspace.applyEdit(edit);
+    if (success) {
+        const document: vscode.TextDocument = await vscode.workspace.openTextDocument(preview);
+        vscode.window.showTextDocument(document, viewColumn, true);
+        return true;
+    }
+    vscode.window.showInformationMessage(`[vscode-utils] Warning: unable to show ${name} in the editor`);
+    return false;
 }
 

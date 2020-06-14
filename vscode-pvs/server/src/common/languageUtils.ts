@@ -374,6 +374,10 @@ export function formatProofState (proofState: ProofState, opt?: { useColors?: bo
 	return null;
 }
 
+/**
+ * Utility function, returns the status of the proof for the theorem indicated in the fuction arguments
+ * @param desc 
+ */
 export async function getProofStatus (desc: { 
 	fileName: string, 
 	fileExtension: string, 
@@ -417,6 +421,50 @@ export async function getProofStatus (desc: {
 			}
 		}
 		return status;
+	}
+	return null;
+}
+
+/**
+ * Utility function, returns the prooflite script for the theorem indicated in the fuction arguments
+ * @param desc 
+ */
+export async function getProofLiteScript (desc: { 
+	fileName: string, 
+	fileExtension: string, 
+	contextFolder: string, 
+	theoryName: string, 
+	formulaName: string
+}): Promise<string> {
+	if (desc) {
+		const makeHeader = (status: ProofStatus): string => { 
+			return `%%-----------------------------------
+%% ProofLite Script for ${desc.formulaName} 
+%% (proof status: ${getIcon(status)}${status})
+%%-----------------------------------\n`; 
+		}
+		let proofScript: string = makeHeader("untried");
+		// check if the .jprf file contains the proof status
+		const jprf: string = fsUtils.desc2fname({
+			fileName: desc.fileName, 
+			fileExtension: ".jprf", 
+			contextFolder: desc.contextFolder
+		});
+		const jprf_content: string = await fsUtils.readFile(jprf);
+		if (jprf_content) {
+			try {
+				const proofFile: ProofFile = JSON.parse(jprf_content);
+				const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
+				if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
+					proofScript = makeHeader(proofDescriptors[0].info.status);
+					proofScript += "\n" + (proofDescriptors[0].proofLite) ? proofDescriptors[0].proofLite.join("\n") : proofScript;
+				}
+			} catch (jprf_parse_error) {
+				console.warn(`[language-utils] Warning: malformed .jprf file: `, jprf_parse_error );
+				return proofScript;
+			}
+		}
+		return proofScript;
 	}
 	return null;
 }
@@ -790,6 +838,7 @@ export function proofTree2ProofLite (proofTree: ProofNode): string[] | null {
 		indent = indent || 0;
 		let res: string = "";
 		if (nodes && nodes.length) {
+			let closeRight: boolean = false;
 			for (let i = 0; i < nodes.length; i++) {
 				const node: ProofNode = nodes[i];
 				switch (node.type) {
@@ -801,6 +850,7 @@ export function proofTree2ProofLite (proofTree: ProofNode): string[] | null {
 					case "proof-command": {
 						if (node.branch === currentBranch && i === 0 && (!node.rules || node.rules.length === 0)) {
 							res += `(then `; // the parenthesis will be closed at the end of the loop
+							closeRight = true;
 						}
 						const cmd: string = node.name.startsWith("(") ? node.name : `(${node.name})`;
 						if (node.rules && node.rules.length) {
@@ -812,7 +862,7 @@ export function proofTree2ProofLite (proofTree: ProofNode): string[] | null {
 							res += `(spread `;
 							indent++;
 							res += cmd + `\n${" ".repeat(indent)}(` + proofTreeToProofLite_aux(node.rules, node.branch, indent);
-							res += `)`; // we need to close the extra parenthesis opened by spread
+							res += `))`; // we need to close the extra parenthesis opened by spread
 						} else {
 							res += cmd + proofTreeToProofLite_aux(node.rules, node.branch, indent);
 						}
@@ -828,7 +878,9 @@ export function proofTree2ProofLite (proofTree: ProofNode): string[] | null {
 					}
 				}
 			}
-			res += ")";
+			if (closeRight) {
+				res += ")";
+			}
 		}
 		return res;
 	}

@@ -50,7 +50,7 @@ import * as fsUtils from './common/fsUtils';
 import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 import * as utils from './common/languageUtils';
 import * as commandUtils from './common/commandUtils';
-import * as path from 'path';
+import * as vscodeUtils from './utils/vscode-utils';
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -387,7 +387,21 @@ export class EventsDispatcher {
             const msg: string = (request && request.args && request.args.formulaName) ? `Proof completed successfully!` : null;
             this.proofExplorer.saveProof({ msg });
             this.vscodePvsTerminal.deactivate();
-		});
+        });
+        this.client.onRequest(serverEvent.showProofLiteResponse, (desc: { 
+            response: string, 
+            args: { 
+                fileName: string, 
+                fileExtension: string, 
+                theoryName: string, 
+                formulaName: string, 
+                contextFolder: string
+            }
+        }) => {
+            if (desc && desc.response) {
+                vscodeUtils.previewTextDocument(desc.args.formulaName, desc.response, { viewColumn: vscode.ViewColumn.Beside });
+            }
+        });
 
 
 
@@ -440,13 +454,13 @@ export class EventsDispatcher {
             // this.vscodePvsTerminal.printWarningMessage(desc);
         }));
 
-        // vscode-pvs-metax
+        // vscode-pvs.metax
         context.subscriptions.push(commands.registerCommand("vscode-pvs.metax", () => {
             this.emacsBindings.metaxPrompt();
         }));
 
-        // vscode-display-prooflite-script
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.display-prooflite-script", async (resource: string | { path: string } | { contextValue: string }) => {
+        // vscode-pvs.show-proflite
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.show-prooflite", async (resource: string | { path: string } | { contextValue: string }) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();
@@ -467,7 +481,7 @@ export class EventsDispatcher {
                         desc.theoryName = theoryName;
                     }
                     if (desc.theoryName) {
-                        this.client.sendRequest(serverCommand.displayProofLiteScript, desc);
+                        this.client.sendRequest(serverCommand.showProofLite, desc);
                     } else {
                         window.showErrorMessage(`Error while trying to display prooflite script (could not identify theory name, please check that the file typechecks correctly)`);
                     }

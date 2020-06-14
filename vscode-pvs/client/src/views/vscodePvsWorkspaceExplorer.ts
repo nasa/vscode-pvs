@@ -816,7 +816,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							}
 						}
 						resolve();
-						vscodeUtils.showTextDocument(utils.makeProofSummary(summary));
+						vscodeUtils.previewTextDocument(theoryName, utils.makeProofSummary(summary));
 					});
 				});
 			} else {

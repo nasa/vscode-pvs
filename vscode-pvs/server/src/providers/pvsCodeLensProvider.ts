@@ -95,14 +95,14 @@ export class PvsCodeLensProvider {
                         //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
                         // }
                     });
-                    // codeLens.push({
-                    //     range,
-                    //     command: {
-                    //         title: "show-proof",
-                    //         command: "vscode-pvs.display-prooflite-script",
-                    //         arguments: [ args ]
-                    //     }
-                    // });
+                    codeLens.push({
+                        range,
+                        command: {
+                            title: "show-proof",
+                            command: "vscode-pvs.show-prooflite",
+                            arguments: [ args ]
+                        }
+                    });
                 }
             }
             return Promise.resolve(codeLens);
