@@ -139,6 +139,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		});
 	}
 
+	async stopAutorun (): Promise<void> {
+		this.running = false;
+		this.formulaDescriptor.autorun = false;
+		await this.quitProof({ confirm: false, save: false });
+	}
+
 	/**
 	 * Returns the active node in the proof tree
 	 * @returns {ProofItem} The active node 
@@ -364,9 +370,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if command is invalid command, stop execution and provide feedback to the user 
 			if (utils.isEmptyCommand(cmd) || utils.isInvalidCommand(proofState)) {
 				this.running = false;
-				if (utils.isInvalidCommand(proofState)) {
-					window.showWarningMessage(proofState.commentary[0]);
-				}
 				if (this.formulaDescriptor.autorun) {
 					// mark proof as unfinished
 					if (this.root.proofStatus !== "untried") {
@@ -374,6 +377,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					}
 					// save and quit proof
 					this.quitProof({ confirm: false, save: true });
+				} else {
+					if (utils.isInvalidCommand(proofState)) {
+						window.showWarningMessage(proofState.commentary[0]);
+					}
 				}
 				return;
 			}
@@ -517,7 +524,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (proofState.commentary && proofState.commentary.length && proofState.commentary[0].startsWith("This completes the proof")) {
 				// PVS has automatically discharged a proof branch -- e.g. check sorting.pvs, not_in_l_gives_lenght_l : LEMMA 
 				nSubGoals += 2;
-				window.showInformationMessage(`Proof command ${cmd} generated ${nSubGoals} sub-goals. PVS automatically discharged the first subgoal.`);
+				if (!this.formulaDescriptor.autorun) {
+					window.showInformationMessage(`Proof command ${cmd} generated ${nSubGoals} sub-goals. PVS automatically discharged the first subgoal.`);
+				}
 				showMsg = false;
 			}
 			if (nSubGoals) {
@@ -549,11 +558,13 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						for (let i = 0; i < nSubGoals; i++) {
 							this.appendBranch({ selected: activeNode }, { firstBranch: newBranch, proofState });
 						}
-						if (showMsg) {
+						if (showMsg && !this.formulaDescriptor.autorun) {
 							window.showInformationMessage(`Proof command ${cmd} on branch ${previousBranch} has generated ${proofState["num-subgoals"]} sub-goals`);
 						}
 					} else {
-						window.showInformationMessage(`Proof command ${cmd} on branch ${previousBranch} has generated ${proofState["num-subgoals"]} sub-goals, but PVS has automatically discharged them`);
+						if (!this.formulaDescriptor.autorun) {
+							window.showInformationMessage(`Proof command ${cmd} on branch ${previousBranch} has generated ${proofState["num-subgoals"]} sub-goals, but PVS has automatically discharged them`);
+						}
 					}
 				}
 			}
@@ -1425,7 +1436,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
-	async saveProof (opt?: { msg?: string, force?: boolean }): Promise<boolean> {
+	async saveProof (opt?: { msg?: string, force?: boolean, quiet?: boolean }): Promise<boolean> {
 		return new Promise(async (resolve, reject) => {
 			opt = opt || {};
 			// register handler
@@ -1442,7 +1453,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}) => {
 				const fname: string = `${desc.args.fileName}.jprf`;
 				if (desc.response.success) {
-					window.showInformationMessage(`Proof ${desc.args.proofDescriptor.proofTree.name} saved in file ${fname}`);
+					if (!opt.quiet) {
+						window.showInformationMessage(`Proof ${desc.args.proofDescriptor.proofTree.name} saved in file ${fname}`);
+					}
 				} else {
 					window.showErrorMessage(`Unexpected error while saving file ${fname} (please check pvs-server output for details)`);
 				}
@@ -1486,7 +1499,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 								: yesno[0];
 		if (ans === yesno[0]) {
 			if (opt.save) {
-				await this.saveProof({ force: !opt.confirm });
+				await this.saveProof({ force: true, quiet: true });
 			}
 			// send quit to the terminal
 			commands.executeCommand("vscode-pvs.send-proof-command", {

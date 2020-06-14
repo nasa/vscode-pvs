@@ -37,7 +37,7 @@
  **/
 import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
-			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat } from 'vscode';
+			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor } from '../common/serverInterface';
 import * as path from 'path';
@@ -729,19 +729,46 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	// event dispatcher invokes this function with the command vscode-pvs.autorun-theory
 	async autorun (theory: TheoryItem): Promise<void> {
 		if (theory) {
-			const theorems: FormulaItem[] = theory.getTheorems();
-			if (theorems && theorems.length) {
-				for (let i = 0; i < theorems.length; i ++) {
-					const next: FormulaItem = theorems[i];
-					await this.proofExplorer.autorun({
-						contextFolder: next.getContextFolder(),
-						fileName: next.getFileName(),
-						fileExtension: next.getFileExtension(),
-						theoryName: next.getTheoryName(),
-						formulaName: next.getFormulaName()
+			// show dialog with progress
+			window.withProgress({
+				location: ProgressLocation.Notification,
+				cancellable: true
+			}, (progress, token) => { 
+				const theorems: FormulaItem[] = theory.getTheorems();
+				const theoryName: string = theory.theoryName;
+				// show initial dialog with spinning progress   
+				progress.report({ increment: -1, message: `Preparing to re-run all proofs in theory ${theoryName}` });
+				// update the dialog
+				return new Promise(async (resolve, reject) => {
+					let stop: boolean = false;
+					token.onCancellationRequested(async () => {
+						// stop loop
+						stop = true;
+						// stop proof explorer
+						this.proofExplorer.stopAutorun();
+						// dispose of the dialog
+						resolve(null);
 					});
-				}
-			}
+					if (theorems && theorems.length) {
+						for (let i = 0; i < theorems.length && !stop; i ++) {
+							const next: FormulaItem = theorems[i];
+							const formulaName: string = next.getFormulaName();
+							progress.report({
+								increment: 1 / theorems.length * 100, // all increments must add up to 100
+								message: `Re-running proof for formula '${formulaName}' (${i + 1}/${theorems.length})`
+							});
+							await this.proofExplorer.autorun({
+								contextFolder: next.getContextFolder(),
+								fileName: next.getFileName(),
+								fileExtension: next.getFileExtension(),
+								theoryName: next.getTheoryName(),
+								formulaName
+							});
+						}
+					}
+					resolve();
+				});
+			});
 		}
 	}
 

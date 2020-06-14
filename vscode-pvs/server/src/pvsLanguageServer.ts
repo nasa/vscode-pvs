@@ -336,8 +336,10 @@ export class PvsLanguageServer {
 		// make sure the file typechecks correctly before starting a proof attempt
 		// send feedback to the front-end
 		const taskId: string = `typecheck-${request.formulaName}`;
-		this.notifyStartImportantTask({ id: taskId, msg: `Typechecking files necessary to prove formula ${request.formulaName}` });		
-		
+		if (!request.autorun) {
+			this.notifyStartImportantTask({ id: taskId, msg: `Typechecking files necessary to prove formula ${request.formulaName}` });
+		}
+
 		// make sure pvs files are typechecked before starting a proof attempt
 		if (request.fileExtension === ".pvs") {
 			const response: PvsResponse = await this.typecheckFile(request)
@@ -376,7 +378,9 @@ export class PvsLanguageServer {
 				this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() })
 				this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request, pvsLogFile, pvsTmpLogFile, shasum });
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile, shasum });
-				this.notifyEndImportantTask({ id: taskId });
+				if (!request.autorun) {
+					this.notifyEndImportantTask({ id: taskId });
+				}
 			}
 		} else {
 			// there was an error
