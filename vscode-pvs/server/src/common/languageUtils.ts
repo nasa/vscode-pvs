@@ -1127,3 +1127,24 @@ ${theoryName}: THEORY
   END ${theoryName}
 `;
 }
+
+export function makeProofSummary (desc: { theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]}): string {
+	let ans: string = `Proof summary for theory ${desc.theoryName}\n`;
+	let nProved: number = 0;
+	let totTime: number = 0;
+	for (let i = 0; i < desc.theorems.length; i++) {
+		const formulaName: string = desc.theorems[i].formulaName;
+		const status: ProofStatus = desc.theorems[i].status;
+		const ms: number = desc.theorems[i].ms;
+
+		const points: number = 64 - formulaName.length;
+		const spaces: number = 20 - status.length;
+
+		if (isProved(status)) { nProved++; }
+		totTime += ms;
+
+		ans += `\n\t${formulaName}` + ".".repeat(points) + getIcon(status) + status + " ".repeat(spaces) + `(${ms / 1000} s)`;
+	}
+	ans += `\n\nTheory ${desc.theoryName} totals: ${desc.theorems.length} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${totTime / 1000} s)`;
+	return ans;
+}

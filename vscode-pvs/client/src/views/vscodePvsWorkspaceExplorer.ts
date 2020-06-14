@@ -37,13 +37,14 @@
  **/
 import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
-			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation } from 'vscode';
+			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, TextDocument } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 import { VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
+import * as vscodeUtils from '../utils/vscode-utils';
 
 //-- files
 class PvsFileItem extends TreeItem {
@@ -91,6 +92,12 @@ class PvsFileItem extends TreeItem {
 	}
 	getChildren (): TreeItem[] {
 		return this.theoriesOverview.getChildren();
+	}
+	getTheoryItem (desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): TheoryItem {
+		if (this.theoriesOverview) {
+			return this.theoriesOverview.getTheoryItem(desc.theoryName);
+		}
+		return null;
 	}
 }
 //-- theories
@@ -454,13 +461,27 @@ class PvsFilesOverviewItem extends OverviewItem {
 		}
 		return children;
 	}
+	getFileItem (desc: { contextFolder: string, fileName: string, fileExtension: string }): PvsFileItem {
+		if (desc) {
+			for (let i = 0; i < this.files.length; i++) {
+				if (this.files[i].contextFolder === desc.contextFolder
+						&& this.files[i].fileName === desc.fileName
+						&& this.files[i].fileExtension === desc.fileExtension) {
+					return this.files[i];
+				}
+			}
+		}
+		return null;
+	}
 	updateFormula (desc: FormulaDescriptor): void {
-		const candidates: PvsFileItem[] = this.files.filter((item: PvsFileItem) => {
-			return item.fileName === desc.fileName && item.fileExtension === desc.fileExtension
-				&& item.contextFolder === desc.contextFolder;
-		});
-		if (candidates && candidates.length === 1) {
-			candidates[0].updateFormula(desc);
+		if (desc) {
+			const candidates: PvsFileItem[] = this.files.filter((item: PvsFileItem) => {
+				return item.fileName === desc.fileName && item.fileExtension === desc.fileExtension
+					&& item.contextFolder === desc.contextFolder;
+			});
+			if (candidates && candidates.length === 1) {
+				candidates[0].updateFormula(desc);
+			}
 		}
 	}
 	sort (): void {
@@ -524,6 +545,19 @@ export class WorkspaceOverviewItem extends OverviewItem {
 	// 		this.updateLabel();
 	// 	}
 	// }
+	getFileItem (desc: { contextFolder: string, fileName: string, fileExtension: string }): PvsFileItem {
+		if (this.pvsFilesOverview) {
+			return this.pvsFilesOverview.getFileItem(desc);
+		}
+		return null;
+	}
+	getTheoryItem (desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): TheoryItem {
+		const fileItem: PvsFileItem = this.getFileItem(desc);
+		if (fileItem) {
+			return fileItem.getTheoryItem(desc);
+		}
+		return null;
+	}
 	getChildren (): TreeItem[] {
 		return this.pvsFilesOverview.getChildren();
 	}
@@ -727,50 +761,70 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	// }
 
 	// event dispatcher invokes this function with the command vscode-pvs.autorun-theory
-	async autorun (theory: TheoryItem): Promise<void> {
-		if (theory) {
-			// show dialog with progress
-			window.withProgress({
-				location: ProgressLocation.Notification,
-				cancellable: true
-			}, (progress, token) => { 
-				const theorems: FormulaItem[] = theory.getTheorems();
-				const theoryName: string = theory.theoryName;
-				// show initial dialog with spinning progress   
-				progress.report({ increment: -1, message: `Preparing to re-run all proofs in theory ${theoryName}` });
-				// update the dialog
-				return new Promise(async (resolve, reject) => {
-					let stop: boolean = false;
-					token.onCancellationRequested(async () => {
-						// stop loop
-						stop = true;
-						// stop proof explorer
-						this.proofExplorer.stopAutorun();
-						// dispose of the dialog
-						resolve(null);
-					});
-					if (theorems && theorems.length) {
-						for (let i = 0; i < theorems.length && !stop; i ++) {
-							const next: FormulaItem = theorems[i];
-							const formulaName: string = next.getFormulaName();
-							progress.report({
-								increment: 1 / theorems.length * 100, // all increments must add up to 100
-								message: `Re-running proof for formula '${formulaName}' (${i + 1}/${theorems.length})`
-							});
-							await this.proofExplorer.autorun({
-								contextFolder: next.getContextFolder(),
-								fileName: next.getFileName(),
-								fileExtension: next.getFileExtension(),
-								theoryName: next.getTheoryName(),
-								formulaName
-							});
+	async autorun (resource: {
+		contextFolder: string,
+		fileName: string, 
+		fileExtension: string,  
+		theoryName: string, 
+		formulaName: string 
+	}): Promise<void> {
+		if (resource) {
+			const theory: TheoryItem = this.root.getTheoryItem(resource);
+			if (theory) {
+				// show dialog with progress
+				window.withProgress({
+					location: ProgressLocation.Notification,
+					cancellable: true
+				}, (progress, token) => { 
+					const theorems: FormulaItem[] = theory.getTheorems();
+					const theoryName: string = theory.theoryName;
+					// show initial dialog with spinning progress   
+					progress.report({ increment: -1, message: `Preparing to re-run all proofs in theory ${theoryName}` });
+					// update the dialog
+					return new Promise(async (resolve, reject) => {
+						let stop: boolean = false;
+						token.onCancellationRequested(async () => {
+							// stop loop
+							stop = true;
+							// stop proof explorer
+							this.proofExplorer.stopAutorun();
+							// dispose of the dialog
+							resolve(null);
+						});
+						const summary: { theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]} = {
+							theoryName,
+							theorems: []
+						};
+						if (theorems && theorems.length) {
+							for (let i = 0; i < theorems.length && !stop; i ++) {
+								const next: FormulaItem = theorems[i];
+								const formulaName: string = next.getFormulaName();
+								progress.report({
+									increment: 1 / theorems.length * 100, // all increments must add up to 100
+									message: `Re-running proofs in theory ${theoryName} (${i + 1}/${theorems.length}) '${formulaName}'`
+								});
+								const start: number = new Date().getTime();
+								const status: ProofStatus = await this.proofExplorer.autorun({
+									contextFolder: next.getContextFolder(),
+									fileName: next.getFileName(),
+									fileExtension: next.getFileExtension(),
+									theoryName: next.getTheoryName(),
+									formulaName
+								});
+								const ms: number = new Date().getTime() - start;
+								summary.theorems.push({ formulaName, status, ms });
+							}
 						}
-					}
-					resolve();
+						resolve();
+						vscodeUtils.showTextDocument(utils.makeProofSummary(summary));
+					});
 				});
-			});
+			} else {
+				window.showErrorMessage(`Error: could not find theory ${resource.theoryName}`);
+			}
 		}
 	}
+
 
 	/**
 	 * Handler activation function

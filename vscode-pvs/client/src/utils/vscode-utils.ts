@@ -35,8 +35,7 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-import * as vscode from "vscode";
-export function log(str: string) { vscode.window.showInformationMessage(str); }
+import * as vscode from 'vscode';
 import * as fsUtils from '../common/fsUtils';
 
 /**
@@ -45,3 +44,17 @@ import * as fsUtils from '../common/fsUtils';
 export function getEditorContextFolder () : string {
     return (vscode.window.activeTextEditor) ? fsUtils.getContextFolder(vscode.window.activeTextEditor.document.fileName) : null;
 }
+
+/**
+ * Utility function, shows a text document in the editor
+ * @param content 
+ */
+export function showTextDocument (content: string, opt?: { viewColumn?: vscode.ViewColumn }): void {
+    opt = opt || {};
+    vscode.workspace.openTextDocument({ language: 'pvs', content: content }).then((document: vscode.TextDocument) => {
+        // vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);
+        const viewColumn: vscode.ViewColumn = opt.viewColumn || vscode.ViewColumn.Active;
+        vscode.window.showTextDocument(document.uri, { preserveFocus: true, preview: true, viewColumn });
+    });
+}
+

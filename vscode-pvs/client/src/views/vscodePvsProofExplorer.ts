@@ -80,7 +80,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Descriptor with information on the active proof
 	 **/
 	protected formulaDescriptor: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string, autorun?: boolean };
-	protected autorunCallback: () => void;
+	protected autorunCallback: (status: ProofStatus) => void;
 
 	/**
 	 * Name of the view associated with the data provider
@@ -130,10 +130,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	async autorun (desc: { 
 		fileName: string, fileExtension: string, contextFolder: string, 
 		theoryName: string, formulaName: string 
-	}): Promise<void> {
+	}): Promise<ProofStatus> {
 		return new Promise((resolve, reject) => {
-			this.autorunCallback = () => {
-				resolve();
+			this.autorunCallback = (status: ProofStatus) => {
+				resolve(status);
 			};
 			commands.executeCommand("vscode-pvs.autorun-formula", desc);
 		});
@@ -1137,7 +1137,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// commands.executeCommand("vscode-pvs.autorun-formula-end", this.desc);
 			// we need a timeout otherwise proof explorer is unable to refresh the view because update events get delayed in the event queue 
 			setTimeout(() => {
-				this.autorunCallback();
+				this.autorunCallback(this.root.proofStatus);
 			}, 400);
 		}
 	}
@@ -1489,7 +1489,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	async quitProof (opt?: { confirm?: boolean, save?: boolean }): Promise<void> {
 		this.running = false;
-		const auto: boolean = this.formulaDescriptor.autorun;
+		const autorun: boolean = this.formulaDescriptor.autorun;
+		const status: ProofStatus = (this.root) ? this.root.proofStatus : "untried";
 		opt = opt || {};
 		opt.confirm = (opt.confirm === undefined || opt.confirm === null) ? true : opt.confirm;
 		// ask the user if the proof is to be saved
@@ -1518,11 +1519,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 
 		// run the other proofs if desc.autorun === true
-		if (auto) {
+		if (autorun) {
 			// we need to use a small delay to give pvs-server the time to quit
 			setTimeout(() => {
 				// commands.executeCommand("vscode-pvs.autorun-formula-end", this.desc);
-				this.autorunCallback();
+				this.autorunCallback(status);
 			}, 1000);
 		}
 	}

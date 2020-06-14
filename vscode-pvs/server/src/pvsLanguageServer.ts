@@ -1791,9 +1791,9 @@ export class PvsLanguageServer {
 					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 				}
 			});
-			this.connection.onRequest(serverCommand.rebootPvsServer, async () => {
+			this.connection.onRequest(serverCommand.rebootPvsServer, async (desc?: { pvsPath?: string }) => {
 				await fsUtils.deletePvsCache(this.lastParsedContext, { keepTccs: true }); // this will remove .pvscontext and pvsbin
-				await this.pvsProxy.rebootPvsServer();
+				await this.pvsProxy.rebootPvsServer(desc);
 				await this.sendPvsVersionInfo();
 			});
 			this.connection.onRequest(serverCommand.parseFile, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {

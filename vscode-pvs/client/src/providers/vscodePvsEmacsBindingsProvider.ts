@@ -53,16 +53,20 @@ import * as utils from '../common/languageUtils';
 import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
 import { serverCommand } from '../common/serverInterface';
 
+/**
+ * cmds is the list of commands that are supported by the emacs binding defined in this module
+ * NB: The order of the commands in the array affects the behavior of autocompletion
+ *     (autocompletion returns the first match that starts with the user input)
+ */
 const cmds: string[] = [
 	"tc", "typecheck",
 	"tcp", "typecheck-prove",
-	//"pr", 
-	"prove",
-	"show-tccs",
+	"pr", "prove",
+	"prt",
 	"pvsio",
-	"step-proof",
 	"restart-pvs",
-	"pvs7", "pvs6"
+	"step-proof",
+	"show-tccs"
 ];
 
 export class VSCodePvsEmacsBindingsProvider {
@@ -105,16 +109,6 @@ export class VSCodePvsEmacsBindingsProvider {
 				line
 			};
 			switch (userInput) {
-				// case "pvs6": {
-				// 	const v6: string = workspace.getConfiguration().get(`pvs.zen-mode:pvs-6-path`);
-				// 	this.client.sendRequest(serverCommand.start_pvs_server, { pvsPath: v6 });
-				// 	break;
-				// }
-				// case "pvs7": {
-				// 	const v7: string = workspace.getConfiguration().get(`pvs.zen-mode:pvs-7-path`);
-				// 	this.client.sendRequest(serverCommand.start_pvs_server, { pvsPath: v7 });
-				// 	break;
-				// }
 				case "show-tccs": {
 					commands.executeCommand('vscode-pvs.show-tccs', desc);
 					break;
@@ -138,20 +132,27 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.prove-formula', desc);
 					break;
 				}
+				case "prt": {
+					commands.executeCommand('vscode-pvs.autorun-theory', desc);
+					break;
+				}
 				case "pvsio": {
-					commands.executeCommand("vscode-pvs.pvsio-evaluator", desc);
+					commands.executeCommand('vscode-pvs.pvsio-evaluator', desc);
 					break;
 				}
 				case "step-proof": {
-					// open pvs terminal
-					// TODO
+					commands.executeCommand('vscode-pvs.prove-formula', desc)
 					break;
 				}
-				case "restart-pvs": {
-					const pvsPath: string = workspace.getConfiguration().get(`pvs.path`);
-					this.client.sendRequest(serverCommand.rebootPvsServer, { pvsPath });
+				case "reboot-pvs-server": {
+					commands.executeCommand('vscode-pvs.reboot-pvs');
+					// const pvsPath: string = workspace.getConfiguration().get(`pvs.path`);
+					// this.client.sendRequest(serverCommand.rebootPvsServer, { pvsPath });
+					break;
 				}
-				default: {}
+				default: {
+					window.showWarningMessage(`Command ${userInput} not supported`);
+				}
 			}
 		}
 	}

@@ -322,7 +322,7 @@ export class EventsDispatcher {
             if (desc) {
                 console.log(desc);
                 if (desc.response && desc.response.result) {
-                    console.dir(desc.response.result);
+                    // console.dir(desc.response.result);
                     this.proofExplorer.loadFormulaDescriptor(desc.args);
                     this.proofExplorer.loadProofDescriptor(desc.response.result);
                 } else {
@@ -562,7 +562,13 @@ export class EventsDispatcher {
         //      3.2 loadProofDescriptor
         //      3.3 proveFormula
         // <loop over all theorems>
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory", async (resource: TheoryItem) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory", async (resource: {
+            contextFolder: string,
+            fileName: string, 
+            fileExtension: string,  
+            theoryName: string, 
+            formulaName: string 
+        }) => {
             if (resource) {
                 this.workspaceExplorer.autorun(resource);
             } else {
