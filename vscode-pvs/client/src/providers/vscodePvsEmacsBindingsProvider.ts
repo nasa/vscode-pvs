@@ -66,7 +66,8 @@ const cmds: string[] = [
 	"pvsio",
 	"restart-pvs",
 	"step-proof",
-	"show-tccs"
+	"show-tccs",
+	"vpf", "view-prelude-file"
 ];
 
 export class VSCodePvsEmacsBindingsProvider {
@@ -149,6 +150,10 @@ export class VSCodePvsEmacsBindingsProvider {
 					// const pvsPath: string = workspace.getConfiguration().get(`pvs.path`);
 					// this.client.sendRequest(serverCommand.rebootPvsServer, { pvsPath });
 					break;
+				}
+				case "vpf":
+				case "view-prelude-file": {
+					commands.executeCommand('vscode-pvs.view-prelude-file');
 				}
 				default: {
 					window.showWarningMessage(`Command ${userInput} not supported`);

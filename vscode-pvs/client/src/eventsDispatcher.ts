@@ -410,6 +410,12 @@ export class EventsDispatcher {
         // commands invoked using code lens, emacs bindings, explorer, etc
         //---------------------------------------------------------
 
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.view-prelude-file", () => {
+            this.client.onRequest(serverEvent.viewPreludeFileResponse, (desc: { contextFolder: string, fileName: string, fileExtension: string }) => {
+                vscodeUtils.showTextDocument(desc);
+            });
+            this.client.sendRequest(serverCommand.viewPreludeFile);
+        }));
         // vscode-pvs.send-proof-command
         context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             this.vscodePvsTerminal.sendProofCommand(desc);

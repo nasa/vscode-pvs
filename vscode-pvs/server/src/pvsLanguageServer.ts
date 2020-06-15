@@ -1860,6 +1860,13 @@ export class PvsLanguageServer {
 				const port: number = this.getGatewayPort();
 				this.connection.sendRequest(serverEvent.getGatewayConfigResponse, { port });
 			});
+			this.connection.onRequest(serverCommand.viewPreludeFile, async () => {
+				this.connection.sendRequest(serverEvent.viewPreludeFileResponse, {
+					contextFolder: path.join(this.pvsPath, "lib"),
+					fileName: "prelude",
+					fileExtension: ".pvs"
+				});
+			});
 			this.connection.onRequest(serverCommand.quitProver, async () => {
 				const timeout: number = await this.connection.workspace.getConfiguration("pvs.settings.prover.watchdog");
 				this.pvsProxy.proofCommand({ cmd: "quit", timeout }); // async call

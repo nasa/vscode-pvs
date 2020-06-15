@@ -477,6 +477,8 @@ export const serverCommand = {
 	startEvaluator: "pvs.start-evaluator",
 	quitProver: "pvs.quit-prover",
 
+	viewPreludeFile: "pvs.view-prelude-file",
+
 	getContextDescriptor: "pvs.get-context-descriptor",
 	getFileDescriptor: "pvs.get-file-descriptor",
 	getGatewayConfig: "pvs.get-cli-descriptor",
@@ -503,6 +505,8 @@ export const serverEvent = {
 	showTccsResponse: "pvs.response.show-tccs",
 	startEvaluatorResponse: "pvs.response.start-evaluator",
 	hp2pvsResponse: "pvs.response.hp-to-pvs-file",
+
+	viewPreludeFileResponse: "pvs.response.view-prelude-file",
 
 	getContextDescriptorResponse: "pvs.response.get-context-descriptor",
 	getFileDescriptorResponse: "pvs.response.get-file-descriptor",

@@ -50,19 +50,37 @@ export function getEditorContextFolder () : string {
  * Utility function, shows a text document in the editor
  * @param content 
  */
+export function showTextDocument (desc: { contextFolder: string, fileName: string, fileExtension: string }, opt?: { viewColumn?: vscode.ViewColumn }): void {
+    opt = opt || {};
+    const viewColumn: vscode.ViewColumn = opt.viewColumn || vscode.ViewColumn.Active;
+    if (desc) {
+        const uri: vscode.Uri = vscode.Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
+        vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
+    }
+}
+
+/**
+ * Utility function, previews a text document in the editor
+ * @param content 
+ */
 export async function previewTextDocument (name: string, content: string, opt?: { viewColumn?: vscode.ViewColumn }): Promise<boolean> {
     opt = opt || {};
     const viewColumn: vscode.ViewColumn = opt.viewColumn || vscode.ViewColumn.Active;
+
     // vscode.workspace.openTextDocument({ language: 'pvs', content: content }).then((document: vscode.TextDocument) => {
     //     // vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);
     //     vscode.window.showTextDocument(document.uri, { preserveFocus: true, preview: true, viewColumn });
     // });
-    const preview: vscode.Uri = vscode.Uri.parse(`untitled:${path.join(vscode.workspace.rootPath, "pvsbin", "preview")}`);
-    const edit = new vscode.WorkspaceEdit();
+    // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${path.join(vscode.workspace.rootPath, "pvsbin", "preview")}`);
+    
+    const preview: vscode.Uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, "pvsbin", "preview"));
+    const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
+    edit.createFile(preview, { overwrite: true });
     edit.replace(preview, new vscode.Range(new vscode.Position(0, 0), new vscode.Position(10000, 0)), content);
     const success: boolean = await vscode.workspace.applyEdit(edit);
     if (success) {
         const document: vscode.TextDocument = await vscode.workspace.openTextDocument(preview);
+        document.save();
         vscode.window.showTextDocument(document, viewColumn, true);
         return true;
     }
