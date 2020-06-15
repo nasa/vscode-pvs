@@ -73,6 +73,7 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 ## ChangeLog
 ### 1.0.22 (2020.06.xx)
 - Added support for rerunning all proofs (M-x prt)
+- Added support for viewing the prelude file (M-x vpf)
 - Added support for proofLite scripts
 
 ### 1.0.21 (2020.06.11)
