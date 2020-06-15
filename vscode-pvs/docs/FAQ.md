@@ -81,3 +81,7 @@ Yes, you can use the following basic set PVS hot-keys combinations in VSCode-PVS
 - M-x pr *(start an interactive Prover session for the formula at the cursor location)*
 - M-x prt *(re-run all proofs in the current theory)*
 - M-x pvsio *(start an interactive PVSio evaluator session for the theory at the cursor location)*
+
+### **What is `M-x`, and how do I use it?**
+`M-x` is a key combination obtained by pressing the `META` key and the `x` letter simultaneously.
+The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` key.
