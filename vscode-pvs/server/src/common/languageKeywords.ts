@@ -49,16 +49,17 @@ function regExpSource(v: Array<string>): string {
 				// regexp /\btype\+?\b/ does not work either, because \b is designed to work with words, not \+ symbols
 				if (elem === "type") {
 					return "\\b(?!" + elem + "\\+)"
-							+ elem + "\\s|\\b" + elem + "\\+";
+							+ elem + "\\b|\\b" + elem + "\\+";
 				} else if (elem === "auto_rewrite") {
 					return "\\b(?!" + elem + "[\\+\\-])"
-							+ elem + "\\s|\\b" + elem + "[\\+\\-]";
+							+ elem + "\\b|\\b" + elem + "[\\+\\-]";
 				}
 				const op: string = elem.includes("?") ? "?"
 									: elem.includes("+") ? "+" 
 									: elem.includes("!") ? "!" : null;
 				return (op) ? "\\b" + elem.replace(op, `\\${op}`)
-							: "\\b" + elem + "\\s";
+							// : "\\b" + elem + "\\b";
+							: "\\b(?!" + elem + "[\\?\\!])" + elem + "\\b";
 			});
 			return v.join("|");
 		}
