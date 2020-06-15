@@ -337,7 +337,8 @@ class PvsCli {
 	}
 	async subscribe (channelID: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
-			this.wsClient = new WebSocket("ws://0.0.0.0:33445");
+			const gatewayAddress: string = `ws://0.0.0.0:${this.args.gateway.port}`;
+			this.wsClient = new WebSocket(gatewayAddress);
 			this.wsClient.on("open", () => {
 				// subscribe to cli gateway
 				// const channelID: string = utils.desc2id({ fileName: this.args.fileName, theoryName: this.args.theoryName, formulaName: this.args.formulaName });

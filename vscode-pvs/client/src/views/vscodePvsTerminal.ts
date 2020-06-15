@@ -55,6 +55,7 @@ class TerminalSession {
     protected wsClient: WebSocket;
     protected clientID: string;
     protected pvsPath: string;
+    protected gatewayPort: number;
 
     protected isActive: boolean = false;
 
@@ -63,11 +64,12 @@ class TerminalSession {
      * @param client VSCode Language Client, necessary for sending requests to pvs-server
      * @param channelID Name of the channel where the terminal is listening
      */
-    constructor (desc: { client: LanguageClient, channelID: string, pvsPath: string }) {
+    constructor (desc: { client: LanguageClient, channelID: string, pvsPath: string, gateway: { port: number } }) {
         this.client = desc.client;
         this.channelID = desc.channelID;
         this.clientID = fsUtils.get_fresh_id();
         this.pvsPath = desc.pvsPath;
+        this.gatewayPort = desc.gateway.port;
     }
     async activate (
         context: vscode.ExtensionContext, 
@@ -96,7 +98,8 @@ class TerminalSession {
                 theoryName: desc.theoryName,
                 formulaName: desc.formulaName,
                 channelID: this.channelID,
-                pvsPath: this.pvsPath
+                pvsPath: this.pvsPath,
+                gateway: { port: this.gatewayPort }
             };
             this.terminal = vscode.window.createTerminal(terminalName, 'node', [ cliFileName, JSON.stringify(cliArgs) ]);
             this.terminal.show();
@@ -138,8 +141,11 @@ class TerminalSession {
     }
     async subscribe (readyCB: () => void): Promise<boolean> {
         return new Promise((resolve, reject) => {
-			this.wsClient = new WebSocket("ws://0.0.0.0:33445");
+            const gatewayAddress: string = `ws://0.0.0.0:${this.gatewayPort}`;
+            console.log(`[vscode-pvs-terminal] Connection to gateway at ${gatewayAddress}`)
+			this.wsClient = new WebSocket(`${gatewayAddress}`);
 			this.wsClient.on("open", () => {
+                console.log(`[vscode-pvs-terminal] Connection established with gateway`)
                 this.wsClient.send(JSON.stringify({ type: "subscribe-vscode", channelID: this.channelID, clientID: this.clientID }));
 			});
 			this.wsClient.on("message", (msg: string) => {
@@ -315,44 +321,77 @@ export class VSCodePvsTerminal {
         theoryName: string, 
         formulaName: string,
         autorun?: boolean // this flag is used to trigger automatic run of the theorem
-    }) {
-        if (desc) {
-            // !important: create a new command line interface first, so it can subscribe to events published by the server
-            const channelID: string = language.desc2id(desc);
-            const pvsPath: string = vscode.workspace.getConfiguration().get("pvs.path");
+    }): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            if (desc) {
+                this.client.onRequest(serverEvent.getGatewayConfigResponse, async (gateway: { port: number }) => {
+                    if (gateway && gateway.port) {
+                        // !important: create a new command line interface first, so it can subscribe to events published by the server
+                        const channelID: string = language.desc2id(desc);
+                        const pvsPath: string = vscode.workspace.getConfiguration().get("pvs.path");
 
-            const keys: string[] = Object.keys(this.openTerminals);
-            if (keys.length > 0) {
-                // close all prover sessions first -- the current version of pvs-server supports one prover session at a time
-                for (let i = 0; i < keys.length; i++) {
-                    const openTerminal: TerminalSession = this.openTerminals[keys[i]];
-                    await openTerminal.quitCommand();
-                    openTerminal.close();
-                }
-            }
-            const pvsTerminal: TerminalSession = new TerminalSession({ client: this.client, channelID, pvsPath });
-            await pvsTerminal.activate(this.context, cliSessionType.proveFormula, desc);
-            this.openTerminals[channelID] = pvsTerminal;
-            // send prove-formula request to pvs-server
-            this.client.sendRequest(serverCommand.proveFormula, desc);
-            // the proof script will be automatically loaded on the front-end when event serverEvent.proveFormulaResponse will be fired by the server
-        }
-    }
-    async startEvaluatorSession (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string }) {
-        if (desc) {
-            // !important: create a new command line interface first, so it can subscribe to events published by the server
-            const channelID: string = language.desc2id(desc);
-            const pvsPath: string = vscode.workspace.getConfiguration().get("pvs.path");
-            if (this.openTerminals[channelID]) {
-                this.openTerminals[channelID].terminal.show();
+                        const keys: string[] = Object.keys(this.openTerminals);
+                        if (keys.length > 0) {
+                            // close all prover sessions first -- the current version of pvs-server supports one prover session at a time
+                            for (let i = 0; i < keys.length; i++) {
+                                const openTerminal: TerminalSession = this.openTerminals[keys[i]];
+                                await openTerminal.quitCommand();
+                                openTerminal.close();
+                            }
+                        }
+                        const pvsTerminal: TerminalSession = new TerminalSession({ client: this.client, channelID, pvsPath, gateway });
+                        await pvsTerminal.activate(this.context, cliSessionType.proveFormula, desc);
+                        this.openTerminals[channelID] = pvsTerminal;
+                        // send prove-formula request to pvs-server
+                        this.client.sendRequest(serverCommand.proveFormula, desc);
+                        // the proof script will be automatically loaded on the front-end when event serverEvent.proveFormulaResponse will be fired by the server
+                        resolve(true);
+                    } else {
+                        vscode.window.showErrorMessage(`Error: Unable to start prover session (server gateway port could not be detected)`);
+                        resolve(false);
+                    }
+                });
+                this.client.sendRequest(serverCommand.getGatewayConfig);
             } else {
-                const pvsioTerminal: TerminalSession = new TerminalSession({ client: this.client, channelID, pvsPath });
-                await pvsioTerminal.activate(this.context, cliSessionType.pvsioEvaluator, desc);
-                this.openTerminals[channelID] = pvsioTerminal;
+                vscode.window.showErrorMessage(`Error: Unable to start prover session (formula name could not be identified)`);
+                resolve(false);
             }
+        });
+    }
+    async startEvaluatorSession (desc: { 
+        fileName: string, 
+        fileExtension: string, 
+        contextFolder: string, 
+        theoryName: string 
+    }): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            if (desc) {
+                this.client.onRequest(serverEvent.getGatewayConfigResponse, async (gateway: { port: number }) => {
+                    if (gateway && gateway.port) {
 
-            // send start-pvsio request to pvs-server
-            this.client.sendRequest(serverCommand.startEvaluator, desc);
-        }
+                        // !important: create a new command line interface first, so it can subscribe to events published by the server
+                        const channelID: string = language.desc2id(desc);
+                        const pvsPath: string = vscode.workspace.getConfiguration().get("pvs.path");
+                        if (this.openTerminals[channelID]) {
+                            this.openTerminals[channelID].terminal.show();
+                        } else {
+                            const pvsioTerminal: TerminalSession = new TerminalSession({ client: this.client, channelID, pvsPath, gateway });
+                            await pvsioTerminal.activate(this.context, cliSessionType.pvsioEvaluator, desc);
+                            this.openTerminals[channelID] = pvsioTerminal;
+                        }
+
+                        // send start-pvsio request to pvs-server
+                        this.client.sendRequest(serverCommand.startEvaluator, desc);
+                        resolve(true);
+                    } else {
+                        vscode.window.showErrorMessage(`Error: Unable to start evaluator session (server gateway port could not be detected)`);
+                        resolve(false);
+                    }
+                });
+            } else {
+                vscode.window.showErrorMessage(`Error: Unable to start evaluator session (theory name could not be identified)`);
+                resolve(false);
+            }
+        });
     }
 }

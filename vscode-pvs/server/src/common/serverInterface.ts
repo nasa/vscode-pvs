@@ -320,6 +320,7 @@ export declare interface PvsCliInterface {
 	type: string;
 	pvsPath: string;
 	contextFolder: string;
+	gateway: { port: number };
 	// pvsProxy: PvsProxy,
 	// cmd: string,
 	fileName: string;
@@ -478,6 +479,7 @@ export const serverCommand = {
 
 	getContextDescriptor: "pvs.get-context-descriptor",
 	getFileDescriptor: "pvs.get-file-descriptor",
+	getGatewayConfig: "pvs.get-cli-descriptor",
 
 	cancelOperation: "pvs.cancel-operation",
 
@@ -504,6 +506,7 @@ export const serverEvent = {
 
 	getContextDescriptorResponse: "pvs.response.get-context-descriptor",
 	getFileDescriptorResponse: "pvs.response.get-file-descriptor",
+	getGatewayConfigResponse: "pvs.response.get-cli-descriptor",
 
 	listDownloadableVersionsResponse: "pvs.response.list-downloadable-versions",
 	downloadPvsResponse: "pvs.response.download-pvs",

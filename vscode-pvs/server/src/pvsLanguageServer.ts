@@ -1488,6 +1488,13 @@ export class PvsLanguageServer {
 		this.linter = new PvsLinter();
 		this.cliGateway = new PvsCliGateway(this);
 	}
+
+	getGatewayPort(): number {
+		if (this.cliGateway) {
+			return this.cliGateway.getPort();
+		}
+		return 0;
+	}
 	/**
 	 * Internal function, sends diagnostics to the client
 	 * @param data Diagnostics data
@@ -1848,7 +1855,11 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverCommand.saveProof, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, proofDescriptor: ProofDescriptor }) => {
 				this.saveProofRequest(args); // async call
-			});			
+			});
+			this.connection.onRequest(serverCommand.getGatewayConfig, async () => {
+				const port: number = this.getGatewayPort();
+				this.connection.sendRequest(serverEvent.getGatewayConfigResponse, { port });
+			});
 			this.connection.onRequest(serverCommand.quitProver, async () => {
 				const timeout: number = await this.connection.workspace.getConfiguration("pvs.settings.prover.watchdog");
 				this.pvsProxy.proofCommand({ cmd: "quit", timeout }); // async call

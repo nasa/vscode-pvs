@@ -56,6 +56,8 @@ export class PvsCliGateway {
 	
 	protected pvsLanguageServer: PvsLanguageServer;
 
+	getPort (): number { return this.port; }
+
 	/**
 	* Checks availability of the port. Returns true if the port is available, false otherwise.
 	* The check works as follows. A dummy server is created at port p; if the creation of the server succeeds, an event 'listening' is triggered, otherwise an event 'error' is triggered.
@@ -130,7 +132,6 @@ export class PvsCliGateway {
 				// create websocket server
 				this.wsServer = new WebSocket.Server({ port: this.port });
 				this.wsServer.on('connection', (wsClient: WebSocket) => {
-					console.info("[pvs-cli-gateway] New terminal session started");
 					wsClient.on('message', (msg: string) => {
 						// FIXME: declare these message types in serverInterface
 						try {
@@ -138,7 +139,7 @@ export class PvsCliGateway {
 							if (data) {
 								switch (data.type) {
 									case "subscribe-vscode": {
-										console.info('[pvs-cli-gateway] received subscription request');
+										console.info('[pvs-cli-gateway] received vscode-pvs-terminal subscription request');
 										console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
 										console.info('[pvs-cli-gateway] client ID = ', data.clientID);
 										this.vscodeTerminal[data.channelID] = this.vscodeTerminal[data.channelID] || {};
@@ -149,7 +150,7 @@ export class PvsCliGateway {
 										break;
 									}
 									case "subscribe": {
-										console.info('[pvs-cli-gateway] received subscription request');
+										console.info('[pvs-cli-gateway] received pvs-CLI subscription request');
 										console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
 										console.info('[pvs-cli-gateway] client ID = ', data.clientID);
 										this.pvsCli[data.channelID] = this.pvsCli[data.channelID] || {};
@@ -243,15 +244,15 @@ export class PvsCliGateway {
 					});
 				});
 				this.wsServer.on('listening', () => {
-					console.log("[pvs-cli-gateway] WebSocket server ready!");
+					console.info(`[pvs-cli-gateway] Gateway awaiting terminal sessions on ws://0.0.0.0:${this.port}`);
 					resolve(true);
 				});
 				this.wsServer.on('error', (err) => {
-					console.error('[pvs-cli-gateway] WebSocket server error ', err);
+					console.error('[pvs-cli-gateway] Gateway error ', err);
 					resolve(false);
 				});
 			} else {
-				console.error(`[pvs-cli-gateway] WebSocket server could not find any available port after ${this.MAX_PORT_ATTEMPTS} attempts`);
+				console.error(`[pvs-cli-gateway] Gateway could not find any available port after ${this.MAX_PORT_ATTEMPTS} attempts`);
 				resolve(false);
 			}
 		});
