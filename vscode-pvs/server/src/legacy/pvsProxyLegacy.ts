@@ -221,7 +221,7 @@ export class PvsProxyLegacy {
             const match: RegExpMatchArray = /\b(?:pvs)?error\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
             const matchSystemError: RegExpExecArray = /\bRestart actions \(select using \:continue\)\:/g.exec(res);
             if (match && match.length > 3) {
-                const error_string: string = match[1].trim().replace("\\n", "\n");
+                const error_string: string = match[1].trim().replace(/\\n/g, "\n");
                 let file_name: string = match[2].trim();
                 if (!file_name.includes('/')) {
                     // pvs has not returned the true name, this happens when the file is in the current context
