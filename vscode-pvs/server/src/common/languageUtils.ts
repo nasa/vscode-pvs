@@ -457,7 +457,11 @@ export async function getProofLiteScript (desc: {
 				const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
 				if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
 					proofScript = makeHeader(proofDescriptors[0].info.status);
-					proofScript += "\n" + (proofDescriptors[0].proofLite) ? proofDescriptors[0].proofLite.join("\n") : proofScript;
+
+					const proofLite: string[] = proofTree2ProofLite(proofDescriptors[0].proofTree);
+					if (proofLite && proofLite.length) {
+						proofScript += "\n" + proofLite.join("\n");
+					}
 				}
 			} catch (jprf_parse_error) {
 				console.warn(`[language-utils] Warning: malformed .jprf file: `, jprf_parse_error );
@@ -1024,9 +1028,7 @@ export function prf2jprf (desc: { prf: string, theoryName: string, formulaName: 
 				}
 				const prf: string = data[3];
 				const proof: ProofNode = prf2ProofTree({ prf, proofName });
-				const proofLite: string[] = proofTree2ProofLite(proof);
 				result.proofTree = proof;
-				result.proofLite = proofLite;
 				// console.dir(result, { depth: null });
 			}
 		}

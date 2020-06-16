@@ -73,7 +73,8 @@ export class PvsProxyLegacy {
         }
     }
     async lisp (cmd: string): Promise<PvsResponse> {
-        let data: string = await this.pvsProcess.sendText(cmd);
+        // let data: string = await this.pvsProcess.sendText(`(lisp (let ((*in-checker* nil)) ${cmd}))`);
+        let data: string = await this.pvsProcess.sendText(`(lisp ${cmd})`);
         if (data) {
             data = data.split("\n").filter(line => { 
                 return !line.startsWith("127.0.0")
@@ -188,7 +189,8 @@ export class PvsProxyLegacy {
             id: "pvs-process-legacy"
         };
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
-            const res: string = await this.pvsProcess.sendText(`(parse-file "${fname}" nil)`);
+            const response: PvsResponse = await this.lisp(`(parse-file "${fname}" nil)`);
+            const res: string = (response) ? response.result : "";
             const match: RegExpMatchArray = /\berror\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
             if (match && match.length > 3) {
                 const error_string: string = match[1].trim().replace("\\n", "\n");
@@ -214,7 +216,8 @@ export class PvsProxyLegacy {
             id: "pvs-process-legacy"
         };
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
-            const res: string = await this.pvsProcess.sendText(`(typecheck-file "${fname}" nil nil nil nil t)`);
+            const response: PvsResponse = await this.lisp(`(typecheck-file "${fname}" nil nil nil nil t)`);
+            const res: string = (response) ? response.result : "";
             const match: RegExpMatchArray = /\b(?:pvs)?error\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
             const matchSystemError: RegExpExecArray = /\bRestart actions \(select using \:continue\)\:/g.exec(res);
             if (match && match.length > 3) {
@@ -260,6 +263,7 @@ export class PvsProxyLegacy {
         let result: FindDeclarationResult = [];
         try {
             if (data && data.result) {
+                data.result = data.result.replace(/\\"/g, '"').replace(/\\\\\//g, "/");
                 // pvs 7.1 is now generating a json object
                 result = JSON.parse(data.result);
                 if (typeof result === "string") {

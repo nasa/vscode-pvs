@@ -217,7 +217,8 @@ export class PvsProcess {
 						}
 
 						const match: RegExpMatchArray = /(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g.exec(data);
-						if (match && match[0]) {
+						const matchChecker: RegExpMatchArray = /\bRule\?/g.exec(data);
+						if (match && match[0] || matchChecker) {
 							// NB: avoid doing :pop, as it may trigger process exit
 							// const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
 							// if (matchRestartAction) {
@@ -230,7 +231,7 @@ export class PvsProcess {
 								resolve(ProcessCode.SUCCESS);
 							}
 							if (this.cb && typeof this.cb === "function") {
-								let res: string = this.data.replace(/(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g, "");
+								let res: string = this.data.replace(/(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g, "").replace(/\bRule\?/g, "");
 								res = res.replace("[Current process: Initial Lisp Listener]", ""); // clean up pvs output by removing unnecessary text
 								this.cb(res.trim());
 							}

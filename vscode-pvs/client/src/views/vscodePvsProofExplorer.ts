@@ -1317,7 +1317,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			return res;
 		}
 		const proofTree: ProofTree = makeProofStructure(this.root);
-		const proofLite: string[] = utils.proofTree2ProofLite(proofTree);
 		const proofDescriptor: ProofDescriptor = {
 			info: {
 				theory: this.formulaDescriptor.theoryName,
@@ -1326,8 +1325,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "7.x",
 				shasum: this.shasum
 			},
-			proofTree,
-			proofLite
+			proofTree
 		};
 		return proofDescriptor;
 	}

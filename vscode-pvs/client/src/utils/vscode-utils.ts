@@ -75,6 +75,7 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     
     const preview: vscode.Uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, "pvsbin", "preview"));
     const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
+    edit.deleteFile(preview, { ignoreIfNotExists: true });
     edit.createFile(preview, { overwrite: true });
     edit.replace(preview, new vscode.Range(new vscode.Position(0, 0), new vscode.Position(10000, 0)), content);
     const success: boolean = await vscode.workspace.applyEdit(edit);
@@ -84,7 +85,7 @@ export async function previewTextDocument (name: string, content: string, opt?: 
         vscode.window.showTextDocument(document, viewColumn, true);
         return true;
     }
-    vscode.window.showInformationMessage(`[vscode-utils] Warning: unable to show ${name} in the editor`);
+    // vscode.window.showInformationMessage(`[vscode-utils] Warning: unable to show ${name} in the editor`);
     return false;
 }
 

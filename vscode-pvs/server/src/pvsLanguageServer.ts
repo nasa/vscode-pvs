@@ -100,7 +100,7 @@ export class PvsLanguageServer {
 	protected pvsPath: string;
 	protected pvsVersionDescriptor: PvsVersionDescriptor;
 
-	protected proverSessionActive: boolean = false; // this flag is necessary because multi-threading is not supported under MacOs, and we need to disable functionalities when a prover session is active
+	// protected proverSessionActive: boolean = false; // this flag is necessary because multi-threading is not supported under MacOs, and we need to disable functionalities when a prover session is active
 
 	// timers
 	protected timers: { [ key:string ]: NodeJS.Timer } = {};
@@ -263,13 +263,13 @@ export class PvsLanguageServer {
 		if (utils.isQuitCommand(request.cmd)) {
 			await this.pvsProxy.proofCommand({ cmd: "quit", timeout });
 			this.connection.sendRequest(serverEvent.quitProofEvent, { args: request });
-			this.proverSessionActive = false;
+			// this.proverSessionActive = false;
 			return
 		}
 		if (utils.isQuitDontSaveCommand(request.cmd)) {
 			await this.pvsProxy.proofCommand({ cmd: "quit", timeout });
 			this.connection.sendRequest(serverEvent.quitDontSaveProofEvent, { args: request });
-			this.proverSessionActive = false;
+			// this.proverSessionActive = false;
 			return
 		}
 		
@@ -316,9 +316,9 @@ export class PvsLanguageServer {
 			try {
 				args = fsUtils.decodeURIComponents(args);
 				const response: PvsResponse = await this.pvsProxy.proveFormula(args);
-				if (response && response.result) {
-					this.proverSessionActive = true;
-				}
+				// if (response && response.result) {
+				// 	this.proverSessionActive = true;
+				// }
 				return response;
 			} catch (ex) {
 				console.error('[pvs-language-server.proveFormula] Error: pvsProxy has thrown an exception', ex);
@@ -337,7 +337,7 @@ export class PvsLanguageServer {
 		// send feedback to the front-end
 		const taskId: string = `typecheck-${request.formulaName}`;
 		if (!request.autorun) {
-			this.notifyStartImportantTask({ id: taskId, msg: `Typechecking files necessary to prove formula ${request.formulaName}` });
+			this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${request.formulaName}'` });
 		}
 
 		// make sure pvs files are typechecked before starting a proof attempt
@@ -361,7 +361,7 @@ export class PvsLanguageServer {
 			this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc }, args: request });
 		}
 		// start proof
-		console.log("prove-formula", request);
+		// console.log("prove-formula", request);
 		const response: PvsResponse = await this.proveFormula(request);
 		if (response) {
 			const channelID: string = utils.desc2id(request);
@@ -512,6 +512,7 @@ export class PvsLanguageServer {
 		formulaName: string, 
 		contextFolder: string
 	}): Promise<PvsResponse> {
+		console.log(`[pvs-server] Loading proof script`);
 		request = fsUtils.decodeURIComponents(request);
 		return await this.pvsProxy.proofScript(request);
 	}
@@ -962,7 +963,7 @@ export class PvsLanguageServer {
 	 */
 	async parseFile (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
 		args = fsUtils.decodeURIComponents(args);
-		if (!this.proverSessionActive && this.checkArgs("parseFile", args)) {
+		if (this.checkArgs("parseFile", args)) {
 			const enableEParser: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.settings.parser.errorTolerant"));
 			try {
 				return await this.pvsProxy.parseFile(args, { enableEParser });

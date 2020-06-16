@@ -197,8 +197,7 @@ export declare interface ProofDescriptor {
 		prover: string, // prover version
 		shasum: string // digest, obtained from the file content after removing all spaces
 	},
-	proofTree?: ProofNode,
-	proofLite?: string[] // we are using a vector rather than a single string so it's human readable
+	proofTree?: ProofNode
 }
 export declare interface PvsListProofStrategies extends PvsResponseType {
 	error: ErrorType,

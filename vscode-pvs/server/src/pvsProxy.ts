@@ -201,7 +201,7 @@ export class PvsProxy {
 		return new Promise((resolve, reject) => {
 			if (this.client) {
 				const jsonReq: string = JSON.stringify(req);
-				// console.log(jsonReq);
+				console.dir(jsonReq);
 				this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
 					if (error) {
 						console.error("[pvs-proxy] Error returned by pvs-server: "); 
@@ -698,9 +698,9 @@ export class PvsProxy {
 	 */
 	async lisp(cmd: string): Promise<PvsResponse> {
 		// don't use legacy apis here --- this command might be used during a prover session, and pvs process is unable to process requests during prover sessions
-		// if (this.useLegacy) {
-		// 	return await this.legacy.sendCommand(cmd);
-		// }
+		if (this.useLegacy) {
+			return await this.legacy.lisp(cmd);
+		}
 		// else
 		return await this.pvsRequest('lisp', [ cmd ]);
 	}
@@ -721,8 +721,8 @@ export class PvsProxy {
 	// protected findDeclarationQueue: Promise<PvsResponse> = null; // we are using this queue to reduce the strain on the server --- pvs-server tends to crash on MacOS if too many requests are sent in a short time frame
 	async findDeclaration (symbolName: string): Promise<PvsResponse> {
 		// we want to use the server, otherwise find-declaration won't work while in a prover session
-		// const ans: PvsResponse = (this.macOs) ? await this.legacy.findDeclaration(symbolName)
-		// 	: await this.pvsRequest('find-declaration', [ symbolName ]);
+		const ans: PvsResponse = (this.useLegacy) ? await this.legacy.findDeclaration(symbolName)
+			: await this.pvsRequest('find-declaration', [ symbolName ]);
 
 		// const promiseFindDeclaration: Promise<PvsResponse> = new Promise ((resolve, reject) => {
 		// 	setTimeout(async () => {
@@ -745,16 +745,16 @@ export class PvsProxy {
 		// }): promiseFindDeclaration;
 		// return this.findDeclarationQueue;
 
-		const ans: PvsResponse = await this.pvsRequest('find-declaration', [ symbolName ]);
-		if (ans && ans.result) {
-			if (typeof ans.result !== "object") {
-				// disabling this warning for now, as we know how to recover from this bug
-				// console.error(`[pvs-proxy] Warning: pvs-server returned malformed result for find-declaration (expecting object found ${typeof ans.result})`);
-			}
-			if (typeof ans.result === "string") {
-				ans.result = JSON.parse(ans.result);
-			}
-		}
+		// const ans: PvsResponse = await this.pvsRequest('find-declaration', [ symbolName ]);
+		// if (ans && ans.result) {
+		// 	if (typeof ans.result !== "object") {
+		// 		// disabling this warning for now, as we know how to recover from this bug
+		// 		// console.error(`[pvs-proxy] Warning: pvs-server returned malformed result for find-declaration (expecting object found ${typeof ans.result})`);
+		// 	}
+		// 	if (typeof ans.result === "string") {
+		// 		ans.result = JSON.parse(ans.result);
+		// 	}
+		// }
 		return ans;
 	}
 

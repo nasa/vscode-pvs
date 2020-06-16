@@ -104,35 +104,35 @@ describe("pvs-proxy", () => {
 
 	}, 10000);
 
-	// xit(`is robust to multiple find-declaration in parallel`, async () => {
-	// 	label(`is robust to multiple find-declaration in parallel`);
+	it(`is robust to multiple parallel invocation of find-declaration`, async () => {
+		label(`is robust to multiple parallel invocation of find-declaration `);
 
-	// 	pvsProxy.findDeclaration("boolean");
-	// 	pvsProxy.findDeclaration("T");
-	// 	pvsProxy.findDeclaration("if_def");
-	// 	pvsProxy.findDeclaration("not_def");
-	// 	pvsProxy.findDeclaration("and_def");
-	// 	pvsProxy.findDeclaration("syand_def");
-	// 	pvsProxy.findDeclaration("or_def");
-	// 	pvsProxy.findDeclaration("implies_def");
-	// 	pvsProxy.findDeclaration("syimplies_def");
-	// 	pvsProxy.findDeclaration("when_def");
-	// 	pvsProxy.findDeclaration("syiff_def");
-	// 	pvsProxy.findDeclaration("excluded_middle");
-	// 	pvsProxy.findDeclaration("not_exists");
-	// 	pvsProxy.findDeclaration("exists_not");
-	// 	pvsProxy.findDeclaration("exists_or");
-	// 	pvsProxy.findDeclaration("exists_implies");
-	// 	pvsProxy.findDeclaration("exists_and");``
-	// 	pvsProxy.findDeclaration("forall_and");
-	// 	pvsProxy.findDeclaration("forall_not");
-	// 	const response: PvsResponse = await pvsProxy.findDeclaration("forall_or");
+		pvsProxy.findDeclaration("boolean");
+		pvsProxy.findDeclaration("T");
+		pvsProxy.findDeclaration("if_def");
+		pvsProxy.findDeclaration("not_def");
+		pvsProxy.findDeclaration("and_def");
+		pvsProxy.findDeclaration("syand_def");
+		pvsProxy.findDeclaration("or_def");
+		pvsProxy.findDeclaration("implies_def");
+		pvsProxy.findDeclaration("syimplies_def");
+		pvsProxy.findDeclaration("when_def");
+		pvsProxy.findDeclaration("syiff_def");
+		pvsProxy.findDeclaration("excluded_middle");
+		pvsProxy.findDeclaration("not_exists");
+		pvsProxy.findDeclaration("exists_not");
+		pvsProxy.findDeclaration("exists_or");
+		pvsProxy.findDeclaration("exists_implies");
+		pvsProxy.findDeclaration("exists_and");``
+		pvsProxy.findDeclaration("forall_and");
+		pvsProxy.findDeclaration("forall_not");
+		const response: PvsResponse = await pvsProxy.findDeclaration("forall_or");
 
-	// 	expect(response).not.toBeNull();
-	// 	expect(response.result).toBeDefined();
-	// 	expect(response.error).not.toBeDefined();
+		expect(response).not.toBeNull();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
 
-	// }, 4000);
+	}, 4000);
 
 	it(`returns a full and well-formed filename in find-declaration`, async () => {
 		label(`returns a full and well-formed filename in find-declaration`);

@@ -2,7 +2,7 @@
 	"name": "vscode-pvs-client",
 	"description": "PVS client for Visual Studio Code",
 	"author": "Paolo Masci",
-	"version": "1.0.22-gamma",
+	"version": "1.0.22-kappa",
 	"publisher": "paolomasci",
 	"license": "NASA-1.3",
 	"notices": {
