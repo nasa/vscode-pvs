@@ -193,7 +193,7 @@ export class PvsProxyLegacy {
             const res: string = (response) ? response.result : "";
             const match: RegExpMatchArray = /\berror\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
             if (match && match.length > 3) {
-                const error_string: string = match[1].trim().replace("\\n", "\n");
+                const error_string: string = match[1].trim().replace(/\\n/g, "\n");
                 const file_name: string = match[2].trim();
                 const line: string = match[3];
                 const character: string = match[4];
@@ -269,6 +269,11 @@ export class PvsProxyLegacy {
                 if (typeof result === "string") {
                     // pvs is erroneously returning a string encoding of a string encoding of a JSON object
                     result = JSON.parse(result);
+                }
+                if (result && result.length) {
+                    for (let i = 0; i < result.length; i++) {
+                        result[i]["decl-ppstring"] = result[i]["decl-ppstring"].replace(/\\n/g, "\n");
+                    }
                 }
                 // let declInfo: string[] = data.result.split(`(("declname"`).filter((elem: string) => { return elem.includes(`"place"`)});
                 // if (declInfo && declInfo.length) {
