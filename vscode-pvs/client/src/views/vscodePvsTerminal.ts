@@ -388,6 +388,7 @@ export class VSCodePvsTerminal {
                         resolve(false);
                     }
                 });
+                this.client.sendRequest(serverCommand.getGatewayConfig);
             } else {
                 vscode.window.showErrorMessage(`Error: Unable to start evaluator session (theory name could not be identified)`);
                 resolve(false);
