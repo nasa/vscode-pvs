@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs-server",
 	"description": "Implementation of a language server for PVS.",
-	"version": "1.0.22-kappa",
+	"version": "1.0.22-lambda",
 	"author": "Paolo Masci",
 	"publisher": "paolomasci",
 	"license": "NASA-1.3",
