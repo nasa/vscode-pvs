@@ -828,6 +828,8 @@ export class EventsDispatcher {
                             if (desc && desc.msg) {
                                 this.statusBar.showError(desc.msg); // use the status bar rather than dialogs, because we don't have APIs to close old dialogs with potentially stale information
                                 // window.showErrorMessage(desc.msg);
+                                // show problems panel -- see also Code->Preferences->KeyboardShortcuts
+                                commands.executeCommand("workbench.actions.view.toggleProblems");
                             }
                         });
                     });
