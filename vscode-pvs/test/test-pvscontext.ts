@@ -60,31 +60,6 @@ describe("pvs", () => {
 	}, 20000);
 
 	// OK
-	it(`can typecheck strings defined in pillboxv7`, async () => {
-		label(`can typecheck strings defined in pillboxv7`);
-		// Need to clear-theories, in case rerunning with the same server.
-		await pvsProxy.lisp("(clear-theories t)");
-
-		// remove pillboxv7 folder if present and replace it with the content of the zip file
-		const baseFolder: string = path.join(__dirname, "pvscontext");
-		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
-		execSync(`cd ${baseFolder} && unzip pillboxv7-errors-with-strings.zip`);
-
-		const response: PvsResponse = await pvsProxy.typecheckFile({
-			fileName: "main", 
-			fileExtension: ".pvs", 
-			contextFolder: path.join(baseFolder, "pillboxv7")
-		});
-		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-
-		// remove pillboxv7 folder 
-		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
-	}, 10000);
-
-	// OK
 	it(`can find typecheck error in ICEcoordinator.pvs (wrong field type)`, async () => {
 		label(`can find typecheck error in ICEcoordinator.pvs (wrong field type)`);
 		// Need to clear-theories, in case rerunning with the same server.
@@ -109,6 +84,30 @@ describe("pvs", () => {
 		fsUtils.deleteFolder(path.join(baseFolder, "pvsICEipandvs2"));
 	}, 10000);
 
+	// FAILS: crashed into Lisp
+	it(`can typecheck strings defined in pillboxv7`, async () => {
+		label(`can typecheck strings defined in pillboxv7`);
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		// remove pillboxv7 folder if present and replace it with the content of the zip file
+		const baseFolder: string = path.join(__dirname, "pvscontext");
+		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
+		execSync(`cd ${baseFolder} && unzip pillboxv7-errors-with-strings.zip`);
+
+		const response: PvsResponse = await pvsProxy.typecheckFile({
+			fileName: "main", 
+			fileExtension: ".pvs", 
+			contextFolder: path.join(baseFolder, "pillboxv7")
+		});
+		// console.dir(response);
+		expect(response).toBeDefined();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+
+		// remove pillboxv7 folder 
+		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
+	}, 10000);
 
 	// FAIL: returns wrong error message
 	it(`returns the correct error message ('limits' theory defined twice in the same context) when typechecking baxterSigmaSpectrum.pvs`, async () => {
@@ -185,11 +184,47 @@ describe("pvs", () => {
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
-		// remove pillboxv7 folder 
+		// remove folder 
 		fsUtils.deleteFolder(path.join(baseFolder, "type_theory"));
 	}, 10000);
 
 
+	// FAIL: crashes into Lisp
+	it(`can typecheck datatypes in trace`, async () => {
+		label(`can typecheck datatypes in trace`);
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		// remove folder if present and replace it with the content of the zip file
+		const baseFolder: string = path.join(__dirname, "pvscontext");
+		fsUtils.deleteFolder(path.join(baseFolder, "trace"));
+		execSync(`cd ${baseFolder} && unzip trace.zip`);
+
+		let response: PvsResponse = await pvsProxy.parseFile({
+			fileName: "trace", 
+			fileExtension: ".pvs", 
+			contextFolder: path.join(baseFolder, "trace")
+		});
+		// console.dir(response);
+		response = await pvsProxy.parseFile({
+			fileName: "CONDITIONS", 
+			fileExtension: ".pvs", 
+			contextFolder: path.join(baseFolder, "trace")
+		});
+		// console.dir(response);
+		response = await pvsProxy.typecheckFile({
+			fileName: "CONDITIONS", 
+			fileExtension: ".pvs", 
+			contextFolder: path.join(baseFolder, "trace")
+		});
+		// console.dir(response);
+		expect(response).toBeDefined();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+
+		// remove folder 
+		fsUtils.deleteFolder(path.join(baseFolder, "trace"));
+	}, 10000);
 
 	// it(`can evalute ground expressions`, async () => {
 	// 	label(`can evalute ground expressions`);
