@@ -314,7 +314,7 @@ class PvsCli {
 					console.log();
 					this.wsClient.send(JSON.stringify({
 						type: serverCommand.proofCommand,
-						cmd: "quit-dont-save",
+						cmd: "quit",
 						fileName: this.args.fileName,
 						fileExtension: this.args.fileExtension,
 						contextFolder: this.args.contextFolder,
