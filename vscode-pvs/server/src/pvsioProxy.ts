@@ -277,6 +277,9 @@ export class PvsIoProxy {
 		const processId: string = utils.desc2id(desc);
 		let data: string = "";
 		if (this.processRegistry && this.processRegistry[processId] && desc.cmd) {
+			console.dir(desc);
+			if (desc.cmd === ";") { desc.cmd = `"";`; }
+			console.dir(desc);
 			let cmd: string = (desc.cmd.endsWith(";") || desc.cmd.endsWith("!")) ? desc.cmd : `${desc.cmd};`;
 			if (utils.isQuitCommand(cmd)) {
 				this.processRegistry[processId].kill();
