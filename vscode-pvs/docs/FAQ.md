@@ -85,3 +85,9 @@ Yes, you can use the following basic set PVS hot-keys combinations in VSCode-PVS
 ### **What is `M-x`, and how do I use it?**
 `M-x` is a key combination obtained by pressing the `META` key and the `x` letter simultaneously.
 The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` key.
+
+### **In the prover session, can I move the cursor with the mouse using point-click actions?**
+Yes, point-click actions are enabled in the prover session when pressing the `META` key.
+
+### **In the prover session, can copy-paste multi-line text?**
+No, this is not supported at this time. We are working on this, please stay tuned for updates.
