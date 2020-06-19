@@ -282,78 +282,83 @@ class PvsCli {
 		// activate readline
 		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.proverCompleter(line); });
 		this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+		this.isActive = true;
 		this.rl.on("line", async (ln: string) => {
-			this.lines += ln;
-			if (this.lines.startsWith("(")) {
-				this.rl.setPrompt("");
-			}
-			if (!this.lines.startsWith("(") || parCheck(this.lines)) {
-				let cmd: string = this.lines;
-				this.lines = "";
-				if (utils.isSaveCommand(cmd)) {
-					console.log();
-					console.log("Proof saved successfully!");
-					console.log();
-					this.wsClient.send(JSON.stringify({
-						type: serverCommand.proofCommand,
-						cmd: "save",
-						fileName: this.args.fileName,
-						fileExtension: this.args.fileExtension,
-						contextFolder: this.args.contextFolder,
-						theoryName: this.args.theoryName,
-						formulaName: this.args.formulaName
-					}));
-					// show prompt
-					this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
-					this.rl.prompt();
-				} else if (utils.isQuitCommand(cmd)) {
-					console.log();
-					console.log("Prover session terminated.");
-					console.log();
-					this.wsClient.send(JSON.stringify({
-						type: serverCommand.proofCommand,
-						cmd: "quit",
-						fileName: this.args.fileName,
-						fileExtension: this.args.fileExtension,
-						contextFolder: this.args.contextFolder,
-						theoryName: this.args.theoryName,
-						formulaName: this.args.formulaName
-					}));
-					this.rl.question("Press Enter to close the terminal.", (answer: string) => {
-						this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
-						this.wsClient.close();
-					});
-					return;
-				} else if (isQED(cmd)) {
-					readline.moveCursor(process.stdin, 0, -1);
-					readline.clearScreenDown(process.stdin);
-					console.log();
-					console.log(utils.colorText("Q.E.D.", utils.textColor.green));
-					console.log();
-					this.rl.question("Press Enter to close the terminal.", () => {
-						this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
-						this.wsClient.close();
-					});
-					return;
-				} else {
-					if (quotesMatch(cmd)) {
-						cmd = parMatch(cmd);
-						// log command, for debugging purposes
-						// this.connection.console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
-					} else {
-						this.connection.console.warn("Mismatching double quotes, please check your expression");
-					}
-					this.wsClient.send(JSON.stringify({
-						type: serverCommand.proofCommand, 
-						cmd,
-						fileName: this.args.fileName,
-						fileExtension: this.args.fileExtension,
-						contextFolder: this.args.contextFolder,
-						theoryName: this.args.theoryName,
-						formulaName: this.args.formulaName
-					}));
+			if (this.isActive) {
+				this.lines += ln;
+				if (this.lines.startsWith("(")) {
+					this.rl.setPrompt("");
 				}
-				this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+				if (!this.lines.startsWith("(") || parCheck(this.lines)) {
+					let cmd: string = this.lines;
+					this.lines = "";
+					if (utils.isSaveCommand(cmd)) {
+						console.log();
+						console.log("Proof saved successfully!");
+						console.log();
+						this.wsClient.send(JSON.stringify({
+							type: serverCommand.proofCommand,
+							cmd: "save",
+							fileName: this.args.fileName,
+							fileExtension: this.args.fileExtension,
+							contextFolder: this.args.contextFolder,
+							theoryName: this.args.theoryName,
+							formulaName: this.args.formulaName
+						}));
+						// show prompt
+						this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+						this.rl.prompt();
+					} else if (utils.isQuitCommand(cmd)) {
+						console.log();
+						console.log("Prover session terminated.");
+						console.log();
+						this.wsClient.send(JSON.stringify({
+							type: serverCommand.proofCommand,
+							cmd: "quit",
+							fileName: this.args.fileName,
+							fileExtension: this.args.fileExtension,
+							contextFolder: this.args.contextFolder,
+							theoryName: this.args.theoryName,
+							formulaName: this.args.formulaName
+						}));
+						this.isActive = false;
+						this.rl.question("Press Enter to close the terminal.", (answer: string) => {
+							this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+							this.wsClient.close();
+						});
+						return;
+					} else if (isQED(cmd)) {
+						readline.moveCursor(process.stdin, 0, -1);
+						readline.clearScreenDown(process.stdin);
+						console.log();
+						console.log(utils.colorText("Q.E.D.", utils.textColor.green));
+						console.log();
+						this.isActive = false;
+						this.rl.question("Press Enter to close the terminal.", () => {
+							this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+							this.wsClient.close();
+						});
+						return;
+					} else {
+						if (quotesMatch(cmd)) {
+							cmd = parMatch(cmd);
+							// log command, for debugging purposes
+							// this.connection.console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
+						} else {
+							this.connection.console.warn("Mismatching double quotes, please check your expression");
+						}
+						this.wsClient.send(JSON.stringify({
+							type: serverCommand.proofCommand, 
+							cmd,
+							fileName: this.args.fileName,
+							fileExtension: this.args.fileExtension,
+							contextFolder: this.args.contextFolder,
+							theoryName: this.args.theoryName,
+							formulaName: this.args.formulaName
+						}));
+					}
+					this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+				}
 			}
 		});
 		this.connection = new CliConnection();
