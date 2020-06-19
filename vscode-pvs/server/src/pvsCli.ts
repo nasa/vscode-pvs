@@ -278,19 +278,16 @@ class PvsCli {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
 		}
-		this.isActive = true;
 		readline.emitKeypressEvents(process.stdin);
-		const activateReadline = (): void => {
-			this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.proverCompleter(line); });
-			this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
-			this.rl.on("line", async (cmd: string) => {
-				this.lines += cmd;
-				if (!this.lines.startsWith("(") || parCheck(this.lines)) {
-					this.rl.close();
-				}
-			});
-			this.rl.on("close", () => {
-				if (!this.isActive) { return; }
+		// activate readline
+		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.proverCompleter(line); });
+		this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+		this.rl.on("line", async (ln: string) => {
+			this.lines += ln;
+			if (this.lines.startsWith("(")) {
+				this.rl.setPrompt("");
+			}
+			if (!this.lines.startsWith("(") || parCheck(this.lines)) {
 				let cmd: string = this.lines;
 				this.lines = "";
 				if (utils.isSaveCommand(cmd)) {
@@ -307,6 +304,7 @@ class PvsCli {
 						formulaName: this.args.formulaName
 					}));
 					// show prompt
+					this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
 					this.rl.prompt();
 				} else if (utils.isQuitCommand(cmd)) {
 					console.log();
@@ -321,8 +319,6 @@ class PvsCli {
 						theoryName: this.args.theoryName,
 						formulaName: this.args.formulaName
 					}));
-					this.isActive = false;
-					activateReadline();
 					this.rl.question("Press Enter to close the terminal.", (answer: string) => {
 						this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
 						this.wsClient.close();
@@ -334,8 +330,6 @@ class PvsCli {
 					console.log();
 					console.log(utils.colorText("Q.E.D.", utils.textColor.green));
 					console.log();
-					this.isActive = false;
-					activateReadline();
 					this.rl.question("Press Enter to close the terminal.", () => {
 						this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
 						this.wsClient.close();
@@ -359,10 +353,9 @@ class PvsCli {
 						formulaName: this.args.formulaName
 					}));
 				}
-				activateReadline();
-			});
-		}
-		activateReadline();
+				this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+			}
+		});
 		this.connection = new CliConnection();
 	}
 	async subscribe (channelID: string): Promise<boolean> {
