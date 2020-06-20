@@ -207,13 +207,14 @@ export class PvsProcess {
 						// 	data: process.memoryUsage()
 						// }, { depth: null });
 						// console.log(data);
-
+						
 						// wait for the pvs prompt, to make sure pvs-server is operational
 						const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
 						if (yesNoQuery) {
 							console.log(data);
 							this.pvsProcess.stdin.write("Yes\n");
 							this.log("Yes\n", { force: true });
+							return;
 						}
 
 						const match: RegExpMatchArray = /(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g.exec(data);

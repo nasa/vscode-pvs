@@ -100,7 +100,8 @@ export class PvsLanguageServer {
 	protected pvsPath: string;
 	protected pvsVersionDescriptor: PvsVersionDescriptor;
 
-	// protected proverSessionActive: boolean = false; // this flag is necessary because multi-threading is not supported under MacOs, and we need to disable functionalities when a prover session is active
+	// indicates whether a prover session is active -- pvs-server is single-threaded, and we can safely send only find-declaration requests when a prover session is active, everything else needs to be disabled
+	protected inChecker: boolean = false;
 
 	// timers
 	protected timers: { [ key:string ]: NodeJS.Timer } = {};
@@ -263,13 +264,13 @@ export class PvsLanguageServer {
 		if (utils.isQuitCommand(request.cmd)) {
 			await this.pvsProxy.proofCommand({ cmd: "quit", timeout });
 			this.connection.sendRequest(serverEvent.quitProofEvent, { args: request });
-			// this.proverSessionActive = false;
+			this.inChecker = false;
 			return
 		}
 		if (utils.isQuitDontSaveCommand(request.cmd)) {
 			await this.pvsProxy.proofCommand({ cmd: "quit", timeout });
 			this.connection.sendRequest(serverEvent.quitDontSaveProofEvent, { args: request });
-			// this.proverSessionActive = false;
+			this.inChecker = false;
 			return
 		}
 		
@@ -316,9 +317,9 @@ export class PvsLanguageServer {
 			try {
 				args = fsUtils.decodeURIComponents(args);
 				const response: PvsResponse = await this.pvsProxy.proveFormula(args);
-				// if (response && response.result) {
-				// 	this.proverSessionActive = true;
-				// }
+				if (response && response.result) {
+					this.inChecker = true;
+				}
 				return response;
 			} catch (ex) {
 				console.error('[pvs-language-server.proveFormula] Error: pvsProxy has thrown an exception', ex);
@@ -481,13 +482,13 @@ export class PvsLanguageServer {
 	async startEvaluatorRequest (request: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		// send feedback to the front-end
-		const taskId: string = `typecheck-${request.fileName}@${request.theoryName}`;
-		this.notifyStartImportantTask({ id: taskId, msg: `Typechecking files necessary to evaluate theory ${request.theoryName}` });
+		const taskId: string = `pvsio-${request.fileName}@${request.theoryName}`;
+		this.notifyStartImportantTask({ id: taskId, msg: `Loading files necessary to evaluate theory ${request.theoryName}` });
 		// parse workspace files before starting the proof attempt, so stats can be updated on the status bar 
-		await this.parseWorkspaceRequest(request);
+		// await this.parseWorkspaceRequest(request);
 		// start pvsio evaluator
-		const response: PvsResponse = await this.typecheckFile(request);
-		if (response && response.result) {
+		// const response: PvsResponse = await this.typecheckFile(request);
+		// if (response && response.result) {
 			let pvsioResponse: PvsResponse = await this.pvsioProxy.startEvaluator(request);
 			const channelID: string = utils.desc2id(request);
 			// replace standard banner
@@ -496,9 +497,9 @@ export class PvsLanguageServer {
 			this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: pvsioResponse });
 			this.connection.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: request });
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
-		} else {
-			this.pvsErrorManager.handleEvaluationError({ request, response: <PvsError> response, taskId });
-		}
+		// } else {
+		// 	this.pvsErrorManager.handleEvaluationError({ request, response: <PvsError> response, taskId });
+		// }
 	}
 
 	/**
@@ -643,8 +644,11 @@ export class PvsLanguageServer {
 			const success: boolean = await this.saveProof(request);
 			this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: request });
 			// trigger a context update, so proof status will be updated on the front-end
-			const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
-			this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+			setTimeout(() => {
+				this.getContextDescriptor({ contextFolder: request.contextFolder }).then((cdesc: PvsContextDescriptor) => {
+					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+				});	
+			}, 320);
 		} else {
 			console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", request);
 		}
@@ -834,7 +838,7 @@ export class PvsLanguageServer {
 									position: null,
 									theorems: (tccResult) ? tccResult.map(tcc => {
 										line += (tcc.comment && tcc.comment.length) ? tcc.comment[0].split("\n").length + 1 : 1;
-										const content: string = tcc.definition || "";
+										// const content: string = tcc.definition || "";
 										const res: FormulaDescriptor = {
 											fileName: args.fileName,
 											fileExtension: ".tccs",
@@ -884,7 +888,7 @@ export class PvsLanguageServer {
 					this.notifyStartImportantTask({ id: taskId, msg: `Generating typecheck conditions for ${shortName}`});
 				}
 				// parse files first, so front-end is updated with stats
-				await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking, pvs-server is not able to do this tho.
+				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking, pvs-server is not able to do this tho.
 				// then generate tccs
 				const response: PvsContextDescriptor = await this.showTccs(desc);
 				if (opt.showTccsResponse) {
@@ -963,7 +967,7 @@ export class PvsLanguageServer {
 	 */
 	async parseFile (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
 		args = fsUtils.decodeURIComponents(args);
-		if (this.checkArgs("parseFile", args)) {
+		if (this.checkArgs("parseFile", args) && !this.inChecker) {
 			const enableEParser: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.settings.parser.errorTolerant"));
 			try {
 				return await this.pvsProxy.parseFile(args, { enableEParser });
@@ -1683,6 +1687,8 @@ export class PvsLanguageServer {
 				await this.cliGateway.activate();
 				// send version info to the front-end
 				await this.sendPvsVersionInfo();
+				// reset inChecker flag
+				this.inChecker = false;
 			} else {
 				console.error("[pvs-language-server] Error: failed to identify PVS path");
 				this.connection.sendRequest(serverEvent.pvsNotPresent);

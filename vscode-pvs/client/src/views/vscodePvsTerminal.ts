@@ -59,6 +59,8 @@ class TerminalSession {
 
     protected isActive: boolean = false;
 
+    protected cb: () => void = null;
+
     /**
      * Constructor
      * @param client VSCode Language Client, necessary for sending requests to pvs-server
@@ -117,7 +119,7 @@ class TerminalSession {
                 }
             }) => {
                 this.isActive = false;
-                vscode.commands.executeCommand('setContext', 'prover-session-active', false);
+                vscode.commands.executeCommand('setContext', 'in-checker', false);
             });
             this.client.onRequest(serverEvent.closeDontSaveEvent, (desc: {
                 args: { 
@@ -135,7 +137,7 @@ class TerminalSession {
                     this.terminal.sendText(desc.msg);
                 }
                 this.terminal.sendText("quit");
-                vscode.commands.executeCommand('setContext', 'prover-session-active', false);
+                vscode.commands.executeCommand('setContext', 'in-checker', false);
             });
         });
     }
@@ -205,33 +207,32 @@ class TerminalSession {
         //         vscode.window.terminals[i].hide();
         //     }
         // }
-        // hide terminal
-        this.terminal.hide();
-        // dispose this terminal
-        this.terminal.dispose();
+        if (this.terminal) {
+            // hide terminal
+            this.terminal.hide();
+            // dispose this terminal
+            this.terminal.dispose();
+        }
         // close proof explorer and proofmate
-        vscode.commands.executeCommand('setContext', 'prover-session-active', false);        
+        vscode.commands.executeCommand('setContext', 'in-checker', false);        
     }
     sendCommand (cmd: string) {
         this.sendText(cmd);
     }
     deactivate(): void {
         this.isActive = false;
+        if (this.cb) {
+            this.cb();
+        }
     }
     async quitCommand (): Promise<void> {
         if (this.isActive) {
             this.sendCommand("quit");
             return new Promise((resolve, reject) => {
-                this.client.onRequest(serverEvent.quitDontSaveProofEvent, (request: { 
-                    fileName: string, 
-                    fileExtension: string, 
-                    contextFolder: string, 
-                    theoryName: string, 
-                    formulaName: string, 
-                    cmd: string 
-                }) => {
+                this.cb = () => {
+                    this.cb = null;
                     resolve();
-                });
+                }
             });
         }
     }
@@ -258,7 +259,7 @@ export class VSCodePvsTerminal {
                         this.client.sendRequest(serverCommand.quitProver);
                         delete this.openTerminals[keys[i]];
                         // the following will hide proof explorer and proofmate
-                        vscode.commands.executeCommand('setContext', 'prover-session-active', false);
+                        // vscode.commands.executeCommand('setContext', 'in-checker', false);
                         break;
                     }
                 }

@@ -1096,12 +1096,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Utility function, hides proof explorer view in the IDE
 	 */
-	hide(): void { commands.executeCommand('setContext', 'prover-session-active', false); }
+	hide(): void { commands.executeCommand('setContext', 'in-checker', false); }
 
 	/**
 	 * Utility function, reveals proof explorer view in the IDE
 	 */
-	reveal(): void { commands.executeCommand('setContext', 'prover-session-active', true); }
+	reveal(): void { commands.executeCommand('setContext', 'in-checker', true); }
 
 	/**
 	 * Utility function, marks the current proof as complete
@@ -1437,7 +1437,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	async saveProof (opt?: { msg?: string, force?: boolean, quiet?: boolean }): Promise<boolean> {
 		return new Promise(async (resolve, reject) => {
 			opt = opt || {};
-			// register handler
+			// register handler that will resolve the promise when the proof needs to be saved
 			this.client.onRequest(serverEvent.saveProofResponse, (desc: {
 				response: { success: boolean, msg?: string }, 
 				args: { 
@@ -1478,6 +1478,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					formulaName: this.formulaDescriptor.formulaName,
 					proofDescriptor: this.proofDescriptor
 				});
+			} else {
+				resolve();
 			}
 		});
 	}

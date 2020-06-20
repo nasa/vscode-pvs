@@ -218,11 +218,11 @@ export class PvsProxyLegacy {
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
             const response: PvsResponse = await this.lisp(`(typecheck-file "${fname}" nil nil nil nil t)`);
             const res: string = (response) ? response.result : "";
-            const match: RegExpMatchArray = /\b(?:pvs)?error\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
-            const matchSystemError: RegExpExecArray = /\bRestart actions \(select using \:continue\)\:/g.exec(res);
-            if (match && match.length > 3) {
-                const error_string: string = match[1].trim().replace(/\\n/g, "\n");
-                let file_name: string = match[2].trim();
+
+            const matchTypecheckError: RegExpMatchArray = /\b(?:pvs)?error\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
+            if (matchTypecheckError && matchTypecheckError.length > 3) {
+                const error_string: string = matchTypecheckError[1].trim().replace(/\\n/g, "\n");
+                let file_name: string = matchTypecheckError[2].trim();
                 if (!file_name.includes('/')) {
                     // pvs has not returned the true name, this happens when the file is in the current context
                     file_name = path.join(fsUtils.getContextFolder(fname), file_name);
@@ -231,8 +231,8 @@ export class PvsProxyLegacy {
                     // pvs has not returned the true name, this happens when the file is in the current context
                     file_name = file_name + ".pvs";
                 }
-                const line: string = match[3];
-                const character: string = match[4];
+                const line: string = matchTypecheckError[3];
+                const character: string = matchTypecheckError[4];
                 pvsResponse.error = {
                     data: {
                         place: [ +line, +character ],
@@ -240,7 +240,11 @@ export class PvsProxyLegacy {
                         file_name
                     }
                 };
-            } else if (matchSystemError) {
+                return pvsResponse;
+            } 
+            
+            const matchSystemError: boolean = /\bRestart actions \(select using \:continue\)\:/g.test(res);
+            if (matchSystemError) {
                 pvsResponse.error = {
                     data: {
                         place: [ 1, 0 ],
@@ -251,9 +255,10 @@ export class PvsProxyLegacy {
                 if (this.pvsErrorManager) {
                     this.pvsErrorManager.notifyPvsFailure({ fname });
                 }
-            } else {
-                pvsResponse.result = res || `File ${fname} typechecked successfully`;
+                return pvsResponse;
             }
+
+            pvsResponse.result = res || `File ${fname} typechecked successfully`;
         }
         return pvsResponse;
     }

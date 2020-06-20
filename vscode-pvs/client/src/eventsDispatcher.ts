@@ -191,12 +191,13 @@ export class EventsDispatcher {
                 this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
             }
             if (desc && desc.args) {
-                const fname: string = fsUtils.desc2fname(desc.args);
+                // const fname: string = fsUtils.desc2fname(desc.args);
                 if (desc && desc.response 
-                        &&  desc.response.fileDescriptors 
-                        && desc.response.fileDescriptors[fname] 
-                        && desc.response.fileDescriptors[fname].theories 
-                        && desc.response.fileDescriptors[fname].theories.length) {
+                        // && desc.response.fileDescriptors 
+                        // && desc.response.fileDescriptors[fname] 
+                        // && desc.response.fileDescriptors[fname].theories 
+                        // && desc.response.fileDescriptors[fname].theories.length
+                        ) {
                     // open tcc file in the editor
                     const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
                     const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
@@ -311,8 +312,8 @@ export class EventsDispatcher {
                 // start proof
                 this.proofExplorer.startProof();
                 
-                // set vscode context variable prover-session-active to true, to indicate a proof is now in progress
-                vscode.commands.executeCommand('setContext', 'prover-session-active', true);
+                // set vscode context variable in-checker to true, to indicate a proof is now in progress
+                vscode.commands.executeCommand('setContext', 'in-checker', true);
             }
         });
 		this.client.onRequest(serverEvent.dischargeTheoremsResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
@@ -360,8 +361,8 @@ export class EventsDispatcher {
             } 
 		}) => {
 			this.proofExplorer.saveProof({ force: true });		
-		});
-		this.client.onRequest(serverEvent.quitProofEvent, (request: {
+        });
+		this.client.onRequest(serverEvent.quitProofEvent, async (request: {
             args: { 
                 fileName: string, 
                 fileExtension: string, 
@@ -371,7 +372,7 @@ export class EventsDispatcher {
                 cmd: string
             } 
 		}) => {
-            this.proofExplorer.saveProof();
+            await this.proofExplorer.saveProof();
             this.vscodePvsTerminal.deactivate();
 		});
 		this.client.onRequest(serverEvent.QED, (request: {
