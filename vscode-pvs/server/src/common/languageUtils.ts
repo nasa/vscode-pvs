@@ -1087,31 +1087,39 @@ export function isEmptyCommand (cmd: string): boolean {
 }
 
 export function isUndoCommand (cmd: string): boolean {
-	return cmd && !/\(?\bundo\s+undo\b/g.test(cmd) && /\(?\bundo\b\s*\n*/g.test(cmd);
+	return cmd && !/\(?\s*\bundo\s+undo\b/g.test(cmd) && /\(?\s*\bundo\b\s*\n*/g.test(cmd);
 }
 
 export function isRedoCommand (cmd: string): boolean {
-	return cmd && /\(?\bredo\b/g.test(cmd);
+	return cmd && /\(?\s*\bredo\b/g.test(cmd);
 }
 
 export function isUndoUndoCommand (cmd: string): boolean {
-	return cmd && /\(?\bundo\s+undo\b/g.test(cmd);
+	if (cmd) {
+		const cm: string = (cmd.startsWith("(")) ? cmd : `(${cmd})`;
+		return /\(\s*\bundo\s+undo\b\s*\)/g.test(cm);
+	}
+	return false;
+}
+
+export function isUndoUndoPlusCommand (cmd: string): boolean {
+	return cmd && /\(?(\s*\bundo)+/g.test(cmd);
 }
 
 export function isPostponeCommand (cmd: string): boolean {
-	return cmd && /\(?\bpostpone\b/g.test(cmd);
+	return cmd && /\(?\s*\bpostpone\b/g.test(cmd);
 }
 
 export function isShowHiddenCommand (cmd: string): boolean {
-	return cmd && /\(?show-hidden\b/g.test(cmd);
+	return cmd && /\(?\s*show-hidden\b/g.test(cmd);
 }
 
 export function isGrindCommand (cmd: string): boolean {
-	return cmd && /\(?grind\b/g.test(cmd);
+	return cmd && /\(?\s*grind\b/g.test(cmd);
 }
 
 export function isSaveCommand (cmd: string): boolean {
-	return cmd && /\(?save\b/g.test(cmd);
+	return cmd && /\(?\s*save\b/g.test(cmd);
 }
 
 export function isSameCommand (cmd1: string, cmd2: string): boolean {

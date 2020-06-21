@@ -244,6 +244,36 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	protected branchHasChanged (b1: string, b2: string): boolean {
 		return b1 !== b2 || (b2 !== "" && b1.indexOf(b2) !== 0);
 	}
+	
+	/**
+	 * repeats the last command
+	 */
+	redo (): void {
+		this.forward();
+	}
+
+	/**
+	 * executes the next step
+	 */
+	forward (): void {
+		if (this.ghostNode && !this.ghostNode.isActive()) {
+			this.root.pending();
+			this.step();
+		}
+	}
+	/**
+	 *  goes one step back (undo)
+	 */
+	back (): void {
+		this.undo();
+	}
+	/**
+	 * goes one step back
+	 */
+	undo (): void {
+		this.root.pending();
+		this.step("undo");
+	}
 	/**
 	 * Executes a proof command. 
 	 * The command is taken from the proof tree.
@@ -480,7 +510,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						// window.showInformationMessage(msg);
 						this.moveIndicatorForward({ keepSameBranch: true, proofState });
 					} else {
-						window.showWarningMessage(`Warning: could not find branch ${newBranch} in the proof tree`);
+						window.showErrorMessage(`Error: could not find branch ${newBranch} in the proof tree. Please report the bug to the developers. Do not continue the proof as Proof Explorer is out of sync with PVS.`);
 					}
 				} else {
 					// do nothing, this is the only branch left to be proved
@@ -488,12 +518,19 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				return;
 			}
 
+			let wasUndoUndo: boolean = false;
 			// handle the special command (undo undo) before proceeding
 			if (utils.isUndoUndoCommand(cmd)) {
 				if (!this.undoundo) {
+					window.showWarningMessage(`Warning: unable to execute ${cmd}`);
 					return;
 				}
 				cmd = this.undoundo;
+				wasUndoUndo = true;
+			}
+			if (utils.isUndoUndoPlusCommand(cmd)) {
+				window.showWarningMessage(`Warning: ${cmd} is not a valid proof command`);
+				return;
 			}
 
 			// else, the prover has made progress with the provided proof command
@@ -604,7 +641,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 			// update undoundo buffer
 			if (!utils.isUndoUndoCommand(cmd)) {
-				this.undoundo = this.activeNode.name;
+				this.undoundo = (wasUndoUndo) ? null : this.activeNode.name; // undo undo can be performed only once
 			}
 
 			// finally, move indicator forward and propagate tooltip to the new active node
@@ -1557,14 +1594,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.quitProof({ confirm: true });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.forward", () => {
-			if (this.ghostNode && !this.ghostNode.isActive()) {
-				this.root.pending();
-				this.step();
-			}
+			this.forward();
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.back", () => {
-			this.root.pending();
-			this.step("undo");
+			this.back();
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.run-proof", () => {
 			this.root.pending();

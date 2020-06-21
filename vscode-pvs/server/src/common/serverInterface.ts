@@ -526,6 +526,7 @@ export const serverEvent = {
 	quitProofEvent: "pvs.event.quit-proof",
 	quitDontSaveProofEvent: "pvs.event.quit-dont-save-proof",
 	closeDontSaveEvent: "pvs.event.close-dont-save-proof",
+	// redoCommandEvent: "pvs.event.redo-command",
 
 	pvsServerCrash: "pvs.event.server-crash",
 

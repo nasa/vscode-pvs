@@ -362,6 +362,18 @@ export class EventsDispatcher {
 		}) => {
 			this.proofExplorer.saveProof({ force: true });		
         });
+		// this.client.onRequest(serverEvent.redoCommandEvent, (request: { 
+        //     args: {
+        //         fileName: string, 
+        //         fileExtension: string, 
+        //         contextFolder: string, 
+        //         theoryName: string, 
+        //         formulaName: string, 
+        //         cmd: string
+        //     } 
+		// }) => {
+		// 	this.proofExplorer.redo();		
+        // });
 		this.client.onRequest(serverEvent.quitProofEvent, async (request: {
             args: { 
                 fileName: string, 
