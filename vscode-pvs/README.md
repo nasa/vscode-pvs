@@ -73,6 +73,7 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 ## ChangeLog
 ### 1.0.23 (2020.06.xx)
 - Added support for multi-line commands in the prover prompt
+- Added support for automatic proof of TCCs (M-x tcp)
 
 ### 1.0.22 (2020.06.18)
 - Added support for rerunning all proofs (M-x prt)
@@ -82,8 +83,8 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 ### 1.0.21 (2020.06.11)
 - Improved hover tooltips
 - Improved feedback & stability
-- Added FAQs
 - Added watchdog to prevent runaway situations with grind
+- Added FAQs
 
 ### 1.0.20 (2020.05.26)
 - Improved Workspace Explorer
