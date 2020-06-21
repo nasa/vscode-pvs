@@ -236,7 +236,7 @@ export class FormulaOverviewItem extends OverviewItem {
 			return item.getStatus() === "proved";
 		}).length : 0;
 		if (nProved === nTheorems) {
-			this.label = `${utils.icons.check} ${this.name}  (${nProved} proved)`
+			this.label = `${utils.icons.checkmark} ${this.name}  (${nProved} proved)`
 		} else {
 			this.label = `${utils.icons.whitecircle} ${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
 		}
