@@ -166,6 +166,9 @@ export class TheoryItem extends TreeItem {
 	getTccsOverview (): TheoremsOverviewItem {
 		return this.tccsOverview;
 	}
+	getTCCs (): FormulaItem[] {
+		return (this.tccsOverview) ? this.tccsOverview.getChildren() : [];
+	}
 }
 class LoadingItem extends TreeItem {
 	contextValue: string = "loading-content";
@@ -211,12 +214,14 @@ abstract class OverviewItem extends TreeItem {
 export class FormulaOverviewItem extends OverviewItem {
 	contextValue: string = "formula-overview";
 	theorems: FormulaItem[] = [];
+	theoryName: string;
 	fileName: string;
 	fileExtension: string;
 	constructor(type: string, desc: TheoryDescriptor, collapsibleState?: TreeItemCollapsibleState) {
 		super(type, desc, collapsibleState);
 		this.fileName = desc.fileName;
 		this.fileExtension = desc.fileExtension;
+		this.theoryName = desc.theoryName;
 	}
 	getFormula (formulaName: string): FormulaItem {
 		const candidates: FormulaItem[] = this.theorems.filter((elem: FormulaItem) => {
@@ -766,9 +771,12 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		fileName: string, 
 		fileExtension: string,  
 		theoryName: string, 
-		formulaName: string 
+		formulaName: string
+	}, opt?: {
+		tccsOnly?: boolean
 	}): Promise<void> {
 		if (resource) {
+			opt = opt || {};
 			const theory: TheoryItem = this.root.getTheoryItem(resource);
 			if (theory) {
 				// show dialog with progress
@@ -776,10 +784,14 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 					location: ProgressLocation.Notification,
 					cancellable: true
 				}, (progress, token) => { 
-					const theorems: FormulaItem[] = theory.getTheorems();
+					const theorems: FormulaItem[] = (opt && opt.tccsOnly) ?
+						theory.getTCCs() 
+							: theory.getTheorems().concat(theory.getTCCs());
 					const theoryName: string = theory.theoryName;
-					// show initial dialog with spinning progress   
-					progress.report({ increment: -1, message: `Preparing to re-run all proofs in theory ${theoryName}` });
+					// show initial dialog with spinning progress
+					const message: string = (opt.tccsOnly) ? `Preparing to discharge proof obligations in theory ${theoryName}`
+						: `Preparing to re-run all proofs in theory ${theoryName}`;
+					progress.report({ increment: -1, message });
 					// update the dialog
 					return new Promise(async (resolve, reject) => {
 						let stop: boolean = false;
@@ -791,17 +803,20 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							// dispose of the dialog
 							resolve(null);
 						});
-						const summary: { theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]} = {
+						const summary: { tccsOnly?: boolean, theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]} = {
 							theoryName,
-							theorems: []
+							theorems: [],
+							tccsOnly: opt.tccsOnly
 						};
 						if (theorems && theorems.length) {
 							for (let i = 0; i < theorems.length && !stop; i ++) {
 								const next: FormulaItem = theorems[i];
 								const formulaName: string = next.getFormulaName();
+								const message: string = (opt.tccsOnly) ? `Discharding proof obligations in theory ${theoryName} (${i + 1}/${theorems.length}) '${formulaName}'`
+									: `Re-running proofs in theory ${theoryName} (${i + 1}/${theorems.length}) '${formulaName}'`
 								progress.report({
 									increment: 1 / theorems.length * 100, // all increments must add up to 100
-									message: `Re-running proofs in theory ${theoryName} (${i + 1}/${theorems.length}) '${formulaName}'`
+									message
 								});
 								const start: number = new Date().getTime();
 								const status: ProofStatus = await this.proofExplorer.autorun({

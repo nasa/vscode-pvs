@@ -1021,11 +1021,25 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 }
 
 
+export function isEmptyPrf(prf: string): boolean {
+	return !prf || prf === `("" (postpone))`;
+}
+
+const grind: string = `("" (grind))`;
+
+
 /**
  * Utility function, transforms a proof tree into a json object
  * @param desc Descriptor specifying proofTree, formulaName, proofName, and parent node (keeps track of the current parent in the proof tree, used in recursive calls)
  */
-export function prf2jprf (desc: { prf: string, theoryName: string, formulaName: string, version: PvsVersionDescriptor, shasum: string }): ProofDescriptor {
+export function prf2jprf (desc: { 
+	prf: string, 
+	theoryName: string, 
+	formulaName: string, 
+	version: PvsVersionDescriptor, 
+	shasum: string,
+	autorun?: boolean
+}): ProofDescriptor {
 	if (desc) {
 		const result: ProofDescriptor = {
 			info: {
@@ -1049,10 +1063,14 @@ export function prf2jprf (desc: { prf: string, theoryName: string, formulaName: 
 				if (formulaName !== `${desc.theoryName}.${desc.formulaName}`) {
 					console.warn(`[language-utils] Warning: proof script for ${desc.theoryName}.${desc.formulaName} has unexpected signature ${formulaName}`);
 				}
-				const prf: string = data[3];
+				const prf: string = (desc.autorun && isEmptyPrf(data[3])) ? grind : data[3];
 				const proof: ProofNode = prf2ProofTree({ prf, proofName });
 				result.proofTree = proof;
 				// console.dir(result, { depth: null });
+			}
+		} else {		
+			if (desc.autorun) {
+				result.proofTree = prf2ProofTree({ prf: grind, proofName: desc.formulaName });
 			}
 		}
 		return result;
@@ -1216,8 +1234,9 @@ ${theoryName}: THEORY
 `;
 }
 
-export function makeProofSummary (desc: { theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]}): string {
-	let ans: string = `Proof summary for theory ${desc.theoryName}\n`;
+export function makeProofSummary (desc: { tccsOnly?: boolean, theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]}): string {
+	const header: string = desc.tccsOnly ? "TCCs summary" : "Proof summary";
+	let ans: string = `${header} for theory ${desc.theoryName}\n`;
 	let nProved: number = 0;
 	let totTime: number = 0;
 	for (let i = 0; i < desc.theorems.length; i++) {

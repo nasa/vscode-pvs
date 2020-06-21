@@ -232,11 +232,6 @@
 				"enablement": "pvs-server-active == true && !in-checker"
 			},
 			{
-				"command": "vscode-pvs.discharge-theorems-alt",
-				"title": "Discharge",
-				"enablement": "pvs-server-active == true && !in-checker"
-			},
-			{
 				"command": "vscode-pvs.discharge-tccs",
 				"title": "Discharge all TCCs",
 				"enablement": "pvs-server-active == true && !in-checker"
@@ -440,7 +435,7 @@
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs-alt",
-					"when": "false && view == workspace-explorer-view && viewItem == tccs-overview",
+					"when": "view == workspace-explorer-view && viewItem == tccs-overview",
 					"group": "inline"
 				},
 				{
@@ -587,7 +582,7 @@
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs",
-					"when": "false && resourceScheme == file && resourceExtname == .tccs",
+					"when": "resourceScheme == file && resourceExtname == .tccs",
 					"group": "yy_commands"
 				},
 				{
@@ -629,7 +624,7 @@
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs",
-					"when": "false && resourceScheme == file && resourceExtname == .tccs",
+					"when": "resourceScheme == file && resourceExtname == .tccs",
 					"group": "yy_commands"
 				},
 				{

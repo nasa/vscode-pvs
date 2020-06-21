@@ -144,7 +144,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	async stopAutorun (): Promise<void> {
 		this.running = false;
 		this.formulaDescriptor.autorun = false;
-		await this.quitProof({ confirm: false, save: false });
+		await this.quitProof({ confirm: false, save: true });
 	}
 
 	/**
@@ -321,7 +321,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						this.root.setProofStatus("unfinished");
 					}
 					// automatically quit the proof attempt
-					this.quitProof({ confirm: false, save: true }); // async call
+					this.quitProof({ confirm: false, save: true });
 				}
 				break;
 			}
@@ -1565,11 +1565,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				contextFolder: this.formulaDescriptor.contextFolder,
 				cmd: "quit"
 			});
-			// delete data structures
-			this.root = null;
-			this.ghostNode = null;
-			this.activeNode = null;
-			this.formulaDescriptor = null;
 		}
 
 		// run the other proofs if desc.autorun === true

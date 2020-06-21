@@ -133,11 +133,11 @@ class TerminalSession {
                 msg?: string
             }) => {
                 this.isActive = false;
+                vscode.commands.executeCommand('setContext', 'in-checker', false);
                 if (desc && desc.msg) {
                     this.terminal.sendText(desc.msg);
                 }
                 this.terminal.sendText("quit");
-                vscode.commands.executeCommand('setContext', 'in-checker', false);
             });
         });
     }
@@ -221,6 +221,7 @@ class TerminalSession {
     }
     deactivate(): void {
         this.isActive = false;
+        vscode.commands.executeCommand('setContext', 'in-checker', false); 
         if (this.cb) {
             this.cb();
         }
@@ -236,10 +237,21 @@ class TerminalSession {
             });
         }
     }
+    async quitDontSaveCommand (): Promise<void> {
+        if (this.isActive) {
+            return new Promise((resolve, reject) => {
+                this.sendCommand("quit-dont-save");
+                setTimeout(() => {
+                    resolve();
+                }, 400);
+            });
+        }
+    }
 }
 
 import { cliSessionType } from '../common/serverInterface';
 import { ProofMateProfile } from '../common/commandUtils';
+import { resolve } from 'dns';
 
 export class VSCodePvsTerminal {
     protected client: LanguageClient;
@@ -336,8 +348,7 @@ export class VSCodePvsTerminal {
                             // close all prover sessions first -- the current version of pvs-server supports one prover session at a time
                             for (let i = 0; i < keys.length; i++) {
                                 const openTerminal: TerminalSession = this.openTerminals[keys[i]];
-                                await openTerminal.quitCommand();
-                                openTerminal.close();
+                                await openTerminal.quitDontSaveCommand(); // the terminal will be automatically closed when the gateway received cli-end
                             }
                         }
                         const pvsTerminal: TerminalSession = new TerminalSession({ client: this.client, channelID, pvsPath, gateway });

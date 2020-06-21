@@ -206,18 +206,18 @@ export class EventsDispatcher {
                 }
             }
         });
-        this.client.onRequest(serverEvent.dischargeTccsResponse, (desc: {
-            response: DischargeTccsResult, 
-            args: { 
-                fileName: string, 
-                fileExtension: string, 
-                contextFolder: string 
-            }
-        }) => {
-            // generate tccs again
-            desc.args["opt"] = { quiet: true };
-            this.client.sendRequest(serverCommand.generateTccs, desc.args);
-        });
+        // this.client.onRequest(serverEvent.dischargeTccsResponse, (desc: {
+        //     response: DischargeTccsResult, 
+        //     args: { 
+        //         fileName: string, 
+        //         fileExtension: string, 
+        //         contextFolder: string 
+        //     }
+        // }) => {
+        //     // generate tccs again
+        //     desc.args["opt"] = { quiet: true };
+        //     this.client.sendRequest(serverCommand.generateTccs, desc.args);
+        // });
 		this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
             response: PvsContextDescriptor, 
             args: { 
@@ -316,9 +316,9 @@ export class EventsDispatcher {
                 vscode.commands.executeCommand('setContext', 'in-checker', true);
             }
         });
-		this.client.onRequest(serverEvent.dischargeTheoremsResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
-            // do nothing for now
-        });
+		// this.client.onRequest(serverEvent.dischargeTheoremsResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
+        //     // do nothing for now
+        // });
         this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, autorun?: boolean }, proofFile: string }) => {
             if (desc) {
                 console.log(desc);
@@ -382,10 +382,19 @@ export class EventsDispatcher {
                 theoryName: string, 
                 formulaName: string, 
                 cmd: string
-            } 
+            },
+            opt?: {
+                force?: boolean,
+                quiet?: boolean
+            }
 		}) => {
-            await this.proofExplorer.saveProof();
-            this.vscodePvsTerminal.deactivate();
+            if (request) {
+                request.opt = request.opt || {};
+                await this.proofExplorer.saveProof({ force: request.opt.force, quiet: request.opt.quiet });
+                this.vscodePvsTerminal.deactivate();
+            } else {
+                console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
+            }
 		});
 		this.client.onRequest(serverEvent.QED, (request: {
             args: { 
@@ -395,11 +404,20 @@ export class EventsDispatcher {
                 theoryName: string, 
                 formulaName: string, 
                 cmd: string
-            } 
+            },
+            opt?: {
+                quiet?: boolean,
+                force?: boolean
+            }
 		}) => {
-            const msg: string = (request && request.args && request.args.formulaName) ? `Proof completed successfully!` : null;
-            this.proofExplorer.saveProof({ msg });
-            this.vscodePvsTerminal.deactivate();
+            if (request) {
+                request.opt = request.opt || {};
+                const msg: string = (request && request.args && request.args.formulaName) ? `Proof completed successfully!` : null;
+                this.proofExplorer.saveProof({ msg, force: request.opt.force, quiet: request.opt.quiet });
+                this.vscodePvsTerminal.deactivate();
+            } else {
+                console.error(`[events-dispatcher] Error: null request in serverEvent`);
+            }
         });
         this.client.onRequest(serverEvent.showProofLiteResponse, (desc: { 
             response: string, 
@@ -609,50 +627,67 @@ export class EventsDispatcher {
             }
         }));
 
-        // vscode-pvs.discharge-tccs
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: {
+            contextFolder: string,
+            fileName: string, 
+            fileExtension: string,  
+            theoryName: string, 
+            formulaName: string 
+        }) => {
             if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string, 
-                    theoryName: string, formulaName: string 
-                }> this.resource2desc(resource);
-                if (desc) {
-                    // send discharge-tccs request to pvs-server
-                    this.client.sendRequest(serverCommand.dischargeTccs, desc);
-                } else {
-                    console.error("[vscode-events-dispatcher] Error: unknown vscode-pvs.prove-formula resource", resource);
-                }
+                this.workspaceExplorer.autorun(resource, { tccsOnly: true });
             } else {
-                console.error("[vscode-events-dispatcher] Error: prove-formula invoked with null resource", resource);
+                console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-tccs invoked with null resource", resource);
             }
         }));
-        // alias for vscode-pvs.discharge-tccs
-		context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs-alt", async (resource: string | { path: string } | { contextValue: string }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs-alt", async (resource) => {
             commands.executeCommand("vscode-pvs.discharge-tccs", resource);
         }));
 
+        // vscode-pvs.discharge-tccs
+        // context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource) => {
+        //     if (resource) {
+        //         let desc = <{ 
+        //             fileName: string, fileExtension: string, contextFolder: string, 
+        //             theoryName: string, formulaName: string 
+        //         }> this.resource2desc(resource);
+        //         if (desc) {
+        //             // send discharge-tccs request to pvs-server
+        //             this.client.sendRequest(serverCommand.dischargeTccs, desc);
+        //         } else {
+        //             console.error("[vscode-events-dispatcher] Error: unknown vscode-pvs.prove-formula resource", resource);
+        //         }
+        //     } else {
+        //         console.error("[vscode-events-dispatcher] Error: prove-formula invoked with null resource", resource);
+        //     }
+        // }));
+        // // alias for vscode-pvs.discharge-tccs
+		// context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs-alt", async (resource: string | { path: string } | { contextValue: string }) => {
+        //     commands.executeCommand("vscode-pvs.discharge-tccs", resource);
+        // }));
+
 
         // vscode-pvs.discharge-theorems
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-theorems", async (resource) => {
-            if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string, 
-                    theoryName: string, formulaName: string 
-                }> this.resource2desc(resource);
-                if (desc) {
-                    // send discharge-theorems request to pvs-server
-                    this.client.sendRequest(serverCommand.dischargeTheorems, desc);
-                } else {
-                    console.error("[vscode-events-dispatcher] Error: unknown vscode-pvs.prove-formula resource", resource);
-                }
-            } else {
-                console.error("[vscode-events-dispatcher] Error: prove-formula invoked with null resource", resource);
-            }
-        }));
-        // alias for vscode-pvs.discharge-tccs
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-theorems-alt", async (resource: string | { path: string } | { contextValue: string }) => {
-            commands.executeCommand("vscode-pvs.discharge-theorems", resource);
-        }));
+        // context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-theorems", async (resource) => {
+        //     if (resource) {
+        //         let desc = <{ 
+        //             fileName: string, fileExtension: string, contextFolder: string, 
+        //             theoryName: string, formulaName: string 
+        //         }> this.resource2desc(resource);
+        //         if (desc) {
+        //             // send discharge-theorems request to pvs-server
+        //             this.client.sendRequest(serverCommand.dischargeTheorems, desc);
+        //         } else {
+        //             console.error("[vscode-events-dispatcher] Error: unknown vscode-pvs.prove-formula resource", resource);
+        //         }
+        //     } else {
+        //         console.error("[vscode-events-dispatcher] Error: prove-formula invoked with null resource", resource);
+        //     }
+        // }));
+        // // alias for vscode-pvs.discharge-tccs
+        // context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-theorems-alt", async (resource: string | { path: string } | { contextValue: string }) => {
+        //     commands.executeCommand("vscode-pvs.discharge-theorems", resource);
+        // }));
         
         // vscode-pvs.typecheck-file
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-file", async (resource: string | { path: string } | { contextValue: string }) => {

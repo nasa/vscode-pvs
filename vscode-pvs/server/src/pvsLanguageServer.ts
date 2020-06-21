@@ -103,6 +103,9 @@ export class PvsLanguageServer {
 	// indicates whether a prover session is active -- pvs-server is single-threaded, and we can safely send only find-declaration requests when a prover session is active, everything else needs to be disabled
 	protected inChecker: boolean = false;
 
+	// this flag indicates whether proof checking is in autorun (batch) mode
+	protected autorunFlag: boolean = false;
+
 	// timers
 	protected timers: { [ key:string ]: NodeJS.Timer } = {};
 	// proxy servers
@@ -266,7 +269,7 @@ export class PvsLanguageServer {
 		// }
 		if (utils.isQuitCommand(request.cmd)) {
 			await this.pvsProxy.proofCommand({ cmd: "quit", timeout });
-			this.connection.sendRequest(serverEvent.quitProofEvent, { args: request });
+			this.connection.sendRequest(serverEvent.quitProofEvent, { args: request, opt: { force: this.autorunFlag, quiet: this.autorunFlag }});
 			this.inChecker = false;
 			return
 		}
@@ -295,7 +298,7 @@ export class PvsLanguageServer {
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
 
 				if (utils.isQED(response.result)) {
-					this.connection.sendRequest(serverEvent.QED, { response, args: request });
+					this.connection.sendRequest(serverEvent.QED, { response, args: request, opt: { quiet: this.autorunFlag, force: this.autorunFlag }});
 					// trigger a context update, so proof status will be updated on the front-end
 					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
 					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
@@ -333,6 +336,7 @@ export class PvsLanguageServer {
 	}
 	async proveFormulaRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, autorun?: boolean }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
+		this.autorunFlag = !!request.autorun;
 		
 		// parse workspace files before starting the proof attempt if you want stats to be updated on the status bar 
 		// await this.parseWorkspaceRequest(request);
@@ -550,7 +554,8 @@ export class PvsLanguageServer {
 		fileExtension: string, 
 		theoryName: string, 
 		formulaName: string, 
-		contextFolder: string
+		contextFolder: string,
+		autorun?: boolean
 	}): Promise<ProofDescriptor> {
 		if (request) {
 			request = fsUtils.decodeURIComponents(request);
@@ -561,7 +566,8 @@ export class PvsLanguageServer {
 				theoryName: request.theoryName, 
 				formulaName: request.formulaName, 
 				version: this.pvsVersionDescriptor,
-				shasum
+				shasum,
+				autorun: request.autorun
 			});
 
 			try {
@@ -569,22 +575,27 @@ export class PvsLanguageServer {
 				let proofFile: ProofFile = await fsUtils.readProofFile(fname);
 				const key: string = `${request.theoryName}.${request.formulaName}`;
 				if (proofFile && proofFile[key] && proofFile[key].length > 0) {
-					proofDescriptor = proofFile[key][0];
-					proofDescriptor.info.status = await utils.getProofStatus(request);
-					if (proofDescriptor.info && proofDescriptor.info.shasum !== shasum) {
-						proofDescriptor.info.shasum = shasum;
+					if (!request.autorun) {
+						proofDescriptor = proofFile[key][0];
+						proofDescriptor.info.status = await utils.getProofStatus(request);
+						if (proofDescriptor.info && proofDescriptor.info.shasum !== shasum) {
+							proofDescriptor.info.shasum = shasum;
+						}
 					}
 				} else {
 					// obtain proof from prf via pvs, and update jprf
 					const response: PvsResponse = await this.proofScript(request);
 					if (response && response.result) {
-						proofDescriptor = utils.prf2jprf({
-							prf: response.result,
-							theoryName: request.theoryName, 
-							formulaName: request.formulaName, 
-							version: this.pvsVersionDescriptor,
-							shasum
-						});
+						if (!request.autorun) {
+							proofDescriptor = utils.prf2jprf({
+								prf: response.result,
+								theoryName: request.theoryName, 
+								formulaName: request.formulaName, 
+								version: this.pvsVersionDescriptor,
+								shasum,
+								autorun: request.autorun
+							});
+						}
 					}
 					// save proof in the jprf file
 					await this.saveProof({
@@ -1846,14 +1857,14 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.proveFormula, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, autorun?: boolean }) => {
 				await this.proveFormulaRequest(args);
 			});
-			this.connection.onRequest(serverCommand.dischargeTccs, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
-				// this function is currently disabled -- pvs-server crashes too easily with this command
-				// await this.dischargeTccsRequest(args);
-			});
-			this.connection.onRequest(serverCommand.dischargeTheorems, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
-				// this command is not implemented yet
-				// this.dischargeTheoremsRequest(args); // async call
-			});
+			// this.connection.onRequest(serverCommand.dischargeTccs, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
+			// 	// this function is currently disabled -- pvs-server crashes too easily with this command
+			// 	// await this.dischargeTccsRequest(args);
+			// });
+			// this.connection.onRequest(serverCommand.dischargeTheorems, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
+			// 	// this command is not implemented yet
+			// 	// this.dischargeTheoremsRequest(args); // async call
+			// });
 			this.connection.onRequest(serverCommand.loadProof, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
 				this.loadProofRequest(args); // async call
 			});

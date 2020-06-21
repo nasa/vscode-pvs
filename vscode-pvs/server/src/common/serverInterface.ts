@@ -455,8 +455,8 @@ export const cliSessionType = {
 export const serverCommand = {
 	typecheckFile: "pvs.typecheck-file",
 	proveFormula: "pvs.prove-formula",
-	dischargeTccs: "pvs.prove-tccs",
-	dischargeTheorems: "pvs.prove-file",
+	// dischargeTccs: "pvs.prove-tccs",
+	// dischargeTheorems: "pvs.prove-file",
 	loadProof: "pvs.load-proof",
 	saveProof: "pvs.save-proof",
 	showProofLite: "pvs.show-prooflite",
@@ -492,8 +492,8 @@ export const serverCommand = {
 export const serverEvent = {
 	typecheckFileResponse: "pvs.response.typecheck-file",
 	proveFormulaResponse: "pvs.response.prove-formula",
-	dischargeTccsResponse: "pvs.reponse.prove-tccs",
-	dischargeTheoremsResponse: "pvs.reponse.prove-file",
+	// dischargeTccsResponse: "pvs.reponse.prove-tccs",
+	// dischargeTheoremsResponse: "pvs.reponse.prove-file",
 	loadProofResponse: "pvs.response.load-proof",
 	saveProofResponse: "pvs.response.save-proof",
 	showProofLiteResponse: "pvs.response.show-prooflite",
