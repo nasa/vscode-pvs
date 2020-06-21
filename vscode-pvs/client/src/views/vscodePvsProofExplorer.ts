@@ -99,6 +99,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	protected running: boolean = false; // status flag, indicates whether we are running all proof commands, as opposed to stepping through the proof commands
 	protected stopAt: ProofItem = null; // indicates which node we are fast-forwarding to
 
+	protected undoundo: string = null;
+
 	/**
 	 * JSON representation of the proof script for the current proof.
 	 * The representation is updated at the beginning of the proof session.
@@ -156,9 +158,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Internal function, moves the active node one position back in the proof tree.
 	 */
-	protected moveIndicatorBack (): void {
+	protected moveIndicatorBack (opt?: { keepSameBranch?: boolean }): void {
 		if (this.activeNode) {
-			const prev: ProofItem = this.activeNode.moveIndicatorBack();
+			opt = opt || {};
+			const prev: ProofItem = this.activeNode.moveIndicatorBack(opt);
 			if (prev.contextValue !== "root") {
 				// this.revealNode({ selected: prev }); // commented for now, sometimes triggers exceptions from TreeView
 				this.markAsActive({ selected: prev }, { force: true });
@@ -263,17 +266,18 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						// the active node is the first child in a branch. 
 						// The command has not been executed yet, just move the indicator back without sending any command to pvs-server
 						this.moveIndicatorBack();
-					} else {
-						this.pendingExecution = true;
-						commands.executeCommand("vscode-pvs.send-proof-command", {
-							fileName: this.formulaDescriptor.fileName,
-							fileExtension: this.formulaDescriptor.fileExtension,
-							theoryName: this.formulaDescriptor.theoryName,
-							formulaName: this.formulaDescriptor.formulaName,
-							contextFolder: this.formulaDescriptor.contextFolder,
-							cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
-						});
+						return;
 					}
+					// else
+					this.pendingExecution = true;
+					commands.executeCommand("vscode-pvs.send-proof-command", {
+						fileName: this.formulaDescriptor.fileName,
+						fileExtension: this.formulaDescriptor.fileExtension,
+						theoryName: this.formulaDescriptor.theoryName,
+						formulaName: this.formulaDescriptor.formulaName,
+						contextFolder: this.formulaDescriptor.contextFolder,
+						cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
+					});
 				} else {
 					console.error(`[proof-explorer] Error: proof command ${this.activeNode.name} does not have a parent`);
 				}
@@ -328,7 +332,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.pendingExecution = false;
 		if (desc && desc.response && desc.response.result && desc.args) {
 			// get command and proof state
-			const cmd: string = desc.args.cmd;
+			let cmd: string = desc.args.cmd; // command entered by the user
 			const proofState: ProofState = <ProofState> desc.response.result;
 			// identify active node in the proof tree
 			let activeNode: ProofItem = this.ghostNode.isActive() ? this.ghostNode.realNode : this.activeNode;
@@ -412,7 +416,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				return;
 			}
 
-
 			const previousBranch: string = activeNode.branchId;
 			const newBranch: string = utils.getBranchId(proofState.label);
 
@@ -440,9 +443,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						window.showErrorMessage(`Error: could not find branch ${newBranch} in the proof tree`);
 					}
 				} else {
-					this.moveIndicatorBack();
+					this.moveIndicatorBack({ keepSameBranch: true });
 				}
-				// this.ghostNode.notActive();
+				// update undoundo buffer after moving the indicator back
+				this.undoundo = this.activeNode.name;
 				return;
 			}
 
@@ -482,6 +486,14 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					// do nothing, this is the only branch left to be proved
 				}
 				return;
+			}
+
+			// handle the special command (undo undo) before proceeding
+			if (utils.isUndoUndoCommand(cmd)) {
+				if (!this.undoundo) {
+					return;
+				}
+				cmd = this.undoundo;
 			}
 
 			// else, the prover has made progress with the provided proof command
@@ -588,6 +600,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				} else {
 					window.showErrorMessage(`Error: could not find branch ${targetBranch} in the proof tree`);
 				}
+			}
+
+			// update undoundo buffer
+			if (!utils.isUndoUndoCommand(cmd)) {
+				this.undoundo = this.activeNode.name;
 			}
 
 			// finally, move indicator forward and propagate tooltip to the new active node
@@ -1756,7 +1773,7 @@ class ProofItem extends TreeItem {
 	}
 	notVisited (): void {
 		this.previousState.tooltip = this.tooltip;
-		this.previousState.icon = this.icon = " ∘ ";
+		this.previousState.icon = this.icon = " ∘  ";
 		this.label = `${this.icon}${this.name}`;
 		this.activeFlag = false;
 		this.visitedFlag = false;
@@ -1898,7 +1915,7 @@ class ProofItem extends TreeItem {
 		}
 		return this;
 	}
-	moveIndicatorBack (): ProofItem {
+	moveIndicatorBack (opt?: { keepSameBranch?: boolean }): ProofItem {
 		if (this.parent) {
 			if (this.parent.children && this.parent.children.length) {
 				const children: ProofItem[] = this.parent.children.filter((item: ProofItem) => {
@@ -1919,6 +1936,10 @@ class ProofItem extends TreeItem {
 					return this;
 				}
 				// else return parent
+				// unless opt.keepSameBranch === true 
+				if (opt.keepSameBranch && this.contextValue === "proof-command") {
+					return this;
+				}
 				this.notVisited();
 				return this.parent;
 			}
@@ -2011,7 +2032,7 @@ class ProofItem extends TreeItem {
 class ProofCommand extends ProofItem {
 	constructor (cmd: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState) {
 		super("proof-command", cmd, branchId, parent, collapsibleState);
-		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) ? cmd.substr(1, cmd.length - 2) : cmd; // remove adorned () to make the visualisation slimmer
+		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) ? cmd : `(${cmd})`;
 		this.notVisited();
 		this.command = {
 			title: this.contextValue,
@@ -2093,7 +2114,7 @@ class RootNode extends ProofItem {
 	}
 	QED (): void {
 		super.visited();
-		this.icon = utils.icons.check;
+		this.icon = utils.icons.checkmark;
 		this.proofStatus = QED;
 		this.setProofStatus(QED);
 		this.updateLabel();

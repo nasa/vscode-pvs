@@ -53,6 +53,29 @@ export const RECORD: { [key: string]: RegExp } = {
 	typeName: /\w+\s*:\s*(\w+)/g
 }
 
+// export function printPreviousCommand (cmd: any): string {
+// 	const printArgs = (cmd: any): string => {
+// 		if (cmd) {
+// 			if (typeof cmd === "string") {
+// 				return `"${cmd}"`;
+// 			}
+// 			if (cmd["length"]) {
+// 				let ans: string = "";
+// 				for (let i = 0; i < cmd["length"]; i++) {
+// 					ans += printArgs(cmd[i]);
+// 				}
+// 				return `(${ans.trim()})`
+// 			}
+// 			return null;
+// 		}
+// 	}
+// 	if (cmd && cmd["length"] && cmd[0] && typeof cmd[0] === "string") {
+// 		const args = cmd.slice(1);
+// 		const ans: string = `${cmd[0]} ${printArgs(args)}`;
+// 		return `(${ans.trim()})`;
+// 	}
+// 	return null;
+// }
 
 export const commentRegexp: RegExp = /%.*/g;
 // group 1 is theoryName, group 2 is comma-separated list of theory parameters
@@ -1064,20 +1087,37 @@ export function isEmptyCommand (cmd: string): boolean {
 }
 
 export function isUndoCommand (cmd: string): boolean {
-	return cmd && (cmd === "(undo)" 
-					|| cmd === "undo" 
-					|| cmd.startsWith("(undo ") 
-					|| cmd.startsWith("undo "));
+	return cmd && !/\(?\bundo\s+undo\b/g.test(cmd) && /\(?\bundo\b\s*\n*/g.test(cmd);
+}
+
+export function isRedoCommand (cmd: string): boolean {
+	return cmd && /\(?\bredo\b/g.test(cmd);
+}
+
+export function isUndoUndoCommand (cmd: string): boolean {
+	return cmd && /\(?\bundo\s+undo\b/g.test(cmd);
 }
 
 export function isPostponeCommand (cmd: string): boolean {
-	return cmd && (cmd === "(postpone)" 
-					|| cmd === "postpone");
+	return cmd && /\(?\bpostpone\b/g.test(cmd);
 }
 
 export function isShowHiddenCommand (cmd: string): boolean {
-	return cmd && (cmd === "(show-hidden)" 
-					|| cmd === "show-hidden");
+	return cmd && /\(?show-hidden\b/g.test(cmd);
+}
+
+export function isGrindCommand (cmd: string): boolean {
+	return cmd && /\(?grind\b/g.test(cmd);
+}
+
+export function isSaveCommand (cmd: string): boolean {
+	return cmd && /\(?save\b/g.test(cmd);
+}
+
+export function isSameCommand (cmd1: string, cmd2: string): boolean {
+	const c1: string = cmd1.replace(/"/g, "");
+	const c2: string = cmd2.replace(/"/g, "");
+	return c1 === c2 || c1 === `(${c2})` || `(${c1})` === c2;
 }
 
 export function applyTimeout (cmd: string, sec: number): string {
@@ -1086,20 +1126,6 @@ export function applyTimeout (cmd: string, sec: number): string {
 		return `(apply ${c} :timeout ${sec})`;
 	}
 	return cmd;
-}
-
-export function isGrindCommand (cmd: string): boolean {
-	return cmd && (cmd.startsWith("(grind") 
-					|| cmd.startsWith("grind"));
-}
-
-export function isSaveCommand (cmd: string): boolean {
-	return cmd && (cmd === "(save)" 
-					|| cmd === "save");
-}
-
-export function isSameCommand (cmd1: string, cmd2: string): boolean {
-	return cmd1 === cmd2 || cmd1 === `(${cmd2})` || `(${cmd1})` === cmd2;
 }
 
 export function isInvalidCommand (result: { commentary: string[] }): boolean {
@@ -1122,11 +1148,11 @@ export function noChange (result: { commentary: string[] }): boolean {
 export function isQED (result: { result: string }): boolean {
 	return result && result.result === "Q.E.D."; 
 }
-
+ 
 export const icons: { [name:string]: string } = {
-	"check": "✅",
+	"checkmark": "✅",
 	"bang" : "❗",
-	"snow" : "❄️",
+	"snowflake" : "❄️",
 	"stars": "✨",
 	"whitecircle": "⚪"
 };
@@ -1139,11 +1165,11 @@ export function getIcon (proofStatus: ProofStatus): string {
 		// case "proved - by mapping":
 		// case "proved - complete": 
 		case "proved":
-			return icons.check;
+			return icons.checkmark;
 		case "unfinished": // proof attempted but failed
 			return icons.bang;
 		case "unchecked":  // proof was successful, but needs to be checked again because of changes in the theories
-			return icons.snow;
+			return icons.snowflake;
 		case "unproved":
 		case "untried": // proof has not been attempted yet
 			return icons.stars;

@@ -308,7 +308,9 @@ class PvsCli {
 						// show prompt
 						this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
 						this.rl.prompt();
-					} else if (utils.isQuitCommand(cmd)) {
+						return;
+					}
+					if (utils.isQuitCommand(cmd)) {
 						console.log();
 						console.log("Prover session terminated.");
 						console.log();
@@ -327,7 +329,8 @@ class PvsCli {
 							this.wsClient.close();
 						});
 						return;
-					} else if (isQED(cmd)) {
+					}
+					if (isQED(cmd)) {
 						readline.moveCursor(process.stdin, 0, -1);
 						readline.clearScreenDown(process.stdin);
 						console.log();
@@ -339,24 +342,24 @@ class PvsCli {
 							this.wsClient.close();
 						});
 						return;
-					} else {
-						if (quotesMatch(cmd)) {
-							cmd = parMatch(cmd);
-							// log command, for debugging purposes
-							// this.connection.console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
-						} else {
-							this.connection.console.warn("Mismatching double quotes, please check your expression");
-						}
-						this.wsClient.send(JSON.stringify({
-							type: serverCommand.proofCommand, 
-							cmd,
-							fileName: this.args.fileName,
-							fileExtension: this.args.fileExtension,
-							contextFolder: this.args.contextFolder,
-							theoryName: this.args.theoryName,
-							formulaName: this.args.formulaName
-						}));
 					}
+					// else
+					if (quotesMatch(cmd)) {
+						cmd = parMatch(cmd);
+						// log command, for debugging purposes
+						// this.connection.console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
+					} else {
+						this.connection.console.warn("Mismatching double quotes, please check your expression");
+					}
+					this.wsClient.send(JSON.stringify({
+						type: serverCommand.proofCommand, 
+						cmd,
+						fileName: this.args.fileName,
+						fileExtension: this.args.fileExtension,
+						contextFolder: this.args.contextFolder,
+						theoryName: this.args.theoryName,
+						formulaName: this.args.formulaName
+					}));
 					this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
 				}
 			}
