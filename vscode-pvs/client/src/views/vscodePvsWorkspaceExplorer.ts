@@ -737,13 +737,10 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		}
 		this.refreshView();
 	}
-	// protected loading (desc: PvsContextDescriptor): void {
-	// 	this.root = new WorkspaceOverviewItem(desc);
-	// }
 	/**
-	 * Internal function, used to refresh the tree view
+	 * Force refresh of the tree view
 	 */
-	protected refreshView(): void {
+	refreshView(): void {
 		this._onDidChangeTreeData.fire();
 	}
 

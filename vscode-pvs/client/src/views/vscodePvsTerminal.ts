@@ -119,7 +119,7 @@ class TerminalSession {
                 }
             }) => {
                 this.isActive = false;
-                vscode.commands.executeCommand('setContext', 'in-checker', false);
+                vscode.commands.executeCommand('vscode-pvs.in-checker', false);
             });
             this.client.onRequest(serverEvent.closeDontSaveEvent, (desc: {
                 args: { 
@@ -133,7 +133,7 @@ class TerminalSession {
                 msg?: string
             }) => {
                 this.isActive = false;
-                vscode.commands.executeCommand('setContext', 'in-checker', false);
+                vscode.commands.executeCommand('vscode-pvs.in-checker', false);
                 if (desc && desc.msg) {
                     this.terminal.sendText(desc.msg);
                 }
@@ -214,14 +214,14 @@ class TerminalSession {
             this.terminal.dispose();
         }
         // close proof explorer and proofmate
-        vscode.commands.executeCommand('setContext', 'in-checker', false);        
+        vscode.commands.executeCommand('vscode-pvs.in-checker', false);
     }
     sendCommand (cmd: string) {
         this.sendText(cmd);
     }
     deactivate(): void {
         this.isActive = false;
-        vscode.commands.executeCommand('setContext', 'in-checker', false); 
+        vscode.commands.executeCommand('vscode-pvs.in-checker', false);
         if (this.cb) {
             this.cb();
         }
@@ -270,8 +270,6 @@ export class VSCodePvsTerminal {
                     if (this.openTerminals[keys[i]].terminal.processId === terminal.processId) {
                         this.client.sendRequest(serverCommand.quitProver);
                         delete this.openTerminals[keys[i]];
-                        // the following will hide proof explorer and proofmate
-                        // vscode.commands.executeCommand('setContext', 'in-checker', false);
                         break;
                     }
                 }

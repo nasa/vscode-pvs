@@ -313,7 +313,7 @@ export class EventsDispatcher {
                 this.proofExplorer.startProof();
                 
                 // set vscode context variable in-checker to true, to indicate a proof is now in progress
-                vscode.commands.executeCommand('setContext', 'in-checker', true);
+                vscode.commands.executeCommand('vscode-pvs.in-checker', true);
             }
         });
 		// this.client.onRequest(serverEvent.dischargeTheoremsResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
@@ -440,6 +440,10 @@ export class EventsDispatcher {
         //---------------------------------------------------------
         // commands invoked using code lens, emacs bindings, explorer, etc
         //---------------------------------------------------------
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.in-checker", (flag: boolean) => {
+            vscode.commands.executeCommand('setContext', 'in-checker', flag);
+            this.workspaceExplorer.refreshView();
+        }));
 
         context.subscriptions.push(commands.registerCommand("vscode-pvs.view-prelude-file", () => {
             this.client.onRequest(serverEvent.viewPreludeFileResponse, (desc: { contextFolder: string, fileName: string, fileExtension: string }) => {

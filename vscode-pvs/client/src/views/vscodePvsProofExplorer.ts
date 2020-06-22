@@ -1133,9 +1133,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 	/**
-	 * Internal function, used to refresh the tree view
+	 * Force refresh of the tree view
 	 */
-	protected refreshView(): void {
+	refreshView(): void {
 		this._onDidChangeTreeData.fire();
 	}
 	/**
@@ -1244,6 +1244,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				this.activeNode.proofState = this.root.proofState;
 				this.activeNode.tooltip = this.root.tooltip;	
 			}
+
+			commands.executeCommand('setContext', 'in-checker', true);
 
 			if (this.formulaDescriptor.autorun) {
 				this.run();
