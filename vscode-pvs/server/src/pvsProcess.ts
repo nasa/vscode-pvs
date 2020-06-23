@@ -289,7 +289,7 @@ export class PvsProcess {
 							this.pvsProcess.stdin.write("(quit)Y\n");
 							setTimeout(() => {
 								resolve();
-							}, 400);
+							}, 200);
 						});
 					} else {
 						// execSync(`kill -9 ${pid}`);

@@ -373,6 +373,21 @@ export class EventsDispatcher {
             }
         });
 
+        this.client.onRequest(serverEvent.quitProofForceSaveEvent, (request: { 
+            args: {
+                fileName: string, 
+                fileExtension: string, 
+                contextFolder: string, 
+                theoryName: string, 
+                formulaName: string, 
+                cmd: string
+            }
+		}) => {
+            this.proofExplorer.saveProof({ force: true, quiet: true });
+            this.vscodePvsTerminal.deactivate();
+        });
+
+
 		this.client.onRequest(serverEvent.saveProofEvent, (request: { 
             args: {
                 fileName: string, 

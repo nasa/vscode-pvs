@@ -308,6 +308,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				cmd = cmd || this.activeNode.name;
 				const parent: ProofItem = this.activeNode.parent;
 				if (parent) {
+					if (this.autorunFlag && !utils.validProofliteCommand(cmd)) {
+						// mark proof as unfinished
+						if (this.root.proofStatus !== "untried") {
+							this.root.setProofStatus("unfinished");
+						}
+						// save and quit proof					
+						this.quitProof({ confirm: false, save: true });
+						return;
+					}
 					if (utils.isUndoCommand(cmd) && parent.contextValue === "proof-branch" && this.activeNode.id === parent.children[0].id && !this.ghostNode.isActive()) {
 						// the active node is the first child in a branch. 
 						// The command has not been executed yet, just move the indicator back without sending any command to pvs-server
@@ -357,17 +366,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						});
 					}
 				} else {
-					const currentBranch: string = this.activeNode.branchId;
-					const activeBranch: string = utils.getBranchId(this.proofState.label);
-					// if (activeBranch !== currentBranch) {
-					// 	// proof structure is incorrect, activate ghost node
-					// 	this.activeNode = 
-					// } else {
-						// propagate tooltip
-						const tooltip: string = this.activeNode.tooltip;
-						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
-						this.activeNode.tooltip = tooltip;
-					// }
+					// propagate tooltip
+					const tooltip: string = this.activeNode.tooltip;
+					this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
+					this.activeNode.tooltip = tooltip;
 				}
 				this.refreshView();
 				if (this.running) {
@@ -575,7 +577,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
 			if (utils.isSameCommand(activeNode.name, cmd) === false || this.ghostNode.isActive()) {
 				this.running = false;
-				if (this.autorunFlag) {
+				if (this.autorunFlag && this.ghostNode.isActive()) {
 					// mark proof as unfinished
 					if (this.root.proofStatus !== "untried") {
 						this.root.setProofStatus("unfinished");
@@ -1187,6 +1189,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	QED (): void {
 		// stop execution
 		this.running = false;
+		this.pendingExecution = false;
 		// move indicator forward so any proof branch that needs to be marked as visited will be marked
 		this.activeNode.moveIndicatorForward();
 		// set QED
@@ -1217,7 +1220,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			setTimeout(() => {
 				this.autorunFlag = false;
 				this.autorunCallback(this.root.proofStatus);
-			}, 400);
+			}, 200);
 		}
 	}
 
@@ -1274,6 +1277,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 
 			this.proofStarted = true;
+			this.pendingExecution = false;
 
 			if (this.autorunFlag) {
 				vscode.commands.executeCommand('setContext', 'autorun', true);
@@ -1586,9 +1590,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		const ans: string = (opt.confirm) ? await vscode.window.showWarningMessage(msg, { modal: true }, yesno[0])
 								: yesno[0];
 		if (ans === yesno[0]) {
-			if (opt.save) {
-				await this.saveProof({ force: true, quiet: true });
-			}
+			// if (opt.save) {
+			// 	await this.saveProof({ force: opt.confirm, quiet: true });
+			// }
 			// send quit to the terminal
 			commands.executeCommand("vscode-pvs.send-proof-command", {
 				fileName: this.formulaDescriptor.fileName,
@@ -1596,7 +1600,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				theoryName: this.formulaDescriptor.theoryName,
 				formulaName: this.formulaDescriptor.formulaName,
 				contextFolder: this.formulaDescriptor.contextFolder,
-				cmd: "quit"
+				cmd: (opt.confirm) ? "quit" : "quit-force-save"
 			});
 		}
 
@@ -1607,7 +1611,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			setTimeout(() => {
 				// commands.executeCommand("vscode-pvs.autorun-formula-end", this.desc);
 				this.autorunCallback(status);
-			}, 1000);
+			}, 200);
 		}
 	}
 	/**
@@ -2098,7 +2102,9 @@ class ProofItem extends TreeItem {
 class ProofCommand extends ProofItem {
 	constructor (cmd: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState) {
 		super("proof-command", cmd, branchId, parent, collapsibleState);
-		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) ? cmd : `(${cmd})`;
+		cmd = cmd.trim();
+		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) 
+						|| (utils.isUndoCommand(cmd) && cmd.toLowerCase().endsWith("y")) ? cmd : `(${cmd})`;
 		this.notVisited();
 		this.command = {
 			title: this.contextValue,

@@ -243,11 +243,9 @@ export class PvsLanguageServer {
 			args = fsUtils.decodeURIComponents(args);
 			const timeout: number = await this.connection.workspace.getConfiguration("pvs.settings.prover.watchdog");
 			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: args.cmd, timeout });
-			const status: PvsResponse = await this.pvsProxy.proverStatus();
+			// const status: PvsResponse = await this.pvsProxy.proverStatus();
 			// ATTN: when quitting the proof, pvs-server returns an object { result: string }, where the string indicates the proof status (completed, unfinished, ...)
-			if (response && response.result) {
-				return response;
-			}
+			return response;
 		} else {
 			console.error('[pvs-language-server] Error: proofCommand invoked with null descriptor');
 		}
@@ -255,18 +253,21 @@ export class PvsLanguageServer {
 	}
 	async proofCommandRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
-		const timeout: number = await this.connection.workspace.getConfiguration("pvs.settings.prover.watchdog");
 		
 		// handle commands not supported by pvs prover
 		if (utils.isSaveCommand(request.cmd)) {
 			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request }); // we are generating an event because the proof is currently being edited, so we need the current proof descriptor from proof explorer, othewise we'd save a stale proof
 			return;
 		}
-		// if (utils.isRedoCommand(request.cmd) || utils.isUndoUndoCommand(request.cmd)) {
-		// 	this.connection.sendRequest(serverEvent.redoCommandEvent, { args: request });
-		// }
-		if (utils.isQuitCommand(request.cmd)) {
+		if (utils.isQuitForceSaveCommand(request.cmd)) {
 			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request });
+			await this.quitProof();
+			return;
+		}
+		if (utils.isQuitCommand(request.cmd)) {
+			// this.connection.sendRequest(serverEvent.saveProofEvent, { args: request });
+			// await this.quitProof();
+			this.connection.sendRequest(serverEvent.quitProofEvent, { args: request }); // this will trigger the confirmation dialog
 			await this.quitProof();
 			return
 		}
@@ -274,7 +275,11 @@ export class PvsLanguageServer {
 			await this.quitProof();
 			return
 		}
-		
+		if (utils.isQED({ result: request.cmd })) {
+			await this.quitProof();
+			return;
+		}
+
 		// else, relay command to pvs-server
 		const response: PvsResponse = await this.proofCommand(request);
 		if (response) {
@@ -664,7 +669,7 @@ export class PvsLanguageServer {
 				this.getContextDescriptor({ contextFolder: request.contextFolder }).then((cdesc: PvsContextDescriptor) => {
 					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 				});	
-			}, 320);
+			}, 200);
 		} else {
 			console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", request);
 		}
@@ -1725,7 +1730,12 @@ export class PvsLanguageServer {
 	 * @param opt 
 	 */
 	async quitProof (): Promise<void> {
-		await this.pvsProxy.proofCommand({ cmd: "quit" });
+		if (this.mode === "in-checker") {
+			const proverStatus: PvsResponse = await this.pvsProxy.proverStatus();
+			if (proverStatus && proverStatus.result !== "inactive") {
+				await this.pvsProxy.proofCommand({ cmd: "quit" });
+			}
+		}
 		this.mode = "lisp";
 		this.connection.sendRequest(serverEvent.proverModeEvent, { mode: this.mode });
 	}

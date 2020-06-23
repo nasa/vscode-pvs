@@ -813,10 +813,12 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 								const formulaName: string = next.getFormulaName();
 								const message: string = (opt.tccsOnly) ? `Discharding proof obligations in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
 									: `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
-								progress.report({
-									increment: 1 / formulas.length * 100, // all increments must add up to 100
-									message
-								});
+								if (formulas.length > 1) {
+									progress.report({
+										increment: 1 / formulas.length * 100, // all increments must add up to 100
+										message
+									});
+								}
 								const start: number = new Date().getTime();
 								const status: ProofStatus = await this.proofExplorer.autorun({
 									contextFolder: next.getContextFolder(),
@@ -830,7 +832,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							}
 						}
 						resolve();
-						vscodeUtils.previewTextDocument(`${theoryName}.summary`, utils.makeProofSummary(summary), { contextFolder: resource.contextFolder, viewColumn: ViewColumn.Beside });
+						vscodeUtils.previewTextDocument(`${theoryName}.summary`, utils.makeProofSummary(summary), { contextFolder: resource.contextFolder });
 					});
 				});
 			} else {

@@ -65,7 +65,7 @@ export function showTextDocument (desc: { contextFolder: string, fileName: strin
  */
 export async function previewTextDocument (name: string, content: string, opt?: { contextFolder?: string, viewColumn?: vscode.ViewColumn }): Promise<boolean> {
     opt = opt || {};
-    const viewColumn: vscode.ViewColumn = opt.viewColumn || vscode.ViewColumn.Active;
+    let viewColumn: vscode.ViewColumn = opt.viewColumn || vscode.ViewColumn.Active;
 
     // vscode.workspace.openTextDocument({ language: 'pvs', content: content }).then((document: vscode.TextDocument) => {
     //     // vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);
@@ -74,16 +74,19 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${path.join(vscode.workspace.rootPath, "pvsbin", "preview")}`);
     
     const folder: string = opt.contextFolder || vscode.workspace.rootPath;
-    const preview: vscode.Uri =  vscode.Uri.file(path.join(folder, name));
+    const fname: string = path.join(folder, name);
+    const preview: vscode.Uri = vscode.Uri.file(fname);
+
     const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
     edit.deleteFile(preview, { ignoreIfNotExists: true });
     edit.createFile(preview, { overwrite: true });
-    edit.replace(preview, new vscode.Range(new vscode.Position(0, 0), new vscode.Position(10000, 0)), content);
+    edit.insert(preview, new vscode.Position(0, 0), content);
     const success: boolean = await vscode.workspace.applyEdit(edit);
+    // FIXME: applyEdit fails if the document is already open and active in the editor, understand why this is the case.
     if (success) {
         const document: vscode.TextDocument = await vscode.workspace.openTextDocument(preview);
-        document.save();
-        vscode.window.showTextDocument(document, viewColumn, true);
+        vscode.window.showTextDocument(document, { viewColumn, preserveFocus: true, preview: true });
+        await document.save();
         return true;
     }
     // vscode.window.showInformationMessage(`[vscode-utils] Warning: unable to show ${name} in the editor`);

@@ -439,6 +439,11 @@
 					"group": "inline"
 				},
 				{
+					"command": "vscode-pvs.discharge-tccs",
+					"when": "view == workspace-explorer-view && viewItem == tccs-overview",
+					"group": "context-menu/ctrl-1"
+				},
+				{
 					"command": "vscode-pvs.new-pvs-file",
 					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
 					"group": "context-menu/ctrl-1"

@@ -171,20 +171,20 @@ class PvsCli {
 		definitions: []
 	};
 
-	protected proofCommands: string[] = ["undo", "save", "quit"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
+	protected proofCommands: string[] = ["undo", "save", "quit", "postpone"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
 	protected evaluatorFunctions: string[] = Object.keys(EVALUATOR_COMMANDS);
 
 	selectProfile (desc: { profile: ProofMateProfile }): void {
 		if (desc && desc.profile) {
 			switch (desc.profile) {
 				case "advanced": {
-					this.proofCommands = ["undo", "save", "quit"].concat(Object.keys(PROOF_COMMANDS_ADVANCED_PROFILE));
+					this.proofCommands = ["undo", "save", "quit", "postpone"].concat(Object.keys(PROOF_COMMANDS_ADVANCED_PROFILE));
 					break;
 				}
 				case "basic":
 				default:
 					{
-					this.proofCommands = ["undo", "save", "quit"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
+					this.proofCommands = ["undo", "save", "quit", "postpone"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
 					break;
 				}
 			}

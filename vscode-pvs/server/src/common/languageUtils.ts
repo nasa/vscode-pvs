@@ -1083,6 +1083,7 @@ export function prf2jprf (desc: {
 	return null;
 }
 
+// quit = quit-and-save
 export function isQuitCommand (cmd: string): boolean {
 	return cmd === "quit" 
 		|| cmd === "quit;"
@@ -1090,6 +1091,16 @@ export function isQuitCommand (cmd: string): boolean {
 		|| cmd === "exit"
 		|| cmd === "exit;"
 		|| cmd === "(exit)"
+		;
+}
+
+export function isQuitForceSaveCommand (cmd: string): boolean {
+	return cmd === "quit-force-save" 
+		|| cmd === "quit-force-save;"
+		|| cmd === "(quit-force-save)"
+		|| cmd === "exit-force-save"
+		|| cmd === "exit-force-save;"
+		|| cmd === "(exit-force-save)"
 		;
 }
 
@@ -1129,6 +1140,10 @@ export function isUndoUndoPlusCommand (cmd: string): boolean {
 	return cmd && /\(?(\s*\bundo)+/g.test(cmd);
 }
 
+export function validProofliteCommand (cmd: string): boolean {
+	return !isUndoCommand(cmd) && !isUndoUndoCommand(cmd) && !isUndoUndoPlusCommand(cmd);
+}
+
 export function isPostponeCommand (cmd: string): boolean {
 	return cmd && /\(?\s*\bpostpone\b/g.test(cmd);
 }
@@ -1142,7 +1157,10 @@ export function isGrindCommand (cmd: string): boolean {
 }
 
 export function isSaveCommand (cmd: string): boolean {
-	return cmd && /\(?\s*save\b/g.test(cmd);
+	return cmd === "save" 
+		|| cmd === "save;"
+		|| cmd === "(save)"
+		;
 }
 
 export function isSameCommand (cmd1: string, cmd2: string): boolean {

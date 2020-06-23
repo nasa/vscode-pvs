@@ -68,6 +68,7 @@ import * as utils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import * as os from 'os';
 import { PvsErrorManager } from './pvsErrorManager';
+import { resourceUsage } from 'process';
 
 
 export class PvsProgressInfo {
@@ -790,22 +791,35 @@ export class PvsProxy {
 				: isGrind ? utils.applyTimeout(desc.cmd, desc.timeout)
 					: desc.cmd;
 			const res: PvsResponse =  await this.pvsRequest('proof-command', [ cmd ]);
-			if (showHidden) {
-				if (res.result) {
-					res.result.action = "Showing list of hidden sequents";
-					if (res.result.commentary && res.result.commentary.length) {
-						res.result.commentary[0] = "No change on: (show-hidden)";
-					} 
+			if (res) {
+				if (showHidden) {
+					if (res.result) {
+						res.result.action = "Showing list of hidden sequents";
+						if (res.result.commentary && res.result.commentary.length) {
+							res.result.commentary[0] = "No change on: (show-hidden)";
+						} 
+					}
 				}
-			}
-			if (isGrind && desc.timeout) {
-				if (res.result && res.result.commentary 
-						&& res.result.commentary.length 
-						&& res.result.commentary[res.result.commentary.length - 1].startsWith("No change on")) {
-					res.result.action = `No change on: ${desc.cmd}\nThe command did not produce a new proof state within a timeout of ${desc.timeout} seconds`;
-					res.result.commentary = [
-						res.result.action
-					];
+				if (isGrind && desc.timeout) {
+					if (res.result && res.result.commentary 
+							&& res.result.commentary.length 
+							&& res.result.commentary[res.result.commentary.length - 1].startsWith("No change on")) {
+						res.result.action = `No change on: ${desc.cmd}\nThe command did not produce a new proof state within a timeout of ${desc.timeout} seconds`;
+						res.result.commentary = [
+							res.result.action
+						];
+					}
+				}
+				if (res.error) {
+					res.result = res.result || {};
+					const error_msg: string = res.error.message ? res.error.message.replace(/\\\\"/g, "") : null;
+					res.result.action = res.result.action || `No change on: ${desc.cmd}`;
+					if (error_msg) {
+						res.result.action += `\n\n${cmd} resulted in the following error: ${error_msg}\n`;
+					}
+					res.result.commentary = res.result.commentary || [];
+					res.result.commentary.push(res.result.action);
+					console.error(res.error);
 				}
 			}
 			return res;

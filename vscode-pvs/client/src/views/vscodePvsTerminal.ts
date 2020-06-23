@@ -243,7 +243,7 @@ class TerminalSession {
                 this.sendCommand("quit-dont-save");
                 setTimeout(() => {
                     resolve();
-                }, 400);
+                }, 200);
             });
         }
     }
