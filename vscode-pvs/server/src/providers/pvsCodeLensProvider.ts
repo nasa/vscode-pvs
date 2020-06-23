@@ -57,10 +57,9 @@ export class PvsCodeLensProvider {
 
             const codeLens: CodeLens[] = [];
             const content: string = document.txt.replace(utils.commentRegexp, "");
-            const regexp: RegExp = utils.theoremRegexp;
             let match: RegExpMatchArray = null;
 
-            while (match = regexp.exec(content)) {
+            while (match = utils.theoremRegexp.exec(content)) {
                 if (match.length > 1 && match[1]) {
                     const formulaName: string = match[1];
 
@@ -71,38 +70,75 @@ export class PvsCodeLensProvider {
                     const character: number = lines[lines.length - 1].indexOf(match[1]);
                     
                     const theoryName: string = utils.findTheoryName(content, line);
-                    const args = {
-                        fileName,
-                        fileExtension,
-                        contextFolder,
-                        theoryName, 
-                        formulaName,
-                        line
-                    };
-                    const range: Range = {
-                        start: { line, character }, 
-                        end: { line, character: character + formulaName.length }
-                    };
-                    codeLens.push({
-                        range,
-                        command: {
-                            title: "prove",
-                            command: "vscode-pvs.prove-formula",
-                            arguments: [ args ]
-                        }
-                        // ,
-                        // data: {
-                        //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
-                        // }
-                    });
-                    codeLens.push({
-                        range,
-                        command: {
-                            title: "show-proof",
-                            command: "vscode-pvs.show-prooflite",
-                            arguments: [ args ]
-                        }
-                    });
+                    if (theoryName) {
+                        const args = {
+                            fileName,
+                            fileExtension,
+                            contextFolder,
+                            theoryName, 
+                            formulaName,
+                            line
+                        };
+                        const range: Range = {
+                            start: { line, character }, 
+                            end: { line, character: character + formulaName.length }
+                        };
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: "prove",
+                                command: "vscode-pvs.prove-formula",
+                                arguments: [ args ]
+                            }
+                            // ,
+                            // data: {
+                            //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
+                            // }
+                        });
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: "show-proof",
+                                command: "vscode-pvs.show-prooflite",
+                                arguments: [ args ]
+                            }
+                        });
+                    }
+                }
+            }
+
+            if (fileExtension === ".pvs") {
+                while (match = utils.theoryRegexp.exec(content)) {
+                    if (match.length > 1 && match[1]) {
+                        const theoryName: string = match[1];
+
+                        const docUp: string = content.slice(0, match.index + theoryName.length);
+                        const lines: string[] = docUp.split("\n");
+                        const line: number = lines.length - 1;
+                        const character: number = lines[lines.length - 1].indexOf(match[1]);
+
+                        const args = {
+                            fileName,
+                            fileExtension,
+                            contextFolder,
+                            theoryName, 
+                            line
+                        };
+
+                        // pvsio codelens
+                        const range: Range = {
+                            start: { line, character },
+                            end: { line, character: character + theoryName.length }
+                        };
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: "evaluate-in-pvsio",
+                                command: "vscode-pvs.pvsio-evaluator",
+                                arguments: [ args ]
+                            }
+                        });            
+                    }
                 }
             }
             return Promise.resolve(codeLens);
