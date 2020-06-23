@@ -43,6 +43,10 @@ import { pvsSnapshotsUrl, PvsDownloadDescriptor, allegroLicenseUrl } from '../co
 
 export class PvsPackageManager {
 
+    /**
+     * Provides the list pvs versions available for this machine's operating system at SRI's pvs-snapshots website.
+     * The list is ordered by version number (the most recent version is in position 0).
+     */
     static async listDownloadableVersions (): Promise<PvsDownloadDescriptor[]> {
         const osName: string = fsUtils.getOs();
         const lsCommand: string = `${fsUtils.downloadCommand(pvsSnapshotsUrl)} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${osName} | grep allegro`;
@@ -62,6 +66,9 @@ export class PvsPackageManager {
         return null;
     }
 
+    /**
+     * Downloads a pvs version from SRI's pvs-snapshots website.
+     */
     static async downloadPvsExecutable (desc: PvsDownloadDescriptor): Promise<string> {
         const fname: string = `${os.tmpdir()}/${desc.fileName}`;
         const downloadCommand: string = fsUtils.downloadCommand(desc.url, { out: fname });
@@ -72,13 +79,16 @@ export class PvsPackageManager {
         return null;
     }
 
+    /**
+     * Downloads the pvs license page from SRI's pvs-snapshots website.
+     */
     static async downloadPvsLicensePage (): Promise<string> {
         const downloadCommand: string = fsUtils.downloadCommand(allegroLicenseUrl);
         const dnl: Buffer = execSync(downloadCommand);
         if (dnl) {
             return dnl.toLocaleString()
-                        .replace(`<body>`, `<body style="color: black;background-color: white;">`)
-                        .replace(`action="../cgi-bin/download.cgi">`, `action="../cgi-bin/download.cgi" style="display: none;">`);
+                    .replace(`<body>`, `<body style="color: black;background-color: white;">`)
+                    .replace(`action="../cgi-bin/download.cgi">`, `action="../cgi-bin/download.cgi" style="display: none;">`);
         }
         return null;
     }
