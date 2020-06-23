@@ -461,10 +461,10 @@ export async function getProofLiteScript (desc: {
 }): Promise<string> {
 	if (desc) {
 		const makeHeader = (status: ProofStatus): string => { 
-			return `%%-----------------------------------
-%% ProofLite Script for ${desc.formulaName} 
-%% (proof status: ${getIcon(status)}${status})
-%%-----------------------------------\n`; 
+			return `%%-------------------------------------------
+%% @formula: ${desc.theoryName}@${desc.formulaName} 
+%% @status: ${getIcon(status)}${status}
+%%-------------------------------------------\n`; 
 		}
 		let proofScript: string = makeHeader("untried");
 		// check if the .jprf file contains the proof status
@@ -483,7 +483,7 @@ export async function getProofLiteScript (desc: {
 
 					const proofLite: string[] = proofTree2ProofLite(proofDescriptors[0].proofTree);
 					if (proofLite && proofLite.length) {
-						proofScript += "\n" + proofLite.join("\n");
+						proofScript += proofLite.join("\n");
 					}
 				}
 			} catch (jprf_parse_error) {
@@ -900,7 +900,11 @@ export function proofTree2ProofLite (proofTree: ProofNode): string[] | null {
 							res += `\n${" ".repeat(indent + 1)}`;
 						}
 					default: {
-						res += proofTreeToProofLite_aux(node.rules, node.branch, indent);
+						if (node.rules && node.rules.length) {
+							res += proofTreeToProofLite_aux(node.rules, node.branch, indent);
+						} else {
+							res += "(postpone)";
+						}
 						break;
 					}
 				}
@@ -1063,16 +1067,17 @@ export function prf2jprf (desc: {
 				if (formulaName !== `${desc.theoryName}.${desc.formulaName}`) {
 					console.warn(`[language-utils] Warning: proof script for ${desc.theoryName}.${desc.formulaName} has unexpected signature ${formulaName}`);
 				}
-				const prf: string = (desc.autorun && isEmptyPrf(data[3])) ? grind : data[3];
+				const prf: string = (desc.autorun && isEmptyPrf(data[3]))? grind : data[3];
 				const proof: ProofNode = prf2ProofTree({ prf, proofName });
 				result.proofTree = proof;
 				// console.dir(result, { depth: null });
 			}
-		} else {		
-			if (desc.autorun) {
-				result.proofTree = prf2ProofTree({ prf: grind, proofName: desc.formulaName });
-			}
-		}
+		} 
+		// else {		
+		// 	if (desc.autorun) {
+		// 		result.proofTree = prf2ProofTree({ prf: grind, proofName: desc.formulaName });
+		// 	}
+		// }
 		return result;
 	}
 	return null;
@@ -1146,7 +1151,7 @@ export function isSameCommand (cmd1: string, cmd2: string): boolean {
 	return c1 === c2 || c1 === `(${c2})` || `(${c1})` === c2;
 }
 
-export function applyTimeout (cmd: string, sec: number): string {
+export function applyTimeout (cmd: string, sec?: number): string {
 	if (cmd && sec) {
 		const c: string = cmd.startsWith('(') && cmd.endsWith(')') ? cmd : `(${cmd})`
 		return `(apply ${c} :timeout ${sec})`;
@@ -1234,7 +1239,7 @@ ${theoryName}: THEORY
 `;
 }
 
-export function makeProofSummary (desc: { tccsOnly?: boolean, theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]}): string {
+export function makeProofSummary (desc: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]}): string {
 	const header: string = desc.tccsOnly ? "TCCs summary" : "Proof summary";
 	let ans: string = `${header} for theory ${desc.theoryName}\n`;
 	let nProved: number = 0;
@@ -1252,6 +1257,6 @@ export function makeProofSummary (desc: { tccsOnly?: boolean, theoryName: string
 
 		ans += `\n\t${formulaName}` + ".".repeat(points) + getIcon(status) + status + " ".repeat(spaces) + `(${ms / 1000} s)`;
 	}
-	ans += `\n\nTheory ${desc.theoryName} totals: ${desc.theorems.length} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${totTime / 1000} s)`;
+	ans += `\n\nTheory ${desc.theoryName} totals: ${desc.total} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${totTime / 1000} s)`;
 	return ans;
 }

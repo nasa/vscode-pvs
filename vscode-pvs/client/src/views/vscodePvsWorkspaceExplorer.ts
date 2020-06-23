@@ -777,13 +777,14 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			const theory: TheoryItem = this.root.getTheoryItem(resource);
 			if (theory) {
 				// show dialog with progress
-				window.withProgress({
+				await window.withProgress({
 					location: ProgressLocation.Notification,
 					cancellable: true
 				}, (progress, token) => { 
-					const theorems: FormulaItem[] = (opt && opt.tccsOnly) ?
+					const theorems: FormulaItem[] = theory.getTheorems();
+					const formulas: FormulaItem[] = (opt && opt.tccsOnly) ?
 						theory.getTCCs() 
-							: theory.getTheorems().concat(theory.getTCCs());
+							: theorems.concat(theory.getTCCs());
 					const theoryName: string = theory.theoryName;
 					// show initial dialog with spinning progress
 					const message: string = (opt.tccsOnly) ? `Preparing to discharge proof obligations in theory ${theoryName}`
@@ -800,19 +801,20 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							// dispose of the dialog
 							resolve(null);
 						});
-						const summary: { tccsOnly?: boolean, theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]} = {
+						const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]} = {
 							theoryName,
 							theorems: [],
-							tccsOnly: opt.tccsOnly
+							tccsOnly: opt.tccsOnly,
+							total: formulas.length
 						};
-						if (theorems && theorems.length) {
-							for (let i = 0; i < theorems.length && !stop; i ++) {
-								const next: FormulaItem = theorems[i];
+						if (formulas && formulas.length) {
+							for (let i = 0; i < formulas.length && !stop; i ++) {
+								const next: FormulaItem = formulas[i];
 								const formulaName: string = next.getFormulaName();
-								const message: string = (opt.tccsOnly) ? `Discharding proof obligations in theory ${theoryName} (${i + 1}/${theorems.length}) '${formulaName}'`
-									: `Re-running proofs in theory ${theoryName} (${i + 1}/${theorems.length}) '${formulaName}'`
+								const message: string = (opt.tccsOnly) ? `Discharding proof obligations in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
+									: `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
 								progress.report({
-									increment: 1 / theorems.length * 100, // all increments must add up to 100
+									increment: 1 / formulas.length * 100, // all increments must add up to 100
 									message
 								});
 								const start: number = new Date().getTime();
@@ -828,7 +830,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							}
 						}
 						resolve();
-						vscodeUtils.previewTextDocument(theoryName, utils.makeProofSummary(summary));
+						vscodeUtils.previewTextDocument(`${theoryName}.summary`, utils.makeProofSummary(summary), { contextFolder: resource.contextFolder, viewColumn: ViewColumn.Beside });
 					});
 				});
 			} else {

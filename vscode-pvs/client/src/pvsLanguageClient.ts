@@ -96,12 +96,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	protected packageManager: VSCodePvsPackageManager;
 
 	/**
-	 * Internal function, returns the pvs path indicated in the configuration file
+	 * Internal function, returns the current pvs path, as indicated in the configuration file
 	 */
-	// protected getPvsPath (): string {
-	// 	return workspace.getConfiguration().get("pvs.path");
-	// }
-
+	protected getPvsPath (): string {
+		return workspace.getConfiguration().get("pvs.path");
+	}
 
 	/**
 	 * Internal function, autosaves pvs files with frequency AUTOSAVE_INTERVAL
@@ -183,17 +182,17 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		}, null, this.context.subscriptions);
 	}
 
-	event (eventName: string): void {
-		switch (eventName) {
-			case serverEvent.pvsServerReady: {
-				this.pvsServerReady = true;
-				break;
-			}
-			default: {
-				console.log(`[pvsLanguageClient] Warning: unhandled event ${eventName}`);
-			}
-		}
-	}
+	// event (eventName: string): void {
+	// 	switch (eventName) {
+	// 		case serverEvent.pvsServerReady: {
+	// 			this.pvsServerReady = true;
+	// 			break;
+	// 		}
+	// 		default: {
+	// 			console.log(`[pvsLanguageClient] Warning: unhandled event ${eventName}`);
+	// 		}
+	// 	}
+	// }
 
 	/**
 	 * Client activation function.
@@ -255,6 +254,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');
 			this.proofMate.activate(this.context);
 			this.packageManager = new VSCodePvsPackageManager(this.client, this.statusBar);
+			this.packageManager.activate(this.context);
 	
 			// enable decorations for pvs syntax
 			this.decorationProvider = new VSCodePvsDecorationProvider();
@@ -279,11 +279,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// set vscode context variable pvs-server-active to true
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 
-				// set vscode context variable macOs to the appropriate value
-				// if (os.platform() === "darwin") {
-				// 	commands.executeCommand('setContext', 'macOs', true);
-				// }
-
 				// update status bar
 				this.statusBar.ready();
 
@@ -291,14 +286,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				if (window.activeTextEditor && window.activeTextEditor.document) {
 					this.client.sendRequest(comm.serverCommand.parseFile, window.activeTextEditor.document.fileName);
 				}
-			});
-		
-			// define error handlers
-			this.client.onRequest(serverEvent.pvsNotPresent, () => {
-				this.packageManager.installationWizard(`Could not find PVS executable in folder '${this.pvsPath}'\nPlease choose the correct location of the PVS executables, or download PVS.`);
-			});
-			this.client.onRequest(serverEvent.pvsIncorrectVersion, (msg: string) => {
-				this.packageManager.installationWizard(msg);
 			});
 
 			// start PVS

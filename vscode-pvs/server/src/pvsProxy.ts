@@ -779,7 +779,7 @@ export class PvsProxy {
 	 * Executes a proof command. The command is always adorned with round parentheses, e.g., (skosimp*)
 	 * @param desc Descriptor of the proof command
 	 */
-	async proofCommand(desc: { cmd: string, timeout: number }): Promise<PvsResponse> {
+	async proofCommand(desc: { cmd: string, timeout?: number }): Promise<PvsResponse> {
 		if (desc) {
 			// console.dir(desc, { depth: null });
 			const showHidden: boolean = utils.isShowHiddenCommand(desc.cmd);

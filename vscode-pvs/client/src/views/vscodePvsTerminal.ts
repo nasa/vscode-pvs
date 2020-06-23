@@ -108,7 +108,7 @@ class TerminalSession {
             this.isActive = true;
 
             // server events
-            this.client.onRequest(serverEvent.quitDontSaveProofEvent, (desc: {
+            this.client.onRequest(serverEvent.quitProofDontSaveEvent, (desc: {
                 args: { 
                     fileName: string, 
                     fileExtension: string, 
@@ -119,7 +119,7 @@ class TerminalSession {
                 }
             }) => {
                 this.isActive = false;
-                vscode.commands.executeCommand('vscode-pvs.in-checker', false);
+                // vscode.commands.executeCommand('vscode-pvs.in-checker', false);
             });
             this.client.onRequest(serverEvent.closeDontSaveEvent, (desc: {
                 args: { 
@@ -133,7 +133,7 @@ class TerminalSession {
                 msg?: string
             }) => {
                 this.isActive = false;
-                vscode.commands.executeCommand('vscode-pvs.in-checker', false);
+                // vscode.commands.executeCommand('vscode-pvs.in-checker', false);
                 if (desc && desc.msg) {
                     this.terminal.sendText(desc.msg);
                 }
@@ -214,14 +214,14 @@ class TerminalSession {
             this.terminal.dispose();
         }
         // close proof explorer and proofmate
-        vscode.commands.executeCommand('vscode-pvs.in-checker', false);
+        // vscode.commands.executeCommand('vscode-pvs.in-checker', false);
     }
     sendCommand (cmd: string) {
         this.sendText(cmd);
     }
     deactivate(): void {
         this.isActive = false;
-        vscode.commands.executeCommand('vscode-pvs.in-checker', false);
+        // vscode.commands.executeCommand('vscode-pvs.in-checker', false);
         if (this.cb) {
             this.cb();
         }
@@ -251,7 +251,6 @@ class TerminalSession {
 
 import { cliSessionType } from '../common/serverInterface';
 import { ProofMateProfile } from '../common/commandUtils';
-import { resolve } from 'dns';
 
 export class VSCodePvsTerminal {
     protected client: LanguageClient;
@@ -263,12 +262,17 @@ export class VSCodePvsTerminal {
      */
     constructor (client: LanguageClient) {
         this.client = client;
-        vscode.window.onDidCloseTerminal((terminal) => {
+        vscode.window.onDidCloseTerminal(async (terminal) => {
             const keys: string[] = Object.keys(this.openTerminals);
             if (keys && keys.length > 0) {
                 for (const i in keys) {
                     if (this.openTerminals[keys[i]].terminal.processId === terminal.processId) {
-                        this.client.sendRequest(serverCommand.quitProver);
+                        this.client.sendRequest(serverCommand.quitProof);
+                        await Promise.resolve(new Promise((resolve, reject) => {
+                            this.client.onRequest(serverEvent.quitProofResponse, () => {
+                                resolve();
+                            });
+                        }))
                         delete this.openTerminals[keys[i]];
                         break;
                     }
@@ -287,14 +291,16 @@ export class VSCodePvsTerminal {
             }
         }
     }
-    sendProofCommand (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): void {
+    sendProofCommand (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): boolean {
         if (desc) {
             const channelID: string = language.desc2id(desc);
             if (this.openTerminals[channelID]) {
                 this.openTerminals[channelID].terminal.show();
                 this.openTerminals[channelID].terminal.sendText(desc.cmd);
+                return true;
             }
         }
+        return false;
     }
     activate (context: vscode.ExtensionContext): void {
         this.context = context;
@@ -330,8 +336,7 @@ export class VSCodePvsTerminal {
         fileExtension: string, 
         contextFolder: string, 
         theoryName: string, 
-        formulaName: string,
-        autorun?: boolean // this flag is used to trigger automatic run of the theorem
+        formulaName: string
     }): Promise<boolean> {
         return new Promise((resolve, reject) => {
             if (desc) {

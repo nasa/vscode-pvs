@@ -21,7 +21,9 @@
 		"pvs": "pvs_icon",
 		"prf": "proof_script_icon",
 		"jprf": "proof_script_icon",
-		"pr" : "proof_state_icon"
+		"pr" : "proof_state_icon",
+		"prlite": "proof_script_icon",
+		"summary": "pvs_icon"
 	},
 	"languageIds": {
 		"pvs": "pvs_icon"

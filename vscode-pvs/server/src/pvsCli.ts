@@ -575,7 +575,7 @@ if (process.argv.length > 2) {
 		if (success) {
 			switch (args.type) {
 				case cliSessionType.proveFormula: {
-					console.log(`\nStarting new prover session for ${utils.colorText(args.formulaName, utils.textColor.blue)}\n`);
+					console.log(`\nStarting new prover session for ${utils.colorText(args.theoryName + "@" + args.formulaName, utils.textColor.blue)}\n`);
 					await pvsCli.activateProverRepl();
 					break;
 				}

@@ -39,13 +39,13 @@
 import { LanguageClient } from "vscode-languageclient";
 import { VSCodePvsStatusBar } from "./views/vscodePvsStatusBar";
 import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindingsProvider";
-import { VSCodePvsWorkspaceExplorer, TheoryItem, FormulaItem } from "./views/vscodePvsWorkspaceExplorer";
+import { VSCodePvsWorkspaceExplorer } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { PvsContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor } from "./common/serverInterface";
+import { PvsContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor, ServerMode } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
-import { PvsResponse, DischargeTccsResult } from "./common/pvs-gui";
+import { PvsResponse } from "./common/pvs-gui";
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 import * as utils from './common/languageUtils';
@@ -61,6 +61,9 @@ export class EventsDispatcher {
     protected proofExplorer: VSCodePvsProofExplorer;
     protected vscodePvsTerminal: VSCodePvsTerminal;
     protected proofMate: VSCodePvsProofMate;
+
+    protected inChecker: boolean = false;
+    protected quietMode: boolean = false;
 
     constructor (client: LanguageClient, handlers: {
         statusBar: VSCodePvsStatusBar,
@@ -312,14 +315,14 @@ export class EventsDispatcher {
                 // start proof
                 this.proofExplorer.startProof();
                 
-                // set vscode context variable in-checker to true, to indicate a proof is now in progress
-                vscode.commands.executeCommand('vscode-pvs.in-checker', true);
+                // // set vscode context variable in-checker to true, to indicate a proof is now in progress
+                // vscode.commands.executeCommand('vscode-pvs.in-checker', true);
             }
         });
 		// this.client.onRequest(serverEvent.dischargeTheoremsResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
         //     // do nothing for now
         // });
-        this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, autorun?: boolean }, proofFile: string }) => {
+        this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             if (desc) {
                 console.log(desc);
                 if (desc.response && desc.response.result) {
@@ -349,6 +352,26 @@ export class EventsDispatcher {
             const msg: string = desc.msg || "Ups, pvs-server just crashed :/";
             this.statusBar.failure(msg);
         });
+        this.client.onRequest(serverEvent.proverModeEvent, (desc: { mode: ServerMode }) => {
+            if (desc) {
+                switch (desc.mode) {
+                    case "in-checker": {
+                        this.inChecker = true;
+                        vscode.commands.executeCommand('setContext', 'in-checker', true);
+                        this.workspaceExplorer.refreshView();
+                        break;
+                    }
+                    case "pvsio":
+                    case "lisp":
+                    default: {
+                        this.inChecker = false;
+                        vscode.commands.executeCommand('setContext', 'in-checker', false);
+                        this.workspaceExplorer.refreshView();
+                        break;
+                    }
+                }
+            }
+        });
 
 		this.client.onRequest(serverEvent.saveProofEvent, (request: { 
             args: {
@@ -358,9 +381,9 @@ export class EventsDispatcher {
                 theoryName: string, 
                 formulaName: string, 
                 cmd: string
-            } 
+            }
 		}) => {
-			this.proofExplorer.saveProof({ force: true });		
+			this.proofExplorer.saveProof({ quiet: true, force: true });
         });
 		// this.client.onRequest(serverEvent.redoCommandEvent, (request: { 
         //     args: {
@@ -430,7 +453,7 @@ export class EventsDispatcher {
             }
         }) => {
             if (desc && desc.response) {
-                vscodeUtils.previewTextDocument(desc.args.formulaName, desc.response, { viewColumn: vscode.ViewColumn.Beside });
+                vscodeUtils.previewTextDocument(`${desc.args.formulaName}.prlite`, desc.response, { contextFolder: desc.args.contextFolder, viewColumn: vscode.ViewColumn.Beside });
             }
         });
 
@@ -440,10 +463,6 @@ export class EventsDispatcher {
         //---------------------------------------------------------
         // commands invoked using code lens, emacs bindings, explorer, etc
         //---------------------------------------------------------
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.in-checker", (flag: boolean) => {
-            vscode.commands.executeCommand('setContext', 'in-checker', flag);
-            this.workspaceExplorer.refreshView();
-        }));
 
         context.subscriptions.push(commands.registerCommand("vscode-pvs.view-prelude-file", () => {
             this.client.onRequest(serverEvent.viewPreludeFileResponse, (desc: { contextFolder: string, fileName: string, fileExtension: string }) => {
@@ -453,7 +472,9 @@ export class EventsDispatcher {
         }));
         // vscode-pvs.send-proof-command
         context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
-            this.vscodePvsTerminal.sendProofCommand(desc);
+            if (!this.vscodePvsTerminal.sendProofCommand(desc)) {
+                this.client.sendRequest(serverCommand.proofCommand, desc);
+            }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.select-profile", (desc: { profile: commandUtils.ProofMateProfile }) => {
             this.vscodePvsTerminal.selectProfile(desc);
@@ -584,6 +605,10 @@ export class EventsDispatcher {
                 }> this.resource2desc(resource);
                 if (desc) {
                     if (desc.theoryName) {
+                        if (this.inChecker) {
+                            // quit the current proof first
+                            await this.proofExplorer.quitProof({ confirm: false });
+                        }
                         // the sequence of events triggered by this command is:
                         // 1. vscodePvsTerminal.startProverSession(desc) 
                         // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
@@ -603,10 +628,9 @@ export class EventsDispatcher {
             }
         }));
 
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-formula", async (resource) => {
-            resource["autorun"] = true;
-            commands.executeCommand("vscode-pvs.prove-formula", resource);
-        }));
+        // context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-formula", async (resource) => {
+        //     commands.executeCommand("vscode-pvs.prove-formula", resource);
+        // }));
 
         // vscode-pvs.autorun-theory
         // the sequence of events triggered by this command is:
@@ -625,7 +649,11 @@ export class EventsDispatcher {
             formulaName: string 
         }) => {
             if (resource) {
-                this.workspaceExplorer.autorun(resource);
+                this.quietMode = true;
+                this.statusBar.showProgress(`Re-running proofs in theory ${resource.theoryName}`);
+                await this.workspaceExplorer.autorun(resource);
+                this.statusBar.ready();
+                this.quietMode = false;
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.autorun-theory invoked with null resource", resource);
             }
@@ -639,7 +667,9 @@ export class EventsDispatcher {
             formulaName: string 
         }) => {
             if (resource) {
-                this.workspaceExplorer.autorun(resource, { tccsOnly: true });
+                this.quietMode = true;
+                await this.workspaceExplorer.autorun(resource, { tccsOnly: true });
+                this.quietMode = false;
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-tccs invoked with null resource", resource);
             }
@@ -844,6 +874,19 @@ export class EventsDispatcher {
         });
         this.client.onNotification("server.status.start-important-task", (desc: { id: string, msg: string, increment?: number }) => {
             if (desc && desc.msg) {
+                if (this.quietMode) {
+                    this.client.onNotification(`server.status.end-important-task-${desc.id}-with-errors`, (desc: { msg: string }) => {
+                        this.statusBar.ready();
+                        this.proofExplorer.stopAutorun();
+                        if (desc && desc.msg) {
+                            this.statusBar.showError(desc.msg); // use the status bar rather than dialogs, because we don't have APIs to close old dialogs with potentially stale information
+                            window.showErrorMessage(desc.msg);
+                            // show problems panel -- see also Code->Preferences->KeyboardShortcuts
+                            commands.executeCommand("workbench.actions.view.toggleProblems");
+                        }
+                    });
+                    return;
+                }
                 // show dialog with progress
                 window.withProgress({
                     location: ProgressLocation.Notification,

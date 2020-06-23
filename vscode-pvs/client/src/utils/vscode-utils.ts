@@ -63,7 +63,7 @@ export function showTextDocument (desc: { contextFolder: string, fileName: strin
  * Utility function, previews a text document in the editor
  * @param content 
  */
-export async function previewTextDocument (name: string, content: string, opt?: { viewColumn?: vscode.ViewColumn }): Promise<boolean> {
+export async function previewTextDocument (name: string, content: string, opt?: { contextFolder?: string, viewColumn?: vscode.ViewColumn }): Promise<boolean> {
     opt = opt || {};
     const viewColumn: vscode.ViewColumn = opt.viewColumn || vscode.ViewColumn.Active;
 
@@ -73,7 +73,8 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     // });
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${path.join(vscode.workspace.rootPath, "pvsbin", "preview")}`);
     
-    const preview: vscode.Uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, "pvsbin", "preview"));
+    const folder: string = opt.contextFolder || vscode.workspace.rootPath;
+    const preview: vscode.Uri =  vscode.Uri.file(path.join(folder, name));
     const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
     edit.deleteFile(preview, { ignoreIfNotExists: true });
     edit.createFile(preview, { overwrite: true });

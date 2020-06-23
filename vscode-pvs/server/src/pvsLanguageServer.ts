@@ -54,7 +54,8 @@ import {
 	PvsVersionDescriptor,
 	ProofFile,
 	ProofDescriptor,
-	ProofStatus
+	ProofStatus,
+	ServerMode
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -101,10 +102,7 @@ export class PvsLanguageServer {
 	protected pvsVersionDescriptor: PvsVersionDescriptor;
 
 	// indicates whether a prover session is active -- pvs-server is single-threaded, and we can safely send only find-declaration requests when a prover session is active, everything else needs to be disabled
-	protected inChecker: boolean = false;
-
-	// this flag indicates whether proof checking is in autorun (batch) mode
-	protected autorunFlag: boolean = false;
+	protected mode: ServerMode = "lisp";
 
 	// timers
 	protected timers: { [ key:string ]: NodeJS.Timer } = {};
@@ -268,15 +266,12 @@ export class PvsLanguageServer {
 		// 	this.connection.sendRequest(serverEvent.redoCommandEvent, { args: request });
 		// }
 		if (utils.isQuitCommand(request.cmd)) {
-			await this.pvsProxy.proofCommand({ cmd: "quit", timeout });
-			this.connection.sendRequest(serverEvent.quitProofEvent, { args: request, opt: { force: this.autorunFlag, quiet: this.autorunFlag }});
-			this.inChecker = false;
+			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request });
+			await this.quitProof();
 			return
 		}
 		if (utils.isQuitDontSaveCommand(request.cmd)) {
-			await this.pvsProxy.proofCommand({ cmd: "quit", timeout });
-			this.connection.sendRequest(serverEvent.quitDontSaveProofEvent, { args: request });
-			this.inChecker = false;
+			await this.quitProof();
 			return
 		}
 		
@@ -298,7 +293,7 @@ export class PvsLanguageServer {
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
 
 				if (utils.isQED(response.result)) {
-					this.connection.sendRequest(serverEvent.QED, { response, args: request, opt: { quiet: this.autorunFlag, force: this.autorunFlag }});
+					this.connection.sendRequest(serverEvent.QED, { response, args: request });
 					// trigger a context update, so proof status will be updated on the front-end
 					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
 					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
@@ -318,13 +313,16 @@ export class PvsLanguageServer {
 	 * Prove formula
 	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
 	 */
+	async startProof (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<PvsResponse | null> {
+		return await this.proveFormula(args);
+	}
 	async proveFormula (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<PvsResponse | null> {
 		if (this.checkArgs("proveFormula", args)) {
 			try {
 				args = fsUtils.decodeURIComponents(args);
 				const response: PvsResponse = await this.pvsProxy.proveFormula(args);
 				if (response && response.result) {
-					this.inChecker = true;
+					this.mode = "in-checker";
 				}
 				return response;
 			} catch (ex) {
@@ -334,19 +332,24 @@ export class PvsLanguageServer {
 		}
 		return null;
 	}
-	async proveFormulaRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, autorun?: boolean }): Promise<void> {
+	async proveFormulaRequest (request: {
+		fileName: string, 
+		fileExtension: string, 
+		contextFolder: string, 
+		theoryName: string, 
+		formulaName: string
+	}): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
-		this.autorunFlag = !!request.autorun;
 		
-		// parse workspace files before starting the proof attempt if you want stats to be updated on the status bar 
-		// await this.parseWorkspaceRequest(request);
+		if (this.mode === "in-checker") {
+			// quit current proof
+			await this.quitProof();
+		}
 
 		// make sure the file typechecks correctly before starting a proof attempt
 		// send feedback to the front-end
 		const taskId: string = `typecheck-${request.formulaName}`;
-		if (!request.autorun) {
-			this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${request.formulaName}'` });
-		}
+		this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${request.formulaName}'` });
 
 		// make sure pvs files are typechecked before starting a proof attempt
 		if (request.fileExtension === ".pvs") {
@@ -386,9 +389,10 @@ export class PvsLanguageServer {
 				this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() })
 				this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request, pvsLogFile, pvsTmpLogFile, shasum });
 				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile, shasum });
-				if (!request.autorun) {
-					this.notifyEndImportantTask({ id: taskId });
-				}
+				
+				this.connection.sendRequest(serverEvent.proverModeEvent, { mode: this.mode });
+
+				this.notifyEndImportantTask({ id: taskId });
 			}
 		} else {
 			// there was an error
@@ -538,7 +542,7 @@ export class PvsLanguageServer {
 	}): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		// first, convert proofs stored in .prf format to .jprf format
-		await this.proofScript(request);
+		await this.loadProof(request);
 		// load prooflite script from the .jprf file
 		const proofScript: string = await utils.getProofLiteScript(request);
 		// send response to the client
@@ -554,8 +558,7 @@ export class PvsLanguageServer {
 		fileExtension: string, 
 		theoryName: string, 
 		formulaName: string, 
-		contextFolder: string,
-		autorun?: boolean
+		contextFolder: string
 	}): Promise<ProofDescriptor> {
 		if (request) {
 			request = fsUtils.decodeURIComponents(request);
@@ -566,36 +569,31 @@ export class PvsLanguageServer {
 				theoryName: request.theoryName, 
 				formulaName: request.formulaName, 
 				version: this.pvsVersionDescriptor,
-				shasum,
-				autorun: request.autorun
+				shasum
 			});
 
 			try {
 				const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
 				let proofFile: ProofFile = await fsUtils.readProofFile(fname);
 				const key: string = `${request.theoryName}.${request.formulaName}`;
+				// check if the proof is stored in the jprf file
 				if (proofFile && proofFile[key] && proofFile[key].length > 0) {
-					if (!request.autorun) {
-						proofDescriptor = proofFile[key][0];
-						proofDescriptor.info.status = await utils.getProofStatus(request);
-						if (proofDescriptor.info && proofDescriptor.info.shasum !== shasum) {
-							proofDescriptor.info.shasum = shasum;
-						}
+					proofDescriptor = proofFile[key][0];
+					proofDescriptor.info.status = await utils.getProofStatus(request);
+					if (proofDescriptor.info && proofDescriptor.info.shasum !== shasum) {
+						proofDescriptor.info.shasum = shasum;
 					}
 				} else {
 					// obtain proof from prf via pvs, and update jprf
 					const response: PvsResponse = await this.proofScript(request);
 					if (response && response.result) {
-						if (!request.autorun) {
-							proofDescriptor = utils.prf2jprf({
-								prf: response.result,
-								theoryName: request.theoryName, 
-								formulaName: request.formulaName, 
-								version: this.pvsVersionDescriptor,
-								shasum,
-								autorun: request.autorun
-							});
-						}
+						proofDescriptor = utils.prf2jprf({
+							prf: response.result,
+							theoryName: request.theoryName, 
+							formulaName: request.formulaName, 
+							version: this.pvsVersionDescriptor,
+							shasum
+						});
 					}
 					// save proof in the jprf file
 					await this.saveProof({
@@ -652,10 +650,14 @@ export class PvsLanguageServer {
 		theoryName: string, 
 		formulaName: string, 
 		contextFolder: string, 
-		proofDescriptor: ProofDescriptor
+		proofDescriptor: ProofDescriptor,
+		quit?: boolean
 	}): Promise<void> {
 		if (request) {
 			const success: boolean = await this.saveProof(request);
+			if (request.quit) {
+				await this.quitProof();
+			}
 			this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: request });
 			// trigger a context update, so proof status will be updated on the front-end
 			setTimeout(() => {
@@ -981,7 +983,7 @@ export class PvsLanguageServer {
 	 */
 	async parseFile (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
 		args = fsUtils.decodeURIComponents(args);
-		if (this.checkArgs("parseFile", args) && !this.inChecker) {
+		if (this.checkArgs("parseFile", args) && !this.mode) {
 			const enableEParser: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.settings.parser.errorTolerant"));
 			try {
 				return await this.pvsProxy.parseFile(args, { enableEParser });
@@ -1702,7 +1704,7 @@ export class PvsLanguageServer {
 				// send version info to the front-end
 				await this.sendPvsVersionInfo();
 				// reset inChecker flag
-				this.inChecker = false;
+				this.mode = "lisp";
 			} else {
 				console.error("[pvs-language-server] Error: failed to identify PVS path");
 				this.connection.sendRequest(serverEvent.pvsNotPresent);
@@ -1711,6 +1713,35 @@ export class PvsLanguageServer {
 		return false;
 	}
 
+	/**
+	 * quitProofEvent triggers a dialog on the front-end that asks whether the proof should be saved
+	 */
+	// quitProofEvent (): void {
+	// 	this.connection.sendRequest(serverEvent.quitProofEvent);
+	// }
+
+	/**
+	 * Quits the prover
+	 * @param opt 
+	 */
+	async quitProof (): Promise<void> {
+		await this.pvsProxy.proofCommand({ cmd: "quit" });
+		this.mode = "lisp";
+		this.connection.sendRequest(serverEvent.proverModeEvent, { mode: this.mode });
+	}
+
+	async quitProofRequest (): Promise<void> {
+		await this.quitProof();
+		this.connection.sendRequest(serverEvent.quitProofResponse);
+	}
+
+	async viewPreludeFileRequest (): Promise<void> {
+		this.connection.sendRequest(serverEvent.viewPreludeFileResponse, {
+			contextFolder: path.join(this.pvsPath, "lib"),
+			fileName: "prelude",
+			fileExtension: ".pvs"
+		});
+	}
 	/**
 	 * Internal function, used to setup LSP event listeners
 	 */
@@ -1792,7 +1823,6 @@ export class PvsLanguageServer {
 					});
 				}
 			});
-
 			this.connection.onRequest(serverCommand.startPvsServer, async (request: { pvsPath: string, contextFolder?: string, externalServer?: boolean }) => {
 				// this should be called just once at the beginning
 				const success: boolean = await this.startPvsServerRequest(request);
@@ -1854,7 +1884,7 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.listContext, async (request: { contextFolder: string }) => {
 				this.listContextFilesRequest(request); // async call
 			});
-			this.connection.onRequest(serverCommand.proveFormula, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, autorun?: boolean }) => {
+			this.connection.onRequest(serverCommand.proveFormula, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
 				await this.proveFormulaRequest(args);
 			});
 			// this.connection.onRequest(serverCommand.dischargeTccs, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }) => {
@@ -1874,7 +1904,7 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.proofCommand, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, cmd: string }) => {
 				this.proofCommandRequest(args); // async call
 			});
-			this.connection.onRequest(serverCommand.saveProof, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, proofDescriptor: ProofDescriptor }) => {
+			this.connection.onRequest(serverCommand.saveProof, async (args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, proofDescriptor: ProofDescriptor, quit?: boolean }) => {
 				this.saveProofRequest(args); // async call
 			});
 			this.connection.onRequest(serverCommand.getGatewayConfig, async () => {
@@ -1882,15 +1912,10 @@ export class PvsLanguageServer {
 				this.connection.sendRequest(serverEvent.getGatewayConfigResponse, { port });
 			});
 			this.connection.onRequest(serverCommand.viewPreludeFile, async () => {
-				this.connection.sendRequest(serverEvent.viewPreludeFileResponse, {
-					contextFolder: path.join(this.pvsPath, "lib"),
-					fileName: "prelude",
-					fileExtension: ".pvs"
-				});
+				this.viewPreludeFileRequest();
 			});
-			this.connection.onRequest(serverCommand.quitProver, async () => {
-				const timeout: number = await this.connection.workspace.getConfiguration("pvs.settings.prover.watchdog");
-				this.pvsProxy.proofCommand({ cmd: "quit", timeout }); // async call
+			this.connection.onRequest(serverCommand.quitProof, async () => {
+				this.quitProofRequest(); // this method will send a quitProofResponse to the client
 			});
 
 			this.connection.onRequest(serverCommand.listDownloadableVersions, async () => {

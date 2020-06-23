@@ -107,12 +107,12 @@
 				{
 					"id": "proof-explorer-view",
 					"name": "PVS Proof Explorer",
-					"when": "pvs-server-active && in-checker"
+					"when": "pvs-server-active && in-checker && !autorun"
 				},
 				{
 					"id": "proof-mate-view",
 					"name": "PVS Proof Mate",
-					"when": "pvs-server-active && in-checker"
+					"when": "pvs-server-active && in-checker && !autorun"
 				}
 			]
 		},
@@ -295,7 +295,7 @@
 			},
 			{
 				"command": "proof-explorer.rename-node",
-				"title": "Rename",
+				"title": "Edit",
 				"enablement": "pvs-server-active == true"
 			},
 			{

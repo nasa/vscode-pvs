@@ -474,7 +474,7 @@ export const serverCommand = {
 	rebootPvsServer: "pvs.reboot-pvs-server",
 	hp2pvs: "pvs.hp-to-pvs-file",
 	startEvaluator: "pvs.start-evaluator",
-	quitProver: "pvs.quit-prover",
+	quitProof: "pvs.quit-proof",
 
 	viewPreludeFile: "pvs.view-prelude-file",
 
@@ -486,7 +486,11 @@ export const serverCommand = {
 
 	listDownloadableVersions: "pvs.list-downloadable-versions",
 	downloadPvs: "pvs.download-pvs",
-	downloadLicensePage: "pvs.download-license-page"
+	downloadLicensePage: "pvs.download-license-page",
+
+	downloadNasalib: "pvs.download-nasalib",
+	importNasalib: "pvs.import-nasalib"
+
 };
 // TODO: add here type information for args
 export const serverEvent = {
@@ -504,6 +508,7 @@ export const serverEvent = {
 	showTccsResponse: "pvs.response.show-tccs",
 	startEvaluatorResponse: "pvs.response.start-evaluator",
 	hp2pvsResponse: "pvs.response.hp-to-pvs-file",
+	quitProofResponse: "pvs.response.quit-proof",
 
 	viewPreludeFileResponse: "pvs.response.view-prelude-file",
 
@@ -515,6 +520,9 @@ export const serverEvent = {
 	downloadPvsResponse: "pvs.response.download-pvs",
 	downloadLicensePageResponse: "pvs.response.download-license-page",
 
+	downloadNasalibResponse: "pvs.response.download-nasalib",
+	importNasalibResponse: "pvs.response.import-nasalib",
+
 	pvsServerReady: "pvs.response.restart",
 
 	contextUpdate: "pvs.event.context-update",
@@ -524,18 +532,21 @@ export const serverEvent = {
 	workspaceStats: "pvs.event.workspace-stats",
 	saveProofEvent: "pvs.event.save-proof",
 	quitProofEvent: "pvs.event.quit-proof",
-	quitDontSaveProofEvent: "pvs.event.quit-dont-save-proof",
+	quitProofDontSaveEvent: "pvs.event.quit-dont-save-proof",
 	closeDontSaveEvent: "pvs.event.close-dont-save-proof",
+	proverModeEvent: "pvs.event.prover-mode",
 	// redoCommandEvent: "pvs.event.redo-command",
 
 	pvsServerCrash: "pvs.event.server-crash",
 
 	pvsVersionInfo: "pvs.event.version-info",
 	pvsNotPresent: "pvs.event.pvs-not-present",
-	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version"
+	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version",
+
+	nasalibNotPresent: "pvs.event.nasalib-not-present"
 };
 
-
+export declare type ServerMode = "lisp" | "in-checker" | "pvsio";
 
 export declare type CliGatewayRequest = { 
 	type: "subscribe", clientID: string, channelID: string 
@@ -593,3 +604,5 @@ export interface PvsDownloadDescriptor { url: string, fileName: string, version:
 export const sriUrl: string = "www.csl.sri.com";
 export const pvsSnapshotsUrl: string = `http://${sriUrl}/users/owre/drop/pvs-snapshots/`;
 export const allegroLicenseUrl: string = `http://pvs.csl.sri.com/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;
+
+export const nasalibUrl: string = "https://github.com/nasa/nasalib";
