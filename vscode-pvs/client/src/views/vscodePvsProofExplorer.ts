@@ -159,7 +159,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (this.proofStarted) {
 				await this.quitProof({ confirm: false, save: false });
 			}
-			this.autorunCallback((this.root) ? this.root.proofStatus : "untried");
+			this.autorunCallback((this.root) ? this.root.getProofStatus() : "untried");
 		}
 	}
 
@@ -308,9 +308,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				cmd = cmd || this.activeNode.name;
 				const parent: ProofItem = this.activeNode.parent;
 				if (parent) {
-					if (this.autorunFlag && !utils.validProofliteCommand(cmd)) {
+					if (this.autorunFlag && utils.isUndoStarCommand(cmd)) {
 						// mark proof as unfinished
-						if (this.root.proofStatus !== "untried") {
+						if (this.root.getProofStatus() !== "untried") {
 							this.root.setProofStatus("unfinished");
 						}
 						// save and quit proof					
@@ -342,7 +342,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				this.running = false;
 				if (this.autorunFlag) {
 					// mark proof as unfinished
-					if (this.root.proofStatus !== "untried") {
+					if (this.root.getProofStatus() !== "untried") {
 						this.root.setProofStatus("unfinished");
 					}
 					// automatically quit the proof attempt
@@ -446,7 +446,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				this.running = false;
 				if (this.autorunFlag) {
 					// mark proof as unfinished
-					if (this.root.proofStatus !== "untried") {
+					if (this.root.getProofStatus() !== "untried") {
 						this.root.setProofStatus("unfinished");
 					}
 					// save and quit proof
@@ -464,7 +464,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				this.running = false;
 				if (this.autorunFlag) {
 					// mark proof as unfinished
-					if (this.root.proofStatus !== "untried") {
+					if (this.root.getProofStatus() !== "untried") {
 						this.root.setProofStatus("unfinished");
 					}
 					// save and quit proof					
@@ -525,7 +525,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				this.running = false;
 				if (this.autorunFlag) {
 					// mark proof as unfinished
-					if (this.root.proofStatus !== "untried") {
+					if (this.root.getProofStatus() !== "untried") {
 						this.root.setProofStatus("unfinished");
 					}
 					// save and quit proof					
@@ -579,7 +579,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				this.running = false;
 				if (this.autorunFlag && this.ghostNode.isActive()) {
 					// mark proof as unfinished
-					if (this.root.proofStatus !== "untried") {
+					if (this.root.getProofStatus() !== "untried") {
 						this.root.setProofStatus("unfinished");
 					}
 					// save and quit proof
@@ -629,7 +629,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 								this.appendBranch({ selected: activeNode }, { firstBranch: newBranch, proofState: this.proofState });
 							}
 						}
-						if (utils.isProved(this.root.proofStatus) || utils.isUnchecked(this.root.proofStatus)) {
+						if (utils.isProved(this.root.getProofStatus()) || utils.isUnchecked(this.root.getProofStatus())) {
 							this.showWarningMessage(`Warning: Proof script might be broken (PVS generated ${nSubGoals} sub goals, but proof script contains ${this.activeNode.children.length} sub goals). Stopping execution of proof script.`);
 						}
 					} else {
@@ -692,7 +692,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					this.running = false;
 					if (this.autorunFlag) {
 						// mark proof as unfinished
-						if (this.root.proofStatus !== "untried") {
+						if (this.root.getProofStatus() !== "untried") {
 							this.root.setProofStatus("unfinished");
 						}
 						// save and quit proof
@@ -811,6 +811,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 	/**
+	 * Internal function, marks a proof as dirty, indicating that the proof structure has changed and the proof needs re-saving and re-checking
+	 */
+	protected dirtyProof (): void {
+		this.dirtyFlag = true;
+		if (this.root && this.root.getProofStatus() === "proved") {
+			this.root.setProofStatus("unchecked");
+		}
+	}
+	/**
 	 * Internal function, reveals a node in the view.
 	 */
 	protected revealNode (desc: { selected: ProofItem }): void {
@@ -840,7 +849,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	async appendNode (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean }): Promise<void> {
 		if (desc && desc.selected) {
-			this.dirtyFlag = true;
+			this.dirtyProof();
 			opt = opt || {};
 			const selectedNode: ProofItem = (desc.selected.contextValue === "ghost") ? (<GhostNode> desc.selected).realNode : desc.selected;
 			const branchId: string = selectedNode.branchId;
@@ -890,7 +899,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: ProofState }): void {
 		if (desc && desc.selected) {
-			this.dirtyFlag = true;
+			this.dirtyProof();
 			opt = opt || {};
 			let selectedNode: ProofItem = desc.selected;
 			const branchId: string = selectedNode.branchId;
@@ -1059,7 +1068,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				await window.showInformationMessage(msg, { modal: true }, yesno[0])
 				: yesno[0];
 			if (ans === yesno[0]) { 
-				this.dirtyFlag = true;
+				this.dirtyProof();
 				if (selected.contextValue === "root") {
 					selected.children = [];
 					this.markAsActive({ selected: this.root });
@@ -1102,7 +1111,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				await window.showInformationMessage(msg, { modal: true }, yesno[0])
 				: yesno[0];
 			if (ans === yesno[0]) {
-				this.dirtyFlag = true;
 				switch (node.contextValue) {
 					case "root": {
 						node.children = [];
@@ -1145,6 +1153,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						console.warn(`[proof-explorer] Warning: unrecognized node type ${node.contextValue} detected while trimming ${node.name}`);
 					}
 				}
+				this.dirtyProof();
 				this.refreshView();
 			}
 		} else {
@@ -1157,15 +1166,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	async renameNode (desc: { selected: ProofItem }): Promise<void> {
 		if (desc && desc.selected) {
-			this.dirtyFlag = true;
+			this.dirtyProof();
 			const node: ProofItem = desc.selected;
-			const newName: string = await vscode.window.showInputBox({ prompt: `Renaming proof command ${node.name}`, placeHolder: `${node.name}`, value: `${node.name}`, ignoreFocusOut: true });
+			const newName: string = await vscode.window.showInputBox({ prompt: `Editing proof command ${node.name}`, placeHolder: `${node.name}`, value: `${node.name}`, ignoreFocusOut: true });
 			if (newName) {
 				node.rename(newName);
 			}
 			this.refreshView();
 		} else {
-			console.warn(`[proof-explorer] Warning: unable to rename selected node`);
+			console.warn(`[proof-explorer] Warning: unable to edir selected node`);
 		}
 	}
 	/**
@@ -1219,7 +1228,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// we need a timeout otherwise proof explorer is unable to refresh the view because update events get delayed in the event queue 
 			setTimeout(() => {
 				this.autorunFlag = false;
-				this.autorunCallback(this.root.proofStatus);
+				this.autorunCallback(this.root.getProofStatus());
 			}, 200);
 		}
 	}
@@ -1412,7 +1421,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			info: {
 				theory: this.formulaDescriptor.theoryName,
 				formula: this.formulaDescriptor.formulaName,
-				status: this.root.proofStatus,
+				status: this.root.getProofStatus(),
 				prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "7.x",
 				shasum: this.shasum
 			},
@@ -1582,7 +1591,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		opt = opt || {};
 		this.running = false;
 		this.pendingExecution = false;
-		const status: ProofStatus = (this.root) ? this.root.proofStatus : "untried";
+		const status: ProofStatus = (this.root) ? this.root.getProofStatus() : "untried";
 		opt.confirm = (opt.confirm === undefined || opt.confirm === null) ? true : opt.confirm;
 		// ask the user if the proof is to be saved
 		const yesno: string[] = [ "Yes", "No" ];
@@ -2144,7 +2153,7 @@ class WelcomeScreen extends TreeItem {
 	}
 }
 class RootNode extends ProofItem {
-	proofStatus: ProofStatus; // this is updated while running the proof
+	protected proofStatus: ProofStatus; // this is updated while running the proof
 	initialProofStatus: ProofStatus; // this is set at the beginning (and at the end of the proof attempt if the proof succeeds)
 	constructor (desc: { name: string, proofStatus?: ProofStatus }) {
 		super("root", desc.name, "", null, TreeItemCollapsibleState.Expanded);
@@ -2206,6 +2215,9 @@ class RootNode extends ProofItem {
 	resetProofStatus (): void {
 		this.proofStatus = this.initialProofStatus;
 		this.updateLabel();
+	}
+	getProofStatus (): ProofStatus {
+		return this.proofStatus;
 	}
 	protected updateLabel (): void {
 		const proofStatus: ProofStatus = this.proofStatus || "untried";

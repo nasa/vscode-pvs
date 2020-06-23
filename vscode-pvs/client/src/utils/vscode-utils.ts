@@ -50,12 +50,19 @@ export function getEditorContextFolder () : string {
  * Utility function, shows a text document in the editor
  * @param content 
  */
-export function showTextDocument (desc: { contextFolder: string, fileName: string, fileExtension: string }, opt?: { viewColumn?: vscode.ViewColumn }): void {
+export function showTextDocument (desc: { 
+    contextFolder: string, 
+    fileName: string, 
+    fileExtension: string 
+}, opt?: { 
+    viewColumn?: vscode.ViewColumn, 
+    selection?: vscode.Range 
+}): void {
     opt = opt || {};
-    const viewColumn: vscode.ViewColumn = opt.viewColumn || vscode.ViewColumn.Active;
+    const viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
     if (desc) {
         const uri: vscode.Uri = vscode.Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
-        vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
+        vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn, selection: opt.selection });
     }
 }
 
@@ -65,7 +72,7 @@ export function showTextDocument (desc: { contextFolder: string, fileName: strin
  */
 export async function previewTextDocument (name: string, content: string, opt?: { contextFolder?: string, viewColumn?: vscode.ViewColumn }): Promise<boolean> {
     opt = opt || {};
-    let viewColumn: vscode.ViewColumn = opt.viewColumn || vscode.ViewColumn.Active;
+    let viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
 
     // vscode.workspace.openTextDocument({ language: 'pvs', content: content }).then((document: vscode.TextDocument) => {
     //     // vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);

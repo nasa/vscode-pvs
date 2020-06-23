@@ -108,6 +108,21 @@ export class PvsProxyLegacy {
             id: "pvs-process-legacy"
         };
     }
+    async proveFormula(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string }): Promise<PvsResponse> {
+        const pvsResponse: PvsResponse = {
+            jsonrpc: "2.0",
+            id: "pvs-process-legacy"
+        };
+        const response: PvsResponse = await this.lisp(`(prove-formula "${desc.theoryName}#${desc.formulaName}")`);
+        try {
+            console.dir(JSON.parse(response.result));
+        } catch (jsonerror) {
+            console.error(jsonerror);
+            return pvsResponse;
+        }
+        console.log(response);
+        return pvsResponse;
+    }
     async showTccs (fname: string, theoryName: string): Promise<PvsResponse> {
         const pvsResponse: PvsResponse = {
             jsonrpc: "2.0",

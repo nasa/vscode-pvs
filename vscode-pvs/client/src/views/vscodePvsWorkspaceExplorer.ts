@@ -535,6 +535,11 @@ export class WorkspaceOverviewItem extends OverviewItem {
 	constructor(desc: PvsContextDescriptor) {
 		super("workspace-overview", desc, TreeItemCollapsibleState.Expanded);
 		this.pvsFilesOverview = new PvsFilesOverviewItem(desc);
+		this.command = {
+			title: "Workspace selected",
+			command: "explorer.didSelectWorkspaceOverview",
+			arguments: [ desc ]
+		};
 		this.refreshLabel();
 	}
 	protected refreshLabel (): void {
@@ -618,6 +623,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	protected view: TreeView<TreeItem>;
 	protected root: WorkspaceOverviewItem;
 	protected loading: LoadingItem = new LoadingItem();
+
+	protected filterOnTypeActive: boolean = false;
 
 	/**
 	 * Returns the full path of the pvs executable
@@ -862,42 +869,30 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 
 		// click on a theorem to open the file and highlight the theorem in the theory
 		context.subscriptions.push(commands.registerCommand('explorer.theorem-selected-event', async (desc: FormulaDescriptor) => {
-			// window.showInformationMessage("theory selected: " + theoryName + " " + fileName + "(" + position.line + ", " + position.character + ")");
-			const uri: Uri = Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
-
-			window.showTextDocument(uri, {
-				preserveFocus: true, 
-				viewColumn: window.activeTextEditor.viewColumn,
+			vscodeUtils.showTextDocument(desc, {
 				selection: new Range(
 					new Position(desc.position.line - 1, 0), // - 1 is because lines in vscode start from 0
 					new Position(desc.position.line - 1, 1000) // highlight entire line
 				)
 			});
 		}))
-
-		// // click on a tcc formula to open the .tccs file
-		// cmd = commands.registerCommand('explorer.tcc-selected-eventFormula', async (desc: { theoryName: string, fileName: string, fileExtension: string, contextFolder: string, position: Position }) => {
-		// 	const uri: Uri = Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
-		// 	commands.executeCommand('vscode.open', uri, {
-		// 		viewColumn: window.activeTextEditor.viewColumn, // do not open new tabs
-		// 		selection: range
-		// 	});
-		// });
-		// context.subscriptions.push(cmd);
 		
 		// click on a theory name to open the file and highlight the theory name in the file
-		context.subscriptions.push(commands.registerCommand('explorer.didSelectTheory', async (desc: { theoryName: string, fileName: string, fileExtension: string, contextFolder: string, position: Position }) => {
-			// window.showInformationMessage("theory selected: " + theoryName + " " + fileName + "(" + position.line + ", " + position.character + ")");
-			const uri: Uri = Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
-			window.showTextDocument(uri, {
-				preserveFocus: true,
-				preview: true,
-				viewColumn: window.activeTextEditor.viewColumn,
+		context.subscriptions.push(commands.registerCommand('explorer.didSelectTheory', async (desc: TheoryDescriptor) => {
+			vscodeUtils.showTextDocument(desc, {
 				selection: new Range(
 					new Position(desc.position.line - 1, 0), // - 1 is because lines in vscode start from 0
 					new Position(desc.position.line - 1, 1000) // highlight entire line
 				)
 			});
+		}));
+
+		// click on the workspace enables search by type in the tree view
+		context.subscriptions.push(commands.registerCommand('explorer.didSelectWorkspaceOverview', async (desc: PvsContextDescriptor) => {
+			if (!this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
+				this.filterOnTypeActive = true;
+				commands.executeCommand('list.toggleFilterOnType', true);
+			}
 		}));
 	}
 

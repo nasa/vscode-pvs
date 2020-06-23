@@ -1140,8 +1140,8 @@ export function isUndoUndoPlusCommand (cmd: string): boolean {
 	return cmd && /\(?(\s*\bundo)+/g.test(cmd);
 }
 
-export function validProofliteCommand (cmd: string): boolean {
-	return !isUndoCommand(cmd) && !isUndoUndoCommand(cmd) && !isUndoUndoPlusCommand(cmd);
+export function isUndoStarCommand (cmd: string): boolean {
+	return isUndoCommand(cmd) || isUndoUndoCommand(cmd) || isUndoUndoPlusCommand(cmd);
 }
 
 export function isPostponeCommand (cmd: string): boolean {
