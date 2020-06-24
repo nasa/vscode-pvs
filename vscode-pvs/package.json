@@ -284,7 +284,7 @@
 			},
 			{
 				"command": "proof-explorer.mark-as-active",
-				"title": "Mark as active",
+				"title": "Jump to...",
 				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
 			},
 			{
@@ -469,6 +469,11 @@
 					"group": "context-menu/ctrl"
 				},
 				{
+					"command": "proof-explorer.mark-as-active",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/ctrl"
+				},
+				{
 					"command": "proof-explorer.run-proof",
 					"when": "view == proof-explorer-view && viewItem == root",
 					"group": "context-menu/ctrl"
@@ -525,7 +530,7 @@
 				},
 				{
 					"command": "proof-explorer.mark-as-pending",
-					"when": "view == proof-explorer-view",
+					"when": "false && view == proof-explorer-view",
 					"group": "context-menu/edit-6"
 				},
 				{
@@ -535,11 +540,6 @@
 				},
 				{
 					"command": "proof-explorer.mark-as-not-visited",
-					"when": "view == proof-explorer-view",
-					"group": "context-menu/edit-6"
-				},
-				{
-					"command": "proof-explorer.mark-as-active",
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-6"
 				},
