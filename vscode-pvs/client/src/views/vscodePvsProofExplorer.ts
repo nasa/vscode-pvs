@@ -1429,7 +1429,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				theory: this.formulaDescriptor.theoryName,
 				formula: this.formulaDescriptor.formulaName,
 				status: this.root.getProofStatus(),
-				prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "7.x",
+				prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "PVS 7.x",
 				shasum: this.shasum
 			},
 			proofTree

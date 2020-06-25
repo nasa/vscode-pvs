@@ -90,6 +90,8 @@ export class PvsErrorManager {
     handleStartPvsServerError (success: ProcessCode): void {
         if (success === ProcessCode.PVSNOTFOUND) {
             this.connection.sendRequest(serverEvent.pvsNotPresent);
+        } else if (success !== ProcessCode.SUCCESS) {
+            this.connection.sendRequest(serverEvent.pvsServerCrash);
         }
     }
     

@@ -72,6 +72,7 @@ import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl, ShowTCCsR
 import { PvsPackageManager } from './providers/pvsPackageManager';
 import { PvsIoProxy } from './pvsioProxy';
 import { PvsErrorManager } from './pvsErrorManager';
+import { ProcessCode } from './pvsProcess';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -154,18 +155,23 @@ export class PvsLanguageServer {
 			hasWorkspaceFolderCapability: false,
 			hasDiagnosticRelatedInformationCapability: false
 		};
-		// Create a connection channel to allow clients to connect.
-		// The connection uses Node's IPC as a transport. Includes all proposed LSP features.
-		this.connection = createConnection(ProposedFeatures.all);
-		this.setupConnectionManager();
 
-		// Create a simple text document manager. The text document manager supports full document sync only
-		this.setupDocumentsManager(this.connection);
+		try {
+			// Create a connection channel to allow clients to connect.
+			// The connection uses Node's IPC as a transport. Includes all proposed LSP features.
+			this.connection = createConnection(ProposedFeatures.all);
 
-		// Listen on the connection
-		this.connection.listen();
-
-		this.pvsErrorManager = new PvsErrorManager(this.connection);
+			// Create connection manager
+			this.setupConnectionManager();
+			// Create a simple text document manager. The text document manager supports full document sync only
+			this.setupDocumentsManager(this.connection);
+			// Listen on the connection
+			this.connection.listen();
+			// Create error manager
+			this.pvsErrorManager = new PvsErrorManager(this.connection);
+		} catch (connectionError) {
+			console.error(`[pvs-server] Error: unable to create LSP connection`);
+		}
 	}
 	
 	//-- utility functions
@@ -558,7 +564,7 @@ export class PvsLanguageServer {
 	 * Internal function, loads the proof script for the formula indicated in the request
 	 * @param request 
 	 */
-	protected async loadProof (request: { 
+	async loadProof (request: { 
 		fileName: string, 
 		fileExtension: string, 
 		theoryName: string, 
@@ -1666,12 +1672,7 @@ export class PvsLanguageServer {
 		return false;
 	}
 
-	/**
-	 * Internal function, restarts pvs-server
-	 * FIXME: create separate functions for starting pvs-server and pvs-proxy
-	 * @param desc 
-	 */
-	protected async startPvsServerRequest (desc: { pvsPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
+	async startPvsServer (desc: { pvsPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
 		if (desc) {
 			desc = fsUtils.decodeURIComponents(desc);
 			if (desc.pvsPath !== this.pvsPath && this.pvsProxy) {
@@ -1706,14 +1707,28 @@ export class PvsLanguageServer {
 				}
 				// activate cli gateway
 				await this.cliGateway.activate();
-				// send version info to the front-end
-				await this.sendPvsVersionInfo();
 				// reset inChecker flag
 				this.mode = "lisp";
+				return true;
 			} else {
 				console.error("[pvs-language-server] Error: failed to identify PVS path");
 				this.connection.sendRequest(serverEvent.pvsNotPresent);
 			}
+		}
+		return false;
+	}
+
+	/**
+	 * Internal function, restarts pvs-server
+	 * FIXME: create separate functions for starting pvs-server and pvs-proxy
+	 * @param desc 
+	 */
+	protected async startPvsServerRequest (desc: { pvsPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
+		const success: boolean = await this.startPvsServer(desc);
+		if (success) {
+			// send version info to the front-end
+			await this.sendPvsVersionInfo();
+			return true;
 		}
 		return false;
 	}
@@ -1833,6 +1848,11 @@ export class PvsLanguageServer {
 					});
 				}
 			});
+			this.connection.onRequest(serverCommand.stopPvsServer, async () => {
+				if (this.pvsProxy) {
+					await this.pvsProxy.killPvsServer();
+				}
+			});
 			this.connection.onRequest(serverCommand.startPvsServer, async (request: { pvsPath: string, contextFolder?: string, externalServer?: boolean }) => {
 				// this should be called just once at the beginning
 				const success: boolean = await this.startPvsServerRequest(request);
@@ -1845,6 +1865,9 @@ export class PvsLanguageServer {
 					}
 					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
 					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+				} else {
+					console.error(`[pvs-server] Error: failed to start pvs-server`);
+					this.pvsErrorManager.handleStartPvsServerError(ProcessCode.PVSSTARTFAIL);
 				}
 			});
 			this.connection.onRequest(serverCommand.rebootPvsServer, async (desc?: { pvsPath?: string }) => {

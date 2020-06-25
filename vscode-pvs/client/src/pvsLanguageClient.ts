@@ -52,7 +52,6 @@ import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsPackageManager } from './providers/vscodePvsPackageManager';
 import { VSCodePvsProofMate } from './views/vscodePvsProofMate';
 import { VSCodePvsFileOutlineProvider } from './providers/vscodsPvsOulineProvider';
-import * as os from 'os';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -310,7 +309,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	async stop (): Promise<void> {
 		if (this.client) {
-			this.client.sendRequest("kill-pvs");
+			this.client.sendRequest(comm.serverCommand.stopPvsServer);
 			await this.client.stop();
 			// set vscode context variable pvs-server-active to true
 			commands.executeCommand('setContext', 'pvs-server-active', false);

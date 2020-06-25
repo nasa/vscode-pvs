@@ -1217,6 +1217,7 @@ export class PvsProxy {
 	 */
 	async activate(opt?: { debugMode?: boolean, showBanner?: boolean, verbose?: boolean, pvsErrorManager?: PvsErrorManager }): Promise<boolean> {
 		opt = opt || {};
+		console.log(`[pvs-proxy] Activating pvs-proxy...`)
 		this.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
 		this.debugMode = !!opt.debugMode;
 		this.verbose = !!opt.verbose;

@@ -471,6 +471,7 @@ export const serverCommand = {
 	generateTccs: "pvs.generate-tccs",
 	showTccs: "pvs.show-tccs",
 	startPvsServer: "pvs.start-pvs-server",
+	stopPvsServer: "pvs.stop-pvs-server",
 	rebootPvsServer: "pvs.reboot-pvs-server",
 	hp2pvs: "pvs.hp-to-pvs-file",
 	startEvaluator: "pvs.start-evaluator",

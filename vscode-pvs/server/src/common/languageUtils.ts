@@ -461,10 +461,11 @@ export async function getProofLiteScript (desc: {
 }): Promise<string> {
 	if (desc) {
 		const makeHeader = (status: ProofStatus): string => { 
-			return `%%-------------------------------------------
-%% @formula: ${desc.theoryName}@${desc.formulaName} 
-%% @status: ${getIcon(status)}${status}
-%%-------------------------------------------\n`; 
+			return `%-------------------------------------------
+% @formula: ${desc.formulaName} 
+% @theory: ${desc.theoryName}
+% @status: ${getIcon(status)}${status}
+%-------------------------------------------\n`; 
 		}
 		let proofScript: string = makeHeader("untried");
 		// check if the .jprf file contains the proof status
@@ -860,7 +861,8 @@ export function pvsVersionToString (version: PvsVersionDescriptor): string {
 	return null;
 }
 
-export function proofTree2ProofLite (proofTree: ProofNode): string[] | null {
+export function proofTree2ProofLite (proofTree: ProofNode, opt?: { barPecent?: boolean }): string[] | null {
+	opt = opt || {};
 	const proofTreeToProofLite_aux = (nodes: ProofNode[], currentBranch?: string, indent?: number): string => {
 		indent = indent || 0;
 		let res: string = "";
@@ -917,8 +919,9 @@ export function proofTree2ProofLite (proofTree: ProofNode): string[] | null {
 	}
 	if (proofTree) {
 		let res: string = proofTreeToProofLite_aux([ proofTree ]);
-		res += "\nQED";
-		return res.split("\n").map(line => { return "%|- " + line; });
+		res += `\nQED ${proofTree.name}`;
+		return (opt.barPecent) ? res.split("\n").map(line => { return "%|- " + line; })
+			: res.split("\n");
 	}
 	return null;
 }
@@ -1050,7 +1053,7 @@ export function prf2jprf (desc: {
 				theory: desc.theoryName,
 				formula: desc.formulaName,
 				status: "untried", // the prf file does not include the proof status
-				prover: pvsVersionToString(desc.version) || "7.x",
+				prover: pvsVersionToString(desc.version) || "PVS 7.x",
 				shasum: desc.shasum
 			}
 		};
