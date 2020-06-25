@@ -1,4 +1,5 @@
 import * as pvsgui from "../server/src/common/pvs-gui.d";
+import { ProofDescriptor } from "../server/src/common/serverInterface";
 
 export const EXTERNAL_SERVER: boolean = true;
 
@@ -1288,3 +1289,196 @@ export const sq_neg_expand = { commentary:
               decl: '-: [numfield -> numfield]',
               'decl-file': 'prelude.pvs',
               'decl-place': [ 1803, 2, 1803, 27 ] } ] } ] } };
+
+export const triangle_rectangle_prj: string = `
+;;; Proof triangle_rectangle-1 for formula sq.triangle_rectangle
+(""
+ (skolem 1 ("a" "b" "c"))
+ (flatten)
+ (case "sq(a)>=0" "sq(b)>=0" "sq(c)>=0")
+ (("1"
+   (case "sq(a) <= sq(c)")
+   (("1"
+     (case "sq(b) <= sq(c)")
+     (("1"
+       (lemma "sq_neg_pos_le")
+       (inst-cp -1 "a" "c")
+       (inst -1 "b" "c")
+       (ground))
+      ("2" (hide 2 -1) (ground))))
+    ("2" (hide 2 -1) (ground))))
+  ("2" (rewrite "sq_pos")) ("3" (rewrite "sq_pos"))
+  ("4" (rewrite "sq_pos"))))
+`;
+
+export const triangle_rectangle: ProofDescriptor = {
+  info: {
+    theory: 'sq',
+    formula: 'triangle_rectangle',
+    status: 'untried',
+    prover: 'PVS 7.x',
+    shasum: '90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a'
+  },
+  proofTree: {
+    name: 'sq.triangle_rectangle',
+    rules: [
+      {
+        name: '(skolem 1 ("a" "b" "c"))',
+        rules: [],
+        type: 'proof-command',
+        branch: ''
+      },
+      {
+        name: '(flatten)',
+        rules: [],
+        type: 'proof-command',
+        branch: ''
+      },
+      {
+        name: '(case "sq(a)>=0" "sq(b)>=0" "sq(c)>=0")',
+        rules: [
+          {
+            name: '1',
+            rules: [
+              {
+                name: '(case "sq(a) <= sq(c)")',
+                rules: [
+                  {
+                    name: '1',
+                    rules: [
+                      {
+                        name: '(case "sq(b) <= sq(c)")',
+                        rules: [
+                          {
+                            name: '1',
+                            rules: [
+                              {
+                                name: '(lemma "sq_neg_pos_le")',
+                                rules: [],
+                                type: 'proof-command',
+                                branch: '1.1.1'
+                              },
+                              {
+                                name: '(inst-cp -1 "a" "c")',
+                                rules: [],
+                                type: 'proof-command',
+                                branch: '1.1.1'
+                              },
+                              {
+                                name: '(inst -1 "b" "c")',
+                                rules: [],
+                                type: 'proof-command',
+                                branch: '1.1.1'
+                              },
+                              {
+                                name: '(ground)',
+                                rules: [],
+                                type: 'proof-command',
+                                branch: '1.1.1'
+                              }
+                            ],
+                            type: 'proof-branch',
+                            branch: '1.1.1'
+                          },
+                          {
+                            name: '2',
+                            rules: [
+                              {
+                                name: '(hide 2 -1)',
+                                rules: [],
+                                type: 'proof-command',
+                                branch: '1.1.2'
+                              },
+                              {
+                                name: '(ground)',
+                                rules: [],
+                                type: 'proof-command',
+                                branch: '1.1.2'
+                              }
+                            ],
+                            type: 'proof-branch',
+                            branch: '1.1.2'
+                          }
+                        ],
+                        type: 'proof-command',
+                        branch: '1.1'
+                      }
+                    ],
+                    type: 'proof-branch',
+                    branch: '1.1'
+                  },
+                  {
+                    name: '2',
+                    rules: [
+                      {
+                        name: '(hide 2 -1)',
+                        rules: [],
+                        type: 'proof-command',
+                        branch: '1.2'
+                      },
+                      {
+                        name: '(ground)',
+                        rules: [],
+                        type: 'proof-command',
+                        branch: '1.2'
+                      }
+                    ],
+                    type: 'proof-branch',
+                    branch: '1.2'
+                  }
+                ],
+                type: 'proof-command',
+                branch: '1'
+              }
+            ],
+            type: 'proof-branch',
+            branch: '1'
+          },
+          {
+            name: '2',
+            rules: [
+              {
+                name: '(rewrite "sq_pos")',
+                rules: [],
+                type: 'proof-command',
+                branch: '2'
+              }
+            ],
+            type: 'proof-branch',
+            branch: '2'
+          },
+          {
+            name: '3',
+            rules: [
+              {
+                name: '(rewrite "sq_pos")',
+                rules: [],
+                type: 'proof-command',
+                branch: '3'
+              }
+            ],
+            type: 'proof-branch',
+            branch: '3'
+          },
+          {
+            name: '4',
+            rules: [
+              {
+                name: '(rewrite "sq_pos")',
+                rules: [],
+                type: 'proof-command',
+                branch: '4'
+              }
+            ],
+            type: 'proof-branch',
+            branch: '4'
+          }
+        ],
+        type: 'proof-command',
+        branch: ''
+      }
+    ],
+    type: 'root',
+    branch: ''
+  }
+};

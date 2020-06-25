@@ -79,6 +79,8 @@ test-pvscontext: install-jasmine
 test: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-all.json
 test-all: test
+test-pvs-language-server: install-jasmine
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-pvs-language-server.json
 
 core:
 	-mkdir server/out && mkdir server/out/core

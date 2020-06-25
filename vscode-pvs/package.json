@@ -32,7 +32,7 @@
 	"activationEvents": [
 		"onLanguage:pvs"
 	],
-	"main": "./client/out/test/testPvsLanguageClient",
+	"main": "./client/out/PvsLanguageClient",
 	"main-ext": "./client/out/pvsLanguageClient",
 	"main-test": "./client/out/test/testPvsLanguageClient",
 	"extensionKind": [ "ui" ],

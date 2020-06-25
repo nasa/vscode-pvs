@@ -1,0 +1,8 @@
+{
+  "spec_dir": "test",
+  "spec_files": [
+    "test-pvs-language-server.ts"
+  ],
+  "stopSpecOnExpectationFailure": false,
+  "random": true
+}
