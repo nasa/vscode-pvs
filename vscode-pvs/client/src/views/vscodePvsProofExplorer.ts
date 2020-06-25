@@ -565,6 +565,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					window.showWarningMessage(`Warning: unable to execute ${cmd}`);
 					return;
 				}
+				// FIXME: we actually need to fast-forward to cmd, not jump-to
 				cmd = this.undoundo;
 				wasUndoUndo = true;
 			}
@@ -847,13 +848,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * 				If the new element is not specified, the function automatically queries the user to enter a proof command
 	 * @param opt Options: beforeSelected (boolean) allows to append the new element before the selected node (rather than after)
 	 */
-	async appendNode (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean }): Promise<void> {
+	async appendNode (desc: { selected: ProofItem, elem?: ProofItem | string }, opt?: { beforeSelected?: boolean }): Promise<ProofItem> {
 		if (desc && desc.selected) {
 			this.dirtyProof();
 			opt = opt || {};
 			const selectedNode: ProofItem = (desc.selected.contextValue === "ghost") ? (<GhostNode> desc.selected).realNode : desc.selected;
 			const branchId: string = selectedNode.branchId;
-			let newNode: ProofItem = desc.elem;
+			let newNode: ProofItem = (typeof desc.elem === "string") ? 
+				new ProofCommand(desc.elem, branchId, selectedNode.parent, TreeItemCollapsibleState.None)
+					: desc.elem;
 			if (!newNode) {
 				const cmd: string = await vscode.window.showInputBox({
 					prompt: `Please enter proof command to be appended after ${desc.selected.name}`,
@@ -884,12 +887,14 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					}
 				}
 				this.refreshView();
+				return newNode;
 			} else {
 				console.warn(`[proof-explorer] Warning: failed to create new node`)
 			}
 		} else {
 			console.warn(`[proof-explorer] Warning: failed to insert after (node is null)`)
 		}
+		return null;
 	}
 	/**
 	 * Appends a new branch to the proof tree. The branch name is automatically computed based on the structure of the proof tree.
@@ -897,7 +902,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * 			   If the selected node is a branch, then the branch will be appended to the parent of the selected branch.
 	 * @param opt Optionals: beforeSelected (boolean) flag used when the selected node is a branch, indicates whether the branch should be appended before the selected branch. 
 	 */
-	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: ProofState }): void {
+	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: ProofState }): ProofItem {
 		if (desc && desc.selected) {
 			this.dirtyProof();
 			opt = opt || {};
@@ -969,9 +974,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					// do nothing
 				}
 			}
+			return newBranch;
 		} else {
 			console.warn(`[proof-explorer] Warning: failed to insert after (node is null)`)
 		}
+		return null;
 	}
 	/**
 	 * Copies the selected node to the clipboard (i.e., the clipboard will store a copy of the selected node)
@@ -1773,7 +1780,7 @@ export const QED: ProofStatus = "proved";
 /**
  * Definition of tree items
  */
-class ProofItem extends TreeItem {
+export class ProofItem extends TreeItem {
 	contextValue: string = "proofItem";
 	name: string; // prover command or branch id
 	branchId: string = ""; // branch in the proof tree where this command is located (branchId for root is "").

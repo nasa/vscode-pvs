@@ -32,7 +32,10 @@
 	"activationEvents": [
 		"onLanguage:pvs"
 	],
-	"main": "./client/out/pvsLanguageClient",
+	"main": "./client/out/test/testPvsLanguageClient",
+	"main-ext": "./client/out/pvsLanguageClient",
+	"main-test": "./client/out/test/testPvsLanguageClient",
+	"extensionKind": [ "ui" ],
 	"contributes": {
 		"notes": {
 			"description": "These contributed settings can be read using vscode.workspace.getConfiguration('pvs')"

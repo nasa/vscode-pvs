@@ -195,15 +195,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	// }
 
 	/**
-	 * Client activation function.
-	 * @param context 
+	 * Internal function, creates the language client necessary for communicating with the language server
 	 */
-	activate (context: ExtensionContext): void {		
+	protected createLanguageClient (context: ExtensionContext): void {
 		// save pointer to extension context
 		this.context = context;
-		
+
 		// The server is implemented in NodeJS
-		const serverModule = context.asAbsolutePath(server_path);
+		const serverModule = this.context.asAbsolutePath(server_path);
 		// If the extension is launched in debug mode then the debug server options are used
 		// Otherwise the run options are used
 		const serverOptions: ServerOptions = {
@@ -230,6 +229,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			serverOptions,
 			clientOptions
 		);
+	}
+	/**
+	 * Client activation function.
+	 * @param context 
+	 */
+	activate (context: ExtensionContext): void {
+		// create language client
+		this.createLanguageClient(context);
 		
 		// create status bar
 		this.statusBar = new VSCodePvsStatusBar(this.client);
