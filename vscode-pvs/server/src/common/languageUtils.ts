@@ -1091,9 +1091,11 @@ export function isQuitCommand (cmd: string): boolean {
 	return cmd === "quit" 
 		|| cmd === "quit;"
 		|| cmd === "(quit)"
+		|| cmd.toLocaleLowerCase() === "(quit)y"
 		|| cmd === "exit"
 		|| cmd === "exit;"
 		|| cmd === "(exit)"
+		|| cmd.toLocaleLowerCase() === "(exit)y"
 		;
 }
 

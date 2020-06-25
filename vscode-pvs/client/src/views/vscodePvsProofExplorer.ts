@@ -1585,6 +1585,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					formulaName: this.formulaDescriptor.formulaName,
 					proofDescriptor: this.proofDescriptor
 				});
+				// mark proof as not dirty
+				this.dirtyFlag = false;
 			} else {
 				resolve();
 			}
@@ -1951,7 +1953,7 @@ export class ProofItem extends TreeItem {
 		}
 		return ans;
 	}
-	moveIndicatorForward (opt?: { lastVisitedChild?: ProofItem, keepSameBranch?: boolean }): ProofItem | null {
+	moveIndicatorForward (opt?: { lastVisitedChild?: ProofItem, keepSameBranch?: boolean, proofState?: ProofState }): ProofItem | null {
 		opt = opt || {};
 		if (this.contextValue === "proof-command") {
 			this.visited();
@@ -1960,8 +1962,12 @@ export class ProofItem extends TreeItem {
 			this.pending();
 		}
 		// check if this node has children, if so, return the first non-visited child
+		const proofState: ProofState = opt.proofState || this.proofState;
 		if (this.children && this.children.length) {
-			const activeBranchId: string = utils.getBranchId(this.proofState.label);
+			if (!proofState) {
+				window.showErrorMessage(`[pvs-explorer] Error: proofstate is null. Please restart the proof and report this error to the vscode-pvs developers.`);
+			}
+			const activeBranchId: string = utils.getBranchId(proofState.label);
 			if (opt.keepSameBranch && this.children[0].branchId !== activeBranchId) {
 				return null;
 			}
