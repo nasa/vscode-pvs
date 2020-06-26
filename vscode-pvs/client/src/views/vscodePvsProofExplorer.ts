@@ -84,6 +84,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	protected autorunFlag: boolean = false;
 	protected autorunCallback: (status: ProofStatus) => void;
 
+	protected filterOnTypeActive: boolean = false;
+
 	/**
 	 * Name of the view associated with the data provider
 	 */
@@ -1846,6 +1848,27 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		context.subscriptions.push(commands.registerCommand("proof-explorer.show-active-sequent", () => {
 			this.showActiveSequent(); // async call
 		}));
+
+		// click on the any node (except ghost nodes) enables search by type in the tree view
+		context.subscriptions.push(commands.registerCommand('proof-explorer.root-selected', async (resource: ProofItem) => {
+			if (!this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
+				this.filterOnTypeActive = true;
+				commands.executeCommand('list.toggleFilterOnType', true);
+			}
+		}));
+		context.subscriptions.push(commands.registerCommand('proof-explorer.proof-branch-selected', async (resource: ProofItem) => {
+			if (!this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
+				this.filterOnTypeActive = true;
+				commands.executeCommand('list.toggleFilterOnType', true);
+			}
+		}));
+		context.subscriptions.push(commands.registerCommand('proof-explorer.proof-command-selected', async (resource: ProofItem) => {
+			if (!this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
+				this.filterOnTypeActive = true;
+				commands.executeCommand('list.toggleFilterOnType', true);
+			}
+		}));
+		
 	}
 
 	/**
@@ -2272,7 +2295,7 @@ class ProofCommand extends ProofItem {
 		this.notVisited();
 		this.command = {
 			title: this.contextValue,
-			command: "explorer.didClickOnStrategy",
+			command: "proof-explorer.proof-command-selected",
 			arguments: [ this.contextValue ]
 		};
 	}
@@ -2289,7 +2312,7 @@ class ProofBranch extends ProofItem {
 		this.notVisited();
 		this.command = {
 			title: this.contextValue,
-			command: "explorer.didClickOnStrategy",
+			command: "proof-explorer.proof-branch-selected",
 			arguments: [ this.contextValue ]
 		};
 	}
@@ -2318,7 +2341,7 @@ class RootNode extends ProofItem {
 		this.notVisited();
 		this.command = {
 			title: this.contextValue,
-			command: "explorer.didClickOnStrategy",
+			command: "proof-explorer.root-selected",
 			arguments: [ this.contextValue ]
 		};
 	}
