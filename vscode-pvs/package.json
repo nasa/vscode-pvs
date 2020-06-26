@@ -261,6 +261,11 @@
 				"enablement": "view == proof-explorer-view && pvs-server-active == true"
 			},
 			{
+				"command": "proof-explorer.trim-unused",
+				"title": "Remove Unused Commands",
+				"enablement": "view == proof-explorer-view && pvs-server-active == true"
+			},
+			{
 				"command": "proof-explorer.create-proof-branch",
 				"title": "New branch",
 				"enablement": "view == proof-explorer-view && viewItem != proof-branch && pvs-server-active == true"
@@ -345,25 +350,25 @@
 				"command": "proof-explorer.back",
 				"title": "Back one step",
 				"icon": "icons/prev-icon.png",
-				"enablement": "in-checker == true"
+				"enablement": "in-checker == true && !proof-explorer.running"
 			},
 			{
 				"command": "proof-explorer.forward",
 				"title": "Step proof",
 				"icon": "icons/next-icon.png",
-				"enablement": "in-checker == true"
+				"enablement": "in-checker == true && !proof-explorer.running"
 			},
 			{
 				"command": "proof-explorer.run-proof",
 				"title": "️️Run proof",
 				"icon": "icons/play-circle-1-icon.png",
-				"enablement": "view == proof-explorer-view && in-checker == true"
+				"enablement": "view == proof-explorer-view && in-checker == true && !proof-explorer.running"
 			},
 			{
 				"command": "proof-explorer.fast-forward",
 				"title": "️️Fast forward",
-				"icon": "icons/fast-forward-icon.png",
-				"enablement": "view == proof-explorer-view && viewItem != root && in-checker == true"
+				"icon": "icons/fast-forward-icon-alt.png",
+				"enablement": "view == proof-explorer-view && viewItem != root && in-checker == true && !proof-explorer.running"
 			},
 			{
 				"command": "proof-mate.show-sequent",
@@ -469,6 +474,11 @@
 				{
 					"command": "proof-explorer.fast-forward",
 					"when": "view == proof-explorer-view && viewItem != root",
+					"group": "inline"
+				},
+				{
+					"command": "proof-explorer.fast-forward",
+					"when": "view == proof-explorer-view && viewItem != root",
 					"group": "context-menu/ctrl"
 				},
 				{
@@ -513,7 +523,7 @@
 				},
 				{
 					"command": "proof-explorer.copy-node",
-					"when": "view == proof-explorer-view",
+					"when": "false && view == proof-explorer-view",
 					"group": "context-menu/edit-2"
 				},
 				{
@@ -532,18 +542,23 @@
 					"group": "context-menu/edit-4"
 				},
 				{
+					"command": "proof-explorer.trim-unused",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-5"
+				},
+				{
 					"command": "proof-explorer.mark-as-pending",
 					"when": "false && view == proof-explorer-view",
 					"group": "context-menu/edit-6"
 				},
 				{
 					"command": "proof-explorer.mark-as-visited",
-					"when": "view == proof-explorer-view",
+					"when": "false && view == proof-explorer-view",
 					"group": "context-menu/edit-6"
 				},
 				{
 					"command": "proof-explorer.mark-as-not-visited",
-					"when": "view == proof-explorer-view",
+					"when": "false && view == proof-explorer-view",
 					"group": "context-menu/edit-6"
 				},
 				{
@@ -783,11 +798,6 @@
 				},
 				"note": "rename proof command in proof explorer",
 				"when": "view == proof-explorer-view && viewItem == proof-command"
-			},
-			{
-				"key": "Del",
-				"command": "proof-explorer.delete-node",
-				"when": "view == proof-explorer-view"
 			},
 			{
 				"key": "F5",

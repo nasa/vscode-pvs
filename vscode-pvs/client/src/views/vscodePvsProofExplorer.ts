@@ -154,6 +154,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 	async stopAutorun (): Promise<void> {
 		this.running = false;
+		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 		if (this.autorunFlag) {
 			this.disableAutorun();
 			if (this.proofStarted) {
@@ -232,6 +233,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	run (): void {
 		if (!this.running) {
 			this.running = true;
+			vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
 			this.step();
 		}
 	}
@@ -247,6 +249,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		if (desc && desc.selected) {
 			this.stopAt = desc.selected;
 			this.running = true;
+			vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
 			this.step();
 		} else {
 			console.warn(`[proof-explorer] Warning: failed to fast forward (selected node is null)`);
@@ -300,6 +303,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		if (this.stopAt === this.activeNode || this.pendingExecution) {
 			this.stopAt = null;
 			this.running = false;
+			vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 			return;
 		}
 		// else
@@ -340,6 +344,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 			case "ghost": {
 				this.running = false;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 				if (this.autorunFlag) {
 					// mark proof as unfinished
 					if (this.root.getProofStatus() !== "untried") {
@@ -398,7 +403,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Call-back function invoked after step(), when the execution of a proof command is complete.
 	 * @param desc Descriptor specifying the reponse of the prover, as well as the actual values of the arguments used to invoke the step function.
 	 */
-	onStepExecuted (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }}): void {
+	async onStepExecuted (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }}): Promise<void> {
 		this.pendingExecution = false;
 		if (desc && desc.response && desc.response.result && desc.args) {
 			// get command and proof state
@@ -410,6 +415,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if QED, update proof status and stop execution
 			if (utils.isQED(desc.response.result)) {
 				this.running = false;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 
 				// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
 				if (utils.isSameCommand(activeNode.name, cmd) === false || this.ghostNode.isActive()) {
@@ -432,18 +438,20 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					activeNode = this.activeNode; // update local variable because the following instructions are using it
 				}
 
-				this.QED();
+				await this.proved();
 				return;
 			}
 			
 			// if command is quit, do nothing
 			if (utils.isQuitCommand(cmd)) {
 				this.running = false;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 				return;	
 			}
 			// if command is invalid command, stop execution and provide feedback to the user 
 			if (utils.isEmptyCommand(cmd) || utils.isInvalidCommand(this.proofState)) {
 				this.running = false;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 				if (this.autorunFlag) {
 					// mark proof as unfinished
 					if (this.root.getProofStatus() !== "untried") {
@@ -462,6 +470,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// the proof script remains unchanged.
 			if (utils.isShowHiddenCommand(cmd)) {
 				this.running = false;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 				if (this.autorunFlag) {
 					// mark proof as unfinished
 					if (this.root.getProofStatus() !== "untried") {
@@ -476,6 +485,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// move the indicator forward (keep same proof branch) if the command was in the proof tree 
 			if (utils.noChange(this.proofState) && !this.autorunFlag) {
 				this.running = false;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 				window.showWarningMessage(this.proofState.commentary.join("\n"));	
 				if (utils.isSameCommand(activeNode.name, cmd) && !this.ghostNode.isActive()) {
 					this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
@@ -492,6 +502,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if command is undo, go back to the last visited node
 			if (utils.isUndoCommand(cmd)) {
 				this.running = false;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 				if (this.branchHasChanged(newBranch, previousBranch)) {
 					const targetBranch: ProofBranch = this.findProofBranch(newBranch);
 					if (targetBranch) {
@@ -523,6 +534,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if command is postpone, move to the new branch
 			if (utils.isPostponeCommand(cmd)) {
 				this.running = false;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 				if (this.autorunFlag) {
 					// mark proof as unfinished
 					if (this.root.getProofStatus() !== "untried") {
@@ -534,7 +546,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 				if (this.branchHasChanged(newBranch, previousBranch)) {
 					this.ghostNode.notActive();
-					const targetBranch: ProofBranch = this.findProofBranch(newBranch);
+					const targetBranch: ProofBranch = this.findProofBranch(newBranch) || this.createBranchRecursive({ id: newBranch, parent: activeNode.parent });
 					if (targetBranch) {
 						this.activeNode.notVisited();
 						// find the last visited child in the new branch
@@ -550,7 +562,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						// window.showInformationMessage(msg);
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 					} else {
-						this.showErrorMessage(`Error: could not find branch ${newBranch} in the proof tree. Please report the bug to the developers. Do not continue the proof as Proof Explorer is out of sync with PVS.`);
+						this.showErrorMessage(`Error: could not find branch ${newBranch} in the proof tree. Proof Explorer is out of sync with PVS. Please restart the proof.`);
 					}
 				} else {
 					// do nothing, this is the only branch left to be proved
@@ -578,6 +590,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
 			if (utils.isSameCommand(activeNode.name, cmd) === false || this.ghostNode.isActive()) {
 				this.running = false;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 				if (this.autorunFlag && this.ghostNode.isActive()) {
 					// mark proof as unfinished
 					if (this.root.getProofStatus() !== "untried") {
@@ -624,6 +637,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					if (this.branchHasChanged(newBranch, previousBranch) === false || !targetBranch) {
 						// stop execution, there's a mismatch between the proof tree and the sub goals generated by the proof command
 						this.running = false;
+						vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 						// add branches if the new branch is missing.
 						if (!targetBranch) {
 							for (let i = 0; i < nSubGoals; i++) {
@@ -691,6 +705,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				if (this.ghostNode.isActive()) {
 					// and so we need to stop the execution
 					this.running = false;
+					vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 					if (this.autorunFlag) {
 						// mark proof as unfinished
 						if (this.root.getProofStatus() !== "untried") {
@@ -705,11 +720,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 		} else {
 			this.running = false;
+			vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 			this.showErrorMessage("Error: could not read proof state information returned by pvs-server.");
 		}
 	}
 	/**
-	 * Internal function, used for finding the node relative to a given proof branch
+	 * Internal function, finds a given proof branch in the tree
 	 * @param id Name of the proof branch. Branch names are specified using a dot notation (e.g., 1.3.2)
 	 */
 	protected findProofBranch (id: string): ProofBranch {
@@ -730,6 +746,36 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			return null;
 		}
 		return findNodeAux(id, this.root);
+	}
+	/**
+	 * Internal function, creates a proof branch
+	 * @param id Name of the proof branch. Branch names are specified using a dot notation (e.g., 1.3.2)
+	 */
+	protected createBranchRecursive (desc: { id: string, parent: ProofItem }): ProofBranch | null {
+		let branch: ProofBranch = null;
+		if (desc && desc.id) {
+			const depth: number = desc.id.split(".").length;
+			let lastValidParent: ProofItem = this.root; // this should always be root or proof-command
+			for (let i = 0; i < depth; i++) {
+				const branchId: string = desc.id.split(".").slice(0, i + 1).join(".");
+				branch = this.findProofBranch(branchId);
+				if (!branch) {
+					if (i === depth - 1 && desc.parent) {
+						// this is it --- double check that the parent is ok before appending the new branch
+						// to be a valid proof tree, the parent should not be a proof branch
+						lastValidParent = (desc.parent.contextValue === "proof-branch") ? desc.parent.parent : desc.parent;
+					}
+					// create branch
+					branch = new ProofBranch(`(${branchId})`, branchId, lastValidParent, TreeItemCollapsibleState.Expanded);
+					// append branch
+					this.appendBranch({ selected: lastValidParent, elem: branch }, { proofState: this.proofState });
+				}
+				lastValidParent = branch.parent;
+			}
+		} else {
+			console.warn(`[proof-explorer] Warning: trying to create a new branch but branch descriptor was not provided`);
+		}
+		return branch;
 	}
 	/**
 	 * Utility function, marks the selected node as pending
@@ -788,7 +834,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		if (desc && desc.selected) {
 			opt = opt || {};
 			const restore: boolean = (opt.restore === undefined || opt.restore === null) ? true : opt.restore;
-			// this.running = false;
 			if (opt.force || desc.selected !== this.activeNode) {
 				// restore status of node currently active
 				if (restore) {
@@ -902,7 +947,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * 			   If the selected node is a branch, then the branch will be appended to the parent of the selected branch.
 	 * @param opt Optionals: beforeSelected (boolean) flag used when the selected node is a branch, indicates whether the branch should be appended before the selected branch. 
 	 */
-	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: ProofState }): ProofItem {
+	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: ProofState }): ProofBranch {
 		if (desc && desc.selected) {
 			this.dirtyProof();
 			opt = opt || {};
@@ -1168,6 +1213,82 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 	/**
+	 * Deletes unused (i.e., not visited or not active) proof commands after the selected node.
+	 * - If the node has children, the function is applied to all its children; 
+	 * - If the node has lower siblings, siblings are removed. Children of siblings are adopted as children of the selected node and the function is applied to all such children.
+	 * @param desc Descriptor indicating which node is selected in the proof tree
+	 * @param opt Optionals: whether user confirmation is required
+	 */
+	async trimUnusedNodes (desc: { selected: ProofItem }, opt?: { confirm?: boolean }): Promise<void> {
+		const trimUnusedAux = (node: ProofItem): boolean => {
+			// check all children first
+			let dirty: boolean = false;
+			if (node) {
+				if (node.children && node.children.length) {
+					for (let i = 0; i < node.children.length; i++) {
+						if (trimUnusedAux(node.children[i])) {
+							dirty = true;
+						}
+					}
+				}
+				const next: ProofItem = node.getNextSibling();
+				if (node.isVisitedOrPending() || node.isActive()) {
+					console.log(node.name);
+				} else {
+					// delete node if it's not active, or not visited
+					// adopt its children, if any
+					if (node.children && node.children.length) {
+						const prev: ProofItem = node.getPreviousSibling();
+						if (prev) {
+							for (let i = 0; i < node.children.length; i++) {
+								node.children[i].parent = prev;
+							}
+							prev.children = prev.children || [];
+							prev.children = prev.children.concat(node.children);
+							prev.collapsibleState = TreeItemCollapsibleState.Expanded;
+						}
+					}
+					node.parent.children = node.parent.children.filter((item: ProofItem) => {
+						if (item.id === node.id) {
+							item.parent = null;
+							item.children = null;
+							return false;
+						}
+						return true;
+					});
+					dirty = true;
+				}
+				// process next
+				if (next) {
+					if(trimUnusedAux(next)) {
+						dirty = true;
+					}
+				}
+			}
+			return dirty;
+		};
+		opt = opt || {};
+		if (desc && desc.selected && desc.selected.parent) {
+			const node: ProofItem = desc.selected;
+			const yesno: string[] = [ "Yes", "Cancel" ];
+			const msg: string = node.contextValue === "root" ? `Remove unused proof commands?` 
+									: node.contextValue === "proof-branch" ? `Remove unused proof commands in branch ${node.name}?`
+									: `Remove unused proof commands after ${node.name}?`;
+			const ans: string = (opt.confirm) ?
+				await window.showInformationMessage(msg, { modal: true }, yesno[0])
+				: yesno[0];
+			if (ans === yesno[0]) {
+				const dirty: boolean = trimUnusedAux(desc.selected);
+				if (dirty) {
+					this.dirtyProof();
+					this.refreshView();
+				}
+			}
+		} else {
+			console.warn(`[proof-explorer] Warning: unable to delete selected node`);
+		}
+	}
+	/**
 	 * Renames the selected node. The new name is entered using a dialog window.
 	 * @param desc Descriptor of the selected node.
 	 */
@@ -1200,14 +1321,17 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	}
 
 	/**
-	 * Utility function, marks the current proof as complete
+	 * Utility function, marks the current proof as proved
 	 */
-	QED (): void {
+	async proved (): Promise<void> {
 		// stop execution
 		this.running = false;
+		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 		this.pendingExecution = false;
 		// move indicator forward so any proof branch that needs to be marked as visited will be marked
 		this.activeNode.moveIndicatorForward();
+		// trim unused commands
+		await this.trimUnusedNodes({ selected: this.root });
 		// set QED
 		this.root.QED();
 		// save proof if status has changed
@@ -1572,7 +1696,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const msg: string = note + `Save proof ${this.root.name}?`;
 			const ans: string = (opt.force) ? yesno[0]
 				: (this.dirtyFlag) ? await window.showInformationMessage(msg, { modal: true }, yesno[0])
-				: yesno[1]; // dont' save if the proof hasn't changed
+					: yesno[1]; // dont' save if the proof hasn't changed
 			if (ans === yesno[0]) {
 				// update proof descriptor
 				this.proofDescriptor = this.getProofDescriptor();
@@ -1599,6 +1723,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	async quitProof (opt?: { confirm?: boolean, save?: boolean, msg?: string }): Promise<void> {
 		opt = opt || {};
 		this.running = false;
+		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 		this.pendingExecution = false;
 		const status: ProofStatus = (this.root) ? this.root.getProofStatus() : "untried";
 		opt.confirm = (opt.confirm === undefined || opt.confirm === null) ? true : opt.confirm;
@@ -1677,6 +1802,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.trim-subtree", (resource: ProofItem) => {
 			this.trimNode({ selected: resource });
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.trim-unused", (resource: ProofItem) => {
+			this.trimUnusedNodes({ selected: resource });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.delete-proof-tree", (resource: ProofItem) => {
 			this.deleteNode({ selected: resource });
@@ -2064,6 +2192,19 @@ export class ProofItem extends TreeItem {
 				const next: number = index + 1;
 				if (next < children.length) {
 					return children[next];
+				}
+			}
+		}
+		return null;
+	}
+	getPreviousSibling (): ProofItem | null {
+		if (this.parent) {
+			const children: ProofItem[] = this.parent.children;
+			if (children && children.length > 1) {
+				const index: number = children.indexOf(this);
+				const prev: number = index - 1;
+				if (prev >= 0) {
+					return children[prev];
 				}
 			}
 		}

@@ -280,7 +280,7 @@ export class EventsDispatcher {
         }) => {
             if (desc) {
                 // notify proofexplorer
-                this.proofExplorer.onStepExecuted(desc);
+                await this.proofExplorer.onStepExecuted(desc);
                 if (desc.response && desc.response.result) {
                     // update proof mate
                     this.proofMate.updateRecommendations(desc.response.result);
