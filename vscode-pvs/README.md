@@ -76,6 +76,7 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 - Added support for automatic proof of TCCs (M-x tcp)
 - Improved handling of 'undo' proof commands
 - Introduced interlocking mechanism for safer interaction with the prover
+- Improved Proof Explorer
 
 ### 1.0.22 (2020.06.18)
 - Added support for rerunning all proofs (M-x prt)
