@@ -1268,6 +1268,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			return dirty;
 		};
 		opt = opt || {};
+		desc.selected = this.root; // TODO: check if we always want to remove unused globally in the proof tree
 		if (desc && desc.selected && desc.selected.parent) {
 			const node: ProofItem = desc.selected;
 			const yesno: string[] = [ "Yes", "Cancel" ];
@@ -1804,7 +1805,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.trimNode({ selected: resource });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.trim-unused", (resource: ProofItem) => {
-			this.trimUnusedNodes({ selected: resource });
+			this.trimUnusedNodes({ selected: resource }, { confirm: true });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.delete-proof-tree", (resource: ProofItem) => {
 			this.deleteNode({ selected: resource });
