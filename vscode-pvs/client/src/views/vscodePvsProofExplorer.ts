@@ -1851,21 +1851,21 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 		// click on the any node (except ghost nodes) enables search by type in the tree view
 		context.subscriptions.push(commands.registerCommand('proof-explorer.root-selected', async (resource: ProofItem) => {
-			if (!this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
-				this.filterOnTypeActive = true;
-				commands.executeCommand('list.toggleFilterOnType', true);
+			if (this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
+				this.filterOnTypeActive = false;
+				commands.executeCommand('list.toggleFilterOnType', false);
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand('proof-explorer.proof-branch-selected', async (resource: ProofItem) => {
-			if (!this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
-				this.filterOnTypeActive = true;
-				commands.executeCommand('list.toggleFilterOnType', true);
+			if (this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
+				this.filterOnTypeActive = false;
+				commands.executeCommand('list.toggleFilterOnType', false);
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand('proof-explorer.proof-command-selected', async (resource: ProofItem) => {
-			if (!this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
-				this.filterOnTypeActive = true;
-				commands.executeCommand('list.toggleFilterOnType', true);
+			if (this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
+				this.filterOnTypeActive = false;
+				commands.executeCommand('list.toggleFilterOnType', false);
 			}
 		}));
 		
