@@ -1126,7 +1126,11 @@ export function isEmptyCommand (cmd: string): boolean {
 }
 
 export function isUndoCommand (cmd: string): boolean {
-	return cmd && !/\(?\s*\bundo\s+undo\b/g.test(cmd) && /\(?\s*\bundo\b\s*\n*/g.test(cmd);
+	return cmd === "undo" 
+	|| cmd === "undo;"
+	|| cmd === "(undo)"
+	|| cmd.toLocaleLowerCase() === "(undo)y"
+	;
 }
 
 export function isRedoCommand (cmd: string): boolean {
@@ -1166,6 +1170,10 @@ export function isSaveCommand (cmd: string): boolean {
 		|| cmd === "save;"
 		|| cmd === "(save)"
 		;
+}
+
+export function isMetaProofCommand (cmd: string): boolean {
+	return isPostponeCommand(cmd) || isUndoStarCommand(cmd) || isShowHiddenCommand(cmd);
 }
 
 export function isSameCommand (cmd1: string, cmd2: string): boolean {

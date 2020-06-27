@@ -304,29 +304,39 @@
 				"icon": "icons/browser-arrow-icon.png"
 			},
 			{
-				"command": "proof-explorer.rename-node",
+				"command": "proof-explorer.edit-node",
 				"title": "Edit",
 				"enablement": "pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.cut-node",
 				"title": "Cut",
-				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true && viewItem != root"
 			},
 			{
 				"command": "proof-explorer.copy-node",
-				"title": "Copy proof command",
-				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
-			},
-			{
-				"command": "proof-explorer.copy-subtree",
 				"title": "Copy",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true && viewItem != root"
 			},
 			{
 				"command": "proof-explorer.paste-node",
 				"title": "Paste",
 				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node && pvs-server-active == true"
+			},
+			{
+				"command": "proof-explorer.cut-subtree",
+				"title": "Cut Subtree",
+				"enablement": "view == proof-explorer-view && pvs-server-active == true"
+			},
+			{
+				"command": "proof-explorer.copy-subtree",
+				"title": "Copy Subtree",
+				"enablement": "view == proof-explorer-view && pvs-server-active == true"
+			},
+			{
+				"command": "proof-explorer.paste-subtree",
+				"title": "Paste Subtree",
+				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-tree && pvs-server-active == true"
 			},
 			{
 				"command": "proof-explorer.save-proof",
@@ -509,7 +519,7 @@
 					"group": "context-menu/edit-0"
 				},
 				{
-					"command": "proof-explorer.copy-subtree",
+					"command": "proof-explorer.copy-node",
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-1"
 				},
@@ -524,12 +534,22 @@
 					"group": "context-menu/edit-1"
 				},
 				{
-					"command": "proof-explorer.copy-node",
-					"when": "false && view == proof-explorer-view",
+					"command": "proof-explorer.copy-subtree",
+					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-2"
 				},
 				{
-					"command": "proof-explorer.rename-node",
+					"command": "proof-explorer.cut-subtree",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-2"
+				},
+				{
+					"command": "proof-explorer.paste-subtree",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-2"
+				},
+				{
+					"command": "proof-explorer.edit-node",
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-3"
 				},
@@ -759,7 +779,7 @@
 			},
 			{
 				"key": "ctrl+c",
-				"command": "proof-explorer.copy-subtree",
+				"command": "proof-explorer.copy-node",
 				"args": {
 					"text": ""
 				},
@@ -794,7 +814,7 @@
 			},
 			{
 				"key": "F2",
-				"command": "proof-explorer.rename-node",
+				"command": "proof-explorer.edit-node",
 				"args": {
 					"text": ""
 				},

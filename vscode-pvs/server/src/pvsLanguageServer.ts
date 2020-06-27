@@ -575,19 +575,22 @@ export class PvsLanguageServer {
 			request = fsUtils.decodeURIComponents(request);
 			const shasum: string = await fsUtils.shasumFile(request);
 
-			let proofDescriptor: ProofDescriptor = utils.prf2jprf({ // empty proof
-				prf: null,
-				theoryName: request.theoryName, 
-				formulaName: request.formulaName, 
-				version: this.pvsVersionDescriptor,
-				shasum
-			});
+			// to begin with, create an empty proof
+			let proofDescriptor: ProofDescriptor = {
+				info: {
+					theory: request.theoryName,
+					formula: request.formulaName,
+					status: "untried",
+					prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "PVS 7.x",
+					shasum
+				}
+			};
 
 			try {
 				const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
 				let proofFile: ProofFile = await fsUtils.readProofFile(fname);
 				const key: string = `${request.theoryName}.${request.formulaName}`;
-				// check if the proof is stored in the jprf file
+				// try to load the proof from the .jprf file
 				if (proofFile && proofFile[key] && proofFile[key].length > 0) {
 					proofDescriptor = proofFile[key][0];
 					proofDescriptor.info.status = await utils.getProofStatus(request);
@@ -595,7 +598,7 @@ export class PvsLanguageServer {
 						proofDescriptor.info.shasum = shasum;
 					}
 				} else {
-					// obtain proof from prf via pvs, and update jprf
+					// if the proof is not stored in the .jprf file, then try to load the proof from the .prf and then update jprf
 					const response: PvsResponse = await this.proofScript(request);
 					if (response && response.result) {
 						proofDescriptor = utils.prf2jprf({

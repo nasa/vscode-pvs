@@ -74,7 +74,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Clipboards for cut/paste operations
 	 */
 	protected clipboard: ProofItem = null;
-	protected clipboardTree: ProofItem = null;
+	protected clipboardTree: ProofItem[] = null;
 
 	/**
 	 * Descriptor with information on the active proof
@@ -1044,17 +1044,25 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 	/**
-	 * Copies the tree rooted at the selected node to the clipboard 
+	 * Copies the tree rooted at the selected node to the clipboard, and all the siblings below the selected node
 	 * (i.e., the clipboard will store a copy of the tree rooted at the selected node)
 	 * @param desc Descriptor of the selected node.
 	 */
 	copyTree (desc: { selected: ProofItem }): void {
 		if (desc && desc.selected) {
-			this.clipboardTree = desc.selected.cloneTree();
+			const parent: ProofItem = desc.selected.parent;
 			this.clipboard = null;
+			this.clipboardTree = [];
+			for (let i = parent.children.indexOf(desc.selected); i < parent.children.length; i++) {
+				const item: ProofItem = parent.children[i];
+				this.clipboardTree.push(item.cloneTree());
+			}
 			// copy to the system clipboard as well
-			vscode.env.clipboard.writeText(this.clipboardTree.name);
-			// set vscode context variable proof-explorer.clipboard-contains-node to true
+			if (this.clipboardTree.length) {
+				vscode.env.clipboard.writeText(this.clipboardTree[0].name);
+			}
+			// set vscode context variable proof-explorer.clipboard-contains-tree and clipboard-contains-node to true
+			vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', true);
 			vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);
 		} else {
 			console.warn(`[proof-explorer] Warning: unable to copy selected subtree`);
@@ -1070,8 +1078,28 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			opt = opt || {};
 			if (this.clipboard) {
 				this.appendNode({ selected: desc.selected, elem: this.clipboard.clone() }, opt);
-			} else if (this.clipboardTree) {
-				this.appendNode({ selected: desc.selected, elem: this.clipboardTree.cloneTree() });
+			} else if (this.clipboardTree && this.clipboardTree.length) {
+				// append just the first node from clipboardtree
+				this.appendNode({ selected: desc.selected, elem: this.clipboardTree[0].cloneTree() });
+			} else {
+				console.warn(`[proof-explorer] Warning: unable to paste (clipboard is empty)`);
+			}
+		} else {
+			console.warn(`[proof-explorer] Warning: unable to paste (selected node is null)`);
+		}
+	}
+	/**
+	 * Appends the tree in the clipboard to the selected node. 
+	 * @param desc Descriptor of the selected node where the content of the clipboard will be appended.
+	 * @param opt Optionals parameters (see appendNode)
+	 */
+	pasteTree (desc: { selected: ProofItem }, opt?: { beforeSelected?: boolean }): void {
+		if (desc && desc.selected) {
+			opt = opt || {};
+			if (this.clipboardTree) {
+				for (let i = 0; i < this.clipboardTree.length; i++) {
+					this.appendNode({ selected: desc.selected, elem: this.clipboardTree[this.clipboardTree.length - i - 1].cloneTree() });
+				}
 			} else {
 				console.warn(`[proof-explorer] Warning: unable to paste (clipboard is empty)`);
 			}
@@ -1100,9 +1128,36 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	cutTree (desc: { selected: ProofItem }): void {
 		if (desc && desc.selected) {
 			this.copyTree(desc);
-			this.deleteNode(desc, { confirm: false });
+			this.deleteTree(desc, { confirm: false });
 		} else {
-			console.warn(`[proof-explorer] Warning: unable to cut tree (selected node is null)`);
+			console.warn(`[proof-explorer] Warning: unable to cut selected subtree`);
+		}
+	}
+	/**
+	 * Deletes the subtree rooted at the selected node.
+	 * A confirmation dialog is automatically displayed (unless optional parameters indicate not to show it) to ask confirmation of the operation.
+	 * @param desc Descriptor of the selected node.
+	 * @param opt Optionals parameters: confirm (boolean) indicates whether a confirmation dialog should be displayed before deleting the node.
+	 */
+	async deleteTree (desc: { selected: ProofItem }, opt?: { confirm?: boolean }): Promise<void> {
+		opt = opt || {};
+		opt.confirm = (opt.confirm === undefined) ? true : opt.confirm; // choose to confirm if options are not specified
+		if (desc && desc.selected && desc.selected.parent) {
+			const selected: ProofItem = desc.selected;
+			const yesno: string[] = [ "Yes", "Cancel" ];
+			const msg: string = selected.contextValue === "root" ? `Delete entire proof?` : `Delete subtree rooted at ${selected.name}?`;
+			const ans: string = (opt.confirm) ?
+				await window.showInformationMessage(msg, { modal: true }, yesno[0])
+				: yesno[0];
+			if (ans === yesno[0]) {
+				const parent: ProofItem = desc.selected.parent;
+				const len: number = parent.children.length - parent.children.indexOf(desc.selected);
+				for (let i = 0; i < len; i++) {
+					this.deleteNode({ selected: parent.children[parent.children.length - 1] }, { confirm: false });
+				}
+			}
+		} else {
+			console.warn(`[proof-explorer] Warning: unable to delete selected node`);
 		}
 	}
 	/**
@@ -1320,6 +1375,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	protected disposeView(): void {
 		this.deleteNode({ selected: this.root }, { confirm: false });
 		vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', false);
+		vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', false);
 		this.refreshView();
 	}
 
@@ -1491,7 +1547,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.ghostNode = new GhostNode({ parent: this.root, node: this.root });
 			if (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length
 					// when proof is simply (postpone), this is an empty proof, don't append postpone
-					&& !(desc.proofTree.rules.length === 1 && desc.proofTree.rules[0].name === "(postpone)")) {
+					&& !(desc.proofTree.rules.length === 1 && utils.isPostponeCommand(desc.proofTree.rules[0].name))) {
 				desc.proofTree.rules.forEach((child: ProofNode) => {
 					createTree(child, this.root);
 				});
@@ -1792,13 +1848,16 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-subtree", (resource: ProofItem) => {
 			this.copyTree({ selected: resource });
-			window.showInformationMessage(`${resource.name} copied in clipboard`);
+			window.showInformationMessage(`Subtree rooted in ${resource.name} copied in clipboard`);
 		}));
 		// context.subscriptions.push(commands.registerCommand("proof-explorer.paste-before-proof-command", (resource: ProofItem) => {
 		// 	this.pasteBeforeNode({ selected: resource });
 		// }));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.paste-node", (resource: ProofItem) => {
 			this.pasteNode({ selected: resource });
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.paste-subtree", (resource: ProofItem) => {
+			this.pasteTree({ selected: resource });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.delete-node", (resource: ProofItem) => {
 			this.deleteNode({ selected: resource });
@@ -1839,7 +1898,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		context.subscriptions.push(commands.registerCommand("proof-explorer.mark-as-active", (resource: ProofItem) => {
 			this.markAsActive({ selected: resource });
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.rename-node", (resource: ProofItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.edit-node", (resource: ProofItem) => {
 			this.renameNode({ selected: resource });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.show-sequent", (resource: ProofItem) => {
@@ -1961,7 +2020,8 @@ export class ProofItem extends TreeItem {
 		this.tooltip = ""; // the tooltip shows the sequent before the execution of the proof command
 		this.notVisited();
 	}
-	clone (parent?: ProofItem): ProofItem {
+	clone (opt?: { parent?: ProofItem }): ProofItem {
+		opt = opt || {};
 		switch (this.contextValue) {
 			case "root": { return <RootNode> this.clone(); }
 			case "proof-branch": { return <ProofBranch> this.clone(); }
@@ -1970,11 +2030,12 @@ export class ProofItem extends TreeItem {
 				console.warn(`[proof-explorer] Warning: trying to clone node type ${this.contextValue}`);
 			}
 		}
-		return new ProofItem(this.contextValue, this.name, this.branchId, parent, this.collapsibleState);
+		return new ProofItem(this.contextValue, this.name, this.branchId, opt.parent, this.collapsibleState);
 	}
-	cloneTree (parent?: ProofItem): ProofItem {
-		parent = parent || this.parent || null;
-		const clonedRoot: ProofItem = this.clone(parent);
+	cloneTree (opt?: { parent?: ProofItem }): ProofItem {
+		opt = opt || {};
+		opt.parent = opt.parent || this.parent || null;
+		const clonedRoot: ProofItem = this.clone(opt);
 		if (this.children) {
 			for (let i: number = 0; i < this.children.length; i++) {
 				const child: ProofItem = this.children[i].cloneTree(clonedRoot);
