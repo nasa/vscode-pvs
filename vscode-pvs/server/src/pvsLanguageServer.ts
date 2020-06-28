@@ -287,34 +287,53 @@ export class PvsLanguageServer {
 		}
 
 		// else, relay command to pvs-server
-		const response: PvsResponse = await this.proofCommand(request);
-		if (response) {
-			if (response.result) {
-				// the following additional logic is necessary to create the log file and start up the interactive cli session
-				const proofLogPath: string = path.join(request.contextFolder, fsUtils.pvsbinFolder);
-				const channelID: string = utils.desc2id(request);
-				const pvsLogFile: string = path.join(proofLogPath, `${channelID}${fsUtils.logFileExtension}`);
-				const pvsTmpLogFile: string = path.join(proofLogPath, `${channelID}-tmp${fsUtils.logFileExtension}`);
-				await fsUtils.createFolder(proofLogPath);
-				await fsUtils.writeFile(pvsLogFile, utils.formatProofState(response.result));
-				await fsUtils.writeFile(pvsTmpLogFile, "");
-
-				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response, cmd: request.cmd });
-				this.connection.sendRequest(serverEvent.proofCommandResponse, { response, args: request });
-				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile });
-
-				if (utils.isQED(response.result)) {
-					this.connection.sendRequest(serverEvent.QED, { response, args: request });
-					// trigger a context update, so proof status will be updated on the front-end
-					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
-					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
-					// re-generate tccs
-					await this.showTccsRequest(request, { quiet: true });
+		const cmdArray: string[] = utils.splitCommands(request.cmd);
+		if (cmdArray) {
+			for (let i = 0; i < cmdArray.length; i++) {
+				const cmd: string = cmdArray[i];
+				const req = {
+					fileName: request.fileName,
+					fileExtension: request.fileExtension,
+					contextFolder: request.contextFolder,
+					theoryName: request.theoryName,
+					formulaName: request.formulaName,
+					cmd
+				};
+				const response: PvsResponse = await this.proofCommand(req);
+				if (response) {
+					if (response.result) {
+						// the following additional logic is necessary to create the log file and start up the interactive cli session
+						const proofLogPath: string = path.join(req.contextFolder, fsUtils.pvsbinFolder);
+						const channelID: string = utils.desc2id(req);
+						const pvsLogFile: string = path.join(proofLogPath, `${channelID}${fsUtils.logFileExtension}`);
+						const pvsTmpLogFile: string = path.join(proofLogPath, `${channelID}-tmp${fsUtils.logFileExtension}`);
+						await fsUtils.createFolder(proofLogPath);
+						await fsUtils.writeFile(pvsLogFile, utils.formatProofState(response.result));
+						await fsUtils.writeFile(pvsTmpLogFile, "");
+		
+						if (i === cmdArray.length - 1) {
+							this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response, cmd });
+						}
+						this.connection.sendRequest(serverEvent.proofCommandResponse, { response, args: req });
+						this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: req, pvsLogFile, pvsTmpLogFile });
+		
+						if (utils.isQED(response.result)) {
+							this.connection.sendRequest(serverEvent.QED, { response, args: req });
+							// trigger a context update, so proof status will be updated on the front-end
+							const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: req.contextFolder });
+							this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+							// re-generate tccs
+							await this.showTccsRequest(req, { quiet: true });
+							// stop the loop
+							return;
+						}
+					} else {
+						this.pvsErrorManager.handleProofCommandError({ response: <PvsError> response });
+					}
 				}
-			} else {
-				this.pvsErrorManager.handleProofCommandError({ response: <PvsError> response });
 			}
-		} 
+		}
+
 		// else {
 		// 	this.notifyError({ msg: "Error: proof-command returned null (please check pvs-server output for details)" });
 		// 	console.error("[pvs-language-server.proofCommandRequest] Error: proof-command returned null");

@@ -1053,13 +1053,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const parent: ProofItem = desc.selected.parent;
 			this.clipboard = null;
 			this.clipboardTree = [];
+			let seq: string = "";
 			for (let i = parent.children.indexOf(desc.selected); i < parent.children.length; i++) {
 				const item: ProofItem = parent.children[i];
 				this.clipboardTree.push(item.cloneTree());
+				seq += item.printProofCommands();
 			}
 			// copy to the system clipboard as well
 			if (this.clipboardTree.length) {
-				vscode.env.clipboard.writeText(this.clipboardTree[0].name);
+				vscode.env.clipboard.writeText(seq);
 			}
 			// set vscode context variable proof-explorer.clipboard-contains-tree and clipboard-contains-node to true
 			vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', true);
@@ -2346,6 +2348,16 @@ export class ProofItem extends TreeItem {
 	getChildren (): ProofItem[] {
 		return this.children;
 	}
+	printProofCommands (): string | null {
+		let ans: string = (this.contextValue === "proof-command") ? this.name : "";
+		if (this.children && this.children.length) {
+			for (let i = 0; i < this.children.length; i++) {
+				ans += this.children[i].printProofCommands();
+			}
+		}
+		return ans;
+	}
+	
 }
 class ProofCommand extends ProofItem {
 	constructor (cmd: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState) {

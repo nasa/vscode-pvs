@@ -286,10 +286,10 @@ class PvsCli {
 		this.rl.on("line", async (ln: string) => {
 			if (this.isActive) {
 				this.lines += ln;
-				if (this.lines.startsWith("(")) {
+				if (this.lines.trim().startsWith("(")) {
 					this.rl.setPrompt("");
 				}
-				if (!this.lines.startsWith("(") || parCheck(this.lines)) {
+				if (!this.lines.trim().startsWith("(") || parCheck(this.lines)) {
 					let cmd: string = this.lines;
 					this.lines = "";
 					if (utils.isSaveCommand(cmd)) {

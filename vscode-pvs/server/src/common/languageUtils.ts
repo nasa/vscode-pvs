@@ -1182,6 +1182,47 @@ export function isSameCommand (cmd1: string, cmd2: string): boolean {
 	return c1 === c2 || c1 === `(${c2})` || `(${c1})` === c2;
 }
 
+export function splitCommands (cmd: string): string[] {
+	let cmds: string[] = [];
+	if (cmd && cmd.trim().startsWith("(")) {
+		let input: string = cmd.trim();
+		let par: number = 0;
+		let start: number = 0;
+		let stop: number = 0;
+		for (let i = 0; i < input.length; i++) {
+			if (input[i] === "(") {
+				if (par === 0) {
+					start = i;
+				}
+				par++;
+			} else if (input[i] === ")") {
+				par--;
+				if (par === 0) {
+					stop = i;
+				}
+			}
+			if (par === 0 && stop > start) {
+				const cmd: string = input.substring(start, stop + 1);
+				cmds = cmds.concat(cmd);
+			}
+		}
+	}
+	return cmds;
+}
+
+export function proofTree2commandSequence (node: ProofNode): string | null {
+	if (node) {
+		let ans: string = (node.type === "proof-command") ? node.name : "";
+		if (node.rules) {
+			for (let i = 0; i < node.rules.length; i++) {
+				ans += proofTree2commandSequence(node.rules[i]);
+			}
+		}
+		return ans;
+	}
+	return null;
+}
+
 export function applyTimeout (cmd: string, sec?: number): string {
 	if (cmd && sec) {
 		const c: string = cmd.startsWith('(') && cmd.endsWith(')') ? cmd : `(${cmd})`
