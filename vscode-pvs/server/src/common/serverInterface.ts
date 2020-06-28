@@ -534,7 +534,7 @@ export const serverEvent = {
 	saveProofEvent: "pvs.event.save-proof",
 	quitProofEvent: "pvs.event.quit-proof",
 	quitProofDontSaveEvent: "pvs.event.quit-dont-save-proof",
-	quitProofForceSaveEvent: "pvs.event.quit-force-save-proof",
+	saveProofForceQuitEvent: "pvs.event.save-force-quit",
 	closeDontSaveEvent: "pvs.event.close-dont-save-proof",
 	proverModeEvent: "pvs.event.prover-mode",
 	// redoCommandEvent: "pvs.event.redo-command",

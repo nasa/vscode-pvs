@@ -265,7 +265,7 @@ export class PvsLanguageServer {
 			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request }); // we are generating an event because the proof is currently being edited, so we need the current proof descriptor from proof explorer, othewise we'd save a stale proof
 			return;
 		}
-		if (utils.isQuitForceSaveCommand(request.cmd)) {
+		if (utils.isSaveForceQuitCommand(request.cmd)) {
 			this.connection.sendRequest(serverEvent.saveProofEvent, { args: request });
 			await this.quitProof();
 			return;

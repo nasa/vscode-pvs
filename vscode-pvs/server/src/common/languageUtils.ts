@@ -1099,13 +1099,13 @@ export function isQuitCommand (cmd: string): boolean {
 		;
 }
 
-export function isQuitForceSaveCommand (cmd: string): boolean {
-	return cmd === "quit-force-save" 
-		|| cmd === "quit-force-save;"
-		|| cmd === "(quit-force-save)"
-		|| cmd === "exit-force-save"
-		|| cmd === "exit-force-save;"
-		|| cmd === "(exit-force-save)"
+export function isSaveForceQuitCommand (cmd: string): boolean {
+	return cmd === "save-force-quit" 
+		|| cmd === "save-force-quit;"
+		|| cmd === "(save-force-quit)"
+		|| cmd === "save-force-exit"
+		|| cmd === "save-force-exit;"
+		|| cmd === "(save-force-exit)"
 		;
 }
 

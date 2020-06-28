@@ -373,7 +373,7 @@ export class EventsDispatcher {
             }
         });
 
-        this.client.onRequest(serverEvent.quitProofForceSaveEvent, (request: { 
+        this.client.onRequest(serverEvent.saveProofForceQuitEvent, (request: { 
             args: {
                 fileName: string, 
                 fileExtension: string, 
