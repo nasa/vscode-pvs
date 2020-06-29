@@ -498,6 +498,32 @@ export async function getProofLiteScript (desc: {
 }
 
 /**
+ * Regex for parsing the content of prooflite files
+ * The regex returns the following groups
+ * group 0: the prooflite script for the formula indicated in desc
+ * group 1: formulaName
+ * group 2: theoryName
+ * group 3: proof status
+ * group 4: prooflite script
+ * @param desc 
+ */
+export function proofliteRegexp(desc: { theoryName: string, formulaName: string }): RegExp {
+	return new RegExp(`(?:(?:%--*.*)\\s*(?:%\\s*@formula\s*:\s*(${desc.formulaName}))?\s*(?:%\s*@theory\s*:\s*(${desc.theoryName}))?\s*(?:%\s*@status\s*:\s*(.*))?\s*(?:%--*.*))?\s*(${desc.formulaName}\s*:\s*PROOF[\w\W\s]*QED\s*${desc.formulaName}`, "g");
+}
+export async function getProofliteScript (desc: { 
+	fileName: string, 
+	fileExtension: string, 
+	contextFolder: string, 
+	theoryName: string, 
+	formulaName: string 
+}): Promise<string> {
+	const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+	const txt: string = await fsUtils.readFile(fname);
+	const matchProoflite: RegExpMatchArray = proofliteRegexp(desc).exec(txt);
+	return matchProoflite ? matchProoflite[0] : null;
+}
+
+/**
  * Utility function, returns the list of theorems defined in a given pvs file
  * @param desc Descriptor indicating filename, file extension, context folder, file content, and whether the file in question is the prelude (flag prelude)
  */

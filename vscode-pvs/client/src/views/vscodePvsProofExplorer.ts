@@ -674,7 +674,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if the branch has changed, move to the new branch
 			// this case handles the completion of a proof branch (postpone is handled separately, see conditions above)
 			if (this.branchHasChanged(newBranch, previousBranch)) {
-				const targetBranch: ProofItem = this.findProofBranch(newBranch);
+				const targetBranch: ProofItem = this.findProofBranch(newBranch) || this.createBranchRecursive({ id: newBranch, parent: activeNode.parent });
 				if (targetBranch) {
 					// go to the new branch
 					activeNode.visited();
@@ -1367,7 +1367,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 			this.refreshView();
 		} else {
-			console.warn(`[proof-explorer] Warning: unable to edir selected node`);
+			console.warn(`[proof-explorer] Warning: unable to edit selected node`);
 		}
 	}
 	/**
@@ -1409,7 +1409,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// refresh tree view
 		this.refreshView();
 
-		// send QED to the terminal
+		// send QED to the terminal -- this will terminate the prover session
 		commands.executeCommand("vscode-pvs.send-proof-command", {
 			fileName: this.formulaDescriptor.fileName,
 			fileExtension: this.formulaDescriptor.fileExtension,
