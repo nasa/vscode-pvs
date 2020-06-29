@@ -1401,7 +1401,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// set QED
 		this.root.QED();
 		// save proof if status has changed
-		if (this.root.proofStatusChanged() && !this.dirtyFlag) {
+		if (this.root.proofStatusChanged() || this.dirtyFlag) {
 			this.saveProof({ force: true });
 		}
 		// update proof descriptor

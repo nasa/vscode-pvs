@@ -387,6 +387,9 @@ export class EventsDispatcher {
             this.vscodePvsTerminal.deactivate();
         });
 
+		this.client.onRequest(serverEvent.getContextDescriptorResponse, (desc: PvsContextDescriptor) => {
+            this.workspaceExplorer.updateContextFolder(desc);
+        });
 
 		this.client.onRequest(serverEvent.saveProofEvent, (request: { 
             args: {

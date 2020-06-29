@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, TextDocument } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverCommand } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -838,6 +838,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 								summary.theorems.push({ formulaName, status, ms });
 							}
 						}
+						this.client.sendRequest(serverCommand.getContextDescriptor, resource);
 						resolve();
 						vscodeUtils.previewTextDocument(`${theoryName}.summary`, utils.makeProofSummary(summary), { contextFolder: resource.contextFolder });
 					});
