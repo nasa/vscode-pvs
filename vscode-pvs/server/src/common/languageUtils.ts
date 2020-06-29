@@ -872,8 +872,7 @@ export function proofTree2ProofLite (proofTree: ProofNode, opt?: { barPecent?: b
 				const node: ProofNode = nodes[i];
 				switch (node.type) {
 					case "root": {
-						res += `${proofTree.name} : PROOF`;
-						res += `\n${" ".repeat(indent)}` + proofTreeToProofLite_aux(node.rules, "", indent);
+						res += `${" ".repeat(indent)}` + proofTreeToProofLite_aux(node.rules, "", indent);
 						break;
 					}
 					case "proof-command": {
@@ -918,8 +917,11 @@ export function proofTree2ProofLite (proofTree: ProofNode, opt?: { barPecent?: b
 		return res;
 	}
 	if (proofTree) {
-		let res: string = proofTreeToProofLite_aux([ proofTree ]);
-		res += `\nQED ${proofTree.name}`;
+		let script: string = proofTreeToProofLite_aux([ proofTree ]);
+		script = script || "(postpone)";
+		const res = `${proofTree.name} : PROOF
+${script}
+QED ${proofTree.name}`;
 		return (opt.barPecent) ? res.split("\n").map(line => { return "%|- " + line; })
 			: res.split("\n");
 	}

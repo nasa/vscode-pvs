@@ -1050,6 +1050,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	copyTree (desc: { selected: ProofItem }): void {
 		if (desc && desc.selected) {
+			if (desc.selected.contextValue !== "proof-command") {
+				if (desc.selected && desc.selected.children && desc.selected.children.length) {
+					desc.selected = desc.selected.children[0];
+				}
+			}
 			const parent: ProofItem = desc.selected.parent;
 			this.clipboard = null;
 			this.clipboardTree = [];
@@ -1292,7 +1297,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 				const next: ProofItem = node.getNextSibling();
 				if (node.isVisitedOrPending() || node.isActive()) {
-					console.log(node.name);
+					// console.log(node.name);
 				} else {
 					// delete node if it's not active, or not visited
 					// adopt its children, if any

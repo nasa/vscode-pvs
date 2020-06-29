@@ -618,6 +618,7 @@ export class PvsLanguageServer {
 					}
 				} else {
 					// if the proof is not stored in the .jprf file, then try to load the proof from the .prf and then update jprf
+					// the APIs of pvs are ugly -- an error is returned if the formula does not have a proof, as opposed to simply returning an empty proof
 					const response: PvsResponse = await this.proofScript(request);
 					if (response && response.result) {
 						proofDescriptor = utils.prf2jprf({
