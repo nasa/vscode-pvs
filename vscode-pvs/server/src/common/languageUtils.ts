@@ -1116,49 +1116,52 @@ export function prf2jprf (desc: {
 
 // quit = quit-and-save
 export function isQuitCommand (cmd: string): boolean {
-	return cmd === "quit" 
+	return cmd && (cmd === "quit" 
 		|| cmd === "quit;"
 		|| cmd === "(quit)"
 		|| cmd.toLocaleLowerCase() === "(quit)y"
 		|| cmd === "exit"
 		|| cmd === "exit;"
 		|| cmd === "(exit)"
-		|| cmd.toLocaleLowerCase() === "(exit)y"
+		|| cmd.toLocaleLowerCase() === "(exit)y")
 		;
 }
 
 export function isSaveForceQuitCommand (cmd: string): boolean {
-	return cmd === "save-force-quit" 
+	return cmd && (cmd === "save-force-quit" 
 		|| cmd === "save-force-quit;"
 		|| cmd === "(save-force-quit)"
 		|| cmd === "save-force-exit"
 		|| cmd === "save-force-exit;"
-		|| cmd === "(save-force-exit)"
+		|| cmd === "(save-force-exit)")
 		;
 }
 
 export function isQuitDontSaveCommand (cmd: string): boolean {
-	return cmd === "quit-dont-save" 
+	return cmd && (cmd === "quit-dont-save" 
 		|| cmd === "quit-dont-save;"
 		|| cmd === "(quit-dont-save)"
 		|| cmd === "exit-dont-save"
 		|| cmd === "exit-dont-save;"
-		|| cmd === "(exit-dont-save)"
+		|| cmd === "(exit-dont-save)")
 		;
 }
 
 export function isEmptyCommand (cmd: string): boolean {
-	return cmd === "" 
+	return !cmd 
+		|| cmd === "" 
 		|| cmd === "()"
-		|| cmd === null;
+		|| cmd === null
+		;
 }
 
 export function isUndoCommand (cmd: string): boolean {
-	return cmd === "undo" 
-	|| cmd === "undo;"
-	|| cmd === "(undo)"
-	|| cmd.toLocaleLowerCase() === "(undo)y"
-	;
+	return cmd && (cmd === "undo" 
+		|| cmd === "undo;"
+		|| cmd === "(undo)"
+		|| cmd.toLocaleLowerCase() === "(undo)y"
+		|| /\(\s*undo\s*\)\s*y?;?/gi.test(cmd))
+		;
 }
 
 export function isRedoCommand (cmd: string): boolean {
@@ -1194,9 +1197,9 @@ export function isGrindCommand (cmd: string): boolean {
 }
 
 export function isSaveCommand (cmd: string): boolean {
-	return cmd === "save" 
+	return cmd && (cmd === "save" 
 		|| cmd === "save;"
-		|| cmd === "(save)"
+		|| cmd === "(save)")
 		;
 }
 
@@ -1205,9 +1208,12 @@ export function isMetaProofCommand (cmd: string): boolean {
 }
 
 export function isSameCommand (cmd1: string, cmd2: string): boolean {
-	const c1: string = cmd1.replace(/"/g, "");
-	const c2: string = cmd2.replace(/"/g, "");
-	return c1 === c2 || c1 === `(${c2})` || `(${c1})` === c2;
+	if (cmd1 && cmd2) {
+		const c1: string = cmd1.replace(/"/g, "");
+		const c2: string = cmd2.replace(/"/g, "");
+		return c1 === c2 || c1 === `(${c2})` || `(${c1})` === c2;
+	}
+	return false;
 }
 
 export function splitCommands (cmd: string): string[] {

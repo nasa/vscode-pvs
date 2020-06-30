@@ -279,6 +279,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	forward (): void {
 		if (this.ghostNode && !this.ghostNode.isActive()) {
 			this.root.pending();
+			// if forward is called on a branch, move to the first child
+			if (this.activeNode && this.activeNode.contextValue === "proof-branch" 
+					&& this.activeNode.children && this.activeNode.children.length) {
+				this.stopAt = this.activeNode.children[0];
+				this.running = true;
+			}
 			this.step();
 		}
 	}
@@ -302,7 +308,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param cmd Optional parameter, specifying the command to be executed.
 	 */
 	step (cmd?: string): void {
-		if (this.stopAt === this.activeNode || this.pendingExecution) {
+		if (this.stopAt === this.activeNode || this.stopAt === this.activeNode.parent 
+				|| this.pendingExecution) {
 			this.stopAt = null;
 			this.running = false;
 			vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
@@ -326,10 +333,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					if (utils.isUndoCommand(cmd) && parent.contextValue === "proof-branch" && this.activeNode.id === parent.children[0].id && !this.ghostNode.isActive()) {
 						// the active node is the first child in a branch. 
 						// The command has not been executed yet, just move the indicator back without sending any command to pvs-server
-						this.moveIndicatorBack();
-						return;
+						this.moveIndicatorBack(); // this first instruction will move the indicator on the proof branch
+						// the undo will then move the indicator to the last instruction of the previous branch
 					}
-					// else
 					this.pendingExecution = true;
 					commands.executeCommand("vscode-pvs.send-proof-command", {
 						fileName: this.formulaDescriptor.fileName,
@@ -838,13 +844,17 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param desc Descriptor of the selected node
 	 */
 	jumpTo (desc: { selected: ProofItem }, opt?: { force?: boolean, restore?: boolean }): void {
+		// if this is a branch, try to jump to the first child
+		if (desc.selected.contextValue === "proof-branch" && desc.selected.children && desc.selected.children.length) {
+			desc.selected = desc.selected.children[0];
+		}
 		return this.markAsActive(desc, opt);
 	}
 	/**
 	 * Utility function, marks the selected node as active.
 	 * @param desc Descriptor of the selected node
 	 */
-	markAsActive (desc: { selected: ProofItem }, opt?: { force?: boolean, restore?: boolean }): void {
+	protected markAsActive (desc: { selected: ProofItem }, opt?: { force?: boolean, restore?: boolean }): void {
 		if (desc && desc.selected) {
 			opt = opt || {};
 			const restore: boolean = (opt.restore === undefined || opt.restore === null) ? true : opt.restore;
