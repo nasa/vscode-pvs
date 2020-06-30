@@ -105,7 +105,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	protected running: boolean = false; // status flag, indicates whether we are running all proof commands, as opposed to stepping through the proof commands
 	protected stopAt: ProofItem = null; // indicates which node we are fast-forwarding to
 
-	protected undoundo: string = null;
+	protected undoundoTarget: ProofItem = null;
 
 	/**
 	 * JSON representation of the proof script for the current proof.
@@ -401,6 +401,17 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			window.showWarningMessage(message);
 		}
 	}
+	protected restoreTreeAttributes (): void {
+		if (this.root) {
+			this.root.restoreTreeAttributes();
+			this.refreshView();
+		}
+	}
+	protected saveTreeAttributes (): void {
+		if (this.root) {
+			this.root.saveTreeAttributes();
+		}
+	}
 	/**
 	 * Call-back function invoked after step(), when the execution of a proof command is complete.
 	 * @param desc Descriptor specifying the reponse of the prover, as well as the actual values of the arguments used to invoke the step function.
@@ -505,6 +516,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (utils.isUndoCommand(cmd)) {
 				this.running = false;
 				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
+				this.undoundoTarget = this.activeNode;
+				this.saveTreeAttributes();
 				if (this.branchHasChanged(newBranch, previousBranch)) {
 					const targetBranch: ProofBranch = this.findProofBranch(newBranch);
 					if (targetBranch) {
@@ -528,8 +541,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				} else {
 					this.moveIndicatorBack({ keepSameBranch: true });
 				}
-				// update undoundo buffer after moving the indicator back
-				this.undoundo = this.activeNode.name;
 				return;
 			}
 
@@ -572,16 +583,16 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				return;
 			}
 
-			let wasUndoUndo: boolean = false;
 			// handle the special command (undo undo) before proceeding
 			if (utils.isUndoUndoCommand(cmd)) {
-				if (!this.undoundo) {
+				if (this.undoundoTarget) {
+					this.restoreTreeAttributes();
+					this.markAsActive({ selected: this.undoundoTarget });
+					this.undoundoTarget = null;
+				} else {
 					window.showWarningMessage(`Warning: unable to execute ${cmd}`);
-					return;
 				}
-				// FIXME: we actually need to fast-forward to cmd, not jump-to
-				cmd = this.undoundo;
-				wasUndoUndo = true;
+				return;
 			}
 			if (utils.isUndoUndoPlusCommand(cmd)) {
 				window.showWarningMessage(`Warning: ${cmd} is not a valid proof command`);
@@ -692,14 +703,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 			}
 
-			// update undoundo buffer
-			if (!utils.isUndoUndoCommand(cmd)) {
-				this.undoundo = (wasUndoUndo) ? null : this.activeNode.name; // undo undo can be performed only once
-			}
-
 			// finally, move indicator forward and propagate tooltip to the new active node
 			this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
-			// this.refreshView();
 
 			// if a proof is running, then iterate
 			if (this.running) {
@@ -827,6 +832,13 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		} else {
 			console.warn(`[proof-explorer] Warning: could not to mark node as not visited`);
 		}
+	}
+	/**
+	 * Utility function, jumps to the selected node without executing it.
+	 * @param desc Descriptor of the selected node
+	 */
+	jumpTo (desc: { selected: ProofItem }, opt?: { force?: boolean, restore?: boolean }): void {
+		return this.markAsActive(desc, opt);
 	}
 	/**
 	 * Utility function, marks the selected node as active.
@@ -2016,6 +2028,15 @@ export class ProofItem extends TreeItem {
 	protected visitedFlag: boolean = false;
 	protected pendingFlag: boolean = false;
 	protected noChangeFlag: boolean = false;
+	protected prevFlags: {
+		activeFlag: boolean,
+		visitedFlag: boolean,
+		pendingFlag: boolean
+	} = {
+		activeFlag: false,
+		visitedFlag: false,
+		pendingFlag: false
+	};
 	proofState: ProofState = null; // sequents *before* the execution of the node
 	constructor (type: string, name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState) {
 		super(type, (collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : collapsibleState);
@@ -2050,6 +2071,18 @@ export class ProofItem extends TreeItem {
 			}
 		}
 		return clonedRoot;
+	}
+	saveAttributes (): void {
+		this.prevFlags = {
+			activeFlag: this.activeFlag,
+			visitedFlag: this.visitedFlag,
+			pendingFlag: this.pendingFlag
+		};
+	}
+	restoreAttributes (): void {
+		if (this.prevFlags.activeFlag) { return this.active(); }
+		if (this.prevFlags.visitedFlag) { return this.visited(); }
+		if (this.prevFlags.pendingFlag) { return this.pending(); }
 	}
 	updateTooltip (): void {
 		this.tooltip = (this.proofState) ? utils.formatProofState(this.proofState) : " ";
@@ -2129,6 +2162,22 @@ export class ProofItem extends TreeItem {
 	restore (): void {
 		this.label = `${this.previousState.icon}${this.name}`;
 		// this.tooltip = this.previousState.tooltip;
+	}
+	restoreTreeAttributes (): void {
+		this.restoreAttributes();
+		if (this.children && this.children.length) {
+			for (let i = 0; i < this.children.length; i++) {
+				this.children[i].restoreTreeAttributes();
+			}
+		}
+	}
+	saveTreeAttributes (): void {
+		this.saveAttributes();
+		if (this.children && this.children.length) {
+			for (let i = 0; i < this.children.length; i++) {
+				this.children[i].saveTreeAttributes();
+			}
+		}
 	}
 	setChildren (children: ProofItem[]): void {
 		this.children = children;
