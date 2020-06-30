@@ -1336,12 +1336,13 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param desc Descriptor indicating which node is selected in the proof tree
 	 * @param opt Optionals: whether user confirmation is required
 	 */
-	async trimUnusedNodes (desc: { selected: ProofItem }, opt?: { confirm?: boolean }): Promise<void> {
+	async trimUnusedNodes (desc: { selected: ProofItem }, opt?: { confirm?: boolean, isQED?: boolean }): Promise<void> {
+		opt = opt || {};
 		const trimUnusedAux = (node: ProofItem): boolean => {
 			// check all children first
 			let dirty: boolean = false;
 			if (node) {
-				if (node.children && node.children.length) {
+				if (node.children && node.children.length && !node.isVisited()) {
 					for (let i = 0; i < node.children.length; i++) {
 						if (trimUnusedAux(node.children[i])) {
 							dirty = true;
@@ -1350,7 +1351,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 				const next: ProofItem = node.getNextSibling();
 				if (node.isVisitedOrPending() || node.isActive()) {
-					// console.log(node.name);
+					console.log(node.name);
 				} else {
 					// delete node if it's not active, or not visited
 					// adopt its children, if any
@@ -1450,7 +1451,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// move indicator forward so any proof branch that needs to be marked as visited will be marked
 		this.activeNode.moveIndicatorForward();
 		// trim unused commands
-		await this.trimUnusedNodes({ selected: this.root });
+		await this.trimUnusedNodes({ selected: this.root }, { isQED: true });
 		// set QED
 		this.root.QED();
 		// save proof if status has changed
