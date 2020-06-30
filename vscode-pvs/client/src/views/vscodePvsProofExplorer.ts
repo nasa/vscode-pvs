@@ -1761,7 +1761,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const note: string = (opt.msg) ? `${opt.msg}\n` : "";
 			const msg: string = note + `Save proof ${this.root.name}?`;
 			const ans: string = (opt.force) ? yesno[0]
-				: (this.dirtyFlag && !this.autorun) ? await window.showInformationMessage(msg, { modal: true }, yesno[0])
+				: (this.dirtyFlag && !this.autorunFlag) ? await window.showInformationMessage(msg, { modal: true }, yesno[0])
 					: yesno[1]; // dont' save if the proof hasn't changed
 			if (ans === yesno[0]) {
 				// update proof descriptor
