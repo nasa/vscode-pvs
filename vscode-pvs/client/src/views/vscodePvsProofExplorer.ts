@@ -215,7 +215,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					this.markAsActive({ selected: next }, { restore: false });
 					this.revealNode({ selected: next });
 					if (opt.proofState) {
-						this.activeNode.proofState = opt.proofState;
+						this.proofState = this.activeNode.proofState = opt.proofState;
 						this.activeNode.updateTooltip();
 						// this.activeNode.setTooltip(utils.formatProofState(this.activeNode.proofState));		
 					}
@@ -249,10 +249,14 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	fastForwardTo (desc: { selected: ProofItem }): void {
 		if (desc && desc.selected) {
-			this.stopAt = desc.selected;
-			this.running = true;
-			vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
-			this.step();
+			if (!desc.selected.isVisited()) {
+				this.stopAt = desc.selected;
+				this.running = true;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
+				this.step();
+			} else {
+				// TODO: rewind
+			}
 		} else {
 			console.warn(`[proof-explorer] Warning: failed to fast forward (selected node is null)`);
 		}
@@ -568,6 +572,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					const targetBranch: ProofBranch = this.findProofBranch(newBranch) || this.createBranchRecursive({ id: newBranch, parent: activeNode.parent });
 					if (targetBranch) {
 						this.activeNode.notVisited();
+						if (this.activeNode === this.activeNode.parent.children[0] && this.activeNode.parent.isPending()) {
+							this.activeNode.parent.notVisited();
+						}
 						// find the last visited child in the new branch
 						const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
 							return elem.contextValue === "proof-command" && elem.isVisited();
@@ -696,9 +703,16 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					// go to the new branch
 					activeNode.visited();
 					this.activeNode.parent.visited();
-					this.markAsActive({ selected: targetBranch }, { restore: false });
+					// find the last visited child in the new branch
+					const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
+						return elem.contextValue === "proof-command" && elem.isVisited();
+					});
+					const targetNode: ProofItem = visitedChildren.length ? visitedChildren[visitedChildren.length - 1] : targetBranch;
+					targetNode.pending();
+					// mark target node as active
+					this.markAsActive({ selected: targetNode }, { restore: false });
 					targetBranch.proofState = this.proofState;
-					targetBranch.updateTooltip();
+					targetBranch.updateTooltip();					
 					// targetBranch.setTooltip(utils.formatProofState(proofState))
 					this.activeNode.pending();
 					if (!this.running) {
@@ -759,6 +773,23 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			return null;
 		}
 		return findNodeAux(id, this.root);
+	}
+	/**
+	 * Internal function, finds first node not visited, starting to check from the given node
+	 * @param id Name of the proof branch. Branch names are specified using a dot notation (e.g., 1.3.2)
+	 */
+	protected findFirstNotVisited (node: ProofItem): ProofItem {
+		if (node && !node.isVisited() && !node.isPending()) {
+			return node;
+		}
+		for (let i = 0; i < node.children.length; i++) {
+			const res: ProofItem = this.findFirstNotVisited(node.children[i]);
+			if (res) {
+				return res;
+			}
+		}
+		window.showErrorMessage(`Error: Lost sync with pvs, please restart the proof.`);
+		return null;
 	}
 	/**
 	 * Internal function, creates a proof branch
@@ -2270,7 +2301,7 @@ export class ProofItem extends TreeItem {
 		}
 		this.visited();
 		if (this.parent && this.contextValue === "proof-command") {
-			return this.parent.moveIndicatorForward({ lastVisitedChild: this });
+			return this.parent.moveIndicatorForward({ lastVisitedChild: this, proofState: this.proofState });
 		}
 		return null;
 	}
