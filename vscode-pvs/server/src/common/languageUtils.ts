@@ -1213,7 +1213,7 @@ export function isSameCommand (cmd1: string, cmd2: string): boolean {
 export function splitCommands (cmd: string): string[] {
 	let cmds: string[] = [];
 	if (cmd && cmd.trim().startsWith("(")) {
-		let input: string = cmd.trim();
+		let input: string = cmd.trim().replace(/\)y/gi, ")");
 		let par: number = 0;
 		let start: number = 0;
 		let stop: number = 0;

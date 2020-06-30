@@ -2368,8 +2368,7 @@ class ProofCommand extends ProofItem {
 	constructor (cmd: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState) {
 		super("proof-command", cmd, branchId, parent, collapsibleState);
 		cmd = cmd.trim();
-		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) 
-						|| (utils.isUndoCommand(cmd) && cmd.toLowerCase().endsWith("y")) ? cmd : `(${cmd})`;
+		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || utils.isUndoCommand(cmd) ? cmd : `(${cmd})`;
 		this.notVisited();
 		this.command = {
 			title: this.contextValue,
