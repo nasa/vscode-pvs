@@ -291,12 +291,22 @@ export class VSCodePvsTerminal {
             }
         }
     }
-    sendProofCommand (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): boolean {
+    sendProofCommand (desc: { 
+        fileName: string, 
+        fileExtension: string, 
+        contextFolder: string, 
+        theoryName: string, 
+        formulaName: string, 
+        cmd: string
+    }, opt?: {
+        addNewLine?: boolean
+    }): boolean {
         if (desc) {
+            const addNewLine: boolean = (opt && (opt.addNewLine !== undefined || opt.addNewLine !== null)) ? opt.addNewLine : true;
             const channelID: string = language.desc2id(desc);
             if (this.openTerminals[channelID]) {
                 this.openTerminals[channelID].terminal.show();
-                this.openTerminals[channelID].terminal.sendText(desc.cmd);
+                this.openTerminals[channelID].terminal.sendText(desc.cmd, addNewLine);
                 return true;
             }
         }

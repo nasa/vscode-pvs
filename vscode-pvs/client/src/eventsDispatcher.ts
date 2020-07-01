@@ -533,7 +533,7 @@ export class EventsDispatcher {
 
         context.subscriptions.push(commands.registerCommand("proof-mate.hint-dblclicked", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             if (desc && desc.cmd) {
-                this.vscodePvsTerminal.sendProofCommand(desc);
+                this.vscodePvsTerminal.sendProofCommand(desc, { addNewLine: false });
             }
         }));
 

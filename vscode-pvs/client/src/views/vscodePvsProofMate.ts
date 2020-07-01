@@ -210,7 +210,7 @@ class ProofMateHints extends ProofMateGroup {
 	addRecommendation (rec: { cmd: string, tooltip?: string }): void {
         if (rec) {
 			this.hints.push(new ProofMateItem({
-				name: rec.cmd, 
+				name: `(${rec.cmd})`, 
 				tooltip: rec.tooltip
 			}));
         }
