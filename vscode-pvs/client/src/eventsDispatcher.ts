@@ -40,7 +40,7 @@ import { LanguageClient } from "vscode-languageclient";
 import { VSCodePvsStatusBar } from "./views/vscodePvsStatusBar";
 import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindingsProvider";
 import { VSCodePvsWorkspaceExplorer } from "./views/vscodePvsWorkspaceExplorer";
-import { VSCodePvsProofExplorer } from "./views/vscodePvsProofExplorer";
+import { VSCodePvsProofExplorer, ProofItem } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
 import { PvsContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor, ServerMode } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
@@ -314,6 +314,7 @@ export class EventsDispatcher {
                 }
                 // start proof
                 this.proofExplorer.startProof();
+                this.proofMate.startProof();
                 
                 // // set vscode context variable in-checker to true, to indicate a proof is now in progress
                 // vscode.commands.executeCommand('vscode-pvs.in-checker', true);
@@ -329,6 +330,7 @@ export class EventsDispatcher {
                     // console.dir(desc.response.result);
                     this.proofExplorer.loadFormulaDescriptor(desc.args);
                     this.proofExplorer.loadProofDescriptor(desc.response.result);
+                    this.proofMate.loadFormulaDescriptor(desc.args);
                 } else {
                     console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error`, desc);
                     window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error (please check pvs-server output for details)`);
@@ -526,6 +528,18 @@ export class EventsDispatcher {
                 this.client.sendRequest(serverCommand.rebootPvsServer);
                 // terminate any prover session
                 this.vscodePvsTerminal.quitAll(); // async call
+            }
+        }));
+
+        context.subscriptions.push(commands.registerCommand("proof-mate.hint-dblclicked", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
+            if (desc && desc.cmd) {
+                this.vscodePvsTerminal.sendProofCommand(desc);
+            }
+        }));
+
+        context.subscriptions.push(commands.registerCommand("proof-explorer.trim", (desc: { items: ProofItem[] }) => {
+            if (desc) {
+                this.proofMate.updateSketchpad(desc);
             }
         }));
 

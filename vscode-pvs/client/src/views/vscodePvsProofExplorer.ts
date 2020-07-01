@@ -45,6 +45,7 @@ import * as fsUtils from '../common/fsUtils';
 import { PvsResponse } from '../common/pvs-gui';
 import { ProofState } from '../common/languageUtils';
 import * as vscode from 'vscode';
+import { VSCodePvsProofMate } from './vscodePvsProofMate';
 
 
 /**
@@ -122,6 +123,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Current proof state
 	 */
 	protected proofState: ProofState;
+
 	
 	/**
 	 * @constructor
@@ -423,6 +425,20 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 	/**
+	 * Utility function, checks if the proof structure has changed
+	 * This check is done when the active node (command) produces new branches and 
+	 * the prover advances to a new branch that is not one of the children of the active node
+	 * @param desc 
+	 */
+	protected proofStructureHasChanged (desc: { activeNode: ProofItem, targetBranch: ProofBranch }): boolean {
+		if (desc) {
+			return desc.targetBranch && !desc.activeNode.children || desc.activeNode.children.filter((item) => {
+				return item.name === desc.targetBranch.name;
+			}).length === 0;
+		}
+		return false;
+	}
+	/**
 	 * Call-back function invoked after step(), when the execution of a proof command is complete.
 	 * @param desc Descriptor specifying the reponse of the prover, as well as the actual values of the arguments used to invoke the step function.
 	 */
@@ -459,6 +475,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					}
 					this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
 					activeNode = this.activeNode; // update local variable because the following instructions are using it
+				}
+
+				// trim the node if necessary
+				if (activeNode) {
+					await this.trimNode({ selected: activeNode }, { confirm: false });
 				}
 
 				await this.proved();
@@ -614,7 +635,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 			// else, the prover has made progress with the provided proof command
 			// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
-			if (utils.isSameCommand(activeNode.name, cmd) === false || this.ghostNode.isActive()) {
+			if (!utils.isSameCommand(activeNode.name, cmd) || this.ghostNode.isActive()) {
 				this.running = false;
 				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 				if (this.autorunFlag && this.ghostNode.isActive()) {
@@ -652,12 +673,23 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			let showMsg: boolean = true;
 			if (this.proofState.commentary && this.proofState.commentary.length && this.proofState.commentary[0].startsWith("This completes the proof")) {
 				// PVS has automatically discharged a proof branch -- e.g. check sorting.pvs, not_in_l_gives_lenght_l : LEMMA 
-				nSubGoals += 2;
-				this.showInformationMessage(`Proof command ${cmd} generated ${nSubGoals} sub-goals. PVS automatically discharged the first subgoal.`);
+				this.showInformationMessage(`Proof command ${cmd} completes the proof in branch ${previousBranch}`);
 				showMsg = false;
+				// trim the rest of the tree if necessary
+				if (activeNode && activeNode.children && activeNode.children.length) {
+					await this.trimNode({ selected: activeNode }, { confirm: false });
+				}
 			}
 			if (nSubGoals) {
-				const targetBranch: ProofItem = this.findProofBranch(newBranch);
+				let targetBranch: ProofItem = this.findProofBranch(newBranch);
+
+				// check if the tree has changed structure, if so trim the proof tree
+				if (this.proofStructureHasChanged({ activeNode, targetBranch })) {
+					// branch is not directly linked to the active node --- trim the proof tree
+					await this.trimNode({ selected: activeNode }, { confirm: false });
+					targetBranch = null;
+				}
+
 				if (this.running && !this.autorunFlag) {
 					// double check that the new branch is a sub-branch of the old one -- pvs may have proved all sub-branches silently
 					if (this.branchHasChanged(newBranch, previousBranch) === false || !targetBranch) {
@@ -670,9 +702,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 								this.appendBranch({ selected: activeNode }, { firstBranch: newBranch, proofState: this.proofState });
 							}
 						}
-						if (utils.isProved(this.root.getProofStatus()) || utils.isUnchecked(this.root.getProofStatus())) {
-							this.showWarningMessage(`Warning: Proof script might be broken (PVS generated ${nSubGoals} sub goals, but proof script contains ${this.activeNode.children.length} sub goals). Stopping execution of proof script.`);
-						}
+						// if (utils.isProved(this.root.getProofStatus()) || utils.isUnchecked(this.root.getProofStatus())) {
+						// 	this.showWarningMessage(`Warning: Proof script might be broken (PVS generated ${nSubGoals} sub goals, but proof script contains ${this.activeNode.children.length} sub goals). Stopping execution of proof script.`);
+						// }
 					} else {
 						if (showMsg) {
 							this.showInformationMessage(`Proof command ${cmd} generated ${this.proofState["num-subgoals"]} sub-goals, but PVS has automatically discharged them`);
@@ -1122,8 +1154,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				vscode.env.clipboard.writeText(seq);
 			}
 			// set vscode context variable proof-explorer.clipboard-contains-tree and clipboard-contains-node to true
-			vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', true);
-			vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);
+			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', true);
+			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);
+			// update sketchboard
+			commands.executeCommand("proof-explorer.trim", { items: this.clipboardTree });
 		} else {
 			console.warn(`[proof-explorer] Warning: unable to copy selected subtree`);
 		}
@@ -1267,7 +1301,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param desc Descriptor indicating which node is selected in the proof tree
 	 * @param opt Optionals: whether user confirmation is required
 	 */
-	async trimNode (desc: { selected: ProofItem }, opt?: { confirm?: boolean }): Promise<void> {
+	async trimNode (desc: { selected: ProofItem }, opt?: { confirm?: boolean }): Promise<ProofItem[] | null> {
 		opt = opt || {};
 		opt.confirm = (opt.confirm === undefined) ? true : opt.confirm; // choose to confirm if options are not specified
 		if (desc && desc.selected && desc.selected.parent) {
@@ -1279,9 +1313,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const ans: string = (opt.confirm) ?
 				await window.showInformationMessage(msg, { modal: true }, yesno[0])
 				: yesno[0];
+			let items: ProofItem[] = null;
 			if (ans === yesno[0]) {
 				switch (node.contextValue) {
 					case "root": {
+						items = node.children;
 						node.children = [];
 						// this.setActiveNode({ selected: this.root });
 						this.markAsActive({ selected: this.root });
@@ -1301,6 +1337,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 							// this.setActiveNode({ selected: node });
 							this.markAsActive({ selected: node });
 						}
+						items = node.children;
 						node.children = [];
 						break;
 					}
@@ -1311,6 +1348,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						// remove also lower siblings
 						const parent: ProofItem = node.parent;
 						const idx: number = parent.children.indexOf(node);
+						items = parent.children.slice(idx + 1, parent.children.length + 1);
 						parent.children = parent.children.slice(0, idx + 1);
 						if (node.isVisited()) {
 							// this.setActiveNode({ selected: node });
@@ -1324,10 +1362,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 				this.dirtyProof();
 				this.refreshView();
+				if (items) {
+					commands.executeCommand("proof-explorer.trim", { items });
+				}
+				return items;
 			}
 		} else {
 			console.warn(`[proof-explorer] Warning: unable to delete selected node`);
 		}
+		return null;
 	}
 	/**
 	 * Deletes unused (i.e., not visited or not active) proof commands after the selected node.
@@ -1969,6 +2012,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.showActiveSequent(); // async call
 		}));
 
+		let cmd: string = null;
 		// click on the any node (except ghost nodes) enables search by type in the tree view
 		context.subscriptions.push(commands.registerCommand('proof-explorer.root-selected', async (resource: ProofItem) => {
 			if (this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
@@ -1986,6 +2030,16 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (this.filterOnTypeActive) { // this will capture future attempt to toggle the filter -- there's no other way to keep this filter on
 				this.filterOnTypeActive = false;
 				commands.executeCommand('list.toggleFilterOnType', false);
+			}
+			// register double click handler
+			if (!cmd || cmd !== resource.name) {
+				cmd = resource.name;
+				setTimeout(() => {
+					cmd = null
+				}, 250);	
+			} else {
+				cmd = null;
+				this.fastForwardTo({ selected: resource });
 			}
 		}));
 		
@@ -2043,7 +2097,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 
 //-------------------------------------------------------------
-// Auxiliary constants and definitons
+// Auxiliary constants and definitions
 //-------------------------------------------------------------
 
 // https://emojipedia.org/symbols/
@@ -2059,7 +2113,7 @@ export class ProofItem extends TreeItem {
 	name: string; // prover command or branch id
 	branchId: string = ""; // branch in the proof tree where this command is located (branchId for root is "").
 	command: Command; // vscode action associated to the node
-	protected icon: string = ""; // icon indicating the state of the node
+	icon: string = ""; // icon indicating the state of the node
 	protected previousState: {
 		tooltip?: string,
 		icon?: string
@@ -2087,7 +2141,7 @@ export class ProofItem extends TreeItem {
 		this.name = name;
 		this.branchId = branchId;
 		this.parent = parent;
-		this.tooltip = ""; // the tooltip shows the sequent before the execution of the proof command
+		this.tooltip = "Double click to fast-forward"; // the tooltip will shows the sequent before the execution of the proof command, as soon as the node becomes active
 		this.notVisited();
 	}
 	clone (opt?: { parent?: ProofItem }): ProofItem {
@@ -2464,7 +2518,7 @@ class ProofCommand extends ProofItem {
 		this.command = {
 			title: this.contextValue,
 			command: "proof-explorer.proof-command-selected",
-			arguments: [ this.contextValue ]
+			arguments: [ this ]
 		};
 	}
 	// @override
@@ -2481,7 +2535,7 @@ class ProofBranch extends ProofItem {
 		this.command = {
 			title: this.contextValue,
 			command: "proof-explorer.proof-branch-selected",
-			arguments: [ this.contextValue ]
+			arguments: [ this ]
 		};
 	}
 	// @override
@@ -2510,7 +2564,7 @@ class RootNode extends ProofItem {
 		this.command = {
 			title: this.contextValue,
 			command: "proof-explorer.root-selected",
-			arguments: [ this.contextValue ]
+			arguments: [ this ]
 		};
 	}
 	// @overrides
