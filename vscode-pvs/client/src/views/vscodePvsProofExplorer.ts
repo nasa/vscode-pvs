@@ -675,6 +675,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				// PVS has automatically discharged a proof branch -- e.g. check sorting.pvs, not_in_l_gives_lenght_l : LEMMA 
 				this.showInformationMessage(`Proof command ${cmd} completes the proof in branch ${previousBranch}`);
 				showMsg = false;
+				nSubGoals = 0; // why is pvs telling it has generated subgoals when the branch is complete?
 				// trim the rest of the tree if necessary
 				if (activeNode && activeNode.children && activeNode.children.length) {
 					await this.trimNode({ selected: activeNode }, { confirm: false });
