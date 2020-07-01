@@ -20,7 +20,7 @@
 		"vscode": "*"
 	},
 	"dependencies": {
-		"typescript": "^3.9.5",
+		"typescript": "^3.9.6",
 		"vscode-languageclient": "^5.2.1",
 		"ws": "^7.2.0"
 	},

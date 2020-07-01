@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.23",
+	"version": "1.0.24-alpha",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -253,6 +253,11 @@
 				"icon": "icons/play-icon.png"
 			},
 			{
+				"command": "proof-mate.send-to-terminal",
+				"title": "Send to terminal",
+				"enablement": "pvs-server-active == true"
+			},
+			{
 				"command": "proof-explorer.delete-node",
 				"title": "Delete",
 				"enablement": "view == proof-explorer-view && pvs-server-active == true"
@@ -290,11 +295,6 @@
 			{
 				"command": "proof-explorer.mark-as-not-visited",
 				"title": "Mark as not visited",
-				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
-			},
-			{
-				"command": "proof-explorer.mark-as-active",
-				"title": "Jump to...",
 				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
 			},
 			{
@@ -378,8 +378,8 @@
 			},
 			{
 				"command": "proof-explorer.fast-forward",
-				"title": "️️Fast forward",
-				"icon": "icons/fast-forward-icon-alt.png",
+				"title": "️️Fast forward here",
+				"icon": "icons/fast-forward-icon-alt-2.png",
 				"enablement": "view == proof-explorer-view && viewItem != root && in-checker == true && !proof-explorer.running"
 			},
 			{
@@ -489,9 +489,9 @@
 					"group": "context-menu/ctrl"
 				},
 				{
-					"command": "proof-explorer.mark-as-active",
-					"when": "view == proof-explorer-view",
-					"group": "context-menu/ctrl"
+					"command": "proof-explorer.fast-forward",
+					"when": "view == proof-explorer-view && viewItem != root",
+					"group": "inline"
 				},
 				{
 					"command": "proof-explorer.run-proof",
@@ -587,6 +587,26 @@
 					"command": "proof-mate.exec-proof-command",
 					"when": "view == proof-mate-view && viewItem == proofmate-item",
 					"group": "context-menu/exec"
+				},
+				{
+					"command": "proof-mate.send-to-terminal",
+					"when": "view == proof-mate-view && viewItem == proofmate-item",
+					"group": "context-menu/exec-1"
+				},
+				{
+					"command": "proof-mate.exec-proof-command",
+					"when": "view == proof-mate-view && viewItem == proof-command",
+					"group": "inline"
+				},
+				{
+					"command": "proof-mate.exec-proof-command",
+					"when": "view == proof-mate-view && viewItem == proof-command",
+					"group": "context-menu/exec"
+				},
+				{
+					"command": "proof-mate.send-to-terminal",
+					"when": "view == proof-mate-view && viewItem == proof-command",
+					"group": "context-menu/exec-1"
 				}
 			],
 			"editor/title/context": [
