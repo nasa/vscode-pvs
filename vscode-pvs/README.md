@@ -71,7 +71,7 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
-### 1.0.23 (2020.06.xx)
+### 1.0.23 (2020.07.01)
 - Added support for multi-line commands in the prover prompt
 - Added support for automatic proof of TCCs (M-x tcp)
 - Improved handling of 'undo' proof commands
