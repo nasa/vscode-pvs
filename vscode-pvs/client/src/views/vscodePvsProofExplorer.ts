@@ -2039,8 +2039,16 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					cmd = null
 				}, 250);	
 			} else {
+				const dd = { 
+					fileName: this.formulaDescriptor.fileName,
+					fileExtension: this.formulaDescriptor.fileExtension,
+					contextFolder: this.formulaDescriptor.contextFolder,
+					theoryName: this.formulaDescriptor.theoryName, 
+					formulaName: this.formulaDescriptor.formulaName,
+					cmd
+				}
+				commands.executeCommand("proof-explorer.proof-command-dblclicked", dd);
 				cmd = null;
-				this.fastForwardTo({ selected: resource });
 			}
 		}));
 		
@@ -2142,7 +2150,7 @@ export class ProofItem extends TreeItem {
 		this.name = name;
 		this.branchId = branchId;
 		this.parent = parent;
-		this.tooltip = "Double click to fast-forward"; // the tooltip will shows the sequent before the execution of the proof command, as soon as the node becomes active
+		this.tooltip = "Double click sends command to terminal"; // the tooltip will shows the sequent before the execution of the proof command, as soon as the node becomes active
 		this.notVisited();
 	}
 	clone (opt?: { parent?: ProofItem }): ProofItem {

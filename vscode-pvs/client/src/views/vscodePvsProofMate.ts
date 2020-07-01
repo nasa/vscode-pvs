@@ -362,10 +362,25 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	activate(context: ExtensionContext) {
 		this.context = context;
 		this.selectProfile("basic");
-		context.subscriptions.push(commands.registerCommand("proof-mate.exec-proof-command", (resource: ProofMateItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-mate.exec-proof-command", (resource: ProofMateItem | ProofItem) => {
 			if (resource && resource.name) {
 				this.sendProofCommand(resource.name);
 			} else {
+				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
+			}
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-mate.send-to-terminal", (resource: ProofMateItem | ProofItem) => {
+			if (resource && resource.name) {
+				const dd = { 
+					fileName: this.desc.fileName,
+					fileExtension: this.desc.fileExtension,
+					contextFolder: this.desc.contextFolder,
+					theoryName: this.desc.theoryName, 
+					formulaName: this.desc.formulaName,
+					cmd: resource.name
+				}
+				commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
+		} else {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
 			}
 		}));
@@ -397,7 +412,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 						formulaName: this.desc.formulaName,
 						cmd: desc.cmd
 					}
-					commands.executeCommand("proof-mate.hint-dblclicked", dd);
+					commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
 					cmd = null;
 				}
 			}

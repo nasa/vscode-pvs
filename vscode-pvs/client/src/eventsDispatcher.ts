@@ -531,9 +531,16 @@ export class EventsDispatcher {
             }
         }));
 
-        context.subscriptions.push(commands.registerCommand("proof-mate.hint-dblclicked", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
+        context.subscriptions.push(commands.registerCommand("proof-mate.proof-command-dblclicked", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             if (desc && desc.cmd) {
                 this.vscodePvsTerminal.sendProofCommand(desc, { addNewLine: false });
+                window.showInformationMessage(`${desc.cmd} sent to terminal`)
+            }
+        }));
+        context.subscriptions.push(commands.registerCommand("proof-explorer.proof-command-dblclicked", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
+            if (desc && desc.cmd) {
+                this.vscodePvsTerminal.sendProofCommand(desc, { addNewLine: false });
+                window.showInformationMessage(`${desc.cmd} sent to terminal`)
             }
         }));
 
