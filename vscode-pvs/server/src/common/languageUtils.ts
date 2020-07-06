@@ -1225,10 +1225,12 @@ export function splitCommands (cmd: string): string[] {
 		let par: number = 0;
 		let start: number = 0;
 		let stop: number = 0;
+		let validStart: boolean = false;
 		for (let i = 0; i < input.length; i++) {
 			if (input[i] === "(") {
 				if (par === 0) {
 					start = i;
+					validStart = true;
 				}
 				par++;
 			} else if (input[i] === ")") {
@@ -1237,9 +1239,16 @@ export function splitCommands (cmd: string): string[] {
 					stop = i;
 				}
 			}
-			if (par === 0 && stop > start) {
-				const cmd: string = input.substring(start, stop + 1);
-				cmds = cmds.concat(cmd);
+			if (par === 0) {
+				if (stop > start && validStart) { // sanity check
+					const cmd: string = input.substring(start, stop + 1);
+					cmds = cmds.concat(cmd);
+					validStart = false;
+				}
+			}
+			if (par < 0) {
+				// too many closed parentheses -- try to skip
+				par = 0;
 			}
 		}
 	}
