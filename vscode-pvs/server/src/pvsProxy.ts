@@ -127,6 +127,7 @@ export class PvsProxy {
 
 	protected legacy: PvsProxyLegacy;
 	protected useLegacy: boolean = true;
+	protected nasalibPresent: boolean = false;
 	/**
 	 * Parser
 	 */
@@ -595,13 +596,17 @@ export class PvsProxy {
 	 */
 	async proveFormula(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string }): Promise<PvsResponse> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName && desc.formulaName) {
-			// if (this.useLegacy) {
-			// 	return await this.legacy.proveFormula(desc);
-			// }
 			await this.changeContext(desc.contextFolder);
-			const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
-			const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, fullName ]);		
-			return ans;
+			if (this.nasalibPresent) {
+				const res: PvsResponse = await this.legacy.proveFormula(desc);
+				console.dir(res);
+				return res;
+			} else {
+				const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
+				const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, fullName ]);
+				console.dir(ans);
+				return ans;
+			}
 		}
 		return null;
 	}
@@ -793,7 +798,8 @@ export class PvsProxy {
 			const cmd: string = showHidden ? "(skip)"
 				: isGrind ? utils.applyTimeout(desc.cmd, desc.timeout)
 					: desc.cmd;
-			const res: PvsResponse =  await this.pvsRequest('proof-command', [ cmd ]);
+			const res: PvsResponse = (this.nasalibPresent) ? await this.legacy.proofCommand(cmd) 
+				: await this.pvsRequest('proof-command', [ cmd ]);
 			if (res) {
 				if (showHidden) {
 					if (res.result) {

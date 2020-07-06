@@ -376,13 +376,20 @@ export class PvsLanguageServer {
 			await this.quitProof();
 		}
 
+		// make sure file exists
+		const fname: string = fsUtils.desc2fname(request);
+		if (!fsUtils.fileExists(fname)) {
+			this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
+			return;
+		}
+		
 		// make sure the file typechecks correctly before starting a proof attempt
 		// send feedback to the front-end
 		const taskId: string = `typecheck-${request.formulaName}`;
 		this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${request.formulaName}'` });
 
 		// make sure pvs files are typechecked before starting a proof attempt
-		if (request.fileExtension === ".pvs") {
+		if (request.fileExtension === ".pvs") {			
 			const response: PvsResponse = await this.typecheckFile(request)
 			if (response && response.error) {
 				const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
@@ -752,6 +759,11 @@ export class PvsLanguageServer {
 			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
 			if (desc) {
 				const fname: string = `${desc.fileName}${desc.fileExtension}`;
+				// make sure file exists
+				if (!fsUtils.fileExists(fname)) {
+					this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
+					return;
+				}
 				const taskId: string = `typecheck-${fname}`;
 				// send feedback to the front-end
 				this.notifyStartImportantTask({ id: taskId, msg: `Typechecking ${fname}` });
@@ -1051,6 +1063,11 @@ export class PvsLanguageServer {
 					// we should only parse .pvs files
 					if (desc.fileExtension === ".pvs") {
 						const fname: string = fsUtils.desc2fname(desc);
+						// make sure file exists
+						if (!fsUtils.fileExists(fname)) {
+							this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
+							return;
+						}
 						const taskId: string = `parse-${fname}`;
 						// send feedback to the front-end
 						if (opt.withFeedback) {

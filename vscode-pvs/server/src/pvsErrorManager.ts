@@ -46,7 +46,7 @@ export class PvsErrorManager {
         response: PvsError,
         taskId: string
     }): void {
-        if (desc) {
+        if (desc && desc.response && desc.response.error) {
             if (desc.response.error.data) {
                 const fname: string = (desc.response.error.data.file_name) ? desc.response.error.data.file_name : fsUtils.desc2fname(desc.request);
                 const msg: string = desc.response.error.data.error_string || "";

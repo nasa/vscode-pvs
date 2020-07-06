@@ -91,6 +91,26 @@ export class PvsProxyLegacy {
             result: data
         };
     }
+    async proofCommand (cmd: string): Promise<PvsResponse> {
+        const pvsResponse: PvsResponse = {
+            jsonrpc: "2.0",
+            id: "pvs-process-legacy"
+        };
+        let data: string = await this.pvsProcess.sendText(cmd);
+        // patch for output while waiting Mariano's fix
+        if (data) {
+            const start: number = data.indexOf("{");
+            data = data.substring(start);
+        }
+        try {
+            pvsResponse.result = JSON.parse(data);
+        } catch (jsonerror) {
+            console.error(jsonerror);
+            pvsResponse.error = jsonerror;
+            return pvsResponse;
+        }
+        return pvsResponse;
+    }
     async changeContext (ctx: string): Promise<PvsResponse> {
         const response: PvsResponse = await this.lisp(`(change-workspace "${ctx}")`);
         if (response.result) {
@@ -114,13 +134,18 @@ export class PvsProxyLegacy {
             id: "pvs-process-legacy"
         };
         const response: PvsResponse = await this.lisp(`(prove-formula "${desc.theoryName}#${desc.formulaName}")`);
+        // patch for output while waiting Mariano's fix
+        if (response && response.result) {
+            const start: number = (<string>response.result).indexOf("{");
+            response.result = (<string>response.result).substring(start);
+        }
         try {
-            console.dir(JSON.parse(response.result));
+            pvsResponse.result = JSON.parse(<string> response.result);
         } catch (jsonerror) {
             console.error(jsonerror);
+            pvsResponse.error = jsonerror;
             return pvsResponse;
         }
-        console.log(response);
         return pvsResponse;
     }
     async showTccs (fname: string, theoryName: string): Promise<PvsResponse> {
