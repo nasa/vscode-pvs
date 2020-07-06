@@ -807,10 +807,8 @@ export class PvsProxy {
 					if (res.result && res.result.commentary 
 							&& res.result.commentary.length 
 							&& res.result.commentary[res.result.commentary.length - 1].startsWith("No change on")) {
-						res.result.action = `No change on: ${desc.cmd}\nThe command did not produce a new proof state within a timeout of ${desc.timeout} seconds`;
-						res.result.commentary = [
-							res.result.action
-						];
+						res.result.action = `No change on: ${desc.cmd}`;
+						res.result.commentary = res.result.commentary.slice(0, res.result.commentary.length - 1).concat(`No change on: ${desc.cmd}`);
 					}
 				}
 				if (res.error) {

@@ -1211,7 +1211,9 @@ export function isSameCommand (cmd1: string, cmd2: string): boolean {
 	if (cmd1 && cmd2) {
 		const c1: string = cmd1.replace(/"/g, "");
 		const c2: string = cmd2.replace(/"/g, "");
-		return c1 === c2 || c1 === `(${c2})` || `(${c1})` === c2;
+		return c1 === c2 
+			|| (!c2.startsWith("(") && c1 === `(${c2})`) 
+			|| (!c1.startsWith("(") && `(${c1})` === c2);
 	}
 	return false;
 }

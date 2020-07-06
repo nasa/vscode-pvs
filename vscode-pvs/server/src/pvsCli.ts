@@ -108,29 +108,32 @@ function parCheck (cmd: string): boolean {
 	while (closeRegex.exec(cmd)) {
 		par--;
 	}
-	return par === 0;
+	return par <= 0;
 }
 
 // utility function, ensures open brackets match closed brackets for commands
 function parMatch (cmd: string): string {
-	const openRegex: RegExp = new RegExp(/\(/g);
-	const closeRegex: RegExp = new RegExp(/\)/g);
-	let par: number = 0;
-	while (openRegex.exec(cmd)) {
-		par++;
+	if (cmd && !cmd.trim().startsWith("(")) {
+		const openRegex: RegExp = new RegExp(/\(/g);
+		const closeRegex: RegExp = new RegExp(/\)/g);
+		let par: number = 0;
+		while (openRegex.exec(cmd)) {
+			par++;
+		}
+		while (closeRegex.exec(cmd)) {
+			par--;
+		}
+		if (par > 0) {
+			// missing closed brackets
+			cmd = cmd.trimRight() + ')'.repeat(par);
+			// console.log(`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
+		} else if (par < 0) {
+			cmd = '('.repeat(-par) + cmd;
+			// console.log(`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
+		}
+		return cmd.startsWith('(') ? cmd : `(${cmd})`; // add outer parentheses if they are missing
 	}
-	while (closeRegex.exec(cmd)) {
-		par--;
-	}
-	if (par > 0) {
-		// missing closed brackets
-		cmd = cmd.trimRight() + ')'.repeat(par);
-		// console.log(`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
-	} else if (par < 0) {
-		cmd = '('.repeat(-par) + cmd;
-		// console.log(`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
-	}
-	return cmd.startsWith('(') ? cmd : `(${cmd})`; // add outer parentheses if they are missing
+	return cmd;
 }
 
 // utility function, ensures open brackets match closed brackets for commands
