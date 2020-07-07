@@ -731,6 +731,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// if the branch has changed, move to the new branch
 			// this case handles the completion of a proof branch (postpone is handled separately, see conditions above)
 			if (this.branchHasChanged(newBranch, previousBranch)) {
+				// trim branch if previous branch is proved
+				if (utils.isBranchProved(this.proofState)) {
+					this.trimNode({ selected: activeNode }, { confirm: false });
+				}
+				// find target branch
 				const targetBranch: ProofItem = this.findProofBranch(newBranch) || this.createBranchRecursive({ id: newBranch, parent: activeNode.parent });
 				if (targetBranch) {
 					// go to the new branch

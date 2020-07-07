@@ -1218,6 +1218,13 @@ export function isSameCommand (cmd1: string, cmd2: string): boolean {
 	return false;
 }
 
+export function isBranchProved (proofState: ProofState): boolean {
+	if (proofState && proofState.commentary && proofState.commentary.length) {
+		return proofState.commentary[proofState.commentary.length - 1].trim().startsWith("This completes the proof of");
+	}
+	return false;
+}
+
 export function splitCommands (cmd: string): string[] {
 	let cmds: string[] = [];
 	if (cmd && cmd.trim().startsWith("(")) {
