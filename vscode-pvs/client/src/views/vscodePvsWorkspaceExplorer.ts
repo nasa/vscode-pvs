@@ -839,8 +839,15 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							}
 						}
 						this.client.sendRequest(serverCommand.getContextDescriptor, resource);
+						this.client.sendRequest(serverCommand.generateSummary, {
+							contextFolder: resource.contextFolder,
+							fileName: resource.fileName,
+							fileExtension: resource.fileExtension,
+							theoryName: resource.theoryName,
+							content: utils.makeProofSummary(summary)
+						});
+						// vscodeUtils.previewTextDocument(`${theoryName}.summary`, utils.makeProofSummary(summary), { contextFolder: resource.contextFolder });
 						resolve();
-						vscodeUtils.previewTextDocument(`${theoryName}.summary`, utils.makeProofSummary(summary), { contextFolder: resource.contextFolder });
 					});
 				});
 			} else {

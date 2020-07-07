@@ -932,6 +932,27 @@ export class PvsLanguageServer {
 		}
 		return null;
 	}
+	async generateSummaryRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, content?: string }): Promise<void> {
+		if (request) {
+			const content: string = request.content || "";
+			const contextFolder: string = request.contextFolder;
+			const fileName: string = request.theoryName;
+			const fileExtension: string = ".summary";
+			await fsUtils.writeFile(fsUtils.desc2fname({
+				contextFolder,
+				fileName,
+				fileExtension
+			}), content);
+			this.connection.sendRequest(serverEvent.generateSummaryResponse, {
+				response: {
+					contextFolder,
+					fileName,
+					fileExtension
+				}, 
+				args: request 
+			});
+		}
+	}
 	async showTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { showTccsResponse?: boolean, quiet?: boolean }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		if (request) {
@@ -1950,6 +1971,9 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverCommand.generateTccs, async (request: { fileName: string, fileExtension: string, contextFolder: string, opt?: { quiet?: boolean } }) => {
 				this.showTccsRequest(request, { quiet: request && request.opt && request.opt.quiet }); // async call
+			});
+			this.connection.onRequest(serverCommand.generateSummary, async (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, content?: string }) => {
+				this.generateSummaryRequest(request); // async call
 			});
 			this.connection.onRequest(serverCommand.showTccs, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.showTccsRequest(request, { showTccsResponse: true }); // async call

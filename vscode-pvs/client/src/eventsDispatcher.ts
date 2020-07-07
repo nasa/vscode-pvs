@@ -476,7 +476,24 @@ export class EventsDispatcher {
                 vscodeUtils.previewTextDocument(`${desc.args.formulaName}.prlite`, desc.response, { contextFolder: desc.args.contextFolder, viewColumn: vscode.ViewColumn.Beside });
             }
         });
-
+        this.client.onRequest(serverEvent.generateSummaryResponse, (desc: { 
+            response: {
+                contextFolder: string,
+                fileName: string, 
+                fileExtension: string
+            },
+            args: { 
+                contextFolder: string,
+                fileName: string, 
+                fileExtension: string, 
+                theoryName: string,
+                content?: string
+            }
+        }) => {
+            if (desc && desc.response) {
+                vscodeUtils.showTextDocument(desc.response);
+            }
+        });
 
 
 
@@ -501,21 +518,35 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.new-pvs-file", async () => {
             this.workspaceExplorer.newPvsFile(); // async method
-        }));
-        
+        }));        
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-version-info", async (opt?: { trailingNote?: string }) => {
             opt = opt || {};
             opt.trailingNote = opt.trailingNote || "";
             let info: PvsVersionDescriptor = {
                 "pvs-version": "PVS version not available :/",
-                "lisp-version": ""
+                "lisp-version": "",
+                "nasalib-version": ""
             };
             const desc: PvsVersionDescriptor = this.statusBar.getVersionInfo();
             if (desc) {
                 if (desc["pvs-version"]) { info["pvs-version"] = desc["pvs-version"]; }
                 if (desc["lisp-version"]) { info["lisp-version"] = desc["lisp-version"]; }
+                if (desc["nasalib-version"]) { info["nasalib-version"] = desc["nasalib-version"]; }
             }
-            const msg: string = `PVS ${info["pvs-version"]} (${info["lisp-version"]}) ${opt.trailingNote}`;
+            let msg: string = `PVS ${info["pvs-version"]}`;
+            let extras: string[] = [];
+            if (info["lisp-version"]) {
+                extras.push(info["lisp-version"]);
+            }
+            if (info["nasalib-version"]) {
+                extras.push(info["nasalib-version"]);
+            }
+            if (extras && extras.length) {
+                msg += ` (${extras.join(" + ")})`;
+            }
+            if (opt.trailingNote) {
+                msg += opt.trailingNote;
+            }
             window.showInformationMessage(msg);
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.reboot-pvs", async () => {

@@ -59,7 +59,7 @@ import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, serverEvent } from './common/serverInterface';
+import { SimpleConnection, serverEvent, PvsVersionDescriptor } from './common/serverInterface';
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
@@ -902,22 +902,37 @@ export class PvsProxy {
 	/**
 	 * Returns pvs version information
 	 */
-	async getPvsVersionInfo(): Promise<{ "pvs-version": string, "lisp-version": string }> {
+	async getPvsVersionInfo(): Promise<PvsVersionDescriptor> {
 		// const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
 		const res: PvsResponse = await this.legacy.lisp(`(get-pvs-version-information)`);
+		const nasalib: string = await this.getNasalibVersionInfo();
 		if (res && res.result) {
 			const regexp: RegExp = /\(\"?(\d+(?:.?\d+)*)\"?[\s|nil]*\"?([\w\s\d\.]*)\"?/g; // group 1 is pvs version, group 2 is lisp version
 			const info: RegExpMatchArray = regexp.exec(res.result);
 			if (info && info.length > 2) {
 				return {
 					"pvs-version": info[1].trim(),
-					"lisp-version": info[2].trim()
+					"lisp-version": info[2].replace("International", "").trim(),
+					"nasalib-version": nasalib ? "NASALib" : null
 				}
 			}
 		}
 		return null;
 	}
 
+	/**
+	 * Returns pvs version information
+	 */
+	async getNasalibVersionInfo(): Promise<string> {
+		const res: PvsResponse = await this.legacy.lisp(`*nasalib-version*`);
+		const regexp: RegExp = /(\d+(?:.?\d+)*)/g; // group 1 is nasalib
+		const info: RegExpMatchArray = regexp.exec(res.result);
+		if (info && info.length > 1) {
+			// this.nasalibPresent = true;
+			return info[1];
+		}
+		return null;
+	}
 	
 	//--------------------------------------------------
 	//         internal functions

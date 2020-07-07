@@ -58,7 +58,8 @@ export declare interface PeekDefinitionCommand {
 
 export declare interface PvsVersionDescriptor {
 	"pvs-version": string,
-	"lisp-version": string
+	"lisp-version": string,
+	"nasalib-version": string
 };
 
 export declare interface ErrorType {
@@ -469,6 +470,7 @@ export const serverCommand = {
 	typecheckWorkspace: "pvs.typecheck-workspace",
 	listContext: "pvs.list-context",
 	generateTccs: "pvs.generate-tccs",
+	generateSummary: "pvs.generate-summary",
 	showTccs: "pvs.show-tccs",
 	startPvsServer: "pvs.start-pvs-server",
 	stopPvsServer: "pvs.stop-pvs-server",
@@ -506,6 +508,7 @@ export const serverEvent = {
 	parseFileResponse: "pvs.response.parse-file",
 	listContextResponse: "pvs.response.list-context",
 	generateTccsResponse: "pvs.response.generate-tccs",
+	generateSummaryResponse: "pvs.response.generate-summary",
 	showTccsResponse: "pvs.response.show-tccs",
 	startEvaluatorResponse: "pvs.response.start-evaluator",
 	hp2pvsResponse: "pvs.response.hp-to-pvs-file",
