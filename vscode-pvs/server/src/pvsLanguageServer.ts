@@ -95,6 +95,7 @@ interface Settings {
 
 export class PvsLanguageServer {
 	protected MAX_PARALLEL_PROCESSES: number = 1; // pvs 7.1 currently does not support parallel processes
+	readonly MIN_PVS_VERSION: number = 7.1;
 
 	protected diags: ContextDiagnostics = {}; 
 
@@ -1714,8 +1715,8 @@ export class PvsLanguageServer {
 	protected async sendPvsVersionInfo (): Promise<boolean> {
 		const desc: PvsVersionDescriptor = await this.pvsProxy.getPvsVersionInfo();
 		if (desc) {
-			const majorReleaseNumber: number = parseInt(desc["pvs-version"]);
-			if (majorReleaseNumber >= 7) {
+			const pvsVersion: number = parseFloat(desc["pvs-version"]);
+			if (pvsVersion >= this.MIN_PVS_VERSION) {
 				await this.sendWorkspaceInfo();
 				this.pvsVersionDescriptor = desc;
 				this.connection.sendRequest(serverEvent.pvsServerReady, desc);
@@ -1723,7 +1724,7 @@ export class PvsLanguageServer {
 				return true;
 			} else {
 				console.error(`[pvs-language-server] Error: incompatible pvs version ${desc["pvs-version"]}`);
-				this.connection.sendRequest(serverEvent.pvsIncorrectVersion, `Incorrect PVS version ${desc["pvs-version"]} (vscode-pvs requires pvs ver >= 7)`);
+				this.connection.sendRequest(serverEvent.pvsIncorrectVersion, `Incorrect PVS version ${desc["pvs-version"]} (vscode-pvs requires pvs ver >= ${this.MIN_PVS_VERSION})`);
 			}
 		} else {
 			const msg: string = `PVS executable not found at ${this.pvsPath}`;
