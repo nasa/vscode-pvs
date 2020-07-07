@@ -1770,6 +1770,7 @@ export class PvsLanguageServer {
 				await this.cliGateway.activate();
 				// reset inChecker flag
 				this.mode = "lisp";
+				this.connection.sendRequest(serverEvent.proverModeEvent, { mode: this.mode });
 				return true;
 			} else {
 				console.error("[pvs-language-server] Error: failed to identify PVS path");
@@ -1934,6 +1935,10 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.rebootPvsServer, async (desc?: { pvsPath?: string }) => {
 				await fsUtils.deletePvsCache(this.lastParsedContext, { keepTccs: true }); // this will remove .pvscontext and pvsbin
 				await this.pvsProxy.rebootPvsServer(desc);
+				// reset inChecker flag
+				this.mode = "lisp";
+				this.connection.sendRequest(serverEvent.proverModeEvent, { mode: this.mode });
+				// send version info				
 				await this.sendPvsVersionInfo();
 			});
 			this.connection.onRequest(serverCommand.parseFile, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
