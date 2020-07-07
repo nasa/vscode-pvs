@@ -68,8 +68,6 @@ import * as utils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import * as os from 'os';
 import { PvsErrorManager } from './pvsErrorManager';
-import { resourceUsage } from 'process';
-
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -216,9 +214,15 @@ export class PvsProxy {
 								id: req.id,
 								error
 							});
-						}
-						if (this.pvsErrorManager) {
-							this.pvsErrorManager.notifyPvsFailure({ method });
+							if (this.pvsErrorManager) {
+								this.pvsErrorManager.notifyPvsFailure({ msg: `Error: unable to connect to pvs-server at http://${this.clientAddress}:${this.clientPort}` });
+							}
+						} else if (error['code'] === 'ECONNRESET') {
+							// do nothing -- this usually occurs when the user reboots pvs-server
+						} else {
+							if (this.pvsErrorManager) {
+								this.pvsErrorManager.notifyPvsFailure({ method });
+							}
 						}
 					} else if (value) {
 						// console.log("[pvs-proxy] Value returned by pvs-server: ");

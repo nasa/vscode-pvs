@@ -116,7 +116,7 @@ export async function readProofFile (fname: string): Promise<ProofFile> {
 			}
 		}
 	} catch (jsonError) {
-		console.warn(`[fs-utils] Warning: unable to parse proof file ${fname}`, jsonError);
+		console.error(`[fs-utils] Error: Unable to parse proof file ${fname}`, jsonError.message);
 	} finally {
 		return proofFile;
 	}

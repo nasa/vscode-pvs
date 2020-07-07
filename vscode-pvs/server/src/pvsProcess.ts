@@ -217,16 +217,13 @@ export class PvsProcess {
 							return;
 						}
 
+						// const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
+						// if (matchRestartAction) {
+						// 	console.error(`[pvs-process] Error: ${this.data}`);
+						// }
 						const match: RegExpMatchArray = /(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g.exec(data);
 						const matchChecker: RegExpMatchArray = /\bRule\?/g.exec(data);
 						if (match && match[0] || matchChecker) {
-							// NB: avoid doing :pop, as it may trigger process exit
-							// const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
-							// if (matchRestartAction) {
-							// 	this.pvsProcess.stdin.write(":pop\n");
-							// 	this.log(":pop\n", { force: true });
-							// 	return;
-							// }
 							if (!this.ready) {
 								this.ready = true;
 								resolve(ProcessCode.SUCCESS);

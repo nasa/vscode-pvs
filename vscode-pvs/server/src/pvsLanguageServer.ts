@@ -782,7 +782,7 @@ export class PvsLanguageServer {
 							isTypecheckError: true
 						};
 						this.sendDiagnostics("Typecheck");
-						this.notifyEndImportantTask({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} successfully typechecked!` });
+						this.notifyEndImportantTask({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} typechecked successfully!` });
 					} else {
 						this.pvsErrorManager.handleTypecheckError({ response: <PvsError> response, taskId, request });
 						// send diagnostics
@@ -897,7 +897,7 @@ export class PvsLanguageServer {
 			});
 		}
 	}
-	async generateTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { showTccsResponse?: boolean, quiet?: boolean }): Promise<void> {
+	async generateTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { quiet?: boolean }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		if (request) {
 			opt = opt || {};
@@ -918,11 +918,8 @@ export class PvsLanguageServer {
 				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking, pvs-server is not able to do this tho.
 				// then generate tccs
 				const response: PvsContextDescriptor = await this.generateTccs(desc);
-				if (opt.showTccsResponse) {
-					this.connection.sendRequest(serverEvent.showTccsResponse, { response, args: request });
-				} else {
-					this.connection.sendRequest(serverEvent.generateTccsResponse, { response, args: request });
-				}
+				this.connection.sendRequest(serverEvent.generateTccsResponse, { response, args: request });
+
 				let nTccs: number = 0;
 				let nProved: number = 0;
 				if (response && response.fileDescriptors && response.fileDescriptors[fname] && response.fileDescriptors[fname].theories) {
@@ -936,8 +933,8 @@ export class PvsLanguageServer {
 						}
 					}
 				}
-				const msg: string = (opt.showTccsResponse) ? `${nTccs} tccs generated for ${shortName} (${nProved} proved, ${nTccs - nProved} to be proved)` : null;
 				if (!opt.quiet) {
+					const msg: string = `${nTccs} tccs generated for ${shortName} (${nProved} proved, ${nTccs - nProved} to be proved)`;
 					this.notifyEndImportantTask({ id: taskId, msg });
 				}
 			} else {
@@ -994,7 +991,7 @@ export class PvsLanguageServer {
 	 */
 	async parseFile (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
 		args = fsUtils.decodeURIComponents(args);
-		if (this.checkArgs("parseFile", args) && !this.mode) {
+		if (this.checkArgs("parseFile", args)) {
 			const enableEParser: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.settings.parser.errorTolerant"));
 			try {
 				return await this.pvsProxy.parseFile(args, { enableEParser });
@@ -1918,14 +1915,11 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.typecheckFile, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.typecheckFileRequest(request); // async call
 			});
-			this.connection.onRequest(serverCommand.generateTccs, async (request: { fileName: string, fileExtension: string, contextFolder: string, opt?: { quiet?: boolean } }) => {
-				this.generateTccsRequest(request, { quiet: request && request.opt && request.opt.quiet }); // async call
+			this.connection.onRequest(serverCommand.generateTccs, async (request: { fileName: string, fileExtension: string, contextFolder: string, quiet?: boolean }) => {
+				this.generateTccsRequest(request, { quiet: request && request.quiet }); // async call
 			});
 			this.connection.onRequest(serverCommand.generateSummary, async (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, content?: string }) => {
 				this.generateSummaryRequest(request); // async call
-			});
-			this.connection.onRequest(serverCommand.showTccs, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
-				this.generateTccsRequest(request, { showTccsResponse: true }); // async call
 			});
 			this.connection.onRequest(serverCommand.listContext, async (request: { contextFolder: string }) => {
 				this.listContextFilesRequest(request); // async call

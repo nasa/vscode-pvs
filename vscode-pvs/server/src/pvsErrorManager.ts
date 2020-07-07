@@ -107,7 +107,7 @@ export class PvsErrorManager {
 			this.connection.sendNotification("server.status.pvs-failure", opt);
 		}
 	}
-	protected notifyError (desc: { msg: string }): void {
+	notifyError (desc: { msg: string }): void {
 		// error shown in the status bar
 		if (this.connection) {
 			this.connection.sendNotification("server.status.error", desc);

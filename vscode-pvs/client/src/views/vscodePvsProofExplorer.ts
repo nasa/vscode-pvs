@@ -1590,9 +1590,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 			if (this.autorunFlag) {
 				vscode.commands.executeCommand('setContext', 'autorun', true);
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
 				this.run();
 			} else {
 				vscode.commands.executeCommand('setContext', 'autorun', false);
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 			}
 		} else {
 			console.warn(`[proof-explorer] Warning: unable to activate selected proof (root node is null)`);

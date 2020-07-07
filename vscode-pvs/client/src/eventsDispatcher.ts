@@ -177,69 +177,26 @@ export class EventsDispatcher {
         }) => {
             // request tccs for the files that typecheck correctly
             if (desc && desc.response && !desc.response.error && desc.args) {
-                desc.args["opt"] = { quiet: true };
-                this.client.sendRequest(serverCommand.generateTccs, desc.args);
+                this.client.sendRequest(serverCommand.generateTccs, {
+                    fileName: desc.args.fileName,
+                    fileExtension: desc.args.fileExtension,
+                    contextFolder: desc.args.contextFolder,
+                    quiet: true
+                });
+                // register handler for response
+                this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
+                    response: PvsContextDescriptor, 
+                    args: { 
+                        fileName: string, 
+                        fileExtension: string, 
+                        contextFolder: string 
+                    }
+                }) => {
+                    if (this.workspaceExplorer && desc.response) {
+                        this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
+                    }
+                });
             }
-        });
-		this.client.onRequest(serverEvent.showTccsResponse, (desc: { 
-            response: PvsContextDescriptor, 
-            args: { 
-                fileName: string, 
-                fileExtension: string, 
-                contextFolder: string 
-            }
-        }) => {
-            // console.log(desc);
-            if (this.workspaceExplorer && desc.response) {
-                this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
-            }
-            if (desc && desc.args) {
-                // const fname: string = fsUtils.desc2fname(desc.args);
-                if (desc && desc.response 
-                        // && desc.response.fileDescriptors 
-                        // && desc.response.fileDescriptors[fname] 
-                        // && desc.response.fileDescriptors[fname].theories 
-                        // && desc.response.fileDescriptors[fname].theories.length
-                        ) {
-                    // open tcc file in the editor
-                    const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
-                    const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
-                    const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
-                    vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
-                }
-            }
-        });
-        // this.client.onRequest(serverEvent.dischargeTccsResponse, (desc: {
-        //     response: DischargeTccsResult, 
-        //     args: { 
-        //         fileName: string, 
-        //         fileExtension: string, 
-        //         contextFolder: string 
-        //     }
-        // }) => {
-        //     // generate tccs again
-        //     desc.args["opt"] = { quiet: true };
-        //     this.client.sendRequest(serverCommand.generateTccs, desc.args);
-        // });
-		this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
-            response: PvsContextDescriptor, 
-            args: { 
-                fileName: string, 
-                fileExtension: string, 
-                contextFolder: string 
-            }
-        }) => {
-            // console.log(desc);
-            if (this.workspaceExplorer && desc.response) {
-                this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
-            }
-            // if (desc && desc.response && desc.response.theories && desc.response.theories.length) {
-            //     // open tcc file in the editor
-            //     const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
-            //     const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
-            //     const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
-            //     vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
-            // }
         });
 		this.client.onRequest(serverEvent.parseFileResponse, (res: PvsResponse) => {
             // show stats
@@ -829,7 +786,29 @@ export class EventsDispatcher {
                 }> this.resource2desc(resource);
                 if (desc) {
                     // send show-tccs request to pvs-server
-                    this.client.sendRequest(serverCommand.showTccs, desc);
+                    this.client.sendRequest(serverCommand.generateTccs, desc);
+                    // register handler for response
+                    this.client.onRequest(serverEvent.generateTccsResponse, (desc: { 
+                        response: PvsContextDescriptor, 
+                        args: { 
+                            fileName: string, 
+                            fileExtension: string, 
+                            contextFolder: string 
+                        }
+                    }) => {
+                        if (this.workspaceExplorer && desc.response) {
+                            this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
+                        }
+                        if (desc && desc.args) {
+                            if (desc && desc.response) {
+                                // open tcc file in the editor
+                                const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
+                                const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
+                                const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
+                                vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
+                            }
+                        }
+                    });
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
@@ -851,6 +830,19 @@ export class EventsDispatcher {
                 if (desc) {
                     // send generate-tccs request to pvs-server
                     this.client.sendRequest(serverCommand.generateTccs, desc);
+                    // register handler for response
+                    this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
+                        response: PvsContextDescriptor, 
+                        args: { 
+                            fileName: string, 
+                            fileExtension: string, 
+                            contextFolder: string 
+                        }
+                    }) => {
+                        if (this.workspaceExplorer && desc.response) {
+                            this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
+                        }
+                    });            
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
