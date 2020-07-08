@@ -106,20 +106,21 @@ export async function readProofFile (fname: string): Promise<ProofFile> {
 	let proofFile: ProofFile = null;
 	fname = fname.replace("file://", "");
 	fname = tildeExpansion(fname);
-	try {
-		// check if a jprf file exists with the proof
-		const fnameExists: boolean = await fileExists(fname);
-		if (fnameExists) {
-			const content: string = await readFile(fname);
-			if (content) {
-				proofFile = JSON.parse(content);
-			}
+	const content: string = await readFile(fname);
+	if (content) {
+		try {
+			proofFile = JSON.parse(content);
+		} catch (jsonError) {
+			console.error(`[fs-utils] Error: Unable to parse proof file ${fname}`, jsonError.message);
+			console.error(`[fs-utils] Storing corrupted file content to ${fname}.err`);
+			// create a backup copy of the corrupted jprf file, because it might get over-written
+			await renameFile(fname, `${fname}.err`);
+			await writeFile(`${fname}.err.msg`, jsonError.message);
+		} finally {
+			return proofFile;
 		}
-	} catch (jsonError) {
-		console.error(`[fs-utils] Error: Unable to parse proof file ${fname}`, jsonError.message);
-	} finally {
-		return proofFile;
 	}
+	return proofFile;
 }
 export function deleteFile(fname: string): boolean {
 	try {
@@ -190,6 +191,17 @@ export async function writeFile(fname: string, content: string): Promise<boolean
 		}
 	}
 	return true;
+}
+export async function renameFile(old_fname: string, new_fname: string): Promise<boolean> {
+	if (old_fname && new_fname) {
+		const content: string = await readFile(old_fname) || "";
+		let success: boolean = await writeFile(new_fname, content);
+		if (success) {
+			success = await deleteFile(old_fname);
+		}
+		return success;
+	}
+	return false;
 }
 export function getFileName(fname: string): string {
 	if (fname) {
