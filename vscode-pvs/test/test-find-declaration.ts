@@ -56,7 +56,7 @@ describe("pvs-proxy", () => {
 
 		await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		const response: PvsResponse = await pvsProxy.findDeclaration("sqrt");
-		console.dir(response);
+		// console.dir(response);
 		expect(response).not.toBeNull();
 		expect(response["error"]).not.toBeDefined();
 		expect(response["result"]).not.toBeNull();

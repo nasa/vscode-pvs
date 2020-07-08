@@ -117,7 +117,7 @@ describe("pvs-typechecker", () => {
 
 	it(`can generate .tcc file content`, async () => {
 		label(`can generate the .tcc file content`);
-		const response: PvsResponse = await pvsProxy.generateTccs({ 
+		const response: PvsResponse = await pvsProxy.tccs({ 
 			fileName: "sqrt", 
 			fileExtension: ".pvs", 
 			theoryName: "sqrt", 
@@ -127,7 +127,7 @@ describe("pvs-typechecker", () => {
 		expect(response.error).not.toBeDefined();
 		expect(response.result).not.toBeNull();
 
-		const response1: PvsResponse = await pvsProxy.generateTccs({
+		const response1: PvsResponse = await pvsProxy.tccs({
 			fileName:"alaris2lnewmodes", 
 			fileExtension:".pvs", 
 			theoryName: "alaris_th", 

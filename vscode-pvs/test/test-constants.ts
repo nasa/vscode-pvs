@@ -1482,3 +1482,141 @@ export const triangle_rectangle: ProofDescriptor = {
     branch: ''
   }
 };
+
+export const sq_plus_eq_0_desc: ProofDescriptor = {
+  info: {
+    theory: 'sq',
+    formula: 'sq_plus_eq_0',
+    status: 'untried',
+    prover: 'PVS 7.1.0 (Allegro CL Enterprise Edition)',
+    shasum: '90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a'
+  },
+  proofTree: {
+    name: 'sq.sq_plus_eq_0',
+    rules: [
+      {
+        name: '(skosimp)',
+        rules: [],
+        type: 'proof-command',
+        branch: ''
+      },
+      {
+        name: '(ground)',
+        rules: [
+          {
+            name: '1',
+            rules: [
+              {
+                name: '(grind-with-lemmas :theories ("sq" "real_props") :if-match all :lazy-match? nil :lemmas "sq_eq_0")',
+                rules: [],
+                type: 'proof-command',
+                branch: '1'
+              }
+            ],
+            type: 'proof-branch',
+            branch: '1'
+          },
+          {
+            name: '2',
+            rules: [
+              {
+                name: '(grind-with-lemmas :theories ("sq" "real_props") :if-match all :lazy-match? nil :lemmas "sq_eq_0")',
+                rules: [],
+                type: 'proof-command',
+                branch: '2'
+              }
+            ],
+            type: 'proof-branch',
+            branch: '2'
+          },
+          {
+            name: '3',
+            rules: [
+              {
+                name: '(grind-with-lemmas :theories ("sq" "real_props") :if-match all :lazy-match? nil :lemmas "sq_eq_0")',
+                rules: [],
+                type: 'proof-command',
+                branch: '3'
+              }
+            ],
+            type: 'proof-branch',
+            branch: '3'
+          }
+        ],
+        type: 'proof-command',
+        branch: ''
+      }
+    ],
+    type: 'root',
+    branch: ''
+  }
+};
+
+export const sq_plus_eq_0_desc_new: ProofDescriptor = {
+  info: {
+    theory: 'sq',
+    formula: 'sq_plus_eq_0',
+    status: 'proved', // update status
+    prover: 'PVS 7.1.0 (Allegro CL Enterprise Edition)',
+    shasum: '90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a'
+  },
+  proofTree: {
+    name: 'sq.sq_plus_eq_0',
+    rules: [
+      {
+        name: '(skosimp*)', // updated proof command
+        rules: [],
+        type: 'proof-command',
+        branch: ''
+      },
+      {
+        name: '(ground)',
+        rules: [
+          {
+            name: '1',
+            rules: [
+              {
+                name: '(grind-with-lemmas :theories ("sq" "real_props") :if-match all :lazy-match? nil :lemmas "sq_eq_0")',
+                rules: [],
+                type: 'proof-command',
+                branch: '1'
+              }
+            ],
+            type: 'proof-branch',
+            branch: '1'
+          },
+          {
+            name: '2',
+            rules: [
+              {
+                name: '(grind-with-lemmas :theories ("sq" "real_props") :if-match all :lazy-match? nil :lemmas "sq_eq_0")',
+                rules: [],
+                type: 'proof-command',
+                branch: '2'
+              }
+            ],
+            type: 'proof-branch',
+            branch: '2'
+          },
+          {
+            name: '3',
+            rules: [
+              {
+                name: '(grind-with-lemmas :theories ("sq" "real_props") :if-match all :lazy-match? nil :lemmas "sq_eq_0")',
+                rules: [],
+                type: 'proof-command',
+                branch: '3'
+              }
+            ],
+            type: 'proof-branch',
+            branch: '3'
+          }
+        ],
+        type: 'proof-command',
+        branch: ''
+      }
+    ],
+    type: 'root',
+    branch: ''
+  }
+};
