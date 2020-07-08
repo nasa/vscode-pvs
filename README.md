@@ -5,7 +5,7 @@ The environment redefines the way developers interact with PVS, and better align
 ![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.24-gamma](releases/vscode-pvs-1.0.24-gamma.vsix)
+[vscode-pvs-1.0.24-delta](releases/vscode-pvs-1.0.24-delta.vsix)
 
 ## Getting started
 New to VSCode-PVS and the PVS verification system? Try out our [tutorial](vscode-pvs/docs/TUTORIAL.md)!
@@ -53,6 +53,8 @@ When a new release of VSCode-PVS is available in the [github repository](release
 
 All settings and preferences from the previous version of VSCode-PVS will be maintained.
 
+## Publications
+Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)]
 
 ## Notices
 ### Copyright 
