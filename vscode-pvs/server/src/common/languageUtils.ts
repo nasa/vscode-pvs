@@ -516,7 +516,7 @@ export async function getProofliteScript (desc: {
  * @param desc Descriptor indicating filename, file extension, context folder, file content, and whether the file in question is the prelude (flag prelude)
  */
 export async function listTheorems (desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean, cache?: { theories?: TheoryDescriptor[] } }): Promise<FormulaDescriptor[]> {
-	if (desc) {
+	if (desc && desc.fileContent) {
 		const theories: TheoryDescriptor[] = (desc.cache && desc.cache.theories) ? desc.cache.theories : listTheories(desc);
 		const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories
 		if (theories) {
@@ -585,7 +585,7 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 			return formulaDescriptors;
 		}
 	}
-	return null;
+	return [];
 }
 
 /**

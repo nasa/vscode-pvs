@@ -102,7 +102,8 @@ export async function readFile(fname: string): Promise<string | null> {
 	return null;
 }
 // TODO: move this function to languageUtils
-export async function readProofFile (fname: string): Promise<ProofFile> {
+export async function readProofFile (fname: string, opt?: { quiet?: boolean }): Promise<ProofFile> {
+	opt = opt || {};
 	let proofFile: ProofFile = null;
 	fname = fname.replace("file://", "");
 	fname = tildeExpansion(fname);
@@ -111,8 +112,10 @@ export async function readProofFile (fname: string): Promise<ProofFile> {
 		try {
 			proofFile = JSON.parse(content);
 		} catch (jsonError) {
-			console.error(`[fs-utils] Error: Unable to parse proof file ${fname}`, jsonError.message);
-			console.error(`[fs-utils] Storing corrupted file content to ${fname}.err`);
+			if (!opt.quiet) {
+				console.error(`[fs-utils] Error: Unable to parse proof file ${fname}`, jsonError.message);
+				console.error(`[fs-utils] Storing corrupted file content to ${fname}.err`);
+			}
 			// create a backup copy of the corrupted jprf file, because it might get over-written
 			await renameFile(fname, `${fname}.err`);
 			await writeFile(`${fname}.err.msg`, jsonError.message);

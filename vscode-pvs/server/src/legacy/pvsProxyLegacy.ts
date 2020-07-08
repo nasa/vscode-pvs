@@ -67,7 +67,7 @@ export class PvsProxyLegacy {
         this.pvsProcess = pvsProcess;
         this.pvsErrorManager = opt.pvsErrorManager;
         if (!this.pvsProcess) {
-            console.log(`[pvs-proxy-legacy] Activation performed with stand-alone pvs-process`);
+            console.log(`[pvs-proxy-legacy] Activating stand-alone pvs process`);
             this.pvsProcess = new PvsProcess(this.pvsPath, opt);
             await this.pvsProcess.activate({ externalServer: true });
         }
