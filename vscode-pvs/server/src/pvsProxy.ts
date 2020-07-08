@@ -125,7 +125,7 @@ export class PvsProxy {
 
 	protected legacy: PvsProxyLegacy;
 	protected useLegacy: boolean = true;
-	protected nasalibPresent: boolean = false;
+	protected useNasalib: boolean = false;
 	/**
 	 * Parser
 	 */
@@ -601,7 +601,7 @@ export class PvsProxy {
 	async proveFormula(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string }): Promise<PvsResponse> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName && desc.formulaName) {
 			await this.changeContext(desc.contextFolder);
-			if (this.nasalibPresent) {
+			if (this.useNasalib) {
 				const res: PvsResponse = await this.legacy.proveFormula(desc);
 				console.dir(res);
 				return res;
@@ -802,7 +802,7 @@ export class PvsProxy {
 			const cmd: string = showHidden ? "(skip)"
 				: isGrind ? utils.applyTimeout(desc.cmd, desc.timeout)
 					: desc.cmd;
-			const res: PvsResponse = (this.nasalibPresent) ? await this.legacy.proofCommand(cmd) 
+			const res: PvsResponse = (this.useNasalib) ? await this.legacy.proofCommand(cmd) 
 				: await this.pvsRequest('proof-command', [ cmd ]);
 			if (res) {
 				if (showHidden) {
@@ -1087,7 +1087,7 @@ export class PvsProxy {
 		const regexp: RegExp = /(\d+(?:.?\d+)*)/g; // group 1 is nasalib
 		const info: RegExpMatchArray = regexp.exec(res.result);
 		if (info && info.length > 1) {
-			// this.nasalibPresent = true;
+			// this.useNasalib = true;
 			return info[1];
 		}
 		return null;
