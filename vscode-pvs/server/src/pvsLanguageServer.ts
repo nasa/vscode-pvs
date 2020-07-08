@@ -551,21 +551,21 @@ export class PvsLanguageServer {
 		// }
 	}
 
-	/**
-	 * Request proof script to pvs-server
-	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
-	 */
-	async proofScript (request: { 
-		fileName: string, 
-		fileExtension: string, 
-		theoryName: string, 
-		formulaName: string, 
-		contextFolder: string
-	}): Promise<PvsResponse> {
-		console.log(`[pvs-server] Loading proof script`);
-		request = fsUtils.decodeURIComponents(request);
-		return await this.pvsProxy.proofScript(request);
-	}
+	// /**
+	//  * Request proof script to pvs-server
+	//  * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
+	//  */
+	// async proofScript (request: { 
+	// 	fileName: string, 
+	// 	fileExtension: string, 
+	// 	theoryName: string, 
+	// 	formulaName: string, 
+	// 	contextFolder: string
+	// }): Promise<PvsResponse> {
+	// 	console.log(`[pvs-server] Loading proof script`);
+	// 	request = fsUtils.decodeURIComponents(request);
+	// 	return await this.pvsProxy.proofScript(request);
+	// }
 
 	/**
 	 * Sends to the client the prooflite script associated with the formula indicated in the request
@@ -598,64 +598,11 @@ export class PvsLanguageServer {
 		formulaName: string, 
 		contextFolder: string
 	}): Promise<ProofDescriptor> {
-		if (request) {
-			request = fsUtils.decodeURIComponents(request);
-			const shasum: string = await fsUtils.shasumFile(request);
-
-			// to begin with, create an empty proof
-			let proofDescriptor: ProofDescriptor = {
-				info: {
-					theory: request.theoryName,
-					formula: request.formulaName,
-					status: "untried",
-					prover: utils.pvsVersionToString(this.pvsVersionDescriptor) || "PVS 7.x",
-					shasum
-				}
-			};
-
-			try {
-				const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
-				let proofFile: ProofFile = await fsUtils.readProofFile(fname);
-				const key: string = `${request.theoryName}.${request.formulaName}`;
-				// try to load the proof from the .jprf file
-				if (proofFile && proofFile[key] && proofFile[key].length > 0) {
-					proofDescriptor = proofFile[key][0];
-					proofDescriptor.info.status = await utils.getProofStatus(request);
-					if (proofDescriptor.info && proofDescriptor.info.shasum !== shasum) {
-						proofDescriptor.info.shasum = shasum;
-					}
-				} else {
-					// if the proof is not stored in the .jprf file, then try to load the proof from the .prf and then update jprf
-					// the APIs of pvs are ugly -- an error is returned if the formula does not have a proof, as opposed to simply returning an empty proof
-					const response: PvsResponse = await this.proofScript(request);
-					if (response && response.result) {
-						proofDescriptor = utils.prf2jprf({
-							prf: response.result,
-							theoryName: request.theoryName, 
-							formulaName: request.formulaName, 
-							version: this.pvsVersionDescriptor,
-							shasum
-						});
-					}
-					// save proof in the jprf file
-					await this.saveProof({
-						fileName: request.fileName,
-						fileExtension: request.fileExtension,
-						theoryName: request.theoryName,
-						formulaName: request.formulaName,
-						contextFolder: request.contextFolder,
-						proofDescriptor
-					});
-				}
-			} catch (err) {
-				console.error(`[pvs-server] Error while fetching proof information.`, err);
-			} finally {
-				// return the requested proof
-				return proofDescriptor;
-			}
-		} else {
-			console.warn(`[pvs-server] Warning: load-proof received null request`);
+		if (this.pvsProxy) {
+			return this.pvsProxy.loadProof(request);
 		}
+		// else
+		console.error(`[pvs-language-server] Error: Could not load proof script (pvs-proxy is null)`);
 		return null;
 	}
 
@@ -677,7 +624,7 @@ export class PvsLanguageServer {
 				this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc }, args: request });
 			} else {
 				// something went wrong
-				console.warn(`[pvs-server] Warning: load-proof-request was unable to receive proof`);
+				console.warn(`[pvs-language-server] Warning: load-proof-request was unable to receive proof`);
 			}
 		}
 	}
@@ -719,18 +666,11 @@ export class PvsLanguageServer {
 		contextFolder: string, 
 		proofDescriptor: ProofDescriptor
 	}): Promise<boolean> {
-		if (request) {
-			request = fsUtils.decodeURIComponents(request);
-			const fname: string = path.join(request.contextFolder, `${request.fileName}.jprf`);
-			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
-			proofFile = proofFile || {};
-			const key: string = `${request.theoryName}.${request.formulaName}`;
-			proofFile[key] = [ request.proofDescriptor ]; // TODO: implement mechanism to save a specific proof?
-			const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
-			return success;
+		if (this.pvsProxy) {
+			return this.pvsProxy.saveProof(request);
 		}
 		// else
-		console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", request);
+		console.error(`[pvs-language-server] Error: Could not save proof script (pvs-proxy is null)`);
 		return false;
 	}
 	/**
