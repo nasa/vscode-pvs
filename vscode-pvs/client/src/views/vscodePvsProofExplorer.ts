@@ -589,10 +589,13 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					return;
 				}
 				if (this.branchHasChanged(newBranch, previousBranch)) {
-					this.ghostNode.notActive();
+					if (this.ghostNode.isActive()) {
+						this.ghostNode.notActive();
+					} else {
+						this.activeNode.notVisited();
+					}
 					const targetBranch: ProofBranch = this.findProofBranch(newBranch) || this.createBranchRecursive({ id: newBranch, parent: activeNode.parent });
 					if (targetBranch) {
-						this.activeNode.notVisited();
 						if (this.activeNode === this.activeNode.parent.children[0] && this.activeNode.parent.isPending()) {
 							this.activeNode.parent.notVisited();
 						}
