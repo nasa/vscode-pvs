@@ -249,7 +249,7 @@ export class PvsLanguageServer {
 		if (args) {
 			args = fsUtils.decodeURIComponents(args);
 			const timeout: number = await this.connection.workspace.getConfiguration("pvs.settings.prover.watchdog");
-			const useLispInterface: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
+			const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
 
 			const start: number = new Date().getTime();
 
@@ -380,7 +380,7 @@ export class PvsLanguageServer {
 		if (this.checkArgs("proveFormula", args)) {
 			try {
 				args = fsUtils.decodeURIComponents(args);
-				const useLispInterface: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
+				const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
 				const response: PvsResponse = await this.pvsProxy.proveFormula(args, { useLispInterface });
 				if (response && response.result) {
 					this.mode = "in-checker";
@@ -1724,7 +1724,7 @@ export class PvsLanguageServer {
 		// if (this.mode === "in-checker") {
 			const proverStatus: PvsResponse = await this.pvsProxy.proverStatus();
 			if (proverStatus && proverStatus.result !== "inactive") {
-				const useLispInterface: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
+				const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
 				await this.pvsProxy.proofCommand({ cmd: "(quit)" }, { useLispInterface });
 			}
 		// }

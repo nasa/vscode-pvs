@@ -1137,6 +1137,8 @@ export function isQuitCommand (cmd: string): boolean {
 		|| cmd === "exit;"
 		|| cmd === "(exit)"
 		|| cmd.toLocaleLowerCase() === "(exit)y")
+		|| /\(\s*quit\s*\)\s*y?;?/gi.test(cmd)
+		|| /\(\s*exit\s*\)\s*y?;?/gi.test(cmd)
 		;
 }
 
@@ -1210,13 +1212,16 @@ export function isGrindCommand (cmd: string): boolean {
 }
 
 export function isQEDCommand (cmd: string): boolean {
-	return cmd && cmd.trim() === "Q.E.D.";
+	return cmd && (cmd.trim() === "Q.E.D."
+		|| /\(?\s*Q\.E\.D\./g.test(cmd))
+		;
 }
 
 export function isSaveCommand (cmd: string): boolean {
 	return cmd && (cmd === "save" 
 		|| cmd === "save;"
-		|| cmd === "(save)")
+		|| cmd === "(save)"
+		|| /\(?\s*save\b/g.test(cmd))
 		;
 }
 

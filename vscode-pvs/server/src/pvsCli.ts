@@ -98,12 +98,6 @@ class CliConnection implements SimpleConnection {
 	sendRequest (type: string, data: any): void { };
 }
 
-
-
-function isQED (cmd: string): boolean {
-	return cmd.startsWith("Q.E.D.");
-}
-
 let progressLevel: number = 0;
 let progressMsg: string = "";
 function showProgress (data: string) {
@@ -210,7 +204,7 @@ class PvsCli {
 				const test: { success: boolean, msg: string } = utils.parCheck(this.lines);
 				if (test.success) {
 					// console.dir(key);
-					let cmd: string = this.lines;
+					let cmd: string = this.lines.trim();
 					this.lines = "";
 					if (utils.isQuitCommand(cmd)) {
 						this.wsClient.send(JSON.stringify({
@@ -251,7 +245,11 @@ class PvsCli {
 		});
 		this.rl.on("line", async (ln: string) => {
 			if (this.isActive) {
-				this.lines += ln;
+				if (this.lines) {
+					this.lines += " " + ln;
+				} else {
+					this.lines = ln;
+				}
 			}
 		});		
 		this.connection = new CliConnection();
@@ -322,7 +320,7 @@ class PvsCli {
 						});
 						return;
 					}
-					if (isQED(cmd)) {
+					if (utils.isQEDCommand(cmd)) {
 						readline.moveCursor(process.stdin, 0, -1);
 						readline.clearScreenDown(process.stdin);
 						console.log();
@@ -370,7 +368,7 @@ class PvsCli {
 		// });
 		this.rl.on("line", async (ln: string) => {
 			if (this.isActive) {
-				this.lines += ln;
+				this.lines += " " + ln;
 			}
 		});
 		this.connection = new CliConnection();
