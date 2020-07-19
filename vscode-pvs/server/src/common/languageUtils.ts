@@ -53,13 +53,16 @@ export const RECORD: { [key: string]: RegExp } = {
 	typeName: /\w+\s*:\s*(\w+)/g
 }
 
-// export function printPreviousCommand (cmd: any): string {
-// 	const printArgs = (cmd: any): string => {
+// export function printCommand (cmd: any[]): string {
+// 	const printArgs = (cmd: any[] | string | number): string => {
 // 		if (cmd) {
 // 			if (typeof cmd === "string") {
 // 				return `"${cmd}"`;
 // 			}
-// 			if (cmd["length"]) {
+// 			if (typeof cmd === "number") {
+// 				return `${cmd}`;
+// 			}
+// 			if (cmd.length) {
 // 				let ans: string = "";
 // 				for (let i = 0; i < cmd["length"]; i++) {
 // 					ans += printArgs(cmd[i]);
@@ -69,9 +72,10 @@ export const RECORD: { [key: string]: RegExp } = {
 // 			return null;
 // 		}
 // 	}
-// 	if (cmd && cmd["length"] && cmd[0] && typeof cmd[0] === "string") {
+// 	if (cmd && cmd.length) {
+// 		const cmdName: string = cmd[0];
 // 		const args = cmd.slice(1);
-// 		const ans: string = `${cmd[0]} ${printArgs(args)}`;
+// 		const ans: string = `${cmdName} ${printArgs(args)}`;
 // 		return `(${ans.trim()})`;
 // 	}
 // 	return null;
@@ -80,9 +84,34 @@ export const RECORD: { [key: string]: RegExp } = {
 export const commentRegexp: RegExp = /%.*/g;
 // group 1 is theoryName, group 2 is comma-separated list of theory parameters
 export const theoryRegexp: RegExp = /(\w+)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*THEORY\s*BEGIN\b/gi;
+export const datatypeRegexp: RegExp = /(\w+)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*DATATYPE\s*BEGIN\b/gi;
+export const declarationRegexp: RegExp = /(\w+)\s*(?:\[([\w\W\s]+)\])?\s*\:/gi;
+// group 1 is the formula name
+export const formulaRegexp: RegExp = /(\b[\w\?]+)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT|AXIOM)\b/gim;
+// same as formulaRegExp, but does not include JUDGEMENT and AXIOM
+export const theoremRegexp: RegExp = /(\b[\w\?]+)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gim;
 // /(\w+)\s*(?:\%.*\s)*(?:\[([^\]]+)\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
 export const tccRegexp: RegExp = /(\b[\w\?]+)\s*:\s*OBLIGATION\b/gi;
 export const tccStatusRegExp: RegExp = /%\s(proved|subsumed|simplified|unproved|unfinished|unchecked|untried)\b/g;
+
+export declare interface IntellisenseTriggers {
+	recordExpression: RegExp,
+	recordAccessor: RegExp,
+	theoryDeclaration: RegExp,
+	datatypeDeclaration: RegExp,
+	formulaDeclaration: RegExp,
+	declaration: RegExp
+};
+
+export const isense: IntellisenseTriggers = {
+	recordExpression: /(\w+)\s*=\s*\(\#(?:\s*(?:\w+)\s*:=(?:.*,)?)*/g, // /(\w+)\s*=\s*\(\#/g, // rc1: Rec1 = (#... 
+	recordAccessor: /(\w+)`/g, // rc1`...
+	theoryDeclaration: theoryRegexp,
+	datatypeDeclaration: datatypeRegexp,
+	formulaDeclaration: formulaRegexp,
+	declaration: declarationRegexp
+};
+
 
 /**
  * @function findTheoryName
@@ -142,13 +171,6 @@ export function listTheoryNames (fileContent: string): string[] {
 	return ans;
 };
 
-// match[1] is the formula name
-export const formulaRegexp: RegExp = /(\b[\w\?]+)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT|AXIOM)\b/gim;
-
-// same as formulaRegExp, but does not include JUDGEMENT and AXIOM
-export const theoremRegexp: RegExp = /(\b[\w\?]+)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gim;
-
-
 /**
  * Utility function, returns the list of theories defined in a given pvs file
  * @param fname Path to a pvs file
@@ -206,7 +228,7 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 		let match: RegExpMatchArray = null;
 		while (match = regexp.exec(fileContent)) {
 			if (match.length > 1 && match[1]) {
-				let theoryName: string = match[1];
+				const theoryName: string = match[1];
 				const clip: string = fileContent.slice(0, match.index);
 				const lines: string[] = clip.split("\n"); 
 				const line: number = lines.length;
@@ -254,21 +276,22 @@ export interface SFormula {
 	formula: string;
 	'names-info': any[];
 }
-
-export interface ProofState {
-	action?: string;
-	commentary: string[];
-	label: string;
-	"num-subgoals": number;
-	'prev-cmd'?: string[]; // this is actually the last command executed. Why is this an array btw? from the execution I can see just one command in it
-	sequent: {
+export type ProofState = {
+	label: string,
+	commentary: string[],
+	action?: string // this field is useless
+	"num-subgoals"?: number,
+	"prev-cmd"?: Object; // object representing the last command executed
+	"last-cmd"?: string,
+	sequent?: {
 		succedents?: SFormula[], 
 		antecedents?: SFormula[],
 		"hidden-succedents"?: SFormula[], 
 		"hidden-antecedents"?: SFormula[]
-	};
-}
+	}
+};
 
+// export type ProverResult = ProofState | ProofState[]
 
 function sequentToString(s: SFormula[], opt?: { useColors?: boolean }): string {
 	let res: string = "";
@@ -390,7 +413,7 @@ export function formatProofState (proofState: ProofState, opt?: { useColors?: bo
 				res += sequentToString(proofState.sequent.succedents, opt);
 			}
 		}
-		return res.trim();
+		return "\n" + res.trim();
 	} else {
 		console.error("[language-utils.format-proof-state] Error: proof state is null :/");
 	}
@@ -710,9 +733,11 @@ export function listSymbols(txt: string): string[] {
 		if (lines && lines.length) {
 			for (let i = 0; i < lines.length; i++) {
 				const txt: string = lines[i];
-				for(let n = 0; n < maxIterations && (match = symbols.exec(txt)); n++) {
-					if (match && !keywords.test(match[0]) && isNaN(+match[0])) { //isNaN(match[0]) is used to exclude numbers -- we don't want to include numbers in the list of symbols
-						symbolsMap[match[0]] = { line: i, character: match.index }; // position is used for debugging purposes here
+				if (txt) {
+					for (let n = 0; n < maxIterations && (match = symbols.exec(txt)); n++) {
+						if (match && !keywords.test(match[0]) && isNaN(+match[0])) { //isNaN(match[0]) is used to exclude numbers -- we don't want to include numbers in the list of symbols
+							symbolsMap[match[0]] = { line: i, character: match.index }; // position is used for debugging purposes here
+						}
 					}
 				}
 			}
@@ -1184,6 +1209,10 @@ export function isGrindCommand (cmd: string): boolean {
 	return cmd && /\(?\s*grind\b/g.test(cmd);
 }
 
+export function isQEDCommand (cmd: string): boolean {
+	return cmd && cmd.trim() === "Q.E.D.";
+}
+
 export function isSaveCommand (cmd: string): boolean {
 	return cmd && (cmd === "save" 
 		|| cmd === "save;"
@@ -1202,13 +1231,6 @@ export function isSameCommand (cmd1: string, cmd2: string): boolean {
 		return c1 === c2 
 			|| (!c2.startsWith("(") && c1 === `(${c2})`) 
 			|| (!c1.startsWith("(") && `(${c1})` === c2);
-	}
-	return false;
-}
-
-export function isBranchProved (proofState: ProofState): boolean {
-	if (proofState && proofState.commentary && proofState.commentary.length) {
-		return proofState.commentary[proofState.commentary.length - 1].trim().startsWith("This completes the proof of");
 	}
 	return false;
 }
@@ -1272,7 +1294,7 @@ export function applyTimeout (cmd: string, sec?: number): string {
 }
 
 export function isInvalidCommand (result: { commentary: string[] }): boolean {
-	return result
+	return result && result.commentary
 		&& typeof result.commentary === "object"
 		&& result.commentary.length
 		&& typeof result.commentary[0] === "string"
@@ -1280,7 +1302,7 @@ export function isInvalidCommand (result: { commentary: string[] }): boolean {
 }
 
 export function noChange (result: { commentary: string[] }): boolean {
-	return result
+	return result && result.commentary
 		&& typeof result.commentary === "object"
 		&& result.commentary.length
 		&& result.commentary.filter((comment: string)=> {
@@ -1288,10 +1310,31 @@ export function noChange (result: { commentary: string[] }): boolean {
 		}).length > 0;
 }
 
-export function isQED (result: { result: string }): boolean {
-	return result && result.result === "Q.E.D."; 
+export function QED (result: { commentary: string[] }): boolean {
+	return result && result.commentary
+		&& typeof result.commentary === "object"
+		&& result.commentary.length
+		&& result.commentary.filter((comment: string)=> {
+			return comment.trim() === "Q.E.D.";
+		}).length > 0; 
 }
- 
+
+export function branchComplete (result: { commentary: string[] }, currentBranch?: string): boolean {
+	return result && result.commentary
+		&& result.commentary.length 
+		&& result.commentary.filter((comment: string) => {
+			if (typeof currentBranch === "string") {
+				return comment.startsWith("This completes the proof") 
+					&& (comment.endsWith(currentBranch) || comment.endsWith(currentBranch + "."));
+			}
+			return comment.startsWith("This completes the proof");
+		}).length > 0;
+}
+
+export function branchHasChanged (desc: { newBranch: string, previousBranch: string }): boolean {
+	return desc && (desc.newBranch !== desc.previousBranch || desc.previousBranch !== "" && !desc.newBranch.startsWith(desc.previousBranch));
+}
+
 export const icons: { [name:string]: string } = {
 	"checkmark": "✅",
 	"bang" : "❗",
@@ -1371,4 +1414,98 @@ export function makeProofSummary (desc: { total: number, tccsOnly?: boolean, the
 	}
 	ans += `\n\nTheory ${desc.theoryName} totals: ${desc.total} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${totTime / 1000} s)`;
 	return ans;
+}
+
+// utility function, checks if parentheses are balanced
+export function balancedPar (cmd: string): boolean {
+	const openRegex: RegExp = new RegExp(/\(/g);
+	const closeRegex: RegExp = new RegExp(/\)/g);
+	let par: number = 0;
+	while (openRegex.exec(cmd)) {
+		par++;
+	}
+	while (closeRegex.exec(cmd)) {
+		par--;
+	}
+	return par <= 0;
+}
+
+// utility function, ensures open brackets match closed brackets for commands
+export function parCheck (cmd: string, opt?: { useColors?: boolean }): { success: boolean, msg: string } {
+	opt = opt || {};
+	let par: number = 0;
+	let quotes: number = 0;
+	cmd = cmd.trim();
+	const startsWithPar: boolean = cmd.startsWith("(");
+	for (let i = 0; i < cmd.length; i++) {
+		switch (cmd[i]) {
+			case `(`: {
+				par++;
+				break;
+			}
+			case `)`: {
+				par--; 
+				if (quotes % 2 === 0 && par % 2 !== 0) {
+					// unbalanced parentheses
+					let msg: string = `Error: Unbalanced double quotes at position ${i}.`;
+					msg += "\n" + cmd.substring(0, i);
+					// msg += (opt.useColors) ? colorText(cmd[i], textColor.red) : cmd[i];
+					msg += "\n" + " ".repeat(i) + "^";
+					return { success: false, msg };
+				}
+				break;
+			}
+			case `"`: {
+				if ((startsWithPar && par % 2 !== 0) || (!startsWithPar && par === 0)) {
+					quotes++;
+				} else {
+					// unbalanced double quotes
+					let msg: string = `Error: Unbalanced parentheses at position ${i}.`;
+					msg += "\n" + cmd.substring(0, i);
+					// msg += (opt.useColors) ? colorText(cmd[i], textColor.red) : cmd[i];
+					msg += "\n" + " ".repeat(i) + "^";
+					return { success: false, msg };
+				}
+				break; 
+			}
+		}
+	}
+	const success: boolean = par <= 0;
+	return { success, msg: (success) ? "" : "Error: Unbalanced parentheses." };
+}
+
+
+// // utility function, ensures open brackets match closed brackets for commands
+// export function quotesMatch (cmd: string): boolean {
+// 	const quotesRegex: RegExp = new RegExp(/\"/g);
+// 	let nQuotes: number = 0;
+// 	while (quotesRegex.exec(cmd)) {
+// 		nQuotes++;
+// 	}
+// 	return nQuotes % 2 === 0;
+// }
+
+// utility function, returns a command with balanced parentheses
+export function parMatch (cmd: string): string {
+	if (cmd && !cmd.trim().startsWith("(")) {
+		const openRegex: RegExp = new RegExp(/\(/g);
+		const closeRegex: RegExp = new RegExp(/\)/g);
+		let par: number = 0;
+		while (openRegex.exec(cmd)) {
+			par++;
+		}
+		while (closeRegex.exec(cmd)) {
+			par--;
+		}
+		if (par > 0) {
+			// missing closed brackets
+			cmd = cmd.trimRight() + ')'.repeat(par);
+			// console.log(`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
+		} else if (par < 0) {
+			cmd = '('.repeat(-par) + cmd;
+			// console.log(`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
+		}
+		return cmd.startsWith('(') ? cmd : `(${cmd})`; // add outer parentheses if they are missing
+	}
+	return cmd;
 }

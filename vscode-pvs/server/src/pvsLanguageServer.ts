@@ -63,7 +63,7 @@ import { PvsHoverProvider } from './providers/pvsHoverProvider';
 import { PvsCodeLensProvider } from './providers/pvsCodeLensProvider';
 import { PvsLinter } from './providers/pvsLinter';
 import { PvsCliGateway } from './pvsCliGateway';
-import { getErrorRange } from './common/languageUtils';
+import { getErrorRange, ProofState } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
@@ -249,9 +249,15 @@ export class PvsLanguageServer {
 		if (args) {
 			args = fsUtils.decodeURIComponents(args);
 			const timeout: number = await this.connection.workspace.getConfiguration("pvs.settings.prover.watchdog");
-			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: args.cmd, timeout });
-			// const status: PvsResponse = await this.pvsProxy.proverStatus();
-			// ATTN: when quitting the proof, pvs-server returns an object { result: string }, where the string indicates the proof status (completed, unfinished, ...)
+			const useLispInterface: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
+
+			const start: number = new Date().getTime();
+
+			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: args.cmd }, { timeout, useLispInterface });
+
+			const ms: number = new Date().getTime() - start;
+			console.info(`[profiler] proof-command ${args.cmd}: ${ms}ms`);
+
 			return response;
 		} else {
 			console.error('[pvs-language-server] Error: proofCommand invoked with null descriptor');
@@ -282,7 +288,7 @@ export class PvsLanguageServer {
 			await this.quitProof();
 			return
 		}
-		if (utils.isQED({ result: request.cmd })) {
+		if (utils.isQEDCommand(request.cmd)) {
 			await this.quitProof();
 			return;
 		}
@@ -309,32 +315,55 @@ export class PvsLanguageServer {
 						const pvsLogFile: string = path.join(proofLogPath, `${channelID}${fsUtils.logFileExtension}`);
 						const pvsTmpLogFile: string = path.join(proofLogPath, `${channelID}-tmp${fsUtils.logFileExtension}`);
 						await fsUtils.createFolder(proofLogPath);
-						await fsUtils.writeFile(pvsLogFile, utils.formatProofState(response.result));
 						await fsUtils.writeFile(pvsTmpLogFile, "");
-		
-						if (i === cmdArray.length - 1) {
-							this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response, cmd });
-						}
-						this.connection.sendRequest(serverEvent.proofCommandResponse, { response, args: req });
-						this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: req, pvsLogFile, pvsTmpLogFile });
-		
-						if (utils.isQED(response.result)) {
-							this.connection.sendRequest(serverEvent.QED, { response, args: req });
-							// trigger a context update, so proof status will be updated on the front-end
-							const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: req.contextFolder });
-							this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
-							// re-generate tccs
-							await this.generateTccsRequest(req, { quiet: true });
-							// stop the loop
-							return;
-						}
+
+						const result: ProofState[] = response.result;
+						for (let r = 0; r < result.length; r++) {
+							if (result[r]["prover-session-status"]) {
+								// branch closed, or proof completed
+								console.dir(result[r]);
+							} else {
+								await fsUtils.writeFile(pvsLogFile, utils.formatProofState(result[r]));
+								// FIXME: vscode-json needs to provide a string representation of the command, not its structure
+								const command: string = 
+									(result[r] && result[r]["last-cmd"] 
+										&& !utils.isUndoCommand(cmd)
+										&& !utils.isUndoUndoCommand(cmd)
+										&& !utils.isPostponeCommand(cmd)) ? result[r]["last-cmd"] : cmd;
+								this.connection.sendRequest(serverEvent.proofCommandResponse, { 
+									response: { result: result[r] }, 
+									args: { 
+										fileName: req.fileName,
+										fileExtension: req.fileExtension,
+										contextFolder: req.contextFolder,
+										theoryName: req.theoryName,
+										formulaName: req.formulaName,
+										cmd: command
+									}
+								});
+								this.connection.sendRequest(serverEvent.proofStateUpdate, { response: { result: result[r] }, args: req, pvsLogFile, pvsTmpLogFile });
+								if (utils.QED(result[r])) {
+									this.connection.sendRequest(serverEvent.QED, { response: { result: result[r] }, args: req });
+									// await this.quitProof();
+									// trigger a context update, so proof status will be updated on the front-end
+									const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: req.contextFolder });
+									this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+									// re-generate tccs
+									await this.generateTccsRequest(req, { quiet: true });
+									// stop the loop & don't send proof-state to cli gateway
+									return;
+								}
+								if (i === cmdArray.length - 1) {
+									this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: result[r], cmd });
+								}
+							}
+						}	
 					} else {
-						this.pvsErrorManager.handleProofCommandError({ response: <PvsError> response });
+						this.pvsErrorManager.handleProofCommandError({ cmd, response: <PvsError> response });
 					}
 				}
 			}
 		}
-
 		// else {
 		// 	this.notifyError({ msg: "Error: proof-command returned null (please check pvs-server output for details)" });
 		// 	console.error("[pvs-language-server.proofCommandRequest] Error: proof-command returned null");
@@ -351,7 +380,8 @@ export class PvsLanguageServer {
 		if (this.checkArgs("proveFormula", args)) {
 			try {
 				args = fsUtils.decodeURIComponents(args);
-				const response: PvsResponse = await this.pvsProxy.proveFormula(args);
+				const useLispInterface: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
+				const response: PvsResponse = await this.pvsProxy.proveFormula(args, { useLispInterface });
 				if (response && response.result) {
 					this.mode = "in-checker";
 				}
@@ -372,10 +402,10 @@ export class PvsLanguageServer {
 	}): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		
-		if (this.mode === "in-checker") {
+		// if (this.mode === "in-checker") {
 			// quit current proof
 			await this.quitProof();
-		}
+		// }
 
 		// make sure file exists
 		const fname: string = fsUtils.desc2fname(request);
@@ -415,20 +445,24 @@ export class PvsLanguageServer {
 		if (response) {
 			const channelID: string = utils.desc2id(request);
 			if (response.result) {
-				// the following additional logic is necessary to create the log file and start up the interactive cli session
+				this.connection.sendRequest(serverEvent.proverModeEvent, { mode: this.mode });
+
+				// the following commands are necessary to create the log file and start up the interactive cli session
 				const proofLogPath: string = path.join(request.contextFolder, fsUtils.pvsbinFolder);
 				const pvsLogFile: string = path.join(proofLogPath, `${channelID}${fsUtils.logFileExtension}`);
 				const pvsTmpLogFile: string = path.join(proofLogPath, `${channelID}-tmp${fsUtils.logFileExtension}`);
 				await fsUtils.createFolder(proofLogPath);
-				await fsUtils.writeFile(pvsLogFile, utils.formatProofState(response.result));
 				await fsUtils.writeFile(pvsTmpLogFile, "");
 
-				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: response });
-				this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() })
-				this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request, pvsLogFile, pvsTmpLogFile, shasum });
-				this.connection.sendRequest(serverEvent.proofStateUpdate, { response, args: request, pvsLogFile, pvsTmpLogFile, shasum });
-				
-				this.connection.sendRequest(serverEvent.proverModeEvent, { mode: this.mode });
+				// check result
+				const result: ProofState[] = response.result;
+				for (let i = 0; i < result.length; i++) {
+					await fsUtils.writeFile(pvsLogFile, utils.formatProofState(result[i]));
+					this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: result[i] });
+					this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() })
+					this.connection.sendRequest(serverEvent.proveFormulaResponse, { response: { result: result[i] }, args: request, pvsLogFile, pvsTmpLogFile, shasum });
+					this.connection.sendRequest(serverEvent.proofStateUpdate, { response: { result: result[i] }, args: request, pvsLogFile, pvsTmpLogFile, shasum });
+				}
 
 				this.notifyEndImportantTask({ id: taskId });
 			}
@@ -496,7 +530,7 @@ export class PvsLanguageServer {
 	// 			this.connection.sendRequest(serverEvent.dischargeTccsResponse, { response, args: request });
 	// 			this.notifyEndImportantTask({ id: taskId, msg });
 	// 		} else {
-	// 			this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Something went wrong while discharding TCCs (pvs-server returned error or null response). Please check pvs-server output for details.` });
+	// 			this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Something went wrong while discharging TCCs (pvs-server returned error or null response). Please check pvs-server output for details.` });
 	// 		}
 	// 	} else {
 	// 		this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Some files contain typecheck errors. Please fix those errors before trying to discharge TCCs.` });
@@ -533,11 +567,10 @@ export class PvsLanguageServer {
 		// send feedback to the front-end
 		const taskId: string = `pvsio-${request.fileName}@${request.theoryName}`;
 		this.notifyStartImportantTask({ id: taskId, msg: `Loading files necessary to evaluate theory ${request.theoryName}` });
-		// parse workspace files before starting the proof attempt, so stats can be updated on the status bar 
-		// await this.parseWorkspaceRequest(request);
-		// start pvsio evaluator
-		// const response: PvsResponse = await this.typecheckFile(request);
-		// if (response && response.result) {
+		// make sure the theory typechecks before starting the evaluator
+		const response: PvsResponse = await this.typecheckFile(request);
+		if (response && response.result) {
+			// start pvsio evaluator
 			let pvsioResponse: PvsResponse = await this.pvsioProxy.startEvaluator(request);
 			const channelID: string = utils.desc2id(request);
 			// replace standard banner
@@ -546,9 +579,9 @@ export class PvsLanguageServer {
 			this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: pvsioResponse });
 			this.connection.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: request });
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
-		// } else {
-		// 	this.pvsErrorManager.handleEvaluationError({ request, response: <PvsError> response, taskId });
-		// }
+		} else {
+			this.pvsErrorManager.handleEvaluationError({ request, response: <PvsError> response, taskId });
+		}
 	}
 
 	// /**
@@ -1593,7 +1626,7 @@ export class PvsLanguageServer {
 	}
 
 	protected async sendPvsVersionInfo (): Promise<boolean> {
-		const desc: PvsVersionDescriptor = await this.pvsProxy.getPvsVersionInfo();
+		const desc: PvsVersionDescriptor = this.pvsProxy.getPvsVersionInfo();
 		if (desc) {
 			const pvsVersion: number = parseFloat(desc["pvs-version"]);
 			if (pvsVersion >= this.MIN_PVS_VERSION) {
@@ -1688,12 +1721,13 @@ export class PvsLanguageServer {
 	 * @param opt 
 	 */
 	async quitProof (): Promise<void> {
-		if (this.mode === "in-checker") {
+		// if (this.mode === "in-checker") {
 			const proverStatus: PvsResponse = await this.pvsProxy.proverStatus();
 			if (proverStatus && proverStatus.result !== "inactive") {
-				await this.pvsProxy.proofCommand({ cmd: "quit" });
+				const useLispInterface: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
+				await this.pvsProxy.proofCommand({ cmd: "(quit)" }, { useLispInterface });
 			}
-		}
+		// }
 		this.mode = "lisp";
 		this.connection.sendRequest(serverEvent.proverModeEvent, { mode: this.mode });
 	}

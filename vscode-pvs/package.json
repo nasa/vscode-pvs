@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.24-delta",
+	"version": "1.0.24-eta",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -81,6 +81,11 @@
 						"type": "number",
 						"default": 8,
 						"description": "Proof commands are aborted if they don't produce results within this timeout (time is in seconds, 0 means timeout disabled)"
+					},
+					"pvs.xperimental.developer.lispInterface": {
+						"type": "boolean",
+						"default": false,
+						"description": "Use Lisp interface when interacting with the theorem prover. Requires NASALib and vscode-output patch."
 					}
 				}
 			}
@@ -112,12 +117,12 @@
 				{
 					"id": "proof-explorer-view",
 					"name": "PVS Proof Explorer",
-					"when": "pvs-server-active && in-checker && !autorun"
+					"when": "pvs-server-active && in-checker && proof-explorer.visible"
 				},
 				{
 					"id": "proof-mate-view",
 					"name": "PVS Proof Mate",
-					"when": "pvs-server-active && in-checker && !autorun"
+					"when": "pvs-server-active && in-checker && proof-mate.visible"
 				}
 			]
 		},
@@ -407,24 +412,34 @@
 		"menus": {
 			"explorer/context": [
 				{
-					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs"
+					"command": "vscode-pvs.new-pvs-file",
+					"when": "explorerResourceIsFolder",
+					"group": "1-navigation"
 				},
 				{
-					"command": "vscode-pvs.generate-tccs",
-					"when": "resourceScheme == file && resourceExtname == .pvs"
-				},
-				{
-					"command": "vscode-pvs.typecheck-workspace",
-					"when": "explorerResourceIsFolder && pvs-server-active == true && editorLangId == pvs"
+					"command": "vscode-pvs.parse-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
-					"when": "explorerResourceIsFolder && pvs-server-active == true && editorLangId == pvs"
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true ||explorerResourceIsFolder && pvs-server-active == true && editorLangId == pvs",
+					"group": "x_commands"
 				},
 				{
-					"command": "vscode-pvs.new-pvs-file",
-					"when": "explorerResourceIsFolder"
+					"command": "vscode-pvs.typecheck-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.typecheck-workspace",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || explorerResourceIsFolder && pvs-server-active == true && editorLangId == pvs",
+					"group": "y_commands"
+				},
+				{
+					"command": "vscode-pvs.show-tccs",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true",
+					"group": "yy_commands"
 				}
 			],
 			"view/item/context": [

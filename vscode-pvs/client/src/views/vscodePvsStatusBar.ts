@@ -35,7 +35,7 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-import { StatusBarItem, ExtensionContext, StatusBarAlignment, window } from "vscode";
+import { StatusBarItem, ExtensionContext, StatusBarAlignment, window, commands } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
 import * as path from 'path';
 import { PvsVersionDescriptor } from "../common/serverInterface";
@@ -187,6 +187,8 @@ export class VSCodePvsStatusBar {
         const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
         this.pvsStatus.text = `$(warning~spin)  ${shortmsg}`; // messages in the status bar should always be on one line
         this.pvsStatus.show();
+        // show problems panel -- see also Code->Preferences->KeyboardShortcuts
+        commands.executeCommand("workbench.panel.markers.view.focus");
     }
 
     getVersionInfo (): PvsVersionDescriptor {

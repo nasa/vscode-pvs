@@ -40,17 +40,17 @@
 function regExpSource(v: Array<string>): string {
 	if (v) {
 		v = v.filter((elem:string) => {
-			return elem !== "auto_rewrite+" && elem !== "auto_rewrite-" && elem !== "type+";
+			return elem !== "AUTO_REWRITE+" && elem !== "AUTO_REWRITE-" && elem !== "TYPE+";
 		});
 		if (v && v.length) {
 			v = v.map((elem: string) => {
 				// keywords ending with +/- need negative lookahead
 				// regex /\btype\+?/ is not good enough because it does not check the keyword boundary (e.g., types would be captured)
 				// regexp /\btype\+?\b/ does not work either, because \b is designed to work with words, not \+ symbols
-				if (elem === "type") {
+				if (elem === "TYPE") {
 					return "\\b(?!" + elem + "\\+)"
 							+ elem + "\\b|\\b" + elem + "\\+";
-				} else if (elem === "auto_rewrite") {
+				} else if (elem === "AUTO_REWRITE") {
 					return "\\b(?!" + elem + "[\\+\\-])"
 							+ elem + "\\b|\\b" + elem + "[\\+\\-]";
 				}
@@ -88,28 +88,42 @@ const PVS_OPERATORS_REGEXP_SOURCE = "\\(:|:\\)|->|:="; // (: :) -> :=
 // 								+ "|" + "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)"
 // 								+ "|" + "\\(\\[\\|->\\|\\]\\)";
 
+export const INNER_DECLARATION_KEYWORDS = [ 
+	"ARRAY", "AXIOM", "CHALLENGE", "CLAIM", "CODATATYPE",
+	"CONJECTURE",
+	"COROLLARY", "DATATYPE",
+	"FACT",
+	"FORMULA", "FUNCTION",
+	"JUDGEMENT", "LEMMA", "LAW",
+	"OBLIGATION", 
+	"POSTULATE", "PROPOSITION", "SUBLEMMA",
+	"THEOREM", "TABLE",
+	// hybrid pvs extension
+	"PROBLEM", "NONEMPTY_TYPE",
+	"TYPE", "TYPE+"
+];
+export const DECLARATION_KEYWORDS = [ "THEORY" ].concat(INNER_DECLARATION_KEYWORDS);
 // from pvs-mode.el
 export const PVS_KEYWORDS = [ 
-	"and", "andthen", "array", "as", "assuming", "assumption", "auto_rewrite",
-	"auto_rewrite+", "auto_rewrite-", "axiom", "begin", "but", "by", "cases",
-	"challenge", "claim", "closure", "codatatype", "coinductive", "cond",
-	"conjecture", "containing", "conversion", "conversion+", "conversion-",
-	"corollary", "datatype", "else", "elsif", "end", "endassuming", "endcases",
-	"endcond", "endif", "endtable", "exists", "exporting", "fact", // "false",
-	"forall", "formula", "from", "function", "has_type", "if", "iff", "implies",
-	"importing", "in", "inductive", "judgement", "lambda", "law", "lemma", "let",
-	"library", "macro", "measure", "nonempty_type", "not", "o", "obligation", "of",
-	"or", "orelse", "postulate", "proposition", "recursive", "sublemma", "subtypes",
-	"subtype_of", "table", "then", "theorem", "theory", //"true", 
-	"type", "type+", "var", "when", "where", "with", "xor",
-	// hybrid pvs extension
-	"problem"
+	"AND", "ANDTHEN", "AS", "ASSUMING", "ASSUMPTION", "AUTO_REWRITE",
+	"AUTO_REWRITE+", "AUTO_REWRITE-", "BEGIN", "BUT", "BY", "CASES",
+	"CLOSURE", "COINDUCTIVE", "COND",
+	"CONTAINING", "CONVERSION", "CONVERSION+", "CONVERSION-",
+	"ELSE", "ELSIF", "END", "ENDASSUMING", "ENDCASES",
+	"ENDCOND", "ENDIF", "ENDTABLE", "EXISTS", "EXPORTING", // "false",
+	"FORALL", "FROM", "HAS_TYPE", "IF", "IFF", "IMPLIES",
+	"IMPORTING", "IN", "INDUCTIVE", "LAMBDA", "LET",
+	"LIBRARY", "MACRO", "MEASURE",  "NOT", "o", "OF",
+	"OR", "ORELSE", "RECURSIVE", "SUBTYPES",
+	"SUBTYPE_OF",  "THEN", //"true", 
+	//"VAR", 
+	"WHEN", "WHERE", "WITH", "XOR"
 ];
 
 export const PVS_TRUE_FALSE: string[] = [ "true", "false" ];
 export const PVS_TRUE_FALSE_REGEXP_SOURCE: string = "true|false";
 
-export const PVS_RESERVED_WORDS_REGEXP_SOURCE: string = regExpSource(PVS_KEYWORDS);
+export const PVS_RESERVED_WORDS_REGEXP_SOURCE: string = regExpSource(PVS_KEYWORDS.concat(DECLARATION_KEYWORDS));
 export const PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE: string = BRACKETS_REGEXP + "|" + PVS_OPERATORS_REGEXP_SOURCE;// + "|" + regExp(PVS_OPERATORS);
 // export const ARITHMETIC_OPERATORS_REGEXP_SOURCE = "[\\s\\d\\w]+(<|>|=|<=|>=)[\\s\\d\\w]+"; // < > = <= >= //FIXME!
 
@@ -136,7 +150,7 @@ export const PVS_BUILTIN_TYPE_REGEXP_SOURCE: string = regExpSource(PVS_BUILTIN_T
 // export const PVS_BUILTIN_TYPES_REGEXP = new RegExp(PVS_BUILTIN_TYPES_REGEXP_SOURCE, "gi");
 
 // export const PVS_LIBRARY_FUNCTIONS: string[] = [ "cons", "car", "cdr", "str2pvs", "pvs2str", "abs", "nth", "length", "reverse", "ceiling", "floor", "fractional", "expt", "pred", "PRED", "predicate", "PREDICATE", "setof", "SETOF", "unique?", "injective?", "surjective?", "inverse?", "bijective?", "upto", "below", "upfrom", "above", "subrange", "member", "empty?", "emptyset", "nonempty?", "full?", "fullset", "nontrivial?", "subset?", "strict_subset?", "union", "intersection", "disjoint?", "complement", "difference", "symmetric_difference", "every", "some", "singleton?", "singleton", "add", "remove", "choose", "the", "rest", "powerset", "Union", "Intersection", "even?", "odd?" ];
-export const PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE: string = "\\bcons\\b|\\bcar\\b|\\bcdr\\b|\\bstr2pvs\\b|\\bpvs2str\\b|\\babs\\b|\\bnth\\b|\\blength\\b|\\breverse\\b|\\bceiling\\b|\\bfloor\\b|\\bfractional\\b|\\bexpt\\b|\\bpred\\b|\\bPRED\\b|\\bpredicate\\b|\\bPREDICATE\\b|\\bsetof\\b|\\bSETOF\\b|\\bunique\\?$|\\binjective\\?$|\\bsurjective\\?$|\\binverse\\?$|\\bbijective\\?$|\\bupto\\b|\\bbelow\\b|\\bupfrom\\b|\\babove\\b|\\bsubrange\\b|\\bmember\\b|\\bempty\\?$|\\bemptyset\\b|\\bnonempty\\?$|\\bfull\\?$|\\bfullset\\b|\\bnontrivial\\?$|\\bsubset\\?$|\\bstrict_subset\\?$|\\bunion\\b|\\bintersection\\b|\\bdisjoint\\?$|\\bcomplement\\b|\\bdifference\\b|\\bsymmetric_difference\\b|\\bevery\\b|\\bsome\\b|\\bsingleton\\?$|\\bsingleton\\b|\\badd\\b|\\bremove\\b|\\bchoose\\b|\\bthe\\b|\\brest\\b|\\bpowerset\\b|\\bUnion\\b|\\bIntersection\\b|\\beven\\?$|\\bodd\\?$";
+export const PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE: string = "\\bcons\\b|\\bcar\\b|\\bcdr\\b|\\bstr2pvs\\b|\\bpvs2str\\b|\\babs\\b|\\bnth\\b|\\blength\\b|\\breverse\\b|\\bceiling\\b|\\bfloor\\b|\\bfractional\\b|\\bexpt\\b|\\bpred\\b|\\bPRED\\b|\\bpredicate\\b|\\bPREDICATE\\b|\\bsetof\\b|\\bSETOF\\b|\\bunique\\?$|\\binjective\\?$|\\bsurjective\\?$|\\binverse\\?$|\\bbijective\\?$|\\bupto\\b|\\bbelow\\b|\\bupfrom\\b|\\babove\\b|\\bsubrange\\b|\\bmember\\b|\\bempty\\?$|\\bemptyset\\b|\\bnonempty\\?$|\\bfull\\?$|\\bfullset\\b|\\bnontrivial\\?$|\\bsubset\\?$|\\bstrict_subset\\?$|\\bunion\\b|\\bintersection\\b|\\bdisjoint\\?$|\\bcomplement\\b|\\bdifference\\b|\\bsymmetric_difference\\b|\\bevery\\b|\\bsome\\b|\\bsingleton\\?$|\\bsingleton\\b|\\badd\\b|\\bremove\\b|\\bchoose\\b|\\brest\\b|\\bpowerset\\b|\\bUnion\\b|\\bIntersection\\b|\\beven\\?$|\\bodd\\?$"; //\\bthe\\b|
 export const PVS_LIBRARY_FUNCTIONS: string[] = PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE.split("|").map(elem => { return elem.replace(/\\b/g, "").replace("\\?$", "?") });
 
 export const PVS_NUMBER_REGEXP_SOURCE: string = "([+-]?)\\b(\\d+\/\\d+)|([+-]?)\\b(\\d+(?:\\.\\d+)?)"; // the first two capturing groups are sign and value for rationals (e.g., -1/12); the second two groups are sign and value for integers (e.g., +1) and reals (e.g., +0.12)

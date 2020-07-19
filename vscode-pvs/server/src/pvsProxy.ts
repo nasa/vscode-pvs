@@ -63,7 +63,7 @@ import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, Proof
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
-import { getErrorRange } from './common/languageUtils';
+import { getErrorRange, ProofState } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import * as os from 'os';
@@ -122,10 +122,15 @@ export class PvsProxy {
 	protected cliListener: (data: string) => void; // useful to show progress feedback
 
 	protected pvsErrorManager: PvsErrorManager;
+	protected buffer: Promise<PvsResponse> = Promise.resolve(null); // this is a queue used to serialize the requests sent to the server
+
+	protected pvsVersionInfo: PvsVersionDescriptor = null;
 
 	protected legacy: PvsProxyLegacy;
 	protected useLegacy: boolean = true;
 	protected useNasalib: boolean = false;
+	protected jsonOutputAvailable: boolean = false;
+
 	/**
 	 * Parser
 	 */
@@ -198,72 +203,97 @@ export class PvsProxy {
 	pvsRequest(method: string, params?: string[]): Promise<PvsResponse> {
 		params = params || [];
 		const req = { method: method, params: params, jsonrpc: "2.0", id: this.get_fresh_id() };
-		return new Promise((resolve, reject) => {
-			if (this.client) {
-				const jsonReq: string = JSON.stringify(req);
-				console.dir(jsonReq);
-				this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
-					if (error) {
-						console.error("[pvs-proxy] Error returned by pvs-server: "); 
-						console.dir(error, { depth: null }); 
-						if (error['code'] === 'ECONNREFUSED') {
-							// if the server refuses the connection, try to reboot
-							console.log(`[pvs-proxy] Connection refused when launching pvs from ${this.pvsPath}`);
-							resolve({
-								jsonrpc: "2.0", 
-								id: req.id,
-								error
-							});
-							if (this.pvsErrorManager) {
-								this.pvsErrorManager.notifyPvsFailure({ msg: `Error: unable to connect to pvs-server at http://${this.clientAddress}:${this.clientPort}` });
+		this.buffer = this.buffer.then(() => {
+			return new Promise((resolve, reject) => {
+				if (this.client) {
+					const jsonReq: string = JSON.stringify(req);
+					console.dir(jsonReq);
+					this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
+						if (error) {
+							console.error("[pvs-proxy] Error returned by pvs-server: "); 
+							console.dir(error, { depth: null }); 
+							if (error['code'] === 'ECONNREFUSED') {
+								// if the server refuses the connection, try to reboot
+								console.log(`[pvs-proxy] Connection refused when launching pvs from ${this.pvsPath}`);
+								resolve({
+									jsonrpc: "2.0", 
+									id: req.id,
+									error
+								});
+								if (this.pvsErrorManager) {
+									this.pvsErrorManager.notifyPvsFailure({ msg: `Error: unable to connect to pvs-server at http://${this.clientAddress}:${this.clientPort}` });
+								}
+							} else if (error['code'] === 'ECONNRESET') {
+								// do nothing -- this usually occurs when the user reboots pvs-server
+							} else {
+								if (this.pvsErrorManager) {
+									this.pvsErrorManager.notifyPvsFailure({ method });
+								}
 							}
-						} else if (error['code'] === 'ECONNRESET') {
-							// do nothing -- this usually occurs when the user reboots pvs-server
+						} else if (value) {
+							// console.log("[pvs-proxy] Value returned by pvs-server: ");
+							// console.dir(value);
+							try {
+								const resp: PvsResponse = JSON.parse(value);
+								// console.dir(resp, { depth: null });
+								if (resp && (resp["result"] === "null" || resp["result"] === "nil")) {
+									// sometimes pvs returns a string "null" or "nil" as result -- here the string is transformed into a proper null value
+									resp["result"] = null;
+								}
+
+								if ((method === "proof-command" || method === "prove-formula") && resp.result) {
+									if (resp.result["result"] && resp.result["result"].trim() === "Q.E.D.") {
+										resp.result = <ProofState> {
+											label: "Q.E.D.", // this should actually be the formula name....
+											commentary: [ "Q.E.D." ],
+											"num-subgoals": 0,
+											sequent: {}
+										}
+									}
+									const proofState: ProofState = resp.result;
+									if (method === "proof-command" && proofState) {
+										// const prev_cmd: string = proofState["prev-cmd"] && proofState["prev-cmd"]["length"] && proofState["prev-cmd"][0];
+										// if (!utils.isShowHiddenCommand(params[0]) && !utils.isPostponeCommand(params[0]) && !utils.QED(proofState) && !utils.branchComplete(proofState) && !utils.isUndoCommand(params[0]) && !utils.isUndoUndoCommand(params[0]) 
+										// 		&& !utils.isInvalidCommand(proofState) 
+										// 		&& !params[0].includes(prev_cmd)) { // FIXME: this is a workaround necessary because pvs does not always report errors, e.g., when trying to replace a term that does not exist in the sequent
+										// 	proofState.commentary = [ `No change on: ${params[0]}` ];
+										// }
+										proofState["last-cmd"] = params[0];
+									}
+									resp.result = <ProofState[]> [ proofState ]; // the prover should always return an array of proof states -- this is necessary to support tacticals
+								}
+								resolve(resp);
+							} catch (jsonError) {
+								console.error(`[pvs-proxy] Unable to parse pvs-server response :/`, value);
+								resolve(null);
+							}
 						} else {
-							if (this.pvsErrorManager) {
-								this.pvsErrorManager.notifyPvsFailure({ method });
-							}
+							console.error(`[pvs-proxy] pvs-server returned error`, error);
+							resolve({
+								jsonrpc: "2.0",
+								id: req.id,
+								error: {
+									code: 'NO_CONTENT',
+									message: "pvs-server returned null response"
+								}
+							});
 						}
-					} else if (value) {
-						// console.log("[pvs-proxy] Value returned by pvs-server: ");
-						// console.dir(value);
-						try {
-							const resp: PvsResponse = JSON.parse(value);
-							// console.dir(resp, { depth: null });
-							if (resp && (resp["result"] === "null" || resp["result"] === "nil")) {
-								// sometimes pvs returns a string "null" or "nil" as result -- here the string is transformed into a proper null value
-								resp["result"] = null;
-							}
-							resolve(resp);
-						} catch (jsonError) {
-							console.error(`[pvs-proxy] Unable to parse pvs-server response :/`, value);
-							resolve(null);
+					});
+				} else {
+					// this error typically occurs at the very beginning if pvs is not installed
+					console.log(`[pvs-proxy] Warning: could not invoke method ${method} (pvs is not installed)`);
+					resolve({
+						jsonrpc: "2.0",
+						id: req.id,
+						error: {
+							code: 'PVS_NOT_INSTALLED',
+							message: "pvs-proxy failed to initialize gui server"
 						}
-					} else {
-						console.error(`[pvs-proxy] pvs-server returned error`, error);
-						resolve({
-							jsonrpc: "2.0",
-							id: req.id,
-							error: {
-								code: 'NO_CONTENT',
-								message: "pvs-server returned null response"
-							}
-						});
-					}
-				});
-			} else {
-				// this error typically occurs at the very beginning if pvs is not installed
-				console.log(`[pvs-proxy] Warning: could not invoke method ${method} (pvs is not installed)`);
-				resolve({
-					jsonrpc: "2.0",
-					id: req.id,
-					error: {
-						code: 'PVS_NOT_INSTALLED',
-						message: "pvs-proxy failed to initialize gui server"
-					}
-				});
-			}
+					});
+				}
+			});
 		});
+		return this.buffer;
 	}
 	async listMethodsRequest(): Promise<PvsResponse> {
 		return await this.pvsRequest('list-methods');
@@ -319,6 +349,7 @@ export class PvsProxy {
 	listTypes (): string[] {
 		return this.mathObjectsCache.types;
 	} 
+	
 	/**
 	 * Parse a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
@@ -516,7 +547,6 @@ export class PvsProxy {
   	async typecheckFile (desc: { contextFolder: string, fileName: string, fileExtension: string }): Promise<PvsResponse> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			let fname: string = fsUtils.desc2fname(desc);
-			const taskId: string = `typecheck-${fname}`;
 			if (this.isProtectedFolder(desc.contextFolder)) {
 				this.info(`${desc.fileName}${desc.fileExtension} is already typechecked`);
 				return null;
@@ -533,22 +563,7 @@ export class PvsProxy {
 				if (res.error) {
 					// the typecheck error might be generated from an imported file --- we need to check res.error.file_name
 					fname = (res.error && res.error.data && res.error.data.file_name) ? res.error.data.file_name : fname;
-					if (res.error && res.error.data) {// && this.parserCache[fname]) {
-						// const errorStart: languageserver.Position = { 
-						// 	line: res.error.data.place[0], 
-						// 	character: res.error.data.place[1]
-						// };
-						// const errorEnd: languageserver.Position = (res.error.data.place.length > 3) ? { 
-						// 	line: res.error.data.place[2], 
-						// 	character: res.error.data.place[3]
-						// } : null;
-						// const txt: string = await fsUtils.readFile(fname);
-						// const error_range: languageserver.Range = getErrorRange(txt, errorStart, errorEnd);
-						// const error: languageserver.Diagnostic = {
-						// 	range: error_range,
-						// 	message: res.error.data.error_string,
-						// 	severity: languageserver.DiagnosticSeverity.Error
-						// };
+					if (res.error && res.error.data) {
 						return {
 							jsonrpc: "2.0",
 							id: this.get_fresh_id(),
@@ -598,17 +613,29 @@ export class PvsProxy {
 	 * Starts an interactive prover session for the given formula
 	 * @param desc 
 	 */
-	async proveFormula(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string }): Promise<PvsResponse> {
+	async proveFormula(desc: { 
+		contextFolder: string, 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		formulaName: string 
+	}, opt: {
+		useLispInterface?: boolean
+	}): Promise<PvsResponse> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName && desc.formulaName) {
+			opt = opt || {};
 			await this.changeContext(desc.contextFolder);
-			if (this.useNasalib) {
+			if (this.useNasalib && this.jsonOutputAvailable && opt.useLispInterface) {
 				const res: PvsResponse = await this.legacy.proveFormula(desc);
-				console.dir(res);
+				// console.dir(res);
 				return res;
 			} else {
 				const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
 				const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, fullName ]);
 				console.dir(ans);
+				if (ans && ans.result && ans.result["length"] === undefined) {
+					ans.result = [ ans.result ]; // the prover should return an array of proof states
+				}
 				return ans;
 			}
 		}
@@ -792,46 +819,70 @@ export class PvsProxy {
 	 * Executes a proof command. The command is always adorned with round parentheses, e.g., (skosimp*)
 	 * @param desc Descriptor of the proof command
 	 */
-	async proofCommand(desc: { cmd: string, timeout?: number }): Promise<PvsResponse> {
+	async proofCommand(desc: { cmd: string }, opt?: { timeout?: number, useLispInterface?: boolean }): Promise<PvsResponse> {
 		if (desc) {
-			// console.dir(desc, { depth: null });
-			const showHidden: boolean = utils.isShowHiddenCommand(desc.cmd);
-			const isGrind: boolean = utils.isGrindCommand(desc.cmd);
-			// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
-			// the front-end will handle the command, and reveal the hidden sequents.
-			const cmd: string = showHidden ? "(skip)"
-				: isGrind ? utils.applyTimeout(desc.cmd, desc.timeout)
-					: desc.cmd;
-			const res: PvsResponse = (this.useNasalib) ? await this.legacy.proofCommand(cmd) 
-				: await this.pvsRequest('proof-command', [ cmd ]);
-			if (res) {
-				if (showHidden) {
-					if (res.result) {
-						res.result.action = "Showing list of hidden sequents";
-						if (res.result.commentary && res.result.commentary.length) {
-							res.result.commentary[0] = "No change on: (show-hidden)";
-						} 
+			opt = opt || {};
+
+			const test: { success: boolean, msg: string } = utils.parCheck(desc.cmd);
+			let res: PvsResponse = {
+				jsonrpc: "2.0", 
+				id: ""
+			};
+			if (test.success) {
+				// console.dir(desc, { depth: null });
+				const showHidden: boolean = utils.isShowHiddenCommand(desc.cmd);
+				const isGrind: boolean = utils.isGrindCommand(desc.cmd);
+				// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
+				// the front-end will handle the command, and reveal the hidden sequents.
+				const cmd: string = showHidden ? "(skip)"
+					: isGrind ? utils.applyTimeout(desc.cmd, opt.timeout)
+						: desc.cmd;
+				res = (this.useNasalib && this.jsonOutputAvailable && opt.useLispInterface) ? await this.legacy.proofCommand(cmd) 
+					: await this.pvsRequest('proof-command', [ cmd ]);
+				if (res && res.result) {
+					const proofStates: ProofState[] = res.result;
+					if (showHidden) {
+						for (let i = 0; i < proofStates.length; i++) {
+							const result: ProofState = proofStates[i];
+							if (result) {
+								result.action = "Showing list of hidden sequents";
+								if (result.commentary && result.commentary.length) {
+									result.commentary[0] = "No change on: (show-hidden)";
+								}
+							}
+						}
+					}
+					if (isGrind) {
+						for (let i = 0; i < proofStates.length; i++) {
+							const result: ProofState = proofStates[i];
+							if (opt.timeout) {
+								if (result && result.commentary 
+										&& result.commentary.length 
+										&& result.commentary[result.commentary.length - 1].startsWith("No change on")) {
+									result.action = `No change on: ${desc.cmd}`;
+									result.commentary = result.commentary.slice(0, result.commentary.length - 1).concat(`No change on: ${desc.cmd}`);
+								}
+							}
+							result["last-cmd"] = desc.cmd; // this will remove the timeout applied to grind
+						}
 					}
 				}
-				if (isGrind && desc.timeout) {
-					if (res.result && res.result.commentary 
-							&& res.result.commentary.length 
-							&& res.result.commentary[res.result.commentary.length - 1].startsWith("No change on")) {
-						res.result.action = `No change on: ${desc.cmd}`;
-						res.result.commentary = res.result.commentary.slice(0, res.result.commentary.length - 1).concat(`No change on: ${desc.cmd}`);
-					}
-				}
-				if (res.error) {
-					res.result = res.result || {};
-					const error_msg: string = res.error.message ? res.error.message.replace(/\\\\"/g, "") : null;
-					res.result.action = res.result.action || `No change on: ${desc.cmd}`;
-					if (error_msg) {
-						res.result.action += `\n\n${cmd} resulted in the following error: ${error_msg}\n`;
-					}
-					res.result.commentary = res.result.commentary || [];
-					res.result.commentary.push(res.result.action);
-					console.error(res.error);
-				}
+			}
+			// FIXME: pvs needs to return errors in a standard way! 
+			// e.g., when the prover is active, pvs should always return the sequents, and present errors as commentary.
+			// currently, errors are presented in many (incompatible) different ways
+			if (res.error || !test.success) {
+				res.result = res.result || [{
+					"last-cmd": desc.cmd
+				}];
+				const error_msg: string = (test.success) ? 
+					(res.error && res.error.message) ? res.error.message.replace(/\\\\"/g, "") : null
+						: test.msg;
+				const i: number = res.result.length - 1;
+				res.result[i].commentary = res.result[i].commentary || [];
+				res.result[i].commentary.push(`No change on: ${desc.cmd}`);
+				res.result[i].commentary.push(error_msg);
+				console.error(desc.cmd, error_msg);
 			}
 			return res;
 		}
@@ -842,7 +893,8 @@ export class PvsProxy {
 	 * Returns the prover status
 	 */
 	async proverStatus(): Promise<PvsResponse> {
-		const res: PvsResponse = await this.pvsRequest('prover-status');
+		const res: PvsResponse = (this.useLegacy) ? await this.legacy.proverStatus()
+			: await this.pvsRequest('prover-status');
 		return res;
 	}
 
@@ -879,7 +931,7 @@ export class PvsProxy {
 		if (desc) {
 			desc = fsUtils.decodeURIComponents(desc);
 			const shasum: string = await fsUtils.shasumFile(desc);
-			const pvsVersionDescriptor = await this.getPvsVersionInfo();
+			const pvsVersionDescriptor = this.getPvsVersionInfo();
 
 			// to begin with, create an empty proof
 			let proofDescriptor: ProofDescriptor = {
@@ -1061,7 +1113,11 @@ export class PvsProxy {
 	/**
 	 * Returns pvs version information
 	 */
-	async getPvsVersionInfo(): Promise<PvsVersionDescriptor> {
+	getPvsVersionInfo(): PvsVersionDescriptor {
+		return this.pvsVersionInfo;
+	}
+
+	protected async loadPvsVersionInfo(): Promise<PvsVersionDescriptor> {
 		// const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
 		const res: PvsResponse = await this.legacy.lisp(`(get-pvs-version-information)`);
 		const nasalib: string = await this.getNasalibVersionInfo();
@@ -1069,7 +1125,7 @@ export class PvsProxy {
 			const regexp: RegExp = /\(\"?(\d+(?:.?\d+)*)\"?[\s|nil]*\"?([\w\s\d\.]*)\"?/g; // group 1 is pvs version, group 2 is lisp version
 			const info: RegExpMatchArray = regexp.exec(res.result);
 			if (info && info.length > 2) {
-				return {
+				this.pvsVersionInfo = {
 					"pvs-version": info[1].trim(),
 					"lisp-version": info[2].replace("International", "").trim(),
 					"nasalib-version": nasalib ? "NASALib" : null
@@ -1083,12 +1139,20 @@ export class PvsProxy {
 	 * Returns pvs version information
 	 */
 	async getNasalibVersionInfo(): Promise<string> {
-		const res: PvsResponse = await this.legacy.lisp(`*nasalib-version*`);
-		const regexp: RegExp = /(\d+(?:.?\d+)*)/g; // group 1 is nasalib
-		const info: RegExpMatchArray = regexp.exec(res.result);
-		if (info && info.length > 1) {
-			// this.useNasalib = true;
-			return info[1];
+		const nasalibPresent: PvsResponse = await this.legacy.lisp(`(boundp '*nasalib-version*)`);
+		if (nasalibPresent && nasalibPresent.result === "t") {
+			const nasalibVersion: PvsResponse = await this.legacy.lisp(`*nasalib-version*`);
+			const regexp: RegExp = /(\d+(?:.?\d+)*)/g; // group 1 is nasalib
+			const info: RegExpMatchArray = regexp.exec(nasalibVersion.result);
+			if (info && info.length > 1) {
+				this.useNasalib = true;
+				// check if vscode-output is enabled -- this is disabled for now
+				const jsonOutput: PvsResponse = await this.legacy.lisp(`(boundp '*vscode-output*)`);
+				if (jsonOutput && jsonOutput.result === "t") {
+					this.jsonOutputAvailable = true;
+				}
+				return info[1];
+			}
 		}
 		return null;
 	}
@@ -1403,7 +1467,11 @@ export class PvsProxy {
 		if (this.pvsServer) {
 			return Promise.resolve(true);
 		}
-		return await this.restartPvsServer();
+		const success: boolean = await this.restartPvsServer();
+		if (success) {
+			await this.loadPvsVersionInfo();
+		}
+		return success;
 		// if (!this.externalServer) {
 		// 	// try to create pvs server
 		// 	const success: ProcessCode = await this.createPvsServer({

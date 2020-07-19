@@ -43,6 +43,12 @@ import * as fsUtils from '../common/fsUtils';
 import { PvsProcess } from '../pvsProcess';
 import * as utils from '../common/languageUtils';
 import { PvsErrorManager } from '../pvsErrorManager';
+import { ProofState } from '../common/languageUtils';
+
+interface ProofSessionStatus {
+    label: string,
+    "proof-session-status": string
+};
 
 export class PvsProxyLegacy {
 	protected pvsPath: string;
@@ -74,7 +80,7 @@ export class PvsProxyLegacy {
     }
     async lisp (cmd: string): Promise<PvsResponse> {
         // let data: string = await this.pvsProcess.sendText(`(lisp (let ((*in-checker* nil)) ${cmd}))`);
-        let data: string = await this.pvsProcess.sendText(`(lisp ${cmd})`);
+        let data: string = (this.pvsProcess) ? await this.pvsProcess.sendText(`(lisp ${cmd})`) : "";
         if (data) {
             data = data.split("\n").filter(line => { 
                 return !line.startsWith("127.0.0")
@@ -91,23 +97,66 @@ export class PvsProxyLegacy {
             result: data
         };
     }
+    async proverStatus (): Promise<PvsResponse> {
+        const inchecker: PvsResponse = await this.lisp("*in-checker*");
+        return {
+            jsonrpc: "2.0",
+            id: "pvs-process-legacy",
+            result: (inchecker && inchecker.result === "t") ? "active" : "inactive"
+        };
+    }
     async proofCommand (cmd: string): Promise<PvsResponse> {
         const pvsResponse: PvsResponse = {
             jsonrpc: "2.0",
             id: "pvs-process-legacy"
         };
-        let data: string = await this.pvsProcess.sendText(cmd);
-        // patch for output while waiting Mariano's fix
-        if (data) {
-            const start: number = data.indexOf("{");
-            data = data.substring(start);
-        }
-        try {
-            pvsResponse.result = JSON.parse(data);
-        } catch (jsonerror) {
-            console.error(jsonerror);
-            pvsResponse.error = jsonerror;
+        let data: string = (this.pvsProcess) ? await this.pvsProcess.sendText(cmd) : "";
+        if (data.includes("Error:")) {
+            const error_string: string = data.substring(data.indexOf("Error:"), data.length + 1);
+            pvsResponse.error = {
+                message: error_string
+            };
             return pvsResponse;
+        }
+        if (data.includes("</pvserror>")) {
+            const error_string: string = data.substring(data.indexOf("</pvserror>") + 11, data.length + 1);
+            pvsResponse.error = {
+                message: error_string
+            };
+            return pvsResponse;
+        }
+        // else
+        if (data.indexOf("[") !== 0) {
+            console.log(cmd); // this is done only for debugging purposes, to check when vscode-output patch erroneously includes extraneous output
+        }
+        // let qed: boolean = data.endsWith("nil"); // this is a workaround while waiting vscode-output patch to be fixed 
+        data = data.substring(data.indexOf("["), data.lastIndexOf("]") + 1);
+        if (data) {
+            try {
+                const result: (ProofState | ProofSessionStatus)[] = JSON.parse(data);
+                // convert result to ProofState[] (pvsResponse.result must be of type ProofState[])
+                pvsResponse.result = [];
+                for (let i = 0; i < result.length; i++) {
+                    if (result[i]["prover-session-status"]) {
+                        pvsResponse.result.push({
+                            label: result[i].label,
+                            commentary: (result[i].label.includes(".")) ? [ `This completes the proof in branch ${result[i].label}` ] : [ `Q.E.D.` ]
+                        });
+                    } else {
+                        pvsResponse.result.push(result[i]);
+                    }
+                }
+                // if (qed) {
+                //     pvsResponse.result[pvsResponse.result.length - 1].commentary = pvsResponse.result[pvsResponse.result.length - 1].commentary || [];
+                //     pvsResponse.result[pvsResponse.result.length - 1].commentary.push("Q.E.D.");
+                //     pvsResponse.result[pvsResponse.result.length - 1].label = "Q.E.D."; // temporary fix while waiting vscode-output patch to be fixed so it always includes a label
+                // }
+            } catch (jsonerror) {
+                console.error(jsonerror);
+                console.error(data);
+                pvsResponse.error = jsonerror;
+                return pvsResponse;
+            }
         }
         return pvsResponse;
     }
@@ -134,14 +183,12 @@ export class PvsProxyLegacy {
             id: "pvs-process-legacy"
         };
         const response: PvsResponse = await this.lisp(`(prove-formula "${desc.theoryName}#${desc.formulaName}")`);
-        // patch for output while waiting Mariano's fix
-        if (response && response.result) {
-            const start: number = (<string>response.result).indexOf("{");
-            response.result = (<string>response.result).substring(start);
-        }
+        // fix for commentary erroneously printed by pvs
+        const data: string = response.result.substring((<string> response.result).indexOf("["), (<string> response.result).lastIndexOf("]") + 1);
         try {
-            pvsResponse.result = JSON.parse(<string> response.result);
+            pvsResponse.result = <ProofState[]> JSON.parse(data);
         } catch (jsonerror) {
+            console.error(data);
             console.error(jsonerror);
             pvsResponse.error = jsonerror;
             return pvsResponse;
@@ -285,15 +332,16 @@ export class PvsProxyLegacy {
             
             const matchSystemError: boolean = /\bRestart actions \(select using \:continue\)\:/g.test(res);
             if (matchSystemError) {
+                const error_string: string = `pvs-server crashed into Lisp.\n To continue, you may need to reboot pvs-server.\nPlease report the following error log to vscode-pvs developers:\n(typecheck-file "${fname}" nil nil nil nil t)\n${res}`;
                 pvsResponse.error = {
                     data: {
                         place: [ 1, 0 ],
-                        error_string: `pvs-server crashed into Lisp. Please reboot pvs-server.`,
+                        error_string,
                         file_name: fname
                     }
                 };
                 if (this.pvsErrorManager) {
-                    this.pvsErrorManager.notifyPvsFailure({ fname });
+                    this.pvsErrorManager.notifyPvsFailure({ fname, msg: error_string });
                 }
                 return pvsResponse;
             }

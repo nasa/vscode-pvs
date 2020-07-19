@@ -326,6 +326,7 @@ export class PvsProcess {
 
 	/**
 	 * Sends a command the Emacs REPL of PVS
+	 * The buffer is used to queue the messages and make sure one message at a time is sent to the process
 	 * @param cmd Command to be sent 
 	 */
 	async sendText (cmd: string): Promise<string> {

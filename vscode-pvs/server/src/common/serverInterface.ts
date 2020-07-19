@@ -36,8 +36,9 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { PvsResponse } from "./pvs-gui";
+import { PvsResponse, PvsResult } from "./pvs-gui";
 import { ProofMateProfile } from "./commandUtils";
+import { ProofState } from "./languageUtils";
 
  // import { PvsProxy } from "../pvsProxy";
 
@@ -573,7 +574,12 @@ export declare type CliGatewayRequest = {
 };
 
 export declare type CliGatewayEvent = {  
-	type: "pvs.event.proof-state" | "pvs.event.evaluator-state",
+	type: "pvs.event.proof-state",
+	channelID: string,
+	data: ProofState,
+	cmd?: string // the command that produced this state
+} | {  
+	type: "pvs.event.evaluator-state",
 	channelID: string,
 	data: PvsResponse,
 	cmd?: string // the command that produced this state
@@ -588,7 +594,11 @@ export declare type CliGatewayEvent = {
 // };
 
 export declare type CliGatewaySubscriberEvent = {  
-	type: "pvs.event.proof-state" | "pvs.event.evaluator-state",
+	type: "pvs.event.proof-state",
+	data: ProofState,
+	cmd?: string // the command that produced this state
+} | {  
+	type: "pvs.event.evaluator-state",
 	data: PvsResponse,
 	cmd?: string // the command that produced this state
 } | {

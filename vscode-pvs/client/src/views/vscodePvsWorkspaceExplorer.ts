@@ -800,11 +800,13 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 					// update the dialog
 					return new Promise(async (resolve, reject) => {
 						let stop: boolean = false;
+						commands.executeCommand('setContext', 'autorun', true);
 						token.onCancellationRequested(async () => {
 							// stop loop
 							stop = true;
 							// stop proof explorer
-							this.proofExplorer.stopAutorun();
+							this.proofExplorer.autorunStop();
+							commands.executeCommand('setContext', 'autorun', false);
 							// dispose of the dialog
 							resolve(null);
 						});
@@ -818,7 +820,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							for (let i = 0; i < formulas.length && !stop; i ++) {
 								const next: FormulaItem = formulas[i];
 								const formulaName: string = next.getFormulaName();
-								const message: string = (opt.tccsOnly) ? `Discharding proof obligations in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
+								const message: string = (opt.tccsOnly) ? `Discharging proof obligations in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
 									: `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
 								if (formulas.length > 1) {
 									progress.report({

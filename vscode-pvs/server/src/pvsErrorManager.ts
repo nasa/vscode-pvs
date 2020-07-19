@@ -12,9 +12,9 @@ export class PvsErrorManager {
         this.connection = connection;
     }
 
-    handleProofCommandError (desc: { response: PvsError }): void {
-        this.notifyError({ msg: "Error: proof-command returned error (please check pvs-server output for details)" });
-        console.error("[pvs-language-server.proofCommandRequest] Error: proof-command returned error", desc.response);
+    handleProofCommandError (desc: { cmd: string, response: PvsError }): void {
+        this.notifyError({ msg: `Error: proof-command ${desc.cmd} returned error (please check pvs-server output for details)` });
+        console.error(`[pvs-language-server.proofCommandRequest] Error: proof-command ${desc.cmd} returned error`, desc.response);
     }
     handleProveFormulaError (desc: {
         request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }, 
@@ -35,7 +35,7 @@ export class PvsErrorManager {
                 console.error(`[pvs-language-server] ${msg}`);
             } else {
                 // there was an error
-                const msg: string = `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}.\nPlease fix the typecheck errors before trying to prove the formula.`;
+                const msg: string = `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}.\nPlease fix the typecheck errors before trying to start the evaluator on theory ${desc.request.theoryName}.`;
                 this.connection.sendRequest(serverEvent.closeDontSaveEvent, { args: desc.request, msg });
                 this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg });
             }

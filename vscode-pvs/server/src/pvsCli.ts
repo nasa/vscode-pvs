@@ -98,53 +98,7 @@ class CliConnection implements SimpleConnection {
 	sendRequest (type: string, data: any): void { };
 }
 
-function parCheck (cmd: string): boolean {
-	const openRegex: RegExp = new RegExp(/\(/g);
-	const closeRegex: RegExp = new RegExp(/\)/g);
-	let par: number = 0;
-	while (openRegex.exec(cmd)) {
-		par++;
-	}
-	while (closeRegex.exec(cmd)) {
-		par--;
-	}
-	return par <= 0;
-}
 
-// utility function, ensures open brackets match closed brackets for commands
-function parMatch (cmd: string): string {
-	if (cmd && !cmd.trim().startsWith("(")) {
-		const openRegex: RegExp = new RegExp(/\(/g);
-		const closeRegex: RegExp = new RegExp(/\)/g);
-		let par: number = 0;
-		while (openRegex.exec(cmd)) {
-			par++;
-		}
-		while (closeRegex.exec(cmd)) {
-			par--;
-		}
-		if (par > 0) {
-			// missing closed brackets
-			cmd = cmd.trimRight() + ')'.repeat(par);
-			// console.log(`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
-		} else if (par < 0) {
-			cmd = '('.repeat(-par) + cmd;
-			// console.log(`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
-		}
-		return cmd.startsWith('(') ? cmd : `(${cmd})`; // add outer parentheses if they are missing
-	}
-	return cmd;
-}
-
-// utility function, ensures open brackets match closed brackets for commands
-function quotesMatch (cmd: string): boolean {
-	const quotesRegex: RegExp = new RegExp(/\"/g);
-	let nQuotes: number = 0;
-	while (quotesRegex.exec(cmd)) {
-		nQuotes++;
-	}
-	return nQuotes % 2 === 0;
-}
 
 function isQED (cmd: string): boolean {
 	return cmd.startsWith("Q.E.D.");
@@ -230,6 +184,7 @@ class PvsCli {
 		this.args = args;
 		this.clientID = fsUtils.get_fresh_id();
 	}
+	// FIXME: the evaluator crashes into lisp when trying to evaluate malformed expressions, e.g., LET x = 1;
 	async activateEvaluatorRepl (): Promise<void> {
 		// read input file so we can autocomplete symbol names
 		this.mainContent = await fsUtils.readFile(fsUtils.desc2fname(this.args));
@@ -237,41 +192,66 @@ class PvsCli {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
 		}
-		this.isActive = true;
 		readline.emitKeypressEvents(process.stdin);
-		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.evaluatorCompleter(line); });
+		// activate readline
+		this.rl = readline.createInterface({ 
+			output: process.stdout, 
+			input: process.stdin, 
+			completer: (line: string) => { 
+				return this.evaluatorCompleter(line); 
+			},
+			removeHistoryDuplicates: true
+		});
 		this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
-		this.rl.on("line", async (cmd: string) => {
-			if (utils.isQuitCommand(cmd)) {
-				this.wsClient.send(JSON.stringify({
-					type: serverCommand.evaluateExpression,
-					cmd: "quit",
-					fileName: this.args.fileName,
-					fileExtension: this.args.fileExtension,
-					contextFolder: this.args.contextFolder,
-					theoryName: this.args.theoryName,
-					formulaName: this.args.formulaName
-				}));	
-				console.log();
-				console.log("PVSio evaluator session terminated.");
-				console.log();
-				console.log();
-				this.isActive = false;
-				this.rl.question("Press Enter to close the terminal.", () => {
-					this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
-					this.wsClient.close();
-				});
-			} else {
-				cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
-				this.wsClient.send(JSON.stringify({
-					type: serverCommand.evaluateExpression,
-					cmd,
-					fileName: this.args.fileName,
-					fileExtension: this.args.fileExtension,
-					contextFolder: this.args.contextFolder,
-					theoryName: this.args.theoryName,
-					formulaName: this.args.formulaName
-				}));
+		this.isActive = true;
+
+		process.stdin.on("keypress", (input: string, key: readline.Key) => {
+			if (key && key.sequence.includes("\r") && utils.balancedPar(this.lines)) {
+				const test: { success: boolean, msg: string } = utils.parCheck(this.lines);
+				if (test.success) {
+					// console.dir(key);
+					let cmd: string = this.lines;
+					this.lines = "";
+					if (utils.isQuitCommand(cmd)) {
+						this.wsClient.send(JSON.stringify({
+							type: serverCommand.evaluateExpression,
+							cmd: "quit",
+							fileName: this.args.fileName,
+							fileExtension: this.args.fileExtension,
+							contextFolder: this.args.contextFolder,
+							theoryName: this.args.theoryName,
+							formulaName: this.args.formulaName
+						}));	
+						console.log();
+						console.log("PVSio evaluator session terminated.");
+						console.log();
+						console.log();
+						this.isActive = false;
+						this.rl.question("Press Enter to close the terminal.", () => {
+							this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+							this.wsClient.close();
+						});
+					} else {
+						cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
+						this.wsClient.send(JSON.stringify({
+							type: serverCommand.evaluateExpression,
+							cmd,
+							fileName: this.args.fileName,
+							fileExtension: this.args.fileExtension,
+							contextFolder: this.args.contextFolder,
+							theoryName: this.args.theoryName,
+							formulaName: this.args.formulaName
+						}));
+					}
+				} else {
+					console.log(test.msg);
+				}
+				this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
+			}
+		});
+		this.rl.on("line", async (ln: string) => {
+			if (this.isActive) {
+				this.lines += ln;
 			}
 		});		
 		this.connection = new CliConnection();
@@ -283,17 +263,26 @@ class PvsCli {
 		}
 		readline.emitKeypressEvents(process.stdin);
 		// activate readline
-		this.rl = readline.createInterface(process.stdout, process.stdin, (line: string) => { return this.proverCompleter(line); });
+		this.rl = readline.createInterface({ 
+			output: process.stdout, 
+			input: process.stdin, 
+			completer: (line: string) => { 
+				return this.proverCompleter(line); 
+			},
+			removeHistoryDuplicates: true
+		});
 		this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
 		this.isActive = true;
-		this.rl.on("line", async (ln: string) => {
-			if (this.isActive) {
-				this.lines += ln;
-				if (this.lines.trim().startsWith("(")) {
-					this.rl.setPrompt("");
-				}
-				if (!this.lines.trim().startsWith("(") || parCheck(this.lines)) {
-					let cmd: string = this.lines;
+
+		process.stdin.on("keypress", (input: string, key: readline.Key) => {
+			// console.log(input);
+			// console.dir(key);
+			// this.rl.setPrompt("");
+			if (key && key.sequence.includes("\r") && utils.balancedPar(this.lines)) {
+				const test: { success: boolean, msg: string } = utils.parCheck(this.lines);
+				const cmd: string = this.lines;
+				// if (test.success) {
+					// console.dir(key);
 					this.lines = "";
 					if (utils.isSaveCommand(cmd)) {
 						console.log();
@@ -346,14 +335,7 @@ class PvsCli {
 						});
 						return;
 					}
-					// else
-					if (quotesMatch(cmd)) {
-						cmd = parMatch(cmd);
-						// log command, for debugging purposes
-						// this.connection.console.log(utils.colorText(cmd, utils.textColor.blue)); // re-introduce the command with colors and parentheses
-					} else {
-						this.connection.console.warn("Mismatching double quotes, please check your expression");
-					}
+					// console.log(`Sending command ${cmd}`);
 					this.wsClient.send(JSON.stringify({
 						type: serverCommand.proofCommand, 
 						cmd,
@@ -363,8 +345,32 @@ class PvsCli {
 						theoryName: this.args.theoryName,
 						formulaName: this.args.formulaName
 					}));
-					this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
-				}
+					console.log();
+				// } else {
+				// 	console.log();
+				// 	console.log(test.msg);
+				// 	this.wsClient.send(JSON.stringify({
+				// 		type: serverCommand.proofCommand, 
+				// 		cmd,
+				// 		fileName: this.args.fileName,
+				// 		fileExtension: this.args.fileExtension,
+				// 		contextFolder: this.args.contextFolder,
+				// 		theoryName: this.args.theoryName,
+				// 		formulaName: this.args.formulaName
+				// 	}));
+				// }
+				this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+			}
+		});
+		// this.rl.on("pause", async () => {
+		// 	console.log("PAUSE");
+		// });
+		// this.rl.on("resume", async () => {
+		// 	console.log("RESUME");
+		// });
+		this.rl.on("line", async (ln: string) => {
+			if (this.isActive) {
+				this.lines += ln;
 			}
 		});
 		this.connection = new CliConnection();
@@ -409,33 +415,29 @@ class PvsCli {
 								break;
 							}
 							case "pvs.event.proof-state": {
-								const pvsResponse: PvsResponse = evt.data;
-								if (pvsResponse) {
-									if (pvsResponse.result) {
-										const res: utils.ProofState = pvsResponse.result;
-										const showHidden: boolean = utils.isShowHiddenCommand(evt.cmd);
-										if (showHidden) {
-											console.log(utils.formatHiddenFormulas(pvsResponse.result, { useColors: true, showAction: true })); // show proof state
-										} else {
-											// print commentary in the CLI
-											if (res.commentary && typeof res.commentary === "object" && res.commentary.length > 0) {
-												// the last line of the commentary is the sequent, dont' print it!
-												for (let i = 0; i < res.commentary.length - 1; i++) {
-													console.log(res.commentary[i]);
-												}
-											}
-											// update proof state -- for the completer
-											this.proofState = utils.formatProofState(res);
-											// print proof state using syntax highlighting 
-											console.log(utils.formatProofState(pvsResponse.result, { useColors: true, showAction: true })); // show proof state										
-										}
-										this.rl.prompt(); // show prompt
-										readline.clearLine(process.stdin, 1); // clear any previous input
+								const result: utils.ProofState = evt.data;
+								if (result) {
+									const showHidden: boolean = utils.isShowHiddenCommand(evt.cmd);
+									if (showHidden) {
+										console.log(utils.formatHiddenFormulas(result, { useColors: true, showAction: true })); // show proof state
 									} else {
-										console.warn(`[pvs-cli] Warning: received null result from pvs-server`);
+										// print commentary in the CLI
+										if (result.commentary && typeof result.commentary === "object" && result.commentary.length > 0) {
+											// the last line of the commentary is the sequent, dont' print it!
+											for (let i = 0; i < result.commentary.length; i++) {
+												console.log(result.commentary[i]);
+											}
+										}
+										// update proof state -- for the completer
+										this.proofState = utils.formatProofState(result);
+										// print proof state using syntax highlighting 
+										console.log(utils.formatProofState(result, { useColors: true, showAction: true })); // show proof state										
 									}
+									console.log();
+									this.rl.prompt(); // show prompt
+									readline.clearLine(process.stdin, 1); // clear any previous input
 								} else {
-									console.warn(`[pvs-cli] Warning: received null response from pvs-server`);
+									console.warn(`[pvs-cli] Warning: received null proof state from pvs-server`);
 								}
 								break;
 							}

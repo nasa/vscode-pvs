@@ -37,7 +37,7 @@
  **/
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent } from 'vscode';
+import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
@@ -52,6 +52,7 @@ import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsPackageManager } from './providers/vscodePvsPackageManager';
 import { VSCodePvsProofMate } from './views/vscodePvsProofMate';
 import { VSCodePvsFileOutlineProvider } from './providers/vscodsPvsOulineProvider';
+import { VSCodePvsSnippetsProvider } from './providers/vscodePvsSnippetsProvider';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -78,6 +79,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// outline provider
 	protected outlineProvider: VSCodePvsFileOutlineProvider;
+
+	// snippets provider
+	protected snippetsProvider: VSCodePvsSnippetsProvider;
 
 	// integrated command line interfaces
 	protected vscodePvsTerminal: VSCodePvsTerminal;
@@ -246,62 +250,75 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.client.start();
 		this.client.onReady().then(() => {
 			// initialise service providers defined on the client-side
-			this.statusBar.showProgress("Activating vscode-pvs components...");	
-			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
-			this.emacsBindingsProvider.activate(this.context);
-			this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
-			this.proofExplorer.activate(this.context);
-			this.workspaceExplorer = new VSCodePvsWorkspaceExplorer(this.client, this.proofExplorer, 'workspace-explorer-view');
-			this.workspaceExplorer.activate(this.context);
-			this.outlineProvider = new VSCodePvsFileOutlineProvider(this.client);
-			this.outlineProvider.activate(this.context);
-			this.vscodePvsTerminal = new VSCodePvsTerminal(this.client);
-			this.vscodePvsTerminal.activate(this.context);
-			this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');
-			this.proofMate.activate(this.context);
-			this.packageManager = new VSCodePvsPackageManager(this.client, this.statusBar);
-			this.packageManager.activate(this.context);
-	
-			// enable decorations for pvs syntax
-			this.decorationProvider = new VSCodePvsDecorationProvider();
-			this.decorationProvider.updateDecorations(window.activeTextEditor);
-	
-			// register handlers for document events
-			this.registerTextEditorHandlers();
+			this.statusBar.showProgress("Activating vscode-pvs...");
+			window.withProgress({
+				location: ProgressLocation.Notification,
+				cancellable: true
+			}, (progress, token): Promise<void> => { 
+				// show initial dialog with spinning progress   
+				progress.report({ increment: -1, message: "Activating vscode-pvs..." });
+				return new Promise ((resolve, reject) => {
+					// start vscode-pvs components
+					this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
+					this.emacsBindingsProvider.activate(this.context);
+					this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
+					this.proofExplorer.activate(this.context);
+					this.workspaceExplorer = new VSCodePvsWorkspaceExplorer(this.client, this.proofExplorer, 'workspace-explorer-view');
+					this.workspaceExplorer.activate(this.context);
+					this.outlineProvider = new VSCodePvsFileOutlineProvider(this.client);
+					this.outlineProvider.activate(this.context);
+					this.snippetsProvider = new VSCodePvsSnippetsProvider(this.client);
+					this.snippetsProvider.activate(this.context);
+					this.vscodePvsTerminal = new VSCodePvsTerminal(this.client);
+					this.vscodePvsTerminal.activate(this.context);
+					this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');
+					this.proofMate.activate(this.context);
+					this.packageManager = new VSCodePvsPackageManager(this.client, this.statusBar);
+					this.packageManager.activate(this.context);
 			
-			// create event dispatcher for handling events for views
-			this.eventsDispatcher = new EventsDispatcher(this.client, {
-				statusBar: this.statusBar,
-				emacsBindings: this.emacsBindingsProvider,
-				workspaceExplorer: this.workspaceExplorer,
-				proofExplorer: this.proofExplorer,
-				vscodePvsTerminal: this.vscodePvsTerminal,
-				proofMate: this.proofMate
-			});
-			this.eventsDispatcher.activate(context);
+					// enable decorations for pvs syntax
+					this.decorationProvider = new VSCodePvsDecorationProvider();
+					this.decorationProvider.updateDecorations(window.activeTextEditor);
+			
+					// register handlers for document events
+					this.registerTextEditorHandlers();
+					
+					// create event dispatcher for handling events for views
+					this.eventsDispatcher = new EventsDispatcher(this.client, {
+						statusBar: this.statusBar,
+						emacsBindings: this.emacsBindingsProvider,
+						workspaceExplorer: this.workspaceExplorer,
+						proofExplorer: this.proofExplorer,
+						vscodePvsTerminal: this.vscodePvsTerminal,
+						proofMate: this.proofMate
+					});
+					this.eventsDispatcher.activate(context);
 
-			// create handler for server ready event
-			this.client.onRequest(serverEvent.pvsServerReady, (info: comm.PvsVersionDescriptor) => {
-				// set vscode context variable pvs-server-active to true
-				commands.executeCommand('setContext', 'pvs-server-active', true);
+					// start PVS
+					// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
+					const contextFolder = vscodeUtils.getEditorContextFolder();
+					this.pvsPath = workspace.getConfiguration().get("pvs.path");
+					this.client.sendRequest(comm.serverCommand.startPvsServer, {
+						pvsPath: this.pvsPath, 
+						contextFolder
+					});					
+					// create handler for pvsServerReady event
+					this.client.onRequest(serverEvent.pvsServerReady, (info: comm.PvsVersionDescriptor) => {
+						// set vscode context variable pvs-server-active to true
+						commands.executeCommand('setContext', 'pvs-server-active', true);
 
-				// update status bar
-				this.statusBar.ready();
+						// update status bar
+						this.statusBar.ready();
 
-				// parse file opened in the editor
-				if (window.activeTextEditor && window.activeTextEditor.document) {
-					this.client.sendRequest(comm.serverCommand.parseFile, window.activeTextEditor.document.fileName);
-				}
-			});
+						// parse file opened in the editor
+						if (window.activeTextEditor && window.activeTextEditor.document) {
+							this.client.sendRequest(comm.serverCommand.parseFile, window.activeTextEditor.document.fileName);
+						}
 
-			// start PVS
-			const contextFolder = vscodeUtils.getEditorContextFolder();
-			this.pvsPath = workspace.getConfiguration().get("pvs.path");
-
-			// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
-			this.client.sendRequest(comm.serverCommand.startPvsServer, {
-				pvsPath: this.pvsPath, 
-				contextFolder
+						// resolve the promise
+						resolve();
+					});
+				});
 			});
 		});
 	}

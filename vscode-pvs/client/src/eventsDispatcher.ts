@@ -51,6 +51,7 @@ import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 import * as utils from './common/languageUtils';
 import * as commandUtils from './common/commandUtils';
 import * as vscodeUtils from './utils/vscode-utils';
+import { ProofState } from "./common/languageUtils";
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -245,7 +246,7 @@ export class EventsDispatcher {
             }
         });
         this.client.onRequest(serverEvent.proveFormulaResponse, (desc: {
-            response: PvsResponse, 
+            response: { result: ProofState }, 
             args: { 
                 fileName: string, 
                 fileExtension: string, 
@@ -277,9 +278,6 @@ export class EventsDispatcher {
                 // vscode.commands.executeCommand('vscode-pvs.in-checker', true);
             }
         });
-		// this.client.onRequest(serverEvent.dischargeTheoremsResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
-        //     // do nothing for now
-        // });
         this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
             if (desc) {
                 console.log(desc);
@@ -452,6 +450,20 @@ export class EventsDispatcher {
             }
         });
 
+        // register handler for generateTccsResponse, which might be triggered at the end of the proof or when discharging tccs
+        this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
+            response: PvsContextDescriptor, 
+            args: { 
+                fileName: string, 
+                fileExtension: string, 
+                contextFolder: string 
+            }
+        }) => {
+            if (this.workspaceExplorer && desc.response) {
+                this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
+            }
+        });   
+        
 
 
         //---------------------------------------------------------
@@ -636,6 +648,9 @@ export class EventsDispatcher {
                             // quit the current proof first
                             await this.proofExplorer.quitProof({ confirm: false });
                         }
+                        this.proofExplorer.prepareToProveFormula();
+                        this.proofExplorer.revealView();
+                        this.proofMate.revealView();
                         // the sequence of events triggered by this command is:
                         // 1. vscodePvsTerminal.startProverSession(desc) 
                         // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
@@ -644,6 +659,20 @@ export class EventsDispatcher {
                         //      3.2 loadProofDescriptor
                         //      3.3 proveFormula
                         await this.vscodePvsTerminal.startProverSession(desc);
+
+                        // register handler for generateTccsResponse, which might be triggered at the end of the proof
+                        this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
+                            response: PvsContextDescriptor, 
+                            args: { 
+                                fileName: string, 
+                                fileExtension: string, 
+                                contextFolder: string 
+                            }
+                        }) => {
+                            if (this.workspaceExplorer && desc.response) {
+                                this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
+                            }
+                        });   
                     } else {
                         console.error("[vscode-events-dispatcher] Error: theory name is null", desc);
                     }
@@ -677,13 +706,27 @@ export class EventsDispatcher {
         }) => {
             if (resource) {
                 this.quietMode = true;
+
                 this.statusBar.showProgress(`Re-running proofs in theory ${resource.theoryName}`);
+                this.proofMate.hideView();
+                this.proofExplorer.hideView();
+
                 await this.workspaceExplorer.autorun(resource);
                 this.statusBar.ready();
+                
                 this.quietMode = false;
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.autorun-theory invoked with null resource", resource);
             }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory-inline", async (resource: {
+            contextFolder: string,
+            fileName: string, 
+            fileExtension: string,  
+            theoryName: string, 
+            formulaName: string 
+        }) => {
+            commands.executeCommand("vscode-pvs.autorun-theory", resource);
         }));
 
         context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: {
@@ -693,9 +736,17 @@ export class EventsDispatcher {
             theoryName: string, 
             formulaName: string 
         }) => {
-            if (resource) {
+            if (resource) {                
                 this.quietMode = true;
+
+                this.proofMate.hideView();
+                this.proofExplorer.autorunStart();
+                this.proofExplorer.hideView();
+
                 await this.workspaceExplorer.autorun(resource, { tccsOnly: true });
+
+                await this.proofExplorer.autorunStop();
+
                 this.quietMode = false;
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-tccs invoked with null resource", resource);
@@ -939,12 +990,13 @@ export class EventsDispatcher {
                 if (this.quietMode) {
                     this.client.onNotification(`server.status.end-important-task-${desc.id}-with-errors`, (desc: { msg: string }) => {
                         this.statusBar.ready();
-                        this.proofExplorer.stopAutorun();
+                        this.proofExplorer.autorunStop();
+
                         if (desc && desc.msg) {
                             this.statusBar.showError(desc.msg); // use the status bar rather than dialogs, because we don't have APIs to close old dialogs with potentially stale information
                             window.showErrorMessage(desc.msg);
                             // show problems panel -- see also Code->Preferences->KeyboardShortcuts
-                            commands.executeCommand("workbench.actions.view.toggleProblems");
+                            commands.executeCommand("workbench.panel.markers.view.focus");
                         }
                     });
                     return;
@@ -986,7 +1038,7 @@ export class EventsDispatcher {
                                 this.statusBar.showError(desc.msg); // use the status bar rather than dialogs, because we don't have APIs to close old dialogs with potentially stale information
                                 // window.showErrorMessage(desc.msg);
                                 // show problems panel -- see also Code->Preferences->KeyboardShortcuts
-                                commands.executeCommand("workbench.actions.view.toggleProblems");
+                                commands.executeCommand("workbench.panel.markers.view.focus");
                             }
                         });
                     });
@@ -1000,7 +1052,7 @@ export class EventsDispatcher {
 
         this.client.onNotification("server.status.pvs-failure", (opt?: { msg?: string, fname?: string, method?: string }) => {
             opt = opt || {};
-            let msg: vscode.MarkedString = opt.msg || `pvs-server crashed into Lisp. Please reboot pvs-server.`;
+            let msg: vscode.MarkedString = opt.msg || `pvs-server crashed into Lisp.\nTo continue, you may need to reboot pvs-server.`;
             if (opt.fname) {
                 // msg += `\nThe error occurred while processing file [${opt.fname}](file://${opt.fname})`; // vscode is unable to render marked strings in dialogs
                 msg += `\nThe error occurred while processing file ${opt.fname}`;
@@ -1008,7 +1060,6 @@ export class EventsDispatcher {
                 // msg += `\nThe error occurred while executing method [${opt.method}](${opt.method})`; // vscode is unable to render marked strings in dialogs
                 msg += `\nThe error occurred while executing method ${opt.method}`;
             }
-            msg += ` (see pvs-server output for details)`;
             window.showErrorMessage("Error: " + msg);
             this.statusBar.showError(msg);
         });

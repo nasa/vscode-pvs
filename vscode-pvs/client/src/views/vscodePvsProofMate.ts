@@ -289,12 +289,16 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	protected providerView: string;
 	protected view: TreeView<TreeItem>;
 
+	protected visible: boolean = false;
+
 	// proof descriptor
 	protected desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string };
 
 	// elements in the view
 	protected hints: ProofMateHints;
 	protected sketchpad: ProofMateSketchpad;
+
+	// protected autorunFlag: boolean = false;
 
 	// rules for computing hints
 	protected recommendationRules: RecommendationRule[] = [
@@ -306,6 +310,22 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		{ name: "lift-if", description: "Brings if-then-else to the top level", test: r4, commands: [ "lift-if" ] },
 		{ name: "split", description: "Split cases", test: r5, commands: [ "split", "ground" ] }
 	]
+
+	// autorunStop (): void {
+	// 	this.autorunFlag = false;
+	// }
+	// autorunStart (): void {
+	// 	this.autorunFlag = true;
+	// }
+	hideView (): void {
+		this.visible = false;
+		vscode.commands.executeCommand('setContext', 'proof-mate.visible', false);
+	}
+	revealView (): void {
+		this.visible = true;
+		vscode.commands.executeCommand('setContext', 'proof-mate.visible', true);
+	}
+
 
 	/**
 	 * Constructor
@@ -330,7 +350,9 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	 * Refresh tree view
 	 */
 	protected refreshView(): void {
-		this._onDidChangeTreeData.fire();
+		if (this.visible) {
+			this._onDidChangeTreeData.fire();
+		}
 	}
 	/**
 	 * Reset tree view
@@ -451,7 +473,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	}
 
 	updateRecommendations (proofState: ProofState): void {
-		if (proofState) {
+		if (proofState && this.visible) {
 			this.resetView();
 			const recs: { cmd: string, tooltip?: string }[] = this.getRecommendations(proofState);
 			if (recs) {

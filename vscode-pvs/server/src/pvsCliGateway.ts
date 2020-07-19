@@ -111,10 +111,10 @@ export class PvsCliGateway {
 				// 	console.error(`[pvs-cli-gateway] Warning: message could not be forwarded on channel ${desc.channelID} (channel is null)`)
 				// }
 			} else {
-				console.error(`[pvs-cli-gateway] Warning: trying to publish on channel ${desc.channelID} (allowed channels are only "pvs.event.proof-state", "pvs.event.evaluator-state", and "gateway.publish.math-objects")`)
+				console.error(`[pvs-cli-gateway] Warning: trying to publish event type ${desc["channelID"]} (allowed types are only "pvs.event.proof-state", "pvs.event.evaluator-state", and "gateway.publish.math-objects")`)
 			}
 		} else {
-			console.error("[pvs-cli-gateway] Warning: received null descriptor");
+			console.error("[pvs-cli-gateway] Warning: received null or incomplete descriptor");
 		}
 	}
 
@@ -194,7 +194,7 @@ export class PvsCliGateway {
 									}
 									case "pvs.proof-command": {
 										if (data && data.cmd) {
-											console.info('[pvs-cli-gateway] received new command from pvs-cli', data.cmd);
+											// console.info('[pvs-cli-gateway] received new command from pvs-cli', data.cmd);
 											this.pvsLanguageServer.proofCommandRequest(data);
 										}
 										break;
