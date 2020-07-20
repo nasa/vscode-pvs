@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs-server",
 	"description": "Implementation of a language server for PVS.",
-	"version": "1.0.24-delta",
+	"version": "1.0.24-eta",
 	"author": "Paolo Masci",
 	"publisher": "paolomasci",
 	"license": "NASA-1.3",
@@ -20,7 +20,7 @@
 		"url": "xxx"
 	},
 	"dependencies": {
-		"typescript": "^3.9.6",
+		"typescript": "^3.9.7",
 		"vscode-languageserver": "^5.2.1",
 		"ws": "^7.2.0",
 		"xmlrpc": "^1.3.2"

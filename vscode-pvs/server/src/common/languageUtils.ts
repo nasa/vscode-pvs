@@ -1450,7 +1450,7 @@ export function parCheck (cmd: string, opt?: { useColors?: boolean }): { success
 			}
 			case `)`: {
 				par--; 
-				if (quotes % 2 === 0 && par % 2 !== 0) {
+				if (quotes && quotes % 2 === 0 && par % 2 !== 0) {
 					// unbalanced parentheses
 					let msg: string = `Error: Unbalanced double quotes at position ${i}.`;
 					msg += "\n" + cmd.substring(0, i);

@@ -1724,7 +1724,10 @@ export class PvsLanguageServer {
 			const proverStatus: PvsResponse = await this.pvsProxy.proverStatus();
 			if (proverStatus && proverStatus.result !== "inactive") {
 				const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
-				await this.pvsProxy.proofCommand({ cmd: "(quit)" }, { useLispInterface });
+				const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: "(quit)" }, { useLispInterface });
+				if (response && response.error) {
+					this.pvsErrorManager.handleProofCommandError({ cmd: "(quit)", response: <PvsError> response });
+				}
 			}
 		// }
 		this.mode = "lisp";

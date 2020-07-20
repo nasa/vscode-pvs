@@ -1643,6 +1643,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.activeNode.proofState = this.initialProofState;
 			this.activeNode.updateTooltip();
 			this.dirtyFlag = false;
+			this.running = false;
 
 			// start the proof
 			if (this.root.children && this.root.children.length) {
@@ -1656,7 +1657,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.pendingExecution = false;
 
 			if (this.autorunFlag) {
-				vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
 				this.run();
 			} else {
 				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);

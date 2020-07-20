@@ -122,7 +122,7 @@ export class PvsProxy {
 	protected cliListener: (data: string) => void; // useful to show progress feedback
 
 	protected pvsErrorManager: PvsErrorManager;
-	protected buffer: Promise<PvsResponse> = Promise.resolve(null); // this is a queue used to serialize the requests sent to the server
+	// protected buffer: Promise<PvsResponse> = Promise.resolve(null); // this is a queue used to serialize the requests sent to the server
 
 	protected pvsVersionInfo: PvsVersionDescriptor = null;
 
@@ -203,7 +203,7 @@ export class PvsProxy {
 	pvsRequest(method: string, params?: string[]): Promise<PvsResponse> {
 		params = params || [];
 		const req = { method: method, params: params, jsonrpc: "2.0", id: this.get_fresh_id() };
-		this.buffer = this.buffer.then(() => {
+		// this.buffer = this.buffer.then(() => {
 			return new Promise((resolve, reject) => {
 				if (this.client) {
 					const jsonReq: string = JSON.stringify(req);
@@ -229,6 +229,13 @@ export class PvsProxy {
 								if (this.pvsErrorManager) {
 									this.pvsErrorManager.notifyPvsFailure({ method });
 								}
+								resolve({
+									jsonrpc: "2.0", 
+									id: req.id,
+									error: {
+										error_string: `xmlrpc method ${method} failed with error ${JSON.stringify(error, null, " ")}`
+									}
+								});
 							}
 						} else if (value) {
 							// console.log("[pvs-proxy] Value returned by pvs-server: ");
@@ -292,8 +299,8 @@ export class PvsProxy {
 					});
 				}
 			});
-		});
-		return this.buffer;
+		// });
+		// return this.buffer;
 	}
 	async listMethodsRequest(): Promise<PvsResponse> {
 		return await this.pvsRequest('list-methods');
