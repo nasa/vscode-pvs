@@ -807,6 +807,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							// stop proof explorer
 							this.proofExplorer.autorunStop();
 							commands.executeCommand('setContext', 'autorun', false);
+							commands.executeCommand('vscode-pvs.stop-autorun');
 							// dispose of the dialog
 							resolve(null);
 						});

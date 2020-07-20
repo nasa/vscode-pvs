@@ -300,6 +300,25 @@ class PvsCli {
 						this.rl.prompt();
 						return;
 					}
+					if (utils.isSaveForceQuitCommand(cmd)) {
+						console.log();
+						console.log("Proof saved successfully!");
+						console.log();
+						console.log("Prover session terminated.");
+						this.wsClient.send(JSON.stringify({
+							type: serverCommand.proofCommand,
+							cmd: "save-force-quit",
+							fileName: this.args.fileName,
+							fileExtension: this.args.fileExtension,
+							contextFolder: this.args.contextFolder,
+							theoryName: this.args.theoryName,
+							formulaName: this.args.formulaName
+						}));
+						this.isActive = false;
+						this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+						this.wsClient.close();
+						return;
+					}
 					if (utils.isQuitCommand(cmd)) {
 						console.log();
 						console.log("Prover session terminated.");

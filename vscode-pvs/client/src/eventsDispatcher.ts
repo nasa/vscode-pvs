@@ -66,6 +66,8 @@ export class EventsDispatcher {
     protected inChecker: boolean = false;
     protected quietMode: boolean = false;
 
+    protected willProveFormula: boolean = false;
+
     constructor (client: LanguageClient, handlers: {
         statusBar: VSCodePvsStatusBar,
         emacsBindings: VSCodePvsEmacsBindingsProvider,
@@ -272,10 +274,7 @@ export class EventsDispatcher {
                 }
                 // start proof
                 this.proofExplorer.startProof();
-                this.proofMate.startProof();
-                
-                // // set vscode context variable in-checker to true, to indicate a proof is now in progress
-                // vscode.commands.executeCommand('vscode-pvs.in-checker', true);
+                this.proofMate.startProof();                
             }
         });
         this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
@@ -309,6 +308,7 @@ export class EventsDispatcher {
             const msg: string = desc.msg || "Ups, pvs-server just crashed :/";
             this.statusBar.failure(msg);
         });
+
         this.client.onRequest(serverEvent.proverModeEvent, (desc: { mode: ServerMode }) => {
             if (desc) {
                 switch (desc.mode) {
@@ -316,6 +316,10 @@ export class EventsDispatcher {
                         this.inChecker = true;
                         vscode.commands.executeCommand('setContext', 'in-checker', true);
                         this.workspaceExplorer.refreshView();
+                        if (!this.willProveFormula) {
+                            // cancel request
+                            this.proofExplorer.quitProof({ confirm: false }); // async call
+                        }
                         break;
                     }
                     case "pvsio":
@@ -633,6 +637,7 @@ export class EventsDispatcher {
 
         // vscode-pvs.prove-formula
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula", async (resource) => {
+            this.willProveFormula = true;
             if (window.activeTextEditor && window.activeTextEditor.document) {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();
@@ -651,7 +656,7 @@ export class EventsDispatcher {
                             // quit the current proof first
                             await this.proofExplorer.quitProof({ confirm: false });
                         }
-                        this.proofExplorer.prepareToProveFormula();
+                        // this.proofExplorer.prepareToProveFormula();
                         this.proofExplorer.revealView();
                         this.proofMate.revealView();
                         // the sequence of events triggered by this command is:
@@ -687,11 +692,10 @@ export class EventsDispatcher {
             }
         }));
 
-        // context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-formula", async (resource) => {
-        //     commands.executeCommand("vscode-pvs.prove-formula", resource);
-        // }));
-
-        // vscode-pvs.autorun-theory
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.stop-autorun", () => {
+            this.willProveFormula = false;
+        }));
+            // vscode-pvs.autorun-theory
         // the sequence of events triggered by this command is:
         // 1. vscodePvsTerminal.startProverSession(desc) 
         // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
@@ -708,6 +712,8 @@ export class EventsDispatcher {
             formulaName: string 
         }) => {
             if (resource) {
+                this.willProveFormula = true;
+
                 this.quietMode = true;
 
                 this.statusBar.showProgress(`Re-running proofs in theory ${resource.theoryName}`);
@@ -739,7 +745,8 @@ export class EventsDispatcher {
             theoryName: string, 
             formulaName: string 
         }) => {
-            if (resource) {                
+            if (resource) {        
+                this.willProveFormula = true;        
                 this.quietMode = true;
 
                 this.proofMate.hideView();

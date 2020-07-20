@@ -1137,8 +1137,8 @@ export function isQuitCommand (cmd: string): boolean {
 		|| cmd === "exit;"
 		|| cmd === "(exit)"
 		|| cmd.toLocaleLowerCase() === "(exit)y")
-		|| /\(\s*quit\s*\)\s*y?;?/gi.test(cmd)
-		|| /\(\s*exit\s*\)\s*y?;?/gi.test(cmd)
+		|| /\(?\s*quit\s*\)?\s*y?;?/gi.test(cmd)
+		|| /\(?\s*exit\s*\)?\s*y?;?/gi.test(cmd)
 		;
 }
 
@@ -1221,7 +1221,7 @@ export function isSaveCommand (cmd: string): boolean {
 	return cmd && (cmd === "save" 
 		|| cmd === "save;"
 		|| cmd === "(save)"
-		|| /\(?\s*save\b/g.test(cmd))
+		|| /\(\s*save\s*\)/g.test(cmd))
 		;
 }
 

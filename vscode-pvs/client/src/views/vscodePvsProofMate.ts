@@ -473,16 +473,18 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	}
 
 	updateRecommendations (proofState: ProofState): void {
-		if (proofState && this.visible) {
-			this.resetView();
-			const recs: { cmd: string, tooltip?: string }[] = this.getRecommendations(proofState);
-			if (recs) {
-				for (let i in recs) {
-					this.hints.addRecommendation(recs[i]);
+		if (proofState) {
+			if (this.visible) {
+				this.resetView();
+				const recs: { cmd: string, tooltip?: string }[] = this.getRecommendations(proofState);
+				if (recs) {
+					for (let i in recs) {
+						this.hints.addRecommendation(recs[i]);
+					}
 				}
+				this.refreshView();
+				// this.addRecommendations([ { cmd: "skosimp*", tooltip: "Removes universal quantifier" } ]);
 			}
-			this.refreshView();
-			// this.addRecommendations([ { cmd: "skosimp*", tooltip: "Removes universal quantifier" } ]);
 		} else {
 			console.warn(`[proof-mate] Warning: null sequent`);
 		}

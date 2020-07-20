@@ -1149,7 +1149,10 @@ export class PvsProxy {
 				// check if vscode-output is enabled -- this is disabled for now
 				const jsonOutput: PvsResponse = await this.legacy.lisp(`(boundp '*vscode-output*)`);
 				if (jsonOutput && jsonOutput.result === "t") {
+					this.connection.sendNotification(serverEvent.profilerData, `Profiling: vscode-output\n`);
 					this.jsonOutputAvailable = true;
+				} else {
+					this.connection.sendNotification(serverEvent.profilerData, `Profiling: xmlrpc-server\n`);
 				}
 				return info[1];
 			}

@@ -247,6 +247,16 @@ class TerminalSession {
             });
         }
     }
+    async saveForceQuitCommand (): Promise<void> {
+        if (this.isActive) {
+            return new Promise((resolve, reject) => {
+                this.sendCommand("save-force-quit");
+                setTimeout(() => {
+                    resolve();
+                }, 200);
+            });
+        }
+    }
 }
 
 import { cliSessionType } from '../common/serverInterface';
@@ -362,7 +372,7 @@ export class VSCodePvsTerminal {
                             // close all prover sessions first -- the current version of pvs-server supports one prover session at a time
                             for (let i = 0; i < keys.length; i++) {
                                 const openTerminal: TerminalSession = this.openTerminals[keys[i]];
-                                await openTerminal.quitDontSaveCommand(); // the terminal will be automatically closed when the gateway received cli-end
+                                await openTerminal.saveForceQuitCommand(); // the terminal will be automatically closed when the gateway received cli-end
                             }
                         }
                         const pvsTerminal: TerminalSession = new TerminalSession({ client: this.client, channelID, pvsPath, gateway });

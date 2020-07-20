@@ -231,7 +231,7 @@
 			{
 				"command": "vscode-pvs.prove-formula",
 				"title": "Prove",
-				"enablement": "pvs-server-active == true"
+				"enablement": "pvs-server-active == true && !autorun"
 			},
 			{
 				"command": "vscode-pvs.command-palette",

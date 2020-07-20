@@ -256,7 +256,7 @@ export class PvsLanguageServer {
 			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: args.cmd }, { timeout, useLispInterface });
 
 			const ms: number = new Date().getTime() - start;
-			this.connection.sendNotification(serverEvent.profilerData, `${args.cmd}: ${ms}ms`);
+			this.connection.sendNotification(serverEvent.profilerData, `${ms}ms ${args.cmd}`);
 
 			return response;
 		} else {
@@ -385,6 +385,7 @@ export class PvsLanguageServer {
 				if (response && response.result) {
 					this.mode = "in-checker";
 				}
+				this.connection.sendNotification(serverEvent.profilerData, `(prove-formula "${path.join(args.contextFolder, args.fileName + ".pvs" + "#" + args.theoryName)}")`);
 				return response;
 			} catch (ex) {
 				console.error('[pvs-language-server.proveFormula] Error: pvsProxy has thrown an exception', ex);
@@ -436,9 +437,7 @@ export class PvsLanguageServer {
 		const shasum: string = await fsUtils.shasumFile(request);
 		// load proof
 		const pdesc: ProofDescriptor = await this.loadProof(request);
-		if (pdesc) {
-			this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc }, args: request });
-		}
+		this.connection.sendRequest(serverEvent.loadProofResponse, { response: { result: pdesc }, args: request });
 		// start proof
 		// console.log("prove-formula", request);
 		const response: PvsResponse = await this.proveFormula(request);
