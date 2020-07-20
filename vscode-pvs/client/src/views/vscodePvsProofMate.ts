@@ -454,7 +454,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 				theoryName: this.desc.theoryName,
 				formulaName: this.desc.formulaName,
 				contextFolder: this.desc.contextFolder,
-				cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
+				cmd: cmd.startsWith("(") ? cmd : `(${cmd.trim()})`
 			});
 		} else {
 			console.warn(`[proof-mate] Warning: could not send proof command (please set proof descriptor before trying to send any command)`)

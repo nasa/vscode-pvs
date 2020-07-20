@@ -652,7 +652,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 				// else, the prover has made progress with the provided proof command
 				// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
-				if (!utils.branchHasChanged({ newBranch, previousBranch }) && (!utils.isSameCommand(activeNode.name, cmd) || this.ghostNode.isActive())) {
+				if (!utils.isSameCommand(activeNode.name, cmd) || this.ghostNode.isActive()) {
 					this.running = false;
 					vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 					if (this.autorunFlag && this.ghostNode.isActive()) {
