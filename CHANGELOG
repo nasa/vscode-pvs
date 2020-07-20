@@ -1,4 +1,10 @@
 ## ChangeLog
+### 1.0.24 (2020.07.xx)
+- Improved autocompletion
+- Improved support for multiline input in prover terminal
+- Improved Proof Explorer
+- Added pvs-server profiler
+
 ### 1.0.23 (2020.07.01)
 - Added support for multi-line commands in the prover prompt
 - Added support for automatic proof of TCCs (M-x tcp)
