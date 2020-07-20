@@ -462,8 +462,11 @@ export class EventsDispatcher {
             if (this.workspaceExplorer && desc.response) {
                 this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
             }
-        });   
+        });
         
+        this.client.onNotification(serverEvent.profilerData, (data: string) => {
+            this.vscodePvsTerminal.profilerData(data);
+        });
 
 
         //---------------------------------------------------------

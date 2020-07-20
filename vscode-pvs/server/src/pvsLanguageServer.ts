@@ -256,7 +256,7 @@ export class PvsLanguageServer {
 			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: args.cmd }, { timeout, useLispInterface });
 
 			const ms: number = new Date().getTime() - start;
-			console.info(`[profiler] proof-command ${args.cmd}: ${ms}ms`);
+			this.connection.sendNotification(serverEvent.profilerData, `${args.cmd}: ${ms}ms`);
 
 			return response;
 		} else {

@@ -547,7 +547,9 @@ export const serverEvent = {
 	pvsNotPresent: "pvs.event.pvs-not-present",
 	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version",
 
-	nasalibNotPresent: "pvs.event.nasalib-not-present"
+	nasalibNotPresent: "pvs.event.nasalib-not-present",
+
+	profilerData: "pvs.event.profiler-data"
 };
 
 export declare type ServerMode = "lisp" | "in-checker" | "pvsio";

@@ -256,6 +256,7 @@ export class VSCodePvsTerminal {
     protected client: LanguageClient;
     protected context: vscode.ExtensionContext;
     protected openTerminals: { [key: string]: TerminalSession } = {};
+    protected profiler: vscode.OutputChannel = vscode.window.createOutputChannel("pvs-server-profiler");
     /**
      * Constructor
      * @param client Language client 
@@ -419,5 +420,8 @@ export class VSCodePvsTerminal {
                 resolve(false);
             }
         });
+    }
+    profilerData (data: string): void {
+        this.profiler.appendLine(data);
     }
 }
