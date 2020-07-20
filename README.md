@@ -5,7 +5,7 @@ The environment redefines the way developers interact with PVS, and better align
 ![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.24-eta](releases/vscode-pvs-1.0.24-eta.vsix)
+[vscode-pvs-1.0.24-theta](releases/vscode-pvs-1.0.24-theta.vsix)
 
 ## Getting started
 New to VSCode-PVS and the PVS verification system? Try out our [tutorial](vscode-pvs/docs/TUTORIAL.md)!
