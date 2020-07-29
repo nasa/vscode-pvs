@@ -61,6 +61,7 @@ import {
 	ProofExecDidLoadSequent,
 	ProofExecDidStartProof,
 	ProofExecDidUpdateSequent,
+	ProofEditTrimUnused,
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -1439,7 +1440,7 @@ export class PvsProofExplorer {
 	 * Deletes proof commands that were not visited. This function is useful to clean up a proof script when a branch is closed or when the proof is QED.
 	 * @param desc Descriptor indicating which node is the root of the subtree that needs to be cleaned up.
 	 */
-	protected removeNotVisited (desc: { selected: ProofItem }): void {
+	removeNotVisited (desc: { selected: ProofItem }): void {
 		if (desc && desc.selected && desc.selected.parent) {
 			const node: ProofItem = desc.selected;
 			if (node.children) {
@@ -1457,6 +1458,17 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
+	removeNotVisitedX (desc: ProofEditTrimUnused): void {
+		if (desc && desc.selected) {
+			const selected: ProofItem = this.findNode(desc.selected.id);
+			if (selected) {
+				this.removeNotVisited({ selected });
+				return;
+			}
+		}
+		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
+	}
+
 
 	/**
 	 * Renames the selected node. The new name is entered using a dialog window.

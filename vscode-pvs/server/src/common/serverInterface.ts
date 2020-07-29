@@ -587,7 +587,7 @@ export const nasalibUrl: string = "https://github.com/nasa/nasalib";
 // ProofEdit
 export type ProofEditCommand = ProofEditAppendNode | ProofEditCopyNode | ProofEditPasteNode | ProofEditCopyTree
 	| ProofEditPasteTree | ProofEditDeleteNode | ProofEditAppendBranch | ProofEditCutNode | ProofEditCutTree
-	| ProofEditDeleteTree | ProofEditTrimNode | ProofEditRenameNode | ProofEditSave;
+	| ProofEditDeleteTree | ProofEditTrimNode | ProofEditRenameNode | ProofEditSave | ProofEditTrimUnused;
 export type ProofEditAppendNode = {
 	action: "append-node",
 	name: string,
@@ -631,6 +631,10 @@ export type ProofEditDeleteTree = {
 };
 export type ProofEditTrimNode = {
 	action: "trim-node",
+	selected: { id: string, name: string }
+};
+export type ProofEditTrimUnused = {
+	action: "trim-unused",
 	selected: { id: string, name: string }
 };
 export type ProofEditRenameNode = {

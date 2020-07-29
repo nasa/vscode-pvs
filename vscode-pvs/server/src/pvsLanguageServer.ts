@@ -1902,6 +1902,7 @@ export class PvsLanguageServer {
 						case "cut-tree": { this.proofExplorer.cutTreeX(desc); break; }
 						case "delete-tree": { this.proofExplorer.deleteTreeX(desc); break; }
 						case "trim-node": { this.proofExplorer.trimNodeX(desc); break; }
+						case "trim-unused": { this.proofExplorer.removeNotVisitedX(desc); break; }
 						case "rename-node": { this.proofExplorer.renameNodeX(desc); break; }
 						case "save": { await this.proofExplorer.saveProof(); break; }
 						default: {
