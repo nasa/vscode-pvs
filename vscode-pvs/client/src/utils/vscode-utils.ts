@@ -70,7 +70,7 @@ export function showTextDocument (desc: {
  * Utility function, previews a text document in the editor
  * @param content 
  */
-export async function previewTextDocument (name: string, content: string, opt?: { contextFolder?: string, viewColumn?: vscode.ViewColumn }): Promise<boolean> {
+export async function previewTextDocument (name: string, content: string, opt?: { contextFolder?: string, viewColumn?: vscode.ViewColumn }): Promise<void> {
     opt = opt || {};
     let viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
 
@@ -85,18 +85,19 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     const preview: vscode.Uri = vscode.Uri.file(fname);
 
     const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
-    edit.deleteFile(preview, { ignoreIfNotExists: true });
+    // edit.deleteFile(preview, { ignoreIfNotExists: true });
     edit.createFile(preview, { overwrite: true });
     edit.insert(preview, new vscode.Position(0, 0), content);
-    const success: boolean = await vscode.workspace.applyEdit(edit);
+    let success: boolean = await vscode.workspace.applyEdit(edit);
     // FIXME: applyEdit fails if the document is already open and active in the editor, understand why this is the case.
+    if (!success) {
+        success = await vscode.workspace.applyEdit(edit);
+    }    
     if (success) {
         const document: vscode.TextDocument = await vscode.workspace.openTextDocument(preview);
+        // const document: vscode.TextDocument = await vscode.workspace.openTextDocument(preview);
         vscode.window.showTextDocument(document, { viewColumn, preserveFocus: true, preview: true });
         await document.save();
-        return true;
     }
-    // vscode.window.showInformationMessage(`[vscode-utils] Warning: unable to show ${name} in the editor`);
-    return false;
 }
 

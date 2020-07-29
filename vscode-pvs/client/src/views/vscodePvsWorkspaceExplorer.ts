@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, TextDocument } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverCommand } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverCommand, serverEvent, PvsFormula } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -172,27 +172,30 @@ export class TheoryItem extends TreeItem {
 }
 class LoadingItem extends TreeItem {
 	contextValue: string = "loading-content";
-	message: string = "Loading..."
-	protected points: number = 3;
+	message: string = "Loading"
+	protected points: number = 0;
 	protected MAX_POINTS: number = 3;
 	protected timer: NodeJS.Timer;
 	constructor () {
 		super ("loading-content", TreeItemCollapsibleState.None);
-		this.label = this.message + "...";
-		this.start();
+		this.label = this.message;
 	}
-	start (): void {
-		this.loading();
-		this.timer = setInterval(() => {
+	start (): Promise<void> {
+		return new Promise((resolve, reject) => {
 			this.loading();
-		}, 200);
+			const timeout: number = this.points < this.MAX_POINTS ? 400 : 1000;
+			this.timer = setInterval(() => {
+				this.loading();
+				resolve();
+			}, timeout);
+		});
 	}
 	protected loading (): void {
 		this.label = this.message + ".".repeat(this.points);
-		this.points = this.points < this.MAX_POINTS ? this.points + 1 : 1;
+		this.points = this.points < this.MAX_POINTS ? this.points + 1 : 0;
 	}
 	stop (): void {
-		this.points = 1;
+		this.points = 0;
 		clearInterval(this.timer);
 		this.timer = null;
 	}
@@ -657,7 +660,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			const theoryName = fsUtils.getFileName(fileName); // this will remove the extension
 			const contextFolder: string = this.getCurrentWorkspace() || workspace.rootPath;
 			const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
-			const uri: Uri = Uri.parse(fname);
+			const uri: Uri = Uri.parse(fname, true);
 
 			let stats: FileStat = null;
 			try {
@@ -770,28 +773,19 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	// }
 
 	// event dispatcher invokes this function with the command vscode-pvs.autorun-theory
-	async autorun (resource: {
-		contextFolder: string,
-		fileName: string, 
-		fileExtension: string,  
-		theoryName: string, 
-		formulaName: string
-	}, opt?: {
+	async autorun (formula: PvsFormula, opt?: {
 		tccsOnly?: boolean
 	}): Promise<void> {
-		if (resource) {
+		if (formula) {
 			opt = opt || {};
-			const theory: TheoryItem = this.root.getTheoryItem(resource);
+			const theory: TheoryItem = this.root.getTheoryItem(formula);
 			if (theory) {
 				// show dialog with progress
 				await window.withProgress({
 					location: ProgressLocation.Notification,
 					cancellable: true
 				}, (progress, token) => { 
-					const theorems: FormulaItem[] = theory.getTheorems();
-					const formulas: FormulaItem[] = (opt && opt.tccsOnly) ?
-						theory.getTCCs() 
-							: theorems.concat(theory.getTCCs());
+					const formulas: FormulaItem[] = (opt && opt.tccsOnly) ? theory.getTCCs() : theory.getTheorems().concat(theory.getTCCs());
 					const theoryName: string = theory.theoryName;
 					// show initial dialog with spinning progress
 					const message: string = (opt.tccsOnly) ? `Preparing to discharge proof obligations in theory ${theoryName}`
@@ -805,9 +799,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							// stop loop
 							stop = true;
 							// stop proof explorer
-							this.proofExplorer.autorunStop();
+							// this.proofExplorer.autorunStop();
 							commands.executeCommand('setContext', 'autorun', false);
-							commands.executeCommand('vscode-pvs.stop-autorun');
 							// dispose of the dialog
 							resolve(null);
 						});
@@ -830,31 +823,38 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 									});
 								}
 								const start: number = new Date().getTime();
-								const status: ProofStatus = await this.proofExplorer.autorun({
-									contextFolder: next.getContextFolder(),
-									fileName: next.getFileName(),
-									fileExtension: next.getFileExtension(),
-									theoryName: next.getTheoryName(),
-									formulaName
-								});
+
+								const status: ProofStatus = await Promise.resolve(new Promise((resolve, reject) => {
+									this.client.sendRequest(serverCommand.autorunFormula, {
+										contextFolder: next.getContextFolder(),
+										fileName: next.getFileName(),
+										fileExtension: next.getFileExtension(),
+										theoryName: next.getTheoryName(),
+										formulaName
+									});
+									this.client.onRequest(serverEvent.autorunFormulaResponse, (status: ProofStatus) => {
+										resolve(status);
+									});
+								}));
+
 								const ms: number = new Date().getTime() - start;
 								summary.theorems.push({ formulaName, status, ms });
 							}
 						}
-						this.client.sendRequest(serverCommand.getContextDescriptor, resource);
+						commands.executeCommand('setContext', 'autorun', false);
+						this.client.sendRequest(serverCommand.getContextDescriptor, formula);
 						this.client.sendRequest(serverCommand.generateSummary, {
-							contextFolder: resource.contextFolder,
-							fileName: resource.fileName,
-							fileExtension: resource.fileExtension,
-							theoryName: resource.theoryName,
+							contextFolder: formula.contextFolder,
+							fileName: formula.fileName,
+							fileExtension: formula.fileExtension,
+							theoryName: formula.theoryName,
 							content: utils.makeProofSummary(summary)
 						});
-						// vscodeUtils.previewTextDocument(`${theoryName}.summary`, utils.makeProofSummary(summary), { contextFolder: resource.contextFolder });
 						resolve();
 					});
 				});
 			} else {
-				window.showErrorMessage(`Error: could not find theory ${resource.theoryName}`);
+				window.showErrorMessage(`Error: could not find theory ${formula.theoryName}`);
 			}
 		}
 	}
@@ -950,6 +950,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			this.loading.stop();
 			return Promise.resolve([ this.root ]);
 		} else {
+			this.loading.start().then(() => { this.refreshView(); });
 			return Promise.resolve([ this.loading ])
 		}
 	}

@@ -37,11 +37,11 @@
  **/
 
 import { TreeItem, TreeItemCollapsibleState, TreeDataProvider, EventEmitter, Event, ExtensionContext, TreeView, window, commands } from "vscode";
-import { ProofState, SFormula } from "../common/languageUtils";
+import { SequentDescriptor, SFormula } from "../common/languageUtils";
 import { LanguageClient } from "vscode-languageclient";
 import { PROOF_COMMANDS, printHelp, PROOF_TACTICS, ProofMateProfile, getCommands } from '../common/commandUtils';
 import * as vscode from 'vscode';
-import { ProofCommandDescriptor } from "../common/serverInterface";
+import { ProofCommandDescriptor, FormulaDescriptor, ProofEditDidTrimNode, PvsFormula } from "../common/serverInterface";
 import { ProofItem } from "./vscodePvsProofExplorer";
 
 declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
@@ -62,7 +62,7 @@ class ProofMateItem extends TreeItem {
 		this.label = this.icon + this.name;
 		this.command = {
 			title: this.name,
-			command: "proof-mate.hint-clicked",
+			command: "proof-mate.did-click-hint",
 			arguments: [ { cmd: this.name } ]
 		};
 	}
@@ -246,14 +246,14 @@ class ProofMateSketchpad extends ProofMateGroup {
 					items[i].icon = " -  ";
 					items[i].command = {
 						title: items[i].name,
-						command: "proof-mate.hint-clicked",
+						command: "proof-mate.did-click-hint",
 						arguments: [ { cmd: items[i].name } ]
 					};
 					items[i].label = items[i].icon + items[i].name;
 					if (!hasContent && items[i].contextValue === "proof-command") {
 						hasContent = true;
 					}
-					updateCommands(items[i].children);
+					hasContent = hasContent || updateCommands(items[i].children);
 				}
 			}
 			return hasContent;
@@ -280,8 +280,6 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	protected _onDidChangeTreeData: EventEmitter<TreeItem> = new EventEmitter<TreeItem>();
     readonly onDidChangeTreeData: Event<TreeItem> = this._onDidChangeTreeData.event;
 
-	protected formulaDescriptor: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string };
-
 	protected profile: ProofMateProfile;
 
 	protected context: ExtensionContext;	
@@ -292,7 +290,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	protected visible: boolean = false;
 
 	// proof descriptor
-	protected desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string };
+	protected formula: PvsFormula;
 
 	// elements in the view
 	protected hints: ProofMateHints;
@@ -317,6 +315,9 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	// autorunStart (): void {
 	// 	this.autorunFlag = true;
 	// }
+	disposeView (): void {
+		this.hideView();
+	}
 	hideView (): void {
 		this.visible = false;
 		vscode.commands.executeCommand('setContext', 'proof-mate.visible', false);
@@ -394,11 +395,11 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		context.subscriptions.push(commands.registerCommand("proof-mate.send-to-terminal", (resource: ProofMateItem | ProofItem) => {
 			if (resource && resource.name) {
 				const dd = { 
-					fileName: this.desc.fileName,
-					fileExtension: this.desc.fileExtension,
-					contextFolder: this.desc.contextFolder,
-					theoryName: this.desc.theoryName, 
-					formulaName: this.desc.formulaName,
+					fileName: this.formula.fileName,
+					fileExtension: this.formula.fileExtension,
+					contextFolder: this.formula.contextFolder,
+					theoryName: this.formula.theoryName, 
+					formulaName: this.formula.formulaName,
 					cmd: resource.name
 				}
 				commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
@@ -406,9 +407,6 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-mate.show-sequent", () => {
-			commands.executeCommand("proof-explorer.show-active-sequent");
-        }));
 		context.subscriptions.push(commands.registerCommand("proof-mate.activate-basic-profile", () => {
 			this.selectProfile("basic");
         }));
@@ -417,7 +415,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		}));
 
 		let cmd: string = null;
-		context.subscriptions.push(commands.registerCommand("proof-mate.hint-clicked", (desc: { cmd: string }) => {
+		context.subscriptions.push(commands.registerCommand("proof-mate.did-click-hint", (desc: { cmd: string }) => {
 			// register double click handler
 			if (desc) {
 				if (!cmd || cmd !== desc.cmd) {
@@ -427,11 +425,11 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 					}, 250);	
 				} else {
 					const dd = { 
-						fileName: this.desc.fileName,
-						fileExtension: this.desc.fileExtension,
-						contextFolder: this.desc.contextFolder,
-						theoryName: this.desc.theoryName, 
-						formulaName: this.desc.formulaName,
+						fileName: this.formula.fileName,
+						fileExtension: this.formula.fileExtension,
+						contextFolder: this.formula.contextFolder,
+						theoryName: this.formula.theoryName, 
+						formulaName: this.formula.formulaName,
 						cmd: desc.cmd
 					}
 					commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
@@ -442,18 +440,22 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	
 	}
 
-	setProofDescriptor (desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }): void {
-		this.desc = desc;
+	/**
+	 * Utility function, used to identify which formula is being proved in the proof tree session
+	 * @param formula 
+	 */
+	loadFormula (formula: PvsFormula): void {
+		this.formula = formula;
 	}
 
 	sendProofCommand (cmd: string): void {
-		if (this.desc) {
+		if (this.formula) {
 			commands.executeCommand("vscode-pvs.send-proof-command", {
-				fileName: this.desc.fileName,
-				fileExtension: this.desc.fileExtension,
-				theoryName: this.desc.theoryName,
-				formulaName: this.desc.formulaName,
-				contextFolder: this.desc.contextFolder,
+				fileName: this.formula.fileName,
+				fileExtension: this.formula.fileExtension,
+				theoryName: this.formula.theoryName,
+				formulaName: this.formula.formulaName,
+				contextFolder: this.formula.contextFolder,
 				cmd: cmd.startsWith("(") ? cmd : `(${cmd.trim()})`
 			});
 		} else {
@@ -472,7 +474,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		});
 	}
 
-	updateRecommendations (proofState: ProofState): void {
+	updateRecommendations (proofState: SequentDescriptor): void {
 		if (proofState) {
 			if (this.visible) {
 				this.resetView();
@@ -489,7 +491,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 			console.warn(`[proof-mate] Warning: null sequent`);
 		}
 	}
-	getRecommendations (proofState: ProofState): { cmd: string, tooltip?: string }[] {
+	getRecommendations (proofState: SequentDescriptor): { cmd: string, tooltip?: string }[] {
 		const ans: { cmd: string, tooltip?: string }[] = [];
 		if (proofState && proofState.sequent) {
 			for (let i in this.recommendationRules) {
@@ -514,19 +516,18 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	 * @param desc 
 	 */
 	updateSketchpad (desc: { items: ProofItem[] }): void {
+		// TODO: remove duplicated entries, e.g., if the user cuts the same tree many times, we want to show just one instance of the tree
 		if (desc && desc.items && desc.items.length) {
 			this.sketchpad.push(desc.items);
 			this.revealNode(desc.items[0]);
 			this.refreshView();
 		}
 	}
+	
 	/**
 	 * Utility function, used to identify which formula is being proved in the proof tree session
 	 * @param desc 
 	 */
-	loadFormulaDescriptor (desc: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string, autorun?: boolean }): void {
-		this.formulaDescriptor = desc;
-	}
 	startProof (): void {
 		this.sketchpad.clear();
 	}

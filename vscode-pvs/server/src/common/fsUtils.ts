@@ -76,9 +76,9 @@ export async function readFile(fname: string): Promise<string | null> {
 	if (fname) {
 		fname = fname.replace("file://", "");
 		fname = tildeExpansion(fname);
-		const exists: boolean = await fileExists(fname);
-		if (exists) {
-			try {
+		try {
+			const exists: boolean = await fileExists(fname);
+			if (exists) {
 				const data: Buffer = fs.readFileSync(fname);
 				if (data) {
 					return data.toLocaleString();
@@ -93,10 +93,11 @@ export async function readFile(fname: string): Promise<string | null> {
 				// 		}
 				// 	});
 				// });
-			} catch (error) {
-				console.error(`[fs-utils] Error while reading file ${fname}`, error);
-				return null;
-			}
+			} 
+		}
+		catch (error) {
+			console.error(`[fs-utils] Error while reading file ${fname}`, error);
+			return null;
 		}
 	}
 	return null;
@@ -406,3 +407,4 @@ export function downloadCommand(url: string, opt?: { out?: string }): string {
 	}
 	return null;
 }
+

@@ -277,7 +277,7 @@ class PvsCli {
 			// console.dir(key);
 			// this.rl.setPrompt("");
 			if (key && key.sequence.includes("\r") && utils.balancedPar(this.lines)) {
-				const test: { success: boolean, msg: string } = utils.parCheck(this.lines);
+				// const test: { success: boolean, msg: string } = utils.parCheck(this.lines);
 				const cmd: string = this.lines;
 				// if (test.success) {
 					// console.dir(key);
@@ -300,14 +300,14 @@ class PvsCli {
 						this.rl.prompt();
 						return;
 					}
-					if (utils.isSaveForceQuitCommand(cmd)) {
+					if (utils.isSaveThenQuitCommand(cmd)) {
 						console.log();
 						console.log("Proof saved successfully!");
 						console.log();
 						console.log("Prover session terminated.");
 						this.wsClient.send(JSON.stringify({
 							type: serverCommand.proofCommand,
-							cmd: "save-force-quit",
+							cmd: "save-then-quit",
 							fileName: this.args.fileName,
 							fileExtension: this.args.fileExtension,
 							contextFolder: this.args.contextFolder,
@@ -432,7 +432,7 @@ class PvsCli {
 								break;
 							}
 							case "pvs.event.proof-state": {
-								const result: utils.ProofState = evt.data;
+								const result: utils.SequentDescriptor = evt.data;
 								if (result) {
 									const showHidden: boolean = utils.isShowHiddenCommand(evt.cmd);
 									if (showHidden) {
@@ -446,15 +446,38 @@ class PvsCli {
 											}
 										}
 										// update proof state -- for the completer
-										this.proofState = utils.formatProofState(result);
+										this.proofState = utils.formatSequent(result);
 										// print proof state using syntax highlighting 
-										console.log(utils.formatProofState(result, { useColors: true, showAction: true })); // show proof state										
+										console.log(utils.formatSequent(result, { useColors: true, showAction: true })); // show proof state										
 									}
 									console.log();
 									this.rl.prompt(); // show prompt
 									readline.clearLine(process.stdin, 1); // clear any previous input
 								} else {
 									console.warn(`[pvs-cli] Warning: received null proof state from pvs-server`);
+								}
+								break;
+							}
+							case "pvs.event.QED": {
+								readline.moveCursor(process.stdin, 0, -1);
+								readline.clearScreenDown(process.stdin);
+								console.log();
+								console.log(utils.colorText("Q.E.D.", utils.textColor.green));
+								console.log();
+								this.isActive = false;
+								this.rl.question("Press Enter to close the terminal.", () => {
+									this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+									this.wsClient.close();
+								});
+								return;
+							}
+							case "pvs.event.print-proof-command": {
+								const data: { cmd: string } = evt.data;
+								if (data && data.cmd) {
+									console.log(data.cmd);
+									console.log();
+								} else {
+									console.warn(`[pvs-cli] Warning: proof command could not be printed in the terminal`);
 								}
 								break;
 							}

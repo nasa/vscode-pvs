@@ -59,11 +59,11 @@ import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile } from './common/serverInterface';
+import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula } from './common/serverInterface';
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
-import { getErrorRange, ProofState } from './common/languageUtils';
+import { getErrorRange, SequentDescriptor } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import * as os from 'os';
@@ -207,7 +207,7 @@ export class PvsProxy {
 			return new Promise((resolve, reject) => {
 				if (this.client) {
 					const jsonReq: string = JSON.stringify(req);
-					console.dir(jsonReq);
+					if (this.verbose) { console.dir(jsonReq); }
 					this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
 						if (error) {
 							console.error("[pvs-proxy] Error returned by pvs-server: "); 
@@ -250,14 +250,14 @@ export class PvsProxy {
 
 								if ((method === "proof-command" || method === "prove-formula") && resp.result) {
 									if (resp.result["result"] && resp.result["result"].trim() === "Q.E.D.") {
-										resp.result = <ProofState> {
+										resp.result = <SequentDescriptor> {
 											label: "Q.E.D.", // this should actually be the formula name....
 											commentary: [ "Q.E.D." ],
 											"num-subgoals": 0,
 											sequent: {}
 										}
 									}
-									const proofState: ProofState = resp.result;
+									const proofState: SequentDescriptor = resp.result;
 									if (method === "proof-command" && proofState) {
 										// const prev_cmd: string = proofState["prev-cmd"] && proofState["prev-cmd"]["length"] && proofState["prev-cmd"][0];
 										// if (!utils.isShowHiddenCommand(params[0]) && !utils.isPostponeCommand(params[0]) && !utils.QED(proofState) && !utils.branchComplete(proofState) && !utils.isUndoCommand(params[0]) && !utils.isUndoUndoCommand(params[0]) 
@@ -267,7 +267,7 @@ export class PvsProxy {
 										// }
 										proofState["last-cmd"] = params[0];
 									}
-									resp.result = <ProofState[]> [ proofState ]; // the prover should always return an array of proof states -- this is necessary to support tacticals
+									resp.result = <SequentDescriptor[]> [ proofState ]; // the prover should always return an array of proof states -- this is necessary to support tacticals
 								}
 								resolve(resp);
 							} catch (jsonError) {
@@ -626,7 +626,7 @@ export class PvsProxy {
 		fileExtension: string, 
 		theoryName: string, 
 		formulaName: string 
-	}, opt: {
+	}, opt?: {
 		useLispInterface?: boolean
 	}): Promise<PvsResponse> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName && desc.formulaName) {
@@ -639,7 +639,7 @@ export class PvsProxy {
 			} else {
 				const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
 				const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, fullName ]);
-				console.dir(ans);
+				if (this.verbose) { console.dir(ans); }
 				if (ans && ans.result && ans.result["length"] === undefined) {
 					ans.result = [ ans.result ]; // the prover should return an array of proof states
 				}
@@ -847,10 +847,10 @@ export class PvsProxy {
 				res = (this.useNasalib && this.jsonOutputAvailable && opt.useLispInterface) ? await this.legacy.proofCommand(cmd) 
 					: await this.pvsRequest('proof-command', [ cmd ]);
 				if (res && res.result) {
-					const proofStates: ProofState[] = res.result;
+					const proofStates: SequentDescriptor[] = res.result;
 					if (showHidden) {
 						for (let i = 0; i < proofStates.length; i++) {
-							const result: ProofState = proofStates[i];
+							const result: SequentDescriptor = proofStates[i];
 							if (result) {
 								result.action = "Showing list of hidden sequents";
 								if (result.commentary && result.commentary.length) {
@@ -861,7 +861,7 @@ export class PvsProxy {
 					}
 					if (isGrind) {
 						for (let i = 0; i < proofStates.length; i++) {
-							const result: ProofState = proofStates[i];
+							const result: SequentDescriptor = proofStates[i];
 							if (opt.timeout) {
 								if (result && result.commentary 
 										&& result.commentary.length 
@@ -924,27 +924,21 @@ export class PvsProxy {
 
 	/**
 	 * Loads the proof script for the formula indicated in the request
-	 * @param desc 
+	 * @param formula 
 	 */
-	async loadProof (desc: { 
-		fileName: string, 
-		fileExtension: string, 
-		theoryName: string, 
-		formulaName: string, 
-		contextFolder: string
-	}, opt?: {
+	async loadProof (formula: PvsFormula, opt?: {
 		quiet?: boolean
 	}): Promise<ProofDescriptor> {
-		if (desc) {
-			desc = fsUtils.decodeURIComponents(desc);
-			const shasum: string = await fsUtils.shasumFile(desc);
+		if (formula) {
+			formula = fsUtils.decodeURIComponents(formula);
+			const shasum: string = await fsUtils.shasumFile(formula);
 			const pvsVersionDescriptor = this.getPvsVersionInfo();
 
 			// to begin with, create an empty proof
 			let proofDescriptor: ProofDescriptor = {
 				info: {
-					theory: desc.theoryName,
-					formula: desc.formulaName,
+					theory: formula.theoryName,
+					formula: formula.formulaName,
 					status: "untried",
 					prover: utils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
 					shasum
@@ -952,36 +946,38 @@ export class PvsProxy {
 			};
 
 			try {
-				const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
+				const fname: string = path.join(formula.contextFolder, `${formula.fileName}.jprf`);
 				let proofFile: ProofFile = await fsUtils.readProofFile(fname, opt);
-				const key: string = `${desc.theoryName}.${desc.formulaName}`;
+				const key: string = `${formula.theoryName}.${formula.formulaName}`;
 				// try to load the proof from the .jprf file
 				if (proofFile && proofFile[key] && proofFile[key].length > 0) {
 					proofDescriptor = proofFile[key][0];
-					proofDescriptor.info.status = await utils.getProofStatus(desc);
-					if (proofDescriptor.info && proofDescriptor.info.shasum !== shasum) {
-						proofDescriptor.info.shasum = shasum;
+					if (formula.fileExtension === ".pvs") {
+						const shasum: string = await fsUtils.shasumFile(formula);
+						if (shasum !== proofDescriptor.info.shasum) {
+							proofDescriptor.info.status = utils.getActualProofStatus(proofDescriptor, shasum);
+						}
 					}
 				} else {
 					// if the proof is not stored in the .jprf file, then try to load the proof from the .prf and then update jprf
 					// the APIs of pvs are ugly -- an error is returned if the formula does not have a proof, as opposed to simply returning an empty proof
-					const response: PvsResponse = await this.proofScript(desc);
+					const response: PvsResponse = await this.proofScript(formula);
 					if (response && response.result) {
 						proofDescriptor = utils.prf2jprf({
 							prf: response.result,
-							theoryName: desc.theoryName, 
-							formulaName: desc.formulaName, 
+							theoryName: formula.theoryName, 
+							formulaName: formula.formulaName, 
 							version: pvsVersionDescriptor,
 							shasum
 						});
 					}
 					// save proof in the jprf file
 					await this.saveProof({
-						fileName: desc.fileName,
-						fileExtension: desc.fileExtension,
-						theoryName: desc.theoryName,
-						formulaName: desc.formulaName,
-						contextFolder: desc.contextFolder,
+						fileName: formula.fileName,
+						fileExtension: formula.fileExtension,
+						theoryName: formula.theoryName,
+						formulaName: formula.formulaName,
+						contextFolder: formula.contextFolder,
 						proofDescriptor
 					});
 				}
@@ -1156,10 +1152,14 @@ export class PvsProxy {
 				// check if vscode-output is enabled -- this is disabled for now
 				const jsonOutput: PvsResponse = await this.legacy.lisp(`(boundp '*vscode-output*)`);
 				if (jsonOutput && jsonOutput.result === "t") {
-					this.connection.sendNotification(serverEvent.profilerData, `Profiling: vscode-output\n`);
+					if (this.connection) {
+						this.connection.sendNotification(serverEvent.profilerData, `Profiling: vscode-output\n`);
+					}
 					this.jsonOutputAvailable = true;
 				} else {
-					this.connection.sendNotification(serverEvent.profilerData, `Profiling: xmlrpc-server\n`);
+					if (this.connection) {
+						this.connection.sendNotification(serverEvent.profilerData, `Profiling: xmlrpc-server\n`);
+					}
 				}
 				return info[1];
 			}

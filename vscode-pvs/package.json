@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.24-theta",
+	"version": "1.0.24-kappa",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -81,6 +81,11 @@
 						"type": "number",
 						"default": 8,
 						"description": "Proof commands are aborted if they don't produce results within this timeout (time is in seconds, 0 means timeout disabled)"
+					},
+					"pvs.settings.prover.profiler": {
+						"type": "boolean",
+						"default": false,
+						"description": "Show profiler data in vscode output channel pvs-server-profiler"
 					}
 				},
 				"disabled_properties": {
@@ -119,12 +124,12 @@
 				{
 					"id": "proof-explorer-view",
 					"name": "PVS Proof Explorer",
-					"when": "pvs-server-active && in-checker && proof-explorer.visible"
+					"when": "pvs-server-active && proof-explorer.visible"
 				},
 				{
 					"id": "proof-mate-view",
 					"name": "PVS Proof Mate",
-					"when": "pvs-server-active && in-checker && proof-mate.visible"
+					"when": "pvs-server-active && proof-mate.visible"
 				}
 			]
 		},
@@ -176,37 +181,37 @@
 			{
 				"command": "vscode-pvs.typecheck-file",
 				"title": "Typecheck File",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.typecheck",
 				"title": "Typecheck",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.autorun-theory",
 				"title": "Re-run all proofs",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.generate-tccs",
 				"title": "Generate TCCs",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.show-tccs",
 				"title": "Show Typecheck Conditions (TCCs)",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.show-tccs-alt",
 				"title": "Show",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.parse-file",
 				"title": "Parse File",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.new-pvs-file",
@@ -216,12 +221,12 @@
 			{
 				"command": "vscode-pvs.parse-workspace",
 				"title": "Parse Workspace",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.typecheck-workspace",
 				"title": "Typecheck Workspace",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.hp2pvs",
@@ -241,17 +246,17 @@
 			{
 				"command": "vscode-pvs.discharge-tccs-alt",
 				"title": "Discharge",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs",
 				"title": "Discharge all TCCs",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
 				"title": "Evaluate in PVSio",
-				"enablement": "pvs-server-active == true && !in-checker"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
 			{
 				"command": "proof-mate.exec-proof-command",
@@ -270,7 +275,7 @@
 				"enablement": "view == proof-explorer-view && pvs-server-active == true"
 			},
 			{
-				"command": "proof-explorer.trim-subtree",
+				"command": "proof-explorer.trim-node",
 				"title": "Trim",
 				"enablement": "view == proof-explorer-view && pvs-server-active == true"
 			},
@@ -285,28 +290,13 @@
 				"enablement": "view == proof-explorer-view && viewItem != proof-branch && pvs-server-active == true"
 			},
 			{
-				"command": "proof-explorer.append-node",
+				"command": "proof-explorer.new-proof-command",
 				"title": "New proof command",
 				"enablement": "view == proof-explorer-view && pvs-server-active == true"
 			},
 			{
-				"command": "proof-explorer.mark-as-pending",
-				"title": "Mark as pending",
-				"enablement": "view == proof-explorer-view && viewItem === proof-branch && pvs-server-active == true"
-			},
-			{
-				"command": "proof-explorer.mark-as-visited",
-				"title": "Mark as visited",
-				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
-			},
-			{
-				"command": "proof-explorer.mark-as-not-visited",
-				"title": "Mark as not visited",
-				"enablement": "view == proof-explorer-view && viewItem != root && pvs-server-active == true"
-			},
-			{
 				"command": "proof-explorer.show-sequent",
-				"title": "Open sequent in the editor",
+				"title": "Show sequent",
 				"enablement": "view == proof-explorer-view && pvs-server-active == true",
 				"icon": "icons/browser-arrow-icon.png"
 			},
@@ -388,12 +378,6 @@
 				"title": "️️Fast forward here",
 				"icon": "icons/fast-forward-icon-alt-2.png",
 				"enablement": "view == proof-explorer-view && viewItem != root && in-checker == true && !proof-explorer.running"
-			},
-			{
-				"command": "proof-mate.show-sequent",
-				"title": "️️Open current sequent in the editor",
-				"icon": "icons/browser-arrow-icon.png",
-				"enablement": "in-checker == true"
 			},
 			{
 				"command": "proof-mate.activate-basic-profile",
@@ -526,7 +510,7 @@
 					"group": "context-menu/edit-0"
 				},
 				{
-					"command": "proof-explorer.append-node",
+					"command": "proof-explorer.new-proof-command",
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-0"
 				},
@@ -571,7 +555,7 @@
 					"group": "context-menu/edit-4"
 				},
 				{
-					"command": "proof-explorer.trim-subtree",
+					"command": "proof-explorer.trim-node",
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-4"
 				},
@@ -579,21 +563,6 @@
 					"command": "proof-explorer.trim-unused",
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-5"
-				},
-				{
-					"command": "proof-explorer.mark-as-pending",
-					"when": "false && view == proof-explorer-view",
-					"group": "context-menu/edit-6"
-				},
-				{
-					"command": "proof-explorer.mark-as-visited",
-					"when": "false && view == proof-explorer-view",
-					"group": "context-menu/edit-6"
-				},
-				{
-					"command": "proof-explorer.mark-as-not-visited",
-					"when": "false && view == proof-explorer-view",
-					"group": "context-menu/edit-6"
 				},
 				{
 					"command": "proof-mate.exec-proof-command",

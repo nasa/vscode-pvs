@@ -10,7 +10,7 @@ import * as constants from './test-constants';
 //----------------------------
 
 describe("pvs-language-server", () => {
-	let server: PvsLanguageServer = new PvsLanguageServer({ disableConnection: true });
+	let server: PvsLanguageServer = new PvsLanguageServer();
 	beforeAll(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);

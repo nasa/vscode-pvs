@@ -38,7 +38,8 @@
 
 import * as WebSocket from 'ws';
 import { PvsLanguageServer } from './pvsLanguageServer'
-import { CliGatewayRequest, CliGatewayEvent, CliGatewaySubscriberEvent } from './common/serverInterface';
+import { CliGatewayRequest, CliGatewayEvent, CliGatewaySubscriberEvent, serverEvent, ProofExecDidEndProof } from './common/serverInterface';
+import { Connection } from 'vscode-languageserver';
 
 /**
  * PvsCliGateway provides a websocket gateway to the language server.
@@ -97,22 +98,14 @@ export class PvsCliGateway {
 	}
 
 	publish (desc: CliGatewayEvent): void {
-		if (desc && desc.channelID && desc.data) {
-			if (desc.type === "pvs.event.proof-state" || desc.type === "pvs.event.evaluator-state" || desc.type === "gateway.publish.math-objects") {
-				if (this.pvsCli[desc.channelID]) {
-					const clientIDs: string[] = Object.keys(this.pvsCli[desc.channelID]);
-					for (let i = 0; i < clientIDs.length; i++) {
-						const subscriberEvent: CliGatewaySubscriberEvent = desc;
-						this.pvsCli[desc.channelID][clientIDs[i]].send(JSON.stringify(subscriberEvent));
-					}
-				} 
-				// the channel does not exist when re-running proofs in batch mode
-				// else {
-				// 	console.error(`[pvs-cli-gateway] Warning: message could not be forwarded on channel ${desc.channelID} (channel is null)`)
-				// }
-			} else {
-				console.error(`[pvs-cli-gateway] Warning: trying to publish event type ${desc["channelID"]} (allowed types are only "pvs.event.proof-state", "pvs.event.evaluator-state", and "gateway.publish.math-objects")`)
-			}
+		if (desc && desc.channelID) {
+			if (this.pvsCli[desc.channelID]) {
+				const clientIDs: string[] = Object.keys(this.pvsCli[desc.channelID]);
+				for (let i = 0; i < clientIDs.length; i++) {
+					const subscriberEvent: CliGatewaySubscriberEvent = desc;
+					this.pvsCli[desc.channelID][clientIDs[i]].send(JSON.stringify(subscriberEvent));
+				}
+			} 
 		} else {
 			console.error("[pvs-cli-gateway] Warning: received null or incomplete descriptor");
 		}
@@ -187,6 +180,11 @@ export class PvsCliGateway {
 												}
 											}
 											delete this.vscodeTerminal[data.channelID];
+											const connection: Connection = this.pvsLanguageServer.getConnection();
+											if (connection) {
+												const evt: ProofExecDidEndProof = { action: "did-end-proof" };
+												connection.sendNotification(serverEvent.proofExecEvent, evt);
+											}
 										} else {
 											console.error("[pvs-cli-gateway] Warning: could not find records of client that wants to unsubscribe");
 										}

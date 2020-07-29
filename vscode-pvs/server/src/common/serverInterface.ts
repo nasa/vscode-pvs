@@ -36,11 +36,9 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { PvsResponse, PvsResult } from "./pvs-gui";
+import { PvsResponse } from "./pvs-gui";
 import { ProofMateProfile } from "./commandUtils";
-import { ProofState } from "./languageUtils";
-
- // import { PvsProxy } from "../pvsProxy";
+import { SequentDescriptor } from "./languageUtils";
 
 export declare interface Position {
 	line: number, // this attribute ranges from 1 to n, while vscode.line ranges from 0 to n-1 
@@ -181,34 +179,41 @@ export declare interface JsonType {
 }
 export declare type ProofNodeType = "root" | "proof-branch" | "proof-command";
 export declare interface ProofNode { 
-	name: string, // name of this node (proof name, branch name, or proof command)
-	rules: ProofNode[], // sequence of proof rules
-	type: ProofNodeType, // node type
-	branch: string // branch id
+	name: string; // name of this node (proof name, branch name, or proof command)
+	rules: ProofNode[]; // sequence of proof rules
+	type: ProofNodeType; // node type
+	branch: string; // branch id
 }
+export declare interface ProofNodeX { 
+	id: string; // unique node ID
+	name: string; // name of this node (proof name, branch name, or proof command)
+	rules: ProofNodeX[]; // sequence of proof rules
+	type: ProofNodeType; // node type
+	branch: string; // branch id
+	parent: string;
+}
+export declare type ProofNodeStatus = "visited" | "not-visited" | "active" | "pending";
 export declare type ProofTree = ProofNode;
 export declare type ProofStatus = "subsumed" | "simplified" | "proved" | "unproved" | "unfinished" | "unchecked" | "untried";
 export declare interface ProofFile {
 	[key: string]: [ProofDescriptor] // key is theoryName.formulaName
 }
-export declare interface ProofDescriptor {
+export class ProofDescriptor {
 	info: {
 		theory: string, // theory name
 		formula: string, // formula name
 		status: ProofStatus, // proof status (proved, untried, unfininshed,...)
 		prover: string, // prover version
 		shasum: string // digest, obtained from the file content after removing all spaces
-	},
-	proofTree?: ProofNode
+	};
+	proofTree?: ProofNode;
 }
 export declare interface PvsListProofStrategies extends PvsResponseType {
 	error: ErrorType,
 	res: ProofCommandDescriptor[],
 	raw: string
 }
-// export interface FindDeclarationResponseType {
-//     [ key: string ] : PvsDeclarationType; // key is theoryName.symbolName
-// }
+
 export declare interface PvsFindDeclaration extends PvsResponseType {
 	error: ErrorType,
 	res: PvsDeclarationType[],
@@ -234,37 +239,6 @@ export declare interface PvsParserResponse extends PvsResponseType {
 	res: ParserResponse,
 	raw: string
 }
-// export declare interface TypecheckerResponse {
-// 	[ theoryName: string ]: TheoryStatus
-// }
-// export declare interface PvsTypecheckerResponse extends PvsResponseType {
-// 	error: ErrorType;
-// 	res: TypecheckerResponse;
-// 	raw: string;
-// }
-
-// export declare interface FormulaMap {
-// 	[ formulaName: string ]: FormulaDescriptor;
-// }
-
-// export declare interface TheoremsStatus {
-// 	theoryName: string;
-// 	theorems: FormulaDescriptor[];
-// }
-
-// export declare interface TheoryStatusMap {
-// 	[ theoryName: string ]: TheoremsStatus
-// }
-
-
-
-
-
-// export declare interface TccDescriptorArray {
-// 	theoryName: string; // theory name
-// 	fileName: string; // pvs file containing the theory
-// 	tccs: TccDescriptor[]; // structured view of the list of tccs generated for the theory
-// }
 
 export declare interface PvsSymbolKind<type> {
 	keywords: type,
@@ -308,15 +282,6 @@ export declare interface PrettyPrintRegionResult {
 	result: string;
 }
 
-// export declare interface PvsTheoryListDescriptor {
-// 	folder: string, // base path
-// 	files: { [ fileName: string ] : string[] } // theories grouped by fileName
-// 	theories: { [ theoryName: string ]: string[] } // files grouped by theoryName
-// }
-
-
-
-
 export declare interface PvsCliInterface {
 	type: string;
 	pvsPath: string;
@@ -333,11 +298,6 @@ export declare interface PvsCliInterface {
 	prompt?: string;
 }
 
-// export declare interface PvsExecutionContext {
-// 	pvsPath: string,
-// 	contextFolder: string
-// }
-
 export declare interface SimpleConsole {
 	log: (str: string) => void,
 	error: (str: string) => void,
@@ -352,32 +312,11 @@ export declare interface SimpleConnection {
 }
 
 
-// export declare interface TheoryMap {
-// 	[ theoryName: string ]: {
-// 		theoryName: string,
-// 		fileName: string,
-// 		fileExtension: string,
-// 		contextFolder: string,
-// 		position: Position
-// 	}
-// }
-
 //TODO: move this declaration to fsUtils
 export declare interface FileList {
 	contextFolder: string;
 	fileNames: string[]; // TODO: FileDescriptor[]
 }
-
-// export declare interface TheoryList {
-// 	contextFolder: string;
-// 	theories: TheoryDescriptor[]; //  TODO TheoryDescriptor[]
-// }
-
-// export declare interface TheoremList {
-// 	contextFolder: string;
-// 	theorems: TheoremDescriptor[];
-// 	fileName?: string; // when fileName is specified, the theorem list describes the content of a specific file. This is useful for status updates.
-// }
 
 export declare interface DeclarationMap {
 	[ theoryName: string ]: {
@@ -393,74 +332,52 @@ export declare interface DeclarationMap {
 	}
 }
 
-// export interface TheoryDescriptor {
-// 	theoryName: string,
-// 	fileName: string,
-// 	position: Position
-// }
-
-export declare interface FormulaDescriptor {
-	fileName: string;
-	fileExtension: string;
-	contextFolder: string;
-	theoryName: string;
-	formulaName: string;
-	position: Position;
-	status: ProofStatus; // proof status
-	isTcc: boolean;
-}
-
-export declare interface TheoryDescriptor {
-	fileName: string;
-	fileExtension: string;
-	contextFolder: string;
-	theoryName: string;
-	position: Position; // position of the theory declaration
-	theorems?: FormulaDescriptor[];
-}
-// export declare interface TheoriesStatusMap {
-// 	[ theoryName: string ]: TheoryStatus;
-// }
-// export declare interface TheoriesMap {
-// 	contextFolder: string;
-// 	theoriesStatusMap: TheoriesStatusMap;
-// }
-
-// export declare interface ContextDescriptor {
-// 	contextFolder: string;
-// 	theories: TheoryDescriptor[];
-// };
-
-export declare interface PvsContextDescriptor {
-	contextFolder: string,
-	fileDescriptors: { [fname: string]: PvsFileDescriptor }
-}
-
-// export declare interface PvsFileListDescriptor {
-// 	folder: string, // base path
-// 	fileNames: string[] // pvs files
-// }
-
-
-export declare interface PvsFileDescriptor {
-	fileName: string;
-	fileExtension: string;
-	contextFolder: string;
-	theories: TheoryDescriptor[];
-}
 
 export const cliSessionType = {
 	pvsioEvaluator: "pvs.pvsio-evaluator",
 	proveFormula: "pvs.prove-formula"
 };
 
+export declare interface ContextFolder {
+	contextFolder: string;
+}
+export declare interface PvsContextDescriptor extends ContextFolder {
+	contextFolder: string,
+	fileDescriptors: { [fname: string]: PvsFileDescriptor }
+}
+export declare interface PvsFile extends ContextFolder {
+	fileName: string;
+	fileExtension: string;
+}
+export declare interface PvsTheory extends PvsFile {
+	theoryName: string;
+}
+export declare interface PvsFormula extends PvsTheory {
+	formulaName: string;
+}
+export declare interface PvsProofCommand extends PvsFormula {
+	cmd: string;
+}
+export declare interface FormulaDescriptor extends PvsFormula {
+	position: Position;
+	status: ProofStatus; // proof status
+	isTcc: boolean;
+}
+export declare interface TheoryDescriptor extends PvsTheory {
+	position: Position; // position of the theory declaration
+	theorems?: FormulaDescriptor[];
+}
+export declare interface PvsFileDescriptor extends PvsFile {
+	theories: TheoryDescriptor[];
+}
+
+
 export const serverCommand = {
 	typecheckFile: "pvs.typecheck-file",
 	proveFormula: "pvs.prove-formula",
-	// dischargeTccs: "pvs.prove-tccs",
-	// dischargeTheorems: "pvs.prove-file",
-	loadProof: "pvs.load-proof",
-	saveProof: "pvs.save-proof",
+	autorunFormula: "pvs.autorun-formula",
+	// loadProof: "pvs.load-proof",
+	// saveProof: "pvs.save-proof",
 	showProofLite: "pvs.show-prooflite",
 	proofCommand: "pvs.proof-command",
 	evaluateExpression: "pvs.evaluate-expression",
@@ -471,6 +388,7 @@ export const serverCommand = {
 	typecheckWorkspace: "pvs.typecheck-workspace",
 	listContext: "pvs.list-context",
 	generateTccs: "pvs.generate-tccs",
+	showTccs: "pvs.show-tccs",
 	generateSummary: "pvs.generate-summary",
 	startPvsServer: "pvs.start-pvs-server",
 	stopPvsServer: "pvs.stop-pvs-server",
@@ -487,6 +405,9 @@ export const serverCommand = {
 
 	cancelOperation: "pvs.cancel-operation",
 
+	proofExecCommand: "pvs.command.proof-exec",
+	proofEditCommand: "pvs.command.proof-edit",
+
 	listDownloadableVersions: "pvs.list-downloadable-versions",
 	downloadPvs: "pvs.download-pvs",
 	downloadLicensePage: "pvs.download-license-page",
@@ -495,12 +416,11 @@ export const serverCommand = {
 	importNasalib: "pvs.import-nasalib"
 
 };
-// TODO: add here type information for args
+
 export const serverEvent = {
 	typecheckFileResponse: "pvs.response.typecheck-file",
 	proveFormulaResponse: "pvs.response.prove-formula",
-	// dischargeTccsResponse: "pvs.reponse.prove-tccs",
-	// dischargeTheoremsResponse: "pvs.reponse.prove-file",
+	autorunFormulaResponse: "pvs.response.autorun-formula",
 	loadProofResponse: "pvs.response.load-proof",
 	saveProofResponse: "pvs.response.save-proof",
 	showProofLiteResponse: "pvs.response.show-prooflite",
@@ -508,6 +428,7 @@ export const serverEvent = {
 	parseFileResponse: "pvs.response.parse-file",
 	listContextResponse: "pvs.response.list-context",
 	generateTccsResponse: "pvs.response.generate-tccs",
+	showTccsResponse: "pvs.response.show-tccs",
 	generateSummaryResponse: "pvs.response.generate-summary",
 	startEvaluatorResponse: "pvs.response.start-evaluator",
 	hp2pvsResponse: "pvs.response.hp-to-pvs-file",
@@ -529,17 +450,26 @@ export const serverEvent = {
 	pvsServerReady: "pvs.response.restart",
 
 	contextUpdate: "pvs.event.context-update",
-	proofStateUpdate: "pvs.event.proof-state",
+	// proofStateUpdate: "pvs.event.proof-state",
 	QED: "pvs.event.qed",
 	evaluatorStateUpdate: "pvs.event.evaluator-state",
 	workspaceStats: "pvs.event.workspace-stats",
-	saveProofEvent: "pvs.event.save-proof",
-	quitProofEvent: "pvs.event.quit-proof",
+	// saveProofEvent: "pvs.event.save-proof",
 	quitProofDontSaveEvent: "pvs.event.quit-dont-save-proof",
-	saveProofForceQuitEvent: "pvs.event.save-force-quit",
+	saveProofForceQuitEvent: "pvs.event.save-then-quit",
 	closeDontSaveEvent: "pvs.event.close-dont-save-proof",
-	proverModeEvent: "pvs.event.prover-mode",
-	// redoCommandEvent: "pvs.event.redo-command",
+	serverModeUpdateEvent: "pvs.event.server-mode-update",
+
+	querySaveBeforeQuit: "pvs.query.save-before-quit?",
+
+	// proverForwardResponse: "pvs.response.prover-forward",
+	proofNodeUpdate: "pvs.event.proof-node-update",
+	proofEditEvent: "pvs.event.proof-edit-event",
+	proofExecEvent: "pvs.event.proof-exec-event",
+	clipboardEvent: "pvs.event.clipboard-event",
+
+	// loadProofStructureEvent: "pvs.event.load-proof-structure",
+	// startProofEvent: "pvs.event.start-proof",
 
 	pvsServerCrash: "pvs.event.server-crash",
 
@@ -554,70 +484,275 @@ export const serverEvent = {
 
 export declare type ServerMode = "lisp" | "in-checker" | "pvsio";
 
-export declare type CliGatewayRequest = { 
+// CliGateway
+export declare type CliGatewayRequest = CliGatewaySubscribeServerRequest | CliGatewaySubscribeClientRequest
+	| CliGatewayUnsubscribeRequest | CliGatewayExecProofCommandRequest | CliGatewayEvaluateExpressionRequest
+	| CliGatewaySaveProofRequest | CliGatewayPublishRequest | CliGatewaySelectProfileRequest
+export declare type CliGatewaySubscribeServerRequest = { 
 	type: "subscribe", clientID: string, channelID: string 
-} | { 
+};
+export declare type CliGatewaySubscribeClientRequest = { 
 	type: "subscribe-vscode", clientID: string, channelID: string 
-} | {
+};
+export declare type CliGatewayUnsubscribeRequest = {
 	type: "unsubscribe", clientID: string, channelID: string
-} | { 
+};
+export declare type CliGatewayExecProofCommandRequest = { 
 	type: "pvs.proof-command", fileName: string, fileExtension: string, contextFolder: string, 
 	theoryName: string, formulaName: string, cmd: string 
-} | { 
+};
+export declare type CliGatewayEvaluateExpressionRequest = { 
 	type: "pvs.evaluate-expression", fileName: string, fileExtension: string, contextFolder: string, 
 	theoryName: string, cmd: string 
-} | {
+};
+export declare type CliGatewaySaveProofRequest = {
 	type: "pvs.save-proof", fileName: string, fileExtension: string, contextFolder: string, 
 	theoryName: string, formulaName: string
-} | {
+};
+export declare type CliGatewayPublishRequest = {
 	type: "publish", channelID: string
-} | {
+};
+export declare type CliGatewaySelectProfileRequest = {
 	type: "pvs.select-profile", profile: ProofMateProfile
 };
 
-export declare type CliGatewayEvent = {  
+
+export declare type CliGatewaySubscriberEvent = CliGatewayProofStateInfo | CliGatewayEvaluatorStateInfo 
+	| CliGatewayMathObjectsInfo | CliGatewayPrintProofCommandInfo | CliGatewaySubscribeEvent
+	| CliGatewaySelectProfileEvent | CliGatewayQEDEvent;
+export declare type CliGatewayProofStateInfo = {  
 	type: "pvs.event.proof-state",
-	channelID: string,
-	data: ProofState,
+	data: SequentDescriptor,
 	cmd?: string // the command that produced this state
-} | {  
+};
+export declare type CliGatewayEvaluatorStateInfo = {  
 	type: "pvs.event.evaluator-state",
-	channelID: string,
 	data: PvsResponse,
 	cmd?: string // the command that produced this state
-} | {
+};
+export declare type CliGatewayMathObjectsInfo = {
 	type: "gateway.publish.math-objects",
-	channelID: string,
 	data: { lemmas: string[], types: string[], definitions: string[] }
+};
+export declare type CliGatewayPrintProofCommandInfo = {  
+	type: "pvs.event.print-proof-command",
+	data: { cmd: string }
+};
+export declare type CliGatewayQEDEvent = {  
+	type: "pvs.event.QED"
+};
+export declare type CliGatewaySubscribeEvent = {
+	type: "subscribe-response",
+	success: boolean
+};
+export declare type CliGatewaySelectProfileEvent = {
+	type: "pvs.select-profile",
+	data: { profile: string }
+};
+
+
+export declare type CliGatewayEvent = CliGatewayProofState | CliGatewayEvaluatorState 
+	| CliGatewayMathObjects | CliGatewayPrintProofCommand | CliGatewayQED;
+export declare interface CliGatewayProofState extends CliGatewayProofStateInfo {  
+	channelID: string
+};
+export declare interface CliGatewayPrintProofCommand extends CliGatewayPrintProofCommandInfo {
+	channelID: string
+};
+export declare interface CliGatewayEvaluatorState extends CliGatewayEvaluatorStateInfo {
+	channelID: string
+};
+export declare interface CliGatewayMathObjects extends CliGatewayMathObjectsInfo {
+	channelID: string
+};
+export declare interface CliGatewayQED extends CliGatewayQEDEvent {
+	channelID: string
 };
 //  | { 
 // 	type: "publish",
 // 	channelID: string
 // };
 
-export declare type CliGatewaySubscriberEvent = {  
-	type: "pvs.event.proof-state",
-	data: ProofState,
-	cmd?: string // the command that produced this state
-} | {  
-	type: "pvs.event.evaluator-state",
-	data: PvsResponse,
-	cmd?: string // the command that produced this state
-} | {
-	type: "gateway.publish.math-objects",
-	data: { lemmas: string[], types: string[], definitions: string[] }
-} | {
-	type: "subscribe-response",
-	success: boolean
-} | {
-	type: "pvs.select-profile",
-	data: { profile: string }
-};
+
 
 export interface PvsDownloadDescriptor { url: string, fileName: string, version: string };
 
+// useful constants
 export const sriUrl: string = "www.csl.sri.com";
 export const pvsSnapshotsUrl: string = `http://${sriUrl}/users/owre/drop/pvs-snapshots/`;
 export const allegroLicenseUrl: string = `http://pvs.csl.sri.com/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;
-
 export const nasalibUrl: string = "https://github.com/nasa/nasalib";
+
+// ProofEdit
+export type ProofEditCommand = ProofEditAppendNode | ProofEditCopyNode | ProofEditPasteNode | ProofEditCopyTree
+	| ProofEditPasteTree | ProofEditDeleteNode | ProofEditAppendBranch | ProofEditCutNode | ProofEditCutTree
+	| ProofEditDeleteTree | ProofEditTrimNode | ProofEditRenameNode | ProofEditSave;
+export type ProofEditAppendNode = {
+	action: "append-node",
+	name: string,
+	selected: { id: string, name: string }
+}
+export type ProofEditCopyNode = {
+	action: "copy-node",
+	selected: { id: string, name: string }
+};
+export type ProofEditPasteNode = {
+	action: "paste-node",
+	selected: { id: string, name: string }
+};
+export type ProofEditCopyTree = {
+	action: "copy-tree",
+	selected: { id: string, name: string }
+};
+export type ProofEditPasteTree = {
+	action: "paste-tree",
+	selected: { id: string, name: string }
+};
+export type ProofEditDeleteNode = {
+	action: "delete-node",
+	selected: { id: string, name: string }
+};
+export type ProofEditAppendBranch = {
+	action: "append-branch",
+	selected: { id: string, name: string }
+};
+export type ProofEditCutNode = {
+	action: "cut-node",
+	selected: { id: string, name: string }
+};
+export type ProofEditCutTree = {
+	action: "cut-tree",
+	selected: { id: string, name: string }
+};
+export type ProofEditDeleteTree = {
+	action: "delete-tree",
+	selected: { id: string, name: string }
+};
+export type ProofEditTrimNode = {
+	action: "trim-node",
+	selected: { id: string, name: string }
+};
+export type ProofEditRenameNode = {
+	action: "rename-node",
+	newName: string,
+	selected: { id: string, name: string }
+};
+export type ProofEditSave = {
+	action: "save"
+};
+
+
+export type ProofEditEvent = ProofEditDidAppendNode | ProofEditDidCopyNode | ProofEditDidPasteNode | ProofEditDidCopyTree
+	| ProofEditDidPasteTree | ProofEditDidDeleteNode | ProofEditDidAppendBranch | ProofEditDidCutNode | ProofEditDidCutTree
+	| ProofEditDidDeleteTree | ProofEditDidTrimNode | ProofEditDidRenameNode | ProofEditDidActivateCursor 
+	| ProofEditDidDeactivateCursor | ProofEditDidUpdateProofStatus;
+export type ProofEditDidAppendNode = {
+	action: "did-append-node",
+	elem: ProofNodeX,
+	position: number
+}
+export type ProofEditDidCopyNode = {
+	action: "did-copy-node",
+	selected: { id: string, name: string }
+};
+export type ProofEditDidPasteNode = {
+	action: "did-paste-node",
+	elem: ProofNodeX
+};
+export type ProofEditDidCopyTree = {
+	action: "did-copy-tree",
+	selected: { id: string, name: string },
+	elems: ProofNodeX[],
+	clipboard: string
+};
+export type ProofEditDidPasteTree = {
+	action: "did-paste-tree",
+	selected: { id: string, name: string }
+};
+export type ProofEditDidDeleteNode = {
+	action: "did-delete-node",
+	selected: { id: string, name: string }
+};
+export type ProofEditDidAppendBranch = {
+	action: "did-append-branch",
+	elem: ProofNodeX
+};
+export type ProofEditDidCutNode = {
+	action: "did-cut-node",
+	selected: { id: string, name: string }
+};
+export type ProofEditDidCutTree = {
+	action: "did-cut-tree",
+	selected: { id: string, name: string },
+	clipboard: string,
+	elems: ProofNodeX[]
+};
+export type ProofEditDidDeleteTree = {
+	action: "did-delete-tree",
+	selected: { id: string, name: string }
+};
+export type ProofEditDidTrimNode = {
+	action: "did-trim-node",
+	elems: ProofNodeX[]
+};
+export type ProofEditDidRenameNode = {
+	action: "did-rename-node",
+	selected: { id: string, name: string },
+	newName: string
+};
+export type ProofEditDidActivateCursor = {
+	action: "did-activate-cursor",
+	cursor: ProofNodeX
+};
+export type ProofEditDidDeactivateCursor = {
+	action: "did-deactivate-cursor"
+};
+export type ProofEditDidUpdateProofStatus = {
+	action: "did-update-proof-status",
+	proofStatus: ProofStatus
+};
+
+
+
+// ProofExec
+export type ProofExecCommand = ProofExecForward | ProofExecBack | ProofExecFastForward | ProofExecRun
+	| ProofExecQuit;
+export type ProofExecForward = {
+	action: "forward"
+};
+export type ProofExecBack = {
+	action: "back"
+};
+export type ProofExecFastForward = {
+	action: "fast-forward",
+	selected: { id: string, name: string }
+};
+export type ProofExecRun = {
+	action: "run"
+};
+export type ProofExecQuit = {
+	action: "quit"
+};
+export type ProofExecEvent = ProofExecDidStartProof | ProofExecDidLoadProof | ProofExecDidLoadSequent
+	| ProofExecDidEndProof | ProofExecDidUpdateSequent;
+export type ProofExecDidStartProof = {
+	action: "did-start-proof"
+};
+export type ProofExecDidLoadSequent = {
+	action: "did-load-sequent",
+	sequent: SequentDescriptor
+};
+export type ProofExecDidUpdateSequent = {
+	action: "did-update-sequent",
+	selected: { id: string, name: string },
+	sequent: SequentDescriptor
+};
+export type ProofExecDidLoadProof = {
+	action: "did-load-proof",
+	formula: PvsFormula,
+	desc: ProofDescriptor,
+	proof: ProofNodeX
+};
+export type ProofExecDidEndProof = {
+	action: "did-end-proof"
+};

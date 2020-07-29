@@ -44,7 +44,7 @@ describe("pvs", () => {
 		fsUtils.deleteFolder(path.join(baseFolder, "alaris2l"));
 		execSync(`cd ${path.join(__dirname, "pvscontext")} && unzip alaris2l-show-tccs-error.zip`);
 
-		const response: PvsResponse = await pvsProxy.generateTccs({
+		const response: PvsResponse = await pvsProxy.tccs({
 			fileName: "alaris2lnewmodes", 
 			fileExtension: ".pvs", 
 			contextFolder: path.join(baseFolder, "alaris2l"),

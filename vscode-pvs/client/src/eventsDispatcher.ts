@@ -42,7 +42,7 @@ import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindin
 import { VSCodePvsWorkspaceExplorer } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { PvsContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor, ServerMode } from "./common/serverInterface";
+import { PvsContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
@@ -51,7 +51,8 @@ import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 import * as utils from './common/languageUtils';
 import * as commandUtils from './common/commandUtils';
 import * as vscodeUtils from './utils/vscode-utils';
-import { ProofState } from "./common/languageUtils";
+import { SequentDescriptor } from "./common/languageUtils";
+import { readlink } from "fs";
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -65,8 +66,6 @@ export class EventsDispatcher {
 
     protected inChecker: boolean = false;
     protected quietMode: boolean = false;
-
-    protected willProveFormula: boolean = false;
 
     constructor (client: LanguageClient, handlers: {
         statusBar: VSCodePvsStatusBar,
@@ -146,7 +145,7 @@ export class EventsDispatcher {
 		this.client.onRequest(serverEvent.pvsVersionInfo, (version: PvsVersionDescriptor) => {
 			if (version) {
                 this.statusBar.pvsReady(version);
-                this.proofExplorer.pvsReady(version);
+                // this.proofExplorer.pvsReady(version);
                 // make sure a valid workspace is open in vscode
                 if (!vscode.workspace.name) {
                     const fname: string = (vscode.window && vscode.window.activeTextEditor 
@@ -186,19 +185,39 @@ export class EventsDispatcher {
                     contextFolder: desc.args.contextFolder,
                     quiet: true
                 });
-                // register handler for response
-                this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
-                    response: PvsContextDescriptor, 
-                    args: { 
-                        fileName: string, 
-                        fileExtension: string, 
-                        contextFolder: string 
-                    }
-                }) => {
-                    if (this.workspaceExplorer && desc.response) {
-                        this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
-                    }
-                });
+            }
+        });
+        this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
+            response: PvsContextDescriptor, 
+            args: { 
+                fileName: string, 
+                fileExtension: string, 
+                contextFolder: string 
+            }
+        }) => {
+            if (this.workspaceExplorer && desc.response) {
+                this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
+            }
+        });
+        this.client.onRequest(serverEvent.showTccsResponse, (desc: { 
+            response: PvsContextDescriptor, 
+            args: { 
+                fileName: string, 
+                fileExtension: string, 
+                contextFolder: string 
+            }
+        }) => {
+            if (this.workspaceExplorer && desc.response) {
+                this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
+            }
+            if (desc && desc.args) {
+                if (desc && desc.response) {
+                    // open tcc file in the editor
+                    const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
+                    const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
+                    const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
+                    vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
+                }
             }
         });
 		this.client.onRequest(serverEvent.parseFileResponse, (res: PvsResponse) => {
@@ -240,64 +259,167 @@ export class EventsDispatcher {
         }) => {
             if (desc) {
                 // notify proofexplorer
-                await this.proofExplorer.onStepExecuted(desc);
+                // await this.proofExplorer.onStepExecuted(desc);
                 if (desc.response && desc.response.result) {
                     // update proof mate
                     this.proofMate.updateRecommendations(desc.response.result);
                 }
             }
         });
-        this.client.onRequest(serverEvent.proveFormulaResponse, (desc: {
-            response: { result: ProofState }, 
+
+        //----------------
+        this.client.onNotification(serverEvent.proofEditEvent, (desc: ProofEditEvent) => {
+			switch (desc.action) {
+				case "did-append-node": {
+                    this.proofExplorer.didAppendNode(desc);
+                    break; 
+                }
+				case "did-copy-node": {
+                    this.proofExplorer.didCopyNode(desc); 
+                    break; 
+                }
+				case "did-copy-tree": {
+                    this.proofExplorer.didCopyTree(desc); 
+                    break; 
+                }
+                case "did-delete-node": {
+                    this.proofExplorer.didDeleteNode(desc);
+                    break;
+                }
+                case "did-cut-node": {
+                    this.proofExplorer.didCutNode(desc);
+                    break;
+                }
+                case "did-cut-tree": {
+                    this.proofExplorer.didCutTree(desc);
+                    break;
+                }
+                case "did-paste-tree": {
+                    this.proofExplorer.didPasteTree(desc);
+                    break;
+                }
+				case "did-trim-node": {
+                    this.proofExplorer.didTrimNode(desc); 
+                    break; 
+                }
+				case "did-rename-node": {
+                    this.proofExplorer.didRenameNode(desc); 
+                    break; 
+				}
+				case "did-activate-cursor": {
+                    this.proofExplorer.didActivateCursor(desc); 
+                    break; 
+				}
+				case "did-deactivate-cursor": {
+                    this.proofExplorer.didDeactivateCursor(desc); 
+                    break; 
+				}
+				case "did-update-proof-status": {
+                    this.proofExplorer.didUpdateProofStatus(desc);
+                    break;
+                }
+                default: // do nothing
+                    return;
+			}
+        });
+        this.client.onNotification(serverEvent.proofExecEvent, (desc: ProofExecEvent) => {
+			switch (desc.action) {
+                case "did-start-proof": {
+                    this.proofExplorer.startProof();
+                    this.proofMate.startProof();
+                    break;
+                }
+                case "did-end-proof": { // this is sent by CliGateway when the prover CLI is closed
+                    this.proofExplorer.disposeView();
+                    this.proofMate.disposeView();
+                    break;
+                }
+                case "did-load-sequent": {
+                    this.proofExplorer.didLoadSequent(desc.sequent);
+                    this.proofMate.updateRecommendations(desc.sequent);
+                    break;
+                }
+                case "did-update-sequent": {
+                    this.proofExplorer.updateTooltip(desc);
+                    this.proofMate.updateRecommendations(desc.sequent);
+                    break;
+                }
+                case "did-load-proof": {
+                    this.proofExplorer.loadProofStructure(desc.formula, desc.desc, desc.proof);
+                    this.proofMate.loadFormula(desc.formula);
+                    break;    
+                }
+            }
+        });
+
+        // register handler that will resolve the promise when the proof needs to be saved
+        this.client.onRequest(serverEvent.saveProofResponse, (desc: {
+            response: { success: boolean, msg?: string }, 
             args: { 
                 fileName: string, 
                 fileExtension: string, 
                 theoryName: string, 
                 formulaName: string, 
-                contextFolder: string 
-            }, 
-            pvsLogFile: string,
-            pvsTmpLogFile: string,
-            shasum: string
-        }) => {
-            if (desc) {
-                // initialise proof explorer
-                this.proofExplorer.setLogFileName(desc);
-                this.proofExplorer.setShasum(desc.shasum);
-
-                if (desc.response && desc.response.result) {
-                    // update proof mate
-                    this.proofMate.setProofDescriptor(desc.args);
-                    this.proofMate.updateRecommendations(desc.response.result);
-                    // save initial proof state in proof explorer
-                    this.proofExplorer.loadInitialProofState(desc.response.result);
-                }
-                // start proof
-                this.proofExplorer.startProof();
-                this.proofMate.startProof();                
+                contextFolder: string, 
+                proofDescriptor: ProofDescriptor
             }
-        });
-        this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, proofFile: string }) => {
-            if (desc) {
-                console.log(desc);
-                if (desc.response && desc.response.result) {
-                    // console.dir(desc.response.result);
-                    this.proofExplorer.loadFormulaDescriptor(desc.args);
-                    this.proofExplorer.loadProofDescriptor(desc.response.result);
-                    this.proofMate.loadFormulaDescriptor(desc.args);
-                } else {
-                    console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error`, desc);
-                    window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error (please check pvs-server output for details)`);
+        }) => {
+            const fname: string = `${desc.args.fileName}.jprf`;
+            if (desc.response.success) {
+                if (!this.quietMode) {
+                    window.showInformationMessage(`Proof ${desc.args.formulaName} saved in file ${fname}`);
                 }
             } else {
-                console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} received null response`);
-                window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} received null response`);
+                window.showErrorMessage(`Unexpected error while saving file ${fname} (please check pvs-server output for details)`);
             }
         });
-        // proof-state handler
-        this.client.onRequest(serverEvent.proofStateUpdate, async (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, pvsLogFile: string, pvsTmpLogFile: string, shasum: string }) => {
-            // do nothing for now
+
+
+        this.client.onRequest(serverEvent.proveFormulaResponse, (desc: {
+            response: PvsResponse, 
+            args: PvsFormula
+        }) => {
+            // if (desc) {
+            //     // initialise proof explorer
+            //     // this.proofExplorer.setLogFileName(desc);
+            //     // this.proofExplorer.setShasum(desc.shasum);
+
+            //     if (desc.response && desc.response.result) {
+            //         // update proof mate
+            //         this.proofMate.setProofDescriptor(desc.args);
+            //         this.proofMate.updateRecommendations(desc.response.result);
+            //         // save initial proof state in proof explorer
+            //         // this.proofExplorer.loadInitialProofState(desc.response.result);
+            //     }
+            //     // start proof
+            //     // this.proofExplorer.startProof();
+            //     this.proofMate.startProof();                
+            // }
         });
+
+        // this.client.onRequest(serverEvent.loadProofResponse, (desc: { response: { result: ProofDescriptor } | null, args: FormulaDescriptor, proofFile: string }) => {
+        //     if (desc) {
+        //         console.log(desc);
+        //         if (desc.response && desc.response.result) {
+        //             // console.dir(desc.response.result);
+        //             this.proofExplorer.loadFormula(desc.args);
+        //             this.proofExplorer.loadProofDescriptor(desc.response.result);
+        //             this.proofMate.loadFormula(desc.args);
+        //         } else {
+        //             console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error`, desc);
+        //             window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error (please check pvs-server output for details)`);
+        //         }
+        //     } else {
+        //         console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} received null response`);
+        //         window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} received null response`);
+        //     }
+        // });
+
+
+        // // proof-state handler
+        // this.client.onRequest(serverEvent.proofStateUpdate, async (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, formulaName: string, contextFolder: string }, pvsLogFile: string, pvsTmpLogFile: string, shasum: string }) => {
+        //     // do nothing for now
+        // });
 
         this.client.onRequest(serverEvent.startEvaluatorResponse, (desc: { response: PvsResponse, args: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string }}) => {
             console.log(desc);
@@ -309,17 +431,17 @@ export class EventsDispatcher {
             this.statusBar.failure(msg);
         });
 
-        this.client.onRequest(serverEvent.proverModeEvent, (desc: { mode: ServerMode }) => {
+        this.client.onRequest(serverEvent.serverModeUpdateEvent, (desc: { mode: ServerMode }) => {
             if (desc) {
                 switch (desc.mode) {
                     case "in-checker": {
                         this.inChecker = true;
                         vscode.commands.executeCommand('setContext', 'in-checker', true);
                         this.workspaceExplorer.refreshView();
-                        if (!this.willProveFormula) {
-                            // cancel request
-                            this.proofExplorer.quitProof({ confirm: false }); // async call
-                        }
+                        // if (!this.willProveFormula) {
+                        //     // cancel request
+                        //     this.proofExplorer.quitProof({ confirm: false }); // async call
+                        // }
                         break;
                     }
                     case "pvsio":
@@ -334,36 +456,22 @@ export class EventsDispatcher {
             }
         });
 
-        this.client.onRequest(serverEvent.saveProofForceQuitEvent, (request: { 
-            args: {
-                fileName: string, 
-                fileExtension: string, 
-                contextFolder: string, 
-                theoryName: string, 
-                formulaName: string, 
-                cmd: string
-            }
-		}) => {
-            this.proofExplorer.saveProof({ force: true, quiet: true });
-            this.vscodePvsTerminal.deactivate();
-        });
+        // this.client.onRequest(serverEvent.saveProofForceQuitEvent, (request: { 
+        //     args: PvsProofCommand
+		// }) => {
+        //     this.proofExplorer.saveProof({ force: true, quiet: true });
+        //     this.vscodePvsTerminal.deactivate();
+        // });
 
 		this.client.onRequest(serverEvent.getContextDescriptorResponse, (desc: PvsContextDescriptor) => {
             this.workspaceExplorer.updateContextFolder(desc);
         });
 
-		this.client.onRequest(serverEvent.saveProofEvent, (request: { 
-            args: {
-                fileName: string, 
-                fileExtension: string, 
-                contextFolder: string, 
-                theoryName: string, 
-                formulaName: string, 
-                cmd: string
-            }
-		}) => {
-			this.proofExplorer.saveProof({ quiet: true, force: true });
-        });
+		// this.client.onRequest(serverEvent.saveProofEvent, (request: { 
+        //     args: PvsProofCommand
+		// }) => {
+		// 	this.proofExplorer.saveProof({ quiet: true, force: true });
+        // });
 		// this.client.onRequest(serverEvent.redoCommandEvent, (request: { 
         //     args: {
         //         fileName: string, 
@@ -376,71 +484,31 @@ export class EventsDispatcher {
 		// }) => {
 		// 	this.proofExplorer.redo();		
         // });
-		this.client.onRequest(serverEvent.quitProofEvent, async (request: {
-            args: { 
-                fileName: string, 
-                fileExtension: string, 
-                contextFolder: string, 
-                theoryName: string, 
-                formulaName: string, 
-                cmd: string
-            },
-            opt?: {
-                force?: boolean,
-                quiet?: boolean
-            }
+		this.client.onRequest(serverEvent.querySaveBeforeQuit, async (request: {
+            args: PvsProofCommand
 		}) => {
             if (request) {
-                request.opt = request.opt || {};
-                await this.proofExplorer.saveProof({ force: request.opt.force, quiet: request.opt.quiet });
+                await this.proofExplorer.querySaveProof();
                 this.vscodePvsTerminal.deactivate();
             } else {
                 console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
             }
 		});
 		this.client.onRequest(serverEvent.QED, (request: {
-            args: { 
-                fileName: string, 
-                fileExtension: string, 
-                contextFolder: string, 
-                theoryName: string, 
-                formulaName: string, 
-                cmd: string
-            },
-            opt?: {
-                quiet?: boolean,
-                force?: boolean
-            }
+            args: PvsProofCommand
 		}) => {
-            if (request) {
-                request.opt = request.opt || {};
-                const msg: string = (request && request.args && request.args.formulaName) ? `Proof completed successfully!` : null;
-                this.proofExplorer.saveProof({ msg, force: request.opt.force, quiet: request.opt.quiet });
-                this.vscodePvsTerminal.deactivate();
-            } else {
-                console.error(`[events-dispatcher] Error: null request in serverEvent`);
-            }
+            this.vscodePvsTerminal.deactivate();
         });
         this.client.onRequest(serverEvent.showProofLiteResponse, (desc: { 
             response: string, 
-            args: { 
-                fileName: string, 
-                fileExtension: string, 
-                theoryName: string, 
-                formulaName: string, 
-                contextFolder: string
-            }
+            args: PvsFormula
         }) => {
             if (desc && desc.response) {
-                vscodeUtils.previewTextDocument(`${desc.args.formulaName}.prlite`, desc.response, { contextFolder: desc.args.contextFolder, viewColumn: vscode.ViewColumn.Beside });
+                vscodeUtils.previewTextDocument(`${desc.args.theoryName}.prlite`, desc.response, { contextFolder: desc.args.contextFolder, viewColumn: vscode.ViewColumn.Beside });
             }
         });
         this.client.onRequest(serverEvent.generateSummaryResponse, (desc: { 
-            response: {
-                contextFolder: string,
-                fileName: string, 
-                fileExtension: string
-            },
+            response: PvsFile,
             args: { 
                 contextFolder: string,
                 fileName: string, 
@@ -451,20 +519,6 @@ export class EventsDispatcher {
         }) => {
             if (desc && desc.response) {
                 vscodeUtils.showTextDocument(desc.response);
-            }
-        });
-
-        // register handler for generateTccsResponse, which might be triggered at the end of the proof or when discharging tccs
-        this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
-            response: PvsContextDescriptor, 
-            args: { 
-                fileName: string, 
-                fileExtension: string, 
-                contextFolder: string 
-            }
-        }) => {
-            if (this.workspaceExplorer && desc.response) {
-                this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
             }
         });
         
@@ -538,16 +592,22 @@ export class EventsDispatcher {
             }
         }));
 
+        // context.subscriptions.push(commands.registerCommand("proof-explorer.step-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
+        //     if (desc && desc.cmd) {
+        //         this.vscodePvsTerminal.sendProofCommand(desc, { addNewLine: true });
+        //         // window.showInformationMessage(`${desc.cmd} sent to terminal`)
+        //     }
+        // }));
         context.subscriptions.push(commands.registerCommand("proof-mate.proof-command-dblclicked", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             if (desc && desc.cmd) {
                 this.vscodePvsTerminal.sendProofCommand(desc, { addNewLine: false });
-                window.showInformationMessage(`${desc.cmd} sent to terminal`)
+                // window.showInformationMessage(`${desc.cmd} sent to terminal`)
             }
         }));
         context.subscriptions.push(commands.registerCommand("proof-explorer.proof-command-dblclicked", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             if (desc && desc.cmd) {
                 this.vscodePvsTerminal.sendProofCommand(desc, { addNewLine: false });
-                window.showInformationMessage(`${desc.cmd} sent to terminal`)
+                // window.showInformationMessage(`${desc.cmd} sent to terminal`)
             }
         }));
 
@@ -637,7 +697,6 @@ export class EventsDispatcher {
 
         // vscode-pvs.prove-formula
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula", async (resource) => {
-            this.willProveFormula = true;
             if (window.activeTextEditor && window.activeTextEditor.document) {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();
@@ -652,10 +711,10 @@ export class EventsDispatcher {
                 }> this.resource2desc(resource);
                 if (desc) {
                     if (desc.theoryName) {
-                        if (this.inChecker) {
-                            // quit the current proof first
-                            await this.proofExplorer.quitProof({ confirm: false });
-                        }
+                        // if (this.inChecker) {
+                        // quit the current proof first
+                        // await this.proofExplorer.quitProof({ confirm: false });
+                        // }
                         // this.proofExplorer.prepareToProveFormula();
                         this.proofExplorer.revealView();
                         this.proofMate.revealView();
@@ -667,20 +726,6 @@ export class EventsDispatcher {
                         //      3.2 loadProofDescriptor
                         //      3.3 proveFormula
                         await this.vscodePvsTerminal.startProverSession(desc);
-
-                        // register handler for generateTccsResponse, which might be triggered at the end of the proof
-                        this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
-                            response: PvsContextDescriptor, 
-                            args: { 
-                                fileName: string, 
-                                fileExtension: string, 
-                                contextFolder: string 
-                            }
-                        }) => {
-                            if (this.workspaceExplorer && desc.response) {
-                                this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
-                            }
-                        });   
                     } else {
                         console.error("[vscode-events-dispatcher] Error: theory name is null", desc);
                     }
@@ -692,10 +737,7 @@ export class EventsDispatcher {
             }
         }));
 
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.stop-autorun", () => {
-            this.willProveFormula = false;
-        }));
-            // vscode-pvs.autorun-theory
+        // vscode-pvs.autorun-theory
         // the sequence of events triggered by this command is:
         // 1. vscodePvsTerminal.startProverSession(desc) 
         // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
@@ -712,17 +754,17 @@ export class EventsDispatcher {
             formulaName: string 
         }) => {
             if (resource) {
-                this.willProveFormula = true;
-
                 this.quietMode = true;
 
                 this.statusBar.showProgress(`Re-running proofs in theory ${resource.theoryName}`);
-                this.proofMate.hideView();
-                this.proofExplorer.hideView();
+                // this.proofMate.hideView();
+                // this.proofExplorer.hideView();
 
                 await this.workspaceExplorer.autorun(resource);
+                // this.proofMate.revealView();
+                // this.proofExplorer.revealView();
                 this.statusBar.ready();
-                
+
                 this.quietMode = false;
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.autorun-theory invoked with null resource", resource);
@@ -746,16 +788,14 @@ export class EventsDispatcher {
             formulaName: string 
         }) => {
             if (resource) {        
-                this.willProveFormula = true;        
                 this.quietMode = true;
 
-                this.proofMate.hideView();
-                this.proofExplorer.autorunStart();
-                this.proofExplorer.hideView();
-
+                // this.proofMate.hideView();
+                // this.proofExplorer.hideView();
                 await this.workspaceExplorer.autorun(resource, { tccsOnly: true });
-
-                await this.proofExplorer.autorunStop();
+                // this.proofMate.revealView();
+                // this.proofExplorer.revealView();
+                this.statusBar.ready();
 
                 this.quietMode = false;
             } else {
@@ -847,29 +887,7 @@ export class EventsDispatcher {
                 }> this.resource2desc(resource);
                 if (desc) {
                     // send show-tccs request to pvs-server
-                    this.client.sendRequest(serverCommand.generateTccs, desc);
-                    // register handler for response
-                    this.client.onRequest(serverEvent.generateTccsResponse, (desc: { 
-                        response: PvsContextDescriptor, 
-                        args: { 
-                            fileName: string, 
-                            fileExtension: string, 
-                            contextFolder: string 
-                        }
-                    }) => {
-                        if (this.workspaceExplorer && desc.response) {
-                            this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
-                        }
-                        if (desc && desc.args) {
-                            if (desc && desc.response) {
-                                // open tcc file in the editor
-                                const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
-                                const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
-                                const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
-                                vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
-                            }
-                        }
-                    });
+                    this.client.sendRequest(serverCommand.showTccs, desc);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
@@ -1000,7 +1018,7 @@ export class EventsDispatcher {
                 if (this.quietMode) {
                     this.client.onNotification(`server.status.end-important-task-${desc.id}-with-errors`, (desc: { msg: string }) => {
                         this.statusBar.ready();
-                        this.proofExplorer.autorunStop();
+                        // this.proofExplorer.autorunStop();
 
                         if (desc && desc.msg) {
                             this.statusBar.showError(desc.msg); // use the status bar rather than dialogs, because we don't have APIs to close old dialogs with potentially stale information

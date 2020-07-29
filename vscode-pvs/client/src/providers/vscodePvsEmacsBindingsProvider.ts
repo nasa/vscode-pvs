@@ -111,20 +111,24 @@ export class VSCodePvsEmacsBindingsProvider {
 			};
 			switch (userInput) {
 				case "show-tccs": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.show-tccs', desc);
 					break;
 				}
 				case "tc": 
 				case "typecheck": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.typecheck-file', desc);
 					break;
 				}
 				case "tcp": 
 				case "typecheck-prove": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.discharge-tccs', desc);
 					break;
 				}
 				case "parse": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.parse-file', desc);
 					break;
 				}
@@ -134,10 +138,12 @@ export class VSCodePvsEmacsBindingsProvider {
 					break;
 				}
 				case "prt": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.autorun-theory', desc);
 					break;
 				}
 				case "pvsio": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.pvsio-evaluator', desc);
 					break;
 				}

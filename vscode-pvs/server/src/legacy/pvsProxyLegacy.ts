@@ -43,7 +43,7 @@ import * as fsUtils from '../common/fsUtils';
 import { PvsProcess } from '../pvsProcess';
 import * as utils from '../common/languageUtils';
 import { PvsErrorManager } from '../pvsErrorManager';
-import { ProofState } from '../common/languageUtils';
+import { SequentDescriptor } from '../common/languageUtils';
 
 interface ProofSessionStatus {
     label: string,
@@ -99,11 +99,20 @@ export class PvsProxyLegacy {
     }
     async proverStatus (): Promise<PvsResponse> {
         const inchecker: PvsResponse = await this.lisp("*in-checker*");
-        return {
-            jsonrpc: "2.0",
-            id: "pvs-process-legacy",
-            result: (inchecker && inchecker.result === "t") ? "active" : "inactive"
-        };
+        if (inchecker && inchecker.result === "t") {
+            return {
+                jsonrpc: "2.0",
+                id: "pvs-process-legacy",
+                result: "active"
+            };    
+        }
+        if (!inchecker) {
+            return {
+                jsonrpc: "2.0",
+                id: "pvs-process-legacy",
+                result: "inactive"
+            };
+        }
     }
     async proofCommand (cmd: string): Promise<PvsResponse> {
         const pvsResponse: PvsResponse = {
@@ -133,7 +142,7 @@ export class PvsProxyLegacy {
         data = data.substring(data.indexOf("["), data.lastIndexOf("]") + 1);
         if (data) {
             try {
-                const result: (ProofState | ProofSessionStatus)[] = JSON.parse(data);
+                const result: (SequentDescriptor | ProofSessionStatus)[] = JSON.parse(data);
                 // convert result to ProofState[] (pvsResponse.result must be of type ProofState[])
                 pvsResponse.result = [];
                 for (let i = 0; i < result.length; i++) {
@@ -186,7 +195,7 @@ export class PvsProxyLegacy {
         // fix for commentary erroneously printed by pvs
         const data: string = response.result.substring((<string> response.result).indexOf("["), (<string> response.result).lastIndexOf("]") + 1);
         try {
-            pvsResponse.result = <ProofState[]> JSON.parse(data);
+            pvsResponse.result = <SequentDescriptor[]> JSON.parse(data);
         } catch (jsonerror) {
             console.error(data);
             console.error(jsonerror);

@@ -62,7 +62,7 @@ export class PvsDefinitionProvider {
 	 * Utility function, prints a warning message in the console
 	 * @param msg
 	 */
-	private printWarning (msg: string) {
+	protected printWarning (msg: string) {
 		if (this.connection) {
 			this.connection.console.warn(`[pvs-definition-provider] ${msg}`);
 		}
@@ -71,7 +71,7 @@ export class PvsDefinitionProvider {
 	 * Utility function, prints a timestamped message in the console
 	 * @param msg
 	 */
-	private printInfo (msg: string) {
+	protected printInfo (msg: string) {
 		if (this.connection) {
 			this.connection.console.info(`[pvs-definition-provider] ${msg}`);
 		}

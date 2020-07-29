@@ -201,20 +201,13 @@ class TerminalSession {
         this.terminal.sendText(cmd);
     }
     close (): void {
-        // hide all other terminals?
-        // if (vscode.window.terminals && vscode.window.terminals.length) {
-        //     for (let i = 0; i < vscode.window.terminals.length; i++) {
-        //         vscode.window.terminals[i].hide();
-        //     }
-        // }
         if (this.terminal) {
             // hide terminal
             this.terminal.hide();
-            // dispose this terminal
+            // dispose of the terminal
             this.terminal.dispose();
+            this.terminal = null;            
         }
-        // close proof explorer and proofmate
-        // vscode.commands.executeCommand('vscode-pvs.in-checker', false);
     }
     sendCommand (cmd: string) {
         this.sendText(cmd);
@@ -226,37 +219,37 @@ class TerminalSession {
             this.cb();
         }
     }
-    async quitCommand (): Promise<void> {
-        if (this.isActive) {
-            this.sendCommand("quit");
-            return new Promise((resolve, reject) => {
-                this.cb = () => {
-                    this.cb = null;
-                    resolve();
-                }
-            });
-        }
-    }
-    async quitDontSaveCommand (): Promise<void> {
-        if (this.isActive) {
-            return new Promise((resolve, reject) => {
-                this.sendCommand("quit-dont-save");
-                setTimeout(() => {
-                    resolve();
-                }, 200);
-            });
-        }
-    }
-    async saveForceQuitCommand (): Promise<void> {
-        if (this.isActive) {
-            return new Promise((resolve, reject) => {
-                this.sendCommand("save-force-quit");
-                setTimeout(() => {
-                    resolve();
-                }, 200);
-            });
-        }
-    }
+    // async quitCommand (): Promise<void> {
+    //     if (this.isActive) {
+    //         this.sendCommand("quit");
+    //         return new Promise((resolve, reject) => {
+    //             this.cb = () => {
+    //                 this.cb = null;
+    //                 resolve();
+    //             }
+    //         });
+    //     }
+    // }
+    // async quitDontSaveCommand (): Promise<void> {
+    //     if (this.isActive) {
+    //         return new Promise((resolve, reject) => {
+    //             this.sendCommand("quit-dont-save");
+    //             setTimeout(() => {
+    //                 resolve();
+    //             }, 200);
+    //         });
+    //     }
+    // }
+    // async saveThenQuitCommand (): Promise<void> {
+    //     if (this.isActive) {
+    //         return new Promise((resolve, reject) => {
+    //             this.sendCommand("save-then-quit");
+    //             setTimeout(() => {
+    //                 resolve();
+    //             }, 200);
+    //         });
+    //     }
+    // }
 }
 
 import { cliSessionType } from '../common/serverInterface';
@@ -266,7 +259,7 @@ export class VSCodePvsTerminal {
     protected client: LanguageClient;
     protected context: vscode.ExtensionContext;
     protected openTerminals: { [key: string]: TerminalSession } = {};
-    protected profiler: vscode.OutputChannel = vscode.window.createOutputChannel("pvs-server-profiler");
+    protected profiler: vscode.OutputChannel;
     /**
      * Constructor
      * @param client Language client 
@@ -274,21 +267,23 @@ export class VSCodePvsTerminal {
     constructor (client: LanguageClient) {
         this.client = client;
         vscode.window.onDidCloseTerminal(async (terminal) => {
-            const keys: string[] = Object.keys(this.openTerminals);
-            if (keys && keys.length > 0) {
-                for (const i in keys) {
-                    if (this.openTerminals[keys[i]].terminal.processId === terminal.processId) {
-                        this.client.sendRequest(serverCommand.quitProof);
-                        await Promise.resolve(new Promise((resolve, reject) => {
-                            this.client.onRequest(serverEvent.quitProofResponse, () => {
-                                resolve();
-                            });
-                        }))
-                        delete this.openTerminals[keys[i]];
-                        break;
-                    }
-                }
-            }
+            this.openTerminals = {}; // unregister all prover terminals -- this simple form works only because we have only one prover session at a time
+
+            // const keys: string[] = Object.keys(this.openTerminals);
+            // if (keys && keys.length > 0) {
+            //     for (const i in keys) {
+            //         if (this.openTerminals[keys[i]].terminal.processId === terminal.processId) {
+            //             this.client.sendRequest(serverCommand.quitProof);
+            //             await Promise.resolve(new Promise((resolve, reject) => {
+            //                 this.client.onRequest(serverEvent.quitProofResponse, () => {
+            //                     resolve();
+            //                 });
+            //             }))
+            //             delete this.openTerminals[keys[i]];
+            //             break;
+            //         }
+            //     }
+            // }
         });
     }
     selectProfile(desc: { profile: ProofMateProfile }): void {
@@ -342,7 +337,7 @@ export class VSCodePvsTerminal {
             // close all prover sessions first -- the current version of pvs-server supports one prover session at a time
             for (let i = 0; i < keys.length; i++) {
                 const openTerminal: TerminalSession = this.openTerminals[keys[i]];
-                await openTerminal.quitCommand();
+                openTerminal.close();
             }
         }
     }
@@ -369,18 +364,19 @@ export class VSCodePvsTerminal {
 
                         const keys: string[] = Object.keys(this.openTerminals);
                         if (keys.length > 0) {
-                            // close all prover sessions first -- the current version of pvs-server supports one prover session at a time
+                            // close all open terminals
                             for (let i = 0; i < keys.length; i++) {
                                 const openTerminal: TerminalSession = this.openTerminals[keys[i]];
-                                await openTerminal.saveForceQuitCommand(); // the terminal will be automatically closed when the gateway received cli-end
+                                openTerminal.close();
                             }
                         }
+
                         const pvsTerminal: TerminalSession = new TerminalSession({ client: this.client, channelID, pvsPath, gateway });
                         await pvsTerminal.activate(this.context, cliSessionType.proveFormula, desc);
                         this.openTerminals[channelID] = pvsTerminal;
                         // send prove-formula request to pvs-server
                         this.client.sendRequest(serverCommand.proveFormula, desc);
-                        // the proof script will be automatically loaded on the front-end when event serverEvent.proveFormulaResponse will be fired by the server
+                        // the proof script will be automatically loaded on the front-end when event proofExecEvent / ProofExecDidStartProof is fired by the server
                         resolve(true);
                     } else {
                         vscode.window.showErrorMessage(`Error: Unable to start prover session (server gateway port could not be detected)`);
@@ -432,6 +428,10 @@ export class VSCodePvsTerminal {
         });
     }
     profilerData (data: string): void {
-        this.profiler.appendLine(data);
+        const showProfilerOutput: boolean = vscode.workspace.getConfiguration().get("pvs.settings.prover.profiler");
+        if (showProfilerOutput) {
+            this.profiler = this.profiler || vscode.window.createOutputChannel("pvs-server-profiler");
+            this.profiler.appendLine(data);
+        }
     }
 }
