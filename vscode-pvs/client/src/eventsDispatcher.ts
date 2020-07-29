@@ -863,6 +863,8 @@ export class EventsDispatcher {
 			if (resource) {
                 let desc = this.resource2desc(resource);
                 if (desc) {
+                    // show output panel for feedback
+                    commands.executeCommand("workbench.action.output.toggleOutput", true);
                     // send typecheck request to pvs-server
                     this.client.sendRequest(serverCommand.typecheckFile, desc);
                 }

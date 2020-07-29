@@ -301,11 +301,18 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					this.client.sendRequest(comm.serverCommand.startPvsServer, {
 						pvsPath: this.pvsPath, 
 						contextFolder
-					});					
+					});
 					// create handler for pvsServerReady event
 					this.client.onRequest(serverEvent.pvsServerReady, (info: comm.PvsVersionDescriptor) => {
 						// set vscode context variable pvs-server-active to true
 						commands.executeCommand('setContext', 'pvs-server-active', true);
+
+						// reset other globals
+						commands.executeCommand('setContext', 'in-checker', false);
+						commands.executeCommand('setContext', 'proof-explorer.running', false);
+						commands.executeCommand('setContext', 'proof-mate.visible', false);
+						commands.executeCommand('setContext', 'proof-explorer.visible', false);
+						commands.executeCommand('setContext', 'autorun', false);
 
 						// update status bar
 						this.statusBar.ready();

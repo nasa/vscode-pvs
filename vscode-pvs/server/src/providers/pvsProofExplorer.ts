@@ -92,7 +92,6 @@ export class PvsProofExplorer {
 	protected tmpLogFileName: string;
 
 	protected dirtyFlag: boolean = false; // indicates whether the proof has changed since the last time it was saved
-	protected pendingExecution: boolean = false; // indicates whether step() has been triggered and we need to wait for onStepExecuted before doing anything else
 
 	protected connection: Connection; // connection to the client
 	protected pvsProxy: PvsProxy;
@@ -403,7 +402,6 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor specifying the reponse of the prover, as well as the actual values of the arguments used to invoke the step function.
 	 */
 	async onStepExecuted (desc: { proofState: SequentDescriptor, args: PvsProofCommand }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
-		this.pendingExecution = false;
 		if (desc && desc.proofState && desc.args) {
 			// get command and proof state
 			let cmd: string = desc.args.cmd; // command entered by the user
@@ -1513,7 +1511,6 @@ export class PvsProofExplorer {
 	async proved (): Promise<void> {
 		// stop execution
 		this.running = false;
-		this.pendingExecution = false;
 		// move indicator forward so any proof branch that needs to be marked as visited will be marked
 		this.activeNode.moveIndicatorForward();
 		// remove unused commands
@@ -1592,8 +1589,6 @@ export class PvsProofExplorer {
 				this.activeNode.sequentDescriptor = this.root.sequentDescriptor;
 				this.activeNode.tooltip = this.root.tooltip;	
 			}
-
-			this.pendingExecution = false;
 			
 			if (this.autorunFlag) {
 				this.run();
@@ -1774,7 +1769,6 @@ export class PvsProofExplorer {
 	 */
 	async quitProof (): Promise<void> {
 		this.running = false;
-		this.pendingExecution = false;
 		if (this.formula) {
 			await this.proofCommand({
 				fileName: this.formula.fileName,
