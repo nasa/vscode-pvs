@@ -97,6 +97,12 @@ export class PvsProofExplorer {
 	protected pvsProxy: PvsProxy;
 	protected pvsLanguageServer: PvsLanguageServer;
 
+	readonly DEBUG_LOG: boolean = false;
+	protected log (...args): void {
+		if (this.DEBUG_LOG) {
+			console.log(args);
+		}
+	}
 
 	/**
 	 * Clipboards for cut/paste operations
@@ -650,23 +656,9 @@ export class PvsProofExplorer {
 					this.removeNotVisited({ selected: activeNode.parent });
 				}
 
-				// append subgoals if needed
-				let nSubGoals: number = (this.proofState["num-subgoals"] && this.proofState["num-subgoals"] > 1) ? (this.proofState["num-subgoals"] - activeNode.children.length) : 0;
-				if (nSubGoals || utils.siblingBranchComplete(this.proofState, newBranch)) {
-					const targetBranch: ProofItem = this.findProofBranch(newBranch);
-					// check if the tree has changed structure, if so trim the proof tree and create new branches
-					if (this.proofStructureHasChanged({ activeNode, targetBranch })) {
-						this.trimNode({ selected: activeNode });
-						for (let i = 0; i < nSubGoals; i++) {
-							this.appendBranch({ selected: activeNode }, { firstBranch: newBranch, proofState: this.proofState });
-						}
-					}
-				}
-
 				// if the branch has changed, move to the new branch
-				// this case handles the completion of a proof branch (postpone is handled separately, see conditions above)
 				if (utils.branchHasChanged({ newBranch, previousBranch })) {
-					// find target branch, or 
+					// find target branch
 					const targetBranch: ProofItem = this.findProofBranch(newBranch) || this.createBranchRecursive({ id: newBranch, parent: activeNode });
 					if (targetBranch) {
 						// update tooltip in target branch
@@ -690,12 +682,25 @@ export class PvsProofExplorer {
 					}
 				}
 
+				// // append subgoals if needed
+				// let nSubGoals: number = (this.proofState["num-subgoals"] && this.proofState["num-subgoals"] > 1) ? (this.proofState["num-subgoals"] - activeNode.children.length) : 0;
+				// if (nSubGoals) { //} || utils.siblingBranchComplete(this.proofState, newBranch)) {
+				// 	const targetBranch: ProofItem = this.findProofBranch(newBranch);
+				// 	// check if the tree has changed structure, if so trim the proof tree and create new branches
+				// 	if (this.proofStructureHasChanged({ activeNode: this.activeNode, targetBranch })) {
+				// 		this.trimNode({ selected: this.activeNode });
+				// 		for (let i = 0; i < nSubGoals; i++) {
+				// 			this.appendBranch({ selected: activeNode }, { firstBranch: newBranch, proofState: this.proofState });
+				// 		}
+				// 	}
+				// }
+
 				// finally, move indicator forward and propagate tooltip to the new active node
 				this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 			}
 
-			// check if we have reached the end of the proof
-			if (this.ghostNode.isActive() && !utils.branchComplete(this.proofState, previousBranch)) {
+			// check if we have reached a dead end where the proof has stopped
+			if (this.ghostNode.isActive()) {//} && !utils.branchComplete(this.proofState, previousBranch)) {
 				// and so we need to stop the execution
 				this.running = false;
 				if (this.autorunFlag) {
@@ -725,7 +730,7 @@ export class PvsProofExplorer {
 		}
 		// else
 		const findNodeAux = (id: string, node: ProofItem): ProofBranch | null => {
-			if (node && node.contextValue === "proof-branch" && node.branchId === id) {
+			if (node && node.contextValue === "proof-branch" && node.branchNameEquals(id)) {
 				return <ProofBranch> node;
 			}
 			for (let i = 0; i < node.children.length; i++) {
@@ -1302,7 +1307,7 @@ export class PvsProofExplorer {
 				// delete children, don't deleted the root
 				if (this.connection && !this.autorunFlag) {
 					for (let i = 0; i < selected.children.length; i++) {
-						console.log(`[proof-explorer] Deleting node ${selected.children[i].name} (${selected.children[i].id})`);
+						this.log(`[proof-explorer] Deleting node ${selected.children[i].name} (${selected.children[i].id})`);
 						const evt: ProofEditDidDeleteNode = {
 							action: "did-delete-node", 
 							selected: { id: selected.children[i].id, name: selected.children[i].name }
@@ -1399,7 +1404,7 @@ export class PvsProofExplorer {
 			if (items && items.length) {
 				this.dirtyProof();
 				if (this.connection && !this.autorunFlag) {
-					console.log(`[proof-explorer] Trimming node ${desc.selected.name} (${desc.selected.id})`);
+					this.log(`[proof-explorer] Trimming node ${desc.selected.name} (${desc.selected.id})`);
 					for (let i = 0; i < items.length; i++) {
 						const evt: ProofEditDidDeleteNode = {
 							action: "did-delete-node", 
@@ -1524,6 +1529,9 @@ export class PvsProofExplorer {
 			// update proof descriptor
 			this.proofDescriptor = this.makeProofDescriptor();
 		}
+
+		// notify server mode change to the client
+		this.pvsLanguageServer.notifyServerMode("lisp");
 
 		// send QED to the terminal -- this will end the terminal session
 		await this.proofCommandRequest({
@@ -1760,9 +1768,6 @@ export class PvsProofExplorer {
 		}
 		this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: this.formula });
 	}
-	// prepareToProveFormula (): void {
-	// 	this.expectProofRequest = true;
-	// }
 	/**
 	 * Quit the current proof
 	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
@@ -1873,7 +1878,7 @@ export class PvsProofExplorer {
 		if (utils.isQuitCommand(request.cmd)) {
 			if (this.dirtyFlag) {
 				// ask if the proof needs to be saved
-				this.connection.sendRequest(serverEvent.querySaveBeforeQuit, { args: request }); // this will trigger the confirmation dialog
+				this.connection.sendRequest(serverEvent.querySaveThenQuit, { args: request }); // this will trigger the confirmation dialog
 			} else {
 				await this.quitProof();
 			}
@@ -1923,7 +1928,7 @@ export class PvsProofExplorer {
 				if (response) {
 					if (response.result) {
 						// the following additional logic is necessary to create the log file and start up the interactive cli session
-						const proofLogPath: string = path.join(req.contextFolder, fsUtils.pvsbinFolder);
+						// const proofLogPath: string = path.join(req.contextFolder, fsUtils.pvsbinFolder);
 						const channelID: string = utils.desc2id(req);
 						// const pvsLogFile: string = path.join(proofLogPath, `${channelID}${fsUtils.logFileExtension}`);
 						// const pvsTmpLogFile: string = path.join(proofLogPath, `${channelID}-tmp${fsUtils.logFileExtension}`);
@@ -2024,6 +2029,12 @@ export class ProofItem extends TreeItem {
 		this.tooltip = "Double click sends command to terminal"; // the tooltip will shows the sequent before the execution of the proof command, as soon as the node becomes active
 		this.notVisited({ internalAction: true });
 	}
+	readonly DEBUG_LOG: boolean = false;
+	protected log (...args): void {
+		if (this.DEBUG_LOG) {
+			console.log(args);
+		}
+	}
 	getNodeXStructure (): ProofNodeX {
 		const res: ProofNodeX = {
 			id: this.id,
@@ -2047,6 +2058,16 @@ export class ProofItem extends TreeItem {
 			}
 		}
 		return res;
+	}
+	branchNameEquals (b: string): boolean {
+		// the following branch names should be equivalent: 1.2T.1 = 1.2.1 = 1.2.1T = 1.2T.1T 
+		const b1x = this.branchId.split(".").map((elem: string) => {
+			return `${parseInt(elem)}`
+		}).join(".");
+		const b2x = b.split(".").map((elem: string) => {
+			return `${parseInt(elem)}`
+		}).join(".");
+		return b1x === b2x;
 	}
 	clone (opt?: { parent?: ProofItem, internalAction?: boolean }): ProofItem {
 		opt = opt || {};
@@ -2247,7 +2268,7 @@ export class ProofItem extends TreeItem {
 		}
 		if (!opt.internalAction && this.connection) {
 			const elem: ProofNodeX = child.getNodeXStructure();
-			console.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
+			this.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
 			const evt: ProofEditDidAppendNode = {
 				action: "did-append-node",
 				elem,
@@ -2264,7 +2285,7 @@ export class ProofItem extends TreeItem {
 			return ch.id !== child.id;
 		});
 		if (!opt.internalAction && this.connection) {
-			console.log(`[proof-explorer] Deleting node ${child.name} (${child.id})`);
+			this.log(`[proof-explorer] Deleting node ${child.name} (${child.id})`);
 			const evt: ProofEditDidDeleteNode = {
 				action: "did-delete-node",
 				selected: { id: child.id, name: child.name }
@@ -2309,7 +2330,7 @@ export class ProofItem extends TreeItem {
 				console.error(`[pvs-explorer] Error: proofstate is null. Please restart the proof and report this error to the vscode-pvs developers.`);
 			}
 			const activeBranchId: string = utils.getBranchId(proofState.label);
-			if (opt.keepSameBranch && this.children[0].branchId !== activeBranchId) {
+			if (opt.keepSameBranch && !this.children[0].branchNameEquals(activeBranchId)) {
 				return null;
 			}
 			if (opt.lastVisitedChild) {
@@ -2447,7 +2468,7 @@ export class ProofItem extends TreeItem {
 
 		if (!opt.internalAction && this.connection) {
 			const elem: ProofNodeX = sib.getNodeXStructure();
-			console.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
+			this.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
 			const evt: ProofEditDidAppendNode = {
 				action: "did-append-node",
 				elem,
@@ -2470,7 +2491,7 @@ export class ProofItem extends TreeItem {
 
 		if (!opt.internalAction && this.connection) {
 			const elem: ProofNodeX = child.getNodeXStructure();
-			console.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
+			this.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
 			const evt: ProofEditDidAppendNode = {
 				action: "did-append-node",
 				elem,
@@ -2500,7 +2521,7 @@ export class ProofItem extends TreeItem {
 
 		if (!opt.internalAction && this.connection) {
 			const elem: ProofNodeX = child.getNodeXStructure();
-			console.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
+			this.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
 			const evt: ProofEditDidAppendNode = {
 				action: "did-append-node",
 				elem,
@@ -2635,7 +2656,7 @@ class GhostNode extends ProofItem {
 		this.activeFlag = true;
 		if (this.connection) {
 			if (this.realNode) {
-				console.log(`[proof-explorer] Activating cursor after node ${this.realNode.name} (${this.realNode.id})`);
+				this.log(`[proof-explorer] Activating cursor after node ${this.realNode.name} (${this.realNode.id})`);
 				const cursor: ProofNodeX = this.getNodeXStructure();
 				cursor.parent = this.realNode.id;
 				const evt: ProofEditDidActivateCursor = {
@@ -2654,7 +2675,7 @@ class GhostNode extends ProofItem {
 		this.activeFlag = false;
 		if (this.connection) {
 			if (this.realNode) {
-				console.log(`[proof-explorer] Activating cursor after node ${this.realNode.name} (${this.realNode.id})`);
+				this.log(`[proof-explorer] Activating cursor after node ${this.realNode.name} (${this.realNode.id})`);
 				const evt: ProofEditDidDeactivateCursor = {
 					action: "did-deactivate-cursor"
 				};

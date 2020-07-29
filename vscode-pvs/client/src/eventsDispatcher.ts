@@ -484,12 +484,22 @@ export class EventsDispatcher {
 		// }) => {
 		// 	this.proofExplorer.redo();		
         // });
-		this.client.onRequest(serverEvent.querySaveBeforeQuit, async (request: {
+		this.client.onRequest(serverEvent.querySaveThenQuit, async (request: {
             args: PvsProofCommand
 		}) => {
             if (request) {
                 await this.proofExplorer.querySaveProof();
                 this.vscodePvsTerminal.deactivate();
+            } else {
+                console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
+            }
+        });
+        this.client.onRequest(serverEvent.querySaveThenProveFormula, async (request: {
+            args: PvsFormula
+		}) => {
+            if (request) {
+                await this.proofExplorer.querySaveProof();
+                this.client.sendRequest(serverCommand.proveFormula, request.args);
             } else {
                 console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
             }

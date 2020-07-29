@@ -795,6 +795,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 					return new Promise(async (resolve, reject) => {
 						let stop: boolean = false;
 						commands.executeCommand('setContext', 'autorun', true);
+						// show output panel for feedback
+						commands.executeCommand("workbench.action.output.toggleOutput", true);
 						token.onCancellationRequested(async () => {
 							// stop loop
 							stop = true;

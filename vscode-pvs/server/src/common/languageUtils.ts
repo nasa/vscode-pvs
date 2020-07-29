@@ -1330,15 +1330,18 @@ export function QED (result: { commentary: string[] }): boolean {
 }
 
 export function branchComplete (result: { commentary: string[] }, previousBranch: string): boolean {
-	return result && result.commentary
-		&& result.commentary.length 
-		&& result.commentary.filter((comment: string) => {
-			if (typeof previousBranch === "string") {
-				return comment.startsWith("This completes the proof") 
-					&& (comment.endsWith(previousBranch) || comment.endsWith(previousBranch + "."));
-			}
-			return comment.startsWith("This completes the proof");
-		}).length > 0;
+	if (previousBranch) {
+		return result && result.commentary
+			&& result.commentary.length 
+			&& result.commentary.filter((comment: string) => {
+				if (typeof previousBranch === "string") {
+					return comment.startsWith("This completes the proof") 
+						&& (comment.endsWith(previousBranch) || comment.endsWith(previousBranch + "."));
+				}
+				return comment.startsWith("This completes the proof");
+			}).length > 0;
+	}
+	return false;
 }
 
 export function siblingBranchComplete (result: { commentary: string[] }, newBranch: string): boolean {

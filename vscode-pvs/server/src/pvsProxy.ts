@@ -207,7 +207,12 @@ export class PvsProxy {
 			return new Promise((resolve, reject) => {
 				if (this.client) {
 					const jsonReq: string = JSON.stringify(req);
-					if (this.verbose) { console.dir(jsonReq); }
+					if (this.verbose) {
+						// console.dir(jsonReq);
+						const msg: string = (req.params) ? req.method + " " + JSON.stringify(req.params)
+							: req.method;
+						console.log(msg);
+					}
 					this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
 						if (error) {
 							console.error("[pvs-proxy] Error returned by pvs-server: "); 
@@ -639,7 +644,7 @@ export class PvsProxy {
 			} else {
 				const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
 				const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, fullName ]);
-				if (this.verbose) { console.dir(ans); }
+				// if (this.verbose) { console.dir(ans); }
 				if (ans && ans.result && ans.result["length"] === undefined) {
 					ans.result = [ ans.result ]; // the prover should return an array of proof states
 				}

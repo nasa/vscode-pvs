@@ -111,9 +111,6 @@ export class PvsLanguageServer {
 	protected pvsPath: string;
 	protected pvsVersionDescriptor: PvsVersionDescriptor;
 
-	// indicates whether a prover session is active -- pvs-server is single-threaded, and we can safely send only find-declaration requests when a prover session is active, everything else needs to be disabled
-	// protected mode: ServerMode = "lisp";
-
 	// timers
 	protected timers: { [ key:string ]: NodeJS.Timer } = {};
 	// proxy servers
@@ -284,20 +281,17 @@ export class PvsLanguageServer {
 		const proverStatus: PvsResponse = await this.pvsProxy.proverStatus();
 		const mode: ServerMode = (proverStatus && proverStatus.result !== "inactive") ?
 			"in-checker" : "lisp";
-		if (this.connection) {
-			this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode });
-		}
 		return mode;
 	} 
 	async proveFormulaRequest (request: PvsFormula, opt?: { autorun?: boolean }): Promise<void> {
 		opt = opt || {};
 		request = fsUtils.decodeURIComponents(request);
 		
-		const mode: ServerMode = await this.getServerMode();
-		if (mode === "in-checker") {
+		if (await this.getServerMode() === "in-checker") {
 			// save then quit current proof
-			if (this.proofExplorer.proofIsDirty()) {
-				await this.proofExplorer.saveProof();
+			if (this.proofExplorer.proofIsDirty() && !opt.autorun) {
+				// ask if the proof needs to be saved
+				this.connection.sendRequest(serverEvent.querySaveThenProveFormula, { args: request }); // this will trigger the confirmation dialog
 			}
 			await this.quitProof();
 		}
@@ -337,10 +331,7 @@ export class PvsLanguageServer {
 			const channelID: string = utils.desc2id(request);
 			if (response.result) {
 				// notify the client that the server is in prover mode
-				if (this.connection) {
-					const mode: ServerMode = await this.getServerMode();
-				}
-
+				this.notifyServerMode("in-checker");
 				// the following commands are necessary to create the log file and start up the interactive cli session
 				// const proofLogPath: string = path.join(request.contextFolder, fsUtils.pvsbinFolder);
 				// const pvsLogFile: string = path.join(proofLogPath, `${channelID}${fsUtils.logFileExtension}`);
@@ -359,7 +350,7 @@ export class PvsLanguageServer {
 				// start proof in proof explorer
 				this.proofExplorer.startProof({ autorun: !!opt.autorun, autorunCallback: (status: ProofStatus) => {
 					this.connection.sendRequest(serverEvent.autorunFormulaResponse, status);
-					this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
+					this.notifyServerMode("lisp");
 				}});
 
 				if (!opt.autorun) {
@@ -883,8 +874,7 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async parseFileRequest (request: PvsFile, opt?: { withFeedback?: boolean }): Promise<void> {
-		const mode: ServerMode = await this.getServerMode();
-		if (mode === "in-checker") {
+		if (await this.getServerMode() === "in-checker") {
 			return;
 		}
 		request = fsUtils.decodeURIComponents(request);
@@ -1590,7 +1580,7 @@ export class PvsLanguageServer {
 					this.createServiceProviders();
 					const success: boolean = await this.pvsProxy.activate({
 						debugMode: opt.debugMode, 
-						verbose: opt.debugMode === false ? false : true,
+						verbose: opt.debugMode !== false,
 						pvsErrorManager: this.pvsErrorManager
 					});
 					if (!success) {
@@ -1601,9 +1591,7 @@ export class PvsLanguageServer {
 				}
 				// activate cli gateway
 				await this.cliGateway.activate();
-				if (this.connection) {
-					this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
-				}
+				this.notifyServerMode("lisp");
 				return true;
 			} else {
 				console.error("[pvs-language-server] Error: failed to identify PVS path");
@@ -1642,15 +1630,19 @@ export class PvsLanguageServer {
 	 * @param opt 
 	 */
 	async quitProof (): Promise<void> {
-		let mode: ServerMode = await this.getServerMode();
-		if (mode === "in-checker") {
+		if (await this.getServerMode() === "in-checker") {
 			const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
 			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: "(quit)" }, { useLispInterface });
 			if (response && response.error) {
 				this.pvsErrorManager.handleProofCommandError({ cmd: "(quit)", response: <PvsError> response });
 			}
 		}
-		mode = await this.getServerMode();
+	}
+
+	notifyServerMode (mode: ServerMode): void {
+		if (this.connection) {
+			this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode });
+		}
 	}
 
 	async quitProofRequest (): Promise<void> {
@@ -1780,9 +1772,7 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverCommand.rebootPvsServer, async (desc?: { pvsPath?: string }) => {
 				await fsUtils.deletePvsCache(this.lastParsedContext, { keepTccs: true }); // this will remove .pvscontext and pvsbin
 				await this.pvsProxy.rebootPvsServer(desc);
-				if (this.connection) {
-					this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
-				}
+				this.notifyServerMode("lisp");
 				// send version info				
 				await this.sendPvsVersionInfo();
 			});

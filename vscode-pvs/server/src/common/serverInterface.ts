@@ -460,7 +460,8 @@ export const serverEvent = {
 	closeDontSaveEvent: "pvs.event.close-dont-save-proof",
 	serverModeUpdateEvent: "pvs.event.server-mode-update",
 
-	querySaveBeforeQuit: "pvs.query.save-before-quit?",
+	querySaveThenQuit: "pvs.query.save-then-quit?",
+	querySaveThenProveFormula: "pvs.query.save-then-prove-formula?",
 
 	// proverForwardResponse: "pvs.response.prover-forward",
 	proofNodeUpdate: "pvs.event.proof-node-update",

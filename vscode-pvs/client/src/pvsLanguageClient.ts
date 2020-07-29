@@ -133,21 +133,25 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		*/
 		workspace.onDidOpenTextDocument((event: TextDocument) => {
 			if ((event && event.languageId === "pvs") 
-				|| (window.activeTextEditor && fsUtils.isPvsFile(window.activeTextEditor.document.fileName))) {
+				|| (window.activeTextEditor && 
+						(fsUtils.isPvsFile(window.activeTextEditor.document.fileName)
+							|| window.activeTextEditor.document.languageId === "Log"))) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
-			} else {
-				commands.executeCommand('setContext', 'pvs-server-active', false);
-				// hide status bar
-				this.statusBar.hide();
-			}
+			} 
+			// else {
+			// 	commands.executeCommand('setContext', 'pvs-server-active', false);
+			// 	// hide status bar
+			// 	this.statusBar.hide();
+			// }
 		});
 
 		// onDidChangeActiveTextEditor is emitted when the active editor focuses on a new document
 		window.onDidChangeActiveTextEditor((event: TextEditor) => {
 			const editor: TextEditor = window.activeTextEditor; //event || window.activeTextEditor;
-			if (editor && editor.document && fsUtils.isPvsFile(editor.document.fileName)) {
+			if (editor && editor.document && (fsUtils.isPvsFile(editor.document.fileName) || editor.document.languageId === "Log")) {
+				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
 				// update decorations
@@ -157,8 +161,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// const context: string = fsUtils.getContextFolder(editor.document.fileName);
 				// this.client.sendRequest(comm.serverCommand.parseWorkspace, context);				
 			} else {
-				// hide status bar
-				this.statusBar.hide();
+				// commands.executeCommand('setContext', 'pvs-server-active', false);
+				// // hide status bar
+				// this.statusBar.hide();
 			}
 		}, null, this.context.subscriptions);
 
