@@ -136,25 +136,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	}
 
 	/**
-	 * Automatic re-run of a proof
-	 * @param desc Descriptor of the formula whose proof is to be re-run
-	 */
-	// async autorun (desc: { 
-	// 	fileName: string, fileExtension: string, contextFolder: string, 
-	// 	theoryName: string, formulaName: string 
-	// }): Promise<ProofStatus> {
-	// 	// this.expectProofRequest = true;
-	// 	return new Promise((resolve, reject) => {
-	// 		this.autorunCallback = (status: ProofStatus) => {
-	// 			resolve(status);
-	// 		};
-	// 		this.autorunStart();
-	// 		this.client.sendRequest(serverCommand.proveFormula, desc);
-	// 		// commands.executeCommand("vscode-pvs.autorun-formula", desc);
-	// 	});
-	// }
-
-	/**
 	 * Executes all proof commands in the proof tree, starting from the active node.
 	 * The execution stops either at the end of the proof tree, or when an anomaly 
 	 * is detected in the proof tree (e.g,. the prover generates more goals than those 
@@ -377,9 +358,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this._onDidChangeTreeData.fire();
 		}
 	}
-	// autorunStart (): void {
-	// 	this.autorunFlag = true;
-	// }
 	hideView (): void {
 		this.visible = false;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.visible', false);
@@ -388,18 +366,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.visible = true;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.visible', true);
 	}
-	// async autorunStop (): Promise<void> {
-	// 	this.running = false;
-	// 	// this.expectProofRequest = false;
-	// 	vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
-	// 	this.pendingExecution = true;
-	// 	if (this.autorunFlag) {
-	// 		this.autorunFlag = false;
-	// 		// await this.quitProof({ confirm: false, save: false });
-	// 		this.autorunCallback((this.root) ? this.root.getProofStatus() : "untried");
-	// 	}
-	// }
-
 
 	/**
 	 * Internal function, used to delete the tree view
@@ -549,36 +515,13 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		if (actionConfirmed) {
 			// send quit to the terminal
 			const action: ProofEditSave = { action: "save" };
-			this.client.sendRequest(serverCommand.proofEditCommand, action);
+			this.client.sendRequest(serverEvent.querySaveProofResponse, action);
 		} else {
 			// send quit to the terminal
 			const action: ProofExecQuit = { action: "quit" };
-			this.client.sendRequest(serverCommand.proofExecCommand, action);
+			this.client.sendRequest(serverEvent.querySaveProofResponse, action);
 		}
 	}
-	/**
-	 * Save the current proof on file
-	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
-	 */
-	// async saveThenQuitProof (): Promise<void> {
-	// 	const msg: string = (this.root) ? `Save proof ${this.root.name}?` : "Save proof?";
-	// 	const actionConfirmed: boolean = await this.queryConfirmation(msg);
-	// 	if (actionConfirmed) {
-	// 		// send quit to the terminal
-	// 		const action: ProofEditSave = { action: "save" };
-	// 		this.client.sendRequest(serverCommand.proofEditCommand, action);
-	// 	} else {
-	// 		// send quit to the terminal
-	// 		commands.executeCommand("vscode-pvs.send-proof-command", {
-	// 			fileName: this.formula.fileName,
-	// 			fileExtension: this.formula.fileExtension,
-	// 			theoryName: this.formula.theoryName,
-	// 			formulaName: this.formula.formulaName,
-	// 			contextFolder: this.formula.contextFolder,
-	// 			cmd: "quit-dont-save"
-	// 		});
-	// 	}
-	// }
 	/**
 	 * Quit the current proof
 	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  

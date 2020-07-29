@@ -62,7 +62,9 @@ import {
 	PvsTheory,
 	PvsProofCommand,
 	ProofExecDidEndProof,
-	ProofStatus
+	ProofStatus,
+	ProofEditSave,
+	ProofExecQuit
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -283,21 +285,21 @@ export class PvsLanguageServer {
 			"in-checker" : "lisp";
 		return mode;
 	} 
-	async proveFormulaRequest (request: PvsFormula, opt?: { autorun?: boolean }): Promise<void> {
+	async proveFormulaRequest (formula: PvsFormula, opt?: { autorun?: boolean }): Promise<void> {
 		opt = opt || {};
-		request = fsUtils.decodeURIComponents(request);
+		formula = fsUtils.decodeURIComponents(formula);
 		
 		if (await this.getServerMode() === "in-checker") {
 			// save then quit current proof
 			if (this.proofExplorer.proofIsDirty() && !opt.autorun) {
 				// ask if the proof needs to be saved
-				this.connection.sendRequest(serverEvent.querySaveThenProveFormula, { args: request }); // this will trigger the confirmation dialog
+				await this.proofExplorer.querySaveProof(formula);
 			}
 			await this.quitProof();
 		}
 
 		// make sure file exists
-		const fname: string = fsUtils.desc2fname(request);
+		const fname: string = fsUtils.desc2fname(formula);
 		if (!fsUtils.fileExists(fname)) {
 			this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
 			return;
@@ -305,30 +307,30 @@ export class PvsLanguageServer {
 		
 		// make sure the file typechecks correctly before starting a proof attempt
 		// send feedback to the front-end
-		const taskId: string = `typecheck-${request.formulaName}`;
+		const taskId: string = `typecheck-${formula.formulaName}`;
 		if (!opt.autorun) {
-			this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${request.formulaName}'` });
+			this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${formula.formulaName}'` });
 		}
 
 		// make sure pvs files are typechecked before starting a proof attempt
-		if (request.fileExtension === ".pvs") {	
-			const response: PvsResponse = await this.typecheckFile(request);
+		if (formula.fileExtension === ".pvs") {	
+			const response: PvsResponse = await this.typecheckFile(formula);
 			if (response && response.error) {
-				const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
+				const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(formula);
 				this.diags[fname] = {
 					pvsResponse: response,
 					isTypecheckError: true
 				};
 				this.sendDiagnostics("Typecheck");
-				this.pvsErrorManager.handleTypecheckError({ request, response: <PvsError> response, taskId });
+				this.pvsErrorManager.handleTypecheckError({ request: formula, response: <PvsError> response, taskId });
 				return;
 			}
 		}
 		// load proof -- this needs to be done before starting the prover session
-		await this.proofExplorer.loadProofRequest(request);
-		const response: PvsResponse = await this.proveFormula(request);
+		await this.proofExplorer.loadProofRequest(formula);
+		const response: PvsResponse = await this.proveFormula(formula);
 		if (response) {
-			const channelID: string = utils.desc2id(request);
+			const channelID: string = utils.desc2id(formula);
 			if (response.result) {
 				// notify the client that the server is in prover mode
 				this.notifyServerMode("in-checker");
@@ -359,7 +361,7 @@ export class PvsLanguageServer {
 			}
 		} else {
 			// there was an error
-			this.pvsErrorManager.handleProveFormulaError({ request, response: <PvsError> response, taskId });
+			this.pvsErrorManager.handleProveFormulaError({ request: formula, response: <PvsError> response, taskId });
 		}
 		// if (this.connection) {
 		// 	this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request });

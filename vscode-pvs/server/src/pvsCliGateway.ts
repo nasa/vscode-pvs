@@ -134,9 +134,9 @@ export class PvsCliGateway {
 							if (data) {
 								switch (data.type) {
 									case "subscribe-vscode": {
-										console.info('[pvs-cli-gateway] received vscode-pvs-terminal subscription request');
-										console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
-										console.info('[pvs-cli-gateway] client ID = ', data.clientID);
+										// console.info('[pvs-cli-gateway] received vscode-pvs-terminal subscription request');
+										// console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
+										// console.info('[pvs-cli-gateway] client ID = ', data.clientID);
 										this.vscodeTerminal[data.channelID] = this.vscodeTerminal[data.channelID] || {};
 										this.vscodeTerminal[data.channelID][data.clientID] = wsClient;
 										wsClient.send(JSON.stringify({
@@ -145,9 +145,9 @@ export class PvsCliGateway {
 										break;
 									}
 									case "subscribe": {
-										console.info('[pvs-cli-gateway] received pvs-CLI subscription request');
-										console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
-										console.info('[pvs-cli-gateway] client ID = ', data.clientID);
+										// console.info('[pvs-cli-gateway] received pvs-CLI subscription request');
+										// console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
+										// console.info('[pvs-cli-gateway] client ID = ', data.clientID);
 										this.pvsCli[data.channelID] = this.pvsCli[data.channelID] || {};
 										this.pvsCli[data.channelID][data.clientID] = wsClient;
 										wsClient.send(JSON.stringify({ type: "subscribe-response", success: true, channelID: data.channelID }));
@@ -163,9 +163,9 @@ export class PvsCliGateway {
 										break;
 									}
 									case "unsubscribe": {
-										console.info('[pvs-cli-gateway] received unsubscription request');
-										console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
-										console.info('[pvs-cli-gateway] client ID = ', data.clientID);
+										// console.info('[pvs-cli-gateway] received unsubscription request');
+										// console.info('[pvs-cli-gateway] channel ID = ', data.channelID);
+										// console.info('[pvs-cli-gateway] client ID = ', data.clientID);
 										if (this.pvsCli[data.channelID] && this.pvsCli[data.channelID][data.clientID]) {
 											this.pvsCli[data.channelID][data.clientID].close();
 											delete this.pvsCli[data.channelID][data.clientID];
@@ -200,14 +200,14 @@ export class PvsCliGateway {
 									}
 									case "pvs.evaluate-expression": {
 										if (data && data.cmd) {
-											console.info('[pvs-cli-gateway] received new evaluation request from pvs-cli', data.cmd);
+											// console.info('[pvs-cli-gateway] received new evaluation request from pvs-cli', data.cmd);
 											this.pvsLanguageServer.evaluateExpressionRequest(data);
 										}
 										break;
 									}
 									case "pvs.select-profile": {
 										if (data && data.profile) {
-											console.info('[pvs-cli-gateway] received profile change request', data.profile);
+											// console.info('[pvs-cli-gateway] received profile change request', data.profile);
 											const channels: string[] = Object.keys(this.pvsCli);
 											for (let i = 0; i < channels.length; i++) {
 												const clients: string[] = Object.keys(this.pvsCli[channels[i]]);
@@ -238,7 +238,7 @@ export class PvsCliGateway {
 						}
 					});
 					wsClient.on('close', () => {
-						console.info('[pvs-cli-gateway] Terminal session end');
+						// console.info('[pvs-cli-gateway] Terminal session end');
 					});
 					wsClient.on('error', (err) => {
 						console.error('[pvs-cli-gateway] Terminal session error', err);

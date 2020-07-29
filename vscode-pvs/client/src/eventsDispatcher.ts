@@ -354,7 +354,7 @@ export class EventsDispatcher {
 
         // register handler that will resolve the promise when the proof needs to be saved
         this.client.onRequest(serverEvent.saveProofResponse, (desc: {
-            response: { success: boolean, msg?: string }, 
+            response: { success: boolean }, 
             args: { 
                 fileName: string, 
                 fileExtension: string, 
@@ -484,7 +484,7 @@ export class EventsDispatcher {
 		// }) => {
 		// 	this.proofExplorer.redo();		
         // });
-		this.client.onRequest(serverEvent.querySaveThenQuit, async (request: {
+		this.client.onRequest(serverEvent.querySaveProof, async (request: {
             args: PvsProofCommand
 		}) => {
             if (request) {
@@ -494,16 +494,15 @@ export class EventsDispatcher {
                 console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
             }
         });
-        this.client.onRequest(serverEvent.querySaveThenProveFormula, async (request: {
-            args: PvsFormula
-		}) => {
-            if (request) {
-                await this.proofExplorer.querySaveProof();
-                this.client.sendRequest(serverCommand.proveFormula, request.args);
-            } else {
-                console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
-            }
-		});
+        // this.client.onRequest(serverEvent.querySaveThenProveFormula, async (request: {
+        //     args: PvsFormula
+		// }) => {
+        //     if (request) {
+        //         await this.proofExplorer.querySaveProof();
+        //     } else {
+        //         console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
+        //     }
+		// });
 		this.client.onRequest(serverEvent.QED, (request: {
             args: PvsProofCommand
 		}) => {
@@ -767,12 +766,11 @@ export class EventsDispatcher {
                 this.quietMode = true;
 
                 this.statusBar.showProgress(`Re-running proofs in theory ${resource.theoryName}`);
-                // this.proofMate.hideView();
-                // this.proofExplorer.hideView();
+                this.proofMate.hideView();
+                this.proofExplorer.hideView();
 
                 await this.workspaceExplorer.autorun(resource);
-                // this.proofMate.revealView();
-                // this.proofExplorer.revealView();
+
                 this.statusBar.ready();
 
                 this.quietMode = false;
@@ -874,7 +872,7 @@ export class EventsDispatcher {
                 let desc = this.resource2desc(resource);
                 if (desc) {
                     // show output panel for feedback
-                    commands.executeCommand("workbench.action.output.toggleOutput", true);
+                    // commands.executeCommand("workbench.action.output.toggleOutput", true);
                     // send typecheck request to pvs-server
                     this.client.sendRequest(serverCommand.typecheckFile, desc);
                 }
@@ -1030,8 +1028,6 @@ export class EventsDispatcher {
                 if (this.quietMode) {
                     this.client.onNotification(`server.status.end-important-task-${desc.id}-with-errors`, (desc: { msg: string }) => {
                         this.statusBar.ready();
-                        // this.proofExplorer.autorunStop();
-
                         if (desc && desc.msg) {
                             this.statusBar.showError(desc.msg); // use the status bar rather than dialogs, because we don't have APIs to close old dialogs with potentially stale information
                             window.showErrorMessage(desc.msg);

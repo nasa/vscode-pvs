@@ -62,6 +62,8 @@ import {
 	ProofExecDidStartProof,
 	ProofExecDidUpdateSequent,
 	ProofEditTrimUnused,
+	ProofEditSave,
+	ProofExecQuit,
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -645,8 +647,10 @@ export class PvsProofExplorer {
 					}
 					this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
 					activeNode = this.activeNode; // update local variable because the following instructions are using it
-					// provide feedback to the user
-					// this.showInformationMessage(`${elem.name} added to the proof tree.`);
+					// if the branch has changed, then we will be moving to a sub-goal --- we need to trim the node
+					if (utils.branchHasChanged({ newBranch, previousBranch })) {
+						this.trimNode({ selected: activeNode });
+					}
 				}
 
 				// check if previous branch has been completed
@@ -796,7 +800,7 @@ export class PvsProofExplorer {
 		let branch: ProofBranch = null;
 		if (desc && desc.id) {
 			const depth: number = desc.id.split(".").length;
-			let lastValidParent: ProofItem = this.root;
+			let lastValidParent: ProofItem = desc.parent;
 			// navigate the proof tree from the root, and create the structure necessary to reach the target branch id
 			for (let i = 0; i < depth; i++) {
 				const branchId: string = desc.id.split(".").slice(0, i + 1).join(".");
@@ -983,7 +987,7 @@ export class PvsProofExplorer {
 	 * 			   If the selected node is a branch, then the branch will be appended to the parent of the selected branch.
 	 * @param opt Optionals: beforeSelected (boolean) flag used when the selected node is a branch, indicates whether the branch should be appended before the selected branch. 
 	 */
-	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: SequentDescriptor }): boolean {
+	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: SequentDescriptor, internalAction?: boolean }): boolean {
 		if (desc && desc.selected) {
 			this.dirtyProof();
 			opt = opt || {};
@@ -1024,7 +1028,7 @@ export class PvsProofExplorer {
 				}
 				case "root":
 				case "proof-branch": {
-					const parent: ProofItem = selectedNode.parent;
+					const parent: ProofItem = selectedNode;
 					if (parent && parent.children) {
 						if (!newBranch) {
 							const branchName: string = (opt.beforeSelected) ? `` : `${branchId}.${parent.children.length}`;
@@ -1034,18 +1038,32 @@ export class PvsProofExplorer {
 							newBranch.parent = parent;
 							const children: ProofItem[] = [];
 							const n: number = parent.children.length;
+							let position: number = 0;
 							for (let i = 0; i < n; i++) {
 								if (!opt.beforeSelected) {
 									children.push(parent.children[i]);
 								}
 								if (parent.children[i].id === selectedNode.id) {
 									children.push(newBranch);
+									position = i;
 								}
 								if (opt.beforeSelected) {
 									children.push(parent.children[i]);
 								}
 							}
 							parent.children = children;
+							if (!opt.internalAction && this.connection) {
+								const elem: ProofNodeX = newBranch.getNodeXStructure();
+								this.log(`[proof-explorer] Appending branch ${elem.name} (${elem.id})`);
+								const evt: ProofEditDidAppendNode = {
+									action: "did-append-node",
+									elem,
+									position
+								};
+								if (this.connection) {
+									this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+								}
+							}					
 						}
 					}
 				}
@@ -1873,8 +1891,20 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
+	async querySaveProof (formula: PvsFormula): Promise<void> {
+		// ask if the proof needs to be saved
+		this.connection.sendRequest(serverEvent.querySaveProof, { args: formula }); // this will trigger the confirmation dialog
+		await Promise.resolve(new Promise((resolve, reject) => {
+			this.connection.onRequest(serverEvent.querySaveProofResponse, async (response: ProofEditSave | ProofExecQuit) => {
+				if (response && response.action && response.action === "save") {
+					await this.saveProof();
+				}
+				resolve();
+			});
+		}));
+	}
 	// this handler is for commands entered by the user at the prover terminal
-	async proofCommandRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<void> {
+	async proofCommandRequest (request: PvsProofCommand): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		
 		// handle meta-commands for saving and quitting
@@ -1890,10 +1920,9 @@ export class PvsProofExplorer {
 		if (utils.isQuitCommand(request.cmd)) {
 			if (this.dirtyFlag) {
 				// ask if the proof needs to be saved
-				this.connection.sendRequest(serverEvent.querySaveThenQuit, { args: request }); // this will trigger the confirmation dialog
-			} else {
-				await this.quitProof();
+				await this.querySaveProof(request)
 			}
+			await this.quitProof();
 			return
 		}
 		if (utils.isQuitDontSaveCommand(request.cmd)) {
