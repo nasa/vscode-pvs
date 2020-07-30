@@ -5,7 +5,7 @@ The environment redefines the way developers interact with PVS, and better align
 ![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.24-kappa](releases/vscode-pvs-1.0.24-kappa.vsix)
+[vscode-pvs-1.0.24-lambda](releases/vscode-pvs-1.0.24-lambda.vsix)
 
 ## Getting started
 New to VSCode-PVS and the PVS verification system? Try out our [tutorial](vscode-pvs/docs/TUTORIAL.md)!
@@ -36,7 +36,9 @@ The main functionalities provided by the environment are as follows:
 - Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
 - Java JDK (v1.8 or greater) https://openjdk.java.net
-- PVS Allegro (v7.1 or greater) http://www.csl.sri.com/users/owre/drop/pvs-snapshots
+- PVS Allegro (v7.1 or greater)
+  - [PVS-7.1.0 for Linux](http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-gf53d987d-ix86_64-Linux-allegro.tgz)
+  - [PVS-7.1.0 for MacOs](http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-gf53d987d-ix86-MacOSX-allegro.tgz) 
 
 ## Installation instructions
 1. Download the latest release of VSCode-PVS from the [github repository](releases)
