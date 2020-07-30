@@ -526,7 +526,7 @@ export class PvsProofExplorer {
 					} else {
 						this.activeNode.notVisited();
 					}
-					const targetBranch: ProofBranch = this.findProofBranch(newBranch) || this.createBranchRecursive({ id: newBranch, parent: activeNode.parent });
+					const targetBranch: ProofBranch = this.findProofBranch(newBranch) || this.createBranchRecursive({ id: newBranch });
 					if (targetBranch) {
 						// before moving to the target branch, mark current branch as open (i.e., not visited)
 						if (this.activeNode.contextValue === "proof-command") {
@@ -664,7 +664,7 @@ export class PvsProofExplorer {
 				// if the branch has changed, move to the new branch
 				if (utils.branchHasChanged({ newBranch, previousBranch })) {
 					// find target branch
-					const targetBranch: ProofItem = this.findProofBranch(newBranch) || this.createBranchRecursive({ id: newBranch, parent: activeNode });
+					const targetBranch: ProofItem = this.findProofBranch(newBranch) || this.createBranchRecursive({ id: newBranch });
 					if (targetBranch) {
 						// update tooltip in target branch
 						targetBranch.sequentDescriptor = this.proofState;
@@ -796,17 +796,17 @@ export class PvsProofExplorer {
 	 * Internal function, creates a proof branch
 	 * @param id Name of the proof branch. Branch names are specified using a dot notation (e.g., 1.3.2)
 	 */
-	protected createBranchRecursive (desc: { id: string, parent: ProofItem }): ProofBranch | null {
+	protected createBranchRecursive (desc: { id: string }): ProofBranch | null {
 		let branch: ProofBranch = null;
 		if (desc && desc.id) {
 			const depth: number = desc.id.split(".").length;
-			let lastValidParent: ProofItem = desc.parent;
+			let lastValidParent: ProofItem = this.findLastVisitedOrActive(this.root);
 			// navigate the proof tree from the root, and create the structure necessary to reach the target branch id
 			for (let i = 0; i < depth; i++) {
 				const branchId: string = desc.id.split(".").slice(0, i + 1).join(".");
 				branch = this.findProofBranch(branchId);
 				if (branch) {
-					lastValidParent = this.findLastVisitedOrActive(branch) || branch;
+					lastValidParent = this.findLastVisitedOrActive(lastValidParent) || lastValidParent;
 				} else {
 					// create branch
 					branch = new ProofBranch(`(${branchId})`, branchId, lastValidParent, this.connection);
