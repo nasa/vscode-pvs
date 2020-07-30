@@ -244,7 +244,7 @@
 				"enablement": "pvs-server-active == true"
 			},
 			{
-				"command": "vscode-pvs.discharge-tccs-alt",
+				"command": "vscode-pvs.discharge-tccs-explorer",
 				"title": "Discharge",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun"
 			},
@@ -455,7 +455,7 @@
 					"group": "context-menu/ctrl-1"
 				},
 				{
-					"command": "vscode-pvs.discharge-tccs-alt",
+					"command": "vscode-pvs.discharge-tccs-explorer",
 					"when": "view == workspace-explorer-view && viewItem == tccs-overview",
 					"group": "inline"
 				},

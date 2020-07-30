@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, TextDocument } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverCommand, serverEvent, PvsFormula } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverCommand, serverEvent, PvsFormula, PvsTheory } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -202,7 +202,7 @@ class LoadingItem extends TreeItem {
 }
 abstract class OverviewItem extends TreeItem {
 	contextValue: string = "abstract-overview";
-	protected contextFolder: string;
+	contextFolder: string;
 	name: string;
 	constructor(type: string, desc: { contextFolder?: string }, collapsibleState?: TreeItemCollapsibleState) {
 		super(type, collapsibleState | TreeItemCollapsibleState.None);
@@ -332,7 +332,7 @@ class TheoremsOverviewItem extends FormulaOverviewItem {
 		super("theorems-overview", desc);
 	}
 }
-class TccsOverviewItem extends FormulaOverviewItem {
+export class TccsOverviewItem extends FormulaOverviewItem {
 	contextValue: string = "tccs-overview";
 	constructor(desc: TheoryDescriptor) {
 		super("tccs-overview", desc);
@@ -473,8 +473,8 @@ class PvsFilesOverviewItem extends OverviewItem {
 		if (desc) {
 			for (let i = 0; i < this.files.length; i++) {
 				if (this.files[i].contextFolder === desc.contextFolder
-						&& this.files[i].fileName === desc.fileName
-						&& this.files[i].fileExtension === desc.fileExtension) {
+						&& this.files[i].fileName === desc.fileName) {
+						// && this.files[i].fileExtension === desc.fileExtension) { -- we are ignoring the extension because .tccs are virtual files, we need to use .pvs files
 					return this.files[i];
 				}
 			}
@@ -773,20 +773,20 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	// }
 
 	// event dispatcher invokes this function with the command vscode-pvs.autorun-theory
-	async autorun (formula: PvsFormula, opt?: {
+	async autorun (theory: PvsTheory, opt?: {
 		tccsOnly?: boolean
 	}): Promise<void> {
-		if (formula) {
+		if (theory) {
 			opt = opt || {};
-			const theory: TheoryItem = this.root.getTheoryItem(formula);
-			if (theory) {
+			const theoryItem: TheoryItem = this.root.getTheoryItem(theory);
+			if (theoryItem) {
 				// show dialog with progress
 				await window.withProgress({
 					location: ProgressLocation.Notification,
 					cancellable: true
 				}, (progress, token) => { 
-					const formulas: FormulaItem[] = (opt && opt.tccsOnly) ? theory.getTCCs() : theory.getTheorems().concat(theory.getTCCs());
-					const theoryName: string = theory.theoryName;
+					const formulas: FormulaItem[] = (opt && opt.tccsOnly) ? theoryItem.getTCCs() : theoryItem.getTheorems().concat(theoryItem.getTCCs());
+					const theoryName: string = theoryItem.theoryName;
 					// show initial dialog with spinning progress
 					const message: string = (opt.tccsOnly) ? `Preparing to discharge proof obligations in theory ${theoryName}`
 						: `Preparing to re-run all proofs in theory ${theoryName}`;
@@ -844,19 +844,19 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							}
 						}
 						commands.executeCommand('setContext', 'autorun', false);
-						this.client.sendRequest(serverCommand.getContextDescriptor, formula);
+						this.client.sendRequest(serverCommand.getContextDescriptor, theory);
 						this.client.sendRequest(serverCommand.generateSummary, {
-							contextFolder: formula.contextFolder,
-							fileName: formula.fileName,
-							fileExtension: formula.fileExtension,
-							theoryName: formula.theoryName,
+							contextFolder: theory.contextFolder,
+							fileName: theory.fileName,
+							fileExtension: theory.fileExtension,
+							theoryName: theory.theoryName,
 							content: utils.makeProofSummary(summary)
 						});
 						resolve();
 					});
 				});
 			} else {
-				window.showErrorMessage(`Error: could not find theory ${formula.theoryName}`);
+				window.showErrorMessage(`Error: could not find theory ${theory.theoryName}`);
 			}
 		}
 	}

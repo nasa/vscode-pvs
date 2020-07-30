@@ -1362,6 +1362,8 @@ export function branchHasChanged (desc: { newBranch: string, previousBranch: str
 	return desc && (desc.newBranch !== desc.previousBranch || desc.previousBranch !== "" && !desc.newBranch.startsWith(desc.previousBranch));
 }
 
+// these icons are shown correctly only on recent os distributions that include the proper font set.
+// use https://iconify.design/icon-sets/ for proof explorer, to have a consistent look&feel on all systems.
 export const icons: { [name:string]: string } = {
 	"checkmark": "✅",
 	"bang" : "❗",

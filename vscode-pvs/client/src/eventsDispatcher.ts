@@ -39,10 +39,10 @@
 import { LanguageClient } from "vscode-languageclient";
 import { VSCodePvsStatusBar } from "./views/vscodePvsStatusBar";
 import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindingsProvider";
-import { VSCodePvsWorkspaceExplorer } from "./views/vscodePvsWorkspaceExplorer";
+import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { PvsContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent } from "./common/serverInterface";
+import { PvsContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
@@ -89,35 +89,58 @@ export class EventsDispatcher {
         contextValue?: string
     }): { 
         contextFolder: string,
-        fileName?: string, fileExtension?: string,
-        theoryName?: string, 
-        formulaName?: string
+        fileName: string,
+        fileExtension: string,
+        theoryName: string, 
+        formulaName: string
     } {
         if (resource) {
             if (typeof resource === "string") {
                 const isFolder: boolean = !fsUtils.isPvsFile(resource);
                 if (isFolder) {
-                    return { contextFolder: fsUtils.normalizeContextFolder(resource) };
+                    return { 
+                        contextFolder: fsUtils.normalizeContextFolder(resource),
+                        fileName: null,
+                        fileExtension: null,
+                        theoryName: null,
+                        formulaName: null
+                    };
                 }
                 return {
                     fileName: fsUtils.getFileName(resource),
                     fileExtension: fsUtils.getFileExtension(resource),
-                    contextFolder: fsUtils.getContextFolder(resource)
+                    contextFolder: fsUtils.getContextFolder(resource),
+                    theoryName: null,
+                    formulaName: null
                 };
             } else if (resource.contextFolder) {
                 //@ts-ignore
-                return resource;
+                return {
+                    fileName: resource.fileName,
+                    fileExtension: resource.fileExtension,
+                    contextFolder: resource.contextFolder,
+                    theoryName: resource.theoryName,
+                    formulaName: resource.formulaName
+                };
             } else if (resource.path) {
                 // resource coming from the editor
                 // resource is of type vscode.Uri
                 const isFolder: boolean = !fsUtils.isPvsFile(resource.path);
                 if (isFolder) {
-                    return { contextFolder: fsUtils.normalizeContextFolder(resource.path) };
+                    return {
+                        contextFolder: fsUtils.normalizeContextFolder(resource.path),
+                        fileName: null,
+                        fileExtension: null,
+                        theoryName: null,
+                        formulaName: null
+                    };
                 }
                 return {
                     fileName: fsUtils.getFileName(resource.path),
                     fileExtension: fsUtils.getFileExtension(resource.path),
-                    contextFolder: fsUtils.getContextFolder(resource.path)
+                    contextFolder: fsUtils.getContextFolder(resource.path),
+                    theoryName: null,
+                    formulaName: null
                 };
             } else if (resource.contextValue) {
                 // resource coming from explorer
@@ -125,6 +148,10 @@ export class EventsDispatcher {
                 if (resource.contextValue.endsWith("-overview")) {
                     return {
                         contextFolder: resource["getContextFolder"](),
+                        fileName: null,
+                        fileExtension: null,
+                        theoryName: null,
+                        formulaName: null
                     };    
                 }
                 return {
@@ -714,7 +741,10 @@ export class EventsDispatcher {
                 }
             }
             if (resource) {
-                let desc = <{ 
+                const desc: { 
+                    fileName: string, fileExtension: string, contextFolder: string, 
+                    theoryName: string, formulaName: string 
+                } = <{ 
                     fileName: string, fileExtension: string, contextFolder: string, 
                     theoryName: string, formulaName: string 
                 }> this.resource2desc(resource);
@@ -755,13 +785,7 @@ export class EventsDispatcher {
         //      3.2 loadProofDescriptor
         //      3.3 proveFormula
         // <loop over all theorems>
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory", async (resource: {
-            contextFolder: string,
-            fileName: string, 
-            fileExtension: string,  
-            theoryName: string, 
-            formulaName: string 
-        }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory", async (resource: TheoryItem) => {
             if (resource) {
                 this.quietMode = true;
 
@@ -778,29 +802,32 @@ export class EventsDispatcher {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.autorun-theory invoked with null resource", resource);
             }
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory-inline", async (resource: {
-            contextFolder: string,
-            fileName: string, 
-            fileExtension: string,  
-            theoryName: string, 
-            formulaName: string 
-        }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory-explorer", async (resource: PvsFormula) => {
             commands.executeCommand("vscode-pvs.autorun-theory", resource);
         }));
 
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: {
-            contextFolder: string,
-            fileName: string, 
-            fileExtension: string,  
-            theoryName: string, 
-            formulaName: string 
-        }) => {
-            if (resource) {        
+        // this request comes from the context menu displayed by the editor
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: PvsTheory | { path: string } | { contextValue: string }) => {
+            if (window.activeTextEditor && window.activeTextEditor.document) {
+                // if the file is currently open in the editor, save file first
+                await window.activeTextEditor.document.save();
+                if (!resource) {
+                    resource = { path: window.activeTextEditor.document.fileName };
+                }
+            }
+            const desc: PvsTheory = this.resource2desc(resource);
+            if (desc && !desc.theoryName) {
+                const document: vscode.TextDocument = window.activeTextEditor.document;
+                const line: number = window.activeTextEditor.selection.active.line;
+                const theoryName: string = utils.findTheoryName(document.getText(), line);
+                desc.theoryName = theoryName;
+            }
+            if (desc && desc.theoryName) {
                 this.quietMode = true;
 
                 // this.proofMate.hideView();
                 // this.proofExplorer.hideView();
-                await this.workspaceExplorer.autorun(resource, { tccsOnly: true });
+                await this.workspaceExplorer.autorun(desc, { tccsOnly: true });
                 // this.proofMate.revealView();
                 // this.proofExplorer.revealView();
                 this.statusBar.ready();
@@ -810,7 +837,8 @@ export class EventsDispatcher {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-tccs invoked with null resource", resource);
             }
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs-alt", async (resource) => {
+        // this request comes from workspace explorer
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs-explorer", async (resource: TccsOverviewItem) => {
             commands.executeCommand("vscode-pvs.discharge-tccs", resource);
         }));
 
@@ -832,7 +860,7 @@ export class EventsDispatcher {
         //     }
         // }));
         // // alias for vscode-pvs.discharge-tccs
-		// context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs-alt", async (resource: string | { path: string } | { contextValue: string }) => {
+		// context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs-explorer", async (resource: string | { path: string } | { contextValue: string }) => {
         //     commands.executeCommand("vscode-pvs.discharge-tccs", resource);
         // }));
 
@@ -869,7 +897,7 @@ export class EventsDispatcher {
                 }
             }
 			if (resource) {
-                let desc = this.resource2desc(resource);
+                const desc: PvsFile = this.resource2desc(resource);
                 if (desc) {
                     // show output panel for feedback
                     // commands.executeCommand("workbench.action.output.toggleOutput", true);
@@ -892,9 +920,7 @@ export class EventsDispatcher {
                 resource = { path: window.activeTextEditor.document.fileName };
             }
 			if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string
-                }> this.resource2desc(resource);
+                const desc: PvsFile = this.resource2desc(resource);
                 if (desc) {
                     // send show-tccs request to pvs-server
                     this.client.sendRequest(serverCommand.showTccs, desc);
@@ -913,9 +939,7 @@ export class EventsDispatcher {
                 resource = { path: window.activeTextEditor.document.fileName };
             }
 			if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string
-                }> this.resource2desc(resource);
+                const desc: PvsFile = this.resource2desc(resource);
                 if (desc) {
                     // send generate-tccs request to pvs-server
                     this.client.sendRequest(serverCommand.generateTccs, desc);
@@ -944,9 +968,7 @@ export class EventsDispatcher {
                 resource = { path: window.activeTextEditor.document.fileName };
             }
 			if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string
-                }> this.resource2desc(resource);
+                const desc: PvsFile = this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
                     this.client.sendRequest(serverCommand.parseFileWithFeedback, desc);
