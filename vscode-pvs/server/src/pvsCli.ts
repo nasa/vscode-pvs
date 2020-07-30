@@ -225,6 +225,7 @@ class PvsCli {
 							this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
 							this.wsClient.close();
 						});
+						return;
 					} else {
 						cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
 						this.wsClient.send(JSON.stringify({
