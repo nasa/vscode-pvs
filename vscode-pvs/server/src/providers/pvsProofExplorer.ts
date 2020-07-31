@@ -804,13 +804,13 @@ export class PvsProofExplorer {
 		let branch: ProofBranch = null;
 		if (desc && desc.id) {
 			const depth: number = desc.id.split(".").length;
-			let lastValidParent: ProofItem = this.findLastVisitedOrActive(this.root);
+			let lastValidParent: ProofItem = this.findLastVisitedOrActive(this.root) || this.root;
 			// navigate the proof tree from the root, and create the structure necessary to reach the target branch id
 			for (let i = 0; i < depth; i++) {
 				const branchId: string = desc.id.split(".").slice(0, i + 1).join(".");
 				branch = this.findProofBranch(branchId);
 				if (branch) {
-					lastValidParent = this.findLastVisitedOrActive(lastValidParent) || lastValidParent;
+					lastValidParent = this.findLastVisitedOrActive(branch) || branch;
 				} else {
 					// create branch
 					branch = new ProofBranch(`(${branchId})`, branchId, lastValidParent, this.connection);
