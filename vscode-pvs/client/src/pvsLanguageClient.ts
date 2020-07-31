@@ -53,6 +53,7 @@ import { VSCodePvsPackageManager } from './providers/vscodePvsPackageManager';
 import { VSCodePvsProofMate } from './views/vscodePvsProofMate';
 import { VSCodePvsFileOutlineProvider } from './providers/vscodsPvsOulineProvider';
 import { VSCodePvsSnippetsProvider } from './providers/vscodePvsSnippetsProvider';
+import { VSCodePvsLogger } from './views/vscodePvsLogger';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -97,6 +98,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// package manager
 	protected packageManager: VSCodePvsPackageManager;
+
+	// logger
+	protected logger: VSCodePvsLogger;
 
 	/**
 	 * Internal function, returns the current pvs path, as indicated in the configuration file
@@ -280,6 +284,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					this.proofMate.activate(this.context);
 					this.packageManager = new VSCodePvsPackageManager(this.client, this.statusBar);
 					this.packageManager.activate(this.context);
+					this.logger = new VSCodePvsLogger();
+					this.logger.activate(this.context);
 			
 					// enable decorations for pvs syntax
 					this.decorationProvider = new VSCodePvsDecorationProvider();
@@ -295,7 +301,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						workspaceExplorer: this.workspaceExplorer,
 						proofExplorer: this.proofExplorer,
 						vscodePvsTerminal: this.vscodePvsTerminal,
-						proofMate: this.proofMate
+						proofMate: this.proofMate,
+						logger: this.logger
 					});
 					this.eventsDispatcher.activate(context);
 

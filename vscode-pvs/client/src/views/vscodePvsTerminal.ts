@@ -259,7 +259,7 @@ export class VSCodePvsTerminal {
     protected client: LanguageClient;
     protected context: vscode.ExtensionContext;
     protected openTerminals: { [key: string]: TerminalSession } = {};
-    protected profiler: vscode.OutputChannel;
+
     /**
      * Constructor
      * @param client Language client 
@@ -426,12 +426,5 @@ export class VSCodePvsTerminal {
                 resolve(false);
             }
         });
-    }
-    profilerData (data: string): void {
-        const showProfilerOutput: boolean = vscode.workspace.getConfiguration().get("pvs.settings.prover.profiler");
-        if (showProfilerOutput) {
-            this.profiler = this.profiler || vscode.window.createOutputChannel("pvs-server-profiler");
-            this.profiler.appendLine(data);
-        }
     }
 }

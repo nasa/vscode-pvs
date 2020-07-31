@@ -1,34 +1,70 @@
 
 
-import { ProofCommandDescriptor } from "./serverInterface";
+import { HelpDescriptor } from "./serverInterface";
+import * as utils from './languageUtils';
 
-export function printHelp (cmd: string, opt?: { optionals?: boolean, note?: boolean }): string {
+// export function printHelp (cmd: string, opt?: { optionals?: boolean, note?: boolean }): string {
+//     opt = opt || {};
+//     let help: string = cmd;
+//     const desc: ProofCommandDescriptor = PROOF_COMMANDS[cmd];
+//     if (desc) {
+//         if (desc.description) { help = desc.description; }
+//         if (desc.syntax) { help += `\n\nSyntax: (${desc.syntax})`; }
+//         if (desc.optionals && opt.optionals) {
+//             help += `\n\nOptionals:`;
+//             const keys: string[] = Object.keys(desc.optionals);
+//             for (let i = 0; i < keys.length; i++) {
+//                 help += `\n\t${keys[i]}: ${desc.optionals[keys[i]]}`;
+//             } 
+//         }
+//         if (desc.note && opt.note) {
+//             help += `\n\nNote:`;
+//             help += `\n${desc.note}`; 
+//         };
+//     }
+//     return help;
+// }
+
+export function formatHelp (desc: HelpDescriptor, opt?: { useColors?: boolean }): string {
     opt = opt || {};
-    let help: string = cmd;
-    const desc: ProofCommandDescriptor = PROOF_COMMANDS[cmd];
     if (desc) {
-        if (desc.description) { help = desc.description; }
-        if (desc.syntax) { help += `\n\nSyntax: (${desc.syntax})`; }
-        if (desc.optionals && opt.optionals) {
-            help += `\n\nOptionals:`;
-            const keys: string[] = Object.keys(desc.optionals);
-            for (let i = 0; i < keys.length; i++) {
-                help += `\n\t${keys[i]}: ${desc.optionals[keys[i]]}`;
-            } 
+        let msg: string = "  ";
+        msg += (opt.useColors) ? `${utils.colorText(desc.description, utils.textColor.green)}` : desc.description;
+        if (desc.syntax) {
+            msg += "\n  Syntax: ";
+            msg += (opt.useColors) ? `${utils.colorText(desc.syntax, utils.textColor.yellow)}` : desc.syntax;
         }
-        if (desc.note && opt.note) {
-            help += `\n\nNote:`;
-            help += `\n${desc.note}`; 
-        };
+        if (desc.optionals) {
+            const opts: string[] = Object.keys(desc.optionals);
+            if (opts && opts.length) {
+                msg += "\n  Optionals: ";
+                for (let i = 0; i < opts.length; i++) {
+                    msg += "\n    ";
+                    msg += (opt.useColors) ? `${utils.colorText(opts[i], utils.textColor.yellow)}` : opts[i];
+                    msg += " " + desc.optionals[opts[i]];
+                }
+            }
+        }
+        return msg;
     }
-    return help;
+    return "";
 }
 
+export function printHelp (helpCommand: string, opt?: { useColors?: boolean }): string {
+    const match: RegExpMatchArray = utils.helpCommandRegexp.exec(helpCommand);
+    if (match && match.length > 1) {
+        const availableHelp: HelpDescriptor = PROOF_COMMANDS[match[1]]
+            || PROOF_TACTICS[match[1]]
+            || EVALUATOR_COMMANDS[match[1]];
+        return (availableHelp) ? formatHelp(availableHelp, opt)
+            : `Help not available for ${match[1]}`;
+    }
+}
 
 // the following list of commands obtained from pvs-server with collect-strategy-names
 // the descriptions are based on those illustrated in the pvs prover guide
 // some commands are commented out in this list are they were not deemed useful for the typical PVS user
-export const PROOF_COMMANDS: { [key:string]: ProofCommandDescriptor } = {
+export const PROOF_COMMANDS: { [key:string]: HelpDescriptor } = {
     // 	"abs-simp": {
     // 		description: ``
     // },
@@ -1256,7 +1292,7 @@ export const PROOF_COMMANDS: { [key:string]: ProofCommandDescriptor } = {
 };
 
 
-export const PROOF_TACTICS: { [key:string]: ProofCommandDescriptor } = {
+export const PROOF_TACTICS: { [key:string]: HelpDescriptor } = {
     "apply": {
         description: `In-line definition of user-defined strategies.`,
         syntax: `apply strategy COMMENT`,
@@ -1716,7 +1752,7 @@ export const PROOF_TACTICS: { [key:string]: ProofCommandDescriptor } = {
 };
 
 // TODO: add more commands
-export const EVALUATOR_COMMANDS: { [key:string]: ProofCommandDescriptor } = {
+export const EVALUATOR_COMMANDS: { [key:string]: HelpDescriptor } = {
     "RANDOM": {
         description: `Generate a random number.`,
         syntax: `RANDOM`
@@ -1772,7 +1808,7 @@ export const EVALUATOR_COMMANDS: { [key:string]: ProofCommandDescriptor } = {
 };
 
 // a selection of 32 useful commands for advanced users. The selection has been based on statistics from nasalib and feedback from experienced pvs users
-export const PROOF_COMMANDS_ADVANCED_PROFILE: { [key: string]: ProofCommandDescriptor } = {
+export const PROOF_COMMANDS_ADVANCED_PROFILE: { [key: string]: HelpDescriptor } = {
     "all-typepreds": PROOF_COMMANDS["all-typepreds"],
     "apply-ext": PROOF_COMMANDS["apply-ext"],
     "assert": PROOF_COMMANDS["assert"],
@@ -1807,7 +1843,7 @@ export const PROOF_COMMANDS_ADVANCED_PROFILE: { [key: string]: ProofCommandDescr
     "use": PROOF_COMMANDS["use"]
 };
 
-export const PROOF_COMMANDS_BASIC_PROFILE: { [key: string]: ProofCommandDescriptor } = {
+export const PROOF_COMMANDS_BASIC_PROFILE: { [key: string]: HelpDescriptor } = {
     "all-typepreds": PROOF_COMMANDS["all-typepreds"],
     "assert": PROOF_COMMANDS["assert"],
     "beta": PROOF_COMMANDS["beta"],
@@ -1824,7 +1860,7 @@ export const PROOF_COMMANDS_BASIC_PROFILE: { [key: string]: ProofCommandDescript
     "split": PROOF_COMMANDS["split"]
 };
 
-export function getCommands(profile: ProofMateProfile): { [key: string]: ProofCommandDescriptor } {
+export function getCommands(profile: ProofMateProfile): { [key: string]: HelpDescriptor } {
     switch (profile) {
         case "basic": { return PROOF_COMMANDS_BASIC_PROFILE; }
         case "advanced": { return PROOF_COMMANDS_ADVANCED_PROFILE; }

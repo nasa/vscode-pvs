@@ -41,6 +41,7 @@ import { PROOF_COMMANDS_BASIC_PROFILE, EVALUATOR_COMMANDS, ProofMateProfile, PRO
 import * as readline from 'readline';
 import { PvsCliInterface, SimpleConsole, SimpleConnection, serverCommand, CliGatewaySubscriberEvent } from './common/serverInterface';
 import * as fsUtils from './common/fsUtils';
+import * as commandUtils from './common/commandUtils';
 
 import { cliSessionType } from './common/serverInterface';
 import { PvsProxy } from './pvsProxy';
@@ -351,6 +352,15 @@ class PvsCli {
 							this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
 							this.wsClient.close();
 						});
+						return;
+					}
+					if (utils.isHelpCommand(cmd)) {
+						console.log();
+						console.log(commandUtils.printHelp(cmd, { useColors: true }));
+						console.log();
+						// show prompt
+						this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+						this.rl.prompt();						
 						return;
 					}
 					// console.log(`Sending command ${cmd}`);

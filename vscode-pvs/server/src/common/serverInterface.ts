@@ -134,7 +134,7 @@ export declare interface PvsListDeclarationsRequest {
 // 	error?: ErrorType;
 // }[];
 
-export declare interface ProofCommandDescriptor {
+export declare interface HelpDescriptor {
 	// name: string,
 	description?: string,
 	syntax: string,
@@ -210,7 +210,7 @@ export class ProofDescriptor {
 }
 export declare interface PvsListProofStrategies extends PvsResponseType {
 	error: ErrorType,
-	res: ProofCommandDescriptor[],
+	res: HelpDescriptor[],
 	raw: string
 }
 
@@ -480,7 +480,8 @@ export const serverEvent = {
 
 	nasalibNotPresent: "pvs.event.nasalib-not-present",
 
-	profilerData: "pvs.event.profiler-data"
+	profilerData: "pvs.event.profiler-data",
+	proverData: "pvs.event.prover-data"
 };
 
 export declare type ServerMode = "lisp" | "in-checker" | "pvsio";

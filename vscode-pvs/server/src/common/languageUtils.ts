@@ -283,6 +283,7 @@ export type SequentDescriptor = {
 	"num-subgoals"?: number,
 	"prev-cmd"?: Object; // object representing the last command executed
 	"last-cmd"?: string,
+	comment?: string,
 	sequent?: {
 		succedents?: SFormula[], 
 		antecedents?: SFormula[],
@@ -309,6 +310,12 @@ function sequentToString(s: SFormula[], opt?: { useColors?: boolean }): string {
 function labelToString (label: string, opt?: { useColors?: boolean }): string {
 	return (opt && opt.useColors)?
 		`\n${colorText(`${label} :`, textColor.blue)}\n`
+			: `\n${label} :\n`;
+}
+
+function commentToString (label: string, opt?: { useColors?: boolean }): string {
+	return (opt && opt.useColors)?
+		`\n${colorText(`${label} :`, textColor.yellow)}\n`
 			: `\n${label} :\n`;
 }
 
@@ -401,6 +408,9 @@ export function formatSequent (proofState: SequentDescriptor, opt?: { useColors?
 		}
 		if (proofState.label) {
 			res += labelToString(proofState.label, opt);
+		}
+		if (proofState.comment) {
+			res += commentToString(proofState.comment, opt);
 		}
 		if (proofState.sequent) {
 			res += "\n";
@@ -1214,6 +1224,17 @@ export function isGrindCommand (cmd: string): boolean {
 	return cmd && /\(?\s*grind\b/g.test(cmd);
 }
 
+export function isHelpCommand (cmd: string): boolean {
+	return cmd && /\(?\s*help\b/g.test(cmd);
+}
+
+// group 1 is the command argument
+export const helpCommandRegexp: RegExp = /\(?\s*help\s*\"?([^\)]+)/g;
+
+export function isCommentCommand (cmd: string): boolean {
+	return cmd && /\(?\s*comment\b/g.test(cmd);
+}
+
 export function isQEDCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
 	return cmd && (cmd.trim() === "Q.E.D."
@@ -1475,7 +1496,7 @@ export function parCheck (cmd: string, opt?: { useColors?: boolean }): { success
 			case `)`: {
 				par--; 
 				if (quotes && quotes % 2 === 0 && par % 2 !== 0) {
-					// unbalanced parentheses
+					// unbalanced double quotes
 					let msg: string = `Error: Unbalanced double quotes at position ${i}.`;
 					msg += "\n" + cmd.substring(0, i);
 					// msg += (opt.useColors) ? colorText(cmd[i], textColor.red) : cmd[i];
@@ -1484,19 +1505,19 @@ export function parCheck (cmd: string, opt?: { useColors?: boolean }): { success
 				}
 				break;
 			}
-			case `"`: {
-				if ((startsWithPar && par % 2 !== 0) || (!startsWithPar && par === 0)) {
-					quotes++;
-				} else {
-					// unbalanced double quotes
-					let msg: string = `Error: Unbalanced parentheses at position ${i}.`;
-					msg += "\n" + cmd.substring(0, i);
-					// msg += (opt.useColors) ? colorText(cmd[i], textColor.red) : cmd[i];
-					msg += "\n" + " ".repeat(i) + "^";
-					return { success: false, msg };
-				}
-				break; 
-			}
+			// case `"`: {
+			// 	if ((startsWithPar && par % 2 !== 0) || (!startsWithPar && par === 0)) {
+			// 		quotes++;
+			// 	} else {
+			// 		// unbalanced double quotes
+			// 		let msg: string = `Error: Unbalanced parentheses at position ${i}.`;
+			// 		msg += "\n" + cmd.substring(0, i);
+			// 		// msg += (opt.useColors) ? colorText(cmd[i], textColor.red) : cmd[i];
+			// 		msg += "\n" + " ".repeat(i) + "^";
+			// 		return { success: false, msg };
+			// 	}
+			// 	break; 
+			// }
 		}
 	}
 	const success: boolean = par <= 0;

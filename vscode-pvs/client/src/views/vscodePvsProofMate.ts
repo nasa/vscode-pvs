@@ -39,9 +39,9 @@
 import { TreeItem, TreeItemCollapsibleState, TreeDataProvider, EventEmitter, Event, ExtensionContext, TreeView, window, commands } from "vscode";
 import { SequentDescriptor, SFormula } from "../common/languageUtils";
 import { LanguageClient } from "vscode-languageclient";
-import { PROOF_COMMANDS, printHelp, PROOF_TACTICS, ProofMateProfile, getCommands } from '../common/commandUtils';
+import { PROOF_COMMANDS, PROOF_TACTICS, ProofMateProfile, getCommands } from '../common/commandUtils';
 import * as vscode from 'vscode';
-import { ProofCommandDescriptor, FormulaDescriptor, ProofEditDidTrimNode, PvsFormula } from "../common/serverInterface";
+import { HelpDescriptor, FormulaDescriptor, ProofEditDidTrimNode, PvsFormula } from "../common/serverInterface";
 import { ProofItem } from "./vscodePvsProofExplorer";
 
 declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
@@ -58,7 +58,7 @@ class ProofMateItem extends TreeItem {
     constructor (desc: ProofMateItemDescriptor) {
 		super(desc.name, TreeItemCollapsibleState.None);
 		this.name = desc.name;
-		this.tooltip = desc.tooltip || printHelp(desc.name);
+		this.tooltip = desc.tooltip;
 		this.label = this.icon + this.name;
 		this.command = {
 			title: this.name,

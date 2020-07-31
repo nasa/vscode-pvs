@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.24-lambda",
+	"version": "1.0.24-mu",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -86,6 +86,11 @@
 						"type": "boolean",
 						"default": false,
 						"description": "Show profiler data in vscode output channel pvs-server-profiler"
+					},
+					"pvs.settings.prover.log": {
+						"type": "boolean",
+						"default": true,
+						"description": "Log messages exchanged with the prover"
 					}
 				},
 				"disabled_properties": {

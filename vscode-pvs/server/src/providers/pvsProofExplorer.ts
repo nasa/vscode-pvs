@@ -64,6 +64,7 @@ import {
 	ProofEditTrimUnused,
 	ProofEditSave,
 	ProofExecQuit,
+	HelpDescriptor,
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -72,7 +73,7 @@ import { SequentDescriptor } from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
 import { PvsProxy } from '../pvsProxy';
 import { PvsLanguageServer } from '../pvsLanguageServer';
-import * as path from 'path';
+import * as commandUtils from '../common/commandUtils';
 
 abstract class TreeItem {
 	id: string;
@@ -476,7 +477,7 @@ export class PvsProofExplorer {
 				this.pvsLanguageServer.cliGateway.publish(evt);
 			}
 
-			//--- check other meta-commands: (undo), (undo undo), (postpone), (show-hidden)
+			//--- check other meta-commands: (undo), (undo undo), (postpone), (show-hidden), (comment "..."), (help xxx)
 			// if command is undo, go back to the last visited node
 			if (utils.isUndoCommand(cmd)) {
 				this.running = false;
@@ -575,9 +576,14 @@ export class PvsProofExplorer {
 				return;
 			}
 
-			// handle (show-hidden)
-			if (utils.isShowHiddenCommand(cmd)) {
+			// handle (show-hidden) and (comment "xxx")
+			if (utils.isShowHiddenCommand(cmd) || utils.isCommentCommand(cmd)) {
 				// nothing to do, the prover will simply show the hidden formulas
+				return;
+			}
+
+			if (utils.isHelpCommand(cmd)) {
+				// do nothing, CLI will show the help message
 				return;
 			}
 
@@ -636,13 +642,11 @@ export class PvsProofExplorer {
 					if (activeNode.isActive()) {
 						elem.sequentDescriptor = activeNode.sequentDescriptor;
 						elem.updateTooltip({ internalAction: this.autorunFlag });
-						// elem.setTooltip(activeNode.tooltip);
 						activeNode.notVisited(); // this resets the tooltip in activeNode
 						this.appendNode({ selected: activeNode, elem }, { beforeSelected: true });
 					} else {
 						elem.sequentDescriptor = (this.ghostNode.isActive()) ? this.ghostNode.sequentDescriptor : activeNode.sequentDescriptor;
 						elem.updateTooltip({ internalAction: this.autorunFlag });
-						// elem.setTooltip(utils.formatProofState(proofState));
 						this.appendNode({ selected: activeNode, elem });
 					}
 					this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode

@@ -78,6 +78,7 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 - Improved support for multiline input in prover terminal
 - Improved Proof Explorer
 - Added pvs-server profiler
+- Added support for proof commands "comment" and "help"
 
 ### 1.0.23 (2020.07.01)
 - Added support for multi-line commands in the prover prompt
