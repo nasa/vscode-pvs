@@ -206,7 +206,12 @@ export class PvsProxy {
 		// this.buffer = this.buffer.then(() => {
 			return new Promise((resolve, reject) => {
 				if (this.client) {
-					const jsonReq: string = JSON.stringify(req);
+					const jsonReq: string = JSON.stringify(req, null, " ");
+
+					if (this.connection) {
+						this.connection.sendNotification(serverEvent.proverData, jsonReq);
+					}
+
 					if (this.verbose) {
 						// console.dir(jsonReq);
 						const msg: string = (req.params) ? req.method + " " + JSON.stringify(req.params)
@@ -214,7 +219,12 @@ export class PvsProxy {
 						console.log(msg);
 					}
 					this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
+
 						if (error) {
+							if (this.connection) {
+								this.connection.sendNotification(serverEvent.proverData, JSON.stringify(error, null, " "));
+							}
+		
 							console.error("[pvs-proxy] Error returned by pvs-server: "); 
 							console.dir(error, { depth: null }); 
 							if (error['code'] === 'ECONNREFUSED') {
@@ -242,11 +252,16 @@ export class PvsProxy {
 									}
 								});
 							}
-						} else if (value) {
+						} else if (value) {		
 							// console.log("[pvs-proxy] Value returned by pvs-server: ");
 							// console.dir(value);
 							try {
 								const resp: PvsResponse = JSON.parse(value);
+
+								if (this.connection) {
+									this.connection.sendNotification(serverEvent.proverData, JSON.stringify(resp, null, " "));
+								}
+
 								// console.dir(resp, { depth: null });
 								if (resp && (resp["result"] === "null" || resp["result"] === "nil")) {
 									// sometimes pvs returns a string "null" or "nil" as result -- here the string is transformed into a proper null value
@@ -277,9 +292,17 @@ export class PvsProxy {
 								resolve(resp);
 							} catch (jsonError) {
 								console.error(`[pvs-proxy] Unable to parse pvs-server response :/`, value);
+
+								if (this.connection) {
+									this.connection.sendNotification(serverEvent.proverData, value);
+								}
+	
 								resolve(null);
 							}
 						} else {
+							if (this.connection) {
+								this.connection.sendNotification(serverEvent.proverData, JSON.stringify(error, null, " "));
+							}
 							console.error(`[pvs-proxy] pvs-server returned error`, error);
 							resolve({
 								jsonrpc: "2.0",

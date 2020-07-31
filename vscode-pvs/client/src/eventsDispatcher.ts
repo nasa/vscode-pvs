@@ -53,6 +53,7 @@ import * as commandUtils from './common/commandUtils';
 import * as vscodeUtils from './utils/vscode-utils';
 import { SequentDescriptor } from "./common/languageUtils";
 import { readlink } from "fs";
+import { VSCodePvsLogger } from "./views/vscodePvsLogger";
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -63,6 +64,7 @@ export class EventsDispatcher {
     protected proofExplorer: VSCodePvsProofExplorer;
     protected vscodePvsTerminal: VSCodePvsTerminal;
     protected proofMate: VSCodePvsProofMate;
+    protected logger: VSCodePvsLogger;
 
     protected inChecker: boolean = false;
     protected quietMode: boolean = false;
@@ -73,7 +75,8 @@ export class EventsDispatcher {
         workspaceExplorer: VSCodePvsWorkspaceExplorer,
         proofExplorer: VSCodePvsProofExplorer,
         vscodePvsTerminal: VSCodePvsTerminal,
-        proofMate: VSCodePvsProofMate
+        proofMate: VSCodePvsProofMate,
+        logger: VSCodePvsLogger
     }) {
         this.client = client;
         this.statusBar = handlers.statusBar;
@@ -82,6 +85,7 @@ export class EventsDispatcher {
         this.proofExplorer = handlers.proofExplorer;
         this.vscodePvsTerminal = handlers.vscodePvsTerminal;
         this.proofMate = handlers.proofMate;
+        this.logger = handlers.logger;
     }
     protected resource2desc (resource: string | { 
         fileName?: string, fileExtension?: string, contextFolder?: string, theoryName?: string, formulaName?: string,
@@ -559,7 +563,10 @@ export class EventsDispatcher {
         });
         
         this.client.onNotification(serverEvent.profilerData, (data: string) => {
-            this.vscodePvsTerminal.profilerData(data);
+            this.logger.profilerData(data);
+        });
+        this.client.onNotification(serverEvent.proverData, (data: string) => {
+            this.logger.proverData(data);
         });
 
 
