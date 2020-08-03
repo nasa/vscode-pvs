@@ -259,14 +259,17 @@ export class PvsLanguageServer {
 	async startProof (args: PvsFormula): Promise<PvsResponse | null> {
 		return await this.proveFormula(args);
 	}
-	async proveFormula (args: PvsFormula): Promise<PvsResponse | null> {
-		if (args && args.fileName && args.formulaName && args.fileExtension && args.contextFolder && args.theoryName) {
+	async proveFormula (formula: PvsFormula): Promise<PvsResponse | null> {
+		if (formula && formula.fileName && formula.formulaName && formula.fileExtension && formula.contextFolder && formula.theoryName) {
+			if (await this.getServerMode() === "in-checker") {
+				await this.quitProof();
+			}
 			try {
-				args = fsUtils.decodeURIComponents(args);
+				formula = fsUtils.decodeURIComponents(formula);
 				const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
-				const response: PvsResponse = await this.pvsProxy.proveFormula(args, { useLispInterface });
+				const response: PvsResponse = await this.pvsProxy.proveFormula(formula, { useLispInterface });
 				if (this.connection) {
-					this.connection.sendNotification(serverEvent.profilerData, `(prove-formula "${path.join(args.contextFolder, args.fileName + ".pvs" + "#" + args.theoryName)}")`);
+					this.connection.sendNotification(serverEvent.profilerData, `(prove-formula "${path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName)}")`);
 				}
 				return response;
 			} catch (ex) {
@@ -280,7 +283,15 @@ export class PvsLanguageServer {
 		this.proofExplorer.proofCommandRequest(request);
 	};
 	async getServerMode (): Promise<ServerMode> {
-		const proverStatus: PvsResponse = await this.pvsProxy.proverStatus();
+		const proverStatus: PvsResponse = await this.pvsProxy.getProverStatus();
+		if (proverStatus === undefined) {
+			console.warn(`[pvs-language-server] Warning: prover status is undefined`);
+			// const pvsResponse: PvsResponse = await this.pvsProxy.proofCommand({ cmd: "(skip)" });
+			// if (pvsResponse && pvsResponse.result && pvsResponse.result.length 
+			// 		&& pvsResponse.result[0].commentary && pvsResponse.result[0].commentary.length) {
+			// 	return "in-checker";
+			// }
+		}
 		const mode: ServerMode = (proverStatus && proverStatus.result !== "inactive") ?
 			"in-checker" : "lisp";
 		return mode;
@@ -322,7 +333,9 @@ export class PvsLanguageServer {
 					isTypecheckError: true
 				};
 				this.sendDiagnostics("Typecheck");
-				this.pvsErrorManager.handleTypecheckError({ request: formula, response: <PvsError> response, taskId });
+				if (this.pvsErrorManager) {
+					this.pvsErrorManager.handleTypecheckError({ request: formula, response: <PvsError> response, taskId });
+				}
 				return;
 			}
 		}
@@ -351,7 +364,9 @@ export class PvsLanguageServer {
 				this.proofExplorer.loadSequent(result[result.length - 1]);
 				// start proof in proof explorer
 				this.proofExplorer.startProof({ autorun: !!opt.autorun, autorunCallback: (status: ProofStatus) => {
-					this.connection.sendRequest(serverEvent.autorunFormulaResponse, status);
+					if (this.connection) {
+						this.connection.sendRequest(serverEvent.autorunFormulaResponse, status);
+					}
 					this.notifyServerMode("lisp");
 				}});
 
@@ -361,7 +376,9 @@ export class PvsLanguageServer {
 			}
 		} else {
 			// there was an error
-			this.pvsErrorManager.handleProveFormulaError({ request: formula, response: <PvsError> response, taskId });
+			if (this.pvsErrorManager) {
+				this.pvsErrorManager.handleProveFormulaError({ request: formula, response: <PvsError> response, taskId });
+			}
 		}
 		// if (this.connection) {
 		// 	this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request });
@@ -1635,7 +1652,7 @@ export class PvsLanguageServer {
 		if (await this.getServerMode() === "in-checker") {
 			const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
 			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: "(quit)" }, { useLispInterface });
-			if (response && response.error) {
+			if (response && response.error && this.pvsErrorManager) {
 				this.pvsErrorManager.handleProofCommandError({ cmd: "(quit)", response: <PvsError> response });
 			}
 		}

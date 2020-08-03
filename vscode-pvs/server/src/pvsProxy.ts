@@ -211,6 +211,7 @@ export class PvsProxy {
 					if (this.connection) {
 						this.connection.sendNotification(serverEvent.proverData, jsonReq);
 					}
+					// console.dir(jsonReq, { depth: null });
 
 					if (this.verbose) {
 						// console.dir(jsonReq);
@@ -219,6 +220,8 @@ export class PvsProxy {
 						console.log(msg);
 					}
 					this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
+						// console.log(error);
+						// console.log(value);
 
 						if (error) {
 							if (this.connection) {
@@ -252,7 +255,7 @@ export class PvsProxy {
 									}
 								});
 							}
-						} else if (value) {		
+						} else if (value) {
 							// console.log("[pvs-proxy] Value returned by pvs-server: ");
 							// console.dir(value);
 							try {
@@ -269,10 +272,12 @@ export class PvsProxy {
 								}
 
 								if ((method === "proof-command" || method === "prove-formula") && resp.result) {
-									if (resp.result["result"] && resp.result["result"].trim() === "Q.E.D.") {
+									// NOTE: this is a temporary fix while waiting the server APIs to be fixed
+									if (resp.result["result"]) {
+										const result: string = resp.result["result"].trim();
 										resp.result = <SequentDescriptor> {
-											label: "Q.E.D.", // this should actually be the formula name....
-											commentary: [ "Q.E.D." ],
+											label: result, // this should actually be the formula name....
+											commentary: [ result ],
 											"num-subgoals": 0,
 											sequent: {}
 										}
@@ -916,8 +921,8 @@ export class PvsProxy {
 				const i: number = res.result.length - 1;
 				res.result[i].commentary = res.result[i].commentary || [];
 				res.result[i].commentary.push(`No change on: ${desc.cmd}`);
-				res.result[i].commentary.push(error_msg);
-				console.error(desc.cmd, error_msg);
+				res.result[i].commentary.push("Error: " + error_msg);
+				// console.error(desc.cmd, error_msg);
 			}
 			return res;
 		}
@@ -927,10 +932,11 @@ export class PvsProxy {
 	/**
 	 * Returns the prover status
 	 */
-	async proverStatus(): Promise<PvsResponse> {
-		const res: PvsResponse = (this.useLegacy) ? await this.legacy.proverStatus()
-			: await this.pvsRequest('prover-status');
-		return res;
+	async getProverStatus(): Promise<PvsResponse> {
+		return await this.legacy.getProverStatus();
+		// const res: PvsResponse = (this.useLegacy) ? await this.legacy.getProverStatus()
+		// 	: await this.pvsRequest('prover-status');
+		// return res;
 	}
 
 	/**
