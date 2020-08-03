@@ -1,0 +1,31 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% @theory: foo
+% @author: xxx
+% @date: Wed, 15 Jul 2020 19:12:22 GMT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+foo_th[n: nat]: THEORY
+  BEGIN 
+    foo1: THEOREM FORALL (x: posreal):
+      COND
+        x = 1 -> x < 0,
+        x = 2 -> x > 0,
+        x = 3 -> x > 0,
+        x = 4 -> x > 0
+      ENDCOND
+
+    foo2: THEOREM FORALL (x: real): FALSE
+    
+    foo3: THEOREM FORALL (x: real): FALSE
+
+    foo4: THEOREM FORALL (x: posreal):
+      COND
+        x = 1 -> x < 0,
+        x = 2 -> x > 0,
+        x = 3 -> x > 0,
+        x = 4 -> x > 0
+      ENDCOND
+
+    foo5: THEOREM FORALL (x: posreal): x > 0
+
+  END foo_th

@@ -1,0 +1,254 @@
+{
+ "foo.foo_lemma": [
+  {
+   "info": {
+    "theory": "foo",
+    "formula": "foo_lemma",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "b9f84c12c398879481b33aa3a31d17edd6047cb546e09c49da3f4a9085893f12"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo_lemma",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(expand \"abs\")",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(typepred \"x!1\")",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(assert)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(typepred \"x!1\")",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(expand \"abs\")",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(then (skosimp*)(expand \"abs\")(assert))",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "foo_th.foo": [
+  {
+   "info": {
+    "theory": "foo_th",
+    "formula": "foo",
+    "status": "unfinished",
+    "prover": "PVS 7.x"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(skolem!)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(grind)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "foo_th.foo2": [
+  {
+   "info": {
+    "theory": "foo_th",
+    "formula": "foo2",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "db1d0716b59033a5a3ec2357817f36427009b84a3336294d7df199b3aa43efa1"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo2",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "foo_th.foo3": [
+  {
+   "info": {
+    "theory": "foo_th",
+    "formula": "foo3",
+    "status": "untried",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "db1d0716b59033a5a3ec2357817f36427009b84a3336294d7df199b3aa43efa1"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo3",
+    "type": "root",
+    "rules": []
+   }
+  }
+ ],
+ "foo_th.foo4": [
+  {
+   "info": {
+    "theory": "foo_th",
+    "formula": "foo4",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "db1d0716b59033a5a3ec2357817f36427009b84a3336294d7df199b3aa43efa1"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo4",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(assert)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(grind)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(case \"x!1 > 0\")",
+      "type": "proof-command",
+      "rules": [
+       {
+        "branch": "1",
+        "name": "(1)",
+        "type": "proof-branch",
+        "rules": [
+         {
+          "branch": "1",
+          "name": "(postpone)",
+          "type": "proof-command",
+          "rules": []
+         }
+        ]
+       },
+       {
+        "branch": "2",
+        "name": "(2)",
+        "type": "proof-branch",
+        "rules": [
+         {
+          "branch": "2",
+          "name": "(grind)",
+          "type": "proof-command",
+          "rules": []
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "foo_th.foo5": [
+  {
+   "info": {
+    "theory": "foo_th",
+    "formula": "foo5",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "db1d0716b59033a5a3ec2357817f36427009b84a3336294d7df199b3aa43efa1"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo5",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(grind)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "foo_th.foo1": [
+  {
+   "info": {
+    "theory": "foo_th",
+    "formula": "foo1",
+    "status": "untried",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "b474a6797e7f46760fd69a07ce715cfe856b1e9d37ddbe87a944fcd3bb260f35"
+   }
+  }
+ ]
+}

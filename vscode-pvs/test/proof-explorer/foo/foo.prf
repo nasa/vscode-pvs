@@ -1,0 +1,10 @@
+(foo_th
+ (foo1_TCC1 0
+  (foo1_TCC1-1 nil 3805452292 ("" (cond-coverage-tcc) nil nil) nil nil
+   (foo1 coverage
+    "COND foo_th.x = 1 -> reals.<(foo_th.x, 0), foo_th.x = 2 -> reals.>(foo_th.x, 0), foo_th.x = 3 -> reals.>(foo_th.x, 0), foo_th.x = 4 -> reals.>(foo_th.x, 0) ENDCOND"
+    "nil")))
+ (foo4 0
+  (foo4-1 nil 3805452298 ("" (skosimp*) (("" (postpone) nil nil)) nil)
+   nil shostak)))
+

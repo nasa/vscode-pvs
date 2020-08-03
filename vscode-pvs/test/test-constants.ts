@@ -1229,7 +1229,7 @@ sequent:
            { id: 'sq',
              place: [ 1, 0, 1, 2 ],
              decl: 'sq(a): nonneg_real = a * a',
-             'decl-file': 'sq.pvs',
+             'decl-file': 'sq.pvs', ////// <<<< Note: the latest version of PVS correctly provides a full path
              'decl-place': [ 10, 2, 10, 26 ] } ] } ] } };
 
 export const sq_neg_expand = { commentary: 
