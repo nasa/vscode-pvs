@@ -1329,7 +1329,11 @@ export function isInvalidCommand (result: { commentary: string[] }): boolean {
 		&& typeof result.commentary === "object"
 		&& result.commentary.length
 		&& typeof result.commentary[0] === "string"
-		&& result.commentary[0].endsWith("not a valid prover command");
+		&& (result.commentary.filter((comment: string)=> {
+			return comment.startsWith("not a valid prover command");
+		}).length > 0 || result.commentary.filter((comment: string)=> {
+			return comment.startsWith(`Found 'eof' when expecting`);
+		}).length > 0);
 }
 
 export function noChange (result: { commentary: string[] }): boolean {
