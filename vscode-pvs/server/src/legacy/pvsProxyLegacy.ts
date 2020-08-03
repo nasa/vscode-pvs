@@ -97,7 +97,7 @@ export class PvsProxyLegacy {
             result: data
         };
     }
-    async proverStatus (): Promise<PvsResponse> {
+    async getProverStatus (): Promise<PvsResponse> {
         const inchecker: PvsResponse = await this.lisp("*in-checker*");
         if (inchecker && inchecker.result === "t") {
             return {
@@ -106,13 +106,11 @@ export class PvsProxyLegacy {
                 result: "active"
             };    
         }
-        if (!inchecker) {
-            return {
-                jsonrpc: "2.0",
-                id: "pvs-process-legacy",
-                result: "inactive"
-            };
-        }
+        return {
+            jsonrpc: "2.0",
+            id: "pvs-process-legacy",
+            result: "inactive"
+        };
     }
     async proofCommand (cmd: string): Promise<PvsResponse> {
         const pvsResponse: PvsResponse = {
