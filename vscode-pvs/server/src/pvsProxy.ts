@@ -54,12 +54,12 @@
 
 import * as xmlrpc from 'xmlrpc';
 import { PvsProcess, ProcessCode } from "./pvsProcess";
-import { PvsResponse, ParseResult, ShowTCCsResult } from "./common/pvs-gui.d";
+import { PvsResponse, ParseResult, ShowTCCsResult, PvsError } from "./common/pvs-gui.d";
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula } from './common/serverInterface';
+import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode } from './common/serverInterface';
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
@@ -785,6 +785,32 @@ export class PvsProxy {
 		return await this.pvsRequest('lisp', [ cmd ]);
 	}
 
+	async getServerMode (): Promise<ServerMode> {
+		const proverStatus: PvsResponse = await this.getProverStatus();
+		// console.dir(proverStatus);
+		if (proverStatus === undefined) {
+			console.warn(`[pvs-language-server] Warning: prover status is undefined`);
+			// const pvsResponse: PvsResponse = await this.pvsProxy.proofCommand({ cmd: "(skip)" });
+			// if (pvsResponse && pvsResponse.result && pvsResponse.result.length 
+			// 		&& pvsResponse.result[0].commentary && pvsResponse.result[0].commentary.length) {
+			// 	return "in-checker";
+			// }
+		}
+		const mode: ServerMode = (proverStatus && proverStatus.result !== "inactive") ?
+			"in-checker" : "lisp";
+		return mode;
+	} 
+
+	async quitProofIfInProver (): Promise<void> {
+		if (await this.getServerMode() === "in-checker") {
+			const useLispInterface: boolean = true;
+			const response: PvsResponse = await this.proofCommand({ cmd: "(quit)" }, { useLispInterface });
+			if (response && response.error && this.pvsErrorManager) {
+				this.pvsErrorManager.handleProofCommandError({ cmd: "(quit)", response: <PvsError> response });
+			}
+		}
+	}
+
 	/**
 	 * Finds a symbol declaration
 	 * The result is an object in the form
@@ -933,10 +959,11 @@ export class PvsProxy {
 	 * Returns the prover status
 	 */
 	async getProverStatus(): Promise<PvsResponse> {
-		return await this.legacy.getProverStatus();
+		// return await this.legacy.getProverStatus();
 		// const res: PvsResponse = (this.useLegacy) ? await this.legacy.getProverStatus()
 		// 	: await this.pvsRequest('prover-status');
 		// return res;
+		return await this.pvsRequest('prover-status');
 	}
 
 	/**

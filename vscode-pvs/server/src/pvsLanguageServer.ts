@@ -283,18 +283,7 @@ export class PvsLanguageServer {
 		this.proofExplorer.proofCommandRequest(request);
 	};
 	async getServerMode (): Promise<ServerMode> {
-		const proverStatus: PvsResponse = await this.pvsProxy.getProverStatus();
-		if (proverStatus === undefined) {
-			console.warn(`[pvs-language-server] Warning: prover status is undefined`);
-			// const pvsResponse: PvsResponse = await this.pvsProxy.proofCommand({ cmd: "(skip)" });
-			// if (pvsResponse && pvsResponse.result && pvsResponse.result.length 
-			// 		&& pvsResponse.result[0].commentary && pvsResponse.result[0].commentary.length) {
-			// 	return "in-checker";
-			// }
-		}
-		const mode: ServerMode = (proverStatus && proverStatus.result !== "inactive") ?
-			"in-checker" : "lisp";
-		return mode;
+		return await this.pvsProxy.getServerMode();
 	} 
 	async proveFormulaRequest (formula: PvsFormula, opt?: { autorun?: boolean }): Promise<void> {
 		opt = opt || {};
@@ -1649,13 +1638,7 @@ export class PvsLanguageServer {
 	 * @param opt 
 	 */
 	async quitProof (): Promise<void> {
-		if (await this.getServerMode() === "in-checker") {
-			const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
-			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: "(quit)" }, { useLispInterface });
-			if (response && response.error && this.pvsErrorManager) {
-				this.pvsErrorManager.handleProofCommandError({ cmd: "(quit)", response: <PvsError> response });
-			}
-		}
+		await this.pvsProxy.quitProofIfInProver();
 	}
 
 	notifyServerMode (mode: ServerMode): void {

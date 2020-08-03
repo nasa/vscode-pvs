@@ -35,10 +35,13 @@ describe("pvs-prover", () => {
 		// delete pvsbin files and .pvscontext
 		await fsUtils.deletePvsCache(safeSandboxExamples);
 		await fsUtils.deletePvsCache(sandboxExamples);
-		await fsUtils.deletePvsCache(radixExamples);		
+		await fsUtils.deletePvsCache(radixExamples);
 	});
 
 	fit(`can start a proof and step proof commands`, async () => {
+		
+		await pvsProxy.quitProofIfInProver();
+
 		const baseFolder: string = path.join(__dirname, "proof-explorer");
 		const request: PvsProofCommand = {
 			contextFolder: path.join(baseFolder, "foo"),
