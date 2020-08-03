@@ -65,6 +65,7 @@ import {
 	ProofEditSave,
 	ProofExecQuit,
 	HelpDescriptor,
+	ProofNodeStatus,
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -184,6 +185,36 @@ export class PvsProofExplorer {
 	}
 	ghostNodeIsActive (): boolean {
 		return this.ghostNode && this.ghostNode.isActive();
+	}
+	isVisited (desc: { id: string, name: string }): boolean {
+		if (desc) {
+			const item: ProofItem = this.findNode(desc.id);
+			if (item) {
+				return item.isVisited();
+			}
+		}
+		console.warn(`[proof-explorer] Warning: failed to check visited flag`);
+		return false;
+	}
+	isPending (desc: { id: string, name: string }): boolean {
+		if (desc) {
+			const item: ProofItem = this.findNode(desc.id);
+			if (item) {
+				return item.isPending();
+			}
+		}
+		console.warn(`[proof-explorer] Warning: failed to check pending flag`);
+		return false;
+	}
+	isActive (desc: { id: string, name: string }): boolean {
+		if (desc) {
+			const item: ProofItem = this.findNode(desc.id);
+			if (item) {
+				return item.isActive();
+			}
+		}
+		console.warn(`[proof-explorer] Warning: failed to check active flag`);
+		return false;
 	}
 
 	/**
@@ -356,7 +387,9 @@ export class PvsProofExplorer {
 				contextFolder: this.formula.contextFolder,
 				cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
 			};
-			let response: PvsResponse = await this.proofCommand(command);
+			// console.dir(command, { depth: null });
+			const response: PvsResponse = await this.proofCommand(command);
+			// console.dir(response, { depth: null });
 			if (response && response.result && response.result.length) {
 				for (let i = 0; i < response.result.length; i++) {
 					const proofState: SequentDescriptor = response.result[i];
@@ -904,6 +937,7 @@ export class PvsProofExplorer {
 					if (this.activeNode.contextValue === "proof-command") {
 						this.ghostNode.notActive();
 					} else {
+						this.activeNode.pending();
 						this.ghostNode.active();
 					}
 				}
@@ -1897,15 +1931,17 @@ export class PvsProofExplorer {
 	}
 	async querySaveProof (formula: PvsFormula): Promise<void> {
 		// ask if the proof needs to be saved
-		this.connection.sendRequest(serverEvent.querySaveProof, { args: formula }); // this will trigger the confirmation dialog
-		await Promise.resolve(new Promise((resolve, reject) => {
-			this.connection.onRequest(serverEvent.querySaveProofResponse, async (response: ProofEditSave | ProofExecQuit) => {
-				if (response && response.action && response.action === "save") {
-					await this.saveProof();
-				}
-				resolve();
-			});
-		}));
+		if (this.connection) {
+			this.connection.sendRequest(serverEvent.querySaveProof, { args: formula }); // this will trigger the confirmation dialog
+			await Promise.resolve(new Promise((resolve, reject) => {
+				this.connection.onRequest(serverEvent.querySaveProofResponse, async (response: ProofEditSave | ProofExecQuit) => {
+					if (response && response.action && response.action === "save") {
+						await this.saveProof();
+					}
+					resolve();
+				});
+			}));
+		}
 	}
 	// this handler is for commands entered by the user at the prover terminal
 	async proofCommandRequest (request: PvsProofCommand): Promise<void> {
@@ -1961,6 +1997,7 @@ export class PvsProofExplorer {
 		if (cmdArray) {
 			for (let i = 0; i < cmdArray.length; i++) {
 				const cmd: string = cmdArray[i];
+				// console.log(cmd);
 				const req: PvsProofCommand = {
 					fileName: request.fileName,
 					fileExtension: request.fileExtension,
@@ -1970,6 +2007,7 @@ export class PvsProofExplorer {
 					cmd
 				};
 				const response: PvsResponse = await this.step({ cmd }); // await this.proofCommand(req); //
+				// console.dir(response, { depth: null });
 				if (response) {
 					if (response.result) {
 						// the following additional logic is necessary to create the log file and start up the interactive cli session
