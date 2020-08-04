@@ -14,8 +14,10 @@ foo_th[n: nat]: THEORY
         x = 4 -> x > 0
       ENDCOND
 
-    foo2: THEOREM FORALL (x: real): FALSE
-    
+    foo2: THEOREM FORALL (x: real): abs(x) > 0 AND x * x > 0
+
+    foo2a: THEOREM FORALL (x: real): abs(x) >= 0 AND x * x >= 0
+
     foo3: THEOREM FORALL (x: real): FALSE
 
     foo4: THEOREM FORALL (x: posreal):

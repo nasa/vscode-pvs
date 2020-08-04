@@ -105,9 +105,9 @@
    "info": {
     "theory": "foo_th",
     "formula": "foo2",
-    "status": "unfinished",
+    "status": "unchecked",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "db1d0716b59033a5a3ec2357817f36427009b84a3336294d7df199b3aa43efa1"
+    "shasum": "6e65cb4e609e9288d461c2e4867aaea9d0cbae4e46d6e1a7e02402729b3f5dd2"
    },
    "proofTree": {
     "branch": "",
@@ -131,7 +131,7 @@
     "formula": "foo3",
     "status": "untried",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "db1d0716b59033a5a3ec2357817f36427009b84a3336294d7df199b3aa43efa1"
+    "shasum": "b474a6797e7f46760fd69a07ce715cfe856b1e9d37ddbe87a944fcd3bb260f35"
    },
    "proofTree": {
     "branch": "",
@@ -148,7 +148,7 @@
     "formula": "foo4",
     "status": "unfinished",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "db1d0716b59033a5a3ec2357817f36427009b84a3336294d7df199b3aa43efa1"
+    "shasum": "b474a6797e7f46760fd69a07ce715cfe856b1e9d37ddbe87a944fcd3bb260f35"
    },
    "proofTree": {
     "branch": "",
@@ -215,9 +215,9 @@
    "info": {
     "theory": "foo_th",
     "formula": "foo5",
-    "status": "unfinished",
+    "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "db1d0716b59033a5a3ec2357817f36427009b84a3336294d7df199b3aa43efa1"
+    "shasum": "b474a6797e7f46760fd69a07ce715cfe856b1e9d37ddbe87a944fcd3bb260f35"
    },
    "proofTree": {
     "branch": "",
@@ -248,6 +248,53 @@
     "status": "untried",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
     "shasum": "b474a6797e7f46760fd69a07ce715cfe856b1e9d37ddbe87a944fcd3bb260f35"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo1",
+    "type": "root",
+    "rules": []
+   }
+  }
+ ],
+ "foo_th.foo1_TCC1": [
+  {
+   "info": {
+    "theory": "foo_th",
+    "formula": "foo1_TCC1",
+    "status": "untried",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "ba05feea8136c9470cbe1470e1ebac7bba588f3b21e27f31ff5928b99c54fe6b"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo1_TCC1",
+    "type": "root",
+    "rules": []
+   }
+  }
+ ],
+ "foo_th.foo2a": [
+  {
+   "info": {
+    "theory": "foo_th",
+    "formula": "foo2a",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "6e65cb4e609e9288d461c2e4867aaea9d0cbae4e46d6e1a7e02402729b3f5dd2"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo2a",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(grind)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
    }
   }
  ]

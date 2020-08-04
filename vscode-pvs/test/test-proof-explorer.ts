@@ -16,7 +16,7 @@ describe("proof-explorer", () => {
 		const content: { pvsPath: string } = JSON.parse(config);
 		// console.log(content);
 		const pvsPath: string = content.pvsPath;
-		await server.startPvsServer({ pvsPath, externalServer: true }, { verbose: false, debugMode: false });
+		await server.startPvsServer({ pvsPath, externalServer: false }, { verbose: false, debugMode: false });
 
 		console.log("\n----------------------");
 		console.log("test-proof-explorer");
@@ -40,6 +40,22 @@ describe("proof-explorer", () => {
 		theoryName: 'foo_th',
 		cmd: ""
 	};
+	const request2: PvsProofCommand = {
+		contextFolder,
+		fileExtension: '.pvs',
+		fileName: 'foo',
+		formulaName: 'foo2',
+		theoryName: 'foo_th',
+		cmd: ""
+	};
+	const request2a: PvsProofCommand = {
+		contextFolder,
+		fileExtension: '.pvs',
+		fileName: 'foo',
+		formulaName: 'foo2a',
+		theoryName: 'foo_th',
+		cmd: ""
+	};
 	const request5: PvsProofCommand = {
 		contextFolder,
 		fileExtension: '.pvs',
@@ -48,43 +64,18 @@ describe("proof-explorer", () => {
 		theoryName: 'foo_th',
 		cmd: ""
 	};
-	// OK
-	// it(`can be started when the proof is not present in the proof file`, async () => {
-	// 	await server.typecheckFile(request);
-	// 	const proofExplorer: PvsProofExplorer = server.getProofExplorer();
-	// 	const pdesc: ProofDescriptor = await proofExplorer.loadProofRequest(request);
 
-	// 	// console.dir(response);
-	// 	expect(pdesc).toBeDefined();
-	// 	expect(pdesc.info.theory).toEqual("foo_th");
-	// 	expect(pdesc.info.formula).toEqual("foo1");
-	// 	expect(pdesc.info.status).toEqual("untried");
-	// 	expect(pdesc.info.prover).toBeDefined();
-	// 	expect(pdesc.info.shasum).toEqual("b474a6797e7f46760fd69a07ce715cfe856b1e9d37ddbe87a944fcd3bb260f35");
-
-	// 	const root: ProofNodeX = proofExplorer.getProofX();
-	// 	expect(root).toBeDefined();
-	// 	expect(root.branch).toEqual("");
-	// 	expect(root.name).toEqual(pdesc.info.formula);
-	// 	expect(root.type).toEqual("root");
-	// 	expect(root.parent).toEqual(root.id);
-	// 	// console.dir(root, { depth: null });
-	// }, 6000);
 	it(`can step single proof commands`, async () => {
-		request.cmd = "(skosimp*)";
-		// let response: PvsResponse = await server.proveFormula(request);
-		// console.dir(response, { depth: null });
-		
-		// response = await server.proveFormula(request);
-		// console.dir(response, { depth: null });
+		await server.getPvsProxy().quitProofIfInProver();
 
 		await server.proveFormulaRequest(request);
 
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
 		let root: ProofNodeX = proofExplorer.getProofX();
 		expect(root.name).toEqual(request.formulaName);
-		expect(root.rules).toEqual([]);
+		expect(root.rules.length).toEqual(0);
 
+		request.cmd = "(skosimp*)";
 		await proofExplorer.proofCommandRequest(request);
 		root = proofExplorer.getProofX();
 		// console.dir(root);
@@ -93,7 +84,7 @@ describe("proof-explorer", () => {
 		expect(root.rules[0].type).toEqual("proof-command");
 		expect(root.rules[0].parent).toEqual(root.id);
 	});
-	return;
+
 	it(`can step a series of proof commands`, async () => {
 		request.cmd = `(assert)(grind)(case "x!1 > 0")(postpone)(grind)`;
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
@@ -252,7 +243,62 @@ describe("proof-explorer", () => {
 		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
 		expect(proofExplorer.isPending({ id: root.id, name: root.name }));
 	});
+	it(`can automatically trim branches at the beginning of a proof, if proof structure has changed`, async () => {
+		await server.proveFormulaRequest(request2);
 
+		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
+		let root: ProofNodeX = proofExplorer.getProofX();
+		expect(root.name).toEqual(request2.formulaName);
+		expect(root.rules[0].name).toEqual("(skosimp*)");
+
+		expect(proofExplorer.ghostNodeIsActive()).not.toBeTrue();
+		let activeNode: ProofNodeX = proofExplorer.getActiveNode();
+		expect(activeNode.name).toEqual(`(skosimp*)`);
+
+		request2.cmd = "(grind)";
+		await proofExplorer.proofCommandRequest(request2);
+
+		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
+
+		root = proofExplorer.getProofX();
+		expect(root.rules[0].name).toEqual("(grind)");
+		expect(root.rules[0].rules[0].name).toEqual("(1)");
+		activeNode = proofExplorer.getActiveNode();
+		expect(activeNode.name).toEqual(`(1)`);
+	});
+	it(`can trim branches with active nodes and correctly re-position the active node`, async () => {
+		await server.proveFormulaRequest(request2a);
+
+		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
+		let root: ProofNodeX = proofExplorer.getProofX();
+		expect(root.name).toEqual(request2a.formulaName);
+		expect(root.rules[0].name).toEqual("(grind)");
+
+		expect(proofExplorer.ghostNodeIsActive()).not.toBeTrue();
+		let activeNode: ProofNodeX = proofExplorer.getActiveNode();
+		expect(activeNode.name).toEqual(`(grind)`);
+
+		request2.cmd = "(skosimp*)";
+		await proofExplorer.proofCommandRequest(request2);
+
+		expect(proofExplorer.ghostNodeIsActive()).toBeFalse();
+
+		root = proofExplorer.getProofX();
+		expect(root.rules.length).toEqual(2);
+		expect(root.rules[0].name).toEqual(`(skosimp*)`);
+		expect(root.rules[1].name).toEqual(`(grind)`);
+		activeNode = proofExplorer.getActiveNode();
+		expect(activeNode.name).toEqual(`(grind)`);
+
+		proofExplorer.trimNodeX({ action: "trim-node", selected: { id: root.rules[0].id, name: root.rules[0].name }});
+		root = proofExplorer.getProofX();
+		// console.dir(root, { depth: null });
+		expect(root.rules.length).toEqual(1);
+		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
+		activeNode = proofExplorer.getActiveNode();
+		expect(activeNode.name).toEqual(`ghost`);
+
+	});
 			// // remove test folder 
 			// fsUtils.deleteFolder(path.join(baseFolder, "foo"));
 

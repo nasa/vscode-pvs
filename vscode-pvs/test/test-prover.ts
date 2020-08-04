@@ -1,6 +1,6 @@
 import * as fsUtils from "../server/src/common/fsUtils";
 import * as test from "./test-constants";
-import { PvsResponse } from "../server/src/common/pvs-gui";
+import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { configFile, sandboxExamples, safeSandboxExamples, radixExamples } from './test-utils';
 import { PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
@@ -38,10 +38,18 @@ describe("pvs-prover", () => {
 		await fsUtils.deletePvsCache(radixExamples);
 	});
 
-	fit(`can start a proof and step proof commands`, async () => {
-		
-		await pvsProxy.quitProofIfInProver();
-
+	// @Sam: this first test fails intermittently.
+	//       It seems that pvs returns a response before it's ready to accept a proof command (if a delay is introduced before sending the command request then the test succeeds)
+	//       There is also a problem with the prover status: sometimes pvs returns the following error:
+	//            'Value #<unknown object of type number 3 @\n' +
+	//            '        #x107000000100223> is not of a type which can be encoded by encode-json.'
+	//       This error usually occurs when the server is restarted, during the first prover session  
+	fit(`can start a proof and step proof commands`, async () => { // to run all tests, change fit(...) into it(...)
+		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
+		console.dir(proverStatus);
+		if (proverStatus && proverStatus.result !== "inactive") {
+			await pvsProxy.proofCommand({ cmd: 'quit' });
+		}
 		const baseFolder: string = path.join(__dirname, "proof-explorer");
 		const request: PvsProofCommand = {
 			contextFolder: path.join(baseFolder, "foo"),
@@ -57,10 +65,14 @@ describe("pvs-prover", () => {
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
-		response = await pvsProxy.proofCommand({ cmd: '(skosimp*)' });
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		// setTimeout(async () => {
+			response = await pvsProxy.proofCommand({ cmd: '(skosimp*)' });
+			expect(response.result).toBeDefined();
+			expect(response.error).not.toBeDefined();	
+		// }, 400);
 	});
+
+	//----- the tests below this line are completed successfully
 
 	it(`can discharge tccs`, async () => {
 		const response: PvsResponse = await pvsProxy.proveTccs({
