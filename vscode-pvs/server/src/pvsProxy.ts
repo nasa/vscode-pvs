@@ -959,8 +959,8 @@ export class PvsProxy {
 	 * Returns the prover status
 	 */
 	async getProverStatus(): Promise<PvsResponse> {
-		const ans1: PvsResponse = await this.legacy.getProverStatus();  // this other uses the lisp interface to test flag *in-checker*
-		const ans2: PvsResponse =  await this.pvsRequest('prover-status');
+		const ans1: PvsResponse =  await this.pvsRequest('prover-status'); // this uses info provided by the xmlrpc server
+		const ans2: PvsResponse = await this.legacy.getProverStatus();  // this other uses the lisp interface to test flag *in-checker*
 		// sanity check
 		if (ans1 && ans2 && ans1.result && ans2.result) {
 			return ans1.result;
