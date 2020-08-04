@@ -177,6 +177,15 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
+	getTooltip (desc: { selected: { id: string, name: string }}): string | null {
+		if (desc && desc.selected) {
+			const item: ProofItem = this.findNode(desc.selected.id);
+			if (item) {
+				return item.tooltip;
+			}
+		}
+		return null;
+	}
 	getGhostNode (): ProofNodeX {
 		if (this.ghostNode) {
 			return this.ghostNode.getNodeXStructure();

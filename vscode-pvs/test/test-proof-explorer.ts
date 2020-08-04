@@ -16,7 +16,7 @@ describe("proof-explorer", () => {
 		const content: { pvsPath: string } = JSON.parse(config);
 		// console.log(content);
 		const pvsPath: string = content.pvsPath;
-		await server.startPvsServer({ pvsPath, externalServer: false }, { verbose: false, debugMode: false });
+		await server.startPvsServer({ pvsPath, externalServer: true }, { verbose: false, debugMode: false });
 
 		console.log("\n----------------------");
 		console.log("test-proof-explorer");
@@ -229,6 +229,10 @@ describe("proof-explorer", () => {
 		expect(root.rules.length).toEqual(2);
 		expect(root.rules[0].name).toEqual("(skosimp*)");
 		expect(root.rules[1].name).toEqual("(grind)");
+
+		const initial_tooltip: string = proofExplorer.getTooltip({ selected: root.rules[0] });
+		expect(initial_tooltip).toContain(request5.formulaName);
+
 	});
 	it(`can delete a proof and display the correct active node`, async () => {
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
