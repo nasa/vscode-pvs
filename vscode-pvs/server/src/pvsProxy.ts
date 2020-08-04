@@ -787,7 +787,7 @@ export class PvsProxy {
 
 	async getServerMode (): Promise<ServerMode> {
 		const proverStatus: PvsResponse = await this.getProverStatus();
-		// console.dir(proverStatus);
+		// console.log("Prover status: ", proverStatus);
 		if (proverStatus === undefined) {
 			console.warn(`[pvs-language-server] Warning: prover status is undefined`);
 			// const pvsResponse: PvsResponse = await this.pvsProxy.proofCommand({ cmd: "(skip)" });
@@ -959,11 +959,17 @@ export class PvsProxy {
 	 * Returns the prover status
 	 */
 	async getProverStatus(): Promise<PvsResponse> {
-		// return await this.legacy.getProverStatus();
-		// const res: PvsResponse = (this.useLegacy) ? await this.legacy.getProverStatus()
-		// 	: await this.pvsRequest('prover-status');
-		// return res;
-		return await this.pvsRequest('prover-status');
+		const ans1: PvsResponse = await this.legacy.getProverStatus();  // this other uses the lisp interface to test flag *in-checker*
+		const ans2: PvsResponse =  await this.pvsRequest('prover-status');
+		// sanity check
+		if (ans1 && ans2 && ans1.result && ans2.result) {
+			return ans1.result;
+		} else {
+			console.warn(`[pvs-proxy] Warning: pvs is not returning a correct prover status`);
+			console.dir(ans1);
+			console.dir(ans2);
+		}
+		return (ans1.result) ? ans1 : ans2;
 	}
 
 	/**

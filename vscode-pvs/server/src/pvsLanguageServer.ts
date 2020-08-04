@@ -169,18 +169,22 @@ export class PvsLanguageServer {
 			// Create a connection channel to allow clients to connect.
 			// The connection uses Node's IPC as a transport. Includes all proposed LSP features.
 			this.connection = createConnection(ProposedFeatures.all);
-
 			// Create connection manager
 			this.setupConnectionManager();
 			// Create a simple text document manager. The text document manager supports full document sync only
 			this.setupDocumentsManager(this.connection);
 			// Listen on the connection
 			this.connection.listen();
+		} catch (connectionError) {
+			console.warn(`[pvs-server] Warning: Unable to create LSP connection with client front-end`);
+		} finally {
 			// Create error manager
 			this.pvsErrorManager = new PvsErrorManager(this.connection);
-		} catch (connectionError) {
-			console.error(`[pvs-server] Error: unable to create LSP connection`);
 		}
+	}
+
+	getPvsProxy (): PvsProxy {
+		return this.pvsProxy;
 	}
 	
 	//-- utility functions
