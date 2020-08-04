@@ -962,14 +962,14 @@ export class PvsProxy {
 		const ans1: PvsResponse =  await this.pvsRequest('prover-status'); // this uses info provided by the xmlrpc server
 		const ans2: PvsResponse = await this.legacy.getProverStatus();  // this other uses the lisp interface to test flag *in-checker*
 		// sanity check
-		if (ans1 && ans2 && ans1.result && ans2.result) {
-			return ans1.result;
+		if (ans1 && ans1.result && ans2 && ans2.result) {
+			return ans1;
 		} else {
 			console.warn(`[pvs-proxy] Warning: pvs is not returning a correct prover status`);
 			console.dir(ans1);
 			console.dir(ans2);
 		}
-		return (ans1.result) ? ans1 : ans2;
+		return (ans1 && ans1.result) ? ans1 : ans2;
 	}
 
 	/**

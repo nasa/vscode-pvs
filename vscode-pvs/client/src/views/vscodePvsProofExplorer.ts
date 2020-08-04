@@ -923,8 +923,10 @@ export class ProofItem extends TreeItem {
 		this.pendingFlag = false;
 		// this.noChangeFlag = false;
 		this.iconPath = {
-            light: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
+            // light: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg"),
+            // dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
+            light: path.join(__dirname, "..", "..", "..", "icons", "star.png"),
+            dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
         };
 	}
 	notVisited (): void {

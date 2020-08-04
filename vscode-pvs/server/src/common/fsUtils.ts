@@ -38,7 +38,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileList, ProofFile } from '../common/serverInterface';
+import { FileList, ProofFile, PvsFile, PvsProofCommand } from '../common/serverInterface';
 
 const HOME_DIR: string = require('os').homedir();
 // nodeJS does not support tilde expansion for the home folder
@@ -375,9 +375,9 @@ export function decodeURIComponents (desc) {
 			return decodeURIComponent(desc);
 		}
 		// else
-		const keys: string[] = Object.keys(desc);
+		const keys: string[] = [ "fileName", "fileExtension", "contextFolder"];
 		for (let i = 0; i < keys.length; i++) {
-			if (typeof desc[keys[i]] === "string") {
+			if (desc[keys[i]] && typeof desc[keys[i]] === "string") {
 				desc[keys[i]] = decodeURIComponent(desc[keys[i]]);
 			}
 		}
