@@ -46,7 +46,7 @@ describe("pvs-prover", () => {
 	//       This error usually occurs when the server is restarted, during the first prover session  
 	fit(`can start a proof and step proof commands`, async () => { // to run all tests, change fit(...) into it(...)
 		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
-		console.dir(proverStatus);
+		// console.log(proverStatus);
 		if (proverStatus && proverStatus.result !== "inactive") {
 			await pvsProxy.proofCommand({ cmd: 'quit' });
 		}
