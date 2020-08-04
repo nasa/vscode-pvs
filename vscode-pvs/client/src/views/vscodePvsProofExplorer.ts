@@ -1394,7 +1394,7 @@ class GhostNode extends ProofItem {
 	// @overrides
 	active (): void {
 		super.active();
-		this.label = " 🔷 ...";
+		this.label = " ...";
 	}
 	notActive (): void {
 		this.activeFlag = false;
