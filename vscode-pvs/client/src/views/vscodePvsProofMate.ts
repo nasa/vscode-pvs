@@ -243,13 +243,13 @@ class ProofMateSketchpad extends ProofMateGroup {
 			let hasContent: boolean = false;
 			if (items) {
 				for (let i = 0; i < items.length; i++) {
-					items[i].icon = " -  ";
+					// items[i].icon = " -  ";
 					items[i].command = {
 						title: items[i].name,
 						command: "proof-mate.did-click-hint",
 						arguments: [ { cmd: items[i].name } ]
 					};
-					items[i].label = items[i].icon + items[i].name;
+					items[i].label = " -  " + items[i].name;
 					if (!hasContent && items[i].contextValue === "proof-command") {
 						hasContent = true;
 					}
