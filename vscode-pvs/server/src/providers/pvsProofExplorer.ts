@@ -1627,10 +1627,8 @@ export class PvsProofExplorer {
 	 * Utility function, used to set the initial proof state.
 	 * @param proofState 
 	 */
-	loadSequent (proofState: SequentDescriptor): void {
-		if (!this.initialProofState) {
-			this.initialProofState = proofState;
-		}
+	loadInitialSequent (proofState: SequentDescriptor): void {
+		this.initialProofState = proofState;
 		const evt: ProofExecDidLoadSequent = { action: "did-load-sequent", sequent: proofState };
 		if (this.connection && !this.autorunFlag) {
 			this.connection.sendNotification(serverEvent.proofExecEvent, evt);
@@ -1647,7 +1645,7 @@ export class PvsProofExplorer {
 			this.autorunCallback = opt.autorunCallback;
 
 			this.root.sequentDescriptor = this.initialProofState;
-			this.root.tooltip = utils.formatSequent(this.initialProofState);
+			this.root.updateTooltip({ internalAction: this.autorunFlag });
 			this.root.pending();
 			this.root.setProofStatus(this.proofDescriptor.info.status);
 			// select either the first child or the root if children are not present
@@ -2259,13 +2257,13 @@ export class ProofItem extends TreeItem {
 			});
 		}
 	}
-	noChange (): void {
-		this.previousState.tooltip = this.tooltip;
-		this.activeFlag = false;
-		this.visitedFlag = false;
-		this.pendingFlag = false;
-		this.noChangeFlag = true;
-	}
+	// noChange (): void {
+	// 	this.previousState.tooltip = this.tooltip;
+	// 	this.activeFlag = false;
+	// 	this.visitedFlag = false;
+	// 	this.pendingFlag = false;
+	// 	this.noChangeFlag = true;
+	// }
 	active (): void {
 		this.activeFlag = true;
 		this.visitedFlag = false;

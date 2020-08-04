@@ -353,8 +353,8 @@ export class PvsLanguageServer {
 				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: result[result.length - 1] });
 				this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() });
 
-				// load sequent in proof explorer
-				this.proofExplorer.loadSequent(result[result.length - 1]);
+				// load initial sequent in proof explorer
+				this.proofExplorer.loadInitialSequent(result[result.length - 1]);
 				// start proof in proof explorer
 				this.proofExplorer.startProof({ autorun: !!opt.autorun, autorunCallback: (status: ProofStatus) => {
 					if (this.connection) {
