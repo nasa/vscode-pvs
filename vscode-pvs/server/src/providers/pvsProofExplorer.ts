@@ -1411,12 +1411,12 @@ export class PvsProofExplorer {
 	 */
 	trimNode (desc: { selected: ProofItem }): ProofItem[] | null {
 		if (desc && desc.selected && desc.selected.parent) {
-			const node: ProofItem = desc.selected;
+			const selected: ProofItem = desc.selected;
 			let items: ProofItem[] = null;
-			switch (node.contextValue) {
+			switch (selected.contextValue) {
 				case "root": {
-					items = node.children;
-					node.children = [];
+					items = selected.children;
+					selected.children = [];
 					// this.setActiveNode({ selected: this.root });
 					this.markAsActive({ selected: this.root });
 					break;
@@ -1424,38 +1424,42 @@ export class PvsProofExplorer {
 				case "proof-branch": {
 					// remove all children in this branch
 					let childWasPendingOrActive: boolean = false;
-					for (let i = 0; i < node.children.length && !childWasPendingOrActive; i++) {
-						if (node.children[i].isPending() || node.children[i].isActive()
-								|| (node.children[i] === this.ghostNode.realNode && this.ghostNode.isActive()) ) {
+					for (let i = 0; i < selected.children.length && !childWasPendingOrActive; i++) {
+						if (selected.children[i].isPending() || selected.children[i].isActive()
+								|| (selected.children[i] === this.ghostNode.realNode && this.ghostNode.isActive()) ) {
 							childWasPendingOrActive = true;
 						}
 					}
 					if (childWasPendingOrActive) {
 						// mark the current branch as active
 						// this.setActiveNode({ selected: node });
-						this.markAsActive({ selected: node });
+						this.markAsActive({ selected: selected });
 					}
-					items = node.children;
-					node.children = [];
+					items = selected.children;
+					selected.children = [];
 					break;
 				}
-				case "proof-command": {
+				case "proof-command": {	
 					// remove children if any
-					items = node.children;
-					node.children = [];
+					items = selected.children;
+					selected.children = [];
 					// remove also lower siblings
-					const parent: ProofItem = node.parent;
-					const idx: number = parent.children.indexOf(node);
+					const parent: ProofItem = selected.parent;
+					const idx: number = parent.children.indexOf(selected);
 					items = items.concat(parent.children.slice(idx + 1, parent.children.length + 1));
 					parent.children = parent.children.slice(0, idx + 1);
-					if (node.isVisited()) {
-						// this.setActiveNode({ selected: node });
-						this.markAsActive({ selected: node });
+					if (!selected.isVisited()) {
+						this.markAsActive({ selected: selected });
+					} else {
+						this.activeNode = this.ghostNode;
+						this.ghostNode.parent = selected.parent;
+						this.ghostNode.realNode = selected;
+						this.activeNode.active();
 					}
 					break;
 				}
 				default: {
-					console.warn(`[proof-explorer] Warning: unrecognized node type ${node.contextValue} detected while trimming ${node.name}`);
+					console.warn(`[proof-explorer] Warning: unrecognized node type ${selected.contextValue} detected while trimming ${selected.name}`);
 				}
 			}
 			if (items && items.length) {
