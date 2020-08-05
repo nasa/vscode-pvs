@@ -462,7 +462,7 @@ export async function getProofStatus (desc: {
 			fileExtension: ".jprf", 
 			contextFolder: desc.contextFolder
 		});
-		const proofFile: ProofFile = await fsUtils.readProofFile(jprf_file);
+		const proofFile: ProofFile = await readProofFile(jprf_file);
 		if (proofFile) {
 			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
 			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
@@ -480,6 +480,21 @@ export async function getProofStatus (desc: {
 	return null;
 }
 
+
+
+/**
+ * Utility function, returns the header for a prooflite script
+ * @param formulaName Formula proved by this prooflite script
+ * @param theoryName Theory of the formula
+ * @param status Proof status
+ */
+export function makeProofliteHeader (formulaName: string, theoryName: string, status: ProofStatus): string { 
+	return `%-------------------------------------------
+% @formula: ${formulaName} 
+% @theory: ${theoryName}
+% @status: ${getIcon(status)}${status}
+%-------------------------------------------\n`;
+}
 /**
  * Utility function, returns the prooflite script for the theorem indicated in the fuction arguments
  * @param desc 
@@ -492,26 +507,18 @@ export async function getProofLiteScript (desc: {
 	formulaName: string
 }): Promise<string> {
 	if (desc) {
-		const makeHeader = (status: ProofStatus): string => { 
-			return `%-------------------------------------------
-% @formula: ${desc.formulaName} 
-% @theory: ${desc.theoryName}
-% @status: ${getIcon(status)}${status}
-%-------------------------------------------\n`; 
-		}
-		let proofScript: string = makeHeader("untried");
+		let proofScript: string = makeProofliteHeader(desc.formulaName, desc.theoryName, "untried");
 		// check if the .jprf file contains the proof status
 		const jprf_file: string = fsUtils.desc2fname({
 			fileName: desc.fileName, 
 			fileExtension: ".jprf", 
 			contextFolder: desc.contextFolder
 		});
-		const proofFile: ProofFile = await fsUtils.readProofFile(jprf_file);
+		const proofFile: ProofFile = await readProofFile(jprf_file);
 		if (proofFile) {
 			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
 			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
-				proofScript = makeHeader(proofDescriptors[0].info.status);
-
+				proofScript = makeProofliteHeader(desc.formulaName, desc.theoryName, proofDescriptors[0].info.status);
 				const proofLite: string[] = proofTree2ProofLite(proofDescriptors[0]);
 				if (proofLite && proofLite.length) {
 					proofScript += proofLite.join("\n");
@@ -915,6 +922,11 @@ export function pvsVersionToString (version: PvsVersionDescriptor): string {
 	return null;
 }
 
+/**
+ * Utility function, converts a proof descriptor to a prooflite script
+ * @param proofDescriptor 
+ * @param opt 
+ */
 export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { barDash?: boolean }): string[] | null {
 	opt = opt || {};
 	const proofTreeToProofLite_aux = (nodes: ProofNode[], currentBranch?: string, indent?: number): string => {
@@ -1084,6 +1096,90 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 	return null;
 }
 
+/**
+ * Reads the content of a .jprf file
+ * @param fname Name of the prooflite file
+ * @param opt Optionals
+ *               - quiet (boolean): if true, the function will not print any message to the console. 
+ */
+export async function readProofFile (fname: string, opt?: { quiet?: boolean }): Promise<ProofFile> {
+	opt = opt || {};
+	let proofFile: ProofFile = null;
+	fname = fname.replace("file://", "");
+	fname = fsUtils.tildeExpansion(fname);
+	const content: string = await fsUtils.readFile(fname);
+	if (content) {
+		try {
+			proofFile = JSON.parse(content);
+		} catch (jsonError) {
+			if (!opt.quiet) {
+				console.error(`[fs-utils] Error: Unable to parse proof file ${fname}`, jsonError.message);
+				console.error(`[fs-utils] Storing corrupted file content to ${fname}.err`);
+			}
+			// create a backup copy of the corrupted jprf file, because it might get over-written
+			await fsUtils.renameFile(fname, `${fname}.err`);
+			await fsUtils.writeFile(`${fname}.err.msg`, jsonError.message);
+		} finally {
+			return proofFile;
+		}
+	}
+	return proofFile;
+}
+
+/**
+ * Utility function, appends a prooflite script at the end of a given file
+ * @param fname Name of the prooflite file
+ * @param script The prooflite script to be appended
+ */
+export async function appendProoflite (fname: string, script: string): Promise<boolean> {
+	if (fname && script) {
+		const content: string = await fsUtils.readFile(fname);
+		const newContent: string = content + `\n\n${script}`;
+		return await fsUtils.writeFile(fname, newContent);
+	}
+	return false;
+}
+/**
+ * Utility function, removes a prooflite script from a given file
+ * @param fname Name of the prooflite file
+ * @param formulaName name of the prooflite script to be removed
+ */
+export async function removeProoflite (fname: string, formulaName: string): Promise<boolean> {
+	if (fname && formulaName) {
+		fname = fsUtils.decodeURIComponents(fname);
+		const fileExists: boolean = await fsUtils.fileExists(fname);
+		if (fileExists) {
+			const content: string = await fsUtils.readFile(fname);
+			if (content) {
+				// group 1 is the header (this group can be null)
+				// group 2 is the prooflite script
+				const regex: RegExp = new RegExp(`(%-*[\\w\\W\\s]+%-*)?\\s*\\b(${formulaName}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formulaName})`, "g");
+				const newContent: string = content.replace(regex, "");
+				return await fsUtils.writeFile(fname, newContent);
+			}
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, saves a prooflite script for a given formula in the given file
+ * @param fname Name of the prooflite file
+ * @param formulaName name of the prooflite script to be removed
+ * @param script The prooflite script to be saved in the file
+ */
+export async function saveProoflite (fname: string, formulaName: string, script: string): Promise<boolean> {
+	if (fname && formulaName && script) {
+		fname = fsUtils.decodeURIComponents(fname);
+		const fileExists: boolean = await fsUtils.fileExists(fname);
+		if (fileExists) {
+			// deleted any previous version of the prooflite script in the file
+			await removeProoflite(fname, formulaName);
+		}
+		// append the new prooflite script
+		return await appendProoflite(fname, script);
+	}
+	return false;
+}
 
 export function isEmptyPrf(prf: string): boolean {
 	return !prf || prf === `("" (postpone))`;

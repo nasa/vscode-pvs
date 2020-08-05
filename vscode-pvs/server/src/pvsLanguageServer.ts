@@ -518,10 +518,10 @@ export class PvsLanguageServer {
 		return null;
 	}
 
-	/**
-	 * Load jprf proof file
-	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
-	 */
+	// /**
+	//  * Load jprf proof file
+	//  * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
+	//  */
 	// async loadProofRequest (request: { 
 	// 	fileName: string, 
 	// 	fileExtension: string, 
@@ -540,51 +540,51 @@ export class PvsLanguageServer {
 	// 		}
 	// 	}
 	// }
+	// /**
+	//  * Save jprf proof file
+	//  * @param args Handler arguments: filename, file extension, context folder, theory name, formula name, proof
+	//  */
+	// async saveProofRequest (request: { 
+	// 	fileName: string, 
+	// 	fileExtension: string, 
+	// 	theoryName: string, 
+	// 	formulaName: string, 
+	// 	contextFolder: string, 
+	// 	proofDescriptor: ProofDescriptor,
+	// 	quit?: boolean
+	// }): Promise<void> {
+	// 	if (request) {
+	// 		const success: boolean = await this.saveProof(request);
+	// 		if (request.quit) {
+	// 			await this.quitProof();
+	// 		}
+	// 		this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: request });
+	// 		// trigger a context update, so proof status will be updated on the front-end
+	// 		setTimeout(() => {
+	// 			this.getContextDescriptor({ contextFolder: request.contextFolder }).then((cdesc: PvsContextDescriptor) => {
+	// 				this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+	// 			});	
+	// 		}, 200);
+	// 	} else {
+	// 		console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", request);
+	// 	}
+	// }
+	// async saveProof (request: { 
+	// 	fileName: string, 
+	// 	fileExtension: string, 
+	// 	theoryName: string, 
+	// 	formulaName: string, 
+	// 	contextFolder: string, 
+	// 	proofDescriptor: ProofDescriptor
+	// }): Promise<boolean> {
+	// 	if (this.pvsProxy) {
+	// 		return this.pvsProxy.saveProof(request);
+	// 	}
+	// 	// else
+	// 	console.error(`[pvs-language-server] Error: Could not save proof script (pvs-proxy is null)`);
+	// 	return false;
+	// }
 
-	/**
-	 * Save jprf proof file
-	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name, proof
-	 */
-	async saveProofRequest (request: { 
-		fileName: string, 
-		fileExtension: string, 
-		theoryName: string, 
-		formulaName: string, 
-		contextFolder: string, 
-		proofDescriptor: ProofDescriptor,
-		quit?: boolean
-	}): Promise<void> {
-		if (request) {
-			const success: boolean = await this.saveProof(request);
-			if (request.quit) {
-				await this.quitProof();
-			}
-			this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: request });
-			// trigger a context update, so proof status will be updated on the front-end
-			setTimeout(() => {
-				this.getContextDescriptor({ contextFolder: request.contextFolder }).then((cdesc: PvsContextDescriptor) => {
-					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
-				});	
-			}, 200);
-		} else {
-			console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", request);
-		}
-	}
-	async saveProof (request: { 
-		fileName: string, 
-		fileExtension: string, 
-		theoryName: string, 
-		formulaName: string, 
-		contextFolder: string, 
-		proofDescriptor: ProofDescriptor
-	}): Promise<boolean> {
-		if (this.pvsProxy) {
-			return this.pvsProxy.saveProof(request);
-		}
-		// else
-		console.error(`[pvs-language-server] Error: Could not save proof script (pvs-proxy is null)`);
-		return false;
-	}
 	/**
 	 * Typecheck file
 	 * @param args Handler arguments: filename, file extension, context folder
@@ -1853,7 +1853,7 @@ export class PvsLanguageServer {
 
 
 			// prover commands
-			this.connection.onRequest(serverCommand.proofExecCommand, async (desc: ProofExecCommand) => {
+			this.connection.onRequest(serverCommand.proverCommand, async (desc: ProofExecCommand | ProofEditCommand) => {
 				if (desc) {
 					switch (desc.action) {
 						case "forward": { this.proofExplorer.forward(); break; }
@@ -1861,15 +1861,7 @@ export class PvsLanguageServer {
 						case "fast-forward": { this.proofExplorer.fastForwardToNodeX(desc); break; }
 						case "run": { await this.proofExplorer.run({ feedbackToTerminal: true }); break; }
 						case "quit": { await this.proofExplorer.quitProof(); break; }
-						default: {
-							console.warn(`[pvs-server] Warning: unhandled proof exec request ${JSON.stringify(desc)}`);
-						}
-					}
-				}
-			});
-			this.connection.onRequest(serverCommand.proofEditCommand, async (desc: ProofEditCommand) => {
-				if (desc) {
-					switch (desc.action) {
+						//------
 						case "append-node": { this.proofExplorer.appendNodeX(desc); break; }
 						case "copy-node": { this.proofExplorer.copyNodeX(desc); break; }
 						case "paste-node": { this.proofExplorer.pasteNodeX(desc); break; }
@@ -1884,8 +1876,9 @@ export class PvsLanguageServer {
 						case "trim-unused": { this.proofExplorer.removeNotVisitedX(desc); break; }
 						case "rename-node": { this.proofExplorer.renameNodeX(desc); break; }
 						case "save": { await this.proofExplorer.saveProof(); break; }
+						//------
 						default: {
-							console.warn(`[pvs-server] Warning: unhandled proof edit request ${JSON.stringify(desc)}`);
+							console.warn(`[pvs-server] Warning: unhandled prover command ${JSON.stringify(desc)}`);
 						}
 					}
 				}

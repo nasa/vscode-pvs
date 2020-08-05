@@ -1833,7 +1833,7 @@ export class PvsProofExplorer {
 		// update proof descriptor
 		this.proofDescriptor = this.makeProofDescriptor();
 		// save proof descriptor to file
-		const success: boolean = await this.pvsLanguageServer.saveProof({ 
+		const success: boolean = await this.pvsProxy.saveProof({ 
 			fileName: this.formula.fileName,
 			fileExtension: this.formula.fileExtension,
 			contextFolder: this.formula.contextFolder,
@@ -1844,6 +1844,19 @@ export class PvsProofExplorer {
 		if (success) {
 			// mark proof as not dirty
 			this.dirtyFlag = false;
+			if (this.proofDescriptor.info.status === "proved") {
+				// save prooflite
+				const fname: string = fsUtils.desc2fname({
+					contextFolder: this.formula.contextFolder,
+					fileName: this.formula.theoryName,
+					fileExtension: ".prl"
+				});
+				const content: string[] = utils.proofTree2ProofLite(this.proofDescriptor);
+				if (content && content.length) {
+					const header: string = utils.makeProofliteHeader(this.formula.formulaName, this.formula.theoryName, this.proofDescriptor.info.status);
+					utils.saveProoflite(fname, this.formula.formulaName, header + content.join("\n"));
+				}
+			}
 		}
 		this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: this.formula });
 	}

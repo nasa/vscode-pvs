@@ -395,7 +395,7 @@ export class EventsDispatcher {
                 proofDescriptor: ProofDescriptor
             }
         }) => {
-            const fname: string = `${desc.args.fileName}.jprf`;
+            const fname: string = `${desc.args.fileName}.jprf/.prl`;
             if (desc.response.success) {
                 if (!this.quietMode) {
                     window.showInformationMessage(`Proof ${desc.args.formulaName} saved in file ${fname}`);

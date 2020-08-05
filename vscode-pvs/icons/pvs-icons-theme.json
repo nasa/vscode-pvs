@@ -8,6 +8,10 @@
 			"iconPath": "prf-icon.png",
 			"description": "pvs proof file"
 		},
+		"prooflite_script_icon": {
+			"iconPath": "prl-icon.png",
+			"description": "pvs prooflite file"
+		},
 		"json_proof_script_icon": {
 			"iconPath": "prf-icon.png",
 			"description": "pvs proof file"
@@ -22,7 +26,8 @@
 		"prf": "proof_script_icon",
 		"jprf": "proof_script_icon",
 		"pr" : "proof_state_icon",
-		"prlite": "proof_script_icon",
+		"prlite": "prooflite_script_icon",
+		"prl": "prooflite_script_icon",
 		"summary": "pvs_icon"
 	},
 	"languageIds": {

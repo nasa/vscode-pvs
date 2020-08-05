@@ -405,8 +405,9 @@ export const serverCommand = {
 
 	cancelOperation: "pvs.cancel-operation",
 
-	proofExecCommand: "pvs.command.proof-exec",
-	proofEditCommand: "pvs.command.proof-edit",
+	// proofExecCommand: "pvs.command.proof-exec",
+	// proofEditCommand: "pvs.command.proof-edit",
+	proverCommand: "pvs.prover-command",
 
 	listDownloadableVersions: "pvs.list-downloadable-versions",
 	downloadPvs: "pvs.download-pvs",

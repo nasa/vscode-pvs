@@ -1014,7 +1014,7 @@ export class PvsProxy {
 
 			try {
 				const fname: string = path.join(formula.contextFolder, `${formula.fileName}.jprf`);
-				let proofFile: ProofFile = await fsUtils.readProofFile(fname, opt);
+				let proofFile: ProofFile = await utils.readProofFile(fname, opt);
 				const key: string = `${formula.theoryName}.${formula.formulaName}`;
 				// try to load the proof from the .jprf file
 				if (proofFile && proofFile[key] && proofFile[key].length > 0) {
@@ -1074,7 +1074,7 @@ export class PvsProxy {
 		if (desc) {
 			desc = fsUtils.decodeURIComponents(desc);
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
-			let proofFile: ProofFile = await fsUtils.readProofFile(fname);
+			let proofFile: ProofFile = await utils.readProofFile(fname);
 			proofFile = proofFile || {};
 			const key: string = `${desc.theoryName}.${desc.formulaName}`;
 			proofFile[key] = [ desc.proofDescriptor ]; // TODO: implement mechanism to save a specific proof?

@@ -860,6 +860,8 @@
 					".prf",
 					".jprf",
 					".pr",
+					".prlite",
+					".prl",
 					".hpvs"
 				],
 				"firstLine": "\\s*((%+\\w+)|((\\w+)\\s*(?:\\[([\\w\\W\\s]*)\\])?\\s*\\:\\s*(THEORY|theory|Theory)\\b))",
