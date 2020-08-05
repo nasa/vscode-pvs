@@ -187,7 +187,7 @@ export class PvsLanguageServer {
 		return this.pvsProxy;
 	}
 	
-	//-- utility functions
+	//-- utility functions for notifiying the client
 	protected notifyStartExecution (desc: { msg: string }): void {
 		if (this.connection) {
 			this.connection.sendNotification("server.status.progress", desc);
@@ -213,40 +213,20 @@ export class PvsLanguageServer {
 			this.connection.sendNotification(`server.status.end-important-task-${desc.id}`, desc);
 		}
 	}
-
 	protected notifyMessage (desc: { msg: string }): void {
-		// error shown in the status bar
 		if (this.connection) {
 			this.connection.sendNotification("server.important-notification", desc);
 		}
 	}
-	//--
+
+	/**
+	 * Internal function, checks if the context folder has changed
+	 * @param contextFolder 
+	 */
 	protected isSameWorkspace (contextFolder: string): boolean {
 		return contextFolder === this.lastParsedContext
 			|| contextFolder === path.join(this.lastParsedContext, fsUtils.pvsbinFolder);
 	}
-
-	/**
-	 * Internal function, checks that pvsProxy and desc are defined
-	 * @param desc 
-	 */
-	// protected checkArgs (methodID: string, desc: { fileName?: string, fileExtension?: string, contextFolder: string, theoryName?: string, formulaName?: string, cmd?: string }): boolean {
-	// 	if (desc && desc.contextFolder) {
-	// 		if (this.pvsProxy) {
-	// 			switch (methodID) {
-	// 				case "proveFormula": {
-	// 					return desc.formulaName !== null && desc.formulaName !== undefined && desc.formulaName !== "";
-	// 				}
-	// 			}
-	// 			return true;
-	// 		} else {
-	// 			console.error(`[pvs-language-server.${methodID}] Error: pvs proxy is null`);
-	// 		}
-	// 	} else {
-	// 		console.error(`[pvs-language-server.${methodID}] Error: descriptor is null or malformed`);
-	// 	}
-	// 	return false;
-	// }
 
 
 	//--------------------------------------------------------------------
@@ -337,33 +317,29 @@ export class PvsLanguageServer {
 		const response: PvsResponse = await this.proveFormula(formula);
 		if (response) {
 			const channelID: string = utils.desc2id(formula);
-			if (response.result) {
+			// the initial response should include only one sequent descriptor
+			const result: SequentDescriptor[] = response.result;
+			if (result && result.length) {
 				// notify the client that the server is in prover mode
 				this.notifyServerMode("in-checker");
-				// the following commands are necessary to create the log file and start up the interactive cli session
-				// const proofLogPath: string = path.join(request.contextFolder, fsUtils.pvsbinFolder);
-				// const pvsLogFile: string = path.join(proofLogPath, `${channelID}${fsUtils.logFileExtension}`);
-				// const pvsTmpLogFile: string = path.join(proofLogPath, `${channelID}-tmp${fsUtils.logFileExtension}`);
-				// await fsUtils.createFolder(proofLogPath);
-				// await fsUtils.writeFile(pvsTmpLogFile, "");
 
-				// load proof state -- the initial response should include only one sequent
-				const result: SequentDescriptor[] = response.result;
-				// await fsUtils.writeFile(pvsLogFile, utils.formatSequent(result[result.length - 1]));
-				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: result[result.length - 1] });
+				// publish the sequent on the cligateway, so it is visible in the prover terminal
+				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: result[0] });
 				this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() });
 
 				// load initial sequent in proof explorer
-				this.proofExplorer.loadInitialSequent(result[result.length - 1]);
+				this.proofExplorer.loadInitialSequent(result[0]);
+
 				// start proof in proof explorer
 				this.proofExplorer.startProof({ autorun: !!opt.autorun, autorunCallback: (status: ProofStatus) => {
+					// the autorun call back is executed at the end of a proof re-run
 					if (this.connection) {
 						this.connection.sendRequest(serverEvent.autorunFormulaResponse, status);
+						this.notifyServerMode("lisp");
 					}
-					this.notifyServerMode("lisp");
 				}});
 
-				if (!opt.autorun) {
+				if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
 					this.notifyEndImportantTask({ id: taskId });
 				}
 			}
@@ -373,9 +349,6 @@ export class PvsLanguageServer {
 				this.pvsErrorManager.handleProveFormulaError({ request: formula, response: <PvsError> response, taskId });
 			}
 		}
-		// if (this.connection) {
-		// 	this.connection.sendRequest(serverEvent.proveFormulaResponse, { response, args: request });
-		// }
 	}
 	/**
 	 * Discharge TCCs (prove-tccs)

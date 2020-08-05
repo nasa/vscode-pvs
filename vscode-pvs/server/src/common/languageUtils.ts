@@ -512,7 +512,7 @@ export async function getProofLiteScript (desc: {
 			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
 				proofScript = makeHeader(proofDescriptors[0].info.status);
 
-				const proofLite: string[] = proofTree2ProofLite(proofDescriptors[0].proofTree);
+				const proofLite: string[] = proofTree2ProofLite(proofDescriptors[0]);
 				if (proofLite && proofLite.length) {
 					proofScript += proofLite.join("\n");
 				}
@@ -915,7 +915,7 @@ export function pvsVersionToString (version: PvsVersionDescriptor): string {
 	return null;
 }
 
-export function proofTree2ProofLite (proofTree: ProofNode, opt?: { barPecent?: boolean }): string[] | null {
+export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { barDash?: boolean }): string[] | null {
 	opt = opt || {};
 	const proofTreeToProofLite_aux = (nodes: ProofNode[], currentBranch?: string, indent?: number): string => {
 		indent = indent || 0;
@@ -970,13 +970,14 @@ export function proofTree2ProofLite (proofTree: ProofNode, opt?: { barPecent?: b
 		}
 		return res;
 	}
-	if (proofTree) {
-		let script: string = proofTreeToProofLite_aux([ proofTree ]);
+	if (proofDescriptor && proofDescriptor.proofTree) {
+		let script: string = proofTreeToProofLite_aux([ proofDescriptor.proofTree ]);
 		script = script || "(postpone)";
-		const res = `${proofTree.name} : PROOF
+		// the theory name will be given by the file name
+		const res: string = `${proofDescriptor.info.formula} : PROOF
 ${script}
-QED ${proofTree.name}`;
-		return (opt.barPecent) ? res.split("\n").map(line => { return "%|- " + line; })
+QED ${proofDescriptor.info.formula}`;
+		return (opt.barDash) ? res.split("\n").map(line => { return "%|- " + line; })
 			: res.split("\n");
 	}
 	return null;
