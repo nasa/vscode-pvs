@@ -631,7 +631,7 @@ export class PvsProofExplorer {
 
 			//--- check special conditions: empty/null command, invalid command, no change before proceeding
 			// if command is invalid command, stop execution and provide feedback to the user 
-			if (utils.isEmptyCommand(cmd) || utils.isInvalidCommand(this.proofState) || utils.isUndoUndoPlusCommand(cmd)) {
+			if (utils.isUndoUndoPlusCommand(cmd)) {
 				// this.running = false;
 				// vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 				if (this.autorunFlag) {
@@ -642,16 +642,14 @@ export class PvsProofExplorer {
 					// save and quit proof
 					await this.saveProof();
 					await this.quitProof();
-				} else {
-					if (utils.isInvalidCommand(this.proofState)) {
-						if (utils.isSameCommand(activeNode.name, cmd) && !this.ghostNode.isActive()) {
-							this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
-							// mark the tree rooted at the previous active node as not visited
-							activeNode.treeNotVisited();
-						}
-					}
 				}
 				// return;
+			} else if (utils.isInvalidCommand(this.proofState) || utils.isEmptyCommand(cmd)) {
+				if (utils.isSameCommand(activeNode.name, cmd) && !this.ghostNode.isActive()) {
+					this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
+					// mark the tree rooted at the previous active node as not visited
+					activeNode.treeNotVisited();
+				}
 			} else if (utils.noChange(this.proofState)) {
 				// if command produced no change, provide feedback to the user, stop any running proof
 				// move the indicator forward (keep same proof branch) if the command was in the proof tree 				
@@ -1604,7 +1602,13 @@ export class PvsProofExplorer {
 		// set QED
 		this.root.QED();
 		// save proof if status has changed
-		if (this.root.proofStatusChanged() || this.dirtyFlag) {
+		const fname: string = fsUtils.desc2fname({
+			fileName: this.formula.theoryName,
+			fileExtension: ".prl",
+			contextFolder: this.formula.contextFolder
+		});
+		const proofliteExists: boolean = await utils.containsProoflite(fname, this.formula.formulaName);
+		if (this.root.proofStatusChanged() || this.dirtyFlag || !proofliteExists) {
 			await this.saveProof(); // proof descriptor is automatically updated by saveproof
 		} else {
 			// update proof descriptor
@@ -1845,17 +1849,14 @@ export class PvsProofExplorer {
 			// mark proof as not dirty
 			this.dirtyFlag = false;
 			if (this.proofDescriptor.info.status === "proved") {
-				// save prooflite
-				const fname: string = fsUtils.desc2fname({
+				await this.pvsProxy.saveProoflite({ 
+					fileName: this.formula.fileName,
+					fileExtension: this.formula.fileExtension,
 					contextFolder: this.formula.contextFolder,
-					fileName: this.formula.theoryName,
-					fileExtension: ".prl"
+					theoryName: this.formula.theoryName,
+					formulaName: this.formula.formulaName,
+					proofDescriptor: this.proofDescriptor
 				});
-				const content: string[] = utils.proofTree2ProofLite(this.proofDescriptor);
-				if (content && content.length) {
-					const header: string = utils.makeProofliteHeader(this.formula.formulaName, this.formula.theoryName, this.proofDescriptor.info.status);
-					utils.saveProoflite(fname, this.formula.formulaName, header + content.join("\n"));
-				}
 			}
 		}
 		this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: this.formula });

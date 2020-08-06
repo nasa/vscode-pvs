@@ -991,6 +991,8 @@ export class PvsProxy {
 
 	/**
 	 * Loads the proof script for the formula indicated in the request
+	 * The function looks for the proof in the .jprf file first.
+	 * If the proof is not in the .jprf file, then checks the .prf file and updates the jprf file with the obtained information
 	 * @param formula 
 	 */
 	async loadProof (formula: PvsFormula, opt?: {
@@ -1085,6 +1087,29 @@ export class PvsProxy {
 		console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", desc);
 		return false;
 	}
+
+	async saveProoflite (desc: { 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		formulaName: string, 
+		contextFolder: string, 
+		proofDescriptor: ProofDescriptor
+	}): Promise<boolean> {
+		// save prooflite
+		const fname: string = fsUtils.desc2fname({
+			contextFolder: desc.contextFolder,
+			fileName: desc.theoryName,
+			fileExtension: ".prl"
+		});
+		const content: string[] = utils.proofTree2ProofLite(desc.proofDescriptor);
+		if (content && content.length) {
+			const header: string = utils.makeProofliteHeader(desc.formulaName, desc.theoryName, desc.proofDescriptor.info.status);
+			return await utils.saveProoflite(fname, desc.formulaName, header + content.join("\n"));
+		}
+		return false;
+	}
+
 
 	/**
 	 * Returns the prooflite script for the given formula -- FIXME: display-prooflite-script is not working, we need to use languageUtils.proofTree2ProofLite()

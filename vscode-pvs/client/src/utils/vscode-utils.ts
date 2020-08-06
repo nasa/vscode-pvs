@@ -81,11 +81,11 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${path.join(vscode.workspace.rootPath, "pvsbin", "preview")}`);
     
     const folder: string = opt.contextFolder || vscode.workspace.rootPath;
-    const fname: string = path.join(folder, name);
+    const fname: string = path.join(folder, "pvsbin", name);
     const preview: vscode.Uri = vscode.Uri.file(fname);
+    // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${fname}`);
 
     const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
-    // edit.deleteFile(preview, { ignoreIfNotExists: true });
     edit.createFile(preview, { overwrite: true });
     edit.insert(preview, new vscode.Position(0, 0), content);
     let success: boolean = await vscode.workspace.applyEdit(edit);
