@@ -1162,6 +1162,27 @@ export async function removeProoflite (fname: string, formulaName: string): Prom
 	return false;
 }
 /**
+ * Utility function, checks if a prooflite script is present in a given file
+ * @param fname Name of the prooflite file
+ * @param formulaName name of the prooflite script
+ */
+export async function containsProoflite (fname: string, formulaName: string): Promise<boolean> {
+	if (fname && formulaName) {
+		fname = fsUtils.decodeURIComponents(fname);
+		const fileExists: boolean = await fsUtils.fileExists(fname);
+		if (fileExists) {
+			const content: string = await fsUtils.readFile(fname);
+			if (content) {
+				// group 1 is the header (this group can be null)
+				// group 2 is the prooflite script
+				const regex: RegExp = new RegExp(`(%-*[\\w\\W\\s]+%-*)?\\s*\\b(${formulaName}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formulaName})`, "g");
+				return regex.test(content);
+			}
+		}
+	}
+	return false;
+}
+/**
  * Utility function, saves a prooflite script for a given formula in the given file
  * @param fname Name of the prooflite file
  * @param formulaName name of the prooflite script to be removed
@@ -1430,6 +1451,10 @@ export function isInvalidCommand (result: { commentary: string[] }): boolean {
 			return comment.startsWith("not a valid prover command");
 		}).length > 0 || result.commentary.filter((comment: string)=> {
 			return comment.startsWith(`Found 'eof' when expecting`);
+		}).length > 0 || result.commentary.filter((comment: string)=> {
+			return comment.includes(`bad proof command`);
+		}).length > 0 || result.commentary.filter((comment: string)=> {
+			return comment.includes(`Expecting an expression`);
 		}).length > 0);
 }
 
