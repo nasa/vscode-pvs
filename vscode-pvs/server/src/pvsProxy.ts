@@ -809,7 +809,7 @@ export class PvsProxy {
 	} 
 
 	async quitProofIfInProver (): Promise<void> {
-		if (await this.getServerMode() === "in-checker") {
+		if (await this.getMode() === "in-checker") {
 			const useLispInterface: boolean = true;
 			const response: PvsResponse = await this.proofCommand({ cmd: "(quit)" }, { useLispInterface });
 			if (response && response.error && this.pvsErrorManager) {
