@@ -297,8 +297,12 @@ export class PvsLanguageServer {
 		}
 
 		// make sure pvs files are typechecked before starting a proof attempt
-		if (formula.fileExtension === ".pvs") {	
-			const response: PvsResponse = await this.typecheckFile(formula);
+		if (formula.fileExtension) {	
+			const response: PvsResponse = await this.typecheckFile({
+				contextFolder: formula.contextFolder,
+				fileName: formula.fileName,
+				fileExtension: ".pvs" // this allows to check the pvs file for .tccs
+			});
 			if (response && response.error) {
 				const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(formula);
 				this.diags[fname] = {
