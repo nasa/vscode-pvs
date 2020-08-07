@@ -313,10 +313,14 @@ export class PvsLanguageServer {
 			}
 		}
 		// load proof -- this needs to be done before starting the prover session
+		if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] loading proof for formula ${formula.formulaName}`); }
 		await this.proofExplorer.loadProofRequest(formula);
+		if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] starting prover session for formula ${formula.formulaName}`); }
+
 		const response: PvsResponse = await this.proveFormula(formula);
-		if (response) {
+		if (response) {			
 			const channelID: string = utils.desc2id(formula);
+			if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] sending sequent to prover ${channelID}`); }
 			// the initial response should include only one sequent descriptor
 			const result: SequentDescriptor[] = response.result;
 			if (result && result.length) {
@@ -345,8 +349,13 @@ export class PvsLanguageServer {
 			}
 		} else {
 			// there was an error
-			if (this.pvsErrorManager) {
-				this.pvsErrorManager.handleProveFormulaError({ request: formula, response: <PvsError> response, taskId });
+			if (this.connection) {
+				if (this.pvsErrorManager) {
+					this.pvsErrorManager.handleProveFormulaError({ request: formula, response: <PvsError> response, taskId });
+				}
+				this.connection.sendNotification(serverEvent.proverData, response);
+			} else {
+				console.error(response);
 			}
 		}
 	}
