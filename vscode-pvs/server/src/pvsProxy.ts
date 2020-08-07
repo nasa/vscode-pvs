@@ -1497,6 +1497,7 @@ export class PvsProxy {
 	}
 
 	async restartPvsServer (desc?: { pvsPath?: string }): Promise<boolean> {
+		this.mode = "lisp";
 		if (desc && desc.pvsPath) {
 			this.pvsPath = desc.pvsPath;
 			console.log(`[pvs-proxy] New pvs path: ${this.pvsPath}`);
