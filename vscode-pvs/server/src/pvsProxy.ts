@@ -131,6 +131,8 @@ export class PvsProxy {
 	protected useNasalib: boolean = false;
 	protected jsonOutputAvailable: boolean = false;
 
+	protected mode: ServerMode = "lisp";
+
 	/**
 	 * Parser
 	 */
@@ -183,6 +185,10 @@ export class PvsProxy {
 			return true;
 		}
 		return false;
+	}
+
+	async getMode (): Promise<ServerMode> {
+		return this.mode;
 	}
 
 	async enableExternalServer (): Promise<void> {
@@ -676,6 +682,7 @@ export class PvsProxy {
 				if (ans && ans.result && ans.result["length"] === undefined) {
 					ans.result = [ ans.result ]; // the prover should return an array of proof states
 				}
+				this.mode = "in-checker";
 				return ans;
 			}
 		}
@@ -809,6 +816,7 @@ export class PvsProxy {
 				this.pvsErrorManager.handleProofCommandError({ cmd: "(quit)", response: <PvsError> response });
 			}
 		}
+		this.mode = "lisp";
 	}
 
 	/**
@@ -931,6 +939,17 @@ export class PvsProxy {
 							}
 							result["last-cmd"] = desc.cmd; // this will remove the timeout applied to grind
 						}
+					}
+					for (let i = 0; i < proofStates.length; i++) {
+						const result: SequentDescriptor = proofStates[i];
+						if (utils.QED(result)) {
+							this.mode = "lisp";
+						}
+					}
+					if (utils.isQuitCommand(desc.cmd) 
+							|| utils.isQuitDontSaveCommand(desc.cmd) 
+							|| utils.isSaveThenQuitCommand(desc.cmd)) {
+						this.mode = "lisp";
 					}
 				}
 			}

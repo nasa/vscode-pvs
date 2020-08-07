@@ -245,7 +245,7 @@ export class PvsLanguageServer {
 	}
 	async proveFormula (formula: PvsFormula): Promise<PvsResponse | null> {
 		if (formula && formula.fileName && formula.formulaName && formula.fileExtension && formula.contextFolder && formula.theoryName) {
-			if (await this.getServerMode() === "in-checker") {
+			if (await this.getMode() !== "lisp") {
 				await this.quitProof();
 			}
 			try {
@@ -266,14 +266,14 @@ export class PvsLanguageServer {
 	async proofCommandRequest (request: PvsProofCommand): Promise<void> {
 		this.proofExplorer.proofCommandRequest(request);
 	};
-	async getServerMode (): Promise<ServerMode> {
-		return await this.pvsProxy.getServerMode();
+	async getMode (): Promise<ServerMode> {
+		return await this.pvsProxy.getMode();
 	} 
 	async proveFormulaRequest (formula: PvsFormula, opt?: { autorun?: boolean }): Promise<void> {
 		opt = opt || {};
 		formula = fsUtils.decodeURIComponents(formula);
 		
-		if (await this.getServerMode() === "in-checker") {
+		if (await this.getMode() !== "lisp") {
 			// save then quit current proof
 			if (this.proofExplorer.proofIsDirty() && !opt.autorun) {
 				// ask if the proof needs to be saved
@@ -451,6 +451,9 @@ export class PvsLanguageServer {
 		}
 	}
 	async startEvaluatorRequest (request: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string }): Promise<void> {
+		if (await this.getMode() !== "lisp") {
+			return;
+		}
 		request = fsUtils.decodeURIComponents(request);
 		// send feedback to the front-end
 		const taskId: string = `pvsio-${request.fileName}@${request.theoryName}`;
@@ -467,6 +470,7 @@ export class PvsLanguageServer {
 			this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: pvsioResponse });
 			this.connection.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: request });
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
+			this.notifyServerMode("pvsio");
 		} else {
 			this.pvsErrorManager.handleEvaluationError({ request, response: <PvsError> response, taskId });
 		}
@@ -612,13 +616,12 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async typecheckFileRequest (request: PvsFile): Promise<void> {
+		if (await this.getMode() !== "lisp") {
+			return;
+		}
 		if (request) {
 			request = fsUtils.decodeURIComponents(request);
-			const desc: {
-				fileName: string, 
-				fileExtension: string, 
-				contextFolder: string 
-			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
+			const desc: PvsFile = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
 			if (desc) {
 				const fname: string = `${desc.fileName}${desc.fileExtension}`;
 				// make sure file exists
@@ -868,7 +871,7 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async parseFileRequest (request: PvsFile, opt?: { withFeedback?: boolean }): Promise<void> {
-		if (await this.getServerMode() === "in-checker") {
+		if (await this.getMode() !== "lisp") {
 			return;
 		}
 		request = fsUtils.decodeURIComponents(request);
