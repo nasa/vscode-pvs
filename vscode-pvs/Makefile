@@ -40,6 +40,8 @@ all: install
 
 release: all install-vsce
 	node_modules/vsce/out/vsce package
+	make resolutions
+	make resolutions
 
 package:
 	node_modules/vsce/out/vsce package

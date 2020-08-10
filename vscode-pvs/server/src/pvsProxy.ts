@@ -682,7 +682,9 @@ export class PvsProxy {
 				if (ans && ans.result && ans.result["length"] === undefined) {
 					ans.result = [ ans.result ]; // the prover should return an array of proof states
 				}
-				this.mode = "in-checker";
+				if (ans && !ans.error) {
+					this.mode = "in-checker";
+				}
 				return ans;
 			}
 		}
@@ -1502,40 +1504,37 @@ export class PvsProxy {
 			this.pvsPath = desc.pvsPath;
 			console.log(`[pvs-proxy] New pvs path: ${this.pvsPath}`);
 		}
-		if (!this.externalServer) {
-			console.info("[pvs-proxy] Rebooting pvs-server...");
-			const serverPort: number = this.serverPort;
-			const serverAddress: string = this.serverAddress;
-			const success: ProcessCode = await this.createPvsServer({
-				enableNotifications: true,
-				externalServer: this.externalServer,
-				verbose: this.verbose
+
+		console.info("[pvs-proxy] Rebooting pvs-server...");
+		const serverPort: number = this.serverPort;
+		const serverAddress: string = this.serverAddress;
+		// if externalServer === true then createPvsServer creates only the pvs process necessary to parse/typecheck files
+		// otherwise creates also the xml-rpc server
+		const pvsProcessActive: ProcessCode = await this.createPvsServer({
+			enableNotifications: true,
+			externalServer: this.externalServer,
+			verbose: this.verbose
+		});
+		if (pvsProcessActive !== ProcessCode.SUCCESS) {
+			this.pvsErrorManager.handleStartPvsServerError(pvsProcessActive);
+		}
+		if (this.client && (this.serverPort !== serverPort || this.serverAddress !== serverAddress)) {
+			// port has changed, we need to update the client
+			this.client = xmlrpc.createClient({
+				host: this.serverAddress, port: this.serverPort, path: "/RPC2"
 			});
-			if (success !== ProcessCode.SUCCESS) {
-				this.pvsErrorManager.handleStartPvsServerError(success);
-			}
-			if (this.serverPort !== serverPort || this.serverAddress !== serverAddress) {
-				// port has changed, we need to update the client
-				this.client = xmlrpc.createClient({
-					host: this.serverAddress, port: this.serverPort, path: "/RPC2"
-				});
-				if (!this.client) {
-					console.error(`[pvs-proxy] Error: could not create client necessary to connect to pvs-server`);
-					this.pvsErrorManager.handleStartPvsServerError(ProcessCode.COMMFAILURE);
-				}
+			if (!this.client) {
+				console.error(`[pvs-proxy] Error: could not create client necessary to connect to pvs-server`);
+				this.pvsErrorManager.handleStartPvsServerError(ProcessCode.COMMFAILURE);
 			}
 		}
+		
 		await this.legacy.activate(this.pvsServer, {
 			pvsErrorManager: this.pvsErrorManager
 		});
-		console.info("[pvs-proxy] Reboot complete!");
-		// if (this.externalServer || this.pvsServer) {
-		return await this.createClient();
-		// }
-		// // send workspace info
-		// await this.sendWorkspaceInfo();
-		// // send pvs info
-		// await this.sendPvsVersionInfo();
+		const success: boolean = await this.createXmlrpcPeer();
+		if (success) { console.info("[pvs-proxy] Reboot complete!"); }
+		return success;
 	}
 
   // async xmlrpcMethodHelp (methodName: string): Promise<XmlRpcResponse> {
@@ -1594,84 +1593,57 @@ export class PvsProxy {
 			await this.loadPvsVersionInfo();
 		}
 		return success;
-		// if (!this.externalServer) {
-		// 	// try to create pvs server
-		// 	const success: ProcessCode = await this.createPvsServer({
-		// 		enableNotifications: true, 
-		// 		externalServer: this.externalServer,
-		// 		verbose: this.verbose
-		// 	});
-		// 	if (success !== ProcessCode.SUCCESS) {
-		// 		this.pvsErrorManager.handleStartPvsServerError(success);
-		// 	}
-		// }
-		// await this.legacy.activate(this.pvsServer, {
-		// 	pvsErrorManager: this.pvsErrorManager
-		// });
-		// // this.legacy.pvsProcess = this.pvsServer;
-		// // if pvs server has been created, then create the client
-		// // if (this.externalServer || this.pvsServer) {
-		// 	const success: boolean = await this.createClient(opt);
-		// 	return success;
-		// // }
-		// // return false;
 	}
 
-	async createClient (opt?: { debugMode?: boolean, showBanner?: boolean }): Promise<boolean> {
+	async createXmlrpcPeer (opt?: { debugMode?: boolean, showBanner?: boolean }): Promise<boolean> {
 		opt = opt || {};
 		if (this.client) {
 			return Promise.resolve(true);
 		}
 		return new Promise(async (resolve, reject) => {
-			// try {
-				let portIsAvailable: boolean = (this.guiServer) ? true : false;
-				for (let i = 0; !portIsAvailable && i < this.MAX_PORT_ATTEMPTS; i++) {
-					portIsAvailable = await this.checkPort(this.clientPort, true);
-					if (portIsAvailable === false) {
-						this.clientPort++;
-					}
+			let portIsAvailable: boolean = (this.guiServer) ? true : false;
+			for (let i = 0; !portIsAvailable && i < this.MAX_PORT_ATTEMPTS; i++) {
+				portIsAvailable = await this.checkPort(this.clientPort, true);
+				if (portIsAvailable === false) {
+					this.clientPort++;
 				}
-				if (portIsAvailable) {
-					this.banner = `GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
-					console.log(`[pvs-proxy] Activating GUI Server on http://${this.clientAddress}:${this.clientPort}`)
-					this.client = xmlrpc.createClient({
-						host: this.serverAddress, port: this.serverPort, path: "/RPC2"
-					});
-					if (!this.client) {
-						console.error(`[pvs-proxy] Error: could not create client necessary to connect to pvs-server`);
-						resolve(false);
-					}
-					if (!this.guiServer) {
-						try {
-							this.guiServer = xmlrpc.createServer({
-								host: this.clientAddress, port: this.clientPort, path: "/RPC2"
-							}, () => {
-								this.serverReadyCallBack();
-								if (opt.showBanner) {
-									console.log("[pvs-proxy] " + this.banner);
-								}
-								resolve(true);
-							});
-							this.guiServer.once('error', (error: Error) => {
-								console.error(error);
-								if (error["code"] === 'EADDRINUSE') {
-									console.log(`[pvs-proxy] port ${this.clientPort} busy`);
-								}
-							});
-				
-						} catch (gui_server_error) {
-							console.error(`[pvs-proxy]`, gui_server_error);
-							resolve(false);
-						}
-					}
-				} else {
-					console.error(`[pvs-proxy] Error: could not start GUI-server`);
+			}
+			if (portIsAvailable) {
+				this.banner = `GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
+				console.log(`[pvs-proxy] Activating GUI Server on http://${this.clientAddress}:${this.clientPort}`)
+				this.client = xmlrpc.createClient({
+					host: this.serverAddress, port: this.serverPort, path: "/RPC2"
+				});
+				if (!this.client) {
+					console.error(`[pvs-proxy] Error: could not create client necessary to connect to pvs-server`);
 					resolve(false);
 				}
-			// } catch (err) {
-			// 	console.error("[pvs-proxy] Error while activating XmlRpcProvider", JSON.stringify(err));
-			// 	resolve(false);
-			// }
+				if (!this.guiServer) {
+					try {
+						this.guiServer = xmlrpc.createServer({
+							host: this.clientAddress, port: this.clientPort, path: "/RPC2"
+						}, () => {
+							this.serverReadyCallBack();
+							if (opt.showBanner) {
+								console.log("[pvs-proxy] " + this.banner);
+							}
+							resolve(true);
+						});
+						this.guiServer.once('error', (error: Error) => {
+							console.error(error);
+							if (error["code"] === 'EADDRINUSE') {
+								console.log(`[pvs-proxy] port ${this.clientPort} busy`);
+							}
+						});
+					} catch (gui_server_error) {
+						console.error(`[pvs-proxy]`, gui_server_error);
+						resolve(false);
+					}
+				}
+			} else {
+				console.error(`[pvs-proxy] Error: could not start GUI-server`);
+				resolve(false);
+			}
 		});
 	}
 

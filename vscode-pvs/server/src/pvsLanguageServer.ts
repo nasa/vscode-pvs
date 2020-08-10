@@ -322,7 +322,7 @@ export class PvsLanguageServer {
 		if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] starting prover session for formula ${formula.formulaName}`); }
 
 		const response: PvsResponse = await this.proveFormula(formula);
-		if (response) {			
+		if (response && response.result) {			
 			const channelID: string = utils.desc2id(formula);
 			if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] sending sequent to prover ${channelID}`); }
 			// the initial response should include only one sequent descriptor
