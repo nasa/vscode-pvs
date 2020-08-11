@@ -39,7 +39,7 @@
 import { execSync } from 'child_process';
 import * as os from 'os';
 import * as fsUtils from '../common/fsUtils';
-import { pvsSnapshotsUrl, PvsDownloadDescriptor, allegroLicenseUrl } from '../common/serverInterface';
+import { pvsSnapshotsUrl, PvsDownloadDescriptor, allegroLicenseUrl, NasalibDownloadDescriptor, nasalibFile } from '../common/serverInterface';
 
 export class PvsPackageManager {
 
@@ -92,4 +92,20 @@ export class PvsPackageManager {
         }
         return null;
     }
+
+    /**
+     * Downloads nasalib from github.
+     */
+    static async downloadNasalib (desc: NasalibDownloadDescriptor): Promise<string> {
+        const url: string = nasalibFile;
+        const fname: string = `${os.tmpdir()}/nasalib7.zip`;
+        const downloadCommand: string = fsUtils.downloadCommand(url, { out: fname });
+        fsUtils.deleteFile(fname);
+        const dnl: Buffer = execSync(downloadCommand);
+        if (dnl) {
+            return fname;
+        }
+        return null;
+    }
+
 }

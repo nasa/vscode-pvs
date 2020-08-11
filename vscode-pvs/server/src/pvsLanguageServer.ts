@@ -64,7 +64,8 @@ import {
 	ProofExecDidEndProof,
 	ProofStatus,
 	ProofEditSave,
-	ProofExecQuit
+	ProofExecQuit,
+	NasalibDownloadDescriptor
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -1535,7 +1536,8 @@ export class PvsLanguageServer {
 	}
 
 	protected async sendPvsVersionInfo (): Promise<boolean> {
-		const desc: PvsVersionDescriptor = this.pvsProxy.getPvsVersionInfo();
+		// load pvs version info
+		const desc: PvsVersionDescriptor = await this.pvsProxy.loadPvsVersionInfo();
 		if (desc) {
 			const pvsVersion: number = parseFloat(desc["pvs-version"]);
 			if (pvsVersion >= this.MIN_PVS_VERSION) {
@@ -1768,7 +1770,7 @@ export class PvsLanguageServer {
 				await fsUtils.deletePvsCache(this.lastParsedContext, { keepTccs: true }); // this will remove .pvscontext and pvsbin
 				await this.pvsProxy.rebootPvsServer(desc);
 				this.notifyServerMode("lisp");
-				// send version info				
+				// send version info
 				await this.sendPvsVersionInfo();
 			});
 			this.connection.onRequest(serverCommand.parseFile, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
@@ -1859,6 +1861,14 @@ export class PvsLanguageServer {
 					this.connection.sendRequest(serverEvent.downloadLicensePageResponse, { response: licensePage });
 				}
 			});
+			// this.connection.onRequest(serverCommand.setNasalibPath, async (desc: { path: string }) => {
+			// 	if (desc && desc.path) {
+			// 		const success: boolean = await this.pvsProxy.setNasalibPath(desc.path);
+			// 		if (this.connection) {
+			// 			this.connection.sendRequest(serverEvent.setNasalibPathResponse, { success });
+			// 		}	
+			// 	}
+			// });
 
 			this.connection.onRequest(serverCommand.startEvaluator, async (args: PvsTheory) => {
 				this.startEvaluatorRequest(args);

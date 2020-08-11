@@ -228,6 +228,9 @@ export async function fileExists(fname: string): Promise<boolean> {
 export async function dirExists(contextFolder: string): Promise<boolean> {
 	return pathExists(contextFolder);
 }
+export async function folderExists(contextFolder: string): Promise<boolean> {
+	return await dirExists(contextFolder);
+}
 export async function pathExists(path: string): Promise<boolean> {
 	if (path) {
 		let ans: boolean = false;
@@ -370,7 +373,8 @@ export function downloadCommand(url: string, opt?: { out?: string }): string {
 	opt = opt || {};
 	const downloader: string = getDownloader();
 	if (downloader) {
-		return opt.out ? `${downloader} -o ${opt.out} ${url}` : `${downloader} ${url}`;
+		const cmd: string = (downloader === "curl") ? `${downloader} -L ` : downloader; // -L allows curl to follow redirect. wget automatically follows up to 20 redirect. Redirects may happen when downloading files from github.
+		return opt.out ? `${cmd} -o ${opt.out} ${url}` : `${cmd} ${url}`;
 	}
 	return null;
 }

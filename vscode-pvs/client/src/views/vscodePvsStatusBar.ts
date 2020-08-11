@@ -54,6 +54,8 @@ export class VSCodePvsStatusBar {
     protected crashReport: StatusBarItem;
     protected restartPvs: StatusBarItem;
 
+    protected downloadNasalib: StatusBarItem;
+
     protected stats: {
         [filename: string]: { lemmas: number, definitions: number, types: number }
     } = { "!tot!": { lemmas: 0, definitions: 0, types: 0 } };
@@ -92,6 +94,8 @@ export class VSCodePvsStatusBar {
 
         this.restartPvs = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
         this.crashReport = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+
+        this.downloadNasalib = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
     }
 
 
@@ -213,6 +217,18 @@ export class VSCodePvsStatusBar {
     hideRestartButton (): void {
         this.restartPvs.hide();
     }
+    showDownloadNasalibButton (showButton?: boolean): void {
+        if (showButton === true) {
+            this.downloadNasalib.text = `$(symbol-function) Download NASALib`;
+            this.downloadNasalib.command = "vscode-pvs.download-nasalib";
+            this.downloadNasalib.show();
+        } else {
+            this.hideDownloadNasalibButton();
+        }
+    }
+    hideDownloadNasalibButton (): void {
+        this.downloadNasalib.hide();
+    }
 
     /**
      * Shows a critical failures in the status bar -- these failures require restarting pvs
@@ -244,6 +260,15 @@ export class VSCodePvsStatusBar {
         // this.workspaceStatus.hide();
         this.pvsStatus.hide();
         this.hideVersionInfo();
+
+        this.hideInstallNasalib();
+    }
+
+    showInstallNasalib (): void {
+        this.showDownloadNasalibButton();
+    }
+    hideInstallNasalib (): void {
+        this.hideDownloadNasalibButton();
     }
 
     /**

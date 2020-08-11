@@ -414,7 +414,7 @@ export const serverCommand = {
 	downloadLicensePage: "pvs.download-license-page",
 
 	downloadNasalib: "pvs.download-nasalib",
-	importNasalib: "pvs.import-nasalib"
+	// setNasalibPath: "pvs.set-nasalib-path"
 
 };
 
@@ -446,7 +446,7 @@ export const serverEvent = {
 	downloadLicensePageResponse: "pvs.response.download-license-page",
 
 	downloadNasalibResponse: "pvs.response.download-nasalib",
-	importNasalibResponse: "pvs.response.import-nasalib",
+	setNasalibPathResponse: "pvs.response.set-nasalib-path",
 
 	pvsServerReady: "pvs.response.restart",
 
@@ -478,8 +478,6 @@ export const serverEvent = {
 	pvsVersionInfo: "pvs.event.version-info",
 	pvsNotPresent: "pvs.event.pvs-not-present",
 	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version",
-
-	nasalibNotPresent: "pvs.event.nasalib-not-present",
 
 	profilerData: "pvs.event.profiler-data",
 	proverData: "pvs.event.prover-data"
@@ -579,12 +577,14 @@ export declare interface CliGatewayQED extends CliGatewayQEDEvent {
 
 
 export interface PvsDownloadDescriptor { url: string, fileName: string, version: string };
+export interface NasalibDownloadDescriptor { pvsPath: string };
 
 // useful constants
 export const sriUrl: string = "www.csl.sri.com";
 export const pvsSnapshotsUrl: string = `http://${sriUrl}/users/owre/drop/pvs-snapshots/`;
 export const allegroLicenseUrl: string = `http://pvs.csl.sri.com/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;
-export const nasalibUrl: string = "https://github.com/nasa/nasalib";
+export const nasalibUrl: string = "https://github.com/nasa/pvslib";
+export const nasalibFile: string = "https://github.com/nasa/pvslib/archive/pvs7.0.zip";
 
 // ProofEdit
 export type ProofEditCommand = ProofEditAppendNode | ProofEditCopyNode | ProofEditPasteNode | ProofEditCopyTree

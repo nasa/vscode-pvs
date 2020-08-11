@@ -54,6 +54,7 @@ import * as vscodeUtils from './utils/vscode-utils';
 import { SequentDescriptor } from "./common/languageUtils";
 import { readlink } from "fs";
 import { VSCodePvsLogger } from "./views/vscodePvsLogger";
+import { VSCodePvsPackageManager } from "./providers/vscodePvsPackageManager";
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -65,6 +66,7 @@ export class EventsDispatcher {
     protected vscodePvsTerminal: VSCodePvsTerminal;
     protected proofMate: VSCodePvsProofMate;
     protected logger: VSCodePvsLogger;
+    protected packageManager: VSCodePvsPackageManager;
 
     protected inChecker: boolean = false;
     protected quietMode: boolean = false;
@@ -76,7 +78,8 @@ export class EventsDispatcher {
         proofExplorer: VSCodePvsProofExplorer,
         vscodePvsTerminal: VSCodePvsTerminal,
         proofMate: VSCodePvsProofMate,
-        logger: VSCodePvsLogger
+        logger: VSCodePvsLogger,
+        packageManager: VSCodePvsPackageManager
     }) {
         this.client = client;
         this.statusBar = handlers.statusBar;
@@ -86,6 +89,7 @@ export class EventsDispatcher {
         this.vscodePvsTerminal = handlers.vscodePvsTerminal;
         this.proofMate = handlers.proofMate;
         this.logger = handlers.logger;
+        this.packageManager = handlers.packageManager;
     }
     protected resource2desc (resource: string | { 
         fileName?: string, fileExtension?: string, contextFolder?: string, theoryName?: string, formulaName?: string,
@@ -176,6 +180,7 @@ export class EventsDispatcher {
 		this.client.onRequest(serverEvent.pvsVersionInfo, (version: PvsVersionDescriptor) => {
 			if (version) {
                 this.statusBar.pvsReady(version);
+                this.statusBar.showDownloadNasalibButton(!version["nasalib-version"]);
                 // this.proofExplorer.pvsReady(version);
                 // make sure a valid workspace is open in vscode
                 if (!vscode.workspace.name) {
@@ -628,10 +633,18 @@ export class EventsDispatcher {
 			const msg: string = `Reboot pvs-server?\n\nThis action can resolve situations where the server crashed or is not responding.`;
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
-                this.statusBar.showProgress("Rebooting pvs-server...");	
+                this.statusBar.showProgress("Rebooting pvs-server...");
                 this.client.sendRequest(serverCommand.rebootPvsServer);
                 // terminate any prover session
                 this.vscodePvsTerminal.quitAll(); // async call
+            }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.download-nasalib", async () => {
+            const success: boolean = await this.packageManager.nasalibInstallationWizard();
+            if (success) {
+                this.statusBar.hideDownloadNasalibButton();
+                this.statusBar.showProgress("Rebooting pvs-server...");
+                this.client.sendRequest(serverCommand.rebootPvsServer);
             }
         }));
 

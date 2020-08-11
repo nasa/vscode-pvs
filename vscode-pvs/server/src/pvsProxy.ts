@@ -116,6 +116,7 @@ export class PvsProxy {
 	protected guiServer: xmlrpc.Server; // GUI server, needed to receive responses sent back by pvs-server
 	protected pvsPath: string;
 	protected pvsLibraryPath: string;
+	protected nasalibPath: string;
 	protected pvsServer: PvsProcess;
 	protected connection: SimpleConnection; // connection to the client
 	protected externalServer: boolean;
@@ -149,6 +150,7 @@ export class PvsProxy {
 		opt = opt || {};
 		this.pvsPath = pvsPath;
 		this.pvsLibraryPath = path.join(pvsPath, "lib");
+		this.nasalibPath = path.join(pvsPath, "nasalib");
 		this.serverPort = (!!opt.serverPort) ? opt.serverPort : 22334;
 		this.clientPort = (!!opt.clientPort) ? opt.clientPort : 9092;
 		this.client_methods.forEach(mth => {
@@ -1233,7 +1235,14 @@ export class PvsProxy {
 		return this.pvsVersionInfo;
 	}
 
-	protected async loadPvsVersionInfo(): Promise<PvsVersionDescriptor> {
+	/**
+	 * Loads pvs version information
+	 */
+	async loadPvsVersionInfo(): Promise<PvsVersionDescriptor | null> {
+		// try to load nasalib
+		await this.setNasalibPath();
+		await this.loadPvsPatches();
+
 		// const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
 		const res: PvsResponse = await this.legacy.lisp(`(get-pvs-version-information)`);
 		const nasalib: string = await this.getNasalibVersionInfo();
@@ -1246,6 +1255,7 @@ export class PvsProxy {
 					"lisp-version": info[2].replace("International", "").trim(),
 					"nasalib-version": nasalib ? "NASALib" : null
 				}
+				return this.pvsVersionInfo;
 			}
 		}
 		return null;
@@ -1254,7 +1264,7 @@ export class PvsProxy {
 	/**
 	 * Returns pvs version information
 	 */
-	async getNasalibVersionInfo(): Promise<string> {
+	async getNasalibVersionInfo(): Promise<string | null> {
 		const nasalibPresent: PvsResponse = await this.legacy.lisp(`(boundp '*nasalib-version*)`);
 		if (nasalibPresent && nasalibPresent.result === "t") {
 			const nasalibVersion: PvsResponse = await this.legacy.lisp(`*nasalib-version*`);
@@ -1515,7 +1525,10 @@ export class PvsProxy {
 			externalServer: this.externalServer,
 			verbose: this.verbose
 		});
-		if (pvsProcessActive !== ProcessCode.SUCCESS) {
+		if (pvsProcessActive === ProcessCode.SUCCESS) {
+			// await this.setNasalibPath();
+			// await this.loadPvsPatches();
+		} else {
 			this.pvsErrorManager.handleStartPvsServerError(pvsProcessActive);
 		}
 		if (this.client && (this.serverPort !== serverPort || this.serverAddress !== serverAddress)) {
@@ -1572,6 +1585,17 @@ export class PvsProxy {
 		return await this.pvsRequest('reset');
 	}
 
+	protected async setNasalibPath (): Promise<void> {
+		const path: string = this.nasalibPath.endsWith("/") ? this.nasalibPath : `${this.nasalibPath}/`
+		await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
+	}
+
+	protected async loadPvsPatches (): Promise<void> {
+		// const response: PvsResponse = await this.legacy.lisp(`(boundp 'load-pvs-patches)`);
+		// if (response && response.result === "t") {
+			await this.legacy.lisp(`(load-pvs-patches)`);
+		// }
+	}
 
 
 	/**
@@ -1591,6 +1615,9 @@ export class PvsProxy {
 		const success: boolean = await this.restartPvsServer();
 		if (success) {
 			await this.loadPvsVersionInfo();
+			console.log(`[pvs-proxy] Activation complete!`);
+		} else {
+			console.error(`[pvs-proxy] Activation failed :/`);
 		}
 		return success;
 	}

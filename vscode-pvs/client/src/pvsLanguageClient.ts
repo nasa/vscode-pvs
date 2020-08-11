@@ -302,7 +302,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						proofExplorer: this.proofExplorer,
 						vscodePvsTerminal: this.vscodePvsTerminal,
 						proofMate: this.proofMate,
-						logger: this.logger
+						logger: this.logger,
+						packageManager: this.packageManager
 					});
 					this.eventsDispatcher.activate(context);
 

@@ -93,7 +93,7 @@ export class PvsProcess {
 	protected log(msg: string, opt?: { force?: boolean}): void {
 		opt = opt || {};
 		if (msg && (this.verbose || opt.force)) {
-			if (!msg.startsWith("127.0.0.1")) {
+			if (!msg.startsWith("127.0.0.1") && !msg.startsWith("emacs does not support X;")) {
 				if (this.connection && this.connection.console) {
 					this.connection.console.log(msg);
 				} else {
@@ -230,7 +230,8 @@ export class PvsProcess {
 							}
 							if (this.cb && typeof this.cb === "function") {
 								let res: string = this.data.replace(/(?:\[\d+\])?\s+pvs\(\d+\)\s*:/g, "").replace(/\bRule\?/g, "");
-								res = res.replace("[Current process: Initial Lisp Listener]", ""); // clean up pvs output by removing unnecessary text
+								// clean up pvs output by removing unnecessary text
+								res = res.replace("[Current process: Initial Lisp Listener]", "");
 								this.cb(res.trim());
 							}
 						}
