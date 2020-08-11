@@ -3,7 +3,7 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
 ## Getting started
-New to VSCode-PVS and the PVS verification system? Try out our [tutorial](docs/TUTORIAL.md)!
+Are you new to VSCode-PVS and the PVS verification system? Try out our [tutorial](docs/TUTORIAL.md)!
 
 ## Functionalities
 The main functionalities provided by the environment are as follows:
