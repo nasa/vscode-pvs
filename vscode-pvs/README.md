@@ -62,6 +62,7 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
         │     ├── pvsCompletionProvider.ts     // Auto-completion
         │     ├── pvsDefinitionProvider.ts     // Find definitions
         │     ├── pvsHoverProvider.ts          // Hover information 
+        │     ├── pvsProofExplorer.ts          // Proof tree editor
         │     └── pvsPackageManager.ts         // Installation manager 
         ├── parser               // Parser grammar and scripts      
         ├── common               // Utility functions           
