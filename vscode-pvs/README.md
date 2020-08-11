@@ -74,7 +74,7 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
-### 1.0.24 (2020.08.xx)
+### 1.0.24 (2020.08.11)
 - Improved autocompletion
 - Improved support for multiline input in prover terminal
 - Improved Proof Explorer
