@@ -244,6 +244,8 @@ export class VSCodePvsPackageManager {
                         const pvsPath: string = await this.installPvs({ fname: desc.fname, targetFolder: targetFolder, version: desc.version });
                         if (pvsPath) {
                             await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
+                            this.statusBar.showProgress("Rebooting pvs-server...");
+                            this.client.sendRequest(serverCommand.rebootPvsServer);            
                             return true;
                         }
                     }
