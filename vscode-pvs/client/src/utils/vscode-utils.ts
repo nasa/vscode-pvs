@@ -38,6 +38,7 @@
 import * as vscode from 'vscode';
 import * as fsUtils from '../common/fsUtils';
 import * as path from 'path';
+import * as utils from '../common/languageUtils';
 
 /**
  * Returns the context folder of the editor
@@ -101,3 +102,43 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     }
 }
 
+/**
+ * Utility function, shows a dialog that allows the user to select the pvs installation folder in the file system
+ * @param pvsPath 
+ */
+export async function addPvsLibraryFolderWizard (): Promise<boolean> {
+    const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: "Select PVS library folder"
+    });
+    let success: boolean = false;
+    if (selection && selection.length === 1) {
+        const path: string = selection[0].fsPath;
+        success = await addPvsLibraryFolder(path);
+        if (success) {
+            vscode.window.showInformationMessage(`Folder ${path} added to PVS library path`);
+        } else {
+            vscode.window.showInformationMessage(`Folder ${path} already in PVS library path`);
+        }
+    }
+    return success;
+}
+
+export async function clearPvsLibraryPath (): Promise<void> {
+    await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", undefined, vscode.ConfigurationTarget.Global);
+}
+export async function addPvsLibraryFolder (path: string): Promise<boolean> {
+    if (path) {
+        path = (path.endsWith("/")) ? path : `${path}/`;
+        const pvsLibraryPath: string = vscode.workspace.getConfiguration().get("pvs.pvsLibraryPath")
+        const libs: string[] = utils.decodePvsLibraryPath(pvsLibraryPath);
+        if (!libs.includes(path)) {
+            const newPvsLibraryPath: string = utils.createPvsLibraryPath(libs.concat([ path ]));
+            await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", newPvsLibraryPath, vscode.ConfigurationTarget.Global);
+            return true;
+        }
+    }
+    return false;
+}

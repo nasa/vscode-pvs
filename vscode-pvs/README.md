@@ -74,6 +74,9 @@ All settings and preferences from the previous version of VSCode-PVS will be mai
 
 
 ## ChangeLog
+### 1.0.25 (2020.08.xx)
+- Added new M-x commands (reinstall-pvs, reinstall-nasalib, set-pvs-path, settings)
+
 ### 1.0.24 (2020.08.11)
 - Improved autocompletion
 - Improved support for multiline input in prover terminal

@@ -115,8 +115,9 @@ export class PvsProxy {
 	protected client: xmlrpc.Client;
 	protected guiServer: xmlrpc.Server; // GUI server, needed to receive responses sent back by pvs-server
 	protected pvsPath: string;
-	protected pvsLibraryPath: string;
+	protected pvsLibPath: string; // these are internal libraries
 	protected nasalibPath: string;
+	protected pvsLibraryPath: string; // these are external libraries
 	protected pvsServer: PvsProcess;
 	protected connection: SimpleConnection; // connection to the client
 	protected externalServer: boolean;
@@ -145,12 +146,14 @@ export class PvsProxy {
 			serverPort?: number,
 			clientPort?: number, 
 			connection?: SimpleConnection,
-			externalServer?: boolean
+			externalServer?: boolean,
+			pvsLibraryPath?: string
 		}) {
 		opt = opt || {};
 		this.pvsPath = pvsPath;
-		this.pvsLibraryPath = path.join(pvsPath, "lib");
+		this.pvsLibPath = path.join(pvsPath, "lib");
 		this.nasalibPath = path.join(pvsPath, "nasalib");
+		this.pvsLibraryPath = opt.pvsLibraryPath || "";
 		this.serverPort = (!!opt.serverPort) ? opt.serverPort : 22334;
 		this.clientPort = (!!opt.clientPort) ? opt.clientPort : 9092;
 		this.client_methods.forEach(mth => {
@@ -1242,6 +1245,7 @@ export class PvsProxy {
 		// try to load nasalib
 		await this.setNasalibPath();
 		await this.loadPvsPatches();
+		await this.loadPvsLibraryPath();
 
 		// const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
 		const res: PvsResponse = await this.legacy.lisp(`(get-pvs-version-information)`);
@@ -1508,29 +1512,50 @@ export class PvsProxy {
 		}
 	}
 
-	async restartPvsServer (desc?: { pvsPath?: string }): Promise<boolean> {
+	/**
+	 * Utility function, restarts the xml-rpc server
+	 * @param opt 
+	 */
+	async restartPvsServer (opt?: { pvsPath?: string, pvsLibraryPath?: string }): Promise<boolean> {
+		opt = opt || {};
+
+		// set server mode to "lisp"
 		this.mode = "lisp";
-		if (desc && desc.pvsPath) {
-			this.pvsPath = desc.pvsPath;
-			console.log(`[pvs-proxy] New pvs path: ${this.pvsPath}`);
+
+		// update pvsPath and pvsLibraryPath with the provided info
+		if (opt) {
+			if (opt.pvsPath) {
+				this.pvsPath = opt.pvsPath;
+				console.log(`[pvs-proxy] PVS path: ${this.pvsPath}`);
+			}
+			if (opt.pvsLibraryPath) {
+				this.pvsLibraryPath = opt.pvsLibraryPath;
+				console.log(`[pvs-proxy] PVS library path: ${this.pvsLibraryPath}`);
+			}
 		}
 
 		console.info("[pvs-proxy] Rebooting pvs-server...");
 		const serverPort: number = this.serverPort;
 		const serverAddress: string = this.serverAddress;
-		// if externalServer === true then createPvsServer creates only the pvs process necessary to parse/typecheck files
-		// otherwise creates also the xml-rpc server
+
+		// create xml-rpc server
+		// if externalServer === true then method createPvsServer will create only 
+		// the pvs process necessary to parse/typecheck files.
+		// Otherwise, createPvsServer creates also the xml-rpc server.
 		const pvsProcessActive: ProcessCode = await this.createPvsServer({
 			enableNotifications: true,
 			externalServer: this.externalServer,
 			verbose: this.verbose
 		});
-		if (pvsProcessActive === ProcessCode.SUCCESS) {
-			// await this.setNasalibPath();
-			// await this.loadPvsPatches();
-		} else {
+		if (pvsProcessActive !== ProcessCode.SUCCESS) {
 			this.pvsErrorManager.handleStartPvsServerError(pvsProcessActive);
 		}
+		// activate proxy for Lisp interface
+		await this.legacy.activate(this.pvsServer, {
+			pvsErrorManager: this.pvsErrorManager
+		});
+
+		// create GUI server necessary for interacting with the xml-rpc server
 		if (this.client && (this.serverPort !== serverPort || this.serverAddress !== serverAddress)) {
 			// port has changed, we need to update the client
 			this.client = xmlrpc.createClient({
@@ -1542,10 +1567,7 @@ export class PvsProxy {
 			}
 		}
 		
-		await this.legacy.activate(this.pvsServer, {
-			pvsErrorManager: this.pvsErrorManager
-		});
-		const success: boolean = await this.createXmlrpcPeer();
+		const success: boolean = await this.createGuiServer();
 		if (success) { console.info("[pvs-proxy] Reboot complete!"); }
 		return success;
 	}
@@ -1560,16 +1582,17 @@ export class PvsProxy {
   // }
 
 	/**
-	 * Utility methods
+	 * Internal function, returns a unique ID
 	*/
-	get_fresh_id(): string {
-		// getTime can be used, but does potentially lead to duplicate ids
-		// return new Date().getTime();
-		// This may be overkill, a simple call to random is probably good enough.
+	protected get_fresh_id(): string {
 		return crypto.createHash('sha256').update(Math.random().toString(36)).digest('hex');
 	}
+	/**
+	 * Utility function, checks if the context folder is the pvs installation folder (pvsPath) or the internal library (pvsLibPath)
+	 * @param contextFolder 
+	 */
 	isProtectedFolder(contextFolder: string): boolean {
-		return !(contextFolder !== this.pvsPath && contextFolder !== this.pvsLibraryPath);
+		return !(contextFolder !== this.pvsPath && contextFolder !== this.pvsLibPath);
 	}
 
 	/**
@@ -1585,16 +1608,50 @@ export class PvsProxy {
 		return await this.pvsRequest('reset');
 	}
 
+	async getPvsLibraryPath (): Promise<string[]> {
+		const response: PvsResponse = await this.legacy.lisp(`*pvs-library-path*`);
+		if (response && response.result) {
+			const match: RegExpMatchArray = /\(([\w\W\s]+)\)/g.exec(response.result);
+			if (match && match.length > 1 && match[1]) {
+				const pvsLibraries: string[] = match[1].replace(/\s+/g, " ").split(`"`).filter((elem: string) => {
+					return elem.trim();
+				});
+				// console.log(pvsLibraries);
+				return pvsLibraries;
+			}
+		}
+		return [];
+	}
+
 	protected async setNasalibPath (): Promise<void> {
-		const path: string = this.nasalibPath.endsWith("/") ? this.nasalibPath : `${this.nasalibPath}/`
-		await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
+		const pvsLibraries: string[] = await this.getPvsLibraryPath();
+		const path: string = this.nasalibPath.endsWith("/") ? this.nasalibPath : `${this.nasalibPath}/`;
+		if (!pvsLibraries.includes(path)) {
+			await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
+		}
+	}
+
+	/**
+	 * Updates pvs library path
+	 * @param pvsLibraryPath colon-separated list of folders
+	 */
+	async loadPvsLibraryPath (): Promise<void> {
+		const libs: string[] = (this.pvsLibraryPath) ? this.pvsLibraryPath.split(":").map((elem: string) => {
+			return elem.trim();
+		}) : [];
+		if (libs && libs.length) {
+			const pvsLibraries: string[] = await this.getPvsLibraryPath();
+			for (let i = 0; i < libs.length; i++) {
+				const path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
+				if (!pvsLibraries.includes(path)) {
+					await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
+				}
+			}
+		}
 	}
 
 	protected async loadPvsPatches (): Promise<void> {
-		// const response: PvsResponse = await this.legacy.lisp(`(boundp 'load-pvs-patches)`);
-		// if (response && response.result === "t") {
-			await this.legacy.lisp(`(load-pvs-patches)`);
-		// }
+		await this.legacy.lisp(`(load-pvs-patches)`);
 	}
 
 
@@ -1622,7 +1679,7 @@ export class PvsProxy {
 		return success;
 	}
 
-	async createXmlrpcPeer (opt?: { debugMode?: boolean, showBanner?: boolean }): Promise<boolean> {
+	async createGuiServer (opt?: { debugMode?: boolean, showBanner?: boolean }): Promise<boolean> {
 		opt = opt || {};
 		if (this.client) {
 			return Promise.resolve(true);

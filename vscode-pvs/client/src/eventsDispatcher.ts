@@ -51,8 +51,6 @@ import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 import * as utils from './common/languageUtils';
 import * as commandUtils from './common/commandUtils';
 import * as vscodeUtils from './utils/vscode-utils';
-import { SequentDescriptor } from "./common/languageUtils";
-import { readlink } from "fs";
 import { VSCodePvsLogger } from "./views/vscodePvsLogger";
 import { VSCodePvsPackageManager } from "./providers/vscodePvsPackageManager";
 
@@ -584,6 +582,22 @@ export class EventsDispatcher {
                 vscodeUtils.showTextDocument(desc);
             });
             this.client.sendRequest(serverCommand.viewPreludeFile);
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.reinstall-pvs", () => {
+            this.packageManager.pvsInstallationWizard();
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.set-pvs-path", () => {
+            this.packageManager.pvsPathWizard();
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.reinstall-nasalib", () => {
+            this.packageManager.nasalibInstallationWizard();
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.add-pvs-library", () => {
+            vscodeUtils.addPvsLibraryFolderWizard();
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.clear-pvs-library-path", async () => {
+            await vscodeUtils.clearPvsLibraryPath();
+            vscode.window.showInformationMessage(`PVS library path cleared!`);
         }));
         // vscode-pvs.send-proof-command
         context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {

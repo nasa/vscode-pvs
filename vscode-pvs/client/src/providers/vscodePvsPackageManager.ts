@@ -43,6 +43,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { VSCodePvsStatusBar } from "../views/vscodePvsStatusBar";
 import * as fsUtils from '../common/fsUtils';
+import * as vscodeUtils from '../utils/vscode-utils';
 
 export class VSCodePvsPackageManager {
     protected client: LanguageClient;
@@ -198,19 +199,33 @@ export class VSCodePvsPackageManager {
         });
     }
     
+    /**
+     * Sets pvs path in vscode settings
+     */
+    async pvsPathWizard (): Promise <void> {
+        // choose installation folder
+        const pvsPath: string = await this.choosePvsInstallationFolder();
+        if (pvsPath) {
+            await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
+            this.statusBar.showProgress("Rebooting pvs-server...");
+            this.client.sendRequest(serverCommand.rebootPvsServer);
+            window.showInformationMessage(`PVS path is ${pvsPath}`);
+        }
+    }
 
     /**
      * Installation wizard for PVS
      * @param msg Opening message shown by the installation wizard
      */
-    async pvsInstallationWizard (msg: string): Promise<boolean> {
+    async pvsInstallationWizard (msg?: string): Promise<boolean> {
+        msg = msg || "PVS Installation Wizard";
 		const item = await window.showWarningMessage(msg, this.messages.downloadPvs, this.messages.setPvsPath);
 		if (item === this.messages.setPvsPath) {
             return this.selectPvsPath();
 		} else if (item === this.messages.downloadPvs) {
 
             // choose installation folder
-            const targetFolder: string = await this.chooseInstallationFolder();
+            const targetFolder: string = await this.choosePvsInstallationFolder(`Please choose PVS installation folder. A sub-folder 'pvs-7.1.0' will be created by the installation wizard.`);
             if (!targetFolder) {
                 this.statusBar.ready();
                 // operation cancelled by the user
@@ -259,12 +274,12 @@ export class VSCodePvsPackageManager {
     /**
      * Utility function used by pvsInstallationWizard to ask the user to choose the pvs installation folder
      */
-	protected async chooseInstallationFolder (): Promise<string> {
+	protected async choosePvsInstallationFolder (msg?: string): Promise<string> {
         const labels: { [ btn: string ]: string } = {
             browse: this.messages.chooseInstallationFolder,
             cancel: "Cancel"
         }
-        const msg: string = `Please choose PVS installation folder. A sub-folder with the PVS release will be automatically created by the installation wizard.`;
+        msg =  msg || `Please choose PVS installation folder.`;
         if (this.statusBar) { this.statusBar.showProgress(msg); }
         const item = await window.showInformationMessage(msg, labels.browse, labels.cancel);
         if (item === labels.browse) {
@@ -304,6 +319,7 @@ export class VSCodePvsPackageManager {
                 });	
             });
         }
+        await fsUtils.deleteFolder(desc.targetFolder);
         await extractPvs(desc);
         // set pvs.path configuration
         const pvsPath: string = path.join(desc.targetFolder, `pvs-${desc.version}`);

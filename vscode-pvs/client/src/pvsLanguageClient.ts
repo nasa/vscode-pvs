@@ -62,6 +62,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	// language client
 	protected client: LanguageClient;
 	protected pvsPath: string;
+	protected pvsLibraryPath: string; // comma-separated list of folders
 	protected pvsServerReady: boolean = false;
 
 	// context variables
@@ -184,13 +185,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
 			// re-initialise pvs if the executable is different
 			const pvsPath: string = workspace.getConfiguration().get("pvs.path");
-			if (pvsPath !== this.pvsPath) {
+			const pvsLibraryPath: string = workspace.getConfiguration().get("pvs.pvsLibraryPath");
+			if (pvsPath !== this.pvsPath || this.pvsLibraryPath !== pvsLibraryPath) {
 				this.pvsPath = pvsPath;
 				const msg: string = `Restarting PVS from ${pvsPath}`;
 				this.statusBar.showProgress(msg);
 				// window.showInformationMessage(msg);
-				this.client.sendRequest(comm.serverCommand.startPvsServer, { pvsPath: this.pvsPath }); // the server will use the last context folder it was using	
-			}
+				this.client.sendRequest(comm.serverCommand.startPvsServer, { pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath }); // the server will use the last context folder it was using	
+			}			
 		}, null, this.context.subscriptions);
 	}
 
@@ -311,8 +313,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
 					const contextFolder = vscodeUtils.getEditorContextFolder();
 					this.pvsPath = workspace.getConfiguration().get("pvs.path");
+					this.pvsLibraryPath = workspace.getConfiguration().get("pvs.pvsLibraryPath");
 					this.client.sendRequest(comm.serverCommand.startPvsServer, {
-						pvsPath: this.pvsPath, 
+						pvsPath: this.pvsPath,
+						pvsLibraryPath: this.pvsLibraryPath,
 						contextFolder
 					});
 					// create handler for pvsServerReady event

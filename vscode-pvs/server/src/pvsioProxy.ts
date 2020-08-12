@@ -239,13 +239,15 @@ class PvsIoProcess {
 
 export class PvsIoProxy {
 	protected pvsPath: string;
-	protected pvsLibraryPath: string;
+	protected pvsLibPath: string; // internal libraries
+	protected pvsLibraryPath: string; // external libraries
 	protected connection: SimpleConnection; // connection to the client
 	protected processRegistry: { [key: string]: PvsIoProcess } = {};
-	constructor (pvsPath: string, opt?: { connection?: SimpleConnection }) {
+	constructor (pvsPath: string, opt?: { connection?: SimpleConnection, pvsLibraryPath?: string }) {
 		opt = opt || {};
 		this.pvsPath = pvsPath;
-		this.pvsLibraryPath = path.join(pvsPath, "lib");
+		this.pvsLibraryPath = opt.pvsLibraryPath || "";
+		this.pvsLibPath = path.join(pvsPath, "lib");
 		this.connection = opt.connection;
 	}
 	async startEvaluator (desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponse> {

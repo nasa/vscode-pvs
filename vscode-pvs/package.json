@@ -50,47 +50,52 @@
 					"pvs.path": {
 						"type": "string",
 						"default": "",
-						"description": "PVS installation folder."
+						"description": "PVS installation folder"
 					},
-					"pvs.settings.codelensProvider": {
+					"pvs.pvsLibraryPath": {
+						"type": "string",
+						"default": "",
+						"description": "PVS library path (colon-separated list of folders, e.g., usr/libs/L1:usr/libs/L2)"
+					},
+					"pvs.pvsProver.watchdog": {
+						"type": "number",
+						"default": 8,
+						"description": "Watchdog for proof commands. Time is in seconds (0 means timeout disabled)"
+					},
+					"pvs.serviceProvider.codelens": {
 						"type": "boolean",
 						"default": true,
-						"description": "Inline actionable commands"
+						"description": "Enable in-line actionable commands"
 					},
-					"pvs.settings.completionProvider": {
+					"pvs.serviceProvider.autocompletion": {
 						"type": "boolean",
 						"default": true,
-						"description": "Autocompletion for function names and language keywords"
+						"description": "Autocomplete symbol names and language keywords"
 					},
-					"pvs.settings.definitionProvider": {
+					"pvs.serviceProvider.definitions": {
 						"type": "boolean",
 						"default": true,
-						"description": "Automatic search of symbol definitions"
+						"description": "Search symbol definitions"
 					},
-					"pvs.settings.hoverProvider": {
+					"pvs.serviceProvider.hover": {
 						"type": "boolean",
 						"default": true,
-						"description": "Hover information for symbol definitions"
+						"description": "Show hover tooltips for symbols"
 					},
-					"pvs.settings.parser.errorTolerant": {
+					"pvs.xtras.enableErrorTolerantParser": {
 						"type": "boolean",
 						"default": false,
 						"description": "Enable error tolerant parser. Requires Java JDK v1.8 or greater (https://openjdk.java.net)"
 					},
-					"pvs.settings.prover.watchdog": {
-						"type": "number",
-						"default": 8,
-						"description": "Proof commands are aborted if they don't produce results within this timeout (time is in seconds, 0 means timeout disabled)"
-					},
-					"pvs.settings.prover.profiler": {
-						"type": "boolean",
-						"default": false,
-						"description": "Show profiler data in vscode output channel pvs-server-profiler"
-					},
-					"pvs.settings.prover.log": {
+					"pvs.xtras.enableXmlrpcLoggger": {
 						"type": "boolean",
 						"default": true,
-						"description": "Log messages exchanged with the prover"
+						"description": "Log xmlrpc messages (output channel vscode-pvs:xmlrpc)"
+					},
+					"pvs.xtras.enableProfiler": {
+						"type": "boolean",
+						"default": false,
+						"description": "Log profiler data (output channel vscode-pvs:profiler)"
 					}
 				},
 				"disabled_properties": {

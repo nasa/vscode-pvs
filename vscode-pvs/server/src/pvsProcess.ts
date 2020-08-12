@@ -95,6 +95,7 @@ export class PvsProcess {
 		if (msg && (this.verbose || opt.force)) {
 			if (!msg.startsWith("127.0.0.1") && !msg.startsWith("emacs does not support X;")) {
 				if (this.connection && this.connection.console) {
+					// msg = msg.replace(/(\r\n|\n|\r)/gm, "");
 					this.connection.console.log(msg);
 				} else {
 					console.log(msg);

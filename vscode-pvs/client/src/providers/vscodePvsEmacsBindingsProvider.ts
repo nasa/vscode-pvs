@@ -51,7 +51,7 @@ import { workspace } from 'vscode';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
-import { serverCommand } from '../common/serverInterface';
+import { serverCommand, PvsFormula } from '../common/serverInterface';
 
 /**
  * cmds is the list of commands that are supported by the emacs binding defined in this module
@@ -64,7 +64,16 @@ const cmds: string[] = [
 	"pr", "prove",
 	"prt",
 	"pvsio",
+
+	"add-pvs-library",
+	"clear-pvs-library-path",
+	"reboot-pvs",
 	"restart-pvs",
+	"reinstall-pvs",
+	"reinstall-nasalib",
+	"set-pvs-path",
+	"settings",
+
 	"step-proof",
 	"show-tccs",
 	"vpf", "view-prelude-file"
@@ -86,7 +95,7 @@ export class VSCodePvsEmacsBindingsProvider {
 	}
 	protected autocompleteInput(input: string): string {
 		if (input) {
-			for (const i in cmds) {
+			for (let i = 0; i < cmds.length; i++) {
 				if (cmds[i].startsWith(input)) {
 					return cmds[i];
 				}
@@ -101,15 +110,22 @@ export class VSCodePvsEmacsBindingsProvider {
 			const line: number = window.activeTextEditor.selection.active.line;
 			const theoryName: string = utils.findTheoryName(document.getText(), line);
 			const formulaName: string = utils.findFormulaName(document.getText(), line);
-			const desc = { 
+			const desc: PvsFormula = { 
 				fileName: fsUtils.getFileName(document.fileName),
 				fileExtension: fsUtils.getFileExtension(document.fileName),
 				contextFolder: fsUtils.getContextFolder(document.fileName),
 				theoryName,
-				formulaName,
-				line
+				formulaName
 			};
 			switch (userInput) {
+				case "add-pvs-library": {
+					commands.executeCommand('vscode-pvs.add-pvs-library');
+					break;
+				}
+				case "clear-pvs-library-path": {
+					commands.executeCommand('vscode-pvs.clear-pvs-library-path');
+					break;
+				}
 				case "show-tccs": {
 					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.show-tccs', desc);
@@ -151,10 +167,27 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.prove-formula', desc)
 					break;
 				}
-				case "reboot-pvs-server": {
+				case "restart-pvs":
+				case "reboot-pvs": {
 					commands.executeCommand('vscode-pvs.reboot-pvs');
 					// const pvsPath: string = workspace.getConfiguration().get(`pvs.path`);
 					// this.client.sendRequest(serverCommand.rebootPvsServer, { pvsPath });
+					break;
+				}
+				case "reinstall-pvs": {
+					commands.executeCommand('vscode-pvs.reinstall-pvs');
+					break;
+				}
+				case "reinstall-nasalib": {
+					commands.executeCommand('vscode-pvs.reinstall-nasalib');
+					break;
+				}
+				case "settings": {
+					commands.executeCommand('workbench.action.openSettings', '@ext:paolomasci.vscode-pvs');
+					break;
+				}
+				case "set-pvs-path": {
+					commands.executeCommand('vscode-pvs.set-pvs-path');
 					break;
 				}
 				case "vpf":

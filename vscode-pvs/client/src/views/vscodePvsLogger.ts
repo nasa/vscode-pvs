@@ -43,22 +43,30 @@ export class VSCodePvsLogger {
     protected proverLogger: vscode.OutputChannel;
 
     activate (context: vscode.ExtensionContext): void {
-        this.profiler = vscode.window.createOutputChannel("pvs-server-profiler");
+        this.profiler = vscode.window.createOutputChannel("vscode-pvs:profiler");
         this.profiler.clear();
-        this.proverLogger = vscode.window.createOutputChannel("pvs-prover");
+        const showProfilerOutput: boolean = vscode.workspace.getConfiguration().get("pvs.xtras.enableProfiler");
+        if (!showProfilerOutput) {
+            this.profiler.hide();
+        }
+        this.proverLogger = vscode.window.createOutputChannel("vscode-pvs:xmlrpc");
         this.proverLogger.clear();
+        const logProverOutput: boolean = vscode.workspace.getConfiguration().get("pvs.xtras.enableXmlrpcLoggger");
+        if (!logProverOutput) {
+            this.proverLogger.hide();
+        }
     }
     profilerData (data: string): void {
-        const showProfilerOutput: boolean = vscode.workspace.getConfiguration().get("pvs.settings.prover.profiler");
+        const showProfilerOutput: boolean = vscode.workspace.getConfiguration().get("pvs.xtras.enableProfiler");
         if (showProfilerOutput) {
-            this.profiler = this.profiler || vscode.window.createOutputChannel("pvs-server-profiler");
+            this.profiler = this.profiler;
             this.profiler.appendLine(data);
         }
     }
     proverData (data: string): void {
-        const logProverOutput: boolean = vscode.workspace.getConfiguration().get("pvs.settings.prover.log");
+        const logProverOutput: boolean = vscode.workspace.getConfiguration().get("pvs.xtras.enableXmlrpcLoggger");
         if (logProverOutput) {
-            this.proverLogger = this.proverLogger || vscode.window.createOutputChannel("pvs-prover");
+            this.proverLogger = this.proverLogger;
             this.proverLogger.appendLine(data);
         }
     }

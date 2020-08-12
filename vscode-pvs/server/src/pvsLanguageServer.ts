@@ -40,7 +40,7 @@ import {
 	Connection, TextDocuments, TextDocument, CompletionItem, createConnection, ProposedFeatures, InitializeParams, 
 	TextDocumentPositionParams, Hover, CodeLens, CodeLensParams,
 	Diagnostic, Position, Range, DiagnosticSeverity, Definition,
-	Location, TextDocumentChangeEvent, TextDocumentSyncKind
+	Location, TextDocumentChangeEvent, TextDocumentSyncKind, DidChangeConfigurationParams
 } from 'vscode-languageserver';
 import { 
 	PvsDefinition,
@@ -84,6 +84,7 @@ import { PvsIoProxy } from './pvsioProxy';
 import { PvsErrorManager } from './pvsErrorManager';
 import { ProcessCode } from './pvsProcess';
 import { PvsProofExplorer } from './providers/pvsProofExplorer';
+import { Configuration } from 'vscode-languageserver/lib/configuration';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -112,6 +113,7 @@ export class PvsLanguageServer {
 
 	// pvs path, context folder, server path
 	protected pvsPath: string;
+	protected pvsLibraryPath: string;
 	protected pvsVersionDescriptor: PvsVersionDescriptor;
 
 	// timers
@@ -865,7 +867,7 @@ export class PvsLanguageServer {
 	async parseFile (args: PvsFile): Promise<PvsResponse> {
 		args = fsUtils.decodeURIComponents(args);
 		if (args && args.fileName && args.fileExtension && args.contextFolder) {			
-			const enableEParser: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.settings.parser.errorTolerant"));
+			const enableEParser: boolean = !!(this.connection && await this.connection.workspace.getConfiguration("pvs.xtras.enableErrorTolerantParser"));
 			try {
 				return await this.pvsProxy.parseFile(args, { enableEParser });
 			} catch (ex) {
@@ -1558,7 +1560,7 @@ export class PvsLanguageServer {
 		return false;
 	}
 
-	async startPvsServer (desc: { pvsPath: string, contextFolder?: string, externalServer?: boolean }, opt?: { verbose?: boolean, debugMode?: boolean }): Promise<boolean> {
+	async startPvsServer (desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean }, opt?: { verbose?: boolean, debugMode?: boolean }): Promise<boolean> {
 		if (desc) {
 			opt = opt || {};
 			desc = fsUtils.decodeURIComponents(desc);
@@ -1567,6 +1569,7 @@ export class PvsLanguageServer {
 				await this.pvsProxy.killPvsServer();
 			}
 			this.pvsPath = desc.pvsPath || this.pvsPath;
+			this.pvsLibraryPath = desc.pvsLibraryPath || this.pvsLibraryPath;
 			const externalServer: boolean = !!desc.externalServer;
 			if (this.pvsPath) {
 				console.log(`[pvs-language-server] Rebooting PVS (installation folder is ${this.pvsPath})`);
@@ -1576,10 +1579,10 @@ export class PvsLanguageServer {
 					} else {
 						await this.pvsProxy.disableExternalServer();
 					}
-					await this.pvsProxy.restartPvsServer({ pvsPath: this.pvsPath });
+					await this.pvsProxy.restartPvsServer({ pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath });
 				} else {
-					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, externalServer });
-					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection })
+					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath, externalServer });
+					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath })
 					this.createServiceProviders();
 					const success: boolean = await this.pvsProxy.activate({
 						debugMode: opt.debugMode, 
@@ -1611,7 +1614,7 @@ export class PvsLanguageServer {
 	 * FIXME: create separate functions for starting pvs-server and pvs-proxy
 	 * @param desc 
 	 */
-	protected async startPvsServerRequest (desc: { pvsPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
+	protected async startPvsServerRequest (desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
 		const success: boolean = await this.startPvsServer(desc);
 		if (success) {
 			// send version info to the front-end
@@ -1748,7 +1751,7 @@ export class PvsLanguageServer {
 					await this.pvsProxy.killPvsServer();
 				}
 			});
-			this.connection.onRequest(serverCommand.startPvsServer, async (request: { pvsPath: string, contextFolder?: string, externalServer?: boolean }) => {
+			this.connection.onRequest(serverCommand.startPvsServer, async (request: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean }) => {
 				// this should be called just once at the beginning
 				const success: boolean = await this.startPvsServerRequest(request);
 				if (success) {
@@ -1917,7 +1920,7 @@ export class PvsLanguageServer {
 		//-------------------------------
 
 		this.connection.onCompletion(async (tpp: TextDocumentPositionParams): Promise<CompletionItem[]> => {
-			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.settings.completionProvider"));
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.serviceProvider.autocompletion"));
 			if (this.completionProvider && isEnabled) {
 				const uri: string = tpp.textDocument.uri;
 				if (uri.endsWith(".pvs") && this.completionProvider) {
@@ -1939,7 +1942,7 @@ export class PvsLanguageServer {
 			return item;
 		});
 		this.connection.onHover(async (tpp: TextDocumentPositionParams): Promise<Hover> => {
-			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.settings.hoverProvider"));
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.serviceProvider.hover"));
 			if (this.hoverProvider && isEnabled) {
 				// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.hoverProvider;
 				const uri: string = tpp.textDocument.uri;
@@ -1954,7 +1957,7 @@ export class PvsLanguageServer {
 			return null;
 		});
 		this.connection.onCodeLens(async (tpp: CodeLensParams): Promise<CodeLens[]> => {
-			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.settings.codelensProvider"));
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.serviceProvider.codelens"));
 			if (this.codeLensProvider && isEnabled) {
 				const uri: string = tpp.textDocument.uri;
 				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
@@ -1967,7 +1970,7 @@ export class PvsLanguageServer {
 			return null;
 		});
 		this.connection.onCodeLensResolve(async (codeLens: CodeLens): Promise<CodeLens> => {
-			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.settings.completionProvider"));
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.serviceProvider.autocompletion"));
 			if (this.codeLensProvider && isEnabled) {
 				return this.codeLensProvider.resolveCodeLens(codeLens);
 			}
@@ -1975,7 +1978,7 @@ export class PvsLanguageServer {
 		});
 		// this provider enables peek definition in the editor
 		this.connection.onDefinition(async (tpp: TextDocumentPositionParams): Promise<Definition> => {
-			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.settings.definitionProvider"));
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.serviceProvider.definitions"));
 			if (this.definitionProvider && isEnabled) {
 				const uri: string = tpp.textDocument.uri;
 				if (fsUtils.isPvsFile(uri)) {

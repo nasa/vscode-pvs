@@ -1685,3 +1685,20 @@ export function parMatch (cmd: string): string {
 	}
 	return cmd;
 }
+
+export function decodePvsLibraryPath (pvsLibraryPath: string): string[] {
+	const libs: string[] = (pvsLibraryPath) ? pvsLibraryPath.split(":").map((elem: string) => {
+		return elem.trim();
+	}) : [];
+	return libs.filter((elem: string) => {
+		return elem !== "";
+	}).map((elem: string) => {
+		return elem.endsWith("/") ? elem : `${elem}/`
+	});
+}
+export function createPvsLibraryPath (libs: string[]): string {
+	if (libs && libs.length) {
+		return libs.join(":");
+	}
+	return "";
+}
