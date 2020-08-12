@@ -1560,7 +1560,7 @@ export class PvsLanguageServer {
 		return false;
 	}
 
-	async startPvsServer (desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean }, opt?: { verbose?: boolean, debugMode?: boolean }): Promise<boolean> {
+	async startPvsServer (desc: { pvsPath: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean }, opt?: { verbose?: boolean, debugMode?: boolean }): Promise<boolean> {
 		if (desc) {
 			opt = opt || {};
 			desc = fsUtils.decodeURIComponents(desc);
