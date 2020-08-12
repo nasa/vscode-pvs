@@ -4,7 +4,7 @@ import * as path from 'path';
 import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
 import { ProofNodeX, PvsProofCommand } from "../server/src/common/serverInterface";
 import { PvsLanguageServer } from "../server/src/pvsLanguageServer";
-import { PvsResponse } from "../server/src/common/pvs-gui";
+import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 
 //----------------------------
 //   Test cases for checking behavior of pvs with corrupted .pvscontext
@@ -66,7 +66,11 @@ describe("proof-explorer", () => {
 	};
 
 	it(`can step single proof commands`, async () => {
-		await server.getPvsProxy().quitProofIfInProver();
+		const proverStatus: PvsResult = await server.getPvsProxy().pvsRequest('prover-status'); // await pvsProxy.getProverStatus();		
+		if (proverStatus && proverStatus.result !== "inactive") {
+			await server.getPvsProxy().proofCommand({ cmd: 'quit' });
+		}
+		// await server.getPvsProxy().quitProofIfInProver();
 
 		await server.proveFormulaRequest(request);
 

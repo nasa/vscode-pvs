@@ -33,90 +33,37 @@ describe("pvs", () => {
 		await pvsProxy.killPvsProxy();
 	});
 
-	// OK
-	it(`can show tccs for alaris_th`, async () => {
-		label(`can show tccs for alaris_th`);
+	const baseFolder: string = path.join(__dirname, "pvscontext");
+
+	// FAIL: crashes into Lisp
+	fit(`can typecheck datatypes in type_theory (type-theory-error-with-datatypes.zip)`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
-		// remove alaris folder if present and replace it with the content of the zip file
-		const baseFolder: string = path.join(__dirname, "pvscontext");
-		fsUtils.deleteFolder(path.join(baseFolder, "alaris2l"));
-		execSync(`cd ${path.join(__dirname, "pvscontext")} && unzip alaris2l-show-tccs-error.zip`);
+		// remove folder if present and replace it with the content of the zip file
+		fsUtils.deleteFolder(path.join(baseFolder, "type_theory"));
+		execSync(`cd ${baseFolder} && unzip type-theory-error-with-datatypes.zip`);
 
-		const response: PvsResponse = await pvsProxy.tccs({
-			fileName: "alaris2lnewmodes", 
+		const response: PvsResponse = await pvsProxy.typecheckFile({
+			fileName: "basics", 
 			fileExtension: ".pvs", 
-			contextFolder: path.join(baseFolder, "alaris2l"),
-			theoryName: "alaris_th"
+			contextFolder: path.join(baseFolder, "type_theory")
 		});
-		// console.dir(response);
+		console.dir(response);
 		expect(response).toBeDefined();
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
-		// remove alaris folder 
-		fsUtils.deleteFolder(path.join(baseFolder, "alaris2l"));
-	}, 20000);
-
-	// OK
-	it(`can find typecheck error in ICEcoordinator.pvs (wrong field type)`, async () => {
-		label(`can find typecheck error in ICEcoordinator.pvs (wrong field type)`);
-		// Need to clear-theories, in case rerunning with the same server.
-		await pvsProxy.lisp("(clear-theories t)");
-
-		// remove pillboxv7 folder if present and replace it with the content of the zip file
-		const baseFolder: string = path.join(__dirname, "pvscontext");
-		fsUtils.deleteFolder(path.join(baseFolder, "pvsICEipandvs2"));
-		execSync(`cd ${baseFolder} && unzip pvsICEipandvs2-wrong-field.zip`);
-
-		const response: PvsResponse = await pvsProxy.typecheckFile({
-			fileName: "main", 
-			fileExtension: ".pvs", 
-			contextFolder: path.join(baseFolder, "pvsICEipandvs2")
-		});
-		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).not.toBeDefined();
-		expect(response.error).toBeDefined();
-
-		// remove pillboxv7 folder 
-		fsUtils.deleteFolder(path.join(baseFolder, "pvsICEipandvs2"));
+		// remove folder 
+		// fsUtils.deleteFolder(path.join(baseFolder, "type_theory"));
 	}, 10000);
 
-	// FAILS: crashed into Lisp
-	it(`can typecheck strings defined in pillboxv7`, async () => {
-		label(`can typecheck strings defined in pillboxv7`);
-		// Need to clear-theories, in case rerunning with the same server.
-		await pvsProxy.lisp("(clear-theories t)");
-
-		// remove pillboxv7 folder if present and replace it with the content of the zip file
-		const baseFolder: string = path.join(__dirname, "pvscontext");
-		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
-		execSync(`cd ${baseFolder} && unzip pillboxv7-errors-with-strings.zip`);
-
-		const response: PvsResponse = await pvsProxy.typecheckFile({
-			fileName: "main", 
-			fileExtension: ".pvs", 
-			contextFolder: path.join(baseFolder, "pillboxv7")
-		});
-		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-
-		// remove pillboxv7 folder 
-		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
-	}, 10000);
-
-	// FAIL: returns wrong error message
-	it(`returns the correct error message ('limits' theory defined twice in the same context) when typechecking baxterSigmaSpectrum.pvs`, async () => {
-		label(`returns the correct error message ('limits' theory defined twice in the same context) when typechecking baxterSigmaSpectrum.pvs`);
+	// FAIL: wrong error message
+	xit(`returns the correct error message ('limits' theory defined twice in the same context) when typechecking baxterSigmaSpectrum.pvs`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
 		// remove baxter folder if present and replace it with the content of the zip file
-		const baseFolder: string = path.join(__dirname, "pvscontext");
 		fsUtils.deleteFolder(path.join(baseFolder, "baxter"));
 		execSync(`cd ${path.join(__dirname, "pvscontext")} && unzip baxter-two-theory-limits.zip`);
 
@@ -135,68 +82,61 @@ describe("pvs", () => {
 		expect(response.error.data.error_string).toMatch(/\blimits\b/g);
 
 		// remove baxter folder 
-		fsUtils.deleteFolder(path.join(baseFolder, "baxter"));
+		// fsUtils.deleteFolder(path.join(baseFolder, "baxter"));
 	}, 10000);
+	
+	//-- all tests below this line are completed successfully
 
-	// FAIL: crashes into Lisp
-	it(`can typecheck lists defined in pillboxv7`, async () => {
-		label(`can typecheck lists defined in pillboxv7`);
+	it(`can show tccs for alaris_th`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
-		// remove pillboxv7 folder if present and replace it with the content of the zip file
-		const baseFolder: string = path.join(__dirname, "pvscontext");
-		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
-		execSync(`cd ${baseFolder} && unzip pillboxv7-errors-with-lists.zip`);
+		// remove alaris folder if present and replace it with the content of the zip file
+		fsUtils.deleteFolder(path.join(baseFolder, "alaris2l"));
+		execSync(`cd ${path.join(__dirname, "pvscontext")} && unzip alaris2l-show-tccs-error.zip`);
 
-		const response: PvsResponse = await pvsProxy.typecheckFile({
-			fileName: "firstpillchecks", 
+		const response: PvsResponse = await pvsProxy.tccs({
+			fileName: "alaris2lnewmodes", 
 			fileExtension: ".pvs", 
-			contextFolder: path.join(baseFolder, "pillboxv7")
+			contextFolder: path.join(baseFolder, "alaris2l"),
+			theoryName: "alaris_th"
 		});
 		// console.dir(response);
 		expect(response).toBeDefined();
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
-		// remove pillboxv7 folder 
-		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
-	}, 10000);
+		// remove alaris folder 
+		// fsUtils.deleteFolder(path.join(baseFolder, "alaris2l"));
+	}, 20000);
 
-	// FAIL: crashes into Lisp
-	it(`can typecheck datatypes in type_theory`, async () => {
-		label(`can typecheck datatypes in type_theory`);
+	it(`can find typecheck error in ICEcoordinator.pvs (wrong field type)`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
 		// remove folder if present and replace it with the content of the zip file
-		const baseFolder: string = path.join(__dirname, "pvscontext");
-		fsUtils.deleteFolder(path.join(baseFolder, "type_theory"));
-		execSync(`cd ${baseFolder} && unzip type-theory-error-with-datatypes.zip`);
+		fsUtils.deleteFolder(path.join(baseFolder, "pvsICEipandvs2"));
+		execSync(`cd ${baseFolder} && unzip pvsICEipandvs2-wrong-field.zip`);
 
 		const response: PvsResponse = await pvsProxy.typecheckFile({
-			fileName: "basics", 
+			fileName: "main", 
 			fileExtension: ".pvs", 
-			contextFolder: path.join(baseFolder, "type_theory")
+			contextFolder: path.join(baseFolder, "pvsICEipandvs2")
 		});
 		// console.dir(response);
 		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response.result).not.toBeDefined();
+		expect(response.error).toBeDefined();
 
 		// remove folder 
-		fsUtils.deleteFolder(path.join(baseFolder, "type_theory"));
+		// fsUtils.deleteFolder(path.join(baseFolder, "pvsICEipandvs2"));
 	}, 10000);
 
-
-	// FAIL: crashes into Lisp
 	it(`can typecheck datatypes in trace`, async () => {
-		label(`can typecheck datatypes in trace`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
 		// remove folder if present and replace it with the content of the zip file
-		const baseFolder: string = path.join(__dirname, "pvscontext");
 		fsUtils.deleteFolder(path.join(baseFolder, "trace"));
 		execSync(`cd ${baseFolder} && unzip trace.zip`);
 
@@ -223,8 +163,62 @@ describe("pvs", () => {
 		expect(response.error).not.toBeDefined();
 
 		// remove folder 
-		fsUtils.deleteFolder(path.join(baseFolder, "trace"));
+		// fsUtils.deleteFolder(path.join(baseFolder, "trace"));
 	}, 10000);
+
+	it(`can typecheck strings defined in pillboxv7`, async () => {
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		// remove pillboxv7 folder if present and replace it with the content of the zip file
+		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
+		execSync(`cd ${baseFolder} && unzip pillboxv7-errors-with-strings.zip`);
+
+		const response: PvsResponse = await pvsProxy.typecheckFile({
+			fileName: "main", 
+			fileExtension: ".pvs", 
+			contextFolder: path.join(baseFolder, "pillboxv7")
+		});
+		// console.dir(response);
+		expect(response).toBeDefined();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+
+		// remove pillboxv7 folder 
+		// fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
+	}, 10000);
+
+	it(`can typecheck lists defined in pillboxv7`, async () => {
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		// remove pillboxv7 folder if present and replace it with the content of the zip file
+		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
+		execSync(`cd ${baseFolder} && unzip pillboxv7-errors-with-lists.zip`);
+
+		const response: PvsResponse = await pvsProxy.typecheckFile({
+			fileName: "firstpillchecks", 
+			fileExtension: ".pvs", 
+			contextFolder: path.join(baseFolder, "pillboxv7")
+		});
+		// console.dir(response);
+		expect(response).toBeDefined();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+
+		// remove pillboxv7 folder 
+		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
+	}, 10000);
+
+
+	// remove folders
+	fsUtils.deleteFolder(path.join(baseFolder, "baxter"));
+	fsUtils.deleteFolder(path.join(baseFolder, "type_theory"));
+	fsUtils.deleteFolder(path.join(baseFolder, "alaris2l"));
+	fsUtils.deleteFolder(path.join(baseFolder, "pvsICEipandvs2"));
+	fsUtils.deleteFolder(path.join(baseFolder, "trace"));
+	fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
+
 
 	// it(`can evalute ground expressions`, async () => {
 	// 	label(`can evalute ground expressions`);

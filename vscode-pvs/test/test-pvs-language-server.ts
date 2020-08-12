@@ -46,14 +46,19 @@ describe("pvs-language-server", () => {
 		expect(desc.info.theory).toEqual("sq");
 		expect(desc.info.formula).toEqual("triangle_rectangle");
 		expect(desc.info.status).toEqual("untried");
-		expect(desc.info.prover.startsWith("PVS")).toBeTrue();
+		expect(desc.info.prover).toContain("PVS");
 		expect(desc.info.shasum).toEqual("90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a");
 
 		const fname: string = path.join(baseFolder, "sq", "sq.jprf");
 		const jprf: ProofFile = JSON.parse(await fsUtils.readFile(fname));
 		// console.dir(jprf, { depth: null });
 		const proof: ProofDescriptor = jprf["sq.triangle_rectangle"][0];
-		expect(proof).toEqual(constants.triangle_rectangle);
+		expect(proof.proofTree).toEqual(constants.triangle_rectangle.proofTree);
+		expect(proof.info.formula).toEqual(constants.triangle_rectangle.info.formula);
+		expect(proof.info.shasum).toEqual(constants.triangle_rectangle.info.shasum);
+		expect(proof.info.status).toEqual(constants.triangle_rectangle.info.status);
+		expect(proof.info.theory).toEqual(constants.triangle_rectangle.info.theory);
+		expect(proof.info.prover).toContain("PVS");
 
 		// remove jprf file
 		execSync(`cd ${path.join(baseFolder, "sq")} && rm -f sq.jprf`);
