@@ -55,6 +55,37 @@ The main functionalities provided by the environment are as follows:
 - **Proof Explorer + Integrated Terminal**: Interactive tree view for viewing and editing the current proof. An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
 <br> <img src="vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
+## Structure
+```
+.
+├── client                       // PVS Language Client (VSCode entry point)
+│   └── src
+│       ├── providers            // Client-side service providers (emacs binding, decorations, package manager, outline provider)
+│       ├── views                // Visual Components: Proof Explorer, Workspace Explorer, Terminals, Status Bar, Sequent Viewer, Proof Mate
+│       ├── common               // Utility functions 
+│       └── pvsLanguageClient.ts // PVS Language Client implementation
+├── icons                        // PVS icons theme
+├── package.json                 // The extension manifest
+├── syntax                       // Syntax highlighting
+├── LICENSES                     // NASA Open Source License Agreement
+├── Makefile                     // Makefile for building a .vsix image from the source code
+└── server                       // PVS Language Server
+    └── src
+        ├── providers                          // Server-side service providers
+        │     ├── pvsCodeLensProvider.ts       // In-line actionable commands
+        │     ├── pvsCompletionProvider.ts     // Auto-completion
+        │     ├── pvsDefinitionProvider.ts     // Find definitions
+        │     ├── pvsHoverProvider.ts          // Hover information 
+        │     ├── pvsProofExplorer.ts          // Proof tree editor
+        │     └── pvsPackageManager.ts         // Installation manager 
+        ├── parser               // Parser grammar and scripts      
+        ├── common               // Utility functions           
+        ├── pvsCli.ts            // PVS Command Line Interface
+        ├── pvsProcess.ts        // PVS process wrapper
+        ├── pvsLisp.ts           // Lisp reader for parsing PVS responses
+        └── pvsLanguageServer.ts // PVS Language Server implementation
+```
+
 ## Notices
 ### Copyright 
 Copyright 2019 United States Government as represented by the Administrator of the National Aeronautics and Space Administration. All Rights Reserved.
