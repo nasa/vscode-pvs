@@ -832,7 +832,7 @@ export class PvsProxy {
 	 * {
 		decl-ppstring:"posnat: TYPE+ = posint"
 		declname:"posnat"
-		filename:"/Users/pmasci/Work/pvs-snapshots/pvs-7.1.0/lib/prelude.pvs"
+		filename:"/Users/usr1/pvs-snapshots/pvs-7.1.0/lib/prelude.pvs"
 		place: [2194, 2, 2194, 4]
 		theoryid:"integers"
 		type:"type"

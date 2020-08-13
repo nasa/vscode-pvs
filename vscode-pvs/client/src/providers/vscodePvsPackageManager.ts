@@ -44,6 +44,7 @@ import * as path from 'path';
 import { VSCodePvsStatusBar } from "../views/vscodePvsStatusBar";
 import * as fsUtils from '../common/fsUtils';
 import * as vscodeUtils from '../utils/vscode-utils';
+import { pvsFolderName } from "../common/fsUtils";
 
 export class VSCodePvsPackageManager {
     protected client: LanguageClient;
@@ -54,7 +55,8 @@ export class VSCodePvsPackageManager {
     readonly messages = {
         setPvsPath: "Select location of PVS executables",
         downloadPvs: "Download PVS",
-        chooseInstallationFolder: "Choose PVS Installation Folder",
+        chooseInstallationFolder: "Choose base folder for PVS installation",
+        selectInstallationFolder: "Select as base folder for PVS installation",
         downloadNasalib: "Download and Install NASALib"
     };
 
@@ -225,7 +227,7 @@ export class VSCodePvsPackageManager {
 		} else if (item === this.messages.downloadPvs) {
 
             // choose installation folder
-            const targetFolder: string = await this.choosePvsInstallationFolder(`Please choose PVS installation folder. A sub-folder 'pvs-7.1.0' will be created by the installation wizard.`);
+            const targetFolder: string = await this.choosePvsInstallationFolder(`Please choose base folder for the PVS installation. A sub-folder '${pvsFolderName}' will be created by the installation wizard.`);
             if (!targetFolder) {
                 this.statusBar.ready();
                 // operation cancelled by the user
@@ -256,7 +258,7 @@ export class VSCodePvsPackageManager {
                 const desc: { fname: string, version: string } = await this.downloadPvsExecutableWithProgress();
                 if (desc) {
                     if (targetFolder) {
-                        const pvsPath: string = await this.installPvs({ fname: desc.fname, targetFolder: targetFolder, version: desc.version });
+                        const pvsPath: string = await this.installPvs({ fname: desc.fname, baseFolder: targetFolder, version: desc.version });
                         if (pvsPath) {
                             await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
                             this.statusBar.showProgress("Rebooting pvs-server...");
@@ -287,7 +289,7 @@ export class VSCodePvsPackageManager {
                 canSelectFiles: false,
                 canSelectFolders: true,
                 canSelectMany: false,
-                openLabel: this.messages.chooseInstallationFolder
+                openLabel: this.messages.selectInstallationFolder
             });
             if (pvsInstallationFolder && pvsInstallationFolder.length === 1) {
                 return pvsInstallationFolder[0].fsPath;
@@ -300,14 +302,14 @@ export class VSCodePvsPackageManager {
      * Utility function, used by pvsInstallationWizard to install pvs in vscode, i.e., extract the executable and set pvs.path in vscode
      * @param desc 
      */
-	protected async installPvs (desc: { fname: string, targetFolder: string, version: string }): Promise<string> {
-        const label: string = `Installing PVS in ${desc.targetFolder}`;
+	protected async installPvs (desc: { fname: string, baseFolder: string, version: string }): Promise<string> {
+        const label: string = `Installing PVS in ${desc.baseFolder}`;
         window.showInformationMessage(label);
         // extract pvs
-        const extractPvs = async (desc: { fname: string, targetFolder: string, version: string }): Promise<void> => {
+        const extractPvs = async (desc: { fname: string, baseFolder: string, version: string }): Promise<void> => {
             const terminal = window.createTerminal({ name: label });
     
-            const extractCommand: string = `tar -C ${desc.targetFolder} -xvf ${desc.fname} && cd ${desc.targetFolder}/pvs-${desc.version} && ./install-sh && exit`;
+            const extractCommand: string = `tar -C ${desc.baseFolder} -xvf ${desc.fname} && cd ${desc.baseFolder}/pvs-${desc.version} && ./install-sh && exit`;
             terminal.show();
             terminal.sendText(extractCommand);
     
@@ -319,10 +321,10 @@ export class VSCodePvsPackageManager {
                 });	
             });
         }
-        await fsUtils.deleteFolder(desc.targetFolder);
+        const pvsPath: string = path.join(desc.baseFolder, `pvs-${desc.version}`);
+        await fsUtils.deleteFolder(pvsPath);
         await extractPvs(desc);
         // set pvs.path configuration
-        const pvsPath: string = path.join(desc.targetFolder, `pvs-${desc.version}`);
 		await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
         return pvsPath;
 	}

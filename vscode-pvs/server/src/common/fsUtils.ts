@@ -379,3 +379,5 @@ export function downloadCommand(url: string, opt?: { out?: string }): string {
 	return null;
 }
 
+export const pvsFolderName: string = "pvs-7.1.0";
+
