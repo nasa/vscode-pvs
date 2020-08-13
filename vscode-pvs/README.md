@@ -3,21 +3,8 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
 ## Getting started
-Are you new to VSCode-PVS and the PVS verification system? Try out our [tutorial](docs/TUTORIAL.md)!
-
-## Functionalities
-The main functionalities provided by the environment are as follows:
-- **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
-- **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented in the editor when placing the mouse over a symbol name. Code snippets are provided for frequent modeling blocks, e.g., if-then-else.
-- **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the user places the cursor over an identifier.
-- **Go-to definition**: Click on the name of the identifier while holding down the Ctrl key to jump to the location where the identifier is declared.
-- **Peek definitions**: Symbol definitions can be shown in mini editors embedded in the current view.
-- **Live diagnostics**: Parsing is automatically performed in the background, and errors are reported in-line in the editor. Problematic expressions are underlined with red wavy lines. Tooltips presenting the error details are shown when the user places the cursor over the wavy lines.
-- **Outline View**: Interactive tree view showing the outline of the pvs file open in the editor. Point-and-click actions can be used to jump to definitions.
-- **Workspace Explorer**: Interactive tree view showing all theories in the current workspace, name and status of theorems and typecheck conditions.
-- **Proof Explorer**: Interactive tree view for viewing and editing the current proof.
-- **Prover Terminal**: An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
-- **Proof Mate**: Helper designed to suggest proof commands that can be used to make progress with the current proof.
+- Are you new to VSCode-PVS? Try out our [tutorial](docs/TUTORIAL.md)!
+- Please check our [FAQs](docs/FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.  
 
 ## Requirements
 - Visual Studio Code (v1.37.1 or greater) https://code.visualstudio.com
@@ -40,6 +27,20 @@ When a new release of VSCode-PVS is available in the [github repository](../rele
 - `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
 
 All settings and preferences from the previous version of VSCode-PVS will be maintained.
+
+## Functionalities
+The main functionalities provided by the environment are as follows:
+- **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
+- **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented in the editor when placing the mouse over a symbol name. Code snippets are provided for frequent modeling blocks, e.g., if-then-else.
+- **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the user places the cursor over an identifier.
+- **Go-to definition**: Click on the name of the identifier while holding down the Ctrl key to jump to the location where the identifier is declared.
+- **Peek definitions**: Symbol definitions can be shown in mini editors embedded in the current view.
+- **Live diagnostics**: Parsing is automatically performed in the background, and errors are reported in-line in the editor. Problematic expressions are underlined with red wavy lines. Tooltips presenting the error details are shown when the user places the cursor over the wavy lines.
+- **Outline View**: Interactive tree view showing the outline of the pvs file open in the editor. Point-and-click actions can be used to jump to definitions.
+- **Workspace Explorer**: Interactive tree view showing all theories in the current workspace, name and status of theorems and typecheck conditions.
+- **Proof Explorer**: Interactive tree view for viewing and editing the current proof.
+- **Prover Terminal**: An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
+- **Proof Mate**: Helper designed to suggest proof commands that can be used to make progress with the current proof.
 
 ## Structure
 ```

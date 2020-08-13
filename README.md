@@ -8,7 +8,31 @@ The environment redefines the way developers interact with PVS, and better align
 [vscode-pvs-1.0.24](releases/vscode-pvs-1.0.24.vsix)
 
 ## Getting started
-New to VSCode-PVS and the PVS verification system? Try out our [tutorial](vscode-pvs/docs/TUTORIAL.md)!
+- Are you new to VSCode-PVS? Try out our [tutorial](vscode-pvs/docs/TUTORIAL.md)!
+- Please check our [FAQs](vscode-pvs/docs/FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.  
+
+## Requirements
+- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
+- NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
+- Java JDK (v1.8 or greater) https://openjdk.java.net
+- PVS Allegro (v7.1 or greater)
+  - [PVS-7.1.0 for Linux](http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-gf53d987d-ix86_64-Linux-allegro.tgz)
+  - [PVS-7.1.0 for MacOs](http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-gf53d987d-ix86-MacOSX-allegro.tgz) 
+
+## Installation instructions
+1. Download the latest release of VSCode-PVS from the [github repository](releases)
+2. Install VSCode-PVS in Visual Studio Code: `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
+3. Have fun using the extension!
+
+## Updating VSCode-PVS
+When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
+
+- `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
+
+All settings and preferences from the previous version of VSCode-PVS will be maintained.
+
+## Publications
+Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)]
 
 ## Functionalities
 The main functionalities provided by the environment are as follows:
@@ -30,33 +54,6 @@ The main functionalities provided by the environment are as follows:
 
 - **Proof Explorer + Integrated Terminal**: Interactive tree view for viewing and editing the current proof. An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
 <br> <img src="vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
-
-
-## Requirements
-- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
-- NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
-- Java JDK (v1.8 or greater) https://openjdk.java.net
-- PVS Allegro (v7.1 or greater)
-  - [PVS-7.1.0 for Linux](http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-gf53d987d-ix86_64-Linux-allegro.tgz)
-  - [PVS-7.1.0 for MacOs](http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-gf53d987d-ix86-MacOSX-allegro.tgz) 
-
-## Installation instructions
-1. Download the latest release of VSCode-PVS from the [github repository](releases)
-2. Install VSCode-PVS in Visual Studio Code: `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
-3. Have fun using the extension!
-
-## Troubleshooting
-Having troubles with the extension? Check our [FAQs](vscode-pvs/docs/FAQ.md).
-
-## Updating VSCode-PVS
-When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
-
-- `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
-
-All settings and preferences from the previous version of VSCode-PVS will be maintained.
-
-## Publications
-Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)]
 
 ## Notices
 ### Copyright 

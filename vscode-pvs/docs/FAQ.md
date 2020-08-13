@@ -54,24 +54,12 @@ No, we recommend not to use Emacs plugins, as they may interfere with the PVS ho
 ## **Functionalities**
 -------
 
-### **Can I save multiple proofs for the same theorem?**
-No, the current version of VSCode-PVS allows you to save only one proof for each theorem.
-
-### **Is there a way to delete a proof?**
-Yes, using the functionalities provided by PVS Proof Explorer you can delete a proof. PVS Proof Explorer is located in the side panel, and shows the current proof tree. Place the mouse on the root node of the proof tree, right click, and select 'Delete'. Then, save the proof to make the change permanent.
-
-### **Is there a way to save a proof from the prover prompt?**
-Yes, enter the following command at the prover prompt: `save`
-
-### **Can I edit a proof tree, e.g., copy/paste proof branches?**
-Yes, PVS Proof Explorer is also a proof editor. You can right click anywhere in the proof tree, and perform the following operations: rename, cut, copy, paste, trim, delete, cut branch, paste branch.
-
-### **Can I develop my pvs theories on my `Desktop`, or in my pvs installation folder?**
-No, that's a bad idea. The recommended way to proceed is to create a subfolder in your home directory, and develop your pvs theories in such subfolder.
-
-## **How do I open files and folders that are not shown in Visual Studio Code?**
+### **How do I open files and folders that are not shown in Visual Studio Code?**
 You can add a folder to Explorer (File -> Add Folder to Workspace...).
 Alternatively, you can open a new Visual Studio Code window (File -> New Window) and then use the `Open Folder` button to open the folder you need. 
+
+### **Can I develop my pvs theories on my `Desktop`, or in my pvs installation folder?**
+**No, that's a bad idea.** The recommended way to proceed is to create a subfolder `pvsWorkspace` in your home directory, and develop your pvs theories under such subfolder.
 
 ### **Can I use the PVS hot-keys combinations?**
 Yes, you can use the following basic set PVS hot-keys combinations in VSCode-PVS:
@@ -82,6 +70,15 @@ Yes, you can use the following basic set PVS hot-keys combinations in VSCode-PVS
 - M-x prt *(re-run all proofs in the current theory)*
 - M-x pvsio *(start an interactive PVSio evaluator session for the theory at the cursor location)*
 
+Additional hot-keys for quick access to configuration settings:
+- M-x add-pvs-library *(adds a folder to the vscode-pvs library path)*
+- M-x clear-pvs-library-path *(removes all entries in the vscode-pvs library path)*
+- M-x reboot-pvs *(reboots the pvs-server)*
+- M-x reinstall-pvs *(interactive wizard for re-installing PVS)*
+- M-x reinstall-nasalib *(interactive wizard for re-installing NASALib)*
+- M-x set-pvs-path *(interactive wizard for selecting the path to the PVS executables)*
+- M-x settings *(shows the vscode-pvs settings)*
+
 ### **What is `M-x`, and how do I use it?**
 `M-x` is a key combination obtained by pressing the `META` key and the `x` letter simultaneously.
 The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` key.
@@ -89,5 +86,17 @@ The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` ke
 ### **In the prover session, can I move the cursor with the mouse using point-click actions?**
 Yes, point-click actions are enabled in the prover session when pressing the `META` key.
 
-### **In the prover session, can copy-paste multi-line text?**
-No, this is not supported at this time. We are working on this, please stay tuned for updates.
+### **In the prover session, can enter or copy-paste a multi-line proof commands?**
+Yes, but you need enclose your multi-line proof command within round brackets.
+
+### **Can I edit a proof tree, e.g., copy/paste proof branches?**
+Yes, PVS Proof Explorer is also a proof editor. You can right click anywhere in the proof tree, and perform the following operations: rename, cut, copy, paste, trim, delete, cut branch, paste branch.
+
+### **Is there a way to save a proof from the prover prompt?**
+Yes, enter the following command at the prover prompt: `save`
+
+### **Is there a way to delete a proof?**
+Yes, using the functionalities provided by PVS Proof Explorer you can delete a proof. PVS Proof Explorer is located in the side panel, and shows the current proof tree. Place the mouse on the root node of the proof tree, right click, and select 'Delete'. Then, save the proof to make the change permanent.
+
+### **Can I save multiple proofs for the same theorem?**
+No, the current version of VSCode-PVS allows you to save only one proof for each theorem.
