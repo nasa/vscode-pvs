@@ -1,10 +1,10 @@
-# VSCode-PVS FAQ
+# **VSCode-PVS FAQ**
 This document contains answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.
 
 If you don't find an answer to your question here or on [github](https://github.com/nasa/vscode-pvs/issues), you can open an issue on [github](https://github.com/nasa/vscode-pvs/issues) or [get in touch with us](mailto:paolo.masci@nianet.org).
 
 -------
-## **General questions**
+# General questions
 -------
 
 ### **Which OS is supported?**
@@ -25,7 +25,7 @@ Yes, you we have a [5-minutes crash course](TUTORIAL.md) on VSCode-PVS, that int
 Yes, you can find tutorials on the Visual Studio Code website, see https://code.visualstudio.com/docs/editor/codebasics
 
 -------
-## **Troubleshooting**
+# Troubleshooting
 -------
 
 ### **VSCode-PVS reports an error "pvs-server crashed", what can I do?**
@@ -51,7 +51,7 @@ No, we recommend not to use Emacs plugins, as they may interfere with the PVS ho
 
 
 -------
-## **Functionalities**
+# Functionalities
 -------
 
 ### **How do I open files and folders that are not shown in Visual Studio Code?**
