@@ -182,15 +182,32 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				let selected: ProofItem = this.findNode(desc.id);
 				if (!selected && this.ghostNode.isActive()) {
 					selected = this.ghostNode;
+					this.ghostNode.parent = this.ghostNode.parent || this.ghostNode.realNode;
 				}
-				if (selected) {
+				if (selected && selected.parent) {
 					this.view.reveal(selected, { expand: 2, select: true, focus: false }).then(() => {
 					}, (error: any) => {
-						console.error(desc);
-						console.error(error);
+						// console.error(selected);
+						// console.error(error);
 					});
 				}
 			// }
+		}
+	}
+	protected focusNode (desc: { id: string, name: string }): void {
+		if (desc && desc.id) {
+			let selected: ProofItem = this.findNode(desc.id);
+			if (!selected && this.ghostNode.isActive()) {
+				selected = this.ghostNode;
+				this.ghostNode.parent = this.ghostNode.parent || this.ghostNode.realNode;
+			}
+			if (selected && selected.parent) {
+				this.view.reveal(selected, { expand: 2, select: true, focus: true }).then(() => {
+				}, (error: any) => {
+					// console.error(selected);
+					// console.error(error);
+				});
+			}
 		}
 	}
 	/**
@@ -280,6 +297,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const realNode: ProofItem = this.findNode(desc.cursor.parent);
 			if (realNode) {
 				this.ghostNode.realNode = realNode;
+				this.ghostNode.parent = realNode;
 				this.ghostNode.active();
 				this.refreshView();
 			}
@@ -568,6 +586,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		});
 		context.subscriptions.push(commands.registerCommand("proof-explorer.reveal-node", (desc: { id: string, name: string }) => {
             this.revealNode(desc);
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.focus-node", (desc: { id: string, name: string }) => {
+            this.focusNode(desc);
 		}));
 		// -- handlers for proof explorer commands
 		context.subscriptions.push(commands.registerCommand("proof-explorer.trim-unused", (resource: ProofItem) => {
@@ -921,8 +942,8 @@ export class ProofItem extends TreeItem {
 		this.pendingFlag = true;
 		// this.noChangeFlag = false;
 		this.iconPath = {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg"),
+            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
             // light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
             // dark: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")
         };
@@ -1354,6 +1375,10 @@ class RootNode extends ProofItem {
 		}
 		super.pending();
 		this.updateLabel();
+		this.iconPath = {
+            light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
+            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")
+        };
 	}
 	QED (): void {
 		super.visited();
@@ -1364,7 +1389,10 @@ class RootNode extends ProofItem {
 		this.iconPath = {
             light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
             dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
-        };
+		};
+		setTimeout(() => {
+			vscode.commands.executeCommand("proof-explorer.focus-node", { id: this.id, name: this.name });
+		}, 400);
 	}
 	isQED (): boolean {
 		return this.proofStatus === QED;

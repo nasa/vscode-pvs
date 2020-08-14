@@ -54,6 +54,7 @@ class ProofMateItem extends TreeItem {
 	name: string; // prover command
 	icon: string = " -  ";
 	command: vscode.Command; // vscode action
+	children: ProofItem[] = [];
 
     constructor (desc: ProofMateItemDescriptor) {
 		super(desc.name, TreeItemCollapsibleState.None);
@@ -66,6 +67,11 @@ class ProofMateItem extends TreeItem {
 			arguments: [ { cmd: this.name } ]
 		};
 	}
+
+	printProofCommands (): null {
+		return null;
+	}
+
 
 }
 abstract class ProofMateGroup extends TreeItem {
@@ -385,6 +391,19 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	activate(context: ExtensionContext) {
 		this.context = context;
 		this.selectProfile("basic");
+		context.subscriptions.push(commands.registerCommand("proof-mate.run-sketchpad", (resource: ProofMateSketchpad) => {
+			if (resource && resource.clips && resource.clips.length) {
+				let seq: string = "";
+				for (let i = 0; i < resource.clips.length; i++) {
+					seq += resource.clips[i].printProofCommands();
+				}
+				if (seq) {
+					this.sendProofCommand(seq);
+				}
+			} else {
+				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
+			}
+		}));
 		context.subscriptions.push(commands.registerCommand("proof-mate.exec-proof-command", (resource: ProofMateItem | ProofItem) => {
 			if (resource && resource.name) {
 				this.sendProofCommand(resource.name);
@@ -525,10 +544,16 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	}
 	
 	/**
-	 * Utility function, used to identify which formula is being proved in the proof tree session
-	 * @param desc 
+	 * Utility function, starts a new proof in proof mate
 	 */
 	startProof (): void {
+		this.clearSketchPath();
+	}
+
+	/**
+	 * Utility function, clears the sketchpad
+	 */
+	clearSketchPath (): void {
 		this.sketchpad.clear();
 	}
 

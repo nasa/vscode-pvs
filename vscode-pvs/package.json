@@ -275,6 +275,11 @@
 				"icon": "icons/play-icon.png"
 			},
 			{
+				"command": "proof-mate.run-sketchpad",
+				"title": "Run-all",
+				"enablement": "pvs-server-active == true"
+			},
+			{
 				"command": "proof-mate.send-to-terminal",
 				"title": "Send to terminal",
 				"enablement": "pvs-server-active == true"
@@ -583,6 +588,11 @@
 					"command": "proof-mate.exec-proof-command",
 					"when": "view == proof-mate-view && viewItem == proofmate-item",
 					"group": "context-menu/exec"
+				},
+				{
+					"command": "proof-mate.run-sketchpad",
+					"when": "view == proof-mate-view && viewItem == proofmate-sketchpad",
+					"group": "inline"
 				},
 				{
 					"command": "proof-mate.send-to-terminal",
