@@ -1476,14 +1476,14 @@ export function QED (result: { commentary: string[] }): boolean {
 		}).length > 0; 
 }
 
-export function branchComplete (result: { commentary: string[] }, previousBranch: string): boolean {
+export function branchComplete (result: { commentary: string[] }, formulaName: string, previousBranch: string): boolean {
 	if (previousBranch) {
 		return result && result.commentary
 			&& result.commentary.length 
 			&& result.commentary.filter((comment: string) => {
 				if (typeof previousBranch === "string") {
 					return comment.startsWith("This completes the proof") 
-						&& (comment.endsWith(previousBranch) || comment.endsWith(previousBranch + "."));
+						&& (comment.endsWith(`${formulaName}.${previousBranch}.`));
 				}
 				return comment.startsWith("This completes the proof");
 			}).length > 0;

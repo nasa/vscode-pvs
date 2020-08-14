@@ -338,9 +338,11 @@ export class PvsProcess {
 					resolve(data);
 				}
 				this.data = "";
-				this.pvsProcess.stdin.write(cmd);
-				this.log(cmd + "\n");	
-			});	
+				if (this.pvsProcess && this.pvsProcess.stdin) {
+					this.pvsProcess.stdin.write(cmd);
+					this.log(cmd + "\n");
+				}
+			});
 		});
 		return this.buffer;
 	}

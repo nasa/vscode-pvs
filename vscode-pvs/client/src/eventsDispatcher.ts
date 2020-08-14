@@ -471,11 +471,6 @@ export class EventsDispatcher {
                     case "in-checker": {
                         this.inChecker = true;
                         vscode.commands.executeCommand('setContext', 'in-checker', true);
-                        this.workspaceExplorer.refreshView();
-                        // if (!this.willProveFormula) {
-                        //     // cancel request
-                        //     this.proofExplorer.quitProof({ confirm: false }); // async call
-                        // }
                         break;
                     }
                     case "pvsio":
@@ -483,10 +478,11 @@ export class EventsDispatcher {
                     default: {
                         this.inChecker = false;
                         vscode.commands.executeCommand('setContext', 'in-checker', false);
-                        this.workspaceExplorer.refreshView();
                         break;
                     }
                 }
+                this.proofExplorer.didUpdateServerMode(desc.mode);
+                this.workspaceExplorer.refreshView();
             }
         });
 
@@ -775,13 +771,7 @@ export class EventsDispatcher {
                 }
             }
             if (resource) {
-                const desc: { 
-                    fileName: string, fileExtension: string, contextFolder: string, 
-                    theoryName: string, formulaName: string 
-                } = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string, 
-                    theoryName: string, formulaName: string 
-                }> this.resource2desc(resource);
+                const desc: PvsFormula = this.resource2desc(resource);
                 if (desc) {
                     if (desc.theoryName) {
                         // if (this.inChecker) {

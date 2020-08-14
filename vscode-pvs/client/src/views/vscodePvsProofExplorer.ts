@@ -47,7 +47,7 @@ import {
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofEditSave, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -74,6 +74,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Language client for communicating with the server
 	 */
 	protected client: LanguageClient;
+	protected serverMode: ServerMode = "lisp";
 
 	protected visible: boolean = false;
 
@@ -135,6 +136,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
 	}
 
+	didUpdateServerMode (mode: ServerMode): void {
+		this.serverMode = mode;
+	}
+
 	/**
 	 * Executes all proof commands in the proof tree, starting from the active node.
 	 * The execution stops either at the end of the proof tree, or when an anomaly 
@@ -174,12 +179,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// when option 'select' is set to true.
 			// Sometimes the exception occurs also with option 'expand'
 			// if (desc.selected.isActive() === false) {
-				const selected: ProofItem = this.findNode(desc.id);
+				let selected: ProofItem = this.findNode(desc.id);
+				if (!selected && this.ghostNode.isActive()) {
+					selected = this.ghostNode;
+				}
 				if (selected) {
-					this.view.reveal(selected, { expand: 2, select: false, focus: false }).then(() => {
+					this.view.reveal(selected, { expand: 2, select: true, focus: false }).then(() => {
 					}, (error: any) => {
-						// console.error(desc);
-						// console.error(error);
+						console.error(desc);
+						console.error(error);
 					});
 				}
 			// }
@@ -591,9 +599,13 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.client.sendRequest(serverCommand.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.run-proof", () => {
-			// run entire proof
-			const action: ProofExecRun = { action: "run" };
-			this.client.sendRequest(serverCommand.proverCommand, action);
+			if (this.serverMode === "in-checker") {
+				// run entire proof
+				const action: ProofExecRun = { action: "run" };
+				this.client.sendRequest(serverCommand.proverCommand, action);
+			} else {
+				commands.executeCommand("vscode-pvs.prove-formula", this.formula);
+			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.fast-forward", (resource: ProofItem) => {
 			// fast forward proof to a given proof command
@@ -909,8 +921,10 @@ export class ProofItem extends TreeItem {
 		this.pendingFlag = true;
 		// this.noChangeFlag = false;
 		this.iconPath = {
-            light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
+            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")
+            // light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
+            // dark: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")
         };
 	}
 	visited (): void {

@@ -59,7 +59,7 @@
 					},
 					"pvs.pvsProver.watchdog": {
 						"type": "number",
-						"default": 8,
+						"default": 16,
 						"description": "Watchdog for proof commands. Time is in seconds (0 means timeout disabled)"
 					},
 					"pvs.serviceProvider.codelens": {
@@ -381,7 +381,7 @@
 				"command": "proof-explorer.run-proof",
 				"title": "️️Run proof",
 				"icon": "icons/play-circle-1-icon.png",
-				"enablement": "view == proof-explorer-view && in-checker == true && !proof-explorer.running"
+				"enablement": "view == proof-explorer-view && !proof-explorer.running"
 			},
 			{
 				"command": "proof-explorer.fast-forward",

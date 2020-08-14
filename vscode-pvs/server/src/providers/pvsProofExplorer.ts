@@ -698,7 +698,7 @@ export class PvsProofExplorer {
 				}
 
 				// check if previous branch has been completed
-				if (utils.branchComplete(this.proofState, previousBranch)) {
+				if (utils.branchComplete(this.proofState, this.formula.formulaName, previousBranch)) {
 					// PVS has automatically discharged the previous proof branch
 					// trim the rest of the tree if necessary
 					this.trimNode({ selected: activeNode });
@@ -715,7 +715,7 @@ export class PvsProofExplorer {
 						targetBranch.updateTooltip({ internalAction: this.autorunFlag });					
 						// go to the new branch
 						activeNode.visited();
-						this.activeNode.parent.visited();
+						activeNode.parent.visited();
 						// find the last visited child in the new branch
 						const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
 							return elem.contextValue === "proof-command" && elem.isVisited();
@@ -728,6 +728,12 @@ export class PvsProofExplorer {
 						// this.activeNode.pending();
 					} else {
 						console.error(`[proof-explorer] Error: could not find branch ${targetBranch} in the proof tree`); // this should never happen, because targetBranch is created if it doesn't exist already
+					}
+				} else {
+					// if branch has not changed and the active node has subgoals, then the structure of the proof tree has changed -- we need to trim
+					// NOTE: we don't want to prune in the case of autorun, otherwise part of the proof will be discarded permanently
+					if (!this.autorunFlag && activeNode.children && activeNode.children.length) {
+						this.trimNode({ selected: activeNode });
 					}
 				}
 
@@ -1737,6 +1743,10 @@ export class PvsProofExplorer {
 		}
 		console.error(`[proof-explorer] Error: Could not load proof script (pvs-proxy is null)`);
 		return null;
+	}
+
+	getFormula (): PvsFormula {
+		return this.formula;
 	}
 	/**
 	 * Loads the proof for a given formula

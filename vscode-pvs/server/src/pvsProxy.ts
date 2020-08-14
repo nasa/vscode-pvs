@@ -1626,7 +1626,7 @@ export class PvsProxy {
 	protected async setNasalibPath (): Promise<void> {
 		const pvsLibraries: string[] = await this.getPvsLibraryPath();
 		const path: string = this.nasalibPath.endsWith("/") ? this.nasalibPath : `${this.nasalibPath}/`;
-		if (!pvsLibraries.includes(path)) {
+		if (!pvsLibraries.includes(path) && await fsUtils.folderExists(path)) {
 			await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
 		}
 	}
