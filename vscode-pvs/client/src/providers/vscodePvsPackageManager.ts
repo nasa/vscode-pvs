@@ -242,6 +242,7 @@ export class VSCodePvsPackageManager {
                 { enableFindWidget: true } // Webview options. More on these later.
             );
             panel.webview.html = await this.downloadPvsLicensePageWithProgress();
+            console.log(panel.webview.html)
             const agreement: { [ btn: string ]: string } = {
                 license: "View PVS License",
                 cancel: "Cancel",
@@ -303,7 +304,7 @@ export class VSCodePvsPackageManager {
      * @param desc 
      */
 	protected async installPvs (desc: { fname: string, baseFolder: string, version: string }): Promise<string> {
-        const label: string = `Installing PVS in ${desc.baseFolder}`;
+        const label: string = `PVS installation folder is ${desc.baseFolder}`;
         window.showInformationMessage(label);
         // extract pvs
         const extractPvs = async (desc: { fname: string, baseFolder: string, version: string }): Promise<void> => {

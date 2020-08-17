@@ -478,7 +478,7 @@ export class PvsLanguageServer {
 			pvsioResponse.result = "";
 			pvsioResponse.banner = utils.pvsioBanner;
 			this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: pvsioResponse });
-			this.connection.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: request });
+			if (this.connection) { this.connection.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: request }); }
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
 			this.notifyServerMode("pvsio");
 		} else {
@@ -519,7 +519,7 @@ export class PvsLanguageServer {
 		// load prooflite script from the .jprf file
 		const proofScript: string = await utils.getProofLiteScript(request);
 		// send response to the client
-		this.connection.sendRequest(serverEvent.showProofLiteResponse, { response: proofScript, args: request });
+		if (this.connection) { this.connection.sendRequest(serverEvent.showProofLiteResponse, { response: proofScript, args: request }); }
 	}
 
 	/**
