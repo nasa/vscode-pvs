@@ -39,7 +39,7 @@
 import * as utils from './common/languageUtils';
 import { PROOF_COMMANDS_BASIC_PROFILE, EVALUATOR_COMMANDS, ProofMateProfile, PROOF_COMMANDS_ADVANCED_PROFILE } from './common/commandUtils';
 import * as readline from 'readline';
-import { PvsCliInterface, SimpleConsole, SimpleConnection, serverCommand, CliGatewaySubscriberEvent } from './common/serverInterface';
+import { PvsCliInterface, SimpleConsole, SimpleConnection, serverRequest, CliGatewaySubscriberEvent } from './common/serverInterface';
 import * as fsUtils from './common/fsUtils';
 import * as commandUtils from './common/commandUtils';
 
@@ -209,7 +209,7 @@ class PvsCli {
 					this.lines = "";
 					if (utils.isQuitCommand(cmd)) {
 						this.wsClient.send(JSON.stringify({
-							type: serverCommand.evaluateExpression,
+							type: serverRequest.evaluateExpression,
 							cmd: "quit",
 							fileName: this.args.fileName,
 							fileExtension: this.args.fileExtension,
@@ -230,7 +230,7 @@ class PvsCli {
 					} else {
 						cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
 						this.wsClient.send(JSON.stringify({
-							type: serverCommand.evaluateExpression,
+							type: serverRequest.evaluateExpression,
 							cmd,
 							fileName: this.args.fileName,
 							fileExtension: this.args.fileExtension,
@@ -289,7 +289,7 @@ class PvsCli {
 						console.log("Proof saved successfully!");
 						console.log();
 						this.wsClient.send(JSON.stringify({
-							type: serverCommand.proofCommand,
+							type: serverRequest.proofCommand,
 							cmd: "save",
 							fileName: this.args.fileName,
 							fileExtension: this.args.fileExtension,
@@ -308,7 +308,7 @@ class PvsCli {
 						console.log();
 						console.log("Prover session terminated.");
 						this.wsClient.send(JSON.stringify({
-							type: serverCommand.proofCommand,
+							type: serverRequest.proofCommand,
 							cmd: "save-then-quit",
 							fileName: this.args.fileName,
 							fileExtension: this.args.fileExtension,
@@ -326,7 +326,7 @@ class PvsCli {
 						console.log("Prover session terminated.");
 						console.log();
 						this.wsClient.send(JSON.stringify({
-							type: serverCommand.proofCommand,
+							type: serverRequest.proofCommand,
 							cmd: "quit",
 							fileName: this.args.fileName,
 							fileExtension: this.args.fileExtension,
@@ -365,7 +365,7 @@ class PvsCli {
 					}
 					// console.log(`Sending command ${cmd}`);
 					this.wsClient.send(JSON.stringify({
-						type: serverCommand.proofCommand, 
+						type: serverRequest.proofCommand, 
 						cmd,
 						fileName: this.args.fileName,
 						fileExtension: this.args.fileExtension,

@@ -38,7 +38,7 @@
 
 import { LanguageClient } from "vscode-languageclient";
 import { window, Uri, workspace, ConfigurationTarget, Progress, CancellationToken, ProgressLocation, Terminal, ViewColumn, WebviewPanel, ExtensionContext } from "vscode";
-import { serverEvent, sriUrl, serverCommand, PvsDownloadDescriptor, nasalibUrl, nasalibFile } from "../common/serverInterface";
+import { serverEvent, sriUrl, serverRequest, PvsDownloadDescriptor, nasalibUrl, nasalibFile } from "../common/serverInterface";
 import * as os from 'os';
 import * as path from 'path';
 import { VSCodePvsStatusBar } from "../views/vscodePvsStatusBar";
@@ -210,7 +210,7 @@ export class VSCodePvsPackageManager {
         if (pvsPath) {
             await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
             this.statusBar.showProgress("Rebooting pvs-server...");
-            this.client.sendRequest(serverCommand.rebootPvsServer);
+            this.client.sendRequest(serverRequest.rebootPvsServer);
             window.showInformationMessage(`PVS path is ${pvsPath}`);
         }
     }
@@ -262,7 +262,7 @@ export class VSCodePvsPackageManager {
                         if (pvsPath) {
                             await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
                             this.statusBar.showProgress("Rebooting pvs-server...");
-                            this.client.sendRequest(serverCommand.rebootPvsServer);            
+                            this.client.sendRequest(serverRequest.rebootPvsServer);            
                             return true;
                         }
                     }
@@ -336,7 +336,7 @@ export class VSCodePvsPackageManager {
      */
 	protected async downloadPvsDialog (progress: Progress<{ message?: string, increment?: number }>, token: CancellationToken): Promise<boolean> {
 		progress.report({ increment: 0 });
-		this.client.sendRequest(serverCommand.listDownloadableVersions);
+		this.client.sendRequest(serverRequest.listDownloadableVersions);
 		return new Promise((resolve, reject) => {
 			this.client.onRequest(serverEvent.listDownloadableVersionsResponse, async (desc: { response: { versions: string[] }}) => {
 				if (desc && desc.response && desc.response.versions && desc.response.versions.length > 0) {
@@ -392,7 +392,7 @@ export class VSCodePvsPackageManager {
                     }
                 });
                 
-                this.client.sendRequest(serverCommand.listDownloadableVersions);
+                this.client.sendRequest(serverRequest.listDownloadableVersions);
                 this.client.onRequest(serverEvent.listDownloadableVersionsResponse, (desc: { response: PvsDownloadDescriptor[] }) => {
                     if (desc && desc.response && desc.response && desc.response.length > 0) {
                         progress.report({ increment: -1, message: `Downloading PVS ${desc.response[0].version} from ${sriUrl}` });
@@ -442,7 +442,7 @@ export class VSCodePvsPackageManager {
                     }
                 });
                 
-                this.client.sendRequest(serverCommand.downloadLicensePage);
+                this.client.sendRequest(serverRequest.downloadLicensePage);
                 this.client.onRequest(serverEvent.downloadLicensePageResponse, (desc: { response: string }) => {
                     if (desc && desc.response && desc.response) {
                         resolve(desc.response);

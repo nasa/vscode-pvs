@@ -39,7 +39,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { LanguageClient } from 'vscode-languageclient';
-import { PvsCliInterface, serverCommand, serverEvent } from '../common/serverInterface';
+import { PvsCliInterface, serverRequest, serverEvent } from '../common/serverInterface';
 import * as language from '../common/languageUtils';
 import * as WebSocket from 'ws';
 import * as fsUtils from '../common/fsUtils';
@@ -375,7 +375,7 @@ export class VSCodePvsTerminal {
                         await pvsTerminal.activate(this.context, cliSessionType.proveFormula, desc);
                         this.openTerminals[channelID] = pvsTerminal;
                         // send prove-formula request to pvs-server
-                        this.client.sendRequest(serverCommand.proveFormula, desc);
+                        this.client.sendRequest(serverRequest.proveFormula, desc);
                         // the proof script will be automatically loaded on the front-end when event proofExecEvent / ProofExecDidStartProof is fired by the server
                         resolve(true);
                     } else {
@@ -383,7 +383,7 @@ export class VSCodePvsTerminal {
                         resolve(false);
                     }
                 });
-                this.client.sendRequest(serverCommand.getGatewayConfig);
+                this.client.sendRequest(serverRequest.getGatewayConfig);
             } else {
                 vscode.window.showErrorMessage(`Error: Unable to start prover session (formula name could not be identified)`);
                 resolve(false);
@@ -413,14 +413,14 @@ export class VSCodePvsTerminal {
                         }
 
                         // send start-pvsio request to pvs-server
-                        this.client.sendRequest(serverCommand.startEvaluator, desc);
+                        this.client.sendRequest(serverRequest.startEvaluator, desc);
                         resolve(true);
                     } else {
                         vscode.window.showErrorMessage(`Error: Unable to start evaluator session (server gateway port could not be detected)`);
                         resolve(false);
                     }
                 });
-                this.client.sendRequest(serverCommand.getGatewayConfig);
+                this.client.sendRequest(serverRequest.getGatewayConfig);
             } else {
                 vscode.window.showErrorMessage(`Error: Unable to start evaluator session (theory name could not be identified)`);
                 resolve(false);

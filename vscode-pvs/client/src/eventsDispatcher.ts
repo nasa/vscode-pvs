@@ -42,7 +42,7 @@ import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindin
 import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { PvsContextDescriptor, serverEvent, serverCommand, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory } from "./common/serverInterface";
+import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
@@ -213,7 +213,7 @@ export class EventsDispatcher {
         }) => {
             // request tccs for the files that typecheck correctly
             if (desc && desc.response && !desc.response.error && desc.args) {
-                this.client.sendRequest(serverCommand.generateTccs, {
+                this.client.sendRequest(serverRequest.generateTccs, {
                     fileName: desc.args.fileName,
                     fileExtension: desc.args.fileExtension,
                     contextFolder: desc.args.contextFolder,
@@ -576,7 +576,7 @@ export class EventsDispatcher {
             this.client.onRequest(serverEvent.viewPreludeFileResponse, (desc: { contextFolder: string, fileName: string, fileExtension: string }) => {
                 vscodeUtils.showTextDocument(desc);
             });
-            this.client.sendRequest(serverCommand.viewPreludeFile);
+            this.client.sendRequest(serverRequest.viewPreludeFile);
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.reinstall-pvs", () => {
             this.packageManager.pvsInstallationWizard();
@@ -597,7 +597,7 @@ export class EventsDispatcher {
         // vscode-pvs.send-proof-command
         context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             if (!this.vscodePvsTerminal.sendProofCommand(desc)) {
-                this.client.sendRequest(serverCommand.proofCommand, desc);
+                this.client.sendRequest(serverRequest.proofCommand, desc);
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.select-profile", (desc: { profile: commandUtils.ProofMateProfile }) => {
@@ -643,7 +643,7 @@ export class EventsDispatcher {
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
                 this.statusBar.showProgress("Rebooting pvs-server...");
-                this.client.sendRequest(serverCommand.rebootPvsServer);
+                this.client.sendRequest(serverRequest.rebootPvsServer);
                 // terminate any prover session
                 this.vscodePvsTerminal.quitAll(); // async call
             }
@@ -653,7 +653,7 @@ export class EventsDispatcher {
             if (success) {
                 this.statusBar.hideDownloadNasalibButton();
                 this.statusBar.showProgress("Rebooting pvs-server...");
-                this.client.sendRequest(serverCommand.rebootPvsServer);
+                this.client.sendRequest(serverRequest.rebootPvsServer);
             }
         }));
 
@@ -715,7 +715,7 @@ export class EventsDispatcher {
                         desc.theoryName = theoryName;
                     }
                     if (desc.theoryName) {
-                        this.client.sendRequest(serverCommand.showProofLite, desc);
+                        this.client.sendRequest(serverRequest.showProofLite, desc);
                     } else {
                         window.showErrorMessage(`Error while trying to display prooflite script (could not identify theory name, please check that the file typechecks correctly)`);
                     }
@@ -922,7 +922,7 @@ export class EventsDispatcher {
                     // show output panel for feedback
                     // commands.executeCommand("workbench.action.output.toggleOutput", true);
                     // send typecheck request to pvs-server
-                    this.client.sendRequest(serverCommand.typecheckFile, desc);
+                    this.client.sendRequest(serverRequest.typecheckFile, desc);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
@@ -943,7 +943,7 @@ export class EventsDispatcher {
                 const desc: PvsFile = this.resource2desc(resource);
                 if (desc) {
                     // send show-tccs request to pvs-server
-                    this.client.sendRequest(serverCommand.showTccs, desc);
+                    this.client.sendRequest(serverRequest.showTccs, desc);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
@@ -962,7 +962,7 @@ export class EventsDispatcher {
                 const desc: PvsFile = this.resource2desc(resource);
                 if (desc) {
                     // send generate-tccs request to pvs-server
-                    this.client.sendRequest(serverCommand.generateTccs, desc);
+                    this.client.sendRequest(serverRequest.generateTccs, desc);
                     // register handler for response
                     this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
                         response: PvsContextDescriptor, 
@@ -991,7 +991,7 @@ export class EventsDispatcher {
                 const desc: PvsFile = this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
-                    this.client.sendRequest(serverCommand.parseFileWithFeedback, desc);
+                    this.client.sendRequest(serverRequest.parseFileWithFeedback, desc);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
@@ -1007,7 +1007,7 @@ export class EventsDispatcher {
                 let desc = this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
-                    this.client.sendRequest(serverCommand.parseWorkspaceWithFeedback, desc);
+                    this.client.sendRequest(serverRequest.parseWorkspaceWithFeedback, desc);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
@@ -1023,7 +1023,7 @@ export class EventsDispatcher {
                 let desc = this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
-                    this.client.sendRequest(serverCommand.typecheckWorkspace, desc);
+                    this.client.sendRequest(serverRequest.typecheckWorkspace, desc);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
@@ -1039,7 +1039,7 @@ export class EventsDispatcher {
                 let desc = this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
-                    this.client.sendRequest(serverCommand.hp2pvs, desc);
+                    this.client.sendRequest(serverRequest.hp2pvs, desc);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
@@ -1090,7 +1090,7 @@ export class EventsDispatcher {
                     return new Promise((resolve, reject) => {
                         token.onCancellationRequested(() => {
                             // send cancellation request to the server
-                            this.client.sendRequest(serverCommand.cancelOperation);
+                            this.client.sendRequest(serverRequest.cancelOperation);
                             // dispose of the dialog
                             resolve(null);
                         });

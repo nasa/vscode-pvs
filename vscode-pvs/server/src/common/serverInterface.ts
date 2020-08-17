@@ -372,7 +372,7 @@ export declare interface PvsFileDescriptor extends PvsFile {
 }
 
 
-export const serverCommand = {
+export const serverRequest = {
 	typecheckFile: "pvs.typecheck-file",
 	proveFormula: "pvs.prove-formula",
 	autorunFormula: "pvs.autorun-formula",

@@ -38,7 +38,7 @@
 
 import * as vscode from 'vscode';
 import { LanguageClient } from "vscode-languageclient";
-import { serverCommand, serverEvent, TheoryDescriptor, PvsFileDescriptor, FormulaDescriptor } from '../common/serverInterface';
+import { serverRequest, serverEvent, TheoryDescriptor, PvsFileDescriptor, FormulaDescriptor } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
 
 export class VSCodePvsFileOutlineProvider implements vscode.DocumentSymbolProvider {
@@ -68,7 +68,7 @@ export class VSCodePvsFileOutlineProvider implements vscode.DocumentSymbolProvid
             const contextFolder: string = fsUtils.getContextFolder(document.fileName);
             const fileName: string = fsUtils.getFileName(document.fileName);
             const fileExtension: string = fsUtils.getFileExtension(document.fileName);
-            this.client.sendRequest(serverCommand.getFileDescriptor, { contextFolder, fileName, fileExtension });
+            this.client.sendRequest(serverRequest.getFileDescriptor, { contextFolder, fileName, fileExtension });
             this.client.onRequest(serverEvent.getFileDescriptorResponse, (fdesc: PvsFileDescriptor) => {
                 const dsym: vscode.DocumentSymbol[] = [];
                 if (fdesc) {

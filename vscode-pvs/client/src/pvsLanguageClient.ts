@@ -163,7 +163,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				this.decorationProvider.updateDecorations(editor);
 				// trigger file parsing to get syntax diagnostics
 				const desc: comm.PvsFile = fsUtils.fname2desc(editor.document.fileName);
-				this.client.sendRequest(comm.serverCommand.parseFile, desc);
+				this.client.sendRequest(comm.serverRequest.parseFile, desc);
 				// const context: string = fsUtils.getContextFolder(editor.document.fileName);
 				// this.client.sendRequest(comm.serverCommand.parseWorkspace, context);				
 			} else {
@@ -192,7 +192,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				const msg: string = `Restarting PVS from ${pvsPath}`;
 				this.statusBar.showProgress(msg);
 				// window.showInformationMessage(msg);
-				this.client.sendRequest(comm.serverCommand.startPvsServer, { pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath }); // the server will use the last context folder it was using	
+				this.client.sendRequest(comm.serverRequest.startPvsServer, { pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath }); // the server will use the last context folder it was using	
 			}			
 		}, null, this.context.subscriptions);
 	}
@@ -315,7 +315,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					const contextFolder = vscodeUtils.getEditorContextFolder();
 					this.pvsPath = workspace.getConfiguration().get("pvs.path");
 					this.pvsLibraryPath = workspace.getConfiguration().get("pvs.pvsLibraryPath");
-					this.client.sendRequest(comm.serverCommand.startPvsServer, {
+					this.client.sendRequest(comm.serverRequest.startPvsServer, {
 						pvsPath: this.pvsPath,
 						pvsLibraryPath: this.pvsLibraryPath,
 						contextFolder
@@ -338,7 +338,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						// parse file opened in the editor
 						if (window.activeTextEditor && window.activeTextEditor.document) {
 							const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor.document.fileName);
-							this.client.sendRequest(comm.serverCommand.parseFile, desc);
+							this.client.sendRequest(comm.serverRequest.parseFile, desc);
 						}
 
 						// resolve the promise
@@ -352,7 +352,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	async stop (): Promise<void> {
 		if (this.client) {
-			this.client.sendRequest(comm.serverCommand.stopPvsServer);
+			this.client.sendRequest(comm.serverRequest.stopPvsServer);
 			await this.client.stop();
 			// set vscode context variable pvs-server-active to true
 			commands.executeCommand('setContext', 'pvs-server-active', false);

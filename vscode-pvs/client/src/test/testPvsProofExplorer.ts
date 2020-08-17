@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ProofNode, ProofNodeType, serverCommand, PvsVersionDescriptor, ProofDescriptor, ProofStatus, serverEvent, ProofTree } from '../common/serverInterface';
+import { ProofNode, ProofNodeType, serverRequest, PvsVersionDescriptor, ProofDescriptor, ProofStatus, serverEvent, ProofTree } from '../common/serverInterface';
 import { VSCodePvsProofExplorer, ProofItem } from '../views/vscodePvsProofExplorer';
 
 /**

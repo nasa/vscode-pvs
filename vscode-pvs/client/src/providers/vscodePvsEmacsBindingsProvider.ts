@@ -51,7 +51,7 @@ import { workspace } from 'vscode';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
-import { serverCommand, PvsFormula } from '../common/serverInterface';
+import { serverRequest, PvsFormula } from '../common/serverInterface';
 
 /**
  * cmds is the list of commands that are supported by the emacs binding defined in this module

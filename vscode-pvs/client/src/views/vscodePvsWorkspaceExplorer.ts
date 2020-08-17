@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, ConfigurationTarget } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverCommand, serverEvent, PvsFormula, PvsTheory } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -827,7 +827,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 								const start: number = new Date().getTime();
 
 								const status: ProofStatus = await Promise.resolve(new Promise((resolve, reject) => {
-									this.client.sendRequest(serverCommand.autorunFormula, {
+									this.client.sendRequest(serverRequest.autorunFormula, {
 										contextFolder: next.getContextFolder(),
 										fileName: next.getFileName(),
 										fileExtension: next.getFileExtension(),
@@ -844,8 +844,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							}
 						}
 						commands.executeCommand('setContext', 'autorun', false);
-						this.client.sendRequest(serverCommand.getContextDescriptor, theory);
-						this.client.sendRequest(serverCommand.generateSummary, {
+						this.client.sendRequest(serverRequest.getContextDescriptor, theory);
+						this.client.sendRequest(serverRequest.generateSummary, {
 							contextFolder: theory.contextFolder,
 							fileName: theory.fileName,
 							fileExtension: theory.fileExtension,
