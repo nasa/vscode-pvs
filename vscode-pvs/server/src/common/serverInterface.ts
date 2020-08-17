@@ -723,8 +723,6 @@ export type ProofEditDidStartNewProof = {
 	action: "did-start-new-proof"
 };
 
-
-
 // ProofExec
 export type ProofExecCommand = ProofExecForward | ProofExecBack | ProofExecFastForward | ProofExecRun
 	| ProofExecQuit;
@@ -744,6 +742,7 @@ export type ProofExecRun = {
 export type ProofExecQuit = {
 	action: "quit"
 };
+
 export type ProofExecEvent = ProofExecDidStartProof | ProofExecDidLoadProof | ProofExecDidLoadSequent
 	| ProofExecDidEndProof | ProofExecDidUpdateSequent;
 export type ProofExecDidStartProof = {
@@ -767,3 +766,6 @@ export type ProofExecDidLoadProof = {
 export type ProofExecDidEndProof = {
 	action: "did-end-proof"
 };
+
+// WorkspaceExec
+// export type WorkspaceExecCommand = TypecheckFileCommand | ParseFileCommand;

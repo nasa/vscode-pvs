@@ -1557,6 +1557,21 @@ export class PvsLanguageServer {
 		return false;
 	}
 
+	async checkDependencies (): Promise<boolean> {
+		console.log(`[pvs-server] Checking dependencies...`);
+		const nodejs: string = await fsUtils.getNodeJsVersion();
+		if (!nodejs) {
+			const msg: string = "[pvs-server] Error: Required dependency 'nodejs' is not installed. Please download 'nodejs' from https://nodejs.org/";
+			console.error(msg);
+			this.pvsErrorManager.notifyError({
+				msg
+			});
+			return false;
+		}
+		console.log("[pvs-server] nodejs: " + nodejs);
+		return true;
+	}
+
 	async startPvsServer (desc: { pvsPath: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean }, opt?: { verbose?: boolean, debugMode?: boolean }): Promise<boolean> {
 		if (desc) {
 			opt = opt || {};
@@ -1612,6 +1627,9 @@ export class PvsLanguageServer {
 	 * @param desc 
 	 */
 	protected async startPvsServerRequest (desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
+		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
+		await this.checkDependencies();
+		// start pvs
 		const success: boolean = await this.startPvsServer(desc);
 		if (success) {
 			// send version info to the front-end

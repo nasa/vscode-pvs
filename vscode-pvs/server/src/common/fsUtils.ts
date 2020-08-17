@@ -38,7 +38,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileList, ProofFile, PvsFile, PvsProofCommand } from '../common/serverInterface';
+import { FileList} from '../common/serverInterface';
+import { execSync } from 'child_process';
+import * as crypto from 'crypto';
+
 
 const HOME_DIR: string = require('os').homedir();
 // nodeJS does not support tilde expansion for the home folder
@@ -296,8 +299,6 @@ export function getText(txt: string, range: { start: { line: number, character?:
 	return txt;
 }
 
-import * as crypto from 'crypto';
-import { execSync } from 'child_process';
 
 export function get_fresh_id(): string {
 	return shasum(Math.random().toString(36));
@@ -380,4 +381,16 @@ export function downloadCommand(url: string, opt?: { out?: string }): string {
 }
 
 export const pvsFolderName: string = "pvs-7.1.0";
+
+export async function getNodeJsVersion (): Promise<string | null> {
+	const buf: Buffer = execSync("node --version");
+	if (buf) {
+		const info: string = buf.toLocaleString();
+		const match: RegExpMatchArray = /v([\d\.]+)/g.exec(info);
+		if (match && match.length > 1) {
+			return match[1];
+		}
+	}
+	return null;
+}
 
