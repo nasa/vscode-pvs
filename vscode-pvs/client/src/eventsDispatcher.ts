@@ -302,7 +302,7 @@ export class EventsDispatcher {
         });
 
         //----------------
-        this.client.onNotification(serverEvent.proofEditEvent, (desc: ProofEditEvent) => {
+        this.client.onNotification(serverEvent.proverEvent, (desc: ProofEditEvent | ProofExecEvent) => {
 			switch (desc.action) {
 				case "did-append-node": {
                     this.proofExplorer.didAppendNode(desc);
@@ -352,12 +352,11 @@ export class EventsDispatcher {
                     this.proofExplorer.didUpdateProofStatus(desc);
                     break;
                 }
-                default: // do nothing
-                    return;
-			}
-        });
-        this.client.onNotification(serverEvent.proofExecEvent, (desc: ProofExecEvent) => {
-			switch (desc.action) {
+				case "did-start-new-proof": {
+                    this.proofExplorer.didStartNewProof();
+                    break;
+                }
+                //---------------
                 case "did-start-proof": {
                     this.proofExplorer.startProof();
                     this.proofMate.startProof();
@@ -775,13 +774,9 @@ export class EventsDispatcher {
                 const desc: PvsFormula = this.resource2desc(resource);
                 if (desc) {
                     if (desc.theoryName) {
-                        // if (this.inChecker) {
-                        // quit the current proof first
-                        // await this.proofExplorer.quitProof({ confirm: false });
-                        // }
-                        // this.proofExplorer.prepareToProveFormula();
-                        this.proofExplorer.revealView();
-                        this.proofMate.revealView();
+                        this.proofExplorer.didStartNewProof();
+                        this.proofExplorer.enableView();
+                        this.proofMate.enableView();
                         // the sequence of events triggered by this command is:
                         // 1. vscodePvsTerminal.startProverSession(desc) 
                         // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
@@ -815,8 +810,8 @@ export class EventsDispatcher {
                 this.quietMode = true;
 
                 this.statusBar.showProgress(`Re-running proofs in theory ${resource.theoryName}`);
-                this.proofMate.hideView();
-                this.proofExplorer.hideView();
+                this.proofMate.disableView();
+                this.proofExplorer.disableView();
 
                 await this.workspaceExplorer.autorun(resource);
 

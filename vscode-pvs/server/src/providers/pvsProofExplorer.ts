@@ -64,8 +64,7 @@ import {
 	ProofEditTrimUnused,
 	ProofEditSave,
 	ProofExecQuit,
-	HelpDescriptor,
-	ProofNodeStatus,
+	ProofEditDidStartNewProof
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -74,7 +73,6 @@ import { SequentDescriptor } from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
 import { PvsProxy } from '../pvsProxy';
 import { PvsLanguageServer } from '../pvsLanguageServer';
-import * as commandUtils from '../common/commandUtils';
 
 abstract class TreeItem {
 	id: string;
@@ -225,6 +223,13 @@ export class PvsProofExplorer {
 		console.warn(`[proof-explorer] Warning: failed to check active flag`);
 		return false;
 	}
+	newProof (): void {
+		const evt: ProofEditDidStartNewProof = {
+			action: "did-start-new-proof" 
+		};
+		this.connection.sendNotification(serverEvent.proverEvent, evt);
+	}
+
 
 	/**
 	 * Internal function, moves the active node one position back in the proof tree.
@@ -1112,7 +1117,7 @@ export class PvsProofExplorer {
 									position
 								};
 								if (this.connection) {
-									this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+									this.connection.sendNotification(serverEvent.proverEvent, evt);
 								}
 							}					
 						}
@@ -1158,7 +1163,7 @@ export class PvsProofExplorer {
 			if (selected && this.copyNode({ selected })) {
 				const evt: ProofEditDidCopyNode = { action: "did-copy-node", selected: desc.selected };
 				if (this.connection && !this.autorunFlag) {
-					this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
 				return;
 			}
@@ -1202,7 +1207,7 @@ export class PvsProofExplorer {
 						return item.getNodeXStructure();
 					});
 					const evt: ProofEditDidCopyTree = { action: "did-copy-tree", selected: desc.selected, elems, clipboard: seq };
-					this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
 				return;
 			}
@@ -1295,7 +1300,7 @@ export class PvsProofExplorer {
 			if (selected && this.cutNode({ selected })) {
 				const evt: ProofEditDidCutNode = { action: "did-cut-node", selected: desc.selected };
 				if (this.connection && !this.autorunFlag) {
-					this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
 				return;
 			}
@@ -1329,7 +1334,7 @@ export class PvsProofExplorer {
 					}
 					const evt: ProofEditDidCutTree = { action: "did-cut-tree", selected: desc.selected, clipboard, elems };
 					if (this.connection && !this.autorunFlag) {
-						this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+						this.connection.sendNotification(serverEvent.proverEvent, evt);
 					}
 				}
 				return;
@@ -1382,7 +1387,7 @@ export class PvsProofExplorer {
 							action: "did-delete-node", 
 							selected: { id: selected.children[i].id, name: selected.children[i].name }
 						};
-						this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+						this.connection.sendNotification(serverEvent.proverEvent, evt);
 					}
 				}
 				selected.children = [];
@@ -1484,12 +1489,12 @@ export class PvsProofExplorer {
 							action: "did-delete-node", 
 							selected: { id: items[i].id, name: items[i].name }
 						};
-						this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+						this.connection.sendNotification(serverEvent.proverEvent, evt);
 					}
 					const evt: ProofEditDidTrimNode = { action: "did-trim-node", elems: items.map(item => {
 						return item.getNodeXStructure();
 					})};
-					this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
 			}
 			return items;
@@ -1650,7 +1655,7 @@ export class PvsProofExplorer {
 		this.initialProofState = proofState;
 		const evt: ProofExecDidLoadSequent = { action: "did-load-sequent", sequent: proofState };
 		if (this.connection && !this.autorunFlag) {
-			this.connection.sendNotification(serverEvent.proofExecEvent, evt);
+			this.connection.sendNotification(serverEvent.proverEvent, evt);
 		}
 	}
 
@@ -1692,7 +1697,7 @@ export class PvsProofExplorer {
 			} else {
 				const evt: ProofExecDidStartProof = { action: "did-start-proof" };
 				if (this.connection) {
-					this.connection.sendNotification(serverEvent.proofExecEvent, evt);
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
 			}
 		} else {
@@ -1763,7 +1768,7 @@ export class PvsProofExplorer {
 				proof: structure
 			};
 			if (this.connection && !this.autorunFlag) {
-				this.connection.sendNotification(serverEvent.proofExecEvent, evt);
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}
 		return pdesc;
@@ -2014,7 +2019,6 @@ export class PvsProofExplorer {
 				this.connection.sendRequest(serverEvent.QED, { response: { result: request.cmd }, args: request });
 				this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
 			}
-			// await this.quitProof();
 			// trigger a context update, so proof status will be updated on the front-end
 			const cdesc: PvsContextDescriptor = await this.pvsLanguageServer.getContextDescriptor({ contextFolder: request.contextFolder });
 			if (this.connection) {
@@ -2023,7 +2027,6 @@ export class PvsProofExplorer {
 			// re-generate tccs
 			await this.pvsLanguageServer.generateTccsRequest(request, { quiet: true });
 			// stop the loop & don't send proof-state to cli gateway
-			
 			return;
 		}
 
@@ -2045,30 +2048,24 @@ export class PvsProofExplorer {
 				// console.dir(response, { depth: null });
 				if (response) {
 					if (response.result) {
-						// the following additional logic is necessary to create the log file and start up the interactive cli session
-						// const proofLogPath: string = path.join(req.contextFolder, fsUtils.pvsbinFolder);
 						const channelID: string = utils.desc2id(req);
-						// const pvsLogFile: string = path.join(proofLogPath, `${channelID}${fsUtils.logFileExtension}`);
-						// const pvsTmpLogFile: string = path.join(proofLogPath, `${channelID}-tmp${fsUtils.logFileExtension}`);
-						// await fsUtils.createFolder(proofLogPath);
-						// await fsUtils.writeFile(pvsTmpLogFile, "");
-
 						const result: SequentDescriptor[] = response.result;
-						for (let r = 0; r < result.length; r++) {
-							if (result[r]["prover-session-status"]) {
+						for (let j = 0; j < result.length; j++) {
+							const sequent: SequentDescriptor = result[result.length - 1 - j]; // result in position 0 is the most recent, process it last
+							if (sequent["prover-session-status"]) {
+								// FIXME: this field is provided only by json-output patch, not by the xmlrpc server -- either use it or don't, adopt a standard solution!
 								// branch closed, or proof completed
-								console.dir(result[r]);
+								console.dir(sequent);
 							} else {
-								// await fsUtils.writeFile(pvsLogFile, utils.formatProofState(result[r]));
-								// FIXME: pvs-server needs to provide a string representation of the command, not its structure
+								// FIXME: pvs-server needs to provide a string representation of the command, not its structure!
 								const command: string = 
-									(result[r] && result[r]["last-cmd"] 
+									(sequent && sequent["last-cmd"] 
 										&& !utils.isUndoCommand(cmd)
 										&& !utils.isUndoUndoCommand(cmd)
-										&& !utils.isPostponeCommand(cmd)) ? result[r]["last-cmd"] : cmd;
+										&& !utils.isPostponeCommand(cmd)) ? sequent["last-cmd"] : cmd;
 								if (this.connection) {
 									this.connection.sendRequest(serverEvent.proofCommandResponse, { 
-										response: { result: result[r] }, 
+										response: { result: sequent }, 
 										args: { 
 											fileName: req.fileName,
 											fileExtension: req.fileExtension,
@@ -2079,15 +2076,12 @@ export class PvsProofExplorer {
 										}
 									});
 								}
-								// this.connection.sendRequest(serverEvent.proofStateUpdate, { response: { result: result[r] }, args: req, pvsLogFile, pvsTmpLogFile });
-								if (utils.QED(result[r])) {
+								// check if the proof is complete
+								if (utils.QED(sequent)) {
 									if (this.connection) {
-										this.connection.sendRequest(serverEvent.QED, { response: { result: result[r] }, args: req });
-									}
-									// await this.quitProof();
-									// trigger a context update, so proof status will be updated on the front-end
-									const cdesc: PvsContextDescriptor = await this.pvsLanguageServer.getContextDescriptor({ contextFolder: req.contextFolder });
-									if (this.connection) {
+										this.connection.sendRequest(serverEvent.QED, { response: { result: sequent }, args: req });
+										// trigger a context update, so proof status will be updated on the front-end
+										const cdesc: PvsContextDescriptor = await this.pvsLanguageServer.getContextDescriptor({ contextFolder: req.contextFolder });
 										this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 									}
 									// re-generate tccs
@@ -2095,8 +2089,9 @@ export class PvsProofExplorer {
 									// stop the loop & don't send proof-state to cli gateway
 									return;
 								}
+								// show feedback in CLI only after executing the last command in the sequence
 								if (i === cmdArray.length - 1) {
-									this.pvsLanguageServer.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: result[r], cmd });
+									this.pvsLanguageServer.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: sequent, cmd });
 								}
 							}
 						}	
@@ -2232,7 +2227,7 @@ export class ProofItem extends TreeItem {
 				sequent: this.sequentDescriptor, 
 				selected: { id: this.id, name: this.name } 
 			};
-			this.connection.sendNotification(serverEvent.proofExecEvent, evt);
+			this.connection.sendNotification(serverEvent.proverEvent, evt);
 		}
 	}
 	rename (newName: string, opt?: { internalAction?: boolean }): void {
@@ -2245,7 +2240,7 @@ export class ProofItem extends TreeItem {
 				selected: { id: this.id, name: oldName }, 
 				newName: newName
 			};
-			this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+			this.connection.sendNotification(serverEvent.proverEvent, evt);
 		}
 	}
 	pending (): void {
@@ -2393,7 +2388,7 @@ export class ProofItem extends TreeItem {
 				position
 			};
 			if (this.connection) {
-				this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}
 	}
@@ -2409,7 +2404,7 @@ export class ProofItem extends TreeItem {
 				selected: { id: child.id, name: child.name }
 			};
 			if (this.connection) {
-				this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}
 	}
@@ -2593,7 +2588,7 @@ export class ProofItem extends TreeItem {
 				position: this.parent.children.indexOf(sib)
 			};
 			if (this.connection) {
-				this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}
 	}
@@ -2616,7 +2611,7 @@ export class ProofItem extends TreeItem {
 				position: this.children.indexOf(child) // this should be 0
 			};
 			if (this.connection) {
-				this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}
 	}
@@ -2646,7 +2641,7 @@ export class ProofItem extends TreeItem {
 				position: this.children.indexOf(child)
 			};
 			if (this.connection) {
-				this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}
 	}
@@ -2730,7 +2725,7 @@ class RootNode extends ProofItem {
 				proofStatus: this.proofStatus
 			};
 			if (this.connection) {
-				this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}
 		if (this.proofStatus !== "proved") {
@@ -2752,7 +2747,7 @@ class RootNode extends ProofItem {
 				proofStatus: this.proofStatus
 			};
 			if (this.connection) {
-				this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}
 	}
@@ -2782,7 +2777,7 @@ class GhostNode extends ProofItem {
 					cursor
 				};
 				if (this.connection) {
-					this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
 			} else {
 				console.warn(`[proof-explorer] Warning: trying to activate cursor node when realNode is null`);
@@ -2798,7 +2793,7 @@ class GhostNode extends ProofItem {
 					action: "did-deactivate-cursor"
 				};
 				if (this.connection) {
-					this.connection.sendNotification(serverEvent.proofEditEvent, evt);
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
 			} else {
 				console.warn(`[proof-explorer] Warning: trying to activate cursor node when realNode is null`);

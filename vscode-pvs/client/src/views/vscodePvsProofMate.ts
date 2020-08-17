@@ -293,7 +293,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	protected providerView: string;
 	protected view: TreeView<TreeItem>;
 
-	protected visible: boolean = false;
+	protected enabled: boolean = false;
 
 	// proof descriptor
 	protected formula: PvsFormula;
@@ -322,14 +322,14 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	// 	this.autorunFlag = true;
 	// }
 	disposeView (): void {
-		this.hideView();
+		this.disableView();
 	}
-	hideView (): void {
-		this.visible = false;
+	disableView (): void {
+		this.enabled = false;
 		vscode.commands.executeCommand('setContext', 'proof-mate.visible', false);
 	}
-	revealView (): void {
-		this.visible = true;
+	enableView (): void {
+		this.enabled = true;
 		vscode.commands.executeCommand('setContext', 'proof-mate.visible', true);
 	}
 
@@ -357,7 +357,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	 * Refresh tree view
 	 */
 	protected refreshView(): void {
-		if (this.visible) {
+		if (this.enabled) {
 			this._onDidChangeTreeData.fire();
 		}
 	}
@@ -495,7 +495,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 
 	updateRecommendations (proofState: SequentDescriptor): void {
 		if (proofState) {
-			if (this.visible) {
+			if (this.enabled) {
 				this.resetView();
 				const recs: { cmd: string, tooltip?: string }[] = this.getRecommendations(proofState);
 				if (recs) {

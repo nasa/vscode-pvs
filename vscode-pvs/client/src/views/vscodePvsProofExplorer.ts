@@ -76,13 +76,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	protected client: LanguageClient;
 	protected serverMode: ServerMode = "lisp";
 
-	protected visible: boolean = false;
-
 	/**
-	 * Clipboards for cut/paste operations
+	 * Flag indicating whether the view is enabled
 	 */
-	protected clipboard: ProofItem = null;
-	protected clipboardTree: ProofItem[] = null;
+	protected enabled: boolean = false;
 
 	/**
 	 * Information on the formula loaded in proof explorer
@@ -326,6 +323,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
+	didStartNewProof (): void {
+		this.root = null;
+	}
+
 	didTrimNode (desc: ProofEditDidTrimNode): void {
 		if (desc && desc.elems && desc.elems.length) {
 			let sketchpadItems: ProofItem[] = [];
@@ -380,16 +381,16 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Force refresh of the tree view
 	 */
 	refreshView(): void {
-		if (this.visible) {
+		if (this.enabled) {
 			this._onDidChangeTreeData.fire();
 		}
 	}
-	hideView (): void {
-		this.visible = false;
+	disableView (): void {
+		this.enabled = false;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.visible', false);
 	}
-	revealView (): void {
-		this.visible = true;
+	enableView (): void {
+		this.enabled = true;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.visible', true);
 	}
 
@@ -401,7 +402,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', false);
 		vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', false);
 		this.refreshView();
-		this.hideView();
+		this.disableView();
 	}
 
 
@@ -808,7 +809,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param item Node to be returned
 	 */
 	getTreeItem(item: TreeItem): TreeItem {
-		return (this.visible) ? item : null;
+		return (this.enabled) ? item : null;
 	}
 	/**
 	 * Returns the parent of a node. This method is necessaty for the correct execution of view.reveal()

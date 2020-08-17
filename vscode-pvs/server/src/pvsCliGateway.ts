@@ -183,7 +183,7 @@ export class PvsCliGateway {
 											const connection: Connection = this.pvsLanguageServer.getConnection();
 											if (connection) {
 												const evt: ProofExecDidEndProof = { action: "did-end-proof" };
-												connection.sendNotification(serverEvent.proofExecEvent, evt);
+												connection.sendNotification(serverEvent.proverEvent, evt);
 											}
 										} else {
 											console.error("[pvs-cli-gateway] Warning: could not find records of client that wants to unsubscribe");

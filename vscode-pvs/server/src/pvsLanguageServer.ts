@@ -227,8 +227,11 @@ export class PvsLanguageServer {
 	 * @param contextFolder 
 	 */
 	protected isSameWorkspace (contextFolder: string): boolean {
-		return contextFolder === this.lastParsedContext
-			|| contextFolder === path.join(this.lastParsedContext, fsUtils.pvsbinFolder);
+		if (this.lastParsedContext) {
+			return contextFolder === this.lastParsedContext
+				|| contextFolder === path.join(this.lastParsedContext, fsUtils.pvsbinFolder);
+		}
+		return false;
 	}
 
 
@@ -628,9 +631,9 @@ export class PvsLanguageServer {
 		}
 		if (request) {
 			request = fsUtils.decodeURIComponents(request);
-			const desc: PvsFile = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
-			if (desc) {
-				const fname: string = `${desc.fileName}${desc.fileExtension}`;
+			if (request) {
+				request.fileExtension = ".pvs"; // only .pvs files should be typechecked
+				const fname: string = `${request.fileName}${request.fileExtension}`;
 				// make sure file exists
 				if (!fsUtils.fileExists(fname)) {
 					this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
@@ -642,23 +645,23 @@ export class PvsLanguageServer {
 				// parse workspace first, so the front-end is updated with statistics
 				await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
 				// proceed with typechecking
-				const response: PvsResponse = await this.typecheckFile(desc);
+				const response: PvsResponse = await this.typecheckFile(request);
 				this.connection.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
 				// send diagnostics
 				if (response) {
 					if (response.result) {
-						const fname: string = fsUtils.desc2fname(desc);
+						const fname: string = fsUtils.desc2fname(request);
 						this.diags[fname] = {
 							pvsResponse: response,
 							isTypecheckError: true
 						};
 						this.sendDiagnostics("Typecheck");
-						this.notifyEndImportantTask({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} typechecked successfully!` });
+						this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} typechecked successfully!` });
 					} else {
 						this.pvsErrorManager.handleTypecheckError({ response: <PvsError> response, taskId, request });
 						// send diagnostics
 						if (response.error.data) {
-							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(desc);
+							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
 							const msg: string = response.error.data.error_string || "";
 							this.diags[fname] = {
 								pvsResponse: response,
@@ -883,72 +886,66 @@ export class PvsLanguageServer {
 		}
 		request = fsUtils.decodeURIComponents(request);
 		if (request) {
+			request.fileExtension = ".pvs"; // only .pvs files should be parsed
 			opt = opt || {};
-			const desc: {
-				fileName: string, 
-				fileExtension: string, 
-				contextFolder: string 
-			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
-			if (desc) {
-				if (fsUtils.isPvsFile(desc)) {
-					if (desc.contextFolder === path.join(this.lastParsedContext, fsUtils.pvsbinFolder)) {
+			if (request) {
+				if (fsUtils.isPvsFile(request)) {
+					if (request.contextFolder === path.join(this.lastParsedContext, fsUtils.pvsbinFolder)) {
 						// nothing to do
 						return;
 					}
 					// send information to the client, to populate theory explorer on the front-end
-					this.lastParsedContext = desc.contextFolder;
-					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: desc.contextFolder });
+					this.lastParsedContext = request.contextFolder;
+					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
 					this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 					
 					// we should only parse .pvs files
-					if (desc.fileExtension === ".pvs") {
-						const fname: string = fsUtils.desc2fname(desc);
-						// make sure file exists
-						if (!fsUtils.fileExists(fname)) {
-							this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
-							return;
+					const fname: string = fsUtils.desc2fname(request);
+					// make sure file exists
+					if (!fsUtils.fileExists(fname)) {
+						this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
+						return;
+					}
+					const taskId: string = `parse-${fname}`;
+					// send feedback to the front-end
+					if (opt.withFeedback) {
+						this.notifyStartImportantTask({ id: taskId, msg: `Parsing file ${fname}` });
+					}
+
+					// send workspace stats
+					const contextFiles: FileList = await fsUtils.listPvsFiles(request.contextFolder);
+					if (contextFiles && contextFiles.fileNames) {
+						const nfiles: number = contextFiles.fileNames.length;
+						this.connection.sendRequest(serverEvent.workspaceStats, { contextFolder: request.contextFolder, files: nfiles });
+					}
+					
+					// parse file, as requested
+					const response: PvsResponse = await this.parseFile(request);
+					let source: string = "Parse";
+					if (response) {
+						// send parser response
+						this.connection.sendRequest(serverEvent.parseFileResponse, response);
+						// collect diagnostics
+						if (this.diags[fname] && this.diags[fname].isTypecheckError) {
+							// keep typecheck diags
+							source = "Typecheck";
+						} else {
+							this.diags[fname] = {
+								pvsResponse: response,
+								isTypecheckError: false
+							};
 						}
-						const taskId: string = `parse-${fname}`;
 						// send feedback to the front-end
 						if (opt.withFeedback) {
-							this.notifyStartImportantTask({ id: taskId, msg: `Parsing file ${fname}` });
-						}
-
-						// send workspace stats
-						const contextFiles: FileList = await fsUtils.listPvsFiles(desc.contextFolder);
-						if (contextFiles && contextFiles.fileNames) {
-							const nfiles: number = contextFiles.fileNames.length;
-							this.connection.sendRequest(serverEvent.workspaceStats, { contextFolder: desc.contextFolder, files: nfiles });
-						}
-						
-						// parse file, as requested
-						const response: PvsResponse = await this.parseFile(desc);
-						let source: string = "Parse";
-						if (response) {
-							// send parser response
-							this.connection.sendRequest(serverEvent.parseFileResponse, response);
-							// collect diagnostics
-							if (this.diags[fname] && this.diags[fname].isTypecheckError) {
-								// keep typecheck diags
-								source = "Typecheck";
+							if (response.error) {
+								this.pvsErrorManager.handleParseFileError({ taskId, request, source });
 							} else {
-								this.diags[fname] = {
-									pvsResponse: response,
-									isTypecheckError: false
-								};
+								this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} parsed successfully!` });
 							}
-							// send feedback to the front-end
-							if (opt.withFeedback) {
-								if (response.error) {
-									this.pvsErrorManager.handleParseFileError({ taskId, request, source });
-								} else {
-									this.notifyEndImportantTask({ id: taskId, msg: `${desc.fileName}${desc.fileExtension} parsed successfully!` });
-								}
-							}
-						} 
-						// send diagnostics
-						this.sendDiagnostics(source);
-					}
+						}
+					} 
+					// send diagnostics
+					this.sendDiagnostics(source);
 				}
 			} else {
 				console.error("[pvs-language-server] Warning: pvs.parse-file is unable to identify filename for ", request);

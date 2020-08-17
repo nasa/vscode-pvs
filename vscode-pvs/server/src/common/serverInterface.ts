@@ -466,8 +466,9 @@ export const serverEvent = {
 
 	// proverForwardResponse: "pvs.response.prover-forward",
 	proofNodeUpdate: "pvs.event.proof-node-update",
-	proofEditEvent: "pvs.event.proof-edit-event",
-	proofExecEvent: "pvs.event.proof-exec-event",
+	// proofEditEvent: "pvs.event.proof-edit-event",
+	// proofExecEvent: "pvs.event.proof-exec-event",
+	proverEvent: "pvs.prover-event",
 	clipboardEvent: "pvs.event.clipboard-event",
 
 	// loadProofStructureEvent: "pvs.event.load-proof-structure",
@@ -652,7 +653,7 @@ export type ProofEditSave = {
 export type ProofEditEvent = ProofEditDidAppendNode | ProofEditDidCopyNode | ProofEditDidPasteNode | ProofEditDidCopyTree
 	| ProofEditDidPasteTree | ProofEditDidDeleteNode | ProofEditDidAppendBranch | ProofEditDidCutNode | ProofEditDidCutTree
 	| ProofEditDidDeleteTree | ProofEditDidTrimNode | ProofEditDidRenameNode | ProofEditDidActivateCursor 
-	| ProofEditDidDeactivateCursor | ProofEditDidUpdateProofStatus;
+	| ProofEditDidDeactivateCursor | ProofEditDidUpdateProofStatus | ProofEditDidStartNewProof;
 export type ProofEditDidAppendNode = {
 	action: "did-append-node",
 	elem: ProofNodeX,
@@ -717,6 +718,9 @@ export type ProofEditDidDeactivateCursor = {
 export type ProofEditDidUpdateProofStatus = {
 	action: "did-update-proof-status",
 	proofStatus: ProofStatus
+};
+export type ProofEditDidStartNewProof = {
+	action: "did-start-new-proof"
 };
 
 

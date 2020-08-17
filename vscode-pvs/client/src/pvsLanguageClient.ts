@@ -162,7 +162,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// update decorations
 				this.decorationProvider.updateDecorations(editor);
 				// trigger file parsing to get syntax diagnostics
-				this.client.sendRequest(comm.serverCommand.parseFile, editor.document.fileName);
+				const desc: comm.PvsFile = fsUtils.fname2desc(editor.document.fileName);
+				this.client.sendRequest(comm.serverCommand.parseFile, desc);
 				// const context: string = fsUtils.getContextFolder(editor.document.fileName);
 				// this.client.sendRequest(comm.serverCommand.parseWorkspace, context);				
 			} else {
@@ -336,7 +337,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 						// parse file opened in the editor
 						if (window.activeTextEditor && window.activeTextEditor.document) {
-							this.client.sendRequest(comm.serverCommand.parseFile, window.activeTextEditor.document.fileName);
+							const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor.document.fileName);
+							this.client.sendRequest(comm.serverCommand.parseFile, desc);
 						}
 
 						// resolve the promise
