@@ -9,8 +9,7 @@ The environment redefines the way developers interact with PVS, and better align
 ## Requirements
 - Visual Studio Code (v1.37.1 or greater) https://code.visualstudio.com
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
-- Java JDK (v1.8 or greater) https://openjdk.java.net
-- PVS Allegro (v7.1 or greater)
+- PVS Allegro (v7.1.0 or greater)
   - [PVS-7.1.0 for Linux](http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-ga2184387-ix86_64-Linux-allegro.tgz)
   - [PVS-7.1.0 for MacOs](http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-ga2184387-ix86-MacOSX-allegro.tgz) 
 
