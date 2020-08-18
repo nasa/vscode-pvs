@@ -191,223 +191,278 @@
 			{
 				"command": "vscode-pvs.typecheck-file",
 				"title": "Typecheck File",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
-				"command": "vscode-pvs.typecheck",
+				"command": "vscode-pvs.typecheck-file-inline",
 				"title": "Typecheck",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.autorun-theory",
-				"title": "Re-run all proofs",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"title": "Re-run All Proofs",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
+			},
+			{
+				"command": "vscode-pvs.show-proof-summary",
+				"title": "Show Proof Summary",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.generate-tccs",
 				"title": "Generate TCCs",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.show-tccs",
 				"title": "Show Typecheck Conditions (TCCs)",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.show-tccs-alt",
 				"title": "Show",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.parse-file",
 				"title": "Parse File",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.new-pvs-file",
 				"title": "New PVS File",
-				"enablement": "pvs-server-active == true"
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.parse-workspace",
 				"title": "Parse Workspace",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.typecheck-workspace",
 				"title": "Typecheck Workspace",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
+			},
+			{
+				"command": "vscode-pvs.typecheck-workspace-inline",
+				"title": "Typecheck",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.hp2pvs",
 				"title": "Generate PVS file",
-				"enablement": "pvs-server-active == true"
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.prove-formula",
 				"title": "Prove",
-				"enablement": "pvs-server-active == true && !autorun"
+				"enablement": "pvs-server-active == true && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.command-palette",
 				"title": "Command Palette...",
-				"enablement": "pvs-server-active == true"
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs-explorer",
 				"title": "Discharge",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs",
 				"title": "Discharge all TCCs",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
 				"title": "Evaluate in PVSio",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun"
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.exec-proof-command",
 				"title": "Execute",
 				"enablement": "pvs-server-active == true",
-				"icon": "icons/play-icon.png"
+				"icon": "icons/play-icon.png",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.run-sketchpad",
 				"title": "Run-all",
-				"enablement": "pvs-server-active == true"
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.send-to-terminal",
 				"title": "Send to terminal",
-				"enablement": "pvs-server-active == true"
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.delete-node",
 				"title": "Delete",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.trim-node",
 				"title": "Trim",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.trim-unused",
 				"title": "Remove Unused Commands",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.create-proof-branch",
 				"title": "New branch",
-				"enablement": "view == proof-explorer-view && viewItem != proof-branch && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && viewItem != proof-branch && pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.new-proof-command",
 				"title": "New proof command",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.show-sequent",
 				"title": "Show sequent",
 				"enablement": "view == proof-explorer-view && pvs-server-active == true",
-				"icon": "icons/browser-arrow-icon.png"
+				"icon": "icons/browser-arrow-icon.png",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.edit-node",
 				"title": "Edit",
-				"enablement": "pvs-server-active == true"
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.cut-node",
 				"title": "Cut",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true && viewItem != root"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true && viewItem != root",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.copy-node",
 				"title": "Copy",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true && viewItem != root"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true && viewItem != root",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.paste-node",
 				"title": "Paste",
-				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node && pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.cut-subtree",
 				"title": "Cut Subtree",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.copy-subtree",
 				"title": "Copy Subtree",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.paste-subtree",
 				"title": "Paste Subtree",
-				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-tree && pvs-server-active == true"
+				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-tree && pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.save-proof",
 				"title": "Save",
-				"enablement": "pvs-server-active == true"
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.save-proof-as",
 				"title": "Save As...",
-				"enablement": "false"
+				"enablement": "false",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.open-proof",
 				"title": "Open Proof File...",
-				"enablement": "false"
+				"enablement": "false",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.quit-proof",
 				"title": "Quit",
-				"enablement": "pvs-server-active == true"
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.back",
 				"title": "Back one step",
 				"icon": "icons/prev-icon.png",
-				"enablement": "in-checker == true && !proof-explorer.running"
+				"enablement": "in-checker == true && !proof-explorer.running",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.forward",
 				"title": "Step proof",
 				"icon": "icons/next-icon.png",
-				"enablement": "in-checker == true && !proof-explorer.running"
+				"enablement": "in-checker == true && !proof-explorer.running",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.run-proof",
 				"title": "️️Run proof",
 				"icon": "icons/play-circle-1-icon.png",
-				"enablement": "view == proof-explorer-view && !proof-explorer.running"
+				"enablement": "view == proof-explorer-view && !proof-explorer.running",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.fast-forward",
 				"title": "️️Fast forward here",
 				"icon": "icons/fast-forward-icon-alt-2.png",
-				"enablement": "view == proof-explorer-view && viewItem != root && in-checker == true && !proof-explorer.running"
+				"enablement": "view == proof-explorer-view && viewItem != root && in-checker == true && !proof-explorer.running",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.activate-basic-profile",
 				"title": "Switch to Basic Profile",
-				"enablement": "in-checker == true && !basic-profile-active"
+				"enablement": "in-checker == true && !basic-profile-active",
+				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.activate-advanced-profile",
 				"title": "Switch to Advanced Profile",
-				"enablement": "in-checker == true && !advanced-profile-active"
+				"enablement": "in-checker == true && !advanced-profile-active",
+				"category": "pvs"
 			},
 			{
 				"command": "workspace-explorer.prove-all",
 				"title": "Prove All",
-				"enablement": "false"
+				"enablement": "false",
+				"category": "pvs"
 			}
 		],
 		"menus": {
@@ -455,17 +510,27 @@
 					"group": "inline"
 				},
 				{
-					"command": "vscode-pvs.typecheck",
+					"command": "vscode-pvs.typecheck-workspace-inline",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "inline"
+				},
+				{
+					"command": "vscode-pvs.typecheck-file-inline",
 					"when": "view == workspace-explorer-view && viewItem == pvs-file",
 					"group": "inline"
 				},
 				{
-					"command": "vscode-pvs.typecheck",
+					"command": "vscode-pvs.typecheck-file-inline",
 					"when": "view == workspace-explorer-view && viewItem == theory",
 					"group": "inline"
 				},
 				{
 					"command": "vscode-pvs.autorun-theory",
+					"when": "view == workspace-explorer-view && viewItem == theory",
+					"group": "context-menu/ctrl-1"
+				},
+				{
+					"command": "vscode-pvs.show-proof-summary",
 					"when": "view == workspace-explorer-view && viewItem == theory",
 					"group": "context-menu/ctrl-1"
 				},
@@ -652,6 +717,16 @@
 					"group": "yy_commands"
 				},
 				{
+					"command": "vscode-pvs.show-proof-summary",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "yy_commands"
+				},
+				{
+					"command": "vscode-pvs.autorun-theory",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "yy_commands"
+				},
+				{
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
 					"group": "yyy_commands"
@@ -694,9 +769,19 @@
 					"group": "yy_commands"
 				},
 				{
+					"command": "vscode-pvs.show-proof-summary",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "yy_commands"
+				},
+				{
+					"command": "vscode-pvs.autorun-theory",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "yy_commands"
+				},
+				{
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
-					"group": "yyy_commands"
+					"group": "yyyy_commands"
 				}
 			],
 			"view/title": [
@@ -877,7 +962,8 @@
 					".pr",
 					".prlite",
 					".prl",
-					".hpvs"
+					".hpvs",
+					".summary"
 				],
 				"firstLine": "\\s*((%+\\w+)|((\\w+)\\s*(?:\\[([\\w\\W\\s]*)\\])?\\s*\\:\\s*(THEORY|theory|Theory)\\b))",
 				"filenames": [

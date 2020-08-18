@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, ConfigurationTarget } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, PvsFile } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -857,6 +857,25 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				});
 			} else {
 				window.showErrorMessage(`Error: could not find theory ${theory.theoryName}`);
+			}
+		}
+	}
+
+	async showProofSummary (desc: PvsTheory): Promise<void> {
+		const summaryFile: PvsFile = {
+			fileName: desc.theoryName,
+			fileExtension: ".summary",
+			contextFolder: desc.contextFolder
+		};
+		const fileExists: boolean = await fsUtils.fileExists(fsUtils.desc2fname(summaryFile));
+		if (fileExists) {
+			vscodeUtils.showTextDocument(summaryFile);
+		} else {
+			const yesno: string[] = [ "Yes", "No" ];
+			const msg: string = `Summary file has not been generated yet. Re-run all proofs?`
+			const ans: string = await window.showInformationMessage(msg, { modal: true }, yesno[0]);
+			if (ans === yesno[0]) {
+				commands.executeCommand("vscode-pvs.autorun-theory", desc);
 			}
 		}
 	}

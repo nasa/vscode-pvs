@@ -796,6 +796,33 @@ export class EventsDispatcher {
             }
         }));
 
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.show-proof-summary", async (resource: TheoryItem | { path: string }) => {
+            let desc: PvsTheory = null;
+            if (resource) {
+                if (resource.path) {
+                    // this is a file in the editor
+                    const document: vscode.TextDocument = window.activeTextEditor.document;
+                    const line: number = window.activeTextEditor.selection.active.line;
+                    const theoryName: string = utils.findTheoryName(document.getText(), line);
+                    desc = {
+                        contextFolder: fsUtils.getContextFolder(resource.path),
+                        fileName: fsUtils.getFileName(resource.path),
+                        fileExtension: fsUtils.getFileExtension(resource.path),
+                        theoryName
+                    }
+                } else {
+                    desc = {
+                        contextFolder: (<TheoryItem> resource).contextFolder,
+                        fileName: (<TheoryItem> resource).fileName,
+                        fileExtension: (<TheoryItem> resource).fileExtension,
+                        theoryName: (<TheoryItem> resource).theoryName
+                    };
+                }
+            }
+            if (desc) {
+                await this.workspaceExplorer.showProofSummary(desc);
+            }
+        }));
         // vscode-pvs.autorun-theory
         // the sequence of events triggered by this command is:
         // 1. vscodePvsTerminal.startProverSession(desc) 
@@ -805,15 +832,37 @@ export class EventsDispatcher {
         //      3.2 loadProofDescriptor
         //      3.3 proveFormula
         // <loop over all theorems>
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory", async (resource: TheoryItem) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory", async (resource: TheoryItem | { path: string }) => {
+            let desc: PvsTheory = null;
             if (resource) {
+                if (resource.path) {
+                    // this is a file in the editor
+                    const document: vscode.TextDocument = window.activeTextEditor.document;
+                    const line: number = window.activeTextEditor.selection.active.line;
+                    const theoryName: string = utils.findTheoryName(document.getText(), line);
+                    desc = {
+                        contextFolder: fsUtils.getContextFolder(resource.path),
+                        fileName: fsUtils.getFileName(resource.path),
+                        fileExtension: fsUtils.getFileExtension(resource.path),
+                        theoryName
+                    }
+                } else {
+                    desc = {
+                        contextFolder: (<TheoryItem> resource).contextFolder,
+                        fileName: (<TheoryItem> resource).fileName,
+                        fileExtension: (<TheoryItem> resource).fileExtension,
+                        theoryName: (<TheoryItem> resource).theoryName
+                    };
+                }
+            }
+            if (desc) {
                 this.quietMode = true;
 
-                this.statusBar.showProgress(`Re-running proofs in theory ${resource.theoryName}`);
+                this.statusBar.showProgress(`Re-running proofs in theory ${desc.theoryName}`);
                 this.proofMate.disableView();
                 this.proofExplorer.disableView();
 
-                await this.workspaceExplorer.autorun(resource);
+                await this.workspaceExplorer.autorun(desc);
 
                 this.statusBar.ready();
 
@@ -929,7 +978,7 @@ export class EventsDispatcher {
             }
         }));
         // alias for vscode-pvs.typecheck-file
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck", async (resource: string | { path: string } | { contextValue: string }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-file-inline", async (resource: string | { path: string } | { contextValue: string }) => {
             commands.executeCommand("vscode-pvs.typecheck-file", resource);
         }));
         
@@ -1015,6 +1064,9 @@ export class EventsDispatcher {
 		}));
 
         // vscode-pvs.typecheck-workspace
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-workspace-inline", async (resource: string | { path: string } | { contextValue: string }) => {
+            commands.executeCommand("vscode-pvs.typecheck-workspace", resource);
+        }));
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-workspace", async (resource: string | { path: string } | { contextValue: string }) => {
             if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
                 resource = { path: window.activeTextEditor.document.fileName };
