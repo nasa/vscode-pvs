@@ -1448,9 +1448,9 @@ export function isInvalidCommand (result: { commentary: string[] }): boolean {
 		&& result.commentary.length
 		&& typeof result.commentary[0] === "string"
 		&& (result.commentary.filter((comment: string)=> {
-			return comment.startsWith("not a valid prover command");
+			return comment.includes("not a valid prover command");
 		}).length > 0 || result.commentary.filter((comment: string)=> {
-			return comment.startsWith(`Found 'eof' when expecting`);
+			return comment.includes(`Found 'eof' when expecting`);
 		}).length > 0 || result.commentary.filter((comment: string)=> {
 			return comment.includes(`bad proof command`);
 		}).length > 0 || result.commentary.filter((comment: string)=> {

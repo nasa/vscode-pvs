@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.25-alpha",
+	"version": "1.0.25-beta",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -239,6 +239,12 @@
 			{
 				"command": "vscode-pvs.new-pvs-file",
 				"title": "New PVS File",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
+				"command": "vscode-pvs.view-prelude-file",
+				"title": "View Prelude File",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
@@ -550,6 +556,11 @@
 					"group": "context-menu/ctrl-1"
 				},
 				{
+					"command": "vscode-pvs.view-prelude-file",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "context-menu/ctrl-1.1"
+				},
+				{
 					"command": "vscode-pvs.parse-workspace",
 					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
 					"group": "context-menu/ctrl-2"
@@ -834,6 +845,11 @@
 					"command": "vscode-pvs.new-pvs-file",
 					"when": "view == workspace-explorer-view",
 					"group": "ctrl-1"
+				},
+				{
+					"command": "vscode-pvs.view-prelude-file",
+					"when": "view == workspace-explorer-view",
+					"group": "ctrl-1.1"
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",

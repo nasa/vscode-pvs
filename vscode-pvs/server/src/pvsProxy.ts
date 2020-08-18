@@ -208,6 +208,21 @@ export class PvsProxy {
 		// await this.restartPvsServer();
 	}
 
+	protected normalizeSequent (res: SequentDescriptor | { result: string }, cmd: string): SequentDescriptor {
+		// NOTE: this is a temporary fix while waiting the server APIs to be fixed
+		if (res) {
+			const sequent: SequentDescriptor = {
+				label: (res["result"]) ? "QED" : res["label"], // this should always be the formula name....
+				commentary: (res["result"]) ? [ res["result"] ] : res["commentary"],
+				"num-subgoals": (res["result"]) ? {} : res["num-subgoals"],
+				sequent: (res["result"]) ? 0 : res["sequent"],
+				"last-cmd": (res["prev-cmd"] && res["prev-cmd"].length === 1) ? res["prev-cmd"][0] : cmd
+			}
+			return sequent;
+		}
+		return null;
+	}
+
 	//--------------------------------------------------
 	//         json-rpc methods
 	//--------------------------------------------------
@@ -283,27 +298,15 @@ export class PvsProxy {
 								}
 
 								if ((method === "proof-command" || method === "prove-formula") && resp.result) {
-									// NOTE: this is a temporary fix while waiting the server APIs to be fixed
-									if (resp.result["result"]) {
-										const result: string = resp.result["result"].trim();
-										resp.result = <SequentDescriptor> {
-											label: result, // this should actually be the formula name....
-											commentary: [ result ],
-											"num-subgoals": 0,
-											sequent: {}
+									if (resp.result) {
+										if (resp.result.length) {
+											for (let i = 0; i < resp.result.length; i++) {
+												resp.result[i] = this.normalizeSequent(resp.result[i], params[0]);
+											}
+										} else {
+											resp.result = [ this.normalizeSequent(resp.result, params[0]) ];
 										}
 									}
-									const proofState: SequentDescriptor = resp.result;
-									if (method === "proof-command" && proofState) {
-										// const prev_cmd: string = proofState["prev-cmd"] && proofState["prev-cmd"]["length"] && proofState["prev-cmd"][0];
-										// if (!utils.isShowHiddenCommand(params[0]) && !utils.isPostponeCommand(params[0]) && !utils.QED(proofState) && !utils.branchComplete(proofState) && !utils.isUndoCommand(params[0]) && !utils.isUndoUndoCommand(params[0]) 
-										// 		&& !utils.isInvalidCommand(proofState) 
-										// 		&& !params[0].includes(prev_cmd)) { // FIXME: this is a workaround necessary because pvs does not always report errors, e.g., when trying to replace a term that does not exist in the sequent
-										// 	proofState.commentary = [ `No change on: ${params[0]}` ];
-										// }
-										proofState["last-cmd"] = params[0];
-									}
-									resp.result = <SequentDescriptor[]> [ proofState ]; // the prover should always return an array of proof states -- this is necessary to support tacticals
 								}
 								resolve(resp);
 							} catch (jsonError) {

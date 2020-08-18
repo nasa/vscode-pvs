@@ -272,8 +272,11 @@ export class PvsLanguageServer {
 	async proofCommandRequest (request: PvsProofCommand): Promise<void> {
 		this.proofExplorer.proofCommandRequest(request);
 	};
-	async getMode (): Promise<ServerMode> {
-		return await this.pvsProxy.getMode();
+	async getMode (): Promise<ServerMode | null> {
+		if (this.pvsProxy) {
+			return await this.pvsProxy.getMode();
+		}
+		return null;
 	} 
 	async proveFormulaRequest (formula: PvsFormula, opt?: { autorun?: boolean }): Promise<void> {
 		opt = opt || {};
@@ -886,7 +889,6 @@ export class PvsLanguageServer {
 		}
 		request = fsUtils.decodeURIComponents(request);
 		if (request) {
-			request.fileExtension = ".pvs"; // only .pvs files should be parsed
 			opt = opt || {};
 			if (request) {
 				if (fsUtils.isPvsFile(request)) {
@@ -894,6 +896,8 @@ export class PvsLanguageServer {
 						// nothing to do
 						return;
 					}
+					// only .pvs files should be parsed
+					request.fileExtension = ".pvs";
 					// send information to the client, to populate theory explorer on the front-end
 					this.lastParsedContext = request.contextFolder;
 					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
@@ -1651,7 +1655,9 @@ export class PvsLanguageServer {
 	 * @param opt 
 	 */
 	async quitProof (): Promise<void> {
-		await this.pvsProxy.quitProofIfInProver();
+		if (this.pvsProxy) {
+			await this.pvsProxy.quitProofIfInProver();
+		}
 	}
 
 	notifyServerMode (mode: ServerMode): void {

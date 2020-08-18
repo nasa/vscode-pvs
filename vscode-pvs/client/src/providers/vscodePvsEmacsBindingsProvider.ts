@@ -66,6 +66,7 @@ const cmds: string[] = [
 	"pvsio",
 
 	"add-pvs-library",
+	"pvs-library-path",
 	"clear-pvs-library-path",
 	"reboot-pvs",
 	"restart-pvs",
@@ -76,6 +77,7 @@ const cmds: string[] = [
 
 	"step-proof",
 	"show-tccs",
+	"show-proof-summary",
 	"vpf", "view-prelude-file"
 ];
 
@@ -122,6 +124,10 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.add-pvs-library');
 					break;
 				}
+				case "pvs-library-path": {
+					commands.executeCommand('workbench.action.openSettings', '@ext:paolomasci.vscode-pvs pvs-library-path');
+					break;
+				}
 				case "clear-pvs-library-path": {
 					commands.executeCommand('vscode-pvs.clear-pvs-library-path');
 					break;
@@ -129,6 +135,10 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "show-tccs": {
 					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.show-tccs', desc);
+					break;
+				}
+				case "show-proof-summary": {
+					commands.executeCommand('vscode-pvs.show-proof-summary', desc);
 					break;
 				}
 				case "tc": 

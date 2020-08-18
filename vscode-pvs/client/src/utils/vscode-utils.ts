@@ -111,7 +111,7 @@ export async function addPvsLibraryFolderWizard (): Promise<boolean> {
         canSelectFiles: false,
         canSelectFolders: true,
         canSelectMany: false,
-        openLabel: "Select PVS library folder"
+        openLabel: "Select folder to be added to PVS library path"
     });
     let success: boolean = false;
     if (selection && selection.length === 1) {
@@ -128,6 +128,9 @@ export async function addPvsLibraryFolderWizard (): Promise<boolean> {
 
 export async function clearPvsLibraryPath (): Promise<void> {
     await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", undefined, vscode.ConfigurationTarget.Global);
+}
+export async function getPvsLibraryPath (): Promise<string> {
+    return await vscode.workspace.getConfiguration().get("pvs.pvsLibraryPath")
 }
 export async function addPvsLibraryFolder (path: string): Promise<boolean> {
     if (path) {

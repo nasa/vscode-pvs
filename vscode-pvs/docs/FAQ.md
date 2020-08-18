@@ -61,23 +61,27 @@ Alternatively, you can open a new Visual Studio Code window (File -> New Window)
 ### **Can I develop my pvs theories on my `Desktop`, or in my pvs installation folder?**
 **No, that's a bad idea.** The recommended way to proceed is to create a subfolder `pvsWorkspace` in your home directory, and develop your pvs theories under such subfolder.
 
-### **Can I use the PVS hot-keys combinations?**
-Yes, you can use the following basic set PVS hot-keys combinations in VSCode-PVS:
-- M-x show-tccs *(show proof obligations for the file open in the editor)*
-- M-x tc *(typecheck the file open in the editor)*
-- M-x parse *(parse the file open in the editor)*
-- M-x pr *(start an interactive Prover session for the formula at the cursor location)*
-- M-x prt *(re-run all proofs in the current theory)*
-- M-x pvsio *(start an interactive PVSio evaluator session for the theory at the cursor location)*
+### **Can I use PVS hot-keys combinations?**
+Yes, you can use the following set PVS hot-keys combinations in VSCode-PVS:
+- `M-x show-tccs` *(show proof obligations for the file open in the editor)*
+- `M-x tc` *(typecheck the file open in the editor)*
+- `M-x tcp` *(typecheck the file open in the editor and re-run all proofs in the file)*
+- `M-x parse` *(parse the file open in the editor)*
+- `M-x pr` *(start an interactive Prover session for the formula at the cursor location)*
+- `M-x prt` *(re-run all proofs in the current theory)*
+- `M-x pvsio` *(start an interactive PVSio evaluator session for the theory at the cursor location)*
+- `M-x show-proof-summary` *(show proof summary)*
+- `M-x vpf` *(view prelude file)*
 
 Additional hot-keys for quick access to configuration settings:
-- M-x add-pvs-library *(adds a folder to the vscode-pvs library path)*
-- M-x clear-pvs-library-path *(removes all entries in the vscode-pvs library path)*
-- M-x reboot-pvs *(reboots the pvs-server)*
-- M-x reinstall-pvs *(interactive wizard for re-installing PVS)*
-- M-x reinstall-nasalib *(interactive wizard for re-installing NASALib)*
-- M-x set-pvs-path *(interactive wizard for selecting the path to the PVS executables)*
-- M-x settings *(shows the vscode-pvs settings)*
+- `M-x add-pvs-library` *(adds a folder to the vscode-pvs library path)*
+- `M-x clear-pvs-library-path` *(removes all entries in the vscode-pvs library path)*
+- `M-x pvs-library-path` *(show library path specified in vscode-pvs settings)*
+- `M-x reboot-pvs` *(reboots the pvs-server)*
+- `M-x reinstall-pvs` *(interactive wizard for re-installing PVS)*
+- `M-x reinstall-nasalib` *(interactive wizard for re-installing NASALib)*
+- `M-x set-pvs-path` *(interactive wizard for selecting the path to the PVS executables)*
+- `M-x settings` *(shows vscode-pvs settings)*
 
 ### **What is `M-x`, and how do I use it?**
 `M-x` is a key combination obtained by pressing the `META` key and the `x` letter simultaneously.
