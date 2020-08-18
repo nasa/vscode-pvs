@@ -56,7 +56,7 @@ describe("pvs-prover", () => {
 	//            'Value #<unknown object of type number 3 @\n' +
 	//            '        #x107000000100223> is not of a type which can be encoded by encode-json.'
 	//       This error usually occurs when the server is restarted, during the first prover session  
-	fit(`can start a proof and step proof commands`, async () => { // to run all tests, change fit(...) into it(...)
+	it(`can start a proof and step proof commands`, async () => { // to run all tests, change fit(...) into it(...)
 		const proverStatus: PvsResult = await pvsProxy.pvsRequest('prover-status'); // await pvsProxy.getProverStatus();
 		expect(proverStatus.result).toBeDefined();
 		expect(proverStatus.error).not.toBeDefined();

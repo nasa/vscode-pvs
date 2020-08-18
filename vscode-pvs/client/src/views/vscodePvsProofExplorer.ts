@@ -323,8 +323,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
-	didStartNewProof (): void {
+	willStartNewProof (): void {
 		this.root = null;
+		this.refreshView();
 	}
 
 	didTrimNode (desc: ProofEditDidTrimNode): void {

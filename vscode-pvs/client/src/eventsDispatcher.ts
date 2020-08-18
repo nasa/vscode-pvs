@@ -353,7 +353,7 @@ export class EventsDispatcher {
                     break;
                 }
 				case "did-start-new-proof": {
-                    this.proofExplorer.didStartNewProof();
+                    this.proofExplorer.willStartNewProof();
                     break;
                 }
                 //---------------
@@ -774,7 +774,7 @@ export class EventsDispatcher {
                 const desc: PvsFormula = this.resource2desc(resource);
                 if (desc) {
                     if (desc.theoryName) {
-                        this.proofExplorer.didStartNewProof();
+                        this.proofExplorer.willStartNewProof();
                         this.proofExplorer.enableView();
                         this.proofMate.enableView();
                         // the sequence of events triggered by this command is:

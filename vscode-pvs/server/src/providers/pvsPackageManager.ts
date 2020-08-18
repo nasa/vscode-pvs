@@ -49,11 +49,7 @@ export class PvsPackageManager {
      */
     static async listDownloadableVersions (): Promise<PvsDownloadDescriptor[]> {
         const osName: string = fsUtils.getOs();
-        const preferredVersion: string = "ga2184387";
-        // const versions = {
-        //     MacOSX: "http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-ga2184387-ix86-MacOSX-allegro.tgz",
-        //     Linux: "http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-ga2184387-ix86-MacOSX-allegro.tgz"
-        // };
+        const preferredVersion: string = "g4cb56e73";
         const lsCommand: string = `${fsUtils.downloadCommand(pvsSnapshotsUrl)} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${preferredVersion} | grep ${osName} | grep allegro`;
         const ls: Buffer = execSync(lsCommand);
         if (ls) {
