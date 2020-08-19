@@ -1526,7 +1526,7 @@ export class PvsLanguageServer {
 		}
 		// else, cache file not present or in wrong format, create it again
 		const cdesc: PvsContextDescriptor = await utils.getContextDescriptor(libPath);
-		// await fsUtils.writeFile(preludeCache, JSON.stringify(cdesc, null, " "));
+		await fsUtils.writeFile(preludeCache, JSON.stringify(cdesc, null, " "));
 		return cdesc;
 	}
 
