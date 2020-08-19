@@ -43,7 +43,7 @@ import PvsLexer;
 // Parser Rules (ATTN: in antlr, all parser rules start with a small letter)
 //------------------------
 parse
-	: theory* datatype* EOF
+	: (theory | datatype)* EOF
 	;
 
 theory
