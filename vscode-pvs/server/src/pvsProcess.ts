@@ -67,6 +67,8 @@ export class PvsProcess {
 	protected serverPort: number = 22334;
 	protected externalServer: boolean = false;
 	protected verbose: boolean = false;
+	
+	protected progressInfoEnabled: boolean = false;
 
 	/**
 	 * utility function for sending error messages over the connection (if any connection is available)
@@ -90,18 +92,25 @@ export class PvsProcess {
 			}
 		}
 	}
-	protected log(msg: string, opt?: { force?: boolean}): void {
+	protected log (msg: string, opt?: { force?: boolean}): void {
 		opt = opt || {};
 		if (msg && (this.verbose || opt.force)) {
 			if (!msg.startsWith("127.0.0.1") && !msg.startsWith("emacs does not support X;")) {
 				if (this.connection && this.connection.console) {
 					// msg = msg.replace(/(\r\n|\n|\r)/gm, "");
 					this.connection.console.log(msg);
+					if (this.progressInfoEnabled) {
+						const ln: string[] = msg.trim().split("\n");
+						this.sendProgressInfo(ln[ln.length - 1]);
+					}
 				} else {
 					console.log(msg);
 				}
 			}
 		}
+	}
+	protected sendProgressInfo (msg: string): void {
+		this.connection.sendNotification("pvs.progress-info", msg);
 	}
 
 	/**
@@ -339,6 +348,7 @@ export class PvsProcess {
 				}
 				this.data = "";
 				if (this.pvsProcess && this.pvsProcess.stdin) {
+					this.progressInfoEnabled = cmd.includes("typecheck-file");
 					this.pvsProcess.stdin.write(cmd);
 					this.log(cmd + "\n");
 				}

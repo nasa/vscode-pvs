@@ -566,6 +566,9 @@ export class EventsDispatcher {
         this.client.onNotification(serverEvent.proverData, (data: string) => {
             this.logger.proverData(data);
         });
+        this.client.onNotification("pvs.progress-info", (data: string) => {
+            this.statusBar.showProgress(data);
+        });
 
 
         //---------------------------------------------------------
@@ -703,10 +706,7 @@ export class EventsDispatcher {
                 }
             }
             if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string, 
-                    theoryName: string, formulaName: string 
-                }> this.resource2desc(resource);
+                let desc: PvsFormula = this.resource2desc(resource);
                 if (desc) {
                     if (!desc.theoryName) {
                         const document: vscode.TextDocument = window.activeTextEditor.document;
@@ -737,10 +737,7 @@ export class EventsDispatcher {
                 }
             }
             if (resource) {
-                let desc = <{ 
-                    fileName: string, fileExtension: string, contextFolder: string, 
-                    theoryName: string, formulaName: string 
-                }> this.resource2desc(resource);
+                let desc: PvsFormula = this.resource2desc(resource);
                 if (desc) {
                     if (!desc.theoryName) {
                         const document: vscode.TextDocument = window.activeTextEditor.document;
