@@ -210,8 +210,8 @@ export class PvsProxy {
 			const sequent: SequentDescriptor = {
 				label: (res["result"]) ? "QED" : res["label"], // this should always be the formula name....
 				commentary: (res["result"]) ? [ res["result"] ] : res["commentary"],
-				"num-subgoals": (res["result"]) ? {} : res["num-subgoals"],
-				sequent: (res["result"]) ? 0 : res["sequent"],
+				"num-subgoals": (res["result"]) ? 0 : res["num-subgoals"],
+				sequent: (res["result"]) ? {} : res["sequent"],
 				"last-cmd": (res["prev-cmd"] && res["prev-cmd"].length === 1) ? res["prev-cmd"][0] : cmd
 			}
 			return sequent;
