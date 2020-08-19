@@ -1567,7 +1567,7 @@ export class PvsLanguageServer {
 		console.log(`[pvs-server] Checking dependencies...`);
 		const nodejs: string = await fsUtils.getNodeJsVersion();
 		if (!nodejs) {
-			const msg: string = "[pvs-server] Error: Required dependency 'nodejs' is not installed. Please download 'nodejs' from https://nodejs.org/";
+			const msg: string = "[pvs-server] Error: Required dependency 'node' is not installed. Please download 'node' from https://nodejs.org/";
 			console.error(msg);
 			this.pvsErrorManager.notifyError({
 				msg
