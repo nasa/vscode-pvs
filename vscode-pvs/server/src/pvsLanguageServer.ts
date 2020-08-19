@@ -806,10 +806,12 @@ export class PvsLanguageServer {
 				if (response && response.fileDescriptors && response.fileDescriptors[fname] && response.fileDescriptors[fname].theories) {
 					const theories: TheoryDescriptor[] = response.fileDescriptors[fname].theories;
 					for (let i = 0; i < theories.length; i++) {
-						nTccs += theories[i].theorems ? theories[i].theorems.length : 0;
-						for (let j = 0; j < nTccs; j++) {
-							if (utils.isProved(theories[i].theorems[j].status)) {
-								nProved++;
+						if (theories[i].theorems && theories[i].theorems.length) {
+							nTccs += theories[i].theorems.length;
+							for (let j = 0; j < theories[i].theorems.length; j++) {
+								if (utils.isProved(theories[i].theorems[j].status)) {
+									nProved++;
+								}
 							}
 						}
 					}
