@@ -82,8 +82,11 @@ export const RECORD: { [key: string]: RegExp } = {
 // }
 
 export const commentRegexp: RegExp = /%.*/g;
-// group 1 is theoryName, group 2 is comma-separated list of theory parameters
-export const theoryRegexp: RegExp = /(\w+)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*THEORY\s*BEGIN\b/gi;
+// group 1 is theoryName, group 2 is comma-separated list of theory parameters -- NB: this regexp is fast but not accurate, because it does not check the end of the theory. See example use in codelense.
+export const theoryRegexp: RegExp = /(\w+)\s*(?:\[([\w+\W+\s+]+)\])?\s*\:\s*THEORY\s*BEGIN\b/gi;
+export function endTheoryRegexp(theoryName: string): RegExp {
+	return new RegExp(`\\bEND\\s*${theoryName}\\b`, "gi");
+}
 export const datatypeRegexp: RegExp = /(\w+)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*DATATYPE\s*BEGIN\b/gi;
 export const declarationRegexp: RegExp = /(\w+)\s*(?:\[([\w\W\s]+)\])?\s*\:/gi;
 // group 1 is the formula name
@@ -129,17 +132,30 @@ export function findTheoryName(fileContent: string, line: number): string | null
 		// check that line number is not before keyword begin -- if so adjust line number otherwise regexp won't find theory name
 		const matchFirstTheory: RegExpMatchArray = regexp.exec(txt)
 		if (matchFirstTheory && matchFirstTheory.length > 1) {
-			const min: number = matchFirstTheory[0].split("\n").length;
-			line = (line < min) ? min : line;
-			candidates.push(matchFirstTheory[1]);
+			const theoryName: string = matchFirstTheory[1];
+
+			const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
+			if (matchEnd && matchEnd.length) {
+				regexp.lastIndex = matchEnd.index; // restart the search from here
+
+				const min: number = matchFirstTheory[0].split("\n").length;
+				line = (line < min) ? min : line;
+				candidates.push(theoryName);
+			}
 		}
 
+		// keep searching theory names -- the first element in candidates will be the closest to the current line number
 		const text: string = txt.split("\n").slice(0, line + 1).join("\n");
 		let match: RegExpMatchArray = null;
-		while(match = regexp.exec(text)) {
+		while (match = regexp.exec(text)) {
 			if (match.length > 1 && match[1]) {
-				// the first match will be the closest to the current line number
-				candidates = [ match[1] ].concat(candidates);
+				const theoryName: string = match[1];
+
+				const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
+				if (matchEnd && matchEnd.length) {
+					regexp.lastIndex = matchEnd.index; // restart the search from here
+					candidates = [ theoryName ].concat(candidates);
+				}
 			}
 		}
 		if (candidates.length > 0) {
@@ -164,7 +180,13 @@ export function listTheoryNames (fileContent: string): string[] {
 		const regexp: RegExp = theoryRegexp;
 		while (match = regexp.exec(txt)) {
 			if (match.length > 1 && match[1]) {
-				ans.push(match[1]);
+				const theoryName: string = match[1];
+
+				const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
+				if (matchEnd && matchEnd.length) {
+					regexp.lastIndex = matchEnd.index; // restart the search from here
+					ans.push(theoryName);
+				}
 			}
 		}
 	}
@@ -222,27 +244,33 @@ export async function mapTheoriesInFile (fname: string): Promise<{ [ key: string
 export function listTheories(desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean }): TheoryDescriptor[] {
 	let ans: TheoryDescriptor[] = [];
 	if (desc && desc.fileContent) {
-		const fileContent: string = desc.fileContent.replace(commentRegexp, "");
+		const txt: string = desc.fileContent.replace(commentRegexp, "");
 		const start: number = Date.now();
 		const regexp: RegExp = theoryRegexp;
 		let match: RegExpMatchArray = null;
-		while (match = regexp.exec(fileContent)) {
+		while (match = regexp.exec(txt)) {
 			if (match.length > 1 && match[1]) {
 				const theoryName: string = match[1];
-				const clip: string = fileContent.slice(0, match.index);
-				const lines: string[] = clip.split("\n"); 
-				const line: number = lines.length;
-				const character: number = 0; //match.index - lines.slice(-1).join("\n").length;
-				ans.push({
-					theoryName,
-					position: {
-						line: line,
-						character: character
-					},
-					fileName: desc.fileName,
-					fileExtension: desc.fileExtension,
-					contextFolder: desc.contextFolder
-				});
+
+				const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
+				if (matchEnd && matchEnd.length) {
+					theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
+
+					const clip: string = txt.slice(0, match.index);
+					const lines: string[] = clip.split("\n"); 
+					const line: number = lines.length;
+					const character: number = 0; //match.index - lines.slice(-1).join("\n").length;
+					ans.push({
+						theoryName,
+						position: {
+							line: line,
+							character: character
+						},
+						fileName: desc.fileName,
+						fileExtension: desc.fileExtension,
+						contextFolder: desc.contextFolder
+					});
+				}
 			}
 		}
 		const stats: number = Date.now() - start;

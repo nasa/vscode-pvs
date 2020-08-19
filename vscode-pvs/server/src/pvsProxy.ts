@@ -171,10 +171,6 @@ export class PvsProxy {
 		this.parser = new Parser();
 
 		this.legacy = new PvsProxyLegacy(pvsPath, opt);
-		if (os.platform() === "darwin") {
-			// macos
-			this.useLegacy = true;
-		}
 	}
 
 	setClientPort (p: number): boolean {

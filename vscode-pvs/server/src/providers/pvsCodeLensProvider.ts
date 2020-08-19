@@ -112,32 +112,37 @@ export class PvsCodeLensProvider {
                     if (match.length > 1 && match[1]) {
                         const theoryName: string = match[1];
 
-                        const docUp: string = content.slice(0, match.index + theoryName.length);
-                        const lines: string[] = docUp.split("\n");
-                        const line: number = lines.length - 1;
-                        const character: number = lines[lines.length - 1].indexOf(match[1]);
+                        const matchEnd: RegExpMatchArray = utils.endTheoryRegexp(theoryName).exec(content);
+                        if (matchEnd && matchEnd.length) {
+                            utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
+                            
+                            const docUp: string = content.slice(0, match.index + theoryName.length);
+                            const lines: string[] = docUp.split("\n");
+                            const line: number = lines.length - 1;
+                            const character: number = lines[lines.length - 1].indexOf(match[1]);
+                            
+                            const args = {
+                                fileName,
+                                fileExtension,
+                                contextFolder,
+                                theoryName, 
+                                line
+                            };
 
-                        const args = {
-                            fileName,
-                            fileExtension,
-                            contextFolder,
-                            theoryName, 
-                            line
-                        };
-
-                        // pvsio codelens
-                        const range: Range = {
-                            start: { line, character },
-                            end: { line, character: character + theoryName.length }
-                        };
-                        codeLens.push({
-                            range,
-                            command: {
-                                title: "evaluate-in-pvsio",
-                                command: "vscode-pvs.pvsio-evaluator",
-                                arguments: [ args ]
-                            }
-                        });            
+                            // pvsio codelens
+                            const range: Range = {
+                                start: { line, character },
+                                end: { line, character: character + theoryName.length }
+                            };
+                            codeLens.push({
+                                range,
+                                command: {
+                                    title: "evaluate-in-pvsio",
+                                    command: "vscode-pvs.pvsio-evaluator",
+                                    arguments: [ args ]
+                                }
+                            });
+                        }
                     }
                 }
             }

@@ -1509,8 +1509,9 @@ export class PvsLanguageServer {
 	 * Internal function, creates a cache to speed up the creation of the prelude descriptor
 	 */
 	protected async cachePreludeDescriptor (): Promise<PvsContextDescriptor> {
+		const libPath: string = path.join(this.pvsPath, "lib");
 		// cache prelude libraries
-		const preludeCache: string = path.join(this.pvsPath, "prelude.cache.json");
+		const preludeCache: string = path.join(libPath, "prelude.cache.json");
 		const cache: string = await fsUtils.readFile(preludeCache);
 		if (cache) {
 			try {
@@ -1524,9 +1525,8 @@ export class PvsLanguageServer {
 			}	
 		}
 		// else, cache file not present or in wrong format, create it again
-		const libPath: string = path.join(this.pvsPath, "lib");
 		const cdesc: PvsContextDescriptor = await utils.getContextDescriptor(libPath);
-		await fsUtils.writeFile(preludeCache, JSON.stringify(cdesc, null, " "));
+		// await fsUtils.writeFile(preludeCache, JSON.stringify(cdesc, null, " "));
 		return cdesc;
 	}
 

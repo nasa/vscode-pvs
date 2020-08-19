@@ -383,13 +383,18 @@ export function downloadCommand(url: string, opt?: { out?: string }): string {
 export const pvsFolderName: string = "pvs-7.1.0";
 
 export async function getNodeJsVersion (): Promise<string | null> {
-	const buf: Buffer = execSync("node --version");
-	if (buf) {
-		const info: string = buf.toLocaleString();
-		const match: RegExpMatchArray = /v([\d\.]+)/g.exec(info);
-		if (match && match.length > 1) {
-			return match[1];
+	try {
+		const buf: Buffer = execSync("$(which node) --version");
+		if (buf) {
+			const info: string = buf.toLocaleString();
+			const match: RegExpMatchArray = /v([\d\.]+)/g.exec(info);
+			if (match && match.length > 1) {
+				return match[1];
+			}
 		}
+	} catch (error) {
+		console.log(error);
+		return null;
 	}
 	return null;
 }
