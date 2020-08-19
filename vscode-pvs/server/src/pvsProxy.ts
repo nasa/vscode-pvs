@@ -431,7 +431,11 @@ export class PvsProxy {
 						// TODO: create a separate module ParserWrapper?
 						if (this.isProtectedFolder(desc.contextFolder)) {
 							this.info(`${desc.contextFolder} is already parsed`);
-							return null;
+							return {
+								jsonrpc: "2.0",
+								id: `parse-${desc.contextFolder}`,
+								result: `Skipping parsing of ${desc.contextFolder} (protected pvs folder)`
+							};
 						}
 						const startTime: number = Date.now();
 						const res: PvsResponse = (this.useLegacy) ? await this.legacy.parseFile(fname)
@@ -599,7 +603,11 @@ export class PvsProxy {
 			let fname: string = fsUtils.desc2fname(desc);
 			if (this.isProtectedFolder(desc.contextFolder)) {
 				this.info(`${desc.fileName}${desc.fileExtension} is already typechecked`);
-				return null;
+				return {
+					jsonrpc: "2.0",
+					id: `parse-${desc.contextFolder}`,
+					result: `Skipping typechecking of ${desc.contextFolder} (protected pvs folder)`
+				};
 			}
 			if (desc.fileExtension === ".hpvs") {
 				// translate file to .pvs and then typecheck

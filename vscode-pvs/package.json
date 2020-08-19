@@ -536,14 +536,34 @@
 					"group": "inline"
 				},
 				{
-					"command": "vscode-pvs.autorun-theory",
+					"command": "vscode-pvs.typecheck-file",
 					"when": "view == workspace-explorer-view && viewItem == theory",
-					"group": "context-menu/ctrl-1"
+					"group": "context-menu/ctrl-0"
+				},
+				{
+					"command": "vscode-pvs.typecheck-workspace",
+					"when": "view == workspace-explorer-view && viewItem == theory",
+					"group": "context-menu/ctrl-0"
 				},
 				{
 					"command": "vscode-pvs.show-proof-summary",
 					"when": "view == workspace-explorer-view && viewItem == theory",
 					"group": "context-menu/ctrl-1"
+				},
+				{
+					"command": "vscode-pvs.show-tccs",
+					"when": "view == workspace-explorer-view && viewItem == theory",
+					"group": "context-menu/ctrl-1"
+				},
+				{
+					"command": "vscode-pvs.autorun-theory",
+					"when": "view == workspace-explorer-view && viewItem == theory",
+					"group": "context-menu/ctrl-2"
+				},
+				{
+					"command": "vscode-pvs.pvsio-evaluator",
+					"when": "view == workspace-explorer-view && viewItem == theory",
+					"group": "context-menu/ctrl-3"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs-explorer",
@@ -699,12 +719,14 @@
 			"editor/title/context": [
 				{
 					"command": "vscode-pvs.parse-file",
-					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"when": "false",
+					"was": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
-					"when": "pvs-server-active && editorLangId == pvs",
+					"when": "false",
+					"was": "pvs-server-active && editorLangId == pvs",
 					"group": "x_commands"
 				},
 				{
@@ -740,23 +762,25 @@
 				{
 					"command": "vscode-pvs.autorun-theory",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
-					"group": "yy_commands"
+					"group": "yyy_commands"
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
-					"group": "yyy_commands"
+					"group": "yyyy_commands"
 				}
 			],
 			"editor/context": [
 				{
 					"command": "vscode-pvs.parse-file",
-					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"when": "false",
+					"was": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "x_commands"
 				},
 				{
 					"command": "vscode-pvs.parse-workspace",
-					"when": "pvs-server-active && editorLangId == pvs",
+					"when": "false",
+					"was": "pvs-server-active && editorLangId == pvs",
 					"group": "x_commands"
 				},
 				{
@@ -792,7 +816,7 @@
 				{
 					"command": "vscode-pvs.autorun-theory",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
-					"group": "yy_commands"
+					"group": "yyy_commands"
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",

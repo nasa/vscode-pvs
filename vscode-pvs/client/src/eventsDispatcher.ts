@@ -797,10 +797,10 @@ export class EventsDispatcher {
             let desc: PvsTheory = null;
             if (resource) {
                 if (resource.path) {
-                    // this is a file in the editor
-                    const document: vscode.TextDocument = window.activeTextEditor.document;
+                    const content: string = await fsUtils.readFile(resource.path);    
+                    // const document: vscode.TextDocument = window.activeTextEditor.document;
                     const line: number = window.activeTextEditor.selection.active.line;
-                    const theoryName: string = utils.findTheoryName(document.getText(), line);
+                    const theoryName: string = utils.findTheoryName(content, line);
                     desc = {
                         contextFolder: fsUtils.getContextFolder(resource.path),
                         fileName: fsUtils.getFileName(resource.path),
@@ -833,10 +833,10 @@ export class EventsDispatcher {
             let desc: PvsTheory = null;
             if (resource) {
                 if (resource.path) {
-                    // this is a file in the editor
-                    const document: vscode.TextDocument = window.activeTextEditor.document;
+                    const content: string = await fsUtils.readFile(resource.path);
+                    // const document: vscode.TextDocument = window.activeTextEditor.document;
                     const line: number = window.activeTextEditor.selection.active.line;
-                    const theoryName: string = utils.findTheoryName(document.getText(), line);
+                    const theoryName: string = utils.findTheoryName(content, line);
                     desc = {
                         contextFolder: fsUtils.getContextFolder(resource.path),
                         fileName: fsUtils.getFileName(resource.path),
@@ -883,10 +883,17 @@ export class EventsDispatcher {
             }
             const desc: PvsTheory = this.resource2desc(resource);
             if (desc && !desc.theoryName) {
-                const document: vscode.TextDocument = window.activeTextEditor.document;
-                const line: number = window.activeTextEditor.selection.active.line;
-                const theoryName: string = utils.findTheoryName(document.getText(), line);
-                desc.theoryName = theoryName;
+                if (resource && resource["path"]) {
+                    const content: string = await fsUtils.readFile(resource["path"]);
+                    const line: number = window.activeTextEditor.selection.active.line;
+                    const theoryName: string = utils.findTheoryName(content, line);
+                    desc.theoryName = theoryName;    
+                } else {
+                    const document: vscode.TextDocument = window.activeTextEditor.document;
+                    const line: number = window.activeTextEditor.selection.active.line;
+                    const theoryName: string = utils.findTheoryName(document.getText(), line);
+                    desc.theoryName = theoryName;
+                }
             }
             if (desc && desc.theoryName) {
                 this.quietMode = true;
