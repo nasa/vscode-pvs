@@ -608,7 +608,13 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.new-pvs-file", async () => {
             this.workspaceExplorer.newPvsFile(); // async method
-        }));        
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.open-pvs-file", async () => {
+            this.workspaceExplorer.openPvsFile(); // async method
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.open-pvs-file-or-folder", async () => {
+            this.workspaceExplorer.openPvsFileOrFolder(); // async method
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-version-info", async (opt?: { trailingNote?: string }) => {
             opt = opt || {};
             opt.trailingNote = opt.trailingNote || "";

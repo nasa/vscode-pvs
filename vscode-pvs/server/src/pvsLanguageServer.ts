@@ -1540,7 +1540,7 @@ export class PvsLanguageServer {
 		}
 	}
 
-	protected async sendPvsVersionInfo (): Promise<boolean> {
+	protected async sendPvsServerReadyEvent (): Promise<boolean> {
 		// load pvs version info
 		const desc: PvsVersionDescriptor = await this.pvsProxy.loadPvsVersionInfo();
 		if (desc) {
@@ -1639,7 +1639,7 @@ export class PvsLanguageServer {
 		const success: boolean = await this.startPvsServer(desc);
 		if (success) {
 			// send version info to the front-end
-			await this.sendPvsVersionInfo();
+			await this.sendPvsServerReadyEvent();
 			return true;
 		}
 		return false;
@@ -1779,13 +1779,15 @@ export class PvsLanguageServer {
 				const success: boolean = await this.startPvsServerRequest(request);
 				if (success) {
 					// send information to the client, to populate theory explorer on the front-end
-					const contextFolder: string = request.contextFolder || this.lastParsedContext || this.pvsPath;
-					if (!this.isSameWorkspace(contextFolder)) {
-						this.lastParsedContext = contextFolder;
-					}
-					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
-					if (this.connection) {
-						this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+					const contextFolder: string = request.contextFolder;
+					if (contextFolder) {
+						if (!this.isSameWorkspace(contextFolder)) {
+							this.lastParsedContext = contextFolder;
+						}
+						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
+						if (this.connection) {
+							this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+						}
 					}
 				} else {
 					console.error(`[pvs-server] Error: failed to start pvs-server`);
@@ -1797,7 +1799,7 @@ export class PvsLanguageServer {
 				await this.pvsProxy.rebootPvsServer(desc);
 				this.notifyServerMode("lisp");
 				// send version info
-				await this.sendPvsVersionInfo();
+				await this.sendPvsServerReadyEvent();
 			});
 			this.connection.onRequest(serverRequest.parseFile, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.parseFileRequest(request); // async call

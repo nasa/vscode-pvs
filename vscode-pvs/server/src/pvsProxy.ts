@@ -1499,16 +1499,6 @@ export class PvsProxy {
 		await this.restartPvsServer();
 	}
 
-	// protected async sendPvsVersionInfo () : Promise<void> {
-	// 	const desc: PvsVersionDescriptor = await this.getPvsVersionInfo();
-	// 	if (desc) {
-	// 		if (this.externalServer) {
-	// 			desc["lisp-version"] += " [EXTERNAL SERVER]";
-	// 		}
-	// 		this.connection.sendRequest(serverEvent.pvsVersionInfo, desc);
-	// 	}
-	// }
-
 	protected async sendWorkspaceInfo (): Promise<void> {
 		const res: PvsResponse = await this.currentContext();
 		if (res && res.result) {

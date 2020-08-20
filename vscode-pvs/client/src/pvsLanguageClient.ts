@@ -37,7 +37,7 @@
  **/
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation } from 'vscode';
+import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation, Uri } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
@@ -313,6 +313,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					// start PVS
 					// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
 					const contextFolder = vscodeUtils.getEditorContextFolder();
+					// console.log(`Context folder: ${contextFolder}`);
 					this.pvsPath = workspace.getConfiguration().get("pvs.path");
 					this.pvsLibraryPath = workspace.getConfiguration().get("pvs.pvsLibraryPath");
 					this.client.sendRequest(comm.serverRequest.startPvsServer, {
@@ -335,10 +336,17 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						// update status bar
 						this.statusBar.ready();
 
-						// parse file opened in the editor
 						if (window.activeTextEditor && window.activeTextEditor.document) {
+							// parse file opened in the editor
 							const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor.document.fileName);
 							this.client.sendRequest(comm.serverRequest.parseFile, desc);
+						} else {
+							// or ask the descriptor of the current folder
+							const workspaceFolder: Uri = (workspace.workspaceFolders && workspace.workspaceFolders.length) ? workspace.workspaceFolders[0].uri : null;
+							const folder: string = (workspaceFolder) ? workspaceFolder.path : contextFolder;
+							if (folder) {
+								this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: folder });
+							}
 						}
 
 						// resolve the promise

@@ -46,6 +46,12 @@
 		"notes": {
 			"description": "These contributed settings can be read using vscode.workspace.getConfiguration('pvs')"
 		},
+		"viewsWelcome": [
+			{
+			  "view": "workspace-explorer-view",
+			  "contents": "Welcome to VSCode-PVS!\n[Open PVS File or Folder](command:vscode-pvs.open-pvs-file-or-folder)\n[New PVS File](command:vscode-pvs.new-pvs-file)"
+			}
+		],
 		"configuration": [
 			{
 				"type": "object",

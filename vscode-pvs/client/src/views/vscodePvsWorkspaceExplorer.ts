@@ -647,6 +647,22 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	}
 
 	/**
+	 * Opens a pvs file in the editor and adds the containing folder in file explorer
+	 */
+	async openPvsFile (): Promise<void> {
+		return await vscodeUtils.openPvsFile();
+	}
+	/**
+	 * Opens a pvs file in the editor and adds the containing folder in file explorer
+	 */
+	async openPvsFileOrFolder (): Promise<void> {
+		const contextFolder: string = await vscodeUtils.openPvsFileOrFolder();
+		if (contextFolder) {
+			this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder })
+		}
+	}
+
+	/**
 	 * Creates a new pvs file in the current workspace folder
 	 */
 	async newPvsFile (): Promise<void> {
@@ -660,7 +676,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			const theoryName = fsUtils.getFileName(fileName); // this will remove the extension
 			const contextFolder: string = this.getCurrentWorkspace() || workspace.rootPath;
 			const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
-			const uri: Uri = Uri.parse(fname, true);
+			const uri: Uri = Uri.parse(`file://${fname}`, true);
 
 			let stats: FileStat = null;
 			try {
@@ -671,9 +687,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				if (!stats) {
 					const content: string = utils.makeEmptyTheory(theoryName);
 					const edit: WorkspaceEdit = new WorkspaceEdit();
-	
+
 					edit.createFile(uri, { overwrite: false, ignoreIfExists: true });
-	
+
 					edit.insert(uri, new Position(0, 0), content);
 					await workspace.applyEdit(edit);	
 				}
@@ -683,7 +699,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				const fileAlreadyOpen: boolean = (editors && editors.length > 0);
 				const viewColumn: number = fileAlreadyOpen ? editors[0].viewColumn : ViewColumn.One;
 				await window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
-	
+
 			}
 			// const theoryName = fsUtils.getFileName(fileName); // this will remove the extension
 			// const contextFolder: string = this.getCurrentWorkspace() || workspace.rootPath;
@@ -701,7 +717,6 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			// }
 		}
 	}
-
 	/**
 	 * @constructor
 	 * @param client Language client 
@@ -932,7 +947,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	 * Returns the list of theories defined in the active pvs file
 	 * @param element Element clicked by the user 
 	 */
-	getChildren(element: TreeItem): Thenable<TreeItem[]> {
+	getChildren(element: TreeItem): Thenable<TreeItem[] | null> {
 		if (element) {
 			let children: TreeItem[] = null;
 			if (element.contextValue === "workspace-overview") {
@@ -968,12 +983,14 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		}
 		// root node: show context
 		if (this.root) {
-			this.loading.stop();
+			// this.loading.stop();
 			return Promise.resolve([ this.root ]);
-		} else {
-			this.loading.start().then(() => { this.refreshView(); });
-			return Promise.resolve([ this.loading ])
-		}
+		} 
+		// else {
+		// 	this.loading.start().then(() => { this.refreshView(); });
+		// 	return Promise.resolve([ this.loading ])
+		// }
+		return Promise.resolve(null);
 	}
 
 	getTreeItem(element: TreeItem): TreeItem {

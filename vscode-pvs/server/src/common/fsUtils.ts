@@ -131,17 +131,19 @@ export function deletePvsCache(contextFolder: string, opt?: { keepTccs?: boolean
 			// console.log(`removing ${path.join(contextFolder, ".pvscontext")}`);
 			deleteFile(path.join(contextFolder, ".pvscontext"));
 			// console.log(`reading folder ${contextFolder}`);
-			const tccFiles: string[] = fs.readdirSync(contextFolder);
-			// console.log(tccFiles);
-			if (tccFiles && !opt.keepTccs) {
+			if (!opt.keepTccs) {
+				const tccFiles: string[] = fs.readdirSync(contextFolder);
 				// console.log(tccFiles);
-				tccFiles.filter(name => {
-					// console.log(name);
-					return name.endsWith(".tccs");
-				}).forEach(file => {
-					// console.log(`deleting ${file}`);
-					deleteFile(path.join(cacheFolder, file));
-				});
+				if (tccFiles) {
+					// console.log(tccFiles);
+					tccFiles.filter(name => {
+						// console.log(name);
+						return name.endsWith(".tccs");
+					}).forEach(file => {
+						// console.log(`deleting ${file}`);
+						deleteFile(path.join(cacheFolder, file));
+					});
+				}
 			}
 		}
 	} catch (deleteError) {

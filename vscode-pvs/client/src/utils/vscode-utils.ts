@@ -39,6 +39,7 @@ import * as vscode from 'vscode';
 import * as fsUtils from '../common/fsUtils';
 import * as path from 'path';
 import * as utils from '../common/languageUtils';
+import * as os from 'os';
 
 /**
  * Returns the context folder of the editor
@@ -81,7 +82,7 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     // });
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${path.join(vscode.workspace.rootPath, "pvsbin", "preview")}`);
     
-    const folder: string = opt.contextFolder || vscode.workspace.rootPath;
+    const folder: string = opt.contextFolder || vscode.workspace.rootPath || os.homedir();
     const fname: string = path.join(folder, "pvsbin", name);
     const preview: vscode.Uri = vscode.Uri.file(fname);
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${fname}`);
@@ -144,4 +145,79 @@ export async function addPvsLibraryFolder (path: string): Promise<boolean> {
         }
     }
     return false;
+}
+
+
+/**
+ * Opens a folder and adds the folder to file explorer
+ */
+export async function openFolder (): Promise<void> {
+    const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: "Open"
+    });
+    if (selection && selection.length === 1) {
+        const contextFolder: string = selection[0].path;
+        const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
+        // add folder to workspace
+        if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
+            vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
+        }
+    }
+}
+/**
+ * Opens a pvs file in the editor and adds the containing folder in file explorer
+ */
+export async function openPvsFile (): Promise<void> {
+    const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        openLabel: "Open",
+        filters: {
+            "PVS": [ ".pvs" ]
+        }
+    });
+    if (selection && selection.length === 1) {
+        const fname: string = selection[0].path;
+        const contextFolder: string = fsUtils.getContextFolder(fname);
+        const fileUri: vscode.Uri = vscode.Uri.file(fname);
+        const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
+        // add folder to workspace
+        if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
+            vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
+        }
+        vscode.window.showTextDocument(fileUri, { preserveFocus: true });
+    }
+}
+/**
+ * Opens a pvs file in the editor and adds the containing folder in file explorer
+ */
+export async function openPvsFileOrFolder (): Promise<string> {
+    const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: "Open",
+        filters: {
+            "PVS": [ ".pvs" ]
+        }
+    });
+    if (selection && selection.length === 1) {
+        const fname: string = (fsUtils.isPvsFile(selection[0].path)) ? selection[0].path : null;
+        const contextFolder: string = (fname) ? fsUtils.getContextFolder(fname) : selection[0].path;
+        const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
+        // add folder to workspace
+        if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
+            vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
+        }
+        if (fname) {
+            const fileUri: vscode.Uri = vscode.Uri.file(fname);
+            vscode.window.showTextDocument(fileUri, { preserveFocus: true });
+        }
+        return contextFolder;
+    }
+    return null;
 }
