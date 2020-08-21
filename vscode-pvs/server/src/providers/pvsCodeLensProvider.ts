@@ -40,6 +40,7 @@
 import { CancellationToken, CodeLens, CodeLensRequest, Range } from 'vscode-languageserver';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
+import { PvsFormula } from '../common/serverInterface';
 
 export class PvsCodeLensProvider {    
     /**
@@ -71,13 +72,12 @@ export class PvsCodeLensProvider {
                     
                     const theoryName: string = utils.findTheoryName(content, line);
                     if (theoryName) {
-                        const args = {
+                        const args: PvsFormula = {
                             fileName,
                             fileExtension,
                             contextFolder,
                             theoryName, 
-                            formulaName,
-                            line
+                            formulaName
                         };
                         const range: Range = {
                             start: { line, character }, 

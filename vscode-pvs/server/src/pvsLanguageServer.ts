@@ -757,13 +757,22 @@ export class PvsLanguageServer {
 		if (request) {
 			const content: string = request.content || "";
 			const contextFolder: string = request.contextFolder;
-			const fileName: string = request.theoryName;
+			const fileName: string = request.fileName;
 			const fileExtension: string = ".summary";
-			await fsUtils.writeFile(fsUtils.desc2fname({
+
+
+			await utils.saveSummary(fsUtils.desc2fname({
 				contextFolder,
 				fileName,
 				fileExtension
-			}), content);
+			}), request.theoryName, content);
+			// await fsUtils.writeFile(fsUtils.desc2fname({
+			// 	contextFolder,
+			// 	fileName,
+			// 	fileExtension
+			// }), content);
+
+
 			this.connection.sendRequest(serverEvent.generateSummaryResponse, {
 				response: {
 					contextFolder,

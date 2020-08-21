@@ -1169,7 +1169,7 @@ export async function readProofFile (fname: string, opt?: { quiet?: boolean }): 
 export async function appendProoflite (fname: string, script: string): Promise<boolean> {
 	if (fname && script) {
 		const content: string = await fsUtils.readFile(fname);
-		const newContent: string = content + `\n\n${script}`;
+		const newContent: string = (content && content.trim()) ? content + `\n\n${script}` : script;
 		return await fsUtils.writeFile(fname, newContent);
 	}
 	return false;
@@ -1220,7 +1220,7 @@ export async function containsProoflite (fname: string, formulaName: string): Pr
 /**
  * Utility function, saves a prooflite script for a given formula in the given file
  * @param fname Name of the prooflite file
- * @param formulaName name of the prooflite script to be removed
+ * @param formulaName name of the prooflite
  * @param script The prooflite script to be saved in the file
  */
 export async function saveProoflite (fname: string, formulaName: string, script: string): Promise<boolean> {
@@ -1237,12 +1237,15 @@ export async function saveProoflite (fname: string, formulaName: string, script:
 	return false;
 }
 
+/**
+ * Utility function, checks if the provided proof script is null or empty
+ * @param prf proof script
+ */
 export function isEmptyPrf(prf: string): boolean {
 	return !prf || prf === `("" (postpone))`;
 }
 
 const grind: string = `("" (grind))`;
-
 
 /**
  * Utility function, transforms a proof tree into a json object
@@ -1736,4 +1739,76 @@ export function createPvsLibraryPath (libs: string[]): string {
 		return libs.join(":");
 	}
 	return "";
+}
+
+/**
+ * Utility function, appends a proof summary at the end of a given file
+ * @param fname Name of the summary file
+ * @param summary The summary to be appended
+ */
+export async function appendSummary (fname: string, summary: string): Promise<boolean> {
+	if (fname && summary) {
+		const content: string = await fsUtils.readFile(fname);
+		const newContent: string = (content && content.trim()) ? content + `\n\n${summary}` : summary;
+		return await fsUtils.writeFile(fname, newContent);
+	}
+	return false;
+}
+/**
+ * Utility function, removes a proof summary from a given file
+ * @param fname Name of the summary file
+ * @param theoryName name of the theory whose summary should be removed
+ */
+export async function removeSummary (fname: string, theoryName: string): Promise<boolean> {
+	if (fname && theoryName) {
+		fname = fsUtils.decodeURIComponents(fname);
+		const fileExists: boolean = await fsUtils.fileExists(fname);
+		if (fileExists) {
+			const content: string = await fsUtils.readFile(fname);
+			if (content) {
+				const regex: RegExp = new RegExp(`\\bProof summary for theory ${theoryName}\\s*[\\s\\w\\W]+\\bTheory ${theoryName}.*`, "g");
+				const newContent: string = content.replace(regex, "");
+				return await fsUtils.writeFile(fname, newContent);
+			}
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, checks if a summary is present in a given file
+ * @param fname Name of the summary file
+ * @param theoryName name of the theory whose summary should be removed
+ */
+export async function containsSummary (fname: string, theoryName: string): Promise<boolean> {
+	if (fname && theoryName) {
+		fname = fsUtils.decodeURIComponents(fname);
+		const fileExists: boolean = await fsUtils.fileExists(fname);
+		if (fileExists) {
+			const content: string = await fsUtils.readFile(fname);
+			if (content) {
+				const regex: RegExp = new RegExp(`\\bProof summary for theory ${theoryName}\\s*[\\s\\w\\W]+\\bTheory ${theoryName}.*`, "g");
+				return regex.test(content);
+			}
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, saves a summary for a given theory in the given file
+ * @param fname Name of the summary file
+ * @param theoryName name of the theory whose summary should be saved
+ * @param summary The summary to be saved in the file
+ */
+export async function saveSummary (fname: string, theoryName: string, summary: string): Promise<boolean> {
+	if (fname && theoryName && summary) {
+		fname = fsUtils.decodeURIComponents(fname);
+		const fileExists: boolean = await fsUtils.fileExists(fname);
+		if (fileExists) {
+			// deleted any previous version of the summary
+			await removeSummary(fname, theoryName);
+		}
+		// append the new summary
+		return await appendSummary(fname, summary);
+	}
+	return false;
 }

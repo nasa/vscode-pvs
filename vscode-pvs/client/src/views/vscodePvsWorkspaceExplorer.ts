@@ -667,7 +667,6 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder })
 		}
 	}
-
 	/**
 	 * Creates a new pvs file in the current workspace folder
 	 */
@@ -722,6 +721,17 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			// 	window.showInformationMessage(`Error: Unable to create file ${fname}`);
 			// }
 		}
+	}
+	/**
+	 * Removes .prlite files, .pvscontext, pvsbin in all folders open in explorer
+	 */
+	async cleanPvsWorkspace (): Promise<void> {
+		// const yesno: string[] = [ "Yes", "No" ];
+		// const msg: string = `Remove all temporary PVS files?`
+		// const ans: string = await window.showInformationMessage(msg, { modal: true }, yesno[0]);
+		// if (ans === yesno[0]) {
+			await vscodeUtils.cleanPvsWorkspace();
+		// }
 	}
 	/**
 	 * @constructor
@@ -884,16 +894,25 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 
 	async showProofSummary (desc: PvsTheory): Promise<void> {
 		const summaryFile: PvsFile = {
-			fileName: desc.theoryName,
+			fileName: desc.fileName,
 			fileExtension: ".summary",
 			contextFolder: desc.contextFolder
 		};
-		const fileExists: boolean = await fsUtils.fileExists(fsUtils.desc2fname(summaryFile));
+		const fname: string = fsUtils.desc2fname(summaryFile);
+
+		// check if summary file exists and if it contains the summary for the requested theory
+		const fileExists: boolean = await fsUtils.fileExists(fname);
+		let theorySummaryExists: boolean = false;
 		if (fileExists) {
+			theorySummaryExists = await utils.containsSummary(fname, desc.theoryName);
+		}
+
+		// show the summary file if the summary exists, or generate the summary file
+		if (theorySummaryExists) {
 			vscodeUtils.showTextDocument(summaryFile);
 		} else {
 			const yesno: string[] = [ "Yes", "No" ];
-			const msg: string = `Summary file has not been generated yet. Re-run all proofs?`
+			const msg: string = `Summary file has not been generated yet. Re-run all proofs in theory ${desc.theoryName}?`
 			const ans: string = await window.showInformationMessage(msg, { modal: true }, yesno[0]);
 			if (ans === yesno[0]) {
 				commands.executeCommand("vscode-pvs.autorun-theory", desc);

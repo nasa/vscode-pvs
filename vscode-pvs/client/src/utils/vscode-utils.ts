@@ -40,6 +40,7 @@ import * as fsUtils from '../common/fsUtils';
 import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
+import { info } from 'console';
 
 /**
  * Returns the context folder of the editor
@@ -146,8 +147,20 @@ export async function addPvsLibraryFolder (path: string): Promise<boolean> {
     }
     return false;
 }
-
-
+/**
+ * Opens a folder and adds the folder to file explorer
+ */
+export async function cleanPvsWorkspace (): Promise<void> {
+    if (vscode.workspace.workspaceFolders) {
+        for (let i = 0; i < vscode.workspace.workspaceFolders.length; i++) {
+            const contextFolder: string = vscode.workspace.workspaceFolders[i].uri.path;
+            if (contextFolder) {
+                await fsUtils.deletePvsCache(contextFolder, { keepTccs: false });
+            }
+        }
+        vscode.window.showInformationMessage(`${vscode.workspace.workspaceFolders.length} folders cleaned!`);
+    }
+}
 /**
  * Opens a folder and adds the folder to file explorer
  */
