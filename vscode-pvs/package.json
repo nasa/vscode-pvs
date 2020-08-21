@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.25-delta",
+	"version": "1.0.25-gamma",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -48,8 +48,8 @@
 		},
 		"viewsWelcome": [
 			{
-			  "view": "workspace-explorer-view",
-			  "contents": "You have not yet opened a PVS file.\n[Open PVS File or Folder](command:vscode-pvs.open-pvs-file-or-folder)\n[New PVS File](command:vscode-pvs.new-pvs-file)"
+				"view": "workspace-explorer-view",
+				"contents": "You have not yet opened a PVS file.\n[Open PVS File or Folder](command:vscode-pvs.open-pvs-file-or-folder)\n[New PVS File](command:vscode-pvs.new-pvs-file)"
 			}
 		],
 		"configuration": [
@@ -884,12 +884,12 @@
 			{
 				"key": "alt+x",
 				"command": "vscode-pvs.metax",
-				"when": "resourceLangId == pvs"
+				"when": "pvs-server-active"
 			},
 			{
 				"key": "shift+alt+x",
 				"command": "vscode-pvs.metax",
-				"when": "resourceLangId == pvs"
+				"when": "pvs-server-active"
 			},
 			{
 				"key": "ctrl+alt+t",
