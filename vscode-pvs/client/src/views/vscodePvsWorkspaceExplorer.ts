@@ -653,6 +653,12 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		return await vscodeUtils.openPvsFile();
 	}
 	/**
+	 * Opens a context folder and adds it to file explorer
+	 */
+	async openFolder (): Promise<void> {
+		return await vscodeUtils.openFolder();
+	}
+	/**
 	 * Opens a pvs file in the editor and adds the containing folder in file explorer
 	 */
 	async openPvsFileOrFolder (): Promise<void> {

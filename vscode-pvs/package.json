@@ -213,7 +213,7 @@
 			{
 				"command": "vscode-pvs.autorun-theory",
 				"title": "Re-run All Proofs",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
 				"category": "pvs"
 			},
 			{
@@ -253,8 +253,20 @@
 				"category": "pvs"
 			},
 			{
+				"command": "vscode-pvs.open-pvs-file-or-folder",
+				"title": "Open ...",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
+				"command": "vscode-pvs.open-folder",
+				"title": "Open PVS Workspace ...",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
 				"command": "vscode-pvs.view-prelude-file",
-				"title": "View Prelude File",
+				"title": "View PVS Prelude File",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
@@ -473,12 +485,6 @@
 				"title": "Switch to Advanced Profile",
 				"enablement": "in-checker == true && !advanced-profile-active",
 				"category": "pvs"
-			},
-			{
-				"command": "workspace-explorer.prove-all",
-				"title": "Prove All",
-				"enablement": "false",
-				"category": "pvs"
 			}
 		],
 		"menus": {
@@ -517,22 +523,7 @@
 			"view/item/context": [
 				{
 					"command": "vscode-pvs.prove-formula",
-					"when": "view == workspace-explorer-view && viewItem == tcc",
-					"group": "inline"
-				},
-				{
-					"command": "vscode-pvs.prove-formula",
-					"when": "view == workspace-explorer-view && viewItem == theorem",
-					"group": "inline"
-				},
-				{
-					"command": "vscode-pvs.typecheck-workspace-inline",
-					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
-					"group": "inline"
-				},
-				{
-					"command": "vscode-pvs.typecheck-file-inline",
-					"when": "view == workspace-explorer-view && viewItem == pvs-file",
+					"when": "view == workspace-explorer-view && viewItem == tcc || view == workspace-explorer-view && viewItem == theorem",
 					"group": "inline"
 				},
 				{
@@ -542,33 +533,33 @@
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "view == workspace-explorer-view && viewItem == theory",
-					"group": "context-menu/ctrl-0"
+					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
+					"group": "context-menu/ctrl-common-0"
 				},
 				{
 					"command": "vscode-pvs.typecheck-workspace",
-					"when": "view == workspace-explorer-view && viewItem == theory",
-					"group": "context-menu/ctrl-0"
+					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
+					"group": "context-menu/ctrl-common-0"
 				},
 				{
 					"command": "vscode-pvs.show-proof-summary",
-					"when": "view == workspace-explorer-view && viewItem == theory",
-					"group": "context-menu/ctrl-1"
+					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
+					"group": "context-menu/ctrl-common-1"
 				},
 				{
 					"command": "vscode-pvs.show-tccs",
-					"when": "view == workspace-explorer-view && viewItem == theory",
-					"group": "context-menu/ctrl-1"
-				},
-				{
-					"command": "vscode-pvs.autorun-theory",
-					"when": "view == workspace-explorer-view && viewItem == theory",
-					"group": "context-menu/ctrl-2"
+					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
+					"group": "context-menu/ctrl-common-1"
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
-					"when": "view == workspace-explorer-view && viewItem == theory",
-					"group": "context-menu/ctrl-3"
+					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
+					"group": "context-menu/ctrl-common-2"
+				},
+				{
+					"command": "vscode-pvs.autorun-theory",
+					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
+					"group": "context-menu/ctrl-common-3"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs-explorer",
@@ -586,24 +577,19 @@
 					"group": "context-menu/ctrl-1"
 				},
 				{
-					"command": "vscode-pvs.view-prelude-file",
+					"command": "vscode-pvs.open-pvs-file-or-folder",
 					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
 					"group": "context-menu/ctrl-1.1"
 				},
 				{
-					"command": "vscode-pvs.parse-workspace",
+					"command": "vscode-pvs.open-folder",
 					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
-					"group": "context-menu/ctrl-2"
+					"group": "context-menu/ctrl-1.1"
 				},
 				{
-					"command": "vscode-pvs.typecheck-workspace",
+					"command": "vscode-pvs.view-prelude-file",
 					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
-					"group": "context-menu/ctrl-2"
-				},
-				{
-					"command": "workspace-explorer.prove-all",
-					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
-					"group": "context-menu/ctrl-3"
+					"group": "context-menu/ctrl-1.2"
 				},
 				{
 					"command": "proof-explorer.fast-forward",
@@ -881,24 +867,19 @@
 					"group": "ctrl-1"
 				},
 				{
-					"command": "vscode-pvs.view-prelude-file",
+					"command": "vscode-pvs.open-pvs-file-or-folder",
 					"when": "view == workspace-explorer-view",
 					"group": "ctrl-1.1"
 				},
 				{
-					"command": "vscode-pvs.parse-workspace",
+					"command": "vscode-pvs.open-folder",
 					"when": "view == workspace-explorer-view",
-					"group": "ctrl-2"
+					"group": "ctrl-1.1"
 				},
 				{
-					"command": "vscode-pvs.typecheck-workspace",
+					"command": "vscode-pvs.view-prelude-file",
 					"when": "view == workspace-explorer-view",
-					"group": "ctrl-2"
-				},
-				{
-					"command": "workspace-explorer.prove-all",
-					"when": "view == workspace-explorer-view",
-					"group": "ctrl-3"
+					"group": "ctrl-1.2"
 				}
 			]
 		},

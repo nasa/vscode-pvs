@@ -615,6 +615,9 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.open-pvs-file-or-folder", async () => {
             this.workspaceExplorer.openPvsFileOrFolder(); // async method
         }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.open-folder", async () => {
+            this.workspaceExplorer.openFolder(); // async method
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-version-info", async (opt?: { trailingNote?: string }) => {
             opt = opt || {};
             opt.trailingNote = opt.trailingNote || "";

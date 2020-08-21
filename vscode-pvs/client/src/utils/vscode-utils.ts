@@ -156,7 +156,7 @@ export async function openFolder (): Promise<void> {
         canSelectFiles: false,
         canSelectFolders: true,
         canSelectMany: false,
-        openLabel: "Open"
+        openLabel: "Open Folder"
     });
     if (selection && selection.length === 1) {
         const contextFolder: string = selection[0].path;
@@ -175,7 +175,7 @@ export async function openPvsFile (): Promise<void> {
         canSelectFiles: true,
         canSelectFolders: false,
         canSelectMany: false,
-        openLabel: "Open",
+        openLabel: "Open PVS File",
         filters: {
             "PVS": [ ".pvs" ]
         }
@@ -200,7 +200,7 @@ export async function openPvsFileOrFolder (): Promise<string> {
         canSelectFiles: true,
         canSelectFolders: true,
         canSelectMany: false,
-        openLabel: "Open",
+        openLabel: "Open PVS File or Folder",
         filters: {
             "PVS": [ ".pvs" ]
         }

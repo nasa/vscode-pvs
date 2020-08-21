@@ -275,7 +275,10 @@ export class VSCodePvsStatusBar {
      * Internal function, returns the content of the tooltip for PVS
      */
     protected printfVersionInfo (): string {
-        return `PVS ${this.pvsVersionInfo["pvs-version"]} ${this.pvsVersionInfo["lisp-version"]}`;
+        if (this.pvsVersionInfo) {
+            return `PVS ${this.pvsVersionInfo["pvs-version"]} ${this.pvsVersionInfo["lisp-version"]}`;
+        }
+        return `PVS`;
     }
     
 }

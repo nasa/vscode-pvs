@@ -976,6 +976,13 @@ export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { b
 						}
 						const cmd: string = node.name.startsWith("(") ? node.name : `(${node.name})`;
 						if (node.rules && node.rules.length) {
+							// these rules are sub-goals (proof-branches)
+							// make sure sub-goals are ordered in ascending order based on their name
+							node.rules = node.rules.sort((a: ProofNode, b: ProofNode) => {
+								const valA: number = +a.name.replace(/[\(\)]/g, "");
+								const valB: number = +b.name.replace(/[\(\)]/g, "");
+								return valA < valB ? 1 : -1
+							});
 							indent++;
 							if (i > 0) {
 								indent++;
