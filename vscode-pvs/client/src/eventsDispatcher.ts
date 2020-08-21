@@ -387,7 +387,7 @@ export class EventsDispatcher {
 
         // register handler that will resolve the promise when the proof needs to be saved
         this.client.onRequest(serverEvent.saveProofResponse, (desc: {
-            response: { success: boolean }, 
+            response: { success: boolean, fileExtension?: string }, 
             args: { 
                 fileName: string, 
                 fileExtension: string, 
@@ -397,7 +397,9 @@ export class EventsDispatcher {
                 proofDescriptor: ProofDescriptor
             }
         }) => {
-            const fname: string = `${desc.args.fileName}.jprf/.prl`;
+            const fname: string = (desc && desc.response && desc.response.fileExtension) ? 
+                `${desc.args.fileName}${desc.response.fileExtension}` 
+                : `${desc.args.fileName}.jprf`;
             if (desc.response.success) {
                 if (!this.quietMode) {
                     window.showInformationMessage(`Proof ${desc.args.formulaName} saved in file ${fname}`);

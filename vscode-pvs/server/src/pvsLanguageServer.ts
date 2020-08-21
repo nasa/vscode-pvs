@@ -1939,6 +1939,7 @@ export class PvsLanguageServer {
 						case "trim-unused": { this.proofExplorer.removeNotVisitedX(desc); break; }
 						case "rename-node": { this.proofExplorer.renameNodeX(desc); break; }
 						case "save": { await this.proofExplorer.saveProof(); break; }
+						case "save-as": { await this.proofExplorer.saveProofAs(desc); break; }
 						//------
 						default: {
 							console.warn(`[pvs-server] Warning: unhandled prover command ${JSON.stringify(desc)}`);

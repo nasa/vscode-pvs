@@ -435,9 +435,9 @@
 				"category": "pvs"
 			},
 			{
-				"command": "proof-explorer.save-proof-as",
-				"title": "Save As...",
-				"enablement": "false",
+				"command": "proof-explorer.save-proof-as-prf",
+				"title": "Save As .PRF File",
+				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
 			{
@@ -834,7 +834,7 @@
 					"group": "ctrl-1"
 				},
 				{
-					"command": "proof-explorer.save-proof-as",
+					"command": "proof-explorer.save-proof-as-prf",
 					"when": "view == proof-explorer-view",
 					"group": "ctrl-1"
 				},

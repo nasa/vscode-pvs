@@ -950,12 +950,19 @@ export function pvsVersionToString (version: PvsVersionDescriptor): string {
 	return null;
 }
 
+export function proofTree2Prl (proofDescriptor: ProofDescriptor): string | null {
+	const content: string[] = proofTree2ProofLite(proofDescriptor, { omitTags: true, escape: true });
+	if (content && content.length) {
+		return content.join("\n");
+	}
+	return null;
+}
 /**
  * Utility function, converts a proof descriptor to a prooflite script
  * @param proofDescriptor 
  * @param opt 
  */
-export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { barDash?: boolean }): string[] | null {
+export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { barDash?: boolean, omitTags?: boolean, escape?: boolean }): string[] | null {
 	opt = opt || {};
 	const proofTreeToProofLite_aux = (nodes: ProofNode[], currentBranch?: string, indent?: number): string => {
 		indent = indent || 0;
@@ -1020,12 +1027,19 @@ export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { b
 	if (proofDescriptor && proofDescriptor.proofTree) {
 		let script: string = proofTreeToProofLite_aux([ proofDescriptor.proofTree ]);
 		script = script || "(postpone)";
-		// the theory name will be given by the file name
-		const res: string = `${proofDescriptor.info.formula} : PROOF
+		if (opt.omitTags) {
+			if (opt.escape) {
+				script = script.replace(/[\n\r]/g, " ").replace(/\"/g, `\\"`)
+			}
+			return script.split("\n");
+		} else {
+			// the theory name will be given by the file name
+			const res: string = `${proofDescriptor.info.formula} : PROOF
 ${script}
 QED ${proofDescriptor.info.formula}`;
-		return (opt.barDash) ? res.split("\n").map(line => { return "%|- " + line; })
-			: res.split("\n");
+			return (opt.barDash) ? res.split("\n").map(line => { return "%|- " + line; })
+				: res.split("\n");
+		}
 	}
 	return null;
 }

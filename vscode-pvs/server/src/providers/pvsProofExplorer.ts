@@ -1848,6 +1848,25 @@ export class PvsProofExplorer {
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
+	async saveProofAs (desc: { fileExtension: string }): Promise<void> {
+		// the only extension supported at this time is .prj
+		// update proof descriptor
+		this.proofDescriptor = this.makeProofDescriptor();
+		// save proof descriptor to file
+		const success: boolean = await this.pvsProxy.saveAsPrj({ 
+			fileName: this.formula.fileName,
+			fileExtension: this.formula.fileExtension,
+			contextFolder: this.formula.contextFolder,
+			theoryName: this.formula.theoryName,
+			formulaName: this.formula.formulaName,
+			proofDescriptor: this.proofDescriptor
+		});
+		this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success, fileExtension: desc.fileExtension }, args: this.formula });
+	}
+	/**
+	 * Save the current proof on file
+	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
+	 */
 	async saveProof (): Promise<void> {
 		// update proof descriptor
 		this.proofDescriptor = this.makeProofDescriptor();

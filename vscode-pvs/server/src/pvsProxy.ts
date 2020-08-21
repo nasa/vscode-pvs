@@ -1138,11 +1138,28 @@ export class PvsProxy {
 		const content: string[] = utils.proofTree2ProofLite(desc.proofDescriptor);
 		if (content && content.length) {
 			const header: string = utils.makeProofliteHeader(desc.formulaName, desc.theoryName, desc.proofDescriptor.info.status);
-			return await utils.saveProoflite(fname, desc.formulaName, header + content.join("\n"));
+			const proofLite: string = content.join("\n");
+			const success: boolean = await utils.saveProoflite(fname, desc.formulaName, header + proofLite);
+			// try to save into .prf -- disabled for now
+			// const prl: string = utils.proofTree2Prl(desc.proofDescriptor);
+			// await this.saveProofWithFormula(desc, prl);
+			return success;
 		}
 		return false;
 	}
 
+	async saveAsPrj (desc: { 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		formulaName: string, 
+		contextFolder: string, 
+		proofDescriptor: ProofDescriptor
+	}): Promise <boolean> {
+		const prl: string = utils.proofTree2Prl(desc.proofDescriptor);
+		const pvsResponse: PvsResponse = await this.saveProofWithFormula(desc, prl);
+		return pvsResponse && pvsResponse.result;
+	}
 
 	/**
 	 * Returns the prooflite script for the given formula -- FIXME: display-prooflite-script is not working, we need to use languageUtils.proofTree2ProofLite()
@@ -1276,8 +1293,8 @@ export class PvsProxy {
 	 * Returns pvs version information
 	 */
 	async getNasalibVersionInfo(): Promise<string | null> {
-		const nasalibPresent: PvsResponse = await this.legacy.lisp(`(boundp '*nasalib-version*)`);
-		if (nasalibPresent && nasalibPresent.result === "t") {
+		const nasalibPresent: boolean = await this.isNasalibPresent();
+		if (nasalibPresent) {
 			const nasalibVersion: PvsResponse = await this.legacy.lisp(`*nasalib-version*`);
 			const regexp: RegExp = /(\d+(?:.?\d+)*)/g; // group 1 is nasalib
 			const info: RegExpMatchArray = regexp.exec(nasalibVersion.result);
@@ -1626,6 +1643,19 @@ export class PvsProxy {
 		if (!pvsLibraries.includes(path) && await fsUtils.folderExists(path)) {
 			await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
 		}
+	}
+
+	async isNasalibPresent (): Promise<boolean> {
+		const response: PvsResponse = await this.legacy.lisp(`(boundp '*nasalib-version*)`);
+		return response && response.result === "t";
+	}
+
+	async saveProofWithFormula (desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {
+		const nasalibPresent: boolean = await this.isNasalibPresent();
+		if (nasalibPresent) {
+			return await this.legacy.saveProofWithFormula(desc, proofLiteScript);
+		}
+		return null;
 	}
 
 	/**

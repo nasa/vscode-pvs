@@ -590,7 +590,8 @@ export const nasalibFile: string = "https://github.com/nasa/pvslib/archive/pvs7.
 // ProofEdit
 export type ProofEditCommand = ProofEditAppendNode | ProofEditCopyNode | ProofEditPasteNode | ProofEditCopyTree
 	| ProofEditPasteTree | ProofEditDeleteNode | ProofEditAppendBranch | ProofEditCutNode | ProofEditCutTree
-	| ProofEditDeleteTree | ProofEditTrimNode | ProofEditRenameNode | ProofEditSave | ProofEditTrimUnused;
+	| ProofEditDeleteTree | ProofEditTrimNode | ProofEditRenameNode | ProofEditSave | ProofEditTrimUnused
+	| ProofEditSaveAs;
 export type ProofEditAppendNode = {
 	action: "append-node",
 	name: string,
@@ -647,6 +648,10 @@ export type ProofEditRenameNode = {
 };
 export type ProofEditSave = {
 	action: "save"
+};
+export type ProofEditSaveAs = {
+	action: "save-as",
+	fileExtension: string
 };
 
 
