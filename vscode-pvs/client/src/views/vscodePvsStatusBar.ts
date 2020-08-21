@@ -35,7 +35,7 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-import { StatusBarItem, ExtensionContext, StatusBarAlignment, window, commands } from "vscode";
+import { StatusBarItem, ExtensionContext, StatusBarAlignment, window, commands, workspace } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
 import * as path from 'path';
 import { PvsVersionDescriptor } from "../common/serverInterface";
@@ -106,7 +106,9 @@ export class VSCodePvsStatusBar {
     pvsReady (desc: PvsVersionDescriptor): void {
         if (desc) {
             this.pvsVersionInfo = desc;
-            this.showVersionInfo();
+            if (window.activeTextEditor && window.activeTextEditor.document && window.activeTextEditor.document.languageId === "pvs") {
+                this.showVersionInfo();
+            }
             this.ready();
         }
     }
