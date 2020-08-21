@@ -49,7 +49,7 @@
 		"viewsWelcome": [
 			{
 			  "view": "workspace-explorer-view",
-			  "contents": "Welcome to VSCode-PVS!\n[Open PVS File or Folder](command:vscode-pvs.open-pvs-file-or-folder)\n[New PVS File](command:vscode-pvs.new-pvs-file)"
+			  "contents": "You have not yet opened a PVS file.\n[Open PVS File or Folder](command:vscode-pvs.open-pvs-file-or-folder)\n[New PVS File](command:vscode-pvs.new-pvs-file)"
 			}
 		],
 		"configuration": [

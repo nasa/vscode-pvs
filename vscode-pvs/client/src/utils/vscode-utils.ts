@@ -152,13 +152,16 @@ export async function addPvsLibraryFolder (path: string): Promise<boolean> {
  */
 export async function cleanPvsWorkspace (): Promise<void> {
     if (vscode.workspace.workspaceFolders) {
+        let nCleaned: number = 0;
         for (let i = 0; i < vscode.workspace.workspaceFolders.length; i++) {
             const contextFolder: string = vscode.workspace.workspaceFolders[i].uri.path;
             if (contextFolder) {
-                await fsUtils.deletePvsCache(contextFolder, { keepTccs: false });
+                nCleaned += await fsUtils.deletePvsCache(contextFolder, { keepTccs: false, recursive: true });
             }
         }
-        vscode.window.showInformationMessage(`${vscode.workspace.workspaceFolders.length} folders cleaned!`);
+        vscode.window.showInformationMessage(`${nCleaned} folders cleaned!`);
+    } else {
+        vscode.window.showInformationMessage(`Nothing to clean (no folder opened)`);
     }
 }
 /**
@@ -208,7 +211,8 @@ export async function openPvsFile (): Promise<void> {
 /**
  * Opens a pvs file in the editor and adds the containing folder in file explorer
  */
-export async function openPvsFileOrFolder (): Promise<string> {
+export async function openPvsFileOrFolder (opt?: { clearExplorer?: boolean }): Promise<string> {
+    opt = opt || {};
     const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
         canSelectFiles: true,
         canSelectFolders: true,
@@ -224,7 +228,8 @@ export async function openPvsFileOrFolder (): Promise<string> {
         const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
         // add folder to workspace
         if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
-            vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
+            const start: number = (vscode.workspace.workspaceFolders && !opt.clearExplorer) ? vscode.workspace.workspaceFolders.length : 0
+            vscode.workspace.updateWorkspaceFolders(start, null, { uri: contextFolderUri });
         }
         if (fname) {
             const fileUri: vscode.Uri = vscode.Uri.file(fname);

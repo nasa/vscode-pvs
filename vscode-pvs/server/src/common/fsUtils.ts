@@ -114,8 +114,9 @@ export function deleteFolder(contextFolder: string): boolean {
 	}
 	return true;
 }
-export function deletePvsCache(contextFolder: string, opt?: { keepTccs?: boolean }): Promise<boolean> {
+export async function deletePvsCache(contextFolder: string, opt?: { keepTccs?: boolean, recursive?: boolean }): Promise<number> {
 	opt = opt || {};
+	let nCleaned: number = 0;
 	try {
 		// console.log(`Deleting cache for context ${contextFolder}`);
 		if (contextFolder) {
@@ -127,33 +128,46 @@ export function deletePvsCache(contextFolder: string, opt?: { keepTccs?: boolean
 			deleteFile(path.join(contextFolder, ".pvscontext"));
 			// console.log(`reading folder ${contextFolder}`);
 			const files: string[] = fs.readdirSync(contextFolder);
-			// remove .prlite files
-			files.filter(name => {
-				// console.log(name);
-				return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~");
-			}).forEach(file => {
-				// console.log(`deleting ${file}`);
-				deleteFile(path.join(contextFolder, file));
-			});
-			// remove .tccs files
-			if (!opt.keepTccs) {
-				// console.log(files);
-				if (files) {
+			if (files) {
+				// remove .prlite files
+				files.filter(name => {
+					// console.log(name);
+					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~");
+				}).forEach(file => {
+					// console.log(`deleting ${file}`);
+					deleteFile(path.join(contextFolder, file));
+				});
+				// remove .tccs files
+				if (!opt.keepTccs) {
 					// console.log(files);
-					files.filter(name => {
-						// console.log(name);
-						return name.endsWith(".tccs");
-					}).forEach(file => {
-						// console.log(`deleting ${file}`);
-						deleteFile(path.join(contextFolder, file));
-					});
+					if (files) {
+						// console.log(files);
+						files.filter(name => {
+							// console.log(name);
+							return name.endsWith(".tccs");
+						}).forEach(file => {
+							// console.log(`deleting ${file}`);
+							deleteFile(path.join(contextFolder, file));
+						});
+					}
+				}
+				nCleaned++;
+				// repeat recursively to subdirs -- do this only for one level
+				if (opt.recursive) {
+					const dirs: string[] = fs.readdirSync(contextFolder);
+					for (let i = 0; i < dirs.length; i++) {
+						const dir: string = path.join(contextFolder, dirs[i]);
+						if (fs.lstatSync(dir).isDirectory()) {
+							nCleaned += await deletePvsCache(dir);
+						}
+					}
 				}
 			}
 		}
 	} catch (deleteError) {
-		return Promise.resolve(false);
+		return Promise.resolve(0);
 	}
-	return Promise.resolve(true);
+	return Promise.resolve(nCleaned);
 }
 export async function createFolder(path: string): Promise<void> {
 	if (!fs.existsSync(path)){

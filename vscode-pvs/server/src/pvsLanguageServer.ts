@@ -1804,7 +1804,7 @@ export class PvsLanguageServer {
 				}
 			});
 			this.connection.onRequest(serverRequest.rebootPvsServer, async (desc?: { pvsPath?: string }) => {
-				await fsUtils.deletePvsCache(this.lastParsedContext, { keepTccs: true }); // this will remove .pvscontext and pvsbin
+				await fsUtils.deletePvsCache(this.lastParsedContext, { keepTccs: true, recursive: true }); // this will remove .pvscontext and pvsbin
 				await this.pvsProxy.rebootPvsServer(desc);
 				this.notifyServerMode("lisp");
 				// send version info

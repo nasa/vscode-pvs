@@ -661,11 +661,12 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Opens a pvs file in the editor and adds the containing folder in file explorer
 	 */
-	async openPvsFileOrFolder (): Promise<void> {
-		const contextFolder: string = await vscodeUtils.openPvsFileOrFolder();
+	async openPvsFileOrFolder (opt?: { clearExplorer?: boolean }): Promise<string | null> {
+		const contextFolder: string = await vscodeUtils.openPvsFileOrFolder(opt);
 		if (contextFolder) {
-			this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder })
+			return this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder })
 		}
+		return null;
 	}
 	/**
 	 * Creates a new pvs file in the current workspace folder
@@ -730,7 +731,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		// const msg: string = `Remove all temporary PVS files?`
 		// const ans: string = await window.showInformationMessage(msg, { modal: true }, yesno[0]);
 		// if (ans === yesno[0]) {
-			await vscodeUtils.cleanPvsWorkspace();
+			return await vscodeUtils.cleanPvsWorkspace();
 		// }
 	}
 	/**
