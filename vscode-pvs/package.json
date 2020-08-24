@@ -254,13 +254,13 @@
 			},
 			{
 				"command": "vscode-pvs.open-pvs-file-or-folder",
-				"title": "Open ...",
+				"title": "Open",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.open-folder",
-				"title": "Open PVS Workspace ...",
+				"title": "Open PVS Workspace",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
@@ -603,9 +603,14 @@
 					"group": "context-menu/ctrl-1.2"
 				},
 				{
-					"command": "vscode-pvs.clean-pvs-workspace",
+					"command": "vscode-pvs.typecheck-workspace",
 					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
 					"group": "context-menu/ctrl-1.3"
+				},
+				{
+					"command": "vscode-pvs.clean-pvs-workspace",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "context-menu/ctrl-1.4"
 				},
 				{
 					"command": "proof-explorer.fast-forward",
@@ -874,9 +879,14 @@
 					"group": "ctrl-1.2"
 				},
 				{
-					"command": "vscode-pvs.clean-pvs-workspace",
+					"command": "vscode-pvs.typecheck-workspace",
 					"when": "view == workspace-explorer-view",
 					"group": "ctrl-1.3"
+				},
+				{
+					"command": "vscode-pvs.clean-pvs-workspace",
+					"when": "view == workspace-explorer-view",
+					"group": "ctrl-1.4"
 				}
 			]
 		},

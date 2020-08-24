@@ -1827,18 +1827,18 @@ export class PvsLanguageServer {
 				this.parseWorkspaceRequest(request, { withFeedback: true }); // async call
 			});
 			this.connection.onRequest(serverRequest.typecheckWorkspace, async (request: { contextFolder: string }) => {
-				const workspaceName: string = request.contextFolder;
-				const shortName: string = fsUtils.getContextFolderName(workspaceName);
-				await this.parseWorkspaceRequest(request, {
-					withFeedback: true, 
-					suppressFinalMessage: true, 
-					keepDialogOpen: true,
-					actionId: "typecheck-workspace", // this is done to keep the same dialog on the front-end
-					msg: `Preparing to typecheck workspace ${shortName}` 
-				});
+				// const workspaceName: string = request.contextFolder;
+				// const shortName: string = fsUtils.getContextFolderName(workspaceName);
+				// await this.parseWorkspaceRequest(request, {
+				// 	withFeedback: true, 
+				// 	suppressFinalMessage: true, 
+				// 	keepDialogOpen: true,
+				// 	actionId: "typecheck-workspace", // this is done to keep the same dialog on the front-end
+				// 	msg: `Preparing to typecheck workspace ${shortName}` 
+				// });
 				await this.typecheckWorkspaceRequest(request, {
-					withFeedback: true,
-					suppressDialogCreation: true
+					withFeedback: true//,
+					// suppressDialogCreation: true
 				});
 			});
 			this.connection.onRequest(serverRequest.hp2pvs, async (request: PvsFile) => {

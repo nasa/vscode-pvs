@@ -100,7 +100,9 @@ export class PvsProcess {
 					// msg = msg.replace(/(\r\n|\n|\r)/gm, "");
 					this.connection.console.log(msg);
 					if (this.progressInfoEnabled) {
-						const ln: string[] = msg.trim().split("\n");
+						const ln: string[] = msg.trim().split("\n").filter(line => {
+							return line.trim() && !line.trim().startsWith("pvs(");
+						});
 						this.sendProgressInfo(ln[ln.length - 1]);
 					}
 				} else {
