@@ -306,7 +306,7 @@ export class PvsLanguageServer {
 		}
 
 		// make sure pvs files are typechecked before starting a proof attempt
-		if (formula.fileExtension) {	
+		if (formula.fileExtension) {
 			const response: PvsResponse = await this.typecheckFile({
 				contextFolder: formula.contextFolder,
 				fileName: formula.fileName,

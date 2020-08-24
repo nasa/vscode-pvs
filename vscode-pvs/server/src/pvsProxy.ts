@@ -806,9 +806,10 @@ export class PvsProxy {
 	 * Executes a lisp command in pvs
 	 * @param cmd 
 	 */
-	async lisp(cmd: string): Promise<PvsResponse> {
+	async lisp(cmd: string, opt?: { useXmlrpc?: boolean }): Promise<PvsResponse> {
+		opt = opt || {};
 		// don't use legacy apis here --- this command might be used during a prover session, and pvs process is unable to process requests during prover sessions
-		if (this.useLegacy) {
+		if (this.useLegacy && !opt.useXmlrpc) {
 			return await this.legacy.lisp(cmd);
 		}
 		// else
@@ -1271,6 +1272,12 @@ export class PvsProxy {
 		return this.pvsVersionInfo;
 	}
 
+	async loadPatchesAndLibraries(): Promise<void> {
+		await this.setNasalibPath();
+		await this.loadPvsPatches();
+		await this.loadPvsLibraryPath();
+	}
+
 	/**
 	 * Loads pvs version information
 	 */
@@ -1631,8 +1638,8 @@ export class PvsProxy {
 		return await this.pvsRequest('reset');
 	}
 
-	async getPvsLibraryPath (): Promise<string[]> {
-		const response: PvsResponse = await this.legacy.lisp(`*pvs-library-path*`);
+	async getPvsLibraryPath (opt?: { useXmlrpc?: boolean }): Promise<string[]> {
+		const response: PvsResponse = await this.lisp(`*pvs-library-path*`, opt);
 		if (response && response.result) {
 			const match: RegExpMatchArray = /\(([\w\W\s]+)\)/g.exec(response.result);
 			if (match && match.length > 1 && match[1]) {
@@ -1646,12 +1653,18 @@ export class PvsProxy {
 		return [];
 	}
 
-	protected async setNasalibPath (): Promise<void> {
-		const pvsLibraries: string[] = await this.getPvsLibraryPath();
-		const path: string = this.nasalibPath.endsWith("/") ? this.nasalibPath : `${this.nasalibPath}/`;
+	async setNasalibPath (opt?: { useXmlrpc?: boolean }): Promise<PvsResponse | null> {
+		const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
+		let path: string = this.nasalibPath.endsWith("/") ? this.nasalibPath : `${this.nasalibPath}/`;
+		path = fsUtils.tildeExpansion(path);
 		if (!pvsLibraries.includes(path) && await fsUtils.folderExists(path)) {
-			await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
+			return await this.lisp(`(push "${path}" *pvs-library-path*)`, opt);
 		}
+		return null;
+	}
+
+	getNasaLibPath (): string {
+		return this.nasalibPath;
 	}
 
 	async isNasalibPresent (): Promise<boolean> {
@@ -1671,23 +1684,26 @@ export class PvsProxy {
 	 * Updates pvs library path
 	 * @param pvsLibraryPath colon-separated list of folders
 	 */
-	async loadPvsLibraryPath (): Promise<void> {
-		const libs: string[] = (this.pvsLibraryPath) ? this.pvsLibraryPath.split(":").map((elem: string) => {
+	async loadPvsLibraryPath (pvsLibraryPath?: string, opt?: { useXmlrpc?: boolean }): Promise<PvsResponse | null> {
+		opt = opt || {};
+		const lp: string = pvsLibraryPath || this.pvsLibraryPath;
+		const libs: string[] = (lp) ? lp.split(":").map((elem: string) => {
 			return elem.trim();
 		}) : [];
 		if (libs && libs.length) {
-			const pvsLibraries: string[] = await this.getPvsLibraryPath();
+			const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
 			for (let i = 0; i < libs.length; i++) {
 				const path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
 				if (!pvsLibraries.includes(path)) {
-					await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
+					return await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
 				}
 			}
 		}
+		return null;
 	}
 
-	protected async loadPvsPatches (): Promise<void> {
-		await this.legacy.lisp(`(load-pvs-patches)`);
+	async loadPvsPatches (opt?: { useXmlrpc?: boolean }): Promise<PvsResponse> {
+		return await this.lisp(`(load-pvs-patches)`, opt);
 	}
 
 
@@ -1707,7 +1723,7 @@ export class PvsProxy {
 		}
 		const success: boolean = await this.restartPvsServer();
 		if (success) {
-			await this.loadPvsVersionInfo();
+			// await this.loadPvsVersionInfo();
 			console.log(`[pvs-proxy] Activation complete!`);
 		} else {
 			console.error(`[pvs-proxy] Activation failed :/`);

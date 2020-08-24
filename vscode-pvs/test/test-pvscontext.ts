@@ -46,31 +46,20 @@ describe("pvs", () => {
 	});
 	cleanAll();
 
-	// utility function, quits the prover if the prover status is active
-	const quitProverIfActive = async (): Promise<void> => {
-		// quit prover if prover status is active
-		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
-		expect(proverStatus.result).toBeDefined();
-		expect(proverStatus.error).not.toBeDefined();
-		console.log(proverStatus);
-		if (proverStatus && proverStatus.result !== "inactive") {
-			await pvsProxy.proofCommand({ cmd: 'quit' });
-		}
-	}
-	
-
-	fit(`can typecheck monitors/trace.pvs (nasalib-monitors.zip)`, async () => {
+	// FAILS: pvs-server breaks into Lisp with this test
+	fit(`can typecheck nasalib-monitors/trace.pvs (nasalib-monitors.zip)`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
-		await quitProverIfActive();
-
 		// remove folder if present and replace it with the content of the zip file
-		const contextFolder: string = path.join(baseFolder, "monitors");
+		const contextFolder: string = path.join(baseFolder, "nasalib-monitors");
 		fsUtils.deleteFolder(contextFolder);
 		execSync(`cd ${baseFolder} && unzip nasalib-monitors.zip`);
 
-		let response: PvsResponse = await pvsProxy.typecheckFile({
+		let response: PvsResponse = await pvsProxy.setNasalibPath({ useXmlrpc: true }); // set nasalib path to <pvs-dir>/nasalib
+		response = await pvsProxy.loadPvsPatches({ useXmlrpc: true }); // load pvs-patches from <pvs-dir>/nasalib/pvs-patches
+
+		response = await pvsProxy.typecheckFile({
 			fileName: "trace", 
 			fileExtension: ".pvs", 
 			contextFolder: path.join(contextFolder, "Fret_MLTL")
@@ -91,14 +80,12 @@ describe("pvs", () => {
 		expect(response.error).not.toBeDefined();
 		// console.dir(response);
 
-		// response = await pvsProxy.proofCommand({ cmd: `(skeep)(fretex)` });
-		response = await pvsProxy.proofCommand({ cmd: `(skeep)(fretex)(iff)(split)(flatten)(inst -1 "0")(skeep)(inst 2 "n-1")(case "i > n-1")(expand "Trace_equiv")(inst -3 "n-1")(assert)(flatten)(assert)(expand "last_atom")(expand "always")(split)(inst -1 "i")(split)(expand "Trace_equiv")(inst -2 "i")(flatten)(hide -2 -3 -4 -5 -7)(expand "post_condition_atom")(assert)(typepred "i")(assert)(expand "nth")(typepred "i")(grind)(expand "nth")(grind)(inst -1 "i")(expand "nth")(grind)(expand "nth")(typepred "i")(grind)(expand "length")(grind)(flatten)(skeep)(expand "always")(skeep)(typepred "i_1")(inst -2 "i_1")(expand "nth")(assert)(typepred "i")(grind)` });
+		response = await pvsProxy.proofCommand({ cmd: `(skeep)` });
+		response = await pvsProxy.proofCommand({ cmd: `(fretex)` });
+		// response = await pvsProxy.proofCommand({ cmd: `(skeep)(fretex)(iff)(split)(flatten)(inst -1 "0")(skeep)(inst 2 "n-1")(case "i > n-1")(expand "Trace_equiv")(inst -3 "n-1")(assert)(flatten)(assert)(expand "last_atom")(expand "always")(split)(inst -1 "i")(split)(expand "Trace_equiv")(inst -2 "i")(flatten)(hide -2 -3 -4 -5 -7)(expand "post_condition_atom")(assert)(typepred "i")(assert)(expand "nth")(typepred "i")(grind)(expand "nth")(grind)(inst -1 "i")(expand "nth")(grind)(expand "nth")(typepred "i")(grind)(expand "length")(grind)(flatten)(skeep)(expand "always")(skeep)(typepred "i_1")(inst -2 "i_1")(expand "nth")(assert)(typepred "i")(grind)` });
 		console.dir(response);
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
-
-		// remove folder 
-		// fsUtils.deleteFolder(path.join(baseFolder, "type_theory"));
 	}, 20000);
 
 	it(`identified typecheck errors for datatypes in type_theory (type-theory-error-with-datatypes.zip)`, async () => {
