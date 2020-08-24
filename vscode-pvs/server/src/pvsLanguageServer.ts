@@ -646,7 +646,7 @@ export class PvsLanguageServer {
 				// send feedback to the front-end
 				this.notifyStartImportantTask({ id: taskId, msg: `Typechecking ${fname}` });
 				// parse workspace first, so the front-end is updated with statistics
-				await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
+				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
 				// proceed with typechecking
 				const response: PvsResponse = await this.typecheckFile(request);
 				this.connection.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
