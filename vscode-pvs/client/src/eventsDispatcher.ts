@@ -589,7 +589,7 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.set-pvs-path", () => {
             this.packageManager.pvsPathWizard();
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.reinstall-nasalib", () => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.install-nasalib", () => {
             this.packageManager.nasalibInstallationWizard();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.add-pvs-library", async () => {
@@ -660,7 +660,8 @@ export class EventsDispatcher {
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
                 this.statusBar.showProgress("Rebooting pvs-server...");
-                this.client.sendRequest(serverRequest.rebootPvsServer);
+                const currentContext: string = vscode.workspace.rootPath;
+                this.client.sendRequest(serverRequest.rebootPvsServer, { cleanFolder: currentContext });
                 // terminate any prover session
                 this.vscodePvsTerminal.quitAll(); // async call
             }

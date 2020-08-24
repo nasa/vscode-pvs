@@ -590,7 +590,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
             this.revealNode(desc);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.focus-node", (desc: { id: string, name: string }) => {
-            this.focusNode(desc);
+            this.revealNode(desc);
 		}));
 		// -- handlers for proof explorer commands
 		context.subscriptions.push(commands.registerCommand("proof-explorer.trim-unused", (resource: ProofItem) => {

@@ -114,7 +114,7 @@ export function deleteFolder(contextFolder: string): boolean {
 	}
 	return true;
 }
-export async function deletePvsCache(contextFolder: string, opt?: { keepTccs?: boolean, recursive?: boolean }): Promise<number> {
+export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean, recursive?: boolean }): Promise<number> {
 	opt = opt || {};
 	let nCleaned: number = 0;
 	try {
@@ -158,7 +158,7 @@ export async function deletePvsCache(contextFolder: string, opt?: { keepTccs?: b
 					for (let i = 0; i < dirs.length; i++) {
 						const dir: string = path.join(contextFolder, dirs[i]);
 						if (fs.lstatSync(dir).isDirectory()) {
-							nCleaned += await deletePvsCache(dir);
+							nCleaned += await cleanBin(dir);
 						}
 					}
 				}

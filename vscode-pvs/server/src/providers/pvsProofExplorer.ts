@@ -2070,7 +2070,7 @@ export class PvsProofExplorer {
 						const channelID: string = utils.desc2id(req);
 						const result: SequentDescriptor[] = response.result;
 						for (let j = 0; j < result.length; j++) {
-							const sequent: SequentDescriptor = result[j]; // result in position 0 was supposed to be the most recent, but it doesn't seem to be the case!
+							const sequent: SequentDescriptor = result[result.length - 1 - j]; // sequents are read in reverse order because the one in position 0 is the current sequent
 							if (sequent["prover-session-status"]) {
 								// FIXME: this field is provided only by json-output patch, not by the xmlrpc server -- either use it or don't, adopt a standard solution!
 								// branch closed, or proof completed

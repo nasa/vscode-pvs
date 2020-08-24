@@ -76,11 +76,11 @@ Yes, you can use the following set PVS hot-keys combinations in VSCode-PVS:
 Additional hot-keys for quick access to configuration settings:
 - `M-x add-pvs-library` *(adds a folder to the vscode-pvs library path)*
 - `M-x clear-pvs-library-path` *(removes all entries in the vscode-pvs library path)*
-- `M-x pvs-library-path` *(show library path specified in vscode-pvs settings)*
-- `M-x reboot-pvs` *(reboots the pvs-server)*
-- `M-x reinstall-pvs` *(interactive wizard for re-installing PVS)*
-- `M-x reinstall-nasalib` *(interactive wizard for re-installing NASALib)*
-- `M-x set-pvs-path` *(interactive wizard for selecting the path to the PVS executables)*
+- `M-x pvs-library-path` *(shows the pvs library path specified in vscode-pvs settings)*
+- `M-x reboot-pvs` *(reboots pvs-server)*
+- `M-x reinstall-pvs` *(starts as interactive wizard that allows to re-install PVS)*
+- `M-x install-nasalib` *(starts an interactive wizard that allows to install NASALib)*
+- `M-x set-pvs-path` *(sets the path to the PVS executables)*
 - `M-x settings` *(shows vscode-pvs settings)*
 
 ### **What is `M-x`, and how do I use it?**

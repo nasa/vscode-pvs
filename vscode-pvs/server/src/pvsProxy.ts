@@ -212,6 +212,7 @@ export class PvsProxy {
 				commentary: (res["result"]) ? [ res["result"] ] : res["commentary"],
 				"num-subgoals": (res["result"]) ? 0 : res["num-subgoals"],
 				sequent: (res["result"]) ? {} : res["sequent"],
+				"prev-cmd": res["prev-cmd"],
 				"last-cmd": (res["prev-cmd"] && res["prev-cmd"].length === 1) ? res["prev-cmd"][0] : cmd
 			}
 			return sequent;

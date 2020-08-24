@@ -1803,8 +1803,12 @@ export class PvsLanguageServer {
 					this.pvsErrorManager.handleStartPvsServerError(ProcessCode.PVSSTARTFAIL);
 				}
 			});
-			this.connection.onRequest(serverRequest.rebootPvsServer, async (desc?: { pvsPath?: string }) => {
-				await fsUtils.deletePvsCache(this.lastParsedContext, { keepTccs: true, recursive: true }); // this will remove .pvscontext and pvsbin
+			this.connection.onRequest(serverRequest.rebootPvsServer, async (desc?: { pvsPath?: string, cleanFolder?: string }) => {
+				desc = desc || {};
+				await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: true }); // this will remove .pvscontext and pvsbin
+				if (desc.cleanFolder) {
+					await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: true }); // this will remove .pvscontext and pvsbin
+				}
 				await this.pvsProxy.rebootPvsServer(desc);
 				this.notifyServerMode("lisp");
 				// send version info
