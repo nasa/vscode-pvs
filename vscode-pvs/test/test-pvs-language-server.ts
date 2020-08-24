@@ -74,54 +74,6 @@ describe("pvs-language-server", () => {
 		// remove jprf file
 		execSync(`cd ${path.join(baseFolder, "sq")} && rm -f sq.jprf`);
 	}, 20000);
-	
-
-	fit(`can typecheck nasalib-monitors/trace.pvs (nasalib-monitors.zip)`, async () => {
-		await quitProverIfActive();
-
-		await server.getPvsProxy().loadPatchesAndLibraries();
-
-		// remove folder if present and replace it with the content of the zip file
-		const contextFolder: string = "/Users/pmasci/Work/gitlab/pvs-experimental/monitors/"; //path.join(baseFolder, "nasalib-monitors"); // "/Users/pmasci/Work/gitlab/pvs-experimental/monitors/";
-		// fsUtils.deleteFolder(contextFolder);
-		// execSync(`cd ${baseFolder} && unzip nasalib-monitors.zip`);
-
-		// let response: PvsResponse = await pvsProxy.setNasalibPath({ useXmlrpc: true });
-		// console.dir(response);
-		// response = await pvsProxy.loadPvsPatches({ useXmlrpc: true });
-		// console.dir(response);
-		// response = await pvsProxy.loadPvsLibraryPath(null, { useXmlrpc: true });
-		// console.dir(response);
-
-		await server.proveFormulaRequest({
-			fileName: "trace",
-			fileExtension: ".pvs",
-			contextFolder: path.join(contextFolder, "Fret_MLTL"),
-			theoryName: "trace",
-			formulaName: "null_null_always_satisfaction"
-		});
-
-		await server.proofCommandRequest({
-			fileName: "trace",
-			fileExtension: ".pvs",
-			contextFolder: path.join(contextFolder, "Fret_MLTL"),
-			theoryName: "trace",
-			formulaName: "null_null_always_satisfaction",
-			cmd: `(skeep)`
-		});
-		await server.proofCommandRequest({
-			fileName: "trace",
-			fileExtension: ".pvs",
-			contextFolder: path.join(contextFolder, "Fret_MLTL"),
-			theoryName: "trace",
-			formulaName: "null_null_always_satisfaction",
-			cmd: `(fretex)`
-		});
-		// response = await pvsProxy.proofCommand({ cmd: `(skeep)(fretex)(iff)(split)(flatten)(inst -1 "0")(skeep)(inst 2 "n-1")(case "i > n-1")(expand "Trace_equiv")(inst -3 "n-1")(assert)(flatten)(assert)(expand "last_atom")(expand "always")(split)(inst -1 "i")(split)(expand "Trace_equiv")(inst -2 "i")(flatten)(hide -2 -3 -4 -5 -7)(expand "post_condition_atom")(assert)(typepred "i")(assert)(expand "nth")(typepred "i")(grind)(expand "nth")(grind)(inst -1 "i")(expand "nth")(grind)(expand "nth")(typepred "i")(grind)(expand "length")(grind)(flatten)(skeep)(expand "always")(skeep)(typepred "i_1")(inst -2 "i_1")(expand "nth")(assert)(typepred "i")(grind)` });
-
-		// remove folder 
-		// fsUtils.deleteFolder(path.join(baseFolder, "type_theory"));
-	}, 20000);
 
 });
 
