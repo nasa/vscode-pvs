@@ -20,7 +20,7 @@ describe("proofScript", () => {
 		await pvsProxy.activate({ debugMode: false, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files and .pvscontext
-		await fsUtils.deletePvsCache(sandboxExamples);
+		await fsUtils.cleanBin(sandboxExamples);
 
 		console.log("\n----------------------");
 		console.log("test-proofscript");
@@ -30,7 +30,7 @@ describe("proofScript", () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
-		await fsUtils.deletePvsCache(sandboxExamples);
+		await fsUtils.cleanBin(sandboxExamples);
 	});	
 
 	it(`can provide pvs proof scripts`, async () => {

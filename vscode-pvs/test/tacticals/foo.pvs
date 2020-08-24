@@ -1,0 +1,7 @@
+foo: THEORY
+  BEGIN 
+    foo1: CONJECTURE
+      FORALL (n: int): IF n >= 0 THEN abs(n) = n ELSE abs(n) = -n ENDIF
+
+    % tactical 1: (then (skosimp*) (split))
+  END foo

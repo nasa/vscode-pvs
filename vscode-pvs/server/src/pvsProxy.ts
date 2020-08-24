@@ -59,7 +59,7 @@ import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode } from './common/serverInterface';
+import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode, TheoryDescriptor, PvsTheory } from './common/serverInterface';
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
@@ -595,9 +595,22 @@ export class PvsProxy {
 	}
 
 	/**
+	 * Returns the import chain for a given theory
+	 * @param desc theory descriptor: context folder, file name, file extension, theory name
+	 */
+	protected async collectTheoryUsings (desc: PvsTheory): Promise<string[]> {
+		const ans: string[] = [];
+		if (desc && desc.theoryName) {
+			const importChain: PvsResponse = await this.lisp(`(collect-theory-usings "${desc.theoryName}")`);
+			const res: PvsResponse = await this.legacy.findDeclaration("system_th");
+			console.dir(res);
+		}
+		return ans;
+	}
+
+	/**
 	 * Typechecks a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
-	 * @param opt 
 	 */
   	async typecheckFile (desc: { contextFolder: string, fileName: string, fileExtension: string }): Promise<PvsResponse> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
@@ -646,6 +659,7 @@ export class PvsProxy {
 					};
 				}
 			}
+
 			return res;
 		}
 		return null;
@@ -672,13 +686,7 @@ export class PvsProxy {
 	 * Starts an interactive prover session for the given formula
 	 * @param desc 
 	 */
-	async proveFormula(desc: { 
-		contextFolder: string, 
-		fileName: string, 
-		fileExtension: string, 
-		theoryName: string, 
-		formulaName: string 
-	}, opt?: {
+	async proveFormula(desc: PvsFormula, opt?: {
 		useLispInterface?: boolean
 	}): Promise<PvsResponse> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName && desc.formulaName) {

@@ -21,9 +21,9 @@ describe("pvs-prover", () => {
 		await pvsProxy.activate({ debugMode: false, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files and .pvscontext
-		await fsUtils.deletePvsCache(safeSandboxExamples);
-		await fsUtils.deletePvsCache(sandboxExamples);
-		await fsUtils.deletePvsCache(radixExamples);
+		await fsUtils.cleanBin(safeSandboxExamples);
+		await fsUtils.cleanBin(sandboxExamples);
+		await fsUtils.cleanBin(radixExamples);
 
 		console.log("\n----------------------");
 		console.log("test-prover");
@@ -33,9 +33,9 @@ describe("pvs-prover", () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
-		await fsUtils.deletePvsCache(safeSandboxExamples);
-		await fsUtils.deletePvsCache(sandboxExamples);
-		await fsUtils.deletePvsCache(radixExamples);
+		await fsUtils.cleanBin(safeSandboxExamples);
+		await fsUtils.cleanBin(sandboxExamples);
+		await fsUtils.cleanBin(radixExamples);
 	});
 
 	// utility function, quits the prover if the prover status is active

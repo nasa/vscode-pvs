@@ -19,7 +19,7 @@ describe("pvs-proxy", () => {
 		await pvsProxy.activate({ debugMode: false, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files and .pvscontext
-		await fsUtils.deletePvsCache(sandboxExamples);
+		await fsUtils.cleanBin(sandboxExamples);
 
 		console.log("\n----------------------");
 		console.log("test-workspace");
@@ -29,7 +29,7 @@ describe("pvs-proxy", () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
-		await fsUtils.deletePvsCache(sandboxExamples);
+		await fsUtils.cleanBin(sandboxExamples);
 	});
 
 	it(`can tell what is the current context and returns a well-formed path`, async () => {

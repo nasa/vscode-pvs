@@ -23,13 +23,13 @@ describe("pvs-typechecker", () => {
 		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files and .pvscontext
-		await fsUtils.deletePvsCache(sandboxExamples);
-		await fsUtils.deletePvsCache(stever);
-		await fsUtils.deletePvsCache(pillbox);
+		await fsUtils.cleanBin(sandboxExamples);
+		await fsUtils.cleanBin(stever);
+		await fsUtils.cleanBin(pillbox);
 		for (let i = 0; i < pvsiowebFolders.length; i++) {
-			await fsUtils.deletePvsCache(path.join(pvsioweb, pvsiowebFolders[i]));
+			await fsUtils.cleanBin(path.join(pvsioweb, pvsiowebFolders[i]));
 		}
-		await fsUtils.deletePvsCache(dependable_plus_safe);
+		await fsUtils.cleanBin(dependable_plus_safe);
 
 		console.log("\n----------------------");
 		console.log("test-typechecker");
@@ -39,13 +39,13 @@ describe("pvs-typechecker", () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
-		await fsUtils.deletePvsCache(sandboxExamples);
-		await fsUtils.deletePvsCache(stever);
-		await fsUtils.deletePvsCache(pillbox);
+		await fsUtils.cleanBin(sandboxExamples);
+		await fsUtils.cleanBin(stever);
+		await fsUtils.cleanBin(pillbox);
 		for (let i = 0; i < pvsiowebFolders.length; i++) {
-			await fsUtils.deletePvsCache(path.join(pvsioweb, pvsiowebFolders[i]));
+			await fsUtils.cleanBin(path.join(pvsioweb, pvsiowebFolders[i]));
 		}
-		await fsUtils.deletePvsCache(dependable_plus_safe);		
+		await fsUtils.cleanBin(dependable_plus_safe);		
 	});
 
 	it(`can typecheck files`, async () => {
