@@ -61,11 +61,11 @@ describe("pvs-prover", () => {
 		expect(response.result).toBeDefined();
 
 		const skosimp_response: PvsResponse = await pvsProxy.proofCommand({ cmd: "(skosimp*)" });
-		console.dir(skosimp_response, { depth: null });
+		// console.dir(skosimp_response, { depth: null });
 		expect(skosimp_response.result[0]["prev-cmd"][0]).toEqual("skosimp*");
 
 		const split_response: PvsResponse = await pvsProxy.proofCommand({ cmd: "(split)" });
-		console.dir(split_response, { depth: null });
+		// console.dir(split_response, { depth: null });
 		expect(split_response.result[0]["prev-cmd"][0]).toEqual("split");
 
 		await pvsProxy.proofCommand({ cmd: "(quit)" });
