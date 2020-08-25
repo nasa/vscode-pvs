@@ -811,33 +811,12 @@ export class EventsDispatcher {
         }));
 
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-proof-summary", async (resource: TheoryItem | { path: string }) => {
-            let desc: PvsTheory = null;
-            if (resource) {
-                if (resource.path) {
-                    const content: string = await fsUtils.readFile(resource.path);    
-                    // const document: vscode.TextDocument = window.activeTextEditor.document;
-                    const line: number = window.activeTextEditor.selection.active.line;
-                    const theoryName: string = utils.findTheoryName(content, line);
-                    desc = {
-                        contextFolder: fsUtils.getContextFolder(resource.path),
-                        fileName: fsUtils.getFileName(resource.path),
-                        fileExtension: fsUtils.getFileExtension(resource.path),
-                        theoryName
-                    }
-                } else {
-                    desc = {
-                        contextFolder: (<TheoryItem> resource).contextFolder,
-                        fileName: (<TheoryItem> resource).fileName,
-                        fileExtension: (<TheoryItem> resource).fileExtension,
-                        theoryName: (<TheoryItem> resource).theoryName
-                    };
-                }
-            }
-            if (desc) {
+            const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
+            if (desc && desc.theoryName) {
                 await this.workspaceExplorer.showProofSummary(desc);
             }
         }));
-        // vscode-pvs.autorun-theory
+        // vscode-pvs.prove-theory
         // the sequence of events triggered by this command is:
         // 1. vscodePvsTerminal.startProverSession(desc) 
         // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
@@ -846,49 +825,38 @@ export class EventsDispatcher {
         //      3.2 loadProofDescriptor
         //      3.3 proveFormula
         // <loop over all theorems>
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory", async (resource: TheoryItem | { path: string }) => {
-            let desc: PvsTheory = null;
-            if (resource) {
-                if (resource.path) {
-                    const content: string = await fsUtils.readFile(resource.path);
-                    // const document: vscode.TextDocument = window.activeTextEditor.document;
-                    const line: number = window.activeTextEditor.selection.active.line;
-                    const theoryName: string = utils.findTheoryName(content, line);
-                    desc = {
-                        contextFolder: fsUtils.getContextFolder(resource.path),
-                        fileName: fsUtils.getFileName(resource.path),
-                        fileExtension: fsUtils.getFileExtension(resource.path),
-                        theoryName
-                    }
-                } else {
-                    desc = {
-                        contextFolder: (<TheoryItem> resource).contextFolder,
-                        fileName: (<TheoryItem> resource).fileName,
-                        fileExtension: (<TheoryItem> resource).fileExtension,
-                        theoryName: (<TheoryItem> resource).theoryName
-                    };
-                }
-            }
-            if (desc) {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-theory", async (resource: TheoryItem | { path: string }) => {
+            const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
+            if (desc && desc.theoryName) {
                 this.quietMode = true;
-
+                this.proofMate.disableView();
+                this.proofExplorer.disableView();
                 this.statusBar.showProgress(`Re-running proofs in theory ${desc.theoryName}`);
+
+                await this.workspaceExplorer.proveTheoryWithProgress(desc);
+
+                this.statusBar.ready();
+                this.quietMode = false;
+            } else {
+                console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-theory invoked with null resource", resource);
+            }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-importchain", async (resource: TheoryItem | { path: string }) => {
+            const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
+            if (desc && desc.theoryName) {
+                this.quietMode = true;
                 this.proofMate.disableView();
                 this.proofExplorer.disableView();
 
-                await this.workspaceExplorer.autorun(desc);
+                this.statusBar.showProgress(`Re-running importchain for theory ${desc.theoryName}`);
+                await this.workspaceExplorer.proveImportChainWithProgress(desc);
 
                 this.statusBar.ready();
-
                 this.quietMode = false;
             } else {
-                console.error("[vscode-events-dispatcher] Error: vscode-pvs.autorun-theory invoked with null resource", resource);
+                console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-importchain invoked with null resource", resource);
             }
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.autorun-theory-explorer", async (resource: PvsFormula) => {
-            commands.executeCommand("vscode-pvs.autorun-theory", resource);
-        }));
-
         // this request comes from the context menu displayed by the editor
         context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: TheoryItem | { path: string }) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {
@@ -899,53 +867,15 @@ export class EventsDispatcher {
                 }
             }
 
-            let desc: PvsTheory = null;
-            if (resource) {
-                if (resource.path) {
-                    const content: string = await fsUtils.readFile(resource.path);    
-                    // const document: vscode.TextDocument = window.activeTextEditor.document;
-                    const line: number = window.activeTextEditor.selection.active.line;
-                    const theoryName: string = utils.findTheoryName(content, line);
-                    desc = {
-                        contextFolder: fsUtils.getContextFolder(resource.path),
-                        fileName: fsUtils.getFileName(resource.path),
-                        fileExtension: fsUtils.getFileExtension(resource.path),
-                        theoryName
-                    }
-                } else {
-                    desc = {
-                        contextFolder: (<TheoryItem> resource).contextFolder,
-                        fileName: (<TheoryItem> resource).fileName,
-                        fileExtension: (<TheoryItem> resource).fileExtension,
-                        theoryName: (<TheoryItem> resource).theoryName
-                    };
-                }
-            }
-            
-            // const desc: PvsTheory = this.resource2desc(resource);
-            // if (desc && !desc.theoryName) {
-            //     if (resource && resource["path"]) {
-            //         const content: string = await fsUtils.readFile(resource["path"]);
-            //         const line: number = window.activeTextEditor.selection.active.line;
-            //         const theoryName: string = utils.findTheoryName(content, line);
-            //         desc.theoryName = theoryName;    
-            //     } else {
-            //         const document: vscode.TextDocument = window.activeTextEditor.document;
-            //         const line: number = window.activeTextEditor.selection.active.line;
-            //         const theoryName: string = utils.findTheoryName(document.getText(), line);
-            //         desc.theoryName = theoryName;
-            //     }
-            // }
+            const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
             if (desc && desc.theoryName) {
                 this.quietMode = true;
+                this.proofMate.disableView();
+                this.proofExplorer.disableView();
 
-                // this.proofMate.hideView();
-                // this.proofExplorer.hideView();
-                await this.workspaceExplorer.autorun(desc, { tccsOnly: true });
-                // this.proofMate.revealView();
-                // this.proofExplorer.revealView();
+                await this.workspaceExplorer.proveTheoryWithProgress(desc, { tccsOnly: true });
+
                 this.statusBar.ready();
-
                 this.quietMode = false;
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-tccs invoked with null resource", resource);

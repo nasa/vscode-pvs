@@ -402,6 +402,7 @@ export const serverRequest = {
 	getContextDescriptor: "pvs.get-context-descriptor",
 	getFileDescriptor: "pvs.get-file-descriptor",
 	getGatewayConfig: "pvs.get-cli-descriptor",
+	getImportChainTheorems: "pvs.get-importchain-theorems",
 
 	cancelOperation: "pvs.cancel-operation",
 
@@ -440,6 +441,7 @@ export const serverEvent = {
 	getContextDescriptorResponse: "pvs.response.get-context-descriptor",
 	getFileDescriptorResponse: "pvs.response.get-file-descriptor",
 	getGatewayConfigResponse: "pvs.response.get-cli-descriptor",
+	getImportChainTheoremsResponse: "pvs.response.get-importchain-theorems",
 
 	listDownloadableVersionsResponse: "pvs.response.list-downloadable-versions",
 	downloadPvsResponse: "pvs.response.download-pvs",

@@ -278,97 +278,120 @@ export class PvsLanguageServer {
 		}
 		return null;
 	} 
+	async getImportChainTheoremsRequest (theory: PvsTheory): Promise<void> {
+		if (this.pvsProxy) {
+			const res: PvsResponse = await this.typecheckFile(theory);
+			if (res && res.result) {
+				const importChainTheorems: PvsFormula[] = await this.pvsProxy.getImportChainTheorems(theory);
+				if (this.connection) {
+					this.connection.sendRequest(serverEvent.getImportChainTheoremsResponse, { theorems: importChainTheorems });
+				}
+			}
+			else {
+				this.connection.sendRequest(serverEvent.getImportChainTheoremsResponse, null);
+			}
+		}
+	}
 	async proveFormulaRequest (formula: PvsFormula, opt?: { autorun?: boolean }): Promise<void> {
 		opt = opt || {};
-		formula = fsUtils.decodeURIComponents(formula);
-		
-		if (await this.getMode() !== "lisp") {
-			// save then quit current proof
-			if (this.proofExplorer.proofIsDirty() && !opt.autorun) {
-				// ask if the proof needs to be saved
-				await this.proofExplorer.querySaveProof(formula);
-			}
-			await this.quitProof();
-		}
-
-		// make sure file exists
-		const fname: string = fsUtils.desc2fname(formula);
-		if (!fsUtils.fileExists(fname)) {
-			this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
-			return;
-		}
-		
-		// make sure the file typechecks correctly before starting a proof attempt
-		// send feedback to the front-end
-		const taskId: string = `typecheck-${formula.formulaName}`;
-		if (!opt.autorun) {
-			this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${formula.formulaName}'` });
-		}
-
-		// make sure pvs files are typechecked before starting a proof attempt
-		if (formula.fileExtension) {
-			const response: PvsResponse = await this.typecheckFile({
-				contextFolder: formula.contextFolder,
-				fileName: formula.fileName,
-				fileExtension: ".pvs" // this allows to check the pvs file for .tccs
-			});
-			if (response && response.error) {
-				const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(formula);
-				this.diags[fname] = {
-					pvsResponse: response,
-					isTypecheckError: true
-				};
-				this.sendDiagnostics("Typecheck");
-				if (this.pvsErrorManager) {
-					this.pvsErrorManager.handleTypecheckError({ request: formula, response: <PvsError> response, taskId });
+		if (formula && formula.formulaName && formula.theoryName && formula.fileName && formula.contextFolder) {
+			formula = fsUtils.decodeURIComponents(formula);
+			if (await this.getMode() !== "lisp") {
+				// save then quit current proof
+				if (this.proofExplorer.proofIsDirty() && !opt.autorun) {
+					// ask if the proof needs to be saved
+					await this.proofExplorer.querySaveProof(formula);
 				}
+				await this.quitProof();
+			}
+
+			// make sure file exists
+			const fname: string = fsUtils.desc2fname(formula);
+			if (!fsUtils.fileExists(fname)) {
+				this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
 				return;
 			}
-		}
-		// load proof -- this needs to be done before starting the prover session
-		if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] loading proof for formula ${formula.formulaName}`); }
-		await this.proofExplorer.loadProofRequest(formula);
-		if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] starting prover session for formula ${formula.formulaName}`); }
+			
+			// make sure the file typechecks correctly before starting a proof attempt
+			// send feedback to the front-end
+			const taskId: string = `typecheck-${formula.formulaName}`;
+			if (!opt.autorun) {
+				this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${formula.formulaName}'` });
+			}
 
-		const response: PvsResponse = await this.proveFormula(formula);
-		if (response && response.result) {			
-			const channelID: string = utils.desc2id(formula);
-			if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] sending sequent to prover ${channelID}`); }
-			// the initial response should include only one sequent descriptor
-			const result: SequentDescriptor[] = response.result;
-			if (result && result.length) {
-				// notify the client that the server is in prover mode
-				this.notifyServerMode("in-checker");
-
-				// publish the sequent on the cligateway, so it is visible in the prover terminal
-				this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: result[0] });
-				this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() });
-
-				// load initial sequent in proof explorer
-				this.proofExplorer.loadInitialSequent(result[0]);
-
-				// start proof in proof explorer
-				this.proofExplorer.startProof({ autorun: !!opt.autorun, autorunCallback: (status: ProofStatus) => {
-					// the autorun call back is executed at the end of a proof re-run
-					if (this.connection) {
-						this.connection.sendRequest(serverEvent.autorunFormulaResponse, status);
-						this.notifyServerMode("lisp");
+			// make sure pvs files are typechecked before starting a proof attempt
+			if (formula.fileExtension) {
+				const response: PvsResponse = await this.typecheckFile({
+					contextFolder: formula.contextFolder,
+					fileName: formula.fileName,
+					fileExtension: ".pvs" // this allows to check the pvs file for .tccs
+				});
+				if (response && response.error) {
+					const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(formula);
+					this.diags[fname] = {
+						pvsResponse: response,
+						isTypecheckError: true
+					};
+					this.sendDiagnostics("Typecheck");
+					if (this.pvsErrorManager) {
+						this.pvsErrorManager.handleTypecheckError({ request: formula, response: <PvsError> response, taskId });
 					}
-				}});
+					return;
+				}
+			}
+			// load proof -- this needs to be done before starting the prover session
+			if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] loading proof for formula ${formula.formulaName}`); }
+			await this.proofExplorer.loadProofRequest(formula);
+			if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] starting prover session for formula ${formula.formulaName}`); }
 
-				if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
-					this.notifyEndImportantTask({ id: taskId });
+			const response: PvsResponse = await this.proveFormula(formula);
+			if (response && response.result) {			
+				const channelID: string = utils.desc2id(formula);
+				if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] sending sequent to prover ${channelID}`); }
+				// the initial response should include only one sequent descriptor
+				const result: SequentDescriptor[] = response.result;
+				if (result && result.length) {
+					// notify the client that the server is in prover mode
+					this.notifyServerMode("in-checker");
+
+					// publish the sequent on the cligateway, so it is visible in the prover terminal
+					this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: result[0] });
+					this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() });
+
+					// load initial sequent in proof explorer
+					this.proofExplorer.loadInitialSequent(result[0]);
+
+					// start proof in proof explorer
+					this.proofExplorer.startProof({ autorun: !!opt.autorun, autorunCallback: (status: ProofStatus) => {
+						// the autorun call back is executed at the end of a proof re-run
+						if (this.connection) {
+							this.connection.sendRequest(serverEvent.autorunFormulaResponse, status);
+							this.notifyServerMode("lisp");
+						}
+					}});
+
+					if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
+						this.notifyEndImportantTask({ id: taskId });
+					}
+				}
+			} else {
+				// there was an error
+				if (this.connection) {
+					if (this.pvsErrorManager) {
+						this.pvsErrorManager.handleProveFormulaError({ request: formula, response: <PvsError> response, taskId });
+					}
+					this.connection.sendNotification(serverEvent.proverData, response);
+				} else {
+					console.error(response);
 				}
 			}
 		} else {
-			// there was an error
 			if (this.connection) {
 				if (this.pvsErrorManager) {
-					this.pvsErrorManager.handleProveFormulaError({ request: formula, response: <PvsError> response, taskId });
+					this.pvsErrorManager.handleProveFormulaError({ request: formula, response: null, taskId: null });
 				}
-				this.connection.sendNotification(serverEvent.proverData, response);
 			} else {
-				console.error(response);
+				console.error(`[pvs-language-server] Warning: Unable to prove formula`, formula);
 			}
 		}
 	}
@@ -681,78 +704,6 @@ export class PvsLanguageServer {
 			console.error("[pvs-language-server] Warning: pvs.typecheck-file invoked with null request");
 		}
 	}
-	/**
-	 * Returns all tccs for a given file
-	 * @param args Handler arguments: filename, file extension, context folder
-	 */
-	async generateTccs (args: PvsFile): Promise<PvsContextDescriptor> {
-		args = fsUtils.decodeURIComponents(args);
-		if (args && args.contextFolder && args.fileName && args.fileExtension) {
-			try {
-				const fname: string = fsUtils.desc2fname(args);
-				const res: PvsContextDescriptor = {
-					contextFolder: args.contextFolder,
-					fileDescriptors: {}
-				};
-				res.fileDescriptors[fname] = {
-					fileName: args.fileName,
-					fileExtension: args.fileExtension,
-					contextFolder: args.contextFolder,
-					theories: []
-				};
-				// fetch theory names
-				const theories: TheoryDescriptor[] = await utils.listTheoriesInFile(fname);
-				const TCC_START_OFFSET: number = 5; // this depends on the size of the header and theory information added before the tccs returned by pvs-server, see this.showTccs
-				if (theories) {
-					for (let i = 0; i < theories.length; i++) {
-						const theoryName: string = theories[i].theoryName;
-						const response: PvsResponse = await this.pvsProxy.tccs({
-							fileName: args.fileName, fileExtension: args.fileExtension, contextFolder: args.contextFolder, theoryName
-						});
-						if (response && !response.error) {
-							if (response.result) {
-								const tccResult: ShowTCCsResult = <ShowTCCsResult> response.result;
-								let line: number = TCC_START_OFFSET;
-								res.fileDescriptors[fname].theories.push({
-									fileName: args.fileName,
-									fileExtension: args.fileExtension,
-									contextFolder: args.contextFolder,
-									theoryName,
-									position: null,
-									theorems: (tccResult) ? tccResult.map(tcc => {
-										line += (tcc.comment && tcc.comment.length) ? tcc.comment[0].split("\n").length + 1 : 1;
-										// const content: string = tcc.definition || "";
-										const res: FormulaDescriptor = {
-											fileName: args.fileName,
-											fileExtension: ".tccs",
-											contextFolder: args.contextFolder,
-											theoryName,
-											formulaName: tcc.id,
-											position: { line, character: 0 },
-											status: tcc["status"], //(tcc.proved) ? "proved" : "untried",
-											isTcc: true//,
-											// shasum: fsUtils.shasum(content)
-										};
-										line += (tcc.definition) ? tcc.definition.split("\n").length + 2 : 2;
-										return res;
-									}): null
-								});
-							} else {
-								console.info(`[pvs-language-server.showTccs] No TCCs generated`, response);	
-							}
-						} else {
-							this.pvsErrorManager.handleShowTccsError({ response: <PvsError> response });
-						}
-					}
-				}
-				return res;
-			} catch (ex) {
-				console.error('[pvs-language-server.showTccs] Error: pvsProxy has thrown an exception', ex);
-				return null;
-			}
-		}
-		return null;
-	}
 	async generateSummaryRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, content?: string }): Promise<void> {
 		if (request) {
 			const content: string = request.content || "";
@@ -785,7 +736,7 @@ export class PvsLanguageServer {
 	}
 	async generateTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { quiet?: boolean, showTccsRequest?: boolean }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
-		if (request) {
+		if (request && this.pvsProxy) {
 			opt = opt || {};
 			const desc: {
 				fileName: string, 
@@ -803,7 +754,7 @@ export class PvsLanguageServer {
 				// parse files first, so front-end is updated with stats
 				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking, pvs-server is not able to do this tho.
 				// then generate tccs
-				const response: PvsContextDescriptor = await this.generateTccs(desc);
+				const response: PvsContextDescriptor = await this.pvsProxy.generateTccs(desc);
 				if (opt.showTccsRequest) {
 					this.connection.sendRequest(serverEvent.showTccsResponse, { response, args: request });
 				} else {
@@ -836,47 +787,6 @@ export class PvsLanguageServer {
 			console.error("[pvs-language-server] Warning: pvs.generate-tccs invoked with null request");
 		}
 	}
-	/**
-	 * Re-runs the proofs for all theorems and tccs in the given pvs file
-	 * @param args Handler arguments: filename, file extension, context folder
-	 */
-	// async dischargeTheorems (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse> {
-	// 	args = fsUtils.decodeURIComponents(args);
-	// 	if (this.checkArgs("proveFile", args)) {
-	// 		try {
-	// 			return await this.pvsProxy.proveFile(args);
-	// 		} catch (ex) {
-	// 			console.error('[pvs-language-server.proveFile] Error: pvsProxy has thrown an exception', ex);
-	// 			return null;
-	// 		}
-	// 	}
-	// 	return null;
-	// }
-	// async dischargeTheoremsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
-	// 	if (request) {
-	// 		request = fsUtils.decodeURIComponents(request);
-	// 		const desc: {
-	// 			fileName: string, 
-	// 			fileExtension: string, 
-	// 			contextFolder: string 
-	// 		} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
-	// 		if (desc) {
-	// 			const fname: string = `${desc.fileName}${desc.fileExtension}`;
-	// 			const taskId: string = `prove-theorems-for-${fname}`;
-	// 			this.notifyStartImportantTask({ id: taskId, msg: `Re-running all proofs in ${fname}`});
-	// 			// parse files first, so front-end is updated with stats
-	// 			await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking, pvs-server is not able to do this tho.
-	// 			// then generate tccs
-	// 			await this.dischargeTheorems(desc);
-	// 			this.connection.sendRequest(serverEvent.dischargeTheoremsResponse, { response: null, args: request });
-	// 			this.notifyEndImportantTask({ id: taskId });
-	// 		} else {
-	// 			console.error("[pvs-language-server] Warning: pvs.discharge-theorems is unable to identify filename for ", request);
-	// 		}
-	// 	} else {
-	// 		console.error("[pvs-language-server] Warning: pvs.discharge-theorems invoked with null request");
-	// 	}
-	// }
 	/**
 	 * Parse file
 	 * @param args Handler arguments: filename, file extension, context folder
@@ -1862,6 +1772,9 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverRequest.proveFormula, async (args: PvsFormula) => {
 				await this.proveFormulaRequest(args);
 			});
+			this.connection.onRequest(serverRequest.getImportChainTheorems, async (args: PvsTheory) => {
+				await this.getImportChainTheoremsRequest(args);
+			})
 			this.connection.onRequest(serverRequest.autorunFormula, async (args: PvsFormula) => {
 				await this.proveFormulaRequest(args, { autorun: true });
 			});

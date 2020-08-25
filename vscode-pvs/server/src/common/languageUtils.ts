@@ -42,7 +42,6 @@ import * as language from './languageKeywords';
 import { FileList, FormulaDescriptor, PvsContextDescriptor, 
 			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range, ProofTree } from '../common/serverInterface';
 
-			
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
 export const RECORD: { [key: string]: RegExp } = {
@@ -53,48 +52,20 @@ export const RECORD: { [key: string]: RegExp } = {
 	typeName: /\w+\s*:\s*(\w+)/g
 }
 
-// export function printCommand (cmd: any[]): string {
-// 	const printArgs = (cmd: any[] | string | number): string => {
-// 		if (cmd) {
-// 			if (typeof cmd === "string") {
-// 				return `"${cmd}"`;
-// 			}
-// 			if (typeof cmd === "number") {
-// 				return `${cmd}`;
-// 			}
-// 			if (cmd.length) {
-// 				let ans: string = "";
-// 				for (let i = 0; i < cmd["length"]; i++) {
-// 					ans += printArgs(cmd[i]);
-// 				}
-// 				return `(${ans.trim()})`
-// 			}
-// 			return null;
-// 		}
-// 	}
-// 	if (cmd && cmd.length) {
-// 		const cmdName: string = cmd[0];
-// 		const args = cmd.slice(1);
-// 		const ans: string = `${cmdName} ${printArgs(args)}`;
-// 		return `(${ans.trim()})`;
-// 	}
-// 	return null;
-// }
-
 export const commentRegexp: RegExp = /%.*/g;
 // group 1 is theoryName, group 2 is comma-separated list of theory parameters -- NB: this regexp is fast but not accurate, because it does not check the end of the theory. See example use in codelense.
-export const theoryRegexp: RegExp = /(\w+)\s*(?:\[([\w+\W+\s+]+)\])?\s*\:\s*THEORY\s*BEGIN\b/gi;
+export const theoryRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w+\W+\s+]+)\])?\s*\:\s*THEORY\s*BEGIN\b/gi;
 export function endTheoryRegexp(theoryName: string): RegExp {
 	return new RegExp(`\\bEND\\s*${theoryName}\\b`, "gi");
 }
-export const datatypeRegexp: RegExp = /(\w+)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*DATATYPE\s*BEGIN\b/gi;
-export const declarationRegexp: RegExp = /(\w+)\s*(?:\[([\w\W\s]+)\])?\s*\:/gi;
+export const datatypeRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*DATATYPE\s*BEGIN\b/gi;
+export const declarationRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:/gi;
 // group 1 is the formula name
-export const formulaRegexp: RegExp = /(\b[\w\?]+)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT|AXIOM)\b/gim;
+export const formulaRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT|AXIOM)\b/gim;
 // same as formulaRegExp, but does not include JUDGEMENT and AXIOM
-export const theoremRegexp: RegExp = /(\b[\w\?]+)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gim;
+export const theoremRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION)\b/gim;
 // /(\w+)\s*(?:\%.*\s)*(?:\[([^\]]+)\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
-export const tccRegexp: RegExp = /(\b[\w\?]+)\s*:\s*OBLIGATION\b/gi;
+export const tccRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*:\s*OBLIGATION\b/gi;
 export const tccStatusRegExp: RegExp = /%\s(proved|subsumed|simplified|unproved|unfinished|unchecked|untried)\b/g;
 
 export declare interface IntellisenseTriggers {
@@ -1622,12 +1593,17 @@ ${theoryName}: THEORY
 `;
 }
 
-export function makeProofSummary (desc: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]}): string {
+export function makeProofSummary (desc: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]}): string {
 	const header: string = desc.tccsOnly ? "TCCs summary" : "Proof summary";
 	let ans: string = `${header} for theory ${desc.theoryName}\n`;
 	let nProved: number = 0;
 	let totTime: number = 0;
+	let importChainFlag: boolean = false;
 	for (let i = 0; i < desc.theorems.length; i++) {
+		if (desc.theorems[i].theoryName !== desc.theoryName && !importChainFlag) {
+			importChainFlag = true;
+			ans += `\n\t%-- importchain`;
+		}
 		const formulaName: string = desc.theorems[i].formulaName;
 		const status: ProofStatus = desc.theorems[i].status;
 		const ms: number = desc.theorems[i].ms;
@@ -1664,7 +1640,6 @@ export function parCheck (cmd: string, opt?: { useColors?: boolean }): { success
 	let par: number = 0;
 	let quotes: number = 0;
 	cmd = cmd.trim();
-	const startsWithPar: boolean = cmd.startsWith("(");
 	for (let i = 0; i < cmd.length; i++) {
 		switch (cmd[i]) {
 			case `(`: {
@@ -1683,35 +1658,12 @@ export function parCheck (cmd: string, opt?: { useColors?: boolean }): { success
 				}
 				break;
 			}
-			// case `"`: {
-			// 	if ((startsWithPar && par % 2 !== 0) || (!startsWithPar && par === 0)) {
-			// 		quotes++;
-			// 	} else {
-			// 		// unbalanced double quotes
-			// 		let msg: string = `Error: Unbalanced parentheses at position ${i}.`;
-			// 		msg += "\n" + cmd.substring(0, i);
-			// 		// msg += (opt.useColors) ? colorText(cmd[i], textColor.red) : cmd[i];
-			// 		msg += "\n" + " ".repeat(i) + "^";
-			// 		return { success: false, msg };
-			// 	}
-			// 	break; 
-			// }
 		}
 	}
 	const success: boolean = par <= 0;
 	return { success, msg: (success) ? "" : "Error: Unbalanced parentheses." };
 }
 
-
-// // utility function, ensures open brackets match closed brackets for commands
-// export function quotesMatch (cmd: string): boolean {
-// 	const quotesRegex: RegExp = new RegExp(/\"/g);
-// 	let nQuotes: number = 0;
-// 	while (quotesRegex.exec(cmd)) {
-// 		nQuotes++;
-// 	}
-// 	return nQuotes % 2 === 0;
-// }
 
 // utility function, returns a command with balanced parentheses
 export function parMatch (cmd: string): string {

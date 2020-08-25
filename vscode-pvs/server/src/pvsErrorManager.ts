@@ -20,7 +20,8 @@ export class PvsErrorManager {
         request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }, 
         response: PvsError, 
         taskId: string 
-    }): void {
+    }): void { 
+        // TODO
     }
     handleEvaluationError (desc: {
         request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd?: string }, 

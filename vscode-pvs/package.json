@@ -211,8 +211,14 @@
 				"category": "pvs"
 			},
 			{
-				"command": "vscode-pvs.autorun-theory",
+				"command": "vscode-pvs.prove-theory",
 				"title": "Re-run All Proofs",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
+				"category": "pvs"
+			},
+			{
+				"command": "vscode-pvs.prove-importchain",
+				"title": "Re-run ImportChain",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
 				"category": "pvs"
 			},
@@ -526,7 +532,12 @@
 					"group": "yyy_commands"
 				},
 				{
-					"command": "vscode-pvs.autorun-theory",
+					"command": "vscode-pvs.prove-theory",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true",
+					"group": "yyyy_commands"
+				},
+				{
+					"command": "vscode-pvs.prove-importchain",
 					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true",
 					"group": "yyyy_commands"
 				}
@@ -568,7 +579,12 @@
 					"group": "context-menu/ctrl-common-2"
 				},
 				{
-					"command": "vscode-pvs.autorun-theory",
+					"command": "vscode-pvs.prove-theory",
+					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
+					"group": "context-menu/ctrl-common-3"
+				},
+				{
+					"command": "vscode-pvs.prove-importchain",
 					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
 					"group": "context-menu/ctrl-common-3"
 				},
@@ -765,7 +781,12 @@
 					"group": "yyy_commands"
 				},
 				{
-					"command": "vscode-pvs.autorun-theory",
+					"command": "vscode-pvs.prove-theory",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "yyyy_commands"
+				},
+				{
+					"command": "vscode-pvs.prove-importchain",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "yyyy_commands"
 				}
@@ -807,7 +828,12 @@
 					"group": "yyy_commands"
 				},
 				{
-					"command": "vscode-pvs.autorun-theory",
+					"command": "vscode-pvs.prove-theory",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "yyyy_commands"
+				},
+				{
+					"command": "vscode-pvs.prove-importchain",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "yyyy_commands"
 				}

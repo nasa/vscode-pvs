@@ -40,7 +40,9 @@ import * as fsUtils from '../common/fsUtils';
 import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
-import { info } from 'console';
+import { TheoryItem } from "../views/vscodePvsWorkspaceExplorer";
+import { PvsTheory } from '../common/serverInterface';
+
 
 /**
  * Returns the context folder of the editor
@@ -156,7 +158,7 @@ export async function cleanPvsWorkspace (): Promise<void> {
         for (let i = 0; i < vscode.workspace.workspaceFolders.length; i++) {
             const contextFolder: string = vscode.workspace.workspaceFolders[i].uri.path;
             if (contextFolder) {
-                nCleaned += await fsUtils.cleanBin(contextFolder, { keepTccs: false, recursive: true });
+                nCleaned += await fsUtils.cleanBin(contextFolder, { keepTccs: true, recursive: true });
             }
         }
         const name: string = (vscode.workspace.name && !vscode.workspace.name.startsWith("Untitled")) ? vscode.workspace.name 
@@ -240,6 +242,52 @@ export async function openPvsFileOrFolder (opt?: { clearExplorer?: boolean }): P
             vscode.window.showTextDocument(fileUri, { preserveFocus: true });
         }
         return contextFolder;
+    }
+    return null;
+}
+
+export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: string }): Promise<PvsTheory | null> {
+	if (resource) {
+        if (resource["contextValue"]) {
+            return {
+                contextFolder: (<TheoryItem> resource).contextFolder,
+                fileName: (<TheoryItem> resource).fileName,
+                fileExtension: (<TheoryItem> resource).fileExtension,
+                theoryName: (<TheoryItem> resource).theoryName
+            };    
+        } else if (resource["path"]) {
+            const content: string = await fsUtils.readFile(resource["path"]);
+            if (content) {
+                // const document: vscode.TextDocument = window.activeTextEditor.document;
+                const line: number = (vscode.window.activeTextEditor && vscode.window.activeTextEditor.selection && vscode.window.activeTextEditor.selection.active) ?
+                    vscode.window.activeTextEditor.selection.active.line : 0;
+                const theoryName: string = utils.findTheoryName(content, line);
+                return {
+                    contextFolder: fsUtils.getContextFolder(resource["path"]),
+                    fileName: fsUtils.getFileName(resource["path"]),
+                    fileExtension: fsUtils.getFileExtension(resource["path"]),
+                    theoryName
+                };
+            }
+		} else if (resource["contextFolder"]) {
+            resource = <PvsTheory> resource;
+            if (!resource["theoryName"]) {
+                resource.fileExtension = (resource.fileExtension === ".summary") ? ".pvs" : resource.fileExtension;
+                const content: string = await fsUtils.readFile(fsUtils.desc2fname(resource));
+                if (content) {
+                    const line: number = (vscode.window.activeTextEditor && vscode.window.activeTextEditor.selection && vscode.window.activeTextEditor.selection.active) ?
+                        vscode.window.activeTextEditor.selection.active.line : 0;
+                    const theoryName: string = utils.findTheoryName(content, line);
+                    return {
+                        contextFolder: resource.contextFolder,
+                        fileName: resource.fileName,
+                        fileExtension: resource.fileExtension,
+                        theoryName
+                    };
+                }
+            }
+            return resource;
+        }
     }
     return null;
 }

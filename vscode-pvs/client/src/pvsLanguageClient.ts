@@ -189,6 +189,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			const pvsLibraryPath: string = workspace.getConfiguration().get("pvs.pvsLibraryPath");
 			if (pvsPath !== this.pvsPath || this.pvsLibraryPath !== pvsLibraryPath) {
 				this.pvsPath = pvsPath;
+				this.pvsLibraryPath = pvsLibraryPath;
 				const msg: string = `Restarting PVS from ${pvsPath}`;
 				this.statusBar.showProgress(msg);
 				// window.showInformationMessage(msg);

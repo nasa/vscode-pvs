@@ -804,13 +804,13 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	// 	return null;
 	// }
 
-	// event dispatcher invokes this function with the command vscode-pvs.autorun-theory
-	async autorun (theory: PvsTheory, opt?: {
+	// event dispatcher invokes this function with the command vscode-pvs.prove-theory
+	async proveTheoryWithProgress (desc: PvsTheory, opt?: {
 		tccsOnly?: boolean
 	}): Promise<void> {
-		if (theory) {
+		if (desc && desc.theoryName) {
 			opt = opt || {};
-			const theoryItem: TheoryItem = this.root.getTheoryItem(theory);
+			const theoryItem: TheoryItem = this.root.getTheoryItem(desc);
 			if (theoryItem) {
 				// show dialog with progress
 				await window.withProgress({
@@ -838,7 +838,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							// dispose of the dialog
 							resolve(null);
 						});
-						const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { formulaName: string, status: ProofStatus, ms: number }[]} = {
+						const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]} = {
 							theoryName,
 							theorems: [],
 							tccsOnly: opt.tccsOnly,
@@ -858,7 +858,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 								}
 								const start: number = new Date().getTime();
 
-								const status: ProofStatus = await Promise.resolve(new Promise((resolve, reject) => {
+								const status: ProofStatus = await new Promise((resolve, reject) => {
 									this.client.sendRequest(serverRequest.autorunFormula, {
 										contextFolder: next.getContextFolder(),
 										fileName: next.getFileName(),
@@ -869,54 +869,151 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 									this.client.onRequest(serverEvent.autorunFormulaResponse, (status: ProofStatus) => {
 										resolve(status);
 									});
-								}));
+								});
 
 								const ms: number = new Date().getTime() - start;
-								summary.theorems.push({ formulaName, status, ms });
+								summary.theorems.push({ theoryName, formulaName, status, ms });
 							}
 						}
 						commands.executeCommand('setContext', 'autorun', false);
-						this.client.sendRequest(serverRequest.getContextDescriptor, theory);
+						this.client.sendRequest(serverRequest.getContextDescriptor, desc);
 						this.client.sendRequest(serverRequest.generateSummary, {
-							contextFolder: theory.contextFolder,
-							fileName: theory.fileName,
-							fileExtension: theory.fileExtension,
-							theoryName: theory.theoryName,
+							contextFolder: desc.contextFolder,
+							fileName: desc.fileName,
+							fileExtension: desc.fileExtension,
+							theoryName: desc.theoryName,
 							content: utils.makeProofSummary(summary)
 						});
 						resolve();
 					});
 				});
 			} else {
-				window.showErrorMessage(`Error: could not find theory ${theory.theoryName}`);
+				window.showErrorMessage(`Error: could not find theory ${desc.theoryName}`);
 			}
 		}
 	}
 
-	async showProofSummary (desc: PvsTheory): Promise<void> {
-		const summaryFile: PvsFile = {
-			fileName: desc.fileName,
-			fileExtension: ".summary",
-			contextFolder: desc.contextFolder
-		};
-		const fname: string = fsUtils.desc2fname(summaryFile);
+	async getImportChainTheorems (desc: PvsTheory): Promise<PvsFormula[]> {
+		return new Promise((resolve, reject) => {
+			this.client.sendRequest(serverRequest.getImportChainTheorems, desc);
+			this.client.onRequest(serverEvent.getImportChainTheoremsResponse, (response: { theorems: PvsFormula[] }) => {
+				return response ? resolve(response.theorems) : resolve(null);
+			});
+		});
+	}
 
-		// check if summary file exists and if it contains the summary for the requested theory
-		const fileExists: boolean = await fsUtils.fileExists(fname);
-		let theorySummaryExists: boolean = false;
-		if (fileExists) {
-			theorySummaryExists = await utils.containsSummary(fname, desc.theoryName);
+	async proveImportChainWithProgress (desc: PvsTheory): Promise<void> {
+		if (desc && desc.theoryName) {
+			// show dialog with progress
+			await window.withProgress({
+				location: ProgressLocation.Notification,
+				cancellable: true
+			}, async (progress, token) => {
+				// show initial dialog with spinning progress
+				const message: string = `Resolving importchain for theory ${desc.theoryName}`;
+				progress.report({ increment: -1, message });
+
+				const formulas: PvsFormula[] = await this.getImportChainTheorems(desc);
+
+				if (formulas && formulas.length) {
+					// update the dialog
+					return new Promise(async (resolve, reject) => {
+						let stop: boolean = false;
+						commands.executeCommand('setContext', 'autorun', true);
+						// show output panel for feedback
+						// commands.executeCommand("workbench.action.output.toggleOutput", true);
+						token.onCancellationRequested(async () => {
+							// stop loop
+							stop = true;
+							// stop proof explorer
+							// this.proofExplorer.autorunStop();
+							commands.executeCommand('setContext', 'autorun', false);
+							// dispose of the dialog
+							resolve(null);
+						});
+
+						// create one summary for each theory
+						const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]} = {
+							theoryName: formulas[0].theoryName,
+							theorems: [],
+							total: formulas.length
+						};
+						for (let i = 0; i < formulas.length && !stop; i ++) {
+							const theoryName: string = formulas[i].theoryName;
+							const formulaName: string = formulas[i].formulaName;
+							const message: string = `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`;
+							if (formulas.length > 1) {
+								progress.report({
+									increment: 1 / formulas.length * 100, // all increments must add up to 100
+									message
+								});
+							}
+							const start: number = new Date().getTime();
+
+							const status: ProofStatus = await new Promise((resolve, reject) => {
+								this.client.sendRequest(serverRequest.autorunFormula, {
+									contextFolder: formulas[i].contextFolder,
+									fileName: formulas[i].fileName,
+									fileExtension: formulas[i].fileExtension,
+									theoryName,
+									formulaName
+								});
+								this.client.onRequest(serverEvent.autorunFormulaResponse, (status: ProofStatus) => {
+									resolve(status);
+								});
+							});
+
+							const ms: number = new Date().getTime() - start;
+							summary.theorems.push({ theoryName, formulaName, status, ms });
+						}
+						this.client.sendRequest(serverRequest.getContextDescriptor, desc);
+						this.client.sendRequest(serverRequest.generateSummary, {
+							contextFolder: desc.contextFolder,
+							fileName: desc.fileName,
+							fileExtension: desc.fileExtension,
+							theoryName: desc.theoryName,
+							content: utils.makeProofSummary(summary)
+						});
+						
+						commands.executeCommand('setContext', 'autorun', false);
+						resolve();
+					});
+				} else {
+					progress.report({
+						increment: 100, // all increments must add up to 100
+						message: "No formula to re-run"
+					});
+				}
+			});
 		}
+	}
 
-		// show the summary file if the summary exists, or generate the summary file
-		if (theorySummaryExists) {
-			vscodeUtils.showTextDocument(summaryFile);
-		} else {
-			const yesno: string[] = [ "Yes", "No" ];
-			const msg: string = `Summary file has not been generated yet. Re-run all proofs in theory ${desc.theoryName}?`
-			const ans: string = await window.showInformationMessage(msg, { modal: true }, yesno[0]);
-			if (ans === yesno[0]) {
-				commands.executeCommand("vscode-pvs.autorun-theory", desc);
+	async showProofSummary (desc: PvsTheory): Promise<void> {
+		if (desc && desc.theoryName) {
+			const summaryFile: PvsFile = {
+				fileName: desc.fileName,
+				fileExtension: ".summary",
+				contextFolder: desc.contextFolder
+			};
+			const fname: string = fsUtils.desc2fname(summaryFile);
+
+			// check if summary file exists and if it contains the summary for the requested theory
+			const fileExists: boolean = await fsUtils.fileExists(fname);
+			let theorySummaryExists: boolean = false;
+			if (fileExists) {
+				theorySummaryExists = await utils.containsSummary(fname, desc.theoryName);
+			}
+
+			// show the summary file if the summary exists, or generate the summary file
+			if (theorySummaryExists) {
+				vscodeUtils.showTextDocument(summaryFile);
+			} else {
+				const yesno: string[] = [ "Yes", "No" ];
+				const msg: string = `Summary file has not been generated yet. Re-run all proofs in theory ${desc.theoryName}?`
+				const ans: string = await window.showInformationMessage(msg, { modal: true }, yesno[0]);
+				if (ans === yesno[0]) {
+					commands.executeCommand("vscode-pvs.prove-theory", desc);
+				}
 			}
 		}
 	}

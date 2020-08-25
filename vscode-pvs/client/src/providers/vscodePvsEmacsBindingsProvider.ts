@@ -62,7 +62,8 @@ const cmds: string[] = [
 	"tc", "typecheck",
 	"tcp", "typecheck-prove",
 	"pr", "prove",
-	"prt",
+	"pri", "prove-importchain",
+	"prt", "prove-theory",
 	"pvsio",
 
 	"add-pvs-library",
@@ -108,16 +109,14 @@ export class VSCodePvsEmacsBindingsProvider {
 	protected onDidAccept(userInput: string) {
 		if (userInput) {
 			userInput = userInput.toLowerCase();
-			const document: TextDocument = window.activeTextEditor.document;
-			const line: number = window.activeTextEditor.selection.active.line;
-			const theoryName: string = utils.findTheoryName(document.getText(), line);
-			const formulaName: string = utils.findFormulaName(document.getText(), line);
+			const document: TextDocument = (window.activeTextEditor) ? window.activeTextEditor.document : null;
+			const line: number = (window.activeTextEditor && window.activeTextEditor.selection && window.activeTextEditor.selection.active) ? window.activeTextEditor.selection.active.line : 0;
 			const desc: PvsFormula = { 
-				fileName: fsUtils.getFileName(document.fileName),
-				fileExtension: fsUtils.getFileExtension(document.fileName),
-				contextFolder: fsUtils.getContextFolder(document.fileName),
-				theoryName,
-				formulaName
+				fileName: (document) ? fsUtils.getFileName(document.fileName) : null,
+				fileExtension: (document) ? fsUtils.getFileExtension(document.fileName) : null,
+				contextFolder: (document) ? fsUtils.getContextFolder(document.fileName) : workspace.rootPath,
+				theoryName: (document) ? utils.findTheoryName(document.getText(), line) : null,
+				formulaName: (document) ? utils.findFormulaName(document.getText(), line) : null
 			};
 			switch (userInput) {
 				case "add-pvs-library": {
@@ -163,9 +162,16 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.prove-formula', desc);
 					break;
 				}
-				case "prt": {
+				case "prt": 
+				case "prove-theory": {
 					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
-					commands.executeCommand('vscode-pvs.autorun-theory', desc);
+					commands.executeCommand('vscode-pvs.prove-theory', desc);
+					break;
+				}
+				case "pri": 
+				case "prove-importchain": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
+					commands.executeCommand('vscode-pvs.prove-importchain', desc);
 					break;
 				}
 				case "pvsio": {

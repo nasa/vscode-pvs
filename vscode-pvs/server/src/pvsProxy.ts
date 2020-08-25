@@ -59,7 +59,7 @@ import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode, TheoryDescriptor, PvsTheory } from './common/serverInterface';
+import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode, TheoryDescriptor, PvsTheory, FormulaDescriptor, PvsFile, PvsContextDescriptor } from './common/serverInterface';
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
@@ -598,16 +598,149 @@ export class PvsProxy {
 	 * Returns the import chain for a given theory
 	 * @param desc theory descriptor: context folder, file name, file extension, theory name
 	 */
-	protected async collectTheoryUsings (desc: PvsTheory): Promise<string[]> {
-		const ans: string[] = [];
+	async getImportChain (desc: PvsTheory): Promise<PvsTheory[]> {
+		let importChain: PvsTheory[] = [];
 		if (desc && desc.theoryName) {
-			const importChain: PvsResponse = await this.lisp(`(collect-theory-usings "${desc.theoryName}")`);
-			const res: PvsResponse = await this.legacy.findDeclaration("system_th");
-			console.dir(res);
+			// change context
+			await this.changeContext(desc);
+
+			// const res: PvsResponse = await this.legacy.lisp(`(prog2 (show-tccs "${fullName}") 
+			const res: PvsResponse = await this.legacy.lisp(`
+		(let ((theoryname "${desc.theoryName}"))
+				(let ((usings (remove-if #'(lambda (th)
+				(or (from-prelude? th)
+					(lib-datatype-or-theory? th)))
+			(collect-theory-usings theoryname nil))))
+				(mapcar (lambda (theory) (cons (format nil "|~a|" (id theory)) (shortname (make-specpath (filename theory))))) (reverse usings))))
+			`);
+			// )`);
+			console.log(res.result);
+			if (res && res.result) {
+				const regex: RegExp = /\"\|(\w+)\|\"\s*\.\s*\"([^\|]+)\"\)/g;
+				let match: RegExpMatchArray = null;
+				while (match = regex.exec(res.result)) {
+					if (match && match.length > 2) {
+						const fname: string = match[2].trim();
+						if (fname) {
+							const pvsTheory: PvsTheory = {
+								theoryName: match[1].trim(),
+								fileName: fsUtils.getFileName(fname),
+								contextFolder: fsUtils.getContextFolder(fname),
+								fileExtension: fsUtils.getFileExtension(fname)
+							};
+							importChain.push(pvsTheory);
+						}
+					}
+				}
+				// console.dir(importChain);
+			}
+		}
+		return importChain;
+	}
+	async getImportChainTheorems (desc: PvsTheory): Promise<PvsFormula[]> {
+		let ans: PvsFormula[] = [];
+		if (desc) {
+			let theories: PvsTheory[] = await this.getImportChain(desc);
+			if (theories && theories.length) {
+				for (let i = 0; i < theories.length; i++) {
+					const formulaDescriptors: FormulaDescriptor[] = await utils.listTheoremsInFile(fsUtils.desc2fname(theories[i]));
+					if (formulaDescriptors && formulaDescriptors.length) {
+						ans = ans.concat(formulaDescriptors);
+					}
+					// generate tccs for the 
+					const tccsResponse: PvsResponse = await this.tccs(theories[i]);
+					if (tccsResponse && tccsResponse.result) {
+						const tccsResult: ShowTCCsResult = <ShowTCCsResult> tccsResponse.result;
+						for (let j = 0; j < tccsResult.length; j++) {
+							if (tccsResult[j].id) {
+								ans.push({
+									formulaName: tccsResult[j].id,
+									theoryName: theories[i].theoryName,
+									fileName: theories[i].fileName,
+									contextFolder: theories[i].contextFolder,
+									fileExtension: theories[i].fileExtension
+								});
+							}
+						}
+					}
+				}
+			}
 		}
 		return ans;
 	}
 
+	/**
+	 * Generates a .tccs file for each theory in a given pvs file
+	 * @param args Handler arguments: filename, file extension, context folder
+	 */
+	async generateTccs (args: PvsFile): Promise<PvsContextDescriptor> {
+		args = fsUtils.decodeURIComponents(args);
+		if (args && args.contextFolder && args.fileName && args.fileExtension) {
+			try {
+				const fname: string = fsUtils.desc2fname(args);
+				const res: PvsContextDescriptor = {
+					contextFolder: args.contextFolder,
+					fileDescriptors: {}
+				};
+				res.fileDescriptors[fname] = {
+					fileName: args.fileName,
+					fileExtension: args.fileExtension,
+					contextFolder: args.contextFolder,
+					theories: []
+				};
+				// fetch theory names
+				const theories: TheoryDescriptor[] = await utils.listTheoriesInFile(fname);
+				const TCC_START_OFFSET: number = 5; // this depends on the size of the header and theory information added before the tccs returned by pvs-server, see this.showTccs
+				if (theories) {
+					for (let i = 0; i < theories.length; i++) {
+						const theoryName: string = theories[i].theoryName;
+						const response: PvsResponse = await this.tccs({
+							fileName: args.fileName, fileExtension: args.fileExtension, contextFolder: args.contextFolder, theoryName
+						});
+						if (response && !response.error) {
+							if (response.result) {
+								const tccResult: ShowTCCsResult = <ShowTCCsResult> response.result;
+								let line: number = TCC_START_OFFSET;
+								res.fileDescriptors[fname].theories.push({
+									fileName: args.fileName,
+									fileExtension: args.fileExtension,
+									contextFolder: args.contextFolder,
+									theoryName,
+									position: null,
+									theorems: (tccResult) ? tccResult.map(tcc => {
+										line += (tcc.comment && tcc.comment.length) ? tcc.comment[0].split("\n").length + 1 : 1;
+										// const content: string = tcc.definition || "";
+										const res: FormulaDescriptor = {
+											fileName: args.fileName,
+											fileExtension: ".tccs",
+											contextFolder: args.contextFolder,
+											theoryName,
+											formulaName: tcc.id,
+											position: { line, character: 0 },
+											status: tcc["status"], //(tcc.proved) ? "proved" : "untried",
+											isTcc: true//,
+											// shasum: fsUtils.shasum(content)
+										};
+										line += (tcc.definition) ? tcc.definition.split("\n").length + 2 : 2;
+										return res;
+									}): null
+								});
+							} else {
+								console.info(`[pvs-language-server.showTccs] No TCCs generated`, response);	
+							}
+						} else {
+							this.pvsErrorManager.handleShowTccsError({ response: <PvsError> response });
+						}
+					}
+				}
+				return res;
+			} catch (ex) {
+				console.error('[pvs-language-server.showTccs] Error: pvsProxy has thrown an exception', ex);
+				return null;
+			}
+		}
+		return null;
+	}
 	/**
 	 * Typechecks a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
@@ -668,8 +801,9 @@ export class PvsProxy {
 	/**
 	 * Re-runs the proofs for all theorems and tccs in the given pvs file
 	 * @param desc 
+	 * @deprecated
 	 */
-	async proveFile (desc: { contextFolder: string, fileName: string, fileExtension: string,  }): Promise<PvsResponse> {
+	protected async proveFile (desc: { contextFolder: string, fileName: string, fileExtension: string,  }): Promise<PvsResponse> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			if (this.isProtectedFolder(desc.contextFolder)) {
 				this.info(`${desc.contextFolder} is already proved`);
@@ -714,7 +848,7 @@ export class PvsProxy {
 
 
 	/**
-	 * THIS IS NOT SUPPORTED YET BY PVS-SERVER
+	 * THIS IS NOT SUPPORTED BY PVS-SERVER
 	 * Starts an interactive pvsio evaluator session for the given theory
 	 * @param desc 
 	 */
@@ -745,7 +879,7 @@ export class PvsProxy {
 	// }
 
 	/**
-	 * THIS IS NOT SUPPORTED YET BY PVS-SERVER
+	 * THIS IS NOT SUPPORTED BY PVS-SERVER
 	 * Evaluates a pvs/lisp expression
 	 * @param desc Descriptor of the expression
 	 */
@@ -1184,7 +1318,7 @@ export class PvsProxy {
 	}
 
 	/**
-	 * Generate tccs for the given theory
+	 * Generate a .tccs file for the given theory
 	 * @param desc 
 	 */
 	async tccs (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string }): Promise<PvsResponse> {
