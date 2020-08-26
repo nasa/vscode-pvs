@@ -75,8 +75,10 @@ The main functionalities provided by the environment are as follows:
 
 ## ChangeLog
 ### 1.0.25 (2020.08.xx)
-- Added new M-x commands (reinstall-pvs, reinstall-nasalib, set-pvs-path, settings)
-- Added vscode-pvs settings for specifying external pvs libraries (pvs-library-path)
+- Added support for prove-importchain (M-x pri)
+- Added vscode-pvs shortcuts (reinstall-pvs, reinstall-nasalib, set-pvs-path, settings, add-library-path)
+- Added vscode-pvs settings for pvs-library-path
+- Improved menus and feedback
 
 ### 1.0.24 (2020.08.11)
 - Improved autocompletion
