@@ -277,18 +277,46 @@ export class PvsLanguageServer {
 			return await this.pvsProxy.getMode();
 		}
 		return null;
-	} 
+	}
 	async getImportChainTheoremsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
 			const res: PvsResponse = await this.typecheckFile(theory);
-			if (res && res.result) {
-				const importChainTheorems: PvsFormula[] = await this.pvsProxy.getImportChainTheorems(theory);
+			if (res && !res.error) {
+				const theorems: PvsFormula[] = await this.pvsProxy.getTheorems(theory, { includeImportChain: true });
 				if (this.connection) {
-					this.connection.sendRequest(serverEvent.getImportChainTheoremsResponse, { theorems: importChainTheorems });
+					this.connection.sendRequest(serverEvent.getImportChainTheoremsResponse, { theorems });
 				}
 			}
 			else {
 				this.connection.sendRequest(serverEvent.getImportChainTheoremsResponse, null);
+			}
+		}
+	}
+	async getTheoremsRequest (theory: PvsTheory): Promise<void> {
+		if (this.pvsProxy) {
+			const res: PvsResponse = await this.typecheckFile(theory);
+			if (res && !res.error) {
+				const theorems: PvsFormula[] = await this.pvsProxy.getTheorems(theory);
+				if (this.connection) {
+					this.connection.sendRequest(serverEvent.getTheoremsResponse, { theorems });
+				}
+			}
+			else {
+				this.connection.sendRequest(serverEvent.getTheoremsResponse, null);
+			}
+		}
+	}
+	async getTccsRequest (theory: PvsTheory): Promise<void> {
+		if (this.pvsProxy) {
+			const res: PvsResponse = await this.typecheckFile(theory);
+			if (res && !res.error) {
+				const theorems: PvsFormula[] = await this.pvsProxy.getTheorems(theory, { tccsOnly: true });
+				if (this.connection) {
+					this.connection.sendRequest(serverEvent.getTccsResponse, { theorems });
+				}
+			}
+			else {
+				this.connection.sendRequest(serverEvent.getTccsResponse, null);
 			}
 		}
 	}
@@ -711,18 +739,18 @@ export class PvsLanguageServer {
 			const fileName: string = request.fileName;
 			const fileExtension: string = ".summary";
 
-
+			// remove old file
+			await fsUtils.deleteFile(fsUtils.desc2fname({
+				contextFolder,
+				fileName,
+				fileExtension
+			}));
+			// save new content
 			await utils.saveSummary(fsUtils.desc2fname({
 				contextFolder,
 				fileName,
 				fileExtension
 			}), request.theoryName, content);
-			// await fsUtils.writeFile(fsUtils.desc2fname({
-			// 	contextFolder,
-			// 	fileName,
-			// 	fileExtension
-			// }), content);
-
 
 			this.connection.sendRequest(serverEvent.generateSummaryResponse, {
 				response: {
@@ -1774,7 +1802,13 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverRequest.getImportChainTheorems, async (args: PvsTheory) => {
 				await this.getImportChainTheoremsRequest(args);
-			})
+			});
+			this.connection.onRequest(serverRequest.getTheorems, async (args: PvsTheory) => {
+				await this.getTheoremsRequest(args);
+			});
+			this.connection.onRequest(serverRequest.getTccs, async (args: PvsTheory) => {
+				await this.getTccsRequest(args);
+			});
 			this.connection.onRequest(serverRequest.autorunFormula, async (args: PvsFormula) => {
 				await this.proveFormulaRequest(args, { autorun: true });
 			});

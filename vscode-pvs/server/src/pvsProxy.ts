@@ -637,17 +637,24 @@ export class PvsProxy {
 		}
 		return importChain;
 	}
-	async getImportChainTheorems (desc: PvsTheory): Promise<PvsFormula[]> {
+	/**
+	 * Resolves all theorems, tccs and import chain theorems for the given theory
+	 * @param desc 
+	 */
+	async getTheorems (desc: PvsTheory, opt?: { includeImportChain?: boolean, tccsOnly?: boolean }): Promise<PvsFormula[]> {
+		opt = opt || {};
 		let ans: PvsFormula[] = [];
 		if (desc) {
-			let theories: PvsTheory[] = await this.getImportChain(desc);
+			let theories: PvsTheory[] = (opt.includeImportChain) ? await this.getImportChain(desc) : [ desc ];
 			if (theories && theories.length) {
 				for (let i = 0; i < theories.length; i++) {
-					const formulaDescriptors: FormulaDescriptor[] = await utils.listTheoremsInFile(fsUtils.desc2fname(theories[i]));
-					if (formulaDescriptors && formulaDescriptors.length) {
-						ans = ans.concat(formulaDescriptors);
+					if (!opt.tccsOnly) {
+						const formulaDescriptors: FormulaDescriptor[] = await utils.listTheoremsInFile(fsUtils.desc2fname(theories[i]));
+						if (formulaDescriptors && formulaDescriptors.length) {
+							ans = ans.concat(formulaDescriptors);
+						}
 					}
-					// generate tccs for the 
+					// generate tccs for the given theory
 					const tccsResponse: PvsResponse = await this.tccs(theories[i]);
 					if (tccsResponse && tccsResponse.result) {
 						const tccsResult: ShowTCCsResult = <ShowTCCsResult> tccsResponse.result;
@@ -668,7 +675,6 @@ export class PvsProxy {
 		}
 		return ans;
 	}
-
 	/**
 	 * Generates a .tccs file for each theory in a given pvs file
 	 * @param args Handler arguments: filename, file extension, context folder

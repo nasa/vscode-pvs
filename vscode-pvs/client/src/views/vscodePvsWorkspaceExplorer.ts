@@ -786,111 +786,107 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		this._onDidChangeTreeData.fire();
 	}
 
-	// getTheoryDescriptor (theoryName: string): TheoryDescriptor {
-	// 	if (this.root && this.root.theoriesOverview.theories) {
-	// 		let candidates: TheoryItem[] = this.root.theoriesOverview.theories.filter((item: TheoryItem) => {
-	// 			return item.theoryName === theoryName;
-	// 		});
-	// 		if (candidates && candidates.length === 1) {
-	// 			return {
-	// 				theoryName: theoryName,
-	// 				fileName: candidates[0].fileName,
-	// 				fileExtension: candidates[0].fileExtension,
-	// 				contextFolder: candidates[0].contextFolder,
-	// 				position: candidates[0].position
-	// 			};
-	// 		}
-	// 	}
-	// 	return null;
-	// }
-
 	// event dispatcher invokes this function with the command vscode-pvs.prove-theory
 	async proveTheoryWithProgress (desc: PvsTheory, opt?: {
 		tccsOnly?: boolean
 	}): Promise<void> {
 		if (desc && desc.theoryName) {
 			opt = opt || {};
-			const theoryItem: TheoryItem = this.root.getTheoryItem(desc);
-			if (theoryItem) {
-				// show dialog with progress
-				await window.withProgress({
-					location: ProgressLocation.Notification,
-					cancellable: true
-				}, (progress, token) => { 
-					const formulas: FormulaItem[] = (opt && opt.tccsOnly) ? theoryItem.getTCCs() : theoryItem.getTheorems().concat(theoryItem.getTCCs());
-					const theoryName: string = theoryItem.theoryName;
-					// show initial dialog with spinning progress
-					const message: string = (opt.tccsOnly) ? `Preparing to discharge proof obligations in theory ${theoryName}`
-						: `Preparing to re-run all proofs in theory ${theoryName}`;
-					progress.report({ increment: -1, message });
-					// update the dialog
-					return new Promise(async (resolve, reject) => {
-						let stop: boolean = false;
-						commands.executeCommand('setContext', 'autorun', true);
-						// show output panel for feedback
-						// commands.executeCommand("workbench.action.output.toggleOutput", true);
-						token.onCancellationRequested(async () => {
-							// stop loop
-							stop = true;
-							// stop proof explorer
-							// this.proofExplorer.autorunStop();
-							commands.executeCommand('setContext', 'autorun', false);
-							// dispose of the dialog
-							resolve(null);
-						});
-						const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]} = {
-							theoryName,
-							theorems: [],
-							tccsOnly: opt.tccsOnly,
-							total: formulas.length
-						};
-						if (formulas && formulas.length) {
-							for (let i = 0; i < formulas.length && !stop; i ++) {
-								const next: FormulaItem = formulas[i];
-								const formulaName: string = next.getFormulaName();
-								const message: string = (opt.tccsOnly) ? `Discharging proof obligations in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
-									: `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
-								if (formulas.length > 1) {
-									progress.report({
-										increment: 1 / formulas.length * 100, // all increments must add up to 100
-										message
-									});
-								}
-								const start: number = new Date().getTime();
+			// show dialog with progress
+			await window.withProgress({
+				location: ProgressLocation.Notification,
+				cancellable: true
+			}, async (progress, token) => {
+				// show initial dialog with spinning progress
+				const message: string = (opt.tccsOnly) ? `Preparing to prove TCCs in theory ${desc.theoryName}` : `Preparing to prove theorems in theory ${desc.theoryName}`;
+				progress.report({ increment: -1, message });
 
-								const status: ProofStatus = await new Promise((resolve, reject) => {
-									this.client.sendRequest(serverRequest.autorunFormula, {
-										contextFolder: next.getContextFolder(),
-										fileName: next.getFileName(),
-										fileExtension: next.getFileExtension(),
-										theoryName: next.getTheoryName(),
-										formulaName
-									});
-									this.client.onRequest(serverEvent.autorunFormulaResponse, (status: ProofStatus) => {
-										resolve(status);
-									});
-								});
+				const formulas: PvsFormula[] = (opt.tccsOnly) ? await this.getTccs(desc) : await this.getTheorems(desc);
 
-								const ms: number = new Date().getTime() - start;
-								summary.theorems.push({ theoryName, formulaName, status, ms });
-							}
-						}
+				progress.report({ increment: -1, message });
+				// update the dialog
+				return new Promise(async (resolve, reject) => {
+					let stop: boolean = false;
+					commands.executeCommand('setContext', 'autorun', true);
+					// show output panel for feedback
+					// commands.executeCommand("workbench.action.output.toggleOutput", true);
+					token.onCancellationRequested(async () => {
+						// stop loop
+						stop = true;
+						// stop proof explorer
+						// this.proofExplorer.autorunStop();
 						commands.executeCommand('setContext', 'autorun', false);
-						this.client.sendRequest(serverRequest.getContextDescriptor, desc);
-						this.client.sendRequest(serverRequest.generateSummary, {
-							contextFolder: desc.contextFolder,
-							fileName: desc.fileName,
-							fileExtension: desc.fileExtension,
-							theoryName: desc.theoryName,
-							content: utils.makeProofSummary(summary)
-						});
-						resolve();
+						// dispose of the dialog
+						resolve(null);
 					});
+					const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]} = {
+						theoryName: desc.theoryName,
+						theorems: [],
+						tccsOnly: opt.tccsOnly,
+						total: formulas.length
+					};
+					if (formulas && formulas.length) {
+						for (let i = 0; i < formulas.length && !stop; i ++) {
+							const theoryName: string = formulas[i].theoryName;
+							const formulaName: string = formulas[i].formulaName;
+							const message: string = (opt.tccsOnly) ? `Discharging proof obligations in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
+								: `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
+							if (formulas.length > 1) {
+								progress.report({
+									increment: 1 / formulas.length * 100, // all increments must add up to 100
+									message
+								});
+							}
+							const start: number = new Date().getTime();
+
+							const status: ProofStatus = await new Promise((resolve, reject) => {
+								this.client.sendRequest(serverRequest.autorunFormula, {
+									contextFolder: formulas[i].contextFolder,
+									fileName: formulas[i].fileName,
+									fileExtension: formulas[i].fileExtension,
+									theoryName: formulas[i].theoryName,
+									formulaName
+								});
+								this.client.onRequest(serverEvent.autorunFormulaResponse, (status: ProofStatus) => {
+									resolve(status);
+								});
+							});
+
+							const ms: number = new Date().getTime() - start;
+							summary.theorems.push({ theoryName, formulaName, status, ms });
+						}
+					}
+					commands.executeCommand('setContext', 'autorun', false);
+					this.client.sendRequest(serverRequest.getContextDescriptor, desc);
+					this.client.sendRequest(serverRequest.generateSummary, {
+						contextFolder: desc.contextFolder,
+						fileName: desc.fileName,
+						fileExtension: desc.fileExtension,
+						theoryName: desc.theoryName,
+						content: utils.makeProofSummary(summary)
+					});
+					resolve();
 				});
-			} else {
-				window.showErrorMessage(`Error: could not find theory ${desc.theoryName}`);
-			}
+			});
 		}
+	}
+
+	async getTheorems (desc: PvsTheory): Promise<PvsFormula[]> {
+		return new Promise((resolve, reject) => {
+			this.client.sendRequest(serverRequest.getTheorems, desc);
+			this.client.onRequest(serverEvent.getTheoremsResponse, (response: { theorems: PvsFormula[] }) => {
+				return response ? resolve(response.theorems) : resolve(null);
+			});
+		});
+	}
+
+	async getTccs (desc: PvsTheory): Promise<PvsFormula[]> {
+		return new Promise((resolve, reject) => {
+			this.client.sendRequest(serverRequest.getTccs, desc);
+			this.client.onRequest(serverEvent.getTccsResponse, (response: { theorems: PvsFormula[] }) => {
+				return response ? resolve(response.theorems) : resolve(null);
+			});
+		});
 	}
 
 	async getImportChainTheorems (desc: PvsTheory): Promise<PvsFormula[]> {
@@ -934,7 +930,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 
 						// create one summary for each theory
 						const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]} = {
-							theoryName: formulas[0].theoryName,
+							theoryName: desc.theoryName,
 							theorems: [],
 							total: formulas.length
 						};

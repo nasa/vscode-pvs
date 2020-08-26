@@ -403,6 +403,8 @@ export const serverRequest = {
 	getFileDescriptor: "pvs.get-file-descriptor",
 	getGatewayConfig: "pvs.get-cli-descriptor",
 	getImportChainTheorems: "pvs.get-importchain-theorems",
+	getTheorems: "pvs.get-theorems",
+	getTccs: "pvs.get-tccs",
 
 	cancelOperation: "pvs.cancel-operation",
 
@@ -442,6 +444,8 @@ export const serverEvent = {
 	getFileDescriptorResponse: "pvs.response.get-file-descriptor",
 	getGatewayConfigResponse: "pvs.response.get-cli-descriptor",
 	getImportChainTheoremsResponse: "pvs.response.get-importchain-theorems",
+	getTheoremsResponse: "pvs.response.get-theorems",
+	getTccsResponse: "pvs.response.get-tccs",
 
 	listDownloadableVersionsResponse: "pvs.response.list-downloadable-versions",
 	downloadPvsResponse: "pvs.response.download-pvs",

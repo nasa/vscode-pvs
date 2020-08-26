@@ -326,7 +326,7 @@
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs",
-				"title": "Discharge all TCCs",
+				"title": "Discharge TCCs",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs"
 			},
@@ -508,7 +508,7 @@
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true || resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "y_commands"
 				},
 				{
@@ -518,28 +518,33 @@
 				},
 				{
 					"command": "vscode-pvs.show-tccs",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
 					"group": "yy_commands"
 				},
 				{
 					"command": "vscode-pvs.show-proof-summary",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
 					"group": "yy_commands"
 				},
 				{
-					"command": "vscode-pvs.pvsio-evaluator",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true",
+					"command": "vscode-pvs.discharge-tccs",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
 					"group": "yyy_commands"
 				},
 				{
-					"command": "vscode-pvs.prove-theory",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true",
+					"command": "vscode-pvs.pvsio-evaluator",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
 					"group": "yyyy_commands"
 				},
 				{
+					"command": "vscode-pvs.prove-theory",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
+					"group": "yyyyy_commands"
+				},
+				{
 					"command": "vscode-pvs.prove-importchain",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true",
-					"group": "yyyy_commands"
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
+					"group": "yyyyy_commands"
 				}
 			],
 			"view/item/context": [
@@ -574,29 +579,29 @@
 					"group": "context-menu/ctrl-common-1"
 				},
 				{
-					"command": "vscode-pvs.pvsio-evaluator",
+					"command": "vscode-pvs.discharge-tccs",
 					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
 					"group": "context-menu/ctrl-common-2"
 				},
 				{
-					"command": "vscode-pvs.prove-theory",
+					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
 					"group": "context-menu/ctrl-common-3"
 				},
 				{
+					"command": "vscode-pvs.prove-theory",
+					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
+					"group": "context-menu/ctrl-common-4"
+				},
+				{
 					"command": "vscode-pvs.prove-importchain",
 					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
-					"group": "context-menu/ctrl-common-3"
+					"group": "context-menu/ctrl-common-4"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs-explorer",
 					"when": "view == workspace-explorer-view && viewItem == tccs-overview",
 					"group": "inline"
-				},
-				{
-					"command": "vscode-pvs.discharge-tccs",
-					"when": "view == workspace-explorer-view && viewItem == tccs-overview",
-					"group": "context-menu/ctrl-1"
 				},
 				{
 					"command": "vscode-pvs.new-pvs-file",
@@ -766,29 +771,29 @@
 					"group": "yy_commands"
 				},
 				{
-					"command": "vscode-pvs.discharge-tccs",
-					"when": "resourceScheme == file && resourceExtname == .tccs",
-					"group": "yy_commands"
-				},
-				{
 					"command": "vscode-pvs.show-proof-summary",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "yy_commands"
 				},
 				{
+					"command": "vscode-pvs.discharge-tccs",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "yyy_commands"
+				},
+				{
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
-					"group": "yyy_commands"
+					"group": "yyyy_commands"
 				},
 				{
 					"command": "vscode-pvs.prove-theory",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
-					"group": "yyyy_commands"
+					"group": "yyyyy_commands"
 				},
 				{
 					"command": "vscode-pvs.prove-importchain",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
-					"group": "yyyy_commands"
+					"group": "yyyyy_commands"
 				}
 			],
 			"editor/context": [
@@ -809,12 +814,7 @@
 				},
 				{
 					"command": "vscode-pvs.show-tccs",
-					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
-					"group": "yy_commands"
-				},
-				{
-					"command": "vscode-pvs.discharge-tccs",
-					"when": "resourceScheme == file && resourceExtname == .tccs",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "yy_commands"
 				},
 				{
@@ -823,19 +823,24 @@
 					"group": "yy_commands"
 				},
 				{
+					"command": "vscode-pvs.discharge-tccs",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "yyy_commands"
+				},
+				{
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
-					"group": "yyy_commands"
+					"group": "yyyy_commands"
 				},
 				{
 					"command": "vscode-pvs.prove-theory",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
-					"group": "yyyy_commands"
+					"group": "yyyyy_commands"
 				},
 				{
 					"command": "vscode-pvs.prove-importchain",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
-					"group": "yyyy_commands"
+					"group": "yyyyy_commands"
 				}
 			],
 			"view/title": [

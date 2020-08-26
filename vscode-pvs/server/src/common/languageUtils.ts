@@ -1732,7 +1732,7 @@ export async function removeSummary (fname: string, theoryName: string): Promise
 		if (fileExists) {
 			const content: string = await fsUtils.readFile(fname);
 			if (content) {
-				const regex: RegExp = new RegExp(`\\bProof summary for theory ${theoryName}\\s*[\\s\\w\\W]+\\bTheory ${theoryName}.*`, "g");
+				const regex: RegExp = new RegExp(`\\bProof summary for theory ${theoryName}\\s[\\s\\w\\W]+\\bTheory ${theoryName}\\s.*`, "g");
 				const newContent: string = content.replace(regex, "");
 				return await fsUtils.writeFile(fname, newContent);
 			}
@@ -1752,7 +1752,7 @@ export async function containsSummary (fname: string, theoryName: string): Promi
 		if (fileExists) {
 			const content: string = await fsUtils.readFile(fname);
 			if (content) {
-				const regex: RegExp = new RegExp(`\\bProof summary for theory ${theoryName}\\s*[\\s\\w\\W]+\\bTheory ${theoryName}.*`, "g");
+				const regex: RegExp = new RegExp(`\\bProof summary for theory ${theoryName}\\s[\\s\\w\\W]+\\bTheory ${theoryName}\\s.*`, "g");
 				return regex.test(content);
 			}
 		}
