@@ -265,7 +265,7 @@
 				"category": "pvs"
 			},
 			{
-				"command": "vscode-pvs.open-folder",
+				"command": "vscode-pvs.open-workspace",
 				"title": "Open PVS Workspace",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
@@ -614,7 +614,7 @@
 					"group": "context-menu/ctrl-1.1"
 				},
 				{
-					"command": "vscode-pvs.open-folder",
+					"command": "vscode-pvs.open-workspace",
 					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
 					"group": "context-menu/ctrl-1.1"
 				},
@@ -900,7 +900,7 @@
 					"group": "ctrl-1.1"
 				},
 				{
-					"command": "vscode-pvs.open-folder",
+					"command": "vscode-pvs.open-workspace",
 					"when": "view == workspace-explorer-view",
 					"group": "ctrl-1.1"
 				},

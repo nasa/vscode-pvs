@@ -75,7 +75,14 @@ describe("pvs-prover", () => {
 		response = await pvsProxy.proofCommand({ cmd: "(then (skosimp*) (split))" });
 		console.dir(response, { depth: null });	
 		
-		expect(response.result.length).toEqual(2);
+		// pvs-server should returns an ordered array of sequents for glassbox tactics such as (then (skosimp*) (split))
+		// - each sequent is the result of the execution of a proof command 
+		// - sequent in position n is the sequent obtained from the first proof command, (skosimp*) in the considered example
+		// - sequent in position 0 is the sequent obtained from the last proof command, (split) in the considered example
+		// - if the last proof command produces more than sequent, only the first sequent is returned (the active sequent)
+		// - all sequents must have a label that identifies the subgoal in the proof tree where the sequent belongs
+		// - all sequents must have a field "last-cmd" of type string, indicating the command that produced the executed command 
+		expect(response.result.length).toEqual(2); // the sequent for (skosimp*) and the active sequent
 
 		expect(response.result[1]["prev-cmd"][0]).toEqual("skosimp*");
 		expect(response.result[1].label).toEqual(skosimp_response.result[0].label);

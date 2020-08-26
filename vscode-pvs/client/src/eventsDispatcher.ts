@@ -617,8 +617,8 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.open-pvs-file-or-folder", async () => {
             await this.workspaceExplorer.openPvsFileOrFolder({ clearExplorer: true });
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.open-folder", async () => {
-            this.workspaceExplorer.openFolder(); // async method
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.open-workspace", async () => {
+            this.workspaceExplorer.openWorkspace(); // async method
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-pvs-workspace", async () => {
             this.workspaceExplorer.cleanPvsWorkspace(); // async method

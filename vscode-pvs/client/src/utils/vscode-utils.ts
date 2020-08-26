@@ -173,7 +173,7 @@ export async function cleanPvsWorkspace (): Promise<void> {
 /**
  * Opens a folder and adds the folder to file explorer
  */
-export async function openFolder (): Promise<void> {
+export async function openWorkspace (): Promise<void> {
     const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
         canSelectFiles: false,
         canSelectFolders: true,
@@ -185,7 +185,12 @@ export async function openFolder (): Promise<void> {
         const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
         // add folder to workspace
         if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
-            vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
+            // save and close all open files in the editor
+            vscode.commands.executeCommand("workbench.action.files.saveAll");
+            vscode.commands.executeCommand("workbench.action.closeAllGroups");
+            // open the new workspace
+            // vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
+            vscode.workspace.updateWorkspaceFolders(0, null, { uri: contextFolderUri });
         }
     }
 }
