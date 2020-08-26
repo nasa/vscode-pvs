@@ -419,27 +419,41 @@ export class PvsProxyLegacy {
         }
     }
     async proofScript (desc: { contextFolder: string, fileName: string, fileExtension: string, formulaName: string, theoryName: string }): Promise<PvsResponse> {
-        const error_string: string = `${desc.theoryName}.${desc.formulaName} does not have a proof`;
         let result: string = null; //`;;; Proof ${desc.formulaName}-1 for formula ${desc.theoryName}.${desc.formulaName}`; // this is an empty proof
-        // extension is forced to .pvs, this is necessary as the request may come for a .tccs file
-        const fname: string = fsUtils.desc2fname({ contextFolder: desc.contextFolder, fileName: desc.fileName, fileExtension: ".pvs" });
-        const fileDesc: PvsFileDescriptor = await utils.getFileDescriptor(fname, { listTheorems: true });
-        if (fileDesc && fileDesc.theories && fileDesc.theories.length) {
-            const theoryDesc: TheoryDescriptor[] = fileDesc.theories.filter(tdesc => { return tdesc.theoryName === desc.theoryName });
-            if (theoryDesc && theoryDesc.length === 1 && theoryDesc[0].theorems && theoryDesc[0].theorems.length > 0) {
-                const formulaDesc: FormulaDescriptor[] = theoryDesc[0].theorems.filter(formula => { return formula.formulaName === desc.formulaName; });
-                if (formulaDesc && formulaDesc.length === 1 && formulaDesc[0].position) {
-                    const line: number = formulaDesc[0].position.line;
-                    const cmd: string = `(edit-proof-at "${fname}" nil ${line} "pvs" "${desc.fileName}${desc.fileExtension}" 0 nil)`;
-                    const data: PvsResponse = await this.lisp(cmd);
-                    if (data && data.result) {
-                        const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
-                        if (matchProof && matchProof.length > 1) {
-                            result = matchProof[1];
+        const error_string: string = `${desc.theoryName}.${desc.formulaName} does not have a proof`;
+        await this.changeContext(desc.contextFolder);
+        await this.typecheckFile(fsUtils.desc2fname(desc));
+        if (desc && desc.contextFolder && desc.fileExtension && desc.fileName && desc.formulaName) {
+            if (desc.fileExtension === ".pvs") {
+                // extension is forced to .pvs, this is necessary as the request may come for a .tccs file
+                const fname: string = fsUtils.desc2fname(desc);
+                const fileDesc: PvsFileDescriptor = await utils.getFileDescriptor(fname, { listTheorems: true });
+                if (fileDesc && fileDesc.theories && fileDesc.theories.length) {
+                    const theoryDesc: TheoryDescriptor[] = fileDesc.theories.filter(tdesc => { return tdesc.theoryName === desc.theoryName });
+                    if (theoryDesc && theoryDesc.length === 1 && theoryDesc[0].theorems && theoryDesc[0].theorems.length > 0) {
+                        const formulaDesc: FormulaDescriptor[] = theoryDesc[0].theorems.filter(formula => { return formula.formulaName === desc.formulaName; });
+                        if (formulaDesc && formulaDesc.length === 1 && formulaDesc[0].position) {
+                            const line: number = formulaDesc[0].position.line;
+                            const cmd: string = `(edit-proof-at "${fname}" nil ${line} "pvs" "${desc.fileName}${desc.fileExtension}" 0 nil)`;
+                            const data: PvsResponse = await this.lisp(cmd);
+                            if (data && data.result) {
+                                const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
+                                if (matchProof && matchProof.length > 1) {
+                                    result = matchProof[1];
+                                }
+                            }
                         }
                     }
                 }
-            }
+            } 
+            // -- the following is disabled because get-default-proof-script returns the proof using a different format that I don't know how to parse
+            // else if (desc.fileExtension === ".tccs") {
+            //     const cmd: string = `(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`;
+            //     const data: PvsResponse = await this.lisp(cmd);
+            //     if (data && data.result && typeof data.result === "string" && data.result.startsWith("(")) {
+            //         result = `;;; Proof ${desc.formulaName}-1 for formula ${desc.theoryName}.${desc.formulaName}\n${data.result}`;
+            //     }
+            // }
         }
         // the APIs of PVS are really ugly here -- if the formula does not have a proof returns an error rather than just returning an empty proof
         return (result) ? {

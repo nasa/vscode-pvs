@@ -1209,6 +1209,28 @@ export class PvsProxy {
 						if (shasum !== proofDescriptor.info.shasum) {
 							proofDescriptor.info.status = utils.getActualProofStatus(proofDescriptor, shasum);
 						}
+					} else if (formula.fileExtension === ".tccs") {
+						if (proofDescriptor && (!proofDescriptor.proofTree || !proofDescriptor.proofTree.rules || proofDescriptor.proofTree.rules.length === 0)) {
+							const response: PvsResponse = await this.proofScript(formula);
+							if (response && response.result) {
+								proofDescriptor = utils.prf2jprf({
+									prf: response.result,
+									theoryName: formula.theoryName, 
+									formulaName: formula.formulaName, 
+									version: pvsVersionDescriptor,
+									shasum
+								});
+								// save proof in the jprf file
+								await this.saveProof({
+									fileName: formula.fileName,
+									fileExtension: formula.fileExtension,
+									theoryName: formula.theoryName,
+									formulaName: formula.formulaName,
+									contextFolder: formula.contextFolder,
+									proofDescriptor
+								});
+							}
+						}
 					}
 				} else {
 					// if the proof is not stored in the .jprf file, then try to load the proof from the .prf and then update jprf

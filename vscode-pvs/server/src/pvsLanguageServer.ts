@@ -540,22 +540,6 @@ export class PvsLanguageServer {
 		}
 	}
 
-	// /**
-	//  * Request proof script to pvs-server
-	//  * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
-	//  */
-	// async proofScript (request: { 
-	// 	fileName: string, 
-	// 	fileExtension: string, 
-	// 	theoryName: string, 
-	// 	formulaName: string, 
-	// 	contextFolder: string
-	// }): Promise<PvsResponse> {
-	// 	console.log(`[pvs-server] Loading proof script`);
-	// 	request = fsUtils.decodeURIComponents(request);
-	// 	return await this.pvsProxy.proofScript(request);
-	// }
-
 	/**
 	 * Sends to the client the prooflite script associated with the formula indicated in the request
 	 * @param request 
@@ -1813,10 +1797,10 @@ export class PvsLanguageServer {
 				await this.proveFormulaRequest(args, { autorun: true });
 			});
 			this.connection.onRequest(serverRequest.showProofLite, async (args: PvsFormula) => {
-				this.showProofLiteRequest(args); // async call
+				await this.showProofLiteRequest(args);
 			});
 			this.connection.onRequest(serverRequest.proofCommand, async (args: PvsProofCommand) => {
-				this.proofExplorer.proofCommandRequest(args); // async call
+				await this.proofExplorer.proofCommandRequest(args);
 			});
 			this.connection.onRequest(serverRequest.getGatewayConfig, async () => {
 				const port: number = this.getGatewayPort();
