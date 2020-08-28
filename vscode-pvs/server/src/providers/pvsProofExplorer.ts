@@ -461,7 +461,7 @@ export class PvsProofExplorer {
 	async onStepExecuted (desc: { proofState: SequentDescriptor, args: PvsProofCommand }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
 		if (desc && desc.proofState && desc.args) {
 			// get command and proof state
-			let cmd: string = desc.proofState["last-cmd"] || desc.args.cmd; // command entered by the user
+			let cmd: string = desc.args.cmd;//desc.proofState["last-cmd"] || desc.args.cmd; // command entered by the user
 			this.proofState = desc.proofState;
 			
 			// identify active node in the proof tree
