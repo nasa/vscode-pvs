@@ -44,6 +44,32 @@ describe("pvs-prover", () => {
 		}
 	}
 
+	fit(`provides correct last-cmd when branch closes`, async () => {
+		await quitProverIfActive();
+
+		const request: PvsFormula = {
+			contextFolder: tacticalsExamples,
+			fileExtension: '.pvs',
+			fileName: 'foo',
+			formulaName: 'foo1',
+			theoryName: 'foo'
+		};
+		let response: PvsResponse = await pvsProxy.proveFormula(request);
+		// console.dir(response, { depth: null });
+		expect(response.error).not.toBeDefined();
+		expect(response.result).toBeDefined();
+
+		response = await pvsProxy.proofCommand({ cmd: "(skosimp*)" });
+		response = await pvsProxy.proofCommand({ cmd: "(split)" });
+		response = await pvsProxy.proofCommand({ cmd: "(flatten)" });
+		response = await pvsProxy.proofCommand({ cmd: "(grind)" });
+		console.dir(response, { depth: null });
+		expect(response.result.length).toEqual(2);
+		expect(response.result[1]["last-cmd"]).toEqual("(grind)");
+		expect(response.result[0]["last-cmd"]).toEqual("(split)");
+
+	});
+
 	// this test case fails (prev-cmd and commentary provide incorrect information for the first command)
 	it(`can execute tactical 'then'`, async () => {
 		await quitProverIfActive();
