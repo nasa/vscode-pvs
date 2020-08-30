@@ -44,7 +44,7 @@ describe("pvs-prover", () => {
 		}
 	}
 
-	fit(`provides correct last-cmd when branch closes`, async () => {
+	fit(`provides correct last-cmd when branch closes (test 1)`, async () => {
 		await quitProverIfActive();
 
 		const request: PvsFormula = {
@@ -60,13 +60,21 @@ describe("pvs-prover", () => {
 		expect(response.result).toBeDefined();
 
 		response = await pvsProxy.proofCommand({ cmd: "(skosimp*)" });
+		expect(response.result[0]["prev-cmd"]).toEqual("(skosimp*)");
+		// console.dir(response);
+
 		response = await pvsProxy.proofCommand({ cmd: "(split)" });
+		expect(response.result[0]["prev-cmd"]).toEqual("(split)");
+		// console.dir(response);
+
 		response = await pvsProxy.proofCommand({ cmd: "(flatten)" });
+		expect(response.result[0]["prev-cmd"]).toEqual("(flatten)");
+		// console.dir(response);
+
 		response = await pvsProxy.proofCommand({ cmd: "(grind)" });
-		console.dir(response, { depth: null });
-		expect(response.result.length).toEqual(2);
-		expect(response.result[1]["last-cmd"]).toEqual("(grind)");
-		expect(response.result[0]["last-cmd"]).toEqual("(split)");
+		expect(response.result[0]["prev-cmd"]).toEqual("(grind)");
+		expect(response.result[1]["prev-cmd"]).toEqual("(grind)");
+		console.dir(response);
 
 	});
 
