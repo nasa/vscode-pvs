@@ -452,5 +452,28 @@ describe("pvs-prover", () => {
 	}, 60000);
 
 
+	fit(`can interrupt prover commands`, async () => {
+		await quitProverIfActive();
 
+		const desc: PvsFormula = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "alaris2lnewmodes",
+			formulaName: "check_chev_fup_permission",
+			theoryName: "alaris_th"
+		};
+		await pvsProxy.proveFormula(desc);
+		pvsProxy.proofCommand({ cmd: '(grind)' }); // async call
+
+		let response: PvsResponse = await new Promise((resolve, reject) => {
+			setTimeout(async () => {
+				let response: PvsResponse = await pvsProxy.pvsRequest("interrupt");
+				console.dir(response);
+				resolve(response);
+			}, 1000);
+		});
+		expect(response.result).toBeDefined();
+		expect(response.result[0].label).toBeDefined();
+		expect(response.result[0].sequent).toBeDefined();
+	}, 20000);
 });
