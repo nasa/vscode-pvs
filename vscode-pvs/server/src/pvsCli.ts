@@ -42,6 +42,7 @@ import * as readline from 'readline';
 import { PvsCliInterface, SimpleConsole, SimpleConnection, serverRequest, CliGatewaySubscriberEvent } from './common/serverInterface';
 import * as fsUtils from './common/fsUtils';
 import * as commandUtils from './common/commandUtils';
+import * as languageUtils from './common/languageUtils';
 
 import { cliSessionType } from './common/serverInterface';
 import { PvsProxy } from './pvsProxy';
@@ -167,7 +168,7 @@ class PvsCli {
 	protected wsClient: WebSocket;
 
 	protected proverPrompt: string = " >> ";
-	protected evaluatorPrompt: string = "<PVSio> ";
+	protected evaluatorPrompt: string = languageUtils.pvsioPrompt;
 
 	protected lines: string = "";
 
@@ -180,14 +181,14 @@ class PvsCli {
 		this.clientID = fsUtils.get_fresh_id();
 	}
 	// FIXME: the evaluator crashes into lisp when trying to evaluate malformed expressions, e.g., LET x = 1;
-	async activateEvaluatorRepl (): Promise<void> {
+	async activateEvaluatorCli (): Promise<void> {
 		// read input file so we can autocomplete symbol names
 		this.mainContent = await fsUtils.readFile(fsUtils.desc2fname(this.args));
 		if (process.stdin.isTTY) {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
 		}
-		readline.emitKeypressEvents(process.stdin);
+		// readline.emitKeypressEvents(process.stdin);
 		// activate readline
 		this.rl = readline.createInterface({ 
 			output: process.stdout, 
@@ -198,55 +199,47 @@ class PvsCli {
 			removeHistoryDuplicates: true
 		});
 		this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
-		this.isActive = true;
+		this.isActive = false;
 
-		process.stdin.on("keypress", (input: string, key: readline.Key) => {
-			if (key && key.sequence.includes("\r") && utils.balancedPar(this.lines)) {
-				const test: { success: boolean, msg: string } = utils.parCheck(this.lines);
-				if (test.success) {
-					// console.dir(key);
-					let cmd: string = this.lines.trim();
-					this.lines = "";
-					if (utils.isQuitCommand(cmd)) {
-						this.wsClient.send(JSON.stringify({
-							type: serverRequest.evaluateExpression,
-							cmd: "quit",
-							fileName: this.args.fileName,
-							fileExtension: this.args.fileExtension,
-							contextFolder: this.args.contextFolder,
-							theoryName: this.args.theoryName,
-							formulaName: this.args.formulaName
-						}));	
-						console.log();
-						console.log("PVSio evaluator session terminated.");
-						console.log();
-						console.log();
-						this.isActive = false;
-						this.rl.question("Press Enter to close the terminal.", () => {
-							this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
-							this.wsClient.close();
-						});
-						return;
-					} else {
-						cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
-						this.wsClient.send(JSON.stringify({
-							type: serverRequest.evaluateExpression,
-							cmd,
-							fileName: this.args.fileName,
-							fileExtension: this.args.fileExtension,
-							contextFolder: this.args.contextFolder,
-							theoryName: this.args.theoryName,
-							formulaName: this.args.formulaName
-						}));
-					}
+		this.rl.on("line", async (ln: string) => {
+			if (ln && (ln.trim().endsWith(";") || ln.trim().endsWith("!")) || utils.isQuitCommand(ln.trim())) {
+				// console.dir(key);
+				let cmd: string = this.lines.trim() + "\n" + ln;
+				this.lines = "";
+				if (utils.isQuitCommand(cmd)) {
+					this.wsClient.send(JSON.stringify({
+						type: serverRequest.evaluateExpression,
+						cmd: "quit",
+						fileName: this.args.fileName,
+						fileExtension: this.args.fileExtension,
+						contextFolder: this.args.contextFolder,
+						theoryName: this.args.theoryName,
+						formulaName: this.args.formulaName
+					}));	
+					console.log();
+					console.log("PVSio evaluator session terminated.");
+					console.log();
+					console.log();
+					this.isActive = false;
+					this.rl.question("Press Enter to close the terminal.", () => {
+						this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+						this.wsClient.close();
+					});
+					return;
 				} else {
-					console.log(test.msg);
+					cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
+					this.wsClient.send(JSON.stringify({
+						type: serverRequest.evaluateExpression,
+						cmd,
+						fileName: this.args.fileName,
+						fileExtension: this.args.fileExtension,
+						contextFolder: this.args.contextFolder,
+						theoryName: this.args.theoryName,
+						formulaName: this.args.formulaName
+					}));
 				}
 				this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
-			}
-		});
-		this.rl.on("line", async (ln: string) => {
-			if (this.isActive) {
+			} else {
 				if (this.lines) {
 					this.lines += " " + ln;
 				} else {
@@ -256,7 +249,7 @@ class PvsCli {
 		});		
 		this.connection = new CliConnection();
 	}
-	async activateProverRepl (): Promise<void> {
+	async activateProverCli (): Promise<void> {
 		if (process.stdin.isTTY) {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
@@ -632,12 +625,12 @@ if (process.argv.length > 2) {
 			switch (args.type) {
 				case cliSessionType.proveFormula: {
 					console.log(`\nStarting new prover session for ${utils.colorText(args.theoryName + "@" + args.formulaName, utils.textColor.blue)}\n`);
-					await pvsCli.activateProverRepl();
+					await pvsCli.activateProverCli();
 					break;
 				}
 				case cliSessionType.pvsioEvaluator: {
 					console.log(`\nStarting new PVSio evaluator session for theory ${utils.colorText(args.theoryName, utils.textColor.blue)}\n`);
-					await pvsCli.activateEvaluatorRepl();
+					await pvsCli.activateEvaluatorCli();
 					break;
 				}
 				default: {

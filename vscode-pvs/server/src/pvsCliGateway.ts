@@ -194,7 +194,7 @@ export class PvsCliGateway {
 										if (data && data.cmd) {
 											// console.info('[pvs-cli-gateway] received new command from pvs-cli', data.cmd);
 											data.cmd = (data.cmd.trim().startsWith("(")) ? data.cmd : `(${data.cmd.trim()})`;
-											this.pvsLanguageServer.proofCommandRequest(data);
+											this.pvsLanguageServer.getProofExplorer().proofCommandRequest(data);
 										}
 										break;
 									}

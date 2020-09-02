@@ -276,12 +276,12 @@ export interface SFormula {
 	'names-info': any[];
 }
 export type SequentDescriptor = {
+	path?: string,
 	label: string,
-	commentary: string[],
+	commentary: string[] | string,
 	action?: string // this field is useless
 	"num-subgoals"?: number,
-	"prev-cmd"?: Object; // object representing the last command executed
-	"last-cmd"?: string,
+	"prev-cmd"?: Object | string; // object representing the last command executed
 	comment?: string,
 	sequent?: {
 		succedents?: SFormula[], 
@@ -770,20 +770,25 @@ export function listSymbols(txt: string): string[] {
 }
 
 export const pvsioBanner: string = `
-+---- 
-| PVSio Evaluator
-|
-| Enter a PVS expression at the prompt, or 'help' for help, or 'exit' to exit the evaluator.
-| You can use TAB to complete commands at the PVSio prompt.
-|
-| Note: evaluation of expressions which depend on unproven TCCs may be unsound,
-| and result in the evaluator becoming unresponsive or crashing into Lisp. 
-| If that happens, please close the evaluator session and start a new one.
-|
-+----
-
+╔════════════════════════════════════════════════════════════════════════════════════
+║ PVSio
+║
+║ How to use the evaluator:
+║ - Enter a PVS expression followed by ';'
+║  or
+║ - Enter a Lisp expresssion followed by '!'
+║ 
+║ To exit the evalutor, enter 'exit'.
+║ You can use TAB to complete commands at the PVSio prompt.
+╚════════════════════════════════════════════════════════════════════════════════════
 `
 ;
+
+export const pvsioPrompt: string = "<PVSio> ";
+// ║
+// ║ Note: Evaluating PVS expressions which depend on unproven TCCs may be unsound
+// ║       and result in the evaluator becoming unresponsive or breaking into Lisp. 
+// ║       If that happens, please close the evaluator terminal and start a new session.
 
 /**
  * @function getErrorRange
@@ -1317,7 +1322,7 @@ export function isQuitDontSaveCommand (cmd: string): boolean {
 }
 
 export function isEmptyCommand (cmd: string): boolean {
-	return !cmd 
+	return !cmd
 		|| cmd.trim() === "" 
 		|| cmd.trim() === "()"
 		;
@@ -1465,51 +1470,81 @@ export function applyTimeout (cmd: string, sec?: number): string {
 	return cmd;
 }
 
-export function isInvalidCommand (result: { commentary: string[] }): boolean {
-	return result && result.commentary
-		&& typeof result.commentary === "object"
-		&& result.commentary.length
-		&& typeof result.commentary[0] === "string"
-		&& (result.commentary.filter((comment: string)=> {
-			return comment.includes("not a valid prover command");
-		}).length > 0 || result.commentary.filter((comment: string)=> {
-			return comment.includes(`Found 'eof' when expecting`);
-		}).length > 0 || result.commentary.filter((comment: string)=> {
-			return comment.includes(`bad proof command`);
-		}).length > 0 || result.commentary.filter((comment: string)=> {
-			return comment.includes(`Expecting an expression`);
-		}).length > 0);
+export function isInvalidCommand (result: { commentary: string | string[] }): boolean {
+	if (result && result.commentary) {
+		if (typeof result.commentary === "string") {
+			return result.commentary.includes("not a valid prover command")
+				|| result.commentary.includes(`Found 'eof' when expecting`)
+				|| result.commentary.includes(`bad proof command`)
+				|| result.commentary.includes(`Expecting an expression`);
+		} else if (typeof result.commentary === "object") {
+			return result.commentary.length
+			&& typeof result.commentary[0] === "string"
+			&& (result.commentary.filter((comment: string)=> {
+				return comment.includes("not a valid prover command");
+			}).length > 0 || result.commentary.filter((comment: string)=> {
+				return comment.includes(`Found 'eof' when expecting`);
+			}).length > 0 || result.commentary.filter((comment: string)=> {
+				return comment.includes(`bad proof command`);
+			}).length > 0 || result.commentary.filter((comment: string)=> {
+				return comment.includes(`Expecting an expression`);
+			}).length > 0);
+		}
+	}
+	return false;
 }
 
-export function noChange (result: { commentary: string[] }): boolean {
-	return result && result.commentary
-		&& typeof result.commentary === "object"
-		&& result.commentary.length
-		&& result.commentary.filter((comment: string)=> {
-			return comment.startsWith("No change on:");
-		}).length > 0;
+export function noChange (result: { commentary: string | string[] }): boolean {
+	if (result && result.commentary) {
+		if (typeof result.commentary === "string") {
+			return result.commentary.startsWith("No change on:")
+		} else if (typeof result.commentary === "object") {
+			return result.commentary.length
+				&& result.commentary.filter((comment: string)=> {
+					return comment.startsWith("No change on:");
+				}).length > 0;
+		}
+	}
+	return false;
 }
 
-export function QED (result: { commentary: string[] }): boolean {
-	return result && result.commentary
-		&& typeof result.commentary === "object"
-		&& result.commentary.length
-		&& result.commentary.filter((comment: string)=> {
-			return comment.trim() === "Q.E.D.";
-		}).length > 0; 
-}
-
-export function branchComplete (result: { commentary: string[] }, formulaName: string, previousBranch: string): boolean {
-	if (previousBranch) {
-		return result && result.commentary
-			&& result.commentary.length 
-			&& result.commentary.filter((comment: string) => {
-				if (typeof previousBranch === "string") {
-					return comment.startsWith("This completes the proof") 
-						&& (comment.endsWith(`${formulaName}.${previousBranch}.`));
-				}
-				return comment.startsWith("This completes the proof");
+export function QED (result: { commentary: string | string[] }): boolean {
+	if (result && result.commentary) {
+		if (typeof result.commentary === "string") {
+			return result.commentary.trim() === "Q.E.D.";
+		} else if (typeof result.commentary === "object") {
+			return result.commentary.length
+			&& result.commentary.filter((comment: string)=> {
+				return comment.trim() === "Q.E.D.";
 			}).length > 0;
+		}
+	}
+	return false;
+}
+
+export function branchComplete (result: { commentary: string | string[] }, formulaName: string, previousBranch: string): boolean {
+	if (previousBranch) {
+		if (result && result.commentary) {
+			if (typeof result.commentary === "string") {
+				if (typeof previousBranch === "string") {
+					return result.commentary.startsWith("This completes") 
+						&& (result.commentary.endsWith(`${formulaName}.${previousBranch}.`)
+							|| result.commentary.endsWith(`${formulaName}.${previousBranch}`));
+				}
+				return result.commentary.startsWith("This completes");
+
+			} else if (typeof result.commentary === "object") {
+					return result.commentary.length 
+						&& result.commentary.filter((comment: string) => {
+							if (typeof previousBranch === "string") {
+								return comment.startsWith("This completes") 
+									&& (comment.endsWith(`${formulaName}.${previousBranch}.`)
+										|| comment.endsWith(`${formulaName}.${previousBranch}`));
+							}
+						return comment.startsWith("This completes");
+					}).length > 0;
+				}
+			}
 	}
 	return false;
 }
@@ -1518,18 +1553,22 @@ export function siblingBranchComplete (result: { commentary: string[] }, newBran
 	return result && result.commentary
 		&& result.commentary.length 
 		&& result.commentary.filter((comment: string) => {
-			if (typeof newBranch === "string" && comment.startsWith("This completes the proof")) {
+			if (typeof newBranch === "string" && comment.startsWith("This completes")) {
 				const parentOfNewBranch: string = newBranch.substring(0, newBranch.lastIndexOf("."));
 				const closedBranch: string = comment.substring(comment.indexOf(".") + 1, comment.lastIndexOf("."));
 				const parentOfClosedBranch: string = closedBranch.substring(0, closedBranch.lastIndexOf("."));
 				return parentOfClosedBranch === parentOfNewBranch;
 			}
-			return comment.startsWith("This completes the proof");
+			return comment.startsWith("This completes");
 		}).length > 0;
 }
 
 export function branchHasChanged (desc: { newBranch: string, previousBranch: string }): boolean {
 	return desc && (desc.newBranch !== desc.previousBranch || desc.previousBranch !== "" && !desc.newBranch.startsWith(desc.previousBranch));
+}
+
+export function pathHasChanged (desc: { newBranch: string, previousBranch: string }): boolean {
+	return desc && !desc.newBranch.startsWith(desc.previousBranch);
 }
 
 // these icons are shown correctly only on recent os distributions that include the proper font set.
