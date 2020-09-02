@@ -3,6 +3,8 @@ import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy';
 import { configFile, tacticalsExamples } from './test-utils';
 import { PvsFormula } from "../server/src/common/serverInterface";
+import * as path from 'path';
+import { execSync } from "child_process";
 
 //----------------------------
 //   Test cases for prover
@@ -44,7 +46,41 @@ describe("pvs-prover", () => {
 		}
 	}
 
-	fit(`provides correct last-cmd when branch closes (test 1)`, async () => {
+	// this test requires nasalib and patch-20291231-server-output
+	fit(`can handle branches with propax`, async () => {
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		const baseFolder: string = path.join(__dirname, "pvscontext");
+
+		// remove folder if present and replace it with the content of the zip file
+		const contextFolder: string = path.join(baseFolder, "nasalib-monitors");
+		fsUtils.deleteFolder(contextFolder);
+		execSync(`cd ${baseFolder} && unzip nasalib-monitors.zip`);
+
+		let response: PvsResponse = await pvsProxy.proveFormula({
+			fileName: "trace",
+			fileExtension: ".pvs",
+			contextFolder: path.join(contextFolder, "Fret_MLTL"),
+			theoryName: "trace",
+			formulaName: "null_null_always_satisfaction"
+		});
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+		// console.dir(response);
+
+		const cmds: string[] = `(skeep)(fretex)(iff)(split)(flatten)(inst -1 "0")(skeep)(inst 2 "n-1")(case "i > n-1")(expand "Trace_equiv")(inst -3 "n-1")(assert)(flatten)(assert)(expand "last_atom")`.replace(/\)/g, ")\n").split("\n");
+		for (let i = 0; i < cmds.length; i++) {
+			const cmd: string = cmds[i];
+			console.log(cmd);
+			response = await pvsProxy.proofCommand({ cmd });
+			console.dir(response);
+		}
+
+		expect(response.result[0]["prev-cmd"]).toEqual(`(expand "last_atom")`);
+	}, 20000);
+
+	it(`provides correct prev-cmd when branch closes (test 1)`, async () => {
 		await quitProverIfActive();
 
 		const request: PvsFormula = {
@@ -115,7 +151,7 @@ describe("pvs-prover", () => {
 		// - sequent in position 0 is the sequent obtained from the last proof command, (split) in the considered example
 		// - if the last proof command produces more than sequent, only the first sequent is returned (the active sequent)
 		// - all sequents must have a label that identifies the subgoal in the proof tree where the sequent belongs
-		// - all sequents must have a field "last-cmd" of type string, indicating the command that produced the executed command 
+		// - all sequents must have a field "prev-cmd" of type string, indicating the command that produced the executed command 
 		expect(response.result.length).toEqual(2); // the sequent for (skosimp*) and the active sequent
 
 		expect(response.result[1]["prev-cmd"][0]).toEqual("skosimp*");
