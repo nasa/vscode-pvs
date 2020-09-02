@@ -405,9 +405,11 @@ describe("pvs-prover", () => {
 	//--- the following test fail on Mac and Linux
 	//-----------------------------------------------
 
-	// on Mac and Linux, the following test fails and the prover crashes into Lisp
+	// on Mac and Linux, the following test fails when executed **during the first** prover session
 	// to activate the test case, change 'xit(...)' to 'it(...)'
-	it(`is robust to prover commands with incorrect arguments`, async () => {
+	fit(`is robust to prover commands with incorrect arguments`, async () => {
+		await quitProverIfActive();
+
 		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
@@ -421,10 +423,16 @@ describe("pvs-prover", () => {
 		expect(response.result[0].label).toEqual(test.sq_neg_prove_formula.label);
 		expect(response.result[0].sequent).toBeDefined();
 
-		response = await pvsProxy.proofCommand({ cmd: '(expand "as <")'});
-		// console.dir(response);
+		await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
+		response = await pvsProxy.proofCommand({ cmd: '(typepred "a!1)'});
+		expect(response.error).not.toBeDefined(); // the prover reports error in the commentary
 		expect(response.result[0].commentary).toBeDefined();
-		//expect(response.result.commentary.startsWith("Found 'AS' when expecting 'EXPR'")).toBeTrue();
+		console.dir(response.result);
+
+		response = await pvsProxy.proofCommand({ cmd: '(expand "as <")'});
+		expect(response.error).not.toBeDefined(); // the prover reports error in the commentary
+		expect(response.result[0].commentary).toBeDefined();
+		console.dir(response.result);
 
 		// quit the proof attempt
 		await pvsProxy.proofCommand({ cmd: 'quit'});
@@ -452,7 +460,7 @@ describe("pvs-prover", () => {
 		expect(response.error.message).toContain('Proof-command error');
 	}, 60000);
 
-	fit(`can interrupt prover commands`, async () => {
+	it(`can interrupt prover commands`, async () => {
 		await quitProverIfActive();
 
 		const desc: PvsFormula = {
@@ -467,11 +475,13 @@ describe("pvs-prover", () => {
 		setTimeout(async () => {
 			pvsProxy.pvsRequest("interrupt");
 		}, 2000);
+		await pvsProxy.proofCommand({ cmd: '(skosimp*)' });
 		let response: PvsResponse = await pvsProxy.proofCommand({ cmd: '(grind)' });
 
 		expect(response.result).toBeDefined();
 		expect(response.result[0].label).toBeDefined();
 		expect(response.result[0].sequent).toBeDefined();
+		expect(response.result[0]["prev-cmd"]).toEqual("(skosimp*)");
 		console.dir(response.result);
 	}, 20000);
 
@@ -503,4 +513,6 @@ describe("pvs-prover", () => {
 		expect(content).toContain("(skosimp*)");
 
 	}, 20000);
+
+
 });

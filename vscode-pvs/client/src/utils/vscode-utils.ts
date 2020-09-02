@@ -178,7 +178,7 @@ export async function openWorkspace (): Promise<void> {
         canSelectFiles: false,
         canSelectFolders: true,
         canSelectMany: false,
-        openLabel: "Open Folder"
+        openLabel: "Open"
     });
     if (selection && selection.length === 1) {
         const contextFolder: string = selection[0].path;
@@ -222,13 +222,12 @@ export async function openPvsFile (): Promise<void> {
 /**
  * Opens a pvs file in the editor and adds the containing folder in file explorer
  */
-export async function openPvsFileOrFolder (opt?: { clearExplorer?: boolean }): Promise<string> {
-    opt = opt || {};
+export async function openPvsFileOrWorkspace (): Promise<string> {
     const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
         canSelectFiles: true,
         canSelectFolders: true,
         canSelectMany: false,
-        openLabel: "Open PVS File or Folder",
+        openLabel: "Open",
         filters: {
             "PVS": [ ".pvs" ]
         }
@@ -239,8 +238,12 @@ export async function openPvsFileOrFolder (opt?: { clearExplorer?: boolean }): P
         const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
         // add folder to workspace
         if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
-            const start: number = (vscode.workspace.workspaceFolders && !opt.clearExplorer) ? vscode.workspace.workspaceFolders.length : 0
-            vscode.workspace.updateWorkspaceFolders(start, null, { uri: contextFolderUri });
+            const start: number = 0
+            const end: number = (vscode.workspace.workspaceFolders) ? vscode.workspace.workspaceFolders.length - 1 : 0;
+            // save and close all open files in the editor
+            vscode.commands.executeCommand("workbench.action.files.saveAll");
+            vscode.commands.executeCommand("workbench.action.closeAllGroups");
+            vscode.workspace.updateWorkspaceFolders(start, end, { uri: contextFolderUri });
         }
         if (fname) {
             const fileUri: vscode.Uri = vscode.Uri.file(fname);

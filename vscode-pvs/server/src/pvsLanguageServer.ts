@@ -269,9 +269,6 @@ export class PvsLanguageServer {
 		}
 		return null;
 	}
-	async proofCommandRequest (request: PvsProofCommand): Promise<void> {
-		this.proofExplorer.proofCommandRequest(request);
-	};
 	async getMode (): Promise<ServerMode | null> {
 		if (this.pvsProxy) {
 			return await this.pvsProxy.getMode();
@@ -526,11 +523,11 @@ export class PvsLanguageServer {
 		const response: PvsResponse = await this.typecheckFile(request);
 		if (response && response.result) {
 			// start pvsio evaluator
-			let pvsioResponse: PvsResponse = await this.pvsioProxy.startEvaluator(request);
+			let pvsioResponse: PvsResponse = await this.pvsioProxy.startEvaluator(request, { pvsLibraryPath: this.pvsLibraryPath });
 			const channelID: string = utils.desc2id(request);
 			// replace standard banner
 			pvsioResponse.result = "";
-			pvsioResponse.banner = utils.pvsioBanner;
+			pvsioResponse.banner = utils.colorText(utils.pvsioBanner, utils.textColor.green);// + "\n\n" + utils.pvsioPrompt;
 			this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: pvsioResponse });
 			if (this.connection) { this.connection.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: request }); }
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });

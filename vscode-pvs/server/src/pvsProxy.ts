@@ -208,12 +208,14 @@ export class PvsProxy {
 		// NOTE: this is a temporary fix while waiting the server APIs to be fixed
 		if (res) {
 			const sequent: SequentDescriptor = {
-				label: (res["result"]) ? "QED" : res["label"], // this should always be the formula name....
-				commentary: (res["result"]) ? [ res["result"] ] : res["commentary"],
+				path: res["path"],
+				label: (res["result"]) ? "Q.E.D." : res["label"], // this should always be the formula name....
+				commentary: (res["result"]) ? [ res["result"] ] 
+								: res["prover-session-status"] ? "Q.E.D." 
+								: res["commentary"],
 				"num-subgoals": (res["result"]) ? 0 : res["num-subgoals"],
 				sequent: (res["result"]) ? {} : res["sequent"],
-				"prev-cmd": res["prev-cmd"],
-				"last-cmd": (res["prev-cmd"] && res["prev-cmd"].length === 1) ? res["prev-cmd"][0] : cmd
+				"prev-cmd": res["prev-cmd"]
 			}
 			return sequent;
 		}
@@ -223,7 +225,7 @@ export class PvsProxy {
 	//--------------------------------------------------
 	//         json-rpc methods
 	//--------------------------------------------------
-	pvsRequest(method: string, params?: string[]): Promise<PvsResponse> {
+	async pvsRequest(method: string, params?: string[]): Promise<PvsResponse> {
 		params = params || [];
 		const req = { method: method, params: params, jsonrpc: "2.0", id: this.get_fresh_id() };
 		// this.buffer = this.buffer.then(() => {
@@ -1069,7 +1071,7 @@ export class PvsProxy {
 			if (test.success) {
 				// console.dir(desc, { depth: null });
 				const showHidden: boolean = utils.isShowHiddenCommand(desc.cmd);
-				const isGrind: boolean = utils.isGrindCommand(desc.cmd);
+				const isGrind: boolean = false;//utils.isGrindCommand(desc.cmd);
 				// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
 				// the front-end will handle the command, and reveal the hidden sequents.
 				const cmd: string = showHidden ? "(skip)"
@@ -1084,26 +1086,25 @@ export class PvsProxy {
 							const result: SequentDescriptor = proofStates[i];
 							if (result) {
 								result.action = "Showing list of hidden sequents";
-								if (result.commentary && result.commentary.length) {
-									result.commentary[0] = "No change on: (show-hidden)";
+								if (result.commentary) {
+									result.commentary = [ "No change on: (show-hidden)" ];
 								}
 							}
 						}
 					}
-					if (isGrind) {
-						for (let i = 0; i < proofStates.length; i++) {
-							const result: SequentDescriptor = proofStates[i];
-							if (opt.timeout) {
-								if (result && result.commentary 
-										&& result.commentary.length 
-										&& result.commentary[result.commentary.length - 1].startsWith("No change on")) {
-									result.action = `No change on: ${desc.cmd}`;
-									result.commentary = result.commentary.slice(0, result.commentary.length - 1).concat(`No change on: ${desc.cmd}`);
-								}
-							}
-							result["last-cmd"] = desc.cmd; // this will remove the timeout applied to grind
-						}
-					}
+					// if (isGrind) {
+					// 	for (let i = 0; i < proofStates.length; i++) {
+					// 		const result: SequentDescriptor = proofStates[i];
+					// 		if (opt.timeout) {
+					// 			if (result && result.commentary && typeof result.commentary === "object" 
+					// 					&& result.commentary.length && result.commentary[result.commentary.length - 1].startsWith("No change on")) {
+					// 				result.action = `No change on: ${desc.cmd}`;
+					// 				result.commentary = result.commentary.slice(0, result.commentary.length - 1).concat(`No change on: ${desc.cmd}`);
+					// 			}
+					// 		}
+					// 		result["prev-cmd"] = desc.cmd; // this will remove the timeout applied to grind
+					// 	}
+					// }
 					for (let i = 0; i < proofStates.length; i++) {
 						const result: SequentDescriptor = proofStates[i];
 						if (utils.QED(result)) {
@@ -1122,7 +1123,7 @@ export class PvsProxy {
 			// currently, errors are presented in many (incompatible) different ways
 			if (res.error || !test.success) {
 				res.result = res.result || [{
-					"last-cmd": desc.cmd
+					"prev-cmd": desc.cmd
 				}];
 				const error_msg: string = (test.success) ? 
 					(res.error && res.error.message) ? res.error.message.replace(/\\\\"/g, "") : null
@@ -1943,6 +1944,10 @@ export class PvsProxy {
 				resolve(false);
 			}
 		});
+	}
+
+	async interrupt (): Promise<PvsResponse | null> {
+		return await this.pvsRequest('interrupt');
 	}
 
 }

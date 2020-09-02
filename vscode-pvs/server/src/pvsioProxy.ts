@@ -38,7 +38,7 @@
 
 import { spawn, ChildProcess, execSync } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
-import { PvsVersionDescriptor, SimpleConnection } from './common/serverInterface'
+import { PvsVersionDescriptor, SimpleConnection, PvsTheory } from './common/serverInterface'
 import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import * as utils from './common/languageUtils';
@@ -51,8 +51,11 @@ class PvsIoProcess {
 	protected pvsioProcess: ChildProcess = null;
 	protected pvsVersionInfo: PvsVersionDescriptor;
 
-	protected pvsPath: string = null;
-	protected pvsLibraryPath: string = null;
+	protected pvsPath: string;
+	protected pvsLibPath: string;
+	protected pvsLibraryPath: string;
+	protected nasalibPath: string;
+
 	protected ready: boolean = false;
 	protected data: string = "";
 	protected cb: (data: string) => void;
@@ -77,9 +80,12 @@ class PvsIoProcess {
 	 * @param desc Information on the PVS execution environment.
 	 * @param connection Connection with the language client
 	 */
-	constructor (desc: { pvsPath: string }, connection?: SimpleConnection) {
+	constructor (desc: { pvsPath: string }, opt?: { pvsLibraryPath?: string }, connection?: SimpleConnection) {
 		this.pvsPath = (desc && desc.pvsPath) ? fsUtils.tildeExpansion(desc.pvsPath) : __dirname
-		this.pvsLibraryPath = path.join(this.pvsPath, "lib");
+		this.pvsLibPath = path.join(this.pvsPath, "lib");
+		this.nasalibPath = path.join(this.pvsPath, "nasalib");
+		opt = opt || {};
+		this.pvsLibraryPath = opt.pvsLibraryPath || "";
 		this.connection = connection;
 	}
 
@@ -110,6 +116,7 @@ class PvsIoProcess {
 	quit (): void {
 		this.pvsioProcess.stdin.write("exit; Y");
 	}
+
 	/**
 	 * Creates a new pvsio process.
 	 * @param desc Descriptor indicating the pvs file and theory for this pvsio process
@@ -130,7 +137,8 @@ class PvsIoProcess {
 			const fname: string = fsUtils.desc2fname(desc);
 			const args: string[] = [ `${fname}@${desc.theoryName}` ];
 			// pvsio args
-			console.info(`${pvsioExecutable} ${args.join(" ")}`);
+			process.env["PVS_LIBRARY_PATH"] = `${this.pvsLibraryPath}/:${this.nasalibPath}/`;
+			console.log(`\nPVS_LIBRARY_PATH=${process.env["PVS_LIBRARY_PATH"]}\n`);
 			const fileExists: boolean = await fsUtils.fileExists(pvsioExecutable);
 			if (fileExists && !this.pvsioProcess) {
 				this.pvsioProcess = spawn(pvsioExecutable, args);
@@ -171,11 +179,11 @@ class PvsIoProcess {
 					// resolve(false);
 				});
 				this.pvsioProcess.on("error", (err: Error) => {
-					console.log("[pvsio-process] Process error");
+					console.log("[pvsio-process] Process error", err);
 					// console.dir(err, { depth: null });
 				});
 				this.pvsioProcess.on("exit", (code: number, signal: string) => {
-					console.log("[pvsio-process] Process exited");
+					console.log("[pvsio-process] Process exited with code ", code);
 					// console.dir({ code, signal });
 				});
 				this.pvsioProcess.on("message", (message: any) => {
@@ -250,8 +258,8 @@ export class PvsIoProxy {
 		this.pvsLibPath = path.join(pvsPath, "lib");
 		this.connection = opt.connection;
 	}
-	async startEvaluator (desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponse> {
-		const pvsioProcess: PvsIoProcess = new PvsIoProcess({ pvsPath: this.pvsPath }, this.connection);
+	async startEvaluator (desc: PvsTheory, opt?: { pvsLibraryPath?: string }): Promise<PvsResponse> {
+		const pvsioProcess: PvsIoProcess = new PvsIoProcess({ pvsPath: this.pvsPath }, opt, this.connection);
 		const processId: string = utils.desc2id(desc);
 		const success: boolean = await pvsioProcess.activate({
 			fileName: desc.fileName, 

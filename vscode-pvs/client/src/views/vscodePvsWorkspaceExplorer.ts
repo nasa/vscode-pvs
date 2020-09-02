@@ -661,8 +661,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Opens a pvs file in the editor and adds the containing folder in file explorer
 	 */
-	async openPvsFileOrFolder (opt?: { clearExplorer?: boolean }): Promise<string | null> {
-		const contextFolder: string = await vscodeUtils.openPvsFileOrFolder(opt);
+	async openPvsFileOrFolder (): Promise<string | null> {
+		const contextFolder: string = await vscodeUtils.openPvsFileOrWorkspace();
 		if (contextFolder) {
 			return this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder })
 		}
