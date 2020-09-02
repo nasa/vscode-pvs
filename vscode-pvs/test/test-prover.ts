@@ -463,17 +463,15 @@ describe("pvs-prover", () => {
 			theoryName: "alaris_th"
 		};
 		await pvsProxy.proveFormula(desc);
-		pvsProxy.proofCommand({ cmd: '(grind)' }); // async call
 
-		let response: PvsResponse = await new Promise((resolve, reject) => {
-			setTimeout(async () => {
-				let response: PvsResponse = await pvsProxy.pvsRequest("interrupt");
-				console.dir(response);
-				resolve(response);
-			}, 1000);
-		});
+		setTimeout(async () => {
+			pvsProxy.pvsRequest("interrupt");
+		}, 2000);
+		let response: PvsResponse = await pvsProxy.proofCommand({ cmd: '(grind)' });
+
 		expect(response.result).toBeDefined();
 		expect(response.result[0].label).toBeDefined();
 		expect(response.result[0].sequent).toBeDefined();
+		console.dir(response.result);
 	}, 20000);
 });
