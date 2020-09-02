@@ -74,6 +74,7 @@ describe("pvs-prover", () => {
 			theoryName: 'foo_th',
 			cmd: "(skosimp*)"
 		};
+		
 		let response: PvsResponse = await pvsProxy.proveFormula(request);
 		// console.dir(response, { depth: null });
 		
@@ -451,7 +452,6 @@ describe("pvs-prover", () => {
 		expect(response.error.message).toContain('Proof-command error');
 	}, 60000);
 
-
 	fit(`can interrupt prover commands`, async () => {
 		await quitProverIfActive();
 
@@ -473,5 +473,34 @@ describe("pvs-prover", () => {
 		expect(response.result[0].label).toBeDefined();
 		expect(response.result[0].sequent).toBeDefined();
 		console.dir(response.result);
+	}, 20000);
+
+	fit(`can save current proof in the .prf file`, async () => {
+		await quitProverIfActive();
+
+		const desc: PvsFormula = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "alaris2lnewmodes",
+			formulaName: "check_chev_fup_permission",
+			theoryName: "alaris_th"
+		};
+		await pvsProxy.proveFormula(desc);
+
+		await pvsProxy.proofCommand({ cmd: '(skosimp*)' });
+		await pvsProxy.proofCommand({ cmd: '(split)' });
+
+		const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName);
+		const response: PvsResponse = await pvsProxy.pvsRequest("save-decl-proofs-to-prf-file", [ desc.formulaName, fullName ]);
+
+		const content: string = await fsUtils.readFile(fsUtils.desc2fname({
+			contextFolder: sandboxExamples,
+			fileExtension: ".prf",
+			fileName: "alaris2lnewmodes"
+		}));
+
+		expect(response.result).toBeTrue();
+		expect(content).toContain("(skosimp*)");
+
 	}, 20000);
 });
