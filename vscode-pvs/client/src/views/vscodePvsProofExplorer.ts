@@ -548,7 +548,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
 	 */
 	async quitProof (): Promise<void> {
-		const actionConfirmed: boolean = await this.queryConfirmation("Quit proof session?");
+		const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
 		if (actionConfirmed) {
 			// send quit to the terminal
 			commands.executeCommand("vscode-pvs.send-proof-command", {
@@ -608,12 +608,17 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const action: ProofEditSaveAs = { action: "save-proof-as", fileExtension: ".prf" };
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof-as-prl", () => {
+			// save proof without asking confirmation
+			const action: ProofEditSaveAs = { action: "save-proof-as", fileExtension: ".prl" };
+			this.client.sendRequest(serverRequest.proverCommand, action);
+		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", async () => {
 			// ask confirmation before quitting proof
-			const actionConfirmed: boolean = await this.queryConfirmation("Quit proof session?");
+			const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
 			if (actionConfirmed) {
 				const action: ProofExecQuit = { action: "quit" };
-				this.client.sendRequest(serverRequest.proofCommand, action);
+				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.forward", () => {

@@ -64,7 +64,9 @@ import {
 	ProofEditTrimUnused,
 	ProofEditSave,
 	ProofExecQuit,
-	ProofEditDidStartNewProof
+	ProofEditDidStartNewProof,
+	CliGatewayQuitEvent,
+	CliGatewayQuit
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -2168,19 +2170,44 @@ export class PvsProofExplorer {
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
 	async saveProofAs (desc: { fileExtension: string }): Promise<void> {
-		// the only extension supported at this time is .prj
-		// update proof descriptor
-		this.proofDescriptor = this.makeProofDescriptor();
-		// save proof descriptor to file
-		const success: boolean = await this.pvsProxy.saveAsPrj({ 
-			fileName: this.formula.fileName,
-			fileExtension: this.formula.fileExtension,
-			contextFolder: this.formula.contextFolder,
-			theoryName: this.formula.theoryName,
-			formulaName: this.formula.formulaName,
-			proofDescriptor: this.proofDescriptor
-		});
-		this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success, fileExtension: desc.fileExtension }, args: this.formula });
+		if (desc) {
+			// update proof descriptor
+			this.proofDescriptor = this.makeProofDescriptor();
+			let success: boolean = false;
+			switch (desc.fileExtension) {
+				case ".prf": {
+					success = await this.pvsProxy.saveProofliteAsPrf({ 
+						fileName: this.formula.fileName,
+						fileExtension: this.formula.fileExtension,
+						contextFolder: this.formula.contextFolder,
+						theoryName: this.formula.theoryName,
+						formulaName: this.formula.formulaName,
+						proofDescriptor: this.proofDescriptor
+					});
+					break;
+				}
+				case ".prl": {
+					success = await this.pvsProxy.saveProoflite({ 
+						fileName: this.formula.fileName,
+						fileExtension: this.formula.fileExtension,
+						contextFolder: this.formula.contextFolder,
+						theoryName: this.formula.theoryName,
+						formulaName: this.formula.formulaName,
+						proofDescriptor: this.proofDescriptor
+					});
+					break;
+				}
+				default: {
+					const msg: string = `Warning: trying to save file with unrecognized file extension ${desc.fileExtension}`;
+					console.warn(`[proof-explorer] ${msg}`);
+					this.connection.sendNotification("server.status.error", msg);
+					return;
+				}
+			}
+			this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success, fileExtension: desc.fileExtension }, args: this.formula });
+		} else {
+			this.connection.sendNotification("server.status.error", `Error: could not save proof (null descriptor)`);
+		}
 	}
 	/**
 	 * Save the current proof on file
@@ -2190,7 +2217,7 @@ export class PvsProofExplorer {
 		// update proof descriptor
 		this.proofDescriptor = this.makeProofDescriptor();
 		// save proof descriptor to file
-		const success: boolean = await this.pvsProxy.saveProof({ 
+		const success: boolean = await this.pvsProxy.saveProofAsJprf({ 
 			fileName: this.formula.fileName,
 			fileExtension: this.formula.fileExtension,
 			contextFolder: this.formula.contextFolder,
@@ -2202,7 +2229,16 @@ export class PvsProofExplorer {
 			// mark proof as not dirty
 			this.dirtyFlag = false;
 			if (this.proofDescriptor.info.status === "proved") {
-				await this.pvsProxy.saveProoflite({ 
+				await this.pvsProxy.saveProofAsPrf({ 
+					fileName: this.formula.fileName,
+					fileExtension: this.formula.fileExtension,
+					contextFolder: this.formula.contextFolder,
+					theoryName: this.formula.theoryName,
+					formulaName: this.formula.formulaName,
+					proofDescriptor: this.proofDescriptor
+				});
+			} else {
+				await this.pvsProxy.saveProofliteAsPrf({ 
 					fileName: this.formula.fileName,
 					fileExtension: this.formula.fileExtension,
 					contextFolder: this.formula.contextFolder,
@@ -2218,7 +2254,8 @@ export class PvsProofExplorer {
 	 * Quit the current proof
 	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
 	 */
-	async quitProof (): Promise<void> {
+	async quitProof (opt?: { notifyCliGateway?: boolean }): Promise<void> {
+		opt = opt || {};
 		this.running = false;
 		if (this.formula) {
 			await this.proofCommand({
@@ -2234,6 +2271,11 @@ export class PvsProofExplorer {
 			const status: ProofStatus = (this.root) ? this.root.getProofStatus() : "untried";
 			this.autorunFlag = false;
 			this.autorunCallback(status);
+		}
+		if (opt.notifyCliGateway) {
+			const channelID: string = utils.desc2id(this.formula);
+			const evt: CliGatewayQuit = { type: "pvs.event.quit", channelID };
+			this.pvsLanguageServer.cliGateway.publish(evt);
 		}
 		this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
 	}

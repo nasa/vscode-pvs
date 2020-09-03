@@ -475,6 +475,17 @@ class PvsCli {
 								});
 								return;
 							}
+							case "pvs.event.quit": {
+								readline.clearScreenDown(process.stdin);
+								console.log("(quit)");
+								console.log();
+								this.isActive = false;
+								this.rl.question("Press Enter to close the terminal.", () => {
+									this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+									this.wsClient.close();
+								});
+								return;
+							}
 							case "pvs.event.print-proof-command": {
 								const data: { cmd: string } = evt.data;
 								if (data && data.cmd) {

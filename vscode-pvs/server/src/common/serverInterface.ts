@@ -522,7 +522,7 @@ export declare type CliGatewaySelectProfileRequest = {
 
 export declare type CliGatewaySubscriberEvent = CliGatewayProofStateInfo | CliGatewayEvaluatorStateInfo 
 	| CliGatewayMathObjectsInfo | CliGatewayPrintProofCommandInfo | CliGatewaySubscribeEvent
-	| CliGatewaySelectProfileEvent | CliGatewayQEDEvent;
+	| CliGatewaySelectProfileEvent | CliGatewayQEDEvent | CliGatewayQuitEvent;
 export declare type CliGatewayProofStateInfo = {  
 	type: "pvs.event.proof-state",
 	data: SequentDescriptor,
@@ -544,6 +544,9 @@ export declare type CliGatewayPrintProofCommandInfo = {
 export declare type CliGatewayQEDEvent = {  
 	type: "pvs.event.QED"
 };
+export declare type CliGatewayQuitEvent = {  
+	type: "pvs.event.quit"
+};
 export declare type CliGatewaySubscribeEvent = {
 	type: "subscribe-response",
 	success: boolean
@@ -555,7 +558,7 @@ export declare type CliGatewaySelectProfileEvent = {
 
 
 export declare type CliGatewayEvent = CliGatewayProofState | CliGatewayEvaluatorState 
-	| CliGatewayMathObjects | CliGatewayPrintProofCommand | CliGatewayQED;
+	| CliGatewayMathObjects | CliGatewayPrintProofCommand | CliGatewayQED | CliGatewayQuit;
 export declare interface CliGatewayProofState extends CliGatewayProofStateInfo {  
 	channelID: string
 };
@@ -569,6 +572,9 @@ export declare interface CliGatewayMathObjects extends CliGatewayMathObjectsInfo
 	channelID: string
 };
 export declare interface CliGatewayQED extends CliGatewayQEDEvent {
+	channelID: string
+};
+export declare interface CliGatewayQuit extends CliGatewayQuitEvent {
 	channelID: string
 };
 //  | { 

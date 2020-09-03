@@ -1222,7 +1222,7 @@ export class PvsProxy {
 									shasum
 								});
 								// save proof in the jprf file
-								await this.saveProof({
+								await this.saveProofAsJprf({
 									fileName: formula.fileName,
 									fileExtension: formula.fileExtension,
 									theoryName: formula.theoryName,
@@ -1247,7 +1247,7 @@ export class PvsProxy {
 						});
 					}
 					// save proof in the jprf file
-					await this.saveProof({
+					await this.saveProofAsJprf({
 						fileName: formula.fileName,
 						fileExtension: formula.fileExtension,
 						theoryName: formula.theoryName,
@@ -1267,11 +1267,12 @@ export class PvsProxy {
 		}
 		return null;
 	}
+
 	/**
-	 * Saves the proof script for the formula indicated in the request
-	 * @param desc 
+	 * Saves the given proof script in .jprf format
+	 * @param desc Proof descriptor
 	 */
-	async saveProof (desc: { 
+	async saveProofAsJprf (desc: { 
 		fileName: string, 
 		fileExtension: string, 
 		theoryName: string, 
@@ -1296,7 +1297,10 @@ export class PvsProxy {
 		console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", desc);
 		return false;
 	}
-
+	/**
+	 * Saves the given proof script in prooflite (.prl) format
+	 * @param desc Proof descriptor
+	 */
 	async saveProoflite (desc: { 
 		fileName: string, 
 		fileExtension: string, 
@@ -1323,8 +1327,11 @@ export class PvsProxy {
 		}
 		return false;
 	}
-
-	async saveAsPrj (desc: { 
+	/**
+	 * Saves the given proof script in .prf format via prooflite
+	 * @param desc Proof descriptor
+	 */
+	async saveProofliteAsPrf (desc: { 
 		fileName: string, 
 		fileExtension: string, 
 		theoryName: string, 
@@ -1336,7 +1343,21 @@ export class PvsProxy {
 		const pvsResponse: PvsResponse = await this.saveProofWithFormula(desc, prl);
 		return pvsResponse && pvsResponse.result;
 	}
-
+	/**
+	 * Saves the given proof script in .prf (legacy) format
+	 * @param desc Proof descriptor
+	 */
+	async saveProofAsPrf (desc: { 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		formulaName: string, 
+		contextFolder: string, 
+		proofDescriptor: ProofDescriptor
+	}): Promise <boolean> {
+		// TODO -- rerun entire proof and use 'save-all-proofs'
+		return this.saveProofliteAsPrf(desc);
+	}
 	/**
 	 * Returns the prooflite script for the given formula -- FIXME: display-prooflite-script is not working, we need to use languageUtils.proofTree2ProofLite()
 	 */

@@ -1650,7 +1650,7 @@ export function isUnchecked (proofStatus: ProofStatus): boolean {
 export function makeEmptyTheory (theoryName: string): string {
 	return `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % @theory: ${theoryName}
-% @author: xxx
+% @author: ${(process && process.env && process.env.USER) ? process.env.USER : "xxx"}
 % @date: ${new Date().toUTCString()}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

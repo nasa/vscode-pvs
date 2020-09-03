@@ -1788,7 +1788,7 @@ export class PvsLanguageServer {
 						case "back": { this.proofExplorer.back(); break; }
 						case "fast-forward": { this.proofExplorer.fastForwardToNodeX(desc); break; }
 						case "run": { await this.proofExplorer.run({ feedbackToTerminal: true }); break; }
-						case "quit": { await this.proofExplorer.quitProof(); break; }
+						case "quit": { await this.proofExplorer.quitProof({ notifyCliGateway: true }); break; }
 						//------
 						case "append-node": { this.proofExplorer.appendNodeX(desc); break; }
 						case "copy-node": { this.proofExplorer.copyNodeX(desc); break; }
