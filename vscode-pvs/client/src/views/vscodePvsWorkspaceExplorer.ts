@@ -679,7 +679,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			ignoreFocusOut: true 
 		});
 		if (fileName) {
-			const theoryName = fsUtils.getFileName(fileName); // this will remove the extension
+			const theoryName = fsUtils.getFileName(fileName); // this will remove the extension, if any has been specified in the dialog
 			const contextFolder: string = this.getCurrentWorkspace() || workspace.rootPath;
 			const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
 			const uri: Uri = Uri.parse(`file://${fname}`, true);

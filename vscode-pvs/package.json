@@ -49,7 +49,7 @@
 		"viewsWelcome": [
 			{
 				"view": "workspace-explorer-view",
-				"contents": "The selected workspace does not contain PVS files.\n[Open PVS Workspace](command:vscode-pvs.open-pvs-workspace)\n or \n[Create PVS File](command:vscode-pvs.new-pvs-file)"
+				"contents": "You have not yet opened a PVS Workspace.\n[Open PVS Workspace](command:vscode-pvs.open-pvs-workspace)"
 			}
 		],
 		"configuration": [
