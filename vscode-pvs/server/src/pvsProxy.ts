@@ -1279,13 +1279,16 @@ export class PvsProxy {
 		contextFolder: string, 
 		proofDescriptor: ProofDescriptor
 	}): Promise<boolean> {
-		if (desc) {
+		if (desc && desc.fileName && desc.contextFolder && desc.formulaName && desc.theoryName && desc.proofDescriptor && desc.proofDescriptor.info) {
 			desc = fsUtils.decodeURIComponents(desc);
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
 			let proofFile: ProofFile = await utils.readProofFile(fname);
 			proofFile = proofFile || {};
 			const key: string = `${desc.theoryName}.${desc.formulaName}`;
-			proofFile[key] = [ desc.proofDescriptor ]; // TODO: implement mechanism to save a specific proof?
+			// update date in proof descriptor
+			desc.proofDescriptor.info.date = new Date().toISOString();
+			// TODO: implement mechanism to save a specific proof?
+			proofFile[key] = [ desc.proofDescriptor ];
 			const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
 			return success;
 		}

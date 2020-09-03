@@ -2313,7 +2313,7 @@ export class PvsProofExplorer {
 			this.connection.sendRequest(serverEvent.querySaveProof, { args: formula }); // this will trigger the confirmation dialog
 			await Promise.resolve(new Promise((resolve, reject) => {
 				this.connection.onRequest(serverEvent.querySaveProofResponse, async (response: ProofEditSave | ProofExecQuit) => {
-					if (response && response.action && response.action === "save") {
+					if (response && response.action && response.action === "save-proof") {
 						await this.saveProof();
 					}
 					resolve();

@@ -535,7 +535,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		const actionConfirmed: boolean = await this.queryConfirmation(msg);
 		if (actionConfirmed) {
 			// send quit to the terminal
-			const action: ProofEditSave = { action: "save" };
+			const action: ProofEditSave = { action: "save-proof" };
 			this.client.sendRequest(serverEvent.querySaveProofResponse, action);
 		} else {
 			// send quit to the terminal
@@ -600,12 +600,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof", () => {
 			// save proof without asking confirmation
-			const action: ProofEditSave = { action: "save" };
+			const action: ProofEditSave = { action: "save-proof" };
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof-as-prf", () => {
 			// save proof without asking confirmation
-			const action: ProofEditSaveAs = { action: "save-as", fileExtension: ".prf" };
+			const action: ProofEditSaveAs = { action: "save-proof-as", fileExtension: ".prf" };
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", async () => {

@@ -487,34 +487,10 @@ export class EventsDispatcher {
             }
         });
 
-        // this.client.onRequest(serverEvent.saveProofForceQuitEvent, (request: { 
-        //     args: PvsProofCommand
-		// }) => {
-        //     this.proofExplorer.saveProof({ force: true, quiet: true });
-        //     this.vscodePvsTerminal.deactivate();
-        // });
-
 		this.client.onRequest(serverEvent.getContextDescriptorResponse, (desc: PvsContextDescriptor) => {
             this.workspaceExplorer.updateContextFolder(desc);
         });
 
-		// this.client.onRequest(serverEvent.saveProofEvent, (request: { 
-        //     args: PvsProofCommand
-		// }) => {
-		// 	this.proofExplorer.saveProof({ quiet: true, force: true });
-        // });
-		// this.client.onRequest(serverEvent.redoCommandEvent, (request: { 
-        //     args: {
-        //         fileName: string, 
-        //         fileExtension: string, 
-        //         contextFolder: string, 
-        //         theoryName: string, 
-        //         formulaName: string, 
-        //         cmd: string
-        //     } 
-		// }) => {
-		// 	this.proofExplorer.redo();		
-        // });
 		this.client.onRequest(serverEvent.querySaveProof, async (request: {
             args: PvsProofCommand
 		}) => {
@@ -525,20 +501,13 @@ export class EventsDispatcher {
                 console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
             }
         });
-        // this.client.onRequest(serverEvent.querySaveThenProveFormula, async (request: {
-        //     args: PvsFormula
-		// }) => {
-        //     if (request) {
-        //         await this.proofExplorer.querySaveProof();
-        //     } else {
-        //         console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
-        //     }
-		// });
+
 		this.client.onRequest(serverEvent.QED, (request: {
             args: PvsProofCommand
 		}) => {
             this.vscodePvsTerminal.deactivate();
         });
+
         this.client.onRequest(serverEvent.showProofLiteResponse, (desc: { 
             response: string, 
             args: PvsFormula
@@ -547,6 +516,7 @@ export class EventsDispatcher {
                 vscodeUtils.previewTextDocument(`${desc.args.theoryName}.prlite`, desc.response, { contextFolder: desc.args.contextFolder, viewColumn: vscode.ViewColumn.Beside });
             }
         });
+
         this.client.onRequest(serverEvent.generateSummaryResponse, (desc: { 
             response: PvsFile,
             args: { 
@@ -565,9 +535,11 @@ export class EventsDispatcher {
         this.client.onNotification(serverEvent.profilerData, (data: string) => {
             this.logger.profilerData(data);
         });
+
         this.client.onNotification(serverEvent.proverData, (data: string) => {
             this.logger.proverData(data);
         });
+        
         this.client.onNotification("pvs.progress-info", (data: string) => {
             this.statusBar.showProgress(data);
         });

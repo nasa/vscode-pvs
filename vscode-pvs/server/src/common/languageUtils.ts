@@ -479,6 +479,34 @@ export async function getProofStatus (desc: {
 	return null;
 }
 
+/**
+ * Utility function, returns the date (day and time) a given proof was saved
+ * @param desc 
+ */
+export async function getProofDate (desc: { 
+	fileName: string, 
+	fileExtension: string, 
+	contextFolder: string, 
+	theoryName: string, 
+	formulaName: string
+}): Promise<string | null> {
+	if (desc) {
+		// check if the .jprf file contains the date
+		const jprf_file: string = fsUtils.desc2fname({
+			fileName: desc.fileName, 
+			fileExtension: ".jprf", 
+			contextFolder: desc.contextFolder
+		});
+		const proofFile: ProofFile = await readProofFile(jprf_file);
+		if (proofFile) {
+			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
+			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
+				return proofDescriptors[0].info.date;
+			}
+		}
+	}
+	return null;
+}
 
 
 /**
@@ -1256,7 +1284,8 @@ export function prf2jprf (desc: {
 				formula: desc.formulaName,
 				status: "untried", // the prf file does not include the proof status
 				prover: pvsVersionToString(desc.version) || "PVS 7.x",
-				shasum: desc.shasum
+				shasum: desc.shasum,
+				date: new Date().toISOString()
 			}
 		};
 		if (desc.prf) {

@@ -204,7 +204,8 @@ export class ProofDescriptor {
 		formula: string, // formula name
 		status: ProofStatus, // proof status (proved, untried, unfininshed,...)
 		prover: string, // prover version
-		shasum: string // digest, obtained from the file content after removing all spaces
+		shasum: string, // digest, obtained from the file content after removing all spaces
+		date?: string // day and time the proof was saved, ISO format, e.g., 2011-10-10T14:48:00
 	};
 	proofTree?: ProofNode;
 }
@@ -376,8 +377,6 @@ export const serverRequest = {
 	typecheckFile: "pvs.typecheck-file",
 	proveFormula: "pvs.prove-formula",
 	autorunFormula: "pvs.autorun-formula",
-	// loadProof: "pvs.load-proof",
-	// saveProof: "pvs.save-proof",
 	showProofLite: "pvs.show-prooflite",
 	proofCommand: "pvs.proof-command",
 	evaluateExpression: "pvs.evaluate-expression",
@@ -408,8 +407,6 @@ export const serverRequest = {
 
 	cancelOperation: "pvs.cancel-operation",
 
-	// proofExecCommand: "pvs.command.proof-exec",
-	// proofEditCommand: "pvs.command.proof-edit",
 	proverCommand: "pvs.prover-command",
 
 	listDownloadableVersions: "pvs.list-downloadable-versions",
@@ -417,8 +414,6 @@ export const serverRequest = {
 	downloadLicensePage: "pvs.download-license-page",
 
 	downloadNasalib: "pvs.download-nasalib",
-	// setNasalibPath: "pvs.set-nasalib-path"
-
 };
 
 export const serverEvent = {
@@ -653,10 +648,10 @@ export type ProofEditRenameNode = {
 	selected: { id: string, name: string }
 };
 export type ProofEditSave = {
-	action: "save"
+	action: "save-proof"
 };
 export type ProofEditSaveAs = {
-	action: "save-as",
+	action: "save-proof-as",
 	fileExtension: string
 };
 

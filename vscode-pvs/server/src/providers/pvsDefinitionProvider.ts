@@ -190,7 +190,18 @@ export class PvsDefinitionProvider {
 								theoryName: info.theoryid,
 								formulaName: info.declname
 							});
-							comment += `Formula ${info.declname} (${utils.getIcon(proofStatus)} ${proofStatus})`;
+							comment += `Formula ${info.declname} (${utils.getIcon(proofStatus)}${proofStatus})`;
+							// try to fetch proof date
+							const date: string = await utils.getProofDate({
+								contextFolder: fsUtils.getContextFolder(fname),
+								fileName: fsUtils.getFileName(fname),
+								fileExtension: fsUtils.getFileExtension(fname),
+								theoryName: info.theoryid,
+								formulaName: info.declname
+							});
+							if (date) {
+								comment += ` (${new Date(date).toLocaleString()})`;
+							}
 						}
 						const def: PvsDefinition = {
 							theory: currentTheory,
