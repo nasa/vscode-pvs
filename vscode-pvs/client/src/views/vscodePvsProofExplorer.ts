@@ -47,7 +47,7 @@ import {
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofEditSave, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditSaveAs 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditSaveAs, ProofExecOpenProof, PvsFile 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -478,6 +478,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		if (proof.rules && proof.rules.length) {
 			this.root.children = this.convertNodeX2ProofItem(proof, this.root);
 		}
+		this.refreshView();
 	}
 	/**
 	 * Loads a proof descriptor in proof-explorer
@@ -613,6 +614,34 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const action: ProofEditSaveAs = { action: "save-proof-as", fileExtension: ".prl" };
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.new-proof", async () => {
+			if (this.root) {
+				commands.executeCommand("proof-explorer.delete-node", this.root);
+			}
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.open-proof", async () => {
+			if (this.formula && this.formula.theoryName && this.formula.formulaName) {
+				const desc: PvsFile = await vscodeUtils.openProofFile();
+				if (desc && desc.fileExtension) {
+					const formula: PvsFormula = {
+						fileName: desc.fileName,
+						fileExtension: desc.fileExtension,
+						contextFolder: desc.contextFolder,
+						theoryName: this.formula.theoryName,
+						formulaName: this.formula.formulaName
+					};
+					const pdesc: ProofDescriptor = await utils.getProofDescriptor(formula);
+					if (pdesc) {
+						const action: ProofExecOpenProof = {
+							action: "open-proof",
+							proofFile: desc,
+							formula: this.formula
+						};
+						this.client.sendRequest(serverRequest.proverCommand, action);
+					}
+				}
+			}
+		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", async () => {
 			// ask confirmation before quitting proof
 			const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
@@ -673,7 +702,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.delete-node", async (resource: ProofItem) => {
 			// ask confirmation before deleting a node
-			const msg: string = (resource.contextValue === "root") ? `Delete entire proof?` : `Delete ${resource.name}?`;
+			const msg: string = (resource.contextValue === "root") ? `Delete current proof?` : `Delete ${resource.name}?`;
 			const actionConfirmed: boolean = await this.queryConfirmation(msg);
 			if (actionConfirmed) {
 				const action: ProofEditDeleteNode = { action: "delete-node", selected: { id: resource.id, name: resource.name } };
@@ -682,7 +711,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.trim-node", async (resource: ProofItem) => {
-			const msg: string = resource.contextValue === "root" ? `Delete entire proof?` 
+			const msg: string = resource.contextValue === "root" ? `Delete current proof?` 
 				: resource.contextValue === "proof-branch" ? `Delete proof commands in branch ${resource.name}?`
 					: `Delete proof commands after ${resource.name}?`;
 			const actionConfirmed: boolean = await this.queryConfirmation(msg);
@@ -693,7 +722,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.delete-tree", async (resource: ProofItem) => {
-			const msg: string = (resource.contextValue === "root") ? `Delete entire proof?` 
+			const msg: string = (resource.contextValue === "root") ? `Delete current proof?` 
 					: `Delete ${resource.name}?`;
 			const actionConfirmed: boolean = await this.queryConfirmation(msg);
 			if (actionConfirmed) {

@@ -1303,7 +1303,7 @@ export class PvsProxy {
 	 */
 	async saveProoflite (desc: { 
 		fileName: string, 
-		fileExtension: string, 
+		fileExtension: ".prl", 
 		theoryName: string, 
 		formulaName: string, 
 		contextFolder: string, 
@@ -1333,7 +1333,7 @@ export class PvsProxy {
 	 */
 	async saveProofliteAsPrf (desc: { 
 		fileName: string, 
-		fileExtension: string, 
+		fileExtension: ".prf", 
 		theoryName: string, 
 		formulaName: string, 
 		contextFolder: string, 
@@ -1349,7 +1349,7 @@ export class PvsProxy {
 	 */
 	async saveProofAsPrf (desc: { 
 		fileName: string, 
-		fileExtension: string, 
+		fileExtension: ".prf", 
 		theoryName: string, 
 		formulaName: string, 
 		contextFolder: string, 

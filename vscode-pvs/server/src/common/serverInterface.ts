@@ -737,7 +737,7 @@ export type ProofEditDidStartNewProof = {
 
 // ProofExec
 export type ProofExecCommand = ProofExecForward | ProofExecBack | ProofExecFastForward | ProofExecRun
-	| ProofExecQuit;
+	| ProofExecQuit | ProofExecOpenProof;
 export type ProofExecForward = {
 	action: "forward"
 };
@@ -754,9 +754,18 @@ export type ProofExecRun = {
 export type ProofExecQuit = {
 	action: "quit"
 };
+export type ProofExecOpenProof = {
+	action: "open-proof",
+	proofFile: {
+		fileName: string,
+		fileExtension: string,
+		contextFolder: string
+	},
+	formula: PvsFormula
+};
 
 export type ProofExecEvent = ProofExecDidStartProof | ProofExecDidLoadProof | ProofExecDidLoadSequent
-	| ProofExecDidEndProof | ProofExecDidUpdateSequent;
+	| ProofExecDidEndProof | ProofExecDidUpdateSequent | ProofExecDidOpenProof;
 export type ProofExecDidStartProof = {
 	action: "did-start-proof"
 };
@@ -777,6 +786,11 @@ export type ProofExecDidLoadProof = {
 };
 export type ProofExecDidEndProof = {
 	action: "did-end-proof"
+};
+export type ProofExecDidOpenProof = {
+	action: "did-open-proof",
+	proofFile: PvsFile,
+	formula: PvsFormula
 };
 
 // WorkspaceExec

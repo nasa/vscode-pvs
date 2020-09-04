@@ -387,13 +387,7 @@ export class PvsLanguageServer {
 					this.proofExplorer.loadInitialSequent(result[0]);
 
 					// start proof in proof explorer
-					this.proofExplorer.startProof({ autorun: !!opt.autorun, autorunCallback: (status: ProofStatus) => {
-						// the autorun call back is executed at the end of a proof re-run
-						if (this.connection) {
-							this.connection.sendRequest(serverEvent.autorunFormulaResponse, status);
-							this.notifyServerMode("lisp");
-						}
-					}});
+					this.proofExplorer.startProof({ autorun: !!opt.autorun });
 
 					if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
 						this.notifyEndImportantTask({ id: taskId });
@@ -1803,6 +1797,7 @@ export class PvsLanguageServer {
 						case "trim-node": { this.proofExplorer.trimNodeX(desc); break; }
 						case "trim-unused": { this.proofExplorer.removeNotVisitedX(desc); break; }
 						case "rename-node": { this.proofExplorer.renameNodeX(desc); break; }
+						case "open-proof": { await this.proofExplorer.openProofRequest(desc.proofFile, desc.formula); break; }
 						case "save-proof": { await this.proofExplorer.saveProof(); break; }
 						case "save-proof-as": { await this.proofExplorer.saveProofAs(desc); break; }
 						//------

@@ -453,9 +453,15 @@
 				"category": "pvs"
 			},
 			{
+				"command": "proof-explorer.new-proof",
+				"title": "New Proof",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
 				"command": "proof-explorer.open-proof",
-				"title": "Open Proof File...",
-				"enablement": "false",
+				"title": "Open...",
+				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
 			{
@@ -866,9 +872,14 @@
 					"group": "navigation"
 				},
 				{
-					"command": "proof-explorer.open-proof",
+					"command": "proof-explorer.new-proof",
 					"when": "view == proof-explorer-view",
 					"group": "ctrl-0"
+				},
+				{
+					"command": "proof-explorer.open-proof",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-0.1"
 				},
 				{
 					"command": "proof-explorer.save-proof",

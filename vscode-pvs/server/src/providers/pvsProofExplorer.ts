@@ -66,7 +66,10 @@ import {
 	ProofExecQuit,
 	ProofEditDidStartNewProof,
 	CliGatewayQuitEvent,
-	CliGatewayQuit
+	CliGatewayQuit,
+	ProofFile,
+	ProofExecDidOpenProof,
+	PvsFile
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -75,6 +78,7 @@ import { SequentDescriptor } from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
 import { PvsProxy } from '../pvsProxy';
 import { PvsLanguageServer } from '../pvsLanguageServer';
+import * as path from 'path';
 
 abstract class TreeItem {
 	id: string;
@@ -1985,11 +1989,17 @@ export class PvsProofExplorer {
 	/**
 	 * Utility function, activates the proof loaded in the view (i.e., sets the first node as active)
 	 */
-	startProof (opt?: { autorun?: boolean, autorunCallback?: (status: ProofStatus) => void }): void {
+	startProof (opt?: { autorun?: boolean }): void {
 		opt = opt || {};
 		if (this.root) {
 			this.autorunFlag = !!opt.autorun;
-			this.autorunCallback = opt.autorunCallback;
+			this.autorunCallback = (status: ProofStatus) => {
+				// the autorun call back is executed at the end of a proof re-run
+				if (this.connection) {
+					this.connection.sendRequest(serverEvent.autorunFormulaResponse, status);
+					this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
+				}
+			};
 
 			this.root.sequentDescriptor = this.initialProofState;
 			this.root.updateTooltip({ internalAction: this.autorunFlag });
@@ -2060,7 +2070,7 @@ export class PvsProofExplorer {
 	 * Loads the proof for a given formula
 	 * @param formula 
 	 */
-	async loadProof (formula: PvsFormula): Promise<ProofDescriptor> {
+	async loadProofRequest (formula: PvsFormula): Promise<ProofDescriptor> {
 		this.formula = formula;
 		if (this.pvsProxy) {
 			const pdesc: ProofDescriptor = await this.pvsProxy.loadProof(formula);
@@ -2080,22 +2090,22 @@ export class PvsProofExplorer {
 	 * Loads the proof for a given formula
 	 * @param formula 
 	 */
-	async loadProofRequest (formula: PvsFormula): Promise<ProofDescriptor | null> {
-		const pdesc: ProofDescriptor = await this.loadProof(formula);
-		if (pdesc) {
-			const structure: ProofNodeX = this.root.getNodeXStructure();
-			const evt: ProofExecDidLoadProof = { 
-				action: "did-load-proof", 
-				formula: this.formula, 
-				desc: pdesc,
-				proof: structure
-			};
-			if (this.connection && !this.autorunFlag) {
-				this.connection.sendNotification(serverEvent.proverEvent, evt);
-			}
-		}
-		return pdesc;
-	}
+	// async loadProofRequest (formula: PvsFormula): Promise<ProofDescriptor | null> {
+	// 	const pdesc: ProofDescriptor = await this.loadProof(formula);
+	// 	if (pdesc) {
+	// 		const structure: ProofNodeX = this.root.getNodeXStructure();
+	// 		const evt: ProofExecDidLoadProof = { 
+	// 			action: "did-load-proof", 
+	// 			formula: this.formula, 
+	// 			desc: pdesc,
+	// 			proof: structure
+	// 		};
+	// 		if (this.connection && !this.autorunFlag) {
+	// 			this.connection.sendNotification(serverEvent.proverEvent, evt);
+	// 		}
+	// 	}
+	// 	return pdesc;
+	// }
 
 	/**
 	 * Internal function, used by loadProof to load the proof descriptor of a given formula in proof-explorer
@@ -2131,6 +2141,17 @@ export class PvsProofExplorer {
 				});
 			}
 			this.proofDescriptor = desc;
+
+			const structure: ProofNodeX = this.root.getNodeXStructure();
+			const evt: ProofExecDidLoadProof = { 
+				action: "did-load-proof", 
+				formula: this.formula, 
+				desc: this.proofDescriptor,
+				proof: structure
+			};
+			if (this.connection && !this.autorunFlag) {
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
+			}
 		} else {
 			console.warn(`[proof-explorer] Warning: null descriptor`);
 		}
@@ -2166,7 +2187,64 @@ export class PvsProofExplorer {
 		};
 		return proofDescriptor;
 	}
-	
+	/**
+	 * Loads a proof file in proof explorer
+	 */
+	async openProofRequest (desc: PvsFile, formula: PvsFormula): Promise<void> {
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
+				&& formula && formula.fileName && formula.fileExtension 
+				&& formula.theoryName && formula.formulaName) {
+			let pdesc: ProofDescriptor = null;
+			switch (desc.fileExtension) {
+				case ".jprf": {
+					const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
+					let proofFile: ProofFile = await utils.readProofFile(fname);
+					const key: string = `${formula.theoryName}.${formula.formulaName}`;
+					// try to load the proof from the .jprf file
+					if (proofFile && proofFile[key] && proofFile[key].length > 0) {
+						pdesc = proofFile[key][0];
+					}
+					break;
+				}
+				case ".prf": {
+					const response: PvsResponse = await this.pvsProxy.proofScript({
+						fileName: desc.fileName,
+						fileExtension: desc.fileExtension,
+						contextFolder: desc.contextFolder,
+						formulaName: formula.formulaName,
+						theoryName: formula.theoryName
+					});
+					if (response && response.result) {
+						const pvsVersionDescriptor = this.pvsProxy.getPvsVersionInfo();
+						const shasum: string = await fsUtils.shasumFile(formula);
+						pdesc = utils.prf2jprf({
+							prf: response.result,
+							theoryName: formula.theoryName, 
+							formulaName: formula.formulaName, 
+							version: pvsVersionDescriptor,
+							shasum
+						});
+					}
+				}
+				default: {
+					console.warn(`[proof-explorer] Warning: trying to load unrecognized proof format ${desc.fileExtension}`);
+					break;
+				}
+			}
+			if (pdesc) {
+				this.loadProofDescriptor(pdesc);
+				const evt: ProofExecDidOpenProof = { 
+					action: "did-open-proof",
+					proofFile: desc,
+					formula
+				};
+				if (this.connection) {
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
+				}
+				this.startProof();
+			}
+		}
+	}
 	/**
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
@@ -2175,13 +2253,18 @@ export class PvsProofExplorer {
 		if (desc) {
 			// update proof descriptor
 			this.proofDescriptor = this.makeProofDescriptor();
+			const proofFile: PvsFile = {
+				fileName: this.formula.fileName,
+				fileExtension: desc.fileExtension,
+				contextFolder: this.formula.contextFolder
+			}
 			let success: boolean = false;
 			switch (desc.fileExtension) {
 				case ".prf": {
 					success = await this.pvsProxy.saveProofliteAsPrf({ 
-						fileName: this.formula.fileName,
-						fileExtension: this.formula.fileExtension,
-						contextFolder: this.formula.contextFolder,
+						fileName: proofFile.fileName,
+						fileExtension: ".prf",
+						contextFolder: proofFile.contextFolder,
 						theoryName: this.formula.theoryName,
 						formulaName: this.formula.formulaName,
 						proofDescriptor: this.proofDescriptor
@@ -2190,9 +2273,9 @@ export class PvsProofExplorer {
 				}
 				case ".prl": {
 					success = await this.pvsProxy.saveProoflite({ 
-						fileName: this.formula.fileName,
-						fileExtension: this.formula.fileExtension,
-						contextFolder: this.formula.contextFolder,
+						fileName: proofFile.fileName,
+						fileExtension: ".prl",
+						contextFolder: proofFile.contextFolder,
 						theoryName: this.formula.theoryName,
 						formulaName: this.formula.formulaName,
 						proofDescriptor: this.proofDescriptor
@@ -2206,23 +2289,34 @@ export class PvsProofExplorer {
 					return;
 				}
 			}
-			this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success, fileExtension: desc.fileExtension }, args: this.formula });
+			this.connection.sendRequest(serverEvent.saveProofResponse, { 
+				response: { 
+					success,
+					proofFile,
+					formula: this.formula
+				}, 
+				args: this.formula 
+			});
 		} else {
 			this.connection.sendNotification("server.status.error", `Error: could not save proof (null descriptor)`);
 		}
 	}
 	/**
 	 * Save the current proof on file
-	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
 	async saveProof (): Promise<void> {
+		const proofFile: PvsFile = {
+			fileName: this.formula.fileName,
+			fileExtension: ".jprf",
+			contextFolder: this.formula.contextFolder,
+		}
 		// update proof descriptor
 		this.proofDescriptor = this.makeProofDescriptor();
 		// save proof descriptor to file
 		const success: boolean = await this.pvsProxy.saveProofAsJprf({ 
-			fileName: this.formula.fileName,
-			fileExtension: this.formula.fileExtension,
-			contextFolder: this.formula.contextFolder,
+			fileName: proofFile.fileName,
+			fileExtension: proofFile.fileExtension,
+			contextFolder: proofFile.contextFolder,
 			theoryName: this.formula.theoryName,
 			formulaName: this.formula.formulaName,
 			proofDescriptor: this.proofDescriptor
@@ -2232,25 +2326,32 @@ export class PvsProofExplorer {
 			this.dirtyFlag = false;
 			if (this.proofDescriptor.info.status === "proved") {
 				await this.pvsProxy.saveProofAsPrf({ 
-					fileName: this.formula.fileName,
-					fileExtension: this.formula.fileExtension,
-					contextFolder: this.formula.contextFolder,
+					fileName: proofFile.fileName,
+					fileExtension: ".prf",
+					contextFolder: proofFile.contextFolder,
 					theoryName: this.formula.theoryName,
 					formulaName: this.formula.formulaName,
 					proofDescriptor: this.proofDescriptor
 				});
 			} else {
 				await this.pvsProxy.saveProofliteAsPrf({ 
-					fileName: this.formula.fileName,
-					fileExtension: this.formula.fileExtension,
-					contextFolder: this.formula.contextFolder,
+					fileName: proofFile.fileName,
+					fileExtension: ".prf",
+					contextFolder: proofFile.contextFolder,
 					theoryName: this.formula.theoryName,
 					formulaName: this.formula.formulaName,
 					proofDescriptor: this.proofDescriptor
 				});
 			}
 		}
-		this.connection.sendRequest(serverEvent.saveProofResponse, { response: { success }, args: this.formula });
+		this.connection.sendRequest(serverEvent.saveProofResponse, {
+			response: { 
+				success,
+				proofFile,
+				formula: this.formula
+			}, 
+			args: this.formula 
+		});
 	}
 	/**
 	 * Quit the current proof

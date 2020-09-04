@@ -253,6 +253,41 @@ export async function openPvsFileOrWorkspace (): Promise<string> {
     }
     return null;
 }
+/**
+ * Opens a proof file and returns the file content
+ */
+export async function openProofFile (opt?: { defaultFolder?: string }): Promise<{
+    fileName: string,
+    fileExtension: string,
+    contextFolder: string
+} | null> {
+    opt = opt || {};
+    const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        openLabel: "Open Proof File",
+        defaultUri: (opt.defaultFolder) ? vscode.Uri.parse(opt.defaultFolder) : null,
+        filters: {
+            "Proof Files": [ ".prf", ".prl", ".jprf" ],
+            "PRF  (Legacy)": [ ".prf" ],
+            "PRL  (ProofLite)": [ ".prl" ],
+            "JPRF (VSCode-PVS)": [ ".jprf" ]
+        }
+    });
+    if (selection && selection.length === 1) {
+        const fname: string = selection[0].path;
+        const fileName: string = fsUtils.getFileName(fname);
+        const fileExtension: string = fsUtils.getFileExtension(fname);
+        const contextFolder: string = fsUtils.getContextFolder(fname);
+        return {
+            fileName,
+            fileExtension,
+            contextFolder
+        };
+    }
+    return null;
+}
 
 export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: string }): Promise<PvsTheory | null> {
 	if (resource) {

@@ -53,6 +53,7 @@ import * as commandUtils from './common/commandUtils';
 import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsLogger } from "./views/vscodePvsLogger";
 import { VSCodePvsPackageManager } from "./providers/vscodePvsPackageManager";
+import * as path from 'path';
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -183,15 +184,20 @@ export class EventsDispatcher {
                 // make sure a valid workspace is open in vscode
                 if (!vscode.workspace.name) {
                     const fname: string = (vscode.window && vscode.window.activeTextEditor 
-                                                && vscode.window.activeTextEditor.document
-                                                && vscode.window.activeTextEditor.document.fileName) ? vscode.window.activeTextEditor.document.fileName : null;
-                    const cc: string = fsUtils.getContextFolder(fname);
-                    const uri: vscode.Uri = vscode.Uri.file(cc);
-                    commands.executeCommand('vscode.openFolder', uri).then(async () => {
-                        await window.showTextDocument(uri, { preserveFocus: true, preview: true });
-                        commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: " :: Ready! ::"});
-                        // commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: ` :: ${cc} ::`});
-                    });
+                        && vscode.window.activeTextEditor.document
+                        && vscode.window.activeTextEditor.document.fileName) ? 
+                            vscode.window.activeTextEditor.document.fileName 
+                            : null;
+                    if (fname) {
+                        const cc: string = fsUtils.getContextFolder(fname);
+                        if (cc) {
+                            const uri: vscode.Uri = vscode.Uri.file(cc);
+                            commands.executeCommand('vscode.openFolder', uri).then(async () => {
+                                await window.showTextDocument(uri, { preserveFocus: true, preview: true });
+                                commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: " :: Ready! ::"});
+                            });
+                        }
+                    }
                 } else {
                     commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: " :: Ready! ::"});
                     // commands.executeCommand("vscode-pvs.show-version-info", { trailingNote: ` :: ${vscode.workspace.name} ::`});
@@ -382,12 +388,24 @@ export class EventsDispatcher {
                     this.proofMate.loadFormula(desc.formula);
                     break;    
                 }
+                case "did-open-proof": {
+                    if (desc && desc.formula) {
+                        const fname: string = fsUtils.desc2fname(desc.formula);
+                        window.showInformationMessage(`Proof ${desc.formula.formulaName} successfully loaded from ${fname}`);
+                    } else {
+                        window.showWarningMessage(`Failed to load proof (null descriptor)`);
+                    }
+                }
             }
         });
 
         // register handler that will resolve the promise when the proof needs to be saved
         this.client.onRequest(serverEvent.saveProofResponse, (desc: {
-            response: { success: boolean, fileExtension?: string }, 
+            response: { 
+                success: boolean,
+                proofFile: PvsFile,
+                formula: PvsFormula
+            }, 
             args: { 
                 fileName: string, 
                 fileExtension: string, 
@@ -397,15 +415,15 @@ export class EventsDispatcher {
                 proofDescriptor: ProofDescriptor
             }
         }) => {
-            const fname: string = (desc && desc.response && desc.response.fileExtension) ? 
-                `${desc.args.fileName}${desc.response.fileExtension}` 
-                : `${desc.args.fileName}.jprf`;
-            if (desc.response.success) {
+            if (desc && desc.response && desc.response.success && desc.response.proofFile && desc.response.formula) {
+                const fname: string = fsUtils.desc2fname(desc.response.proofFile);
                 if (!this.quietMode) {
-                    window.showInformationMessage(`Proof ${desc.args.formulaName} saved in file ${fname}`);
+                    window.showInformationMessage(`Proof ${desc.response.formula.formulaName} saved in file ${fname}`);
                 }
             } else {
-                window.showErrorMessage(`Unexpected error while saving file ${fname} (please check pvs-server output for details)`);
+                if (desc.args) {
+                    window.showErrorMessage(`Unexpected error while saving file ${fsUtils.desc2fname(desc.args)} (please check pvs-server output for details)`);
+                }
             }
         });
 

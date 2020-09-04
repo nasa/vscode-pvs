@@ -480,6 +480,35 @@ export async function getProofStatus (desc: {
 }
 
 /**
+ * Utility function, returns the proof descriptor for a given formula
+ * @param desc 
+ */
+export async function getProofDescriptor (desc: { 
+	fileName: string, 
+	fileExtension: string, 
+	contextFolder: string, 
+	theoryName: string, 
+	formulaName: string
+}): Promise<ProofDescriptor> {
+	if (desc) {
+		// check if the .jprf file contains the proof status
+		const jprf_file: string = fsUtils.desc2fname({
+			fileName: desc.fileName, 
+			fileExtension: ".jprf", 
+			contextFolder: desc.contextFolder
+		});
+		const proofFile: ProofFile = await readProofFile(jprf_file);
+		if (proofFile) {
+			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
+			if (proofDescriptors && proofDescriptors.length) {
+				return proofDescriptors[0];
+			}
+		}
+	}
+	return null;
+}
+
+/**
  * Utility function, returns the date (day and time) a given proof was saved
  * @param desc 
  */
