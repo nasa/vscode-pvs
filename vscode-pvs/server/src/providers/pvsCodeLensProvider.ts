@@ -41,6 +41,7 @@ import { CancellationToken, CodeLens, CodeLensRequest, Range } from 'vscode-lang
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 import { PvsFormula } from '../common/serverInterface';
+import * as path from 'path';
 
 export class PvsCodeLensProvider {    
     /**
@@ -144,6 +145,42 @@ export class PvsCodeLensProvider {
                             });
                         }
                     }
+                }
+            }
+
+            if (fileExtension === ".prlite") {
+                while (match = utils.proofRegexp.exec(content)) {
+                    if (match.length > 1 && match[1]) {
+                        const formulaName: string = match[1];
+                        const theoryName: string = fileName; // by convention, .prlite filename is the theoryName
+                            
+                        const docUp: string = content.slice(0, match.index + theoryName.length);
+                        const lines: string[] = docUp.split("\n");
+                        const line: number = lines.length - 1;
+                        const character: number = 0;
+                        
+                        const args: PvsFormula = {
+                            fileName,
+                            fileExtension: ".pvs",
+                            contextFolder: path.join(contextFolder, ".."), // .prlite files are stored in the /pvsbin subfolder
+                            theoryName, 
+                            formulaName
+                        };
+
+                        // codelens in .prlite files
+                        const range: Range = {
+                            start: { line, character },
+                            end: { line, character: character + theoryName.length }
+                        };
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: "prove",
+                                command: "vscode-pvs.prove-formula",
+                                arguments: [ args ]
+                            }
+                        });
+                    }       
                 }
             }
             return Promise.resolve(codeLens);

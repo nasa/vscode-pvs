@@ -570,6 +570,8 @@ export async function getProofLiteScript (desc: {
 export function proofliteRegexp(desc: { theoryName: string, formulaName: string }): RegExp {
 	return new RegExp(`(?:(?:%--*.*)\\s*(?:%\\s*@formula\s*:\s*(${desc.formulaName}))?\s*(?:%\s*@theory\s*:\s*(${desc.theoryName}))?\s*(?:%\s*@status\s*:\s*(.*))?\s*(?:%--*.*))?\s*(${desc.formulaName}\s*:\s*PROOF[\w\W\s]*QED\s*${desc.formulaName}`, "g");
 }
+// group 1 is formula name
+export const proofRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(%.+)?\s*:\s*(%.+)?\s*(?:PROOF)\b/gim;
 export async function getProofliteScript (desc: { 
 	fileName: string, 
 	fileExtension: string, 
