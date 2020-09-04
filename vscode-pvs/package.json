@@ -815,7 +815,7 @@
 				},
 				{
 					"command": "vscode-pvs.typecheck-workspace",
-					"when": "pvs-server-active && editorLangId == pvs",
+					"when": "resourceExtname == .pvs && pvs-server-active && editorLangId == pvs",
 					"group": "y_commands"
 				},
 				{

@@ -209,7 +209,7 @@ export class PvsProxy {
 		if (res) {
 			const sequent: SequentDescriptor = {
 				path: res["path"],
-				label: (res["result"]) ? "Q.E.D." : res["label"], // this should always be the formula name....
+				label: (res["result"]) ? "Q.E.D." : res["label"],
 				commentary: (res["result"]) ? [ res["result"] ] 
 								: res["prover-session-status"] ? "Q.E.D." 
 								: res["commentary"],
@@ -1071,7 +1071,7 @@ export class PvsProxy {
 			if (test.success) {
 				// console.dir(desc, { depth: null });
 				const showHidden: boolean = utils.isShowHiddenCommand(desc.cmd);
-				const isGrind: boolean = false;//utils.isGrindCommand(desc.cmd);
+				const isGrind: boolean = utils.isGrindCommand(desc.cmd);
 				// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
 				// the front-end will handle the command, and reveal the hidden sequents.
 				const cmd: string = showHidden ? "(skip)"
@@ -1092,19 +1092,19 @@ export class PvsProxy {
 							}
 						}
 					}
-					// if (isGrind) {
-					// 	for (let i = 0; i < proofStates.length; i++) {
-					// 		const result: SequentDescriptor = proofStates[i];
-					// 		if (opt.timeout) {
-					// 			if (result && result.commentary && typeof result.commentary === "object" 
-					// 					&& result.commentary.length && result.commentary[result.commentary.length - 1].startsWith("No change on")) {
-					// 				result.action = `No change on: ${desc.cmd}`;
-					// 				result.commentary = result.commentary.slice(0, result.commentary.length - 1).concat(`No change on: ${desc.cmd}`);
-					// 			}
-					// 		}
-					// 		result["prev-cmd"] = desc.cmd; // this will remove the timeout applied to grind
-					// 	}
-					// }
+					if (isGrind) {
+						for (let i = 0; i < proofStates.length; i++) {
+							const result: SequentDescriptor = proofStates[i];
+							if (opt.timeout) {
+								if (result && result.commentary && typeof result.commentary === "object" 
+										&& result.commentary.length && result.commentary[result.commentary.length - 1].startsWith("No change on")) {
+									result.action = `No change on: ${desc.cmd}`;
+									result.commentary = result.commentary.slice(0, result.commentary.length - 1).concat(`No change on: ${desc.cmd}`);
+								}
+							}
+							result["prev-cmd"] = desc.cmd; // this will remove the timeout applied to grind
+						}
+					}
 					for (let i = 0; i < proofStates.length; i++) {
 						const result: SequentDescriptor = proofStates[i];
 						if (utils.QED(result)) {

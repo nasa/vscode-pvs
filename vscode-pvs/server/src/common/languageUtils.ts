@@ -992,7 +992,7 @@ export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { b
 							node.rules = node.rules.sort((a: ProofNode, b: ProofNode) => {
 								const valA: number = +a.name.replace(/[\(\)]/g, "");
 								const valB: number = +b.name.replace(/[\(\)]/g, "");
-								return valA < valB ? 1 : -1
+								return valA < valB ? -1 : 1;
 							});
 							indent++;
 							if (i > 0) {
@@ -1391,6 +1391,10 @@ export function isPostponeCommand (cmd: string): boolean {
 	return cmd && /\(?\s*\bpostpone\b/g.test(cmd);
 }
 
+export function isSkipCommand (cmd: string): boolean {
+	return cmd && /\(?\s*\bskip\b/g.test(cmd);
+}
+
 export function isShowHiddenCommand (cmd: string): boolean {
 	return cmd && /\(?\s*show-hidden\b/g.test(cmd);
 }
@@ -1502,7 +1506,8 @@ export function applyTimeout (cmd: string, sec?: number): string {
 export function isInvalidCommand (result: { commentary: string | string[] }): boolean {
 	if (result && result.commentary) {
 		if (typeof result.commentary === "string") {
-			return result.commentary.includes("not a valid prover command")
+			return result.commentary.includes("Error:")
+				|| result.commentary.includes("not a valid prover command")
 				|| result.commentary.includes(`Found 'eof' when expecting`)
 				|| result.commentary.includes(`bad proof command`)
 				|| result.commentary.includes(`Expecting an expression`);
@@ -1510,6 +1515,8 @@ export function isInvalidCommand (result: { commentary: string | string[] }): bo
 			return result.commentary.length
 			&& typeof result.commentary[0] === "string"
 			&& (result.commentary.filter((comment: string)=> {
+				return comment.includes("Error:");
+			}).length > 0 || result.commentary.filter((comment: string)=> {
 				return comment.includes("not a valid prover command");
 			}).length > 0 || result.commentary.filter((comment: string)=> {
 				return comment.includes(`Found 'eof' when expecting`);
