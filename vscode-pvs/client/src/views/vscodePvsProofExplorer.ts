@@ -47,7 +47,7 @@ import {
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofEditSave, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditSaveAs, ProofExecOpenProof, PvsFile 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditSaveAs, ProofExecOpenProof, PvsFile, ProofExecStartNewProof 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -615,8 +615,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.new-proof", async () => {
-			if (this.root) {
-				commands.executeCommand("proof-explorer.delete-node", this.root);
+			 // ask confirmation before deleting a node
+			 if (this.formula) {
+				const msg: string = `Start a new proof for ${this.formula.formulaName}?`;
+				const actionConfirmed: boolean = await this.queryConfirmation(msg);
+				if (actionConfirmed) {
+					const action: ProofExecStartNewProof = { action: "start-new-proof", formula: this.formula };
+					console.log(`[vscode-proof-explorer] Starting new proof for ${this.formula.formulaName}`);
+					this.client.sendRequest(serverRequest.proverCommand, action);
+				}
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.open-proof", async () => {

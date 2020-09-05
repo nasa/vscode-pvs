@@ -737,7 +737,7 @@ export type ProofEditDidStartNewProof = {
 
 // ProofExec
 export type ProofExecCommand = ProofExecForward | ProofExecBack | ProofExecFastForward | ProofExecRun
-	| ProofExecQuit | ProofExecOpenProof;
+	| ProofExecQuit | ProofExecOpenProof | ProofExecStartNewProof;
 export type ProofExecForward = {
 	action: "forward"
 };
@@ -761,6 +761,10 @@ export type ProofExecOpenProof = {
 		fileExtension: string,
 		contextFolder: string
 	},
+	formula: PvsFormula
+};
+export type ProofExecStartNewProof = {
+	action: "start-new-proof",
 	formula: PvsFormula
 };
 

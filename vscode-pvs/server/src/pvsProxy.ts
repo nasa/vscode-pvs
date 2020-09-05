@@ -1180,9 +1180,11 @@ export class PvsProxy {
 	 * @param formula 
 	 */
 	async loadProof (formula: PvsFormula, opt?: {
-		quiet?: boolean
+		quiet?: boolean,
+		newProof?: boolean
 	}): Promise<ProofDescriptor> {
 		if (formula) {
+			opt = opt || {};
 			formula = fsUtils.decodeURIComponents(formula);
 			const shasum: string = await fsUtils.shasumFile(formula);
 			const pvsVersionDescriptor = this.getPvsVersionInfo();
@@ -1197,6 +1199,10 @@ export class PvsProxy {
 					shasum
 				}
 			};
+
+			if (opt.newProof) {
+				return proofDescriptor;
+			}
 
 			try {
 				const fname: string = path.join(formula.contextFolder, `${formula.fileName}.jprf`);

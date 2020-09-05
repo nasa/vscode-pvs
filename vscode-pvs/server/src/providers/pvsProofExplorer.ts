@@ -2070,10 +2070,10 @@ export class PvsProofExplorer {
 	 * Loads the proof for a given formula
 	 * @param formula 
 	 */
-	async loadProofRequest (formula: PvsFormula): Promise<ProofDescriptor> {
+	async loadProofRequest (formula: PvsFormula, opt?: { newProof?: boolean }): Promise<ProofDescriptor> {
 		this.formula = formula;
 		if (this.pvsProxy) {
-			const pdesc: ProofDescriptor = await this.pvsProxy.loadProof(formula);
+			const pdesc: ProofDescriptor = await this.pvsProxy.loadProof(formula, opt);
 			// re-compute the shasum --- the shasum in the proof descriptor is from the last proof attempt, and it might be different if the file has been modified
 			this.shasum = await fsUtils.shasumFile(formula);
 			this.loadProofDescriptor(pdesc);
