@@ -317,7 +317,7 @@ export class PvsLanguageServer {
 			}
 		}
 	}
-	async proveFormulaRequest (formula: PvsFormula, opt?: { autorun?: boolean }): Promise<void> {
+	async proveFormulaRequest (formula: PvsFormula, opt?: { autorun?: boolean, newProof?: boolean }): Promise<void> {
 		opt = opt || {};
 		if (formula && formula.formulaName && formula.theoryName && formula.fileName && formula.contextFolder) {
 			formula = fsUtils.decodeURIComponents(formula);
@@ -366,7 +366,7 @@ export class PvsLanguageServer {
 			}
 			// load proof -- this needs to be done before starting the prover session
 			if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] loading proof for formula ${formula.formulaName}`); }
-			await this.proofExplorer.loadProofRequest(formula);
+			await this.proofExplorer.loadProofRequest(formula, opt);
 			if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] starting prover session for formula ${formula.formulaName}`); }
 
 			const response: PvsResponse = await this.proveFormula(formula);
@@ -1800,6 +1800,7 @@ export class PvsLanguageServer {
 						case "open-proof": { await this.proofExplorer.openProofRequest(desc.proofFile, desc.formula); break; }
 						case "save-proof": { await this.proofExplorer.saveProof(); break; }
 						case "save-proof-as": { await this.proofExplorer.saveProofAs(desc); break; }
+						case "start-new-proof": { await this.proveFormulaRequest(desc.formula, { newProof: true }); }
 						//------
 						default: {
 							console.warn(`[pvs-server] Warning: unhandled prover command ${JSON.stringify(desc)}`);

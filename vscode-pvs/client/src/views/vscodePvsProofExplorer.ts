@@ -630,22 +630,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (this.formula && this.formula.theoryName && this.formula.formulaName) {
 				const desc: PvsFile = await vscodeUtils.openProofFile();
 				if (desc && desc.fileExtension) {
-					const formula: PvsFormula = {
-						fileName: desc.fileName,
-						fileExtension: desc.fileExtension,
-						contextFolder: desc.contextFolder,
-						theoryName: this.formula.theoryName,
-						formulaName: this.formula.formulaName
+					const action: ProofExecOpenProof = {
+						action: "open-proof",
+						proofFile: desc,
+						formula: this.formula
 					};
-					const pdesc: ProofDescriptor = await utils.getProofDescriptor(formula);
-					if (pdesc) {
-						const action: ProofExecOpenProof = {
-							action: "open-proof",
-							proofFile: desc,
-							formula: this.formula
-						};
-						this.client.sendRequest(serverRequest.proverCommand, action);
-					}
+					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
 		}));

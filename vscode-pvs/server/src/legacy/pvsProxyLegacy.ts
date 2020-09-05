@@ -470,7 +470,7 @@ export class PvsProxyLegacy {
             }
         };
     }
-    async saveProofWithFormula (desc: PvsFormula, prl: string): Promise<PvsResponse> {
+    async associateProofWithFormula (desc: PvsFormula, prl: string): Promise<PvsResponse> {
         // To store a prooflite script into the prf file you can use the lisp function:
         // defun associate-proof-with-formulas (theory-name formula-name strategy force
         //                                                   &optional

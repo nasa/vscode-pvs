@@ -1267,6 +1267,31 @@ export async function containsProoflite (fname: string, formulaName: string): Pr
 	return false;
 }
 /**
+ * Utility function, returns the prooflite script without tags
+ * @param fname Name of the prooflite file
+ * @param formulaName name of the prooflite script
+ */
+export async function readProoflite (fname: string, formulaName: string): Promise<string | null> {
+	if (fname && formulaName) {
+		fname = fsUtils.decodeURIComponents(fname);
+		const fileExists: boolean = await fsUtils.fileExists(fname);
+		if (fileExists) {
+			const content: string = await fsUtils.readFile(fname);
+			if (content) {
+				// group 1 is the header (this group can be null)
+				// group 2 is the prooflite script (with tags)
+				// group 3 is the prooflite script (without tags)
+				const regex: RegExp = new RegExp(`(%-*[\\w\\W\\s]+%-*)?\\s*\\b(${formulaName}\\s*:\\s*PROOF\\b([\\s\\w\\W]+)\\bQED\\b\\s*${formulaName})`, "g");
+				const match: RegExpMatchArray = regex.exec(content);
+				if (match && match.length > 3) {
+					return match[3].trim();
+				}
+			}
+		}
+	}
+	return null;
+}
+/**
  * Utility function, saves a prooflite script for a given formula in the given file
  * @param fname Name of the prooflite file
  * @param formulaName name of the prooflite

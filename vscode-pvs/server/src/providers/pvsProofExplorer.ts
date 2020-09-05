@@ -2197,8 +2197,8 @@ export class PvsProofExplorer {
 			let pdesc: ProofDescriptor = null;
 			switch (desc.fileExtension) {
 				case ".jprf": {
-					const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
-					let proofFile: ProofFile = await utils.readProofFile(fname);
+					const fname: string = fsUtils.desc2fname(desc);
+					const proofFile: ProofFile = await utils.readProofFile(fname);
 					const key: string = `${formula.theoryName}.${formula.formulaName}`;
 					// try to load the proof from the .jprf file
 					if (proofFile && proofFile[key] && proofFile[key].length > 0) {
@@ -2224,6 +2224,43 @@ export class PvsProofExplorer {
 							version: pvsVersionDescriptor,
 							shasum
 						});
+					}
+				}
+				case ".prlite":
+				case ".prl": {
+					const fname: string = fsUtils.desc2fname(desc);
+					const prl: string = await utils.readProoflite(fname, formula.formulaName);
+					if (prl) {
+						// FIXME: this does not seem to be working!
+						const pvsResponse: PvsResponse = await this.pvsProxy.associateProofWithFormula(formula, prl); // this will load the prl in pvs ans save the proof as .prf
+						if (pvsResponse && pvsResponse.result) {
+							const response: PvsResponse = await this.pvsProxy.proofScript({
+								fileName: desc.fileName,
+								fileExtension: desc.fileExtension,
+								contextFolder: desc.contextFolder,
+								formulaName: formula.formulaName,
+								theoryName: formula.theoryName
+							});
+							if (response && response.result) {
+								const pvsVersionDescriptor = this.pvsProxy.getPvsVersionInfo();
+								const shasum: string = await fsUtils.shasumFile(formula);
+								pdesc = utils.prf2jprf({
+									prf: response.result,
+									theoryName: formula.theoryName, 
+									formulaName: formula.formulaName, 
+									version: pvsVersionDescriptor,
+									shasum
+								});
+							} else {
+								let msg: string = `Error: Unable to associate prooflite script to ${formula.formulaName}`;
+								const error_msg: string = (response && response.error && response.error.data && response.error.data.error_string) ?
+									response.error.data.error_string : "";
+								if (error_msg) {
+									msg += ` (${error_msg})`;
+								}
+								this.connection.sendNotification("server.status.error", { msg });
+							}
+						}
 					}
 				}
 				default: {
@@ -2333,16 +2370,17 @@ export class PvsProofExplorer {
 					formulaName: this.formula.formulaName,
 					proofDescriptor: this.proofDescriptor
 				});
-			} else {
-				await this.pvsProxy.saveProofliteAsPrf({ 
-					fileName: proofFile.fileName,
-					fileExtension: ".prf",
-					contextFolder: proofFile.contextFolder,
-					theoryName: this.formula.theoryName,
-					formulaName: this.formula.formulaName,
-					proofDescriptor: this.proofDescriptor
-				});
-			}
+			} 
+			// else {
+			// 	await this.pvsProxy.saveProofliteAsPrf({ 
+			// 		fileName: proofFile.fileName,
+			// 		fileExtension: ".prf",
+			// 		contextFolder: proofFile.contextFolder,
+			// 		theoryName: this.formula.theoryName,
+			// 		formulaName: this.formula.formulaName,
+			// 		proofDescriptor: this.proofDescriptor
+			// 	});
+			// }
 		}
 		this.connection.sendRequest(serverEvent.saveProofResponse, {
 			response: { 
