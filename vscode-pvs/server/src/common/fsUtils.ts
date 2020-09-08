@@ -390,7 +390,30 @@ export function getDownloader (): string {
 	return null;
 } 
 
-export function downloadCommand(url: string, opt?: { out?: string }): string {
+export function getSourceControl (): "git" | null {
+	const res: Buffer = execSync(`which git`);
+	if (res) {
+		const ans: string = res.toLocaleString();
+		if (ans.trim().endsWith("git")) {
+			return "git";
+		}
+	}
+	return null;
+}
+
+export function cloneCommand (url: string, opt?: { basePath?: string, branch?: string }): string {
+	opt = opt || {};
+	let gitCommand: string = `git clone ${url} nasalib`;
+	if (opt.basePath) {
+		gitCommand = `cd "${opt.basePath}" && ` + gitCommand;
+	}
+	if (opt.branch) {
+		gitCommand += ` -b "${opt.branch}"`;
+	}
+	return gitCommand;
+}
+
+export function downloadCommand (url: string, opt?: { out?: string }): string {
 	opt = opt || {};
 	const downloader: string = getDownloader();
 	if (downloader) {
@@ -418,4 +441,3 @@ export async function getNodeJsVersion (): Promise<string | null> {
 	}
 	return null;
 }
-

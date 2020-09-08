@@ -428,6 +428,7 @@ export const serverRequest = {
 	downloadPvs: "pvs.download-pvs",
 	downloadLicensePage: "pvs.download-license-page",
 
+	getNasalibDownloader: "pvs.get-nasalib-downloader",
 	downloadNasalib: "pvs.download-nasalib",
 };
 
@@ -461,7 +462,7 @@ export const serverEvent = {
 	downloadPvsResponse: "pvs.response.download-pvs",
 	downloadLicensePageResponse: "pvs.response.download-license-page",
 
-	downloadNasalibResponse: "pvs.response.download-nasalib",
+	getNasalibDownloaderResponse: "pvs.response.get-nasalib-downloader",
 	setNasalibPathResponse: "pvs.response.set-nasalib-path",
 
 	pvsServerReady: "pvs.response.restart",
@@ -608,6 +609,7 @@ export const pvsSnapshotsUrl: string = `http://${sriUrl}/users/owre/drop/pvs-sna
 export const allegroLicenseUrl: string = `http://pvs.csl.sri.com/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;
 export const nasalibUrl: string = "https://github.com/nasa/pvslib";
 export const nasalibFile: string = "https://github.com/nasa/pvslib/archive/pvs7.0.zip";
+export const nasalibBranch: string = "v7.1.0";
 
 // ProofEdit
 export type ProofEditCommand = ProofEditAppendNode | ProofEditCopyNode | ProofEditPasteNode | ProofEditCopyTree

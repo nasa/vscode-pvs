@@ -1740,6 +1740,12 @@ export class PvsLanguageServer {
 				this.quitProofRequest(); // this method will send a quitProofResponse to the client
 			});
 
+			this.connection.onRequest(serverRequest.getNasalibDownloader, async () => {
+				const downloader: "git" | "download" = await PvsPackageManager.getNasalibDownloader();
+				if (this.connection) {
+					this.connection.sendRequest(serverEvent.getNasalibDownloaderResponse, { response: downloader });
+				}
+			});
 			this.connection.onRequest(serverRequest.listDownloadableVersions, async () => {
 				const versions: PvsDownloadDescriptor[] = await PvsPackageManager.listDownloadableVersions();
 				if (this.connection) {

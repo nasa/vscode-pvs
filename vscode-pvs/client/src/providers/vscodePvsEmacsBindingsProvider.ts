@@ -71,6 +71,7 @@ const cmds: string[] = [
 	"clear-pvs-library-path",
 	"reboot-pvs",
 	"restart-pvs",
+	"install-pvs",
 	"reinstall-pvs",
 	"install-nasalib",
 	"set-pvs-path",
@@ -190,6 +191,7 @@ export class VSCodePvsEmacsBindingsProvider {
 					// this.client.sendRequest(serverCommand.rebootPvsServer, { pvsPath });
 					break;
 				}
+				case "install-pvs":
 				case "reinstall-pvs": {
 					commands.executeCommand('vscode-pvs.reinstall-pvs');
 					break;

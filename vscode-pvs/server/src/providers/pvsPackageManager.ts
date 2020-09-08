@@ -39,7 +39,8 @@
 import { execSync } from 'child_process';
 import * as os from 'os';
 import * as fsUtils from '../common/fsUtils';
-import { pvsSnapshotsUrl, PvsDownloadDescriptor, allegroLicenseUrl, NasalibDownloadDescriptor, nasalibFile } from '../common/serverInterface';
+import { pvsSnapshotsUrl, PvsDownloadDescriptor, allegroLicenseUrl, NasalibDownloadDescriptor, nasalibFile, nasalibUrl } from '../common/serverInterface';
+import * as path from 'path';
 
 export class PvsPackageManager {
 
@@ -78,6 +79,15 @@ export class PvsPackageManager {
             return fname;
         }
         return null;
+    }
+
+    /**
+     * Returns the available nasalib downloader (preferred is git clone, alternative is zip)
+     * @param pvsPath pvs installation path
+     * @returns {string} the path where nasalib is installed
+     */
+    static async getNasalibDownloader (): Promise<"git" | "download"> {
+        return fsUtils.getSourceControl() || "download";
     }
 
     /**
