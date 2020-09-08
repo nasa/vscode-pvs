@@ -65,7 +65,8 @@ import {
 	ProofStatus,
 	ProofEditSave,
 	ProofExecQuit,
-	NasalibDownloadDescriptor
+	NasalibDownloadDescriptor,
+	FileDescriptor
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -563,7 +564,7 @@ export class PvsLanguageServer {
 		contextFolder: string
 	}): Promise<ProofDescriptor> {
 		if (this.pvsProxy) {
-			return this.pvsProxy.loadProof(request);
+			return this.pvsProxy.openProof(request);
 		}
 		// else
 		console.error(`[pvs-language-server] Error: Could not load proof script (pvs-proxy is null)`);

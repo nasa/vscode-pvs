@@ -2073,10 +2073,22 @@ export class PvsProofExplorer {
 	async loadProofRequest (formula: PvsFormula, opt?: { newProof?: boolean }): Promise<ProofDescriptor> {
 		this.formula = formula;
 		if (this.pvsProxy) {
-			const pdesc: ProofDescriptor = await this.pvsProxy.loadProof(formula, opt);
-			// re-compute the shasum --- the shasum in the proof descriptor is from the last proof attempt, and it might be different if the file has been modified
+			const pdesc: ProofDescriptor = await this.pvsProxy.openProof(formula, opt);
+			// re-compute the shasum for the pvs file --- the shasum in the proof descriptor is from the last proof attempt, and it might be different if the file has been modified
 			this.shasum = await fsUtils.shasumFile(formula);
+			// load proof descriptor
 			this.loadProofDescriptor(pdesc);
+			// send feedback to the client
+			const structure: ProofNodeX = this.root.getNodeXStructure();
+			const evt: ProofExecDidLoadProof = { 
+				action: "did-load-proof", 
+				formula: this.formula, 
+				desc: this.proofDescriptor,
+				proof: structure
+			};
+			if (this.connection && !this.autorunFlag) {
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
+			}
 			return pdesc;
 		}
 		console.error(`[proof-explorer] Error: Could not load proof script (pvs-proxy is null)`);
@@ -2141,17 +2153,6 @@ export class PvsProofExplorer {
 				});
 			}
 			this.proofDescriptor = desc;
-
-			const structure: ProofNodeX = this.root.getNodeXStructure();
-			const evt: ProofExecDidLoadProof = { 
-				action: "did-load-proof", 
-				formula: this.formula, 
-				desc: this.proofDescriptor,
-				proof: structure
-			};
-			if (this.connection && !this.autorunFlag) {
-				this.connection.sendNotification(serverEvent.proverEvent, evt);
-			}
 		} else {
 			console.warn(`[proof-explorer] Warning: null descriptor`);
 		}
@@ -2175,16 +2176,13 @@ export class PvsProofExplorer {
 			return res;
 		}
 		const proofTree: ProofTree = makeProofStructure(this.root);
-		const proofDescriptor: ProofDescriptor = {
-			info: {
-				theory: this.formula.theoryName,
-				formula: this.formula.formulaName,
-				status: this.root.getProofStatus(),
-				prover: (this.pvsProxy) ? utils.pvsVersionToString(this.pvsProxy.getPvsVersionInfo()) : "PVS 7.x",
-				shasum: this.shasum
-			},
-			proofTree
-		};
+		const proofDescriptor: ProofDescriptor = new ProofDescriptor ({
+			theory: this.formula.theoryName,
+			formula: this.formula.formulaName,
+			status: this.root.getProofStatus(),
+			prover: (this.pvsProxy) ? utils.pvsVersionToString(this.pvsProxy.getPvsVersionInfo()) : "PVS 7.x",
+			shasum: this.shasum
+		}, proofTree);
 		return proofDescriptor;
 	}
 	/**
@@ -2194,90 +2192,24 @@ export class PvsProofExplorer {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
 				&& formula && formula.fileName && formula.fileExtension 
 				&& formula.theoryName && formula.formulaName) {
-			let pdesc: ProofDescriptor = null;
-			switch (desc.fileExtension) {
-				case ".jprf": {
-					const fname: string = fsUtils.desc2fname(desc);
-					const proofFile: ProofFile = await utils.readProofFile(fname);
-					const key: string = `${formula.theoryName}.${formula.formulaName}`;
-					// try to load the proof from the .jprf file
-					if (proofFile && proofFile[key] && proofFile[key].length > 0) {
-						pdesc = proofFile[key][0];
-					}
-					break;
-				}
-				case ".prf": {
-					const response: PvsResponse = await this.pvsProxy.proofScript({
-						fileName: desc.fileName,
-						fileExtension: desc.fileExtension,
-						contextFolder: desc.contextFolder,
-						formulaName: formula.formulaName,
-						theoryName: formula.theoryName
-					});
-					if (response && response.result) {
-						const pvsVersionDescriptor = this.pvsProxy.getPvsVersionInfo();
-						const shasum: string = await fsUtils.shasumFile(formula);
-						pdesc = utils.prf2jprf({
-							prf: response.result,
-							theoryName: formula.theoryName, 
-							formulaName: formula.formulaName, 
-							version: pvsVersionDescriptor,
-							shasum
-						});
-					}
-				}
-				case ".prlite":
-				case ".prl": {
-					const fname: string = fsUtils.desc2fname(desc);
-					const prl: string = await utils.readProoflite(fname, formula.formulaName);
-					if (prl) {
-						// FIXME: this does not seem to be working!
-						const pvsResponse: PvsResponse = await this.pvsProxy.associateProofWithFormula(formula, prl); // this will load the prl in pvs ans save the proof as .prf
-						if (pvsResponse && pvsResponse.result) {
-							const response: PvsResponse = await this.pvsProxy.proofScript({
-								fileName: desc.fileName,
-								fileExtension: desc.fileExtension,
-								contextFolder: desc.contextFolder,
-								formulaName: formula.formulaName,
-								theoryName: formula.theoryName
-							});
-							if (response && response.result) {
-								const pvsVersionDescriptor = this.pvsProxy.getPvsVersionInfo();
-								const shasum: string = await fsUtils.shasumFile(formula);
-								pdesc = utils.prf2jprf({
-									prf: response.result,
-									theoryName: formula.theoryName, 
-									formulaName: formula.formulaName, 
-									version: pvsVersionDescriptor,
-									shasum
-								});
-							} else {
-								let msg: string = `Error: Unable to associate prooflite script to ${formula.formulaName}`;
-								const error_msg: string = (response && response.error && response.error.data && response.error.data.error_string) ?
-									response.error.data.error_string : "";
-								if (error_msg) {
-									msg += ` (${error_msg})`;
-								}
-								this.connection.sendNotification("server.status.error", { msg });
-							}
-						}
-					}
-				}
-				default: {
-					console.warn(`[proof-explorer] Warning: trying to load unrecognized proof format ${desc.fileExtension}`);
-					break;
-				}
-			}
+			// open proof descriptor
+			const pdesc: ProofDescriptor = await this.pvsProxy.openProofFile(desc, formula);
 			if (pdesc) {
+				// load proof descriptor
 				this.loadProofDescriptor(pdesc);
+				// send feedback to the client
+				const structure: ProofNodeX = this.root.getNodeXStructure();
 				const evt: ProofExecDidOpenProof = { 
 					action: "did-open-proof",
 					proofFile: desc,
-					formula
+					formula,
+					desc: this.proofDescriptor,
+					proof: structure
 				};
 				if (this.connection) {
 					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
+				// re-start proof in proof explorer
 				this.startProof();
 			}
 		}
@@ -2339,7 +2271,8 @@ export class PvsProofExplorer {
 		}
 	}
 	/**
-	 * Save the current proof on file
+	 * Save the current proof in a .jprf (vscode-pvs) file
+	 * If the proof is QED, then the proof is also saved in the .prf (legacy) file
 	 */
 	async saveProof (): Promise<void> {
 		const proofFile: PvsFile = {
@@ -2347,10 +2280,10 @@ export class PvsProofExplorer {
 			fileExtension: ".jprf",
 			contextFolder: this.formula.contextFolder,
 		}
-		// update proof descriptor
+		// update proof descriptor so it reflects the current proof structure
 		this.proofDescriptor = this.makeProofDescriptor();
 		// save proof descriptor to file
-		const success: boolean = await this.pvsProxy.saveProofAsJprf({ 
+		const success: boolean = await this.pvsProxy.saveProof({ 
 			fileName: proofFile.fileName,
 			fileExtension: proofFile.fileExtension,
 			contextFolder: proofFile.contextFolder,
@@ -2359,8 +2292,9 @@ export class PvsProofExplorer {
 			proofDescriptor: this.proofDescriptor
 		});
 		if (success) {
-			// mark proof as not dirty
+			// clear dirty flag if proof saved successfully
 			this.dirtyFlag = false;
+			// save legacy proof if QED
 			if (this.proofDescriptor.info.status === "proved") {
 				await this.pvsProxy.saveProofAsPrf({ 
 					fileName: proofFile.fileName,
@@ -2370,18 +2304,9 @@ export class PvsProofExplorer {
 					formulaName: this.formula.formulaName,
 					proofDescriptor: this.proofDescriptor
 				});
-			} 
-			// else {
-			// 	await this.pvsProxy.saveProofliteAsPrf({ 
-			// 		fileName: proofFile.fileName,
-			// 		fileExtension: ".prf",
-			// 		contextFolder: proofFile.contextFolder,
-			// 		theoryName: this.formula.theoryName,
-			// 		formulaName: this.formula.formulaName,
-			// 		proofDescriptor: this.proofDescriptor
-			// 	});
-			// }
+			}
 		}
+		// send feedback to the client
 		this.connection.sendRequest(serverEvent.saveProofResponse, {
 			response: { 
 				success,

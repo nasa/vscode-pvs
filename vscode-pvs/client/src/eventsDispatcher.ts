@@ -384,17 +384,24 @@ export class EventsDispatcher {
                     break;
                 }
                 case "did-load-proof": {
-                    this.proofExplorer.loadProofStructure(desc.formula, desc.desc, desc.proof);
-                    this.proofMate.loadFormula(desc.formula);
+                    if (desc && desc.formula) {
+                        this.proofExplorer.loadProofStructure(desc.formula, desc.desc, desc.proof);
+                        this.proofMate.loadFormula(desc.formula);
+                    } else {
+                        window.showWarningMessage(`Failed to load proof (null descriptor)`);
+                    }
                     break;    
                 }
                 case "did-open-proof": {
                     if (desc && desc.formula) {
+                        this.proofExplorer.loadProofStructure(desc.formula, desc.desc, desc.proof);
+                        this.proofMate.loadFormula(desc.formula);
                         const fname: string = fsUtils.desc2fname(desc.formula);
                         window.showInformationMessage(`Proof ${desc.formula.formulaName} successfully loaded from ${fname}`);
                     } else {
-                        window.showWarningMessage(`Failed to load proof (null descriptor)`);
+                        window.showWarningMessage(`Failed to open proof (null descriptor)`);
                     }
+                    break;
                 }
             }
         });

@@ -418,13 +418,14 @@ export class PvsProxyLegacy {
             }
         }
     }
-    async proofScript (desc: { contextFolder: string, fileName: string, fileExtension: string, formulaName: string, theoryName: string }): Promise<PvsResponse> {
+    async getDefaultProofScript (desc: { contextFolder: string, fileName: string, fileExtension: string, formulaName: string, theoryName: string }): Promise<PvsResponse> {
         let result: string = null; //`;;; Proof ${desc.formulaName}-1 for formula ${desc.theoryName}.${desc.formulaName}`; // this is an empty proof
         const error_string: string = `${desc.theoryName}.${desc.formulaName} does not have a proof`;
         await this.changeContext(desc.contextFolder);
         await this.typecheckFile(fsUtils.desc2fname(desc));
         if (desc && desc.contextFolder && desc.fileExtension && desc.fileName && desc.formulaName) {
             if (desc.fileExtension === ".pvs") {
+                // I'm keeping this for backwards compatibility, until the final version of pvs is released
                 // extension is forced to .pvs, this is necessary as the request may come for a .tccs file
                 const fname: string = fsUtils.desc2fname(desc);
                 const fileDesc: PvsFileDescriptor = await utils.getFileDescriptor(fname, { listTheorems: true });
@@ -445,15 +446,16 @@ export class PvsProxyLegacy {
                         }
                     }
                 }
-            } 
-            // -- the following is disabled because get-default-proof-script returns the proof using a different format that I don't know how to parse
-            // else if (desc.fileExtension === ".tccs") {
-            //     const cmd: string = `(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`;
-            //     const data: PvsResponse = await this.lisp(cmd);
-            //     if (data && data.result && typeof data.result === "string" && data.result.startsWith("(")) {
-            //         result = `;;; Proof ${desc.formulaName}-1 for formula ${desc.theoryName}.${desc.formulaName}\n${data.result}`;
-            //     }
-            // }
+            } else if (desc.fileExtension === ".tccs") {
+                const cmd: string = `(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`;
+                const data: PvsResponse = await this.lisp(cmd);
+                if (data && data.result) {
+                    const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
+                    if (matchProof && matchProof.length > 1) {
+                        result = matchProof[1];
+                    }
+                }
+            }
         }
         // the APIs of PVS are really ugly here -- if the formula does not have a proof returns an error rather than just returning an empty proof
         return (result) ? {

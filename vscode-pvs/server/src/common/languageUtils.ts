@@ -1159,17 +1159,19 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 	}
 
 	if (desc && desc.prf) {
-		desc.prf = desc.prf.trim();
+		// root node
+		const rootNode: ProofNode = {
+			name: desc.proofName,
+			rules: [],
+			type: "root",
+			branch: "root"
+		};
+		let prf: string = desc.prf.trim();
 		if (desc.prf.startsWith(`(""`)) {
-			// root node
-			const rootNode: ProofNode = {
-				name: desc.proofName,
-				rules: [],
-				type: "root",
-				branch: "root"
-			};
 			const match: RegExpMatchArray = /\(\"\"([\w\W\s]+)\s*\)/.exec(desc.prf);
-			desc.prf = match[1].trim();
+			prf = match[1].trim();
+		}
+		if (prf) {
 			buildProofTree_aux({ prf: desc.prf, proofName: desc.proofName, parent: rootNode });
 			expandBranchNames(rootNode)
 			return rootNode;
@@ -1334,22 +1336,20 @@ export function prf2jprf (desc: {
 	autorun?: boolean
 }): ProofDescriptor {
 	if (desc) {
-		const result: ProofDescriptor = {
-			info: {
-				theory: desc.theoryName,
-				formula: desc.formulaName,
-				status: "untried", // the prf file does not include the proof status
-				prover: pvsVersionToString(desc.version) || "PVS 7.x",
-				shasum: desc.shasum,
-				date: new Date().toISOString()
-			}
-		};
+		const result: ProofDescriptor = new ProofDescriptor ({
+			theory: desc.theoryName,
+			formula: desc.formulaName,
+			status: "untried", // the prf file does not include the proof status
+			prover: pvsVersionToString(desc.version) || "PVS 7.x",
+			shasum: desc.shasum,
+			date: new Date().toISOString()
+		});
 		if (desc.prf) {
 			const script: string = desc.prf.replace(/\s*\n+\s*/g, " "); // remove all \n introduced by pvs in the expression
 			// capture group 1 is proofName
 			// capture group 2 is formulaName,
 			// capture group 3 is proofTree
-			const data: RegExpMatchArray = /;;; Proof\s+([\w\-\.\?]+)\s+for formula\s+([\w\-\.\?]+).*\s*(\(""[\n\w\W]+)/g.exec(script);
+			const data: RegExpMatchArray = /;;; Proof\s+([\w\-\.\?]+)\s+for formula\s+([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉\.]*)\s+(\((?:\"\")?[\n\w\W]+)/g.exec(script);
 			if (data && data.length > 3) {
 				const proofName: string =  data[2]; //data[1];
 				const formulaName: string = data[2];

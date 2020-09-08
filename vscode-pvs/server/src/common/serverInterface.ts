@@ -208,6 +208,20 @@ export class ProofDescriptor {
 		date?: string // day and time the proof was saved, ISO format, e.g., 2011-10-10T14:48:00
 	};
 	proofTree?: ProofNode;
+	constructor (info: {
+		theory: string, // theory name
+		formula: string, // formula name
+		status: ProofStatus, // proof status (proved, untried, unfininshed,...)
+		prover: string, // prover version
+		shasum: string, // digest, obtained from the file content after removing all spaces
+		date?: string // day and time the proof was saved, ISO format, e.g., 2011-10-10T14:48:00
+	}, proofTree?: ProofNode) {
+		this.info = info;
+		this.proofTree = proofTree;
+	}
+	isEmpty (): boolean {
+		return !this.proofTree || !this.proofTree.rules || this.proofTree.rules.length === 0;
+	}
 }
 export declare interface PvsListProofStrategies extends PvsResponseType {
 	error: ErrorType,
@@ -350,6 +364,7 @@ export declare interface PvsFile extends ContextFolder {
 	fileName: string;
 	fileExtension: string;
 }
+export declare type FileDescriptor = PvsFile;
 export declare interface PvsTheory extends PvsFile {
 	theoryName: string;
 }
@@ -794,7 +809,9 @@ export type ProofExecDidEndProof = {
 export type ProofExecDidOpenProof = {
 	action: "did-open-proof",
 	proofFile: PvsFile,
-	formula: PvsFormula
+	formula: PvsFormula,
+	desc: ProofDescriptor,
+	proof: ProofNodeX
 };
 
 // WorkspaceExec
