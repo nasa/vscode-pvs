@@ -1311,15 +1311,13 @@ export const triangle_rectangle_prj: string = `
   ("4" (rewrite "sq_pos"))))
 `;
 
-export const triangle_rectangle: ProofDescriptor = {
-  info: {
+export const triangle_rectangle: ProofDescriptor = new ProofDescriptor({
     theory: 'sq',
     formula: 'triangle_rectangle',
     status: 'untried',
     prover: 'PVS 7.x',
     shasum: '90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a'
-  },
-  proofTree: {
+  }, {
     name: 'sq.triangle_rectangle',
     rules: [
       {
@@ -1480,18 +1478,15 @@ export const triangle_rectangle: ProofDescriptor = {
     ],
     type: 'root',
     branch: ''
-  }
-};
+});
 
-export const sq_plus_eq_0_desc: ProofDescriptor = {
-  info: {
-    theory: 'sq',
-    formula: 'sq_plus_eq_0',
-    status: 'untried',
-    prover: 'PVS 7.1.0 (Allegro CL Enterprise Edition)',
-    shasum: '90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a'
-  },
-  proofTree: {
+export const sq_plus_eq_0_desc: ProofDescriptor = new ProofDescriptor({
+  theory: 'sq',
+  formula: 'sq_plus_eq_0',
+  status: 'untried',
+  prover: 'PVS 7.1.0 (Allegro CL Enterprise Edition)',
+  shasum: '90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a'
+  }, {
     name: 'sq.sq_plus_eq_0',
     rules: [
       {
@@ -1549,18 +1544,15 @@ export const sq_plus_eq_0_desc: ProofDescriptor = {
     ],
     type: 'root',
     branch: ''
-  }
-};
+});
 
-export const sq_plus_eq_0_desc_new: ProofDescriptor = {
-  info: {
-    theory: 'sq',
-    formula: 'sq_plus_eq_0',
-    status: 'proved', // update status
-    prover: 'PVS 7.1.0 (Allegro CL Enterprise Edition)',
-    shasum: '90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a'
-  },
-  proofTree: {
+export const sq_plus_eq_0_desc_new: ProofDescriptor = new ProofDescriptor({
+  theory: 'sq',
+  formula: 'sq_plus_eq_0',
+  status: 'proved', // update status
+  prover: 'PVS 7.1.0 (Allegro CL Enterprise Edition)',
+  shasum: '90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a'
+  }, {
     name: 'sq.sq_plus_eq_0',
     rules: [
       {
@@ -1618,5 +1610,4 @@ export const sq_plus_eq_0_desc_new: ProofDescriptor = {
     ],
     type: 'root',
     branch: ''
-  }
-};
+});

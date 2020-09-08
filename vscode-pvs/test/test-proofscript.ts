@@ -43,7 +43,7 @@ describe("proofScript", () => {
 			formulaName: "sq_neg",
 			theoryName: "sq"
 		};
-		const response: PvsResponse = await pvsProxy.proofScript(desc);
+		const response: PvsResponse = await pvsProxy.getDefaultProofScript(desc);
 		expect(response.error).not.toBeDefined();
 		expect(response.result).toBeDefined();
 		const proof_header: string = response.result.split("\n")[0];
@@ -61,7 +61,7 @@ describe("proofScript", () => {
 			formulaName: "sqrt_0",
 			theoryName: "sqrt"
 		};
-		let response: PvsResponse = await pvsProxy.proofScript(desc);
+		let response: PvsResponse = await pvsProxy.getDefaultProofScript(desc);
 		// console.dir(response);
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
@@ -74,15 +74,15 @@ describe("proofScript", () => {
 			formulaName: "vtbi_over_rate_lemma",
 			theoryName: "pump_th"
 		}
-		response = await pvsProxy.proofScript(desc1);
+		response = await pvsProxy.getDefaultProofScript(desc1);
 		// console.dir(response);
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
 		expect(response.error.data.error_string).toMatch(/(.*) does not have a proof/);
 	});
 	
-	it(`can generate vscode-pvs proof file`, async () => {
-		label(`can generate vscode-pvs proof file`);
+	it(`can load & save vscode-pvs proof file`, async () => {
+		label(`can load & save vscode-pvs proof file`);
 
 		const fname: string = fsUtils.desc2fname({
 			contextFolder: sandboxExamples,
@@ -98,13 +98,23 @@ describe("proofScript", () => {
 			formulaName: "sq_plus_eq_0",
 			theoryName: "sq"
 		};
-		const proofDescriptor: ProofDescriptor = await pvsProxy.loadProof(desc); // this will trigger the generation of the proof file
+		const proofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc); // this will trigger the generation of the proof file
 		expect(proofDescriptor).toBeDefined();
+
+		await pvsProxy.saveProof({
+			contextFolder: sandboxExamples,
+			fileExtension: ".jprf",
+			fileName: "sq",
+			formulaName: "sq_plus_eq_0",
+			theoryName: "sq",
+			proofDescriptor
+		})
 
 		const jprf: string = await fsUtils.readFile(fname);
 		expect(jprf).toBeDefined();
 		// console.dir(proofDescriptor, { depth: null });
 
+		// compare the file content with the backup descriptor saved in the sandbox folder 
 		const fname_copy: string = fsUtils.desc2fname({
 			contextFolder: sandboxExamples,
 			fileExtension: ".jprf.bak",
@@ -137,7 +147,7 @@ describe("proofScript", () => {
 			formulaName: "sq_plus_eq_0",
 			theoryName: "sq"
 		};
-		const proofDescriptor: ProofDescriptor = await pvsProxy.loadProof(desc);
+		const proofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc);
 		expect(proofDescriptor).toBeDefined();
 		expect(proofDescriptor.info.formula).toEqual(test.sq_plus_eq_0_desc.info.formula);
 		expect(proofDescriptor.info.theory).toEqual(test.sq_plus_eq_0_desc.info.theory);
@@ -178,7 +188,7 @@ describe("proofScript", () => {
 		});
 		expect(success).toBeTrue();
 
-		const newProofDescriptor: ProofDescriptor = await pvsProxy.loadProof(desc);
+		const newProofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc);
 		expect(newProofDescriptor).toBeDefined();
 		expect(newProofDescriptor.info.formula).toEqual(test.sq_plus_eq_0_desc_new.info.formula);
 		expect(newProofDescriptor.info.theory).toEqual(test.sq_plus_eq_0_desc_new.info.theory);
@@ -206,7 +216,7 @@ describe("proofScript", () => {
 			formulaName: "sq_plus_eq_0",
 			theoryName: "sq"
 		};
-		const proofDescriptor: ProofDescriptor = await pvsProxy.loadProof(desc);
+		const proofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc);
 		expect(proofDescriptor).toBeDefined();
 		expect(proofDescriptor.info.formula).toEqual(test.sq_plus_eq_0_desc.info.formula);
 		expect(proofDescriptor.info.theory).toEqual(test.sq_plus_eq_0_desc.info.theory);
@@ -226,7 +236,7 @@ describe("proofScript", () => {
 		});
 		expect(success).toBeTrue();
 
-		const newProofDescriptor: ProofDescriptor = await pvsProxy.loadProof(desc);
+		const newProofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc);
 		expect(newProofDescriptor).toBeDefined();
 		expect(newProofDescriptor.info.formula).toEqual(test.sq_plus_eq_0_desc_new.info.formula);
 		expect(newProofDescriptor.info.theory).toEqual(test.sq_plus_eq_0_desc_new.info.theory);
@@ -261,7 +271,7 @@ describe("proofScript", () => {
 			formulaName: "sq_plus_eq_0",
 			theoryName: "sq"
 		};
-		const proofDescriptor: ProofDescriptor = await pvsProxy.loadProof(desc, { quiet: true });
+		const proofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc, { quiet: true });
 		expect(proofDescriptor).toBeDefined();
 		expect(proofDescriptor).toEqual(test.sq_plus_eq_0_desc); // the prf file content should be loaded when the jprf file is corrupted
 

@@ -405,9 +405,41 @@ describe("pvs-prover", () => {
 	//--- the following test fail on Mac and Linux
 	//-----------------------------------------------
 
+	// the following test fails after QED, with the following error
+	// 	Error: the assertion
+	//        (or (equalp (car scr-old) "")
+	//            (and (stringp (car scr-old))
+	//                 (char= (char (car scr-old) 0) #\;)))
+	//        failed.
+	//   [condition type: simple-error]
+	fit(`supports glassbox tactics`, async () => {
+		await quitProverIfActive();
+
+		const desc: PvsFormula = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "sq",
+			formulaName: "sq_neg",
+			theoryName: "sq"
+		};
+
+		let response: PvsResponse = await pvsProxy.proveFormula(desc);
+		// console.dir(response);
+		expect(response.result[0].label).toEqual(test.sq_neg_prove_formula.label);
+		expect(response.result[0].sequent).toBeDefined();
+
+		response = await pvsProxy.proofCommand({ cmd: '(then (skosimp*)(grind))'});
+		expect(response.error).not.toBeDefined();
+		expect(response.result).toBeDefined();
+		console.dir(response);
+
+		// quit the proof attempt
+		await pvsProxy.proofCommand({ cmd: 'quit'});
+	});
+
 	// on Mac and Linux, the following test fails when executed **during the first** prover session
 	// to activate the test case, change 'xit(...)' to 'it(...)'
-	fit(`is robust to prover commands with incorrect arguments`, async () => {
+	it(`is robust to prover commands with incorrect arguments`, async () => {
 		await quitProverIfActive();
 
 		const desc: PvsFormula = {
@@ -485,7 +517,7 @@ describe("pvs-prover", () => {
 		console.dir(response.result);
 	}, 20000);
 
-	fit(`can save current proof in the .prf file`, async () => {
+	it(`can save current proof in the .prf file`, async () => {
 		await quitProverIfActive();
 
 		const desc: PvsFormula = {
