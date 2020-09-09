@@ -36,8 +36,7 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 import { ExtensionContext, TreeItemCollapsibleState, commands, window, 
-	TreeItem, Command, EventEmitter, Event, TreeDataProvider, TreeView, 
-	Terminal 
+	TreeItem, Command, EventEmitter, Event, TreeDataProvider, TreeView
 } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import { 

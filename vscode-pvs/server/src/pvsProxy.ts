@@ -297,6 +297,10 @@ export class PvsProxy {
 								}
 
 								if ((method === "proof-command" || method === "prove-formula") && resp.result) {
+									console.log("---------------- in-checker --------------")
+									console.dir(req)
+									console.dir(resp);
+									console.log("------------------------------------------")	
 									if (resp.result) {
 										if (resp.result.length) {
 											for (let i = 0; i < resp.result.length; i++) {
@@ -1298,6 +1302,17 @@ export class PvsProxy {
 						fileExtension: ".prf",
 						contextFolder: formula.contextFolder
 					}, formula);
+					// save the .jprf file, this is useful for code lens commands such as show-proof
+					if (pdesc) {
+						await this.saveProof({
+							fileName: formula.fileName,
+							fileExtension: formula.fileExtension,
+							theoryName: formula.theoryName,
+							formulaName: formula.formulaName,
+							contextFolder: formula.contextFolder,
+							proofDescriptor: pdesc
+						});
+					}
 				}
 				// const fname: string = path.join(formula.contextFolder, `${formula.fileName}.jprf`);
 				// let proofFile: ProofFile = await utils.readProofFile(fname, opt);

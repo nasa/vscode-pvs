@@ -351,7 +351,61 @@ export class PvsProofExplorer {
 	 * executes the next step
 	 */
 	async forward (): Promise<PvsResponse | null> {
-		return await this.step({ feedbackToTerminal: true });
+		const response: PvsResponse = await this.step({ feedbackToTerminal: true });
+		// if (response) {
+		// 	if (response.result) {
+		// 		const channelID: string = utils.desc2id(req);
+		// 		const result: SequentDescriptor[] = response.result;
+		// 		if (result.length) {
+		// 			const sequent: SequentDescriptor = result[result.length - 1];
+		// 			if (sequent["prover-session-status"]) {
+		// 				// FIXME: this field is provided only by json-output patch, not by the xmlrpc server -- either use it or don't, adopt a standard solution!
+		// 				// branch closed, or proof completed
+		// 				console.dir(sequent);
+		// 			} else {
+		// 				// FIXME: pvs-server needs to provide a string representation of the command, not its structure!
+		// 				const command: string = 
+		// 					(sequent && sequent["last-cmd"] 
+		// 						&& !utils.isUndoCommand(cmd)
+		// 						&& !utils.isUndoUndoCommand(cmd)
+		// 						&& !utils.isPostponeCommand(cmd)) ? sequent["last-cmd"] : cmd;
+		// 				if (this.connection) {
+		// 					this.connection.sendRequest(serverEvent.proofCommandResponse, { 
+		// 						response: { result: sequent }, 
+		// 						args: { 
+		// 							fileName: req.fileName,
+		// 							fileExtension: req.fileExtension,
+		// 							contextFolder: req.contextFolder,
+		// 							theoryName: req.theoryName,
+		// 							formulaName: req.formulaName,
+		// 							cmd: command
+		// 						}
+		// 					});
+		// 				}
+		// 				// check if the proof is complete
+		// 				if (utils.QED(sequent)) {
+		// 					if (this.connection) {
+		// 						this.connection.sendRequest(serverEvent.QED, { response: { result: sequent }, args: req });
+		// 						// trigger a context update, so proof status will be updated on the front-end
+		// 						const cdesc: PvsContextDescriptor = await this.pvsLanguageServer.getContextDescriptor({ contextFolder: req.contextFolder });
+		// 						this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
+		// 					}
+		// 					// re-generate tccs
+		// 					await this.pvsLanguageServer.generateTccsRequest(req, { quiet: true });
+		// 					// stop the loop & don't send proof-state to cli gateway
+		// 					return;
+		// 				}
+		// 				// show feedback in CLI only after executing the last command in the sequence
+		// 				if (i === cmdArray.length - 1) {
+		// 					this.pvsLanguageServer.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: sequent, cmd });
+		// 				}
+		// 			}
+		// 		}	
+		// 	} else {
+		// 		this.pvsLanguageServer.pvsErrorManager.handleProofCommandError({ cmd, response: <PvsError> response });
+		// 	}
+		// }
+		return response;
 		// if (this.ghostNode && !this.ghostNode.isActive()) {
 		// 	this.root.pending();
 		// 	// if forward is called on a branch, move to the first child

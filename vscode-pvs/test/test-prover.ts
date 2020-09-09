@@ -44,7 +44,7 @@ describe("pvs-prover", () => {
 		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
 		expect(proverStatus.result).toBeDefined();
 		expect(proverStatus.error).not.toBeDefined();
-		console.log(proverStatus);
+		// console.log(proverStatus);
 		if (proverStatus && proverStatus.result !== "inactive") {
 			await pvsProxy.proofCommand({ cmd: 'quit' });
 		}
