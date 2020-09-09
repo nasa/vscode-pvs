@@ -106,6 +106,7 @@ class TerminalSession {
             this.terminal = vscode.window.createTerminal(terminalName, 'node', [ cliFileName, JSON.stringify(cliArgs) ]);
             this.terminal.show();
             this.isActive = true;
+            this.maximizePanel();
 
             // server events
             this.client.onRequest(serverEvent.quitProofDontSaveEvent, (desc: {
@@ -196,6 +197,9 @@ class TerminalSession {
             type: "pvs.select-profile",
             profile: desc.profile
         }));
+    }
+    maximizePanel (): void {
+        vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
     }
     protected sendText(cmd: string): void {
         this.terminal.sendText(cmd);
