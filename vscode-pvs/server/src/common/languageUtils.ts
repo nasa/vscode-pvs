@@ -1172,7 +1172,7 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 			prf = match[1].trim();
 		}
 		if (prf) {
-			buildProofTree_aux({ prf: desc.prf, proofName: desc.proofName, parent: rootNode });
+			buildProofTree_aux({ prf, proofName: desc.proofName, parent: rootNode });
 			expandBranchNames(rootNode)
 			return rootNode;
 		} else {

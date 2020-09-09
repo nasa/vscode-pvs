@@ -2228,9 +2228,10 @@ export class PvsProofExplorer {
 				contextFolder: this.formula.contextFolder
 			}
 			let success: boolean = false;
+			let msg: string = null;
 			switch (desc.fileExtension) {
 				case ".prf": {
-					success = await this.pvsProxy.saveProofliteAsPrf({ 
+					const pvsResponse: PvsResponse = await this.pvsProxy.saveProofliteAsPrf({ 
 						fileName: proofFile.fileName,
 						fileExtension: ".prf",
 						contextFolder: proofFile.contextFolder,
@@ -2238,6 +2239,12 @@ export class PvsProofExplorer {
 						formulaName: this.formula.formulaName,
 						proofDescriptor: this.proofDescriptor
 					});
+					if (pvsResponse) {
+						success = !(pvsResponse.error || (pvsResponse.result && typeof pvsResponse.result === "string" && pvsResponse.result.startsWith("Error:")));
+						msg = (typeof pvsResponse.result === "string") ? pvsResponse.result
+							: pvsResponse.error ? pvsResponse.error.error_string
+							: null;
+					}
 					break;
 				}
 				case ".prl": {
@@ -2262,6 +2269,7 @@ export class PvsProofExplorer {
 				response: { 
 					success,
 					proofFile,
+					msg,
 					formula: this.formula
 				}, 
 				args: this.formula 

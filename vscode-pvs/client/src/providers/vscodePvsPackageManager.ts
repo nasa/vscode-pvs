@@ -106,7 +106,7 @@ export class VSCodePvsPackageManager {
     }
 
     /**
-     * Utility function, used by pvsInstallationWizard to install pvs in vscode, i.e., extract the executable and set pvs.path in vscode
+     * Utility function, used by nasalibInstallationWizard to download and install nasalib
      * @param desc 
      */
 	protected async installNasalib (desc: { pvsPath: string, targetFolder: string, version: string }): Promise<boolean> {
@@ -127,7 +127,7 @@ export class VSCodePvsPackageManager {
                     }
                 });
 
-                const installNasalib = async (desc: { pvsPath: string, targetFolder: string, version: string }): Promise<void> => {
+                const runInstallScript = async (desc: { pvsPath: string, targetFolder: string, version: string }): Promise<void> => {
                     const terminalName: string = "Completing installation of NASALib..."
                     const terminal = window.createTerminal({ name: terminalName });            
                     terminal.show();
@@ -141,7 +141,7 @@ export class VSCodePvsPackageManager {
                         });	
                     });
                 }
-                await installNasalib(desc);
+                await runInstallScript(desc);
 
                 const message: string = `NASALib installed successfully in ${desc.targetFolder}`;
                 progress.report({ increment: 100, message });
@@ -152,10 +152,17 @@ export class VSCodePvsPackageManager {
         });
     }
 
+    async updateNasalib (): Promise<{ path: string, version: string }> {
+        return this.downloadNasalibWithProgress({ update: true })
+    }
+
     /**
-     * Utility function, downloads the list of nasalib versions from github, and returns the descriptor of the most recent version
+     * Utility function, downloads nasalib from github
+     * The primary download method is the 'git' command
+     * If the 'git' command is not available on the machine, then the zip file is downloaded from github
      */
-    protected async downloadNasalibWithProgress (): Promise<{ path: string, version: string }> {
+    protected async downloadNasalibWithProgress (opt?: { update?: boolean }): Promise<{ path: string, version: string }> {
+        opt = opt || {};
         return window.withProgress({
             location: ProgressLocation.Notification,
             cancellable: true
@@ -177,41 +184,49 @@ export class VSCodePvsPackageManager {
                 this.client.onRequest(serverEvent.getNasalibDownloaderResponse, (desc: { response: "git" | "download" }) => {
                     if (desc && desc.response) {
                         let downloadCommand: string = null;
-                        let label: string = null;
+                        let startMsg: string = null;
+                        let endMsg: string = null;
                         const pvsPath: string = workspace.getConfiguration().get("pvs.path");
                         const targetFolder: string = path.join(pvsPath, "nasalib");
                         switch (desc.response) {
                             case "git": {
-                                label = `Cloning NASALib`;
-                                progress.report({ increment: -1, message: `Cloning NASALib from ${nasalibUrl}` });
-                                downloadCommand = fsUtils.cloneCommand(nasalibUrl, { basePath: pvsPath, branch: nasalibBranch }) + ` && exit`;
+                                startMsg = opt.update ? `Updating NASALib` : `Cloning NASALib`;
+                                endMsg = opt.update ? `NASALib update complete!` : `NASALib installed successfully!`;
+                                progress.report({ increment: -1, message: `${startMsg} from ${nasalibUrl}` });
+                                downloadCommand = fsUtils.cloneCommand(nasalibUrl, { update: opt.update, basePath: pvsPath, branch: nasalibBranch });
                                 break;
                             }
                             case "download": {
-                                label = `Downloading NASALib`;
+                                startMsg = `Downloading NASALib`;
+                                endMsg = `NASALib installed successfully!`;
                                 progress.report({ increment: -1, message: `Downloading NASALib from ${nasalibUrl}` });
                                 const fname: string = `${os.tmpdir()}/nasalib7.zip`;
                                 const tmpdir: string = os.tmpdir();
                                 downloadCommand = fsUtils.downloadCommand(nasalibFile, { out: fname }) 
                                     + ` && unzip -o -qq ${fname} -d ${tmpdir}`
-                                    + ` && mv ${path.join(tmpdir, "pvslib-pvs7.0")} ${targetFolder}`
-                                    + ` && exit`;
+                                    + ` && mv ${path.join(tmpdir, "pvslib-pvs7.0")} ${targetFolder}`;
                                 break;                
                             }
                         }
                         if (downloadCommand) {
-                            // make sure the folder does not already exist
-                            fsUtils.deleteFolder(targetFolder);
+                            if (!opt.update) {
+                                // make sure the folder does not already exist
+                                fsUtils.deleteFolder(targetFolder);
+                            }
 
                             // execute the download command in the terminal
-                            terminal = window.createTerminal({ name: label });
+                            terminal = window.createTerminal({ name: startMsg });
                             terminal.show();
                             terminal.sendText(downloadCommand);
+                            terminal.sendText(`sleep 1 && exit`);
             
                             // return nasalib version when the terminal closes
                             window.onDidCloseTerminal((t) => {
-                                if (t.name === label) {
+                                if (t.name === startMsg) {
                                     resolve({ path: targetFolder, version: "7.1.0" });
+                                    if (endMsg) {
+                                        window.showInformationMessage(endMsg);
+                                    }
                                 }
                             });
                         }
@@ -320,7 +335,7 @@ export class VSCodePvsPackageManager {
 	}
 
     /**
-     * Utility function, used by pvsInstallationWizard to install pvs in vscode, i.e., extract the executable and set pvs.path in vscode
+     * Utility function, extracts the pvs executable and sets pvs.path in vscode
      * @param desc 
      */
 	protected async installPvs (desc: { fname: string, baseFolder: string, version: string }): Promise<string> {
@@ -343,7 +358,7 @@ export class VSCodePvsPackageManager {
             });
         }
         const pvsPath: string = path.join(desc.baseFolder, `pvs-${desc.version}`);
-        await fsUtils.deleteFolder(pvsPath);
+        fsUtils.deleteFolder(pvsPath);
         await extractPvs(desc);
         // set pvs.path configuration
 		await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);

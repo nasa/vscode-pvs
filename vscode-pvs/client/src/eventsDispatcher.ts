@@ -410,6 +410,7 @@ export class EventsDispatcher {
         this.client.onRequest(serverEvent.saveProofResponse, (desc: {
             response: { 
                 success: boolean,
+                msg?: string,
                 proofFile: PvsFile,
                 formula: PvsFormula
             }, 
@@ -428,8 +429,12 @@ export class EventsDispatcher {
                     window.showInformationMessage(`Proof ${desc.response.formula.formulaName} saved in file ${fname}`);
                 }
             } else {
-                if (desc.args) {
-                    window.showErrorMessage(`Unexpected error while saving file ${fsUtils.desc2fname(desc.args)} (please check pvs-server output for details)`);
+                if (desc && desc.args) {
+                    if (desc.response && desc.response.msg) {
+                        window.showErrorMessage(`Error while saving file ${fsUtils.desc2fname(desc.args)} (${desc.response.msg})`);
+                    } else {
+                        window.showErrorMessage(`Unexpected error while saving file ${fsUtils.desc2fname(desc.args)} (please check pvs-server output for details)`);
+                    }
                 }
             }
         });
@@ -580,7 +585,7 @@ export class EventsDispatcher {
             });
             this.client.sendRequest(serverRequest.viewPreludeFile);
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.reinstall-pvs", () => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", () => {
             this.packageManager.pvsInstallationWizard();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.set-pvs-path", () => {
@@ -588,6 +593,9 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.install-nasalib", () => {
             this.packageManager.nasalibInstallationWizard();
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.update-nasalib", () => {
+            this.packageManager.updateNasalib();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.add-pvs-library", async () => {
             await vscodeUtils.addPvsLibraryFolderWizard();

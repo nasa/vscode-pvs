@@ -1218,7 +1218,7 @@ export class PvsProxy {
 						const prl: string = await utils.readProoflite(fname, formula.formulaName);
 						if (prl) {
 							// FIXME: this does not seem to be working!
-							const pvsResponse: PvsResponse = await this.associateProofWithFormula(formula, prl); // this will load the prl in pvs ans save the proof as .prf
+							const pvsResponse: PvsResponse = await this.installProofliteScript(formula, prl); // this will load the prl in pvs ans save the proof as .prf
 							if (pvsResponse && pvsResponse.result) {
 								const response: PvsResponse = await this.getDefaultProofScript(formula);
 								if (response && response.result) {
@@ -1434,10 +1434,10 @@ export class PvsProxy {
 		formulaName: string, 
 		contextFolder: string, 
 		proofDescriptor: ProofDescriptor
-	}): Promise <boolean> {
+	}): Promise <PvsResponse> {
 		const prl: string = utils.proofTree2Prl(desc.proofDescriptor);
-		const pvsResponse: PvsResponse = await this.associateProofWithFormula(desc, prl); // this will load the prl in pvs ans save the proof as .prf
-		return pvsResponse && pvsResponse.result;
+		const pvsResponse: PvsResponse = await this.installProofliteScript(desc, prl); // this will load the prl in pvs ans save the proof as .prf
+		return pvsResponse;
 	}
 	/**
 	 * Saves the given proof script in .prf (legacy) format
@@ -1450,7 +1450,7 @@ export class PvsProxy {
 		formulaName: string, 
 		contextFolder: string, 
 		proofDescriptor: ProofDescriptor
-	}): Promise <boolean> {
+	}): Promise <PvsResponse> {
 		// TODO -- rerun entire proof and use 'save-all-proofs'
 		return this.saveProofliteAsPrf(desc);
 	}
@@ -1462,6 +1462,7 @@ export class PvsProxy {
 			// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
 			const fname: string = fsUtils.desc2fname({ contextFolder: desc.contextFolder, fileName: desc.fileName, fileExtension: ".pvs" });
 			const res: PvsResponse = await this.lisp(`(display-prooflite-script "${fname}#${desc.theoryName}" "${desc.formulaName}")`);
+			return res;
 		}
 		return null;
 	}
@@ -1955,10 +1956,10 @@ export class PvsProxy {
 		return response && response.result === "t";
 	}
 
-	async associateProofWithFormula (desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {
+	async installProofliteScript (desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {
 		const nasalibPresent: boolean = await this.isNasalibPresent();
 		if (nasalibPresent) {
-			return await this.legacy.associateProofWithFormula(desc, proofLiteScript);
+			return await this.legacy.installProofliteScript(desc, proofLiteScript);
 		}
 		return null;
 	}

@@ -104,22 +104,7 @@ export class PvsPackageManager {
         //     return res;
         // }
         // return null;
-        return PvsPackageManager.allegroLicense; // using the cached version to prevent issues in the case the license server is down
-    }
-
-    /**
-     * Downloads nasalib from github.
-     */
-    static async downloadNasalib (desc: NasalibDownloadDescriptor): Promise<string> {
-        const url: string = nasalibFile;
-        const fname: string = `${os.tmpdir()}/nasalib7.zip`;
-        const downloadCommand: string = fsUtils.downloadCommand(url, { out: fname });
-        fsUtils.deleteFile(fname);
-        const dnl: Buffer = execSync(downloadCommand);
-        if (dnl) {
-            return fname;
-        }
-        return null;
+        return PvsPackageManager.allegroLicense; // we are using the cached version of the page to prevent issues in the case the license server is down
     }
 
     protected static allegroLicense: string = `

@@ -401,13 +401,13 @@ export function getSourceControl (): "git" | null {
 	return null;
 }
 
-export function cloneCommand (url: string, opt?: { basePath?: string, branch?: string }): string {
+export function cloneCommand (url: string, opt?: { update?: boolean, basePath?: string, branch?: string }): string {
 	opt = opt || {};
-	let gitCommand: string = `git clone ${url} nasalib`;
+	let gitCommand: string = (opt.update) ? `cd nasalib && git pull` : `git clone ${url} nasalib`;
 	if (opt.basePath) {
 		gitCommand = `cd "${opt.basePath}" && ` + gitCommand;
 	}
-	if (opt.branch) {
+	if (opt.branch && !opt.update) {
 		gitCommand += ` -b "${opt.branch}"`;
 	}
 	return gitCommand;

@@ -472,23 +472,22 @@ export class PvsProxyLegacy {
             }
         };
     }
-    async associateProofWithFormula (desc: PvsFormula, prl: string): Promise<PvsResponse> {
+    async installProofliteScript (desc: PvsFormula, prl: string): Promise<PvsResponse> {
         // To store a prooflite script into the prf file you can use the lisp function:
-        // defun associate-proof-with-formulas (theory-name formula-name strategy force
-        //                                                   &optional
-        //                                                   (overwrite-default-proof? t)
-        //                                                   (save-prf-file? t)
+        // defun install-script (theory script formulas force &optional (overwrite-default-proof? t) (save-prf-file? t))
+        // * script is a string containing the prooflite script
         // * theory-name is the name of the theory
         // * formula-name is the name of the formula
-        // * strategy is a string containing the prooflite script
         // * If force is nil, the script only is installed if the formula has no proof.
         // * if overwrite-default-proof? is t, the script will replace the current default proof.
         // * The script only is stored to the prf file if save-prf-file? is t.
         // * Parameter overwrite-default-proof? is omitted when force is nil.
-        const cmd: string = `(associate-proof-with-formulas "${desc.theoryName}" "${desc.formulaName}" "${prl}" t)`;
+        const cmd: string = `(install-script "${desc.theoryName}" "${prl}" (list "${desc.formulaName}") t)`;
         const data: PvsResponse = await this.lisp(cmd);
         if (data && data.error) {
             console.error(data.error);
+        } else if (data && data.result && typeof data.result === "string" && data.result.startsWith("Error:")) {
+            console.error(data.result);
         }
         return data;
     }
