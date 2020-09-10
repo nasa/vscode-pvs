@@ -754,7 +754,7 @@ export type ProofEditDidStartNewProof = {
 
 // ProofExec
 export type ProofExecCommand = ProofExecForward | ProofExecBack | ProofExecFastForward | ProofExecRun
-	| ProofExecQuit | ProofExecOpenProof | ProofExecStartNewProof;
+	| ProofExecQuit | ProofExecOpenProof | ProofExecStartNewProof | ProofExecInterruptProver;
 export type ProofExecForward = {
 	action: "forward"
 };
@@ -783,6 +783,9 @@ export type ProofExecOpenProof = {
 export type ProofExecStartNewProof = {
 	action: "start-new-proof",
 	formula: PvsFormula
+};
+export type ProofExecInterruptProver = {
+	action: "interrupt-prover"
 };
 
 export type ProofExecEvent = ProofExecDidStartProof | ProofExecDidLoadProof | ProofExecDidLoadSequent

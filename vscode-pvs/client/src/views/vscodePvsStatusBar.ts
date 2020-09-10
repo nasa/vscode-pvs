@@ -53,6 +53,7 @@ export class VSCodePvsStatusBar {
     protected versionInfo: StatusBarItem;
     protected crashReport: StatusBarItem;
     protected restartPvs: StatusBarItem;
+    protected interruptProver: StatusBarItem;
 
     protected downloadNasalib: StatusBarItem;
 
@@ -95,6 +96,7 @@ export class VSCodePvsStatusBar {
         this.restartPvs = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
         this.crashReport = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
 
+        this.interruptProver = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
         this.downloadNasalib = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
     }
 
@@ -218,6 +220,14 @@ export class VSCodePvsStatusBar {
     }
     hideRestartButton (): void {
         this.restartPvs.hide();
+    }
+    showInterruptButton (): void {
+        this.interruptProver.text = `$(debug-disconnect) Interrupt Prover`;
+        this.interruptProver.command = "vscode-pvs.interrupt-prover";
+        this.interruptProver.show();
+    }
+    hideInterruptButton (): void {
+        this.interruptProver.hide();
     }
     showDownloadNasalibButton (showButton?: boolean): void {
         if (showButton === true) {

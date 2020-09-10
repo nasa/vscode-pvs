@@ -295,10 +295,10 @@ export class PvsProxy {
 									resp["result"] = null;
 								}
 
-								console.log("---------------- in-checker --------------");
-								console.dir(req);
-								console.dir(resp);
-								console.log("------------------------------------------\n");
+								// console.log("---------------- in-checker --------------");
+								// console.dir(req);
+								// console.dir(resp);
+								// console.log("------------------------------------------\n");
 								if ((method === "proof-command" || method === "prove-formula") && resp.result) {
 									if (resp.result) {
 										if (resp.result.length) {

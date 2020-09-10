@@ -97,6 +97,8 @@ abstract class TreeItem {
 export class PvsProofExplorer {
 	protected shasum: string;
 
+	protected interruptFlag: boolean = false;
+
 	protected logFileName: string;
 	protected tmpLogFileName: string;
 
@@ -466,6 +468,10 @@ export class PvsProofExplorer {
 			};
 			// console.dir(command, { depth: null });
 			const response: PvsResponse = await this.proofCommand(command);
+			if (this.interruptFlag) {
+				this.interruptFlag = false;
+				return response;
+			}
 			// console.dir(response, { depth: null });
 			if (response && response.result && response.result.length) {
 				// response.result = response.result.reverse(); // having the most recent sequent in position 0 is only bringing havoc!
@@ -2435,6 +2441,13 @@ export class PvsProofExplorer {
 		return item.parent;
 	}
 
+	async interruptProofCommand (): Promise<PvsResponse> {
+		if (this.pvsProxy && !this.interruptFlag) {
+			this.interruptFlag = true;
+			return await this.pvsProxy.interrupt();
+		}
+		return null;
+	}
 	
 	/**
 	 * Send proof command

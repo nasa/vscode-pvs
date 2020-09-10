@@ -42,7 +42,7 @@ import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindin
 import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory } from "./common/serverInterface";
+import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
@@ -366,11 +366,13 @@ export class EventsDispatcher {
                 case "did-start-proof": {
                     this.proofExplorer.startProof();
                     this.proofMate.startProof();
+                    this.statusBar.showInterruptButton();
                     break;
                 }
                 case "did-end-proof": { // this is sent by CliGateway when the prover CLI is closed
                     this.proofExplorer.disposeView();
                     this.proofMate.disposeView();
+                    this.statusBar.hideInterruptButton();
                     break;
                 }
                 case "did-load-sequent": {
@@ -669,6 +671,16 @@ export class EventsDispatcher {
                 this.client.sendRequest(serverRequest.rebootPvsServer, { cleanFolder: currentContext });
                 // terminate any prover session
                 this.vscodePvsTerminal.quitAll(); // async call
+            }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.interrupt-prover", async () => {
+            // ask the user confirmation before restarting pvs
+			const yesno: string[] = [ "Yes", "No" ];
+			const msg: string = `Interrupt the execution of the current proof command?`;
+			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+			if (ans === yesno[0]) {
+                const action: ProofExecInterruptProver = { action: "interrupt-prover" };
+                this.client.sendRequest(serverRequest.proverCommand, action);
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.download-nasalib", async () => {
