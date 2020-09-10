@@ -68,6 +68,11 @@ export const theoremRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈�
 export const tccRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*:\s*OBLIGATION\b/gi;
 export const tccStatusRegExp: RegExp = /%\s(proved|subsumed|simplified|unproved|unfinished|unchecked|untried)\b/g;
 
+// capture group 1 is proofName
+// capture group 2 is formulaName,
+// capture group 3 is proofTree
+export const prfRegExp: RegExp = /;;; Proof\s+([\w\?₀₁₂₃₄₅₆₇₈₉\.\-]+)\s+for formula\s+([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉\.]*)\s+(\((?:\"\")?[\n\w\W]+)/g;
+
 export declare interface IntellisenseTriggers {
 	recordExpression: RegExp,
 	recordAccessor: RegExp,
@@ -575,7 +580,7 @@ export async function getProofLiteScript (desc: {
 			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
 			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
 				proofScript = makeProofliteHeader(desc.formulaName, desc.theoryName, proofDescriptors[0].info.status);
-				const proofLite: string[] = proofTree2ProofLite(proofDescriptors[0]);
+				const proofLite: string[] = proofDescriptor2ProofLite(proofDescriptors[0]);
 				if (proofLite && proofLite.length) {
 					proofScript += proofLite.join("\n");
 				}
@@ -986,20 +991,91 @@ export function pvsVersionToString (version: PvsVersionDescriptor): string {
 }
 
 export function proofTree2Prl (proofDescriptor: ProofDescriptor): string | null {
-	const content: string[] = proofTree2ProofLite(proofDescriptor, { omitTags: true, escape: true });
+	const content: string[] = proofDescriptor2ProofLite(proofDescriptor, { omitTags: true, escape: true });
 	if (content && content.length) {
 		return content.join("\n");
 	}
 	return null;
+}
+export function proofLite2proofTree (desc: { prf: string, parent?: ProofNode, proofName?: string }): ProofNode {
+	if (desc) {
+		if (desc.parent) {
+			let currentNode: ProofNode = desc.parent;
+			let plite: string = desc.prf.trim();
+			if (plite.startsWith("(then ")) {
+				// series of proof commands
+				plite = plite.replace("(then ", "");
+				const cmdArray: string[] = splitCommands(plite);
+				for (let i = 0; i < cmdArray.length; i++) {
+					if (cmdArray[i].startsWith("(spread ")) {
+						// series of proof branches
+						proofLite2proofTree({ prf: plite, parent: currentNode });
+					} else {
+						currentNode = {
+							name: cmdArray[i],
+							type: "proof-command",
+							rules: [],
+							branch: currentNode.branch
+						};
+						desc.parent.rules.push(currentNode);
+					}
+				}
+			} else if (plite.startsWith("(spread ")) {
+				// series of proof branches
+				plite = plite.replace("(spread ", "");
+				const cmdArray: string[] = splitCommands(plite);
+				for (let i = 0; i < cmdArray.length; i++) {
+					currentNode = {
+						name: `(${i + 1})`,
+						type: "proof-branch",
+						rules: [],
+						branch: desc.parent.branch
+					};
+					desc.parent.rules.push(currentNode);
+					proofLite2proofTree({ prf: cmdArray[i], parent: currentNode });
+				}
+			} else if (plite.startsWith(`("" `)) {
+				// proof start
+				plite = plite.replace(`("" `, "");
+				proofLite2proofTree({ prf: plite, parent: currentNode });
+			}
+		} else {
+			desc.parent = {
+				name: desc.proofName, // proof name
+				rules: [], // sequence of proof rules
+				type: "root", // node type
+				branch: `""` // branch id			
+			};
+			proofLite2proofTree(desc);
+		}
+		return desc.parent;
+	}
+	return null;
+}
+export function proofLite2ProofDescriptor (prf: string, info: {
+	theory: string, formula: string, status: ProofStatus, prover: string, shasum: string, date?: string
+}): ProofDescriptor {
+	const pdesc: ProofDescriptor = new ProofDescriptor(info);
+	const script: string = prf.replace(/\s*\n+\s*/g, " "); // remove all \n introduced by pvs in the expression
+	// capture group 1 is proofName
+	// capture group 2 is formulaName,
+	// capture group 3 is proofTree
+	const data: RegExpMatchArray = new RegExp(prfRegExp).exec(script);
+	if (data && data.length > 3) {
+		// const proofName: string =  data[2];
+		const prf: string = data[3];
+		pdesc.proofTree = proofLite2proofTree({ prf, proofName: info.formula });
+	}
+	return pdesc;
 }
 /**
  * Utility function, converts a proof descriptor to a prooflite script
  * @param proofDescriptor 
  * @param opt 
  */
-export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { barDash?: boolean, omitTags?: boolean, escape?: boolean }): string[] | null {
+export function proofDescriptor2ProofLite (proofDescriptor: ProofDescriptor, opt?: { barDash?: boolean, omitTags?: boolean, escape?: boolean }): string[] | null {
 	opt = opt || {};
-	const proofTreeToProofLite_aux = (nodes: ProofNode[], currentBranch?: string, indent?: number): string => {
+	const proofTreeToProofLite = (nodes: ProofNode[], currentBranch?: string, indent?: number): string => {
 		indent = indent || 0;
 		let res: string = "";
 		if (nodes && nodes.length) {
@@ -1008,7 +1084,7 @@ export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { b
 				const node: ProofNode = nodes[i];
 				switch (node.type) {
 					case "root": {
-						res += `${" ".repeat(indent)}` + proofTreeToProofLite_aux(node.rules, "", indent);
+						res += `${" ".repeat(indent)}` + proofTreeToProofLite(node.rules, "", indent);
 						break;
 					}
 					case "proof-command": {
@@ -1032,10 +1108,10 @@ export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { b
 							}
 							res += `(spread `;
 							indent++;
-							res += cmd + `\n${" ".repeat(indent)}(` + proofTreeToProofLite_aux(node.rules, node.branch, indent);
+							res += cmd + `\n${" ".repeat(indent)}(` + proofTreeToProofLite(node.rules, node.branch, indent);
 							res += `))`; // we need to close the extra parenthesis opened by spread
 						} else {
-							res += cmd + proofTreeToProofLite_aux(node.rules, node.branch, indent);
+							res += cmd + proofTreeToProofLite(node.rules, node.branch, indent);
 						}
 						break;
 					}
@@ -1045,7 +1121,7 @@ export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { b
 						}
 					default: {
 						if (node.rules && node.rules.length) {
-							res += proofTreeToProofLite_aux(node.rules, node.branch, indent);
+							res += proofTreeToProofLite(node.rules, node.branch, indent);
 						} else {
 							res += "(postpone)";
 						}
@@ -1060,7 +1136,7 @@ export function proofTree2ProofLite (proofDescriptor: ProofDescriptor, opt?: { b
 		return res;
 	}
 	if (proofDescriptor && proofDescriptor.proofTree) {
-		let script: string = proofTreeToProofLite_aux([ proofDescriptor.proofTree ]);
+		let script: string = proofTreeToProofLite([ proofDescriptor.proofTree ]);
 		script = script || "(postpone)";
 		if (opt.omitTags) {
 			if (opt.escape) {
@@ -1172,8 +1248,14 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 			prf = match[1].trim();
 		}
 		if (prf) {
-			buildProofTree_aux({ prf, proofName: desc.proofName, parent: rootNode });
-			expandBranchNames(rootNode)
+			// if (prf.startsWith("(then ")) {
+			// 	// prf contains prooflite glassbox
+			// 	proofLite2proofTree({ prf, proofName: desc.proofName, parent: rootNode });	
+			// } else {
+				// regular prf file
+				buildProofTree_aux({ prf, proofName: desc.proofName, parent: rootNode });
+				expandBranchNames(rootNode);
+			// }
 			return rootNode;
 		} else {
 			console.error("[pvs-proxy] Warning: unrecognised proof structure", desc.prf);
@@ -1322,6 +1404,7 @@ export function isEmptyPrf(prf: string): boolean {
 }
 
 const grind: string = `("" (grind))`;
+const postpone: string = `("" (postpone))`;
 
 /**
  * Utility function, transforms a proof tree into a json object
@@ -1349,7 +1432,7 @@ export function prf2jprf (desc: {
 			// capture group 1 is proofName
 			// capture group 2 is formulaName,
 			// capture group 3 is proofTree
-			const data: RegExpMatchArray = /;;; Proof\s+([\w\-\.\?]+)\s+for formula\s+([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉\.]*)\s+(\((?:\"\")?[\n\w\W]+)/g.exec(script);
+			const data: RegExpMatchArray = new RegExp(prfRegExp).exec(script);
 			if (data && data.length > 3) {
 				const proofName: string =  data[2]; //data[1];
 				const formulaName: string = data[2];
@@ -1357,7 +1440,7 @@ export function prf2jprf (desc: {
 				if (formulaName !== `${desc.theoryName}.${desc.formulaName}`) {
 					console.warn(`[language-utils] Warning: proof script for ${desc.theoryName}.${desc.formulaName} has unexpected signature ${formulaName}`);
 				}
-				const prf: string = (desc.autorun && isEmptyPrf(data[3]))? grind : data[3];
+				const prf: string = isEmptyPrf(data[3])? postpone : data[3];
 				const proof: ProofNode = prf2ProofTree({ prf, proofName });
 				result.proofTree = proof;
 				// console.dir(result, { depth: null });
@@ -1457,6 +1540,10 @@ export function isShowHiddenCommand (cmd: string): boolean {
 
 export function isGrindCommand (cmd: string): boolean {
 	return cmd && /\(?\s*grind\b/g.test(cmd);
+}
+
+export function isProofliteGlassbox (cmd: string): boolean {
+	return cmd && cmd.trim().startsWith("(then ");
 }
 
 export function isHelpCommand (cmd: string): boolean {

@@ -47,7 +47,39 @@ describe("pvs-prover", () => {
 	}
 
 	// this test requires nasalib and patch-20291231-server-output
-	fit(`can handle branches with propax`, async () => {
+	fit(`can execute glassbox proof for eventually_nulltiming`, async () => {
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		const baseFolder: string = path.join(__dirname, "pvscontext");
+
+		// remove folder if present and replace it with the content of the zip file
+		const contextFolder: string = path.join(baseFolder, "monitors");
+		fsUtils.deleteFolder(contextFolder);
+		execSync(`cd ${baseFolder} && unzip nasalib-monitors-1.zip`);
+
+		let response: PvsResponse = await pvsProxy.proveFormula({
+			fileName: "trace",
+			fileExtension: ".pvs",
+			contextFolder: path.join(contextFolder, "Fret_MLTL"),
+			theoryName: "trace",
+			formulaName: "eventually_nulltiming"
+		});
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+		// console.dir(response);
+
+		const cmd: string = `(then (skeep) (expand "check_fretish_req_semantics") (expand* "Timing_fun"))`;
+		response = await pvsProxy.proofCommand({ cmd });
+		console.log(cmd);
+		console.dir(response);
+
+		expect(response.error).not.toBeDefined();
+		expect(response.result).toBeDefined();
+	}, 20000);
+
+	// this test requires nasalib and patch-20291231-server-output
+	it(`can handle branches with propax`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 

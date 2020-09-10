@@ -184,14 +184,14 @@ export async function openWorkspace (): Promise<void> {
         const contextFolder: string = selection[0].path;
         const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
         // add folder to workspace
-        if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
+        // if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
             // save and close all open files in the editor
             vscode.commands.executeCommand("workbench.action.files.saveAll");
             vscode.commands.executeCommand("workbench.action.closeAllGroups");
             // open the new workspace
             // vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
             vscode.workspace.updateWorkspaceFolders(0, null, { uri: contextFolderUri });
-        }
+        // }
     }
 }
 /**

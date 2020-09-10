@@ -132,7 +132,7 @@ export class VSCodePvsPackageManager {
                     const terminal = window.createTerminal({ name: terminalName });            
                     terminal.show();
                     return new Promise ((resolve, reject) => {
-                        terminal.sendText(`cd ${desc.targetFolder} && ./install-scripts -pvs_dir ${desc.pvsPath} && exit`);
+                        terminal.sendText(`cd ${desc.targetFolder} && ./install-scripts`);
             
                         window.onDidCloseTerminal((t) => {
                             if (t.name === terminalName) {

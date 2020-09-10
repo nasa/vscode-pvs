@@ -431,7 +431,7 @@ describe("pvs-prover", () => {
 		response = await pvsProxy.proofCommand({ cmd: '(then (skosimp*)(grind))'});
 		expect(response.error).not.toBeDefined();
 		expect(response.result).toBeDefined();
-		console.dir(response);
+		// console.dir(response);
 
 		// quit the proof attempt
 		await pvsProxy.proofCommand({ cmd: 'quit'});

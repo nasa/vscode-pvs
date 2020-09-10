@@ -131,7 +131,6 @@ export class PvsProxy {
 	protected legacy: PvsProxyLegacy;
 	protected useLegacy: boolean = true;
 	protected useNasalib: boolean = false;
-	protected jsonOutputAvailable: boolean = false;
 
 	protected mode: ServerMode = "lisp";
 
@@ -296,11 +295,11 @@ export class PvsProxy {
 									resp["result"] = null;
 								}
 
+								console.log("---------------- in-checker --------------");
+								console.dir(req);
+								console.dir(resp);
+								console.log("------------------------------------------\n");
 								if ((method === "proof-command" || method === "prove-formula") && resp.result) {
-									console.log("---------------- in-checker --------------")
-									console.dir(req)
-									console.dir(resp);
-									console.log("------------------------------------------")	
 									if (resp.result) {
 										if (resp.result.length) {
 											for (let i = 0; i < resp.result.length; i++) {
@@ -838,22 +837,18 @@ export class PvsProxy {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName && desc.formulaName) {
 			opt = opt || {};
 			await this.changeContext(desc.contextFolder);
-			if (this.useNasalib && this.jsonOutputAvailable && opt.useLispInterface) {
-				const res: PvsResponse = await this.legacy.proveFormula(desc);
-				// console.dir(res);
-				return res;
-			} else {
-				const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
-				const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, fullName ]);
-				// if (this.verbose) { console.dir(ans); }
-				if (ans && ans.result && ans.result["length"] === undefined) {
-					ans.result = [ ans.result ]; // the prover should return an array of proof states
-				}
-				if (ans && !ans.error) {
-					this.mode = "in-checker";
-				}
-				return ans;
+
+			const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
+			const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, fullName ]);
+			// if (this.verbose) { console.dir(ans); }
+			if (ans && ans.result && ans.result["length"] === undefined) {
+				ans.result = [ ans.result ]; // the prover should return an array of proof states
 			}
+			if (ans && !ans.error) {
+				this.mode = "in-checker";
+			}
+			return ans;
+
 		}
 		return null;
 	}
@@ -1075,14 +1070,13 @@ export class PvsProxy {
 			if (test.success) {
 				// console.dir(desc, { depth: null });
 				const showHidden: boolean = utils.isShowHiddenCommand(desc.cmd);
-				const isGrind: boolean = utils.isGrindCommand(desc.cmd);
+				// const isGrind: boolean = utils.isGrindCommand(desc.cmd);
 				// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
 				// the front-end will handle the command, and reveal the hidden sequents.
 				const cmd: string = showHidden ? "(skip)"
-					: isGrind ? utils.applyTimeout(desc.cmd, opt.timeout)
+					// : isGrind ? utils.applyTimeout(desc.cmd, opt.timeout)
 						: desc.cmd;
-				res = (this.useNasalib && this.jsonOutputAvailable && opt.useLispInterface) ? await this.legacy.proofCommand(cmd) 
-					: await this.pvsRequest('proof-command', [ cmd ]);
+				res = await this.pvsRequest('proof-command', [ cmd ]);
 				if (res && res.result) {
 					const proofStates: SequentDescriptor[] = res.result;
 					if (showHidden) {
@@ -1096,19 +1090,19 @@ export class PvsProxy {
 							}
 						}
 					}
-					if (isGrind) {
-						for (let i = 0; i < proofStates.length; i++) {
-							const result: SequentDescriptor = proofStates[i];
-							if (opt.timeout) {
-								if (result && result.commentary && typeof result.commentary === "object" 
-										&& result.commentary.length && result.commentary[result.commentary.length - 1].startsWith("No change on")) {
-									result.action = `No change on: ${desc.cmd}`;
-									result.commentary = result.commentary.slice(0, result.commentary.length - 1).concat(`No change on: ${desc.cmd}`);
-								}
-							}
-							result["prev-cmd"] = desc.cmd; // this will remove the timeout applied to grind
-						}
-					}
+					// if (isGrind) {
+					// 	for (let i = 0; i < proofStates.length; i++) {
+					// 		const result: SequentDescriptor = proofStates[i];
+					// 		if (opt.timeout) {
+					// 			if (result && result.commentary && typeof result.commentary === "object" 
+					// 					&& result.commentary.length && result.commentary[result.commentary.length - 1].startsWith("No change on")) {
+					// 				result.action = `No change on: ${desc.cmd}`;
+					// 				result.commentary = result.commentary.slice(0, result.commentary.length - 1).concat(`No change on: ${desc.cmd}`);
+					// 			}
+					// 		}
+					// 		result["prev-cmd"] = desc.cmd; // this will remove the timeout applied to grind
+					// 	}
+					// }
 					for (let i = 0; i < proofStates.length; i++) {
 						const result: SequentDescriptor = proofStates[i];
 						if (utils.QED(result)) {
@@ -1204,7 +1198,7 @@ export class PvsProxy {
 					case ".prf": {
 						const response: PvsResponse = await this.getDefaultProofScript(formula);
 						if (response && response.result) {
-							const pvsVersionDescriptor = this.getPvsVersionInfo();
+							const pvsVersionDescriptor: PvsVersionDescriptor = this.getPvsVersionInfo();
 							const shasum: string = await fsUtils.shasumFile(formula);
 							pdesc = utils.prf2jprf({
 								prf: response.result,
@@ -1212,7 +1206,7 @@ export class PvsProxy {
 								formulaName: formula.formulaName, 
 								version: pvsVersionDescriptor,
 								shasum
-							});
+							});					
 						}
 						break;
 					}
@@ -1426,7 +1420,7 @@ export class PvsProxy {
 			fileName: desc.theoryName,
 			fileExtension: ".prl"
 		});
-		const content: string[] = utils.proofTree2ProofLite(desc.proofDescriptor);
+		const content: string[] = utils.proofDescriptor2ProofLite(desc.proofDescriptor);
 		if (content && content.length) {
 			const header: string = utils.makeProofliteHeader(desc.formulaName, desc.theoryName, desc.proofDescriptor.info.status);
 			const proofLite: string = content.join("\n");
@@ -1616,16 +1610,8 @@ export class PvsProxy {
 			if (info && info.length > 1) {
 				this.useNasalib = true;
 				// check if vscode-output is enabled -- this is disabled for now
-				const jsonOutput: PvsResponse = await this.legacy.lisp(`(boundp '*vscode-output*)`);
-				if (jsonOutput && jsonOutput.result === "t") {
-					if (this.connection) {
-						this.connection.sendNotification(serverEvent.profilerData, `Profiling: vscode-output\n`);
-					}
-					this.jsonOutputAvailable = true;
-				} else {
-					if (this.connection) {
-						this.connection.sendNotification(serverEvent.profilerData, `Profiling: xmlrpc-server\n`);
-					}
+				if (this.connection) {
+					this.connection.sendNotification(serverEvent.profilerData, `Profiling: xmlrpc-server\n`);
 				}
 				return info[1];
 			}

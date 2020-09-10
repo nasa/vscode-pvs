@@ -268,7 +268,8 @@
 				"command": "vscode-pvs.open-pvs-workspace",
 				"title": "Open PVS Workspace...",
 				"enablement": "pvs-server-active == true",
-				"category": "pvs"
+				"category": "pvs",
+				"icon": "icons/open-workspace.png"
 			},
 			{
 				"command": "vscode-pvs.view-prelude-file",
@@ -925,6 +926,11 @@
 					"command": "vscode-pvs.open-pvs-workspace",
 					"when": "view == workspace-explorer-view",
 					"group": "ctrl-1.1"
+				},
+				{
+					"command": "vscode-pvs.open-pvs-workspace",
+					"when": "view == workspace-explorer-view",
+					"group": "navigation"
 				},
 				{
 					"command": "vscode-pvs.view-prelude-file",

@@ -884,7 +884,11 @@ export class PvsProofExplorer {
 
 				// trim the node if necessary
 				if (activeNode) {
-					this.trimNode({ selected: activeNode });
+					if (utils.isProofliteGlassbox(activeNode.name)) {
+						this.deleteNode({ selected: activeNode });
+					} else {
+						this.trimNode({ selected: activeNode });
+					}
 				}
 
 				// disable ghost node if necessary
@@ -2152,26 +2156,6 @@ export class PvsProofExplorer {
 	getFormula (): PvsFormula {
 		return this.formula;
 	}
-	/**
-	 * Loads the proof for a given formula
-	 * @param formula 
-	 */
-	// async loadProofRequest (formula: PvsFormula): Promise<ProofDescriptor | null> {
-	// 	const pdesc: ProofDescriptor = await this.loadProof(formula);
-	// 	if (pdesc) {
-	// 		const structure: ProofNodeX = this.root.getNodeXStructure();
-	// 		const evt: ProofExecDidLoadProof = { 
-	// 			action: "did-load-proof", 
-	// 			formula: this.formula, 
-	// 			desc: pdesc,
-	// 			proof: structure
-	// 		};
-	// 		if (this.connection && !this.autorunFlag) {
-	// 			this.connection.sendNotification(serverEvent.proverEvent, evt);
-	// 		}
-	// 	}
-	// 	return pdesc;
-	// }
 
 	/**
 	 * Internal function, used by loadProof to load the proof descriptor of a given formula in proof-explorer
