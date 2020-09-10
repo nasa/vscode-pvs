@@ -47,7 +47,7 @@ export class PvsRenameProvider {
         const changes: { [uri: string]: TextEdit[] } = {};
         if (desc && desc.txt && desc.uri && desc.position) {
             const fname: string = desc.uri;
-            // const shasum: string = fsUtils.shasum(content);
+            // const oldShasum: string = fsUtils.shasum(desc.txt);
             const theorems: FormulaDescriptor[] = await utils.listTheoremsInFile(fname, { content: desc.txt });
             if (theorems && theorems.length) {
                 const candidates: FormulaDescriptor[] = theorems.filter((fdesc: FormulaDescriptor) => {
@@ -80,7 +80,7 @@ export class PvsRenameProvider {
                                 };
                                 changes[desc.uri] = [ textEdit ];
 
-                                // change shasum and formula name in the jprf file, if the file exists and a proof exists in the file
+                                // change ormula name in the jprf file, and all shasum for all proofs
                                 const newShasum: string = fsUtils.shasum(newContent);
                                 const theoryName: string = utils.findTheoryName(desc.txt, line);
                                 const formula: PvsFormula = {

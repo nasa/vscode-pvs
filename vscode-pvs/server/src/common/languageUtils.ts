@@ -1014,8 +1014,15 @@ export async function renameProof (formula: PvsFormula, newInfo: { newFormulaNam
 			}
 			// delete old fdesc entry
 			delete fdesc[key];
+			// change old shasum for all other proofs
+			const keys: string[] = Object.keys(fdesc);
+			for (let i = 0; i < keys.length; i++) {
+				if (fdesc[keys[i]] && fdesc[keys[i]].length && fdesc[keys[i]][0].info) {
+					fdesc[keys[i]][0].info.shasum = newInfo.newShasum;
+				}
+			}
 			// add new key
-			fdesc[newKey] = [ pdesc ];
+			fdesc[newKey] = [ pdesc ];			
 			// write to file
 			const newContent: string = JSON.stringify(fdesc, null, " ");
 			return await fsUtils.writeFile(fname, newContent);
