@@ -92,6 +92,11 @@
 						"default": true,
 						"description": "Show hover tooltips for symbols"
 					},
+					"pvs.serviceProvider.rename": {
+						"type": "boolean",
+						"default": true,
+						"description": "Support for renaming of theories & formulas"
+					},
 					"pvs.xtras.enableErrorTolerantParser": {
 						"type": "boolean",
 						"default": false,

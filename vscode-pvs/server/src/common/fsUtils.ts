@@ -177,6 +177,7 @@ export async function createFolder(path: string): Promise<void> {
 export async function writeFile(fname: string, content: string): Promise<boolean> {
 	if (fname) {
 		try {
+			fname = fname.replace("file://", "");
 			fname = tildeExpansion(fname);
 			fs.writeFileSync(fname, content);
 		} catch (error) {

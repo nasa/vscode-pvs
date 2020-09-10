@@ -37,7 +37,7 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { CancellationToken, CodeLens, CodeLensRequest, Range } from 'vscode-languageserver';
+import { CancellationToken, CodeLens, CodeLensRequest, Range, CodeLensParams } from 'vscode-languageserver';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 import { PvsFormula } from '../common/serverInterface';
@@ -217,5 +217,14 @@ export class PvsCodeLensProvider {
         //     };
         // }
         // return null;
+    }
+
+    async onCodeLens (args: CodeLensParams, txt: string): Promise<CodeLens[]> {
+        const uri: string = args.textDocument.uri;
+        if (fsUtils.isPvsFile(uri)) {
+            let codelens: CodeLens[] = await this.provideCodeLens({ txt, uri });
+            return codelens;
+        }
+        return null;
     }
  }

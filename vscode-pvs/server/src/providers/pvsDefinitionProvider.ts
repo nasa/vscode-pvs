@@ -38,7 +38,7 @@
 
 import { PvsDefinition, ProofStatus, TheoryDescriptor } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
-import { Connection, Position, Range, CancellationToken, TextDocuments } from 'vscode-languageserver';
+import { Connection, Position, Range, CancellationToken, TextDocuments, TextDocumentPositionParams, Definition, TextDocument, Location } from 'vscode-languageserver';
 import { findTheoryName, getWordRange } from '../common/languageUtils';
 import * as fs from '../common/fsUtils';
 import { PvsProxy } from '../pvsProxy';
@@ -298,7 +298,7 @@ export class PvsDefinitionProvider {
 	 * @param position Current cursor position
 	 * @param token Cancellation token (optional)
 	 */
-	async provideDefinition(document: { uri: string, txt: string, position: Position }, token?: CancellationToken): Promise<{ symbolName: string, definitions: PvsDefinition[] }> {
+	async getDefinition(document: { uri: string, txt: string, position: Position }, token?: CancellationToken): Promise<{ symbolName: string, definitions: PvsDefinition[] }> {
 		if (document && document.uri && document.txt && document.position) {
 			const symbolRange: Range = getWordRange(document.txt, document.position);
 			// console.log(`Provide definition`, symbolRange);
@@ -314,6 +314,42 @@ export class PvsDefinitionProvider {
 
 				const definitions: PvsDefinition[] = await this.findSymbolDefinition(document.uri, symbolName, { line: line, character: character });
 				return { symbolName, definitions };
+			}
+		}
+		return null;
+	}
+
+	async provideDefinition (desc: { uri: string, position: Position, txt: string }): Promise<Definition> {
+		if (desc && desc.uri && fsUtils.isPvsFile(desc.uri)) {
+			if (desc.txt) {
+				const position: Position = desc.position;
+				const info: { symbolName: string, definitions: PvsDefinition[] } = await this.getDefinition({ txt: desc.txt, uri: desc.uri, position });
+				if (info) {
+					const pvsDefinitions: PvsDefinition[] = info.definitions;
+					if (pvsDefinitions) {
+						const ans: Location[] = [];
+						for (let i: number = 0; i < pvsDefinitions.length; i++) {
+							const def: PvsDefinition = pvsDefinitions[i];
+							const uri: string = def.symbolDeclarationFile;
+							const range: Range = {
+								start: {
+									line: def.symbolDeclarationRange.start.line - 1,
+									character: def.symbolDeclarationRange.start.character
+								},
+								end: {
+									line: def.symbolDeclarationRange.end.line - 1,
+									character: def.symbolDeclarationRange.end.character
+								}
+							}
+							const location: Location = {
+								uri: "file://" + uri,
+								range: range
+							}
+							ans.push(location);
+						}
+						return ans.reverse();
+					}
+				}
 			}
 		}
 		return null;

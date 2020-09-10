@@ -60,31 +60,31 @@ export class PvsHoverProvider {
 	
 	/**
 	 * Standard API of the language server for requesting hover information, activated when the cursor is over a symbol
-	 * @param document Current document
+	 * @param desc Current document
 	 * @param position Current cursor position
 	 * @param token Cancellation token (optional).
 	 */
-	async provideHover (document: { txt: string, uri: string, position: Position }, token?: CancellationToken): Promise<Hover> {
-		if (document && document.txt && document.uri && document.position) {
+	async provideHover (desc: { txt: string, uri: string, position: Position }, token?: CancellationToken): Promise<Hover> {
+		if (desc && desc.txt && desc.uri && desc.position) {
 			let contents: MarkedString[] = [];
 			// load the text preceeding the current position and check if this is a comment
-			const line: string = fsUtils.getText(document.txt, {
-				start: { line:document.position.line },
-				end: { line: document.position.line }
+			const line: string = fsUtils.getText(desc.txt, {
+				start: { line:desc.position.line },
+				end: { line: desc.position.line }
 			});
 			// check if the cursor is over a comment -- if that's the case, do nothing
 			const commentRegex: RegExp = new RegExp(language.PVS_COMMENT_REGEXP_SOURCE);
 			const matchComment: RegExpMatchArray = commentRegex.exec(line);
-			const isComment: boolean = matchComment && matchComment.index <= document.position.character; //commentRegex.test(line);
+			const isComment: boolean = matchComment && matchComment.index <= desc.position.character; //commentRegex.test(line);
 			if (isComment) { return null; }
 			// else, not a comment
-			const ans: { symbolName: string, definitions: PvsDefinition[] } = await this.definitionProvider.provideDefinition(document);
+			const ans: { symbolName: string, definitions: PvsDefinition[] } = await this.definitionProvider.getDefinition(desc);
 			if (ans) {
 				const definitions: PvsDefinition[] = ans.definitions;
 				if (definitions && definitions.length > 0) {
 					// give preference to definitions in the same file
 					const sameTheoryDefs: PvsDefinition[] = definitions.filter((def: PvsDefinition) => {
-						return def.symbolDeclarationFile === document.uri;
+						return def.symbolDeclarationFile === desc.uri;
 					});
 					const def: PvsDefinition = (sameTheoryDefs && sameTheoryDefs.length > 0) ? sameTheoryDefs[0] : definitions[0];
 					if (def.error) {
@@ -122,13 +122,13 @@ export class PvsHoverProvider {
 					}
 				} else {
 					const link: MarkedString = // encoded as a markdown string
-							`[${ans.symbolName}](file://${document.uri}#L${document.position.line + 1})`;
+							`[${ans.symbolName}](file://${desc.uri}#L${desc.position.line + 1})`;
 					contents.push(`No definition found for ${link}`);
 				}
 			}
 			return {
 				contents: contents,
-				range: { start: document.position, end: document.position } // the hover is located at the mouse position
+				range: { start: desc.position, end: desc.position } // the hover is located at the mouse position
 			};
 		}
 		return null;

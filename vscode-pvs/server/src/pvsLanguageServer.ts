@@ -40,7 +40,7 @@ import {
 	Connection, TextDocuments, TextDocument, CompletionItem, createConnection, ProposedFeatures, InitializeParams, 
 	TextDocumentPositionParams, Hover, CodeLens, CodeLensParams,
 	Diagnostic, Position, Range, DiagnosticSeverity, Definition,
-	Location, TextDocumentChangeEvent, TextDocumentSyncKind, DidChangeConfigurationParams
+	Location, TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit
 } from 'vscode-languageserver';
 import { 
 	PvsDefinition,
@@ -50,7 +50,6 @@ import {
 	serverRequest,
 	PvsDownloadDescriptor,
 	PvsFileDescriptor,
-	FormulaDescriptor,
 	PvsVersionDescriptor,
 	ProofDescriptor,
 	ServerMode,
@@ -60,13 +59,7 @@ import {
 	PvsFile,
 	ContextFolder,
 	PvsTheory,
-	PvsProofCommand,
-	ProofExecDidEndProof,
-	ProofStatus,
-	ProofEditSave,
-	ProofExecQuit,
-	NasalibDownloadDescriptor,
-	FileDescriptor
+	PvsProofCommand
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -85,7 +78,7 @@ import { PvsIoProxy } from './pvsioProxy';
 import { PvsErrorManager } from './pvsErrorManager';
 import { ProcessCode } from './pvsProcess';
 import { PvsProofExplorer } from './providers/pvsProofExplorer';
-import { Configuration } from 'vscode-languageserver/lib/configuration';
+import { PvsRenameProvider } from './providers/pvsRenameProvider';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -144,6 +137,7 @@ export class PvsLanguageServer {
 	protected definitionProvider: PvsDefinitionProvider;
 	protected hoverProvider: PvsHoverProvider;
 	protected codeLensProvider: PvsCodeLensProvider;
+	protected renameProvider: PvsRenameProvider;
 	protected linter: PvsLinter;
 	protected proofExplorer: PvsProofExplorer;
 
@@ -1255,6 +1249,7 @@ export class PvsLanguageServer {
 		this.definitionProvider = new PvsDefinitionProvider(this.pvsProxy, this.documents);
 		this.completionProvider = new PvsCompletionProvider(this.definitionProvider);
 		this.codeLensProvider = new PvsCodeLensProvider();
+		this.renameProvider = new PvsRenameProvider();
 		this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
 		this.linter = new PvsLinter();
 		this.cliGateway = new PvsCliGateway(this);
@@ -1568,13 +1563,13 @@ export class PvsLanguageServer {
 					},
 					// definition provider
 					definitionProvider: true,
-					workspaceSymbolProvider: true
+					workspaceSymbolProvider: true,
 					// documentSymbolProvider: true
 					// executeCommandProvider: {
 					// 	commands: SERVER_COMMANDS // what is this for??
 					// },
 					// ,
-					// renameProvider: true,
+					renameProvider: true,
 					// ,
 					// documentOnTypeFormattingProvider: {
 					// 	firstTriggerCharacter: "}",
@@ -1845,78 +1840,65 @@ export class PvsLanguageServer {
 			// console.log(item);
 			return item;
 		});
-		this.connection.onHover(async (tpp: TextDocumentPositionParams): Promise<Hover> => {
+		this.connection.onHover(async (args: TextDocumentPositionParams): Promise<Hover> => {
 			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.serviceProvider.hover"));
 			if (this.hoverProvider && isEnabled) {
 				// const isEnabled = await this.connection.workspace.getConfiguration("pvs").settings.hoverProvider;
-				const uri: string = tpp.textDocument.uri;
+				const uri: string = args.textDocument.uri;
 				if (fsUtils.isPvsFile(uri) && this.hoverProvider) {
 					// const document: TextDocument = this.documents.get(tpp.textDocument.uri);
 					const txt: string = await this.readFile(uri);
-					const position: Position = tpp.position;
-					let hover: Hover = await this.hoverProvider.provideHover({ txt, uri, position });
+					const hover: Hover = await this.hoverProvider.provideHover({ txt, uri, position: args.position });
 					return hover;
 				}
 			}
 			return null;
 		});
-		this.connection.onCodeLens(async (tpp: CodeLensParams): Promise<CodeLens[]> => {
+		this.connection.onCodeLens(async (args: CodeLensParams): Promise<CodeLens[]> => {
 			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.serviceProvider.codelens"));
 			if (this.codeLensProvider && isEnabled) {
-				const uri: string = tpp.textDocument.uri;
+				const uri: string = args.textDocument.uri;
 				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
 					// const doc: TextDocument = this.documents.get(tpp.textDocument.uri);
 					const txt: string = await this.readFile(uri);
-					let codelens: CodeLens[] = await this.codeLensProvider.provideCodeLens({ txt, uri });
+					const codelens: CodeLens[] = await this.codeLensProvider.provideCodeLens({ txt, uri });
 					return codelens;
 				}
 			}
 			return null;
 		});
-		this.connection.onCodeLensResolve(async (codeLens: CodeLens): Promise<CodeLens> => {
+		this.connection.onCodeLensResolve(async (args: CodeLens): Promise<CodeLens> => {
 			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.serviceProvider.autocompletion"));
 			if (this.codeLensProvider && isEnabled) {
-				return this.codeLensProvider.resolveCodeLens(codeLens);
+				return this.codeLensProvider.resolveCodeLens(args);
 			}
 			return null;
 		});
 		// this provider enables peek definition in the editor
-		this.connection.onDefinition(async (tpp: TextDocumentPositionParams): Promise<Definition> => {
+		this.connection.onDefinition(async (args: TextDocumentPositionParams): Promise<Definition> => {
 			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.serviceProvider.definitions"));
 			if (this.definitionProvider && isEnabled) {
-				const uri: string = tpp.textDocument.uri;
-				if (fsUtils.isPvsFile(uri)) {
+				const uri: string = args.textDocument.uri;
+				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
+					const txt: string = await this.readFile(args.textDocument.uri);
+					const def: Definition = await this.definitionProvider.provideDefinition({ uri, position: args.position, txt });
+					return def;
+				}
+			}
+			return null;
+		});
+		this.connection.onRenameRequest(async (args: RenameParams): Promise<WorkspaceEdit> => {
+			const isEnabled: boolean = !!(await this.connection.workspace.getConfiguration("pvs.serviceProvider.rename"));
+			if (this.renameProvider && isEnabled) {
+				const uri: string = args.textDocument.uri;
+				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
 					const txt: string = await this.readFile(uri);
-					if (txt) {
-						const position: Position = tpp.position;
-						const info: { symbolName: string, definitions: PvsDefinition[] } = await this.definitionProvider.provideDefinition({ txt, uri, position });
-						if (info) {
-							const pvsDefinitions: PvsDefinition[] = info.definitions;
-							if (pvsDefinitions) {
-								const ans: Location[] = [];
-								for (let i: number = 0; i < pvsDefinitions.length; i++) {
-									const def: PvsDefinition = pvsDefinitions[i];
-									const uri: string = def.symbolDeclarationFile;
-									const range: Range = {
-										start: {
-											line: def.symbolDeclarationRange.start.line - 1,
-											character: def.symbolDeclarationRange.start.character
-										},
-										end: {
-											line: def.symbolDeclarationRange.end.line - 1,
-											character: def.symbolDeclarationRange.end.character
-										}
-									}
-									const location: Location = {
-										uri: "file://" + uri,
-										range: range
-									}
-									ans.push(location);
-								}
-								return ans.reverse();
-							}
-						}
+					const wsEdit: WorkspaceEdit = await this.renameProvider.provideRename({ txt, uri, position: args.position, newName: args.newName });
+					if (wsEdit && wsEdit.changes && Object.keys(wsEdit.changes) && Object.keys(wsEdit.changes).length) {
+						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: fsUtils.getContextFolder(uri) });
+						this.connection.sendRequest(serverEvent.contextUpdate, cdesc);	
 					}
+					return {};
 				}
 			}
 			return null;

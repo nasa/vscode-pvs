@@ -40,7 +40,7 @@ import * as fsUtils from './fsUtils';
 import * as path from 'path';
 import * as language from './languageKeywords';
 import { FileList, FormulaDescriptor, PvsContextDescriptor, 
-			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range, ProofTree } from '../common/serverInterface';
+			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range, ProofTree, PvsFormula } from '../common/serverInterface';
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -259,12 +259,13 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
  * Utility function, returns the list of theories defined in a given pvs file
  * @param fname Path to a pvs file
  */
-export async function listTheoremsInFile (fname: string): Promise<FormulaDescriptor[]> {
+export async function listTheoremsInFile (fname: string, opt?: { content?: string }): Promise<FormulaDescriptor[]> {
+	opt = opt || {};
 	if (fname) {
 		const fileName: string = fsUtils.getFileName(fname);
 		const fileExtension: string = fsUtils.getFileExtension(fname);
 		const contextFolder: string = fsUtils.getContextFolder(fname);
-		const fileContent: string = await fsUtils.readFile(fname);
+		const fileContent: string = (opt.content) ? opt.content : await fsUtils.readFile(fname);
 		if (fileContent) {
 			const response: FormulaDescriptor[] = await listTheorems({ fileName, fileExtension, contextFolder, fileContent });
 			return response;
@@ -779,11 +780,11 @@ export function getWordRange(txt: string, position: Position): Range {
 		const strings: RegExp = /\"[\w\W]+?\"/g;
 		const numbers: RegExp = /([+-]?\d+\.?\d*)\b/g;
 		const keywords: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
-		const symbols: RegExp = /(\w+\??)/g;
-		let ans = testTokenizer(strings, txt)
-					|| testTokenizer(numbers, txt)
-					|| testTokenizer(keywords, txt)
-					|| testTokenizer(symbols, txt);
+		const symbols: RegExp = /[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*/g;///(\w+\??)/g;
+		let ans: { token: string, character: number } = testTokenizer(new RegExp(strings), txt)
+			|| testTokenizer(new RegExp(numbers), txt)
+			|| testTokenizer(new RegExp(keywords), txt)
+			|| testTokenizer(new RegExp(symbols), txt);
 		if (ans) {
 			character = ans.character;
 			len = ans.token.length;
@@ -990,6 +991,38 @@ export function pvsVersionToString (version: PvsVersionDescriptor): string {
 	return null;
 }
 
+export async function renameProof (formula: PvsFormula, newInfo: { newFormulaName: string, newShasum?: string }): Promise<boolean> {
+	if (formula && newInfo && newInfo.newFormulaName) {
+		const fname: string = fsUtils.desc2fname({
+			fileName: formula.fileName,
+			fileExtension: ".jprf",
+			contextFolder: formula.contextFolder
+		});
+		const fdesc: ProofFile = await readProofFile(fname);
+		// check if file contains a proof for the given formula
+		const key: string = `${formula.theoryName}.${formula.formulaName}`;
+		if (fdesc && fdesc[key] && fdesc[key].length) {
+			const newKey: string = `${formula.theoryName}.${newInfo.newFormulaName}`;
+			// we are updating only the default proof, this might be changed in the future
+			const pdesc: ProofDescriptor = fdesc[key][0];
+			if (pdesc.info) {
+				pdesc.info.formula = newInfo.newFormulaName;
+				pdesc.info.shasum = newInfo.newShasum || pdesc.info.shasum;
+			}
+			if (pdesc.proofTree) {
+				pdesc.proofTree.name = newKey;
+			}
+			// delete old fdesc entry
+			delete fdesc[key];
+			// add new key
+			fdesc[newKey] = [ pdesc ];
+			// write to file
+			const newContent: string = JSON.stringify(fdesc, null, " ");
+			return await fsUtils.writeFile(fname, newContent);
+		}
+	}
+	return false;
+}
 export function proofTree2Prl (proofDescriptor: ProofDescriptor): string | null {
 	const content: string[] = proofDescriptor2ProofLite(proofDescriptor, { omitTags: true, escape: true });
 	if (content && content.length) {
