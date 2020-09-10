@@ -290,9 +290,26 @@ describe("proofScript", () => {
 		fsUtils.deleteFile(`${fname}.err.msg`);
 	});
 
-	fit(`can provide default proofs for tccs`, async () => {
+	fit(`edit-proof-at and get-default-proof-script are equivalent`, async () => {
+		const desc: PvsFormula = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "sq",
+			formulaName: "sq_neg",
+			theoryName: "sq"
+		};
+		const fname: string = fsUtils.desc2fname(desc);
+		const line: number = 12;
+		await pvsProxy.changeContext(desc);
+		await pvsProxy.typecheckFile(desc);
+		const response1: PvsResponse = await pvsProxy.lisp(`(edit-proof-at "${fname}" nil ${line} "pvs" "${desc.fileName}${desc.fileExtension}" 0 nil)`);
+		const response2: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`);
+		console.dir(response1.result);
+		console.dir(response2.result);
+		expect(response1.result).toEqual(response2.result);
+	});
 
-		// try to load a proof from the corrupted file
+	it(`can provide default proofs for tccs`, async () => {
 		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
