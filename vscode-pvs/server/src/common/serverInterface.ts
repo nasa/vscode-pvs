@@ -467,6 +467,7 @@ export const serverEvent = {
 
 	pvsServerReady: "pvs.response.restart",
 
+	workspaceEvent: "pvs.workspace-event",
 	contextUpdate: "pvs.event.context-update",
 	// proofStateUpdate: "pvs.event.proof-state",
 	QED: "pvs.event.qed",
@@ -502,6 +503,13 @@ export const serverEvent = {
 };
 
 export declare type ServerMode = "lisp" | "in-checker" | "pvsio";
+
+export declare type WorkspaceEvent = ServerDidRenameFile;
+export declare type ServerDidRenameFile = {
+	action: "did-rename-file",
+	old_fname: string,
+	new_fname: string
+};
 
 // CliGateway
 export declare type CliGatewayRequest = CliGatewaySubscribeServerRequest | CliGatewaySubscribeClientRequest

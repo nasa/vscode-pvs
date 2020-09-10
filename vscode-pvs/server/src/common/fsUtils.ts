@@ -96,11 +96,22 @@ export async function readFile(fname: string): Promise<string> {
 	}
 	return "";
 }
-export function deleteFile(fname: string): boolean {
-	try {
-		fs.unlinkSync(fname);
-	} catch (deleteError) {
-		return false;
+export function isSameFile (fname1: string, fname2: string): boolean {
+	if (fname1 && fname2) {
+		const f1: string = fname1.replace("file://", "");
+		const f2: string = fname2.replace("file://", "");
+		return f1 === f2;
+	}
+	return false;
+}
+export function deleteFile (fname: string): boolean {
+	if (fname) {
+		try {
+			fname = fname.replace("file://", "");
+			fs.unlinkSync(fname);
+		} catch (deleteError) {
+			return false;
+		}
 	}
 	return true;
 }

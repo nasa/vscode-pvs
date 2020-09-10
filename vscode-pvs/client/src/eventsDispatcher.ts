@@ -42,7 +42,7 @@ import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindin
 import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver } from "./common/serverInterface";
+import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
@@ -308,6 +308,25 @@ export class EventsDispatcher {
         });
 
         //----------------
+        this.client.onNotification(serverEvent.workspaceEvent, (desc: WorkspaceEvent) => {
+            switch (desc.action) {
+                case "did-rename-file": {
+                    if (vscode.window && vscode.window.activeTextEditor && vscode.window.activeTextEditor.document
+                            && fsUtils.isSameFile(vscode.window.activeTextEditor.document.fileName, desc.old_fname)) {
+                        setTimeout(() => {
+                            vscode.window.showTextDocument(vscode.Uri.file(desc.new_fname), { preserveFocus: false });
+                        }, 250);
+                    }
+                    break;
+                }
+                default: {
+                    console.warn(`[event-dispatcher] Warning: unrecognized prover event`, desc);
+                    break;
+                }
+            }
+        });
+
+        //----------------
         this.client.onNotification(serverEvent.proverEvent, (desc: ProofEditEvent | ProofExecEvent) => {
 			switch (desc.action) {
 				case "did-append-node": {
@@ -403,6 +422,10 @@ export class EventsDispatcher {
                     } else {
                         window.showWarningMessage(`Failed to open proof (null descriptor)`);
                     }
+                    break;
+                }
+                default: {
+                    console.warn(`[event-dispatcher] Warning: unrecognized prover event`, desc);
                     break;
                 }
             }

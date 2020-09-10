@@ -1249,7 +1249,7 @@ export class PvsLanguageServer {
 		this.definitionProvider = new PvsDefinitionProvider(this.pvsProxy, this.documents);
 		this.completionProvider = new PvsCompletionProvider(this.definitionProvider);
 		this.codeLensProvider = new PvsCodeLensProvider();
-		this.renameProvider = new PvsRenameProvider();
+		this.renameProvider = new PvsRenameProvider(this.connection);
 		this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
 		this.linter = new PvsLinter();
 		this.cliGateway = new PvsCliGateway(this);

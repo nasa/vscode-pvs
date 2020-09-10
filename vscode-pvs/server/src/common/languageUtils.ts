@@ -40,7 +40,7 @@ import * as fsUtils from './fsUtils';
 import * as path from 'path';
 import * as language from './languageKeywords';
 import { FileList, FormulaDescriptor, PvsContextDescriptor, 
-			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range, ProofTree, PvsFormula } from '../common/serverInterface';
+			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range, ProofTree, PvsFormula, PvsTheory } from '../common/serverInterface';
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -56,7 +56,7 @@ export const commentRegexp: RegExp = /%.*/g;
 // group 1 is theoryName, group 2 is comma-separated list of theory parameters -- NB: this regexp is fast but not accurate, because it does not check the end of the theory. See example use in codelense.
 export const theoryRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w+\W+\s+]+)\])?\s*\:\s*THEORY\s*BEGIN\b/gi;
 export function endTheoryRegexp(theoryName: string): RegExp {
-	return new RegExp(`\\bEND\\s*${theoryName}\\b`, "gi");
+	return new RegExp(`(\\bEND\\s*)(${theoryName})(\\b)`, "gi");
 }
 export const datatypeRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*DATATYPE\s*BEGIN\b/gi;
 export const declarationRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:/gi;
@@ -173,13 +173,14 @@ export function listTheoryNames (fileContent: string): string[] {
  * Utility function, returns the list of theories defined in a given pvs file
  * @param fname Path to a pvs file
  */
-export async function listTheoriesInFile (fname: string): Promise<TheoryDescriptor[]> {
+export async function listTheoriesInFile (fname: string, opt?: { content?: string }): Promise<TheoryDescriptor[]> {
 	// console.log(`listing theories in file ${fname}`);
+	opt = opt || {};
 	if (fname) {
 		const fileName: string = fsUtils.getFileName(fname);
 		const fileExtension: string = fsUtils.getFileExtension(fname);
 		const contextFolder: string = fsUtils.getContextFolder(fname);
-		const fileContent: string = await fsUtils.readFile(fname);
+		const fileContent: string = (opt.content) ? opt.content : await fsUtils.readFile(fname);
 		if (fileContent) {
 			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
 			// console.dir(response);
@@ -991,7 +992,7 @@ export function pvsVersionToString (version: PvsVersionDescriptor): string {
 	return null;
 }
 
-export async function renameProof (formula: PvsFormula, newInfo: { newFormulaName: string, newShasum?: string }): Promise<boolean> {
+export async function renameFormulaInProofFile (formula: PvsFormula, newInfo: { newFormulaName: string, newShasum?: string }): Promise<boolean> {
 	if (formula && newInfo && newInfo.newFormulaName) {
 		const fname: string = fsUtils.desc2fname({
 			fileName: formula.fileName,
@@ -1026,6 +1027,53 @@ export async function renameProof (formula: PvsFormula, newInfo: { newFormulaNam
 			// write to file
 			const newContent: string = JSON.stringify(fdesc, null, " ");
 			return await fsUtils.writeFile(fname, newContent);
+		}
+	}
+	return false;
+}
+export async function renameTheoryInProofFile (theory: PvsTheory, newInfo: { newTheoryName: string, newShasum?: string }): Promise<boolean> {
+	if (theory && newInfo && newInfo.newTheoryName) {
+		const fname: string = fsUtils.desc2fname({
+			fileName: theory.fileName,
+			fileExtension: ".jprf",
+			contextFolder: theory.contextFolder
+		});
+		const fdesc: ProofFile = await readProofFile(fname);
+		// update all proofs
+		// check if file contains a proof for the given formula
+		if (fdesc) {
+			const keys: string[] = Object.keys(fdesc);
+			if (keys && keys.length) {
+				const newFdesc: ProofFile = {};
+				for (let i = 0; i < keys.length; i++) {
+					const key: string = keys[i];
+					// we are updating only the default proof, this might be changed in the future
+					const pdesc: ProofDescriptor = fdesc[key][0];
+					if (pdesc.info) {
+						pdesc.info.theory = newInfo.newTheoryName;
+						pdesc.info.shasum = newInfo.newShasum || pdesc.info.shasum;
+					}
+					const newKey: string = `${newInfo.newTheoryName}.${pdesc.info.formula}`;
+					if (pdesc.proofTree) {
+						pdesc.proofTree.name = newKey;
+					}
+					newFdesc[newKey] = [ pdesc ];
+				}	
+				// write to file
+				const newContent: string = JSON.stringify(newFdesc, null, " ");
+				const newFname: string = fsUtils.desc2fname({
+					fileName: (theory.fileName === theory.theoryName) ? newInfo.newTheoryName : theory.fileName,
+					fileExtension: ".jprf",
+					contextFolder: theory.contextFolder		
+				});
+				const fileAlreadyExists: boolean = await fsUtils.fileExists(newFname);
+				const success: boolean = (fileAlreadyExists) ? await fsUtils.writeFile(fname, newContent)
+					: await fsUtils.writeFile(newFname, newContent);
+				if (success && !fileAlreadyExists && fname !== newFname) {
+					fsUtils.deleteFile(fname);
+				}
+				return success;
+			}
 		}
 	}
 	return false;

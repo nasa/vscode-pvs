@@ -36,34 +36,107 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { RenameParams, WorkspaceEdit, TextEdit, Range, Position } from "vscode-languageserver";
-import { FormulaDescriptor, PvsFormula } from "../common/serverInterface";
+import { RenameParams, WorkspaceEdit, TextEdit, Range, Position, Connection } from "vscode-languageserver";
+import { FormulaDescriptor, PvsFormula, TheoryDescriptor, PvsTheory, serverEvent, ServerDidRenameFile } from "../common/serverInterface";
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
 
 export class PvsRenameProvider {
+    protected connection: Connection;
+    constructor (connection: Connection) {
+		this.connection = connection;
+    }
     async provideRename (desc: { txt: string, uri: string, position: Position, newName: string }): Promise<WorkspaceEdit> {
         // TODO: handle renaming of theories
         const changes: { [uri: string]: TextEdit[] } = {};
         if (desc && desc.txt && desc.uri && desc.position) {
             const fname: string = desc.uri;
-            // const oldShasum: string = fsUtils.shasum(desc.txt);
-            const theorems: FormulaDescriptor[] = await utils.listTheoremsInFile(fname, { content: desc.txt });
-            if (theorems && theorems.length) {
-                const candidates: FormulaDescriptor[] = theorems.filter((fdesc: FormulaDescriptor) => {
-                    return fdesc.position.line === desc.position.line + 1; // line in rename parameters start from 0
-                });
-                if (candidates && candidates.length) {
-                    const formulaName: string = candidates[0].formulaName;
-                    if (formulaName !== desc.newName) {
-                        const lines: string[] = desc.txt.split("\n");
-                        if (lines && lines.length > desc.position.line) {
-                            const ln: string = lines[desc.position.line];
-                            let character: number = desc.position.character;
-                            const line: number = desc.position.line; 
-                            let range: Range = utils.getWordRange(desc.txt, desc.position);
+
+            const lines: string[] = desc.txt.split("\n");
+            if (lines && lines.length > desc.position.line) {
+                const ln: string = lines[desc.position.line];
+                let character: number = desc.position.character;
+                const line: number = desc.position.line; 
+                let range: Range = utils.getWordRange(desc.txt, desc.position);
+
+                // check if the user is trying to rename a theory
+                const theories: TheoryDescriptor[] = await utils.listTheoriesInFile(fname, { content: desc.txt });
+                if (theories && theories.length) {
+                    const candidates: TheoryDescriptor[] = theories.filter((tdesc: TheoryDescriptor) => {
+                        return tdesc.position.line === desc.position.line + 1; // line in rename parameters start from 0
+                    });
+                    if (candidates && candidates.length) {
+                        const theoryName: string = candidates[0].theoryName;
+                        const fileName: string = fsUtils.getFileName(fname);
+                        const fileExtension: string = fsUtils.getFileExtension(fname);
+                        const contextFolder: string = fsUtils.getContextFolder(fname);
+                        if (theoryName !== desc.newName) {
+                            // the character indicated in the request cannot always be trusted, e.g., when an entire line is selected
                             if (!range || range.start.character === range.end.character) {
-                                character = ln.indexOf(formulaName); // the character indicated in the request cannot always be trusted, e.g., when an entire line is selected
+                                character = ln.indexOf(theoryName);
+                                range = utils.getWordRange(desc.txt, { line, character });
+                            }
+                            if (range) {
+                                const newTheoryName: string = desc.newName;
+                                console.log(`[rename-provider] Renaming theory ${theoryName} to ${newTheoryName}`);
+                                // change text in the theory
+                                const mod: string = ln.substring(0, range.start.character) + newTheoryName + ln.substring(range.end.character);
+                                const newLines: string[] = lines.slice(0, desc.position.line).concat(mod).concat(lines.slice(desc.position.line + 1, lines.length + 1));
+                                const theoryEndRegexp: RegExp = utils.endTheoryRegexp(theoryName);
+                                const newContent: string = newLines.join("\n").replace(theoryEndRegexp, `$1${newTheoryName}$3`);
+                                await fsUtils.writeFile(fname, newContent);
+                                const textEdit: TextEdit = {
+                                    range,
+                                    newText: desc.newName
+                                };
+                                changes[desc.uri] = [ textEdit ];
+
+                                // change theory name in the jprf file, and all shasum for all proofs
+                                const newShasum: string = fsUtils.shasum(newContent);
+                                const theory: PvsTheory = { fileName, fileExtension, contextFolder, theoryName };
+                                await utils.renameTheoryInProofFile(theory, { newTheoryName, newShasum });
+
+                                // if the theory name was identical to the file name, then change also the file name
+                                if (theoryName === fileName && fileExtension === ".pvs") {
+                                    const new_fname: string = fsUtils.desc2fname({
+                                        fileName: newTheoryName,
+                                        contextFolder,
+                                        fileExtension: ".pvs"
+                                    });
+                                    const fileAlreadyExists: boolean = await fsUtils.fileExists(new_fname);
+                                    if (!fileAlreadyExists) {
+                                        const success: boolean = await fsUtils.renameFile(fname, new_fname);
+                                        if (success && this.connection) {
+                                            // notify the client that a file has been renamed
+                                            const evt: ServerDidRenameFile = {
+                                                action: "did-rename-file",
+                                                old_fname: fname,
+                                                new_fname
+                                            };
+                                            this.connection.sendNotification(serverEvent.workspaceEvent, evt);
+                                    
+                                        }
+                                    }
+                                }
+                                return { changes };
+                            }
+                        }
+                    }
+                }
+
+                // check if the user is trying to rename a formula
+                // const oldShasum: string = fsUtils.shasum(desc.txt);
+                const theorems: FormulaDescriptor[] = await utils.listTheoremsInFile(fname, { content: desc.txt });
+                if (theorems && theorems.length) {
+                    const candidates: FormulaDescriptor[] = theorems.filter((fdesc: FormulaDescriptor) => {
+                        return fdesc.position.line === desc.position.line + 1; // line in rename parameters start from 0
+                    });
+                    if (candidates && candidates.length) {
+                        const formulaName: string = candidates[0].formulaName;
+                        if (formulaName !== desc.newName) {
+                            // the character indicated in the request cannot always be trusted, e.g., when an entire line is selected
+                            if (!range || range.start.character === range.end.character) {
+                                character = ln.indexOf(formulaName);
                                 range = utils.getWordRange(desc.txt, { line, character });
                             }
                             if (range) {
@@ -80,7 +153,7 @@ export class PvsRenameProvider {
                                 };
                                 changes[desc.uri] = [ textEdit ];
 
-                                // change ormula name in the jprf file, and all shasum for all proofs
+                                // change formula name in the jprf file, and all shasum for all proofs
                                 const newShasum: string = fsUtils.shasum(newContent);
                                 const theoryName: string = utils.findTheoryName(desc.txt, line);
                                 const formula: PvsFormula = {
@@ -90,13 +163,14 @@ export class PvsRenameProvider {
                                     theoryName,
                                     formulaName
                                 };
-                                await utils.renameProof(formula, { newFormulaName, newShasum });
+                                await utils.renameFormulaInProofFile(formula, { newFormulaName, newShasum });
+                                return { changes };
                             }
                         }
                     }
                 }
             }
         }
-        return { changes };
+        return null;
     }
 }
