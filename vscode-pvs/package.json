@@ -515,6 +515,10 @@
 		"menus": {
 			"explorer/context": [
 				{
+					"command": "vscode-pvs.open-pvs-workspace",
+					"group": "navigation"
+				},
+				{
 					"command": "vscode-pvs.new-pvs-file",
 					"when": "explorerResourceIsFolder",
 					"group": "1-navigation"

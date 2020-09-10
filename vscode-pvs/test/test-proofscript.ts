@@ -3,7 +3,7 @@ import * as test from "./test-constants";
 import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { label, log, configFile, sandboxExamples } from './test-utils';
-import { ProofDescriptor } from "../server/src/common/serverInterface";
+import { ProofDescriptor, PvsFormula } from "../server/src/common/serverInterface";
 
 //----------------------------
 //   Test cases for proofScript
@@ -288,5 +288,24 @@ describe("proofScript", () => {
 		fsUtils.deleteFile(fname);
 		fsUtils.deleteFile(`${fname}.err`);
 		fsUtils.deleteFile(`${fname}.err.msg`);
+	});
+
+	fit(`can provide default proofs for tccs`, async () => {
+
+		// try to load a proof from the corrupted file
+		const desc: PvsFormula = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "sq",
+			formulaName: "sq_TCC1",
+			theoryName: "sq"
+		};
+		await pvsProxy.changeContext(desc);
+		const response: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`);
+		expect(response.error).not.toBeDefined();
+		expect(response.result).toBeDefined();
+		expect(response.result).toContain(`("" (ground))`)
+		
+		console.dir(response.result);
 	});
 });

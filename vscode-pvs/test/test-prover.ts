@@ -412,7 +412,7 @@ describe("pvs-prover", () => {
 	//                 (char= (char (car scr-old) 0) #\;)))
 	//        failed.
 	//   [condition type: simple-error]
-	fit(`supports glassbox tactics`, async () => {
+	it(`supports glassbox tactics`, async () => {
 		await quitProverIfActive();
 
 		const desc: PvsFormula = {

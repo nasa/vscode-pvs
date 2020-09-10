@@ -41,7 +41,7 @@ import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem } from "../views/vscodePvsWorkspaceExplorer";
-import { PvsTheory } from '../common/serverInterface';
+import { PvsTheory, PvsFile } from '../common/serverInterface';
 
 
 /**
@@ -197,8 +197,8 @@ export async function openWorkspace (): Promise<void> {
 /**
  * Opens a pvs file in the editor and adds the containing folder in file explorer
  */
-export async function openPvsFile (): Promise<void> {
-    const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
+export async function openPvsFile (opt?: PvsFile): Promise<void> {
+    const selection: vscode.Uri[] = (opt) ? [ vscode.Uri.file(fsUtils.desc2fname(opt)) ] : await vscode.window.showOpenDialog({
         canSelectFiles: true,
         canSelectFolders: false,
         canSelectMany: false,

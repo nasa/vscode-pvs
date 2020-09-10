@@ -39,10 +39,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { LanguageClient } from 'vscode-languageclient';
-import { PvsCliInterface, serverRequest, serverEvent } from '../common/serverInterface';
+import { PvsCliInterface, serverRequest, serverEvent, PvsFile } from '../common/serverInterface';
 import * as language from '../common/languageUtils';
 import * as WebSocket from 'ws';
 import * as fsUtils from '../common/fsUtils';
+import * as vscodeUtils from '../utils/vscode-utils';
 
 export const PVS_CLI_FILE: string = 'pvsCli'; // pvsCli file name
 
@@ -106,7 +107,7 @@ class TerminalSession {
             this.terminal = vscode.window.createTerminal(terminalName, 'node', [ cliFileName, JSON.stringify(cliArgs) ]);
             this.terminal.show();
             this.isActive = true;
-            this.maximizePanel();
+            await this.maximizePanel(desc);
 
             // server events
             this.client.onRequest(serverEvent.quitProofDontSaveEvent, (desc: {
@@ -198,7 +199,10 @@ class TerminalSession {
             profile: desc.profile
         }));
     }
-    maximizePanel (): void {
+    async maximizePanel (opt?: PvsFile): Promise<void> {
+        if (!vscode.window.activeTextEditor || !vscode.window.activeTextEditor.document) {
+            await vscodeUtils.openPvsFile(opt);
+        }
         vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
     }
     protected sendText(cmd: string): void {
