@@ -2508,11 +2508,25 @@ export class PvsProofExplorer {
 				await this.querySaveProof(request)
 			}
 			await this.quitProof();
-			return
+			return;
 		}
 		if (utils.isQuitDontSaveCommand(request.cmd)) {
 			await this.quitProof();
-			return
+			return;
+		}
+		if (utils.isFailCommand(request.cmd)) {
+			if (this.activeNode.branchId === "") {
+				// fail at the root sequent is equivalent to quit
+				if (this.dirtyFlag) {
+					// ask if the proof needs to be saved
+					await this.querySaveProof(request)
+				}
+				await this.quitProof({ notifyCliGateway: true });
+				return;	
+			} else {
+				// fail in a branch is equivalent to postpone
+				request.cmd = "(postpone)";
+			}
 		}
 		if (utils.isQEDCommand(request.cmd)) {
 			// print QED in the terminal and close the terminal session

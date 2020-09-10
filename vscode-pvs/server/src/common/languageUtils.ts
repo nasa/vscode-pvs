@@ -1534,6 +1534,10 @@ export function isSkipCommand (cmd: string): boolean {
 	return cmd && /\(?\s*\bskip\b/g.test(cmd);
 }
 
+export function isFailCommand (cmd: string): boolean {
+	return cmd && /\(?\s*\bfail\b/g.test(cmd);
+}
+
 export function isShowHiddenCommand (cmd: string): boolean {
 	return cmd && /\(?\s*show-hidden\b/g.test(cmd);
 }
