@@ -58,6 +58,8 @@ describe("pvs-prover", () => {
 		fsUtils.deleteFolder(contextFolder);
 		execSync(`cd ${baseFolder} && unzip nasalib-monitors-1.zip`);
 
+		// await fsUtils.cleanBin(contextFolder, { keepTccs: true, recursive: true }); // cleaning pvsbin and .pvscontext does not help
+
 		let response: PvsResponse = await pvsProxy.proveFormula({
 			fileName: "trace",
 			fileExtension: ".pvs",
