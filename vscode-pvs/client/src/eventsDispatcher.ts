@@ -682,6 +682,7 @@ export class EventsDispatcher {
                 msg += opt.trailingNote;
             }
             window.showInformationMessage(msg);
+            this.statusBar.hideInterruptButton();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.reboot-pvs", async () => {
             // ask the user confirmation before restarting pvs

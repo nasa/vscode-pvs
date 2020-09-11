@@ -1750,7 +1750,9 @@ export function isInvalidCommand (result: { commentary: string | string[] }): bo
 				|| result.commentary.includes("not a valid prover command")
 				|| result.commentary.includes(`Found 'eof' when expecting`)
 				|| result.commentary.includes(`bad proof command`)
-				|| result.commentary.includes(`Expecting an expression`);
+				|| result.commentary.includes(`Expecting an expression`)
+				|| result.commentary.includes(`Not enough arguments for prover command`)
+				|| result.commentary.includes(`Could not find formula number`);
 		} else if (typeof result.commentary === "object") {
 			return result.commentary.length
 			&& typeof result.commentary[0] === "string"
@@ -1764,6 +1766,10 @@ export function isInvalidCommand (result: { commentary: string | string[] }): bo
 				return comment.includes(`bad proof command`);
 			}).length > 0 || result.commentary.filter((comment: string)=> {
 				return comment.includes(`Expecting an expression`);
+			}).length > 0 || result.commentary.filter((comment: string)=> {
+				return comment.includes(`Not enough arguments for prover command`);
+			}).length > 0 || result.commentary.filter((comment: string) => {
+				return comment.includes(`Could not find formula number`);
 			}).length > 0);
 		}
 	}
