@@ -108,7 +108,7 @@ export class PvsCodeLensProvider {
                 }
             }
 
-            if (fileExtension === ".pvs") {
+            if (fileExtension === ".pvs" || fileExtension === ".tccs") {
                 while (match = utils.theoryRegexp.exec(content)) {
                     if (match.length > 1 && match[1]) {
                         const theoryName: string = match[1];
@@ -161,7 +161,7 @@ export class PvsCodeLensProvider {
                         
                         const args: PvsFormula = {
                             fileName,
-                            fileExtension: ".pvs",
+                            fileExtension: (utils.tccFormulaRegexp.test(formulaName)) ? ".tccs" : ".pvs",
                             contextFolder: path.join(contextFolder, ".."), // .prlite files are stored in the /pvsbin subfolder
                             theoryName, 
                             formulaName
