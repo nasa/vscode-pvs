@@ -1935,7 +1935,7 @@ export function makeProofSummary (desc: { total: number, tccsOnly?: boolean, the
 		if (isProved(status)) { nProved++; }
 		totTime += ms;
 
-		ans += `\n\t${formulaName}` + ".".repeat(points) + getIcon(status) + status + " ".repeat(spaces) + `(${ms / 1000} s)`;
+		ans += `\n\t${formulaName}` + ".".repeat(points) + getIcon(status) + " " + status + " ".repeat(spaces) + `(${ms / 1000} s)`;
 	}
 	ans += `\n\nTheory ${desc.theoryName} totals: ${desc.total} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${totTime / 1000} s)`;
 	return ans;

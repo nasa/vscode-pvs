@@ -336,6 +336,7 @@ export class PvsLanguageServer {
 			// send feedback to the front-end
 			const taskId: string = `typecheck-${formula.formulaName}`;
 			if (!opt.autorun) {
+				this.proofExplorer.resetFlags();
 				this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${formula.formulaName}'` });
 			}
 
@@ -1598,6 +1599,7 @@ export class PvsLanguageServer {
 			// }
 			this.connection.onRequest(serverRequest.cancelOperation, () => {
 				console.log(`[pvs-server] Operation cancelled by the user`);
+				this.proofExplorer.interruptProofCommand();
 				// which pvs-server command should I invoke to stop the operation??
 			});
 			this.connection.onRequest(serverRequest.getContextDescriptor, (request: { contextFolder: string }) => {
