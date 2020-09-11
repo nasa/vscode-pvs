@@ -214,7 +214,7 @@ export class PvsProxy {
 								: res["commentary"],
 				"num-subgoals": (res["result"]) ? 0 : res["num-subgoals"],
 				sequent: (res["result"]) ? {} : res["sequent"],
-				"prev-cmd": res["prev-cmd"]
+				"prev-cmd": (res["prev-cmd"] && typeof res["prev-cmd"] === "string") ? res["prev-cmd"].replace(/\s+/, " ") : res["prev-cmd"]
 			}
 			return sequent;
 		}
