@@ -670,7 +670,7 @@ export class PvsProxy {
 									theoryName: theories[i].theoryName,
 									fileName: theories[i].fileName,
 									contextFolder: theories[i].contextFolder,
-									fileExtension: theories[i].fileExtension
+									fileExtension: ".tccs" //theories[i].fileExtension
 								});
 							}
 						}
@@ -1177,13 +1177,14 @@ export class PvsProxy {
 	 * @param formula Formula descriptor
 	 * @returns Proof descriptor
 	 */
-	async openProofFile (desc: FileDescriptor, formula: PvsFormula): Promise<ProofDescriptor | null> {
+	async openProofFile (desc: FileDescriptor, formula: PvsFormula): Promise<ProofDescriptor> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
 				&& formula && formula.fileName && formula.fileExtension 
 				&& formula.theoryName && formula.formulaName) {
 			let pdesc: ProofDescriptor = null;
 			try {
 				// create proof descriptor
+				const isTcc: boolean = utils.tccFormulaRegexp.test(formula.formulaName);
 				switch (desc.fileExtension) {
 					case ".jprf": {
 						const fname: string = fsUtils.desc2fname(desc);
@@ -1193,7 +1194,9 @@ export class PvsProxy {
 						if (proofFile && proofFile[key] && proofFile[key].length > 0) {
 							pdesc = new ProofDescriptor (proofFile[key][0].info, proofFile[key][0].proofTree);
 						}
-						break;
+						if (!isTcc && !utils.isEmptyProof(pdesc)) {
+							break;
+						} // else, this is a tcc, go to case .prf and get the default proof for the formula
 					}
 					case ".prf": {
 						const response: PvsResponse = await this.getDefaultProofScript(formula);
@@ -1250,6 +1253,17 @@ export class PvsProxy {
 			} catch (err) {
 				console.error(`[pvs-server] Error while fetching proof information.`, err);
 			} finally {
+				if (!pdesc) {
+					const shasum: string = await fsUtils.shasumFile(formula);
+					const pvsVersionDescriptor = this.getPvsVersionInfo();		
+					pdesc = new ProofDescriptor ({
+						theory: formula.theoryName,
+						formula: formula.formulaName,
+						status: "untried",
+						prover: utils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
+						shasum
+					});		
+				}
 				return pdesc;
 			}
 		}

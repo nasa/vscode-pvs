@@ -452,7 +452,7 @@ export class PvsProxyLegacy {
                 if (data && data.result) {
                     const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
                     if (matchProof && matchProof.length > 1) {
-                        result = matchProof[1];
+                        result = matchProof[1].replace(/\\"/g, `"`); // this is necessary because get-default-proof-script is erroneously escaping double quotes
                     }
                 }
             }

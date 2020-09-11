@@ -67,6 +67,7 @@ export const theoremRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈�
 // /(\w+)\s*(?:\%.*\s)*(?:\[([^\]]+)\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
 export const tccRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*:\s*OBLIGATION\b/gi;
 export const tccStatusRegExp: RegExp = /%\s(proved|subsumed|simplified|unproved|unfinished|unchecked|untried)\b/g;
+export const tccFormulaRegexp: RegExp = /[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*_TCC\d+/g;
 
 // capture group 1 is proofName
 // capture group 2 is formulaName,
@@ -1489,6 +1490,10 @@ export async function saveProoflite (fname: string, formulaName: string, script:
  */
 export function isEmptyPrf(prf: string): boolean {
 	return !prf || prf === `("" (postpone))`;
+}
+export function isEmptyProof (pdesc: ProofDescriptor): boolean {
+	return !pdesc || !pdesc.proofTree || !pdesc.proofTree.rules || pdesc.proofTree.rules.length === 0
+		|| (pdesc.proofTree.rules.length === 1 && pdesc.proofTree.rules[0].name === "(postpone)");
 }
 
 const grind: string = `("" (grind))`;

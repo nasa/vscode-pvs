@@ -134,7 +134,7 @@ export class PvsProofExplorer {
 	/**
 	 * Attributes for run-time management of the proof tree rendered in the view
 	 */
-	protected welcome: WelcomeScreen = new WelcomeScreen(this.connection);
+	protected welcome: WelcomeScreen = null;
 	protected root: RootNode = null // the root of the tree
 	protected ghostNode: GhostNode = null; // this is a floating node that follows activeNode. It is used during proof development, to signpost where the next proof command will be appended in the proof tree
 	protected activeNode: ProofCommand | ProofBranch | GhostNode = null;
@@ -168,6 +168,7 @@ export class PvsProofExplorer {
 		this.connection = connection;
 		this.pvsProxy = pvsProxy;
 		this.pvsLanguageServer = pvsLanguageServer;
+		this.welcome = new WelcomeScreen(this.connection)
     }
 
 	// utility accessor functions, useful for testing purposes
@@ -478,7 +479,7 @@ export class PvsProofExplorer {
 				for (let i = 0; i < response.result.length; i++) {
 					const proofState: SequentDescriptor = response.result[i]; // process proof commands
 					// if (proofState && proofState.path) {
-						await this.onStepExecutedNew({ proofState, args: command}, opt);
+						await this.onStepExecutedNew({ proofState, args: command, lastSequent: i === response.result.length - 1 }, opt);
 					// } else {
 					// 	await this.onStepExecuted({ proofState, args: command}, opt);
 					// }
@@ -851,7 +852,7 @@ export class PvsProofExplorer {
 	// 		console.error("[proof-explorer] Error: could not read proof state information returned by pvs-server.");
 	// 	}
 	// }
-	async onStepExecutedNew (desc: { proofState: SequentDescriptor, args: PvsProofCommand }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
+	async onStepExecutedNew (desc: { proofState: SequentDescriptor, args: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
 		if (desc && desc.proofState && desc.args) {
 			// get command and proof state
 			let userCmd: string = desc.args.cmd; // command entered by the user
@@ -1156,7 +1157,7 @@ export class PvsProofExplorer {
 			// this.previousPath = this.proofState.path || "";
 
 			// check if we have reached a dead end where the proof has stopped
-			if (this.ghostNode.isActive() && !branchCompleted) {
+			if (this.ghostNode.isActive() && !branchCompleted && desc.lastSequent) {
 				// and so we need to stop the execution
 				this.running = false;
 				if (this.autorunFlag) {
