@@ -1057,7 +1057,11 @@ export class PvsProofExplorer {
 					await this.quitProof();
 				}
 				// return;
-			} else if (utils.noChange(this.proofState) || utils.isInvalidCommand(this.proofState) || utils.isEmptyCommand(cmd)) {
+			} else if (utils.isInvalidCommand(this.proofState)) {
+				this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
+				// mark the sub tree of the invalid node as not visited
+				activeNode.treeNotVisited();
+			} else if (utils.noChange(this.proofState) || utils.isEmptyCommand(cmd)) {
 				// check if the command that produced no change comes from the proof tree -- if so advance indicator
 				if (utils.isSameCommand(activeNode.name, cmd) && !this.ghostNode.isActive()) {
 					this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });

@@ -1802,11 +1802,12 @@ export class PvsLanguageServer {
 						case "open-proof": { await this.proofExplorer.openProofRequest(desc.proofFile, desc.formula); break; }
 						case "save-proof": { await this.proofExplorer.saveProof(); break; }
 						case "save-proof-as": { await this.proofExplorer.saveProofAs(desc); break; }
-						case "start-new-proof": { await this.proveFormulaRequest(desc.formula, { newProof: true }); }
-						case "interrupt-prover": { await this.proofExplorer.interruptProofCommand(); }
+						case "start-new-proof": { await this.proveFormulaRequest(desc.formula, { newProof: true }); break; }
+						case "interrupt-prover": { await this.proofExplorer.interruptProofCommand(); break; }
 						//------
 						default: {
 							console.warn(`[pvs-server] Warning: unhandled prover command ${JSON.stringify(desc)}`);
+							break;
 						}
 					}
 				}
