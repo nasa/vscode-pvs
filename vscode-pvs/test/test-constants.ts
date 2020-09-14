@@ -1,8 +1,6 @@
 import * as pvsgui from "../server/src/common/pvs-gui.d";
 import { ProofDescriptor } from "../server/src/common/serverInterface";
 
-export const EXTERNAL_SERVER: boolean = true;
-
 export const parse1_result: pvsgui.ParseResult =
     [ { id: 'sqrt',
     decls: 

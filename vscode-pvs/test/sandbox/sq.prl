@@ -1,0 +1,8 @@
+%-------------------------------------------
+% @formula: sq_neg 
+% @theory: sq
+% @status: ✅proved
+%-------------------------------------------
+sq_neg : PROOF
+(then (skosimp*)(grind))
+QED sq_neg

@@ -4,11 +4,14 @@
     "test-proxy.ts",
     "test-parser.ts",
     "test-find-declaration.ts",
-    "test-typechecker.ts",
-    "test-prover.ts",
-    "test-proofscript.ts",
     "test-workspace.ts",
-    "test-pvscontext.ts"
+    "test-typechecker.ts",
+    "test-proof-script.ts",
+    "test-prover.ts",
+    "test-pvs-language-server.ts",
+    "test-proof-explorer.ts",
+    "test-pvscontext.ts",
+    "test-tacticals.ts"
   ],
   "stopSpecOnExpectationFailure": false,
   "random": false

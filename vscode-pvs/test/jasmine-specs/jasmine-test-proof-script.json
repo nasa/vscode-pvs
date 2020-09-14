@@ -1,7 +1,7 @@
 {
   "spec_dir": "test",
   "spec_files": [
-    "test-proofscript.ts"
+    "test-proof-script.ts"
   ],
   "stopSpecOnExpectationFailure": false,
   "random": false

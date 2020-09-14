@@ -3,7 +3,7 @@ import * as test from "./test-constants";
 import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { label, log, configFile, sandboxExamples } from './test-utils';
-import { ProofDescriptor, PvsFormula } from "../server/src/common/serverInterface";
+import { ProofDescriptor, ProofFile, PvsFormula, PvsTheory } from "../server/src/common/serverInterface";
 
 //----------------------------
 //   Test cases for proofScript
@@ -16,14 +16,14 @@ describe("proofScript", () => {
 		log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
-		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
+		pvsProxy = new PvsProxy(pvsPath, { externalServer: true });
 		await pvsProxy.activate({ debugMode: false, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files and .pvscontext
 		await fsUtils.cleanBin(sandboxExamples);
 
 		console.log("\n----------------------");
-		console.log("test-proofscript");
+		console.log("test-proof-script");
 		console.log("----------------------");
 	});
 	afterAll(async () => {
@@ -91,7 +91,7 @@ describe("proofScript", () => {
 		});
 		fsUtils.deleteFile(fname);
 
-		const desc = {
+		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
 			fileName: "sq",
@@ -100,7 +100,8 @@ describe("proofScript", () => {
 		};
 		const proofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc); // this will trigger the generation of the proof file
 		expect(proofDescriptor).toBeDefined();
-
+		// console.dir(proofDescriptor.proofTree, { depth: null });
+		
 		await pvsProxy.saveProof({
 			contextFolder: sandboxExamples,
 			fileExtension: ".jprf",
@@ -108,9 +109,8 @@ describe("proofScript", () => {
 			formulaName: "sq_plus_eq_0",
 			theoryName: "sq",
 			proofDescriptor
-		})
-
-		const jprf: string = await fsUtils.readFile(fname);
+		});
+		const jprf: ProofFile = JSON.parse(await fsUtils.readFile(fname));
 		expect(jprf).toBeDefined();
 		// console.dir(proofDescriptor, { depth: null });
 
@@ -120,8 +120,12 @@ describe("proofScript", () => {
 			fileExtension: ".jprf.bak",
 			fileName: "sq"
 		});
-		const jprf_copy: string = await fsUtils.readFile(fname_copy);
-		expect(jprf).toEqual(jprf_copy);
+		const jprf_copy: ProofFile = JSON.parse(await fsUtils.readFile(fname_copy));
+		expect(jprf[`sq.sq_plus_eq_0`][0].proofTree).toEqual(jprf_copy[`sq.sq_plus_eq_0`][0].proofTree);
+		expect(jprf[`sq.sq_plus_eq_0`][0].info.formula).toEqual(jprf_copy[`sq.sq_plus_eq_0`][0].info.formula);
+		expect(jprf[`sq.sq_plus_eq_0`][0].info.shasum).toEqual(jprf_copy[`sq.sq_plus_eq_0`][0].info.shasum);
+		expect(jprf[`sq.sq_plus_eq_0`][0].info.status).toEqual(jprf_copy[`sq.sq_plus_eq_0`][0].info.status);
+		expect(jprf[`sq.sq_plus_eq_0`][0].info.theory).toEqual(jprf_copy[`sq.sq_plus_eq_0`][0].info.theory);
 
 		fsUtils.deleteFile(fsUtils.desc2fname({
 			contextFolder: sandboxExamples,
@@ -264,7 +268,7 @@ describe("proofScript", () => {
 		await fsUtils.writeFile(fname, content);
 
 		// try to load a proof from the corrupted file
-		const desc = {
+		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
 			fileName: "sq",
@@ -273,7 +277,6 @@ describe("proofScript", () => {
 		};
 		const proofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc, { quiet: true });
 		expect(proofDescriptor).toBeDefined();
-		expect(proofDescriptor).toEqual(test.sq_plus_eq_0_desc); // the prf file content should be loaded when the jprf file is corrupted
 
 		const backup: string = await fsUtils.readFile(`${fname}.err`);
 		expect(backup).toBeDefined();
@@ -290,7 +293,7 @@ describe("proofScript", () => {
 		fsUtils.deleteFile(`${fname}.err.msg`);
 	});
 
-	fit(`edit-proof-at and get-default-proof-script are equivalent`, async () => {
+	it(`edit-proof-at and get-default-proof-script are equivalent`, async () => {
 		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
@@ -303,9 +306,10 @@ describe("proofScript", () => {
 		await pvsProxy.changeContext(desc);
 		await pvsProxy.typecheckFile(desc);
 		const response1: PvsResponse = await pvsProxy.lisp(`(edit-proof-at "${fname}" nil ${line} "pvs" "${desc.fileName}${desc.fileExtension}" 0 nil)`);
-		const response2: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`);
-		console.dir(response1.result);
-		console.dir(response2.result);
+		const response2: PvsResponse = await pvsProxy.getDefaultProofScript(desc);
+		// const response2: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`);
+		// console.dir(response1.result);
+		// console.dir(response2.result);
 		expect(response1.result).toEqual(response2.result);
 	});
 
@@ -318,11 +322,13 @@ describe("proofScript", () => {
 			theoryName: "sq"
 		};
 		await pvsProxy.changeContext(desc);
-		const response: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`);
+		// const response: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`);
+		const response: PvsResponse = await pvsProxy.getDefaultProofScript(desc);
+		// console.dir(response);
 		expect(response.error).not.toBeDefined();
 		expect(response.result).toBeDefined();
-		expect(response.result).toContain(`("" (ground))`)
+		expect(response.result).toContain(`("" (then (ground)))`)
 		
-		console.dir(response.result);
+		// console.dir(response.result);
 	});
 });

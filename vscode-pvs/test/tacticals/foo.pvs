@@ -3,5 +3,6 @@ foo: THEORY
     foo1: CONJECTURE
       FORALL (n: int): IF n >= 0 THEN abs(n) = n ELSE abs(n) = -n ENDIF
 
-    % tactical 1: (then (skosimp*) (split))
+    % tactical 1: (then (skosimp*) (split) (flatten))
+    % tactical 2: (then (skosimp*) (split) (flatten) (grind)) // this completes the proof
   END foo

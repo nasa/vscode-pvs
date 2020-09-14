@@ -19,7 +19,7 @@ describe("pvs-typechecker", () => {
 		// console.log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
-		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
+		pvsProxy = new PvsProxy(pvsPath, { externalServer: true });
 		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files and .pvscontext

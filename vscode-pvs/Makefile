@@ -72,8 +72,8 @@ test-typechecker: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-typechecker.json
 test-prover: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-prover.json
-test-proofscript: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proofscript.json
+test-proof-script: install-jasmine
+	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proof-script.json
 test-workspace: install-jasmine
 	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-workspace.json
 test-pvscontext: install-jasmine

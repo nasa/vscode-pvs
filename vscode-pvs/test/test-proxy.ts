@@ -16,7 +16,7 @@ describe("pvs-proxy", () => {
 		// console.log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
-		pvsProxy = new PvsProxy(pvsPath, { externalServer: test.EXTERNAL_SERVER });
+		pvsProxy = new PvsProxy(pvsPath, { externalServer: true });
 		await pvsProxy.activate({ debugMode: false, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files and .pvscontext
@@ -61,20 +61,33 @@ describe("pvs-proxy", () => {
 		label(`can list pvs-server methods`);
 		const response: PvsResponse = await pvsProxy.listMethodsRequest();
 		// console.log(response);
-		const mths: string[] = [
-			'change-context',      'change-workspace',
-			'find-declaration',    'help',
-			'interrupt',           'lisp',
-			'list-client-methods', 'list-methods',
-			'names-info',          'parse',
-			'proof-command',       'proof-script',
-			'proof-status',        'prove-formula',
-			'prove-tccs',          'prover-status',
-			'reset',               'show-tccs',
-			'term-at',             'typecheck'
+		const methods: string[] = [
+			'change-context',
+			'change-workspace',
+			'find-declaration',
+			'help',
+			'interrupt',
+			'lisp',
+			'list-client-methods',
+			'list-methods',
+			'names-info',
+			'parse',
+			'proof-command',
+			'proof-script',
+			'proof-status',
+			'prove-formula',
+			'prove-tccs',
+			'prover-status',
+			'reset',
+			'save-all-proofs',
+			'show-tccs',
+			'store-last-attempted-proof',
+			'term-at',
+			'typecheck'
 		];
 		expect(response).not.toBeNull();
-		expect(response.result).toEqual(mths);
+		expect(response.result).toEqual(methods);
+		// console.dir(response.result);
 	});
 
 	it(`knows client methods`, async () => {

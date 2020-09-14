@@ -7,7 +7,7 @@ import { PvsFormula, PvsProofCommand } from "../server/src/common/serverInterfac
 import * as path from 'path';
 
 //----------------------------
-//   Test cases for prover
+//   Test cases for prover --- 	THESE TESTS REQUIRE PVS RUNNING IN SERVER MODE ON PORT 22334 + NASALIB
 //----------------------------
 describe("pvs-prover", () => {
 	let pvsProxy: PvsProxy = null;
@@ -60,7 +60,7 @@ describe("pvs-prover", () => {
 		const proverStatus: PvsResult = await pvsProxy.pvsRequest('prover-status'); // await pvsProxy.getProverStatus();
 		expect(proverStatus.result).toBeDefined();
 		expect(proverStatus.error).not.toBeDefined();
-		console.log(proverStatus);
+		// console.log(proverStatus);
 		
 		if (proverStatus && proverStatus.result !== "inactive") {
 			await pvsProxy.proofCommand({ cmd: 'quit' });
@@ -117,13 +117,14 @@ describe("pvs-prover", () => {
 			theoryName: "alaris_th"
 		};
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
-		console.log(response);
-		// expect(response.result).toBeDefined();
-		// expect(response.error).not.toBeDefined();
+		// console.log(response);
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
 
 		response = await pvsProxy.proofCommand({ cmd: 'quit' });
 		// console.dir(response);
-		// expect(response.result[0].commentary[0]).toEqual('Unfinished');
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
 	}, 60000);
 
 	it(`can start interactive proof session when the formula has already been proved`, async () => {
@@ -146,21 +147,20 @@ describe("pvs-prover", () => {
 			// send proof command (skosimp*)
 			response = await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
 			// console.dir(response);
-			expect(response.result[0].label).toEqual(test.sq_neg_proof_command_skosimp_star.label);
-			expect(response.result[0].action).toEqual(test.sq_neg_proof_command_skosimp_star.action);
 			expect(response.result[0].sequent).toBeDefined();
+			expect(response.result[0]["prev-cmd"]).toEqual("(skosimp*)");
 
 			// send proof command (expand "sq")
 			response = await pvsProxy.proofCommand({ cmd: '(expand "sq")'});
 			// console.dir(response);
-			expect(response.result[0].label).toEqual(test.sq_neg_expand.label);
-			expect(response.result[0].action).toEqual(test.sq_neg_expand.action);
 			expect(response.result[0].sequent).toBeDefined();
+			expect(response.result[0]["prev-cmd"]).toEqual('(expand "sq")');
 
 			// send proof command (assert) to complete the proof
 			response = await pvsProxy.proofCommand({ cmd: '(assert)'});
 			// console.dir(response);
-			expect(response.result[0].commentary[0]).toEqual('Q.E.D.');
+			expect(response.result[0].commentary).toEqual('This completes the proof of sq_neg.');
+			expect(response.result[1].commentary).toEqual('Q.E.D.');
 
 			// try to re-start the proof
 			response = await pvsProxy.proveFormula(desc);
@@ -171,8 +171,6 @@ describe("pvs-prover", () => {
 			// send proof command (skosimp*)
 			response = await pvsProxy.proofCommand({ cmd: '(skosimp*)'});
 			// console.dir(response);
-			expect(response.result[0].label).toEqual(test.sq_neg_proof_command_skosimp_star.label);
-			expect(response.result[0].action).toEqual(test.sq_neg_proof_command_skosimp_star.action);
 			expect(response.result[0].sequent).toBeDefined();
 		}
 		finally {
@@ -197,7 +195,7 @@ describe("pvs-prover", () => {
 
 		response = await pvsProxy.proofCommand({ cmd: 'quit' });
 		// console.dir(response);
-		expect(response.result[0].commentary[0]).toEqual('Unfinished');
+		expect(response.result[0].commentary).toEqual('Proof attempt aborted');
 	}, 20000);
 	
 	it(`returns proverStatus = inactive when a prover session is not active`, async () => {
@@ -206,6 +204,7 @@ describe("pvs-prover", () => {
 	}, 4000);
 
 	it(`returns proverStatus = active when a prover session is active`, async () => {
+		await quitProverIfActive();
 		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
@@ -225,6 +224,7 @@ describe("pvs-prover", () => {
 	}, 4000);
 
 	it(`can invoke prove-formula on theories with parameters`, async () => {
+		await quitProverIfActive();
 		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
@@ -233,14 +233,19 @@ describe("pvs-prover", () => {
 			theoryName: "alaris_th" // pump_th exists, but check_chev_fup_permission is in alaris_th
 		};
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
+		// console.dir(response);
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
 		response = await pvsProxy.proofCommand({ cmd: 'quit' });
-		expect(response.result[0].commentary[0]).toEqual('Unfinished');
+		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
+		expect(proverStatus.result).toBeDefined();
+		expect(proverStatus.error).not.toBeDefined();
+		expect(proverStatus.result).toEqual("inactive");
 	}, 60000);	
 
 	it(`returns proverStatus = inactive after quitting a prover session`, async () => {
+		await quitProverIfActive();
 		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
@@ -259,6 +264,7 @@ describe("pvs-prover", () => {
 	}, 4000);
 
 	it(`can start prover sessions in theories with parameters`, async () => {
+		await quitProverIfActive();
 		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
@@ -271,10 +277,14 @@ describe("pvs-prover", () => {
 		expect(response.result).toBeDefined();
 
 		response = await pvsProxy.proofCommand({ cmd: 'quit' });
-		expect(response.result[0].commentary[0]).toEqual('Unfinished');
+		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
+		expect(proverStatus.result).toBeDefined();
+		expect(proverStatus.error).not.toBeDefined();
+		expect(proverStatus.result).toEqual("inactive");
 	}, 10000);
 
 	it(`reports typecheck error when the prove command is executed but the theory does not typecheck`, async () => {
+		await quitProverIfActive();
 		const desc: PvsFormula = {
 			contextFolder: radixExamples,
 			fileExtension: ".pvs",
@@ -292,6 +302,7 @@ describe("pvs-prover", () => {
 	// f1 typechecks correctly; f2 does not typecheck; the user tries to prove formula l in f2;
 	// pvs-server should not start the proof and return a typecheck error
 	it(`is able to distinguish theories with the same name that are stored in different files in the same context`, async () => {
+		await quitProverIfActive();
 		// this version of the theory does not typecheck, so the prover should report error
 		let desc: PvsFormula = {
 			contextFolder: radixExamples,
@@ -325,6 +336,7 @@ describe("pvs-prover", () => {
 	}, 2000);
 
 	it(`reports error when trying to prove a theory that does not exist`, async () => {
+		await quitProverIfActive();
 		let desc: PvsFormula = {
 			contextFolder: radixExamples,
 			fileExtension: ".pvs",
@@ -338,6 +350,7 @@ describe("pvs-prover", () => {
 	}, 2000);
 
 	it(`reports error when the prove command is executed but the formula does not exist`, async () => {
+		await quitProverIfActive();
 		const desc: PvsFormula = {
 			contextFolder: radixExamples,
 			fileExtension: ".pvs",
@@ -351,6 +364,7 @@ describe("pvs-prover", () => {
 	}, 2000);
 
 	it(`is robust to mistyped / malformed prover commands`, async () => {
+		await quitProverIfActive();
 		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
@@ -459,12 +473,12 @@ describe("pvs-prover", () => {
 		response = await pvsProxy.proofCommand({ cmd: '(typepred "a!1)'});
 		expect(response.error).not.toBeDefined(); // the prover reports error in the commentary
 		expect(response.result[0].commentary).toBeDefined();
-		console.dir(response.result);
+		// console.dir(response.result);
 
 		response = await pvsProxy.proofCommand({ cmd: '(expand "as <")'});
 		expect(response.error).not.toBeDefined(); // the prover reports error in the commentary
 		expect(response.result[0].commentary).toBeDefined();
-		console.dir(response.result);
+		// console.dir(response.result);
 
 		// quit the proof attempt
 		await pvsProxy.proofCommand({ cmd: 'quit'});
@@ -514,37 +528,7 @@ describe("pvs-prover", () => {
 		expect(response.result[0].label).toBeDefined();
 		expect(response.result[0].sequent).toBeDefined();
 		expect(response.result[0]["prev-cmd"]).toEqual("(skosimp*)");
-		console.dir(response.result);
+		// console.dir(response.result);
 	}, 20000);
-
-	it(`can save current proof in the .prf file`, async () => {
-		await quitProverIfActive();
-
-		const desc: PvsFormula = {
-			contextFolder: sandboxExamples,
-			fileExtension: ".pvs",
-			fileName: "alaris2lnewmodes",
-			formulaName: "check_chev_fup_permission",
-			theoryName: "alaris_th"
-		};
-		await pvsProxy.proveFormula(desc);
-
-		await pvsProxy.proofCommand({ cmd: '(skosimp*)' });
-		await pvsProxy.proofCommand({ cmd: '(split)' });
-
-		const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName);
-		const response: PvsResponse = await pvsProxy.pvsRequest("save-decl-proofs-to-prf-file", [ desc.formulaName, fullName ]);
-
-		const content: string = await fsUtils.readFile(fsUtils.desc2fname({
-			contextFolder: sandboxExamples,
-			fileExtension: ".prf",
-			fileName: "alaris2lnewmodes"
-		}));
-
-		expect(response.result).toBeTrue();
-		expect(content).toContain("(skosimp*)");
-
-	}, 20000);
-
 
 });
