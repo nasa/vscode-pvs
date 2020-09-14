@@ -431,6 +431,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 	startProof (): void {
 		this.refreshView();
+		if (this.root && this.root.children && this.root.children.length) {
+			if (utils.isGlassboxTactic(this.root.children[0].name)) {
+				this.queryUnfoldGlassbox();
+			}
+		}
 	}
 	
 	protected convertNodeX2ProofItem (elem: ProofNodeX, parent?: ProofItem): ProofItem[] {
@@ -524,6 +529,21 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.refreshView();
 	}
 
+	async queryRunProof (msg: string): Promise<boolean> {
+		const yesno: string[] = [ "Run Proof", "No" ];
+		const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
+		return ans === yesno[0];
+	}
+	/**
+	 * Query unfold glassbox
+	 */
+	async queryUnfoldGlassbox (): Promise<void> {
+		const msg: string = `The proof script has been imported from ProofLite. To view the proof structure in proof-explorer, you need to run the proof.`;
+		const actionConfirmed: boolean = await this.queryRunProof(msg);
+		if (actionConfirmed) {
+			commands.executeCommand("proof-explorer.run-proof");
+		}
+	}
 	/**
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
