@@ -424,7 +424,17 @@ export class PvsProxyLegacy {
         await this.changeContext(desc.contextFolder);
         await this.typecheckFile(fsUtils.desc2fname(desc));
         if (desc && desc.contextFolder && desc.fileExtension && desc.fileName && desc.formulaName) {
-            if (desc.fileExtension === ".pvs") {
+            const isTcc: boolean = utils.isTccFormula(desc);
+            if (isTcc) {
+                const cmd: string = `(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`;
+                const data: PvsResponse = await this.lisp(cmd);
+                if (data && data.result) {
+                    const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
+                    if (matchProof && matchProof.length > 1) {
+                        result = matchProof[1].replace(/\\"/g, `"`); // this is necessary because get-default-proof-script is erroneously escaping double quotes
+                    }
+                }
+            } else {
                 // I'm keeping this for backwards compatibility, until the final version of pvs is released
                 // extension is forced to .pvs, this is necessary as the request may come for a .tccs file
                 const fname: string = fsUtils.desc2fname(desc);
@@ -444,15 +454,6 @@ export class PvsProxyLegacy {
                                 }
                             }
                         }
-                    }
-                }
-            } else if (desc.fileExtension === ".tccs") {
-                const cmd: string = `(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`;
-                const data: PvsResponse = await this.lisp(cmd);
-                if (data && data.result) {
-                    const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
-                    if (matchProof && matchProof.length > 1) {
-                        result = matchProof[1].replace(/\\"/g, `"`); // this is necessary because get-default-proof-script is erroneously escaping double quotes
                     }
                 }
             }

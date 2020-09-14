@@ -1177,7 +1177,7 @@ export class PvsProxy {
 	 * @param formula Formula descriptor
 	 * @returns Proof descriptor
 	 */
-	async openProofFile (desc: FileDescriptor, formula: PvsFormula): Promise<ProofDescriptor> {
+	async openProofFile (desc: FileDescriptor, formula: PvsFormula, opt?: { quiet?: boolean }): Promise<ProofDescriptor> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
 				&& formula && formula.fileName && formula.fileExtension 
 				&& formula.theoryName && formula.formulaName) {
@@ -1188,7 +1188,7 @@ export class PvsProxy {
 				switch (desc.fileExtension) {
 					case ".jprf": {
 						const fname: string = fsUtils.desc2fname(desc);
-						const proofFile: ProofFile = await utils.readProofFile(fname);
+						const proofFile: ProofFile = await utils.readProofFile(fname, opt);
 						const key: string = `${formula.theoryName}.${formula.formulaName}`;
 						// try to load the proof from the .jprf file
 						if (proofFile && proofFile[key] && proofFile[key].length > 0) {
@@ -1298,20 +1298,23 @@ export class PvsProxy {
 			if (opt.newProof) {
 				return pdesc;
 			} else {
+				// console.log(`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from .jprf file`);
 				pdesc = await this.openProofFile({
 					fileName: formula.fileName,
 					fileExtension: ".jprf",
 					contextFolder: formula.contextFolder
-				}, formula);
+				}, formula, opt);
 				if (!pdesc || pdesc.isEmpty()) {
 					// try to load from the .prf legacy file
+					// console.log(`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from legacy .prf file`);
 					pdesc = await this.openProofFile({
 						fileName: formula.fileName,
 						fileExtension: ".prf",
 						contextFolder: formula.contextFolder
-					}, formula);
+					}, formula, opt);
 					// save the .jprf file, this is useful for code lens commands such as show-proof
 					if (pdesc) {
+						// console.log(`[pvs-proxy] Saving .jprf proof file for formula ${formula.formulaName}`);
 						await this.saveProof({
 							fileName: formula.fileName,
 							fileExtension: formula.fileExtension,

@@ -67,7 +67,11 @@ export const theoremRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈�
 // /(\w+)\s*(?:\%.*\s)*(?:\[([^\]]+)\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
 export const tccRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*:\s*OBLIGATION\b/gi;
 export const tccStatusRegExp: RegExp = /%\s(proved|subsumed|simplified|unproved|unfinished|unchecked|untried)\b/g;
-export const tccFormulaRegexp: RegExp = /[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*_TCC\d+/g;
+export const tccFormulaRegexp: RegExp = /[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉\.]*_TCC\d+/g;
+export function isTccFormula (desc: PvsFormula): boolean {
+	return desc && desc.formulaName && tccFormulaRegexp.test(desc.formulaName);
+}
+
 
 // capture group 1 is proofName
 // capture group 2 is formulaName,
