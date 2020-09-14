@@ -182,7 +182,7 @@ describe("pvs-prover", () => {
 		// re-run the proof commands with the tactical
 		response = await pvsProxy.proveFormula(request);
 		response = await pvsProxy.proofCommand({ cmd: "(then (skosimp*) (split))" });
-		console.dir(response, { depth: null });
+		// console.dir(response, { depth: null });
 		
 		// pvs-server should returns an ordered array of sequents for glassbox tactics such as (then (skosimp*) (split))
 		// - each sequent is the result of the execution of a proof command 
