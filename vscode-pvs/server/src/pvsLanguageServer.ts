@@ -559,7 +559,7 @@ export class PvsLanguageServer {
 		contextFolder: string
 	}): Promise<ProofDescriptor> {
 		if (this.pvsProxy) {
-			return this.pvsProxy.openProof(request);
+			return await this.pvsProxy.openProof(request);
 		}
 		// else
 		console.error(`[pvs-language-server] Error: Could not load proof script (pvs-proxy is null)`);
