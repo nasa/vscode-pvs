@@ -1683,8 +1683,8 @@ export function isSameCommand (cmd1: string, cmd2: string): boolean {
 		const c1: string = cmd1.replace(/"/g, "").replace(/\s+/g, " ").trim();
 		const c2: string = cmd2.replace(/"/g, "").replace(/\s+/g, " ").trim();
 		return c1 === c2 
-			|| new RegExp(`(\\s*${c1}\\s*)`).test(c2)
-			|| new RegExp(`(\\s*${c2}\\s*)`).test(c1);
+			|| new RegExp(`^(\\s*${c1}\\s*)`).test(c2)
+			|| new RegExp(`^(\\s*${c2}\\s*)`).test(c1);
 	}
 	return false;
 }
@@ -1806,6 +1806,10 @@ export function QED (result: { commentary: string | string[] }): boolean {
 		}
 	}
 	return false;
+}
+
+export function isGlassboxTactic (cmd: string): boolean {
+	return cmd && cmd.startsWith("(then ");
 }
 
 export function branchComplete (result: { commentary: string | string[] }, formulaName: string, previousBranch: string): boolean {
