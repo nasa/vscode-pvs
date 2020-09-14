@@ -39,8 +39,7 @@
 import { execSync } from 'child_process';
 import * as os from 'os';
 import * as fsUtils from '../common/fsUtils';
-import { pvsSnapshotsUrl, PvsDownloadDescriptor, allegroLicenseUrl, NasalibDownloadDescriptor, nasalibFile, nasalibUrl } from '../common/serverInterface';
-import * as path from 'path';
+import { pvsSnapshotsUrl, PvsDownloadDescriptor } from '../common/serverInterface';
 
 export class PvsPackageManager {
 
@@ -50,7 +49,7 @@ export class PvsPackageManager {
      */
     static async listDownloadableVersions (): Promise<PvsDownloadDescriptor[]> {
         const osName: string = fsUtils.getOs();
-        const preferredVersion: string = "g4cb56e73";
+        const preferredVersion: string = "g5f04aec5";
         const lsCommand: string = `${fsUtils.downloadCommand(pvsSnapshotsUrl)} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${preferredVersion} | grep ${osName} | grep allegro`;
         const ls: Buffer = execSync(lsCommand);
         if (ls) {
