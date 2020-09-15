@@ -1301,7 +1301,7 @@ export class PvsProxy {
 				// console.log(`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from .jprf file`);
 				pdesc = await this.openProofFile({
 					fileName: formula.fileName,
-					fileExtension: ".jprf",
+					fileExtension: ".prf",
 					contextFolder: formula.contextFolder
 				}, formula, opt);
 				if (!pdesc || pdesc.isEmpty()) {
@@ -1309,19 +1309,18 @@ export class PvsProxy {
 					// console.log(`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from legacy .prf file`);
 					pdesc = await this.openProofFile({
 						fileName: formula.fileName,
-						fileExtension: ".prf",
+						fileExtension: ".jprf",
 						contextFolder: formula.contextFolder
 					}, formula, opt);
 					// save the .jprf file, this is useful for code lens commands such as show-proof
 					if (pdesc) {
 						// console.log(`[pvs-proxy] Saving .jprf proof file for formula ${formula.formulaName}`);
-						await this.saveProof({
+						await this.saveCurrentProof({
 							fileName: formula.fileName,
 							fileExtension: formula.fileExtension,
 							theoryName: formula.theoryName,
 							formulaName: formula.formulaName,
-							contextFolder: formula.contextFolder,
-							proofDescriptor: pdesc
+							contextFolder: formula.contextFolder
 						});
 					}
 				}
@@ -1391,33 +1390,32 @@ export class PvsProxy {
 	}
 
 	/**
-	 * Saves the given proof script in .jprf format
-	 * @param desc Proof descriptor
+	 * Saves the given proof script in .prf format
+	 * @param formula Proof descriptor
 	 */
-	async saveProof (desc: { 
-		fileName: string, 
-		fileExtension: string, 
-		theoryName: string, 
-		formulaName: string, 
-		contextFolder: string, 
-		proofDescriptor: ProofDescriptor
-	}): Promise<boolean> {
-		if (desc && desc.fileName && desc.contextFolder && desc.formulaName && desc.theoryName && desc.proofDescriptor && desc.proofDescriptor.info) {
-			desc = fsUtils.decodeURIComponents(desc);
-			const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
-			let proofFile: ProofFile = await utils.readProofFile(fname);
-			proofFile = proofFile || {};
-			const key: string = `${desc.theoryName}.${desc.formulaName}`;
-			// update date in proof descriptor
-			desc.proofDescriptor.info.date = new Date().toISOString();
-			// TODO: implement mechanism to save a specific proof?
-			proofFile[key] = [ desc.proofDescriptor ];
-			const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
-			return success;
+	async saveCurrentProof (formula: PvsFormula): Promise<PvsResponse> {
+		if (formula && formula.fileName && formula.contextFolder && formula.formulaName && formula.theoryName) {
+			// desc = fsUtils.decodeURIComponents(desc);
+			// const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
+			// let proofFile: ProofFile = await utils.readProofFile(fname);
+			// proofFile = proofFile || {};
+			// const key: string = `${desc.theoryName}.${desc.formulaName}`;
+			// // update date in proof descriptor
+			// desc.proofDescriptor.info.date = new Date().toISOString();
+			// // TODO: implement mechanism to save a specific proof?
+			// proofFile[key] = [ desc.proofDescriptor ];
+			// const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
+			const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
+			let response: PvsResponse = await this.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName ]);
+			if (response && response.result) {
+				response = await this.pvsRequest("change-context", [ formula.contextFolder ]);
+				response = await this.pvsRequest("save-all-proofs", [ fullTheoryName ]);
+			}
+			return response;
 		}
 		// else
-		console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", desc);
-		return false;
+		console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", formula);
+		return null;
 	}
 	/**
 	 * Saves the given proof script in prooflite (.prl) format
@@ -1453,33 +1451,33 @@ export class PvsProxy {
 	 * Saves the given proof script in .prf format via prooflite
 	 * @param desc Proof descriptor
 	 */
-	async saveProofliteAsPrf (desc: { 
-		fileName: string, 
-		fileExtension: ".prf", 
-		theoryName: string, 
-		formulaName: string, 
-		contextFolder: string, 
-		proofDescriptor: ProofDescriptor
-	}): Promise <PvsResponse> {
-		const prl: string = utils.proofTree2Prl(desc.proofDescriptor);
-		const pvsResponse: PvsResponse = await this.installProofliteScript(desc, prl); // this will load the prl in pvs ans save the proof as .prf
-		return pvsResponse;
-	}
+	// async saveProofliteAsPrf (desc: { 
+	// 	fileName: string, 
+	// 	fileExtension: ".prf", 
+	// 	theoryName: string, 
+	// 	formulaName: string, 
+	// 	contextFolder: string, 
+	// 	proofDescriptor: ProofDescriptor
+	// }): Promise <PvsResponse> {
+	// 	const prl: string = utils.proofTree2Prl(desc.proofDescriptor);
+	// 	const pvsResponse: PvsResponse = await this.installProofliteScript(desc, prl); // this will load the prl in pvs ans save the proof as .prf
+	// 	return pvsResponse;
+	// }
 	/**
 	 * Saves the given proof script in .prf (legacy) format
 	 * @param desc Proof descriptor
 	 */
-	async saveProofAsPrf (desc: { 
-		fileName: string, 
-		fileExtension: ".prf", 
-		theoryName: string, 
-		formulaName: string, 
-		contextFolder: string, 
-		proofDescriptor: ProofDescriptor
-	}): Promise <PvsResponse> {
-		// TODO -- rerun entire proof and use 'save-all-proofs'
-		return this.saveProofliteAsPrf(desc);
-	}
+	// async saveProofAsPrf (desc: { 
+	// 	fileName: string, 
+	// 	fileExtension: ".prf", 
+	// 	theoryName: string, 
+	// 	formulaName: string, 
+	// 	contextFolder: string, 
+	// 	proofDescriptor: ProofDescriptor
+	// }): Promise <PvsResponse> {
+	// 	// TODO -- rerun entire proof and use 'save-all-proofs'
+	// 	return this.saveProofliteAsPrf(desc);
+	// }
 	/**
 	 * Returns the prooflite script for the given formula -- FIXME: display-prooflite-script is not working, we need to use languageUtils.proofTree2ProofLite()
 	 */

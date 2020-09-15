@@ -1,8 +1,8 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import { configFile } from './test-utils';
+import { configFile, sandboxExamples } from './test-utils';
 import * as path from 'path';
 import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
-import { ProofNodeX, PvsProofCommand } from "../server/src/common/serverInterface";
+import { ProofNodeX, PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
 import { PvsLanguageServer } from "../server/src/pvsLanguageServer";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 
@@ -307,8 +307,26 @@ describe("proof-explorer", () => {
 		expect(activeNode.name).toEqual(`ghost`);
 
 	});
-			// // remove test folder 
-			// fsUtils.deleteFolder(path.join(baseFolder, "foo"));
+
+	fit(`can save current proof`, async () => {
+		await server.getPvsProxy().quitProofIfInProver();
+
+		const formula: PvsFormula = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "sq",
+			theoryName: "sq",
+			formulaName: "sq_neg"
+		};
+
+		await server.proveFormulaRequest(formula, { autorun: true });
+		const res: { success: boolean, msg?: string } = await server.getProofExplorer().saveCurrentProof();
+		console.dir(res);
+		expect(res.success).toBeTrue();
+	});
+
+	// // remove test folder 
+	// fsUtils.deleteFolder(path.join(baseFolder, "foo"));
 
 });
 

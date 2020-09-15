@@ -1802,7 +1802,7 @@ export class PvsLanguageServer {
 						case "trim-unused": { this.proofExplorer.removeNotVisitedX(desc); break; }
 						case "rename-node": { this.proofExplorer.renameNodeX(desc); break; }
 						case "open-proof": { await this.proofExplorer.openProofRequest(desc.proofFile, desc.formula); break; }
-						case "save-proof": { await this.proofExplorer.saveProof(); break; }
+						case "save-proof": { await this.proofExplorer.saveCurrentProof(); break; }
 						case "save-proof-as": { await this.proofExplorer.saveProofAs(desc); break; }
 						case "start-new-proof": { await this.proveFormulaRequest(desc.formula, { newProof: true }); break; }
 						case "interrupt-prover": { await this.proofExplorer.interruptProofCommand(); break; }
