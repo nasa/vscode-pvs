@@ -1,0 +1,6 @@
+TCCs summary for theory MLTL_semantics
+
+	semantic_rel_TCC1...............................................✅proved              (1.903 s)
+	semantic_rel_TCC2...............................................✅proved              (0.121 s)
+
+Theory MLTL_semantics totals: 2 formulas, 2 attempted, 2 succeeded (2.024 s)

@@ -264,9 +264,9 @@ describe("pvs", () => {
 
 
 	// remove folders
-	// setTimeout(() => {
-	// 	cleanAll();
-	// }, 400);
+	setTimeout(() => {
+		cleanAll();
+	}, 400);
 
 
 	// it(`can evalute ground expressions`, async () => {

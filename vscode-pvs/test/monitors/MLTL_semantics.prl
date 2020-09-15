@@ -1,0 +1,19 @@
+
+
+%-------------------------------------------
+% @formula: semantic_rel_TCC1 
+% @theory: MLTL_semantics
+% @status: ✅proved
+%-------------------------------------------
+semantic_rel_TCC1 : PROOF
+(then (grind))
+QED semantic_rel_TCC1
+
+%-------------------------------------------
+% @formula: semantic_rel_TCC2 
+% @theory: MLTL_semantics
+% @status: ✅proved
+%-------------------------------------------
+semantic_rel_TCC2 : PROOF
+(then (grind))
+QED semantic_rel_TCC2
