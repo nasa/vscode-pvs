@@ -622,8 +622,8 @@ export const nasalibBranch: string = "v7.1.0";
 // ProofEdit
 export type ProofEditCommand = ProofEditAppendNode | ProofEditCopyNode | ProofEditPasteNode | ProofEditCopyTree
 	| ProofEditPasteTree | ProofEditDeleteNode | ProofEditAppendBranch | ProofEditCutNode | ProofEditCutTree
-	| ProofEditDeleteTree | ProofEditTrimNode | ProofEditRenameNode | ProofEditSave | ProofEditTrimUnused
-	| ProofEditSaveAs;
+	| ProofEditDeleteTree | ProofEditTrimNode | ProofEditRenameNode | ProofEditTrimUnused
+	| ExportProofAs;
 export type ProofEditAppendNode = {
 	action: "append-node",
 	name: string,
@@ -678,11 +678,8 @@ export type ProofEditRenameNode = {
 	newName: string,
 	selected: { id: string, name: string }
 };
-export type ProofEditSave = {
-	action: "save-proof"
-};
-export type ProofEditSaveAs = {
-	action: "save-proof-as",
+export type ExportProofAs = {
+	action: "export-proof-as",
 	fileExtension: string
 };
 
@@ -762,7 +759,7 @@ export type ProofEditDidStartNewProof = {
 
 // ProofExec
 export type ProofExecCommand = ProofExecForward | ProofExecBack | ProofExecFastForward | ProofExecRun
-	| ProofExecQuit | ProofExecOpenProof | ProofExecStartNewProof | ProofExecInterruptProver;
+	| ProofExecQuit | ProofExecOpenProof | ProofExecStartNewProof | ProofExecInterruptProver | ProofExecQuitAndSave;
 export type ProofExecForward = {
 	action: "forward"
 };
@@ -777,7 +774,10 @@ export type ProofExecRun = {
 	action: "run"
 };
 export type ProofExecQuit = {
-	action: "quit"
+	action: "quit-proof"
+};
+export type ProofExecQuitAndSave = {
+	action: "quit-proof-and-save"
 };
 export type ProofExecOpenProof = {
 	action: "open-proof",

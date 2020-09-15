@@ -441,20 +441,8 @@
 				"category": "pvs"
 			},
 			{
-				"command": "proof-explorer.save-proof",
-				"title": "Save Proof",
-				"enablement": "pvs-server-active == true",
-				"category": "pvs"
-			},
-			{
-				"command": "proof-explorer.save-proof-as-prf",
-				"title": "Save As .PRF (Legacy)",
-				"enablement": "pvs-server-active == true",
-				"category": "pvs"
-			},
-			{
-				"command": "proof-explorer.save-proof-as-prl",
-				"title": "Save As .PRL (ProofLite)",
+				"command": "proof-explorer.export-prooflite",
+				"title": "Export ProofLite (.prl)",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
@@ -892,17 +880,7 @@
 					"group": "ctrl-0.1"
 				},
 				{
-					"command": "proof-explorer.save-proof",
-					"when": "view == proof-explorer-view",
-					"group": "ctrl-1"
-				},
-				{
-					"command": "proof-explorer.save-proof-as-prf",
-					"when": "view == proof-explorer-view",
-					"group": "ctrl-1.1"
-				},
-				{
-					"command": "proof-explorer.save-proof-as-prl",
+					"command": "proof-explorer.export-prooflite",
 					"when": "view == proof-explorer-view",
 					"group": "ctrl-1.1"
 				},

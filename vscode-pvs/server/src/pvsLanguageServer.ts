@@ -1498,19 +1498,12 @@ export class PvsLanguageServer {
 	}
 
 	/**
-	 * quitProofEvent triggers a dialog on the front-end that asks whether the proof should be saved
-	 */
-	// quitProofEvent (): void {
-	// 	this.connection.sendRequest(serverEvent.quitProofEvent);
-	// }
-
-	/**
 	 * Quits the prover
 	 * @param opt 
 	 */
 	async quitProof (): Promise<void> {
 		if (this.pvsProxy) {
-			await this.pvsProxy.quitProofIfInProver();
+			await this.pvsProxy.quitProof();
 		}
 	}
 
@@ -1786,7 +1779,8 @@ export class PvsLanguageServer {
 						case "back": { this.proofExplorer.back(); break; }
 						case "fast-forward": { this.proofExplorer.fastForwardToNodeX(desc); break; }
 						case "run": { await this.proofExplorer.run({ feedbackToTerminal: true }); break; }
-						case "quit": { await this.proofExplorer.quitProof({ notifyCliGateway: true }); break; }
+						case "quit-proof": { await this.proofExplorer.quitProof({ notifyCliGateway: true }); break; }
+						case "quit-proof-and-save": { await this.proofExplorer.quitProofAndSave(); break; }
 						//------
 						case "append-node": { this.proofExplorer.appendNodeX(desc); break; }
 						case "copy-node": { this.proofExplorer.copyNodeX(desc); break; }
@@ -1802,8 +1796,8 @@ export class PvsLanguageServer {
 						case "trim-unused": { this.proofExplorer.removeNotVisitedX(desc); break; }
 						case "rename-node": { this.proofExplorer.renameNodeX(desc); break; }
 						case "open-proof": { await this.proofExplorer.openProofRequest(desc.proofFile, desc.formula); break; }
-						case "save-proof": { await this.proofExplorer.saveCurrentProof(); break; }
-						case "save-proof-as": { await this.proofExplorer.saveProofAs(desc); break; }
+	
+						case "export-proof-as": { await this.proofExplorer.saveProofAs(desc); break; }
 						case "start-new-proof": { await this.proveFormulaRequest(desc.formula, { newProof: true }); break; }
 						case "interrupt-prover": { await this.proofExplorer.interruptProofCommand(); break; }
 						//------

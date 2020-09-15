@@ -4,6 +4,8 @@ import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { label, log, configFile, sandboxExamples } from './test-utils';
 import { ProofDescriptor, ProofFile, PvsFormula, PvsTheory } from "../server/src/common/serverInterface";
+import * as path from 'path';
+
 
 //----------------------------
 //   Test cases for proofScript
@@ -30,7 +32,9 @@ describe("proofScript", () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
-		await fsUtils.cleanBin(sandboxExamples);
+		setTimeout(async () => {
+			await fsUtils.cleanBin(sandboxExamples);
+		}, 600);
 	});	
 
 	// utility function, quits the prover if the prover status is active
@@ -107,7 +111,13 @@ describe("proofScript", () => {
 		response = await pvsProxy.proofCommand({ cmd: "(skosimp*)" });
 		response = await pvsProxy.proofCommand({ cmd: "(quit)" });
 		console.dir(response);
-		response = await pvsProxy.saveCurrentProof(formula);
+		// response = await pvsProxy.storeLastProofAndSave(formula);
+		const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
+		response = await pvsProxy.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName ]);
+		if (response && response.result) {
+			response = await pvsProxy.pvsRequest("change-context", [ formula.contextFolder ]);
+			response = await pvsProxy.pvsRequest("save-all-proofs", [ fullTheoryName ]);
+		}
 		expect(response.result).toBeDefined();
 		console.dir(response);
 	});

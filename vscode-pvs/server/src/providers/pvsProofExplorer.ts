@@ -62,14 +62,13 @@ import {
 	ProofExecDidStartProof,
 	ProofExecDidUpdateSequent,
 	ProofEditTrimUnused,
-	ProofEditSave,
 	ProofExecQuit,
 	ProofEditDidStartNewProof,
 	CliGatewayQuitEvent,
 	CliGatewayQuit,
 	ProofFile,
 	ProofExecDidOpenProof,
-	PvsFile
+	PvsFile, ProofExecQuitAndSave
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -499,7 +498,7 @@ export class PvsProofExplorer {
 				this.root.setProofStatus("unfinished");
 			}
 			// save and quit proof
-			await this.saveCurrentProof();
+			await this.quitProofAndSave();
 			await this.quitProof();
 			return null;
 		}
@@ -972,7 +971,7 @@ export class PvsProofExplorer {
 						this.root.setProofStatus("unfinished");
 					}
 					// save and quit proof
-					await this.saveCurrentProof();
+					await this.quitProofAndSave();
 					await this.quitProof();
 					return;
 				}
@@ -1055,7 +1054,7 @@ export class PvsProofExplorer {
 							this.root.setProofStatus("unfinished");
 						}
 						// save and quit proof
-						await this.saveCurrentProof();
+						await this.quitProofAndSave();
 						await this.quitProof();
 					}
 					// return;
@@ -1083,7 +1082,7 @@ export class PvsProofExplorer {
 								this.root.setProofStatus("unfinished");
 							}
 							// save and quit proof
-							await this.saveCurrentProof();
+							await this.quitProofAndSave();
 							await this.quitProof();
 							return;
 						}
@@ -1173,7 +1172,7 @@ export class PvsProofExplorer {
 						this.root.setProofStatus("unfinished");
 					}
 					// save and quit proof
-					await this.saveCurrentProof();
+					await this.quitProofAndSave();
 					await this.quitProof();
 				}
 			}
@@ -2019,7 +2018,7 @@ export class PvsProofExplorer {
 		});
 		const proofliteExists: boolean = await utils.containsProoflite(fname, this.formula.formulaName);
 		if (this.root.proofStatusChanged() || this.dirtyFlag || !proofliteExists) {
-			await this.saveCurrentProof(); // proof descriptor is automatically updated by saveproof
+			await this.quitProofAndSave(); // proof descriptor is automatically updated by saveproof
 		} else {
 			// update proof descriptor
 			this.proofDescriptor = this.makeProofDescriptor();
@@ -2283,7 +2282,7 @@ export class PvsProofExplorer {
 			let msg: string = null;
 			switch (desc.fileExtension) {
 				case ".prf": {
-					const pvsResponse: PvsResponse = await this.pvsProxy.saveCurrentProof({ 
+					const pvsResponse: PvsResponse = await this.pvsProxy.quitProofAndSave({ 
 						fileName: proofFile.fileName,
 						fileExtension: ".prf",
 						contextFolder: proofFile.contextFolder,
@@ -2330,10 +2329,9 @@ export class PvsProofExplorer {
 		}
 	}
 	/**
-	 * Save the current proof in a .jprf (vscode-pvs) file
-	 * If the proof is QED, then the proof is also saved in the .prf (legacy) file
+	 * Quit proof and save the current proof in a .prf format
 	 */
-	async saveCurrentProof (): Promise<{ success: boolean, msg?: string }> {
+	async quitProofAndSave (): Promise<{ success: boolean, msg?: string }> {
 		const proofFile: PvsFile = {
 			fileName: this.formula.fileName,
 			fileExtension: ".prf",
@@ -2342,23 +2340,15 @@ export class PvsProofExplorer {
 		// update proof descriptor so it reflects the current proof structure
 		this.proofDescriptor = this.makeProofDescriptor();
 		// save proof descriptor to file
-		const response: PvsResponse = await this.pvsProxy.saveCurrentProof(this.formula);
+		const response: PvsResponse = await this.pvsProxy.quitProofAndSave(this.formula);
+		await this.quitProof();
 		const success: boolean = response && response.result;
-		let msg: string = (response && response.error && response.error.data && response.error.data.error_string) ? response.error.data.error_string : null;
+		let msg: string = null;
 		if (success) {
 			// clear dirty flag if proof saved successfully
 			this.dirtyFlag = false;
-			// save legacy proof if QED
-			// if (this.proofDescriptor.info.status === "proved") {
-			// 	await this.pvsProxy.saveProofAsPrf({ 
-			// 		fileName: proofFile.fileName,
-			// 		fileExtension: ".prf",
-			// 		contextFolder: proofFile.contextFolder,
-			// 		theoryName: this.formula.theoryName,
-			// 		formulaName: this.formula.formulaName,
-			// 		proofDescriptor: this.proofDescriptor
-			// 	});
-			// }
+		} else {
+			msg = (response && response.error && response.error.data && response.error.data.error_string) ? response.error.data.error_string : null;
 		}
 		// send feedback to the client
 		if (this.connection) {
@@ -2485,9 +2475,9 @@ export class PvsProofExplorer {
 		if (this.connection) {
 			this.connection.sendRequest(serverEvent.querySaveProof, { args: formula }); // this will trigger the confirmation dialog
 			await Promise.resolve(new Promise((resolve, reject) => {
-				this.connection.onRequest(serverEvent.querySaveProofResponse, async (response: ProofEditSave | ProofExecQuit) => {
-					if (response && response.action && response.action === "save-proof") {
-						await this.saveCurrentProof();
+				this.connection.onRequest(serverEvent.querySaveProofResponse, async (response: ProofExecQuitAndSave | ProofExecQuit) => {
+					if (response && response.action && response.action === "quit-proof-and-save") {
+						await this.quitProofAndSave();
 					}
 					resolve();
 				});
@@ -2500,11 +2490,11 @@ export class PvsProofExplorer {
 		
 		// handle meta-commands for saving and quitting
 		if (utils.isSaveCommand(request.cmd)) {
-			await this.saveCurrentProof();
+			await this.quitProofAndSave();
 			return;
 		}
 		if (utils.isSaveThenQuitCommand(request.cmd)) {
-			await this.saveCurrentProof();
+			await this.quitProofAndSave();
 			await this.quitProof();
 			return;
 		}

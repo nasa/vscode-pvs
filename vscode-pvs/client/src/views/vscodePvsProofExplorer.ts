@@ -43,10 +43,10 @@ import {
 	ProofNode, serverRequest, PvsVersionDescriptor, ProofDescriptor, ProofStatus, 
 	serverEvent, PvsFormula, ProofNodeX, ProofNodeStatus, ProofEditCopyNode, 
 	ProofEditDidCopyNode, ProofEditEvent, ProofEditDidAppendNode, ProofEditPasteNode, 
-	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofEditSave, ProofExecRun, 
+	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditSaveAs, ProofExecOpenProof, PvsFile, ProofExecStartNewProof 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ExportProofAs, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -548,18 +548,18 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
-	async querySaveProof (opt?: { msg?: string }): Promise<void> {
+	async queryQuitProofAndSave (opt?: { msg?: string }): Promise<void> {
 		opt = opt || {};
 		const note: string = (opt.msg) ? `${opt.msg}\n` : "";
 		const msg: string = (this.root) ? note + `Save proof ${this.root.name}?` : note + "Save proof?";
 		const actionConfirmed: boolean = await this.queryConfirmation(msg);
 		if (actionConfirmed) {
 			// send quit to the terminal
-			const action: ProofEditSave = { action: "save-proof" };
+			const action: ProofExecQuitAndSave = { action: "quit-proof-and-save" };
 			this.client.sendRequest(serverEvent.querySaveProofResponse, action);
 		} else {
 			// send quit to the terminal
-			const action: ProofExecQuit = { action: "quit" };
+			const action: ProofExecQuit = { action: "quit-proof" };
 			this.client.sendRequest(serverEvent.querySaveProofResponse, action);
 		}
 	}
@@ -618,19 +618,19 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const action: ProofEditTrimUnused = { action: "trim-unused", selected: { id: resource.id, name: resource.name } };
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof", () => {
+		// context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof", () => {
+		// 	// save proof without asking confirmation
+		// 	const action: ProofExecQuitAndSave = { action: "quit-proof-and-save" };
+		// 	this.client.sendRequest(serverRequest.proverCommand, action);
+		// }));
+		// context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof-as-prf", () => {
+		// 	// save proof without asking confirmation
+		// 	const action: ProofEditSaveAs = { action: "save-proof-as", fileExtension: ".prf" };
+		// 	this.client.sendRequest(serverRequest.proverCommand, action);
+		// }));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.export-prooflite", () => {
 			// save proof without asking confirmation
-			const action: ProofEditSave = { action: "save-proof" };
-			this.client.sendRequest(serverRequest.proverCommand, action);
-		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof-as-prf", () => {
-			// save proof without asking confirmation
-			const action: ProofEditSaveAs = { action: "save-proof-as", fileExtension: ".prf" };
-			this.client.sendRequest(serverRequest.proverCommand, action);
-		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof-as-prl", () => {
-			// save proof without asking confirmation
-			const action: ProofEditSaveAs = { action: "save-proof-as", fileExtension: ".prl" };
+			const action: ExportProofAs = { action: "export-proof-as", fileExtension: ".prl" };
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.new-proof", async () => {
@@ -662,7 +662,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// ask confirmation before quitting proof
 			const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
 			if (actionConfirmed) {
-				const action: ProofExecQuit = { action: "quit" };
+				const action: ProofExecQuit = { action: "quit-proof" };
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));

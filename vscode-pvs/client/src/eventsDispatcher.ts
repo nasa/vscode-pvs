@@ -550,7 +550,7 @@ export class EventsDispatcher {
             args: PvsProofCommand
 		}) => {
             if (request) {
-                await this.proofExplorer.querySaveProof();
+                await this.proofExplorer.queryQuitProofAndSave();
                 this.vscodePvsTerminal.deactivate();
             } else {
                 console.error(`[events-dispatcher] Error: null request in quitProofEvent`);

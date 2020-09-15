@@ -54,7 +54,7 @@
 
 import * as xmlrpc from 'xmlrpc';
 import { PvsProcess, ProcessCode } from "./pvsProcess";
-import { PvsResponse, ParseResult, ShowTCCsResult, PvsError } from "./common/pvs-gui.d";
+import { PvsResponse, ParseResult, ShowTCCsResult, PvsError, PvsResult } from "./common/pvs-gui.d";
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
@@ -973,7 +973,18 @@ export class PvsProxy {
 		return mode;
 	} 
 
-	async quitProofIfInProver (): Promise<void> {
+	// async quitProverIfActive (): Promise<void> {
+	// 	// quit prover if prover status is active
+	// 	const proverStatus: PvsResult = await this.getProverStatus();
+	// 	expect(proverStatus.result).toBeDefined();
+	// 	expect(proverStatus.error).not.toBeDefined();
+	// 	console.log(proverStatus);
+	// 	if (proverStatus && proverStatus.result !== "inactive") {
+	// 		await this.proofCommand({ cmd: 'quit' });
+	// 	}
+	// }
+
+	async quitProof (): Promise<void> {
 		if (await this.getMode() === "in-checker") {
 			const useLispInterface: boolean = true;
 			const response: PvsResponse = await this.proofCommand({ cmd: "(quit)" }, { useLispInterface });
@@ -1315,7 +1326,7 @@ export class PvsProxy {
 					// save the .jprf file, this is useful for code lens commands such as show-proof
 					if (pdesc) {
 						// console.log(`[pvs-proxy] Saving .jprf proof file for formula ${formula.formulaName}`);
-						await this.saveCurrentProof({
+						await this.storeLastProofAndSave({
 							fileName: formula.fileName,
 							fileExtension: formula.fileExtension,
 							theoryName: formula.theoryName,
@@ -1391,9 +1402,10 @@ export class PvsProxy {
 
 	/**
 	 * Saves the given proof script in .prf format
+	 * NOTE: this function can be used only after quitting the current proof
 	 * @param formula Proof descriptor
 	 */
-	async saveCurrentProof (formula: PvsFormula): Promise<PvsResponse> {
+	async storeLastProofAndSave (formula: PvsFormula): Promise<PvsResponse> {
 		if (formula && formula.fileName && formula.contextFolder && formula.formulaName && formula.theoryName) {
 			// desc = fsUtils.decodeURIComponents(desc);
 			// const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
@@ -1405,6 +1417,7 @@ export class PvsProxy {
 			// // TODO: implement mechanism to save a specific proof?
 			// proofFile[key] = [ desc.proofDescriptor ];
 			// const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
+			// await this.proofCommand({ cmd: "(quit)" });
 			const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
 			let response: PvsResponse = await this.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName ]);
 			if (response && response.result) {
