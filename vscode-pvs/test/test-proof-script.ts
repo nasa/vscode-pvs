@@ -1,6 +1,6 @@
 import * as fsUtils from "../server/src/common/fsUtils";
 import * as test from "./test-constants";
-import { PvsResponse } from "../server/src/common/pvs-gui";
+import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { label, log, configFile, sandboxExamples } from './test-utils';
 import { ProofDescriptor, ProofFile, PvsFormula, PvsTheory } from "../server/src/common/serverInterface";
@@ -32,6 +32,18 @@ describe("proofScript", () => {
 		// delete pvsbin files and .pvscontext
 		await fsUtils.cleanBin(sandboxExamples);
 	});	
+
+	// utility function, quits the prover if the prover status is active
+	const quitProverIfActive = async (): Promise<void> => {
+		// quit prover if prover status is active
+		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
+		expect(proverStatus.result).toBeDefined();
+		expect(proverStatus.error).not.toBeDefined();
+		console.log(proverStatus);
+		if (proverStatus && proverStatus.result !== "inactive") {
+			await pvsProxy.proofCommand({ cmd: 'quit' });
+		}
+	}
 
 	it(`can provide pvs proof scripts`, async () => {
 		label(`can provide pvs proof scripts`);
@@ -82,14 +94,7 @@ describe("proofScript", () => {
 	});
 	
 	fit(`can load & save vscode-pvs proof file`, async () => {
-		label(`can load & save vscode-pvs proof file`);
-
-		const fname: string = fsUtils.desc2fname({
-			contextFolder: sandboxExamples,
-			fileExtension: ".jprf",
-			fileName: "sq"
-		});
-		fsUtils.deleteFile(fname);
+		await quitProverIfActive();
 
 		const formula: PvsFormula = {
 			contextFolder: sandboxExamples,
@@ -100,6 +105,8 @@ describe("proofScript", () => {
 		};
 		let response: PvsResponse = await pvsProxy.proveFormula(formula);
 		response = await pvsProxy.proofCommand({ cmd: "(skosimp*)" });
+		response = await pvsProxy.proofCommand({ cmd: "(quit)" });
+		console.dir(response);
 		response = await pvsProxy.saveCurrentProof(formula);
 		expect(response.result).toBeDefined();
 		console.dir(response);
