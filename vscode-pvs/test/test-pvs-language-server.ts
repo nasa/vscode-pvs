@@ -1,10 +1,9 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import { label, configFile } from './test-utils';
+import { configFile } from './test-utils';
 import * as path from 'path';
 import { PvsLanguageServer } from '../server/src/pvsLanguageServer'
-import { ProofDescriptor, ProofFile } from "../server/src/common/serverInterface";
+import { ProofDescriptor, ProofFile, PvsFormula } from "../server/src/common/serverInterface";
 import { execSync } from "child_process";
-import * as constants from './test-constants';
 import { PvsResult } from "../server/src/common/pvs-gui";
 //----------------------------
 //   Test cases for pvs language server
@@ -46,13 +45,18 @@ describe("pvs-language-server", () => {
 		// execSync(`cd ${path.join(__dirname, "pvscontext")} && unzip alaris2l-show-tccs-error.zip`);
 		execSync(`cd ${path.join(baseFolder, "sq")} && rm -f sq.jprf`);
 
-		const desc: ProofDescriptor = await server.loadProof({
+		const formula: PvsFormula = {
 			fileName: "sq", 
 			fileExtension: ".pvs", 
 			contextFolder: path.join(baseFolder, "sq"),
 			theoryName: "sq",
 			formulaName: "triangle_rectangle"
-		});
+		};
+		const desc: ProofDescriptor = await server.getPvsProxy().openProofFile({
+			contextFolder: formula.contextFolder,
+			fileName: formula.fileName,
+			fileExtension: ".prf"
+		}, formula);
 		// console.dir(desc, { depth: null });
 		expect(desc.info.theory).toEqual("sq");
 		expect(desc.info.formula).toEqual("triangle_rectangle");
