@@ -68,7 +68,7 @@ import {
 	CliGatewayQuit,
 	ProofFile,
 	ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave
+	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -499,7 +499,7 @@ export class PvsProofExplorer {
 			}
 			// save and quit proof
 			await this.quitProofAndSave();
-			await this.quitProof();
+			// await this.quitProof();
 			return null;
 		}
 		return null;
@@ -972,7 +972,7 @@ export class PvsProofExplorer {
 					}
 					// save and quit proof
 					await this.quitProofAndSave();
-					await this.quitProof();
+					// await this.quitProof();
 					return;
 				}
 				if (utils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
@@ -1055,7 +1055,7 @@ export class PvsProofExplorer {
 						}
 						// save and quit proof
 						await this.quitProofAndSave();
-						await this.quitProof();
+						// await this.quitProof();
 					}
 					// return;
 				} else if (utils.isInvalidCommand(this.proofState)) {
@@ -1083,7 +1083,7 @@ export class PvsProofExplorer {
 							}
 							// save and quit proof
 							await this.quitProofAndSave();
-							await this.quitProof();
+							// await this.quitProof();
 							return;
 						}
 						// concatenate new command
@@ -1173,7 +1173,7 @@ export class PvsProofExplorer {
 					}
 					// save and quit proof
 					await this.quitProofAndSave();
-					await this.quitProof();
+					// await this.quitProof();
 				}
 			}
 		} else {
@@ -2138,17 +2138,42 @@ export class PvsProofExplorer {
 	}
 
 	/**
+	 * Internal function, used by loadProofRequest and openProofRequest
+	 * @param formula 
+	 */
+	protected async openProofFile (desc: PvsFile, formula: PvsFormula, opt?: { newProof?: boolean }): Promise<ProofDescriptor> {
+		opt = opt || {};
+		this.formula = formula;
+		if (this.pvsProxy) {
+			const pdesc: ProofDescriptor = (opt.newProof) ? await this.pvsProxy.newProof(formula) : await this.pvsProxy.openProofFile(desc, formula);
+			if (pdesc) {
+				// re-compute the shasum for the pvs file --- the shasum in the proof descriptor is from the last proof attempt, and it might be different if the file has been modified
+				this.shasum = await fsUtils.shasumFile(formula);
+				// load proof descriptor
+				this.loadProofDescriptor(pdesc);
+				// update proof descriptor file
+				await utils.saveProofDescriptor(this.formula, pdesc);
+				return pdesc;
+			}
+		}
+		console.error(`[proof-explorer] Error: Could not load proof script (pvs-proxy is null)`);
+		return null;
+	}
+
+	/**
 	 * Loads the proof for a given formula
 	 * @param formula 
 	 */
 	async loadProofRequest (formula: PvsFormula, opt?: { newProof?: boolean }): Promise<ProofDescriptor> {
+		opt = opt || {};
 		this.formula = formula;
 		if (this.pvsProxy) {
-			const pdesc: ProofDescriptor = await this.pvsProxy.openProof(formula, opt);
-			// re-compute the shasum for the pvs file --- the shasum in the proof descriptor is from the last proof attempt, and it might be different if the file has been modified
-			this.shasum = await fsUtils.shasumFile(formula);
-			// load proof descriptor
-			this.loadProofDescriptor(pdesc);
+			const fdesc: PvsFile = {
+				fileName: formula.fileName,
+				fileExtension: ".prf",
+				contextFolder: formula.contextFolder
+			};
+			const pdesc: ProofDescriptor = (opt.newProof) ? await this.pvsProxy.newProof(formula) : await this.openProofFile(fdesc, formula, opt);
 			// send feedback to the client
 			const structure: ProofNodeX = this.root.getNodeXStructure();
 			const evt: ProofExecDidLoadProof = { 
@@ -2246,6 +2271,8 @@ export class PvsProofExplorer {
 			// open proof descriptor
 			const pdesc: ProofDescriptor = await this.pvsProxy.openProofFile(desc, formula);
 			if (pdesc) {
+				// update proof descriptor
+				await utils.saveProofDescriptor(this.formula, pdesc);
 				// load proof descriptor
 				this.loadProofDescriptor(pdesc);
 				// send feedback to the client
@@ -2266,10 +2293,10 @@ export class PvsProofExplorer {
 		}
 	}
 	/**
-	 * Save the current proof on file
-	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
+	 * Export the current proof to a given file format
+	 * Only one supported format at the moment: .prl (prooflite)
 	 */
-	async saveProofAs (desc: { fileExtension: string }): Promise<void> {
+	async exportProof (desc: { fileExtension: string }): Promise<void> {
 		if (desc) {
 			// update proof descriptor
 			this.proofDescriptor = this.makeProofDescriptor();
@@ -2281,22 +2308,36 @@ export class PvsProofExplorer {
 			let success: boolean = false;
 			let msg: string = null;
 			switch (desc.fileExtension) {
-				case ".prf": {
-					const pvsResponse: PvsResponse = await this.pvsProxy.quitProofAndSave({ 
-						fileName: proofFile.fileName,
-						fileExtension: ".prf",
-						contextFolder: proofFile.contextFolder,
-						theoryName: this.formula.theoryName,
-						formulaName: this.formula.formulaName
-					});
-					if (pvsResponse) {
-						success = !(pvsResponse.error || (pvsResponse.result && typeof pvsResponse.result === "string" && pvsResponse.result.startsWith("Error:")));
-						msg = (typeof pvsResponse.result === "string") ? pvsResponse.result
-							: pvsResponse.error ? pvsResponse.error.error_string
-							: null;
-					}
-					break;
-				}
+				// case ".prf": {
+				// 	const pvsResponse: PvsResponse = await this.pvsProxy.quitProofAndSave({ 
+				// 		fileName: proofFile.fileName,
+				// 		fileExtension: ".prf",
+				// 		contextFolder: proofFile.contextFolder,
+				// 		theoryName: this.formula.theoryName,
+				// 		formulaName: this.formula.formulaName
+				// 	});
+				// 	if (pvsResponse) {
+				// 		success = !(pvsResponse.error || (pvsResponse.result && typeof pvsResponse.result === "string" && pvsResponse.result.startsWith("Error:")));
+				// 		msg = (typeof pvsResponse.result === "string") ? pvsResponse.result
+				// 			: pvsResponse.error ? pvsResponse.error.error_string
+				// 			: null;
+				// 		if (success && formula && formula.formulaName && formula.theoryName
+				// 				&& formula.fileExtension && formula.contextFolder && formula.fileName) {
+				// 			const pvsVersionDescriptor: PvsVersionDescriptor = this.pvsProxy.getPvsVersionInfo();
+				// 			const shasum: string = await fsUtils.shasumFile(formula);
+				// 			const newDesc: ProofDescriptor = new ProofDescriptor({
+				// 				theory: formula.theoryName,
+				// 				formula: formula.formulaName,
+				// 				shasum,
+				// 				status: null,
+				// 				prover: (pvsVersionDescriptor) ? pvsVersionDescriptor["pvs-version"] : null,
+				// 				date: new Date().toISOString()
+				// 			});
+				// 			await utils.saveProofDescriptor(formula, newDesc);
+				// 		}
+				// 	}
+				// 	break;
+				// }
 				case ".prl": {
 					success = await this.pvsProxy.saveProoflite({ 
 						fileName: proofFile.fileName,
@@ -2341,12 +2382,14 @@ export class PvsProofExplorer {
 		this.proofDescriptor = this.makeProofDescriptor();
 		// save proof descriptor to file
 		const response: PvsResponse = await this.pvsProxy.quitProofAndSave(this.formula);
-		await this.quitProof();
+		// await this.quitProof();
 		const success: boolean = response && response.result;
 		let msg: string = null;
 		if (success) {
 			// clear dirty flag if proof saved successfully
 			this.dirtyFlag = false;
+			// update jprf info
+			utils.saveProofDescriptor(this.formula, this.proofDescriptor);
 		} else {
 			msg = (response && response.error && response.error.data && response.error.data.error_string) ? response.error.data.error_string : null;
 		}
@@ -2489,13 +2532,13 @@ export class PvsProofExplorer {
 		request = fsUtils.decodeURIComponents(request);
 		
 		// handle meta-commands for saving and quitting
-		if (utils.isSaveCommand(request.cmd)) {
-			await this.quitProofAndSave();
-			return;
-		}
+		// if (utils.isSaveCommand(request.cmd)) {
+		// 	await this.quitProofAndSave();
+		// 	return;
+		// }
 		if (utils.isSaveThenQuitCommand(request.cmd)) {
 			await this.quitProofAndSave();
-			await this.quitProof();
+			// await this.quitProof();
 			return;
 		}
 		if (utils.isQuitCommand(request.cmd)) {

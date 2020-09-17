@@ -124,20 +124,20 @@ class PvsCli {
 		definitions: []
 	};
 
-	protected proofCommands: string[] = ["undo", "save", "quit", "postpone"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
+	protected proofCommands: string[] = ["undo", "quit", "postpone"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
 	protected evaluatorFunctions: string[] = Object.keys(EVALUATOR_COMMANDS);
 
 	selectProfile (desc: { profile: ProofMateProfile }): void {
 		if (desc && desc.profile) {
 			switch (desc.profile) {
 				case "advanced": {
-					this.proofCommands = ["undo", "save", "quit", "postpone"].concat(Object.keys(PROOF_COMMANDS_ADVANCED_PROFILE));
+					this.proofCommands = ["undo", "quit", "postpone"].concat(Object.keys(PROOF_COMMANDS_ADVANCED_PROFILE));
 					break;
 				}
 				case "basic":
 				default:
 					{
-					this.proofCommands = ["undo", "save", "quit", "postpone"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
+					this.proofCommands = ["undo", "quit", "postpone"].concat(Object.keys(PROOF_COMMANDS_BASIC_PROFILE));
 					break;
 				}
 			}
@@ -181,7 +181,7 @@ class PvsCli {
 		this.clientID = fsUtils.get_fresh_id();
 	}
 	// FIXME: the evaluator crashes into lisp when trying to evaluate malformed expressions, e.g., LET x = 1;
-	async activateEvaluatorCli (): Promise<void> {
+	async startEvaluatorCli (): Promise<void> {
 		// read input file so we can autocomplete symbol names
 		this.mainContent = await fsUtils.readFile(fsUtils.desc2fname(this.args));
 		if (process.stdin.isTTY) {
@@ -249,7 +249,7 @@ class PvsCli {
 		});		
 		this.connection = new CliConnection();
 	}
-	async activateProverCli (): Promise<void> {
+	async startProverCli (): Promise<void> {
 		if (process.stdin.isTTY) {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
@@ -277,24 +277,24 @@ class PvsCli {
 				// if (test.success) {
 					// console.dir(key);
 					this.lines = "";
-					if (utils.isSaveCommand(cmd)) {
-						console.log();
-						console.log("Proof saved successfully!");
-						console.log();
-						this.wsClient.send(JSON.stringify({
-							type: serverRequest.proofCommand,
-							cmd: "save",
-							fileName: this.args.fileName,
-							fileExtension: this.args.fileExtension,
-							contextFolder: this.args.contextFolder,
-							theoryName: this.args.theoryName,
-							formulaName: this.args.formulaName
-						}));
-						// show prompt
-						this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
-						this.rl.prompt();
-						return;
-					}
+					// if (utils.isSaveCommand(cmd)) {
+					// 	console.log();
+					// 	console.log("Proof saved successfully!");
+					// 	console.log();
+					// 	this.wsClient.send(JSON.stringify({
+					// 		type: serverRequest.proofCommand,
+					// 		cmd: "save",
+					// 		fileName: this.args.fileName,
+					// 		fileExtension: this.args.fileExtension,
+					// 		contextFolder: this.args.contextFolder,
+					// 		theoryName: this.args.theoryName,
+					// 		formulaName: this.args.formulaName
+					// 	}));
+					// 	// show prompt
+					// 	this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+					// 	this.rl.prompt();
+					// 	return;
+					// }
 					if (utils.isSaveThenQuitCommand(cmd)) {
 						console.log();
 						console.log("Proof saved successfully!");
@@ -636,12 +636,12 @@ if (process.argv.length > 2) {
 			switch (args.type) {
 				case cliSessionType.proveFormula: {
 					console.log(`\nStarting new prover session for ${utils.colorText(args.theoryName + "@" + args.formulaName, utils.textColor.blue)}\n`);
-					await pvsCli.activateProverCli();
+					await pvsCli.startProverCli();
 					break;
 				}
 				case cliSessionType.pvsioEvaluator: {
 					console.log(`\nStarting new PVSio evaluator session for theory ${utils.colorText(args.theoryName, utils.textColor.blue)}\n`);
-					await pvsCli.activateEvaluatorCli();
+					await pvsCli.startEvaluatorCli();
 					break;
 				}
 				default: {

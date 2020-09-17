@@ -473,7 +473,7 @@ export async function getProofStatus (desc: {
 			fileExtension: ".jprf", 
 			contextFolder: desc.contextFolder
 		});
-		const proofFile: ProofFile = await readProofFile(jprf_file);
+		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
 		if (proofFile) {
 			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
 			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
@@ -493,31 +493,59 @@ export async function getProofStatus (desc: {
 
 /**
  * Utility function, returns the proof descriptor for a given formula
- * @param desc 
+ * @param formula 
  */
-export async function getProofDescriptor (desc: { 
-	fileName: string, 
-	fileExtension: string, 
-	contextFolder: string, 
-	theoryName: string, 
-	formulaName: string
-}): Promise<ProofDescriptor> {
-	if (desc) {
+export async function getProofDescriptor (formula: PvsFormula): Promise<ProofDescriptor> {
+	if (formula) {
 		// check if the .jprf file contains the proof status
 		const jprf_file: string = fsUtils.desc2fname({
-			fileName: desc.fileName, 
+			fileName: formula.fileName, 
 			fileExtension: ".jprf", 
-			contextFolder: desc.contextFolder
+			contextFolder: formula.contextFolder
 		});
-		const proofFile: ProofFile = await readProofFile(jprf_file);
+		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
 		if (proofFile) {
-			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
+			const proofDescriptors: ProofDescriptor[] = proofFile[`${formula.theoryName}.${formula.formulaName}`];
 			if (proofDescriptors && proofDescriptors.length) {
 				return proofDescriptors[0];
 			}
 		}
 	}
 	return null;
+}
+
+/**
+ * Utility function, updates the proof descriptor for a given formula
+ * @param formula 
+ */
+export async function saveProofDescriptor (formula: PvsFormula, newDesc: ProofDescriptor): Promise<boolean> {
+	if (formula && newDesc) {
+		const fname: string = fsUtils.desc2fname({
+			fileName: formula.fileName,
+			fileExtension: ".jprf",
+			contextFolder: formula.contextFolder
+		});
+		const fdesc: ProofFile = await readJprfProofFile(fname);
+		// check if file contains a proof for the given formula
+		const key: string = `${formula.theoryName}.${formula.formulaName}`;
+		if (fdesc && fdesc[key] && fdesc[key].length) {
+			// we are updating only the default proof, this might be changed in the future
+			const pdesc: ProofDescriptor = fdesc[key][0];
+			if (pdesc.info) {
+				pdesc.info.shasum = newDesc.info.shasum ? newDesc.info.shasum : pdesc.info.shasum;
+				pdesc.info.prover = newDesc.info.prover ? newDesc.info.prover : pdesc.info.prover;
+				pdesc.info.status = newDesc.info.status ? newDesc.info.status : pdesc.info.status;
+				pdesc.info.date = newDesc.info.date ? newDesc.info.date : pdesc.info.date;
+			}
+			// if (pdesc.proofTree) {
+			// 	pdesc.proofTree.name = newKey;
+			// }
+			// write to file
+			const newContent: string = JSON.stringify(fdesc, null, " ");
+			return await fsUtils.writeFile(fname, newContent);
+		}
+	}
+	return false;
 }
 
 /**
@@ -538,7 +566,7 @@ export async function getProofDate (desc: {
 			fileExtension: ".jprf", 
 			contextFolder: desc.contextFolder
 		});
-		const proofFile: ProofFile = await readProofFile(jprf_file);
+		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
 		if (proofFile) {
 			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
 			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
@@ -567,36 +595,36 @@ export function makeProofliteHeader (formulaName: string, theoryName: string, st
  * Utility function, returns the prooflite script for the theorem indicated in the fuction arguments
  * @param desc 
  */
-export async function getProofLiteScript (desc: { 
-	fileName: string, 
-	fileExtension: string, 
-	contextFolder: string, 
-	theoryName: string, 
-	formulaName: string
-}): Promise<string> {
-	if (desc) {
-		let proofScript: string = makeProofliteHeader(desc.formulaName, desc.theoryName, "untried");
-		// check if the .jprf file contains the proof status
-		const jprf_file: string = fsUtils.desc2fname({
-			fileName: desc.fileName, 
-			fileExtension: ".jprf", 
-			contextFolder: desc.contextFolder
-		});
-		const proofFile: ProofFile = await readProofFile(jprf_file);
-		if (proofFile) {
-			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
-			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
-				proofScript = makeProofliteHeader(desc.formulaName, desc.theoryName, proofDescriptors[0].info.status);
-				const proofLite: string[] = proofDescriptor2ProofLite(proofDescriptors[0]);
-				if (proofLite && proofLite.length) {
-					proofScript += proofLite.join("\n");
-				}
-			}
-		}
-		return proofScript;
-	}
-	return null;
-}
+// export async function getProofLiteScript (desc: { 
+// 	fileName: string, 
+// 	fileExtension: string, 
+// 	contextFolder: string, 
+// 	theoryName: string, 
+// 	formulaName: string
+// }): Promise<string> {
+// 	if (desc) {
+// 		let proofScript: string = makeProofliteHeader(desc.formulaName, desc.theoryName, "untried");
+// 		// check if the .jprf file contains the proof status
+// 		const jprf_file: string = fsUtils.desc2fname({
+// 			fileName: desc.fileName, 
+// 			fileExtension: ".jprf", 
+// 			contextFolder: desc.contextFolder
+// 		});
+// 		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
+// 		if (proofFile) {
+// 			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
+// 			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
+// 				proofScript = makeProofliteHeader(desc.formulaName, desc.theoryName, proofDescriptors[0].info.status);
+// 				const proofLite: string[] = proofDescriptor2ProofLite(proofDescriptors[0]);
+// 				if (proofLite && proofLite.length) {
+// 					proofScript += proofLite.join("\n");
+// 				}
+// 			}
+// 		}
+// 		return proofScript;
+// 	}
+// 	return null;
+// }
 
 /**
  * Regex for parsing the content of prooflite files
@@ -729,7 +757,6 @@ export function findFormulaName(fileContent: string, line: number): string | nul
 	}
 	return null;
 };
-
 
 /**
  * @function findProofObligation
@@ -1004,7 +1031,7 @@ export async function renameFormulaInProofFile (formula: PvsFormula, newInfo: { 
 			fileExtension: ".jprf",
 			contextFolder: formula.contextFolder
 		});
-		const fdesc: ProofFile = await readProofFile(fname);
+		const fdesc: ProofFile = await readJprfProofFile(fname);
 		// check if file contains a proof for the given formula
 		const key: string = `${formula.theoryName}.${formula.formulaName}`;
 		if (fdesc && fdesc[key] && fdesc[key].length) {
@@ -1043,7 +1070,7 @@ export async function renameTheoryInProofFile (theory: PvsTheory, newInfo: { new
 			fileExtension: ".jprf",
 			contextFolder: theory.contextFolder
 		});
-		const fdesc: ProofFile = await readProofFile(fname);
+		const fdesc: ProofFile = await readJprfProofFile(fname);
 		// update all proofs
 		// check if file contains a proof for the given formula
 		if (fdesc) {
@@ -1363,7 +1390,7 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
  * @param opt Optionals
  *               - quiet (boolean): if true, the function will not print any message to the console. 
  */
-export async function readProofFile (fname: string, opt?: { quiet?: boolean }): Promise<ProofFile> {
+export async function readJprfProofFile (fname: string, opt?: { quiet?: boolean }): Promise<ProofFile> {
 	opt = opt || {};
 	let proofFile: ProofFile = null;
 	fname = fname.replace("file://", "");
@@ -1513,13 +1540,14 @@ export function prf2jprf (desc: {
 	formulaName: string, 
 	version: PvsVersionDescriptor, 
 	shasum: string,
+	status?: ProofStatus,
 	autorun?: boolean
 }): ProofDescriptor {
 	if (desc) {
 		const result: ProofDescriptor = new ProofDescriptor ({
 			theory: desc.theoryName,
 			formula: desc.formulaName,
-			status: "untried", // the prf file does not include the proof status
+			status: desc.status || "untried",
 			prover: pvsVersionToString(desc.version) || "PVS 7.x",
 			shasum: desc.shasum,
 			date: new Date().toISOString()
@@ -1665,14 +1693,14 @@ export function isQEDCommand (cmd: string): boolean {
 		;
 }
 
-export function isSaveCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && (cmd === "save" 
-		|| cmd === "save;"
-		|| cmd === "(save)"
-		|| /\(\s*save\s*\)/g.test(cmd))
-		;
-}
+// export function isSaveCommand (cmd: string): boolean {
+// 	cmd = (cmd) ? cmd.trim() : cmd;
+// 	return cmd && (cmd === "save" 
+// 		|| cmd === "save;"
+// 		|| cmd === "(save)"
+// 		|| /\(\s*save\s*\)/g.test(cmd))
+// 		;
+// }
 
 export function isMetaProofCommand (cmd: string): boolean {
 	return isPostponeCommand(cmd) || isUndoStarCommand(cmd) || isShowHiddenCommand(cmd);
@@ -1797,11 +1825,11 @@ export function noChange (result: { commentary: string | string[] }): boolean {
 export function QED (result: { commentary: string | string[] }): boolean {
 	if (result && result.commentary) {
 		if (typeof result.commentary === "string") {
-			return result.commentary.trim() === "Q.E.D.";
+			return result.commentary.trim().startsWith("Q.E.D.");
 		} else if (typeof result.commentary === "object") {
 			return result.commentary.length
 			&& result.commentary.filter((comment: string)=> {
-				return comment.trim() === "Q.E.D.";
+				return comment.trim().startsWith("Q.E.D.");
 			}).length > 0;
 		}
 	}

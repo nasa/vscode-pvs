@@ -46,7 +46,7 @@ import {
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ExportProofAs, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -625,12 +625,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// }));
 		// context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof-as-prf", () => {
 		// 	// save proof without asking confirmation
-		// 	const action: ProofEditSaveAs = { action: "save-proof-as", fileExtension: ".prf" };
+		// 	const action: ProofEditSaveAs = { action: "export-proof", fileExtension: ".prf" };
 		// 	this.client.sendRequest(serverRequest.proverCommand, action);
 		// }));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.export-prooflite", () => {
 			// save proof without asking confirmation
-			const action: ExportProofAs = { action: "export-proof-as", fileExtension: ".prl" };
+			const action: ProofEditExportProof = { action: "export-proof", proofFile: { fileExtension: ".prl" }};
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.new-proof", async () => {

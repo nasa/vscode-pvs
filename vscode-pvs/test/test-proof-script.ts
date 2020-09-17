@@ -108,7 +108,7 @@ describe("proofScript", () => {
 			theoryName: "sq"
 		};
 		let response: PvsResponse = await pvsProxy.proveFormula(formula);
-		response = await pvsProxy.proofCommand({ cmd: "(skosimp*)" });
+		response = await pvsProxy.proofCommand({ cmd: "(grind)" });
 		response = await pvsProxy.proofCommand({ cmd: "(quit)" });
 		console.dir(response);
 		// response = await pvsProxy.storeLastProofAndSave(formula);

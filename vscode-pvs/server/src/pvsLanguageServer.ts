@@ -361,9 +361,9 @@ export class PvsLanguageServer {
 				}
 			}
 			// load proof -- this needs to be done before starting the prover session
-			if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] loading proof for formula ${formula.formulaName}`); }
+			this.connection?.sendNotification(serverEvent.proverData, `[pvs-server] loading proof for formula ${formula.formulaName}`);
 			await this.proofExplorer.loadProofRequest(formula, opt);
-			if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] starting prover session for formula ${formula.formulaName}`); }
+			this.connection?.sendNotification(serverEvent.proverData, `[pvs-server] starting prover session for formula ${formula.formulaName}`);
 
 			const response: PvsResponse = await this.proveFormula(formula);
 			if (response && response.result) {			
@@ -529,37 +529,27 @@ export class PvsLanguageServer {
 
 	/**
 	 * Sends to the client the prooflite script associated with the formula indicated in the request
-	 * @param request 
+	 * @param formula 
 	 */
-	async showProofLiteRequest (request: { 
-		fileName: string, 
-		fileExtension: string, 
-		theoryName: string, 
-		formulaName: string, 
-		contextFolder: string
-	}): Promise<void> {
-		request = fsUtils.decodeURIComponents(request);
-		// first, convert proofs stored in .prf format to .jprf format
-		await this.loadProof(request);
-		// load prooflite script from the .jprf file
-		const proofScript: string = await utils.getProofLiteScript(request);
-		// send response to the client
-		if (this.connection) { this.connection.sendRequest(serverEvent.showProofLiteResponse, { response: proofScript, args: request }); }
+	async showProofLiteRequest (formula: PvsFormula): Promise<void> {
+		if (formula && this.connection) {
+			formula = fsUtils.decodeURIComponents(formula);
+			const pdesc: ProofDescriptor = await this.openProof(formula);
+			const header: string = utils.makeProofliteHeader(formula.formulaName, formula.theoryName, pdesc.info.status);
+			const proof: string[] = utils.proofDescriptor2ProofLite(pdesc);
+			const proofScript: string = (proof && proof.length) ? header + proof.join("\n") : header;
+			// send response to the client
+			this.connection.sendRequest(serverEvent.showProofLiteResponse, { response: proofScript, args: formula });
+		}
 	}
 
 	/**
 	 * Internal function, loads the proof script for the formula indicated in the request
-	 * @param request 
+	 * @param formula 
 	 */
-	async loadProof (request: { 
-		fileName: string, 
-		fileExtension: string, 
-		theoryName: string, 
-		formulaName: string, 
-		contextFolder: string
-	}): Promise<ProofDescriptor> {
+	protected async openProof (formula: PvsFormula): Promise<ProofDescriptor> {
 		if (this.pvsProxy) {
-			return await this.pvsProxy.openProof(request);
+			return await this.pvsProxy.openProof(formula);
 		}
 		// else
 		console.error(`[pvs-language-server] Error: Could not load proof script (pvs-proxy is null)`);
@@ -1797,7 +1787,7 @@ export class PvsLanguageServer {
 						case "rename-node": { this.proofExplorer.renameNodeX(desc); break; }
 						case "open-proof": { await this.proofExplorer.openProofRequest(desc.proofFile, desc.formula); break; }
 	
-						case "export-proof-as": { await this.proofExplorer.saveProofAs(desc); break; }
+						case "export-proof": { await this.proofExplorer.exportProof(desc.proofFile); break; }
 						case "start-new-proof": { await this.proveFormulaRequest(desc.formula, { newProof: true }); break; }
 						case "interrupt-prover": { await this.proofExplorer.interruptProofCommand(); break; }
 						//------

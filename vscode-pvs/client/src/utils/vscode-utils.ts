@@ -170,6 +170,23 @@ export async function cleanPvsWorkspace (): Promise<void> {
         vscode.window.showInformationMessage(`Nothing to clean (no folder opened)`);
     }
 }
+// export async function createCodeWorkspace (contextFolder: string): Promise<boolean> {
+//     const contextFolderName: string = fsUtils.getContextFolderName(contextFolder);
+//     const codeWorkspaceFile: string = path.join(contextFolder, `${contextFolderName}.code-workspace`);
+//     const uri: vscode.Uri = vscode.Uri.file(codeWorkspaceFile);
+//     const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
+//     edit.createFile(uri, { overwrite: true });
+//     edit.insert(uri, new vscode.Position(0, 0), JSON.stringify({ folders: [{
+//         name: contextFolderName,
+//         path: "."
+//     }] }, null, " "));
+//     let success: boolean = await vscode.workspace.applyEdit(edit);
+//     // FIXME: applyEdit fails if the document is already open and active in the editor, understand why this is the case.
+//     if (!success) {
+//         success = await vscode.workspace.applyEdit(edit);
+//     }
+//     return success;
+// }
 /**
  * Opens a folder and adds the folder to file explorer
  */
@@ -191,6 +208,8 @@ export async function openWorkspace (): Promise<void> {
             // open the new workspace
             // vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
             vscode.workspace.updateWorkspaceFolders(0, null, { uri: contextFolderUri });
+
+            // await createCodeWorkspace(contextFolder);
         // }
     }
 }

@@ -880,11 +880,6 @@
 					"group": "ctrl-0.1"
 				},
 				{
-					"command": "proof-explorer.export-prooflite",
-					"when": "view == proof-explorer-view",
-					"group": "ctrl-1.1"
-				},
-				{
 					"command": "proof-explorer.quit-proof",
 					"when": "view == proof-explorer-view",
 					"group": "ctrl-2"
@@ -979,14 +974,6 @@
 				},
 				"note": "cut proof command in proof explorer",
 				"when": "view == proof-explorer-view && viewItem == proof-command"
-			},
-			{
-				"key": "ctrl+s",
-				"command": "proof-explorer.save-proof",
-				"args": {
-					"text": ""
-				},
-				"when": "view == proof-explorer-view"
 			},
 			{
 				"key": "ctrl+v",

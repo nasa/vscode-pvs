@@ -599,6 +599,30 @@ export class PvsProxy {
 		return null;
 	}
 
+	// async getProofStatus (formula: PvsFormula): Promise<ProofStatus | null> {
+	// 	const fname: string = fsUtils.desc2fname(formula);
+	// 	const response: PvsResponse = await this.lisp(`(proof-status-at "${fname}" nil 12 "pvs")`);
+	// 	if (response && response.result) {
+	// 		switch (response.result) {
+	// 			case "subsumed":
+	// 			case "simplified":
+	// 			// case "proved - incomplete":
+	// 			// case "proved - by mapping":
+	// 			// case "proved - complete": 
+	// 			case "proved":
+	// 				return "proved";
+	// 			case "unfinished": // proof attempted but failed
+	// 				return "unfinished";
+	// 			case "unchecked":  // proof was successful, but needs to be checked again because of changes in the theories
+	// 				return "unchecked";
+	// 			case "unproved":
+	// 			case "untried": // proof has not been attempted yet
+	// 				return "untried";
+	// 		}
+	// 	}
+	// 	return null;
+	// }
+
 	/**
 	 * Returns the import chain for a given theory
 	 * @param desc theory descriptor: context folder, file name, file extension, theory name
@@ -826,20 +850,59 @@ export class PvsProxy {
 		}
 		return null;
 	}
-
+	/**
+	 * Internal function used by getProofStatus
+	 * @param formula 
+	 */
+	protected async proofStatus(formula: PvsFormula): Promise<PvsResponse> {
+		if (formula && formula.fileName && formula.fileExtension && formula.contextFolder && formula.theoryName && formula.formulaName) {
+			await this.changeContext(formula.contextFolder);
+			const fullName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
+			const ans: PvsResponse = await this.pvsRequest("proof-status", [ fullName, formula.formulaName ]);
+			return ans;
+		}
+		return null;
+	}
+	/**
+	 * Returns the proof status (proved, unfinished, untried, ...) for the given formula
+	 * @param formula 
+	 */
+	async getProofStatus (formula: PvsFormula): Promise<ProofStatus> {
+		if (formula) {
+			const response: PvsResponse = await this.proofStatus(formula);
+			if (response && response.result) {
+				switch (response.result) {
+					case "subsumed":
+					case "simplified":
+					// case "proved - incomplete":
+					// case "proved - by mapping":
+					// case "proved - complete": 
+					case "proved":
+						return "proved";
+					case "unfinished": // proof attempted but failed
+						return "unfinished";
+					case "unchecked":  // proof was successful, but needs to be checked again because of changes in the theories
+						return "unchecked";
+					case "unproved":
+					case "untried": // proof has not been attempted yet
+						return "untried";
+				}
+			}
+		}
+		return "untried";
+	}
 	/**
 	 * Starts an interactive prover session for the given formula
-	 * @param desc 
+	 * @param formula 
 	 */
-	async proveFormula(desc: PvsFormula, opt?: {
+	async proveFormula(formula: PvsFormula, opt?: {
 		useLispInterface?: boolean
 	}): Promise<PvsResponse> {
-		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName && desc.formulaName) {
+		if (formula && formula.fileName && formula.fileExtension && formula.contextFolder && formula.theoryName && formula.formulaName) {
 			opt = opt || {};
-			await this.changeContext(desc.contextFolder);
-
-			const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
-			const ans: PvsResponse = await this.pvsRequest("prove-formula", [ desc.formulaName, fullName ]);
+			await this.changeContext(formula.contextFolder);
+			const fullName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
+			const ans: PvsResponse = await this.pvsRequest("prove-formula", [ formula.formulaName, fullName ]);
 			// if (this.verbose) { console.dir(ans); }
 			if (ans && ans.result && ans.result["length"] === undefined) {
 				ans.result = [ ans.result ]; // the prover should return an array of proof states
@@ -984,6 +1047,9 @@ export class PvsProxy {
 	// 	}
 	// }
 
+	/**
+	 * Quits the prover
+	 */
 	async quitProof (): Promise<void> {
 		if (await this.getMode() === "in-checker") {
 			const useLispInterface: boolean = true;
@@ -993,6 +1059,16 @@ export class PvsProxy {
 			}
 		}
 		this.mode = "lisp";
+	}
+
+	/**
+	 * Quits the prover and save the current proof
+	 * NOTE: pvs-server can save the proof only after quitting the proof
+	 * @param formula Descriptor of the formula opened in the prover
+	 */
+	async quitProofAndSave (formula: PvsFormula): Promise<PvsResponse> {
+		await this.quitProof();
+		return await this.storeLastProof(formula);
 	}
 
 	/**
@@ -1199,7 +1275,7 @@ export class PvsProxy {
 				switch (desc.fileExtension) {
 					case ".jprf": {
 						const fname: string = fsUtils.desc2fname(desc);
-						const proofFile: ProofFile = await utils.readProofFile(fname, opt);
+						const proofFile: ProofFile = await utils.readJprfProofFile(fname, opt);
 						const key: string = `${formula.theoryName}.${formula.formulaName}`;
 						// try to load the proof from the .jprf file
 						if (proofFile && proofFile[key] && proofFile[key].length > 0) {
@@ -1214,13 +1290,15 @@ export class PvsProxy {
 						if (response && response.result) {
 							const pvsVersionDescriptor: PvsVersionDescriptor = this.getPvsVersionInfo();
 							const shasum: string = await fsUtils.shasumFile(formula);
+							const status: ProofStatus = await this.getProofStatus(formula);
 							pdesc = utils.prf2jprf({
 								prf: response.result,
 								theoryName: formula.theoryName, 
 								formulaName: formula.formulaName, 
 								version: pvsVersionDescriptor,
-								shasum
-							});					
+								shasum,
+								status
+							});
 						}
 						break;
 					}
@@ -1281,131 +1359,79 @@ export class PvsProxy {
 		return null;
 	}
 
+	async newProof (formula: PvsFormula): Promise<ProofDescriptor> {
+		formula = fsUtils.decodeURIComponents(formula);
+		const shasum: string = await fsUtils.shasumFile(formula);
+		const pvsVersionDescriptor = this.getPvsVersionInfo();
+		const status: ProofStatus = await this.getProofStatus(formula);
+		const empty_pdesc: ProofDescriptor = new ProofDescriptor ({
+			theory: formula.theoryName,
+			formula: formula.formulaName,
+			status,
+			prover: utils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
+			shasum
+		});
+		return empty_pdesc;
+	}
+
 	/**
 	 * Opens the proof script for the formula indicated in the request
 	 * The function looks for the proof in the .jprf file first.
 	 * If the proof is not in the .jprf file, then checks the .prf file and updates the jprf file with the obtained information
 	 * @param formula 
 	 */
-	async openProof (formula: PvsFormula, opt?: {
-		quiet?: boolean,
-		newProof?: boolean
-	}): Promise<ProofDescriptor> {
-		if (formula) {
-			opt = opt || {};
-			formula = fsUtils.decodeURIComponents(formula);
-			const shasum: string = await fsUtils.shasumFile(formula);
-			const pvsVersionDescriptor = this.getPvsVersionInfo();
+	// async openProof (formula: PvsFormula, opt?: {
+	// 	quiet?: boolean,
+	// 	newProof?: boolean
+	// }): Promise<ProofDescriptor> {
+	// 	if (formula) {
+	// 		opt = opt || {};
+	// 		formula = fsUtils.decodeURIComponents(formula);
+	// 		const shasum: string = await fsUtils.shasumFile(formula);
+	// 		const pvsVersionDescriptor = this.getPvsVersionInfo();
+	// 		const status: ProofStatus = await this.getProofStatus(formula);
 
-			// to begin with, create an empty proof
-			let pdesc: ProofDescriptor = new ProofDescriptor ({
-				theory: formula.theoryName,
-				formula: formula.formulaName,
-				status: "untried",
-				prover: utils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
-				shasum
-			});
+	// 		// to begin with, create an empty proof
+	// 		const empty_pdesc: ProofDescriptor = new ProofDescriptor ({
+	// 			theory: formula.theoryName,
+	// 			formula: formula.formulaName,
+	// 			status,
+	// 			prover: utils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
+	// 			shasum
+	// 		});
 
-			if (opt.newProof) {
-				return pdesc;
-			} else {
-				// console.log(`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from .jprf file`);
-				pdesc = await this.openProofFile({
-					fileName: formula.fileName,
-					fileExtension: ".prf",
-					contextFolder: formula.contextFolder
-				}, formula, opt);
-				if (!pdesc || pdesc.isEmpty()) {
-					// try to load from the .prf legacy file
-					// console.log(`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from legacy .prf file`);
-					pdesc = await this.openProofFile({
-						fileName: formula.fileName,
-						fileExtension: ".jprf",
-						contextFolder: formula.contextFolder
-					}, formula, opt);
-					// save the .jprf file, this is useful for code lens commands such as show-proof
-					if (pdesc) {
-						// console.log(`[pvs-proxy] Saving .jprf proof file for formula ${formula.formulaName}`);
-						await this.storeLastProofAndSave({
-							fileName: formula.fileName,
-							fileExtension: formula.fileExtension,
-							theoryName: formula.theoryName,
-							formulaName: formula.formulaName,
-							contextFolder: formula.contextFolder
-						});
-					}
-				}
-				// const fname: string = path.join(formula.contextFolder, `${formula.fileName}.jprf`);
-				// let proofFile: ProofFile = await utils.readProofFile(fname, opt);
-				// const key: string = `${formula.theoryName}.${formula.formulaName}`;
-				// // try to load the proof from the .jprf file
-				// if (proofFile && proofFile[key] && proofFile[key].length > 0) {
-				// 	proofDescriptor = proofFile[key][0];
-				// 	if (formula.fileExtension === ".pvs") {
-				// 		const shasum: string = await fsUtils.shasumFile(formula);
-				// 		if (shasum !== proofDescriptor.info.shasum) {
-				// 			proofDescriptor.info.status = utils.getActualProofStatus(proofDescriptor, shasum);
-				// 		}
-				// 	} else if (formula.fileExtension === ".tccs") {
-				// 		if (proofDescriptor && (!proofDescriptor.proofTree || !proofDescriptor.proofTree.rules || proofDescriptor.proofTree.rules.length === 0)) {
-				// 			const response: PvsResponse = await this.getProofScript(formula);
-				// 			if (response && response.result) {
-				// 				proofDescriptor = utils.prf2jprf({
-				// 					prf: response.result,
-				// 					theoryName: formula.theoryName, 
-				// 					formulaName: formula.formulaName, 
-				// 					version: pvsVersionDescriptor,
-				// 					shasum
-				// 				});
-				// 				// save proof in the jprf file
-				// 				await this.saveProofAsJprf({
-				// 					fileName: formula.fileName,
-				// 					fileExtension: formula.fileExtension,
-				// 					theoryName: formula.theoryName,
-				// 					formulaName: formula.formulaName,
-				// 					contextFolder: formula.contextFolder,
-				// 					proofDescriptor
-				// 				});
-				// 			}
-				// 		}
-				// 	}
-				// } else {
-				// 	// if the proof is not stored in the .jprf file, then try to load the proof from the .prf and then update jprf
-				// 	// the APIs of pvs are ugly -- an error is returned if the formula does not have a proof, as opposed to simply returning an empty proof
-				// 	const response: PvsResponse = await this.getProofScript(formula);
-				// 	if (response && response.result) {
-				// 		proofDescriptor = utils.prf2jprf({
-				// 			prf: response.result,
-				// 			theoryName: formula.theoryName, 
-				// 			formulaName: formula.formulaName, 
-				// 			version: pvsVersionDescriptor,
-				// 			shasum
-				// 		});
-				// 	}
-				// 	// save proof in the jprf file
-				// 	await this.saveProofAsJprf({
-				// 		fileName: formula.fileName,
-				// 		fileExtension: formula.fileExtension,
-				// 		theoryName: formula.theoryName,
-				// 		formulaName: formula.formulaName,
-				// 		contextFolder: formula.contextFolder,
-				// 		proofDescriptor
-				// 	});
-				// }
-				return pdesc;
-			}
-		} else {
-			console.warn(`[pvs-server] Warning: load-proof received null request`);
-		}
-		return null;
-	}
+	// 		if (opt.newProof) {
+	// 			return empty_pdesc;
+	// 		} else {
+	// 			// console.log(`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from .jprf file`);
+	// 			let pdesc: ProofDescriptor = await this.openProofFile({
+	// 				fileName: formula.fileName,
+	// 				fileExtension: ".prf",
+	// 				contextFolder: formula.contextFolder
+	// 			}, formula, opt);
+	// 			if (!pdesc || pdesc.isEmpty()) {
+	// 				// try to load from the .prf legacy file
+	// 				// console.log(`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from legacy .prf file`);
+	// 				pdesc = await this.openProofFile({
+	// 					fileName: formula.fileName,
+	// 					fileExtension: ".jprf",
+	// 					contextFolder: formula.contextFolder
+	// 				}, formula, opt);
+	// 			}
+	// 			return (!pdesc || pdesc.isEmpty()) ? empty_pdesc : pdesc;
+	// 		}
+	// 	} else {
+	// 		console.warn(`[pvs-server] Warning: load-proof received null request`);
+	// 	}
+	// 	return null;
+	// }
 
 	/**
 	 * Saves the given proof script in .prf format
 	 * NOTE: this function can be used only after quitting the current proof
 	 * @param formula Proof descriptor
 	 */
-	async storeLastProofAndSave (formula: PvsFormula): Promise<PvsResponse> {
+	protected async storeLastProof (formula: PvsFormula): Promise<PvsResponse> {
 		if (formula && formula.fileName && formula.contextFolder && formula.formulaName && formula.theoryName) {
 			// desc = fsUtils.decodeURIComponents(desc);
 			// const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
@@ -1419,10 +1445,10 @@ export class PvsProxy {
 			// const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
 			// await this.proofCommand({ cmd: "(quit)" });
 			const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
-			let response: PvsResponse = await this.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName ]);
+			const response: PvsResponse = await this.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName ]);
 			if (response && response.result) {
-				response = await this.pvsRequest("change-context", [ formula.contextFolder ]);
-				response = await this.pvsRequest("save-all-proofs", [ fullTheoryName ]);
+				await this.pvsRequest("change-context", [ formula.contextFolder ]);
+				await this.pvsRequest("save-all-proofs", [ fullTheoryName ]); // it's pointless to return the result of 'save-all-proofs' because the result is null all the times
 			}
 			return response;
 		}

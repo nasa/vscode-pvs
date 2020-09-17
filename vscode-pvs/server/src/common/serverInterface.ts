@@ -623,7 +623,7 @@ export const nasalibBranch: string = "v7.1.0";
 export type ProofEditCommand = ProofEditAppendNode | ProofEditCopyNode | ProofEditPasteNode | ProofEditCopyTree
 	| ProofEditPasteTree | ProofEditDeleteNode | ProofEditAppendBranch | ProofEditCutNode | ProofEditCutTree
 	| ProofEditDeleteTree | ProofEditTrimNode | ProofEditRenameNode | ProofEditTrimUnused
-	| ExportProofAs;
+	| ProofEditExportProof;
 export type ProofEditAppendNode = {
 	action: "append-node",
 	name: string,
@@ -678,9 +678,13 @@ export type ProofEditRenameNode = {
 	newName: string,
 	selected: { id: string, name: string }
 };
-export type ExportProofAs = {
-	action: "export-proof-as",
-	fileExtension: string
+export type ProofEditExportProof = {
+	action: "export-proof",
+	proofFile: {
+		// fileName?: string,
+		fileExtension: string
+		// contextFolder?: string
+	}
 };
 
 
