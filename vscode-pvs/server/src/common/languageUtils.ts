@@ -69,7 +69,7 @@ export const tccRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*
 export const tccStatusRegExp: RegExp = /%\s(proved|subsumed|simplified|unproved|unfinished|unchecked|untried)\b/g;
 export const tccFormulaRegexp: RegExp = /[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉\.]*_TCC\d+/g;
 export function isTccFormula (desc: PvsFormula): boolean {
-	return desc && desc.formulaName && tccFormulaRegexp.test(desc.formulaName);
+	return desc && desc.formulaName && new RegExp(tccFormulaRegexp).test(desc.formulaName);
 }
 
 
