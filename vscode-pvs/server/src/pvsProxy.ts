@@ -1558,6 +1558,10 @@ export class PvsProxy {
 						}
 					}
 				}
+				// keep only tccs with id --- the others are subsumed
+				res.result = result.filter(elem => {
+					return elem.id;
+				});
 				if (content.trim()) {
 					// indent lines
 					content = "\n" + content.split("\n").map(line => { return `\t${line}`; }).join("\n").trim() + "\n";
