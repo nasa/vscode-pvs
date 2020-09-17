@@ -549,7 +549,11 @@ export class PvsLanguageServer {
 	 */
 	protected async openProof (formula: PvsFormula): Promise<ProofDescriptor> {
 		if (this.pvsProxy) {
-			return await this.pvsProxy.openProof(formula);
+			return await this.pvsProxy.openProofFile({
+				fileName: formula.fileName,
+				fileExtension: ".prf",
+				contextFolder: formula.contextFolder
+			}, formula);
 		}
 		// else
 		console.error(`[pvs-language-server] Error: Could not load proof script (pvs-proxy is null)`);

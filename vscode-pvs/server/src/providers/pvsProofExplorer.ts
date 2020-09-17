@@ -2151,8 +2151,7 @@ export class PvsProofExplorer {
 				this.shasum = await fsUtils.shasumFile(formula);
 				// load proof descriptor
 				this.loadProofDescriptor(pdesc);
-				// update proof descriptor file
-				await utils.saveProofDescriptor(this.formula, pdesc);
+				// return the descriptor to the caller
 				return pdesc;
 			}
 		}
@@ -2381,8 +2380,8 @@ export class PvsProofExplorer {
 		// update proof descriptor so it reflects the current proof structure
 		this.proofDescriptor = this.makeProofDescriptor();
 		// save proof descriptor to file
-		const response: PvsResponse = await this.pvsProxy.quitProofAndSave(this.formula);
-		// await this.quitProof();
+		await this.quitProof();
+		const response: PvsResponse = await this.pvsProxy.storeLastProof(this.formula);
 		const success: boolean = response && response.result;
 		let msg: string = null;
 		if (success) {

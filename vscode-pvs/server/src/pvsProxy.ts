@@ -1062,16 +1062,6 @@ export class PvsProxy {
 	}
 
 	/**
-	 * Quits the prover and save the current proof
-	 * NOTE: pvs-server can save the proof only after quitting the proof
-	 * @param formula Descriptor of the formula opened in the prover
-	 */
-	async quitProofAndSave (formula: PvsFormula): Promise<PvsResponse> {
-		await this.quitProof();
-		return await this.storeLastProof(formula);
-	}
-
-	/**
 	 * Finds a symbol declaration
 	 * The result is an object in the form
 	 * {
@@ -1271,7 +1261,7 @@ export class PvsProxy {
 			let pdesc: ProofDescriptor = null;
 			try {
 				// create proof descriptor
-				const isTcc: boolean = utils.tccFormulaRegexp.test(formula.formulaName);
+				const isTcc: boolean = utils.isTccFormula(formula);
 				switch (desc.fileExtension) {
 					case ".jprf": {
 						const fname: string = fsUtils.desc2fname(desc);
@@ -1290,14 +1280,15 @@ export class PvsProxy {
 						if (response && response.result) {
 							const pvsVersionDescriptor: PvsVersionDescriptor = this.getPvsVersionInfo();
 							const shasum: string = await fsUtils.shasumFile(formula);
-							const status: ProofStatus = await this.getProofStatus(formula);
+							const jpdesc: ProofDescriptor = await utils.getProofDescriptor(formula);
+							// const status: ProofStatus = await this.getProofStatus(formula); <<< we can't use this because pvs doesn't know the proof status until the proof has been re-run
 							pdesc = utils.prf2jprf({
 								prf: response.result,
 								theoryName: formula.theoryName, 
 								formulaName: formula.formulaName, 
 								version: pvsVersionDescriptor,
 								shasum,
-								status
+								status: jpdesc?.info?.status || "untried"
 							});
 						}
 						break;
@@ -1427,11 +1418,11 @@ export class PvsProxy {
 	// }
 
 	/**
-	 * Saves the given proof script in .prf format
+	 * Saves the last proof executed by the prover in a .prf file
 	 * NOTE: this function can be used only after quitting the current proof
 	 * @param formula Proof descriptor
 	 */
-	protected async storeLastProof (formula: PvsFormula): Promise<PvsResponse> {
+	async storeLastProof (formula: PvsFormula): Promise<PvsResponse> {
 		if (formula && formula.fileName && formula.contextFolder && formula.formulaName && formula.theoryName) {
 			// desc = fsUtils.decodeURIComponents(desc);
 			// const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);

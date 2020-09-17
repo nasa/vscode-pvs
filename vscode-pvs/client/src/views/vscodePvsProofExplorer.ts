@@ -816,7 +816,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				cmd = resource.name;
 				setTimeout(() => {
 					cmd = null
-				}, 250);	
+				}, 500);
 			} else {
 				const dd: PvsProofCommand = { 
 					fileName: this.formula.fileName,

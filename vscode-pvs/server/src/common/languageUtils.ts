@@ -96,7 +96,6 @@ export const isense: IntellisenseTriggers = {
 	declaration: declarationRegexp
 };
 
-
 /**
  * @function findTheoryName
  * @description Utility function, finds the name of the theory that immediately preceeds a given line
@@ -525,9 +524,9 @@ export async function saveProofDescriptor (formula: PvsFormula, newDesc: ProofDe
 			fileExtension: ".jprf",
 			contextFolder: formula.contextFolder
 		});
-		const fdesc: ProofFile = await readJprfProofFile(fname);
-		// check if file contains a proof for the given formula
 		const key: string = `${formula.theoryName}.${formula.formulaName}`;
+		let fdesc: ProofFile = await readJprfProofFile(fname);
+		// check if file contains a proof for the given formula
 		if (fdesc && fdesc[key] && fdesc[key].length) {
 			// we are updating only the default proof, this might be changed in the future
 			const pdesc: ProofDescriptor = fdesc[key][0];
@@ -537,13 +536,12 @@ export async function saveProofDescriptor (formula: PvsFormula, newDesc: ProofDe
 				pdesc.info.status = newDesc.info.status ? newDesc.info.status : pdesc.info.status;
 				pdesc.info.date = newDesc.info.date ? newDesc.info.date : pdesc.info.date;
 			}
-			// if (pdesc.proofTree) {
-			// 	pdesc.proofTree.name = newKey;
-			// }
-			// write to file
-			const newContent: string = JSON.stringify(fdesc, null, " ");
-			return await fsUtils.writeFile(fname, newContent);
+		} else {
+			fdesc[key] = fdesc[key] || [ newDesc ];
 		}
+		// write descriptor to file
+		const newContent: string = JSON.stringify(fdesc, null, " ");
+		return await fsUtils.writeFile(fname, newContent);		
 	}
 	return false;
 }
@@ -1392,7 +1390,7 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
  */
 export async function readJprfProofFile (fname: string, opt?: { quiet?: boolean }): Promise<ProofFile> {
 	opt = opt || {};
-	let proofFile: ProofFile = null;
+	let proofFile: ProofFile = {};
 	fname = fname.replace("file://", "");
 	fname = fsUtils.tildeExpansion(fname);
 	const content: string = await fsUtils.readFile(fname);
