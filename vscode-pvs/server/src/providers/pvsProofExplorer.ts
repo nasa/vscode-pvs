@@ -2263,7 +2263,7 @@ export class PvsProofExplorer {
 	/**
 	 * Loads a proof file in proof explorer
 	 */
-	async openProofRequest (desc: PvsFile, formula: PvsFormula): Promise<void> {
+	async openProofRequest (desc: PvsFile, formula: PvsFormula): Promise<boolean> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
 				&& formula && formula.fileName && formula.fileExtension 
 				&& formula.theoryName && formula.formulaName) {
@@ -2288,8 +2288,10 @@ export class PvsProofExplorer {
 				}
 				// re-start proof in proof explorer
 				this.startProof();
+				return true;
 			}
 		}
+		return false;
 	}
 	/**
 	 * Export the current proof to a given file format
@@ -2381,8 +2383,8 @@ export class PvsProofExplorer {
 		this.proofDescriptor = this.makeProofDescriptor();
 		// save proof descriptor to file
 		await this.quitProof();
-		const response: PvsResponse = await this.pvsProxy.storeLastProof(this.formula);
-		const success: boolean = response && response.result;
+		const response: PvsResponse = await this.pvsProxy?.storeLastProof(this.formula);
+		const success: boolean = !!(response && response.result);
 		let msg: string = null;
 		if (success) {
 			// clear dirty flag if proof saved successfully
@@ -2393,17 +2395,15 @@ export class PvsProofExplorer {
 			msg = (response && response.error && response.error.data && response.error.data.error_string) ? response.error.data.error_string : null;
 		}
 		// send feedback to the client
-		if (this.connection) {
-			this.connection.sendRequest(serverEvent.saveProofResponse, {
-				response: { 
-					success,
-					msg: (response && response.error && response.error.data && response.error.data.error_string) ? response.error.data.error_string : null,
-					proofFile,
-					formula: this.formula
-				}, 
-				args: this.formula 
-			});
-		}
+		this.connection?.sendRequest(serverEvent.saveProofResponse, {
+			response: { 
+				success,
+				msg: (response && response.error && response.error.data && response.error.data.error_string) ? response.error.data.error_string : null,
+				proofFile,
+				formula: this.formula
+			}, 
+			args: this.formula 
+		});
 		return { success, msg };
 	}
 	/**
@@ -2433,7 +2433,7 @@ export class PvsProofExplorer {
 			const evt: CliGatewayQuit = { type: "pvs.event.quit", channelID };
 			this.pvsLanguageServer.cliGateway.publish(evt);
 		}
-		this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
+		this.connection?.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
 	}
 
 	/**

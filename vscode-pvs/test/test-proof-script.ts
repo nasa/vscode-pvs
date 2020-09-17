@@ -43,23 +43,22 @@ describe("proofScript", () => {
 		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
 		expect(proverStatus.result).toBeDefined();
 		expect(proverStatus.error).not.toBeDefined();
-		console.log(proverStatus);
+		// console.log(proverStatus);
 		if (proverStatus && proverStatus.result !== "inactive") {
 			await pvsProxy.proofCommand({ cmd: 'quit' });
 		}
 	}
 
-	it(`can provide pvs proof scripts`, async () => {
-		label(`can provide pvs proof scripts`);
-
-		const desc = {
+	it(`can open default pvs proof script`, async () => {
+		const formula: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
 			fileName: "sq",
 			formulaName: "sq_neg",
 			theoryName: "sq"
 		};
-		const response: PvsResponse = await pvsProxy.getDefaultProofScript(desc);
+		const response: PvsResponse = await pvsProxy.getDefaultProofScript(formula);
+		// console.dir(response);
 		expect(response.error).not.toBeDefined();
 		expect(response.result).toBeDefined();
 		const proof_header: string = response.result.split("\n")[0];
@@ -70,34 +69,34 @@ describe("proofScript", () => {
 		label(`returns a well-formed empty pvs proof script when the proof file is not available`);
 
 		// a well-formed response for formula sqrt_0 is in the form /;;; Proof sqrt_0(\-\d+)? for formula sqrt.sqrt_0\n(""\s*)/
-		const desc = {
+		const formula: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
 			fileName: "sqrt",
 			formulaName: "sqrt_0",
 			theoryName: "sqrt"
 		};
-		let response: PvsResponse = await pvsProxy.getDefaultProofScript(desc);
+		let response: PvsResponse = await pvsProxy.getDefaultProofScript(formula);
 		// console.dir(response);
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
 		expect(response.error.data.error_string).toMatch(/(.*) does not have a proof/);
 
-		const desc1 = {
+		const formula1: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
 			fileName: "alari2lnewmodes.pump.pvs",
 			formulaName: "vtbi_over_rate_lemma",
 			theoryName: "pump_th"
 		}
-		response = await pvsProxy.getDefaultProofScript(desc1);
+		response = await pvsProxy.getDefaultProofScript(formula1);
 		// console.dir(response);
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
 		expect(response.error.data.error_string).toMatch(/(.*) does not have a proof/);
 	});
 	
-	fit(`can load & save vscode-pvs proof file`, async () => {
+	it(`can load & save vscode-pvs proof files`, async () => {
 		await quitProverIfActive();
 
 		const formula: PvsFormula = {
@@ -110,7 +109,7 @@ describe("proofScript", () => {
 		let response: PvsResponse = await pvsProxy.proveFormula(formula);
 		response = await pvsProxy.proofCommand({ cmd: "(grind)" });
 		response = await pvsProxy.proofCommand({ cmd: "(quit)" });
-		console.dir(response);
+		// console.dir(response);
 		// response = await pvsProxy.storeLastProofAndSave(formula);
 		const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
 		response = await pvsProxy.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName ]);
@@ -119,36 +118,7 @@ describe("proofScript", () => {
 			response = await pvsProxy.pvsRequest("save-all-proofs", [ fullTheoryName ]);
 		}
 		expect(response.result).toBeDefined();
-		console.dir(response);
-	});
-
-	it(`can load vscode-pvs proof descriptors`, async () => {
-		label(`can load vscode-pvs proof descriptors`);
-
-		const fname: string = fsUtils.desc2fname({
-			contextFolder: sandboxExamples,
-			fileExtension: ".jprf",
-			fileName: "sq"
-		});
-		fsUtils.deleteFile(fname);
-
-		const desc = {
-			contextFolder: sandboxExamples,
-			fileExtension: ".pvs",
-			fileName: "sq",
-			formulaName: "sq_plus_eq_0",
-			theoryName: "sq"
-		};
-		const proofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc);
-		expect(proofDescriptor).toBeDefined();
-		expect(proofDescriptor.info.formula).toEqual(test.sq_plus_eq_0_desc.info.formula);
-		expect(proofDescriptor.info.theory).toEqual(test.sq_plus_eq_0_desc.info.theory);
-		expect(proofDescriptor.info.status).toEqual(test.sq_plus_eq_0_desc.info.status);
-		expect(proofDescriptor.info.shasum).toEqual(test.sq_plus_eq_0_desc.info.shasum);
-		expect(proofDescriptor.proofTree).toEqual(test.sq_plus_eq_0_desc.proofTree);
-		// console.dir(proofDescriptor, { depth: null });
-
-		fsUtils.deleteFile(fname);
+		// console.dir(response);
 	});
 
 	// it(`can save new vscode-pvs proof descriptors`, async () => {
@@ -256,14 +226,18 @@ describe("proofScript", () => {
 		await fsUtils.writeFile(fname, content);
 
 		// try to load a proof from the corrupted file
-		const desc: PvsFormula = {
+		const formula: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
 			fileName: "sq",
 			formulaName: "sq_plus_eq_0",
 			theoryName: "sq"
 		};
-		const proofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc, { quiet: true });
+		const proofDescriptor: ProofDescriptor = await pvsProxy.openProofFile({
+			contextFolder: formula.contextFolder,
+			fileName: formula.fileName,
+			fileExtension: ".jprf"
+		}, formula, { quiet: true });
 		expect(proofDescriptor).toBeDefined();
 
 		const backup: string = await fsUtils.readFile(`${fname}.err`);
@@ -301,7 +275,7 @@ describe("proofScript", () => {
 		expect(response1.result).toEqual(response2.result);
 	});
 
-	it(`can provide default proofs for tccs`, async () => {
+	it(`can provide default proof script for tccs`, async () => {
 		const desc: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
@@ -315,8 +289,7 @@ describe("proofScript", () => {
 		// console.dir(response);
 		expect(response.error).not.toBeDefined();
 		expect(response.result).toBeDefined();
-		expect(response.result).toContain(`("" (then (ground)))`)
-		
+		expect(response.result).toContain(`("" (subtype-tcc))`)
 		// console.dir(response.result);
 	});
 });

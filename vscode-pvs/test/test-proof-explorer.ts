@@ -2,10 +2,10 @@ import * as fsUtils from "../server/src/common/fsUtils";
 import { configFile, sandboxExamples } from './test-utils';
 import * as path from 'path';
 import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
-import { ProofNodeX, PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
+import { ProofDescriptor, ProofNodeX, PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
 import { PvsLanguageServer } from "../server/src/pvsLanguageServer";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
-
+import * as utils from '../server/src/common/languageUtils';-
 //----------------------------
 //   Test cases for checking behavior of pvs with corrupted .pvscontext
 //----------------------------
@@ -27,10 +27,6 @@ describe("proof-explorer", () => {
 
 	const baseFolder: string = path.join(__dirname, "proof-explorer");
 	const contextFolder: string = path.join(baseFolder, "foo")
-
-	// remove alaris folder if present and replace it with the content of the zip file
-	// fsUtils.deleteFolder(contextFolder);
-	// execSync(`cd ${baseFolder} && unzip foo.zip`);
 
 	const request: PvsProofCommand = {
 		contextFolder,
@@ -223,10 +219,18 @@ describe("proof-explorer", () => {
 		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
 		expect(activeNode.name).toEqual(`(1.1)`);
 	}, 6000);
+
 	it(`can start another proof when a prover session has already started`, async () => {
 		await server.proveFormulaRequest(request5);
-
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
+
+		const success: boolean = await proofExplorer.openProofRequest({
+			contextFolder: request5.contextFolder,
+			fileName: request5.fileName,
+			fileExtension: ".jprf"
+		}, request5);
+		expect(success).toBeTrue();
+
 		let root: ProofNodeX = proofExplorer.getProofX();
 
 		expect(root.name).toEqual(request5.formulaName);
@@ -238,6 +242,7 @@ describe("proof-explorer", () => {
 		expect(initial_tooltip).toContain(request5.formulaName);
 
 	});
+
 	it(`can delete a proof and display the correct active node`, async () => {
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
 		let root: ProofNodeX = proofExplorer.getProofX();
@@ -251,10 +256,19 @@ describe("proof-explorer", () => {
 		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
 		expect(proofExplorer.isPending({ id: root.id, name: root.name }));
 	});
-	it(`can automatically trim branches at the beginning of a proof, if proof structure has changed`, async () => {
-		await server.proveFormulaRequest(request2);
 
+	it(`can automatically trim branches at the beginning of a proof, if proof structure has changed`, async () => {
+		await server.getPvsProxy().proofCommand({ cmd: "(quit)" });
+		await server.proveFormulaRequest(request2);
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
+
+		const success: boolean = await proofExplorer.openProofRequest({
+			contextFolder: request2.contextFolder,
+			fileName: request2.fileName,
+			fileExtension: ".jprf"
+		}, request2);
+		expect(success).toBeTrue();
+
 		let root: ProofNodeX = proofExplorer.getProofX();
 		expect(root.name).toEqual(request2.formulaName);
 		expect(root.rules[0].name).toEqual("(skosimp*)");
@@ -274,10 +288,19 @@ describe("proof-explorer", () => {
 		activeNode = proofExplorer.getActiveNode();
 		expect(activeNode.name).toEqual(`(1)`);
 	});
-	it(`can trim branches with active nodes and correctly re-position the active node`, async () => {
-		await server.proveFormulaRequest(request2a);
 
+	it(`can trim branches with active nodes and correctly re-position the active node`, async () => {
+		await server.getPvsProxy().proofCommand({ cmd: "(quit)" });
+		await server.proveFormulaRequest(request2a);
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
+
+		const success: boolean = await proofExplorer.openProofRequest({
+			contextFolder: request2a.contextFolder,
+			fileName: request2a.fileName,
+			fileExtension: ".jprf"
+		}, request2a);
+		expect(success).toBeTrue();
+
 		let root: ProofNodeX = proofExplorer.getProofX();
 		expect(root.name).toEqual(request2a.formulaName);
 		expect(root.rules[0].name).toEqual("(grind)");
@@ -308,8 +331,8 @@ describe("proof-explorer", () => {
 
 	});
 
-	fit(`can save current proof`, async () => {
-		await server.getPvsProxy().quitProofIfInProver();
+	it(`can save current proof`, async () => {
+		await server.getPvsProxy().quitProof();
 
 		const formula: PvsFormula = {
 			contextFolder: sandboxExamples,
@@ -320,13 +343,10 @@ describe("proof-explorer", () => {
 		};
 
 		await server.proveFormulaRequest(formula, { autorun: true });
-		const res: { success: boolean, msg?: string } = await server.getProofExplorer().saveCurrentProof();
-		console.dir(res);
+		const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
+		// console.dir(res);
 		expect(res.success).toBeTrue();
 	});
-
-	// // remove test folder 
-	// fsUtils.deleteFolder(path.join(baseFolder, "foo"));
 
 });
 
