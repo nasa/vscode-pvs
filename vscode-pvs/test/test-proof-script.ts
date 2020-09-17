@@ -76,7 +76,7 @@ describe("proofScript", () => {
 			formulaName: "sqrt_0",
 			theoryName: "sqrt"
 		};
-		let response: PvsResponse = await pvsProxy.getDefaultProofScript(formula);
+		const response: PvsResponse = await pvsProxy.getDefaultProofScript(formula);
 		// console.dir(response);
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
@@ -85,15 +85,15 @@ describe("proofScript", () => {
 		const formula1: PvsFormula = {
 			contextFolder: sandboxExamples,
 			fileExtension: ".pvs",
-			fileName: "alari2lnewmodes.pump.pvs",
+			fileName: "alari2lnewmodes.pump",
 			formulaName: "vtbi_over_rate_lemma",
 			theoryName: "pump_th"
 		}
-		response = await pvsProxy.getDefaultProofScript(formula1);
+		const response1: PvsResponse = await pvsProxy.getDefaultProofScript(formula1);
 		// console.dir(response);
-		expect(response.result).not.toBeDefined();
-		expect(response.error).toBeDefined();
-		expect(response.error.data.error_string).toMatch(/(.*) does not have a proof/);
+		expect(response1.result).not.toBeDefined();
+		expect(response1.error).toBeDefined();
+		expect(response1.error.data.error_string).toMatch(/(.*) does not have a proof/);
 	});
 	
 	it(`can load & save vscode-pvs proof files`, async () => {
@@ -120,94 +120,6 @@ describe("proofScript", () => {
 		expect(response.result).toBeDefined();
 		// console.dir(response);
 	});
-
-	// it(`can save new vscode-pvs proof descriptors`, async () => {
-	// 	label(`can save new vscode-pvs proof descriptors`);
-
-	// 	const fname: string = fsUtils.desc2fname({
-	// 		contextFolder: sandboxExamples,
-	// 		fileExtension: ".jprf",
-	// 		fileName: "sq"
-	// 	});
-	// 	fsUtils.deleteFile(fname);
-
-	// 	const desc = {
-	// 		contextFolder: sandboxExamples,
-	// 		fileExtension: ".pvs",
-	// 		fileName: "sq",
-	// 		formulaName: "sq_plus_eq_0",
-	// 		theoryName: "sq"
-	// 	};
-
-	// 	// update proof descriptor
-	// 	const success: boolean = await pvsProxy.saveProof({
-	// 		fileName: desc.fileName,
-	// 		fileExtension: desc.fileExtension,
-	// 		theoryName: desc.theoryName,
-	// 		formulaName: desc.formulaName,
-	// 		contextFolder: desc.contextFolder,
-	// 		proofDescriptor: test.sq_plus_eq_0_desc_new
-	// 	});
-	// 	expect(success).toBeTrue();
-
-	// 	const newProofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc);
-	// 	expect(newProofDescriptor).toBeDefined();
-	// 	expect(newProofDescriptor.info.formula).toEqual(test.sq_plus_eq_0_desc_new.info.formula);
-	// 	expect(newProofDescriptor.info.theory).toEqual(test.sq_plus_eq_0_desc_new.info.theory);
-	// 	expect(newProofDescriptor.info.status).toEqual(test.sq_plus_eq_0_desc_new.info.status);
-	// 	expect(newProofDescriptor.info.shasum).toEqual(test.sq_plus_eq_0_desc_new.info.shasum);
-	// 	expect(newProofDescriptor.proofTree).toEqual(test.sq_plus_eq_0_desc_new.proofTree);
-
-	// 	fsUtils.deleteFile(fname);
-	// });
-
-	// it(`can update existing vscode-pvs proof descriptors`, async () => {
-	// 	label(`can update existing vscode-pvs proof descriptors`);
-
-	// 	const fname: string = fsUtils.desc2fname({
-	// 		contextFolder: sandboxExamples,
-	// 		fileExtension: ".jprf",
-	// 		fileName: "sq"
-	// 	});
-	// 	fsUtils.deleteFile(fname);
-
-	// 	const desc = {
-	// 		contextFolder: sandboxExamples,
-	// 		fileExtension: ".pvs",
-	// 		fileName: "sq",
-	// 		formulaName: "sq_plus_eq_0",
-	// 		theoryName: "sq"
-	// 	};
-	// 	const proofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc);
-	// 	expect(proofDescriptor).toBeDefined();
-	// 	expect(proofDescriptor.info.formula).toEqual(test.sq_plus_eq_0_desc.info.formula);
-	// 	expect(proofDescriptor.info.theory).toEqual(test.sq_plus_eq_0_desc.info.theory);
-	// 	expect(proofDescriptor.info.status).toEqual(test.sq_plus_eq_0_desc.info.status);
-	// 	expect(proofDescriptor.info.shasum).toEqual(test.sq_plus_eq_0_desc.info.shasum);
-	// 	expect(proofDescriptor.proofTree).toEqual(test.sq_plus_eq_0_desc.proofTree);
-	// 	// console.dir(proofDescriptor, { depth: null });
-
-	// 	// update proof descriptor
-	// 	const success: boolean = await pvsProxy.saveProof({
-	// 		fileName: desc.fileName,
-	// 		fileExtension: desc.fileExtension,
-	// 		theoryName: desc.theoryName,
-	// 		formulaName: desc.formulaName,
-	// 		contextFolder: desc.contextFolder,
-	// 		proofDescriptor: test.sq_plus_eq_0_desc_new
-	// 	});
-	// 	expect(success).toBeTrue();
-
-	// 	const newProofDescriptor: ProofDescriptor = await pvsProxy.openProof(desc);
-	// 	expect(newProofDescriptor).toBeDefined();
-	// 	expect(newProofDescriptor.info.formula).toEqual(test.sq_plus_eq_0_desc_new.info.formula);
-	// 	expect(newProofDescriptor.info.theory).toEqual(test.sq_plus_eq_0_desc_new.info.theory);
-	// 	expect(newProofDescriptor.info.status).toEqual(test.sq_plus_eq_0_desc_new.info.status);
-	// 	expect(newProofDescriptor.info.shasum).toEqual(test.sq_plus_eq_0_desc_new.info.shasum);
-	// 	expect(newProofDescriptor.proofTree).toEqual(test.sq_plus_eq_0_desc_new.proofTree);
-
-	// 	fsUtils.deleteFile(fname);
-	// });
 
 	it(`can generate backup files if vscode-pvs proof file is corrupted`, async () => {
 		label(`can generate backup files if vscode-pvs proof file is corrupted`);

@@ -1598,14 +1598,14 @@ export class PvsProxy {
 	 * Discharge all tccs generated for the given theory
 	 * @param desc 
 	 */
-	async proveTccs(desc: { contextFolder: string, fileName: string, fileExtension: string }): Promise<PvsResponse> {
-		if (desc) {
-			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-			const res: PvsResponse = await this.pvsRequest('prove-tccs', [ fname ]);
-			return res;
-		}
-		return null;
-	}
+	// async proveTccs(desc: { contextFolder: string, fileName: string, fileExtension: string }): Promise<PvsResponse> {
+	// 	if (desc) {
+	// 		const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+	// 		const res: PvsResponse = await this.pvsRequest('prove-tccs', [ fname ]);
+	// 		return res;
+	// 	}
+	// 	return null;
+	// }
 
 	/**
 	 * Returns pvs version information

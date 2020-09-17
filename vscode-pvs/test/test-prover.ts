@@ -87,25 +87,6 @@ describe("pvs-prover", () => {
 	});
 
 	//----- the tests below this line are completed successfully
-
-	it(`can discharge tccs`, async () => {
-		await quitProverIfActive();
-		
-		const response: PvsResponse = await pvsProxy.proveTccs({
-			fileName: "sq",
-			fileExtension: ".pvs",
-			contextFolder: sandboxExamples
-		});
-		// console.dir(response);
-		expect(response.error).not.toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.result.totals).toEqual(2);
-		expect(response.result.proved).toEqual(2);
-		expect(response.result.unproved).toEqual(0);
-		expect(response.result.subsumed).toEqual(0);
-		expect(response.result.simplified).toEqual(0);
-	}, 4000);
-
 	it(`can start prover session`, async () => {
 		await quitProverIfActive();
 
@@ -160,7 +141,7 @@ describe("pvs-prover", () => {
 			response = await pvsProxy.proofCommand({ cmd: '(assert)'});
 			// console.dir(response);
 			expect(response.result[0].commentary).toEqual('This completes the proof of sq_neg.');
-			expect(response.result[1].commentary).toEqual('Q.E.D.');
+			expect(response.result[1].commentary).toContain('Q.E.D.');
 
 			// try to re-start the proof
 			response = await pvsProxy.proveFormula(desc);

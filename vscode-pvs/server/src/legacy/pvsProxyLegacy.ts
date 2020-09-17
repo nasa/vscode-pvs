@@ -424,8 +424,8 @@ export class PvsProxyLegacy {
         await this.changeContext(desc.contextFolder);
         await this.typecheckFile(fsUtils.desc2fname(desc));
         if (desc && desc.contextFolder && desc.fileExtension && desc.fileName && desc.formulaName) {
-            const isTcc: boolean = utils.isTccFormula(desc);
-            if (isTcc) {
+            // const isTcc: boolean = utils.isTccFormula(desc);
+            // if (isTcc) {
                 const cmd: string = `(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`;
                 const data: PvsResponse = await this.lisp(cmd);
                 if (data && data.result) {
@@ -434,29 +434,29 @@ export class PvsProxyLegacy {
                         result = matchProof[1].replace(/\\"/g, `"`); // this is necessary because get-default-proof-script is erroneously escaping double quotes
                     }
                 }
-            } else {
-                // I'm keeping this for backwards compatibility, until the final version of pvs is released
-                // extension is forced to .pvs, this is necessary as the request may come for a .tccs file
-                const fname: string = fsUtils.desc2fname(desc);
-                const fileDesc: PvsFileDescriptor = await utils.getFileDescriptor(fname, { listTheorems: true });
-                if (fileDesc && fileDesc.theories && fileDesc.theories.length) {
-                    const theoryDesc: TheoryDescriptor[] = fileDesc.theories.filter(tdesc => { return tdesc.theoryName === desc.theoryName });
-                    if (theoryDesc && theoryDesc.length === 1 && theoryDesc[0].theorems && theoryDesc[0].theorems.length > 0) {
-                        const formulaDesc: FormulaDescriptor[] = theoryDesc[0].theorems.filter(formula => { return formula.formulaName === desc.formulaName; });
-                        if (formulaDesc && formulaDesc.length === 1 && formulaDesc[0].position) {
-                            const line: number = formulaDesc[0].position.line;
-                            const cmd: string = `(edit-proof-at "${fname}" nil ${line} "pvs" "${desc.fileName}${desc.fileExtension}" 0 nil)`;
-                            const data: PvsResponse = await this.lisp(cmd);
-                            if (data && data.result) {
-                                const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
-                                if (matchProof && matchProof.length > 1) {
-                                    result = matchProof[1];
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            // } else {
+            //     // I'm keeping this for backwards compatibility, until the final version of pvs is released
+            //     // extension is forced to .pvs, this is necessary as the request may come for a .tccs file
+            //     const fname: string = fsUtils.desc2fname(desc);
+            //     const fileDesc: PvsFileDescriptor = await utils.getFileDescriptor(fname, { listTheorems: true });
+            //     if (fileDesc && fileDesc.theories && fileDesc.theories.length) {
+            //         const theoryDesc: TheoryDescriptor[] = fileDesc.theories.filter(tdesc => { return tdesc.theoryName === desc.theoryName });
+            //         if (theoryDesc && theoryDesc.length === 1 && theoryDesc[0].theorems && theoryDesc[0].theorems.length > 0) {
+            //             const formulaDesc: FormulaDescriptor[] = theoryDesc[0].theorems.filter(formula => { return formula.formulaName === desc.formulaName; });
+            //             if (formulaDesc && formulaDesc.length === 1 && formulaDesc[0].position) {
+            //                 const line: number = formulaDesc[0].position.line;
+            //                 const cmd: string = `(edit-proof-at "${fname}" nil ${line} "pvs" "${desc.fileName}${desc.fileExtension}" 0 nil)`;
+            //                 const data: PvsResponse = await this.lisp(cmd);
+            //                 if (data && data.result) {
+            //                     const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
+            //                     if (matchProof && matchProof.length > 1) {
+            //                         result = matchProof[1];
+            //                     }
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
         }
         // the APIs of PVS are really ugly here -- if the formula does not have a proof returns an error rather than just returning an empty proof
         return (result) ? {

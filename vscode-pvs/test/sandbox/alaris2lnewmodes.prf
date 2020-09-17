@@ -3,9 +3,6 @@
   (vtbi_over_rate_lemma_TCC1-1 nil 3808815956
    ("" (then (subtype-tcc)) nil) nil nil
    (vtbi_over_rate_lemma subtype "pump_th.r" "nznum")))
- (vtbi_over_rate_lemma 0
-  (vtbi_over_rate_lemma-1 nil 3808820925 ("" (postpone) nil nil) nil
-   shostak))
  (vtbi_over_time_lemma 0
   (vtbi_over_time_lemma-1 nil 3808820925 ("" (postpone) nil nil) nil
    shostak))
