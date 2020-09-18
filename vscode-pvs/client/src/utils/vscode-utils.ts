@@ -207,7 +207,8 @@ export async function openWorkspace (): Promise<void> {
             vscode.commands.executeCommand("workbench.action.closeAllGroups");
             // open the new workspace
             // vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
-            vscode.workspace.updateWorkspaceFolders(0, null, { uri: contextFolderUri });
+            const deleteCount: number = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0;
+            vscode.workspace.updateWorkspaceFolders(0, deleteCount, { uri: contextFolderUri });
 
             // await createCodeWorkspace(contextFolder);
         // }

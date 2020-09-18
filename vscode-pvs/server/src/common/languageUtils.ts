@@ -967,7 +967,8 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 		fileExtension
 	};
 	const pvsFileContent: string = await fsUtils.readFile(fname);
-	const tccsFileContent: string = (opt.includeTccs) ? await fsUtils.readFile(path.join(contextFolder, `${fileName}.tccs`)) : null;
+	const tccsContextFolder: string = path.join(contextFolder, "pvsbin")
+	const tccsFileContent: string = (opt.includeTccs) ? await fsUtils.readFile(path.join(tccsContextFolder, `${fileName}.tccs`)) : null;
 	// console.log(`[languageUtils.getFileDescriptor] listTheories(${fileName})`);
 	const theories: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent });
 	if (theories) {
@@ -978,7 +979,7 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 					: [];
 		const tccs: FormulaDescriptor[] = 
 			(opt.listTheorems && fileExtension !== ".tccs" && tccsFileContent) 
-				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: false })
+				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder: tccsContextFolder, fileContent: tccsFileContent, prelude: false })
 					: [];
 		const descriptors: FormulaDescriptor[] = lemmas.concat(tccs);
 		for (let i = 0; i < theories.length; i++) {
@@ -1264,9 +1265,9 @@ export function proofDescriptor2ProofLite (proofDescriptor: ProofDescriptor, opt
 			return script.split("\n");
 		} else {
 			// the theory name will be given by the file name
-			const res: string = `${proofDescriptor.info.formula} : PROOF
-${script}
-QED ${proofDescriptor.info.formula}`;
+			const res: string = `${proofDescriptor.info.formula} : PROOF\n`
+				+ script
+				+ `\nQED ${proofDescriptor.info.formula}`;
 			return (opt.barDash) ? res.split("\n").map(line => { return "%|- " + line; })
 				: res.split("\n");
 		}

@@ -125,6 +125,16 @@ export function deleteFolder(contextFolder: string): boolean {
 	}
 	return true;
 }
+export function deleteBinFiles(contextFolder: string): boolean {
+	try {
+		if (fs.existsSync(contextFolder)) {
+			execSync(`rm ${contextFolder}/*.bin`);
+		}
+	} catch (deleteError) {
+		return false;
+	}
+	return true;
+}
 export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean, recursive?: boolean }): Promise<number> {
 	opt = opt || {};
 	let nCleaned: number = 0;
@@ -133,8 +143,8 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 		if (contextFolder) {
 			contextFolder = tildeExpansion(contextFolder);
 			// console.log(`Deleting cache for context ${contextFolder}`);
-			const cacheFolder: string = path.join(contextFolder, "pvsbin");
-			deleteFolder(cacheFolder);
+			const pvsbinFolder: string = path.join(contextFolder, "pvsbin");
+			deleteBinFiles(pvsbinFolder);
 			// console.log(`removing ${path.join(contextFolder, ".pvscontext")}`);
 			deleteFile(path.join(contextFolder, ".pvscontext"));
 			// console.log(`reading folder ${contextFolder}`);
@@ -143,7 +153,8 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 				// remove .prlite files
 				files.filter(name => {
 					// console.log(name);
-					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~");
+					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~") 
+						|| name.endsWith(".tccs"); // .tccs should reside in the pvsbin folder, if they are in the context folder then it's a leftover from older vscode-pvs versions
 				}).forEach(file => {
 					// console.log(`deleting ${file}`);
 					deleteFile(path.join(contextFolder, file));
@@ -158,7 +169,7 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 							return name.endsWith(".tccs");
 						}).forEach(file => {
 							// console.log(`deleting ${file}`);
-							deleteFile(path.join(contextFolder, file));
+							deleteFile(path.join(pvsbinFolder, file));
 						});
 					}
 				}
@@ -190,6 +201,8 @@ export async function writeFile(fname: string, content: string): Promise<boolean
 		try {
 			fname = fname.replace("file://", "");
 			fname = tildeExpansion(fname);
+			const contextFolder: string = getContextFolder(fname);
+			await createFolder(contextFolder);
 			fs.writeFileSync(fname, content);
 		} catch (error) {
 			console.error(`[fs-utils] Error while writing file ${fname}`, error);

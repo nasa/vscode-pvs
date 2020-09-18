@@ -19,10 +19,15 @@
 		"proof_state_icon": {
 			"iconPath": "pr-icon.png",
 			"description": "pvs proof state file"
+		},
+		"tcc_icon": {
+			"iconPath": "tcc-icon.png",
+			"description": "tccs file"
 		}
 	},
 	"fileExtensions": {
 		"pvs": "pvs_icon",
+		"tccs": "tcc_icon",
 		"prf": "proof_script_icon",
 		"jprf": "proof_script_icon",
 		"pr" : "proof_state_icon",

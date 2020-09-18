@@ -59,7 +59,7 @@ import {
 	PvsFile,
 	ContextFolder,
 	PvsTheory,
-	PvsProofCommand
+	PvsProofCommand, FormulaDescriptor
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -670,9 +670,13 @@ export class PvsLanguageServer {
 				contextFolder: string 
 			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
 			if (desc) {
-				desc.fileExtension = ".pvs"; // tccs can be generated only for .pvs files
-				const fname: string = fsUtils.desc2fname(desc);
-				const shortName: string = `${desc.fileName}${desc.fileExtension}`;
+				const contextFolder: string = (desc.fileExtension === ".tccs") ? path.join(desc.contextFolder, "..") : desc.contextFolder; // .tccs files reside under pvsbin/
+				const fname: string = fsUtils.desc2fname({
+					contextFolder,
+					fileName: desc.fileName,
+					fileExtension: ".pvs"
+				});
+				const shortName: string = `${desc.fileName}.pvs`;
 				const taskId: string = `generate-tcc-for-${fname}`;
 				if (!opt.quiet) {
 					this.notifyStartImportantTask({ id: taskId, msg: `Generating typecheck conditions for ${shortName}`});
@@ -689,7 +693,10 @@ export class PvsLanguageServer {
 					const theories: TheoryDescriptor[] = response.fileDescriptors[fname].theories;
 					for (let i = 0; i < theories.length; i++) {
 						if (theories[i].theorems && theories[i].theorems.length) {
-							nTccs += theories[i].theorems.length;
+							// count only tccs with id --- the others are subsumed
+							nTccs += theories[i].theorems.filter((elem: FormulaDescriptor) => {
+								return elem.formulaName;
+							}).length;
 							for (let j = 0; j < theories[i].theorems.length; j++) {
 								if (utils.isProved(theories[i].theorems[j].status)) {
 									nProved++;
@@ -1075,7 +1082,8 @@ export class PvsLanguageServer {
 				if (this.pvsProxy.isProtectedFolder(args.contextFolder)) {
 					return await this.getPreludeDescriptor();
 				} // else
-				return await utils.getContextDescriptor(args.contextFolder, { listTheorems: true, includeTccs: true });
+				const contextFolder: string = (args.contextFolder.endsWith("pvsbin")) ? path.join(args.contextFolder, "..") : args.contextFolder;
+				return await utils.getContextDescriptor(contextFolder, { listTheorems: true, includeTccs: true });
 			} else {
 				console.error('[pvs-language-server.listTheories] Error: pvs proxy is null');
 			}

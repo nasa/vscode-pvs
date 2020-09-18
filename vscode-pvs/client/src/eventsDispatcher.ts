@@ -253,7 +253,8 @@ export class EventsDispatcher {
             if (desc && desc.args) {
                 if (desc && desc.response) {
                     // open tcc file in the editor
-                    const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
+                    const tccsContextFolder: string = path.join(desc.args.contextFolder, "pvsbin");
+                    const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: tccsContextFolder, fileExtension: ".tccs"}));
                     const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
                     const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
                     vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });

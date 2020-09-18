@@ -706,21 +706,26 @@ export class PvsProxy {
 	}
 	/**
 	 * Generates a .tccs file for each theory in a given pvs file
-	 * @param args Handler arguments: filename, file extension, context folder
+	 * @param desc Handler arguments: filename, file extension, context folder
 	 */
-	async generateTccs (args: PvsFile): Promise<PvsContextDescriptor> {
-		args = fsUtils.decodeURIComponents(args);
-		if (args && args.contextFolder && args.fileName && args.fileExtension) {
+	async generateTccs (desc: PvsFile): Promise<PvsContextDescriptor> {
+		desc = fsUtils.decodeURIComponents(desc);
+		if (desc && desc.contextFolder && desc.fileName && desc.fileExtension) {
 			try {
-				const fname: string = fsUtils.desc2fname(args);
+				const contextFolder: string = (desc.fileExtension === ".tccs") ? path.join(desc.contextFolder, "..") : desc.contextFolder;
+				const fname: string = fsUtils.desc2fname({
+					contextFolder,
+					fileName: desc.fileName,
+					fileExtension: ".pvs"
+				});
 				const res: PvsContextDescriptor = {
-					contextFolder: args.contextFolder,
+					contextFolder,
 					fileDescriptors: {}
 				};
 				res.fileDescriptors[fname] = {
-					fileName: args.fileName,
-					fileExtension: args.fileExtension,
-					contextFolder: args.contextFolder,
+					fileName: desc.fileName,
+					fileExtension: ".pvs",
+					contextFolder,
 					theories: []
 				};
 				// fetch theory names
@@ -730,35 +735,38 @@ export class PvsProxy {
 					for (let i = 0; i < theories.length; i++) {
 						const theoryName: string = theories[i].theoryName;
 						const response: PvsResponse = await this.tccs({
-							fileName: args.fileName, fileExtension: args.fileExtension, contextFolder: args.contextFolder, theoryName
+							fileName: desc.fileName, fileExtension: ".pvs", contextFolder, theoryName
 						});
 						if (response && !response.error) {
 							if (response.result) {
 								const tccResult: ShowTCCsResult = <ShowTCCsResult> response.result;
 								let line: number = TCC_START_OFFSET;
+								const tccs: FormulaDescriptor[] = (tccResult) ? tccResult.map(tcc => {
+									line += (tcc.comment && tcc.comment.length) ? tcc.comment[0].split("\n").length + 1 
+												: tcc["subsumed-tccs"] ? tcc["subsumed-tccs"].split("\n").length + 1
+												: 1;
+									// const content: string = tcc.definition || "";
+									const res: FormulaDescriptor = {
+										fileName: desc.fileName,
+										fileExtension: ".tccs",
+										contextFolder: path.join(contextFolder, "pvsbin"),
+										theoryName,
+										formulaName: tcc.id,
+										position: { line, character: 0 },
+										status: tcc["status"], //(tcc.proved) ? "proved" : "untried",
+										isTcc: true//,
+										// shasum: fsUtils.shasum(content)
+									};
+									line += (tcc.definition) ? tcc.definition.split("\n").length + 2 : 2;
+									return res;
+								}): null
 								res.fileDescriptors[fname].theories.push({
-									fileName: args.fileName,
-									fileExtension: args.fileExtension,
-									contextFolder: args.contextFolder,
+									fileName: desc.fileName,
+									fileExtension: ".pvs",
+									contextFolder,
 									theoryName,
-									position: null,
-									theorems: (tccResult) ? tccResult.map(tcc => {
-										line += (tcc.comment && tcc.comment.length) ? tcc.comment[0].split("\n").length + 1 : 1;
-										// const content: string = tcc.definition || "";
-										const res: FormulaDescriptor = {
-											fileName: args.fileName,
-											fileExtension: ".tccs",
-											contextFolder: args.contextFolder,
-											theoryName,
-											formulaName: tcc.id,
-											position: { line, character: 0 },
-											status: tcc["status"], //(tcc.proved) ? "proved" : "untried",
-											isTcc: true//,
-											// shasum: fsUtils.shasum(content)
-										};
-										line += (tcc.definition) ? tcc.definition.split("\n").length + 2 : 2;
-										return res;
-									}): null
+									position: null, // tccs are not part of the .pvs file
+									theorems: tccs
 								});
 							} else {
 								console.info(`[pvs-language-server.showTccs] No TCCs generated`, response);	
@@ -1546,7 +1554,7 @@ export class PvsProxy {
 							const lastKnownStatus: ProofStatus = await utils.getProofStatus({
 								fileName: desc.fileName,
 								fileExtension: ".tccs",
-								contextFolder: desc.contextFolder,
+								contextFolder: path.join(desc.contextFolder, "pvsbin"),
 								theoryName: desc.theoryName,
 								formulaName
 							});
@@ -1558,10 +1566,6 @@ export class PvsProxy {
 						}
 					}
 				}
-				// keep only tccs with id --- the others are subsumed
-				res.result = result.filter(elem => {
-					return elem.id;
-				});
 				if (content.trim()) {
 					// indent lines
 					content = "\n" + content.split("\n").map(line => { return `\t${line}`; }).join("\n").trim() + "\n";
@@ -1573,7 +1577,7 @@ export class PvsProxy {
 				// add header
 				const header: string = `%% TCCs associated with theory ${desc.theoryName}\n%% This file was automatically generated by PVS, please **do not modify** by hand.\n`;
 				// write .tccs file
-				const fname: string = path.join(desc.contextFolder, `${desc.fileName}.tccs`);
+				const fname: string = path.join(desc.contextFolder, "pvsbin", `${desc.fileName}.tccs`);
 				fsUtils.writeFile(fname, header + content);
 			}
 		} catch (error) {
