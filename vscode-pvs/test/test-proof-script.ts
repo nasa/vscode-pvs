@@ -65,9 +65,7 @@ describe("proofScript", () => {
 		expect(proof_header).toEqual(`;;; Proof sq_neg-1 for formula sq.sq_neg`);
 	});
 	
-	it(`returns a well-formed empty pvs proof script when the proof file is not available`, async () => {
-		label(`returns a well-formed empty pvs proof script when the proof file is not available`);
-
+	fit(`returns a well-formed empty pvs proof script when the proof file is not available`, async () => {
 		// a well-formed response for formula sqrt_0 is in the form /;;; Proof sqrt_0(\-\d+)? for formula sqrt.sqrt_0\n(""\s*)/
 		const formula: PvsFormula = {
 			contextFolder: sandboxExamples,
@@ -94,6 +92,23 @@ describe("proofScript", () => {
 		expect(response1.result).not.toBeDefined();
 		expect(response1.error).toBeDefined();
 		expect(response1.error.data.error_string).toMatch(/(.*) does not have a proof/);
+
+		const formula3: PvsFormula = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "sq",
+			formulaName: "sq_plus_pos",
+			theoryName: "sq"
+		};
+		await pvsProxy.changeContext(formula3);
+		await pvsProxy.typecheckFile(formula3);
+		// const response: PvsResponse = await pvsProxy.getDefaultProofScript(desc);
+		const response3: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${formula3.theoryName}" "${formula3.formulaName}")`);
+		console.dir(response3.result);
+
+		expect(response3.result).not.toBeDefined();
+		expect(response3.error).toBeDefined();
+		expect(response3.error.data.error_string).toMatch(/(.*) does not have a proof/);
 	});
 	
 	it(`can load & save vscode-pvs proof files`, async () => {
@@ -204,4 +219,5 @@ describe("proofScript", () => {
 		expect(response.result).toContain(`("" (subtype-tcc))`)
 		// console.dir(response.result);
 	});
+
 });
