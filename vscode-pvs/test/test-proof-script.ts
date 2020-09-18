@@ -75,7 +75,7 @@ describe("proofScript", () => {
 			theoryName: "sqrt"
 		};
 		const response: PvsResponse = await pvsProxy.getDefaultProofScript(formula);
-		// console.dir(response);
+		console.dir(response);
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
 		expect(response.error.data.error_string).toMatch(/(.*) does not have a proof/);
@@ -102,8 +102,8 @@ describe("proofScript", () => {
 		};
 		await pvsProxy.changeContext(formula3);
 		await pvsProxy.typecheckFile(formula3);
-		// const response: PvsResponse = await pvsProxy.getDefaultProofScript(desc);
-		const response3: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${formula3.theoryName}" "${formula3.formulaName}")`);
+		const response3: PvsResponse = await pvsProxy.getDefaultProofScript(formula3);
+		// const response3: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${formula3.theoryName}" "${formula3.formulaName}")`);
 		console.dir(response3.result);
 
 		expect(response3.result).not.toBeDefined();
