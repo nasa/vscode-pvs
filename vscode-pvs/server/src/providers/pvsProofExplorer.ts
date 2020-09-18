@@ -2383,7 +2383,7 @@ export class PvsProofExplorer {
 		this.proofDescriptor = this.makeProofDescriptor();
 		// save proof descriptor to file
 		await this.quitProof();
-		const response: PvsResponse = await this.pvsProxy?.storeLastProof(this.formula);
+		const response: PvsResponse = await this.pvsProxy?.storeLastAttemptedProof(this.formula);
 		const success: boolean = !!(response && response.result);
 		let msg: string = null;
 		if (success) {

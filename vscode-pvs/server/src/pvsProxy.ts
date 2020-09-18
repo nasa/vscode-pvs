@@ -1422,7 +1422,7 @@ export class PvsProxy {
 	 * NOTE: this function can be used only after quitting the current proof
 	 * @param formula Proof descriptor
 	 */
-	async storeLastProof (formula: PvsFormula): Promise<PvsResponse> {
+	async storeLastAttemptedProof (formula: PvsFormula): Promise<PvsResponse> {
 		if (formula && formula.fileName && formula.contextFolder && formula.formulaName && formula.theoryName) {
 			// desc = fsUtils.decodeURIComponents(desc);
 			// const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
@@ -1436,7 +1436,7 @@ export class PvsProxy {
 			// const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
 			// await this.proofCommand({ cmd: "(quit)" });
 			const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
-			const response: PvsResponse = await this.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName ]);
+			const response: PvsResponse = await this.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName, 't' ]);
 			if (response && response.result) {
 				await this.pvsRequest("change-context", [ formula.contextFolder ]);
 				await this.pvsRequest("save-all-proofs", [ fullTheoryName ]); // it's pointless to return the result of 'save-all-proofs' because the result is null all the times

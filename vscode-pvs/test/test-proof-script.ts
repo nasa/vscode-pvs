@@ -110,9 +110,9 @@ describe("proofScript", () => {
 		response = await pvsProxy.proofCommand({ cmd: "(grind)" });
 		response = await pvsProxy.proofCommand({ cmd: "(quit)" });
 		// console.dir(response);
-		// response = await pvsProxy.storeLastProofAndSave(formula);
+		response = await pvsProxy.storeLastAttemptedProof(formula);
 		const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
-		response = await pvsProxy.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName ]);
+		response = await pvsProxy.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName, 't' ]);
 		if (response && response.result) {
 			response = await pvsProxy.pvsRequest("change-context", [ formula.contextFolder ]);
 			response = await pvsProxy.pvsRequest("save-all-proofs", [ fullTheoryName ]);
