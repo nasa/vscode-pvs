@@ -1830,34 +1830,37 @@ export function applyTimeout (cmd: string, sec?: number): string {
 	return cmd;
 }
 
+export const proverErrorMessages: string[] = [
+	"Error:",
+	"not a valid prover command",
+	"Found 'eof' when expecting",
+	"bad proof command",
+	"Expecting an expression",
+	"Not enough arguments for prover command",
+	"Could not find formula number",
+	"There is garbage at the end"
+];
+
 export function isInvalidCommand (result: { commentary: string | string[] }): boolean {
+	const isInvalid = (cmd: string): boolean => {
+		if (cmd) {
+			for (let i = 0; i < proverErrorMessages.length; i++) {
+				if (cmd.includes(proverErrorMessages[i])) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 	if (result && result.commentary) {
 		if (typeof result.commentary === "string") {
-			return result.commentary.includes("Error:")
-				|| result.commentary.includes("not a valid prover command")
-				|| result.commentary.includes(`Found 'eof' when expecting`)
-				|| result.commentary.includes(`bad proof command`)
-				|| result.commentary.includes(`Expecting an expression`)
-				|| result.commentary.includes(`Not enough arguments for prover command`)
-				|| result.commentary.includes(`Could not find formula number`);
+			return isInvalid(result.commentary);
 		} else if (typeof result.commentary === "object") {
 			return result.commentary.length
-			&& typeof result.commentary[0] === "string"
-			&& (result.commentary.filter((comment: string)=> {
-				return comment.includes("Error:");
-			}).length > 0 || result.commentary.filter((comment: string)=> {
-				return comment.includes("not a valid prover command");
-			}).length > 0 || result.commentary.filter((comment: string)=> {
-				return comment.includes(`Found 'eof' when expecting`);
-			}).length > 0 || result.commentary.filter((comment: string)=> {
-				return comment.includes(`bad proof command`);
-			}).length > 0 || result.commentary.filter((comment: string)=> {
-				return comment.includes(`Expecting an expression`);
-			}).length > 0 || result.commentary.filter((comment: string)=> {
-				return comment.includes(`Not enough arguments for prover command`);
-			}).length > 0 || result.commentary.filter((comment: string) => {
-				return comment.includes(`Could not find formula number`);
-			}).length > 0);
+				&& typeof result.commentary[0] === "string"
+				&& result.commentary.filter((comment: string)=> {
+					return isInvalid(comment);
+				}).length > 0;
 		}
 	}
 	return false;
