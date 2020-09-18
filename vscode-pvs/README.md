@@ -75,10 +75,9 @@ The main functionalities provided by the environment are as follows:
 
 ## ChangeLog
 ### 1.0.25 (2020.08.xx)
+- Proof files are now saved using legacy .prf format
 - Added support for prove-importchain (M-x pri)
 - Added support for glassbox tactics
-- Added support for renaming of theories and theorems
-- Added support for importing/exporting proof files in different formats (jprf, prf, prl)
 - Added vscode-pvs shortcuts (reinstall-pvs, reinstall-nasalib, set-pvs-path, settings, add-library-path)
 - Added vscode-pvs settings for pvs-library-path
 - Improved menus and feedback

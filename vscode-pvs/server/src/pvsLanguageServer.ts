@@ -1561,7 +1561,7 @@ export class PvsLanguageServer {
 					// 	commands: SERVER_COMMANDS // what is this for??
 					// },
 					// ,
-					renameProvider: true,
+					renameProvider: false, // rename provider disabled for now -- pvs-server apis are needed to manipulate .prf files
 					// ,
 					// documentOnTypeFormattingProvider: {
 					// 	firstTriggerCharacter: "}",
