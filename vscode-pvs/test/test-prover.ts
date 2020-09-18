@@ -512,4 +512,23 @@ describe("pvs-prover", () => {
 		// console.dir(response.result);
 	}, 20000);
 
+	fit(`weird stuck thread`, async () => {
+        await quitProverIfActive();
+
+        const formula: PvsFormula = {
+            contextFolder: sandboxExamples,
+            fileExtension: ".pvs",
+            fileName: "sq",
+            formulaName: "sq_plus_eq_0",
+            theoryName: "sq"
+        };
+
+        let response: PvsResponse = await pvsProxy.proveFormula(formula);
+        console.dir(response);
+        response = await pvsProxy.proofCommand({ cmd: "(grind)" });
+        console.dir(response);
+        response = await pvsProxy.proofCommand({ cmd: "(quit)" });
+        console.dir(response);
+    });
+
 });

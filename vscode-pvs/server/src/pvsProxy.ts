@@ -1271,18 +1271,6 @@ export class PvsProxy {
 				// create proof descriptor
 				const isTcc: boolean = utils.isTccFormula(formula);
 				switch (desc.fileExtension) {
-					case ".jprf": {
-						const fname: string = fsUtils.desc2fname(desc);
-						const proofFile: ProofFile = await utils.readJprfProofFile(fname, opt);
-						const key: string = `${formula.theoryName}.${formula.formulaName}`;
-						// try to load the proof from the .jprf file
-						if (proofFile && proofFile[key] && proofFile[key].length > 0) {
-							pdesc = new ProofDescriptor (proofFile[key][0].info, proofFile[key][0].proofTree);
-						}
-						if (!isTcc && !utils.isEmptyProof(pdesc)) {
-							break;
-						} // else, this is a tcc, go to case .prf and get the default proof for the formula
-					}
 					case ".prf": {
 						const response: PvsResponse = await this.getDefaultProofScript(formula);
 						if (response && response.result) {
@@ -1298,6 +1286,19 @@ export class PvsProxy {
 								shasum,
 								status: jpdesc?.info?.status || "untried"
 							});
+						}
+						if (!utils.isEmptyProof(pdesc)) {
+							break;
+						}
+						// else, try to load from .jprf
+					}
+					case ".jprf": {
+						const fname: string = fsUtils.desc2fname(desc);
+						const proofFile: ProofFile = await utils.readJprfProofFile(fname, opt);
+						const key: string = `${formula.theoryName}.${formula.formulaName}`;
+						// try to load the proof from the .jprf file
+						if (proofFile && proofFile[key] && proofFile[key].length > 0) {
+							pdesc = new ProofDescriptor (proofFile[key][0].info, proofFile[key][0].proofTree);
 						}
 						break;
 					}
