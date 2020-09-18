@@ -1293,7 +1293,11 @@ export class PvsProxy {
 						// else, try to load from .jprf
 					}
 					case ".jprf": {
-						const fname: string = fsUtils.desc2fname(desc);
+						const fname: string = fsUtils.desc2fname({
+							fileName: desc.fileName,
+							fileExtension: ".jprf",
+							contextFolder: desc.contextFolder
+						});
 						const proofFile: ProofFile = await utils.readJprfProofFile(fname, opt);
 						const key: string = `${formula.theoryName}.${formula.formulaName}`;
 						// try to load the proof from the .jprf file

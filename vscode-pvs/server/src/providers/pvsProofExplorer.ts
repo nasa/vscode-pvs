@@ -963,17 +963,19 @@ export class PvsProofExplorer {
 			// if command is postpone, move to the new branch
 			if (utils.isPostponeCommand(userCmd) || pathHasChanged) {
 				// this.previousPath = currentPath;
-				if (this.autorunFlag && utils.isPostponeCommand(userCmd)) {
+				if (this.running && utils.isPostponeCommand(userCmd)) {
 					this.running = false;
 					this.stopAt = null;	
-					// mark proof as unfinished
-					if (this.root.getProofStatus() !== "untried") {
-						this.root.setProofStatus("unfinished");
+					if (this.autorunFlag) {
+						// mark proof as unfinished
+						if (this.root.getProofStatus() !== "untried") {
+							this.root.setProofStatus("unfinished");
+						}
+						// save and quit proof
+						await this.quitProofAndSave();
+						// await this.quitProof();
+						return;
 					}
-					// save and quit proof
-					await this.quitProofAndSave();
-					// await this.quitProof();
-					return;
 				}
 				if (utils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
 					if (this.ghostNode.isActive()) {
@@ -1074,17 +1076,19 @@ export class PvsProofExplorer {
 					// else, the prover has made progress with the provided proof command
 					// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
 					if (!utils.isSameCommand(activeNode.name, cmd) || this.ghostNode.isActive()) {
-						this.running = false;
-						this.stopAt = null;
-						if (this.autorunFlag && this.ghostNode.isActive()) {
-							// mark proof as unfinished
-							if (this.root.getProofStatus() !== "untried") {
-								this.root.setProofStatus("unfinished");
+						if (!utils.isPropax(cmd)) {
+							this.running = false;
+							this.stopAt = null;
+							if (this.autorunFlag && this.ghostNode.isActive()) {
+								// mark proof as unfinished
+								if (this.root.getProofStatus() !== "untried") {
+									this.root.setProofStatus("unfinished");
+								}
+								// save and quit proof
+								await this.quitProofAndSave();
+								// await this.quitProof();
+								return;
 							}
-							// save and quit proof
-							await this.quitProofAndSave();
-							// await this.quitProof();
-							return;
 						}
 						// concatenate new command
 						const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);

@@ -1759,13 +1759,17 @@ export function isMetaProofCommand (cmd: string): boolean {
 
 export function isSameCommand (cmd1: string, cmd2: string): boolean {
 	if (cmd1 && cmd2) {
-		const c1: string = cmd1.replace(/"/g, "").replace(/\s+/g, " ").trim();
-		const c2: string = cmd2.replace(/"/g, "").replace(/\s+/g, " ").trim();
-		return c1 === c2 
+		const c1: string = cmd1.replace(/"/g, "").replace(/\s+/g, "").trim();
+		const c2: string = cmd2.replace(/"/g, "").replace(/\s+/g, "").trim();
+		return c1 === c2
 			|| new RegExp(`^(\\s*${c1}\\s*)`).test(c2)
 			|| new RegExp(`^(\\s*${c2}\\s*)`).test(c1);
 	}
 	return false;
+}
+
+export function isPropax (cmd: string): boolean {
+	return cmd && cmd === "(propax)";
 }
 
 export function splitCommands (cmd: string): string[] {
