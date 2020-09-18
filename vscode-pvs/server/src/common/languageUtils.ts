@@ -1253,9 +1253,10 @@ export function proofDescriptor2ProofLite (proofDescriptor: ProofDescriptor, opt
 		}
 		return res;
 	}
-	if (proofDescriptor && proofDescriptor.proofTree) {
-		let script: string = proofTreeToProofLite([ proofDescriptor.proofTree ]);
-		script = script || "(postpone)";
+	if (proofDescriptor) {
+		const nodes: ProofNode[] = proofDescriptor.proofTree ? [ proofDescriptor.proofTree ] : null
+		let script: string = proofTreeToProofLite(nodes);
+		script = script || "(then (postpone))";
 		if (opt.omitTags) {
 			if (opt.escape) {
 				script = script.replace(/[\n\r]/g, " ").replace(/\"/g, `\\"`)
