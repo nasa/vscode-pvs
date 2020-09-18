@@ -38,7 +38,7 @@
 
 import * as WebSocket from 'ws';
 import { PvsLanguageServer } from './pvsLanguageServer'
-import { CliGatewayRequest, CliGatewayEvent, CliGatewaySubscriberEvent, serverEvent, ProofExecDidEndProof } from './common/serverInterface';
+import { CliGatewayRequest, CliGatewayEvent, CliGatewaySubscriberEvent, serverEvent, ProofExecDidQuitProof } from './common/serverInterface';
 import { Connection } from 'vscode-languageserver';
 
 /**
@@ -182,7 +182,7 @@ export class PvsCliGateway {
 											delete this.vscodeTerminal[data.channelID];
 											const connection: Connection = this.pvsLanguageServer.getConnection();
 											if (connection) {
-												const evt: ProofExecDidEndProof = { action: "did-end-proof" };
+												const evt: ProofExecDidQuitProof = { action: "did-quit-proof" };
 												connection.sendNotification(serverEvent.proverEvent, evt);
 											}
 										} else {

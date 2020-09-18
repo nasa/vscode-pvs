@@ -40,7 +40,9 @@ import * as fsUtils from './fsUtils';
 import * as path from 'path';
 import * as language from './languageKeywords';
 import { FileList, FormulaDescriptor, PvsContextDescriptor, 
-			TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ProofFile, ProofStatus, Position, Range, ProofTree, PvsFormula, PvsTheory } from '../common/serverInterface';
+	TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, 
+	ProofFile, ProofStatus, Position, Range, ProofTree, PvsFormula, PvsTheory 
+} from '../common/serverInterface';
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -544,6 +546,55 @@ export async function saveProofDescriptor (formula: PvsFormula, newDesc: ProofDe
 		return await fsUtils.writeFile(fname, newContent);		
 	}
 	return false;
+}
+
+/**
+ * Utility function, saves the sketchpad with proof clips for a given formula
+ * @param formula 
+ */
+export async function saveSketchpad (formula: PvsFormula, clips: ProofNode[]): Promise<boolean> {
+	if (formula) {
+		const fname: string = fsUtils.desc2fname({
+			fileName: formula.fileName,
+			fileExtension: ".jprf",
+			contextFolder: formula.contextFolder
+		});
+		const key: string = `${formula.theoryName}.${formula.formulaName}`;
+		let fdesc: ProofFile = await readJprfProofFile(fname);
+		// check if file contains a proof for the given formula
+		if (fdesc && fdesc[key] && fdesc[key].length) {
+			// update clips for default proof
+			const pdesc: ProofDescriptor = fdesc[key][0];
+			pdesc.clips = clips || [];
+			// write descriptor to file
+			const newContent: string = JSON.stringify(fdesc, null, " ");
+			return await fsUtils.writeFile(fname, newContent);		
+		}
+	}
+	return false;
+}
+
+/**
+ * Utility function, opens the sketchpad with proof clips for a given formula
+ * @param formula 
+ */
+export async function openSketchpad (formula: PvsFormula): Promise<ProofNode[] | null> {
+	if (formula) {
+		const fname: string = fsUtils.desc2fname({
+			fileName: formula.fileName,
+			fileExtension: ".jprf",
+			contextFolder: formula.contextFolder
+		});
+		const key: string = `${formula.theoryName}.${formula.formulaName}`;
+		let fdesc: ProofFile = await readJprfProofFile(fname);
+		// check if file contains a proof for the given formula
+		if (fdesc && fdesc[key] && fdesc[key].length) {
+			// update clips for default proof
+			const pdesc: ProofDescriptor = fdesc[key][0];
+			return pdesc.clips;
+		}
+	}
+	return null;
 }
 
 /**

@@ -328,7 +328,7 @@ export class EventsDispatcher {
         });
 
         //----------------
-        this.client.onNotification(serverEvent.proverEvent, (desc: ProofEditEvent | ProofExecEvent) => {
+        this.client.onNotification(serverEvent.proverEvent, async (desc: ProofEditEvent | ProofExecEvent) => {
 			switch (desc.action) {
 				case "did-append-node": {
                     this.proofExplorer.didAppendNode(desc);
@@ -386,11 +386,13 @@ export class EventsDispatcher {
                 case "did-start-proof": {
                     this.proofExplorer.startProof();
                     this.proofMate.startProof();
+                    await this.proofMate.loadSketchpadClips(); // loads sketchpad clips from the .jprf file
                     this.statusBar.showInterruptButton();
                     break;
                 }
-                case "did-end-proof": { // this is sent by CliGateway when the prover CLI is closed
+                case "did-quit-proof": { // this is sent by CliGateway when the prover CLI is closed
                     this.proofExplorer.disposeView();
+                    await this.proofMate.saveSketchpadClips();  // saves sketchpad clips to the .jprf file
                     this.proofMate.disposeView();
                     this.statusBar.hideInterruptButton();
                     break;
@@ -695,7 +697,7 @@ export class EventsDispatcher {
                 const currentContext: string = vscode.workspace.rootPath;
                 this.client.sendRequest(serverRequest.rebootPvsServer, { cleanFolder: currentContext });
                 // terminate any prover session
-                this.vscodePvsTerminal.quitAll(); // async call
+                await this.vscodePvsTerminal.quitAll();
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.interrupt-prover", async () => {

@@ -39,10 +39,11 @@
 import { TreeItem, TreeItemCollapsibleState, TreeDataProvider, EventEmitter, Event, ExtensionContext, TreeView, window, commands } from "vscode";
 import { SequentDescriptor, SFormula } from "../common/languageUtils";
 import { LanguageClient } from "vscode-languageclient";
-import { PROOF_COMMANDS, PROOF_TACTICS, ProofMateProfile, getCommands } from '../common/commandUtils';
+import { ProofMateProfile } from '../common/commandUtils';
 import * as vscode from 'vscode';
-import { HelpDescriptor, FormulaDescriptor, ProofEditDidTrimNode, PvsFormula } from "../common/serverInterface";
-import { ProofItem } from "./vscodePvsProofExplorer";
+import { ProofBranch, ProofCommand, ProofItem, RootNode } from "./vscodePvsProofExplorer";
+import * as utils from '../common/languageUtils';
+import { ProofNode, ProofNodeX, PvsFormula } from "../common/serverInterface";
 
 declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
 
@@ -244,7 +245,7 @@ class ProofMateSketchpad extends ProofMateGroup {
 	getChildren (): TreeItem[] {
 		return this.clips;
 	}
-	push (items: ProofItem[]): void {
+	add (items: ProofItem[]): void {
 		const updateCommands = (items: ProofItem[]): boolean => {
 			let hasContent: boolean = false;
 			if (items) {
@@ -269,6 +270,18 @@ class ProofMateSketchpad extends ProofMateGroup {
 				this.clips = items.concat(this.clips);
 			}
 		}
+	}
+	getNodes (): ProofNode[] {
+		const nodes: ProofNode[] = [];
+		if (this.clips && this.clips.length) {
+			for (let i = 0; i < this.clips.length; i++) {
+				const node: ProofNode = this.clips[i].getNodeStructure();
+				if (node) {
+					nodes.push(node);
+				}
+			}
+		}
+		return nodes;
 	}
 	clear (): void {
 		this.clips = [];
@@ -331,6 +344,48 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	enableView (): void {
 		this.enabled = true;
 		vscode.commands.executeCommand('setContext', 'proof-mate.visible', true);
+	}
+	async saveSketchpadClips (): Promise<void> {
+		await utils.saveSketchpad(this.formula, this.sketchpad?.getNodes());
+	}
+	async loadSketchpadClips (): Promise<void> {
+		const clips: ProofNode[] = await utils.openSketchpad(this.formula);
+		if (clips && clips.length) {
+			const items: ProofItem[] = [];
+			for (let i = 0; i < clips.length; i++) {
+				const item: ProofItem = this.proofNode2proofItem(clips[i]);
+				if (item) {
+					items.push(item);
+				}
+			}
+			this.sketchpad.add(items);
+		}
+	}
+	protected proofNode2proofItem (node: ProofNode): ProofItem {
+		// utility function for building the proof tree -- see also pvsProofExplorer.loadProofDescriptor
+		const createTree = (elem: ProofNode, parent: ProofItem): void => {
+			const node: ProofItem = (elem.type === "proof-command") ? 
+				new ProofCommand({ cmd: elem.name, branchId: elem.branch, parent }) 
+				: new ProofBranch({ cmd: elem.name, branchId: elem.branch, parent });
+			parent.appendChild(node);
+			if (elem.rules && elem.rules.length) {
+				elem.rules.forEach(child => {
+					createTree(child, node);
+				});
+			}
+		}
+		// initialise
+		const item: ProofItem = (node.type === "proof-branch") ? new ProofBranch({ 
+			cmd: node.name, branchId: node.branch, parent: null
+		}) : (node.type === "proof-command") ? new ProofCommand({
+			cmd: node.name, branchId: node.branch, parent: null
+		}) : new RootNode({ name: node.name });
+		if (node.rules && node.rules.length) {
+			node.rules.forEach((child: ProofNode) => {
+				createTree(child, item);
+			});
+		}
+		return item;
 	}
 
 
@@ -537,7 +592,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	updateSketchpad (desc: { items: ProofItem[] }): void {
 		// TODO: remove duplicated entries, e.g., if the user cuts the same tree many times, we want to show just one instance of the tree
 		if (desc && desc.items && desc.items.length) {
-			this.sketchpad.push(desc.items);
+			this.sketchpad.add(desc.items);
 			this.revealNode(desc.items[0]);
 			this.refreshView();
 		}

@@ -1864,9 +1864,7 @@ export class PvsProofExplorer {
 					const idx: number = parent.children.indexOf(selected);
 					items = items.concat(parent.children.slice(idx + 1, parent.children.length + 1));
 					parent.children = parent.children.slice(0, idx + 1);
-					if (!selected.isVisited()) {
-						this.markAsActive({ selected: selected });
-					} else {
+					if (selected.isVisited()) {
 						this.activeNode = this.ghostNode;
 						this.ghostNode.parent = selected.parent;
 						this.ghostNode.realNode = selected;

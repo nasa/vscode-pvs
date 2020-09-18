@@ -46,7 +46,7 @@ import {
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -312,6 +312,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		if (this.root) {
 			if (desc.proofStatus === "proved") {
 				this.root.QED();
+				// clear sketchpad
+				commands.executeCommand("proof-explorer.trim", { items: [] });
 			} else {
 				this.root.pending();
 				this.root.setProofStatus(desc.proofStatus);
@@ -904,26 +906,13 @@ export class ProofItem extends TreeItem {
 	name: string; // prover command or branch id
 	branchId: string = ""; // branch in the proof tree where this command is located (branchId for root is "").
 	command: Command; // vscode action associated to the node
-	// icon: string = ""; // icon indicating the state of the node
-	// protected previousState: {
-	// 	tooltip?: string,
-	// 	icon?: string
-	// } = {};
+
 	children: ProofItem[] = [];
 	parent: ProofItem;
 	protected activeFlag: boolean = false;
 	protected visitedFlag: boolean = false;
 	protected pendingFlag: boolean = false;
-	// protected noChangeFlag: boolean = false;
-	// protected prevFlags: {
-	// 	activeFlag: boolean,
-	// 	visitedFlag: boolean,
-	// 	pendingFlag: boolean
-	// } = {
-	// 	activeFlag: false,
-	// 	visitedFlag: false,
-	// 	pendingFlag: false
-	// };
+
 	proofState: SequentDescriptor = null; // sequents *before* the execution of the node
 	constructor (desc: { id?: string, type: string, name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
 		super(desc.type, (desc.collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : desc.collapsibleState);
@@ -935,42 +924,6 @@ export class ProofItem extends TreeItem {
 		this.tooltip = "Double click sends command to terminal"; // the tooltip will shows the sequent before the execution of the proof command, as soon as the node becomes active
 		this.notVisited();
 	}
-	// clone (opt?: { parent?: ProofItem }): ProofItem {
-	// 	opt = opt || {};
-	// 	switch (this.contextValue) {
-	// 		case "root": { return <RootNode> this.clone(); }
-	// 		case "proof-branch": { return <ProofBranch> this.clone(); }
-	// 		case "proof-command": { return <ProofCommand> this.clone(); }
-	// 		default: {
-	// 			console.warn(`[proof-explorer] Warning: trying to clone node type ${this.contextValue}`);
-	// 		}
-	// 	}
-	// 	return new ProofItem({ type: this.contextValue, name: this.name, branchId: this.branchId, parent: opt.parent, collapsibleState: this.collapsibleState });
-	// }
-	// cloneTree (opt?: { parent?: ProofItem }): ProofItem {
-	// 	opt = opt || {};
-	// 	opt.parent = opt.parent || this.parent || null;
-	// 	const clonedRoot: ProofItem = this.clone(opt);
-	// 	if (this.children) {
-	// 		for (let i: number = 0; i < this.children.length; i++) {
-	// 			const child: ProofItem = this.children[i].cloneTree(clonedRoot);
-	// 			clonedRoot.insertChild(child, i);
-	// 		}
-	// 	}
-	// 	return clonedRoot;
-	// }
-	// saveAttributes (): void {
-	// 	this.prevFlags = {
-	// 		activeFlag: this.activeFlag,
-	// 		visitedFlag: this.visitedFlag,
-	// 		pendingFlag: this.pendingFlag
-	// 	};
-	// }
-	// restoreAttributes (): void {
-	// 	if (this.prevFlags.activeFlag) { return this.active(); }
-	// 	if (this.prevFlags.visitedFlag) { return this.visited(); }
-	// 	if (this.prevFlags.pendingFlag) { return this.pending(); }
-	// }
 	updateTooltip (sequent?: utils.SequentDescriptor): void {
 		this.tooltip = (sequent) ? utils.formatSequent(sequent)
 			: (this.proofState) ? utils.formatSequent(this.proofState) 
@@ -1035,16 +988,6 @@ export class ProofItem extends TreeItem {
             dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")
         };
 	}
-	// noChange (): void {
-	// 	// this.previousState.tooltip = this.tooltip;
-	// 	// this.previousState.icon = this.icon;
-	// 	this.icon = '⭕';
-	// 	this.label = `${this.icon}${this.name}`;
-	// 	this.activeFlag = false;
-	// 	this.visitedFlag = false;
-	// 	this.pendingFlag = false;
-	// 	// this.noChangeFlag = true;
-	// }
 	active (): void {
 		// this.icon = "🔷";
 		this.label = this.name;//`${this.icon}${this.name}`;
@@ -1058,18 +1001,6 @@ export class ProofItem extends TreeItem {
             dark: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg")
         };
 	}
-	// treeNotVisited (): void {
-	// 	this.notVisited();
-	// 	for (let i = 0; i < this.children.length; i++) {
-	// 		this.children[i].treeNotVisited();
-	// 	}
-	// }
-	// treeVisited (): void {
-	// 	this.visited();
-	// 	for (let i = 0; i < this.children.length; i++) {
-	// 		this.children[i].treeVisited();
-	// 	}
-	// }
 	isActive (): boolean {
 		return this.activeFlag;
 	}
@@ -1082,22 +1013,9 @@ export class ProofItem extends TreeItem {
 	isVisited (): boolean {
 		return this.visitedFlag;
 	}
-	// restore (): void {
-	// 	// this.label = `${this.previousState.icon}${this.name}`;
-	// 	// this.tooltip = this.previousState.tooltip;
-	// }
 	setChildren (children: ProofItem[]): void {
 		this.children = children;
 	}
-	// insertChild (child: ProofItem, position: number): void {
-	// 	if (this.children && position < this.children.length - 1) {
-	// 		this.children = this.children.slice(0, position).concat([ child ]).concat(this.children.slice(position));
-	// 	} else {
-	// 		// append at the end
-	// 		this.children = this.children.concat([ child ]);
-	// 	}
-	// 	this.collapsibleState = TreeItemCollapsibleState.Expanded;
-	// }
 	deleteChild (child: ProofItem): void {
 		this.children = this.children.filter((ch: ProofItem) => {
 			return ch.id !== child.id;
@@ -1106,20 +1024,6 @@ export class ProofItem extends TreeItem {
 			this.collapsibleState = TreeItemCollapsibleState.None;
 		}
 	}
-	// deleteTree (child: ProofItem): void {
-	// 	const children: ProofItem[] = [];
-	// 	for (let i in this.children) {
-	// 		if (this.children[i].id !== child.id) {
-	// 			children.push(this.children[i]);
-	// 		} else {
-	// 			this.children = children;
-	// 			if (this.contextValue !== "root" && this.children.length === 0) {
-	// 				this.collapsibleState = TreeItemCollapsibleState.None;
-	// 			}
-	// 			return; // this stops the iteration and prunes the tree
-	// 		}
-	// 	}
-	// }
 	getProofCommands (): ProofItem[] {
 		let ans: ProofItem[] = [ this ];
 		if (this.children) {
@@ -1129,166 +1033,6 @@ export class ProofItem extends TreeItem {
 		}
 		return ans;
 	}
-	// moveIndicatorForward (opt?: { lastVisitedChild?: ProofItem, keepSameBranch?: boolean, proofState?: SequentDescriptor }): ProofItem | null {
-	// 	opt = opt || {};
-	// 	if (this.contextValue === "proof-command") {
-	// 		this.visited();
-	// 	} else {
-	// 		// proof branch or root
-	// 		this.pending();
-	// 	}
-	// 	// check if this node has children, if so, return the first non-visited child
-	// 	const proofState: SequentDescriptor = opt.proofState || this.proofState;
-	// 	if (this.children && this.children.length) {
-	// 		if (!proofState) {
-	// 			window.showErrorMessage(`[pvs-explorer] Error: proofstate is null. Please restart the proof and report this error to the vscode-pvs developers.`);
-	// 		}
-	// 		const activeBranchId: string = utils.getBranchId(proofState.label);
-	// 		if (opt.keepSameBranch && this.children[0].branchId !== activeBranchId) {
-	// 			return null;
-	// 		}
-	// 		if (opt.lastVisitedChild) {
-	// 			// the next node to be visited is the one after the last visited
-	// 			const idx: number = this.children.indexOf(opt.lastVisitedChild);
-	// 			const next: number = idx + 1;
-	// 			if (next < this.children.length) {
-	// 				return this.children[next];
-	// 			}
-	// 		} else {
-	// 			return this.children[0];
-	// 		}
-	// 	}
-	// 	// else, branch completed
-	// 	// go to next sibling, unless opt.keepSameBranch === true 
-	// 	if (opt.keepSameBranch 
-	// 			&& ((this.contextValue === "proof-branch" && this.children.length === 0) 
-	// 				|| (this.contextValue === "proof-command" && this.children.length > 0))) {
-	// 		return null;
-	// 	}
-	// 	this.visited();
-	// 	if (this.parent && this.contextValue === "proof-command") {
-	// 		return this.parent.moveIndicatorForward({ lastVisitedChild: this, proofState: this.proofState });
-	// 	}
-	// 	return null;
-	// }
-	// selectLastVisitedChild (): ProofItem {
-	// 	if (this.children) {
-	// 		const children: ProofItem[] = this.children.filter(item => {
-	// 			return item.isVisitedOrPending();
-	// 		});
-	// 		if (children && children.length) {
-	// 			this.pending();
-	// 			return children[children.length - 1].selectLastVisitedChild();
-	// 		}
-	// 	}
-	// 	return this;
-	// }
-	// moveIndicatorBack (opt?: { keepSameBranch?: boolean }): ProofItem {
-	// 	if (this.parent) {
-	// 		if (this.parent.children && this.parent.children.length) {
-	// 			const children: ProofItem[] = this.parent.children.filter((item: ProofItem) => {
-	// 				return item.isVisitedOrPending();
-	// 			});
-	// 			// return previous child, if any
-	// 			if (children && children.length) {
-	// 				this.notVisited();
-	// 				const candidate: ProofItem = children[children.length - 1];
-	// 				if (candidate.children && candidate.children.length) {
-	// 					return candidate.selectLastVisitedChild();
-	// 				}
-	// 				return candidate;
-	// 			}
-	// 			// return first proof command, if parent is root
-	// 			if (this.parent.contextValue === "root" && this.parent.children && this.parent.children.length) {
-	// 				// we were on the first proof command, cannot undo
-	// 				return this;
-	// 			}
-	// 			// else return parent
-	// 			// unless opt.keepSameBranch === true 
-	// 			if (opt.keepSameBranch && this.contextValue === "proof-command") {
-	// 				return this;
-	// 			}
-	// 			this.notVisited();
-	// 			return this.parent;
-	// 		}
-	// 	} else {
-	// 		console.error(`Error: Could not find parent for node ${this.name}`);
-	// 	}
-	// 	return this;
-	// }
-	// getSiblingOrParent (): ProofItem {
-	// 	if (this.parent) {
-	// 		const children: ProofItem[] = this.parent.children;
-	// 		if (children && children.length > 1) {
-	// 			const index: number = children.indexOf(this);
-	// 			const next: number = index + 1;
-	// 			const prev: number = index - 1;
-	// 			return (next < children.length) ? children[next] : children[prev];	
-	// 		}
-	// 		// else, this is the only child, return the parent
-	// 		return this.parent;
-	// 	} else {
-	// 		console.error(`[proof-explorer] Error: could not find sibling or parent for node ${this.name}`);
-	// 	}
-	// 	return null;
-	// }
-	// getNextSibling (): ProofItem | null {
-	// 	if (this.parent) {
-	// 		const children: ProofItem[] = this.parent.children;
-	// 		if (children && children.length > 1) {
-	// 			const index: number = children.indexOf(this);
-	// 			const next: number = index + 1;
-	// 			if (next < children.length) {
-	// 				return children[next];
-	// 			}
-	// 		}
-	// 	}
-	// 	return null;
-	// }
-	// getPreviousSibling (): ProofItem | null {
-	// 	if (this.parent) {
-	// 		const children: ProofItem[] = this.parent.children;
-	// 		if (children && children.length > 1) {
-	// 			const index: number = children.indexOf(this);
-	// 			const prev: number = index - 1;
-	// 			if (prev >= 0) {
-	// 				return children[prev];
-	// 			}
-	// 		}
-	// 	}
-	// 	return null;
-	// }
-	// appendSibling (sib: ProofItem, opt?: { beforeSelected?: boolean }): void {
-	// 	let children: ProofItem[] = [];
-	// 	const n: number = this.parent.children.length;
-	// 	opt = opt || {};
-	// 	for (let i = 0; i < n; i++) {
-	// 		if (!opt.beforeSelected) {
-	// 			children.push(this.parent.children[i]);
-	// 		}
-	// 		if (this.parent.children[i].id === this.id) {
-	// 			if (sib.contextValue === "root") {
-	// 				children = children.concat(sib.children);
-	// 			} else {
-	// 				children.push(sib);
-	// 			}
-	// 		}
-	// 		if (opt.beforeSelected) {
-	// 			children.push(this.parent.children[i]);
-	// 		}
-	// 	}
-	// 	this.parent.children = children;
-	// }
-	// appendChildAtBeginning (child: ProofItem): void {
-	// 	this.children = this.children || [];
-	// 	child.parent = this;
-	// 	if (child.contextValue === "root") {
-	// 		this.children = child.children.concat(this.children);
-	// 	} else {
-	// 		this.children = [ child ].concat(this.children);
-	// 	}
-	// 	this.collapsibleState = TreeItemCollapsibleState.Expanded;
-	// }
 	appendChild (child: ProofItem): void {
 		this.children = this.children || [];
 		child.parent = this;
@@ -1318,9 +1062,52 @@ export class ProofItem extends TreeItem {
 		}
 		return ans;
 	}
-	
+	getNodeXStructure (): ProofNodeX {
+		const res: ProofNodeX = {
+			id: this.id,
+			branch: this.branchId,
+			name: this.name,
+			type: <ProofNodeType> this.contextValue,
+			rules: [],
+			parent: this.parent.id
+		};
+		if (this.children) {
+			for (let i = 0; i < this.children.length; i++) {
+				const child: ProofNodeX = this.children[i].getNodeXStructure();
+				res.rules.push({
+					id: child.id,
+					branch: child.branch,
+					name: child.name,
+					type: child.type,
+					rules: child.rules,
+					parent: this.id
+				});
+			}
+		}
+		return res;
+	}
+	getNodeStructure (): ProofNode {
+		const res: ProofNode = {
+			branch: this.branchId,
+			name: this.name,
+			type: <ProofNodeType> this.contextValue,
+			rules: []
+		};
+		if (this.children) {
+			for (let i = 0; i < this.children.length; i++) {
+				const child: ProofNode = this.children[i].getNodeStructure();
+				res.rules.push({
+					branch: child.branch,
+					name: child.name,
+					type: child.type,
+					rules: child.rules
+				});
+			}
+		}
+		return res;
+	}
 }
-class ProofCommand extends ProofItem {
+export class ProofCommand extends ProofItem {
 	constructor (desc: { id?: string, cmd: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
 		super({ id: desc.id, type: "proof-command", name: desc.cmd, branchId: desc.branchId, parent: desc.parent, collapsibleState: desc.collapsibleState });
 		const cmd: string = desc.cmd.trim();
@@ -1332,13 +1119,8 @@ class ProofCommand extends ProofItem {
 			arguments: [ this ]
 		};
 	}
-	// @override
-	// clone (parent?: ProofCommand): ProofCommand {
-	// 	const c: ProofCommand = new ProofCommand({ cmd: this.name, branchId: this.branchId, parent, collapsibleState: this.collapsibleState });
-	// 	return c;
-	// }
 }
-class ProofBranch extends ProofItem {
+export class ProofBranch extends ProofItem {
 	constructor (desc: { id?: string, cmd: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
 		super({ id: desc.id, type: "proof-branch", name: desc.cmd, branchId: desc.branchId, parent: desc.parent, collapsibleState: desc.collapsibleState });
 		this.name = `(${desc.branchId})`;
@@ -1349,13 +1131,6 @@ class ProofBranch extends ProofItem {
 			arguments: [ this ]
 		};
 	}
-	// @override
-	// clone (parent?: ProofBranch): ProofBranch {
-	// 	const c: ProofBranch = new ProofBranch({ cmd: this.name, branchId: this.branchId, parent: this.parent, collapsibleState: this.collapsibleState });
-	// 	c.parent = parent || null;
-	// 	return c;
-	// }
-
 }
 class WelcomeScreen extends TreeItem {
 	constructor () {
@@ -1392,7 +1167,7 @@ class LoadingItem extends TreeItem {
 		this.timer = null;
 	}
 }
-class RootNode extends ProofItem {
+export class RootNode extends ProofItem {
 	proofStatus: ProofStatus; // this is updated while running the proof
 	initialProofStatus: ProofStatus; // this is set at the beginning (and at the end of the proof attempt if the proof succeeds)
 	constructor (desc: { id?: string, name: string, proofStatus?: ProofStatus }) {

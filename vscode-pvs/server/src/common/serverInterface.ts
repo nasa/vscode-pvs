@@ -184,7 +184,7 @@ export declare interface ProofNode {
 	type: ProofNodeType; // node type
 	branch: string; // branch id
 }
-export declare interface ProofNodeX { 
+export declare interface ProofNodeX extends ProofNode { 
 	id: string; // unique node ID
 	name: string; // name of this node (proof name, branch name, or proof command)
 	rules: ProofNodeX[]; // sequence of proof rules
@@ -208,6 +208,7 @@ export class ProofDescriptor {
 		date?: string // day and time the proof was saved, ISO format, e.g., 2011-10-10T14:48:00
 	};
 	proofTree?: ProofNode;
+	clips?: ProofNode[];
 	constructor (info: {
 		theory: string, // theory name
 		formula: string, // formula name
@@ -801,7 +802,7 @@ export type ProofExecInterruptProver = {
 };
 
 export type ProofExecEvent = ProofExecDidStartProof | ProofExecDidLoadProof | ProofExecDidLoadSequent
-	| ProofExecDidEndProof | ProofExecDidUpdateSequent | ProofExecDidOpenProof;
+	| ProofExecDidQuitProof | ProofExecDidUpdateSequent | ProofExecDidOpenProof;
 export type ProofExecDidStartProof = {
 	action: "did-start-proof"
 };
@@ -820,8 +821,8 @@ export type ProofExecDidLoadProof = {
 	desc: ProofDescriptor,
 	proof: ProofNodeX
 };
-export type ProofExecDidEndProof = {
-	action: "did-end-proof"
+export type ProofExecDidQuitProof = {
+	action: "did-quit-proof"
 };
 export type ProofExecDidOpenProof = {
 	action: "did-open-proof",
