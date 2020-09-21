@@ -49,7 +49,7 @@ export class StatusBarPriority {
 export class VSCodePvsStatusBarItem {
     protected maxLen: number = 64;
     protected lab: StatusBarItem; // label
-    protected ico: StatusBarItem; // icon
+    protected ico: StatusBarItem; // animated icon
     constructor (alignment: StatusBarAlignment, priority: number) {
         this.ico = window.createStatusBarItem(alignment, priority);
         this.lab = window.createStatusBarItem(alignment, priority);
@@ -170,8 +170,8 @@ export class VSCodePvsStatusBar {
      */
     showInfo (msg: string): void {
         if (msg) {
-            this.pvsStatus.icon(`$(megaphone)`);
-            this.pvsStatus.text(msg);
+            this.pvsStatus.icon("");
+            this.pvsStatus.text(`$(megaphone)  ` + msg);
             this.pvsStatus.show();
         }
     }
@@ -215,8 +215,8 @@ export class VSCodePvsStatusBar {
         this.versionInfo.hide();
     }
     showRestartButton (): void {
-        this.restartPvs.icon(`$(debug-restart)`);
-        this.restartPvs.text(`Reboot pvs-server`);
+        this.restartPvs.icon("");
+        this.restartPvs.text(`$(debug-restart)  Reboot pvs-server`);
         this.restartPvs.command("vscode-pvs.reboot-pvs");
         this.restartPvs.show();
     }
@@ -224,8 +224,8 @@ export class VSCodePvsStatusBar {
         this.restartPvs.hide();
     }
     showInterruptButton (): void {
-        this.interruptProver.icon(`$(debug-disconnect)`);
-        this.interruptProver.text(`Interrupt Prover`);
+        this.interruptProver.icon("");
+        this.interruptProver.text(`$(debug-disconnect)  Interrupt Prover`);
         this.interruptProver.command("vscode-pvs.interrupt-prover");
         this.interruptProver.show();
     }
@@ -234,8 +234,8 @@ export class VSCodePvsStatusBar {
     }
     showDownloadNasalibButton (showButton?: boolean): void {
         if (showButton === true) {
-            this.downloadNasalib.icon(`$(symbol-function)`);
-            this.downloadNasalib.text(`Download NASALib`);
+            this.downloadNasalib.icon("");
+            this.downloadNasalib.text(`$(symbol-function)  Download NASALib`);
             this.downloadNasalib.command("vscode-pvs.download-nasalib");
             this.downloadNasalib.show();
         } else {
