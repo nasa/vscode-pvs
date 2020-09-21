@@ -267,22 +267,17 @@ export class EventsDispatcher {
                 // display info in the status bar
                 const stats: { types: number, definitions: number, lemmas: number } = <{ types: number, definitions: number, lemmas: number }> res["math-objects"];
                 this.statusBar.updateStats({ contextFolder: res["contextFolder"], fileName: res["fileName"], fileExtension: res["fileExtension"], stats });
-                this.statusBar.showStats();
             }
         });
 		this.client.onRequest(serverEvent.workspaceStats, (res: PvsResponse) => {
             // show stats
             if (res) {
-                if (res["files"]) {
-                    this.statusBar.setFiles(res["files"]);
-                }
                 if (res["contextFolder"]) {
                     this.statusBar.setContextFolder(res["contextFolder"]);
                     if (res["math-objects"] && res["contextFolder"]) {
                         // display info in the status bar
                         const stats: { types: number, definitions: number, lemmas: number } = <{ types: number, definitions: number, lemmas: number }> res["math-objects"];
                         this.statusBar.updateStats({ contextFolder: res["contextFolder"], fileName: res["fileName"], fileExtension: res["fileExtension"], stats });
-                        this.statusBar.showStats();
                     }
                 }
             }
@@ -870,6 +865,9 @@ export class EventsDispatcher {
         //      3.2 loadProofDescriptor
         //      3.3 proveFormula
         // <loop over all theorems>
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-theory-inline", async (resource: TheoryItem | { path: string }) => {
+            commands.executeCommand("vscode-pvs.prove-theory", resource);
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-theory", async (resource: TheoryItem | { path: string }) => {
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
             if (desc && desc.theoryName) {

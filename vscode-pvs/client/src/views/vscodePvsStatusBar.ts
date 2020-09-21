@@ -46,41 +46,58 @@ export class StatusBarPriority {
     public static Max: number = 3;
 }
 
+export class VSCodePvsStatusBarItem {
+    protected maxLen: number = 64;
+    protected lab: StatusBarItem; // label
+    protected ico: StatusBarItem; // icon
+    constructor (alignment: StatusBarAlignment, priority: number) {
+        this.ico = window.createStatusBarItem(alignment, priority);
+        this.lab = window.createStatusBarItem(alignment, priority);
+    }
+    text (text: string): void {
+        this.lab.text = text;
+        if (text?.length > this.maxLen) {
+            const start: string = text.substring(0, this.maxLen / 2);
+            const end: string = text.substring(text.length - this.maxLen / 2);
+            this.lab.text = start + " ... " + end;
+        }
+    }
+    icon (text: string): void {
+        if (text !== this.ico.text) {
+            this.ico.text = text;
+        }
+    }
+    command (cmd: string): void {
+        this.lab.command = cmd;
+        this.ico.command = cmd;
+    }
+    show (): void {
+        this.ico.show();
+        this.lab.show();
+    }
+    hide (): void {
+        this.lab.hide();
+        this.ico.hide();
+    }
+    clear (): void {
+        this.lab.text = "";
+        this.ico.text = "";
+    }
+}
+
 export class VSCodePvsStatusBar {
     protected pvsVersionInfo: PvsVersionDescriptor;
-    protected pvsStatus: StatusBarItem;
-    protected workspaceStatus: StatusBarItem;
-    protected versionInfo: StatusBarItem;
-    protected crashReport: StatusBarItem;
-    protected restartPvs: StatusBarItem;
-    protected interruptProver: StatusBarItem;
-
-    protected downloadNasalib: StatusBarItem;
-
-    protected stats: {
-        [filename: string]: { lemmas: number, definitions: number, types: number }
-    } = { "!tot!": { lemmas: 0, definitions: 0, types: 0 } };
-    protected nfiles: number = 0;
     protected contextFolder: string = "";
 
-    protected client: LanguageClient;
+    protected pvsStatus: VSCodePvsStatusBarItem;
+    protected workspaceStatus: VSCodePvsStatusBarItem;
+    protected versionInfo: VSCodePvsStatusBarItem;
+    protected crashReport: VSCodePvsStatusBarItem;
+    protected restartPvs: VSCodePvsStatusBarItem;
+    protected interruptProver: VSCodePvsStatusBarItem;
+    protected downloadNasalib: VSCodePvsStatusBarItem;
 
-    protected makeStats (): string {
-        const nFiles: number = Object.keys(this.stats).length - 1; // -1 because stats includes key "!tot!" with summary info
-        let wName: string = this.contextFolder.endsWith("/") ? this.contextFolder.substring(0, this.contextFolder.length - 1) : this.contextFolder;
-        wName = wName.substring(wName.lastIndexOf("/") + 1, wName.length);
-        let msg: string = `[ Active workspace: ${wName} ] `;
-        // msg += (nFiles !== 1) ? `${nFiles} of ${this.nfiles} files parsed ` : `1 of ${this.nfiles} file parsed `;
-        // if (os.platform() !== "darwin") {
-        //     // stats are not yet supported in macOs
-        //     msg += `(${this.stats["!tot!"].types} types, ${this.stats["!tot!"].lemmas} lemmas, ${this.stats["!tot!"].definitions} definitions)`;
-        // }
-        return msg;
-    }
-    protected resetStats (): void {
-        this.stats = {};
-        this.stats["!tot!"] = { lemmas: 0, definitions: 0, types: 0 };
-    }
+    protected client: LanguageClient;
 
     /**
      * Constructor
@@ -89,15 +106,15 @@ export class VSCodePvsStatusBar {
     constructor (client: LanguageClient) {
         this.client = client;
         // create status bar elements
-        this.workspaceStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
-        this.pvsStatus = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
-        this.versionInfo = window.createStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
+        this.workspaceStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
+        this.pvsStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.versionInfo = new VSCodePvsStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
 
-        this.restartPvs = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
-        this.crashReport = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.restartPvs = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
+        this.crashReport = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
 
-        this.interruptProver = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
-        this.downloadNasalib = window.createStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.interruptProver = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.downloadNasalib = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
     }
 
 
@@ -116,47 +133,22 @@ export class VSCodePvsStatusBar {
     }
 
 
-    setFiles (nfiles: number): void {
-        this.nfiles = nfiles;
-    }
     setContextFolder (contextFolder: string): void {
         if (this.contextFolder !== contextFolder) {
             this.contextFolder = contextFolder;
-            this.resetStats();
-            // this.showStats();
         }
     }
     updateStats (desc: { contextFolder: string, fileName: string, fileExtension: string, stats: { types: number, definitions: number, lemmas: number }}): void {
         if (desc && desc.stats && desc.fileExtension !== ".tccs") {
             const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-            if (!this.stats[fname] 
-                || (this.stats[fname]
-                    && (this.stats[fname].lemmas !== desc.stats.lemmas 
-                        || this.stats[fname].definitions !== desc.stats.definitions
-                        || this.stats[fname].types !== desc.stats.types))) {
-                this.stats[fname] = desc.stats;
-                const fnames: string[] = Object.keys(this.stats);
-                this.stats["!tot!"] = { lemmas: 0, definitions: 0, types: 0 };
-                for (const i in fnames) {
-                    const fname: string = fnames[i];
-                    if (fname !== "!tot!") {
-                        this.stats["!tot!"].lemmas += this.stats[fname].lemmas;
-                        this.stats["!tot!"].definitions += this.stats[fname].definitions;
-                        this.stats["!tot!"].types += this.stats[fname].types;
-                    }
-                }
-            } 
         }
-    }
-    showStats (): void {
-        this.workspaceStatus.text = this.makeStats();
     }
 
     /**
      * Shows "ready" in the status bar for 2 secs
      */
     ready (): void {
-        this.pvsStatus.text = "";//`$(check)  pvs-server ready!`;
+        this.pvsStatus.clear();
         this.pvsStatus.show();
     };
 
@@ -166,7 +158,8 @@ export class VSCodePvsStatusBar {
      */
     showProgress (msg: string): void {
         if (msg) {
-            this.pvsStatus.text = `$(loading~spin)  ${msg}`;
+            this.pvsStatus.icon(`$(loading~spin)`);
+            this.pvsStatus.text(msg);
             this.pvsStatus.show();
         }
     }
@@ -177,7 +170,8 @@ export class VSCodePvsStatusBar {
      */
     showInfo (msg: string): void {
         if (msg) {
-            this.pvsStatus.text = `$(megaphone)  ${msg}`;
+            this.pvsStatus.icon(`$(megaphone)`);
+            this.pvsStatus.text(msg);
             this.pvsStatus.show();
         }
     }
@@ -187,7 +181,8 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     showMsg (msg: string): void {
-        this.pvsStatus.text = msg;
+        this.pvsStatus.icon("");
+        this.pvsStatus.text(msg);
         this.pvsStatus.show();
     }
     
@@ -197,7 +192,8 @@ export class VSCodePvsStatusBar {
      */
     showError (msg: string): void {
         const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
-        this.pvsStatus.text = `$(warning~spin)  ${shortmsg}`; // messages in the status bar should always be on one line
+        this.pvsStatus.icon(`$(warning~spin)`);
+        this.pvsStatus.text(shortmsg); // messages in the status bar should always be on one line
         this.pvsStatus.show();
         // show problems panel -- see also Code->Preferences->KeyboardShortcuts
         commands.executeCommand("workbench.panel.markers.view.focus");
@@ -209,8 +205,9 @@ export class VSCodePvsStatusBar {
 
     showVersionInfo (): void {
         if (this.pvsVersionInfo) {
-            this.versionInfo.text = this.pvsVersionInfo["pvs-version"];
-            this.versionInfo.command = "vscode-pvs.show-version-info";
+            this.versionInfo.icon("");
+            this.versionInfo.text(this.pvsVersionInfo["pvs-version"]);
+            this.versionInfo.command("vscode-pvs.show-version-info");
         }
         this.versionInfo.show();
     }
@@ -218,16 +215,18 @@ export class VSCodePvsStatusBar {
         this.versionInfo.hide();
     }
     showRestartButton (): void {
-        this.restartPvs.text = `$(debug-restart) Reboot pvs-server`;
-        this.restartPvs.command = "vscode-pvs.reboot-pvs";
+        this.restartPvs.icon(`$(debug-restart)`);
+        this.restartPvs.text(`Reboot pvs-server`);
+        this.restartPvs.command("vscode-pvs.reboot-pvs");
         this.restartPvs.show();
     }
     hideRestartButton (): void {
         this.restartPvs.hide();
     }
     showInterruptButton (): void {
-        this.interruptProver.text = `$(debug-disconnect) Interrupt Prover`;
-        this.interruptProver.command = "vscode-pvs.interrupt-prover";
+        this.interruptProver.icon(`$(debug-disconnect)`);
+        this.interruptProver.text(`Interrupt Prover`);
+        this.interruptProver.command("vscode-pvs.interrupt-prover");
         this.interruptProver.show();
     }
     hideInterruptButton (): void {
@@ -235,8 +234,9 @@ export class VSCodePvsStatusBar {
     }
     showDownloadNasalibButton (showButton?: boolean): void {
         if (showButton === true) {
-            this.downloadNasalib.text = `$(symbol-function) Download NASALib`;
-            this.downloadNasalib.command = "vscode-pvs.download-nasalib";
+            this.downloadNasalib.icon(`$(symbol-function)`);
+            this.downloadNasalib.text(`Download NASALib`);
+            this.downloadNasalib.command("vscode-pvs.download-nasalib");
             this.downloadNasalib.show();
         } else {
             this.hideDownloadNasalibButton();
@@ -252,7 +252,8 @@ export class VSCodePvsStatusBar {
      */
     failure (msg: string): void {
         const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
-        this.crashReport.text = `$(debug~spin)  ${shortmsg}`; // messages in the status bar should be on one line
+        this.crashReport.icon(`$(debug~spin)`);
+        this.crashReport.text(shortmsg); // messages in the status bar should be on one line
         this.crashReport.show();
         this.pvsStatus.hide();
     }
@@ -261,7 +262,6 @@ export class VSCodePvsStatusBar {
      * Activates the service provider
      */
     activate (context: ExtensionContext) {
-        this.resetStats();
         this.show();
     }
 

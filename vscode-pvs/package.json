@@ -217,6 +217,12 @@
 				"category": "pvs"
 			},
 			{
+				"command": "vscode-pvs.prove-theory-inline",
+				"title": "Prove-All | ",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
+				"category": "pvs"
+			},
+			{
 				"command": "vscode-pvs.prove-importchain",
 				"title": "Re-run ImportChain",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
@@ -560,6 +566,11 @@
 				},
 				{
 					"command": "vscode-pvs.typecheck-file-inline",
+					"when": "view == workspace-explorer-view && viewItem == theory",
+					"group": "inline"
+				},
+				{
+					"command": "vscode-pvs.prove-theory-inline",
 					"when": "view == workspace-explorer-view && viewItem == theory",
 					"group": "inline"
 				},
