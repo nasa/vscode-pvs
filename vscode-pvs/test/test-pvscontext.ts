@@ -58,7 +58,9 @@ describe("pvs", () => {
 		}
 	}
 
-	fit(`can prove null_null_after_satisfaction_ft (monitors-stack-limit-error.zip)`, async () => {
+	// this test case requires pvs-experimental/monitors in the pvs-library-path
+	// or alternatively folder vscode-pvs/test/pvs-context/nasalib-monitors-stack-limit-error in the library path
+	fit(`can prove null_null_after_satisfaction_ft (nasalib-monitors-stack-limit-error.zip)`, async () => {
 		await quitProverIfActive();
 
 		// Need to clear-theories, in case rerunning with the same server.
