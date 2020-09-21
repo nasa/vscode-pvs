@@ -1559,7 +1559,7 @@ export class PvsProxy {
 							const lastKnownStatus: ProofStatus = await utils.getProofStatus({
 								fileName: desc.fileName,
 								fileExtension: ".tccs",
-								contextFolder: path.join(desc.contextFolder, "pvsbin"),
+								contextFolder: desc.contextFolder,
 								theoryName: desc.theoryName,
 								formulaName
 							});

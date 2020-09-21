@@ -218,7 +218,7 @@
 			},
 			{
 				"command": "vscode-pvs.prove-theory-inline",
-				"title": "Prove-All | ",
+				"title": "Prove-All  |",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
 				"category": "pvs"
 			},
