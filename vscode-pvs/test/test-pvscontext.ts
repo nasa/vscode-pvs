@@ -58,7 +58,56 @@ describe("pvs", () => {
 		}
 	}
 
-	// FAILS: pvs-server breaks into Lisp with this test
+	fit(`can prove null_null_after_satisfaction_ft (monitors-stack-limit-error.zip)`, async () => {
+		await quitProverIfActive();
+
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		// remove folder if present and replace it with the content of the zip file
+		const contextFolder: string = path.join(baseFolder, "nasalib-monitors-stack-limit-error");
+		fsUtils.deleteFolder(contextFolder);
+		execSync(`cd ${baseFolder} && unzip nasalib-monitors-stack-limit-error.zip`);
+
+		let response: PvsResponse = await pvsProxy.proveFormula({
+			fileName: "trace",
+			fileExtension: ".pvs",
+			contextFolder: path.join(contextFolder, "Fret_MLTL"),
+			theoryName: "trace",
+			formulaName: "null_null_after_satisfaction_ft"
+		});
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+		// console.dir(response);
+
+		const commands: string[] = [
+			'(skeep)',
+			'(fretex)',
+			'(iff)',
+			'(split)',
+			'(flatten)',
+			'(split)',
+			'(inst -1 "0")',
+			'(expand "nth")',
+			'(expand "after")',
+			'(inst -1 "0")',
+			'(expand "nth")',
+			'(flatten)',
+			'(skeep)',
+			'(skeep)',
+			'(case "n-1 < i")',
+			'(inst 2 "n-1")',
+			'(expand "Trace_equiv")',
+			'(inst -6 "n-1")',
+			'(grind)'
+		]
+		for (let i = 0; i < commands.length; i++) {
+			response = await pvsProxy.proofCommand({ cmd: commands[i] });
+		}
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+	}, 20000);
+
 	it(`can typecheck nasalib-monitors/trace.pvs (nasalib-monitors.zip)`, async () => {
 		await quitProverIfActive();
 
