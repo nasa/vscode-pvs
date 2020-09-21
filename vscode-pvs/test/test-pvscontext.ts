@@ -106,7 +106,7 @@ describe("pvs", () => {
 		}
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
-	}, 20000);
+	}, 100000);
 
 	it(`can typecheck nasalib-monitors/trace.pvs (nasalib-monitors.zip)`, async () => {
 		await quitProverIfActive();
