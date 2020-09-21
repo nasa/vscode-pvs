@@ -387,6 +387,8 @@ export class PvsLanguageServer {
 
 					if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
 						this.notifyEndImportantTask({ id: taskId });
+					} else {
+						this.connection?.sendNotification("pvs.progress-info", `Re-running proof for ${formula.formulaName}`);
 					}
 				}
 			} else {

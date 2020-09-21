@@ -153,8 +153,7 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 				// remove .prlite files
 				files.filter(name => {
 					// console.log(name);
-					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~") 
-						|| name.endsWith(".tccs"); // .tccs should reside in the pvsbin folder, if they are in the context folder then it's a leftover from older vscode-pvs versions
+					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~");
 				}).forEach(file => {
 					// console.log(`deleting ${file}`);
 					deleteFile(path.join(contextFolder, file));

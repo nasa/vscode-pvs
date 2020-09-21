@@ -2496,12 +2496,12 @@ export class PvsProofExplorer {
 	async proofCommand (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<PvsResponse | null> {
 		if (args) {
 			args = fsUtils.decodeURIComponents(args);
-			const timeout: number = (this.connection) ? await this.connection.workspace.getConfiguration("pvs.pvsProver.watchdog") : 0;
+			// const timeout: number = (this.connection) ? await this.connection.workspace.getConfiguration("pvs.pvsProver.watchdog") : 0;
 			const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
 
 			const start: number = new Date().getTime();
 
-			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: args.cmd }, { timeout, useLispInterface });
+			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: args.cmd }, { useLispInterface });
 
 			const ms: number = new Date().getTime() - start;
 			if (this.connection) {

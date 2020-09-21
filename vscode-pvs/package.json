@@ -67,11 +67,6 @@
 						"default": "",
 						"description": "PVS library path (colon-separated list of folders, e.g., usr/libs/L1:usr/libs/L2)"
 					},
-					"pvs.pvsProver.watchdog": {
-						"type": "number",
-						"default": 16,
-						"description": "Watchdog for proof commands. Time is in seconds (0 means timeout disabled)"
-					},
 					"pvs.serviceProvider.codelens": {
 						"type": "boolean",
 						"default": true,

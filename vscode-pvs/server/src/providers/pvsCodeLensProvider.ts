@@ -53,62 +53,64 @@ export class PvsCodeLensProvider {
 	 */
 	provideCodeLens(document: { txt: string, uri: string }, token?: CancellationToken): Thenable<CodeLens[]> {
         if (document) {
-            const contextFolder: string = fsUtils.getContextFolder(document.uri);
             const fileName: string = fsUtils.getFileName(document.uri);
             const fileExtension: string = fsUtils.getFileExtension(document.uri);
-
+            let currentFolder: string = fsUtils.getContextFolder(document.uri);
+            const contextFolder: string = (fileExtension === ".tccs" || fileExtension === ".prlite") ? path.join(currentFolder, "..") : currentFolder;
+            
+            let match: RegExpMatchArray = null;
             const codeLens: CodeLens[] = [];
             const content: string = document.txt.replace(utils.commentRegexp, "");
-            let match: RegExpMatchArray = null;
-
-            while (match = utils.theoremRegexp.exec(content)) {
-                if (match.length > 1 && match[1]) {
-                    const formulaName: string = match[1];
-
-                    // the following can be done in the resolve if necessary for performance reasons
-                    const docUp: string = content.slice(0, match.index + formulaName.length);
-                    const lines: string[] = docUp.split("\n");
-                    const line: number = lines.length - 1;
-                    const character: number = lines[lines.length - 1].indexOf(match[1]);
-                    
-                    const theoryName: string = utils.findTheoryName(content, line);
-                    if (theoryName) {
-                        const args: PvsFormula = {
-                            fileName,
-                            fileExtension,
-                            contextFolder,
-                            theoryName, 
-                            formulaName
-                        };
-                        const range: Range = {
-                            start: { line, character }, 
-                            end: { line, character: character + formulaName.length }
-                        };
-                        codeLens.push({
-                            range,
-                            command: {
-                                title: "prove",
-                                command: "vscode-pvs.prove-formula",
-                                arguments: [ args ]
-                            }
-                            // ,
-                            // data: {
-                            //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
-                            // }
-                        });
-                        codeLens.push({
-                            range,
-                            command: {
-                                title: "show-proof",
-                                command: "vscode-pvs.show-prooflite",
-                                arguments: [ args ]
-                            }
-                        });
-                    }
-                }
-            }
 
             if (fileExtension === ".pvs" || fileExtension === ".tccs") {
+                while (match = utils.theoremRegexp.exec(content)) {
+                    if (match.length > 1 && match[1]) {
+                        const formulaName: string = match[1];
+
+                        // the following can be done in the resolve if necessary for performance reasons
+                        const docUp: string = content.slice(0, match.index + formulaName.length);
+                        const lines: string[] = docUp.split("\n");
+                        const line: number = lines.length - 1;
+                        const character: number = lines[lines.length - 1].indexOf(match[1]);
+                        
+                        const theoryName: string = utils.findTheoryName(content, line);
+                        if (theoryName) {
+                            const args: PvsFormula = {
+                                fileName,
+                                fileExtension,
+                                contextFolder,
+                                theoryName, 
+                                formulaName
+                            };
+                            const range: Range = {
+                                start: { line, character }, 
+                                end: { line, character: character + formulaName.length }
+                            };
+                            codeLens.push({
+                                range,
+                                command: {
+                                    title: "prove",
+                                    command: "vscode-pvs.prove-formula",
+                                    arguments: [ args ]
+                                }
+                                // ,
+                                // data: {
+                                //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
+                                // }
+                            });
+                            codeLens.push({
+                                range,
+                                command: {
+                                    title: "show-proof",
+                                    command: "vscode-pvs.show-prooflite",
+                                    arguments: [ args ]
+                                }
+                            });
+                        }
+                    }
+                }
+
+                
                 while (match = utils.theoryRegexp.exec(content)) {
                     if (match.length > 1 && match[1]) {
                         const theoryName: string = match[1];
@@ -162,7 +164,7 @@ export class PvsCodeLensProvider {
                         const args: PvsFormula = {
                             fileName,
                             fileExtension: (utils.tccFormulaRegexp.test(formulaName)) ? ".tccs" : ".pvs",
-                            contextFolder: path.join(contextFolder, ".."), // .prlite files are stored in the /pvsbin subfolder
+                            contextFolder,
                             theoryName, 
                             formulaName
                         };

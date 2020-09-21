@@ -1143,7 +1143,7 @@ export class PvsProxy {
 	 * Executes a proof command. The command is always adorned with round parentheses, e.g., (skosimp*)
 	 * @param desc Descriptor of the proof command
 	 */
-	async proofCommand(desc: { cmd: string }, opt?: { timeout?: number, useLispInterface?: boolean }): Promise<PvsResponse> {
+	async proofCommand(desc: { cmd: string }, opt?: { useLispInterface?: boolean }): Promise<PvsResponse> {
 		if (desc) {
 			opt = opt || {};
 

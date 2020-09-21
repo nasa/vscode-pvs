@@ -165,8 +165,10 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     showProgress (msg: string): void {
-        this.pvsStatus.text = `$(loading~spin)  ${msg}`;
-        this.pvsStatus.show();
+        if (msg) {
+            this.pvsStatus.text = `$(loading~spin)  ${msg}`;
+            this.pvsStatus.show();
+        }
     }
 
     /**
@@ -174,8 +176,10 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     showInfo (msg: string): void {
-        this.pvsStatus.text = `$(megaphone)  ${msg}`;
-        this.pvsStatus.show();
+        if (msg) {
+            this.pvsStatus.text = `$(megaphone)  ${msg}`;
+            this.pvsStatus.show();
+        }
     }
 
     /**

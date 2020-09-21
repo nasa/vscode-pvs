@@ -113,7 +113,7 @@ export class PvsProcess {
 	}
 	protected sendProgressInfo (msg: string): void {
 		if (msg) {
-			this.connection.sendNotification("pvs.progress-info", msg);
+			this.connection?.sendNotification("pvs.progress-info", msg);
 		}
 	}
 

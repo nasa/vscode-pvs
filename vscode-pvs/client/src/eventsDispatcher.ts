@@ -831,6 +831,7 @@ export class EventsDispatcher {
             if (resource) {
                 const desc: PvsFormula = this.resource2desc(resource);
                 if (desc) {
+                    desc.contextFolder = (desc.fileExtension === ".tccs") ? path.join(desc.contextFolder, "..") : desc.contextFolder;
                     if (desc.theoryName) {
                         this.proofExplorer.willStartNewProof();
                         this.proofExplorer.enableView();

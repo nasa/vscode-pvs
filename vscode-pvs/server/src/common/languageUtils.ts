@@ -750,7 +750,7 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 								status = await getProofStatus({
 									fileName: desc.fileName, 
 									fileExtension: desc.fileExtension, 
-									contextFolder: desc.contextFolder,
+									contextFolder: (desc.fileExtension === ".tccs") ? path.join(desc.contextFolder, "..") : desc.contextFolder,
 									formulaName,
 									theoryName
 								});
@@ -1830,18 +1830,17 @@ export function applyTimeout (cmd: string, sec?: number): string {
 	return cmd;
 }
 
-export const proverErrorMessages: string[] = [
-	"Error:",
-	"not a valid prover command",
-	"Found 'eof' when expecting",
-	"bad proof command",
-	"Expecting an expression",
-	"Not enough arguments for prover command",
-	"Could not find formula number",
-	"There is garbage at the end"
-];
-
 export function isInvalidCommand (result: { commentary: string | string[] }): boolean {
+	const proverErrorMessages: string[] = [
+		"Error:",
+		"not a valid prover command",
+		"Found 'eof' when expecting",
+		"bad proof command",
+		"Expecting an expression",
+		"Not enough arguments for prover command",
+		"Could not find formula number",
+		"There is garbage at the end"
+	];
 	const isInvalid = (cmd: string): boolean => {
 		if (cmd) {
 			for (let i = 0; i < proverErrorMessages.length; i++) {
