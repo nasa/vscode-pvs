@@ -276,7 +276,7 @@ describe("pvs-prover", () => {
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
-	}, 2000);
+	}, 10000);
 
 	// the rationale for the following test case is to check that the following use case:
 	// the user has defined formula l in file f1, and another formula with the same name l in file f2;
@@ -314,7 +314,7 @@ describe("pvs-prover", () => {
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
 		expect(response.error.data.error_string).toContain("has been declared previously");
-	}, 2000);
+	}, 10000);
 
 	it(`reports error when trying to prove a theory that does not exist`, async () => {
 		await quitProverIfActive();
@@ -328,7 +328,7 @@ describe("pvs-prover", () => {
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
-	}, 2000);
+	}, 10000);
 
 	it(`reports error when the prove command is executed but the formula does not exist`, async () => {
 		await quitProverIfActive();
@@ -342,7 +342,7 @@ describe("pvs-prover", () => {
 		let response: PvsResponse = await pvsProxy.proveFormula(desc);
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
-	}, 2000);
+	}, 10000);
 
 	it(`is robust to mistyped / malformed prover commands`, async () => {
 		await quitProverIfActive();
@@ -512,7 +512,7 @@ describe("pvs-prover", () => {
 		// console.dir(response.result);
 	}, 20000);
 
-	fit(`weird stuck thread`, async () => {
+	it(`weird stuck thread`, async () => {
         await quitProverIfActive();
 
         const formula: PvsFormula = {
@@ -524,11 +524,11 @@ describe("pvs-prover", () => {
         };
 
         let response: PvsResponse = await pvsProxy.proveFormula(formula);
-        console.dir(response);
+        // console.dir(response);
         response = await pvsProxy.proofCommand({ cmd: "(grind)" });
-        console.dir(response);
+        // console.dir(response);
         response = await pvsProxy.proofCommand({ cmd: "(quit)" });
-        console.dir(response);
+        // console.dir(response);
     });
 
 });

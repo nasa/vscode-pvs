@@ -60,7 +60,7 @@ describe("pvs", () => {
 
 	// this test case requires pvs-experimental/monitors in the pvs-library-path
 	// or alternatively folder vscode-pvs/test/pvs-context/nasalib-monitors-stack-limit-error in the library path
-	fit(`can prove null_null_after_satisfaction_ft (nasalib-monitors-stack-limit-error.zip)`, async () => {
+	it(`can prove null_null_after_satisfaction_ft (nasalib-monitors-stack-limit-error.zip)`, async () => {
 		await quitProverIfActive();
 
 		// Need to clear-theories, in case rerunning with the same server.
@@ -138,7 +138,7 @@ describe("pvs", () => {
 		// console.dir(response);
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
-	}, 20000);
+	}, 60000);
 
 	it(`identified typecheck errors for datatypes in type_theory (type-theory-error-with-datatypes.zip)`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
@@ -289,7 +289,7 @@ describe("pvs", () => {
 
 		// remove pillboxv7 folder 
 		// fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
-	}, 10000);
+	}, 40000);
 
 	it(`can typecheck lists defined in pillboxv7`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
