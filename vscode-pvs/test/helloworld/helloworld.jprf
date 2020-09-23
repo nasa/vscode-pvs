@@ -1,0 +1,27 @@
+{
+ "helloworld.always_positive": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "always_positive",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "221bf800599cecda655e87ca374a6253e313bd1bcab4ec496f9d496321b6a05e"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "always_positive",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(grind)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ]
+}

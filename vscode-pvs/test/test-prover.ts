@@ -2,7 +2,7 @@ import * as fsUtils from "../server/src/common/fsUtils";
 import * as test from "./test-constants";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
-import { configFile, sandboxExamples, safeSandboxExamples, radixExamples } from './test-utils';
+import { configFile, sandboxExamples, safeSandboxExamples, radixExamples, helloworldExamples } from './test-utils';
 import { PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
 import * as path from 'path';
 
@@ -512,23 +512,23 @@ describe("pvs-prover", () => {
 		// console.dir(response.result);
 	}, 20000);
 
-	it(`weird stuck thread`, async () => {
+	fit(`stuck thread`, async () => {
         await quitProverIfActive();
 
         const formula: PvsFormula = {
-            contextFolder: sandboxExamples,
+            contextFolder: helloworldExamples,
             fileExtension: ".pvs",
-            fileName: "sq",
-            formulaName: "sq_plus_eq_0",
-            theoryName: "sq"
+            fileName: "helloworld",
+            theoryName: "helloworld",
+            formulaName: "foo"
         };
 
         let response: PvsResponse = await pvsProxy.proveFormula(formula);
         // console.dir(response);
-        response = await pvsProxy.proofCommand({ cmd: "(grind)" });
-        // console.dir(response);
-        response = await pvsProxy.proofCommand({ cmd: "(quit)" });
-        // console.dir(response);
+        response = await pvsProxy.proofCommand({ cmd: "(propax)" });
+		console.dir(response);
+		expect(response.error).not.toBeDefined();
+		expect(response.result).toBeDefined();
     });
 
 });

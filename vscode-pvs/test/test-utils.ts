@@ -4,6 +4,7 @@ import * as path from 'path';
 const VERBOSE: boolean = false;
 
 // folders with the example specifications
+export const helloworldExamples: string = path.join(__dirname, "helloworld");
 export const sandboxExamples: string = path.join(__dirname, "sandbox");
 export const safeSandboxExamples: string = path.join(__dirname, "safesandbox");
 export const radixExamples: string = path.join(__dirname, "radix_sort_7");
