@@ -128,7 +128,7 @@ export function deleteFolder(contextFolder: string): boolean {
 export function deleteBinFiles(contextFolder: string): boolean {
 	try {
 		if (fs.existsSync(contextFolder)) {
-			execSync(`rm ${contextFolder}/*.bin`);
+			execSync(`rm ${contextFolder}/*.bin 2> /dev/null`); // 2> /dev/null suppresses 'file not found' messages
 		}
 	} catch (deleteError) {
 		return false;
