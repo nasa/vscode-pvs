@@ -3,8 +3,9 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
 ## Getting started
-- Are you new to VSCode-PVS? Try out our [tutorial](docs/TUTORIAL.md)!
-- Please check our [FAQs](docs/FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.  
+- Quick reference guide for the [VSCode-PVS User Interface](docs/USER-INTERFACE.md)
+- Are you new to PVS? Try out our [tutorial](docs/TUTORIAL.md)!
+- Please check our [FAQs](docs/FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.
 
 ## Requirements
 - Visual Studio Code (v1.37.1 or greater) https://code.visualstudio.com

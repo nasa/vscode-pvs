@@ -8,7 +8,8 @@ The environment redefines the way developers interact with PVS, and better align
 [vscode-pvs-1.0.25](releases/vscode-pvs-1.0.25.vsix)
 
 ## Getting started
-- Are you new to VSCode-PVS? Try out our [tutorial](vscode-pvs/docs/TUTORIAL.md)!
+- Quick reference guide for the [VSCode-PVS User Interface](vscode-pvs/docs/USER-INTERFACE.md)
+- Are you new to PVS? Try out our [tutorial](vscode-pvs/docs/TUTORIAL.md)!
 - Please check our [FAQs](vscode-pvs/docs/FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.  
 
 ## Requirements
@@ -37,22 +38,22 @@ Paolo Masci and César Muñoz, [An Integrated Development Environment for the Pr
 The main functionalities provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
 - **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented in the editor when placing the mouse over a symbol name. Code snippets are provided for frequent modeling blocks, e.g., if-then-else. 
-<br> <img src="vscode-pvs/screenshots/vscode-pvs-autocompletion.gif" width="600">
+<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-autocompletion.gif" width="600">
 
 - **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the user places the cursor over an identifier.
-<br> <img src="vscode-pvs/screenshots/vscode-pvs-hover.gif" width="600">
+<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-hover.gif" width="600">
 
 - **Go-to definition**: Click on the name of the identifier while holding down the Ctrl key to jump to the location where the identifier is declared.
-<br> <img src="vscode-pvs/screenshots/vscode-pvs-goto-definition.gif" width="600">
+<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-goto-definition.gif" width="600">
 
 - **Live diagnostics**: Parsing is automatically performed in the background, and errors are reported in-line in the editor. Problematic expressions are underlined with red wavy lines. Tooltips presenting the error details are shown when the user places the cursor over the wavy lines.
-<br> <img src="vscode-pvs/screenshots/vscode-pvs-live-diagnostics.gif" width="600">
+<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-live-diagnostics.gif" width="600">
 
 - **Workspace Explorer**: Interactive tree view showing all theories in the current workspace, name and status of theorems and typecheck conditions.
-<br> <img src="vscode-pvs/screenshots/vscode-pvs-theory-explorer.gif" width="600">
+<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-theory-explorer.gif" width="600">
 
 - **Proof Explorer + Integrated Terminal**: Interactive tree view for viewing and editing the current proof. An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
-<br> <img src="vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
+<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
 ## Structure
 ```
