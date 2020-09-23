@@ -75,7 +75,7 @@ The main functionalities provided by the environment are as follows:
 
 
 ## ChangeLog
-### 1.0.25 (2020.08.xx)
+### 1.0.25 (2020.09.23)
 - Proof files are now saved using legacy .prf format
 - Added support for prove-importchain (M-x pri)
 - Added support for glassbox tactics
