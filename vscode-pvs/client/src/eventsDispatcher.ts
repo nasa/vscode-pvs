@@ -42,7 +42,7 @@ import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindin
 import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent } from "./common/serverInterface";
+import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, ProofExecInterruptAndQuitProver } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
@@ -704,6 +704,11 @@ export class EventsDispatcher {
                 const action: ProofExecInterruptProver = { action: "interrupt-prover" };
                 this.client.sendRequest(serverRequest.proverCommand, action);
             }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.interrupt-and-quit-prover", async () => {
+            // ask the user confirmation before restarting pvs
+            const action: ProofExecInterruptAndQuitProver = { action: "interrupt-and-quit-prover" };
+            this.client.sendRequest(serverRequest.proverCommand, action);
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.download-nasalib", async () => {
             const success: boolean = await this.packageManager.nasalibInstallationWizard();

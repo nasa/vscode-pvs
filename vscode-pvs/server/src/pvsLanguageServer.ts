@@ -1800,6 +1800,7 @@ export class PvsLanguageServer {
 						case "export-proof": { await this.proofExplorer.exportProof(desc.proofFile); break; }
 						case "start-new-proof": { await this.proveFormulaRequest(desc.formula, { newProof: true }); break; }
 						case "interrupt-prover": { await this.proofExplorer.interruptProofCommand(); break; }
+						case "interrupt-and-quit-prover": { await this.proofExplorer.interruptAndQuitProver(); break; }
 						//------
 						default: {
 							console.warn(`[pvs-server] Warning: unhandled prover command ${JSON.stringify(desc)}`);

@@ -814,7 +814,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 						// stop loop
 						stop = true;
 						// stop proof explorer
-						// this.proofExplorer.autorunStop();
+						commands.executeCommand("vscode-pvs.interrupt-and-quit-prover");
 						commands.executeCommand('setContext', 'autorun', false);
 						// dispose of the dialog
 						resolve(null);
@@ -925,7 +925,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							// stop loop
 							stop = true;
 							// stop proof explorer
-							// this.proofExplorer.autorunStop();
+							commands.executeCommand("vscode-pvs.interrupt-and-quit-prover");
 							commands.executeCommand('setContext', 'autorun', false);
 							// dispose of the dialog
 							resolve(null);

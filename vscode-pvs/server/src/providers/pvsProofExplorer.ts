@@ -2489,6 +2489,11 @@ export class PvsProofExplorer {
 		return null;
 	}
 	
+	async interruptAndQuitProver (): Promise<void> {
+		await this.interruptProofCommand();
+		await this.quitProof();
+	}
+
 	/**
 	 * Send proof command
 	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name, prover command

@@ -764,7 +764,8 @@ export type ProofEditDidStartNewProof = {
 
 // ProofExec
 export type ProofExecCommand = ProofExecForward | ProofExecBack | ProofExecFastForward | ProofExecRun
-	| ProofExecQuit | ProofExecOpenProof | ProofExecStartNewProof | ProofExecInterruptProver | ProofExecQuitAndSave;
+	| ProofExecQuit | ProofExecOpenProof | ProofExecStartNewProof | ProofExecInterruptProver | ProofExecQuitAndSave
+	| ProofExecInterruptAndQuitProver;
 export type ProofExecForward = {
 	action: "forward"
 };
@@ -799,6 +800,9 @@ export type ProofExecStartNewProof = {
 };
 export type ProofExecInterruptProver = {
 	action: "interrupt-prover"
+};
+export type ProofExecInterruptAndQuitProver = {
+	action: "interrupt-and-quit-prover"
 };
 
 export type ProofExecEvent = ProofExecDidStartProof | ProofExecDidLoadProof | ProofExecDidLoadSequent
