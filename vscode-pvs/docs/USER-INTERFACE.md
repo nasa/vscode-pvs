@@ -94,7 +94,7 @@ Icons are displayed next to the nodes:
 - blue diamond: indicates the *active command*, i.e., the proof command ready to be sent to the theorem prover.
 - hollow star: indicates a *visited command*, i.e., a proof command that has already been sent to the theorem prover. 
 - full star: indicates a *complete branch*, i.e., a branch that is proved and complete in the current proof. 
-- bullet: indicates a proof node that has not yet been sent to the theorem prover.
+- bullet: indicates a proof node that has not yet been sent to the theorem prover (for proof nodes below the active node) or proof commands that were executed by the prover but did not produce any change in the sequent (proof nodes above the active node).
 
 Action icons are provided in the title bar:
 - *play*: re-runs the entire proof script.
