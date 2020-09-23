@@ -81,7 +81,9 @@ This action will activate three components:
 - `Proof Mate`: interactive tree view displaying hints.
 - `Integrated Prover Terminal`: interactive command line for sending proof commands to the PVS theorem prover.
 
-### Proof Explorer
+<br>
+
+**Proof Explorer**
 
 The interactive tree view provided by Proof Explorer uses the following conventions to display a proof script:
 - the root of the tree is the name of the formula currently being proved.
@@ -102,7 +104,9 @@ Action icons are provided in the title bar:
 Action icons are also provided next to each node:
 - *fast-forward* re-runs the proof script up to the selected node (not included).
 
-### Integrated Prover Terminal
+<br>
+
+**Integrated Prover Terminal**
 
 A terminal session is automatically started when starting a proof.
 The user can enter proof commands in the terminal session.
