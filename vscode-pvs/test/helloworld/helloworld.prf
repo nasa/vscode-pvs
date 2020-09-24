@@ -1,4 +1,22 @@
 (helloworld
  (always_positive 0
-  (always_positive-1 nil 3809866971 ("" (grind) nil nil) nil shostak)))
+  (always_positive-1 nil 3809866971
+   ("" (skosimp*)
+    (("" (expand "abs")
+      (("" (lift-if)
+        (("" (split)
+          (("1" (flatten)
+            (("1" (case "x!1 > 1")
+              (("1" (case "x!1 > 2")
+                (("1" (assert) nil nil) ("2" (assert) nil nil)) nil)
+               ("2" (grind) nil nil))
+              nil))
+            nil)
+           ("2" (grind) nil nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak))
+ (foo 0 (foo-1 nil 3809944245 ("" (propax) nil nil) nil shostak)))
 

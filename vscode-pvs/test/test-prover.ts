@@ -512,7 +512,7 @@ describe("pvs-prover", () => {
 		// console.dir(response.result);
 	}, 20000);
 
-	fit(`stuck thread`, async () => {
+	it(`stuck thread`, async () => {
         await quitProverIfActive();
 
         const formula: PvsFormula = {
@@ -524,9 +524,31 @@ describe("pvs-prover", () => {
         };
 
         let response: PvsResponse = await pvsProxy.proveFormula(formula);
-        // console.dir(response);
-        response = await pvsProxy.proofCommand({ cmd: "(propax)" });
+        console.dir(response);
+        response = await pvsProxy.proofCommand({ cmd: "(assert)" });
 		console.dir(response);
+		// expect(response.error).not.toBeDefined();
+		// expect(response.result).toBeDefined();
+    });
+
+	fit(`interrupt has no effect when the prover is not executing a command`, async () => {
+        await quitProverIfActive();
+
+        const formula: PvsFormula = {
+            contextFolder: helloworldExamples,
+            fileExtension: ".pvs",
+            fileName: "helloworld",
+            theoryName: "helloworld",
+            formulaName: "always_positive"
+        };
+
+        let response: PvsResponse = await pvsProxy.proveFormula(formula);
+        console.dir(response);
+        response = await pvsProxy.pvsRequest('interrupt');
+		console.dir(response);
+		response = await pvsProxy.proofCommand({ cmd: "(skosimp*)" });
+		console.dir(response);
+
 		expect(response.error).not.toBeDefined();
 		expect(response.result).toBeDefined();
     });

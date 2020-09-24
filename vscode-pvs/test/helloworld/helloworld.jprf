@@ -6,7 +6,7 @@
     "formula": "always_positive",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "221bf800599cecda655e87ca374a6253e313bd1bcab4ec496f9d496321b6a05e"
+    "shasum": "0c8b191e2852b2487040b57801ab246dbd7253aefaf5e8d5125d33bcce16cca7"
    },
    "proofTree": {
     "branch": "",
@@ -16,6 +16,31 @@
      {
       "branch": "",
       "name": "(grind)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ],
+ "helloworld.foo": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "foo",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "0c8b191e2852b2487040b57801ab246dbd7253aefaf5e8d5125d33bcce16cca7"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(propax)",
       "type": "proof-command",
       "rules": []
      }
