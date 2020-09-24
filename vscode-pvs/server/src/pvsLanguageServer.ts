@@ -385,6 +385,13 @@ export class PvsLanguageServer {
 					// start proof in proof explorer
 					this.proofExplorer.startProof({ autorun: !!opt.autorun });
 
+					if (result.length > 1) {
+						for (let i = 1; i < response.result.length; i++) {
+							const proofState: SequentDescriptor = response.result[i]; // process proof commands
+							await this.proofExplorer.onStepExecutedNew({ proofState, lastSequent: i === response.result.length - 1 }, { feedbackToTerminal: true });
+						}
+					}
+
 					if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
 						this.notifyEndImportantTask({ id: taskId });
 					} else {
