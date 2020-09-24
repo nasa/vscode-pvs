@@ -1127,6 +1127,7 @@ export class PvsProofExplorer {
 						this.removeNotVisited({ selected });
 						selected.treeVisited();
 						selected.treeComplete();
+						selected.perculateVisitedAndComplete();
 					}
 
 					// if the branch has changed, move to the new branch
@@ -1139,7 +1140,7 @@ export class PvsProofExplorer {
 							targetBranch.updateTooltip({ internalAction: this.autorunFlag });					
 							// go to the new branch
 							activeNode.visited();
-							activeNode.parent.visited();
+							// activeNode.parent.visited();
 							// find the last visited child in the new branch
 							const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
 								return elem.contextValue === "proof-command" && elem.isVisited();
@@ -2914,6 +2915,24 @@ export class ProofItem extends TreeItem {
 				this.children[i].treeComplete();
 			}
 		}
+	}
+	checkChildrenComplete (): boolean {
+		if (this.children && this.children.length) {
+			const open: ProofItem[] = this.children.filter(item => {
+				return !item.isVisited();
+			});
+			return open.length === 0;
+		}
+		return true;
+	}
+	perculateVisitedAndComplete (): void {
+		if (this.contextValue !== "root" && this.parent && this.parent.checkChildrenComplete()) {
+			// the parent branch is also complete
+			this.parent.visited();
+			this.parent.treeComplete();
+			this.parent.perculateVisitedAndComplete();
+		}
+
 	}
 	isActive (): boolean {
 		return this.activeFlag;
