@@ -851,11 +851,11 @@ export class PvsProofExplorer {
 	// 		console.error("[proof-explorer] Error: could not read proof state information returned by pvs-server.");
 	// 	}
 	// }
-	async onStepExecutedNew (desc: { proofState: SequentDescriptor, args: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
-		if (desc && desc.proofState && desc.args) {
+	async onStepExecutedNew (desc: { proofState: SequentDescriptor, args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
+		if (desc && desc.proofState) {
 			// get command and proof state
-			let userCmd: string = desc.args.cmd; // command entered by the user
-			const cmd: string = (typeof desc.proofState["prev-cmd"] === "string") ? desc.proofState["prev-cmd"] : desc.args.cmd;
+			let userCmd: string = desc.args ? desc.args.cmd : null; // command entered by the user
+			const cmd: string = (typeof desc.proofState["prev-cmd"] === "string") ? desc.proofState["prev-cmd"] : userCmd;
 			this.proofState = desc.proofState;
 			
 			// identify active node in the proof tree
@@ -1118,7 +1118,7 @@ export class PvsProofExplorer {
 						const selected: ProofBranch = this.findProofBranch(previousBranchName);
 						this.removeNotVisited({ selected });
 						selected.treeVisited();
-						selected.complete();
+						selected.treeComplete();
 					}
 					if (utils.branchComplete(this.proofState, this.formula.formulaName, currentBranchName)) {
 						// PVS has automatically discharged the previous proof branch
@@ -1126,7 +1126,7 @@ export class PvsProofExplorer {
 						const selected: ProofBranch = this.findProofBranch(currentBranchName);
 						this.removeNotVisited({ selected });
 						selected.treeVisited();
-						selected.complete();
+						selected.treeComplete();
 					}
 
 					// if the branch has changed, move to the new branch
@@ -2700,8 +2700,6 @@ export class ProofItem extends TreeItem {
 	sequentDescriptor: SequentDescriptor = null; // sequent *before* the execution of the node
 
 	isComplete(): boolean { return this.completeFlag; }
-	complete(): void { this.completeFlag = true; }
-	notComplete(): void { this.completeFlag = false; }
 
 	constructor (type: string, name: string, branchId: string, parent: ProofItem, connection: Connection) {
 		super(type, connection);
@@ -2857,6 +2855,22 @@ export class ProofItem extends TreeItem {
 			});
 		}
 	}
+	complete(): void {
+		this.completeFlag = true;
+		this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
+			id: this.id,
+			name: this.name,
+			status: "complete"
+		});
+	}
+	notComplete(): void {
+		this.completeFlag = false;
+		this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
+			id: this.id,
+			name: this.name,
+			status: "not-complete"
+		});		
+	}
 	// noChange (): void {
 	// 	this.previousState.tooltip = this.tooltip;
 	// 	this.activeFlag = false;
@@ -2890,6 +2904,14 @@ export class ProofItem extends TreeItem {
 		if (this.children) {
 			for (let i = 0; i < this.children.length; i++) {
 				this.children[i].treeVisited();
+			}
+		}
+	}
+	treeComplete (): void {
+		this.complete();
+		if (this.children) {
+			for (let i = 0; i < this.children.length; i++) {
+				this.children[i].treeComplete();
 			}
 		}
 	}

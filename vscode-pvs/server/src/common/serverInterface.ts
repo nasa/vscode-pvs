@@ -192,7 +192,7 @@ export declare interface ProofNodeX extends ProofNode {
 	branch: string; // branch id
 	parent: string;
 }
-export declare type ProofNodeStatus = "visited" | "not-visited" | "active" | "pending";
+export declare type ProofNodeStatus = "visited" | "not-visited" | "active" | "pending" | "complete" | "not-complete";
 export declare type ProofTree = ProofNode;
 export declare type ProofStatus = "subsumed" | "simplified" | "proved" | "unproved" | "unfinished" | "unchecked" | "untried";
 export declare interface ProofFile {

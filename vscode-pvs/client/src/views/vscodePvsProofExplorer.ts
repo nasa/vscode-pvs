@@ -180,7 +180,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					selected = this.ghostNode;
 					this.ghostNode.parent = this.ghostNode.parent || this.ghostNode.realNode;
 				}
-				if (selected && selected.parent) {
+				if (selected && selected.parent && !selected.parent.isComplete()) {
 					this.view.reveal(selected, { expand: 2, select: true, focus: false }).then(() => {
 					}, (error: any) => {
 						// console.error(selected);
@@ -188,6 +188,32 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					});
 				}
 			// }
+		}
+	}
+	protected collapseNode (desc: { id: string, name: string }): void {
+		// FIXME: this function is not working
+		// if (desc && desc.id) {
+		// 	let selected: ProofItem = this.findNode(desc.id);
+		// 	if (selected && selected.parent) {
+		// 		// selected.collapsibleState = TreeItemCollapsibleState.None;
+		// 		this.view.reveal(selected, { expand: false, select: false, focus: false }).then(() => {
+		// 		}, (error: any) => {
+		// 			// console.error(selected);
+		// 			// console.error(error);
+		// 		});
+		// 	}
+		// }
+	}
+	protected expandNode (desc: { id: string, name: string }): void {
+		if (desc && desc.id) {
+			let selected: ProofItem = this.findNode(desc.id);
+			if (selected && selected.parent) {
+				this.view.reveal(selected, { expand: true, select: false, focus: false }).then(() => {
+				}, (error: any) => {
+					// console.error(selected);
+					// console.error(error);
+				});
+			}
 		}
 	}
 	protected focusNode (desc: { id: string, name: string }): void {
@@ -602,6 +628,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						this.activeNode = node;
 					}
 					node.updateStatus(desc.status);
+					if (desc.status === "complete") {
+						this.collapseNode(desc);
+					} else if (desc.status === "not-complete") {
+						this.expandNode(desc);
+					}
 					this.refreshView();
 				} else {
 					console.warn(`[vscode-proof-explorer] Warning: could not update status of node ${desc.name} to ${desc.status}`);
@@ -912,6 +943,7 @@ export class ProofItem extends TreeItem {
 	protected activeFlag: boolean = false;
 	protected visitedFlag: boolean = false;
 	protected pendingFlag: boolean = false;
+	protected completeFlag: boolean = false;
 
 	proofState: SequentDescriptor = null; // sequents *before* the execution of the node
 	constructor (desc: { id?: string, type: string, name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
@@ -935,6 +967,8 @@ export class ProofItem extends TreeItem {
 			case "visited": { this.visited(); break; }
 			case "not-visited": { this.notVisited(); break; }
 			case "pending": { this.pending(); break; }
+			case "complete": { this.complete(); break; }
+			case "not-complete": { this.notComplete(); break; }
 			default: {
 				console.warn(`[vscode-proof-explorer] Warning: unrecognized node status ${status}`);
 			}
@@ -944,6 +978,9 @@ export class ProofItem extends TreeItem {
 		this.name = name;
 		this.label = this.name;//`${this.icon}${this.name}`;
 	}
+	complete (): void { this.completeFlag = true; }
+	notComplete (): void { this.completeFlag = false; }
+	isComplete(): boolean { return this.completeFlag; }
 	pending (): void {
 		// this.icon = "🔶";
 		this.label = this.name;//`${this.icon}${this.name}`;
@@ -952,7 +989,7 @@ export class ProofItem extends TreeItem {
 		this.pendingFlag = true;
 		// this.noChangeFlag = false;
 		this.iconPath = {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg"),
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-star-gray.svg"),
             dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
             // light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
             // dark: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")
@@ -970,7 +1007,7 @@ export class ProofItem extends TreeItem {
 		this.iconPath = {
             // light: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg"),
             // dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
-            light: path.join(__dirname, "..", "..", "..", "icons", "star.png"),
+            light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
             dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
         };
 	}
