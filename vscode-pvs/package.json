@@ -148,7 +148,8 @@
 				{
 					"id": "proof-mate-view",
 					"name": "PVS Proof Mate",
-					"when": "pvs-server-active && proof-mate.visible"
+					"when": "pvs-server-active && proof-mate.visible",
+					"visibility": "collapsed"
 				}
 			],
 			"explorer": []
