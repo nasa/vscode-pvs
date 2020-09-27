@@ -1127,7 +1127,7 @@ export class PvsProofExplorer {
 						this.removeNotVisited({ selected });
 						selected.treeVisited();
 						selected.treeComplete();
-						selected.perculateVisitedAndComplete();
+						selected.bubbleVisitedAndComplete();
 					}
 
 					// if the branch has changed, move to the new branch
@@ -2814,63 +2814,73 @@ export class ProofItem extends TreeItem {
 		}
 	}
 	pending (): void {
-		this.activeFlag = false;
-		this.visitedFlag = false;
-		this.pendingFlag = true;
-		this.noChangeFlag = false;
-		if (this.connection) {
-			this.connection.sendNotification(serverEvent.proofNodeUpdate, {
-				id: this.id,
-				name: this.name,
-				status: "pending"
-			});
+		if (!this.pendingFlag) {
+			this.activeFlag = false;
+			this.visitedFlag = false;
+			this.pendingFlag = true;
+			this.noChangeFlag = false;
+			if (this.connection) {
+				this.connection.sendNotification(serverEvent.proofNodeUpdate, {
+					id: this.id,
+					name: this.name,
+					status: "pending"
+				});
+			}
 		}
 	}
 	visited (): void {
-		this.previousState.tooltip = this.tooltip;
-		this.activeFlag = false;
-		this.visitedFlag = true;
-		this.pendingFlag = false;
-		this.noChangeFlag = false;
-		if (this.connection) {
-			this.connection.sendNotification(serverEvent.proofNodeUpdate, {
-				id: this.id,
-				name: this.name,
-				status: "visited"
-			});
+		if (!this.visitedFlag) {
+			this.previousState.tooltip = this.tooltip;
+			this.activeFlag = false;
+			this.visitedFlag = true;
+			this.pendingFlag = false;
+			this.noChangeFlag = false;
+			if (this.connection) {
+				this.connection.sendNotification(serverEvent.proofNodeUpdate, {
+					id: this.id,
+					name: this.name,
+					status: "visited"
+				});
+			}
 		}
 	}
 	notVisited (opt?: { internalAction?: boolean }): void {
-		this.previousState.tooltip = this.tooltip;
-		this.activeFlag = false;
-		this.visitedFlag = false;
-		this.pendingFlag = false;
-		this.noChangeFlag = false;
-		this.completeFlag = false;
-		opt = opt || {};
-		if (!opt.internalAction && this.connection) {
-			this.connection.sendNotification(serverEvent.proofNodeUpdate, {
-				id: this.id,
-				name: this.name,
-				status: "not-visited"
-			});
+		if (this.visitedFlag) {
+			this.previousState.tooltip = this.tooltip;
+			this.activeFlag = false;
+			this.visitedFlag = false;
+			this.pendingFlag = false;
+			this.noChangeFlag = false;
+			this.completeFlag = false;
+			opt = opt || {};
+			if (!opt.internalAction && this.connection) {
+				this.connection.sendNotification(serverEvent.proofNodeUpdate, {
+					id: this.id,
+					name: this.name,
+					status: "not-visited"
+				});
+			}
 		}
 	}
 	complete(): void {
-		this.completeFlag = true;
-		this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
-			id: this.id,
-			name: this.name,
-			status: "complete"
-		});
+		if (!this.completeFlag) {
+			this.completeFlag = true;
+			this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
+				id: this.id,
+				name: this.name,
+				status: "complete"
+			});
+		}
 	}
 	notComplete(): void {
-		this.completeFlag = false;
-		this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
-			id: this.id,
-			name: this.name,
-			status: "not-complete"
-		});		
+		if (this.completeFlag) {
+			this.completeFlag = false;
+			this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
+				id: this.id,
+				name: this.name,
+				status: "not-complete"
+			});
+		}
 	}
 	// noChange (): void {
 	// 	this.previousState.tooltip = this.tooltip;
@@ -2880,16 +2890,18 @@ export class ProofItem extends TreeItem {
 	// 	this.noChangeFlag = true;
 	// }
 	active (): void {
-		this.activeFlag = true;
-		this.visitedFlag = false;
-		this.pendingFlag = false;
-		this.noChangeFlag = false;
-		if (this.connection) {
-			this.connection.sendNotification(serverEvent.proofNodeUpdate, {
-				id: this.id,
-				name: this.name,
-				status: "active"
-			});
+		if (!this.activeFlag) {
+			this.activeFlag = true;
+			this.visitedFlag = false;
+			this.pendingFlag = false;
+			this.noChangeFlag = false;
+			if (this.connection) {
+				this.connection.sendNotification(serverEvent.proofNodeUpdate, {
+					id: this.id,
+					name: this.name,
+					status: "active"
+				});
+			}
 		}
 	}
 	treeNotVisited (): void {
@@ -2925,12 +2937,12 @@ export class ProofItem extends TreeItem {
 		}
 		return true;
 	}
-	perculateVisitedAndComplete (): void {
+	bubbleVisitedAndComplete (): void {
 		if (this.contextValue !== "root" && this.parent && this.parent.checkChildrenComplete()) {
 			// the parent branch is also complete
 			this.parent.visited();
 			this.parent.treeComplete();
-			this.parent.perculateVisitedAndComplete();
+			this.parent.bubbleVisitedAndComplete();
 		}
 
 	}

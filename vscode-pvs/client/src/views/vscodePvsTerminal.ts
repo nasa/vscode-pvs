@@ -107,11 +107,11 @@ class TerminalSession {
             this.terminal = vscode.window.createTerminal(terminalName, 'node', [ cliFileName, JSON.stringify(cliArgs) ]);
             this.terminal.show();
             this.isActive = true;
-            if (typeID === cliSessionType.proveFormula) {
-                setTimeout(() => {
-                    this.maximizePanel(desc);
-                }, 500);
-            }
+            // if (typeID === cliSessionType.proveFormula) {
+            //     setTimeout(() => {
+            //         this.maximizePanel(desc);
+            //     }, 500);
+            // }
 
             // server events
             this.client.onRequest(serverEvent.quitProofDontSaveEvent, (desc: {

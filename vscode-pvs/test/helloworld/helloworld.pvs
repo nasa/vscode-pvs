@@ -15,6 +15,8 @@ helloworld: THEORY
     foo: LEMMA
       true
 
+    % Computes the square root of a non-negative real number
+    % by recursively applying Newton's method n times
     sqrt_newton(a: nnreal, n: nat): RECURSIVE posreal =
       IF n = 0 THEN a + 1
       ELSE LET r = sqrt_newton(a, n - 1) 
@@ -29,6 +31,19 @@ helloworld: THEORY
       LET res: posreal = sqrt_newton(a, n)
       IN println(newline + "sqrt_newton(" + a + ", " + n + ") ≈ " + res)
 
+    % sqrt upper bound
+    sqrt_ub(a: nnreal): posreal = sqrt_newton(a, 10)
+
+    % sqrt lower bound
+    sqrt_lb(a: nnreal): nnreal = a / sqrt_newton(a, 10)
+
+    sqrt2: LEMMA
+      sqrt_lb(2) < sqrt_ub(2)
+
+    sqrt_lb2: LEMMA
+      2/3 <= 1 / sqrt_lb(2)
+
+    dummy: LEMMA 1 = 0
 
   END helloworld
 
