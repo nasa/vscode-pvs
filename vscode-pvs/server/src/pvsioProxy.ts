@@ -58,7 +58,7 @@ class PvsIoProcess {
 
 	protected ready: boolean = false;
 	protected data: string = "";
-	protected cb: (data: string) => void;
+	protected cb: (data: string, readyPrompt?: boolean) => void;
 
 	protected connection: SimpleConnection;
 
@@ -101,13 +101,14 @@ class PvsIoProcess {
 	 * Sends an expression at the PVSio prompt
 	 * @param data Expression to be evaluated at the PVSio prompt 
 	 */
-	async sendText (data: string): Promise<string> {
+	async sendText (data: string, opt?: { cb?: (data: string) => void }): Promise<string> {
+		opt = opt || {};
 		return new Promise((resolve, reject) => {
-			this.cb = (data: string) => {
+			this.cb = opt.cb ? opt.cb : (data: string) => {
 				resolve(data);
 			}
 			this.resetData();
-			this.pvsioProcess.stdin.write(data);
+			this.pvsioProcess.stdin.write(data + "\n");
 		});
 	}
 	/**
@@ -115,6 +116,10 @@ class PvsIoProcess {
 	 */
 	quit (): void {
 		this.pvsioProcess.stdin.write("exit; Y");
+	}
+
+	async loadPvsPatches (): Promise<void> {
+		await this.sendText(`(load-pvs-patches)!`);
 	}
 
 	/**
@@ -146,12 +151,22 @@ class PvsIoProcess {
 				this.pvsioProcess.stdout.setEncoding("utf8");
 				this.pvsioProcess.stderr.setEncoding("utf8");
 				this.pvsioProcess.stdout.on("data", (data: string) => {
+					data = data.trim();
 					if (this.connection) {
 						this.connection.console.log(data);
 					} else {
 						console.log(data);
 					}
-					this.data += data;
+					// this.data += data;
+
+					const readyPrompt: boolean = data.trim().endsWith(utils.pvsioPrompt);
+					if (this.cb && typeof this.cb === "function") {
+						// the prompt will be added by CLI
+						if (readyPrompt) {
+							data = data.replace(utils.pvsioPrompt, "");
+						}
+						this.cb(data, readyPrompt);
+					}
 					// console.dir({ 
 					// 	type: "memory usage",
 					// 	data: process.memoryUsage()
@@ -160,14 +175,14 @@ class PvsIoProcess {
 
 					// wait for the pvs prompt, to make sure pvs-server is operational
 					// const match: RegExpMatchArray = /\s*<PVSio>\s*/g.exec(data);
-					if (this.data.trim().endsWith("<PVSio>")) {
+					if (readyPrompt) {
 						if (!this.ready) {
 							this.ready = true;
 							resolve(true);
 						}
-						if (this.cb && typeof this.cb === "function") {
-							this.cb(this.data);
-						}
+						// if (this.cb && typeof this.cb === "function") {
+						// 	this.cb(this.data);
+						// }
 					}
 				});
 				this.pvsioProcess.stdin.on("data", (data: string) => {
@@ -271,6 +286,7 @@ export class PvsIoProxy {
 			this.processRegistry[processId] = pvsioProcess;
 			const data: string = pvsioProcess.getData();
 			pvsioProcess.resetData();
+			pvsioProcess.loadPvsPatches();
 			return {
 				jsonrpc: "2.0",
 				id: processId,
@@ -283,18 +299,24 @@ export class PvsIoProxy {
 			error: "Failed to start PVSio"
 		}
 	}
-	async evaluateExpression (desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, cmd: string }): Promise<PvsResponse> {
+	async evaluateExpression (desc: {
+		contextFolder: string, 
+		fileName: string, 
+		fileExtension: string, 
+		theoryName: string, 
+		cmd: string
+	}, opt?: { cb?: (data: string) => void }): Promise<PvsResponse> {
 		const processId: string = utils.desc2id(desc);
 		let data: string = "";
 		if (this.processRegistry && this.processRegistry[processId] && desc.cmd) {
-			console.dir(desc);
-			if (desc.cmd === ";") { desc.cmd = `"";`; }
-			console.dir(desc);
-			let cmd: string = (desc.cmd.endsWith(";") || desc.cmd.endsWith("!")) ? desc.cmd : `${desc.cmd};`;
-			if (utils.isQuitCommand(cmd)) {
+			// console.dir(desc);
+			// if (desc.cmd === ";") { desc.cmd = `"";`; }
+			// console.dir(desc);
+			// let cmd: string = (desc.cmd.endsWith(";") || desc.cmd.endsWith("!")) ? desc.cmd : `${desc.cmd};`;
+			if (utils.isQuitCommand(desc.cmd)) {
 				this.processRegistry[processId].kill();
 			} else {
-				data = await this.processRegistry[processId].sendText(cmd);
+				data = await this.processRegistry[processId].sendText(desc.cmd, opt);
 			}
 		} else {
 			data = "Error: PVSio could not be started. Please check pvs-server log for details.";

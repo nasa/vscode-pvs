@@ -43,6 +43,8 @@ import { FileList, FormulaDescriptor, PvsContextDescriptor,
 	TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, 
 	ProofFile, ProofStatus, Position, Range, ProofTree, PvsFormula, PvsTheory 
 } from '../common/serverInterface';
+import * as utils from '../common/languageUtils';
+
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -931,7 +933,7 @@ export const pvsioBanner: string = `
 `
 ;
 
-export const pvsioPrompt: string = "<PVSio> ";
+export const pvsioPrompt: string = "<PVSio>";
 // ║
 // ║ Note: Evaluating PVS expressions which depend on unproven TCCs may be unsound
 // ║       and result in the evaluator becoming unresponsive or breaking into Lisp. 
@@ -981,7 +983,7 @@ export const textColor: { [ key: string ]: number } = {
 
 export function colorText(text: string, colorCode: number): string {
     // \x1b[0m resets all attributes
-	return `\x1b[38;5;${colorCode}m${text}\x1b[0m`;
+	return `\x1b[38;5;${colorCode}m${text.toLocaleString()}\x1b[0m`;
 }
 
 

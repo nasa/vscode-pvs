@@ -168,7 +168,7 @@ class PvsCli {
 	protected wsClient: WebSocket;
 
 	protected proverPrompt: string = " >> ";
-	protected evaluatorPrompt: string = languageUtils.pvsioPrompt;
+	protected evaluatorPrompt: string = languageUtils.pvsioPrompt + " ";
 
 	protected lines: string = "";
 
@@ -198,15 +198,15 @@ class PvsCli {
 			},
 			removeHistoryDuplicates: true
 		});
-		this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
-		this.isActive = false;
+		// this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
+		this.rl.setPrompt("");
+		this.isActive = true;
 
 		this.rl.on("line", async (ln: string) => {
-			if (ln && (ln.trim().endsWith(";") || ln.trim().endsWith("!")) || utils.isQuitCommand(ln.trim())) {
-				// console.dir(key);
-				let cmd: string = this.lines.trim() + "\n" + ln;
-				this.lines = "";
+			if (ln) {
+				let cmd: string = ln.trim();
 				if (utils.isQuitCommand(cmd)) {
+					this.isActive = false;
 					this.wsClient.send(JSON.stringify({
 						type: serverRequest.evaluateExpression,
 						cmd: "quit",
@@ -219,31 +219,24 @@ class PvsCli {
 					console.log();
 					console.log("PVSio evaluator session terminated.");
 					console.log();
-					console.log();
-					this.isActive = false;
-					this.rl.question("Press Enter to close the terminal.", () => {
+					this.rl.question("Press Enter to close the terminal. ", () => {
 						this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
 						this.wsClient.close();
 					});
 					return;
 				} else {
-					cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
-					this.wsClient.send(JSON.stringify({
-						type: serverRequest.evaluateExpression,
-						cmd,
-						fileName: this.args.fileName,
-						fileExtension: this.args.fileExtension,
-						contextFolder: this.args.contextFolder,
-						theoryName: this.args.theoryName,
-						formulaName: this.args.formulaName
-					}));
-				}
-				this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
-			} else {
-				if (this.lines) {
-					this.lines += " " + ln;
-				} else {
-					this.lines = ln;
+					if (this.isActive) {
+						// cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
+						this.wsClient.send(JSON.stringify({
+							type: serverRequest.evaluateExpression,
+							cmd,
+							fileName: this.args.fileName,
+							fileExtension: this.args.fileExtension,
+							contextFolder: this.args.contextFolder,
+							theoryName: this.args.theoryName,
+							formulaName: this.args.formulaName
+						}));
+					}
 				}
 			}
 		});		
@@ -264,7 +257,7 @@ class PvsCli {
 			},
 			removeHistoryDuplicates: true
 		});
-		this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+		this.rl.setPrompt("");
 		this.isActive = true;
 
 		process.stdin.on("keypress", (input: string, key: readline.Key) => {
@@ -380,7 +373,7 @@ class PvsCli {
 				// 		formulaName: this.args.formulaName
 				// 	}));
 				// }
-				this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+				// this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
 			}
 		});
 		// this.rl.on("pause", async () => {
@@ -418,21 +411,34 @@ class PvsCli {
 								resolve(evt.success);
 								break;
 							}
+							case "pvs.event.evaluator-ready": {
+								if (evt.banner) {
+									console.log(evt.banner + "\n");
+								}
+								this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
+								this.rl.prompt();
+								break;
+							}
+							case "pvs.event.prover-ready": {
+								this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+								this.rl.prompt();
+								break;
+							}
 							case "pvs.event.evaluator-state": {
 								const pvsResponse: PvsResponse = evt.data;
 								if (pvsResponse) {
 									if (pvsResponse.result) {
+										this.rl.setPrompt("");
 										console.log(utils.formatPvsIoState(pvsResponse.result, { useColors: true }));
-									} else if (pvsResponse.banner) {
-										console.log(pvsResponse.banner);
 									}
 								}
+								// readline.moveCursor(process.stdin, 8, -1);
 								// remove the standard prompt created by PVSio
-								readline.moveCursor(process.stdin, 0, -1);
-								readline.clearScreenDown(process.stdin);
+								// readline.moveCursor(process.stdin, 0, -1);
+								// readline.clearScreenDown(process.stdin);
 								// show prompt
-								this.rl.prompt();
-								readline.clearLine(process.stdin, 1); // clear any previous input
+								// this.rl.prompt();
+								// readline.clearLine(process.stdin, 1); // clear any previous input
 								break;
 							}
 							case "pvs.event.proof-state": {

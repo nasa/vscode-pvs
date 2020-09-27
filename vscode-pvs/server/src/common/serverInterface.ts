@@ -547,7 +547,8 @@ export declare type CliGatewaySelectProfileRequest = {
 
 export declare type CliGatewaySubscriberEvent = CliGatewayProofStateInfo | CliGatewayEvaluatorStateInfo 
 	| CliGatewayMathObjectsInfo | CliGatewayPrintProofCommandInfo | CliGatewaySubscribeEvent
-	| CliGatewaySelectProfileEvent | CliGatewayQEDEvent | CliGatewayQuitEvent;
+	| CliGatewaySelectProfileEvent | CliGatewayQEDEvent | CliGatewayQuitEvent | CliGatewayEvaluatorReady
+	| CliGatewayProverReady;
 export declare type CliGatewayProofStateInfo = {  
 	type: "pvs.event.proof-state",
 	data: SequentDescriptor,
@@ -557,6 +558,13 @@ export declare type CliGatewayEvaluatorStateInfo = {
 	type: "pvs.event.evaluator-state",
 	data: PvsResponse,
 	cmd?: string // the command that produced this state
+};
+export declare type CliGatewayEvaluatorReady = {  
+	type: "pvs.event.evaluator-ready",
+	banner?: string
+};
+export declare type CliGatewayProverReady = {  
+	type: "pvs.event.prover-ready"
 };
 export declare type CliGatewayMathObjectsInfo = {
 	type: "gateway.publish.math-objects",
@@ -583,7 +591,14 @@ export declare type CliGatewaySelectProfileEvent = {
 
 
 export declare type CliGatewayEvent = CliGatewayProofState | CliGatewayEvaluatorState 
-	| CliGatewayMathObjects | CliGatewayPrintProofCommand | CliGatewayQED | CliGatewayQuit;
+	| CliGatewayMathObjects | CliGatewayPrintProofCommand | CliGatewayQED | CliGatewayQuit
+	| CliGatewayEvaluatorReadyEvent | CliGatewayProverReadyEvent;
+export declare interface CliGatewayEvaluatorReadyEvent extends CliGatewayEvaluatorReady {  
+	channelID: string
+};
+export declare interface CliGatewayProverReadyEvent extends CliGatewayProverReady {  
+	channelID: string
+};
 export declare interface CliGatewayProofState extends CliGatewayProofStateInfo {  
 	channelID: string
 };

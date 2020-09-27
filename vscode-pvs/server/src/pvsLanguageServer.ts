@@ -72,7 +72,7 @@ import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import { PvsProxy } from './pvsProxy';
-import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl, ShowTCCsResult, DischargeTccsResult } from './common/pvs-gui';
+import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl, ShowTCCsResult, DischargeTccsResult, PvsResult } from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
 import { PvsIoProxy } from './pvsioProxy';
 import { PvsErrorManager } from './pvsErrorManager';
@@ -377,6 +377,7 @@ export class PvsLanguageServer {
 
 					// publish the sequent on the cligateway, so it is visible in the prover terminal
 					this.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: result[0] });
+					this.cliGateway.publish({ type: "pvs.event.prover-ready", channelID });
 					this.cliGateway.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy.listMathObjects() });
 
 					// load initial sequent in proof explorer
@@ -503,9 +504,20 @@ export class PvsLanguageServer {
 	// }
 	async evaluateExpressionRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd: string }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
-		const response: PvsResponse = await this.pvsioProxy.evaluateExpression(request);
 		const channelID: string = utils.desc2id(request);
-		this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: response });
+		const response: PvsResponse = await this.pvsioProxy.evaluateExpression(request, {
+			cb: (data: string, readyPrompt?: boolean) => {
+				const result: PvsResult = {
+					jsonrpc: "2.0",
+					id: channelID,
+					result: data
+				};
+				this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: result });
+				if (readyPrompt) {
+					this.cliGateway.publish({ type: "pvs.event.evaluator-ready", channelID });
+				}
+			}
+		});
 		if (response && response.error) {
 			this.pvsErrorManager.handleEvaluationError({ request, response: <PvsError> response });
 		}
@@ -525,9 +537,8 @@ export class PvsLanguageServer {
 			let pvsioResponse: PvsResponse = await this.pvsioProxy.startEvaluator(request, { pvsLibraryPath: this.pvsLibraryPath });
 			const channelID: string = utils.desc2id(request);
 			// replace standard banner
-			pvsioResponse.result = "";
-			pvsioResponse.banner = utils.colorText(utils.pvsioBanner, utils.textColor.green);// + "\n\n" + utils.pvsioPrompt;
-			this.cliGateway.publish({ type: "pvs.event.evaluator-state", channelID, data: pvsioResponse });
+			const banner: string = utils.colorText(utils.pvsioBanner, utils.textColor.green);// + "\n\n" + utils.pvsioPrompt;
+			this.cliGateway.publish({ type: "pvs.event.evaluator-ready", channelID, banner });
 			if (this.connection) { this.connection.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: request }); }
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
 			this.notifyServerMode("pvsio");

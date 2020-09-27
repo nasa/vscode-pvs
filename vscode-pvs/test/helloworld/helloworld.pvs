@@ -15,5 +15,20 @@ helloworld: THEORY
     foo: LEMMA
       true
 
+    sqrt_newton(a: nnreal, n: nat): RECURSIVE posreal =
+      IF n = 0 THEN a + 1
+      ELSE LET r = sqrt_newton(a, n - 1) 
+            IN (1/2) * (r + a/r)
+      ENDIF
+    MEASURE n + 1
+
+    newton: void =
+      println("Newton's iterative method to compute the square root") &
+      LET a: nnreal = query_real("Enter a non-negative real number:") IN
+      LET n: int = query_int("Enter number of iterations:") IN
+      LET res: posreal = sqrt_newton(a, n)
+      IN println(newline + "sqrt_newton(" + a + ", " + n + ") ≈ " + res)
+
+
   END helloworld
 
