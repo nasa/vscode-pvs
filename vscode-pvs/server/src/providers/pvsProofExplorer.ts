@@ -2360,12 +2360,14 @@ export class PvsProofExplorer {
 					return;
 				}
 			}
+			const script: string = this.copyTree({ selected: this.root });
 			this.connection.sendRequest(serverEvent.saveProofResponse, { 
 				response: { 
 					success,
 					proofFile,
 					msg,
-					formula: this.formula
+					formula: this.formula,
+					script
 				}, 
 				args: this.formula 
 			});
@@ -2398,12 +2400,14 @@ export class PvsProofExplorer {
 			msg = (response && response.error && response.error.data && response.error.data.error_string) ? response.error.data.error_string : null;
 		}
 		// send feedback to the client
+		const script: string = this.copyTree({ selected: this.root });
 		this.connection?.sendRequest(serverEvent.saveProofResponse, {
 			response: { 
 				success,
 				msg: (response && response.error && response.error.data && response.error.data.error_string) ? response.error.data.error_string : null,
 				proofFile,
-				formula: this.formula
+				formula: this.formula,
+				script
 			}, 
 			args: this.formula 
 		});

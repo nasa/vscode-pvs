@@ -430,12 +430,13 @@ export class EventsDispatcher {
         });
 
         // register handler that will resolve the promise when the proof needs to be saved
-        this.client.onRequest(serverEvent.saveProofResponse, (desc: {
+        this.client.onRequest(serverEvent.saveProofResponse, async (desc: {
             response: { 
                 success: boolean,
                 msg?: string,
                 proofFile: PvsFile,
-                formula: PvsFormula
+                formula: PvsFormula,
+                script?: string
             }, 
             args: { 
                 fileName: string, 
@@ -457,6 +458,23 @@ export class EventsDispatcher {
                         window.showErrorMessage(`Error while saving file ${fsUtils.desc2fname(desc.args)} (${desc.response.msg})`);
                     } else {
                         window.showErrorMessage(`Unexpected error while saving file ${fsUtils.desc2fname(desc.args)} (please check pvs-server output for details)`);
+                    }
+                    if (desc.response.script) {
+                        const content: string = `# Proof for ${desc.args.formulaName}\n`
+                            + 'An error occurred while trying to save your proof in PVS.\n'
+                            + 'You might be using an obsolete version of PVS. Please try to re-install PVS with the command `M-x reinstall-pvs`.\n'
+                            + `If the problem persists, please report an issue on [github](https://github.com/nasa/vscode-pvs/issues).\n\n`
+                            + `## Your proof attempt\n`
+                            + `Don't panic, your proof attempt for ${desc.args.formulaName} is not lost.\n`
+                            + 'To repeat your proof, you can copy and paste the following sequence of proof commands in the prover terminal:\n'
+                            + '```lisp\n'
+                            + desc.response.script
+                            + '\n```';
+                        const fileName: string = desc.args.formulaName + ".md";
+                        const fileUri: vscode.Uri = await vscodeUtils.createTextDocument(fileName, content);
+                        if (fileUri) {
+                            commands.executeCommand('markdown.showPreview', fileUri);
+                        }
                     }
                 }
             }

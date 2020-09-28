@@ -106,6 +106,31 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     }
 }
 
+
+/**
+ * Utility function, creates a text document in the editor with the given content
+ * @param content 
+ */
+export async function createTextDocument (name: string, content: string, opt?: { contextFolder?: string, viewColumn?: vscode.ViewColumn }): Promise<vscode.Uri> {
+    opt = opt || {};
+    let viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
+    
+    const folder: string = opt.contextFolder || vscode.workspace.rootPath || os.homedir();
+    const fname: string = path.join(folder, "pvsbin", name);
+    const preview: vscode.Uri = vscode.Uri.file(fname);
+    // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${fname}`);
+
+    const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
+    edit.createFile(preview, { overwrite: true });
+    edit.insert(preview, new vscode.Position(0, 0), content);
+    let success: boolean = await vscode.workspace.applyEdit(edit);
+    // FIXME: applyEdit fails if the document is already open and active in the editor, understand why this is the case.
+    if (!success) {
+        success = await vscode.workspace.applyEdit(edit);
+    }
+    return preview;
+}
+
 /**
  * Utility function, shows a dialog that allows the user to select the pvs installation folder in the file system
  * @param pvsPath 
