@@ -1680,8 +1680,24 @@ export function isUndoCommand (cmd: string): boolean {
 		|| cmd === "undo;"
 		|| cmd === "(undo)"
 		|| cmd.toLocaleLowerCase() === "(undo)y"
-		|| /\(\s*undo\s*\)\s*y?;?/gi.test(cmd))
+		|| /\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.test(cmd))
 		;
+}
+
+export function unfoldUndoCommand (cmd: string): string[] {
+	const match: RegExpMatchArray = /\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.exec(cmd);
+	let cmds: string[] = [];
+	if (match) {
+		if (match.length > 1) {
+			const n: number = +match[1];
+			for (let i = 0; i < n; i++) {
+				cmds.push('(undo)');
+			}
+		} else {
+			cmds.push('(undo)');
+		}
+	}
+	return cmds;
 }
 
 export function isRedoCommand (cmd: string): boolean {
@@ -1776,7 +1792,9 @@ export function isPropax (cmd: string): boolean {
 
 export function splitCommands (cmd: string): string[] {
 	let cmds: string[] = [];
-	if (cmd && cmd.trim().startsWith("(")) {
+	if (cmd && isUndoCommand(cmd)) {
+		cmds = unfoldUndoCommand(cmd);
+	} else if (cmd && cmd.trim().startsWith("(")) {
 		let input: string = cmd.trim().replace(/\)y/gi, ")");
 		let par: number = 0;
 		let start: number = 0;
