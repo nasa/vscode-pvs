@@ -618,7 +618,7 @@ export class EventsDispatcher {
             this.packageManager.nasalibInstallationWizard();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.update-nasalib", () => {
-            this.packageManager.updateNasalib();
+            this.packageManager.updateNasalibWithProgress();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.add-pvs-library", async () => {
             await vscodeUtils.addPvsLibraryFolderWizard();

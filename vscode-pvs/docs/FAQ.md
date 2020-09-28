@@ -3,8 +3,10 @@ This document contains answers to common questions on VSCode-PVS, including trou
 
 If you don't find an answer to your question here or on [github](https://github.com/nasa/vscode-pvs/issues), you can open an issue on [github](https://github.com/nasa/vscode-pvs/issues) or [get in touch with us](mailto:paolo.masci@nianet.org).
 
+<br>
+
 -------
-# General questions
+## General questions
 -------
 
 ### **Which OS is supported?**
@@ -19,13 +21,15 @@ If this is not happening, please go through the following checklist, to make sur
 - [VSCode-PVS](https://github.com/nasa/vscode-pvs) is installed and enabled in Visual Studio Code
 
 ### **I'm new to PVS, is there a tutorial I can use to get started?**
-Yes, you we have a [5-minutes crash course](TUTORIAL.md) on VSCode-PVS, that introduces the basics functions of PVS, and a [NASA PVS Class](https://shemesh.larc.nasa.gov/PVSClass2012/) that covers a broader range of topics.
+Yes, you we have a [tutorial](TUTORIAL.md) on VSCode-PVS, that introduces the basics functions of PVS, and a [NASA PVS Class](https://shemesh.larc.nasa.gov/PVSClass2012/) that covers a broader range of topics.
 
 ### **I'm not familiar with Visual Studio Code, is there a quick tutorial?**
 Yes, you can find tutorials on the Visual Studio Code website, see https://code.visualstudio.com/docs/editor/codebasics
 
+<br>
+
 -------
-# Troubleshooting
+## Troubleshooting
 -------
 
 ### **VSCode-PVS reports an error "pvs-server crashed", what can I do?**
@@ -49,9 +53,10 @@ The error indicates that one of the required software packages is not installed 
 ### **Can I use Emacs plugins for Visual Studio Code together with VSCode-PVS?**
 No, we recommend not to use Emacs plugins, as they may interfere with the PVS hot-keys (M-x command).
 
+<br>
 
 -------
-# Functionalities
+## Functionalities
 -------
 
 ### **How do I open files and folders that are not shown in Visual Studio Code?**

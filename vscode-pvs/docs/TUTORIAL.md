@@ -1,29 +1,31 @@
-# VSCode-PVS Tutorial
+# Welcome to VSCode-PVS!
 This tutorial provides a series of simple examples suitable to demonstrate the functionalities of VSCode-PVS.
 - Novice PVS users can use this tutorial as a gentle introduction to the PVS verification system.
 - Expert PVS users can use this tutorial as a basis to discover the editing and proving capabilities provided by VSCode-PVS.
 
----
+<br>
 
+-------
 ## Pre-requisites
+-------
+
 - Familiarity with [Visual Studio Code](https://code.visualstudio.com)
-- [VSCode-PVS](https://github.com/nasa/vscode-pvs) extension installed and enabled in Visual Studio Code (see installation instructions in [README.md](README.md))
+- [VSCode-PVS](https://github.com/nasa/vscode-pvs) extension is installed and enabled in Visual Studio Code (see installation instructions in [README.md](README.md))
 
----
+> Note: If your have troubles with the VSCode-PVS functionalities illustrated in this tutorial, please check our [FAQs](FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.  
 
-## Troubleshooting
-Please check our [FAQs](FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.  
+<br>
 
----
-
-## Example 1: Hello World!
+-------
+## Hello World!
+-------
 This first example demonstrates the following functionalities of VSCode-PVS:
 - PVS Syntax highlighting
 - Navigation of PVS definitions
 
 Try the following actions in VSCode-PVS:
 
-1. Create a new folder `pvs-tutorial` under your Home folder. You will be storing all your pvs files in this folder.
+1. Create a new folder `pvs-workspaces` under your Home folder. You will be storing all your pvs files in this folder.
 > Important: Please do not store your `pvs` files on your `Desktop`, because PVS may be unable to operate in that folder. Do not use your `pvs installation folder` either. The recommended way to proceed is to create a subfolder in your home directory, and develop your pvs theories in such subfolder.
 
 2. Open the folder in Visual Studio Code, and then create a new file `helloworld.pvs` in it.
@@ -44,9 +46,11 @@ The specification defines a module (`theory` in the PVS language) called `hellow
 
 > Hint 3: Introduce syntax errors in the specification: diagnostics will be provided every time you save the file.
 
----
+<br>
 
-## Example 2: Typechecking
+-------
+## Typechecking
+-------
 The PVS language is strongly typed, and `typechecking` is the functionality for checking the correct use of types in a PVS specification. 
 
 The following example demonstrates:
@@ -63,9 +67,12 @@ Try the following actions in VSCode-PVS:
 
 > Hint 2: Are you an expert PVS user that likes the `M-x` shortcuts? Try them out, most of them will work in VSCode-PVS! For example, you can typecheck a pvs file with the shortcut `M-x tc`
 
----
+<br>
 
-## Example 3: Subtyping
+-------
+## Proof Obligations (TCCs)
+-------
+
 A powerful feature of the PVS language is `sub-typing`, which allows developers to restrict the domain of an existing type. When using subtypes, PVS generates additional proof obligations, also known as typecheck conditions (`TCCs`) that can be conveniently used to improve the quality of a PVS specification.
 
 The following example demonstrates:
@@ -89,9 +96,13 @@ helloworld: THEORY
 
 4. To discharge all TCCS: right-click in the editor window showing the TCCs. A contextual menu will be displayed. Select `Discharge all TCCs` from the contextual menu.
 > Hint: Check the functionalities of `PVS Workspace Explorer` located in the side panel, under file explorer. It shows all theories defined in the context and, for each theory, all formulas and TCCs.
----
 
-## Example 4: Testing
+<br>
+
+-------
+## Testing
+-------
+
 Several PVS constructs are `executable`, that is, they can be evaluated using concrete inputs.
 This is useful for validation purposes, e.g., to check that a given function produces expected outputs for given inputs.
 
@@ -125,9 +136,12 @@ Try the following actions in VSCode-PVS:
 
 5. To exit the PVSio evaluator, enter the following command at the `<PVSio>` prompt: `exit;` 
 
----
+<br>
 
-## Example 5: Proving
+-------
+## Proving
+-------
+
 Properties of a PVS specifications are defined in expressions called `theorems`.
 Theorems are proved interactively, using the PVS theorem prover.
 
@@ -178,8 +192,11 @@ always_positive :
 
 > Hint 2: Check the functionalities of `PVS Proof Explorer` located in the side panel, under file explorer. It shows the proof steps and provides functions for proof playback and proof editing.
 
----
+<br>
 
+-------
 ## Further reading
+-------
+
 - For more information on the PVS language and theorem proving system, please refer to the [PVS documentation](http://pvs.cls.sri.com)
 - Additional examples can be found in the [NASA PVS Class](https://shemesh.larc.nasa.gov/PVSClass2012/)
