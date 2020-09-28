@@ -13,11 +13,11 @@ If you don't find an answer to your question here or on [github](https://github.
 VSCode-PVS currently runs on Linux and MacOS. For Windows systems, you will need to install the extension in a virtual machine with Linux.
 
 ### **How do I start VSCode-PVS?**
-VSCode-PVS will automatically start when you open a `.pvs` file in Visual Studio Code.
+VSCode-PVS will automatically start with Visual Studio Code.
 If this is not happening, please go through the following checklist, to make sure you have installed all dependencies necessary to run VSCode-PVS:
 - [NodeJS](https://nodejs.org/en/download) (v12.16.1 or greater) is installed
 - [Java JDK](https://openjdk.java.net) (v1.8 or greater) is installed
-- [PVS Allegro](http://www.csl.sri.com/users/owre/drop/pvs-snapshots) (v7.1 or greater) is installed
+- [PVS Allegro](http://www.csl.sri.com/users/owre/drop/pvs-snapshots) (v7.1.0 or greater) is installed
 - [VSCode-PVS](https://github.com/nasa/vscode-pvs) is installed and enabled in Visual Studio Code
 
 ### **I'm new to PVS, is there a tutorial I can use to get started?**
@@ -59,12 +59,14 @@ No, we recommend not to use Emacs plugins, as they may interfere with the PVS ho
 ## Functionalities
 -------
 
-### **How do I open files and folders that are not shown in Visual Studio Code?**
-You can add a folder to Explorer (File -> Add Folder to Workspace...).
-Alternatively, you can open a new Visual Studio Code window (File -> New Window) and then use the `Open Folder` button to open the folder you need. 
+### **How do I open PVS files and workspaces that are not shown in Visual Studio Code?**
+The easiest way to open PVS files and workspaces is through PVS Workspace Explorer.
+In the title of PVS Workspace Explorer there's a menu `...` where you can find `Open PVS File...` and `Open PVS Workspace...`.
+
+Alternatively, you can use the standard Visual Studio Code functions to open files and folders (File -> Open). 
 
 ### **Can I develop my pvs theories on my `Desktop`, or in my pvs installation folder?**
-**No, that's a bad idea.** The recommended way to proceed is to create a subfolder `pvsWorkspace` in your home directory, and develop your pvs theories under such subfolder.
+**No, that's a bad idea.** The recommended way to proceed is to create a folder `pvs-workspaces` in your home directory, and develop your pvs theories under such folder.
 
 ### **Can I use PVS hot-keys combinations?**
 Yes, you can use the following set PVS hot-keys combinations in VSCode-PVS:
@@ -102,10 +104,8 @@ Yes, but you need enclose your multi-line proof command within round brackets.
 Yes, PVS Proof Explorer is also a proof editor. You can right click anywhere in the proof tree, and perform the following operations: rename, cut, copy, paste, trim, delete, cut branch, paste branch.
 
 ### **Is there a way to save a proof from the prover prompt?**
-Yes, enter the following command at the prover prompt: `save`
-
-### **Is there a way to delete a proof?**
-Yes, using the functionalities provided by PVS Proof Explorer you can delete a proof. PVS Proof Explorer is located in the side panel, and shows the current proof tree. Place the mouse on the root node of the proof tree, right click, and select 'Delete'. Then, save the proof to make the change permanent.
+VSCode-PVS will automatically save the proof at the end of the prover session. If a proof is already present for the formula being proved, VSCode-PVS will ask confirmation before overwriting the old proof. 
 
 ### **Can I save multiple proofs for the same theorem?**
 No, the current version of VSCode-PVS allows you to save only one proof for each theorem.
+
