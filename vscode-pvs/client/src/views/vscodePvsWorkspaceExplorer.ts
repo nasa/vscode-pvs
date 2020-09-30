@@ -244,9 +244,19 @@ export class FormulaOverviewItem extends OverviewItem {
 			return item.getStatus() === "proved";
 		}).length : 0;
 		if (nProved === nTheorems) {
-			this.label = `${utils.icons.checkmark} ${this.name}  (${nProved} proved)`
+			// this.label = `${utils.icons.checkmark} ${this.name}  (${nProved} proved)`;
+			this.label = `${this.name}  (${nProved} proved)`;
+			this.iconPath = {
+				light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
+				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
+			};
 		} else {
-			this.label = `${utils.icons.whitecircle} ${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
+			// this.label = `${utils.icons.whitecircle} ${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
+			this.label = `${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
+			this.iconPath = {
+				light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
+				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
+			};
 		}
 		this.collapsibleState = (this.theorems.length > 0) ?
 			(nProved === nTheorems) ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.Expanded
@@ -322,7 +332,25 @@ export class FormulaItem extends TreeItem {
 	protected refreshLabel() {
 		this.status = this.status || "unchecked"; //'\u{2705}'
 		this.status = this.status.startsWith("proved") ? "proved" : this.status;
-		this.label = `${utils.getIcon(this.status)} ${this.formulaName}  (${this.status})`;
+		// this.label = `${utils.getIcon(this.status)} ${this.formulaName}  (${this.status})`;
+		this.label = `${this.formulaName}  (${this.status})`;
+		const icon: string = utils.getIcon(this.status);
+		this.iconPath = (icon === utils.icons.checkmark) ? {
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
+			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
+		} : (icon === utils.icons.bang) ? {
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg"),
+			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg")
+		} : (icon === utils.icons.snowflake) ? {
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-snowflake.svg"),
+			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-snowflake.svg")
+		} : (icon === utils.icons.stars) ? {
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg"),
+			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg")
+		} : (icon === utils.icons.whitecircle) ? {
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
+			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
+		} : null;
 	}
 }
 //-- overviews
@@ -823,7 +851,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 						theoryName: desc.theoryName,
 						theorems: [],
 						tccsOnly: opt.tccsOnly,
-						total: formulas.length
+						total: (formulas) ? formulas.length : 0
 					};
 					if (formulas && formulas.length) {
 						for (let i = 0; i < formulas.length && !stop; i ++) {

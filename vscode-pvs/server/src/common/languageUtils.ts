@@ -639,7 +639,7 @@ export function makeProofliteHeader (formulaName: string, theoryName: string, st
 	return `%-------------------------------------------
 % @formula: ${formulaName} 
 % @theory: ${theoryName}
-% @status: ${getIcon(status)}${status}
+% @status: ${getIcon(status)} ${status}
 %-------------------------------------------\n`;
 }
 /**
@@ -1777,11 +1777,9 @@ export function isMetaProofCommand (cmd: string): boolean {
 
 export function isSameCommand (cmd1: string, cmd2: string): boolean {
 	if (cmd1 && cmd2) {
-		const c1: string = cmd1.replace(/"/g, "").replace(/\s+/g, "").trim();
-		const c2: string = cmd2.replace(/"/g, "").replace(/\s+/g, "").trim();
-		return c1 === c2
-			|| new RegExp(`^(\\s*${c1}\\s*)`).test(c2)
-			|| new RegExp(`^(\\s*${c2}\\s*)`).test(c1);
+		const c1: string = cmd1.replace(/[\s+\"\(\)]/g, ""); // remove all spaces, round parens, and double quotes
+		const c2: string = cmd2.replace(/[\s+\"\(\)]/g, "");
+		return c1 === c2;
 	}
 	return false;
 }

@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.26-beta",
+	"version": "1.0.26-gamma",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -209,7 +209,8 @@
 				"command": "vscode-pvs.typecheck-file-inline",
 				"title": "Typecheck",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
-				"category": "pvs"
+				"category": "pvs",
+				"icon": "icons/typecheck-icon.png"
 			},
 			{
 				"command": "vscode-pvs.prove-theory",
@@ -219,9 +220,10 @@
 			},
 			{
 				"command": "vscode-pvs.prove-theory-inline",
-				"title": "Prove-All  |",
+				"title": "Prove-All",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
-				"category": "pvs"
+				"category": "pvs",
+				"icon": "icons/prove-icon.png"
 			},
 			{
 				"command": "vscode-pvs.prove-importchain",
@@ -318,7 +320,8 @@
 				"command": "vscode-pvs.prove-formula",
 				"title": "Prove",
 				"enablement": "pvs-server-active == true && !autorun",
-				"category": "pvs"
+				"category": "pvs",
+				"icon": "icons/prove-icon.png"
 			},
 			{
 				"command": "vscode-pvs.command-palette",
@@ -330,13 +333,15 @@
 				"command": "vscode-pvs.discharge-tccs-explorer",
 				"title": "Discharge",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
-				"category": "pvs"
+				"category": "pvs",
+				"icon": "icons/prove-icon.png"
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs",
 				"title": "Discharge TCCs",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
-				"category": "pvs"
+				"category": "pvs",
+				"icon": "icons/prove-icon.png"
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
@@ -616,7 +621,7 @@
 					"group": "context-menu/ctrl-common-4"
 				},
 				{
-					"command": "vscode-pvs.discharge-tccs-explorer",
+					"command": "vscode-pvs.discharge-tccs",
 					"when": "view == workspace-explorer-view && viewItem == tccs-overview",
 					"group": "inline"
 				},

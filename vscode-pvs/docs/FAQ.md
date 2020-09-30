@@ -85,8 +85,9 @@ Additional hot-keys for quick access to configuration settings:
 - `M-x clear-pvs-library-path` *(removes all entries in the vscode-pvs library path)*
 - `M-x pvs-library-path` *(shows the pvs library path specified in vscode-pvs settings)*
 - `M-x reboot-pvs` *(reboots pvs-server)*
-- `M-x reinstall-pvs` *(starts as interactive wizard that allows to re-install PVS)*
+- `M-x install-pvs` *(starts as interactive wizard that allows to install or update PVS)*
 - `M-x install-nasalib` *(starts an interactive wizard that allows to install NASALib)*
+- `M-x update-nasalib` *(updates the installed version of NASALib)*
 - `M-x set-pvs-path` *(sets the path to the PVS executables)*
 - `M-x settings` *(shows vscode-pvs settings)*
 

@@ -43,7 +43,7 @@ import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import { PvsErrorManager } from './pvsErrorManager';
 
-export enum ProcessCode { PVSNOTFOUND = 0, SUCCESS = -1, ADDRINUSE = -2, COMMFAILURE = -3, PVSSTARTFAIL = -4 };
+export enum ProcessCode { PVSNOTFOUND = 0, SUCCESS = -1, ADDRINUSE = -2, COMMFAILURE = -3, PVSSTARTFAIL = -4, PVSERROR = -5 };
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
  */
@@ -235,9 +235,9 @@ export class PvsProcess {
 						// if (matchRestartAction) {
 						// 	console.error(`[pvs-process] Error: ${this.data}`);
 						// }
-						const match: RegExpMatchArray = /(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/g.exec(data);
-						const matchChecker: RegExpMatchArray = /\bRule\?/g.exec(data);
-						if (match && match[0] || matchChecker) {
+						const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/g.exec(data);
+						const matchProverPrompt: RegExpMatchArray = /\bRule\?/g.exec(data);
+						if (matchPvsPrompt || matchProverPrompt) {
 							if (!this.ready) {
 								this.ready = true;
 								resolve(ProcessCode.SUCCESS);

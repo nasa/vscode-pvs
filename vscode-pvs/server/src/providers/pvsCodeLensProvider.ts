@@ -109,8 +109,48 @@ export class PvsCodeLensProvider {
                         }
                     }
                 }
-
                 
+                while (match = utils.datatypeRegexp.exec(content)) {
+                    if (match.length > 1 && match[1]) {
+                        const theoryName: string = match[1];
+
+                        const matchEnd: RegExpMatchArray = utils.endTheoryRegexp(theoryName).exec(content);
+                        if (matchEnd && matchEnd.length) {
+                            utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
+                            
+                            const docUp: string = content.slice(0, match.index + theoryName.length);
+                            const lines: string[] = docUp.split("\n");
+                            const line: number = lines.length - 1;
+                            const character: number = lines[lines.length - 1].indexOf(match[1]);
+                            
+                            const superTheory: string = utils.findTheoryName(content, line);
+                            if (!superTheory) { // this additional check is necessary to ensure that the datatype is not encapsulated within a theory
+                                const args = {
+                                    fileName,
+                                    fileExtension,
+                                    contextFolder,
+                                    theoryName, 
+                                    line
+                                };
+
+                                // pvsio codelens
+                                const range: Range = {
+                                    start: { line, character },
+                                    end: { line, character: character + theoryName.length }
+                                };
+                                codeLens.push({
+                                    range,
+                                    command: {
+                                        title: "typecheck-file",
+                                        command: "vscode-pvs.typecheck-file",
+                                        arguments: [ args ]
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+
                 while (match = utils.theoryRegexp.exec(content)) {
                     if (match.length > 1 && match[1]) {
                         const theoryName: string = match[1];
@@ -137,6 +177,14 @@ export class PvsCodeLensProvider {
                                 start: { line, character },
                                 end: { line, character: character + theoryName.length }
                             };
+                            codeLens.push({
+                                range,
+                                command: {
+                                    title: "typecheck-file",
+                                    command: "vscode-pvs.typecheck-file",
+                                    arguments: [ args ]
+                                }
+                            });
                             codeLens.push({
                                 range,
                                 command: {

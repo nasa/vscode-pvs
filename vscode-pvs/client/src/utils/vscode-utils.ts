@@ -140,7 +140,7 @@ export async function addPvsLibraryFolderWizard (): Promise<boolean> {
         canSelectFiles: false,
         canSelectFolders: true,
         canSelectMany: false,
-        openLabel: "Select folder to be added to PVS library path"
+        openLabel: "Add selected folder to PVS library path"
     });
     let success: boolean = false;
     if (selection && selection.length === 1) {

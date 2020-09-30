@@ -143,7 +143,6 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 		if (contextFolder) {
 			contextFolder = tildeExpansion(contextFolder);
 			// console.log(`Deleting cache for context ${contextFolder}`);
-			const pvsbinFolder: string = path.join(contextFolder, "pvsbin");
 			deleteBinFiles(pvsbinFolder);
 			// console.log(`removing ${path.join(contextFolder, ".pvscontext")}`);
 			deleteFile(path.join(contextFolder, ".pvscontext"));
@@ -153,19 +152,23 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 				// remove .prlite files
 				files.filter(name => {
 					// console.log(name);
-					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~");
+					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~")
+						|| (name.endsWith(".tccs") && !contextFolder.endsWith("pvsbin"));
 				}).forEach(file => {
 					// console.log(`deleting ${file}`);
 					deleteFile(path.join(contextFolder, file));
 				});
 				// remove .tccs files
-				if (!opt.keepTccs) {
+				if (!contextFolder.endsWith("pvsbin")) {
+					const pvsbinFolder: string = path.join(contextFolder, "pvsbin");
+					const pvsbinFiles: string[] = fs.readdirSync(pvsbinFolder);
 					// console.log(files);
-					if (files) {
+					if (pvsbinFiles) {
 						// console.log(files);
-						files.filter(name => {
+						pvsbinFiles.filter(name => {
 							// console.log(name);
-							return name.endsWith(".tccs");
+							return (name.endsWith(".tccs") && !opt.keepTccs)
+									|| name.endsWith(".bin");
 						}).forEach(file => {
 							// console.log(`deleting ${file}`);
 							deleteFile(path.join(pvsbinFolder, file));

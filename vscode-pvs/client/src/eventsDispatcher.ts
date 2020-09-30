@@ -70,6 +70,8 @@ export class EventsDispatcher {
     protected inChecker: boolean = false;
     protected quietMode: boolean = false;
 
+    protected NOTIFICATION_TIMEOUT: number = 2000; // 2sec
+
     constructor (client: LanguageClient, handlers: {
         statusBar: VSCodePvsStatusBar,
         emacsBindings: VSCodePvsEmacsBindingsProvider,
@@ -894,15 +896,21 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-theory", async (resource: TheoryItem | { path: string }) => {
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
             if (desc && desc.theoryName) {
-                this.quietMode = true;
-                this.proofMate.disableView();
-                this.proofExplorer.disableView();
-                this.statusBar.showProgress(`Re-running proofs in theory ${desc.theoryName}`);
+                // ask the user confirmation before restarting pvs
+                const yesno: string[] = [ "Yes", "No" ];
+                const msg: string = `Re-run all proofs in theory ${desc.theoryName}?`;
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+                if (ans === yesno[0]) {
+                    this.quietMode = true;
+                    this.proofMate.disableView();
+                    this.proofExplorer.disableView();
+                    this.statusBar.showProgress(`Re-running proofs in theory ${desc.theoryName}`);
 
-                await this.workspaceExplorer.proveTheoryWithProgress(desc);
+                    await this.workspaceExplorer.proveTheoryWithProgress(desc);
 
-                this.statusBar.ready();
-                this.quietMode = false;
+                    this.statusBar.ready();
+                    this.quietMode = false;
+                }
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-theory invoked with null resource", resource);
             }
@@ -935,14 +943,20 @@ export class EventsDispatcher {
 
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
             if (desc && desc.theoryName) {
-                this.quietMode = true;
-                this.proofMate.disableView();
-                this.proofExplorer.disableView();
+                // ask the user confirmation before discharging
+                const yesno: string[] = [ "Yes", "No" ];
+                const msg: string = `Discharge all TCCs?`;
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+                if (ans === yesno[0]) {
+                    this.quietMode = true;
+                    this.proofMate.disableView();
+                    this.proofExplorer.disableView();
 
-                await this.workspaceExplorer.proveTheoryWithProgress(desc, { tccsOnly: true });
+                    await this.workspaceExplorer.proveTheoryWithProgress(desc, { tccsOnly: true });
 
-                this.statusBar.ready();
-                this.quietMode = false;
+                    this.statusBar.ready();
+                    this.quietMode = false;
+                }
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-tccs invoked with null resource", resource);
             }
@@ -1177,15 +1191,27 @@ export class EventsDispatcher {
                     location: ProgressLocation.Notification,
                     cancellable: true
                 }, (progress, token) => { 
-                    // show initial dialog with spinning progress   
+                    let complete: boolean = false;
+                    // show initial dialog with spinning progress
                     progress.report({ increment: -1, message: desc.msg });
+                    setTimeout(() => {
+                        if (!complete) {
+                            progress.report({
+                                increment: isNaN(desc.increment) ? -1 : desc.increment,
+                                message: "The task is taking a bit longer than expected, please wait...\n(" + desc.msg + ")"
+                            });
+                        }
+                    }, 8000);
                     // update the dialog
                     return new Promise((resolve, reject) => {
                         token.onCancellationRequested(() => {
-                            // send cancellation request to the server
-                            this.client.sendRequest(serverRequest.cancelOperation);
-                            // dispose of the dialog
-                            resolve(null);
+                            if (!complete) {
+                                complete = true;
+                                // send cancellation request to the server
+                                this.client.sendRequest(serverRequest.cancelOperation);
+                                // dispose of the dialog
+                                resolve(null);
+                            }
                         });
                         this.client.onNotification(`server.status.progress-important-task-${desc.id}`, (desc: { msg: string, increment?: number }) => {
                             if (desc) {
@@ -1193,23 +1219,44 @@ export class EventsDispatcher {
                                     increment: isNaN(desc.increment) ? -1 : desc.increment,
                                     message: desc.msg
                                 });
-                            }
+                             }
                         });
                         this.client.onNotification(`server.status.end-important-task-${desc.id}`, (desc: { msg?: string }) => {
                             this.statusBar.ready();
-                            resolve(null);
+                            complete = true;
                             if (desc && desc.msg) {
-                                window.showInformationMessage(desc.msg);
+                                progress.report({
+                                    increment: 100,
+                                    message: desc.msg
+                                });
+                                setTimeout(() => {
+                                    resolve(null);
+                                }, this.NOTIFICATION_TIMEOUT);
+                                // window.showInformationMessage(desc.msg); // notification is given with the same dialog instead of creating a new one, this avoids cluttering vscode notification list
+                            } else {
+                                resolve(null);
                             }
                         });
                         this.client.onNotification(`server.status.end-important-task-${desc.id}-with-errors`, (desc: { msg: string }) => {
                             this.statusBar.ready();
-                            resolve(null);
+                            complete = true;
                             if (desc && desc.msg) {
-                                this.statusBar.showError(desc.msg); // use the status bar rather than dialogs, because we don't have APIs to close old dialogs with potentially stale information
+                                this.statusBar.showError(desc.msg);
+                                // NOTE: we don't have APIs to close old error dialogs that contain stale information.
+                                // The user will need to close the error dialog. 
+                                // If the user doesn't close the dialog, the message may show up later, and bring confusion.
                                 // window.showErrorMessage(desc.msg);
+                                progress.report({
+                                    increment: 100,
+                                    message: "Error: " + desc.msg
+                                });
+                                setTimeout(() => {
+                                    resolve(null);
+                                }, this.NOTIFICATION_TIMEOUT * 4);
                                 // show problems panel -- see also Code->Preferences->KeyboardShortcuts
                                 commands.executeCommand("workbench.panel.markers.view.focus");
+                            } else {
+                                resolve(null);
                             }
                         });
                     });
@@ -1223,7 +1270,7 @@ export class EventsDispatcher {
 
         this.client.onNotification("server.status.pvs-failure", (opt?: { msg?: string, fname?: string, method?: string }) => {
             opt = opt || {};
-            let msg: vscode.MarkedString = opt.msg || `pvs-server crashed into Lisp.\nTo continue, you may need to reboot pvs-server.`;
+            let msg: string = opt.msg || `pvs-server crashed into Lisp.\nTo continue, you may need to reboot pvs-server.`;
             if (opt.fname) {
                 // msg += `\nThe error occurred while processing file [${opt.fname}](file://${opt.fname})`; // vscode is unable to render marked strings in dialogs
                 msg += `\nThe error occurred while processing file ${opt.fname}`;

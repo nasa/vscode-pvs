@@ -164,18 +164,15 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// trigger file parsing to get syntax diagnostics
 				const desc: comm.PvsFile = fsUtils.fname2desc(editor.document.fileName);
 				this.client.sendRequest(comm.serverRequest.parseFile, desc);
-				// const context: string = fsUtils.getContextFolder(editor.document.fileName);
-				// this.client.sendRequest(comm.serverCommand.parseWorkspace, context);				
 			} else {
-				// commands.executeCommand('setContext', 'pvs-server-active', false);
-				// // hide status bar
-				// this.statusBar.hide();
+				// hide status bar
+				this.statusBar.hide();
 			}
 		}, null, this.context.subscriptions);
 
 		// onDidChangeTextDocument is emitted when the content of a document changes
 		workspace.onDidChangeTextDocument((event: TextDocumentChangeEvent) => {
-			if (fsUtils.isPvsFile(event.document.fileName)) {
+			if (fsUtils.isPvsFile(event?.document?.fileName)) {
 				this.decorationProvider.updateDecorations(window.activeTextEditor);
 				// autosave will trigger parsing, which in turn triggers diagnostics
 				this.autosave(event.document);

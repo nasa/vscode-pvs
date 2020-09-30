@@ -171,7 +171,7 @@ export class VSCodePvsStatusBar {
     showInfo (msg: string): void {
         if (msg) {
             this.pvsStatus.icon("");
-            this.pvsStatus.text(`$(megaphone)  ` + msg);
+            this.pvsStatus.text(`$(megaphone)  ${msg}`);
             this.pvsStatus.show();
         }
     }
@@ -192,8 +192,8 @@ export class VSCodePvsStatusBar {
      */
     showError (msg: string): void {
         const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
-        this.pvsStatus.icon(`$(warning~spin)`);
-        this.pvsStatus.text(shortmsg); // messages in the status bar should always be on one line
+        this.pvsStatus.icon("");
+        this.pvsStatus.text(`$(warning)  ${shortmsg}`); // messages in the status bar should always be on one line
         this.pvsStatus.show();
         // show problems panel -- see also Code->Preferences->KeyboardShortcuts
         commands.executeCommand("workbench.panel.markers.view.focus");
@@ -252,8 +252,8 @@ export class VSCodePvsStatusBar {
      */
     failure (msg: string): void {
         const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
-        this.crashReport.icon(`$(debug~spin)`);
-        this.crashReport.text(shortmsg); // messages in the status bar should be on one line
+        this.crashReport.icon("");
+        this.crashReport.text(`$(debug~spin)  ${shortmsg}`); // messages in the status bar should be on one line
         this.crashReport.show();
         this.pvsStatus.hide();
     }
@@ -266,18 +266,16 @@ export class VSCodePvsStatusBar {
     }
 
     show (): void {
-        // this.workspaceStatus.show();
         this.pvsStatus.show();
         this.showVersionInfo();
         this.showRestartButton();
     }
 
     hide (): void {
-        // this.workspaceStatus.hide();
         this.pvsStatus.hide();
         this.hideVersionInfo();
-
         this.hideInstallNasalib();
+        this.hideRestartButton();
     }
 
     showInstallNasalib (): void {

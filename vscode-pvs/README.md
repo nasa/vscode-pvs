@@ -76,6 +76,9 @@ The main functionalities provided by the environment are as follows:
 
 ## ChangeLog
 ### 1.0.26 (2020.10.xx)
+- Improved PVSio terminal
+- Improved dialogs and icons
+- Improved installation wizard
 
 ### 1.0.25 (2020.09.23)
 - Proof files are now saved using legacy .prf format

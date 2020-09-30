@@ -2354,7 +2354,7 @@ export class PvsProofExplorer {
 					break;
 				}
 				default: {
-					const msg: string = `Warning: trying to save file with unrecognized file extension ${desc.fileExtension}`;
+					const msg: string = `Warning: unsupported export format ${desc.fileExtension}`;
 					console.warn(`[proof-explorer] ${msg}`);
 					this.connection.sendNotification("server.status.error", msg);
 					return;
@@ -2413,6 +2413,14 @@ export class PvsProofExplorer {
 		});
 		return { success, msg };
 	}
+	async inChecker(): Promise<boolean> {
+		if (this.pvsProxy) {
+			const response: PvsResponse = await this.pvsProxy.getProverStatus();
+			return response && response.result && response.result === "active";
+		}
+		return false;
+	}
+
 	/**
 	 * Quit the current proof
 	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
@@ -2420,7 +2428,8 @@ export class PvsProofExplorer {
 	async quitProof (opt?: { notifyCliGateway?: boolean }): Promise<void> {
 		opt = opt || {};
 		this.running = false;
-		if (this.formula) {
+		const inchecker: boolean = await this.inChecker();
+		if (this.formula && inchecker) {
 			await this.proofCommand({
 				fileName: this.formula.fileName,
 				fileExtension: this.formula.fileExtension,

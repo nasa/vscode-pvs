@@ -91,6 +91,13 @@ export class PvsProxyLegacy {
                 data = data.substring(1, data.length - 1);
             }
         }
+        const matchPvsError: RegExpMatchArray = /Error: (the assertion .+)/g.exec(data);
+        if (matchPvsError && this.pvsErrorManager) {
+            const error_string: string = (matchPvsError.length > 1 && matchPvsError[1]) ? matchPvsError[1] : matchPvsError[0];
+            this.pvsErrorManager.notifyPvsFailure({
+                msg: `Internal error: ${error_string}`
+            });
+        }
         return {
             jsonrpc: "2.0",
             id: "pvs-process-legacy",
@@ -285,12 +292,14 @@ export class PvsProxyLegacy {
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
             const response: PvsResponse = await this.lisp(`(parse-file "${fname}" nil)`);
             const res: string = (response) ? response.result : "";
-            const match: RegExpMatchArray = /\berror\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
-            if (match && match.length > 3) {
-                const error_string: string = match[1].trim().replace(/\\n/g, "\n");
-                const file_name: string = match[2].trim();
-                const line: string = match[3];
-                const character: string = match[4];
+            const matchParseError: RegExpMatchArray = /\berror\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
+            const matchAssertionError: RegExpMatchArray = /\bError:[\w\W\s]+/gm.exec(res);
+            if (matchParseError || matchAssertionError) {
+                const error_string: string = (matchParseError && matchParseError.length > 3) ? matchParseError[1].trim().replace(/\\n/g, "\n")
+                    : matchAssertionError[0];
+                const file_name: string = (matchParseError && matchParseError.length > 3) ? matchParseError[2].trim() : fname;
+                const line: string = (matchParseError && matchParseError.length > 3) ? matchParseError[3] : "1";
+                const character: string = (matchParseError && matchParseError.length > 3) ? matchParseError[4] : "0";
                 pvsResponse.error = {
                     data: {
                         place: [ +line, +character ],
@@ -314,9 +323,12 @@ export class PvsProxyLegacy {
             const res: string = (response) ? response.result : "";
 
             const matchTypecheckError: RegExpMatchArray = /\b(?:pvs)?error\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
-            if (matchTypecheckError && matchTypecheckError.length > 3) {
-                const error_string: string = matchTypecheckError[1].trim().replace(/\\n/g, "\n");
-                let file_name: string = matchTypecheckError[2].trim();
+            const matchLibraryError: RegExpMatchArray = /\bError: ([\w\W\s]+)\b/gm.exec(res);
+            if (matchTypecheckError || matchLibraryError) {
+                const error_string: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[1].trim().replace(/\\n/g, "\n")
+                    : `Libraries imported by the theory cannot be found`;
+                let file_name: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[2].trim()
+                    : fname;
                 if (!file_name.includes('/')) {
                     // pvs has not returned the true name, this happens when the file is in the current context
                     file_name = path.join(fsUtils.getContextFolder(fname), file_name);
@@ -325,8 +337,10 @@ export class PvsProxyLegacy {
                     // pvs has not returned the true name, this happens when the file is in the current context
                     file_name = file_name + ".pvs";
                 }
-                const line: string = matchTypecheckError[3];
-                const character: string = matchTypecheckError[4];
+                const line: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[3]
+                    : "1";
+                const character: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[4]
+                    : "0" ;
                 pvsResponse.error = {
                     data: {
                         place: [ +line, +character ],

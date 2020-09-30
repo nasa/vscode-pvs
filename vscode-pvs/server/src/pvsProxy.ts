@@ -150,8 +150,8 @@ export class PvsProxy {
 		}) {
 		opt = opt || {};
 		this.pvsPath = pvsPath;
-		this.pvsLibPath = path.join(pvsPath, "lib");
-		this.nasalibPath = path.join(pvsPath, "nasalib");
+		// this.pvsLibPath = path.join(pvsPath, "lib");
+		// this.nasalibPath = path.join(pvsPath, "nasalib");
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
 		this.serverPort = (!!opt.serverPort) ? opt.serverPort : 22334;
 		this.clientPort = (!!opt.clientPort) ? opt.clientPort : 9092;
@@ -1228,7 +1228,7 @@ export class PvsProxy {
 	 * Returns the prover status
 	 */
 	async getProverStatus(): Promise<PvsResponse> {
-		const ans1: PvsResponse =  await this.pvsRequest('prover-status'); // this uses info provided by the xmlrpc server
+		const ans1: PvsResponse = await this.pvsRequest('prover-status'); // this uses info provided by the xmlrpc server
 		const ans2: PvsResponse = await this.legacy.getProverStatus();  // this other uses the lisp interface to test flag *in-checker*
 		// sanity check
 		if (ans1 && ans1.result && ans2 && ans2.result) {
@@ -1967,7 +1967,7 @@ export class PvsProxy {
 	 * @param contextFolder 
 	 */
 	isProtectedFolder(contextFolder: string): boolean {
-		return !(contextFolder !== this.pvsPath && contextFolder !== this.pvsLibPath);
+		return contextFolder === this.pvsPath || contextFolder === path.join(this.pvsPath, "lib");
 	}
 
 	/**
@@ -1997,19 +1997,18 @@ export class PvsProxy {
 		}
 		return [];
 	}
+	getNasalibPath (): string {
+		return fsUtils.tildeExpansion(path.join(this.pvsPath, "nasalib/"));
+	}
 
 	async setNasalibPath (opt?: { useXmlrpc?: boolean }): Promise<PvsResponse | null> {
 		const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
-		let path: string = this.nasalibPath.endsWith("/") ? this.nasalibPath : `${this.nasalibPath}/`;
-		path = fsUtils.tildeExpansion(path);
-		if (!pvsLibraries.includes(path) && await fsUtils.folderExists(path)) {
-			return await this.lisp(`(push "${path}" *pvs-library-path*)`, opt);
+		const nasalibPath: string = this.getNasalibPath();
+		if (!pvsLibraries.includes(nasalibPath) && await fsUtils.folderExists(nasalibPath)) {
+			console.log(`[pvs-proxy] Setting nasalib path to ${nasalibPath}`);
+			return await this.lisp(`(push "${nasalibPath}" *pvs-library-path*)`, opt);
 		}
 		return null;
-	}
-
-	getNasaLibPath (): string {
-		return this.nasalibPath;
 	}
 
 	async isNasalibPresent (): Promise<boolean> {
