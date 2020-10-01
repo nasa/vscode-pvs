@@ -1688,7 +1688,7 @@ export function unfoldUndoCommand (cmd: string): string[] {
 	const match: RegExpMatchArray = /\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.exec(cmd);
 	let cmds: string[] = [];
 	if (match) {
-		if (match.length > 1) {
+		if (match.length > 1 && match[1]) {
 			const n: number = +match[1];
 			for (let i = 0; i < n; i++) {
 				cmds.push('(undo)');
