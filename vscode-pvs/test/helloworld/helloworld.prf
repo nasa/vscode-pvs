@@ -1,22 +1,52 @@
 (helloworld
  (always_positive 0
-  (always_positive-1 nil 3809866971
-   ("" (skosimp*)
-    (("" (expand "abs")
-      (("" (lift-if)
-        (("" (split)
-          (("1" (flatten)
-            (("1" (case "x!1 > 1")
-              (("1" (case "x!1 > 2")
-                (("1" (assert) nil nil) ("2" (assert) nil nil)) nil)
-               ("2" (grind) nil nil))
-              nil))
-            nil)
-           ("2" (grind) nil nil))
-          nil))
-        nil))
-      nil))
-    nil)
-   nil shostak))
- (foo 0 (foo-1 nil 3809944245 ("" (propax) nil nil) nil shostak)))
+  (always_positive-1 nil 3809866971 ("" (grind) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (abs const-decl "real" helloworld nil))
+   shostak))
+ (foo 0 (foo-1 nil 3809944245 ("" (propax) nil nil) nil shostak))
+ (sqrt_newton_TCC1 0
+  (sqrt_newton_TCC1-1 nil 3810216203 ("" (subtype-tcc) nil nil) nil nil
+   (sqrt_newton subtype "(number_fields.-)(helloworld.n, 1)" "nat")))
+ (sqrt_newton_TCC2 0
+  (sqrt_newton_TCC2-1 nil 3810216203 ("" (termination-tcc) nil nil) nil
+   nil
+   (sqrt_newton termination
+                "helloworld.sqrt_newton(helloworld.a, (number_fields.-)(helloworld.n, 1))"
+                "nil")))
+ (newton_TCC1 0
+  (newton_TCC1-1 nil 3810216203
+   ("" (subtype-tcc) (("" (postpone) nil nil)) nil) nil nil
+   (newton subtype
+    "stdio.query_real(\"Enter a non-negative real number:\")"
+    "nnreal")))
+ (newton_TCC2 0
+  (newton_TCC2-1 nil 3810216203
+   ("" (subtype-tcc) (("" (postpone) nil nil)) nil) nil nil
+   (newton subtype "helloworld.n" "nat")))
+ (sqrt2 0
+  (sqrt2-1 nil 3810221097 ("" (eval-formula) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (bijective? const-decl "bool" functions nil)
+    (id const-decl "(bijective?[T, T])" identity nil)
+    (TRUE const-decl "bool" booleans nil))
+   shostak))
+ (sqrt_lb2_TCC1 0
+  (sqrt_lb2_TCC1-1 nil 3810221097 ("" (subtype-tcc) nil nil) nil nil
+   (sqrt_lb2 subtype "helloworld.sqrt_lb(2)" "nznum")))
+ (sqrt_lb2 0
+  (sqrt_lb2-1 nil 3810221431
+   ("" (eval-expr "sqrt_lb(2)") (("" (assert) nil nil)) nil) nil
+   shostak)))
 

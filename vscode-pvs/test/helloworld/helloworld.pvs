@@ -5,7 +5,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 helloworld: THEORY
-  BEGIN 
+  BEGIN IMPORTING dummy
 
     abs (x: real): real = IF x > 0 THEN x ELSE -x ENDIF
 

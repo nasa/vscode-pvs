@@ -788,7 +788,7 @@ export class PvsProxy {
 	 * Typechecks a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
 	 */
-  	async typecheckFile (desc: { contextFolder: string, fileName: string, fileExtension: string }): Promise<PvsResponse> {
+  	async typecheckFile (desc: PvsFile): Promise<PvsResponse> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			let fname: string = fsUtils.desc2fname(desc);
 			if (this.isProtectedFolder(desc.contextFolder)) {
@@ -805,8 +805,9 @@ export class PvsProxy {
 				fname = path.join(desc.contextFolder, `${desc.fileName}.pvs`);
 			}
 
-			const res: PvsResponse = (this.useLegacy) ? await this.legacy.typecheckFile(fname)
-					: await this.pvsRequest('typecheck', [ fname ]);
+			const res: PvsResponse = await this.legacy.typecheckFile(fname);
+			// const res: PvsResponse = (this.useLegacy) ? await this.legacy.typecheckFile(fname)
+			// 		: await this.pvsRequest('typecheck', [ fname ]);
 			if (res && (res.error && res.error.data) || res.result) {
 				if (res.error) {
 					// the typecheck error might be generated from an imported file --- we need to check res.error.file_name
@@ -994,10 +995,10 @@ export class PvsProxy {
 	async changeContext (desc: string | { contextFolder: string }): Promise<PvsResponse> {
 		if (desc) {
 			const ctx: string = (typeof desc === "string") ? desc : desc.contextFolder;
-			if (this.useLegacy) {
+			// if (this.useLegacy) {
 				return await this.legacy.changeContext(ctx);
-			}
-			return await this.pvsRequest('change-context', [ ctx ]);
+			// }
+			// return await this.pvsRequest('change-context', [ ctx ]);
 		}
 		return null;
 	}
@@ -1018,10 +1019,10 @@ export class PvsProxy {
 	 * Executes a lisp command in pvs
 	 * @param cmd 
 	 */
-	async lisp(cmd: string, opt?: { useXmlrpc?: boolean }): Promise<PvsResponse> {
+	async lisp(cmd: string, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
 		opt = opt || {};
 		// don't use legacy apis here --- this command might be used during a prover session, and pvs process is unable to process requests during prover sessions
-		if (this.useLegacy && !opt.useXmlrpc) {
+		if (this.useLegacy && !opt.externalServer) {
 			return await this.legacy.lisp(cmd);
 		}
 		// else
@@ -1244,15 +1245,15 @@ export class PvsProxy {
 	/**
 	 * Returns the pvs proof script for a given formula
 	 */
-	async getDefaultProofScript (desc: { contextFolder: string, fileName: string, fileExtension: string, formulaName: string, theoryName: string }): Promise<PvsResponse> {
-		if (desc) {
-			desc = fsUtils.decodeURIComponents(desc);
+	async getDefaultProofScript (formula: PvsFormula): Promise<PvsResponse> {
+		if (formula) {
+			formula = fsUtils.decodeURIComponents(formula);
 			// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
-			const fname: string = fsUtils.desc2fname({ contextFolder: desc.contextFolder, fileName: desc.fileName, fileExtension: ".pvs" });
+			const fname: string = fsUtils.desc2fname({ contextFolder: formula.contextFolder, fileName: formula.fileName, fileExtension: ".pvs" });
 			if (this.useLegacy) {
-				return await this.legacy.getDefaultProofScript(desc);
+				return await this.legacy.getDefaultProofScript(formula);
 			} else {
-				return await this.pvsRequest('proof-script', [ fname, desc.formulaName ]);
+				return await this.pvsRequest('proof-script', [ fname, formula.formulaName ]);
 			}
 		}
 		return null;
@@ -1983,7 +1984,7 @@ export class PvsProxy {
 		return await this.pvsRequest('reset');
 	}
 
-	async getPvsLibraryPath (opt?: { useXmlrpc?: boolean }): Promise<string[]> {
+	async getPvsLibraryPath (opt?: { externalServer?: boolean }): Promise<string[]> {
 		const response: PvsResponse = await this.lisp(`*pvs-library-path*`, opt);
 		if (response && response.result) {
 			const match: RegExpMatchArray = /\(([\w\W\s]+)\)/g.exec(response.result);
@@ -2001,7 +2002,7 @@ export class PvsProxy {
 		return fsUtils.tildeExpansion(path.join(this.pvsPath, "nasalib/"));
 	}
 
-	async setNasalibPath (opt?: { useXmlrpc?: boolean }): Promise<PvsResponse | null> {
+	async setNasalibPath (opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
 		const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
 		const nasalibPath: string = this.getNasalibPath();
 		if (!pvsLibraries.includes(nasalibPath) && await fsUtils.folderExists(nasalibPath)) {
@@ -2028,7 +2029,7 @@ export class PvsProxy {
 	 * Updates pvs library path
 	 * @param pvsLibraryPath colon-separated list of folders
 	 */
-	async loadPvsLibraryPath (pvsLibraryPath?: string, opt?: { useXmlrpc?: boolean }): Promise<PvsResponse | null> {
+	async loadPvsLibraryPath (pvsLibraryPath?: string, opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
 		const lp: string = pvsLibraryPath || this.pvsLibraryPath;
 		const libs: string[] = (lp) ? lp.split(":").map((elem: string) => {
@@ -2046,7 +2047,7 @@ export class PvsProxy {
 		return null;
 	}
 
-	async loadPvsPatches (opt?: { useXmlrpc?: boolean }): Promise<PvsResponse> {
+	async loadPvsPatches (opt?: { externalServer?: boolean }): Promise<PvsResponse> {
 		return await this.lisp(`(load-pvs-patches)`, opt);
 	}
 

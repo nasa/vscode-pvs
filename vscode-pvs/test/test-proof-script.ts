@@ -2,7 +2,7 @@ import * as fsUtils from "../server/src/common/fsUtils";
 import * as test from "./test-constants";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
-import { label, log, configFile, sandboxExamples } from './test-utils';
+import { label, log, configFile, sandboxExamples, helloworldExamples } from './test-utils';
 import { ProofDescriptor, ProofFile, PvsFormula, PvsTheory } from "../server/src/common/serverInterface";
 import * as path from 'path';
 
@@ -218,6 +218,22 @@ describe("proofScript", () => {
 		expect(response.result).toBeDefined();
 		expect(response.result).toContain(`("" (subtype-tcc))`)
 		// console.dir(response.result);
+	});
+
+	fit(`can open default pvs proof script when the formula has no proof script saved in the prf file`, async () => {
+		const formula: PvsFormula = {
+			contextFolder: helloworldExamples,
+			fileExtension: ".pvs",
+			fileName: "helloworld",
+			theoryName: "helloworld",
+			formulaName: "dummy"
+		};
+		// const response: PvsResponse = await pvsProxy.getDefaultProofScript(formula);
+		let response: PvsResponse = await pvsProxy.lisp(`(change-workspace "${formula.contextFolder}")`, { externalServer: true });
+		response = await pvsProxy.lisp(`(typecheck-file "${fsUtils.desc2fname(formula)}" nil nil nil nil t)`, { externalServer: true });
+		response = await pvsProxy.lisp(`(get-default-proof-script "helloworld" "dummy")`, { externalServer: true });
+		console.dir(response);
+		expect(response.error).toEqual({ data: { error_string: 'helloworld.dummy does not have a proof' }});
 	});
 
 });

@@ -6,7 +6,7 @@
     "formula": "always_positive",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "0c8b191e2852b2487040b57801ab246dbd7253aefaf5e8d5125d33bcce16cca7"
+    "shasum": "c0d092a0dffa6e868a586bebbb9f4b4b3e53c80103ff90b174771534130c3252"
    },
    "proofTree": {
     "branch": "",
@@ -31,7 +31,7 @@
     "formula": "foo",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "0c8b191e2852b2487040b57801ab246dbd7253aefaf5e8d5125d33bcce16cca7"
+    "shasum": "c0d092a0dffa6e868a586bebbb9f4b4b3e53c80103ff90b174771534130c3252"
    },
    "proofTree": {
     "branch": "",
@@ -47,6 +47,183 @@
     ]
    },
    "clips": []
+  }
+ ],
+ "helloworld.sqrt2": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "sqrt2",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "c0d092a0dffa6e868a586bebbb9f4b4b3e53c80103ff90b174771534130c3252"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "sqrt2",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(eval-formula)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ],
+ "helloworld.sqrt_lb2": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "sqrt_lb2",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "ff98c6b33a98191aa5165f6350687a77082a443008463bf80a6305a241845586"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "sqrt_lb2",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(eval-expr \"sqrt_lb(2)\")",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(assert)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ],
+ "helloworld.sqrt_newton_TCC1": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "sqrt_newton_TCC1",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": ""
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "sqrt_newton_TCC1",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(subtype-tcc)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ],
+ "helloworld.sqrt_newton_TCC2": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "sqrt_newton_TCC2",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": ""
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "sqrt_newton_TCC2",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(termination-tcc)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.newton_TCC1": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "newton_TCC1",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": ""
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "newton_TCC1",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(subtype-tcc)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.newton_TCC2": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "newton_TCC2",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": ""
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "newton_TCC2",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(subtype-tcc)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.sqrt_lb2_TCC1": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "sqrt_lb2_TCC1",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": ""
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "sqrt_lb2_TCC1",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(subtype-tcc)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
   }
  ]
 }

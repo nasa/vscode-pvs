@@ -91,7 +91,7 @@ export class PvsProxyLegacy {
                 data = data.substring(1, data.length - 1);
             }
         }
-        const matchPvsError: RegExpMatchArray = /Error: (the assertion .+)/g.exec(data);
+        const matchPvsError: RegExpMatchArray = /Error: (.+)/g.exec(data);
         if (matchPvsError && this.pvsErrorManager) {
             const error_string: string = (matchPvsError.length > 1 && matchPvsError[1]) ? matchPvsError[1] : matchPvsError[0];
             this.pvsErrorManager.notifyPvsFailure({
@@ -432,15 +432,15 @@ export class PvsProxyLegacy {
             }
         }
     }
-    async getDefaultProofScript (desc: { contextFolder: string, fileName: string, fileExtension: string, formulaName: string, theoryName: string }): Promise<PvsResponse> {
+    async getDefaultProofScript (formula: PvsFormula): Promise<PvsResponse> {
         let result: string = null; //`;;; Proof ${desc.formulaName}-1 for formula ${desc.theoryName}.${desc.formulaName}`; // this is an empty proof
-        const error_string: string = `${desc.theoryName}.${desc.formulaName} does not have a proof`;
-        await this.changeContext(desc.contextFolder);
-        await this.typecheckFile(fsUtils.desc2fname(desc));
-        if (desc && desc.contextFolder && desc.fileExtension && desc.fileName && desc.formulaName) {
+        const error_string: string = `${formula.theoryName}.${formula.formulaName} does not have a proof`;
+        await this.changeContext(formula.contextFolder);
+        await this.typecheckFile(fsUtils.desc2fname(formula));
+        if (formula && formula.contextFolder && formula.fileExtension && formula.fileName && formula.formulaName) {
             // const isTcc: boolean = utils.isTccFormula(desc);
             // if (isTcc) {
-                const cmd: string = `(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`;
+                const cmd: string = `(get-default-proof-script "${formula.theoryName}" "${formula.formulaName}")`;
                 const data: PvsResponse = await this.lisp(cmd);
                 if (data && data.result) {
                     const matchProof: RegExpMatchArray = /(;;; Proof\b[\w\W\s]+)/.exec(data.result);
