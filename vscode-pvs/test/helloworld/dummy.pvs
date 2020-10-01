@@ -1,0 +1,11 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% @theory: dummy
+% @author: pmasci
+% @date: Tue, 29 Sep 2020 21:08:49 GMT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+dummy[max: posnat]: THEORY
+  BEGIN 
+    fl: LEMMA
+        FORALL (x: real): x > max IMPLIES x > 0
+  END dummy
