@@ -304,20 +304,20 @@ export class VSCodePvsPackageManager {
                 const desc: { fname: string, version: string } = await this.downloadPvsExecutableWithProgress();
                 if (desc) {
                     if (targetFolder) {
-                        const pvsPath: string = await this.installPvs({ fname: desc.fname, baseFolder: targetFolder, version: desc.version });
+                        const pvsPath: string = await this.installPvs({ fname: desc.fname, baseFolder: targetFolder, version: desc.version }, { quiet: true });
                         if (pvsPath) {
                             // update pvs.path
                             await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
 
-                            // automatically install nasalib
-                            await this.downloadAndInstallNasalib();
+                            // uncomment the following to automatically install nasalib
+                            // await this.downloadAndInstallNasalib();
 
                             // reboot pvs-server
                             this.statusBar.showProgress("Rebooting pvs-server...");
                             this.client.sendRequest(serverRequest.rebootPvsServer);
 
                             // show release info
-                            this.showReleaseInfo();
+                            vscodeUtils.showReleaseNotes();
                             return true;
                         }
                     }
@@ -357,9 +357,12 @@ export class VSCodePvsPackageManager {
      * Utility function, extracts the pvs executable and sets pvs.path in vscode
      * @param desc 
      */
-	protected async installPvs (desc: { fname: string, baseFolder: string, version: string }): Promise<string> {
-        const label: string = `PVS installation folder is ${desc.baseFolder}`;
-        window.showInformationMessage(label);
+	protected async installPvs (desc: { fname: string, baseFolder: string, version: string }, opt?: { quiet?: boolean }): Promise<string> {
+        opt = opt || {};
+        const label: string = `PVS installation folder is ${path.join(desc.baseFolder, "pvs-7.1.0")}`;
+        if (!opt.quiet) {
+            window.showInformationMessage(label);
+        }
         // extract pvs
         const extractPvs = async (desc: { fname: string, baseFolder: string, version: string }): Promise<void> => {
             const terminal = window.createTerminal({ name: label });
@@ -508,11 +511,6 @@ export class VSCodePvsPackageManager {
                 });
             });
         });
-    }
-
-    showReleaseInfo (): void {
-        const fileUri: Uri = Uri.file(path.join(__dirname, "..", "..", "..", "docs", "TUTORIAL.md"));
-        commands.executeCommand('markdown.showPreview', fileUri);
     }
 
 }

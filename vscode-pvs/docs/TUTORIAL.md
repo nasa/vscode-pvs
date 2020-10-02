@@ -1,13 +1,11 @@
-# Welcome to VSCode-PVS!
+# VSCode-PVS Tutorial
 This tutorial provides a series of simple examples suitable to demonstrate the functionalities of VSCode-PVS.
 - Novice PVS users can use this tutorial as a gentle introduction to the PVS verification system.
 - Expert PVS users can use this tutorial as a basis to discover the editing and proving capabilities provided by VSCode-PVS.
 
 <br>
 
--------
 ## Pre-requisites
--------
 
 - Familiarity with [Visual Studio Code](https://code.visualstudio.com)
 - [VSCode-PVS](https://github.com/nasa/vscode-pvs) extension is installed and enabled in Visual Studio Code (see installation instructions in [README.md](README.md))
@@ -16,16 +14,14 @@ This tutorial provides a series of simple examples suitable to demonstrate the f
 
 <br>
 
--------
 ## Hello World!
--------
 This first example demonstrates the following functionalities of VSCode-PVS:
 - PVS Syntax highlighting
 - Navigation of PVS definitions
 
 Try the following actions in VSCode-PVS:
 
-1. Create a new folder `pvs-workspaces` under your Home folder. You will be storing all your pvs files in this folder.
+1. Create a new folder `workspaces` under your Home folder. You will be storing all your pvs files in this folder.
 > Important: Please do not store your `pvs` files on your `Desktop`, because PVS may be unable to operate in that folder. Do not use your `pvs installation folder` either. The recommended way to proceed is to create a subfolder in your home directory, and develop your pvs theories in such subfolder.
 
 2. Open the folder in Visual Studio Code, and then create a new file `helloworld.pvs` in it.
@@ -48,9 +44,7 @@ The specification defines a module (`theory` in the PVS language) called `hellow
 
 <br>
 
--------
 ## Typechecking
--------
 The PVS language is strongly typed, and `typechecking` is the functionality for checking the correct use of types in a PVS specification. 
 
 The following example demonstrates:
@@ -69,10 +63,7 @@ Try the following actions in VSCode-PVS:
 
 <br>
 
--------
 ## Proof Obligations (TCCs)
--------
-
 A powerful feature of the PVS language is `sub-typing`, which allows developers to restrict the domain of an existing type. When using subtypes, PVS generates additional proof obligations, also known as typecheck conditions (`TCCs`) that can be conveniently used to improve the quality of a PVS specification.
 
 The following example demonstrates:
@@ -99,10 +90,7 @@ helloworld: THEORY
 
 <br>
 
--------
 ## Testing
--------
-
 Several PVS constructs are `executable`, that is, they can be evaluated using concrete inputs.
 This is useful for validation purposes, e.g., to check that a given function produces expected outputs for given inputs.
 
@@ -117,31 +105,26 @@ Try the following actions in VSCode-PVS:
 
 3. VSCode-PVS will open an integrated terminal window with the PVSio prompt. The content of the terminal window should look as follows:
 ```
-+---- 
-| PVSio Evaluator
-|
-| Enter a PVS expression at the prompt, or 'help' for help, or 'exit' to exit the evaluator.
-| You can use TAB to complete commands at the PVSio prompt.
-|
-| Note: evaluation of expressions which depend on unproven TCCs may be unsound,
-| and result in the evaluator becoming unresponsive or crashing into Lisp. 
-| If that happens, please close the evaluator session and start a new one.
-|
-+----
+╔════════════════════════════════════════════════════════════════════════════════════
+║ PVSio
+║
+║ How to use the evaluator:
+║ - Enter a PVS expression followed by ';'
+║  or
+║ - Enter a Lisp expresssion followed by '!'
+║ 
+║ To exit the evalutor, enter 'exit'.
+║ You can use TAB to complete commands at the PVSio prompt.
+╚════════════════════════════════════════════════════════════════════════════════════
 
 <PVSio> 
 ```
-4. To evaluate an executable PVS expression, enter the expression at the `<PVSio>` prompt, followed by `;` 
-> Hint: If you are evaluating `helloworld.pvs`, you can enter the following expression: `abs(-7);`
-
-5. To exit the PVSio evaluator, enter the following command at the `<PVSio>` prompt: `exit;` 
+4. To evaluate an executable PVS expression, enter the expression at the `<PVSio>` prompt, followed by `;`. For example, when evaluating `helloworld.pvs`, you can enter the following expression: `abs(-7);`
 
 <br>
 
--------
-## Proving
--------
 
+## Proving
 Properties of a PVS specifications are defined in expressions called `theorems`.
 Theorems are proved interactively, using the PVS theorem prover.
 
@@ -194,9 +177,6 @@ always_positive :
 
 <br>
 
--------
 ## Further reading
--------
-
 - For more information on the PVS language and theorem proving system, please refer to the [PVS documentation](http://pvs.cls.sri.com)
 - Additional examples can be found in the [NASA PVS Class](https://shemesh.larc.nasa.gov/PVSClass2012/)

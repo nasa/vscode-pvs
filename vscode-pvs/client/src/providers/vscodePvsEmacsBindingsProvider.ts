@@ -51,8 +51,8 @@ import { workspace } from 'vscode';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
-import { serverRequest, PvsFormula } from '../common/serverInterface';
-
+import { PvsFormula } from '../common/serverInterface';
+import * as vscodeUtils from '../utils/vscode-utils';
 /**
  * cmds is the list of commands that are supported by the emacs binding defined in this module
  * NB: The order of the commands in the array affects the behavior of autocompletion
@@ -78,6 +78,7 @@ const cmds: string[] = [
 	"update-nasalib",
 	"set-pvs-path",
 	"settings",
+	"release-notes", // show release notes
 
 	"step-proof",
 	"show-tccs",
@@ -180,6 +181,10 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "pvsio": {
 					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.pvsio-evaluator', desc);
+					break;
+				}
+				case "release-notes": {
+					vscodeUtils.showReleaseNotes();
 					break;
 				}
 				case "step-proof": {

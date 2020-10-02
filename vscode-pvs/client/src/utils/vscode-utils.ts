@@ -380,3 +380,8 @@ export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: s
     }
     return null;
 }
+
+export function showReleaseNotes (): void {
+    const fileUri: vscode.Uri = vscode.Uri.file(path.join(__dirname, "..", "..", "..", "README.md"));
+    vscode.commands.executeCommand('markdown.showPreview', fileUri);
+}

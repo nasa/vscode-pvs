@@ -66,7 +66,7 @@ In the title of PVS Workspace Explorer there's a menu `...` where you can find `
 Alternatively, you can use the standard Visual Studio Code functions to open files and folders (File -> Open). 
 
 ### **Can I develop my pvs theories on my `Desktop`, or in my pvs installation folder?**
-**No, that's a bad idea.** The recommended way to proceed is to create a folder `pvs-workspaces` in your home directory, and develop your pvs theories under such folder.
+**No, that's a bad idea.** The recommended way to proceed is to create a folder `workspaces` in your home directory, and develop your pvs theories under such folder.
 
 ### **Can I use PVS hot-keys combinations?**
 Yes, you can use the following set PVS hot-keys combinations in VSCode-PVS:
@@ -90,6 +90,7 @@ Additional hot-keys for quick access to configuration settings:
 - `M-x update-nasalib` *(updates the installed version of NASALib)*
 - `M-x set-pvs-path` *(sets the path to the PVS executables)*
 - `M-x settings` *(shows vscode-pvs settings)*
+- `M-x release-notes` *(shows vscode-pvs release notes)*
 
 ### **What is `M-x`, and how do I use it?**
 `M-x` is a key combination obtained by pressing the `META` key and the `x` letter simultaneously.

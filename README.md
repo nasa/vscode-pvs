@@ -60,8 +60,8 @@ The main functionalities provided by the environment are as follows:
 .
 ├── client                       // PVS Language Client (VSCode entry point)
 │   └── src
-│       ├── providers            // Client-side service providers (emacs binding, decorations, package manager, outline provider)
-│       ├── views                // Visual Components: Proof Explorer, Workspace Explorer, Terminals, Status Bar, Sequent Viewer, Proof Mate
+│       ├── providers            // Client-side service providers
+│       ├── views                // User interface components
 │       ├── common               // Utility functions 
 │       └── pvsLanguageClient.ts // PVS Language Client implementation
 ├── icons                        // PVS icons theme
