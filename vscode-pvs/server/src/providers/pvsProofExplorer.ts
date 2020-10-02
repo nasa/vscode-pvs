@@ -2386,6 +2386,10 @@ export class PvsProofExplorer {
 		}
 		// update proof descriptor so it reflects the current proof structure
 		this.proofDescriptor = this.makeProofDescriptor();
+		// save proof backup file -- just to be save in the case pvs hungs up and is unable to save
+		const script: string = this.copyTree({ selected: this.root });
+		const backupFile: string = path.join(this.formula.contextFolder, "pvsbin", `${this.formula.theoryName}.${this.formula.formulaName}.prs`);
+		await fsUtils.writeFile(backupFile, `% Proof script for ${this.formula.theoryName}.${this.formula.formulaName}\n` + script);
 		// save proof descriptor to file
 		await this.quitProof();
 		const response: PvsResponse = await this.pvsProxy?.storeLastAttemptedProof(this.formula);
@@ -2400,7 +2404,6 @@ export class PvsProofExplorer {
 			msg = (response && response.error && response.error.data && response.error.data.error_string) ? response.error.data.error_string : null;
 		}
 		// send feedback to the client
-		const script: string = this.copyTree({ selected: this.root });
 		this.connection?.sendRequest(serverEvent.saveProofResponse, {
 			response: { 
 				success,
