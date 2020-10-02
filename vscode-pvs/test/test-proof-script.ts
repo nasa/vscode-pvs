@@ -233,7 +233,7 @@ describe("proofScript", () => {
 		response = await pvsProxy.lisp(`(typecheck-file "${fsUtils.desc2fname(formula)}" nil nil nil nil t)`, { externalServer: true });
 		response = await pvsProxy.lisp(`(get-default-proof-script "helloworld" "dummy")`, { externalServer: true });
 		console.dir(response);
-		expect(response.error).toEqual({ data: { error_string: 'helloworld.dummy does not have a proof' }});
+		expect(response.result).toBeNull();
 	});
 
 });
