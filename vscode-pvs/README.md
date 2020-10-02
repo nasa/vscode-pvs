@@ -161,6 +161,8 @@ The environment redefines the way developers interact with PVS, and better align
   -Diagnostics for syntax errors  
   -Literate programming for executable expressions  
 
+<br>
+
 ## Notices
 ### Copyright 
 Copyright 2019 United States Government as represented by the Administrator of the National Aeronautics and Space Administration. All Rights Reserved.
