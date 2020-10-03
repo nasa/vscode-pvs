@@ -206,13 +206,6 @@
 				"category": "pvs"
 			},
 			{
-				"command": "vscode-pvs.typecheck-file-inline",
-				"title": "Typecheck",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
-				"category": "pvs",
-				"icon": "icons/typecheck-icon.png"
-			},
-			{
 				"command": "vscode-pvs.prove-theory",
 				"title": "Re-run All Proofs",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
@@ -223,7 +216,7 @@
 				"title": "Prove-All",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
 				"category": "pvs",
-				"icon": "icons/prove-icon.png"
+				"icon": "icons/play-circle-icon.png"
 			},
 			{
 				"command": "vscode-pvs.prove-importchain",
@@ -318,10 +311,10 @@
 			},
 			{
 				"command": "vscode-pvs.prove-formula",
-				"title": "Prove",
+				"title": "Prove Formula",
 				"enablement": "pvs-server-active == true && !autorun",
 				"category": "pvs",
-				"icon": "icons/prove-icon.png"
+				"icon": "icons/play-circle-icon.png"
 			},
 			{
 				"command": "vscode-pvs.command-palette",
@@ -571,11 +564,6 @@
 					"group": "inline"
 				},
 				{
-					"command": "vscode-pvs.typecheck-file-inline",
-					"when": "view == workspace-explorer-view && viewItem == theory",
-					"group": "inline"
-				},
-				{
 					"command": "vscode-pvs.prove-theory-inline",
 					"when": "view == workspace-explorer-view && viewItem == theory",
 					"group": "inline"
@@ -599,6 +587,11 @@
 					"command": "vscode-pvs.show-tccs",
 					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
 					"group": "context-menu/ctrl-common-1"
+				},
+				{
+					"command": "vscode-pvs.prove-formula",
+					"when": "view == workspace-explorer-view && viewItem == tcc || view == workspace-explorer-view && viewItem == theorem",
+					"group": "context-menu/ctrl-common-1.1"
 				},
 				{
 					"command": "vscode-pvs.prove-theory",
@@ -1050,7 +1043,7 @@
 				],
 				"firstLine": "\\s*((%+\\w+)|((\\w+)\\s*(?:\\[([\\w\\W\\s]*)\\])?\\s*\\:\\s*(THEORY|theory|Theory)\\b))",
 				"filenames": [
-					".pvscontext"
+					".pvscontext", ".pvs-strategies", "pvs-strategies"
 				],
 				"configuration": "./syntax/pvs-language-configuration.json",
 				"aliases": [

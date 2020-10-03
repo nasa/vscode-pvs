@@ -1,41 +1,29 @@
 {
 	"iconDefinitions": {
-		"pvs_icon": {
-			"iconPath": "pvs-icon.png",
-			"description": "pvs specification file"
+		"pvs-file-icon": {
+			"iconPath": "pvs-file-icon.png",
+			"description": "pvs theory file"
 		},
-		"proof_script_icon": {
-			"iconPath": "prf-icon.png",
-			"description": "pvs proof file"
-		},
-		"prooflite_script_icon": {
-			"iconPath": "prl-icon.png",
-			"description": "pvs prooflite file"
-		},
-		"json_proof_script_icon": {
-			"iconPath": "prf-icon.png",
-			"description": "pvs proof file"
-		},
-		"proof_state_icon": {
-			"iconPath": "pr-icon.png",
-			"description": "pvs proof state file"
-		},
-		"tcc_icon": {
-			"iconPath": "tcc-icon.png",
+		"tccs-file-icon": {
+			"iconPath": "tccs-file-icon.png",
 			"description": "tccs file"
+		},
+		"summary-file-icon": {
+			"iconPath": "summary-file-icon.png",
+			"description": "summary file"
+		},
+		"internal-pvs-file-icon": {
+			"iconPath": "internal-pvs-file-icon.png",
+			"description": "pvs proof file"
 		}
 	},
 	"fileExtensions": {
-		"pvs": "pvs_icon",
-		"tccs": "tcc_icon",
-		"prf": "proof_script_icon",
-		"jprf": "proof_script_icon",
-		"pr" : "proof_state_icon",
-		"prlite": "prooflite_script_icon",
-		"prl": "prooflite_script_icon",
-		"summary": "pvs_icon"
+		"pvs": "pvs-file-icon",
+		"tccs": "tccs-file-icon",
+		"summary": "summary-file-icon",
+		"prf": "internal-pvs-file"
 	},
 	"languageIds": {
-		"pvs": "pvs_icon"
+		"pvs": "internal-pvs-file-icon"
 	}
 }
