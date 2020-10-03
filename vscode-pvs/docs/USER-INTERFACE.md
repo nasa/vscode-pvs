@@ -112,3 +112,36 @@ A terminal session is automatically started when starting a proof.
 The user can enter proof commands in the terminal session.
 Each command executed by the prover will be automatically appended to the proof tree displayed in Proof Explorer.
 Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
+
+<br><br>
+
+## Hot-Keys combinations
+VSCode-PVS provides a series of hot-key combinations that facilitate access to frequent functions.
+The hot-key combinations is activated by the `M-x` sequence, which is obtained by pressing the `META` key and the `x` letter simultaneously. The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` key.
+
+Hot-keys for frequent commands on pvs files:
+- `M-x show-tccs` *(show proof obligations for the file open in the editor)*
+- `M-x tc` *(typecheck the file open in the editor)*
+- `M-x tcp` *(typecheck the file open in the editor and re-run all proofs in the file)*
+- `M-x parse` *(parse the file open in the editor)*
+- `M-x pr` *(prove formula, i.e., start an interactive prover session for the formula at the cursor location)*
+- `M-x prt` *(prove theory, i.e., re-run all proofs in the current theory)*
+- `M-x pri` *(prove importchain, i.e., re-run all proofs in the current theory and in the imported theories)*
+- `M-x pvsio` *(start an interactive PVSio evaluator session for the theory opened in the editor)*
+- `M-x show-proof-summary` *(show proof summary)*
+- `M-x vpf` *(view prelude file)*
+
+Additional hot-keys:
+- `M-x add-pvs-library` *(adds a folder to the vscode-pvs library path)*
+- `M-x pvs-library-path` *(shows the pvs library path specified in vscode-pvs settings)*
+- `M-x reset-pvs-library-path` *(resets the vscode-pvs library path to empty)*
+- `M-x reboot-pvs` *(reboots pvs-server)*
+- `M-x clean-bin` *(removes pvsbin files created by pvs)*
+- `M-x clean-all` *(removes all temporary files created by pvs)*
+- `M-x install-pvs` *(starts as interactive wizard that allows to install or update PVS)*
+- `M-x install-nasalib` *(starts an interactive wizard that allows to install NASALib)*
+- `M-x update-nasalib` *(updates the installed version of NASALib)*
+- `M-x set-pvs-path` *(sets the path to the PVS executables)*
+- `M-x settings` *(shows vscode-pvs settings)*
+- `M-x release-notes` *(shows vscode-pvs release notes)*
+

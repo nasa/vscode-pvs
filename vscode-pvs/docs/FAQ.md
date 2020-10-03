@@ -68,23 +68,26 @@ Alternatively, you can use the standard Visual Studio Code functions to open fil
 ### **Can I develop my pvs theories on my `Desktop`, or in my pvs installation folder?**
 **No, that's a bad idea.** The recommended way to proceed is to create a folder `workspaces` in your home directory, and develop your pvs theories under such folder.
 
-### **Can I use PVS hot-keys combinations?**
-Yes, you can use the following set PVS hot-keys combinations in VSCode-PVS:
+### **Can I use the classic PVS Emacs hot-keys combinations?**
+Yes, you can use most of the PVS hot-keys combinations in VSCode-PVS:
 - `M-x show-tccs` *(show proof obligations for the file open in the editor)*
 - `M-x tc` *(typecheck the file open in the editor)*
 - `M-x tcp` *(typecheck the file open in the editor and re-run all proofs in the file)*
 - `M-x parse` *(parse the file open in the editor)*
-- `M-x pr` *(start an interactive Prover session for the formula at the cursor location)*
-- `M-x prt` *(re-run all proofs in the current theory)*
-- `M-x pvsio` *(start an interactive PVSio evaluator session for the theory at the cursor location)*
+- `M-x pr` *(prove formula, i.e., start an interactive prover session for the formula at the cursor location)*
+- `M-x prt` *(prove theory, i.e., re-run all proofs in the current theory)*
+- `M-x pri` *(prove importchain, i.e., re-run all proofs in the current theory and in the imported theories)*
+- `M-x pvsio` *(start an interactive PVSio evaluator session for the theory opened in the editor)*
 - `M-x show-proof-summary` *(show proof summary)*
 - `M-x vpf` *(view prelude file)*
 
-Additional hot-keys for quick access to configuration settings:
+Additional hot-keys:
 - `M-x add-pvs-library` *(adds a folder to the vscode-pvs library path)*
-- `M-x clear-pvs-library-path` *(removes all entries in the vscode-pvs library path)*
 - `M-x pvs-library-path` *(shows the pvs library path specified in vscode-pvs settings)*
+- `M-x reset-pvs-library-path` *(resets the vscode-pvs library path to empty)*
 - `M-x reboot-pvs` *(reboots pvs-server)*
+- `M-x clean-bin` *(removes pvsbin files created by pvs)*
+- `M-x clean-all` *(removes all temporary files created by pvs)*
 - `M-x install-pvs` *(starts as interactive wizard that allows to install or update PVS)*
 - `M-x install-nasalib` *(starts an interactive wizard that allows to install NASALib)*
 - `M-x update-nasalib` *(updates the installed version of NASALib)*
