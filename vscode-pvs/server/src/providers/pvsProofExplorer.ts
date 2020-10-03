@@ -453,15 +453,9 @@ export class PvsProofExplorer {
 					this.activeNode?.name 
 						: null;
 		if (cmd) {
-			if (this.running && utils.isPostponeCommand(cmd)) {
-				if (this.autorunFlag) {
-					// mark proof as unfinished
-					if (this.root.getProofStatus() !== "untried") {
-						this.root.setProofStatus("unfinished");
-					}
-					// save and quit proof
-					await this.quitProofAndSave();
-				}
+			if (this.running && !this.autorunFlag && utils.isPostponeCommand(cmd)) {
+				// stop the proof at the first postpone when running the proof in proof explorer, except if this is a re-run triggered by M-x prt or M-x pri (autorunFlag)
+				this.running = false;
 				return null;
 			}
 			if (opt.feedbackToTerminal && !this.autorunFlag) {
@@ -508,8 +502,8 @@ export class PvsProofExplorer {
 			if (this.root.getProofStatus() !== "untried") {
 				this.root.setProofStatus("unfinished");
 			}
-			// save and quit proof
-			await this.quitProofAndSave();
+			// quit proof and update proof status in the jprf file
+			await this.quitProofAndSave({ jprfOnly: true });
 			// await this.quitProof();
 			return null;
 		}
@@ -2396,7 +2390,8 @@ export class PvsProofExplorer {
 	/**
 	 * Quit proof and save the current proof in a .prf format
 	 */
-	async quitProofAndSave (): Promise<{ success: boolean, msg?: string }> {
+	async quitProofAndSave (opt?: { jprfOnly?: boolean }): Promise<{ success: boolean, msg?: string }> {
+		opt = opt || {};
 		const proofFile: PvsFile = {
 			fileName: this.formula.fileName,
 			fileExtension: ".prf",
@@ -2407,22 +2402,26 @@ export class PvsProofExplorer {
 		await utils.saveProofDescriptor(this.formula, this.proofDescriptor, { saveProofTree: true });
 		// save proof backup file -- just to be save in the case pvs hungs up and is unable to save
 		const script: string = this.copyTree({ selected: this.root });
-		// save proof descriptor to file
-		await this.quitProof();
-		const response: PvsResponse = await this.pvsProxy?.storeLastAttemptedProof(this.formula);
-		const success: boolean = !!(response?.result);
+		let success: boolean = true;
 		let msg: string = null;
-		if (success) {
-			// clear dirty flag if proof saved successfully
-			this.dirtyFlag = false;
-		} else {
-			msg = response?.error?.data?.error_string;
+		// quit proof
+		await this.quitProof();
+		if (!opt.jprfOnly) {
+			// save proof descriptor to file
+			const response: PvsResponse = await this.pvsProxy?.storeLastAttemptedProof(this.formula);
+			success = !!(response?.result);
+			if (success) {
+				// clear dirty flag if proof saved successfully
+				this.dirtyFlag = false;
+			} else {
+				msg = response?.error?.data?.error_string;
+			}
 		}
 		// send feedback to the client
 		this.connection?.sendRequest(serverEvent.saveProofResponse, {
 			response: { 
 				success,
-				msg: response?.error?.data?.error_string,
+				msg,
 				proofFile,
 				formula: this.formula,
 				script
@@ -2515,7 +2514,7 @@ export class PvsProofExplorer {
 
 	async interruptProofCommand (): Promise<PvsResponse> {
 		if (this.pvsProxy && !this.interruptFlag) {
-			this.interruptFlag = true;
+			this.interruptFlag = !this.autorunFlag;
 			return await this.pvsProxy.interrupt();
 		}
 		return null;
