@@ -66,7 +66,7 @@ class PvsFileItem extends TreeItem {
 	updateFileDescriptor (desc: PvsFileDescriptor, opt?: { tccDescriptor?: boolean }): void {
 		this.label = this.fileName = desc.fileName;
 		this.fileExtension = desc.fileExtension;
-		this.contextFolder = (desc.fileExtension === ".tccs") ? path.join(desc.contextFolder, "..") : desc.contextFolder;
+		this.contextFolder = desc.contextFolder;
 		this.path = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 		this.command = {
 			title: "PVS file selected",

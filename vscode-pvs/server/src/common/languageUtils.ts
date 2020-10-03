@@ -246,7 +246,7 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 					const line: number = lines.length;
 					const character: number = 0; //match.index - lines.slice(-1).join("\n").length;
 					ans.push({
-						theoryName,
+						theoryName: desc.fileExtension === ".tccs" && theoryName.endsWith("_TCCS") ? theoryName.substr(0, theoryName.length - 5) : theoryName,
 						position: {
 							line: line,
 							character: character
@@ -521,8 +521,9 @@ export async function getProofDescriptor (formula: PvsFormula): Promise<ProofDes
  * Utility function, updates the proof descriptor for a given formula
  * @param formula 
  */
-export async function saveProofDescriptor (formula: PvsFormula, newDesc: ProofDescriptor): Promise<boolean> {
+export async function saveProofDescriptor (formula: PvsFormula, newDesc: ProofDescriptor, opt?: { saveProofTree?: boolean }): Promise<boolean> {
 	if (formula && newDesc) {
+		opt = opt || {};
 		const fname: string = fsUtils.desc2fname({
 			fileName: formula.fileName,
 			fileExtension: ".jprf",
@@ -539,6 +540,9 @@ export async function saveProofDescriptor (formula: PvsFormula, newDesc: ProofDe
 				pdesc.info.prover = newDesc.info.prover ? newDesc.info.prover : pdesc.info.prover;
 				pdesc.info.status = newDesc.info.status ? newDesc.info.status : pdesc.info.status;
 				pdesc.info.date = newDesc.info.date ? newDesc.info.date : pdesc.info.date;
+			}
+			if (opt.saveProofTree) {
+				pdesc.proofTree = newDesc.proofTree ? newDesc.proofTree : pdesc.proofTree;
 			}
 		} else {
 			fdesc[key] = fdesc[key] || [ newDesc ];
@@ -752,7 +756,7 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 								status = await getProofStatus({
 									fileName: desc.fileName, 
 									fileExtension: desc.fileExtension, 
-									contextFolder: (desc.fileExtension === ".tccs") ? path.join(desc.contextFolder, "..") : desc.contextFolder,
+									contextFolder: desc.contextFolder,
 									formulaName,
 									theoryName
 								});
@@ -1020,8 +1024,7 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 		fileExtension
 	};
 	const pvsFileContent: string = await fsUtils.readFile(fname);
-	const tccsContextFolder: string = path.join(contextFolder, "pvsbin")
-	const tccsFileContent: string = (opt.includeTccs) ? await fsUtils.readFile(path.join(tccsContextFolder, `${fileName}.tccs`)) : null;
+	const tccsFileContent: string = (opt.includeTccs) ? await fsUtils.readFile(path.join(contextFolder, `${fileName}.tccs`)) : null;
 	// console.log(`[languageUtils.getFileDescriptor] listTheories(${fileName})`);
 	const theories: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent });
 	if (theories) {
@@ -1032,7 +1035,7 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 					: [];
 		const tccs: FormulaDescriptor[] = 
 			(opt.listTheorems && fileExtension !== ".tccs" && tccsFileContent) 
-				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder: tccsContextFolder, fileContent: tccsFileContent, prelude: false })
+				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: false })
 					: [];
 		const descriptors: FormulaDescriptor[] = lemmas.concat(tccs);
 		for (let i = 0; i < theories.length; i++) {
@@ -1895,6 +1898,22 @@ export function noChange (result: { commentary: string | string[] }): boolean {
 		}
 	}
 	return false;
+}
+
+export function getNoChangeCommand (result: { commentary: string | string[] }): string {
+	if (result && result.commentary) {
+		if (typeof result.commentary === "string") {
+			return result.commentary.replace("No change on:", "").trim();
+		} else if (typeof result.commentary === "object" && result.commentary.length) {
+			const comments: string[] = result.commentary.filter((comment: string)=> {
+				return comment.startsWith("No change on:");
+			});
+			if (comments && comments.length && typeof comments[0] === "string") {
+				return comments[0].replace("No change on:", "").trim();
+			}
+		}
+	}
+	return null;
 }
 
 export function QED (result: { commentary: string | string[] }): boolean {

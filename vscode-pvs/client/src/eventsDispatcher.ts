@@ -255,8 +255,7 @@ export class EventsDispatcher {
             if (desc && desc.args) {
                 if (desc && desc.response) {
                     // open tcc file in the editor
-                    const tccsContextFolder: string = path.join(desc.args.contextFolder, "pvsbin");
-                    const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: tccsContextFolder, fileExtension: ".tccs"}));
+                    const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
                     const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
                     const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
                     vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
@@ -586,7 +585,10 @@ export class EventsDispatcher {
             args: PvsFormula
         }) => {
             if (desc && desc.response) {
-                vscodeUtils.previewTextDocument(`${desc.args.theoryName}.prlite`, desc.response, { contextFolder: desc.args.contextFolder, viewColumn: vscode.ViewColumn.Beside });
+                vscodeUtils.previewTextDocument(`${desc.args.theoryName}.prlite`, desc.response, { 
+                    contextFolder: path.join(desc.args.contextFolder, "pvsbin"), 
+                    viewColumn: vscode.ViewColumn.Beside
+                });
             }
         });
 
@@ -851,7 +853,6 @@ export class EventsDispatcher {
             if (resource) {
                 const desc: PvsFormula = this.resource2desc(resource);
                 if (desc) {
-                    desc.contextFolder = (desc.fileExtension === ".tccs") ? path.join(desc.contextFolder, "..") : desc.contextFolder;
                     if (desc.theoryName) {
                         this.proofExplorer.willStartNewProof();
                         this.proofExplorer.enableView();

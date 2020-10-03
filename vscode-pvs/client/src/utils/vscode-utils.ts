@@ -86,7 +86,7 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${path.join(vscode.workspace.rootPath, "pvsbin", "preview")}`);
     
     const folder: string = opt.contextFolder || vscode.workspace.rootPath || os.homedir();
-    const fname: string = path.join(folder, "pvsbin", name);
+    const fname: string = path.join(folder, name);
     const preview: vscode.Uri = vscode.Uri.file(fname);
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${fname}`);
 
@@ -116,7 +116,7 @@ export async function createTextDocument (name: string, content: string, opt?: {
     let viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
     
     const folder: string = opt.contextFolder || vscode.workspace.rootPath || os.homedir();
-    const fname: string = path.join(folder, "pvsbin", name);
+    const fname: string = path.join(folder, name);
     const preview: vscode.Uri = vscode.Uri.file(fname);
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${fname}`);
 

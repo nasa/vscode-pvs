@@ -56,7 +56,7 @@ export class PvsCodeLensProvider {
             const fileName: string = fsUtils.getFileName(document.uri);
             const fileExtension: string = fsUtils.getFileExtension(document.uri);
             let currentFolder: string = fsUtils.getContextFolder(document.uri);
-            const contextFolder: string = (fileExtension === ".tccs" || fileExtension === ".prlite") ? path.join(currentFolder, "..") : currentFolder;
+            const contextFolder: string = (fileExtension === ".prlite") ? path.join(currentFolder, "..") : currentFolder;
             
             let match: RegExpMatchArray = null;
             const codeLens: CodeLens[] = [];
@@ -73,13 +73,15 @@ export class PvsCodeLensProvider {
                         const line: number = lines.length - 1;
                         const character: number = lines[lines.length - 1].indexOf(match[1]);
                         
-                        const theoryName: string = utils.findTheoryName(content, line);
+                        let theoryName: string = utils.findTheoryName(content, line);
                         if (theoryName) {
                             const args: PvsFormula = {
                                 fileName,
                                 fileExtension,
                                 contextFolder,
-                                theoryName, 
+                                theoryName: (fileExtension === ".tccs") ? 
+                                    theoryName.substr(0, theoryName.length - 5) // the theory name in the .tccs file ends with _TCCS
+                                    : theoryName, 
                                 formulaName
                             };
                             const range: Range = {
@@ -151,48 +153,50 @@ export class PvsCodeLensProvider {
                     }
                 }
 
-                while (match = utils.theoryRegexp.exec(content)) {
-                    if (match.length > 1 && match[1]) {
-                        const theoryName: string = match[1];
+                if (fileExtension === ".pvs") {
+                    while (match = utils.theoryRegexp.exec(content)) {
+                        if (match.length > 1 && match[1]) {
+                            const theoryName: string = match[1];
 
-                        const matchEnd: RegExpMatchArray = utils.endTheoryRegexp(theoryName).exec(content);
-                        if (matchEnd && matchEnd.length) {
-                            utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
-                            
-                            const docUp: string = content.slice(0, match.index + theoryName.length);
-                            const lines: string[] = docUp.split("\n");
-                            const line: number = lines.length - 1;
-                            const character: number = lines[lines.length - 1].indexOf(match[1]);
-                            
-                            const args = {
-                                fileName,
-                                fileExtension,
-                                contextFolder,
-                                theoryName, 
-                                line
-                            };
+                            const matchEnd: RegExpMatchArray = utils.endTheoryRegexp(theoryName).exec(content);
+                            if (matchEnd && matchEnd.length) {
+                                utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
+                                
+                                const docUp: string = content.slice(0, match.index + theoryName.length);
+                                const lines: string[] = docUp.split("\n");
+                                const line: number = lines.length - 1;
+                                const character: number = lines[lines.length - 1].indexOf(match[1]);
+                                
+                                const args = {
+                                    fileName,
+                                    fileExtension,
+                                    contextFolder,
+                                    theoryName, 
+                                    line
+                                };
 
-                            // pvsio codelens
-                            const range: Range = {
-                                start: { line, character },
-                                end: { line, character: character + theoryName.length }
-                            };
-                            codeLens.push({
-                                range,
-                                command: {
-                                    title: "typecheck-file",
-                                    command: "vscode-pvs.typecheck-file",
-                                    arguments: [ args ]
-                                }
-                            });
-                            codeLens.push({
-                                range,
-                                command: {
-                                    title: "evaluate-in-pvsio",
-                                    command: "vscode-pvs.pvsio-evaluator",
-                                    arguments: [ args ]
-                                }
-                            });
+                                // pvsio codelens
+                                const range: Range = {
+                                    start: { line, character },
+                                    end: { line, character: character + theoryName.length }
+                                };
+                                codeLens.push({
+                                    range,
+                                    command: {
+                                        title: "typecheck-file",
+                                        command: "vscode-pvs.typecheck-file",
+                                        arguments: [ args ]
+                                    }
+                                });
+                                codeLens.push({
+                                    range,
+                                    command: {
+                                        title: "evaluate-in-pvsio",
+                                        command: "vscode-pvs.pvsio-evaluator",
+                                        arguments: [ args ]
+                                    }
+                                });
+                            }
                         }
                     }
                 }

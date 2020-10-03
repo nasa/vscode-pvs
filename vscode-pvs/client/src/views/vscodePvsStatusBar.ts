@@ -35,9 +35,8 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-import { StatusBarItem, ExtensionContext, StatusBarAlignment, window, commands, workspace } from "vscode";
+import { StatusBarItem, ExtensionContext, StatusBarAlignment, window, commands } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
-import * as path from 'path';
 import { PvsVersionDescriptor } from "../common/serverInterface";
 
 export class StatusBarPriority {
@@ -139,9 +138,9 @@ export class VSCodePvsStatusBar {
         }
     }
     updateStats (desc: { contextFolder: string, fileName: string, fileExtension: string, stats: { types: number, definitions: number, lemmas: number }}): void {
-        if (desc && desc.stats && desc.fileExtension !== ".tccs") {
-            const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-        }
+        // if (desc && desc.stats && desc.fileExtension !== ".tccs") {
+        //     const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+        // }
     }
 
     /**

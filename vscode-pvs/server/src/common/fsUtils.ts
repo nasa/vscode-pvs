@@ -125,10 +125,10 @@ export function deleteFolder(contextFolder: string): boolean {
 	}
 	return true;
 }
-export function deleteBinFiles(contextFolder: string): boolean {
+export function deleteBinFiles(binFolder: string): boolean {
 	try {
-		if (fs.existsSync(contextFolder)) {
-			execSync(`rm ${contextFolder}/*.bin 2> /dev/null`); // 2> /dev/null suppresses 'file not found' messages
+		if (fs.existsSync(binFolder)) {
+			execSync(`rm ${binFolder}/*.bin 2> /dev/null`); // 2> /dev/null suppresses 'file not found' messages
 		}
 	} catch (deleteError) {
 		return false;
@@ -152,28 +152,21 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 				// remove .prlite files
 				files.filter(name => {
 					// console.log(name);
-					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~")
-						|| (name.endsWith(".tccs") && !contextFolder.endsWith("pvsbin"));
+					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~");
 				}).forEach(file => {
 					// console.log(`deleting ${file}`);
 					deleteFile(path.join(contextFolder, file));
 				});
 				// remove .tccs files
-				if (!contextFolder.endsWith("pvsbin")) {
-					const pvsbinFolder: string = path.join(contextFolder, "pvsbin");
-					const pvsbinFiles: string[] = fs.readdirSync(pvsbinFolder);
+				if (!opt.keepTccs) {
 					// console.log(files);
-					if (pvsbinFiles) {
-						// console.log(files);
-						pvsbinFiles.filter(name => {
-							// console.log(name);
-							return (name.endsWith(".tccs") && !opt.keepTccs)
-									|| name.endsWith(".bin");
-						}).forEach(file => {
-							// console.log(`deleting ${file}`);
-							deleteFile(path.join(pvsbinFolder, file));
-						});
-					}
+					files.filter(name => {
+						// console.log(name);
+						return name.endsWith(".tccs");
+					}).forEach(file => {
+						// console.log(`deleting ${file}`);
+						deleteFile(file);
+					});
 				}
 				nCleaned++;
 				// repeat recursively to subdirs -- do this only for one level
@@ -182,7 +175,7 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 					for (let i = 0; i < dirs.length; i++) {
 						const dir: string = path.join(contextFolder, dirs[i]);
 						if (fs.lstatSync(dir).isDirectory()) {
-							nCleaned += await cleanBin(dir);
+							nCleaned += await cleanBin(dir, opt);
 						}
 					}
 				}

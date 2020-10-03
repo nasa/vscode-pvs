@@ -690,9 +690,8 @@ export class PvsLanguageServer {
 				contextFolder: string 
 			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
 			if (desc) {
-				const contextFolder: string = (desc.fileExtension === ".tccs") ? path.join(desc.contextFolder, "..") : desc.contextFolder; // .tccs files reside under pvsbin/
 				const fname: string = fsUtils.desc2fname({
-					contextFolder,
+					contextFolder: desc.contextFolder,
 					fileName: desc.fileName,
 					fileExtension: ".pvs"
 				});
@@ -1102,7 +1101,7 @@ export class PvsLanguageServer {
 				if (this.pvsProxy.isProtectedFolder(args.contextFolder)) {
 					return await this.getPreludeDescriptor();
 				} // else
-				const contextFolder: string = (args.contextFolder.endsWith("pvsbin")) ? path.join(args.contextFolder, "..") : args.contextFolder;
+				const contextFolder: string = (args.contextFolder.endsWith("pvsbin") || args.contextFolder.endsWith("pvsbin/")) ? path.join(args.contextFolder, "..") : args.contextFolder;
 				return await utils.getContextDescriptor(contextFolder, { listTheorems: true, includeTccs: true });
 			} else {
 				console.error('[pvs-language-server.listTheories] Error: pvs proxy is null');
@@ -1661,7 +1660,7 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverRequest.rebootPvsServer, async (desc?: { pvsPath?: string, cleanFolder?: string }) => {
 				desc = desc || {};
 				await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: true }); // this will remove .pvscontext and pvsbin
-				if (desc.cleanFolder) {
+				if (desc.cleanFolder && desc.cleanFolder !== this.lastParsedContext) {
 					await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: true }); // this will remove .pvscontext and pvsbin
 				}
 				await this.pvsProxy.rebootPvsServer(desc);

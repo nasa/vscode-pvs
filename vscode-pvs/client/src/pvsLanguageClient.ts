@@ -339,7 +339,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						if (window.activeTextEditor && window.activeTextEditor.document) {
 							// parse file opened in the editor
 							const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor.document.fileName);
-							this.client.sendRequest(comm.serverRequest.parseFile, desc);
+							if (desc.contextFolder) {
+								this.client.sendRequest(comm.serverRequest.parseFile, desc);
+								this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
+							}
 						} else {
 							// or ask the descriptor of the current folder
 							const workspaceFolder: Uri = (workspace.workspaceFolders && workspace.workspaceFolders.length) ? workspace.workspaceFolders[0].uri : null;

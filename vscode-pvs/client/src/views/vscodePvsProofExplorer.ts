@@ -294,7 +294,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 	didPasteTree (desc: ProofEditDidPasteTree): void {
 		// the tree structure is automatically updated whenever a node is added to the proof tree (see did-append-node)
-		if (desc) {
+		if (desc && desc.selected) {
 			this.revealNode(desc.selected)
 		}
 		this.refreshView();
@@ -384,7 +384,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	}
 
 	didAppendNode (desc: ProofEditDidAppendNode): void {
-		if (desc) {
+		if (desc && desc.elem) {
 			const parent: ProofItem = this.findNode(desc.elem.parent);
 			if (parent) {
 				const items: ProofItem[] = this.convertNodeX2ProofItem(desc.elem); // do not give the parent otherwise the node will be automatically appended by convertNodeX2ProofItem
