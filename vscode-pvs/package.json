@@ -42,6 +42,7 @@
 	"extensionKind": [
 		"ui"
 	],
+	"enableProposedApi": true,
 	"contributes": {
 		"notes": {
 			"description": "These contributed settings can be read using vscode.workspace.getConfiguration('pvs')"
@@ -121,7 +122,7 @@
 			{
 				"id": "pvs",
 				"label": "PVS",
-				"path": "./icons/pvs-icons-theme.json"
+				"path": "icons/pvs-icons-theme.json"
 			}
 		],
 		"viewsContainers": {
