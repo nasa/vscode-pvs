@@ -175,7 +175,7 @@ export class PvsDefinitionProvider {
 						if (fname && fname.indexOf("/") < 0) {
 							// add contextFolder to fname, check if this is the pvslog folder (if so, remove /pvsbin)
 							let contextFolder: string = fsUtils.getContextFolder(uri);
-							if (contextFolder.endsWith(`/${fsUtils.pvsbinFolder}`)) {
+							if (contextFolder.endsWith("/pvsbin") || contextFolder.endsWith("pvsbin/")) {
 								contextFolder = contextFolder.split("/").slice(0, -1).join("/");
 							}
 							fname = path.join(contextFolder, fname);

@@ -1039,7 +1039,8 @@
 					".prlite",
 					".prl",
 					".hpvs",
-					".summary"
+					".summary",
+					".pvstest"
 				],
 				"firstLine": "\\s*((%+\\w+)|((\\w+)\\s*(?:\\[([\\w\\W\\s]*)\\])?\\s*\\:\\s*(THEORY|theory|Theory)\\b))",
 				"filenames": [

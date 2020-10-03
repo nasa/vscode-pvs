@@ -44,6 +44,7 @@ import * as crypto from 'crypto';
 
 
 const HOME_DIR: string = require('os').homedir();
+export const MAX_RECURSION: number = 4;
 // nodeJS does not support tilde expansion for the home folder
 export function tildeExpansion(path: string): string {
 	if (path && (path.startsWith("~/") || path === "~")) {
@@ -125,17 +126,22 @@ export function deleteFolder(contextFolder: string): boolean {
 	}
 	return true;
 }
-export function deleteBinFiles(binFolder: string): boolean {
+export function deleteBinFiles(binFolder: string, opt?: { removePvsbin?: boolean }): boolean {
+	opt = opt || {};
 	try {
 		if (fs.existsSync(binFolder)) {
-			execSync(`rm ${binFolder}/*.bin 2> /dev/null`); // 2> /dev/null suppresses 'file not found' messages
+			if (opt.removePvsbin) {
+				deleteFolder(binFolder);
+			} else {
+				execSync(`rm ${binFolder}/*.bin 2> /dev/null`); // 2> /dev/null suppresses 'file not found' messages
+			}
 		}
 	} catch (deleteError) {
 		return false;
 	}
 	return true;
 }
-export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean, recursive?: boolean }): Promise<number> {
+export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean, recursive?: number, removePvsbin?: boolean }): Promise<number> {
 	opt = opt || {};
 	let nCleaned: number = 0;
 	try {
@@ -143,7 +149,8 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 		if (contextFolder) {
 			contextFolder = tildeExpansion(contextFolder);
 			// console.log(`Deleting cache for context ${contextFolder}`);
-			deleteBinFiles(pvsbinFolder);
+			const pvsbinFolder: string = path.join(contextFolder, "pvsbin");
+			deleteBinFiles(pvsbinFolder, opt);
 			// console.log(`removing ${path.join(contextFolder, ".pvscontext")}`);
 			deleteFile(path.join(contextFolder, ".pvscontext"));
 			// console.log(`reading folder ${contextFolder}`);
@@ -171,6 +178,7 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 				nCleaned++;
 				// repeat recursively to subdirs -- do this only for one level
 				if (opt.recursive) {
+					opt.recursive--;
 					const dirs: string[] = fs.readdirSync(contextFolder);
 					for (let i = 0; i < dirs.length; i++) {
 						const dir: string = path.join(contextFolder, dirs[i]);
@@ -397,7 +405,6 @@ export function decodeURIComponents (desc) {
 }
 
 // constants
-export const pvsbinFolder: string = "pvsbin";
 export const logFileExtension: string = ".pr";
 
 export function getDownloader (): string {

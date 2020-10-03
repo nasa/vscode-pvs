@@ -68,13 +68,15 @@ const cmds: string[] = [
 
 	"add-pvs-library",
 	"pvs-library-path",
-	"clear-pvs-library-path",
 	"reboot-pvs",
 	"restart-pvs",
 	"install-pvs",
 	"reinstall-pvs", // equivalent to install-pvs
 	"install-nasalib",
 	"reinstall-nasalib", // equivalent to install-nasalib
+	"reset-pvs-library-path",
+	"clean-bin",
+	"clean-all",
 	"update-nasalib",
 	"set-pvs-path",
 	"settings",
@@ -131,8 +133,8 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('workbench.action.openSettings', '@ext:paolomasci.vscode-pvs pvs-library-path');
 					break;
 				}
-				case "clear-pvs-library-path": {
-					commands.executeCommand('vscode-pvs.clear-pvs-library-path');
+				case "reset-pvs-library-path": {
+					commands.executeCommand('vscode-pvs.reset-pvs-library-path');
 					break;
 				}
 				case "show-tccs": {
@@ -223,6 +225,15 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "vpf":
 				case "view-prelude-file": {
 					commands.executeCommand('vscode-pvs.view-prelude-file');
+					break;
+				}
+				case "clean-bin": {
+					commands.executeCommand('vscode-pvs.clean-bin');
+					break;
+				}
+				case "clean-all": {
+					commands.executeCommand('vscode-pvs.clean-all');
+					break;
 				}
 				default: {
 					window.showWarningMessage(`Command ${userInput} not supported`);

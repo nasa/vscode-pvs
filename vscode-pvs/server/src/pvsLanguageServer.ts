@@ -224,7 +224,7 @@ export class PvsLanguageServer {
 	protected isSameWorkspace (contextFolder: string): boolean {
 		if (this.lastParsedContext) {
 			return contextFolder === this.lastParsedContext
-				|| contextFolder === path.join(this.lastParsedContext, fsUtils.pvsbinFolder);
+				|| contextFolder === path.join(this.lastParsedContext, "pvsbin");
 		}
 		return false;
 	}
@@ -761,7 +761,7 @@ export class PvsLanguageServer {
 			opt = opt || {};
 			if (request) {
 				if (fsUtils.isPvsFile(request)) {
-					if (request.contextFolder === path.join(this.lastParsedContext, fsUtils.pvsbinFolder)) {
+					if (request.contextFolder === path.join(this.lastParsedContext, "pvsbin")) {
 						// nothing to do
 						return;
 					}
@@ -1659,9 +1659,9 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverRequest.rebootPvsServer, async (desc?: { pvsPath?: string, cleanFolder?: string }) => {
 				desc = desc || {};
-				await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: true }); // this will remove .pvscontext and pvsbin
+				await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
 				if (desc.cleanFolder && desc.cleanFolder !== this.lastParsedContext) {
-					await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: true }); // this will remove .pvscontext and pvsbin
+					await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
 				}
 				await this.pvsProxy.rebootPvsServer(desc);
 				this.notifyServerMode("lisp");

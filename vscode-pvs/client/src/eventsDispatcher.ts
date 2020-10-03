@@ -1012,6 +1012,14 @@ export class EventsDispatcher {
         //     commands.executeCommand("vscode-pvs.discharge-theorems", resource);
         // }));
         
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-bin", async () => {
+            const currentContext: string = vscode.workspace.rootPath;
+            await fsUtils.cleanBin(currentContext, { removePvsbin: true, recursive: fsUtils.MAX_RECURSION });
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-all", async () => {
+            const currentContext: string = vscode.workspace.rootPath;
+            await fsUtils.cleanBin(currentContext, { removePvsbin: true, recursive: fsUtils.MAX_RECURSION, keepTccs: false });
+        }));
         // vscode-pvs.typecheck-file
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-file", async (resource: string | { path: string } | { contextValue: string }) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {

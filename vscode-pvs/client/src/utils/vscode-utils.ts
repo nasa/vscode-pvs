@@ -183,7 +183,7 @@ export async function cleanPvsWorkspace (): Promise<void> {
         for (let i = 0; i < vscode.workspace.workspaceFolders.length; i++) {
             const contextFolder: string = vscode.workspace.workspaceFolders[i].uri.path;
             if (contextFolder) {
-                nCleaned += await fsUtils.cleanBin(contextFolder, { keepTccs: true, recursive: true });
+                nCleaned += await fsUtils.cleanBin(contextFolder, { keepTccs: true, recursive: fsUtils.MAX_RECURSION });
             }
         }
         const name: string = (vscode.workspace.name && !vscode.workspace.name.startsWith("Untitled")) ? vscode.workspace.name 
