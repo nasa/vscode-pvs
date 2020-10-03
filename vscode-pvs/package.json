@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.26-theta",
+	"version": "1.0.26-iota",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -1044,7 +1044,9 @@
 				],
 				"firstLine": "\\s*((%+\\w+)|((\\w+)\\s*(?:\\[([\\w\\W\\s]*)\\])?\\s*\\:\\s*(THEORY|theory|Theory)\\b))",
 				"filenames": [
-					".pvscontext", ".pvs-strategies", "pvs-strategies"
+					".pvscontext",
+					".pvs-strategies",
+					"pvs-strategies"
 				],
 				"configuration": "./syntax/pvs-language-configuration.json",
 				"aliases": [
