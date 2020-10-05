@@ -137,7 +137,8 @@ Additional hot-keys:
 - `M-x reset-pvs-library-path` *(resets the vscode-pvs library path to empty)*
 - `M-x reboot-pvs` *(reboots pvs-server)*
 - `M-x clean-bin` *(removes pvsbin files created by pvs)*
-- `M-x clean-all` *(removes all temporary files created by pvs)*
+- `M-x clean-tccs` *(removes .tccs files created by pvs)*
+- `M-x clean-all` *(removes all temporary files (including .tccs and pvsbin) created by pvs)*
 - `M-x install-pvs` *(starts as interactive wizard that allows to install or update PVS)*
 - `M-x install-nasalib` *(starts an interactive wizard that allows to install NASALib)*
 - `M-x update-nasalib` *(updates the installed version of NASALib)*

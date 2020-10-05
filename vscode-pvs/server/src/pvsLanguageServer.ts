@@ -1095,7 +1095,7 @@ export class PvsLanguageServer {
 	 * @param contextFolder Context folder
 	 */
 	async getContextDescriptor (args: { contextFolder: string }): Promise<PvsContextDescriptor> {
-		if (args) {
+		if (args && args.contextFolder) {
 			args = fsUtils.decodeURIComponents(args);
 			if (this.pvsProxy) {
 				if (this.pvsProxy.isProtectedFolder(args.contextFolder)) {
@@ -1107,7 +1107,7 @@ export class PvsLanguageServer {
 				console.error('[pvs-language-server.listTheories] Error: pvs proxy is null');
 			}
 		} else {
-			console.error('[pvs-language-server.listTheories] Error: getContextDescriptor invoked with null descriptor');
+			console.warn('[pvs-language-server.listTheories] Warning: getContextDescriptor invoked with null descriptor');
 		}
 		return null;
 	}

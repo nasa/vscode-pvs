@@ -76,6 +76,7 @@ const cmds: string[] = [
 	"reinstall-nasalib", // equivalent to install-nasalib
 	"reset-pvs-library-path",
 	"clean-bin",
+	"clean-tccs",
 	"clean-all",
 	"update-nasalib",
 	"set-pvs-path",
@@ -229,6 +230,10 @@ export class VSCodePvsEmacsBindingsProvider {
 				}
 				case "clean-bin": {
 					commands.executeCommand('vscode-pvs.clean-bin');
+					break;
+				}
+				case "clean-tccs": {
+					commands.executeCommand('vscode-pvs.clean-tccs');
 					break;
 				}
 				case "clean-all": {

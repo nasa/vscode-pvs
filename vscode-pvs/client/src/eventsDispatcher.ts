@@ -1013,12 +1013,37 @@ export class EventsDispatcher {
         // }));
         
         context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-bin", async () => {
-            const currentContext: string = vscode.workspace.rootPath;
-            await fsUtils.cleanBin(currentContext, { removePvsbin: true, recursive: fsUtils.MAX_RECURSION });
+            // ask the user confirmation before deleting bin files
+			const yesno: string[] = [ "Yes", "No" ];
+			const msg: string = `Delete pvsbin folder?\n\nThis action can resolve situations where the server crashes because of corrupted pvsbin files.`;
+			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+			if (ans === yesno[0]) {
+                const currentContext: string = vscode.workspace.rootPath;
+                await fsUtils.cleanBin(currentContext, { removePvsbinFolder: true, keepTccs: true, recursive: fsUtils.MAX_RECURSION });
+            }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-tccs", async () => {
+            // ask the user confirmation before deleting bin files
+			const yesno: string[] = [ "Yes", "No" ];
+			const msg: string = `Delete .tccs files?`;
+			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+			if (ans === yesno[0]) {
+                const currentContext: string = vscode.workspace.rootPath;
+                await fsUtils.cleanTccs(currentContext, { recursive: fsUtils.MAX_RECURSION });
+                // request context descriptor, so pvs explorer can refresh the view
+                const desc: PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
+                this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
+            }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-all", async () => {
-            const currentContext: string = vscode.workspace.rootPath;
-            await fsUtils.cleanBin(currentContext, { removePvsbin: true, recursive: fsUtils.MAX_RECURSION, keepTccs: false });
+            // ask the user confirmation before deleting bin files
+			const yesno: string[] = [ "Yes", "No" ];
+			const msg: string = `Delete temporary files (.tccs and pvsbin) created by PVS?`;
+			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+			if (ans === yesno[0]) {
+                const currentContext: string = vscode.workspace.rootPath;
+                await fsUtils.cleanBin(currentContext, { removePvsbinFolder: true, keepTccs: false, recursive: fsUtils.MAX_RECURSION });
+            }
         }));
         // vscode-pvs.typecheck-file
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-file", async (resource: string | { path: string } | { contextValue: string }) => {

@@ -139,8 +139,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		workspace.onDidOpenTextDocument((event: TextDocument) => {
 			if ((event && event.languageId === "pvs") 
 				|| (window.activeTextEditor && 
-						(fsUtils.isPvsFile(window.activeTextEditor.document.fileName)
-							|| window.activeTextEditor.document.languageId === "Log"))) {
+						(fsUtils.isPvsFile(window.activeTextEditor.document?.fileName)
+							|| window.activeTextEditor.document?.languageId === "Log"))) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
@@ -338,7 +338,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 						if (window.activeTextEditor && window.activeTextEditor.document) {
 							// parse file opened in the editor
-							const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor.document.fileName);
+							const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
 							if (desc.contextFolder) {
 								this.client.sendRequest(comm.serverRequest.parseFile, desc);
 								this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });

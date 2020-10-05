@@ -126,11 +126,11 @@ export function deleteFolder(contextFolder: string): boolean {
 	}
 	return true;
 }
-export function deleteBinFiles(binFolder: string, opt?: { removePvsbin?: boolean }): boolean {
+export function deleteBinFiles(binFolder: string, opt?: { removePvsbinFolder?: boolean }): boolean {
 	opt = opt || {};
 	try {
 		if (fs.existsSync(binFolder)) {
-			if (opt.removePvsbin) {
+			if (opt.removePvsbinFolder) {
 				deleteFolder(binFolder);
 			} else {
 				execSync(`rm ${binFolder}/*.bin 2> /dev/null`); // 2> /dev/null suppresses 'file not found' messages
@@ -141,7 +141,50 @@ export function deleteBinFiles(binFolder: string, opt?: { removePvsbin?: boolean
 	}
 	return true;
 }
-export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean, recursive?: number, removePvsbin?: boolean }): Promise<number> {
+export async function cleanTccs(contextFolder: string, opt?: { 
+	recursive?: number, 
+}): Promise<number> {
+	opt = opt || {};
+	let nCleaned: number = 0;
+	try {
+		if (contextFolder) {
+			contextFolder = tildeExpansion(contextFolder);
+			// console.log(`reading folder ${contextFolder}`);
+			const files: string[] = fs.readdirSync(contextFolder);
+			if (files) {
+				// console.log(files);
+				// remove .tccs files
+				files.filter(name => {
+					// console.log(name);
+					return name.endsWith(".tccs");
+				}).forEach(file => {
+					// console.log(`deleting ${file}`);
+					deleteFile(path.join(contextFolder, file));
+				});
+				nCleaned++;
+				// repeat recursively to subdirs -- do this only for one level
+				if (opt.recursive) {
+					opt.recursive--;
+					const dirs: string[] = fs.readdirSync(contextFolder);
+					for (let i = 0; i < dirs.length; i++) {
+						const dir: string = path.join(contextFolder, dirs[i]);
+						if (fs.lstatSync(dir).isDirectory()) {
+							nCleaned += await cleanTccs(dir, opt);
+						}
+					}
+				}
+			}
+		}
+	} catch (deleteError) {
+		return Promise.resolve(nCleaned);
+	}
+	return Promise.resolve(nCleaned);
+}
+export async function cleanBin(contextFolder: string, opt?: { 
+	keepTccs?: boolean, 
+	recursive?: number, 
+	removePvsbinFolder?: boolean
+}): Promise<number> {
 	opt = opt || {};
 	let nCleaned: number = 0;
 	try {
@@ -172,7 +215,7 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 						return name.endsWith(".tccs");
 					}).forEach(file => {
 						// console.log(`deleting ${file}`);
-						deleteFile(file);
+						deleteFile(path.join(contextFolder, file));
 					});
 				}
 				nCleaned++;
@@ -190,7 +233,7 @@ export async function cleanBin(contextFolder: string, opt?: { keepTccs?: boolean
 			}
 		}
 	} catch (deleteError) {
-		return Promise.resolve(0);
+		return Promise.resolve(nCleaned);
 	}
 	return Promise.resolve(nCleaned);
 }
@@ -266,10 +309,12 @@ export function getContextFolderName(contextFolder: string): string {
 	return null;
 }
 export function isPvsFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
-	const ext: string = (typeof desc === "string") ? desc : (desc) ? desc.fileExtension : null;
-	if (ext) {
-		return ext.endsWith('.pvs') || ext.endsWith('.tccs') || ext.endsWith('.ppe') || ext.endsWith('.pr')
-				|| ext.endsWith('.hpvs') || ext.endsWith(".summary") || ext.endsWith(".prlite");
+	if (desc) {
+		const ext: string = (typeof desc === "string") ? desc : (desc) ? desc.fileExtension : null;
+		if (ext) {
+			return ext.endsWith('.pvs') || ext.endsWith('.tccs') || ext.endsWith('.ppe') || ext.endsWith('.pr')
+					|| ext.endsWith('.hpvs') || ext.endsWith(".summary") || ext.endsWith(".prlite");
+		}
 	}
 	return false;
 }
