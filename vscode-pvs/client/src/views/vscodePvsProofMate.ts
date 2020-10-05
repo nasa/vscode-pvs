@@ -43,7 +43,8 @@ import { ProofMateProfile } from '../common/commandUtils';
 import * as vscode from 'vscode';
 import { ProofBranch, ProofCommand, ProofItem, RootNode } from "./vscodePvsProofExplorer";
 import * as utils from '../common/languageUtils';
-import { ProofNode, ProofNodeX, PvsFormula } from "../common/serverInterface";
+import { ProofNode, PvsFormula } from "../common/serverInterface";
+import * as path from 'path';
 
 declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
 
@@ -53,7 +54,6 @@ declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
 class ProofMateItem extends TreeItem {
 	contextValue: string = "proofmate-item";
 	name: string; // prover command
-	icon: string = " -  ";
 	command: vscode.Command; // vscode action
 	children: ProofItem[] = [];
 
@@ -61,7 +61,7 @@ class ProofMateItem extends TreeItem {
 		super(desc.name, TreeItemCollapsibleState.None);
 		this.name = desc.name;
 		this.tooltip = desc.tooltip;
-		this.label = this.icon + this.name;
+		this.label = this.name;
 		this.command = {
 			title: this.name,
 			command: "proof-mate.did-click-hint",
@@ -250,13 +250,16 @@ class ProofMateSketchpad extends ProofMateGroup {
 			let hasContent: boolean = false;
 			if (items) {
 				for (let i = 0; i < items.length; i++) {
-					// items[i].icon = " -  ";
+					items[i].iconPath = {
+						light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
+						dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")			
+					};			
 					items[i].command = {
 						title: items[i].name,
 						command: "proof-mate.did-click-hint",
 						arguments: [ { cmd: items[i].name } ]
 					};
-					items[i].label = " -  " + items[i].name;
+					items[i].label = items[i].name;
 					if (!hasContent && items[i].contextValue === "proof-command") {
 						hasContent = true;
 					}
@@ -459,8 +462,22 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
 			}
 		}));
+		context.subscriptions.push(commands.registerCommand("proof-mate.exec-subtree", (resource: ProofMateItem | ProofItem) => {
+			if (resource && resource.name) {
+				const seq: string = resource.printProofCommands({ markExecuted: true });
+				this.sendProofCommand(seq);
+				this.refreshView();
+			} else {
+				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
+			}
+		}));
 		context.subscriptions.push(commands.registerCommand("proof-mate.exec-proof-command", (resource: ProofMateItem | ProofItem) => {
 			if (resource && resource.name) {
+				resource.iconPath = {
+					light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
+					dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
+				};
+				this.refreshView();
 				this.sendProofCommand(resource.name);
 			} else {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);

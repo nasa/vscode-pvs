@@ -1156,11 +1156,18 @@ export class ProofItem extends TreeItem {
 	getChildren (): ProofItem[] {
 		return this.children;
 	}
-	printProofCommands (): string | null {
+	printProofCommands (opt?: { markExecuted?: boolean }): string | null {
+		opt = opt || {};
+		if (opt.markExecuted) {
+			this.iconPath = {
+				light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
+				dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
+			};
+		}
 		let ans: string = (this.contextValue === "proof-command") ? this.name : "";
 		if (this.children && this.children.length) {
 			for (let i = 0; i < this.children.length; i++) {
-				ans += this.children[i].printProofCommands();
+				ans += this.children[i].printProofCommands(opt);
 			}
 		}
 		return ans;

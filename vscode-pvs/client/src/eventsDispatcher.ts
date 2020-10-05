@@ -779,7 +779,7 @@ export class EventsDispatcher {
 
         context.subscriptions.push(commands.registerCommand("proof-explorer.trim", (desc: { items: ProofItem[] }) => {
             if (desc) {
-                this.proofMate.clearSketchPath();
+                // this.proofMate.clearSketchPath();
                 this.proofMate.updateSketchpad(desc);
             }
         }));
