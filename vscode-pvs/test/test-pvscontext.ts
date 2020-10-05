@@ -313,6 +313,30 @@ describe("pvs", () => {
 		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
 	}, 10000);
 
+	// this test case fails with the assertion error "the assertion (directory-p path) failed."
+	fit(`ignores non-existing folders indicated in pvs-library-path`, async () => {
+		await quitProverIfActive();
+
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		// remove folder if present and replace it with the content of the zip file
+		const contextFolder: string = path.join(baseFolder, "nasalib-monitors");
+		fsUtils.deleteFolder(contextFolder);
+		execSync(`cd ${baseFolder} && unzip nasalib-monitors.zip`);
+
+		await pvsProxy.lisp(`(push "~/non/existing/path/" *pvs-library-path*)`, { externalServer: true });
+		
+		let response: PvsResponse = await pvsProxy.proveFormula({
+			fileName: "trace",
+			fileExtension: ".pvs",
+			contextFolder: path.join(contextFolder, "Fret_MLTL"),
+			theoryName: "trace",
+			formulaName: "null_null_always_satisfaction"
+		});
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+	}, 100000);
 
 	// remove folders
 	// setTimeout(() => {
