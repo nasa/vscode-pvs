@@ -1659,10 +1659,10 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverRequest.rebootPvsServer, async (desc?: { pvsPath?: string, cleanFolder?: string }) => {
 				desc = desc || {};
-				await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
-				if (desc.cleanFolder && desc.cleanFolder !== this.lastParsedContext) {
-					await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
-				}
+				// await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
+				// if (desc.cleanFolder && desc.cleanFolder !== this.lastParsedContext) {
+				// 	await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
+				// }
 				await this.pvsProxy.rebootPvsServer(desc);
 				this.notifyServerMode("lisp");
 				// send version info
