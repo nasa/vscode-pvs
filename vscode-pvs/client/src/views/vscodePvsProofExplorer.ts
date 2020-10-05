@@ -744,6 +744,19 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 			}
 		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.import-jprf", async () => {
+			if (this.formula && this.formula.theoryName && this.formula.formulaName) {
+				const desc: PvsFile = await vscodeUtils.openProofFile({ defaultExtension: ".jprf" });
+				if (desc && desc.fileExtension) {
+					const action: ProofExecOpenProof = {
+						action: "open-proof",
+						proofFile: desc,
+						formula: this.formula
+					};
+					this.client.sendRequest(serverRequest.proverCommand, action);
+				}
+			}
+		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", async () => {
 			// ask confirmation before quitting proof
 			const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");

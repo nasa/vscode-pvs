@@ -302,7 +302,7 @@ export async function openPvsFileOrWorkspace (): Promise<string> {
 /**
  * Opens a proof file and returns the file content
  */
-export async function openProofFile (opt?: { defaultFolder?: string, defaultExtension?: ".prf" | ".prl" | "jprf" }): Promise<{
+export async function openProofFile (opt?: { defaultFolder?: string, defaultExtension?: ".prf" | ".prl" | ".jprf" }): Promise<{
     fileName: string,
     fileExtension: string,
     contextFolder: string

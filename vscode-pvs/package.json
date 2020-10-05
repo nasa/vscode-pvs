@@ -472,6 +472,12 @@
 				"category": "pvs"
 			},
 			{
+				"command": "proof-explorer.import-jprf",
+				"title": "Import from J-PRF",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
 				"command": "proof-explorer.quit-proof",
 				"title": "Quit Proof",
 				"enablement": "pvs-server-active == true",
@@ -904,6 +910,11 @@
 				},
 				{
 					"command": "proof-explorer.import-prooflite",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1"
+				},
+				{
+					"command": "proof-explorer.import-jprf",
 					"when": "view == proof-explorer-view",
 					"group": "ctrl-1"
 				},
