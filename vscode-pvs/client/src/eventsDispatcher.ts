@@ -663,9 +663,8 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.add-pvs-library", async () => {
             await vscodeUtils.addPvsLibraryFolderWizard();
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.clear-pvs-library-path", async () => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.reset-pvs-library-path", async () => {
             await vscodeUtils.clearPvsLibraryPath();
-            vscode.window.showInformationMessage(`PVS library path cleared!`);
         }));
         // vscode-pvs.send-proof-command
         context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
