@@ -42,7 +42,7 @@ import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindin
 import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, ProofExecInterruptAndQuitProver } from "./common/serverInterface";
+import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, ProofExecInterruptAndQuitProver, FileDescriptor } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
@@ -859,37 +859,32 @@ export class EventsDispatcher {
         }));
 
         // vscode-pvs.prove-formula
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula", async (resource) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula", async (desc: {
+            contextFolder: string,
+            fileName: string,
+            fileExtension: string,
+            theoryName: string,
+            formulaName: string,
+            proofFile?: FileDescriptor
+        }) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();
-                if (!resource) {
-                    resource = { path: window.activeTextEditor.document.fileName };
-                }
             }
-            if (resource) {
-                const desc: PvsFormula = this.resource2desc(resource);
-                if (desc) {
-                    if (desc.theoryName) {
-                        this.proofExplorer.willStartNewProof();
-                        this.proofExplorer.enableView();
-                        this.proofMate.enableView();
-                        // the sequence of events triggered by this command is:
-                        // 1. vscodePvsTerminal.startProverSession(desc) 
-                        // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
-                        // 3. pvsLanguageServer.proveFormulaRequest(desc)
-                        //      3.1 typecheck
-                        //      3.2 loadProofDescriptor
-                        //      3.3 proveFormula
-                        await this.vscodePvsTerminal.startProverSession(desc);
-                    } else {
-                        console.error("[vscode-events-dispatcher] Error: theory name is null", desc);
-                    }
-                } else {
-                    console.error("[vscode-events-dispatcher] Error: unknown vscode-pvs.prove-formula resource", resource);
-                }
+            if (desc && desc.theoryName && desc.formulaName) {
+                    this.proofExplorer.willStartNewProof();
+                    this.proofExplorer.enableView();
+                    this.proofMate.enableView();
+                    // the sequence of events triggered by this command is:
+                    // 1. vscodePvsTerminal.startProverSession(desc) 
+                    // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
+                    // 3. pvsLanguageServer.proveFormulaRequest(desc)
+                    //      3.1 typecheck
+                    //      3.2 loadProofDescriptor
+                    //      3.3 proveFormula
+                    await this.vscodePvsTerminal.startProverSession(desc);
             } else {
-                console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-formula invoked with null resource", resource);
+                console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-formula invoked with null or incomplete descriptor", desc);
             }
         }));
 

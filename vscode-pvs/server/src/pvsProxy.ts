@@ -1314,7 +1314,7 @@ export class PvsProxy {
 						const prl: string = await utils.readProoflite(fname, formula.formulaName);
 						if (prl) {
 							// FIXME: this does not seem to be working!
-							const pvsResponse: PvsResponse = await this.installProofliteScript(formula, prl); // this will load the prl in pvs ans save the proof as .prf
+							const pvsResponse: PvsResponse = await this.installProofliteScript(formula, prl); // this will load the prl in pvs and save the proof as .prf
 							if (pvsResponse && pvsResponse.result) {
 								const response: PvsResponse = await this.getDefaultProofScript(formula);
 								if (response && response.result) {

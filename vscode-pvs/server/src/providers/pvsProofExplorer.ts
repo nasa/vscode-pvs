@@ -68,7 +68,7 @@ import {
 	CliGatewayQuit,
 	ProofFile,
 	ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof
+	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -2176,18 +2176,25 @@ export class PvsProofExplorer {
 
 	/**
 	 * Loads the proof for a given formula
-	 * @param formula 
+	 * @param desc 
 	 */
-	async loadProofRequest (formula: PvsFormula, opt?: { newProof?: boolean }): Promise<ProofDescriptor> {
+	async loadProofRequest (desc: {
+		fileName: string, 
+		fileExtension: string, 
+		contextFolder: string, 
+		theoryName: string, 
+		formulaName: string,
+		proofFile?: FileDescriptor 
+	}, opt?: { newProof?: boolean }): Promise<ProofDescriptor> {
 		opt = opt || {};
-		this.formula = formula;
+		this.formula = desc;
 		if (this.pvsProxy) {
-			const fdesc: PvsFile = {
-				fileName: formula.fileName,
+			const fdesc: PvsFile = desc.proofFile || {
+				fileName: desc.fileName,
 				fileExtension: ".prf",
-				contextFolder: formula.contextFolder
+				contextFolder: desc.contextFolder
 			};
-			const pdesc: ProofDescriptor = (opt.newProof) ? await this.pvsProxy.newProof(formula) : await this.openProofFile(fdesc, formula, opt);
+			const pdesc: ProofDescriptor = (opt.newProof) ? await this.pvsProxy.newProof(desc) : await this.openProofFile(fdesc, desc, opt);
 			// send feedback to the client
 			const structure: ProofNodeX = this.root.getNodeXStructure();
 			const evt: ProofExecDidLoadProof = { 

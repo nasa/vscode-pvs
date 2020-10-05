@@ -59,7 +59,7 @@ import {
 	PvsFile,
 	ContextFolder,
 	PvsTheory,
-	PvsProofCommand, FormulaDescriptor
+	PvsProofCommand, FormulaDescriptor, FileDescriptor
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -312,21 +312,28 @@ export class PvsLanguageServer {
 			}
 		}
 	}
-	async proveFormulaRequest (formula: PvsFormula, opt?: { autorun?: boolean, newProof?: boolean }): Promise<void> {
+	async proveFormulaRequest (desc: {
+		fileName: string, 
+		fileExtension: string, 
+		contextFolder: string, 
+		theoryName: string, 
+		formulaName: string,
+		proofFile?: FileDescriptor 
+	}, opt?: { autorun?: boolean, newProof?: boolean }): Promise<void> {
 		opt = opt || {};
-		if (formula && formula.formulaName && formula.theoryName && formula.fileName && formula.contextFolder) {
-			formula = fsUtils.decodeURIComponents(formula);
+		if (desc && desc.formulaName && desc.theoryName && desc.fileName && desc.contextFolder) {
+			desc = fsUtils.decodeURIComponents(desc);
 			if (await this.getMode() !== "lisp") {
 				// save then quit current proof
 				if (this.proofExplorer.proofIsDirty() && !opt.autorun) {
 					// ask if the proof needs to be saved
-					await this.proofExplorer.querySaveProof(formula);
+					await this.proofExplorer.querySaveProof(desc);
 				}
 				await this.quitProof();
 			}
 
 			// make sure file exists
-			const fname: string = fsUtils.desc2fname(formula);
+			const fname: string = fsUtils.desc2fname(desc);
 			if (!fsUtils.fileExists(fname)) {
 				this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
 				return;
@@ -334,40 +341,40 @@ export class PvsLanguageServer {
 			
 			// make sure the file typechecks correctly before starting a proof attempt
 			// send feedback to the front-end
-			const taskId: string = `typecheck-${formula.formulaName}`;
+			const taskId: string = `typecheck-${desc.formulaName}`;
 			if (!opt.autorun) {
 				this.proofExplorer.resetFlags();
-				this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${formula.formulaName}'` });
+				this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${desc.formulaName}'` });
 			}
 
 			// make sure pvs files are typechecked before starting a proof attempt
-			if (formula.fileExtension) {
+			if (desc.fileExtension) {
 				const response: PvsResponse = await this.typecheckFile({
-					contextFolder: formula.contextFolder,
-					fileName: formula.fileName,
+					contextFolder: desc.contextFolder,
+					fileName: desc.fileName,
 					fileExtension: ".pvs" // this allows to check the pvs file for .tccs
 				});
 				if (response && response.error) {
-					const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(formula);
+					const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(desc);
 					this.diags[fname] = {
 						pvsResponse: response,
 						isTypecheckError: true
 					};
 					this.sendDiagnostics("Typecheck");
 					if (this.pvsErrorManager) {
-						this.pvsErrorManager.handleTypecheckError({ request: formula, response: <PvsError> response, taskId });
+						this.pvsErrorManager.handleTypecheckError({ request: desc, response: <PvsError> response, taskId });
 					}
 					return;
 				}
 			}
 			// load proof -- this needs to be done before starting the prover session
-			this.connection?.sendNotification(serverEvent.proverData, `[pvs-server] loading proof for formula ${formula.formulaName}`);
-			await this.proofExplorer.loadProofRequest(formula, opt);
-			this.connection?.sendNotification(serverEvent.proverData, `[pvs-server] starting prover session for formula ${formula.formulaName}`);
+			this.connection?.sendNotification(serverEvent.proverData, `[pvs-server] loading proof for formula ${desc.formulaName}`);
+			await this.proofExplorer.loadProofRequest(desc, opt);
+			this.connection?.sendNotification(serverEvent.proverData, `[pvs-server] starting prover session for formula ${desc.formulaName}`);
 
-			const response: PvsResponse = await this.proveFormula(formula);
+			const response: PvsResponse = await this.proveFormula(desc);
 			if (response && response.result) {			
-				const channelID: string = utils.desc2id(formula);
+				const channelID: string = utils.desc2id(desc);
 				if (this.connection) { this.connection.sendNotification(serverEvent.proverData, `[pvs-server] sending sequent to prover ${channelID}`); }
 				// the initial response should include only one sequent descriptor
 				const result: SequentDescriptor[] = response.result;
@@ -396,14 +403,14 @@ export class PvsLanguageServer {
 					if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
 						this.notifyEndImportantTask({ id: taskId });
 					} else {
-						this.connection?.sendNotification("pvs.progress-info", `Re-running proof for ${formula.formulaName}`);
+						this.connection?.sendNotification("pvs.progress-info", `Re-running proof for ${desc.formulaName}`);
 					}
 				}
 			} else {
 				// there was an error
 				if (this.connection) {
 					if (this.pvsErrorManager) {
-						this.pvsErrorManager.handleProveFormulaError({ request: formula, response: <PvsError> response, taskId });
+						this.pvsErrorManager.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId });
 					}
 					this.connection.sendNotification(serverEvent.proverData, response);
 				} else {
@@ -413,10 +420,10 @@ export class PvsLanguageServer {
 		} else {
 			if (this.connection) {
 				if (this.pvsErrorManager) {
-					this.pvsErrorManager.handleProveFormulaError({ request: formula, response: null, taskId: null });
+					this.pvsErrorManager.handleProveFormulaError({ request: desc, response: null, taskId: null });
 				}
 			} else {
-				console.error(`[pvs-language-server] Warning: Unable to prove formula`, formula);
+				console.error(`[pvs-language-server] Warning: Unable to prove formula`, desc);
 			}
 		}
 	}
@@ -1713,7 +1720,7 @@ export class PvsLanguageServer {
 			this.connection.onRequest(serverRequest.listContext, async (request: ContextFolder) => {
 				this.listContextFilesRequest(request); // async call
 			});
-			this.connection.onRequest(serverRequest.proveFormula, async (args: PvsFormula) => {
+			this.connection.onRequest(serverRequest.proveFormula, async (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, proofFile?: FileDescriptor }) => {
 				await this.proveFormulaRequest(args);
 			});
 			this.connection.onRequest(serverRequest.getImportChainTheorems, async (args: PvsTheory) => {

@@ -39,7 +39,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { LanguageClient } from 'vscode-languageclient';
-import { PvsCliInterface, serverRequest, serverEvent, PvsFile } from '../common/serverInterface';
+import { PvsCliInterface, serverRequest, serverEvent, PvsFile, FileDescriptor } from '../common/serverInterface';
 import * as language from '../common/languageUtils';
 import * as WebSocket from 'ws';
 import * as fsUtils from '../common/fsUtils';
@@ -364,7 +364,8 @@ export class VSCodePvsTerminal {
         fileExtension: string, 
         contextFolder: string, 
         theoryName: string, 
-        formulaName: string
+        formulaName: string,
+        proofFile?: FileDescriptor
     }): Promise<boolean> {
         return new Promise((resolve, reject) => {
             if (desc) {

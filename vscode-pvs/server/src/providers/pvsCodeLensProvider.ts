@@ -216,12 +216,17 @@ export class PvsCodeLensProvider {
                         const line: number = lines.length - 1;
                         const character: number = 0;
                         
-                        const args: PvsFormula = {
+                        const args = {
                             fileName,
                             fileExtension: (utils.tccFormulaRegexp.test(formulaName)) ? ".tccs" : ".pvs",
                             contextFolder,
                             theoryName, 
-                            formulaName
+                            formulaName,
+                            proofFile: {
+                                fileName,
+                                fileExtension,
+                                contextFolder: currentFolder
+                            }
                         };
 
                         // codelens in .prlite files

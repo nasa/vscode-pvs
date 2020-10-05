@@ -315,10 +315,9 @@ export async function openProofFile (opt?: { defaultFolder?: string }): Promise<
         openLabel: "Open Proof File",
         defaultUri: (opt.defaultFolder) ? vscode.Uri.parse(opt.defaultFolder) : null,
         filters: {
-            "Proof Files": [ ".prf", ".prl", ".prlite", ".jprf" ],
-            "PRF  (Legacy)": [ ".prf" ],
+            "PRF": [ ".prf" ],
             "PRL  (ProofLite)": [ ".prl", ".prlite" ],
-            "JPRF (VSCode-PVS)": [ ".jprf" ]
+            "JPRF (Backup Proof)": [ ".jprf" ]
         }
     });
     if (selection && selection.length === 1) {
