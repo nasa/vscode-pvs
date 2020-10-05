@@ -46,7 +46,7 @@ import {
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -665,6 +665,46 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// save proof without asking confirmation
 			const action: ProofEditExportProof = { action: "export-proof", proofFile: { fileExtension: ".prl" }};
 			this.client.sendRequest(serverRequest.proverCommand, action);
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.import-proof", async () => {
+			if (this.formula && this.formula.theoryName && this.formula.formulaName) {
+				const desc: PvsFile = {
+					contextFolder: this.formula.contextFolder,
+					fileName: this.formula.fileName,
+					fileExtension: ".prf"
+				};	
+				if (desc && desc.contextFolder && desc.fileName && desc.fileExtension) {
+					// const formulaName: string = await vscode.window.showQuickPick(["a", "b", "c"]);
+					// if (formulaName) {
+					// 	const action: ProofExecImportProof = {
+					// 		action: "import-proof",
+					// 		proofFile: desc,
+					// 		formula: this.formula
+					// 	};
+					// 	this.client.sendRequest(serverRequest.proverCommand, action);
+					// }
+					let formulaName: string = await vscode.window.showInputBox({
+						prompt: `Please enter name of the proof to be imported`, 
+						value: "", 
+						ignoreFocusOut: true
+					});
+					if (formulaName) {
+						const formula: PvsFormula = {
+							contextFolder: desc.contextFolder,
+							fileName: desc.fileName,
+							fileExtension: ".pvs",
+							theoryName: this.formula.theoryName,
+							formulaName
+						};
+						const action: ProofExecImportProof = {
+							action: "import-proof",
+							proofFile: desc,
+							formula
+						};
+						this.client.sendRequest(serverRequest.proverCommand, action);
+					}
+				}
+			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.new-proof", async () => {
 			 // ask confirmation before deleting a node

@@ -8,9 +8,9 @@ The environment redefines the way developers interact with PVS, and better align
 [vscode-pvs-1.0.26-iota](releases/vscode-pvs-1.0.26-iota.vsix)
 
 ## Getting started
-- Quick reference guide for the [VSCode-PVS User Interface](vscode-pvs/docs/USER-INTERFACE.md)
-- Are you new to PVS? Try out our [tutorial](vscode-pvs/docs/TUTORIAL.md)!
-- Please check our [FAQs](vscode-pvs/docs/FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.  
+- [Quick reference guide](docs/USER-INTERFACE.md) for the VSCode-PVS User Interface
+- [FAQs](docs/FAQ.md) on VSCode-PVS, including troubleshooting techniques for basic problems.
+- Are you new to PVS? Try out our [tutorial](docs/TUTORIAL.md)!
 
 ## Requirements
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download

@@ -460,6 +460,12 @@
 				"category": "pvs"
 			},
 			{
+				"command": "proof-explorer.import-proof",
+				"title": "Import Proof",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
 				"command": "proof-explorer.quit-proof",
 				"title": "Quit Proof",
 				"enablement": "pvs-server-active == true",
@@ -886,6 +892,16 @@
 					"group": "ctrl-0.1"
 				},
 				{
+					"command": "proof-explorer.import-proof",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1"
+				},
+				{
+					"command": "proof-explorer.export-prooflite",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1"
+				},
+				{
 					"command": "proof-explorer.quit-proof",
 					"when": "view == proof-explorer-view",
 					"group": "ctrl-2"
@@ -996,7 +1012,7 @@
 				"args": {
 					"text": ""
 				},
-				"note": "rename proof command in proof explorer",
+				"note": "edit proof command in proof explorer",
 				"when": "view == proof-explorer-view && viewItem == proof-command"
 			},
 			{

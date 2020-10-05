@@ -780,7 +780,7 @@ export type ProofEditDidStartNewProof = {
 // ProofExec
 export type ProofExecCommand = ProofExecForward | ProofExecBack | ProofExecFastForward | ProofExecRun
 	| ProofExecQuit | ProofExecOpenProof | ProofExecStartNewProof | ProofExecInterruptProver | ProofExecQuitAndSave
-	| ProofExecInterruptAndQuitProver;
+	| ProofExecInterruptAndQuitProver | ProofExecImportProof;
 export type ProofExecForward = {
 	action: "forward"
 };
@@ -809,6 +809,15 @@ export type ProofExecOpenProof = {
 	},
 	formula: PvsFormula
 };
+export type ProofExecImportProof = {
+	action: "import-proof",
+	proofFile: {
+		fileName: string,
+		fileExtension: string,
+		contextFolder: string
+	},
+	formula: PvsFormula
+};
 export type ProofExecStartNewProof = {
 	action: "start-new-proof",
 	formula: PvsFormula
@@ -821,7 +830,7 @@ export type ProofExecInterruptAndQuitProver = {
 };
 
 export type ProofExecEvent = ProofExecDidStartProof | ProofExecDidLoadProof | ProofExecDidLoadSequent
-	| ProofExecDidQuitProof | ProofExecDidUpdateSequent | ProofExecDidOpenProof;
+	| ProofExecDidQuitProof | ProofExecDidUpdateSequent | ProofExecDidOpenProof | ProofExecDidImportProof;
 export type ProofExecDidStartProof = {
 	action: "did-start-proof"
 };
@@ -848,7 +857,15 @@ export type ProofExecDidOpenProof = {
 	proofFile: PvsFile,
 	formula: PvsFormula,
 	desc: ProofDescriptor,
-	proof: ProofNodeX
+	proof?: ProofNodeX
+};
+export type ProofExecDidImportProof = {
+	action: "did-import-proof",
+	proofFile: PvsFile,
+	formula: PvsFormula,
+	importedFormula: PvsFormula,
+	desc: ProofDescriptor,
+	proof?: ProofNodeX
 };
 
 // WorkspaceExec

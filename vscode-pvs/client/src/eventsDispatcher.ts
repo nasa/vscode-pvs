@@ -414,12 +414,30 @@ export class EventsDispatcher {
                 }
                 case "did-open-proof": {
                     if (desc && desc.formula) {
-                        this.proofExplorer.loadProofStructure(desc.formula, desc.desc, desc.proof);
-                        this.proofMate.loadFormula(desc.formula);
-                        const fname: string = fsUtils.desc2fname(desc.formula);
-                        window.showInformationMessage(`Proof ${desc.formula.formulaName} successfully loaded from ${fname}`);
+                        if (desc.proof) {
+                            this.proofExplorer.loadProofStructure(desc.formula, desc.desc, desc.proof);
+                            this.proofMate.loadFormula(desc.formula);
+                            const fname: string = fsUtils.desc2fname(desc.formula);
+                            window.showInformationMessage(`Proof ${desc.formula.formulaName} successfully loaded from ${fname}`);
+                        } else {
+                            window.showInformationMessage(`Formula ${desc.formula.formulaName} does not have a proof.`);
+                        }
                     } else {
                         window.showWarningMessage(`Failed to open proof (null descriptor)`);
+                    }
+                    break;
+                }
+                case "did-import-proof": {
+                    if (desc && desc.formula) {
+                        if (desc.proof) {
+                            this.proofExplorer.loadProofStructure(desc.formula, desc.desc, desc.proof);
+                            this.proofMate.loadFormula(desc.formula);
+                            window.showInformationMessage(`Proof ${desc.importedFormula.formulaName} successfully imported!`);
+                        } else {
+                            window.showInformationMessage(`Formula ${desc.formula.formulaName} does not have a proof.`);
+                        }
+                    } else {
+                        window.showWarningMessage(`Failed to import proof (null descriptor)`);
                     }
                     break;
                 }

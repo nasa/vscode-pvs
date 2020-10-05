@@ -68,7 +68,7 @@ import {
 	CliGatewayQuit,
 	ProofFile,
 	ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor
+	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -2285,7 +2285,7 @@ export class PvsProofExplorer {
 			// open proof descriptor
 			const pdesc: ProofDescriptor = await this.pvsProxy.openProofFile(desc, formula);
 			if (pdesc) {
-				// update proof descriptor
+				// save proof descriptor
 				await utils.saveProofDescriptor(this.formula, pdesc, { saveProofTree: false });
 				// load proof descriptor
 				this.loadProofDescriptor(pdesc);
@@ -2294,7 +2294,7 @@ export class PvsProofExplorer {
 				const evt: ProofExecDidOpenProof = { 
 					action: "did-open-proof",
 					proofFile: desc,
-					formula,
+					formula: this.formula,
 					desc: this.proofDescriptor,
 					proof: structure
 				};
@@ -2304,6 +2304,63 @@ export class PvsProofExplorer {
 				// re-start proof in proof explorer
 				this.startProof();
 				return true;
+			} else {
+				const evt: ProofExecDidOpenProof = { 
+					action: "did-open-proof",
+					proofFile: desc,
+					formula: this.formula,
+					desc: this.proofDescriptor
+				};
+				this.connection?.sendNotification(serverEvent.proverEvent, evt);
+			}
+		}
+		return false;
+	}
+	/**
+	 * Imports the proof of a given formula in proof explorer
+	 */
+	async importProofRequest (desc: PvsFile, formula: PvsFormula): Promise<boolean> {
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
+				&& formula && formula.fileName && formula.fileExtension 
+				&& formula.theoryName && formula.formulaName) {
+			// open proof descriptor
+			const pdesc: ProofDescriptor = await this.pvsProxy.openProofFile(desc, formula);
+			if (pdesc) {
+				// update proof descriptor
+				pdesc.info = this.proofDescriptor.info;
+				pdesc.info.status = "untried";
+				if (pdesc.proofTree) {
+					pdesc.proofTree.name = pdesc.info.formula;
+				}
+				// save proof descriptor
+				await utils.saveProofDescriptor(this.formula, pdesc, { saveProofTree: false });
+				// load proof descriptor
+				this.loadProofDescriptor(pdesc);
+				// mark as dirty
+				this.dirtyFlag = true;
+				// send feedback to the client
+				const structure: ProofNodeX = this.root.getNodeXStructure();
+				const evt: ProofExecDidImportProof = { 
+					action: "did-import-proof",
+					proofFile: desc,
+					formula: this.formula,
+					importedFormula: formula,
+					desc: this.proofDescriptor,
+					proof: structure
+				};
+				this.connection?.sendNotification(serverEvent.proverEvent, evt);
+				// re-start proof in proof explorer
+				this.startProof();
+				return true;
+			} else {
+				const evt: ProofExecDidImportProof = { 
+					action: "did-import-proof",
+					proofFile: desc,
+					formula: this.formula,
+					importedFormula: formula,
+					desc: this.proofDescriptor
+				};
+				this.connection?.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}
 		return false;

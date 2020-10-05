@@ -31,6 +31,7 @@ The environment redefines the way developers interact with PVS, and better align
   -Improved PVSio terminal  
   -Improved dialogs and icons  
   -Improved installation wizard  
+  -Improved Proof Explorer (import/export proof, automatic backup of proof script)
 
 - [1.0.25 (2020.09.23)]()  
   -Proof files are now saved using legacy .prf format  
