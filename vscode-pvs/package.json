@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.26-lambda",
+	"version": "1.0.26-kappa",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -455,13 +455,19 @@
 			},
 			{
 				"command": "proof-explorer.open-proof",
-				"title": "Open...",
+				"title": "Open Proof...",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.import-proof",
-				"title": "Import Proof",
+				"title": "Import from Formula",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
+				"command": "proof-explorer.import-prooflite",
+				"title": "Import from ProofLite",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
@@ -897,9 +903,14 @@
 					"group": "ctrl-1"
 				},
 				{
-					"command": "proof-explorer.export-prooflite",
+					"command": "proof-explorer.import-prooflite",
 					"when": "view == proof-explorer-view",
 					"group": "ctrl-1"
+				},
+				{
+					"command": "proof-explorer.export-prooflite",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1.1"
 				},
 				{
 					"command": "proof-explorer.quit-proof",

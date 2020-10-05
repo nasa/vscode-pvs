@@ -302,23 +302,29 @@ export async function openPvsFileOrWorkspace (): Promise<string> {
 /**
  * Opens a proof file and returns the file content
  */
-export async function openProofFile (opt?: { defaultFolder?: string }): Promise<{
+export async function openProofFile (opt?: { defaultFolder?: string, defaultExtension?: ".prf" | ".prl" | "jprf" }): Promise<{
     fileName: string,
     fileExtension: string,
     contextFolder: string
 } | null> {
     opt = opt || {};
+    let filters: { [key: string]: string[] } = {
+        ".prf": [ ".prf" ],
+        ".prl": [ ".prl", ".prlite" ],
+        ".jprf":[ ".jprf" ]
+    };
+    if (opt.defaultExtension) {
+        const customFilter: { [key: string]: string[] } = {};
+        customFilter[opt.defaultExtension] = filters[opt.defaultExtension];
+        filters = customFilter;
+    }
     const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
         canSelectFiles: true,
         canSelectFolders: false,
         canSelectMany: false,
         openLabel: "Open Proof File",
         defaultUri: (opt.defaultFolder) ? vscode.Uri.parse(opt.defaultFolder) : null,
-        filters: {
-            "PRF": [ ".prf" ],
-            "PRL  (ProofLite)": [ ".prl", ".prlite" ],
-            "JPRF (Backup Proof)": [ ".jprf" ]
-        }
+        filters
     });
     if (selection && selection.length === 1) {
         const fname: string = selection[0].path;
