@@ -1139,6 +1139,10 @@ export class PvsProofExplorer {
 
 					// if the branch has changed, move to the new branch
 					if (utils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
+						// trim node if the number of subgoals has changed
+						if (activeNode.children?.length !== this.proofState["num-subgoals"] && !this.autorunFlag) {
+							this.trimNode({ selected: activeNode });
+						}
 						// find target branch
 						const targetBranch: ProofItem = this.findProofBranch(currentBranchName) || this.createBranchRecursive({ id: currentBranchName }, { internalAction: this.autorunFlag });
 						if (targetBranch) {
