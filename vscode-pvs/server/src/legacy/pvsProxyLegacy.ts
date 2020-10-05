@@ -92,11 +92,24 @@ export class PvsProxyLegacy {
             }
         }
         const matchPvsError: RegExpMatchArray = /Error: (.+)/g.exec(data);
-        if (matchPvsError && this.pvsErrorManager) {
-            const error_string: string = (matchPvsError.length > 1 && matchPvsError[1]) ? matchPvsError[1] : matchPvsError[0];
-            this.pvsErrorManager.notifyPvsFailure({
-                msg: `Internal error: ${error_string}`
-            });
+        const matchPvsErrorAlt: RegExpMatchArray = /<pvserror msg="([\w\W\s]+)">\s*"([\w\W\s]+)"\s*<\/pvserror>/gm.exec(data);
+        if ((matchPvsError || matchPvsErrorAlt) && this.pvsErrorManager) {
+            const error_string: string = matchPvsError ? (matchPvsError.length > 1 && matchPvsError[1]) ? matchPvsError[1] : matchPvsError[0]
+                : matchPvsErrorAlt ? (matchPvsErrorAlt.length > 2 && matchPvsErrorAlt[2]) ? matchPvsErrorAlt[2] : matchPvsErrorAlt[1]
+                : "Please check console log";
+            const msg: string = (error_string.includes("not find lib-path")) ? 
+                error_string + ". Please add external libraries to the PVS_LIBRARY_PATH" 
+                    : "Internal Error: " + error_string;
+            this.pvsErrorManager.notifyPvsFailure({ msg });
+            return {
+                jsonrpc: "2.0",
+                id: "pvs-process-legacy",
+                error: {
+                    data: {
+                        error_string
+                    }
+                }
+            };    
         }
         return {
             jsonrpc: "2.0",
@@ -320,8 +333,11 @@ export class PvsProxyLegacy {
         };
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
             const response: PvsResponse = await this.lisp(`(typecheck-file "${fname}" nil nil nil nil t)`);
-            const res: string = (response) ? response.result : "";
+            if (response && response.error) {
+                return response;
+            }
 
+            const res: string = (response) ? response.result : "";
             const matchTypecheckError: RegExpMatchArray = /\b(?:pvs)?error\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
             const matchLibraryError: RegExpMatchArray = /\bError: ([\w\W\s]+)\b/gm.exec(res);
             if (matchTypecheckError || matchLibraryError) {

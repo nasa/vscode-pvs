@@ -1813,6 +1813,7 @@ export class PvsLanguageServer {
 						case "trim-unused": { this.proofExplorer.removeNotVisitedX(desc); break; }
 						case "rename-node": { this.proofExplorer.renameNodeX(desc); break; }
 						case "open-proof": { await this.proofExplorer.openProofRequest(desc.proofFile, desc.formula); break; }
+						case "import-proof": { await this.proofExplorer.importProofRequest(desc.proofFile, desc.formula); break; }
 	
 						case "export-proof": { await this.proofExplorer.exportProof(desc.proofFile); break; }
 						case "start-new-proof": { await this.proveFormulaRequest(desc.formula, { newProof: true }); break; }
