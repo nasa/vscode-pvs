@@ -313,7 +313,7 @@ export function isPvsFile(desc: string | { fileName: string, fileExtension: stri
 		const ext: string = (typeof desc === "string") ? desc : (desc) ? desc.fileExtension : null;
 		if (ext) {
 			return ext.endsWith('.pvs') || ext.endsWith('.tccs') || ext.endsWith('.ppe') || ext.endsWith('.pr')
-					|| ext.endsWith('.hpvs') || ext.endsWith(".summary") || ext.endsWith(".prlite");
+					|| ext.endsWith('.hpvs') || ext.endsWith(".summary") || ext.endsWith(".prlite") || ext.endsWith(".prl");
 		}
 	}
 	return false;

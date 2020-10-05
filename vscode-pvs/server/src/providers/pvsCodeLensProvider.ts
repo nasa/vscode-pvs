@@ -56,7 +56,10 @@ export class PvsCodeLensProvider {
             const fileName: string = fsUtils.getFileName(document.uri);
             const fileExtension: string = fsUtils.getFileExtension(document.uri);
             let currentFolder: string = fsUtils.getContextFolder(document.uri);
-            const contextFolder: string = (fileExtension === ".prlite") ? path.join(currentFolder, "..") : currentFolder;
+            const contextFolder: string = (fileExtension === ".prlite" 
+                    && (currentFolder.endsWith("pvsbin") || currentFolder.endsWith("pvsbin/"))) ? 
+                path.join(currentFolder, "..") 
+                : currentFolder;
             
             let match: RegExpMatchArray = null;
             const codeLens: CodeLens[] = [];
@@ -103,7 +106,7 @@ export class PvsCodeLensProvider {
                             codeLens.push({
                                 range,
                                 command: {
-                                    title: "show-proof",
+                                    title: "show-prooflite",
                                     command: "vscode-pvs.show-prooflite",
                                     arguments: [ args ]
                                 }
@@ -202,7 +205,7 @@ export class PvsCodeLensProvider {
                 }
             }
 
-            if (fileExtension === ".prlite") {
+            if (fileExtension === ".prlite" || fileExtension === ".prl") {
                 while (match = utils.proofRegexp.exec(content)) {
                     if (match.length > 1 && match[1]) {
                         const formulaName: string = match[1];
