@@ -513,7 +513,8 @@ export class PvsProxyLegacy {
         // * if overwrite-default-proof? is t, the script will replace the current default proof.
         // * The script only is stored to the prf file if save-prf-file? is t.
         // * Parameter overwrite-default-proof? is omitted when force is nil.
-        const cmd: string = `(install-script "${desc.theoryName}" "${prl}" (list "${desc.formulaName}") t)`;
+        const escaped: string = prl.replace(/"/g, "\\\"");
+        const cmd: string = `(install-script "${desc.theoryName}" "${escaped}" (list "${desc.formulaName}") t)`;
         const data: PvsResponse = await this.lisp(cmd);
         if (data && data.error) {
             console.error(data.error);
