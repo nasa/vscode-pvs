@@ -13,16 +13,16 @@ The environment redefines the way developers interact with PVS, and better align
 - Please check our [FAQs](vscode-pvs/docs/FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.  
 
 ## Requirements
-- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
-- PVS Allegro (v7.1.0 or greater)
-  - [PVS-7.1.0 for Linux](http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-g4cb56e73-ix86_64-Linux-allegro.tgz)
-  - [PVS-7.1.0 for MacOs](http://www.csl.sri.com/users/owre/drop/pvs-snapshots/pvs7.1-0-g4cb56e73-ix86-MacOSX-allegro.tgz) 
+- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
 
 ## Installation instructions
 1. Download the latest release of VSCode-PVS from the [github repository](releases)
-2. Install VSCode-PVS in Visual Studio Code: `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
+2. Install VSCode-PVS in Visual Studio Code: 
+- `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
 3. Have fun using the extension!
+
+>Note: When launching VSCode-PVS for the first time, it will check if PVS Allegro v7.1.0 is installed on your system. If not, VSCode-PVS will show a dialog that allows you to download and install it.
 
 ## Updating VSCode-PVS
 When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
