@@ -624,7 +624,7 @@ export class PvsLanguageServer {
 			request = fsUtils.decodeURIComponents(request);
 			if (request) {
 				request.fileExtension = ".pvs"; // only .pvs files should be typechecked
-				const fname: string = `${request.fileName}${request.fileExtension}`;
+				const fname: string = fsUtils.desc2fname(request);
 				// make sure file exists
 				if (!fsUtils.fileExists(fname)) {
 					this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
@@ -641,7 +641,6 @@ export class PvsLanguageServer {
 				// send diagnostics
 				if (response) {
 					if (response.result) {
-						const fname: string = fsUtils.desc2fname(request);
 						this.diags[fname] = {
 							pvsResponse: response,
 							isTypecheckError: true
@@ -1480,7 +1479,7 @@ export class PvsLanguageServer {
 			if (this.pvsPath) {
 				console.log(`[pvs-language-server] Rebooting PVS (installation folder is ${this.pvsPath})`);
 				if (this.pvsProxy) {
-					// await this.pvsProxy.enableExternalServer({ enabled: externalServer });
+					await this.pvsProxy.enableExternalServer({ enabled: externalServer });
 					await this.pvsProxy.restartPvsServer({ pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath, externalServer });
 				} else {
 					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath, externalServer });

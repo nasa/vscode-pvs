@@ -1896,8 +1896,6 @@ export class PvsProxy {
 	async restartPvsServer (opt?: { pvsPath?: string, pvsLibraryPath?: string, externalServer?: boolean }): Promise<boolean> {
 		opt = opt || {};
 
-		await this.enableExternalServer({ enabled: opt.externalServer });
-
 		// set server mode to "lisp"
 		this.mode = "lisp";
 
