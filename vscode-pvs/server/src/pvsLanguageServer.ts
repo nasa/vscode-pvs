@@ -363,6 +363,7 @@ export class PvsLanguageServer {
 					this.sendDiagnostics("Typecheck");
 					if (this.pvsErrorManager) {
 						this.pvsErrorManager.handleTypecheckError({ request: desc, response: <PvsError> response, taskId });
+						this.pvsErrorManager.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId });
 					}
 					return;
 				}

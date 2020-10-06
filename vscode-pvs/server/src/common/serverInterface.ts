@@ -830,9 +830,13 @@ export type ProofExecInterruptAndQuitProver = {
 };
 
 export type ProofExecEvent = ProofExecDidStartProof | ProofExecDidLoadProof | ProofExecDidLoadSequent
-	| ProofExecDidQuitProof | ProofExecDidUpdateSequent | ProofExecDidOpenProof | ProofExecDidImportProof;
+	| ProofExecDidQuitProof | ProofExecDidUpdateSequent | ProofExecDidOpenProof | ProofExecDidImportProof
+	| ProofExecDidFailToStartProof;
 export type ProofExecDidStartProof = {
 	action: "did-start-proof"
+};
+export type ProofExecDidFailToStartProof = {
+	action: "did-fail-to-start-proof"
 };
 export type ProofExecDidLoadSequent = {
 	action: "did-load-sequent",

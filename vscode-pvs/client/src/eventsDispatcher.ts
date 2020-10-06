@@ -375,8 +375,15 @@ export class EventsDispatcher {
                     break;
                 }
 				case "did-start-new-proof": {
-                    this.proofExplorer.willStartNewProof();
+                    this.proofExplorer.enableView();
+                    this.proofMate.enableView();
+                    this.proofExplorer.resetView();
                     break;
+                }
+                case "did-fail-to-start-proof": {
+                    this.proofExplorer.disableView();
+                    this.proofMate.disableView();
+                    this.proofExplorer.resetView();
                 }
                 //---------------
                 case "did-start-proof": {
@@ -384,6 +391,7 @@ export class EventsDispatcher {
                     this.proofMate.startProof();
                     await this.proofMate.loadSketchpadClips(); // loads sketchpad clips from the .jprf file
                     this.statusBar.showInterruptButton();
+                    this.vscodePvsTerminal.maximizePanel();
                     break;
                 }
                 case "did-quit-proof": { // this is sent by CliGateway when the prover CLI is closed
@@ -872,9 +880,10 @@ export class EventsDispatcher {
                 await window.activeTextEditor.document.save();
             }
             if (desc && desc.theoryName && desc.formulaName) {
-                    this.proofExplorer.willStartNewProof();
+                    this.proofExplorer.resetView();
                     this.proofExplorer.enableView();
                     this.proofMate.enableView();
+
                     // the sequence of events triggered by this command is:
                     // 1. vscodePvsTerminal.startProverSession(desc) 
                     // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)

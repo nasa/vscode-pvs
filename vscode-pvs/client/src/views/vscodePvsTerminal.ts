@@ -203,9 +203,9 @@ class TerminalSession {
             profile: desc.profile
         }));
     }
-    async maximizePanel (opt?: PvsFile): Promise<void> {
-        if (!vscode.window.activeTextEditor || !vscode.window.activeTextEditor.document) {
-            await vscodeUtils.openPvsFile(opt);
+    async maximizePanel (pvsFile?: PvsFile): Promise<void> {
+        if (pvsFile && (!vscode.window.activeTextEditor || !vscode.window.activeTextEditor.document)) {
+            await vscodeUtils.openPvsFile(pvsFile);
         }
         vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
     }
@@ -439,5 +439,8 @@ export class VSCodePvsTerminal {
                 resolve(false);
             }
         });
+    }
+    maximizePanel (): void {
+        vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
     }
 }

@@ -2119,9 +2119,7 @@ export class PvsProofExplorer {
 				this.run();
 			} else {
 				const evt: ProofExecDidStartProof = { action: "did-start-proof" };
-				if (this.connection) {
-					this.connection.sendNotification(serverEvent.proverEvent, evt);
-				}
+				this.connection?.sendNotification(serverEvent.proverEvent, evt);
 			}
 		} else {
 			console.warn(`[proof-explorer] Warning: unable to activate selected proof (root node is null)`);

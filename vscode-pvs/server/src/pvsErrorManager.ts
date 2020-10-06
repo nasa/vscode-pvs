@@ -1,6 +1,6 @@
 import { Connection } from "vscode-languageserver";
 import { PvsError } from "./common/pvs-gui";
-import { serverEvent } from "./common/serverInterface";
+import { ProofExecDidFailToStartProof, serverEvent } from "./common/serverInterface";
 import * as fsUtils from './common/fsUtils';
 import { ProcessCode } from "./pvsProcess";
 
@@ -20,8 +20,9 @@ export class PvsErrorManager {
         request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }, 
         response: PvsError, 
         taskId: string 
-    }): void { 
-        // TODO
+    }): void {
+        const evt: ProofExecDidFailToStartProof = { action: "did-fail-to-start-proof" };
+        this.connection?.sendNotification(serverEvent.proverEvent, evt);
     }
     handleEvaluationError (desc: {
         request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd?: string }, 

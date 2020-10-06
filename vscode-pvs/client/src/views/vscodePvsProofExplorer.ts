@@ -350,7 +350,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
-	willStartNewProof (): void {
+	resetView (): void {
 		this.root = null;
 		this.refreshView();
 	}
