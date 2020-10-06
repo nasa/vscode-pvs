@@ -46,7 +46,7 @@ import {
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, FileDescriptor 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -755,6 +755,21 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					};
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
+			}
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.restore-from-jprf", async () => {
+			if (this.formula && this.formula.theoryName && this.formula.formulaName) {
+				const proofFile: FileDescriptor = {
+					contextFolder: this.formula.contextFolder,
+					fileName: this.formula.fileName,
+					fileExtension: ".jprf"
+				};
+				const action: ProofExecOpenProof = {
+					action: "open-proof",
+					proofFile,
+					formula: this.formula
+				};
+				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", async () => {

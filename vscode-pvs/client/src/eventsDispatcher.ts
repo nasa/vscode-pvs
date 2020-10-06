@@ -426,9 +426,9 @@ export class EventsDispatcher {
                             this.proofExplorer.loadProofStructure(desc.formula, desc.desc, desc.proof);
                             this.proofMate.loadFormula(desc.formula);
                             const fname: string = fsUtils.desc2fname(desc.formula);
-                            window.showInformationMessage(`Proof ${desc.formula.formulaName} successfully loaded from ${fname}`);
+                            // window.showInformationMessage(`Proof ${desc.formula.formulaName} successfully loaded from ${fname}`);
                         } else {
-                            window.showInformationMessage(`Formula ${desc.formula.formulaName} does not have a proof.`);
+                            window.showWarningMessage(`Formula ${desc.formula.formulaName} does not have a proof.`);
                         }
                     } else {
                         window.showWarningMessage(`Failed to open proof (null descriptor)`);
