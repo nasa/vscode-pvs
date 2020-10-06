@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.26-nu",
+	"version": "1.0.26-xi",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon.png",
@@ -136,7 +136,7 @@
 				"label": "PVS",
 				"path": "icons/pvs-icons-theme.json"
 			}
-		],	
+		],
 		"viewsContainers": {
 			"activitybar": [
 				{
