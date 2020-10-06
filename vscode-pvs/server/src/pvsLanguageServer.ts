@@ -1480,12 +1480,8 @@ export class PvsLanguageServer {
 			if (this.pvsPath) {
 				console.log(`[pvs-language-server] Rebooting PVS (installation folder is ${this.pvsPath})`);
 				if (this.pvsProxy) {
-					if (externalServer) {
-						await this.pvsProxy.enableExternalServer();
-					} else {
-						await this.pvsProxy.disableExternalServer();
-					}
-					await this.pvsProxy.restartPvsServer({ pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath });
+					// await this.pvsProxy.enableExternalServer({ enabled: externalServer });
+					await this.pvsProxy.restartPvsServer({ pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath, externalServer });
 				} else {
 					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath, externalServer });
 					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath })

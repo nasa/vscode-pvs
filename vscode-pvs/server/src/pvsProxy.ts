@@ -191,10 +191,15 @@ export class PvsProxy {
 		return this.mode;
 	}
 
-	async enableExternalServer (): Promise<void> {
-		console.info("[pvs-proxy] Enabling external server...");
-		await this.killPvsServer();
-		this.externalServer = true;
+	async enableExternalServer (opt?: { enabled?: boolean }): Promise<void> {
+		opt = opt || {};
+		if (opt.enabled === false) {
+			await this.disableExternalServer();
+		} else {
+			console.info("[pvs-proxy] Enabling external server...");
+			await this.killPvsServer();
+			this.externalServer = true;
+		}
 	}
 
 	async disableExternalServer (): Promise<void> {
@@ -1888,8 +1893,10 @@ export class PvsProxy {
 	 * Utility function, restarts the xml-rpc server
 	 * @param opt 
 	 */
-	async restartPvsServer (opt?: { pvsPath?: string, pvsLibraryPath?: string }): Promise<boolean> {
+	async restartPvsServer (opt?: { pvsPath?: string, pvsLibraryPath?: string, externalServer?: boolean }): Promise<boolean> {
 		opt = opt || {};
+
+		await this.enableExternalServer({ enabled: opt.externalServer });
 
 		// set server mode to "lisp"
 		this.mode = "lisp";
@@ -2076,7 +2083,6 @@ export class PvsProxy {
 		}
 		const success: boolean = await this.restartPvsServer();
 		if (success) {
-			// await this.loadPvsVersionInfo();
 			console.log(`[pvs-proxy] Activation complete!`);
 		} else {
 			console.error(`[pvs-proxy] Activation failed :/`);

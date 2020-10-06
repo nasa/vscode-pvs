@@ -188,7 +188,7 @@ export class PvsProcess {
 		const args: string[] = opt.externalServer ?  [ "-raw" ] : [ "-raw", "-port", `${this.serverPort}` ];
 		// pvs args
 		console.info(`${this.pvsPath}/pvs ${args.join(" ")}`);
-		const fileExists: boolean = await fsUtils.fileExists(pvs);
+		const fileExists: boolean = fsUtils.fileExists(pvs);
 		if (fileExists) {
 			let addressInUse: boolean = false;
 			return await new Promise((resolve, reject) => {
@@ -226,7 +226,7 @@ export class PvsProcess {
 						const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
 						if (yesNoQuery) {
 							console.log(data);
-							this.pvsProcess.stdin.write("Yes\n");
+							this.pvsProcess?.stdin?.write("Yes\n");
 							this.log("Yes\n", { force: true });
 							return;
 						}
@@ -298,14 +298,14 @@ export class PvsProcess {
 					if (this.pvsProcess) {
 						// try to exit the process gracefully
 						await new Promise((resolve, reject) => {
-							this.pvsProcess.stdin.write("(quit)Y\n");
+							this.pvsProcess?.stdin?.write("(quit)Y\n");
 							setTimeout(() => {
 								resolve();
 							}, 200);
 						});
 					} else {
 						// execSync(`kill -9 ${pid}`);
-						process.kill(pid, "SIGTERM");
+						process?.kill(pid, "SIGTERM");
 					} 
 				} finally {
 					this.pvsProcess = null;
