@@ -5,7 +5,7 @@ The environment redefines the way developers interact with PVS, and better align
 ![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.26-mu](releases/vscode-pvs-1.0.26-mu.vsix)
+[vscode-pvs-1.0.26-nu](releases/vscode-pvs-1.0.26-nu.vsix)
 
 ## Getting started
 - [Quick reference guide](docs/USER-INTERFACE.md) for the VSCode-PVS User Interface
