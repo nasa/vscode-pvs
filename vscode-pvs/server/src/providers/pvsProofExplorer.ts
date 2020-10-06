@@ -2421,7 +2421,7 @@ export class PvsProofExplorer {
 				// 	break;
 				// }
 				case ".prl": {
-					success = await this.pvsProxy.saveProoflite({ 
+					const fname: string = await this.pvsProxy.saveProoflite({ 
 						fileName: proofFile.fileName,
 						fileExtension: ".prl",
 						contextFolder: proofFile.contextFolder,
@@ -2429,6 +2429,7 @@ export class PvsProofExplorer {
 						formulaName: this.formula.formulaName,
 						proofDescriptor: this.proofDescriptor
 					});
+					success = !!fname;
 					break;
 				}
 				default: {

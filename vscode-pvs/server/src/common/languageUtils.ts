@@ -41,7 +41,7 @@ import * as path from 'path';
 import * as language from './languageKeywords';
 import { FileList, FormulaDescriptor, PvsContextDescriptor, 
 	TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, 
-	ProofFile, ProofStatus, Position, Range, ProofTree, PvsFormula, PvsTheory 
+	ProofFile, ProofStatus, Position, Range, ProofTree, PvsFormula, PvsTheory, FileDescriptor 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 
@@ -692,7 +692,13 @@ export function makeProofliteHeader (formulaName: string, theoryName: string, st
  * @param desc 
  */
 export function proofliteRegexp(desc: { theoryName: string, formulaName: string }): RegExp {
-	return new RegExp(`(?:(?:%--*.*)\\s*(?:%\\s*@formula\s*:\s*(${desc.formulaName}))?\s*(?:%\s*@theory\s*:\s*(${desc.theoryName}))?\s*(?:%\s*@status\s*:\s*(.*))?\s*(?:%--*.*))?\s*(${desc.formulaName}\s*:\s*PROOF[\w\W\s]*QED\s*${desc.formulaName}`, "g");
+	const formulaName: string = desc.formulaName.replace(/\?/g, "\\\\?");
+	const theoryName: string = desc.theoryName.replace(/\?/g, "\\\\?");
+	return new RegExp(`(?:(?:%--*.*)\\s*(?:%\\s*@formula\\s*:\\s*(${formulaName}))?\\s*(?:%\\s*@theory\\s*:\\s*(${theoryName}))?\\s*(?:%\\s*@status\\s*:\\s*(.*))?\\s*(?:%--*.*))?\\s*(${desc.formulaName}\\s*:\\s*PROOF[\\w\\W\\s]*QED\\s*${desc.formulaName})`, "g");
+}
+export function proofliteDeclRegexp(desc: { theoryName: string, formulaName: string }): RegExp {
+	const formulaName: string = desc.formulaName.replace(/\?/g, "\\\\?");
+	return new RegExp(`\\b${formulaName}\\s*:\\s*PROOF\\b`, "g");
 }
 // group 1 is formula name
 export const proofRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(%.+)?\s*:\s*(%.+)?\s*(?:PROOF)\b/gim;
@@ -707,6 +713,19 @@ export async function getProofliteScript (desc: {
 	const txt: string = await fsUtils.readFile(fname);
 	const matchProoflite: RegExpMatchArray = proofliteRegexp(desc).exec(txt);
 	return matchProoflite ? matchProoflite[0] : null;
+}
+export async function getProofLitePosition (desc: { formula: PvsFormula, proofFile: FileDescriptor }): Promise<number> {
+	if (desc && desc.formula && desc.proofFile) {
+		const fname: string = fsUtils.desc2fname(desc.proofFile);
+		const txt: string = await fsUtils.readFile(fname);
+		const matchProoflite: RegExpMatchArray = proofliteDeclRegexp(desc.formula).exec(txt);
+		if (matchProoflite) {
+			const slice: string = txt.slice(0, matchProoflite.index);
+			const lines: string[] = slice.split("\n");
+			return lines.length;
+		}
+	}
+	return 0;
 }
 
 /**
@@ -1470,37 +1489,44 @@ export async function readJprfProofFile (fname: string, opt?: { quiet?: boolean 
 	return proofFile;
 }
 
-/**
- * Utility function, appends a prooflite script at the end of a given file
- * @param fname Name of the prooflite file
- * @param script The prooflite script to be appended
- */
-export async function appendProoflite (fname: string, script: string): Promise<boolean> {
-	if (fname && script) {
-		const content: string = await fsUtils.readFile(fname);
-		const newContent: string = (content && content.trim()) ? content + `\n\n${script}` : script;
-		return await fsUtils.writeFile(fname, newContent);
-	}
-	return false;
-}
+// /**
+//  * Utility function, appends a prooflite script at the end of a given file
+//  * @param fname Name of the prooflite file
+//  * @param script The prooflite script to be appended
+//  */
+// export async function appendProoflite (fname: string, script: string): Promise<boolean> {
+// 	if (fname && script) {
+// 		const content: string = await fsUtils.readFile(fname);
+// 		const newContent: string = (content && content.trim()) ? content + `\n\n${script}` : script;
+// 		return await fsUtils.writeFile(fname, newContent);
+// 	}
+// 	return false;
+// }
 /**
  * Utility function, removes a prooflite script from a given file
  * @param fname Name of the prooflite file
  * @param formulaName name of the prooflite script to be removed
  */
-export async function removeProoflite (fname: string, formulaName: string): Promise<boolean> {
+export async function updateProoflite (fname: string, formulaName: string, newProoflite: string): Promise<boolean> {
 	if (fname && formulaName) {
 		fname = fsUtils.decodeURIComponents(fname);
 		const fileExists: boolean = await fsUtils.fileExists(fname);
-		if (fileExists) {
-			const content: string = await fsUtils.readFile(fname);
-			if (content) {
-				// group 1 is the header (this group can be null)
-				// group 2 is the prooflite script
-				const regex: RegExp = new RegExp(`(%-*[\\w\\W\\s]+%-*)?\\s*\\b(${formulaName}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formulaName})`, "g");
-				const newContent: string = content.replace(regex, "");
-				return await fsUtils.writeFile(fname, newContent);
-			}
+		if (!fileExists) {
+			fsUtils.writeFile(fname, "");
+		}
+		const content: string = await fsUtils.readFile(fname);
+
+		// group 1 is the header (this group can be null)
+		// group 2 is the prooflite script
+		const formula: string = formulaName.replace(/\?/g, "\\?");
+		const regex: RegExp = new RegExp(`(%-*\\s%\\s*@formula\\s*:\\s*${formula}\\s[\\w\\W\\s]+%-*)?\\s*\\b(${formula}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
+		if (regex.test(content)) {
+			let newContent: string =  newProoflite + "\n\n\n" + content.replace(regex, "").trim();
+			// update content
+			return await fsUtils.writeFile(fname, newContent.trim());
+		} else {
+			const newContent: string = newProoflite + "\n\n\n" + content.trim();
+			return await fsUtils.writeFile(fname, newContent.trim());
 		}
 	}
 	return false;
@@ -1519,7 +1545,8 @@ export async function containsProoflite (fname: string, formulaName: string): Pr
 			if (content) {
 				// group 1 is the header (this group can be null)
 				// group 2 is the prooflite script
-				const regex: RegExp = new RegExp(`(%-*[\\w\\W\\s]+%-*)?\\s*\\b(${formulaName}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formulaName})`, "g");
+				const formula: string = formulaName.replace(/\?/g, "\\?");
+				const regex: RegExp = new RegExp(`\\b(${formula}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
 				return regex.test(content);
 			}
 		}
@@ -1541,10 +1568,11 @@ export async function readProoflite (fname: string, formulaName: string): Promis
 				// group 1 is the header (this group can be null)
 				// group 2 is the prooflite script (with tags)
 				// group 3 is the prooflite script (without tags)
-				const regex: RegExp = new RegExp(`(%-*[\\w\\W\\s]+%-*)?\\s*\\b(${formulaName}\\s*:\\s*PROOF\\b([\\s\\w\\W]+)\\bQED\\b\\s*${formulaName})`, "g");
+				const formula: string = formulaName.replace(/\?/g, "\\?");
+				const regex: RegExp = new RegExp(`\\s*\\b(${formula}\\s*:\\s*PROOF\\b([\\s\\w\\W]+)\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
 				const match: RegExpMatchArray = regex.exec(content);
-				if (match && match.length > 3) {
-					return match[3].trim();
+				if (match && match.length > 2) {
+					return match[2].trim();
 				}
 			}
 		}
@@ -1560,13 +1588,7 @@ export async function readProoflite (fname: string, formulaName: string): Promis
 export async function saveProoflite (fname: string, formulaName: string, script: string): Promise<boolean> {
 	if (fname && formulaName && script) {
 		fname = fsUtils.decodeURIComponents(fname);
-		const fileExists: boolean = await fsUtils.fileExists(fname);
-		if (fileExists) {
-			// deleted any previous version of the prooflite script in the file
-			await removeProoflite(fname, formulaName);
-		}
-		// append the new prooflite script
-		return await appendProoflite(fname, script);
+		return await updateProoflite(fname, formulaName, script);
 	}
 	return false;
 }

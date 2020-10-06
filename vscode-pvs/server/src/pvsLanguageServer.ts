@@ -563,11 +563,22 @@ export class PvsLanguageServer {
 		if (formula && this.connection) {
 			formula = fsUtils.decodeURIComponents(formula);
 			const pdesc: ProofDescriptor = await this.openProof(formula);
-			const header: string = utils.makeProofliteHeader(formula.formulaName, formula.theoryName, pdesc.info.status);
-			const proof: string[] = utils.proofDescriptor2ProofLite(pdesc);
-			const proofScript: string = (proof && proof.length) ? header + proof.join("\n") : header;
+
+			const fname: string = await this.pvsProxy.saveProoflite({ 
+				fileName: formula.fileName,
+				fileExtension: ".prl",
+				contextFolder: formula.contextFolder,
+				theoryName: formula.theoryName,
+				formulaName: formula.formulaName,
+				proofDescriptor: pdesc
+			});
+
+			// const header: string = utils.makeProofliteHeader(formula.formulaName, formula.theoryName, pdesc.info.status);
+			// const proof: string[] = utils.proofDescriptor2ProofLite(pdesc);
+			// const proofScript: string = (proof && proof.length) ? header + proof.join("\n") : header;
 			// send response to the client
-			this.connection.sendRequest(serverEvent.showProofLiteResponse, { response: proofScript, args: formula });
+			const proofFile: FileDescriptor = fsUtils.fname2desc(fname)
+			this.connection.sendRequest(serverEvent.showProofLiteResponse, { response: { proofFile }, args: formula });
 		}
 	}
 

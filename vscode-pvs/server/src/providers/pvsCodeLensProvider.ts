@@ -55,11 +55,7 @@ export class PvsCodeLensProvider {
         if (document) {
             const fileName: string = fsUtils.getFileName(document.uri);
             const fileExtension: string = fsUtils.getFileExtension(document.uri);
-            let currentFolder: string = fsUtils.getContextFolder(document.uri);
-            const contextFolder: string = (fileExtension === ".prlite" 
-                    && (currentFolder.endsWith("pvsbin") || currentFolder.endsWith("pvsbin/"))) ? 
-                path.join(currentFolder, "..") 
-                : currentFolder;
+            const contextFolder: string = fsUtils.getContextFolder(document.uri);
             
             let match: RegExpMatchArray = null;
             const codeLens: CodeLens[] = [];
@@ -225,7 +221,7 @@ export class PvsCodeLensProvider {
                             proofFile: {
                                 fileName,
                                 fileExtension,
-                                contextFolder: currentFolder
+                                contextFolder
                             }
                         };
 

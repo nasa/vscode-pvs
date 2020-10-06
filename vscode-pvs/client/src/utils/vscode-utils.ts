@@ -310,7 +310,7 @@ export async function openProofFile (opt?: { defaultFolder?: string, defaultExte
     opt = opt || {};
     let filters: { [key: string]: string[] } = {
         ".prf": [ ".prf" ],
-        ".prl": [ ".prl", ".prlite" ],
+        ".prl": [ ".prl" ],
         ".jprf":[ ".jprf" ]
     };
     if (opt.defaultExtension) {

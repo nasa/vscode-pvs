@@ -606,18 +606,6 @@ export class EventsDispatcher {
             this.vscodePvsTerminal.deactivate();
         });
 
-        this.client.onRequest(serverEvent.showProofLiteResponse, (desc: { 
-            response: string, 
-            args: PvsFormula
-        }) => {
-            if (desc && desc.response) {
-                vscodeUtils.previewTextDocument(`${desc.args.theoryName}.prlite`, desc.response, { 
-                    contextFolder: path.join(desc.args.contextFolder, "pvsbin"), 
-                    viewColumn: vscode.ViewColumn.Beside
-                });
-            }
-        });
-
         this.client.onRequest(serverEvent.generateSummaryResponse, (desc: { 
             response: PvsFile,
             args: { 
@@ -822,7 +810,47 @@ export class EventsDispatcher {
                         desc.theoryName = theoryName;
                     }
                     if (desc.theoryName) {
-                        this.client.sendRequest(serverRequest.showProofLite, desc);
+                        // show dialog with progress
+                        await window.withProgress({
+                            location: ProgressLocation.Notification,
+                            cancellable: true
+                        }, async (progress, token) => {
+                            // show initial dialog with spinning progress
+                            const message: string = `Generating ProofLite script for formula ${desc.formulaName}`;
+                            progress.report({ increment: -1, message });
+
+                            return new Promise((resolve, reject) => {
+                                this.client.sendRequest(serverRequest.showProofLite, desc);
+
+                                this.client.onRequest(serverEvent.showProofLiteResponse, async (desc: { 
+                                    response: { proofFile: FileDescriptor }, 
+                                    args: PvsFormula
+                                }) => {
+                                    if (desc && desc.args && desc.response && desc.response.proofFile) {
+                                        const line: number = await utils.getProofLitePosition({ formula: desc.args, proofFile: desc.response.proofFile });
+                                        vscodeUtils.showTextDocument(desc.response.proofFile, {
+                                            viewColumn: vscode.ViewColumn.Beside,
+                                            selection: new vscode.Range(
+                                                new vscode.Position(line - 1, 0),
+                                                new vscode.Position(line, 0)
+                                            )
+                                        });
+                                        this.statusBar.ready();
+                                        progress.report({ message: `Done!`, increment: 100 });
+                                        resolve();
+                                        // vscodeUtils.previewTextDocument(`${desc.args.theoryName}.prlite`, desc.response, { 
+                                        //     contextFolder: path.join(desc.args.contextFolder, "pvsbin"), 
+                                        //     viewColumn: vscode.ViewColumn.Beside
+                                        // });
+                                    } else {
+                                        progress.report({ message: `Unable to generate prooflite script for formula ${desc.args.formulaName}`, increment: 100 });
+                                        setTimeout(() => {
+                                            resolve();
+                                        }, 4000)
+                                    }
+                                });
+                            });
+                        });
                     } else {
                         window.showErrorMessage(`Error while trying to display prooflite script (could not identify theory name, please check that the file typechecks correctly)`);
                     }

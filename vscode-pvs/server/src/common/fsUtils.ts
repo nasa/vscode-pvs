@@ -38,7 +38,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileList} from '../common/serverInterface';
+import { FileDescriptor, FileList} from '../common/serverInterface';
 import { execSync } from 'child_process';
 import * as crypto from 'crypto';
 
@@ -313,7 +313,7 @@ export function isPvsFile(desc: string | { fileName: string, fileExtension: stri
 		const ext: string = (typeof desc === "string") ? desc : (desc) ? desc.fileExtension : null;
 		if (ext) {
 			return ext.endsWith('.pvs') || ext.endsWith('.tccs') || ext.endsWith('.ppe') || ext.endsWith('.pr')
-					|| ext.endsWith('.hpvs') || ext.endsWith(".summary") || ext.endsWith(".prlite") || ext.endsWith(".prl");
+					|| ext.endsWith('.hpvs') || ext.endsWith(".summary") || ext.endsWith(".prl");
 		}
 	}
 	return false;
@@ -405,7 +405,7 @@ export function shasum (txt: string): string {
 	return "";
 }
 
-export async function shasumFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<string> {
+export async function shasumFile (desc: FileDescriptor): Promise<string> {
 	const content: string = await readFile(desc2fname(desc));
 	if (content) {
 		return shasum(content);
@@ -413,14 +413,17 @@ export async function shasumFile (desc: { fileName: string, fileExtension: strin
 	return "";
 }
 
-export function fname2desc (fname: string): { fileName: string, fileExtension: string, contextFolder: string } {
-	const fileName: string = getFileName(fname);
-	const fileExtension: string = getFileExtension(fname);
-	const contextFolder: string = getContextFolder(fname);
-	return { fileName, fileExtension, contextFolder };
+export function fname2desc (fname: string): FileDescriptor | null {
+	if (fname) {
+		const fileName: string = getFileName(fname);
+		const fileExtension: string = getFileExtension(fname);
+		const contextFolder: string = getContextFolder(fname);
+		return { fileName, fileExtension, contextFolder };
+	}
+	return null;
 }
 
-export function desc2fname (desc: { fileName: string, fileExtension: string, contextFolder: string }): string {
+export function desc2fname (desc: FileDescriptor): string {
 	return path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 }
 

@@ -1308,7 +1308,6 @@ export class PvsProxy {
 						}
 						break;
 					}
-					case ".prlite":
 					case ".prl": {
 						const fname: string = fsUtils.desc2fname(desc);
 						const prl: string = await utils.readProoflite(fname, formula.formulaName);
@@ -1473,7 +1472,7 @@ export class PvsProxy {
 		formulaName: string, 
 		contextFolder: string, 
 		proofDescriptor: ProofDescriptor
-	}): Promise<boolean> {
+	}): Promise<string> {
 		// save prooflite
 		const fname: string = fsUtils.desc2fname({
 			contextFolder: desc.contextFolder,
@@ -1488,9 +1487,9 @@ export class PvsProxy {
 			// try to save into .prf -- disabled for now
 			// const prl: string = utils.proofTree2Prl(desc.proofDescriptor);
 			// await this.saveProofWithFormula(desc, prl);
-			return success;
+			return success ? fname : null;
 		}
-		return false;
+		return null;
 	}
 	/**
 	 * Saves the given proof script in .prf format via prooflite
