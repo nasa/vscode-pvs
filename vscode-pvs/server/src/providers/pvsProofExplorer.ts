@@ -1140,7 +1140,9 @@ export class PvsProofExplorer {
 					// if the branch has changed, move to the new branch
 					if (utils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
 						// trim node if the number of subgoals has changed
-						if (activeNode.children?.length !== this.proofState["num-subgoals"] && !this.autorunFlag) {
+						// children.length === 0 means this branch does not have sub-goals
+						// this.proofState["num-subgoals"] === 1 when branch does not have subgoals
+						if (activeNode.children?.length === 0 && this.proofState["num-subgoals"] > 1 && !this.autorunFlag) {
 							this.trimNode({ selected: activeNode });
 						}
 						// find target branch
