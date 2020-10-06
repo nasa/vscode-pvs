@@ -70,7 +70,7 @@
 					"pvs.pvsWorkspaces": {
 						"type": "string",
 						"default": "Workspaces",
-						"description": "Default folder for PVS workspaces (leave blank if you do not want to set a default workspaces folder)"
+						"description": "Default PVS workspaces folder (path is relative to your home folder; leave blank to disable the use of a default workspace)"
 					},
 					"pvs.serviceProvider.codelens": {
 						"type": "boolean",
