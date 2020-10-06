@@ -42,7 +42,6 @@
 	"extensionKind": [
 		"ui"
 	],
-	"enableProposedApi": true,
 	"contributes": {
 		"notes": {
 			"description": "These contributed settings can be read using vscode.workspace.getConfiguration('pvs')"
@@ -67,6 +66,11 @@
 						"type": "string",
 						"default": "",
 						"description": "PVS library path (colon-separated list of folders, e.g., usr/libs/L1:usr/libs/L2)"
+					},
+					"pvs.pvsWorkspaces": {
+						"type": "string",
+						"default": "Workspaces",
+						"description": "Default folder for PVS workspaces (leave blank if you do not want to set a default workspaces folder)"
 					},
 					"pvs.serviceProvider.codelens": {
 						"type": "boolean",
@@ -118,6 +122,7 @@
 				}
 			}
 		],
+		"enableProposedApi": true,
 		"iconThemes": [
 			{
 				"id": "pvs",

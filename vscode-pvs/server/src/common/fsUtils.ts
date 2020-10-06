@@ -43,7 +43,7 @@ import { execSync } from 'child_process';
 import * as crypto from 'crypto';
 
 
-const HOME_DIR: string = require('os').homedir();
+export const HOME_DIR: string = require('os').homedir();
 export const MAX_RECURSION: number = 4;
 // nodeJS does not support tilde expansion for the home folder
 export function tildeExpansion(path: string): string {
@@ -318,16 +318,16 @@ export function isPvsFile(desc: string | { fileName: string, fileExtension: stri
 	}
 	return false;
 }
-export async function fileExists(fname: string): Promise<boolean> {
+export function fileExists(fname: string): boolean {
 	return pathExists(fname);
 }
-export async function dirExists(contextFolder: string): Promise<boolean> {
+export function dirExists(contextFolder: string): boolean {
 	return pathExists(contextFolder);
 }
-export async function folderExists(contextFolder: string): Promise<boolean> {
-	return await dirExists(contextFolder);
+export function folderExists(contextFolder: string): boolean {
+	return dirExists(contextFolder);
 }
-export async function pathExists(path: string): Promise<boolean> {
+export function pathExists(path: string): boolean {
 	if (path) {
 		let ans: boolean = false;
 		path = tildeExpansion(path);

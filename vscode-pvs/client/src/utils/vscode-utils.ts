@@ -51,6 +51,36 @@ export function getEditorContextFolder () : string {
     return (vscode.window.activeTextEditor) ? fsUtils.getContextFolder(vscode.window.activeTextEditor.document.fileName) : null;
 }
 
+export function getDefaultContextFolder (): string {
+    const workspaces: string = vscode.workspace.getConfiguration().get("pvs.pvsWorkspaces");
+    if (workspaces) {
+        const pvsWorkspaces: string = path.join(fsUtils.HOME_DIR, workspaces);
+        if (fsUtils.folderExists(pvsWorkspaces)) {
+            return pvsWorkspaces;
+        }
+    }
+    return null;
+}
+export async function createDefaultPvsWorkspacesDirectory (): Promise<string> {
+    const workspaces: string = vscode.workspace.getConfiguration().get("pvs.pvsWorkspaces");
+    if (workspaces) {
+        const pvsWorkspaces: string = path.join(fsUtils.HOME_DIR, workspaces);
+        if (!fsUtils.folderExists(pvsWorkspaces)) {
+            await fsUtils.createFolder(pvsWorkspaces);
+            vscode.window.showInformationMessage(
+`Welcome to VSCode-PVS!
+
+VSCode-PVS has automatically created a folder '${workspaces}' under your home directory.
+
+You can use this folder to develop your PVS theories.`,
+                { modal: true }
+            );
+        }
+        return pvsWorkspaces;
+    }
+    return null;
+}
+
 /**
  * Utility function, shows a text document in the editor
  * @param content 

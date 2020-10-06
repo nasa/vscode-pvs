@@ -307,7 +307,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						packageManager: this.packageManager
 					});
 					this.eventsDispatcher.activate(context);
-
+					
 					// start PVS
 					// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
 					const contextFolder = vscodeUtils.getEditorContextFolder();
@@ -336,6 +336,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						// update status bar
 						this.statusBar.ready();
 
+						// create default workspaces folder
+						vscodeUtils.createDefaultPvsWorkspacesDirectory();
+
 						if (window.activeTextEditor && window.activeTextEditor.document) {
 							// parse file opened in the editor
 							const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
@@ -344,9 +347,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 								this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
 							}
 						} else {
-							// or ask the descriptor of the current folder
+							// or get the descriptor of the current folder
 							const workspaceFolder: Uri = (workspace.workspaceFolders && workspace.workspaceFolders.length) ? workspace.workspaceFolders[0].uri : null;
-							const folder: string = (workspaceFolder) ? workspaceFolder.path : contextFolder;
+							const folder: string = (workspaceFolder) ? workspaceFolder.path : 
+									contextFolder ? contextFolder : vscodeUtils.getDefaultContextFolder();
 							if (folder) {
 								this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: folder });
 							}
