@@ -130,6 +130,13 @@
 				"path": "icons/pvs-icons-theme.json"
 			}
 		],
+		"productIconThemes": [
+			{
+				"id": "pvs",
+				"label": "PVS",
+				"path": "icons/pvs-icons-theme.json"
+			}
+		],	
 		"viewsContainers": {
 			"activitybar": [
 				{

@@ -1790,14 +1790,6 @@ export class PvsLanguageServer {
 					this.connection.sendRequest(serverEvent.downloadLicensePageResponse, { response: licensePage });
 				}
 			});
-			// this.connection.onRequest(serverCommand.setNasalibPath, async (desc: { path: string }) => {
-			// 	if (desc && desc.path) {
-			// 		const success: boolean = await this.pvsProxy.setNasalibPath(desc.path);
-			// 		if (this.connection) {
-			// 			this.connection.sendRequest(serverEvent.setNasalibPathResponse, { success });
-			// 		}	
-			// 	}
-			// });
 
 			this.connection.onRequest(serverRequest.startEvaluator, async (args: PvsTheory) => {
 				this.startEvaluatorRequest(args);

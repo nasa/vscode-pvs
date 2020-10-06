@@ -1634,10 +1634,8 @@ export class PvsProxy {
 	 * Loads pvs version information
 	 */
 	async loadPvsVersionInfo(): Promise<PvsVersionDescriptor | null> {
-		// try to load nasalib
-		await this.setNasalibPath();
-		await this.loadPvsPatches();
-		await this.loadPvsLibraryPath();
+		// try to load nasalib and patches
+		await this.loadPatchesAndLibraries();
 
 		// const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
 		const res: PvsResponse = await this.legacy.lisp(`(get-pvs-version-information)`);
@@ -1661,7 +1659,7 @@ export class PvsProxy {
 	 * Returns pvs version information
 	 */
 	async getNasalibVersionInfo(): Promise<string | null> {
-		const nasalibPresent: boolean = await this.isNasalibPresent();
+		const nasalibPresent: boolean = await this.NasalibPresent();
 		if (nasalibPresent) {
 			const nasalibVersion: PvsResponse = await this.legacy.lisp(`*nasalib-version*`);
 			const regexp: RegExp = /(\d+(?:.?\d+)*)/g; // group 1 is nasalib
@@ -2001,22 +1999,25 @@ export class PvsProxy {
 	}
 
 	async setNasalibPath (opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
-		const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
-		const nasalibPath: string = this.getNasalibPath();
-		if (!pvsLibraries.includes(nasalibPath) && await fsUtils.folderExists(nasalibPath)) {
-			console.log(`[pvs-proxy] Setting nasalib path to ${nasalibPath}`);
-			return await this.lisp(`(push "${nasalibPath}" *pvs-library-path*)`, opt);
+		const present: boolean = await this.NasalibPresent();
+		if (!present) {
+			const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
+			const nasalibPath: string = this.getNasalibPath();
+			if (!pvsLibraries.includes(nasalibPath) && fsUtils.folderExists(nasalibPath)) {
+				console.log(`[pvs-proxy] Setting nasalib path to ${nasalibPath}`);
+				return await this.lisp(`(push "${nasalibPath}" *pvs-library-path*)`, opt);
+			}
 		}
 		return null;
 	}
 
-	async isNasalibPresent (): Promise<boolean> {
+	async NasalibPresent (): Promise<boolean> {
 		const response: PvsResponse = await this.legacy.lisp(`(boundp '*nasalib-version*)`);
 		return response && response.result === "t";
 	}
 
 	async installProofliteScript (desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {
-		const nasalibPresent: boolean = await this.isNasalibPresent();
+		const nasalibPresent: boolean = await this.NasalibPresent();
 		if (nasalibPresent) {
 			return await this.legacy.installProofliteScript(desc, proofLiteScript);
 		}
@@ -2045,8 +2046,17 @@ export class PvsProxy {
 		return null;
 	}
 
+	async patchesLoaded (): Promise<boolean> {
+		const response: PvsResponse = await this.legacy.lisp(`(boundp '*pvs-patches*)`);
+		return response && response.result === "t";
+	}
+
 	async loadPvsPatches (opt?: { externalServer?: boolean }): Promise<PvsResponse> {
-		return await this.lisp(`(load-pvs-patches)`, opt);
+		const alreadyLoaded: boolean = await this.patchesLoaded();
+		if (!alreadyLoaded) {
+			return await this.lisp(`(load-pvs-patches)`, opt);
+		}
+		return null;
 	}
 
 
