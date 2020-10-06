@@ -1953,7 +1953,7 @@ export function QED (result: { commentary: string | string[] }): boolean {
 }
 
 export function isGlassboxTactic (cmd: string): boolean {
-	return cmd && cmd.startsWith("(then ");
+	return cmd && (cmd.startsWith("(then ") || cmd.startsWith("(spread "));
 }
 
 export function branchComplete (result: { commentary: string | string[] }, formulaName: string, previousBranch: string): boolean {
