@@ -93,7 +93,8 @@ export class PvsProxyLegacy {
         }
         const matchPvsError: RegExpMatchArray = /Error: (.+)/g.exec(data);
         const matchPvsErrorAlt: RegExpMatchArray = /<pvserror msg="([\w\W\s]+)">\s*"([\w\W\s]+)"\s*<\/pvserror>/gm.exec(data);
-        if ((matchPvsError || matchPvsErrorAlt) && this.pvsErrorManager) {
+        const matchInterrupted: RegExpMatchArray = /Error: Interrupted by client/gm.exec(data);
+        if ((matchPvsError || matchPvsErrorAlt) && !matchInterrupted && this.pvsErrorManager) {
             const error_string: string = matchPvsError ? (matchPvsError.length > 1 && matchPvsError[1]) ? matchPvsError[1] : matchPvsError[0]
                 : matchPvsErrorAlt ? (matchPvsErrorAlt.length > 2 && matchPvsErrorAlt[2]) ? matchPvsErrorAlt[2] : matchPvsErrorAlt[1]
                 : "Please check console log";

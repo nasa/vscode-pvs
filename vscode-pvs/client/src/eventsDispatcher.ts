@@ -895,6 +895,29 @@ export class EventsDispatcher {
         }));
 
         // vscode-pvs.prove-formula
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.jprove-formula", async (desc: {
+            contextFolder: string,
+            fileName: string,
+            fileExtension: string,
+            theoryName: string,
+            formulaName: string
+        }) => {
+            if (desc) {
+                commands.executeCommand("vscode-pvs.prove-formula", {
+                    contextFolder: desc.contextFolder,
+                    fileName: desc.fileName,
+                    fileExtension: desc.fileExtension,
+                    theoryName: (desc.fileExtension === ".tccs" && desc.theoryName.endsWith("_TCCS")) ? desc.theoryName.substr(0, desc.theoryName.length - 5) : desc.theoryName,
+                    formulaName: desc.formulaName,
+                    proofFile: {
+                        contextFolder: desc.contextFolder,
+                        fileName: desc.fileName,
+                        fileExtension: ".jprf"
+                    }
+                });
+                this.statusBar.showProgress(`Starting J-PRF proof for ${desc.formulaName}`);
+            }
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula", async (desc: {
             contextFolder: string,
             fileName: string,
@@ -908,18 +931,22 @@ export class EventsDispatcher {
                 await window.activeTextEditor.document.save();
             }
             if (desc && desc.theoryName && desc.formulaName) {
-                    this.proofExplorer.resetView();
-                    this.proofExplorer.enableView();
-                    this.proofMate.enableView();
+                if (desc.fileExtension === ".tccs" &&  desc.theoryName.endsWith("_TCCS")) {
+                    desc.theoryName = desc.theoryName.substr(0, desc.theoryName.length - 5);
+                }
 
-                    // the sequence of events triggered by this command is:
-                    // 1. vscodePvsTerminal.startProverSession(desc) 
-                    // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
-                    // 3. pvsLanguageServer.proveFormulaRequest(desc)
-                    //      3.1 typecheck
-                    //      3.2 loadProofDescriptor
-                    //      3.3 proveFormula
-                    await this.vscodePvsTerminal.startProverSession(desc);
+                this.proofExplorer.resetView();
+                this.proofExplorer.enableView();
+                this.proofMate.enableView();
+
+                // the sequence of events triggered by this command is:
+                // 1. vscodePvsTerminal.startProverSession(desc) 
+                // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
+                // 3. pvsLanguageServer.proveFormulaRequest(desc)
+                //      3.1 typecheck
+                //      3.2 loadProofDescriptor
+                //      3.3 proveFormula
+                await this.vscodePvsTerminal.startProverSession(desc);
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-formula invoked with null or incomplete descriptor", desc);
             }
@@ -943,20 +970,25 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-theory-inline", async (resource: TheoryItem | { path: string }) => {
             commands.executeCommand("vscode-pvs.prove-theory", resource);
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-theory", async (resource: TheoryItem | { path: string }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.jprove-theory", async (resource: TheoryItem | { path: string }) => {
+            commands.executeCommand("vscode-pvs.prove-theory", resource, { useJprf: true });
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-theory", async (resource: TheoryItem | { path: string }, opt?: { useJprf?: boolean }) => {
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
             if (desc && desc.theoryName) {
+                opt = opt || {};
                 // ask the user confirmation before restarting pvs
                 const yesno: string[] = [ "Yes", "No" ];
-                const msg: string = `Re-run all proofs in theory ${desc.theoryName}?`;
+                const msg: string = opt.useJprf ? `Re-run J-PRF proofs in theory ${desc.theoryName}?` : `Re-run all proofs in theory ${desc.theoryName}?`;
                 const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
                 if (ans === yesno[0]) {
                     this.quietMode = true;
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
-                    this.statusBar.showProgress(`Re-running proofs in theory ${desc.theoryName}`);
+                    const msg: string = opt.useJprf ? `Re-running J-PRF proofs (theory ${desc.theoryName})` : `Re-running proofs in theory ${desc.theoryName}`
+                    this.statusBar.showProgress(msg);
 
-                    await this.workspaceExplorer.proveTheoryWithProgress(desc);
+                    await this.workspaceExplorer.proveTheoryWithProgress(desc, opt);
 
                     this.statusBar.ready();
                     this.quietMode = false;
@@ -965,24 +997,35 @@ export class EventsDispatcher {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-theory invoked with null resource", resource);
             }
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-importchain", async (resource: TheoryItem | { path: string }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.jprove-importchain", async (resource: TheoryItem | { path: string }) => {
+            commands.executeCommand("vscode-pvs.prove-importchain", resource, { useJprf: true });
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-importchain", async (resource: TheoryItem | { path: string }, opt?: { useJprf?: boolean }) => {
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
             if (desc && desc.theoryName) {
-                this.quietMode = true;
-                this.proofMate.disableView();
-                this.proofExplorer.disableView();
+                opt = opt || {};
+                // ask the user confirmation before restarting pvs
+                const yesno: string[] = [ "Yes", "No" ];
+                const msg: string = opt.useJprf ? `Re-run J-PRF importchain for theory ${desc.theoryName}?` : `Re-run importchain for theory ${desc.theoryName}?`;
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+                if (ans === yesno[0]) {
+                    this.quietMode = true;
+                    this.proofMate.disableView();
+                    this.proofExplorer.disableView();
 
-                this.statusBar.showProgress(`Re-running importchain for theory ${desc.theoryName}`);
-                await this.workspaceExplorer.proveImportChainWithProgress(desc);
+                    const msg: string = opt.useJprf ? `Re-running J-PRF importchain for theory ${desc.theoryName}` : `Re-running importchain for theory ${desc.theoryName}`
+                    this.statusBar.showProgress(msg);
+                    await this.workspaceExplorer.proveImportChainWithProgress(desc, opt);
 
-                this.statusBar.ready();
-                this.quietMode = false;
+                    this.statusBar.ready();
+                    this.quietMode = false;
+                }
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-importchain invoked with null resource", resource);
             }
         }));
         // this request comes from the context menu displayed by the editor
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: TheoryItem | { path: string }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: TheoryItem | { path: string }, opt?: { useJprf?: boolean }) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();
@@ -993,16 +1036,17 @@ export class EventsDispatcher {
 
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
             if (desc && desc.theoryName) {
+                opt = opt || {};
                 // ask the user confirmation before discharging
                 const yesno: string[] = [ "Yes", "No" ];
-                const msg: string = `Discharge all TCCs?`;
+                const msg: string = opt.useJprf ? `Discharge TCCs using J-PRF?` : `Discharge all TCCs?`;
                 const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
                 if (ans === yesno[0]) {
                     this.quietMode = true;
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
 
-                    await this.workspaceExplorer.proveTheoryWithProgress(desc, { tccsOnly: true });
+                    await this.workspaceExplorer.proveTheoryWithProgress(desc, { tccsOnly: true, useJprf: opt.useJprf });
 
                     this.statusBar.ready();
                     this.quietMode = false;
@@ -1011,55 +1055,13 @@ export class EventsDispatcher {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-tccs invoked with null resource", resource);
             }
         }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.jdischarge-tccs", async (resource: TheoryItem | { path: string }) => {
+            commands.executeCommand("vscode-pvs.discharge-tccs", resource, { useJprf: true });
+        }));
         // this request comes from workspace explorer
         context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs-explorer", async (resource: TccsOverviewItem) => {
             commands.executeCommand("vscode-pvs.discharge-tccs", resource);
         }));
-
-        // vscode-pvs.discharge-tccs
-        // context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource) => {
-        //     if (resource) {
-        //         let desc = <{ 
-        //             fileName: string, fileExtension: string, contextFolder: string, 
-        //             theoryName: string, formulaName: string 
-        //         }> this.resource2desc(resource);
-        //         if (desc) {
-        //             // send discharge-tccs request to pvs-server
-        //             this.client.sendRequest(serverCommand.dischargeTccs, desc);
-        //         } else {
-        //             console.error("[vscode-events-dispatcher] Error: unknown vscode-pvs.prove-formula resource", resource);
-        //         }
-        //     } else {
-        //         console.error("[vscode-events-dispatcher] Error: prove-formula invoked with null resource", resource);
-        //     }
-        // }));
-        // // alias for vscode-pvs.discharge-tccs
-		// context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs-explorer", async (resource: string | { path: string } | { contextValue: string }) => {
-        //     commands.executeCommand("vscode-pvs.discharge-tccs", resource);
-        // }));
-
-
-        // vscode-pvs.discharge-theorems
-        // context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-theorems", async (resource) => {
-        //     if (resource) {
-        //         let desc = <{ 
-        //             fileName: string, fileExtension: string, contextFolder: string, 
-        //             theoryName: string, formulaName: string 
-        //         }> this.resource2desc(resource);
-        //         if (desc) {
-        //             // send discharge-theorems request to pvs-server
-        //             this.client.sendRequest(serverCommand.dischargeTheorems, desc);
-        //         } else {
-        //             console.error("[vscode-events-dispatcher] Error: unknown vscode-pvs.prove-formula resource", resource);
-        //         }
-        //     } else {
-        //         console.error("[vscode-events-dispatcher] Error: prove-formula invoked with null resource", resource);
-        //     }
-        // }));
-        // // alias for vscode-pvs.discharge-tccs
-        // context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-theorems-alt", async (resource: string | { path: string } | { contextValue: string }) => {
-        //     commands.executeCommand("vscode-pvs.discharge-theorems", resource);
-        // }));
         
         context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-bin", async () => {
             // ask the user confirmation before deleting bin files

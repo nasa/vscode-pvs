@@ -475,6 +475,13 @@ export class PvsProofExplorer {
 			const response: PvsResponse = await this.proofCommand(command);
 			if (this.interruptFlag) {
 				this.interruptFlag = false;
+				if (this.autorunFlag) {
+					this.running = false;
+					this.stopAt = null;			
+					await this.quitProof();
+					return null;
+				}
+				// else
 				return response;
 			}
 			// console.dir(response, { depth: null });
@@ -2189,13 +2196,13 @@ export class PvsProofExplorer {
 		theoryName: string, 
 		formulaName: string,
 		proofFile?: FileDescriptor 
-	}, opt?: { newProof?: boolean }): Promise<ProofDescriptor> {
+	}, opt?: { newProof?: boolean, useJprf?: boolean }): Promise<ProofDescriptor> {
 		opt = opt || {};
 		this.formula = desc;
 		if (this.pvsProxy) {
 			const fdesc: PvsFile = desc.proofFile || {
 				fileName: desc.fileName,
-				fileExtension: ".prf",
+				fileExtension: (opt.useJprf) ? ".jprf" : ".prf",
 				contextFolder: desc.contextFolder
 			};
 			const pdesc: ProofDescriptor = (opt.newProof) ? await this.pvsProxy.newProof(desc) : await this.openProofFile(fdesc, desc, opt);
@@ -2583,7 +2590,7 @@ export class PvsProofExplorer {
 
 	async interruptProofCommand (): Promise<PvsResponse> {
 		if (this.pvsProxy && !this.interruptFlag) {
-			this.interruptFlag = !this.autorunFlag;
+			this.interruptFlag = true;
 			return await this.pvsProxy.interrupt();
 		}
 		return null;

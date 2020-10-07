@@ -393,6 +393,7 @@ export const serverRequest = {
 	typecheckFile: "pvs.typecheck-file",
 	proveFormula: "pvs.prove-formula",
 	autorunFormula: "pvs.autorun-formula",
+	autorunFormulaFromJprf: "pvs.autorun-formula-from-jprf",
 	showProofLite: "pvs.show-prooflite",
 	proofCommand: "pvs.proof-command",
 	evaluateExpression: "pvs.evaluate-expression",

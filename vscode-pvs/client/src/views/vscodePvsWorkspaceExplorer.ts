@@ -816,7 +816,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 
 	// event dispatcher invokes this function with the command vscode-pvs.prove-theory
 	async proveTheoryWithProgress (desc: PvsTheory, opt?: {
-		tccsOnly?: boolean
+		tccsOnly?: boolean,
+		useJprf?: boolean
 	}): Promise<void> {
 		if (desc && desc.theoryName) {
 			opt = opt || {};
@@ -847,6 +848,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 						// dispose of the dialog
 						resolve(null);
 					});
+					// create one summary for each theory
 					const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]} = {
 						theoryName: desc.theoryName,
 						theorems: [],
@@ -868,7 +870,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							const start: number = new Date().getTime();
 
 							const status: ProofStatus = await new Promise((resolve, reject) => {
-								this.client.sendRequest(serverRequest.autorunFormula, {
+								const autorunRequest: string = (opt.useJprf) ? serverRequest.autorunFormulaFromJprf : serverRequest.autorunFormula;
+								this.client.sendRequest(autorunRequest, {
 									contextFolder: formulas[i].contextFolder,
 									fileName: formulas[i].fileName,
 									fileExtension: formulas[i].fileExtension,
@@ -929,8 +932,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		});
 	}
 
-	async proveImportChainWithProgress (desc: PvsTheory): Promise<void> {
+	async proveImportChainWithProgress (desc: PvsTheory, opt?: { useJprf?: boolean }): Promise<void> {
 		if (desc && desc.theoryName) {
+			opt = opt || {};
 			// show dialog with progress
 			await window.withProgress({
 				location: ProgressLocation.Notification,
@@ -958,7 +962,6 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							// dispose of the dialog
 							resolve(null);
 						});
-
 						// create one summary for each theory
 						const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]} = {
 							theoryName: desc.theoryName,
@@ -978,7 +981,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							const start: number = new Date().getTime();
 
 							const status: ProofStatus = await new Promise((resolve, reject) => {
-								this.client.sendRequest(serverRequest.autorunFormula, {
+								const autorunRequest: string = opt.useJprf ? serverRequest.autorunFormulaFromJprf : serverRequest.autorunFormula;
+								this.client.sendRequest(autorunRequest, {
 									contextFolder: formulas[i].contextFolder,
 									fileName: formulas[i].fileName,
 									fileExtension: formulas[i].fileExtension,

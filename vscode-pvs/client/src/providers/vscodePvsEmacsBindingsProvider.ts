@@ -66,6 +66,11 @@ const cmds: string[] = [
 	"prt", "prove-theory",
 	"pvsio",
 
+	"jpr", "jprove",
+	"jtcp", "jtypecheck-prove",
+	"jprt", "jprove-theory",
+	"jpri", "jprove-importchain",
+
 	"add-pvs-library",
 	"pvs-library-path",
 	"reboot-pvs",
@@ -159,6 +164,12 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.discharge-tccs', desc);
 					break;
 				}
+				case "jtcp": 
+				case "jtypecheck-prove": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
+					commands.executeCommand('vscode-pvs.jdischarge-tccs', desc);
+					break;
+				}
 				case "parse": {
 					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.parse-file', desc);
@@ -169,16 +180,33 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.prove-formula', desc);
 					break;
 				}
+				case "jpr":
+				case "jprove": {
+					commands.executeCommand('vscode-pvs.jprove-formula', desc);
+					break;
+				}
 				case "prt": 
 				case "prove-theory": {
 					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.prove-theory', desc);
 					break;
 				}
+				case "jprt": 
+				case "jprove-theory": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
+					commands.executeCommand('vscode-pvs.jprove-theory', desc);
+					break;
+				}
 				case "pri": 
 				case "prove-importchain": {
 					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.prove-importchain', desc);
+					break;
+				}
+				case "jpri": 
+				case "jprove-importchain": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
+					commands.executeCommand('vscode-pvs.jprove-importchain', desc);
 					break;
 				}
 				case "pvsio": {
