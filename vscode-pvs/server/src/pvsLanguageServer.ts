@@ -319,7 +319,7 @@ export class PvsLanguageServer {
 		theoryName: string, 
 		formulaName: string,
 		proofFile?: FileDescriptor 
-	}, opt?: { autorun?: boolean, newProof?: boolean }): Promise<void> {
+	}, opt?: { autorun?: boolean, newProof?: boolean, useJprf?: boolean }): Promise<void> {
 		opt = opt || {};
 		if (desc && desc.formulaName && desc.theoryName && desc.fileName && desc.contextFolder) {
 			desc = fsUtils.decodeURIComponents(desc);
@@ -404,7 +404,8 @@ export class PvsLanguageServer {
 					if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
 						this.notifyEndImportantTask({ id: taskId });
 					} else {
-						this.connection?.sendNotification("pvs.progress-info", `Re-running proof for ${desc.formulaName}`);
+						const msg: string = opt.useJprf ? `Re-running J-PRF proof for ${desc.formulaName}` : `Re-running proof for ${desc.formulaName}`
+						this.connection?.sendNotification("pvs.progress-info", msg);
 					}
 				}
 			} else {
@@ -1461,7 +1462,7 @@ export class PvsLanguageServer {
 			});
 			return false;
 		}
-		console.log("[pvs-server] nodejs: " + nodejs);
+		console.log("[pvs-server] node: " + nodejs);
 		return true;
 	}
 
@@ -1741,6 +1742,9 @@ export class PvsLanguageServer {
 			});
 			this.connection.onRequest(serverRequest.autorunFormula, async (args: PvsFormula) => {
 				await this.proveFormulaRequest(args, { autorun: true });
+			});
+			this.connection.onRequest(serverRequest.autorunFormulaFromJprf, async (args: PvsFormula) => {
+				await this.proveFormulaRequest(args, { autorun: true, useJprf: true });
 			});
 			this.connection.onRequest(serverRequest.showProofLite, async (args: PvsFormula) => {
 				await this.showProofLiteRequest(args);
