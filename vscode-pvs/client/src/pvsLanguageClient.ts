@@ -336,9 +336,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						// update status bar
 						this.statusBar.ready();
 
-						// create default workspaces folder
-						vscodeUtils.createDefaultPvsWorkspacesDirectory();
-
 						if (window.activeTextEditor && window.activeTextEditor.document) {
 							// parse file opened in the editor
 							const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);

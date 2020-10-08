@@ -640,8 +640,10 @@ export class EventsDispatcher {
             });
             this.client.sendRequest(serverRequest.viewPreludeFile);
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", () => {
-            this.packageManager.pvsInstallationWizard();
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", async () => {
+            await this.packageManager.pvsInstallationWizard();
+            // create default workspaces folder if it doesn't exist
+            await vscodeUtils.createDefaultPvsWorkspacesDirectory();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.set-pvs-path", () => {
             this.packageManager.pvsPathWizard();

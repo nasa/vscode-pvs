@@ -66,17 +66,18 @@ export async function createDefaultPvsWorkspacesDirectory (): Promise<string> {
     if (workspaces) {
         const pvsWorkspaces: string = path.join(fsUtils.HOME_DIR, workspaces);
         if (!fsUtils.folderExists(pvsWorkspaces)) {
-            await fsUtils.createFolder(pvsWorkspaces);
-            vscode.window.showInformationMessage(
-`Welcome to VSCode-PVS!
-
-VSCode-PVS has automatically created a folder '${workspaces}' under your home directory.
-
-You can use this folder to develop your PVS theories.`,
-                { modal: true }
-            );
+            const yesno: string[] = [ "Yes", "No" ];
+			const msg: string = `Welcome to VSCode-PVS!`
+                + `\n\nWould you like VSCode-PVS to create folder '${workspaces}' under your home directory?`
+                + `\n\nYou can conveniently use that folder to develop your PVS theories.`;
+			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+			if (ans === yesno[0]) {
+                await fsUtils.createFolder(pvsWorkspaces);
+            }
         }
         return pvsWorkspaces;
+    } else {
+        vscode.window.showInformationMessage(`Welcome to VSCode-PVS!`, { modal: true });
     }
     return null;
 }

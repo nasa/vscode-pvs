@@ -76,12 +76,12 @@ export class VSCodePvsPackageManager {
      */
     activate (context: ExtensionContext): void {
         // pvs installation handlers
-        this.client.onRequest(serverEvent.pvsNotPresent, () => {
+        this.client.onRequest(serverEvent.pvsNotPresent, async () => {
 			// const pvsPath: string = workspace.getConfiguration().get("pvs.path");
-            this.pvsInstallationWizard(`VSCode-PVS is almost ready!\n\nTo complete the installation, please choose one of the following actions.\n`);
+            await this.pvsInstallationWizard(`VSCode-PVS is almost ready!\n\nTo complete the installation, please choose one of the following actions.\n`);
         });
-        this.client.onRequest(serverEvent.pvsIncorrectVersion, (msg: string) => {
-            this.pvsInstallationWizard(msg);
+        this.client.onRequest(serverEvent.pvsIncorrectVersion, async (msg: string) => {
+            await this.pvsInstallationWizard(msg);
         });
     }
 
