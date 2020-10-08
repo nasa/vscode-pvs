@@ -208,6 +208,7 @@ class TerminalSession {
             await vscodeUtils.openPvsFile(pvsFile);
         }
         vscode.commands.executeCommand("workbench.action.terminal.resizePaneUp");
+        vscode.commands.executeCommand("workbench.action.terminal.resizePaneUp");
         // vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
     }
     protected sendText(cmd: string): void {
@@ -442,6 +443,8 @@ export class VSCodePvsTerminal {
         });
     }
     maximizePanel (): void {
-        vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
+        vscode.commands.executeCommand("workbench.action.terminal.resizePaneUp");
+        vscode.commands.executeCommand("workbench.action.terminal.resizePaneUp");
+        // vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
     }
 }
