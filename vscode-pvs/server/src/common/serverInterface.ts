@@ -500,8 +500,7 @@ export const serverEvent = {
 	pvsNotPresent: "pvs.event.pvs-not-present",
 	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version",
 
-	profilerData: "pvs.event.profiler-data",
-	proverData: "pvs.event.prover-data"
+	profilerData: "pvs.event.profiler-data"
 };
 
 export declare type ServerMode = "lisp" | "in-checker" | "pvsio";

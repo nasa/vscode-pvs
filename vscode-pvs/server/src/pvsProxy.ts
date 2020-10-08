@@ -236,10 +236,6 @@ export class PvsProxy {
 			return new Promise((resolve, reject) => {
 				if (this.client) {
 					const jsonReq: string = JSON.stringify(req, null, " ");
-
-					if (this.connection) {
-						this.connection.sendNotification(serverEvent.proverData, jsonReq);
-					}
 					// console.dir(jsonReq, { depth: null });
 
 					if (this.verbose && req && req.method !== "prover-status") {
@@ -252,11 +248,7 @@ export class PvsProxy {
 						// console.log(error);
 						// console.log(value);
 
-						if (error) {
-							if (this.connection) {
-								this.connection.sendNotification(serverEvent.proverData, JSON.stringify(error, null, " "));
-							}
-		
+						if (error) {		
 							console.error("[pvs-proxy] Error returned by pvs-server: "); 
 							console.dir(error, { depth: null }); 
 							if (error['code'] === 'ECONNREFUSED') {
@@ -290,10 +282,6 @@ export class PvsProxy {
 							try {
 								const resp: PvsResponse = JSON.parse(value);
 
-								if (this.connection) {
-									this.connection.sendNotification(serverEvent.proverData, JSON.stringify(resp, null, " "));
-								}
-
 								// console.dir(resp, { depth: null });
 								if (resp && (resp["result"] === "null" || resp["result"] === "nil")) {
 									// sometimes pvs returns a string "null" or "nil" as result -- here the string is transformed into a proper null value
@@ -318,17 +306,9 @@ export class PvsProxy {
 								resolve(resp);
 							} catch (jsonError) {
 								console.error(`[pvs-proxy] Unable to parse pvs-server response :/`, value);
-
-								if (this.connection) {
-									this.connection.sendNotification(serverEvent.proverData, value);
-								}
-	
 								resolve(null);
 							}
 						} else {
-							if (this.connection) {
-								this.connection.sendNotification(serverEvent.proverData, JSON.stringify(error, null, " "));
-							}
 							console.error(`[pvs-proxy] pvs-server returned error`, error);
 							resolve({
 								jsonrpc: "2.0",
