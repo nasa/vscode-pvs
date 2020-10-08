@@ -2521,6 +2521,7 @@ export class PvsProofExplorer {
 	async quitProof (opt?: { notifyCliGateway?: boolean }): Promise<void> {
 		opt = opt || {};
 		this.running = false;
+		// await this.interruptProofCommand();
 		const inchecker: boolean = await this.inChecker();
 		if (this.formula && inchecker) {
 			await this.proofCommand({
@@ -2596,9 +2597,9 @@ export class PvsProofExplorer {
 		return null;
 	}
 	
-	async interruptAndQuitProver (): Promise<void> {
+	async interruptAndQuitProof (opt?: { notifyCliGateway?: boolean }): Promise<void> {
 		await this.interruptProofCommand();
-		await this.quitProof();
+		await this.quitProof(opt);
 	}
 
 	/**

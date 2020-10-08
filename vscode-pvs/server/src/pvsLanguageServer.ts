@@ -1800,6 +1800,7 @@ export class PvsLanguageServer {
 						case "back": { this.proofExplorer.back(); break; }
 						case "fast-forward": { this.proofExplorer.fastForwardToNodeX(desc); break; }
 						case "run": { await this.proofExplorer.run({ feedbackToTerminal: true }); break; }
+						
 						case "quit-proof": { await this.proofExplorer.quitProof({ notifyCliGateway: true }); break; }
 						case "quit-proof-and-save": { await this.proofExplorer.quitProofAndSave(); break; }
 						//------
@@ -1822,7 +1823,7 @@ export class PvsLanguageServer {
 						case "export-proof": { await this.proofExplorer.exportProof(desc.proofFile); break; }
 						case "start-new-proof": { await this.proveFormulaRequest(desc.formula, { newProof: true }); break; }
 						case "interrupt-prover": { await this.proofExplorer.interruptProofCommand(); break; }
-						case "interrupt-and-quit-prover": { await this.proofExplorer.interruptAndQuitProver(); break; }
+						case "interrupt-and-quit-prover": { await this.proofExplorer.interruptAndQuitProof(); break; }
 						//------
 						default: {
 							console.warn(`[pvs-server] Warning: unhandled prover command ${JSON.stringify(desc)}`);

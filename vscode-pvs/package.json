@@ -233,6 +233,12 @@
 				"category": "pvs"
 			},
 			{
+				"command": "vscode-pvs.interrupt-prover",
+				"title": "Interrupt Prover",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
 				"command": "vscode-pvs.show-proof-summary",
 				"title": "Show Proof Summary",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
