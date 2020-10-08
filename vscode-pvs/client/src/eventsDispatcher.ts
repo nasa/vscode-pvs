@@ -721,7 +721,6 @@ export class EventsDispatcher {
 			const msg: string = `Reboot pvs-server?\n\nThis action can resolve situations where the server crashed or is not responding.`;
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
-                this.statusBar.showProgress("Rebooting pvs-server...");
                 const currentContext: string = vscode.workspace.rootPath;
                 this.client.sendRequest(serverRequest.rebootPvsServer, { cleanFolder: currentContext });
                 // terminate any prover session
@@ -747,7 +746,6 @@ export class EventsDispatcher {
             const success: boolean = await this.packageManager.nasalibInstallationWizard();
             if (success) {
                 this.statusBar.hideDownloadNasalibButton();
-                this.statusBar.showProgress("Rebooting pvs-server...");
                 this.client.sendRequest(serverRequest.rebootPvsServer);
             }
         }));

@@ -251,7 +251,6 @@ export class VSCodePvsPackageManager {
         const pvsPath: string = await this.choosePvsInstallationFolder();
         if (pvsPath) {
             await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
-            this.statusBar.showProgress("Rebooting pvs-server...");
             this.client.sendRequest(serverRequest.rebootPvsServer);
             window.showInformationMessage(`PVS path is ${pvsPath}`);
         }
@@ -313,7 +312,6 @@ export class VSCodePvsPackageManager {
                             // await this.downloadAndInstallNasalib();
 
                             // reboot pvs-server
-                            this.statusBar.showProgress("Rebooting pvs-server...");
                             this.client.sendRequest(serverRequest.rebootPvsServer);
 
                             // show release info

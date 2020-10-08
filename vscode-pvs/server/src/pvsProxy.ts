@@ -1044,7 +1044,8 @@ export class PvsProxy {
 	 * Quits the prover
 	 */
 	async quitProof (): Promise<void> {
-		if (await this.getMode() === "in-checker") {
+		const mode: string = await this.getMode();
+		if (mode === "in-checker") {
 			const useLispInterface: boolean = true;
 			const response: PvsResponse = await this.proofCommand({ cmd: "(quit)" }, { useLispInterface });
 			if (response && response.error && this.pvsErrorManager) {

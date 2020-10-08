@@ -246,7 +246,8 @@ export class PvsLanguageServer {
 	}
 	async proveFormula (formula: PvsFormula): Promise<PvsResponse | null> {
 		if (formula && formula.fileName && formula.formulaName && formula.fileExtension && formula.contextFolder && formula.theoryName) {
-			if (await this.getMode() !== "lisp") {
+			const mode: string = await this.getMode();
+			if (mode !== "lisp") {
 				await this.quitProof();
 			}
 			try {
@@ -265,10 +266,7 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async getMode (): Promise<ServerMode | null> {
-		if (this.pvsProxy) {
-			return await this.pvsProxy.getMode();
-		}
-		return null;
+		return await this.pvsProxy?.getMode();
 	}
 	async getImportChainTheoremsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
@@ -323,7 +321,8 @@ export class PvsLanguageServer {
 		opt = opt || {};
 		if (desc && desc.formulaName && desc.theoryName && desc.fileName && desc.contextFolder) {
 			desc = fsUtils.decodeURIComponents(desc);
-			if (await this.getMode() !== "lisp") {
+			const mode: string = await this.getMode();
+			if (mode !== "lisp") {
 				// save then quit current proof
 				if (this.proofExplorer.proofIsDirty() && !opt.autorun) {
 					// ask if the proof needs to be saved
@@ -526,7 +525,8 @@ export class PvsLanguageServer {
 		}
 	}
 	async startEvaluatorRequest (request: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string }): Promise<void> {
-		if (await this.getMode() !== "lisp") {
+		const mode: string = await this.getMode();
+		if (mode !== "lisp") {
 			return;
 		}
 		request = fsUtils.decodeURIComponents(request);
@@ -612,7 +612,8 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async typecheckFileRequest (request: PvsFile): Promise<void> {
-		if (await this.getMode() !== "lisp") {
+		const mode: string = await this.getMode();
+		if (mode !== "lisp") {
 			return;
 		}
 		if (request) {
@@ -766,7 +767,8 @@ export class PvsLanguageServer {
 		return null;
 	}
 	async parseFileRequest (request: PvsFile, opt?: { withFeedback?: boolean }): Promise<void> {
-		if (await this.getMode() !== "lisp") {
+		const mode: string = await this.getMode();
+		if (mode !== "lisp") {
 			return;
 		}
 		request = fsUtils.decodeURIComponents(request);
