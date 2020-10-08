@@ -207,7 +207,8 @@ class TerminalSession {
         if (pvsFile && (!vscode.window.activeTextEditor || !vscode.window.activeTextEditor.document)) {
             await vscodeUtils.openPvsFile(pvsFile);
         }
-        vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
+        vscode.commands.executeCommand("workbench.action.terminal.resizePaneUp");
+        // vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
     }
     protected sendText(cmd: string): void {
         this.terminal.sendText(cmd);
