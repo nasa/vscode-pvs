@@ -624,10 +624,6 @@ export class EventsDispatcher {
         this.client.onNotification(serverEvent.profilerData, (data: string) => {
             this.logger.profilerData(data);
         });
-
-        this.client.onNotification(serverEvent.proverData, (data: string) => {
-            this.logger.proverData(data);
-        });
         
         this.client.onNotification("pvs.progress-info", (data: string) => {
             this.statusBar.showProgress(data);

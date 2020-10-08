@@ -102,11 +102,6 @@
 						"default": false,
 						"description": "Enable error tolerant parser. Requires Java JDK v1.8 or greater (https://openjdk.java.net)"
 					},
-					"pvs.xtras.enableXmlrpcLoggger": {
-						"type": "boolean",
-						"default": true,
-						"description": "Log xmlrpc messages (output channel vscode-pvs:xmlrpc)"
-					},
 					"pvs.xtras.enableProfiler": {
 						"type": "boolean",
 						"default": false,

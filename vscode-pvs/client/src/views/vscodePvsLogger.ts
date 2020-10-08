@@ -40,7 +40,6 @@ import * as vscode from 'vscode';
 
 export class VSCodePvsLogger {
     protected profiler: vscode.OutputChannel;
-    protected proverLogger: vscode.OutputChannel;
 
     activate (context: vscode.ExtensionContext): void {
         this.profiler = vscode.window.createOutputChannel("vscode-pvs:profiler");
@@ -49,25 +48,12 @@ export class VSCodePvsLogger {
         if (!showProfilerOutput) {
             this.profiler.hide();
         }
-        this.proverLogger = vscode.window.createOutputChannel("vscode-pvs:xmlrpc");
-        this.proverLogger.clear();
-        const logProverOutput: boolean = vscode.workspace.getConfiguration().get("pvs.xtras.enableXmlrpcLoggger");
-        if (!logProverOutput) {
-            this.proverLogger.hide();
-        }
     }
     profilerData (data: string): void {
         const showProfilerOutput: boolean = vscode.workspace.getConfiguration().get("pvs.xtras.enableProfiler");
         if (showProfilerOutput) {
             this.profiler = this.profiler;
             this.profiler.appendLine(data);
-        }
-    }
-    proverData (data: string): void {
-        const logProverOutput: boolean = vscode.workspace.getConfiguration().get("pvs.xtras.enableXmlrpcLoggger");
-        if (logProverOutput) {
-            this.proverLogger = this.proverLogger;
-            this.proverLogger.appendLine(data);
         }
     }
 }
