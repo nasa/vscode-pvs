@@ -1654,7 +1654,7 @@ export function prf2jprf (desc: {
 	return null;
 }
 
-// quit = quit-and-save
+// quit
 export function isQuitCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
 	return cmd && (cmd === "quit" 
@@ -1957,28 +1957,26 @@ export function isGlassboxTactic (cmd: string): boolean {
 }
 
 export function branchComplete (result: { commentary: string | string[] }, formulaName: string, previousBranch: string): boolean {
-	if (previousBranch) {
-		if (result && result.commentary) {
-			if (typeof result.commentary === "string") {
-				if (typeof previousBranch === "string") {
-					return result.commentary.startsWith("This completes") 
-						&& (result.commentary.endsWith(`${formulaName}.${previousBranch}.`)
-							|| result.commentary.endsWith(`${formulaName}.${previousBranch}`));
-				}
-				return result.commentary.startsWith("This completes");
-
-			} else if (typeof result.commentary === "object") {
-					return result.commentary.length 
-						&& result.commentary.filter((comment: string) => {
-							if (typeof previousBranch === "string") {
-								return comment.startsWith("This completes") 
-									&& (comment.endsWith(`${formulaName}.${previousBranch}.`)
-										|| comment.endsWith(`${formulaName}.${previousBranch}`));
-							}
-						return comment.startsWith("This completes");
-					}).length > 0;
-				}
+	if (result && result.commentary) {
+		if (typeof result.commentary === "string") {
+			if (typeof previousBranch === "string") {
+				return result.commentary.startsWith("This completes") 
+					&& (result.commentary.endsWith(`${formulaName}.${previousBranch}.`)
+						|| result.commentary.endsWith(`${formulaName}.${previousBranch}`.trim()));
 			}
+			return result.commentary.startsWith("This completes");
+
+		} else if (typeof result.commentary === "object") {
+			return result.commentary.length 
+				&& result.commentary.filter((comment: string) => {
+					if (typeof previousBranch === "string") {
+						return comment.startsWith("This completes") 
+							&& (comment.endsWith(`${formulaName}.${previousBranch}.`)
+								|| comment.endsWith(`${formulaName}.${previousBranch}`.trim()));
+					}
+				return comment.startsWith("This completes");
+			}).length > 0;
+		}
 	}
 	return false;
 }
