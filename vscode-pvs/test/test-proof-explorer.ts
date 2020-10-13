@@ -345,9 +345,26 @@ describe("proof-explorer", () => {
 
 		await server.proveFormulaRequest(formula, { autorun: true });
 		const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
-		// console.dir(res);
+		console.dir(res);
 		expect(res.success).toBeTrue();
 	});
 
+	fit(`can start a proof, then interrupt, quit and save current proof`, async () => {
+		await server.getPvsProxy().quitProof();
+
+		const formula: PvsFormula = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "sq",
+			theoryName: "sq",
+			formulaName: "sq_neg"
+		};
+
+		await server.proveFormulaRequest(formula, { autorun: true });
+		await server.getPvsProxy().interrupt();
+		const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
+		// console.dir(res);
+		expect(res.success).toBeTrue();
+	});
 });
 
