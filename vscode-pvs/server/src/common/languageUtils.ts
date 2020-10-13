@@ -1815,9 +1815,7 @@ export function isPropax (cmd: string): boolean {
 
 export function splitCommands (cmd: string): string[] {
 	let cmds: string[] = [];
-	if (cmd && isUndoCommand(cmd)) {
-		cmds = unfoldUndoCommand(cmd);
-	} else if (cmd && cmd.trim().startsWith("(")) {
+	if (cmd && cmd.trim().startsWith("(")) {
 		let input: string = cmd.trim().replace(/\)y/gi, ")");
 		let par: number = 0;
 		let start: number = 0;
@@ -1838,7 +1836,11 @@ export function splitCommands (cmd: string): string[] {
 			}
 			if (par === 0) {
 				if (stop > start && validStart) { // sanity check
-					const cmd: string = input.substring(start, stop + 1);
+					let cmd: string = input.substring(start, stop + 1);
+					if (isUndoCommand(cmd)) {
+						cmd = unfoldUndoCommand(cmd).join("");
+					}
+
 					cmds = cmds.concat(cmd);
 					validStart = false;
 				}
@@ -1848,6 +1850,8 @@ export function splitCommands (cmd: string): string[] {
 				par = 0;
 			}
 		}
+	} else if (cmd && isUndoCommand(cmd)) {
+		cmds = unfoldUndoCommand(cmd);
 	}
 	return cmds;
 }

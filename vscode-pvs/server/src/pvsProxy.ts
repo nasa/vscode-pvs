@@ -215,11 +215,19 @@ export class PvsProxy {
 				path: res["path"],
 				label: (res["result"]) ? "Q.E.D." : res["label"],
 				commentary: (res["result"]) ? [ res["result"] ] 
-								: res["prover-session-status"] ? "Q.E.D." 
+								: res["prover-session-status"] ? [ "Q.E.D." ] 
 								: res["commentary"],
 				"num-subgoals": (res["result"]) ? 0 : res["num-subgoals"],
 				sequent: (res["result"]) ? {} : res["sequent"],
 				"prev-cmd": (res["prev-cmd"] && typeof res["prev-cmd"] === "string") ? res["prev-cmd"].replace(/\s+/, " ") : res["prev-cmd"]
+			}
+			sequent["commentary"] = sequent["commentary"] || [];
+			if (typeof sequent["commentary"] === "string") { sequent["commentary"] = [ sequent["commentary"] ]; }
+			if (res["action"]) {
+				sequent["commentary"].push(res["action"]);
+			}
+			if (res["num-subgoals"] && +res["num-subgoals"] > 1) {
+				sequent["commentary"].push(`this yields ${res["num-subgoals"]} subgoals:`);
 			}
 			return sequent;
 		}
@@ -1613,7 +1621,7 @@ export class PvsProxy {
 	async loadPatchesAndLibraries(): Promise<void> {
 		await this.setNasalibPath();
 		await this.loadPvsPatches();
-		await this.loadPvsLibraryPath();
+		await this.pushPvsLibraryPath();
 	}
 
 	/**
@@ -1992,6 +2000,7 @@ export class PvsProxy {
 			if (!pvsLibraries.includes(nasalibPath) && fsUtils.folderExists(nasalibPath)) {
 				console.log(`[pvs-proxy] Setting nasalib path to ${nasalibPath}`);
 				return await this.lisp(`(push "${nasalibPath}" *pvs-library-path*)`, opt);
+				// return await this.pushPvsLibraryPath(nasalibPath);
 			}
 		}
 		return null;
@@ -2014,7 +2023,7 @@ export class PvsProxy {
 	 * Updates pvs library path
 	 * @param pvsLibraryPath colon-separated list of folders
 	 */
-	async loadPvsLibraryPath (pvsLibraryPath?: string, opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
+	async pushPvsLibraryPath (pvsLibraryPath?: string, opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
 		const lp: string = pvsLibraryPath || this.pvsLibraryPath;
 		const libs: string[] = (lp) ? lp.split(":").map((elem: string) => {
@@ -2025,7 +2034,8 @@ export class PvsProxy {
 			for (let i = 0; i < libs.length; i++) {
 				const path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
 				if (!pvsLibraries.includes(path)) {
-					return await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
+					// return await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
+					return await this.pvsRequest('add-pvs-library', [ path ]);
 				}
 			}
 		}
