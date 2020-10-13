@@ -1279,7 +1279,7 @@ export class EventsDispatcher {
                         if (!complete) {
                             progress.report({
                                 increment: isNaN(desc.increment) ? -1 : desc.increment,
-                                message: "The task is taking a bit longer than expected, please wait...\n(" + desc.msg + ")"
+                                message: "Almost ready, please wait... \n(" + desc.msg + ")"
                             });
                         }
                     }, 8000);
