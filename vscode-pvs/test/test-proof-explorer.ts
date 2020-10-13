@@ -5,7 +5,7 @@ import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
 import { ProofDescriptor, ProofNodeX, PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
 import { PvsLanguageServer } from "../server/src/pvsLanguageServer";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
-import * as utils from '../server/src/common/languageUtils';-
+
 //----------------------------
 //   Test cases for checking behavior of pvs with corrupted .pvscontext
 //----------------------------
@@ -61,6 +61,7 @@ describe("proof-explorer", () => {
 		cmd: ""
 	};
 
+	// the following groupd of tests needs to be performed together -- don't use fit() to enable just one of them
 	it(`can step single proof commands`, async () => {
 		const proverStatus: PvsResult = await server.getPvsProxy().pvsRequest('prover-status'); // await pvsProxy.getProverStatus();		
 		if (proverStatus && proverStatus.result !== "inactive") {
@@ -84,7 +85,6 @@ describe("proof-explorer", () => {
 		expect(root.rules[0].type).toEqual("proof-command");
 		expect(root.rules[0].parent).toEqual(root.id);
 	});
-
 	it(`can step a series of proof commands`, async () => {
 		request.cmd = `(assert)(grind)(case "x!1 > 0")(postpone)(grind)`;
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
@@ -220,6 +220,7 @@ describe("proof-explorer", () => {
 		expect(activeNode.name).toEqual(`(1.1)`);
 	}, 6000);
 
+	//-----
 	it(`can start another proof when a prover session has already started`, async () => {
 		await server.proveFormulaRequest(request5);
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();

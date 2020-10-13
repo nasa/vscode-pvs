@@ -62,6 +62,7 @@ describe("pvs-proxy", () => {
 		const response: PvsResponse = await pvsProxy.listMethodsRequest();
 		// console.log(response);
 		const methods: string[] = [
+			'add-pvs-library',
 			'change-context',
 			'change-workspace',
 			'find-declaration',

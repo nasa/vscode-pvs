@@ -220,7 +220,7 @@ describe("proofScript", () => {
 		// console.dir(response.result);
 	});
 
-	fit(`can open default pvs proof script when the formula has no proof script saved in the prf file`, async () => {
+	it(`can open default pvs proof script when the formula has no proof script saved in the prf file`, async () => {
 		const formula: PvsFormula = {
 			contextFolder: helloworldExamples,
 			fileExtension: ".pvs",
@@ -232,7 +232,7 @@ describe("proofScript", () => {
 		let response: PvsResponse = await pvsProxy.lisp(`(change-workspace "${formula.contextFolder}")`, { externalServer: true });
 		response = await pvsProxy.lisp(`(typecheck-file "${fsUtils.desc2fname(formula)}" nil nil nil nil t)`, { externalServer: true });
 		response = await pvsProxy.lisp(`(get-default-proof-script "helloworld" "dummy")`, { externalServer: true });
-		console.dir(response);
+		// console.dir(response);
 		expect(response.result).toBeNull();
 	});
 

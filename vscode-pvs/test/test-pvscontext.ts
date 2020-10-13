@@ -314,7 +314,7 @@ describe("pvs", () => {
 	}, 10000);
 
 	// this test case fails with the assertion error "the assertion (directory-p path) failed."
-	fit(`ignores non-existing folders indicated in pvs-library-path`, async () => {
+	it(`ignores non-existing folders indicated in pvs-library-path`, async () => {
 		await quitProverIfActive();
 
 		// Need to clear-theories, in case rerunning with the same server.

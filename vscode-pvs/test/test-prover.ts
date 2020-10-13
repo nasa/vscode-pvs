@@ -5,6 +5,8 @@ import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { configFile, sandboxExamples, safeSandboxExamples, radixExamples, helloworldExamples } from './test-utils';
 import { PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
 import * as path from 'path';
+import * as os from 'os';
+import { execSync } from "child_process";
 
 //----------------------------
 //   Test cases for prover --- 	THESE TESTS REQUIRE PVS RUNNING IN SERVER MODE ON PORT 22334 + NASALIB
@@ -140,7 +142,7 @@ describe("pvs-prover", () => {
 			// send proof command (assert) to complete the proof
 			response = await pvsProxy.proofCommand({ cmd: '(assert)'});
 			// console.dir(response);
-			expect(response.result[0].commentary).toEqual('This completes the proof of sq_neg.');
+			expect(response.result[0].commentary).toContain('This completes the proof of sq_neg.');
 			expect(response.result[1].commentary).toContain('Q.E.D.');
 
 			// try to re-start the proof
@@ -176,7 +178,7 @@ describe("pvs-prover", () => {
 
 		response = await pvsProxy.proofCommand({ cmd: 'quit' });
 		// console.dir(response);
-		expect(response.result[0].commentary).toEqual('Proof attempt aborted');
+		expect(response.result[0].commentary).toContain('Proof attempt aborted');
 	}, 20000);
 	
 	it(`returns proverStatus = inactive when a prover session is not active`, async () => {
@@ -512,7 +514,7 @@ describe("pvs-prover", () => {
 		// console.dir(response.result);
 	}, 20000);
 
-	fit(`stuck thread`, async () => {
+	it(`stuck thread`, async () => {
         await quitProverIfActive();
 
         const formula: PvsFormula = {
@@ -524,12 +526,23 @@ describe("pvs-prover", () => {
         };
 
         let response: PvsResponse = await pvsProxy.proveFormula(formula);
-        console.dir(response);
+        // console.dir(response);
         response = await pvsProxy.proofCommand({ cmd: "(assert)" });
-		console.dir(response);
-		// expect(response.error).not.toBeDefined();
-		// expect(response.result).toBeDefined();
-    });
+		// console.dir(response);
+		await new Promise((resolve, reject) => {
+			setTimeout(() => {
+				let info: string = execSync("ps -o pcpu").toLocaleString();
+				const cpus: number[] = info.split("\n").slice(1).map(line => {
+					return +line;
+				})
+				for (let i = 0; i < cpus.length; i++) {
+					console.dir(`cpu[${i}] = ${cpus[i]}%`);
+					expect(cpus[i]).toBeLessThan(50);
+				}
+				resolve();
+			}, 16000);
+		});
+    }, 20000);
 
 	it(`interrupt has no effect when the prover is not executing a command`, async () => {
         await quitProverIfActive();
