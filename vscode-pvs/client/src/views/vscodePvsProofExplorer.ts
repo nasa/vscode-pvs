@@ -576,7 +576,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
-	async queryQuitProofAndSave (opt?: { msg?: string }): Promise<void> {
+	async queryQuitProofAndSave (opt?: { msg?: string }): Promise<boolean> {
 		opt = opt || {};
 		const note: string = (opt.msg) ? `${opt.msg}\n` : "";
 		const msg: string = (this.root) ? note + `Save proof ${this.root.name}?` : note + "Save proof?";
@@ -590,6 +590,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const action: ProofExecQuit = { action: "quit-proof" };
 			this.client.sendRequest(serverEvent.querySaveProofResponse, action);
 		}
+		return actionConfirmed;
 	}
 	/**
 	 * Quit the current proof
