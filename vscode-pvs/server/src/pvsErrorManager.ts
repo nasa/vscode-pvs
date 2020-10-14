@@ -46,16 +46,18 @@ export class PvsErrorManager {
     handleTypecheckError (desc: {
         request: { fileName: string, fileExtension: string, contextFolder: string },
         response: PvsError,
-        taskId: string
+        taskId?: string
     }): void {
         if (desc && desc.response && desc.response.error) {
             if (desc.response.error.data) {
                 const fname: string = (desc.response.error.data.file_name) ? desc.response.error.data.file_name : fsUtils.desc2fname(desc.request);
                 const msg: string = desc.response.error.data.error_string || "";
-                if (fname === fsUtils.desc2fname(desc.request)) {
-                    this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}: ${msg}` });
-                } else {
-                    this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `File ${fsUtils.getFileName(fname)}${fsUtils.getFileExtension(fname)} imported by ${desc.request.fileName}${desc.request.fileExtension} contains typecheck errors.` });
+                if (desc.taskId) {
+                    if (fname === fsUtils.desc2fname(desc.request)) {
+                        this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}: ${msg}` });
+                    } else {
+                        this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `File ${fsUtils.getFileName(fname)}${fsUtils.getFileExtension(fname)} imported by ${desc.request.fileName}${desc.request.fileExtension} contains typecheck errors.` });
+                    }
                 }
             } else if (desc.response.error.message) {
                 // this is typically an error thrown by pvs-server, not an error in the PVS spec

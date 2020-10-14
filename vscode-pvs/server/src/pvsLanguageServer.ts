@@ -603,6 +603,26 @@ export class PvsLanguageServer {
 			try {
 				args = fsUtils.decodeURIComponents(args);
 				const response: PvsResponse = await this.pvsProxy.typecheckFile(args);
+				// send diagnostics
+				if (response) {
+					if (response.result) {
+						const fname: string = fsUtils.desc2fname(args);
+						this.diags[fname] = {
+							pvsResponse: response,
+							isTypecheckError: true
+						};
+						this.sendDiagnostics("Typecheck");
+					} else {
+						if (response.error.data) {
+							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(args);
+							this.diags[fname] = {
+								pvsResponse: response,
+								isTypecheckError: true
+							};
+							this.sendDiagnostics("Typecheck");
+						}
+					}
+				}
 				return response;
 			} catch (ex) {
 				console.error('[pvs-language-server.typecheckFile] Error: pvsProxy has thrown an exception', ex);
@@ -634,27 +654,27 @@ export class PvsLanguageServer {
 				// proceed with typechecking
 				const response: PvsResponse = await this.typecheckFile(request);
 				this.connection.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
-				// send diagnostics
+				// // send diagnostics
 				if (response) {
 					if (response.result) {
-						this.diags[fname] = {
-							pvsResponse: response,
-							isTypecheckError: true
-						};
-						this.sendDiagnostics("Typecheck");
+						// this.diags[fname] = {
+						// 	pvsResponse: response,
+						// 	isTypecheckError: true
+						// };
+						// this.sendDiagnostics("Typecheck");
 						this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} typechecked successfully!` });
 					} else {
 						this.pvsErrorManager.handleTypecheckError({ response: <PvsError> response, taskId, request });
 						// send diagnostics
-						if (response.error.data) {
-							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
-							const msg: string = response.error.data.error_string || "";
-							this.diags[fname] = {
-								pvsResponse: response,
-								isTypecheckError: true
-							};
-							this.sendDiagnostics("Typecheck");
-						}
+						// if (response.error.data) {
+						// 	const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
+						// 	const msg: string = response.error.data.error_string || "";
+						// 	this.diags[fname] = {
+						// 		pvsResponse: response,
+						// 		isTypecheckError: true
+						// 	};
+						// 	this.sendDiagnostics("Typecheck");
+						// }
 					}
 				}
 			} else {
