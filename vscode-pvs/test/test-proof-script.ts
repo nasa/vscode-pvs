@@ -136,6 +136,50 @@ describe("proofScript", () => {
 		// console.dir(response);
 	});
 
+	// this test fails: save proof saves an empty proof in the prf file for vtbi_over_rate_lemma.
+	// additionally, pvs-server takes 100% of the cpu at the end of this test
+	fit(`saves only the current proof, and leaves all other proofs untouched`, async () => {
+		await quitProverIfActive();
+		const formula1: PvsFormula = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "alari2lnewmodes.pump",
+			formulaName: "vtbi_over_rate_lemma",
+			theoryName: "pump_th"
+		}
+		let response1: PvsResponse = await pvsProxy.getDefaultProofScript(formula1);
+		// console.dir(response1);
+		expect(response1.result).not.toBeDefined();
+		expect(response1.error).toBeDefined();
+		expect(response1.error.data.error_string).toMatch(/(.*) does not have a proof/);
+
+		await quitProverIfActive();
+		const formula: PvsFormula = {
+			contextFolder: sandboxExamples,
+			fileExtension: ".pvs",
+			fileName: "sq",
+			formulaName: "sq_plus_eq_0",
+			theoryName: "sq"
+		};
+		let response: PvsResponse = await pvsProxy.proveFormula(formula);
+		response = await pvsProxy.proofCommand({ cmd: "(grind)" });
+		response = await pvsProxy.proofCommand({ cmd: "(quit)" });
+		// console.dir(response);
+		response = await pvsProxy.storeLastAttemptedProof(formula);
+		const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
+		response = await pvsProxy.pvsRequest("store-last-attempted-proof", [ formula.formulaName, fullTheoryName, 't' ]);
+		if (response && response.result) {
+			response = await pvsProxy.pvsRequest("change-context", [ formula.contextFolder ]);
+			response = await pvsProxy.pvsRequest("save-all-proofs", [ fullTheoryName ]);
+		}
+
+		response1 = await pvsProxy.getDefaultProofScript(formula1);
+		// console.dir(response1);
+		expect(response1.result).not.toBeDefined();
+		expect(response1.error).toBeDefined();
+		expect(response1.error.data.error_string).toMatch(/(.*) does not have a proof/);
+	});
+
 	it(`can generate backup files if vscode-pvs proof file is corrupted`, async () => {
 		label(`can generate backup files if vscode-pvs proof file is corrupted`);
 

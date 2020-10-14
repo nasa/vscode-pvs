@@ -60,7 +60,7 @@ describe("pvs", () => {
 
 	// this test case requires pvs-experimental/monitors in the pvs-library-path
 	// or alternatively folder vscode-pvs/test/pvs-context/nasalib-monitors-stack-limit-error in the library path
-	it(`can prove null_null_after_satisfaction_ft (nasalib-monitors-stack-limit-error.zip)`, async () => {
+	fit(`can prove null_null_after_satisfaction_ft (nasalib-monitors-stack-limit-error.zip)`, async () => {
 		await quitProverIfActive();
 
 		// Need to clear-theories, in case rerunning with the same server.
@@ -80,7 +80,7 @@ describe("pvs", () => {
 		});
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
-		// console.dir(response);
+		console.dir(response);
 
 		const commands: string[] = [
 			'(skeep)',

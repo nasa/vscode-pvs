@@ -349,7 +349,7 @@ describe("proof-explorer", () => {
 		expect(res.success).toBeTrue();
 	});
 
-	fit(`can start a proof, then interrupt, quit and save current proof`, async () => {
+	xit(`can start a proof, then interrupt, quit and save current proof`, async () => {
 		await server.getPvsProxy().quitProof();
 
 		const formula: PvsFormula = {
