@@ -7,11 +7,11 @@
     "test-workspace.ts",
     "test-typechecker.ts",
     "test-proof-script.ts",
-    "test-prover.ts",
     "test-pvs-language-server.ts",
     "test-proof-explorer.ts",
+    "test-tacticals.ts",
     "test-pvscontext.ts",
-    "test-tacticals.ts"
+    "test-prover.ts"
   ],
   "stopSpecOnExpectationFailure": false,
   "random": false

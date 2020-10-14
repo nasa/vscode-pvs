@@ -564,6 +564,8 @@ describe("pvs-prover", () => {
 
 		expect(response.error).not.toBeDefined();
 		expect(response.result).toBeDefined();
+
+		await quitProverIfActive();
     });
 
 });

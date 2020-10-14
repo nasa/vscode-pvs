@@ -138,7 +138,7 @@ describe("proofScript", () => {
 
 	// this test fails: save proof saves an empty proof in the prf file for vtbi_over_rate_lemma.
 	// additionally, pvs-server takes 100% of the cpu at the end of this test
-	fit(`saves only the current proof, and leaves all other proofs untouched`, async () => {
+	it(`saves only the current proof, and leaves all other proofs untouched`, async () => {
 		await quitProverIfActive();
 		const formula1: PvsFormula = {
 			contextFolder: sandboxExamples,

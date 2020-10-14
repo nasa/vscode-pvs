@@ -23,6 +23,8 @@ describe("pvs", () => {
 		fsUtils.deleteFolder(path.join(baseFolder, "pvsICEipandvs2"));
 		fsUtils.deleteFolder(path.join(baseFolder, "trace"));
 		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
+		fsUtils.deleteFolder(path.join(baseFolder, "nasalib-monitors"));
+		fsUtils.deleteFolder(path.join(baseFolder, "nasalib-monitors-stack-limit-error"));
 	}
 
 	beforeAll(async () => {
@@ -43,16 +45,21 @@ describe("pvs", () => {
 	afterAll(async () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
+		await new Promise((resolve, reject) => {
+			setTimeout(() => {
+				cleanAll();
+				resolve();
+			}, 2000);
+		})
 	});
-	cleanAll();
 
 	// utility function, quits the prover if the prover status is active
 	const quitProverIfActive = async (): Promise<void> => {
 		// quit prover if prover status is active
 		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
+		// console.log(proverStatus);
 		expect(proverStatus.result).toBeDefined();
 		expect(proverStatus.error).not.toBeDefined();
-		// console.log(proverStatus);
 		if (proverStatus && proverStatus.result !== "inactive") {
 			await pvsProxy.proofCommand({ cmd: 'quit' });
 		}
@@ -60,7 +67,7 @@ describe("pvs", () => {
 
 	// this test case requires pvs-experimental/monitors in the pvs-library-path
 	// or alternatively folder vscode-pvs/test/pvs-context/nasalib-monitors-stack-limit-error in the library path
-	fit(`can prove null_null_after_satisfaction_ft (nasalib-monitors-stack-limit-error.zip)`, async () => {
+	it(`can prove null_null_after_satisfaction_ft (nasalib-monitors-stack-limit-error.zip)`, async () => {
 		await quitProverIfActive();
 
 		// Need to clear-theories, in case rerunning with the same server.
@@ -80,7 +87,7 @@ describe("pvs", () => {
 		});
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
-		console.dir(response);
+		// console.dir(response);
 
 		const commands: string[] = [
 			'(skeep)',
@@ -158,8 +165,6 @@ describe("pvs", () => {
 		expect(response.result).not.toBeDefined();
 		expect(response.error).toBeDefined();
 
-		// remove folder 
-		// fsUtils.deleteFolder(path.join(baseFolder, "type_theory"));
 	}, 10000);
 
 	it(`identifies typecheck errors when processing baxterSigmaSpectrum.pvs`, async () => {
@@ -184,8 +189,6 @@ describe("pvs", () => {
 		expect(response.error.data.error_string).toBeDefined();
 		// expect(response.error.data.error_string).toMatch(/\blimits\b/g);
 
-		// remove baxter folder 
-		// fsUtils.deleteFolder(path.join(baseFolder, "baxter"));
 	}, 10000);
 	
 	//-- all tests below this line are completed successfully
@@ -209,31 +212,7 @@ describe("pvs", () => {
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
-		// remove alaris folder 
-		// fsUtils.deleteFolder(path.join(baseFolder, "alaris2l"));
 	}, 20000);
-
-	it(`can find typecheck error in ICEcoordinator.pvs (wrong field type)`, async () => {
-		// Need to clear-theories, in case rerunning with the same server.
-		await pvsProxy.lisp("(clear-theories t)");
-
-		// remove folder if present and replace it with the content of the zip file
-		fsUtils.deleteFolder(path.join(baseFolder, "pvsICEipandvs2"));
-		execSync(`cd ${baseFolder} && unzip pvsICEipandvs2-wrong-field.zip`);
-
-		const response: PvsResponse = await pvsProxy.typecheckFile({
-			fileName: "main", 
-			fileExtension: ".pvs", 
-			contextFolder: path.join(baseFolder, "pvsICEipandvs2")
-		});
-		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).not.toBeDefined();
-		expect(response.error).toBeDefined();
-
-		// remove folder 
-		// fsUtils.deleteFolder(path.join(baseFolder, "pvsICEipandvs2"));
-	}, 10000);
 
 	it(`can typecheck datatypes in trace`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
@@ -265,8 +244,6 @@ describe("pvs", () => {
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
-		// remove folder 
-		// fsUtils.deleteFolder(path.join(baseFolder, "trace"));
 	}, 10000);
 
 	it(`can typecheck strings defined in pillboxv7`, async () => {
@@ -287,31 +264,7 @@ describe("pvs", () => {
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 
-		// remove pillboxv7 folder 
-		// fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
 	}, 40000);
-
-	it(`can typecheck lists defined in pillboxv7`, async () => {
-		// Need to clear-theories, in case rerunning with the same server.
-		await pvsProxy.lisp("(clear-theories t)");
-
-		// remove pillboxv7 folder if present and replace it with the content of the zip file
-		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
-		execSync(`cd ${baseFolder} && unzip pillboxv7-errors-with-lists.zip`);
-
-		const response: PvsResponse = await pvsProxy.typecheckFile({
-			fileName: "firstpillchecks", 
-			fileExtension: ".pvs", 
-			contextFolder: path.join(baseFolder, "pillboxv7")
-		});
-		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-
-		// remove pillboxv7 folder 
-		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
-	}, 10000);
 
 	// this test case fails with the assertion error "the assertion (directory-p path) failed."
 	it(`ignores non-existing folders indicated in pvs-library-path`, async () => {
@@ -336,7 +289,48 @@ describe("pvs", () => {
 		});
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
-	}, 100000);
+	}, 40000);
+
+	it(`can typecheck lists defined in pillboxv7`, async () => {
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		// remove pillboxv7 folder if present and replace it with the content of the zip file
+		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
+		execSync(`cd ${baseFolder} && unzip pillboxv7-errors-with-lists.zip`);
+
+		const response: PvsResponse = await pvsProxy.typecheckFile({
+			fileName: "firstpillchecks", 
+			fileExtension: ".pvs", 
+			contextFolder: path.join(baseFolder, "pillboxv7")
+		});
+		// console.dir(response);
+		expect(response).toBeDefined();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+
+	}, 10000);
+
+	it(`can find typecheck error in ICEcoordinator.pvs (wrong field type)`, async () => {
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		// remove folder if present and replace it with the content of the zip file
+		fsUtils.deleteFolder(path.join(baseFolder, "pvsICEipandvs2"));
+		execSync(`cd ${baseFolder} && unzip pvsICEipandvs2-wrong-field.zip`);
+
+		const response: PvsResponse = await pvsProxy.typecheckFile({
+			fileName: "main", 
+			fileExtension: ".pvs", 
+			contextFolder: path.join(baseFolder, "pvsICEipandvs2")
+		});
+		// console.dir(response);
+		expect(response).toBeDefined();
+		expect(response.result).not.toBeDefined();
+		expect(response.error).toBeDefined();
+
+	}, 10000);
+
 
 	// remove folders
 	// setTimeout(() => {
