@@ -21,4 +21,5 @@ server/.DS_Store
 *.log
 *.???~
 pvsbin/
+*/*/*.summary
 **/javaTarget/out/
