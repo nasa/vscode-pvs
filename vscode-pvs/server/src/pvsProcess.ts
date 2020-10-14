@@ -226,8 +226,10 @@ export class PvsProcess {
 						const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
 						if (yesNoQuery) {
 							console.log(data);
-							this.pvsProcess?.stdin?.write("Yes\n");
-							this.log("Yes\n", { force: true });
+							if (!this.pvsProcess?.stdin?.destroyed) {
+								this.pvsProcess?.stdin?.write("Yes\n");
+								this.log("Yes\n", { force: true });
+							}
 							return;
 						}
 
@@ -298,7 +300,9 @@ export class PvsProcess {
 					if (this.pvsProcess) {
 						// try to exit the process gracefully
 						await new Promise((resolve, reject) => {
-							this.pvsProcess?.stdin?.write("(quit)Y\n");
+							if (!this.pvsProcess?.stdin?.destroyed) {
+								this.pvsProcess?.stdin?.write("(quit)Y\n");
+							}
 							setTimeout(() => {
 								resolve();
 							}, 200);
@@ -351,9 +355,9 @@ export class PvsProcess {
 					resolve(data);
 				}
 				this.data = "";
-				if (this.pvsProcess && this.pvsProcess.stdin) {
+				if (this.pvsProcess && this.pvsProcess.stdin && !this.pvsProcess.stdin.destroyed) {
 					this.progressInfoEnabled = cmd.includes("typecheck-file");
-					this.pvsProcess.stdin.write(cmd);
+					this.pvsProcess?.stdin?.write(cmd);
 					this.log(cmd + "\n");
 				}
 			});

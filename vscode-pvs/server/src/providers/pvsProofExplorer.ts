@@ -880,7 +880,7 @@ export class PvsProofExplorer {
 				this.stopAt = null;
 
 				// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
-				if (this.proofState.sequent && (utils.isSameCommand(activeNode.name, cmd) === false || this.ghostNode.isActive())) {
+				if (this.proofState.sequent && (utils.isSameCommand(activeNode.name, cmd) === false || utils.isSameCommand(activeNode.name, userCmd) === false || this.ghostNode.isActive())) {
 					// concatenate new command
 					const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);
 					// append before selected node (the active not has not been executed yet)
@@ -1079,7 +1079,7 @@ export class PvsProofExplorer {
 				} else if (utils.noChange(this.proofState) || utils.isEmptyCommand(cmd)) {
 					const command: string = utils.getNoChangeCommand(this.proofState);
 					// check if the command that produced no change comes from the proof tree -- if so advance indicator
-					if ((utils.isSameCommand(activeNode.name, command) || utils.isSameCommand(activeNode.name, cmd))
+					if ((utils.isSameCommand(activeNode.name, command) || utils.isSameCommand(activeNode.name, userCmd) || utils.isSameCommand(activeNode.name, cmd))
 							&& !this.ghostNode.isActive()) {
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 						// mark the sub tree of the invalid node as not visited
@@ -1089,7 +1089,7 @@ export class PvsProofExplorer {
 					// regular prover command
 					// else, the prover has made progress with the provided proof command
 					// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
-					if (!utils.isSameCommand(activeNode.name, cmd) || this.ghostNode.isActive()) {
+					if (!(utils.isSameCommand(activeNode.name, cmd) || utils.isSameCommand(activeNode.name, userCmd)) || this.ghostNode.isActive()) {
 						if (!utils.isPropax(cmd)) {
 							this.running = false;
 							this.stopAt = null;

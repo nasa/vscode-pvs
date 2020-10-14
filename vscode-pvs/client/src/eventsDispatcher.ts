@@ -1359,7 +1359,8 @@ export class EventsDispatcher {
                 // msg += `\nThe error occurred while executing method [${opt.method}](${opt.method})`; // vscode is unable to render marked strings in dialogs
                 msg += `\nThe error occurred while executing method ${opt.method}`;
             }
-            window.showErrorMessage("Error: " + msg);
+            msg = (msg && msg.startsWith("Error:")) ? msg : `Error: ` + msg;
+            window.showErrorMessage(msg);
             this.statusBar.showError(msg);
         });
     }

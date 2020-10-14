@@ -559,7 +559,7 @@ describe("pvs-prover", () => {
 				let info: string = execSync("ps -o pcpu").toLocaleString();
 				const cpus: number[] = info.split("\n").slice(1).map(line => {
 					return +line;
-				})
+				});
 				for (let i = 0; i < cpus.length; i++) {
 					console.dir(`cpu[${i}] = ${cpus[i]}%`);
 					expect(cpus[i]).toBeLessThan(50);
