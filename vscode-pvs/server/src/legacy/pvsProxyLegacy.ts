@@ -98,7 +98,7 @@ export class PvsProxyLegacy {
                 : "Please check console log";
             const msg: string = (error_string.includes("not find lib-path")) ? 
                 error_string + ". Please add external pvs libraries to vscode-pvs settings" 
-                    : "Internal Error: " + error_string;
+                    : "(pvs-server error) " + error_string;
             this.pvsErrorManager.notifyPvsFailure({ msg });
             return {
                 jsonrpc: "2.0",
