@@ -1,32 +1,38 @@
 (helloworld
  (always_positive 0
-  (always_positive-1 nil 3809866971 ("" (grind) nil nil)
-   ((boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (number nonempty-type-decl nil numbers nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (real_gt_is_strict_total_order name-judgement
+  (always_positive-1 nil 3809866971
+   ("" (skeep) (("" (grind) nil nil)) nil)
+   ((real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (abs const-decl "real" helloworld nil))
    shostak))
  (foo 0 (foo-1 nil 3809944245 ("" (propax) nil nil) nil shostak))
  (sqrt_newton_TCC1 0
-  (sqrt_newton_TCC1-1 nil 3810216203 ("" (subtype-tcc) nil nil) nil nil
+  (sqrt_newton_TCC1-1 nil 3810216203
+   ("" (skosimp*) (("" (subtype-tcc) nil nil)) nil)
+   ((int_minus_int_is_int application-judgement "int" integers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil
    (sqrt_newton subtype "(number_fields.-)(helloworld.n, 1)" "nat")))
  (sqrt_newton_TCC2 0
-  (sqrt_newton_TCC2-1 nil 3810216203 ("" (termination-tcc) nil nil) nil
+  (sqrt_newton_TCC2-1 nil 3810216203
+   ("" (skosimp*) (("" (termination-tcc) nil nil)) nil)
+   ((nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (int_plus_int_is_int application-judgement "int" integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
    nil
    (sqrt_newton termination
-                "helloworld.sqrt_newton(helloworld.a, (number_fields.-)(helloworld.n, 1))"
-                "nil")))
+    "helloworld.sqrt_newton(helloworld.a, (number_fields.-)(helloworld.n, 1))"
+    "nil")))
  (newton_TCC1 0
   (newton_TCC1-1 nil 3810216203
-   ("" (subtype-tcc) (("" (postpone) nil nil)) nil) nil nil
+   ("" (grind) (("" (postpone) nil nil)) nil) nil nil
    (newton subtype
     "stdio.query_real(\"Enter a non-negative real number:\")"
     "nnreal")))

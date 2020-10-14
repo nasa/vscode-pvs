@@ -5,12 +5,15 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 helloworld: THEORY
-  BEGIN IMPORTING dummy
+  BEGIN
 
     abs (x: real): real = IF x > 0 THEN x ELSE -x ENDIF
 
     always_positive: THEOREM
       FORALL (x: real): abs(x) >= 0
+
+    always_negative: THEOREM
+      FORALL (x: negreal): x < 0
 
     foo: LEMMA
       true
