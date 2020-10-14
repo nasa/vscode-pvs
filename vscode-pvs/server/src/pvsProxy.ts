@@ -1053,7 +1053,7 @@ export class PvsProxy {
 	 */
 	async quitProof (): Promise<void> {
 		// await this.interrupt();
-		const mode: string = await this.getMode();
+		const mode: string = await this.getServerMode(); //await this.getMode();
 		if (mode === "in-checker") {
 			const useLispInterface: boolean = true;
 			const response: PvsResponse = await this.proofCommand({ cmd: "(quit)" }, { useLispInterface });
