@@ -341,14 +341,14 @@
 				"title": "Discharge",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
-				"icon": "icons/prove-icon.png"
+				"icon": "icons/play-circle-icon.png"
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs",
 				"title": "Discharge TCCs",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
-				"icon": "icons/prove-icon.png"
+				"icon": "icons/play-circle-icon.png"
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
