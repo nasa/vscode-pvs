@@ -2521,18 +2521,18 @@ export class PvsProofExplorer {
 	async quitProof (opt?: { notifyCliGateway?: boolean }): Promise<void> {
 		opt = opt || {};
 		this.running = false;
-		// await this.interruptProofCommand();
-		const inchecker: boolean = await this.inChecker();
-		if (this.formula && inchecker) {
-			await this.proofCommand({
-				fileName: this.formula.fileName,
-				fileExtension: this.formula.fileExtension,
-				theoryName: this.formula.theoryName,
-				formulaName: this.formula.formulaName,
-				contextFolder: this.formula.contextFolder,
-				cmd: "quit"
-			});
-		}
+		await this.pvsProxy.quitProof();
+		// const inchecker: boolean = await this.inChecker();
+		// if (this.formula && inchecker) {
+		// 	await this.proofCommand({
+		// 		fileName: this.formula.fileName,
+		// 		fileExtension: this.formula.fileExtension,
+		// 		theoryName: this.formula.theoryName,
+		// 		formulaName: this.formula.formulaName,
+		// 		contextFolder: this.formula.contextFolder,
+		// 		cmd: "quit"
+		// 	});
+		// }
 		if (this.autorunFlag) {
 			const status: ProofStatus = (this.root) ? this.root.getProofStatus() : "untried";
 			this.autorunFlag = false;

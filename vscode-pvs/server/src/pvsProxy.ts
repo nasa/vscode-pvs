@@ -1052,6 +1052,7 @@ export class PvsProxy {
 	 * Quits the prover
 	 */
 	async quitProof (): Promise<void> {
+		await this.interrupt();
 		const mode: string = await this.getMode();
 		if (mode === "in-checker") {
 			const useLispInterface: boolean = true;
