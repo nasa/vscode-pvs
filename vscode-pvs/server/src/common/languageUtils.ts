@@ -1849,10 +1849,10 @@ export function splitCommands (cmd: string): string[] {
 				if (stop > start && validStart) { // sanity check
 					let cmd: string = input.substring(start, stop + 1);
 					if (isUndoCommand(cmd)) {
-						cmd = unfoldUndoCommand(cmd).join("");
+						cmds = cmds.concat(unfoldUndoCommand(cmd));
+					} else {
+						cmds = cmds.concat(cmd);
 					}
-
-					cmds = cmds.concat(cmd);
 					validStart = false;
 				}
 			}
