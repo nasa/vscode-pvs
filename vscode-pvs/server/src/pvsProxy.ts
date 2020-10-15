@@ -1619,10 +1619,10 @@ export class PvsProxy {
 		return this.pvsVersionInfo;
 	}
 
-	async loadPatchesAndLibraries(): Promise<void> {
+	async loadLibrariesAndPatches(): Promise<void> {
 		await this.setNasalibPath();
-		await this.loadPvsPatches();
 		await this.pushPvsLibraryPath();
+		await this.loadPvsPatches();
 	}
 
 	/**
@@ -1630,7 +1630,7 @@ export class PvsProxy {
 	 */
 	async loadPvsVersionInfo(): Promise<PvsVersionDescriptor | null> {
 		// try to load nasalib and patches
-		await this.loadPatchesAndLibraries();
+		await this.loadLibrariesAndPatches();
 
 		// const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
 		const res: PvsResponse = await this.legacy.lisp(`(get-pvs-version-information)`);
