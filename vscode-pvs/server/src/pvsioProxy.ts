@@ -142,9 +142,24 @@ class PvsIoProcess {
 			const fname: string = fsUtils.desc2fname(desc);
 			const args: string[] = [ `${fname}@${desc.theoryName}` ];
 			// pvsio args
-			process.env["PVS_LIBRARY_PATH"] = `${this.pvsLibraryPath}/:${this.nasalibPath}/`;
+			let libraries: string[] = [];
+			const external: string[] = this.pvsLibraryPath.split(":") || [];
+			for (let i = 0; i < external.length; i++) {
+				let lib: string = external[i].trim();
+				if (lib) {
+					lib = lib.endsWith("/") ? lib : `${lib}/`;
+					if (fsUtils.folderExists(lib)) {
+						libraries.push(lib);
+					}
+				}
+			}
+			if (this.nasalibPath && fsUtils.folderExists(this.nasalibPath)) {
+				let lib: string = this.nasalibPath.endsWith("/") ? this.nasalibPath : `${this.nasalibPath}/`;
+				libraries.push(lib);
+			}
+			process.env["PVS_LIBRARY_PATH"] = (libraries && libraries.length) ? libraries.join(":") : "";
 			console.log(`\nPVS_LIBRARY_PATH=${process.env["PVS_LIBRARY_PATH"]}\n`);
-			const fileExists: boolean = await fsUtils.fileExists(pvsioExecutable);
+			const fileExists: boolean = fsUtils.fileExists(pvsioExecutable);
 			if (fileExists && !this.pvsioProcess) {
 				this.pvsioProcess = spawn(pvsioExecutable, args);
 				// console.dir(this.pvsProcess, { depth: null });
