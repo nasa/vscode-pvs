@@ -146,3 +146,22 @@ Additional hot-keys:
 - `M-x settings` *(shows vscode-pvs settings)*
 - `M-x release-notes` *(shows vscode-pvs release notes)*
 
+<br><br>
+
+## Useful Visual Studio Code shortcuts
+
+[Linux](https://code.visualstudio.com/shortcuts/keyboard-shortcuts-linux.pdf)
+- `ctrl shift p ` *(command palette)*
+- `ctrl shift l ` *(add more cursors at each occurrence of the current selected text)*
+- `ctrl alt ↓ ` *(add a cursor at the line below)*
+- `ctrl shift f ` *(find in workspace)*
+- `ctrl f ` *(find in file)*
+
+<br>
+
+[MacOS](https://code.visualstudio.com/shortcuts/keyboard-shortcuts-macos.pdf)
+- `⌘ ⇧ p ` *(command palette)*
+- `⌘ ⇧ l ` *(add more cursors at each occurrence of the current selected text)*
+- `⌘ ⌥ ↓ ` *(add a cursor at the line below)*
+- `⌘ ⇧ f ` *(find in workspace)*
+- `⌘ f ` *(find in file)*
