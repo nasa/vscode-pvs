@@ -12,7 +12,7 @@ The layout of VSCode-PVS includes 8 main elements:
 4. [Proof Mate]() view. Located in the vscode side panel, this view provides *hints* on proof commands that can be used to make progress with the current proof. It also contains a *sketchpad* that stores proof commands clipped from the current proof shown in Proof Explorer (e.g., when editing or repairing a proof).
 5. [Editor]() view. Located in the vscode central panel, this view allows to edit PVS files.
 6. [Prover Terminal]() view. Located in the vscode lower panel, this view provides an interactive prompt for sending proof commands to the PVS theorem prover.
-7. [Reboot pvs-server]() and [Interrupt Prover]() buttons. Located in the vscode status bar, these buttons can be used to reset vscode-pvs in the case of unexpected errors or run-away situations.
+7. [Reboot pvs]() and [Interrupt Prover]() buttons. Located in the vscode status bar, these buttons can be used to reset vscode-pvs in the case of unexpected errors or run-away situations.
 8. PVS version information.
 
 <img src="../screenshots/vscode-pvs-user-interface-annotated.png" width="600">

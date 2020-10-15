@@ -34,18 +34,18 @@ Yes, you can find tutorials on the Visual Studio Code website, see https://code.
 
 ### **VSCode-PVS reports an error "pvs-server crashed", what can I do?**
 An unexpected error has occurred in the server. 
-You can try a 'soft restart' by pressing the `Reboot pvs-server` button located in the status bar.
+You can try a 'soft restart' by pressing the `Reboot pvs` button located in the status bar.
 If the problem persists, please close and reopen Visual Studio Code.
 
 ### **VSCode-PVS became not responsive, what can I do?**
-These situations may occur when the reasoning engine has crashed. You can try to restart the reasoning engine with the `Reboot pvs-server` button located in the status bar. If the problem persists, please try restarting Visual Studio Code.
+These situations may occur when the reasoning engine has crashed. You can try to restart the reasoning engine with the `Reboot pvs` button located in the status bar. If the problem persists, please try restarting Visual Studio Code.
 
 >Note 1: If VSCode-PVS became not responsive during a prover session, you can still save the current proof using the `Save` command from the menu in Proof Explorer.
 
 >Note 2: There is an output channel `pvs-server` in Visual Studio Code. You can use it to inspect the raw output of PVS, including errors thrown by the reasoning engine, when errors occur.
 
 ### **A proof because a pop-up message "Typechecking files necessary to prove formula" does not go away, what can I do?**
-An unexpected error might have occurred while processing one of the files necessary for running the proof. Please restart the reasoning engine with the `Reboot pvs-server` button located in the status bar and try again. If the problem persists, please open an issue on [github](https://github.com/nasa/vscode-pvs/issues) or [get in touch with us](mailto:paolo.masci@nianet.org).
+An unexpected error might have occurred while processing one of the files necessary for running the proof. Please restart the reasoning engine with the `Reboot pvs` button located in the status bar and try again. If the problem persists, please open an issue on [github](https://github.com/nasa/vscode-pvs/issues) or [get in touch with us](mailto:paolo.masci@nianet.org).
 
 ### **The terminal reports an error "node does not exist", what does it mean?**
 The error indicates that one of the required software packages is not installed on your system --- you need to install [NodeJS](https://nodejs.org/en/download).
