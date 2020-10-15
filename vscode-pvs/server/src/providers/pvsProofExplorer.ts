@@ -973,9 +973,9 @@ export class PvsProofExplorer {
 			}
 
 			// if command is postpone, move to the new branch
-			if (utils.isPostponeCommand(userCmd) || pathHasChanged) {
+			if (utils.isPostponeCommand(userCmd, this.proofState) || pathHasChanged) {
 				// this.previousPath = currentPath;
-				if (this.running && utils.isPostponeCommand(userCmd)) {
+				if (this.running && utils.isPostponeCommand(userCmd, this.proofState)) {
 					this.running = false;
 					this.stopAt = null;	
 					if (this.autorunFlag) {
@@ -1079,6 +1079,7 @@ export class PvsProofExplorer {
 				} else if (utils.noChange(this.proofState) || utils.isEmptyCommand(cmd)) {
 					const command: string = utils.getNoChangeCommand(this.proofState);
 					// check if the command that produced no change comes from the proof tree -- if so advance indicator
+					// here we need to check both command and userCmd, as pvs may clean up the command, eg., (hide 01) is returned as (hide 1)
 					if ((utils.isSameCommand(activeNode.name, command) || utils.isSameCommand(activeNode.name, userCmd) || utils.isSameCommand(activeNode.name, cmd))
 							&& !this.ghostNode.isActive()) {
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
@@ -1123,6 +1124,10 @@ export class PvsProofExplorer {
 						if (utils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
 							this.trimNode({ selected: activeNode });
 						}
+					}
+					if (utils.isSameCommand(activeNode.name, cmd) || utils.isSameCommand(activeNode.name, userCmd)) {
+						// replace the command entered by the user with the one polished by pvs
+						this.activeNode.rename(cmd);
 					}
 
 					// check if current or previous branch have been completed

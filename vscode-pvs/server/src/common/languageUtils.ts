@@ -1745,7 +1745,18 @@ export function isUndoStarCommand (cmd: string): boolean {
 	return isUndoCommand(cmd) || isUndoUndoCommand(cmd) || isUndoUndoPlusCommand(cmd);
 }
 
-export function isPostponeCommand (cmd: string): boolean {
+export function isPostponeCommand (cmd: string, result?: { commentary: string | string[] }): boolean {
+	if (result && result.commentary) {
+		if (typeof result.commentary === "string") {
+			return result.commentary.toLocaleLowerCase().startsWith("postponing ");
+		} else if (typeof result.commentary === "object") {
+			return result.commentary.length
+				&& typeof result.commentary[0] === "string"
+				&& result.commentary.filter((comment: string)=> {
+					return comment.toLocaleLowerCase().startsWith("postponing ");
+				}).length > 0;
+		}
+	}
 	return cmd && /\(?\s*\bpostpone\b/g.test(cmd);
 }
 
