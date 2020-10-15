@@ -718,7 +718,7 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.reboot-pvs", async () => {
             // ask the user confirmation before restarting pvs
 			const yesno: string[] = [ "Yes", "No" ];
-			const msg: string = `Reboot pvs-server?\n\nThis action can resolve situations where the server crashed or is not responding.`;
+			const msg: string = `Reboot pvs?\n\nThis action can resolve situations where the server crashed or is not responding.`;
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
                 const currentContext: string = vscode.workspace.rootPath;
@@ -1351,7 +1351,7 @@ export class EventsDispatcher {
 
         this.client.onNotification("server.status.pvs-failure", (opt?: { msg?: string, fname?: string, method?: string }) => {
             opt = opt || {};
-            let msg: string = opt.msg || `pvs-server crashed into Lisp.\nTo continue, you may need to reboot pvs-server.`;
+            let msg: string = opt.msg || `pvs-server crashed into Lisp.\nTo continue, you may need to Reboot pvs.`;
             if (opt.fname) {
                 // msg += `\nThe error occurred while processing file [${opt.fname}](file://${opt.fname})`; // vscode is unable to render marked strings in dialogs
                 msg += `\nThe error occurred while processing file ${opt.fname}`;

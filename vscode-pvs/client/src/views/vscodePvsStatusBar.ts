@@ -192,7 +192,7 @@ export class VSCodePvsStatusBar {
     showError (msg: string): void {
         const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
         this.pvsStatus.icon("");
-        this.pvsStatus.text(`$(warning)  ${shortmsg}`); // messages in the status bar should always be on one line
+        this.pvsStatus.text(`$(megaphone)  ${shortmsg}`); // messages in the status bar should always be on one line
         this.pvsStatus.show();
         // show problems panel -- see also Code->Preferences->KeyboardShortcuts
         commands.executeCommand("workbench.panel.markers.view.focus");
@@ -215,7 +215,7 @@ export class VSCodePvsStatusBar {
     }
     showRestartButton (): void {
         this.restartPvs.icon("");
-        this.restartPvs.text(`$(debug-restart)  Reboot pvs-server`);
+        this.restartPvs.text(`$(debug-restart)  Reboot pvs`);
         this.restartPvs.command("vscode-pvs.reboot-pvs");
         this.restartPvs.show();
     }
@@ -224,7 +224,7 @@ export class VSCodePvsStatusBar {
     }
     showInterruptButton (): void {
         this.interruptProver.icon("");
-        this.interruptProver.text(`$(debug-disconnect)  Interrupt Prover`);
+        this.interruptProver.text(`$(stop-circle)  Interrupt Prover`);
         this.interruptProver.command("vscode-pvs.interrupt-prover");
         this.interruptProver.show();
     }

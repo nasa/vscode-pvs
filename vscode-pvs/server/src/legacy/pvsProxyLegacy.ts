@@ -368,7 +368,7 @@ export class PvsProxyLegacy {
             
             const matchSystemError: boolean = /\bRestart actions \(select using \:continue\)\:/g.test(res);
             if (matchSystemError) {
-                const error_string: string = `pvs-server crashed into Lisp.\n To continue, you may need to reboot pvs-server.\nPlease report the following error log to vscode-pvs developers:\n(typecheck-file "${fname}" nil nil nil nil t)\n${res}`;
+                const error_string: string = `pvs crashed into Lisp.\n To continue, you may need to reboot pvs.\nPlease report the following error log to vscode-pvs developers:\n(typecheck-file "${fname}" nil nil nil nil t)\n${res}`;
                 pvsResponse.error = {
                     data: {
                         place: [ 1, 0 ],

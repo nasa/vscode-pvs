@@ -797,6 +797,9 @@ export class PvsProxy {
 				fname = path.join(desc.contextFolder, `${desc.fileName}.pvs`);
 			}
 
+			// show library path, it's useful when debugging problems with importings
+			await this.getPvsLibraryPath();
+			// typecheck file
 			const res: PvsResponse = await this.legacy.typecheckFile(fname);
 			// const res: PvsResponse = (this.useLegacy) ? await this.legacy.typecheckFile(fname)
 			// 		: await this.pvsRequest('typecheck', [ fname ]);
@@ -1619,9 +1622,9 @@ export class PvsProxy {
 		return this.pvsVersionInfo;
 	}
 
-	async loadLibrariesAndPatches(): Promise<void> {
+	async loadPvsLibraryPathAndPatches(): Promise<void> {
 		await this.setNasalibPath();
-		await this.pushPvsLibraryPath();
+		await this.pushPvsLibraryPath({ useLisp: true });
 		await this.loadPvsPatches();
 	}
 
@@ -1630,7 +1633,7 @@ export class PvsProxy {
 	 */
 	async loadPvsVersionInfo(): Promise<PvsVersionDescriptor | null> {
 		// try to load nasalib and patches
-		await this.loadLibrariesAndPatches();
+		await this.loadPvsLibraryPathAndPatches();
 
 		// const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
 		const res: PvsResponse = await this.legacy.lisp(`(get-pvs-version-information)`);
@@ -2000,8 +2003,8 @@ export class PvsProxy {
 			const nasalibPath: string = this.getNasalibPath();
 			if (!pvsLibraries.includes(nasalibPath) && fsUtils.folderExists(nasalibPath)) {
 				console.log(`[pvs-proxy] Setting nasalib path to ${nasalibPath}`);
-				return await this.lisp(`(push "${nasalibPath}" *pvs-library-path*)`, opt);
-				// return await this.pushPvsLibraryPath(nasalibPath);
+				// return await this.lisp(`(push "${nasalibPath}" *pvs-library-path*)`, opt);
+				return await this.pushPvsLibraryPath({ pvsLibraryPath: nasalibPath, useLisp: true });
 			}
 		}
 		return null;
@@ -2024,9 +2027,9 @@ export class PvsProxy {
 	 * Updates pvs library path
 	 * @param pvsLibraryPath colon-separated list of folders
 	 */
-	async pushPvsLibraryPath (pvsLibraryPath?: string, opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
+	async pushPvsLibraryPath (opt?: { pvsLibraryPath?: string, useLisp?: boolean, externalServer?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
-		const lp: string = pvsLibraryPath || this.pvsLibraryPath;
+		const lp: string = opt.pvsLibraryPath || this.pvsLibraryPath;
 		const libs: string[] = (lp) ? lp.split(":").map((elem: string) => {
 			return elem.trim();
 		}) : [];
@@ -2035,8 +2038,8 @@ export class PvsProxy {
 			for (let i = 0; i < libs.length; i++) {
 				const path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
 				if (!pvsLibraries.includes(path)) {
-					// return await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`);
-					return await this.pvsRequest('add-pvs-library', [ path ]);
+					return (opt.useLisp) ? await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`)
+						: await this.pvsRequest('add-pvs-library', [ path ]);
 				}
 			}
 		}
