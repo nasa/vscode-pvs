@@ -1091,20 +1091,6 @@ export class PvsProofExplorer {
 					// else, the prover has made progress with the provided proof command
 					// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
 					if (!(utils.isSameCommand(activeNode.name, cmd) || utils.isSameCommand(activeNode.name, userCmd)) || this.ghostNode.isActive()) {
-						if (!utils.isPropax(cmd)) {
-							this.running = false;
-							this.stopAt = null;
-							if (this.autorunFlag && this.ghostNode.isActive()) {
-								// mark proof as unfinished
-								if (this.root.getProofStatus() !== "untried") {
-									this.root.setProofStatus("unfinished");
-								}
-								// save and quit proof
-								await this.quitProofAndSave();
-								// await this.quitProof();
-								return;
-							}
-						}
 						// concatenate new command
 						const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);
 						// append before selected node (the active not has not been executed yet)
