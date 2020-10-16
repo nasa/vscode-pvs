@@ -1073,9 +1073,11 @@ export class PvsProofExplorer {
 					}
 					// return;
 				} else if (utils.isInvalidCommand(this.proofState)) {
-					this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
-					// mark the sub tree of the invalid node as not visited
-					activeNode.treeNotVisited();
+					if (utils.isSameCommand(activeNode.name, cmd) || utils.isSameCommand(activeNode.name, userCmd)) {
+						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
+						// mark the sub tree of the invalid node as not visited
+						activeNode.treeNotVisited();
+					}
 				} else if (utils.noChange(this.proofState) || utils.isEmptyCommand(cmd)) {
 					const command: string = utils.getNoChangeCommand(this.proofState);
 					// check if the command that produced no change comes from the proof tree -- if so advance indicator
