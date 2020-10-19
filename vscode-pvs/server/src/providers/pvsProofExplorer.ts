@@ -454,9 +454,15 @@ export class PvsProofExplorer {
 						: null;
 		if (cmd) {
 			if (this.running && !this.autorunFlag && utils.isPostponeCommand(cmd)) {
-				// stop the proof at the first postpone when running the proof in proof explorer, except if this is a re-run triggered by M-x prt or M-x pri (autorunFlag)
-				this.running = false;
-				return null;
+				if (this.stopAt) {
+					if (this.stopAt === this.activeNode) {
+						// stop the proof at the first postpone when running the proof in proof explorer, except if this is a re-run triggered by M-x prt or M-x pri (autorunFlag)
+						this.running = false;
+						return null;
+					}
+				} else {
+					this.stopAt = this.activeNode;
+				}
 			}
 			if (opt.feedbackToTerminal && !this.autorunFlag) {
 				const channelID: string = utils.desc2id(this.formula);
@@ -976,9 +982,9 @@ export class PvsProofExplorer {
 			if (utils.isPostponeCommand(userCmd, this.proofState) || pathHasChanged) {
 				// this.previousPath = currentPath;
 				if (this.running && utils.isPostponeCommand(userCmd, this.proofState)) {
-					this.running = false;
-					this.stopAt = null;	
 					if (this.autorunFlag) {
+						this.running = false;
+						this.stopAt = null;	
 						// mark proof as unfinished
 						if (this.root.getProofStatus() !== "untried") {
 							this.root.setProofStatus("unfinished");
