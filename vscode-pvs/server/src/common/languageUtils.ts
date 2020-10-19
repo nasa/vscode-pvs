@@ -1971,6 +1971,20 @@ export function isGlassboxTactic (cmd: string): boolean {
 	return cmd && (cmd.startsWith("(then ") || cmd.startsWith("(spread "));
 }
 
+export function interruptedByClient (result: { commentary: string | string[] }): boolean {
+	if (result && result.commentary) {
+		if (typeof result.commentary === "string") {
+			return result.commentary.trim().includes("interrupted by client");
+		} else if (typeof result.commentary === "object") {
+			return result.commentary.length
+			&& result.commentary.filter((comment: string)=> {
+				return comment.trim().includes("interrupted by client");
+			}).length > 0;
+		}
+	}
+	return false;
+}
+
 export function branchComplete (result: { commentary: string | string[] }, formulaName: string, previousBranch: string): boolean {
 	if (result && result.commentary) {
 		if (typeof result.commentary === "string") {

@@ -387,7 +387,7 @@ export class PvsLanguageServer {
 			} else {
 				// there was an error
 				if (this.pvsErrorManager) {
-					this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId });
+					this.pvsErrorManager.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId });
 				} else {
 					console.error(response);
 				}

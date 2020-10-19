@@ -442,29 +442,31 @@ class PvsCli {
 								break;
 							}
 							case "pvs.event.proof-state": {
-								const result: utils.SequentDescriptor = evt.data;
-								if (result) {
-									const showHidden: boolean = utils.isShowHiddenCommand(evt.cmd);
-									if (showHidden) {
-										console.log(utils.formatHiddenFormulas(result, { useColors: true, showAction: true })); // show proof state
-									} else {
-										// print commentary in the CLI
-										if (result.commentary && typeof result.commentary === "object" && result.commentary.length > 0) {
-											// the last line of the commentary is the sequent, dont' print it!
-											for (let i = 0; i < result.commentary.length; i++) {
-												console.log(result.commentary[i]);
+								if (this.isActive) {
+									const result: utils.SequentDescriptor = evt.data;
+									if (result) {
+										const showHidden: boolean = utils.isShowHiddenCommand(evt.cmd);
+										if (showHidden) {
+											console.log(utils.formatHiddenFormulas(result, { useColors: true, showAction: true })); // show proof state
+										} else {
+											// print commentary in the CLI
+											if (result.commentary && typeof result.commentary === "object" && result.commentary.length > 0) {
+												// the last line of the commentary is the sequent, dont' print it!
+												for (let i = 0; i < result.commentary.length; i++) {
+													console.log(result.commentary[i]);
+												}
 											}
+											// update proof state -- for the completer
+											this.proofState = utils.formatSequent(result);
+											// print proof state using syntax highlighting 
+											console.log(utils.formatSequent(result, { useColors: true, showAction: true })); // show proof state										
 										}
-										// update proof state -- for the completer
-										this.proofState = utils.formatSequent(result);
-										// print proof state using syntax highlighting 
-										console.log(utils.formatSequent(result, { useColors: true, showAction: true })); // show proof state										
+										console.log();
+										this.rl.prompt(); // show prompt
+										readline.clearLine(process.stdin, 1); // clear any previous input
+									} else {
+										console.warn(`[pvs-cli] Warning: received null proof state from pvs-server`);
 									}
-									console.log();
-									this.rl.prompt(); // show prompt
-									readline.clearLine(process.stdin, 1); // clear any previous input
-								} else {
-									console.warn(`[pvs-cli] Warning: received null proof state from pvs-server`);
 								}
 								break;
 							}

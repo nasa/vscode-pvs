@@ -1072,7 +1072,7 @@ export class PvsProofExplorer {
 						// await this.quitProof();
 					}
 					// return;
-				} else if (utils.isInvalidCommand(this.proofState)) {
+				} else if (utils.isInvalidCommand(this.proofState) || utils.interruptedByClient(this.proofState)) {
 					if (utils.isSameCommand(activeNode.name, cmd) || utils.isSameCommand(activeNode.name, userCmd)) {
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 						// mark the sub tree of the invalid node as not visited
@@ -2484,6 +2484,7 @@ export class PvsProofExplorer {
 				this.dirtyFlag = false;
 			} else {
 				msg = response?.error?.data?.error_string;
+				console.error(msg);
 			}
 		}
 		// send feedback to the client
@@ -2514,6 +2515,10 @@ export class PvsProofExplorer {
 	async quitProof (opt?: { notifyCliGateway?: boolean }): Promise<void> {
 		opt = opt || {};
 		this.running = false;
+
+		// interrupt proof commands if necessary
+		const res: PvsResponse = await this.pvsProxy.interrupt();
+
 		const inchecker: boolean = await this.inChecker();
 		if (this.formula && inchecker) {
 			await this.proofCommand({

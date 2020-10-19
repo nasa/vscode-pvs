@@ -242,8 +242,9 @@ export class PvsProxy {
 		params = params || [];
 		const req = { method: method, params: params, jsonrpc: "2.0", id: this.get_fresh_id() };
 		// this.buffer = this.buffer.then(() => {
-			return new Promise((resolve, reject) => {
+			return new Promise(async (resolve, reject) => {
 				if (this.proverBusy && req && req.method === "proof-command") {
+					console.warn(`[pvs-proxy] Warning: prover busy, ignoring command ${req.method}`);
 					return resolve({
 						jsonrpc: "2.0", 
 						id: req.id
@@ -1066,7 +1067,7 @@ export class PvsProxy {
 	 */
 	async quitProof (): Promise<void> {
 		// await this.interrupt();
-		const mode: string = await this.getServerMode(); //await this.getMode();
+		const mode: string = await this.getMode(); //await this.getServerMode(); //await this.getMode();
 		if (mode === "in-checker") {
 			const useLispInterface: boolean = true;
 			const response: PvsResponse = await this.proofCommand({ cmd: "(quit)" }, { useLispInterface });
