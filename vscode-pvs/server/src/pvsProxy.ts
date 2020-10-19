@@ -243,7 +243,7 @@ export class PvsProxy {
 		const req = { method: method, params: params, jsonrpc: "2.0", id: this.get_fresh_id() };
 		// this.buffer = this.buffer.then(() => {
 			return new Promise((resolve, reject) => {
-				if (this.proverBusy) {
+				if (this.proverBusy && req && req.method === "proof-command") {
 					return resolve({
 						jsonrpc: "2.0", 
 						id: req.id
