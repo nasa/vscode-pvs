@@ -133,6 +133,7 @@ export class PvsProxy {
 	protected useNasalib: boolean = false;
 
 	protected mode: ServerMode = "lisp";
+	protected proverBusy: boolean = false;
 
 	/**
 	 * Parser
@@ -242,19 +243,27 @@ export class PvsProxy {
 		const req = { method: method, params: params, jsonrpc: "2.0", id: this.get_fresh_id() };
 		// this.buffer = this.buffer.then(() => {
 			return new Promise((resolve, reject) => {
+				if (this.proverBusy) {
+					return resolve({
+						jsonrpc: "2.0", 
+						id: req.id
+					});
+				}
 				if (this.client) {
 					const jsonReq: string = JSON.stringify(req, null, " ");
 					// console.dir(jsonReq, { depth: null });
 
-					if (this.verbose && req && req.method !== "prover-status") {
+					if (req && req.method !== "prover-status") {
 						// console.dir(jsonReq);
 						const msg: string = (req.params) ? req.method + " " + JSON.stringify(req.params)
 							: req.method;
 						console.log(msg);
 					}
+					this.proverBusy = true;
 					this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {
 						// console.log(error);
 						// console.log(value);
+						this.proverBusy = false;
 
 						if (error) {		
 							console.error("[pvs-proxy] Error returned by pvs-server: "); 
@@ -331,6 +340,7 @@ export class PvsProxy {
 				} else {
 					// this error typically occurs at the very beginning if pvs is not installed
 					console.log(`[pvs-proxy] Warning: could not invoke method ${method} (pvs is not installed)`);
+					this.proverBusy = false;
 					resolve({
 						jsonrpc: "2.0",
 						id: req.id,
