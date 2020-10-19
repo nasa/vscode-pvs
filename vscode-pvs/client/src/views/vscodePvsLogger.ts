@@ -41,19 +41,18 @@ import * as vscode from 'vscode';
 export class VSCodePvsLogger {
     protected profiler: vscode.OutputChannel;
 
-    activate (context: vscode.ExtensionContext): void {
-        this.profiler = vscode.window.createOutputChannel("vscode-pvs:profiler");
-        this.profiler.clear();
-        const showProfilerOutput: boolean = vscode.workspace.getConfiguration().get("pvs.xtras.enableProfiler");
-        if (!showProfilerOutput) {
-            this.profiler.hide();
-        }
-    }
+    activate (context: vscode.ExtensionContext): void { }
+    
     profilerData (data: string): void {
         const showProfilerOutput: boolean = vscode.workspace.getConfiguration().get("pvs.xtras.enableProfiler");
         if (showProfilerOutput) {
-            this.profiler = this.profiler;
-            this.profiler.appendLine(data);
+            if (!this.profiler) {
+                this.profiler = vscode.window.createOutputChannel("vscode-pvs:profiler");
+                this.profiler.clear();
+            }
+            this.profiler?.appendLine(data);
+        } else {
+            this.profiler?.hide();
         }
     }
 }
