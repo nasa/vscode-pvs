@@ -297,14 +297,14 @@ export class PvsLanguageServer {
 		theoryName: string, 
 		formulaName: string,
 		proofFile?: FileDescriptor 
-	}, opt?: { autorun?: boolean, newProof?: boolean, useJprf?: boolean }): Promise<void> {
+	}, opt?: { autorun?: boolean, newProof?: boolean, useJprf?: boolean, skipSave?: boolean }): Promise<void> {
 		opt = opt || {};
 		if (desc && desc.formulaName && desc.theoryName && desc.fileName && desc.contextFolder) {
 			desc = fsUtils.decodeURIComponents(desc);
 			const mode: string = await this.getMode();
 			if (mode !== "lisp") {
 				// save then quit current proof
-				if (this.proofExplorer.proofIsDirty() && !opt.autorun) {
+				if (this.proofExplorer.proofIsDirty() && !opt.autorun && !opt.skipSave) {
 					// ask if the proof needs to be saved
 					await this.proofExplorer.querySaveProof(desc);
 				}
@@ -1791,7 +1791,23 @@ export class PvsLanguageServer {
 						case "trim-node": { this.proofExplorer.trimNodeX(desc); break; }
 						case "trim-unused": { this.proofExplorer.removeNotVisitedX(desc); break; }
 						case "rename-node": { this.proofExplorer.renameNodeX(desc); break; }
-						case "open-proof": { await this.proofExplorer.openProofRequest(desc.proofFile, desc.formula); break; }
+						case "open-proof": {
+							if (desc?.opt?.restartProof) {
+								await this.proveFormulaRequest({
+									contextFolder: desc.formula.contextFolder,
+									fileName: desc.formula.fileName,
+									fileExtension: desc.formula.fileExtension,
+									theoryName: desc.formula.theoryName,
+									formulaName: desc.formula.formulaName,
+									proofFile: desc.proofFile
+								}, {
+									skipSave: true
+								});
+							} else {
+								await this.proofExplorer.openProofRequest(desc.proofFile, desc.formula);
+							}
+							break;
+						}
 						case "import-proof": { await this.proofExplorer.importProofRequest(desc.proofFile, desc.formula); break; }
 	
 						case "export-proof": { await this.proofExplorer.exportProof(desc.proofFile); break; }

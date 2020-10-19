@@ -807,7 +807,10 @@ export type ProofExecOpenProof = {
 		fileExtension: string,
 		contextFolder: string
 	},
-	formula: PvsFormula
+	formula: PvsFormula,
+	opt?: {
+		restartProof?: boolean
+	}
 };
 export type ProofExecImportProof = {
 	action: "import-proof",

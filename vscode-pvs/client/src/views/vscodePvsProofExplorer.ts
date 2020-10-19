@@ -739,7 +739,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					const action: ProofExecOpenProof = {
 						action: "open-proof",
 						proofFile: desc,
-						formula: this.formula
+						formula: this.formula,
+						opt: {
+							restartProof: true
+						}
 					};
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
@@ -752,25 +755,36 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					const action: ProofExecOpenProof = {
 						action: "open-proof",
 						proofFile: desc,
-						formula: this.formula
+						formula: this.formula,
+						opt: {
+							restartProof: true
+						}
 					};
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.restore-from-jprf", async () => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.restore-from-jprf", async () => {	
 			if (this.formula && this.formula.theoryName && this.formula.formulaName) {
-				const proofFile: FileDescriptor = {
-					contextFolder: this.formula.contextFolder,
-					fileName: this.formula.fileName,
-					fileExtension: ".jprf"
-				};
-				const action: ProofExecOpenProof = {
-					action: "open-proof",
-					proofFile,
-					formula: this.formula
-				};
-				this.client.sendRequest(serverRequest.proverCommand, action);
+				const yesno: string[] = [ "Yes", "No" ];
+				const msg: string = `Restore last saved proof for formula '${this.formula.formulaName}'?\n\n(The prover session will be restarted)\n`;
+				const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
+				if (ans === yesno[0]) {
+					const proofFile: FileDescriptor = {
+						contextFolder: this.formula.contextFolder,
+						fileName: this.formula.fileName,
+						fileExtension: ".jprf"
+					};
+					const action: ProofExecOpenProof = {
+						action: "open-proof",
+						proofFile,
+						formula: this.formula,
+						opt: {
+							restartProof: true
+						}
+					};
+					this.client.sendRequest(serverRequest.proverCommand, action);
+				}
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", async () => {
