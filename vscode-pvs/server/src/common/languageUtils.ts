@@ -286,7 +286,7 @@ export async function listTheoremsInFile (fname: string, opt?: { content?: strin
 
 export interface SFormula {
 	labels: string[];
-	changed: boolean;
+	changed: 'true' | 'false';
 	formula: string;
 	'names-info': any[];
 }
@@ -313,8 +313,8 @@ function sequentToString(s: SFormula[], opt?: { useColors?: boolean }): string {
 	opt = opt || {};
 	s.forEach((sequent: SFormula) => {
 		let label: string = sequent.labels.join(" ");
-		label = (sequent.changed) ? `{${label}}` : `[${label}]` ;
-		label = (sequent.changed && opt.useColors) ? `${colorText(label, textColor.green)}` : `${label}` ;
+		label = (sequent.changed === 'true') ? `{${label}}` : `[${label}]` ;
+		label = (sequent.changed === 'true' && opt.useColors) ? `${colorText(label, textColor.green)}` : `${label}` ;
 		const formula: string = (opt.useColors) ? `${pvsCliSyntaxHighlighting(sequent.formula)}` : sequent.formula;
 		res += `${label}   ${formula}\n`;
 	});
