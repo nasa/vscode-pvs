@@ -254,7 +254,7 @@ export class PvsProxy {
 					const jsonReq: string = JSON.stringify(req, null, " ");
 					// console.dir(jsonReq, { depth: null });
 
-					if (this.debugMode && req && req.method !== "prover-status") {
+					if (!this.externalServer && req && req.method !== "prover-status") {
 						// console.dir(jsonReq);
 						const msg: string = (req.params) ? req.method + " " + JSON.stringify(req.params)
 							: req.method;

@@ -539,7 +539,7 @@ describe("pvs-prover", () => {
     });
 
 	
-	it(`stuck thread`, async () => {
+	xit(`stuck thread`, async () => {
         await quitProverIfActive();
 
         const formula: PvsFormula = {

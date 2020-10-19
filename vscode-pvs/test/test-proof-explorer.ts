@@ -345,12 +345,16 @@ describe("proof-explorer", () => {
 
 		await server.proveFormulaRequest(formula, { autorun: true });
 		const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
-		console.dir(res);
+		// console.dir(res);
 		expect(res.success).toBeTrue();
 	});
 
-	xit(`can start a proof, then interrupt, quit and save current proof`, async () => {
-		await server.getPvsProxy().quitProof();
+	it(`can start a proof, then interrupt, quit and save current proof`, async () => {
+		let proverStatus: PvsResult = await server.getPvsProxy().pvsRequest('prover-status'); // await pvsProxy.getProverStatus();		
+		// console.dir(proverStatus);
+		if (proverStatus && proverStatus.result !== "inactive") {
+			await server.getPvsProxy().proofCommand({ cmd: 'quit' });
+		}
 
 		const formula: PvsFormula = {
 			contextFolder: sandboxExamples,
@@ -360,11 +364,27 @@ describe("proof-explorer", () => {
 			formulaName: "sq_neg"
 		};
 
-		await server.proveFormulaRequest(formula, { autorun: true });
+		await server.proveFormulaRequest(formula);
+		await server.getPvsProxy().proofCommand({ cmd: "skosimp*" });
 		await server.getPvsProxy().interrupt();
 		const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
 		// console.dir(res);
 		expect(res.success).toBeTrue();
+
+		// try to start other proofs, to double check that everything is still working fine
+		await server.getPvsProxy().proofCommand({ cmd: 'quit' });
+		const pvsResponse: PvsResponse = await server.proveFormula(request);
+		expect(pvsResponse.error).not.toBeDefined();
+		expect(pvsResponse.result).toBeDefined();
+
+		await server.proveFormulaRequest(request5);
+		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
+		const success: boolean = await proofExplorer.openProofRequest({
+			contextFolder: request5.contextFolder,
+			fileName: request5.fileName,
+			fileExtension: ".jprf"
+		}, request5);
+		expect(success).toBeTrue();
 	});
 });
 

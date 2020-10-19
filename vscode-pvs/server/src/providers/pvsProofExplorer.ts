@@ -2292,6 +2292,10 @@ export class PvsProofExplorer {
 		}, proofTree);
 		return proofDescriptor;
 	}
+	protected isOnFirstCommand (): boolean {
+		return !this.activeNode || this.activeNode.contextValue === "root" 
+			|| (this.root?.children && this.root.children.length && this.activeNode === this.root.children[0]);
+	}
 	/**
 	 * Loads a proof file in proof explorer
 	 */
