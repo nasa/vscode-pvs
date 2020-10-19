@@ -24,6 +24,8 @@ The environment redefines the way developers interact with PVS, and better align
 
 >Note: When launching VSCode-PVS for the first time, it will check if PVS Allegro v7.1.0 is installed on your system. If not, VSCode-PVS will show a dialog that allows you to download and install it.
 
+>Note: If you have used earlier releases of VSCode-PVS (`< 1.0.26`), you will need to update PVS and NASALib. You can do this in VSCode-PVS, with the commands `M-x install-pvs` and `M-x install-nasalib`. 
+
 ## Updating VSCode-PVS
 When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
 
