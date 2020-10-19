@@ -38,7 +38,7 @@ export class PvsErrorManager {
             } else {
                 // there was an error
                 const msg: string = `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}.\nPlease fix the typecheck errors before trying to start the evaluator on theory ${desc.request.theoryName}.`;
-                this.connection.sendRequest(serverEvent.closeDontSaveEvent, { args: desc.request, msg });
+                this.connection?.sendRequest(serverEvent.closeDontSaveEvent, { args: desc.request, msg });
                 this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg });
             }
         }
@@ -93,28 +93,22 @@ export class PvsErrorManager {
     }
     handleStartPvsServerError (success: ProcessCode): void {
         if (success === ProcessCode.PVSNOTFOUND) {
-            this.connection.sendRequest(serverEvent.pvsNotPresent);
+            this.connection?.sendRequest(serverEvent.pvsNotPresent);
         } else if (success !== ProcessCode.SUCCESS) {
-            this.connection.sendRequest(serverEvent.pvsServerCrash);
+            this.connection?.sendRequest(serverEvent.pvsServerCrash);
         }
     }
     
     // utility functions
     notifyEndImportantTaskWithErrors (desc: { id: string, msg: string }) {
-		if (this.connection) {
-			this.connection.sendNotification(`server.status.end-important-task-${desc.id}-with-errors`, desc);
-		}
+        this.connection?.sendNotification(`server.status.end-important-task-${desc.id}-with-errors`, desc);
 	}
 	notifyPvsFailure (opt?: { msg?: string, fname?: string, method?: string }): void {
 		// error will be shown in a dialogue box
-		if (this.connection) {
-			this.connection.sendNotification("server.status.pvs-failure", opt);
-		}
+        this.connection?.sendNotification("server.status.pvs-failure", opt);
 	}
 	notifyError (desc: { msg: string }): void {
 		// error shown in the status bar
-		if (this.connection) {
-			this.connection.sendNotification("server.status.error", desc);
-		}
+        this.connection?.sendNotification("server.status.error", desc);
 	}
 }
