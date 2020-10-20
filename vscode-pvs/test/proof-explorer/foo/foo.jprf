@@ -105,9 +105,9 @@
    "info": {
     "theory": "foo_th",
     "formula": "foo2",
-    "status": "unchecked",
+    "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "6e65cb4e609e9288d461c2e4867aaea9d0cbae4e46d6e1a7e02402729b3f5dd2"
+    "shasum": "b474a6797e7f46760fd69a07ce715cfe856b1e9d37ddbe87a944fcd3bb260f35"
    },
    "proofTree": {
     "branch": "",
@@ -277,7 +277,7 @@
     "formula": "foo2a",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "6e65cb4e609e9288d461c2e4867aaea9d0cbae4e46d6e1a7e02402729b3f5dd2"
+    "shasum": "b474a6797e7f46760fd69a07ce715cfe856b1e9d37ddbe87a944fcd3bb260f35"
    },
    "proofTree": {
     "branch": "",
