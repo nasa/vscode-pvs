@@ -118,7 +118,7 @@ export function deleteFile (fname: string): boolean {
 }
 export function deleteFolder(contextFolder: string): boolean {
 	try {
-		if (fs.existsSync(contextFolder)) {
+		if (contextFolder && fs.existsSync(contextFolder)) {
 			execSync(`rm -r ${contextFolder}`);
 		}
 	} catch (deleteError) {
@@ -282,6 +282,17 @@ export function removeFileExtension(fname: string): string {
 		return fname.split(".").slice(0, -1).join(".");
 	}
 	return null;
+}
+export function moveFolder(contextFolder: string, toFolder: string): boolean {
+	try {
+		if (contextFolder && toFolder && fs.existsSync(contextFolder) && !fs.existsSync(toFolder)) {
+			execSync(`mv ${contextFolder} ${toFolder}`);
+			return true;
+		}
+	} catch (moveError) {
+		return false;
+	}
+	return false;
 }
 export function getFileExtension(fname: string): string {
 	if (fname) {

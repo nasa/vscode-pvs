@@ -361,6 +361,17 @@ export class VSCodePvsPackageManager {
         if (!opt.quiet) {
             window.showInformationMessage(label);
         }
+        const pvsPath: string = path.join(desc.baseFolder, `pvs-${desc.version}`);
+        const nasalibPath: string = path.join(pvsPath, "nasalib");
+        const tmpdir: string = path.join(os.tmpdir(), "nasalib");
+        let restoreNasalib: boolean = false;
+        // if nasalib is under the pvs folder, save it and then copy it back
+        if (fsUtils.folderExists(nasalibPath)) {
+            console.log(`[vscode-package-manager] Saving NASALib to temporary folder ${tmpdir}`);
+            fsUtils.deleteFolder(tmpdir);
+            restoreNasalib = fsUtils.moveFolder(nasalibPath, tmpdir);
+        }
+        fsUtils.deleteFolder(pvsPath);
         // extract pvs
         const extractPvs = async (desc: { fname: string, baseFolder: string, version: string }): Promise<void> => {
             const terminal = window.createTerminal({ name: label });
@@ -377,9 +388,14 @@ export class VSCodePvsPackageManager {
                 });	
             });
         }
-        const pvsPath: string = path.join(desc.baseFolder, `pvs-${desc.version}`);
-        fsUtils.deleteFolder(pvsPath);
         await extractPvs(desc);
+        // restore nasalib
+        if (restoreNasalib) {
+            const success: boolean = fsUtils.moveFolder(tmpdir, nasalibPath);
+            if (success) {
+                console.log(`[vscode-package-manager] NASALib restored`);
+            }
+        }
         // set pvs.path configuration
 		await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
         return pvsPath;
