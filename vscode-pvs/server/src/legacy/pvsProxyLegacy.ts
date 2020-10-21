@@ -187,7 +187,7 @@ export class PvsProxyLegacy {
         return pvsResponse;
     }
     async changeContext (ctx: string): Promise<PvsResponse> {
-        const response: PvsResponse = await this.lisp(`(change-workspace "${ctx}")`);
+        const response: PvsResponse = await this.lisp(`(change-workspace "${ctx}" t)`);
         if (response.result) {
             const matchFolder: RegExpMatchArray = /\"(.+)\"/g.exec(response.result);
             if (matchFolder && matchFolder.length > 1) {
