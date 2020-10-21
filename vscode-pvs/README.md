@@ -5,9 +5,9 @@ The environment redefines the way developers interact with PVS, and better align
 <br>
 
 ## Documentation
-- [Quick reference guide](docs/USER-INTERFACE.md) for the VSCode-PVS User Interface
-- [FAQs](docs/FAQ.md) on VSCode-PVS, including troubleshooting techniques for basic problems.
-- Are you new to PVS? Try out our [tutorial](docs/TUTORIAL.md)!
+- [Quick reference guide](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/USER-INTERFACE.md) for the VSCode-PVS User Interface
+- [FAQs](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/FAQ.md) on VSCode-PVS, including troubleshooting techniques for basic problems.
+- Are you new to PVS? Try out our [tutorial](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/TUTORIAL.md)!
 
 <br>
 

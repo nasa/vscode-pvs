@@ -166,7 +166,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				this.client.sendRequest(comm.serverRequest.parseFile, desc);
 			} else {
 				// hide status bar
-				this.statusBar.hide();
+				// this.statusBar.hide();
 			}
 		}, null, this.context.subscriptions);
 
