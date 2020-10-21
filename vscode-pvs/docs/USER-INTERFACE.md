@@ -144,7 +144,7 @@ Additional hot-keys:
 - `M-x update-nasalib` *(updates the installed version of NASALib)*
 - `M-x set-pvs-path` *(sets the path to the PVS executables)*
 - `M-x settings` *(shows vscode-pvs settings)*
-- `M-x release-notes` *(shows vscode-pvs release notes)*
+- `M-x welcome` *(shows vscode-pvs welcome screen)*
 
 <br><br>
 

@@ -87,6 +87,8 @@ const cmds: string[] = [
 	"set-pvs-path",
 	"settings",
 	"release-notes", // show release notes
+	"welcome", // show release notes
+	"about", // show release notes
 
 	"step-proof",
 	"show-tccs",
@@ -214,7 +216,9 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.pvsio-evaluator', desc);
 					break;
 				}
-				case "release-notes": {
+				case "release-notes": 
+				case "welcome": 
+				case "about": {
 					vscodeUtils.showReleaseNotes();
 					break;
 				}
