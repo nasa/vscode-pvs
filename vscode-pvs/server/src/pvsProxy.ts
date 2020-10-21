@@ -425,8 +425,9 @@ export class PvsProxy {
 		opt = opt || {};
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-			const fileExists: boolean = await fsUtils.fileExists(fname);
+			const fileExists: boolean = fsUtils.fileExists(fname);
 			if (fileExists) {
+				await this.changeContext(desc);
 				const content: string = await fsUtils.readFile(fname);
 				if (content) {
 					if (desc.fileExtension === ".hpvs") {
@@ -811,6 +812,7 @@ export class PvsProxy {
 			// show library path, it's useful when debugging problems with importings
 			await this.getPvsLibraryPath();
 			// typecheck file
+			await this.changeContext(desc);
 			const res: PvsResponse = await this.legacy.typecheckFile(fname);
 			// const res: PvsResponse = (this.useLegacy) ? await this.legacy.typecheckFile(fname)
 			// 		: await this.pvsRequest('typecheck', [ fname ]);
