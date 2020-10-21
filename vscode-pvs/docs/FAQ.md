@@ -26,6 +26,14 @@ Yes, you we have a [tutorial](TUTORIAL.md) on VSCode-PVS, that introduces the ba
 ### **I'm not familiar with Visual Studio Code, is there a quick tutorial?**
 Yes, you can find tutorials on the Visual Studio Code website, see https://code.visualstudio.com/docs/editor/codebasics
 
+
+### **What is NASALib and how do I install it?**
+NASALib is an extensive PVS library developed and maintained by the NASA Langley Formal Methods Team.
+To install NASALib in VSCode-PVS, just click the `Install NASALib` button in the status bar.
+Alternatively, you can also use the shortcut `M-x install-nasalib`.
+
+<img src="../screenshots/how-to-install-nasalib.gif" width="600">
+
 <br>
 
 -------
