@@ -52,7 +52,7 @@ export function getEditorContextFolder () : string {
 }
 
 export function getDefaultContextFolder (): string {
-    const workspaces: string = vscode.workspace.getConfiguration().get("pvs.pvsWorkspaces");
+    const workspaces: string = getConfiguration("pvs.pvsWorkspaces");
     if (workspaces) {
         const pvsWorkspaces: string = path.join(fsUtils.HOME_DIR, workspaces);
         if (fsUtils.folderExists(pvsWorkspaces)) {
@@ -62,7 +62,7 @@ export function getDefaultContextFolder (): string {
     return null;
 }
 export async function createDefaultPvsWorkspacesDirectory (): Promise<string> {
-    const workspaces: string = vscode.workspace.getConfiguration().get("pvs.pvsWorkspaces");
+    const workspaces: string = getConfiguration("pvs.pvsWorkspaces");
     if (workspaces) {
         const pvsWorkspaces: string = path.join(fsUtils.HOME_DIR, workspaces);
         if (!fsUtils.folderExists(pvsWorkspaces)) {
@@ -190,12 +190,12 @@ export async function clearPvsLibraryPath (): Promise<void> {
     await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", undefined, vscode.ConfigurationTarget.Global);
 }
 export async function getPvsLibraryPath (): Promise<string> {
-    return await vscode.workspace.getConfiguration().get("pvs.pvsLibraryPath")
+    return getConfiguration("pvs.pvsLibraryPath");
 }
 export async function addPvsLibraryFolder (path: string): Promise<boolean> {
     if (path) {
         path = (path.endsWith("/")) ? path : `${path}/`;
-        const pvsLibraryPath: string = vscode.workspace.getConfiguration().get("pvs.pvsLibraryPath")
+        const pvsLibraryPath: string = getConfiguration("pvs.pvsLibraryPath");
         const libs: string[] = utils.decodePvsLibraryPath(pvsLibraryPath);
         if (!libs.includes(path)) {
             const newPvsLibraryPath: string = utils.createPvsLibraryPath(libs.concat([ path ]));
@@ -420,4 +420,11 @@ export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: s
 export function showReleaseNotes (): void {
     const fileUri: vscode.Uri = vscode.Uri.file(path.join(__dirname, "..", "..", "..", "README.md"));
     vscode.commands.executeCommand('markdown.showPreview', fileUri);
+}
+
+export function getConfiguration (key: string): string {
+    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+    const res = config.get(key);
+    return (typeof res === "string") ? res : "";
+
 }

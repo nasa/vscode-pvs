@@ -77,7 +77,6 @@ export class VSCodePvsPackageManager {
     activate (context: ExtensionContext): void {
         // pvs installation handlers
         this.client.onRequest(serverEvent.pvsNotPresent, async () => {
-			// const pvsPath: string = workspace.getConfiguration().get("pvs.path");
             await this.pvsInstallationWizard(`VSCode-PVS is almost ready!\n\nTo complete the installation, please choose one of the following actions.\n`);
         });
         this.client.onRequest(serverEvent.pvsIncorrectVersion, async (msg: string) => {
@@ -100,7 +99,7 @@ export class VSCodePvsPackageManager {
     }
 
     async downloadAndInstallNasalib (): Promise<boolean> {
-        const pvsPath: string = workspace.getConfiguration().get("pvs.path");
+        const pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
         if (pvsPath) {
             const desc: { path: string, version: string } = await this.downloadNasalibWithProgress(); // { fname: "/Users/pmasci/Downloads/pvslib-pvs7.0.zip", version: "7" };//
             if (desc) {

@@ -37,7 +37,7 @@
  **/
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation, Uri } from 'vscode';
+import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation, Uri, WorkspaceConfiguration } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
@@ -107,7 +107,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	 * Internal function, returns the current pvs path, as indicated in the configuration file
 	 */
 	protected getPvsPath (): string {
-		return workspace.getConfiguration().get("pvs.path");
+		return vscodeUtils.getConfiguration("pvs.path");
 	}
 
 	/**
@@ -182,16 +182,18 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// onDidChangeConfiguration is emitted when the configuration file changes
 		workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
 			// re-initialise pvs if the executable is different
-			const pvsPath: string = workspace.getConfiguration().get("pvs.path");
-			const pvsLibraryPath: string = workspace.getConfiguration().get("pvs.pvsLibraryPath");
+			const pvsPath: string = vscodeUtils.getConfiguration("pvs.path").trim();
+			const pvsLibraryPath: string = vscodeUtils.getConfiguration("pvs.pvsLibraryPath").trim();
 			if (pvsPath !== this.pvsPath || this.pvsLibraryPath !== pvsLibraryPath) {
-				this.pvsPath = pvsPath;
+				this.pvsPath = pvsPath || this.pvsPath;
 				this.pvsLibraryPath = pvsLibraryPath;
-				const msg: string = `Restarting PVS from ${pvsPath}`;
-				this.statusBar.showProgress(msg);
-				// window.showInformationMessage(msg);
-				this.client.sendRequest(comm.serverRequest.startPvsServer, { pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath }); // the server will use the last context folder it was using	
-			}			
+				if (this.pvsPath) {
+					const msg: string = `Restarting PVS from ${this.pvsPath}`;
+					this.statusBar.showProgress(msg);
+					// window.showInformationMessage(msg);
+					this.client.sendRequest(comm.serverRequest.startPvsServer, { pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath }); // the server will use the last context folder it was using	
+				}
+			}
 		}, null, this.context.subscriptions);
 	}
 
@@ -267,6 +269,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			}, (progress, token): Promise<void> => { 
 				// show initial dialog with spinning progress   
 				progress.report({ increment: -1, message: "Activating vscode-pvs..." });
+
+				token.onCancellationRequested(() => {
+					this.statusBar.ready();
+				});
+				
 				return new Promise ((resolve, reject) => {
 					// start vscode-pvs components
 					this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);

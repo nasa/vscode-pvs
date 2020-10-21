@@ -661,7 +661,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	 * Returns the full path of the pvs executable
 	 */
 	protected getPvsPath (): string {
-		return workspace.getConfiguration().get("pvs.path");
+		return vscodeUtils.getConfiguration("pvs.path");
 	}
 
 	/**

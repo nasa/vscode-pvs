@@ -225,8 +225,6 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "restart-pvs":
 				case "reboot-pvs": {
 					commands.executeCommand('vscode-pvs.reboot-pvs');
-					// const pvsPath: string = workspace.getConfiguration().get(`pvs.path`);
-					// this.client.sendRequest(serverCommand.rebootPvsServer, { pvsPath });
 					break;
 				}
 				case "install-pvs":

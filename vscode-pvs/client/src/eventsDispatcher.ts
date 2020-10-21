@@ -560,8 +560,9 @@ export class EventsDispatcher {
 
         this.client.onRequest(serverEvent.pvsServerCrash, (desc: { msg?: string }) => {
             desc = desc || {};
-            const msg: string = desc.msg || "Ups, pvs-server just crashed :/";
-            this.statusBar.failure(msg);
+            if (desc.msg) {
+                this.statusBar.failure(desc.msg);
+            }
         });
 
         this.client.onRequest(serverEvent.serverModeUpdateEvent, (desc: { mode: ServerMode }) => {

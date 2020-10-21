@@ -375,7 +375,7 @@ export class VSCodePvsTerminal {
                     if (gateway && gateway.port) {
                         // !important: create a new command line interface first, so it can subscribe to events published by the server
                         const channelID: string = language.desc2id(desc);
-                        const pvsPath: string = vscode.workspace.getConfiguration().get("pvs.path");
+                        const pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
 
                         const keys: string[] = Object.keys(this.openTerminals);
                         if (keys.length > 0) {
@@ -418,7 +418,7 @@ export class VSCodePvsTerminal {
 
                         // !important: create a new command line interface first, so it can subscribe to events published by the server
                         const channelID: string = language.desc2id(desc);
-                        const pvsPath: string = vscode.workspace.getConfiguration().get("pvs.path");
+                        const pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
                         if (this.openTerminals[channelID]) {
                             this.openTerminals[channelID].terminal.show();
                         } else {
