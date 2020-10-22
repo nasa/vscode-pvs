@@ -76,6 +76,12 @@ Alternatively, you can use the standard Visual Studio Code functions to open fil
 ### **Can I develop my pvs theories on my `Desktop`, or in my pvs installation folder?**
 **No, that's a bad idea.** The recommended way to proceed is to create a folder `workspaces` in your home directory, and develop your pvs theories under such folder.
 
+
+### **Can I add external pvs libraries so that the typechecker finds them?**
+Yes, you can add libraries with the hot-key combination `M-x add-pvs-library`.
+The full list of external libraries can be viewed with the command `M-x pvs-library-path`.
+
+
 ### **Can I use the classic PVS Emacs hot-keys combinations?**
 Yes, you can use most of the PVS hot-keys combinations in VSCode-PVS:
 - `M-x show-tccs` *(show proof obligations for the file open in the editor)*
