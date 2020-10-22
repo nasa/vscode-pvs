@@ -57,10 +57,6 @@ describe("pvs-parser", () => {
 		// console.dir(response);
 		expect(response).toBeDefined();
 		expect(response.result).toBeDefined();
-		// on MacOS, stats are not provided because we are using the Emacs interface to interact with the parser
-		if (os.platform() !== "darwin") {
-			expect(response.result).toEqual(test.parse1_result);
-		}
 		expect(response.error).not.toBeDefined();
 	}, 4000);
 
@@ -80,12 +76,7 @@ describe("pvs-parser", () => {
 		};
 		expect(response.error).toBeDefined();
 		expect(response.error.data).toBeDefined();
-		// legacy apis provide only the position of the error (as opposed to the range) because they use the Emacs interface for the parser
-		// if (os.platform() === "darwin") {
-			expect(response.error.data.place).toEqual(exp.data.place.slice(0, 2));
-		// } else {
-		// 	expect(response.error.data.place).toEqual(exp.data.place);
-		// }
+		expect(response.error.data.place).toEqual(exp.data.place.slice(0, 2));
 		expect(response.error.data.error_string.startsWith(exp.data.error_string.split("\n")[0])).toBeTruthy();
 	}, 100000);
 
@@ -106,10 +97,6 @@ describe("pvs-parser", () => {
 		// console.dir(response);
 		expect(response).toBeDefined();
 		expect(response.result).toBeDefined();
-		// on MacOS, stats are not provided because we are using the Emacs interface to interact with the parser
-		if (os.platform() !== "darwin") {
-			expect(response.result).toEqual(test.parse2_result);
-		}
 		expect(response.error).not.toBeDefined();
 	}, 100000);
 
@@ -124,10 +111,6 @@ describe("pvs-parser", () => {
 		// console.dir(response);
 		expect(response).toBeDefined();
 		expect(response.result).toBeDefined();
-		// on MacOS, stats are not provided because we are using the Emacs interface to interact with the parser
-		if (os.platform() !== "darwin") {
-			expect(response.result).toEqual(test.parse2_result);
-		}
 		expect(response.error).not.toBeDefined();
 	}, 100000);
 

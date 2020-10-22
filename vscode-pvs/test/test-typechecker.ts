@@ -117,10 +117,6 @@ describe("pvs-typechecker", () => {
 		// console.dir(response);
 		expect(response).toBeDefined();
 		expect(response.result).toBeDefined();
-		// on MacOS, stats are not provided because we are using the Emacs interface to interact with the parser
-		if (os.platform() !== "darwin") {
-			expect(response.result).toEqual(test.parse2_result);
-		}
 		expect(response.error).not.toBeDefined();
 	}, 100000);
 
