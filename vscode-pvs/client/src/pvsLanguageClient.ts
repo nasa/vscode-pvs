@@ -262,13 +262,13 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.client.start();
 		this.client.onReady().then(() => {
 			// initialise service providers defined on the client-side
-			this.statusBar.showProgress("Activating vscode-pvs...");
+			this.statusBar.showProgress("Starting vscode-pvs...");
 			window.withProgress({
 				location: ProgressLocation.Notification,
 				cancellable: true
 			}, (progress, token): Promise<void> => { 
 				// show initial dialog with spinning progress   
-				progress.report({ increment: -1, message: "Activating vscode-pvs..." });
+				progress.report({ increment: -1, message: "Starting vscode-pvs..." });
 
 				token.onCancellationRequested(() => {
 					this.statusBar.ready();

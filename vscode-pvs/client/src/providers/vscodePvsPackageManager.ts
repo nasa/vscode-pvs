@@ -344,6 +344,7 @@ export class VSCodePvsPackageManager {
                 openLabel: this.messages.selectInstallationFolder
             });
             if (pvsInstallationFolder && pvsInstallationFolder.length === 1) {
+                this.statusBar.ready();
                 return pvsInstallationFolder[0].fsPath;
             }
         }
