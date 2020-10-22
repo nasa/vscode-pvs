@@ -5,6 +5,7 @@ import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
 import { ProofDescriptor, ProofNodeX, PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
 import { PvsLanguageServer } from "../server/src/pvsLanguageServer";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
+import { SequentDescriptor } from "../server/src/common/languageUtils";
 
 //----------------------------
 //   Test cases for checking behavior of pvs with corrupted .pvscontext
@@ -222,8 +223,18 @@ describe("proof-explorer", () => {
 
 	//-----
 	it(`can start another proof when a prover session has already started`, async () => {
-		await server.proveFormulaRequest(request5);
+		await server.getPvsProxy().proofCommand({ cmd: "(quit)" });
+		const response: PvsResponse = await server.proveFormula(request5);
+
+		// console.log(response);
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
+
+		const result: SequentDescriptor[] = response.result;
+		// load initial sequent in proof explorer
+		proofExplorer.loadInitialSequent(result[0]);
+
+		let root: ProofNodeX = proofExplorer.getProofX();
+		// console.dir(root);
 
 		const success: boolean = await proofExplorer.openProofRequest({
 			contextFolder: request5.contextFolder,
@@ -232,7 +243,8 @@ describe("proof-explorer", () => {
 		}, request5);
 		expect(success).toBeTrue();
 
-		let root: ProofNodeX = proofExplorer.getProofX();
+		root = proofExplorer.getProofX();
+		// console.dir(root);
 
 		expect(root.name).toEqual(request5.formulaName);
 		expect(root.rules.length).toEqual(2);
