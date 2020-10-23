@@ -308,8 +308,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
 			const contextFolder = vscodeUtils.getEditorContextFolder();
 			// console.log(`Context folder: ${contextFolder}`);
-			this.pvsPath = workspace.getConfiguration().get("pvs.path");
-			this.pvsLibraryPath = workspace.getConfiguration().get("pvs.pvsLibraryPath");
+			this.pvsPath = vscodeUtils.getConfiguration("pvs.path");
+			this.pvsLibraryPath = vscodeUtils.getConfiguration("pvs.pvsLibraryPath");
 			// setTimeout(() => {
 			this.client.sendRequest(comm.serverRequest.startPvsServer, {
 				pvsPath: this.pvsPath,

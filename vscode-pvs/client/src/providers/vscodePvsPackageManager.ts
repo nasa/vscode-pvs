@@ -78,9 +78,11 @@ export class VSCodePvsPackageManager {
         // pvs installation handlers
         this.client.onRequest(serverEvent.pvsNotPresent, async () => {
             await this.pvsInstallationWizard(`VSCode-PVS is almost ready!\n\nTo complete the installation, please choose one of the following actions.\n`);
+            this.statusBar.ready();
         });
         this.client.onRequest(serverEvent.pvsIncorrectVersion, async (msg: string) => {
             await this.pvsInstallationWizard(msg);
+            this.statusBar.ready();
         });
     }
 
@@ -192,7 +194,7 @@ export class VSCodePvsPackageManager {
                         let downloadCommand: string = null;
                         let startMsg: string = null;
                         let endMsg: string = null;
-                        const pvsPath: string = workspace.getConfiguration().get("pvs.path");
+                        const pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
                         const targetFolder: string = path.join(pvsPath, "nasalib");
                         switch (desc.response) {
                             case "git": {

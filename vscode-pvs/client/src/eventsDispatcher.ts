@@ -1291,6 +1291,8 @@ export class EventsDispatcher {
                                 complete = true;
                                 // send cancellation request to the server
                                 this.client.sendRequest(serverRequest.cancelOperation);
+                                // clear status bar
+                                this.statusBar.ready();
                                 // dispose of the dialog
                                 resolve(null);
                             }
