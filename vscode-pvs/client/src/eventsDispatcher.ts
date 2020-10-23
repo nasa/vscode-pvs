@@ -1355,19 +1355,25 @@ export class EventsDispatcher {
 
         });
 
-        this.client.onNotification("server.status.pvs-failure", (opt?: { msg?: string, fname?: string, method?: string }) => {
+        this.client.onNotification("server.status.pvs-failure", (opt?: { msg?: string, fname?: string, method?: string, error_type?: string }) => {
             opt = opt || {};
-            let msg: string = opt.msg || `pvs-server crashed into Lisp.\nTo continue, you may need to Reboot pvs.`;
-            if (opt.fname) {
-                // msg += `\nThe error occurred while processing file [${opt.fname}](file://${opt.fname})`; // vscode is unable to render marked strings in dialogs
-                msg += `\nThe error occurred while processing file ${opt.fname}`;
-            } else if (opt.method) {
-                // msg += `\nThe error occurred while executing method [${opt.method}](${opt.method})`; // vscode is unable to render marked strings in dialogs
-                msg += `\nThe error occurred while executing method ${opt.method}`;
+            let msg: string = opt.msg || "";
+            msg = msg.replace("[pvs-server]", "").trim();
+            if (opt.error_type === "dependency") {
+                this.statusBar.showDependencyError(msg);
+            } else {
+                msg = msg || `pvs-server crashed into Lisp.\nTo continue, you may need to Reboot pvs.`;
+                if (opt.fname) {
+                    // msg += `\nThe error occurred while processing file [${opt.fname}](file://${opt.fname})`; // vscode is unable to render marked strings in dialogs
+                    msg += `\nThe error occurred while processing file ${opt.fname}`;
+                } else if (opt.method) {
+                    // msg += `\nThe error occurred while executing method [${opt.method}](${opt.method})`; // vscode is unable to render marked strings in dialogs
+                    msg += `\nThe error occurred while executing method ${opt.method}`;
+                }
+                msg = (msg && msg.startsWith("Error:")) ? msg : `Error: ` + msg;
+                // vscodeUtils.showErrorMessage(msg);
+                this.statusBar.showFailure(msg);
             }
-            msg = (msg && msg.startsWith("Error:")) ? msg : `Error: ` + msg;
-            // vscodeUtils.showErrorMessage(msg);
-            this.statusBar.showFailure(msg);
         });
     }
 }

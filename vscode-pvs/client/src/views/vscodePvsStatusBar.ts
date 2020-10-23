@@ -218,6 +218,20 @@ export class VSCodePvsStatusBar {
         // this.pvsStatus.show();
     }
 
+    showDependencyError (msg: string): void {
+        const content: string = `# Missing dependency\n`
+        + 'VSCode-PVS failed to start: a required dependency could not be detected:\n\n'
+        + '```\n' + msg + '\n```\n\n'
+        + 'If the above action does not resolve the problem, please make sure you are using the latest version of VSCode-PVS.\n\n'
+        + `If the problem persists, please report the error on [github](https://github.com/nasa/vscode-pvs/issues), we will look into it.`;
+
+        vscodeUtils.showMarkdownContent(content);
+        // const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
+        // this.pvsStatus.icon("");
+        // this.pvsStatus.text(`$(megaphone)  ${shortmsg}`); // messages in the status bar should always be on one line
+        // this.pvsStatus.show();
+    }
+
     getVersionInfo (): PvsVersionDescriptor {
         return this.pvsVersionInfo;
     }

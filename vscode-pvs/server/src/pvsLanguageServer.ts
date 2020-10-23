@@ -1451,16 +1451,18 @@ export class PvsLanguageServer {
 
 	async checkDependencies (): Promise<boolean> {
 		console.log(`[pvs-server] Checking dependencies...`);
-		const nodejs: string = await fsUtils.getNodeJsVersion();
-		if (!nodejs) {
-			const msg: string = "[pvs-server] Error: Required dependency 'node' is not installed. Please download 'node' from https://nodejs.org/";
+		const nodejs: { version?: string, error?: string } = await fsUtils.getNodeJsVersion();
+		if (!nodejs || nodejs.error) {
+			let msg: string = (nodejs && nodejs.error) ? nodejs.error : "";
+			msg += "\n" + "Required dependency 'node' is not installed. Please download 'node' from https://nodejs.org/";
 			console.error(msg);
-			this.pvsErrorManager?.notifyError({
-				msg
+			this.pvsErrorManager?.notifyPvsFailure({
+				msg,
+				error_type: "dependency"
 			});
 			return false;
 		}
-		console.log("[pvs-server] node: " + nodejs);
+		console.log("[pvs-server] node: " + nodejs?.version);
 		return true;
 	}
 
@@ -1521,6 +1523,27 @@ export class PvsLanguageServer {
 			// send version info to the front-end
 			await this.sendPvsServerReadyEvent();
 			return true;
+		}
+		return false;
+	}
+
+	protected async rebootPvsServer (desc: { pvsPath?: string, cleanFolder?: string }): Promise<boolean> {
+		desc = desc || {};
+		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
+		await this.checkDependencies();
+		// await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
+		// if (desc.cleanFolder && desc.cleanFolder !== this.lastParsedContext) {
+		// 	await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
+		// }
+		if (this.pvsProxy) {
+			await this.pvsProxy?.rebootPvsServer(desc);
+			this.notifyServerMode("lisp");
+			// send version info
+			await this.sendPvsServerReadyEvent();
+			return true;
+		} else {
+			console.error("[pvs-language-server] Error: pvs-proxy is null");
+			this.connection?.sendRequest(serverEvent.pvsNotPresent);
 		}
 		return false;
 	}
@@ -1657,20 +1680,7 @@ export class PvsLanguageServer {
 				}
 			});
 			this.connection?.onRequest(serverRequest.rebootPvsServer, async (desc?: { pvsPath?: string, cleanFolder?: string }) => {
-				desc = desc || {};
-				// await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
-				// if (desc.cleanFolder && desc.cleanFolder !== this.lastParsedContext) {
-				// 	await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
-				// }
-				if (this.pvsProxy) {
-					await this.pvsProxy?.rebootPvsServer(desc);
-					this.notifyServerMode("lisp");
-					// send version info
-					await this.sendPvsServerReadyEvent();
-				} else {
-					console.error("[pvs-language-server] Error: failed to activate pvs-proxy");
-					this.connection?.sendRequest(serverEvent.pvsNotPresent);
-				}
+				this.rebootPvsServer(desc);
 			});
 			this.connection?.onRequest(serverRequest.parseFile, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.parseFileRequest(request); // async call

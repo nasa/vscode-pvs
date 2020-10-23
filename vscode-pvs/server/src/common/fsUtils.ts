@@ -511,19 +511,26 @@ export function downloadCommand (url: string, opt?: { out?: string }): string {
 
 export const pvsFolderName: string = "pvs-7.1.0";
 
-export async function getNodeJsVersion (): Promise<string | null> {
+export async function getNodeJsVersion (): Promise<{ version?: string, error?: string }> {
+	const cmd: string = "node --version";
 	try {
-		const buf: Buffer = execSync("$(which node) --version");
+		const buf: Buffer = execSync("type -P node");
 		if (buf) {
-			const info: string = buf.toLocaleString();
-			const match: RegExpMatchArray = /v([\d\.]+)/g.exec(info);
+			const info: string = execSync(cmd)?.toLocaleString();
+			console.log(`[pvs-server] ${cmd}\n `, info);
+			const match: RegExpMatchArray = /(v?[\d\.]+)/g.exec(info);
 			if (match && match.length > 1) {
-				return match[1];
+				return { version: match[1] };
+			} else {
+				return { error: info };
 			}
+		} else {
+			console.log("[pvs-server] Missing dependency: node (please download node from https://nodejs.org/)");
 		}
 	} catch (error) {
-		console.log(error);
-		return null;
+		const msg: string = `${cmd}\n${error}`;
+		console.log("[pvs-server]", { error: msg });
+		return { error: msg };
 	}
 	return null;
 }
