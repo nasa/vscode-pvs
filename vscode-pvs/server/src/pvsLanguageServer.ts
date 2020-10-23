@@ -272,9 +272,12 @@ export class PvsLanguageServer {
 			if (res && !res.error) {
 				const theorems: PvsFormula[] = await this.pvsProxy?.getTheorems(theory);
 				this.connection?.sendRequest(serverEvent.getTheoremsResponse, { theorems });
-			}
-			else {
-				this.connection?.sendRequest(serverEvent.getTheoremsResponse, null);
+			} else {
+				if (res && res.error && res.error.data) {
+					const fname: string = (res.error.data.file_name) ? res.error.data.file_name : fsUtils.desc2fname(theory);
+					const msg: string = `Typecheck errors in ${fname}${res.error.data.error_string ? ":" + res.error.data.error_string : ""}`;
+					this.connection?.sendRequest(serverEvent.getTheoremsResponse, { error: msg });
+				}
 			}
 		}
 	}
@@ -284,9 +287,12 @@ export class PvsLanguageServer {
 			if (res && !res.error) {
 				const theorems: PvsFormula[] = await this.pvsProxy?.getTheorems(theory, { tccsOnly: true });
 				this.connection?.sendRequest(serverEvent.getTccsResponse, { theorems });
-			}
-			else {
-				this.connection?.sendRequest(serverEvent.getTccsResponse, null);
+			} else {
+				if (res && res.error && res.error.data) {
+					const fname: string = (res.error.data.file_name) ? res.error.data.file_name : fsUtils.desc2fname(theory);
+					const msg: string = `Typecheck errors in ${fname}${res.error.data.error_string ? ":" + res.error.data.error_string : ""}`;
+					this.connection?.sendRequest(serverEvent.getTccsResponse, { error: msg });
+				}
 			}
 		}
 	}

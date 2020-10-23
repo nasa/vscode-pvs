@@ -467,7 +467,7 @@ export const serverEvent = {
 	getNasalibDownloaderResponse: "pvs.response.get-nasalib-downloader",
 	setNasalibPathResponse: "pvs.response.set-nasalib-path",
 
-	pvsServerReady: "pvs.response.restart",
+	pvsServerReady: "pvs.response.pvs-server-ready",
 
 	workspaceEvent: "pvs.workspace-event",
 	contextUpdate: "pvs.event.context-update",

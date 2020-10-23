@@ -78,8 +78,7 @@ Alternatively, you can use the standard Visual Studio Code functions to open fil
 
 
 ### **Can I add external pvs libraries so that the typechecker finds them?**
-Yes, you can add libraries with the hot-key combination `M-x add-pvs-library`.
-The full list of external libraries can be viewed with the command `M-x pvs-library-path`.
+Yes, you can add external libraries with the hot-key combination `M-x add-pvs-library`. This command will open a file browser that allows you to select the folder to be included. The full list of external libraries can be viewed with the command `M-x pvs-library-path`.
 
 
 ### **Can I use the classic PVS Emacs hot-keys combinations?**

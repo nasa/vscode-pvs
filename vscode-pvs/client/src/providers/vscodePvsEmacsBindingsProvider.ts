@@ -73,6 +73,7 @@ const cmds: string[] = [
 
 	"add-pvs-library",
 	"pvs-library-path",
+	"view-pvs-library-path",
 	"reboot-pvs",
 	"restart-pvs",
 	"install-pvs",
@@ -137,8 +138,9 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.add-pvs-library');
 					break;
 				}
-				case "pvs-library-path": {
-					commands.executeCommand('workbench.action.openSettings', '@ext:paolomasci.vscode-pvs pvs-library-path');
+				case "pvs-library-path":
+				case "vscode-pvs.view-pvs-library-path": {
+					commands.executeCommand('vscode-pvs.view-pvs-library-path');
 					break;
 				}
 				case "reset-pvs-library-path": {

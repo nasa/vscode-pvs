@@ -38,6 +38,7 @@
 import { StatusBarItem, ExtensionContext, StatusBarAlignment, window, commands } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
 import { PvsVersionDescriptor } from "../common/serverInterface";
+import * as vscodeUtils from '../utils/vscode-utils';
 
 export class StatusBarPriority {
     public static Min: number = 1;
@@ -194,8 +195,27 @@ export class VSCodePvsStatusBar {
         this.pvsStatus.icon("");
         this.pvsStatus.text(`$(megaphone)  ${shortmsg}`); // messages in the status bar should always be on one line
         this.pvsStatus.show();
-        // show problems panel -- see also Code->Preferences->KeyboardShortcuts
-        commands.executeCommand("workbench.panel.markers.view.focus");
+        vscodeUtils.showProblemsPanel();
+    }
+
+    /**
+     * Shows a failure (i.e., an error that cannot be recovered), typically a pvs-server bug (e.g, assertion error)
+     * @param msg message
+     */
+    showFailure (msg: string): void {
+        const content: string = `# PVS error\n`
+        + 'The following error occurred:\n\n'
+        + '```lisp\n' + msg + '\n```'
+        + '\n\nThis error is likely caused by temporary files used by PVS that might have gotten corrupted.\n\n'
+        + '[Recommended action]():  `M-x clean-bin`  (this command will remove the corrupted temporary files)\n\n'
+        + 'If the above action does not resolve the problem, please make sure you are using the latest version of VSCode-PVS, PVS and NASALib.\n\n'
+        + `If the problem persists, please report the error on [github](https://github.com/nasa/vscode-pvs/issues), we will look into it.`;
+
+        vscodeUtils.showMarkdownContent(content);
+        // const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
+        // this.pvsStatus.icon("");
+        // this.pvsStatus.text(`$(megaphone)  ${shortmsg}`); // messages in the status bar should always be on one line
+        // this.pvsStatus.show();
     }
 
     getVersionInfo (): PvsVersionDescriptor {
@@ -267,14 +287,14 @@ export class VSCodePvsStatusBar {
     show (): void {
         this.pvsStatus.show();
         this.showVersionInfo();
-        this.showRestartButton();
+        // this.showRestartButton();
     }
 
     hide (): void {
         this.pvsStatus.hide();
         this.hideVersionInfo();
         this.hideInstallNasalib();
-        this.hideRestartButton();
+        // this.hideRestartButton();
     }
 
     showInstallNasalib (): void {

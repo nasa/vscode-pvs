@@ -2688,6 +2688,10 @@ export class PvsProofExplorer {
 				request.cmd = "(postpone)";
 			}
 		}
+		if (utils.isInterruptCommand(request.cmd)) {
+			await this.interruptProofCommand();
+			request.cmd = "(skip)";
+		}
 		if (utils.isQEDCommand(request.cmd)) {
 			// print QED in the terminal and close the terminal session
 			const channelID: string = utils.desc2id(this.formula);

@@ -390,15 +390,15 @@ export class EventsDispatcher {
                     this.proofExplorer.startProof();
                     this.proofMate.startProof();
                     await this.proofMate.loadSketchpadClips(); // loads sketchpad clips from the .jprf file
-                    this.statusBar.showInterruptButton();
-                    this.vscodePvsTerminal.maximizePanel();
+                    // this.statusBar.showInterruptButton();
+                    // this.vscodePvsTerminal.maximizePanel();
                     break;
                 }
                 case "did-quit-proof": { // this is sent by CliGateway when the prover CLI is closed
                     this.proofExplorer.disposeView();
                     await this.proofMate.saveSketchpadClips();  // saves sketchpad clips to the .jprf file
                     this.proofMate.disposeView();
-                    this.statusBar.hideInterruptButton();
+                    // this.statusBar.hideInterruptButton();
                     break;
                 }
                 case "did-load-sequent": {
@@ -440,9 +440,9 @@ export class EventsDispatcher {
                         if (desc.proof) {
                             this.proofExplorer.loadProofStructure(desc.formula, desc.desc, desc.proof);
                             this.proofMate.loadFormula(desc.formula);
-                            window.showInformationMessage(`Proof ${desc.importedFormula.formulaName} successfully imported!`);
+                            vscodeUtils.showInformationMessage(`Proof ${desc.importedFormula.formulaName} successfully imported!`);
                         } else {
-                            window.showInformationMessage(`Formula ${desc.formula.formulaName} does not have a proof.`);
+                            vscodeUtils.showInformationMessage(`Formula ${desc.formula.formulaName} does not have a proof.`);
                         }
                     } else {
                         window.showWarningMessage(`Failed to import proof (null descriptor)`);
@@ -477,14 +477,15 @@ export class EventsDispatcher {
             if (desc && desc.response && desc.response.success && desc.response.proofFile && desc.response.formula) {
                 const fname: string = fsUtils.desc2fname(desc.response.proofFile);
                 if (!this.quietMode) {
-                    window.showInformationMessage(`Proof ${desc.response.formula.formulaName} saved in file ${fname}`);
+                    const msg: string = `Proof ${desc.response.formula.formulaName} saved in file ${fname}`;
+                    window.showInformationMessage(msg);
                 }
             } else {
                 if (desc && desc.args) {
                     if (desc.response && desc.response.msg) {
-                        window.showErrorMessage(`Error while saving file ${fsUtils.desc2fname(desc.args)} (${desc.response.msg})`);
+                        vscodeUtils.showErrorMessage(`Error while saving file ${fsUtils.desc2fname(desc.args)} (${desc.response.msg})`);
                     } else {
-                        window.showErrorMessage(`Unexpected error while saving file ${fsUtils.desc2fname(desc.args)} (please check pvs-server output for details)`);
+                        vscodeUtils.showErrorMessage(`Unexpected error while saving file ${fsUtils.desc2fname(desc.args)} (please check pvs-server output for details)`);
                     }
                     if (desc.response.script) {
                         const content: string = `# Proof for ${desc.args.formulaName}\n`
@@ -497,11 +498,8 @@ export class EventsDispatcher {
                             + '```lisp\n'
                             + desc.response.script
                             + '\n```';
-                        const fileName: string = desc.args.formulaName + ".md";
-                        const fileUri: vscode.Uri = await vscodeUtils.createTextDocument(fileName, content);
-                        if (fileUri) {
-                            commands.executeCommand('markdown.showPreview', fileUri);
-                        }
+                        const fname: string = desc.args.formulaName + ".md";
+                        await vscodeUtils.showMarkdownPreview({ fname, content });
                     }
                 }
             }
@@ -540,11 +538,11 @@ export class EventsDispatcher {
         //             this.proofMate.loadFormula(desc.args);
         //         } else {
         //             console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error`, desc);
-        //             window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error (please check pvs-server output for details)`);
+        //             vscodeUtils.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} response indicates error (please check pvs-server output for details)`);
         //         }
         //     } else {
         //         console.error(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} received null response`);
-        //         window.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} received null response`);
+        //         vscodeUtils.showErrorMessage(`[event-dispatcher] Error: ${serverEvent.loadProofResponse} received null response`);
         //     }
         // });
 
@@ -661,6 +659,9 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.reset-pvs-library-path", async () => {
             await vscodeUtils.clearPvsLibraryPath();
         }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.view-pvs-library-path", async () => {
+            commands.executeCommand('workbench.action.openSettings', '@ext:paolomasci.vscode-pvs pvs-library-path');
+        }));
         // vscode-pvs.send-proof-command
         context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             if (!this.vscodePvsTerminal.sendProofCommand(desc)) {
@@ -713,7 +714,7 @@ export class EventsDispatcher {
             if (opt.trailingNote) {
                 msg += opt.trailingNote;
             }
-            window.showInformationMessage(msg);
+            vscodeUtils.showInformationMessage(msg);
             this.statusBar.hideInterruptButton();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.reboot-pvs", async () => {
@@ -840,7 +841,7 @@ export class EventsDispatcher {
                                         //     viewColumn: vscode.ViewColumn.Beside
                                         // });
                                     } else {
-                                        progress.report({ message: `Unable to generate prooflite script for formula ${desc.args.formulaName}`, increment: 100 });
+                                        progress.report({ message: `${utils.icons.bang} Unable to generate prooflite script for formula ${desc.args.formulaName}`, increment: 100 });
                                         setTimeout(() => {
                                             resolve();
                                         }, 4000)
@@ -849,7 +850,7 @@ export class EventsDispatcher {
                             });
                         });
                     } else {
-                        window.showErrorMessage(`Error while trying to display prooflite script (could not identify theory name, please check that the file typechecks correctly)`);
+                        vscodeUtils.showErrorMessage(`Error while trying to display prooflite script (could not identify theory name, please check that the file typechecks correctly)`);
                     }
                 } else {
                     console.error("[vscode-events-dispatcher] Error: prooflite script requested for unknown resource", resource);
@@ -881,7 +882,7 @@ export class EventsDispatcher {
                     if (desc.theoryName) {
                         await this.vscodePvsTerminal.startEvaluatorSession(desc);
                     } else {
-                        window.showErrorMessage(`Error while trying to invoke PVSio (could not identify theory name, please check that the file typechecks correctly)`);
+                        vscodeUtils.showErrorMessage(`Error while trying to invoke PVSio (could not identify theory name, please check that the file typechecks correctly)`);
                     }
                 } else {
                     console.error("[vscode-events-dispatcher] Error: pvsio-evaluator invoked over an unknown resource", resource);
@@ -1240,7 +1241,7 @@ export class EventsDispatcher {
         //----------------------------------
         this.client.onNotification("server.status.error", (desc: { msg: string }) => {
             if (desc && desc.msg) {
-                window.showErrorMessage(desc.msg);
+                vscodeUtils.showErrorMessage(desc.msg);
             }
         });
         this.client.onNotification("server.status.progress", (desc: { msg: string }) => {
@@ -1251,7 +1252,7 @@ export class EventsDispatcher {
         this.client.onNotification("server.important-notification", (desc?: { msg?: string }) => {
             this.statusBar.ready();
             if (desc && desc.msg) {
-                window.showInformationMessage(desc.msg);
+                vscodeUtils.showInformationMessage(desc.msg);
             }
         });
         this.client.onNotification("server.status.start-important-task", (desc: { id: string, msg: string, increment?: number }) => {
@@ -1261,9 +1262,8 @@ export class EventsDispatcher {
                         this.statusBar.ready();
                         if (desc && desc.msg) {
                             this.statusBar.showError(desc.msg); // use the status bar rather than dialogs, because we don't have APIs to close old dialogs with potentially stale information
-                            window.showErrorMessage(desc.msg);
-                            // show problems panel -- see also Code->Preferences->KeyboardShortcuts
-                            commands.executeCommand("workbench.panel.markers.view.focus");
+                            vscodeUtils.showErrorMessage(desc.msg);
+                            vscodeUtils.showProblemsPanel();
                         }
                     });
                     return;
@@ -1307,16 +1307,18 @@ export class EventsDispatcher {
                             this.statusBar.ready();
                             complete = true;
                             if (desc && desc.msg) {
-                                progress.report({
-                                    increment: 100,
-                                    message: desc.msg
-                                });
-                                setTimeout(() => {
-                                    resolve(null);
-                                }, this.NOTIFICATION_TIMEOUT);
+                                vscodeUtils.showInformationMessage(desc.msg);
+                                resolve();
+                                // progress.report({
+                                //     increment: 100,
+                                //     message: desc.msg
+                                // });
+                                // setTimeout(() => {
+                                //     resolve(null);
+                                // }, this.NOTIFICATION_TIMEOUT);
                                 // window.showInformationMessage(desc.msg); // notification is given with the same dialog instead of creating a new one, this avoids cluttering vscode notification list
                             } else {
-                                resolve(null);
+                                resolve();
                             }
                         });
                         this.client.onNotification(`server.status.end-important-task-${desc.id}-with-errors`, (desc: { msg: string }) => {
@@ -1327,18 +1329,19 @@ export class EventsDispatcher {
                                 // NOTE: we don't have APIs to close old error dialogs that contain stale information.
                                 // The user will need to close the error dialog. 
                                 // If the user doesn't close the dialog, the message may show up later, and bring confusion.
-                                // window.showErrorMessage(desc.msg);
-                                progress.report({
-                                    increment: 100,
-                                    message: "Error: " + desc.msg
-                                });
-                                setTimeout(() => {
-                                    resolve(null);
-                                }, this.NOTIFICATION_TIMEOUT * 4);
-                                // show problems panel -- see also Code->Preferences->KeyboardShortcuts
-                                commands.executeCommand("workbench.panel.markers.view.focus");
+                                // vscodeUtils.showErrorMessage(desc.msg);
+                                vscodeUtils.showErrorMessage("Error: " + desc.msg);
+                                // progress.report({
+                                //     increment: 100,
+                                //     message: "Error: " + desc.msg
+                                // });
+                                // setTimeout(() => {
+                                //     resolve();
+                                // }, this.NOTIFICATION_TIMEOUT * 4);
+                                vscodeUtils.showProblemsPanel();
+                                resolve();
                             } else {
-                                resolve(null);
+                                resolve();
                             }
                         });
                     });
@@ -1361,8 +1364,8 @@ export class EventsDispatcher {
                 msg += `\nThe error occurred while executing method ${opt.method}`;
             }
             msg = (msg && msg.startsWith("Error:")) ? msg : `Error: ` + msg;
-            window.showErrorMessage(msg);
-            this.statusBar.showError(msg);
+            // vscodeUtils.showErrorMessage(msg);
+            this.statusBar.showFailure(msg);
         });
     }
 }

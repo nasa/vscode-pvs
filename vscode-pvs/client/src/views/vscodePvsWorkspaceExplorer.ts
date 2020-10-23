@@ -344,7 +344,7 @@ export class FormulaItem extends TreeItem {
 		} : (icon === utils.icons.snowflake) ? {
 			light: path.join(__dirname, "..", "..", "..", "icons", "svg-snowflake.svg"),
 			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-snowflake.svg")
-		} : (icon === utils.icons.stars) ? {
+		} : (icon === utils.icons.sparkles) ? {
 			light: path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg"),
 			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg")
 		} : (icon === utils.icons.whitecircle) ? {
@@ -908,7 +908,11 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	async getTheorems (desc: PvsTheory): Promise<PvsFormula[]> {
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getTheorems, desc);
-			this.client.onRequest(serverEvent.getTheoremsResponse, (response: { theorems: PvsFormula[] }) => {
+			this.client.onRequest(serverEvent.getTheoremsResponse, (response: { theorems: PvsFormula[], error?: string }) => {
+				if (response && response.error) {
+					vscodeUtils.showErrorMessage(response.error);
+					vscodeUtils.showProblemsPanel();
+				}
 				return response ? resolve(response.theorems) : resolve(null);
 			});
 		});
@@ -917,7 +921,11 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	async getTccs (desc: PvsTheory): Promise<PvsFormula[]> {
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getTccs, desc);
-			this.client.onRequest(serverEvent.getTccsResponse, (response: { theorems: PvsFormula[] }) => {
+			this.client.onRequest(serverEvent.getTccsResponse, (response: { theorems: PvsFormula[], error?: string }) => {
+				if (response && response.error) {
+					vscodeUtils.showErrorMessage(response.error);
+					vscodeUtils.showProblemsPanel();
+				}
 				return response ? resolve(response.theorems) : resolve(null);
 			});
 		});

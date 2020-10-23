@@ -49,7 +49,7 @@ export class PvsPackageManager {
      */
     static async listDownloadableVersions (): Promise<PvsDownloadDescriptor[]> {
         const osName: string = fsUtils.getOs();
-        const preferredVersion: string = "ga3f9dbb7";//"g03fe2100";
+        const preferredVersion: string = "g762f82aa"; //"ga3f9dbb7";//"g03fe2100";
         const lsCommand: string = `${fsUtils.downloadCommand(pvsSnapshotsUrl)} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${preferredVersion} | grep ${osName} | grep allegro`;
         const ls: Buffer = execSync(lsCommand);
         if (ls) {

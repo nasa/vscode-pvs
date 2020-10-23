@@ -94,11 +94,10 @@ export class PvsProxyLegacy {
         const matchPvsError: RegExpMatchArray = /Error: (.+)/g.exec(data);
         const matchInterrupted: RegExpMatchArray = /Error: Interrupted by client/gm.exec(data);
         if (matchPvsError && !matchInterrupted && this.pvsErrorManager) {
-            const error_string: string = matchPvsError ? (matchPvsError.length > 1 && matchPvsError[1]) ? matchPvsError[1] : matchPvsError[0]
-                : "Please check console log";
+            const error_string: string = data;
             const msg: string = (error_string.includes("not find lib-path")) ? 
                 error_string + ". Please add external pvs libraries to vscode-pvs settings" 
-                    : "(pvs-server error) " + error_string;
+                    : error_string;
             this.pvsErrorManager.notifyPvsFailure({ msg });
             return {
                 jsonrpc: "2.0",

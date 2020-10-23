@@ -42,6 +42,7 @@ import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem } from "../views/vscodePvsWorkspaceExplorer";
 import { PvsTheory, PvsFile } from '../common/serverInterface';
+import { CancellationToken } from 'vscode-languageclient';
 
 
 /**
@@ -162,6 +163,62 @@ export async function createTextDocument (name: string, content: string, opt?: {
     return preview;
 }
 
+export function showMarkdownFile (uri: vscode.Uri): void {
+    if (uri) {
+        vscode.commands.executeCommand('markdown.showPreview', uri);
+    }
+}
+
+export async function showMarkdownContent (content: string): Promise<void> {
+    if (content) {
+        const fname: string = `${os.tmpdir()}/pvs.error`;
+        const fileUri: vscode.Uri = await createTextDocument(fname, content);
+        vscode.commands.executeCommand('markdown.showPreview', fileUri);
+    }
+}
+
+export async function showMarkdownPreview (desc: { fname: string, content: string }): Promise<void> {
+    if (desc && desc.fname && desc.content) {
+        const fileUri: vscode.Uri = await createTextDocument(desc.fname, desc.content);
+        if (fileUri) {
+            showMarkdownFile(fileUri);
+        }
+    }
+}
+
+/**
+ *  Utility function, shows problems panel -- see also Code->Preferences->KeyboardShortcuts 
+ */
+export function showProblemsPanel (): void {
+    vscode.commands.executeCommand("workbench.panel.markers.view.focus");
+}
+
+export function showInformationMessage (message: string, opt?: { timeout?: number, cancellable?: boolean }): void {
+    if (message) {
+        opt = opt || {};
+        const timeout: number = opt.timeout || 3200;
+        const cancellable: boolean = !!opt.cancellable;
+        const task = (progress: vscode.Progress<{ message: string, increment?: number }>, token: CancellationToken): Promise<void> => {
+            progress.report({ increment: 100, message });
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    resolve();
+                }, timeout);
+            });
+        }
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            cancellable
+        }, task);
+    }
+}
+export function showErrorMessage (message: string, timeout?: number): void {
+    showInformationMessage(`${utils.icons.bang} ${message}`, { timeout: 4000 });
+}
+export function showWarningMessage (message: string, timeout?: number): void {
+    showInformationMessage(`${utils.icons.sparkles} ${message}`, { timeout: 4000 });
+}
+
 /**
  * Utility function, shows a dialog that allows the user to select the pvs installation folder in the file system
  * @param pvsPath 
@@ -192,13 +249,13 @@ export async function clearPvsLibraryPath (): Promise<void> {
 export async function getPvsLibraryPath (): Promise<string> {
     return getConfiguration("pvs.pvsLibraryPath");
 }
-export async function addPvsLibraryFolder (path: string): Promise<boolean> {
-    if (path) {
-        path = (path.endsWith("/")) ? path : `${path}/`;
+export async function addPvsLibraryFolder (folder: string): Promise<boolean> {
+    if (folder) {
+        folder = (folder.endsWith("/")) ? folder : `${folder}/`;
         const pvsLibraryPath: string = getConfiguration("pvs.pvsLibraryPath");
         const libs: string[] = utils.decodePvsLibraryPath(pvsLibraryPath);
-        if (!libs.includes(path)) {
-            const newPvsLibraryPath: string = utils.createPvsLibraryPath(libs.concat([ path ]));
+        if (!libs.includes(folder)) {
+            const newPvsLibraryPath: string = utils.createPvsLibraryPath(libs.concat([ folder ]));
             await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", newPvsLibraryPath, vscode.ConfigurationTarget.Global);
             return true;
         }

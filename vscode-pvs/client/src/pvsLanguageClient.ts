@@ -37,8 +37,8 @@
  **/
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation, Uri, WorkspaceConfiguration } from 'vscode';
-import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions } from 'vscode-languageclient';
+import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation, Uri, WorkspaceConfiguration, Progress } from 'vscode';
+import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, CancellationToken } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
@@ -263,107 +263,91 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.client.onReady().then(() => {
 			// initialise service providers defined on the client-side
 			this.statusBar.showProgress("Starting vscode-pvs...");
-			window.withProgress({
-				location: ProgressLocation.Notification,
-				cancellable: true
-			}, (progress, token): Promise<void> => { 
-				// show initial dialog with spinning progress   
-				progress.report({ increment: -1, message: "Starting vscode-pvs..." });
 
-				token.onCancellationRequested(() => {
-					this.statusBar.ready();
-				});
-				
-				return new Promise ((resolve, reject) => {
-					// start vscode-pvs components
-					this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
-					this.emacsBindingsProvider.activate(this.context);
-					this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
-					this.proofExplorer.activate(this.context);
-					this.workspaceExplorer = new VSCodePvsWorkspaceExplorer(this.client, this.proofExplorer, 'workspace-explorer-view');
-					this.workspaceExplorer.activate(this.context);
-					this.outlineProvider = new VSCodePvsFileOutlineProvider(this.client);
-					this.outlineProvider.activate(this.context);
-					this.snippetsProvider = new VSCodePvsSnippetsProvider(this.client);
-					this.snippetsProvider.activate(this.context);
-					this.vscodePvsTerminal = new VSCodePvsTerminal(this.client);
-					this.vscodePvsTerminal.activate(this.context);
-					this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');
-					this.proofMate.activate(this.context);
-					this.packageManager = new VSCodePvsPackageManager(this.client, this.statusBar);
-					this.packageManager.activate(this.context);
-					this.logger = new VSCodePvsLogger();
-					this.logger.activate(this.context);
+			// start vscode-pvs components
+			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
+			this.emacsBindingsProvider.activate(this.context);
+			this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
+			this.proofExplorer.activate(this.context);
+			this.workspaceExplorer = new VSCodePvsWorkspaceExplorer(this.client, this.proofExplorer, 'workspace-explorer-view');
+			this.workspaceExplorer.activate(this.context);
+			this.outlineProvider = new VSCodePvsFileOutlineProvider(this.client);
+			this.outlineProvider.activate(this.context);
+			this.snippetsProvider = new VSCodePvsSnippetsProvider(this.client);
+			this.snippetsProvider.activate(this.context);
+			this.vscodePvsTerminal = new VSCodePvsTerminal(this.client);
+			this.vscodePvsTerminal.activate(this.context);
+			this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');
+			this.proofMate.activate(this.context);
+			this.packageManager = new VSCodePvsPackageManager(this.client, this.statusBar);
+			this.packageManager.activate(this.context);
+			this.logger = new VSCodePvsLogger();
+			this.logger.activate(this.context);
+	
+			// enable decorations for pvs syntax
+			this.decorationProvider = new VSCodePvsDecorationProvider();
+			this.decorationProvider.updateDecorations(window.activeTextEditor);
+	
+			// register handlers for document events
+			this.registerTextEditorHandlers();
 			
-					// enable decorations for pvs syntax
-					this.decorationProvider = new VSCodePvsDecorationProvider();
-					this.decorationProvider.updateDecorations(window.activeTextEditor);
+			// create event dispatcher for handling events for views
+			this.eventsDispatcher = new EventsDispatcher(this.client, {
+				statusBar: this.statusBar,
+				emacsBindings: this.emacsBindingsProvider,
+				workspaceExplorer: this.workspaceExplorer,
+				proofExplorer: this.proofExplorer,
+				vscodePvsTerminal: this.vscodePvsTerminal,
+				proofMate: this.proofMate,
+				logger: this.logger,
+				packageManager: this.packageManager
+			});
+			this.eventsDispatcher.activate(context);
 			
-					// register handlers for document events
-					this.registerTextEditorHandlers();
-					
-					// create event dispatcher for handling events for views
-					this.eventsDispatcher = new EventsDispatcher(this.client, {
-						statusBar: this.statusBar,
-						emacsBindings: this.emacsBindingsProvider,
-						workspaceExplorer: this.workspaceExplorer,
-						proofExplorer: this.proofExplorer,
-						vscodePvsTerminal: this.vscodePvsTerminal,
-						proofMate: this.proofMate,
-						logger: this.logger,
-						packageManager: this.packageManager
-					});
-					this.eventsDispatcher.activate(context);
-					
-					// start PVS
-					// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
-					const contextFolder = vscodeUtils.getEditorContextFolder();
-					// console.log(`Context folder: ${contextFolder}`);
-					this.pvsPath = workspace.getConfiguration().get("pvs.path");
-					this.pvsLibraryPath = workspace.getConfiguration().get("pvs.pvsLibraryPath");
-					// setTimeout(() => {
-					this.client.sendRequest(comm.serverRequest.startPvsServer, {
-						pvsPath: this.pvsPath,
-						pvsLibraryPath: this.pvsLibraryPath,
-						contextFolder
-					});
-					// }, 1000);
-					// create handler for pvsServerReady event
-					this.client.onRequest(serverEvent.pvsServerReady, (info: comm.PvsVersionDescriptor) => {
-						// set vscode context variable pvs-server-active to true
-						commands.executeCommand('setContext', 'pvs-server-active', true);
+			// start PVS
+			// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
+			const contextFolder = vscodeUtils.getEditorContextFolder();
+			// console.log(`Context folder: ${contextFolder}`);
+			this.pvsPath = workspace.getConfiguration().get("pvs.path");
+			this.pvsLibraryPath = workspace.getConfiguration().get("pvs.pvsLibraryPath");
+			// setTimeout(() => {
+			this.client.sendRequest(comm.serverRequest.startPvsServer, {
+				pvsPath: this.pvsPath,
+				pvsLibraryPath: this.pvsLibraryPath,
+				contextFolder
+			});
+			// }, 1000);
+			// create handler for pvsServerReady event
+			this.client.onRequest(serverEvent.pvsServerReady, (info: comm.PvsVersionDescriptor) => {
+				// set vscode context variable pvs-server-active to true
+				commands.executeCommand('setContext', 'pvs-server-active', true);
 
-						// reset other globals
-						commands.executeCommand('setContext', 'in-checker', false);
-						commands.executeCommand('setContext', 'proof-explorer.running', false);
-						commands.executeCommand('setContext', 'proof-mate.visible', false);
-						commands.executeCommand('setContext', 'proof-explorer.visible', false);
-						commands.executeCommand('setContext', 'autorun', false);
+				// reset other globals
+				commands.executeCommand('setContext', 'in-checker', false);
+				commands.executeCommand('setContext', 'proof-explorer.running', false);
+				commands.executeCommand('setContext', 'proof-mate.visible', false);
+				commands.executeCommand('setContext', 'proof-explorer.visible', false);
+				commands.executeCommand('setContext', 'autorun', false);
 
-						// update status bar
-						this.statusBar.ready();
+				// update status bar
+				this.statusBar.ready();
 
-						if (window.activeTextEditor && window.activeTextEditor.document) {
-							// parse file opened in the editor
-							const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
-							if (desc.contextFolder) {
-								this.client.sendRequest(comm.serverRequest.parseFile, desc);
-								this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
-							}
-						} else {
-							// or get the descriptor of the current folder
-							const workspaceFolder: Uri = (workspace.workspaceFolders && workspace.workspaceFolders.length) ? workspace.workspaceFolders[0].uri : null;
-							const folder: string = (workspaceFolder) ? workspaceFolder.path : 
-									contextFolder ? contextFolder : vscodeUtils.getDefaultContextFolder();
-							if (folder) {
-								this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: folder });
-							}
-						}
-
-						// resolve the promise
-						resolve();
-					});
-				});
+				if (window.activeTextEditor && window.activeTextEditor.document) {
+					// parse file opened in the editor
+					const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
+					if (desc.contextFolder) {
+						this.client.sendRequest(comm.serverRequest.parseFile, desc);
+						this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
+					}
+				} else {
+					// or get the descriptor of the current folder
+					const workspaceFolder: Uri = (workspace.workspaceFolders && workspace.workspaceFolders.length) ? workspace.workspaceFolders[0].uri : null;
+					const folder: string = (workspaceFolder) ? workspaceFolder.path : 
+							contextFolder ? contextFolder : vscodeUtils.getDefaultContextFolder();
+					if (folder) {
+						this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: folder });
+					}
+				}
 			});
 		});
 	}

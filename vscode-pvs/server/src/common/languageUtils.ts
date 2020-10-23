@@ -1971,6 +1971,15 @@ export function isGlassboxTactic (cmd: string): boolean {
 	return cmd && (cmd.startsWith("(then ") || cmd.startsWith("(spread "));
 }
 
+export function isInterruptCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && (cmd === "interrupt" 
+		|| cmd === "interrupt;"
+		|| cmd === "(interrupt)"
+		|| /\(\s*interrupt\s*\);?/gi.test(cmd))
+		;
+}
+
 export function interruptedByClient (result: { commentary: string | string[] }): boolean {
 	if (result && result.commentary) {
 		if (typeof result.commentary === "string") {
@@ -2034,12 +2043,18 @@ export function pathHasChanged (desc: { newBranch: string, previousBranch: strin
 
 // these icons are shown correctly only on recent os distributions that include the proper font set.
 // use https://iconify.design/icon-sets/ for proof explorer, to have a consistent look&feel on all systems.
-export const icons: { [name:string]: string } = {
-	"checkmark": "✅",
-	"bang" : "❗",
-	"snowflake" : "❄️",
-	"stars": "✨",
-	"whitecircle": "⚪"
+export const icons: {
+	checkmark: string,
+	bang: string,
+	snowflake: string,
+	sparkles: string,
+	whitecircle: string
+} = {
+	checkmark: "✅",
+	bang : "❗",
+	snowflake : "❄️",
+	sparkles: "✨",
+	whitecircle: "⚪"
 };
 
 export function getIcon (proofStatus: ProofStatus): string {
@@ -2057,7 +2072,7 @@ export function getIcon (proofStatus: ProofStatus): string {
 			return icons.snowflake;
 		case "unproved":
 		case "untried": // proof has not been attempted yet
-			return icons.stars;
+			return icons.sparkles;
 	}
 }
 
