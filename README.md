@@ -11,6 +11,7 @@ The environment redefines the way developers interact with PVS, and better align
 - [Quick reference guide](docs/USER-INTERFACE.md) for the VSCode-PVS User Interface
 - [FAQs](docs/FAQ.md) on VSCode-PVS, including troubleshooting techniques for basic problems.
 - Are you new to PVS? Try out our [tutorial](docs/TUTORIAL.md)!
+- Join the new [PVS group on Google](https://groups.google.com/g/pvs-group)
 
 ## Requirements
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
