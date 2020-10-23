@@ -104,7 +104,9 @@ class TerminalSession {
                 pvsPath: this.pvsPath,
                 gateway: { port: this.gatewayPort }
             };
-            this.terminal = vscode.window.createTerminal(terminalName, 'node', [ cliFileName, JSON.stringify(cliArgs) ]);
+            const nodePath: string = vscodeUtils.getConfiguration("pvs.serviceDependency.node");
+            const cmd: string = nodePath || "node";
+            this.terminal = vscode.window.createTerminal(terminalName, cmd, [ cliFileName, JSON.stringify(cliArgs) ]);
             this.terminal.show();
             this.isActive = true;
             // if (typeID === cliSessionType.proveFormula) {
