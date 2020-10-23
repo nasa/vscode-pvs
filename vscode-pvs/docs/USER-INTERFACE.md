@@ -5,17 +5,15 @@ This document illustrates the layout and functionalities of VSCode-PVS.
 
 ## Layout
 
-The layout of VSCode-PVS includes 8 main elements:
+The layout of VSCode-PVS includes 6 main elements:
 1. [PVS]() button. Located in the vscode activity bar, this button activates three custom views created for PVS: *Workspace Explorer*, *Proof Explorer*, and *Proof Mate*.
 2. [Workspace Explorer]() view. Located in the vscode side panel, this view shows the name of the PVS theories defined in the current workspace, as well as the list of theorems defined in each theory. Contextual menus and in-line actions provide quick access to functionalities such as *typechecking* and *prove formula*.
 3. [Proof Explorer]() view. Located in the vscode side panel, this view shows the proof tree for the current proof. Contextual menus and in-line actions provide quick access to functionalities such as *run proof* and *step proof*.
 4. [Proof Mate]() view. Located in the vscode side panel, this view provides *hints* on proof commands that can be used to make progress with the current proof. It also contains a *sketchpad* that stores proof commands clipped from the current proof shown in Proof Explorer (e.g., when editing or repairing a proof).
 5. [Editor]() view. Located in the vscode central panel, this view allows to edit PVS files.
 6. [Prover Terminal]() view. Located in the vscode lower panel, this view provides an interactive prompt for sending proof commands to the PVS theorem prover.
-7. [Reboot pvs]() and [Interrupt Prover]() buttons. Located in the vscode status bar, these buttons can be used to reset vscode-pvs in the case of unexpected errors or run-away situations.
-8. PVS version information.
 
-<img src="../screenshots/vscode-pvs-user-interface-annotated.png" width="600">
+<img src="../screenshots/vscode-pvs-user-interface-annotated.png">
 
 <br><br>
 

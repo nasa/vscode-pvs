@@ -42,11 +42,11 @@ Alternatively, you can also use the shortcut `M-x install-nasalib`.
 
 ### **VSCode-PVS reports an error "pvs-server crashed", what can I do?**
 An unexpected error has occurred in the server. 
-You can try a 'soft restart' by pressing the `Reboot pvs` button located in the status bar.
+You can try a 'soft restart' with `M-x reboot-pvs`.
 If the problem persists, please close and reopen Visual Studio Code.
 
 ### **VSCode-PVS became not responsive, what can I do?**
-These situations may occur when the reasoning engine has crashed. You can try to restart the reasoning engine with the `Reboot pvs` button located in the status bar. If the problem persists, please try restarting Visual Studio Code.
+These situations may occur when the reasoning engine has crashed. You can try to restart the reasoning engine with `M-x reboot-pvs`. If the problem persists, please try restarting Visual Studio Code.
 
 >Note 1: If VSCode-PVS became not responsive during a prover session, you can still save the current proof using the `Save` command from the menu in Proof Explorer.
 

@@ -27,7 +27,11 @@ The environment redefines the way developers interact with PVS, and better align
 <br>
 
 ## ChangeLog
-- [1.0.26 (2020.10.xx)]()  
+- [1.0.27 (2020.11.xx)]()
+  -Improved dialogs and feedback for errors
+  -Added interrupt command (ctrl+c) that stops the execution of proof commands
+
+- [1.0.26 (2020.10.21)]()  
   -Improved PVSio terminal  
   -Improved dialogs and icons  
   -Improved installation wizard  

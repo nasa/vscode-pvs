@@ -538,7 +538,6 @@ describe("pvs-prover", () => {
 		await quitProverIfActive();
     });
 
-	
 	xit(`stuck thread`, async () => {
         await quitProverIfActive();
 
