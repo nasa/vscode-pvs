@@ -5,7 +5,7 @@ The environment redefines the way developers interact with PVS, and better align
 ![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.27-delta](releases/vscode-pvs-1.0.27-delta.vsix)
+[vscode-pvs-1.0.27-epsilon](releases/vscode-pvs-1.0.27-epsilon.vsix)
 
 ## Getting started
 - [Quick reference guide](docs/USER-INTERFACE.md) for the VSCode-PVS User Interface
@@ -15,7 +15,7 @@ The environment redefines the way developers interact with PVS, and better align
 
 ## Requirements
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
-- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
+- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com`
 
 ## Installation instructions
 1. Download the latest release of VSCode-PVS from the [github repository](releases)
