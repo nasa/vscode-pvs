@@ -41,6 +41,7 @@ import * as path from 'path';
 import { FileDescriptor, FileList} from '../common/serverInterface';
 import { execSync } from 'child_process';
 import * as crypto from 'crypto';
+import * as os from 'os';
 
 
 export const HOME_DIR: string = require('os').homedir();
@@ -444,13 +445,19 @@ export function desc2fname (desc: FileDescriptor): string {
 	return path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 }
 
-export function getOs (): string {
-	if (process.platform === 'linux' || process.platform === 'freebsd' || process.platform === 'openbsd' || process.platform === 'sunos' || process.platform === 'aix') {
-		return 'Linux';
-	} else if (process.platform === 'darwin') {
-		return 'MacOSX';
+export function getOs (): { version?: string, error?: string } {
+	try {
+		if (process.platform === 'linux' || process.platform === 'freebsd' || process.platform === 'openbsd' || process.platform === 'sunos' || process.platform === 'aix') {
+			return { version: 'Linux' };
+		} else if (process.platform === 'darwin') {
+			return { version: 'MacOSX' };
+		}
+		return { version: process.platform };
+	} catch (err) {
+		const error: string = err.message + "Unable to detect OS version. This problem is likey due to missing dependency 'node' (please download node from https://nodejs.org/)";
+		console.log(`[pvs-server] ${error}`);
+		return { error };
 	}
-	return process.platform;
 }
 
 export function decodeURIComponents (desc) {
@@ -517,25 +524,26 @@ export function downloadCommand (url: string, opt?: { out?: string }): string {
 
 export const pvsFolderName: string = "pvs-7.1.0";
 
-export async function getNodeJsVersion (): Promise<{ version?: string, error?: string }> {
-	const cmd: string = "node --version";
-	try {
-		const buf: Buffer = execSync(cmd);
-		if (buf) {
-			const info: string = buf.toLocaleString();
-			console.log(`[pvs-server] ${cmd}\n `, info);
-			const match: RegExpMatchArray = /(v?[\d\.]+)/g.exec(info);
-			if (match && match.length > 1) {
-				return { version: match[1] };
-			} else {
-				return { error: info };
-			}
-		} else {
-			console.log("[pvs-server] Missing dependency: node (please download node from https://nodejs.org/)");
-		}
-	} catch (error) {
-		console.log("[pvs-server]", error);
-		return { error };
-	}
-	return null;
-}
+
+// export async function getNodeJsVersion (): Promise<{ version?: string, error?: string }> {
+// 	const cmd: string = "node --version";
+// 	try {
+// 		const buf: Buffer = execSync(cmd);
+// 		if (buf) {
+// 			const info: string = buf.toLocaleString();
+// 			console.log(`[pvs-server] ${cmd}\n `, info);
+// 			const match: RegExpMatchArray = /(v?[\d\.]+)/g.exec(info);
+// 			if (match && match.length > 1) {
+// 				return { version: match[1] };
+// 			} else {
+// 				return { error: info };
+// 			}
+// 		} else {
+// 			console.log("[pvs-server] Missing dependency: node (please download node from https://nodejs.org/)");
+// 		}
+// 	} catch (error) {
+// 		console.log("[pvs-server]", error);
+// 		return { error };
+// 	}
+// 	return null;
+// }

@@ -1369,22 +1369,40 @@ export class PvsLanguageServer {
 		return false;
 	}
 
-	// async checkDependencies (): Promise<boolean> {
-	// 	console.log(`[pvs-server] Checking dependencies...`);
-	// 	const nodejs: { version?: string, error?: string } = await fsUtils.getNodeJsVersion();
-	// 	if (!nodejs || nodejs.error) {
-	// 		let msg: string = (nodejs && nodejs.error) ? nodejs.error : "";
-	// 		msg += "\n" + "Required dependency 'node' is not installed. Please download 'node' from https://nodejs.org/";
-	// 		console.error(msg);
-	// 		this.pvsErrorManager?.notifyPvsFailure({
-	// 			msg,
-	// 			error_type: "dependency"
-	// 		});
-	// 		return false;
-	// 	}
-	// 	console.log("[pvs-server] node: " + nodejs?.version);
-	// 	return true;
-	// }
+	async checkDependencies (): Promise<boolean> {
+		console.log(`[pvs-server] Checking dependencies...`);
+		const osVersion: { version?: string, error?: string } = fsUtils.getOs();
+		if (osVersion && (osVersion.version !== "Linux" && osVersion.version !== "MacOSX")) {
+			let msg: string = `VSCode-PVS currently runs only under Linux or MacOSX.\nPlease use a virtual machine to run VSCode-PVS under ${osVersion.version}.`;
+			console.error(msg);
+			this.pvsErrorManager?.notifyPvsFailure({
+				msg,
+				error_type: "dependency"
+			});
+			return false;
+		}
+		if (!osVersion || osVersion.error) {
+			console.error(osVersion.error);
+			this.pvsErrorManager?.notifyPvsFailure({
+				msg: osVersion.error,
+				error_type: "dependency"
+			});
+			return false;
+		}
+		// const nodejs: { version?: string, error?: string } = await fsUtils.getNodeJsVersion();
+		// if (!nodejs || nodejs.error) {
+		// 	let msg: string = (nodejs && nodejs.error) ? nodejs.error : "";
+		// 	msg += "\n" + "Required dependency 'node' is not installed. Please download 'node' from https://nodejs.org/";
+		// 	console.error(msg);
+		// 	this.pvsErrorManager?.notifyPvsFailure({
+		// 		msg,
+		// 		error_type: "dependency"
+		// 	});
+		// 	return false;
+		// }
+		// console.log("[pvs-server] node: " + nodejs?.version);
+		return true;
+	}
 
 	async startPvsServer (desc: { pvsPath: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean }, opt?: { verbose?: boolean, debugMode?: boolean }): Promise<boolean> {
 		if (desc) {
@@ -1436,7 +1454,7 @@ export class PvsLanguageServer {
 	 */
 	protected async startPvsServerRequest (desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
 		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
-		// await this.checkDependencies();
+		this.checkDependencies(); // async call
 		// start pvs
 		const success: boolean = await this.startPvsServer(desc);
 		if (success) {
@@ -1450,7 +1468,7 @@ export class PvsLanguageServer {
 	protected async rebootPvsServer (desc: { pvsPath?: string, cleanFolder?: string }): Promise<boolean> {
 		desc = desc || {};
 		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
-		// await this.checkDependencies();
+		this.checkDependencies(); // async call
 		// await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
 		// if (desc.cleanFolder && desc.cleanFolder !== this.lastParsedContext) {
 		// 	await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin

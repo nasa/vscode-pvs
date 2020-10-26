@@ -194,6 +194,7 @@ PI: 'pi';
 //------------------------
 ID: LETTER IDCHAR*;
 
+ANY: (ESC | .);
 
 //------------------------
 // Fragments necessary for the lexer that we choose not to tokenize individually
