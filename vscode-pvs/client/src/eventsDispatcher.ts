@@ -495,8 +495,8 @@ export class EventsDispatcher {
                             + `If the problem persists, please report an issue on [github](https://github.com/nasa/vscode-pvs/issues).\n\n`
                             + `## Your proof attempt\n`
                             + `Don't panic, your proof attempt for ${desc.args.formulaName} is not lost.\n`
-                            + `Proof Explorer saved your proof attempt, and you can load it with the 'Restore Proof' functionality next time you start the proof for ${desc.args.formulaName}.\n`
-                            + `As an ultimate resourve, below you can also find the complete proof script, which you can paste in the prover terminal if the 'Restore Proof' functionality fails:\n`
+                            + `Proof Explorer saved your proof attempt, and you can load it with the 'Restore Proof' functionality next time you start the proof with VSCode-PVS.\n`
+                            + `As a last resource, below you can also find the complete proof script, which you can paste in the prover terminal if the 'Restore Proof' functionality fails:\n`
                             + '```lisp\n'
                             + desc.response.script
                             + '\n```';
