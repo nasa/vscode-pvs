@@ -30,7 +30,7 @@ The environment redefines the way developers interact with PVS, and better align
 ## ChangeLog
 - [1.0.27 (2020.11.xx)]()
   -Improved dialogs and feedback for errors  
-  -Added interrupt command (ctrl+c) that stops the execution of proof commands  
+  -Added interrupt command (ctrl+c) to stop the execution of a proof command in the theorem prover  
 
 - [1.0.26 (2020.10.21)]()  
   -Improved PVSio terminal  
