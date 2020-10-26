@@ -895,13 +895,17 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 					}
 					commands.executeCommand('setContext', 'autorun', false);
 					this.client.sendRequest(serverRequest.getContextDescriptor, desc);
-					this.client.sendRequest(serverRequest.generateSummary, {
-						contextFolder: desc.contextFolder,
-						fileName: desc.fileName,
-						fileExtension: desc.fileExtension,
-						theoryName: desc.theoryName,
-						content: utils.makeProofSummary(summary)
-					});
+					if (summary && summary.total) {
+						this.client.sendRequest(serverRequest.generateSummary, {
+							contextFolder: desc.contextFolder,
+							fileName: desc.fileName,
+							fileExtension: desc.fileExtension,
+							theoryName: desc.theoryName,
+							content: utils.makeProofSummary(summary)
+						});
+					} else {
+						// vscodeUtils.showInformationMessage(`0 proofs attempted`);
+					}
 					resolve();
 				});
 			});
