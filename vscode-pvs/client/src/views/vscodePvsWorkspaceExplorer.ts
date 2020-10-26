@@ -878,10 +878,13 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 									theoryName: formulas[i].theoryName,
 									formulaName
 								});
-								this.client.onRequest(serverEvent.autorunFormulaResponse, (status: ProofStatus) => {
+								this.client.onRequest(serverEvent.autorunFormulaResponse, (desc: { status: ProofStatus, error?: string }) => {
+									if (desc && desc.error) {
+										vscodeUtils.showErrorMessage(desc.error);
+									}
 									setTimeout(() => {
 										// this timeout gives time to the front end to refresh the content
-										resolve(status);
+										resolve(desc.status);
 									}, 250);
 								});
 							});
@@ -998,7 +1001,10 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 									formulaName
 								});
 								this.client.onRequest(serverEvent.autorunFormulaResponse, (status: ProofStatus) => {
-									resolve(status);
+									setTimeout(() => {
+										// this timeout gives time to the front end to refresh the content
+										resolve(status);
+									}, 250);
 								});
 							});
 

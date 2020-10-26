@@ -58,11 +58,11 @@ export const RECORD: { [key: string]: RegExp } = {
 
 export const commentRegexp: RegExp = /%.*/g;
 // group 1 is theoryName, group 2 is comma-separated list of theory parameters -- NB: this regexp is fast but not accurate, because it does not check the end of the theory. See example use in codelense.
-export const theoryRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w+\W+\s+]+)\])?\s*\:\s*THEORY\s*BEGIN\b/gi;
+export const theoryRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*THEORY\s+BEGIN\b/gi;
 export function endTheoryRegexp(theoryName: string): RegExp {
 	return new RegExp(`(\\bEND\\s*)(${theoryName})(\\b)`, "gi");
 }
-export const datatypeRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*DATATYPE\s*BEGIN\b/gi;
+export const datatypeRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*DATATYPE\s+BEGIN\b/gi;
 export const declarationRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:/gi;
 // group 1 is the formula name
 export const formulaRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(%.+)?\s*:\s*(%.+)?\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT|AXIOM)\b/gim;
@@ -227,24 +227,34 @@ export async function mapTheoriesInFile (fname: string): Promise<{ [ key: string
  * @param desc Descriptor indicating filename, file extension, context folder, and file content
  */
 export function listTheories(desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean }): TheoryDescriptor[] {
+	// console.log(`[language-utils] Listing theorems in file ${desc.fileName}${desc.fileExtension}`);
 	let ans: TheoryDescriptor[] = [];
 	if (desc && desc.fileContent) {
-		const txt: string = desc.fileContent.replace(commentRegexp, "");
+		let txt: string = desc.fileContent.replace(commentRegexp, "");
+		console.log(txt);
 		const start: number = Date.now();
 		const regexp: RegExp = theoryRegexp;
-		let match: RegExpMatchArray = null;
-		while (match = regexp.exec(txt)) {
+		// let lastIndex: number = 0;
+		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
+		let lineOffset: number = 0;
+		while (match) {
+			// console.log(`[language-utils] Found ${match[0]}`);
 			if (match.length > 1 && match[1]) {
 				const theoryName: string = match[1];
 
 				const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
 				if (matchEnd && matchEnd.length) {
-					theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
+					const endIndex: number = matchEnd.index + matchEnd[0].length;
+					const fullClip = txt.slice(0, endIndex);
 
-					const clip: string = txt.slice(0, match.index);
-					const lines: string[] = clip.split("\n"); 
-					const line: number = lines.length;
-					const character: number = 0; //match.index - lines.slice(-1).join("\n").length;
+					const clipStart = txt.slice(0, match.index);
+					const lines: string[] = clipStart.split("\n"); 
+					const line: number = lines.length + lineOffset;
+					const character: number = 0;
+
+					txt = txt.slice(endIndex);
+					lineOffset += fullClip.split("\n").length - 1;
+
 					ans.push({
 						theoryName: desc.fileExtension === ".tccs" && theoryName.endsWith("_TCCS") ? theoryName.substr(0, theoryName.length - 5) : theoryName,
 						position: {
@@ -257,6 +267,8 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 					});
 				}
 			}
+			match = new RegExp(regexp).exec(txt);
+			// console.log(match);
 		}
 		const stats: number = Date.now() - start;
 		// console.log(`[languageUtils] listTheories(${desc.fileName}) completed in ${stats}ms`);
@@ -1014,6 +1026,7 @@ export function colorText(text: string, colorCode: number): string {
  * Lists all theorems in a given context folder
  */
 export async function getContextDescriptor (contextFolder: string, opt?: { listTheorems?: boolean, includeTccs?: boolean }): Promise<PvsContextDescriptor> {
+	// console.log(`[language-utils] Generating context descriptor for ${contextFolder}...`);
 	const response: PvsContextDescriptor = {
 		fileDescriptors: {},
 		contextFolder
@@ -1022,10 +1035,12 @@ export async function getContextDescriptor (contextFolder: string, opt?: { listT
 	if (fileList) {
 		for (let i in fileList.fileNames) {
 			const fname: string = path.join(contextFolder, fileList.fileNames[i]);
+			// console.log(`[language-utils] Processing file ${fname}`);
 			const desc: PvsFileDescriptor = await getFileDescriptor(fname, opt);
 			response.fileDescriptors[fname] = desc;
 		}
 	}
+	// console.log("[language-utils] Done");
 	return response;
 }
 
@@ -1057,8 +1072,10 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: false })
 					: [];
 		const descriptors: FormulaDescriptor[] = lemmas.concat(tccs);
+		// console.log(`[language-utils] Processing ${theories.length} theories`);
 		for (let i = 0; i < theories.length; i++) {
 			const theoryName: string = theories[i].theoryName;
+			// console.log(`[language-utils] Processing theory ${theoryName}`);
 			const position: Position = theories[i].position;
 			const theoryDescriptor: TheoryDescriptor = {
 				fileName, fileExtension, contextFolder, theoryName, position, 
@@ -1066,6 +1083,7 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 					return desc.theoryName === theoryName;
 				}) : []
 			}
+			// console.log(`[language-utils] Done`);
 			response.theories.push(theoryDescriptor);
 		}
 	}

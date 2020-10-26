@@ -242,13 +242,19 @@ export async function createFolder(path: string): Promise<void> {
 		fs.mkdirSync(path);
 	}
 }
-export async function writeFile(fname: string, content: string): Promise<boolean> {
+export async function writeFile(fname: string, content: string, opt?: { append?: boolean }): Promise<boolean> {
+	opt = opt || {};
 	if (fname) {
 		try {
 			fname = fname.replace("file://", "");
 			fname = tildeExpansion(fname);
 			const contextFolder: string = getContextFolder(fname);
 			await createFolder(contextFolder);
+			if (opt.append) {
+				const previousContent: string = await readFile(fname);
+				content = previousContent + "\n\n" + content;
+				content = content.trim();
+			}
 			fs.writeFileSync(fname, content);
 		} catch (error) {
 			console.error(`[fs-utils] Error while writing file ${fname}`, error);

@@ -357,7 +357,7 @@ export class PvsLanguageServer {
 			await this.proofExplorer?.loadProofRequest(desc, opt);
 
 			const response: PvsResponse = await this.proveFormula(desc);
-			if (response && response.result) {			
+			if (response?.result) {
 				const channelID: string = utils.desc2id(desc);
 				// the initial response should include only one sequent descriptor
 				const result: SequentDescriptor[] = response.result;
@@ -392,102 +392,22 @@ export class PvsLanguageServer {
 				}
 			} else {
 				// there was an error
+				const channelID: string = utils.desc2id(desc);
 				if (this.pvsErrorManager) {
-					this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId });
+					this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId, autorun: opt.autorun });
 				} else {
 					console.error(response);
 				}
+				this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 			}
 		} else {
 			if (this.pvsErrorManager) {
-				this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: null, taskId: null });
+				this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: null, taskId: null, autorun: opt.autorun });
 			} else {
 				console.error(`[pvs-language-server] Warning: Unable to prove formula`, desc);
 			}
 		}
 	}
-	/**
-	 * Discharge TCCs (prove-tccs)
-	 * function disabled for now --- pvs-server tends to crash often with this command
-	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
-	 */
-	// async dischargeTccs (args: { fileName: string, fileExtension: string, contextFolder: string }): Promise<PvsResponse | null> {
-	// 	if (this.checkArgs("prove-tccs", args)) {
-	// 		try {
-	// 			args = fsUtils.decodeURIComponents(args);
-	// 			const tccs: FormulaDescriptor[] = await utils.listTheoremsInFile(fsUtils.desc2fname({
-	// 				fileName: args.fileName,
-	// 				fileExtension: ".tccs",
-	// 				contextFolder: args.contextFolder
-	// 			}));
-	// 			if (tccs) {
-	// 				for (let i = 0; i < tccs.length; i++) {
-	// 					const response: PvsResponse = await this.pvsProxy?.proveFormula({
-	// 						contextFolder: tccs[i].contextFolder, 
-	// 						fileName: tccs[i].fileName, 
-	// 						fileExtension: ".pvs", 
-	// 						theoryName: tccs[i].theoryName,
-	// 						formulaName: tccs[i].formulaName
-	// 					});
-	// 				}
-	// 			}
-	// 			// update .tccs file
-	// 			await this.showTccsRequest(args);
-	// 			// return response;
-	// 		} catch (ex) {
-	// 			console.error('[pvs-language-server.dischargeTccs] Error: pvsProxy has thrown an exception', ex);
-	// 			return null;
-	// 		}
-	// 	}
-	// 	return null;
-	// }
-	// async dischargeTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }): Promise<void> {
-	// 	request = fsUtils.decodeURIComponents(request);
-
-	// 	// typecheck first
-	// 	const taskId: string = `discharge-tccs-${fsUtils.desc2fname(request)}`;
-	// 	this.notifyStartImportantTask({ id: taskId, msg: `Loading theories necessary to discharge typecheck conditions in ${request.fileName}${request.fileExtension}` });
-	// 	// parse workspace files while typechecking
-	// 	await this.parseWorkspaceRequest(request);
-	// 	const req = { fileName: request.fileName, fileExtension: ".pvs", contextFolder: request.contextFolder };
-	// 	const typecheckResponse: PvsResponse = await this.typecheckFile(req);
-	// 	if (typecheckResponse && !typecheckResponse.error) {
-	// 		this.notifyEndImportantTask({ id: taskId });
-	// 		// send feedback to the front-end
-	// 		this.notifyStartImportantTask({ id: taskId, msg: `Discharging typecheck conditions in ${request.fileName}${request.fileExtension}` });
-	// 		const response: PvsResponse = await this.dischargeTccs(req); // pvs-server wants the name of the .pvs file, not the .tccs file
-	// 		if (response && response.result) {
-	// 			const info: DischargeTccsResult = response.result;
-	// 			const msg: string = info.unproved ? 
-	// 				`${info.unproved} typecheck conditions could not be proved`
-	// 				: `All tccs discharged successfully!`;
-
-	// 			this.connection?.sendRequest(serverEvent.dischargeTccsResponse, { response, args: request });
-	// 			this.notifyEndImportantTask({ id: taskId, msg });
-	// 		} else {
-	// 			this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Something went wrong while discharging TCCs (pvs-server returned error or null response). Please check pvs-server output for details.` });
-	// 		}
-	// 	} else {
-	// 		this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Some files contain typecheck errors. Please fix those errors before trying to discharge TCCs.` });
-	// 	}
-	// }
-	/**
-	 * CURRENTLY NOT SUPPORTED BY PVS-SERVER
-	 * PVSio evaluator prompt
-	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
-	 */
-	// async pvsioEvaluator (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }): Promise<PvsResponse> {
-	// 	if (this.checkArgs("pvsioEvaluator", args)) {
-	// 		try {
-	// 			const response: PvsResponse = await this.pvsProxy?.pvsioEvaluator(args);
-	// 			return response;
-	// 		} catch (ex) {
-	// 			console.error('[pvs-language-server.proveFormula] Error: pvsProxy has thrown an exception', ex);
-	// 			return null;
-	// 		}
-	// 	}
-	// 	return null;
-	// }
 	async evaluateExpressionRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd: string }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		const channelID: string = utils.desc2id(request);

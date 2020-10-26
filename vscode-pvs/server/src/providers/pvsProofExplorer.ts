@@ -2094,7 +2094,7 @@ export class PvsProofExplorer {
 			this.autorunCallback = (status: ProofStatus) => {
 				// the autorun call back is executed at the end of a proof re-run
 				if (this.connection) {
-					this.connection.sendRequest(serverEvent.autorunFormulaResponse, status);
+					this.connection.sendRequest(serverEvent.autorunFormulaResponse, { status });
 					this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
 				}
 			};

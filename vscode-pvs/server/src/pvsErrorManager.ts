@@ -19,10 +19,17 @@ export class PvsErrorManager {
     handleProveFormulaError (desc: {
         request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }, 
         response: PvsError, 
-        taskId: string 
+        taskId: string,
+        autorun?: boolean
     }): void {
+        console.error(desc?.response);
         const evt: ProofExecDidFailToStartProof = { action: "did-fail-to-start-proof" };
         this.connection?.sendNotification(serverEvent.proverEvent, evt);
+        if (desc?.autorun) {
+            this.connection?.sendRequest(serverEvent.autorunFormulaResponse, { status: "untried", error: `Unable to run proof ${desc?.request?.formulaName}` });
+        } else {
+            this.connection?.sendNotification(`server.status.end-important-task-${desc.taskId}`, desc);
+        }
     }
     handleEvaluationError (desc: {
         request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd?: string }, 

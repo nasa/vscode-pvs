@@ -144,12 +144,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
-			} 
-			// else {
-			// 	commands.executeCommand('setContext', 'pvs-server-active', false);
-			// 	// hide status bar
-			// 	this.statusBar.hide();
-			// }
+			}
 		});
 
 		// onDidChangeActiveTextEditor is emitted when the active editor focuses on a new document
@@ -166,7 +161,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				this.client.sendRequest(comm.serverRequest.parseFile, desc);
 			} else {
 				// hide status bar
-				// this.statusBar.hide();
+				this.statusBar.hide();
 			}
 		}, null, this.context.subscriptions);
 

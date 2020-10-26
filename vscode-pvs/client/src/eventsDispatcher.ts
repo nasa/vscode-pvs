@@ -384,6 +384,7 @@ export class EventsDispatcher {
                     this.proofExplorer.disableView();
                     this.proofMate.disableView();
                     this.proofExplorer.resetView();
+                    break;
                 }
                 //---------------
                 case "did-start-proof": {
