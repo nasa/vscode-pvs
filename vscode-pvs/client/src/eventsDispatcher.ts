@@ -492,6 +492,7 @@ export class EventsDispatcher {
                         const content: string = `# Proof for ${desc.args.formulaName}\n`
                             + 'An error occurred while trying to save your proof in PVS.\n'
                             + 'You might be using an obsolete version of PVS. Please try to re-install PVS with the command `M-x reinstall-pvs`.\n'
+                            + 'The command will open a dialog, select `Download PVS` to install the latest version of PVS.\n'
                             + `If the problem persists, please report an issue on [github](https://github.com/nasa/vscode-pvs/issues).\n\n`
                             + `## Your proof attempt\n`
                             + `Don't panic, your proof attempt for ${desc.args.formulaName} is not lost.\n`
