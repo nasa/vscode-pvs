@@ -38,6 +38,12 @@ all: install
 	npm run compile
 	make core
 
+loc-server:
+	find . -name '*.ts' ! -name '*.d.ts' -path '*server/src/*' | xargs wc -l
+
+loc-client:
+	find . -name '*.ts' ! -name '*.d.ts' -path '*client/src/*' | xargs wc -l
+
 release: all install-vsce
 	node_modules/vsce/out/vsce package
 	make resolutions
