@@ -231,7 +231,7 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 	let ans: TheoryDescriptor[] = [];
 	if (desc && desc.fileContent) {
 		let txt: string = desc.fileContent.replace(commentRegexp, "");
-		console.log(txt);
+		// console.log(txt);
 		const start: number = Date.now();
 		const regexp: RegExp = theoryRegexp;
 		// let lastIndex: number = 0;
