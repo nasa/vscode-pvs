@@ -265,9 +265,14 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 						fileExtension: desc.fileExtension,
 						contextFolder: desc.contextFolder
 					});
+					// need to create a new regexp when txt is updated
+					match = new RegExp(regexp).exec(txt);
+				} else {
+					match = regexp.exec(txt);
 				}
+			} else {
+				match = regexp.exec(txt);
 			}
-			match = new RegExp(regexp).exec(txt);
 			// console.log(match);
 		}
 		const stats: number = Date.now() - start;
