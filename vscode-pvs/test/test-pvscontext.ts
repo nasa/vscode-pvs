@@ -14,7 +14,7 @@ describe("pvs", () => {
 	let pvsProxy: PvsProxy = null;
 	let pvsioProxy: PvsIoProxy = null;
 
-	const baseFolder: string = path.join(__dirname, "pvscontext");
+	let baseFolder: string = path.join(__dirname, "pvscontext");
 	const cleanAll = () => {
 		fsUtils.deleteFolder(path.join(baseFolder, "monitors"));
 		fsUtils.deleteFolder(path.join(baseFolder, "baxter"));
@@ -201,7 +201,7 @@ describe("pvs", () => {
 		fsUtils.deleteFolder(path.join(baseFolder, "alaris2l"));
 		execSync(`cd ${path.join(__dirname, "pvscontext")} && unzip alaris2l-show-tccs-error.zip`);
 
-		const response: PvsResponse = await pvsProxy.tccs({
+		const response: PvsResponse = await pvsProxy.generateTccsFile({
 			fileName: "alaris2lnewmodes", 
 			fileExtension: ".pvs", 
 			contextFolder: path.join(baseFolder, "alaris2l"),
@@ -338,7 +338,6 @@ describe("pvs", () => {
 		expect(response.error).not.toBeDefined();
 
 	}, 10000);
-
 
 });
 

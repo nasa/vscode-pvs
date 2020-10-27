@@ -119,10 +119,14 @@ export function deleteFile (fname: string): boolean {
 }
 export function deleteFolder(contextFolder: string): boolean {
 	try {
-		if (contextFolder && fs.existsSync(contextFolder)) {
-			execSync(`rm -r ${contextFolder}`);
+		if (contextFolder) {
+			contextFolder = tildeExpansion(contextFolder);
+			if (fs.existsSync(contextFolder)) {
+				execSync(`rm -r ${contextFolder}`);
+			}
 		}
 	} catch (deleteError) {
+		console.error(`[fs-utils] `, deleteError);
 		return false;
 	}
 	return true;
@@ -130,11 +134,14 @@ export function deleteFolder(contextFolder: string): boolean {
 export function deleteBinFiles(binFolder: string, opt?: { removePvsbinFolder?: boolean }): boolean {
 	opt = opt || {};
 	try {
-		if (fs.existsSync(binFolder)) {
-			if (opt.removePvsbinFolder) {
-				deleteFolder(binFolder);
-			} else {
-				execSync(`rm ${binFolder}/*.bin 2> /dev/null`); // 2> /dev/null suppresses 'file not found' messages
+		if (binFolder) {
+			binFolder = tildeExpansion(binFolder);
+			if (fs.existsSync(binFolder)) {
+				if (opt.removePvsbinFolder) {
+					deleteFolder(binFolder);
+				} else {
+					execSync(`rm ${binFolder}/*.bin 2> /dev/null`); // 2> /dev/null suppresses 'file not found' messages
+				}
 			}
 		}
 	} catch (deleteError) {
