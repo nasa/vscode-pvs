@@ -38,15 +38,14 @@ export class PvsErrorManager {
     }): void {
         if (desc) {
             if (desc.taskId) {
-                const msg: string = (desc.response.error && desc.response.error.message) ? desc.response.error.message 
-                    : `Error: PVSio crashed into Lisp. Please start a new evaluator session.`;
-                this.notifyError({ msg });
-                console.error(`[pvs-language-server] ${msg}`);
-            } else {
-                // there was an error
                 const msg: string = `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}.\nPlease fix the typecheck errors before trying to start the evaluator on theory ${desc.request.theoryName}.`;
                 this.connection?.sendRequest(serverEvent.closeDontSaveEvent, { args: desc.request, msg });
                 this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg });
+            } else {
+                const msg: string = (desc.response.error && desc.response.error.message) ? desc.response.error.message 
+                : `Error: PVSio crashed into Lisp. Please start a new evaluator session.`;
+                this.notifyError({ msg });
+                console.error(`[pvs-language-server] ${msg}`);
             }
         }
     }

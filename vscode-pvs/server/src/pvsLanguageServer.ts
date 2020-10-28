@@ -436,13 +436,13 @@ export class PvsLanguageServer {
 		request = fsUtils.decodeURIComponents(request);
 		// send feedback to the front-end
 		const taskId: string = `pvsio-${request.fileName}@${request.theoryName}`;
+		const channelID: string = utils.desc2id(request);
 		this.notifyStartImportantTask({ id: taskId, msg: `Loading files necessary to evaluate theory ${request.theoryName}` });
 		// make sure the theory typechecks before starting the evaluator
 		const response: PvsResponse = await this.typecheckFile(request);
 		if (response && response.result) {
 			// start pvsio evaluator
 			let pvsioResponse: PvsResponse = await this.pvsioProxy?.startEvaluator(request, { pvsLibraryPath: this.pvsLibraryPath });
-			const channelID: string = utils.desc2id(request);
 			// replace standard banner
 			const banner: string = utils.colorText(utils.pvsioBanner, utils.textColor.green);// + "\n\n" + utils.pvsioPrompt;
 			this.cliGateway?.publish({ type: "pvs.event.evaluator-ready", channelID, banner });
@@ -451,6 +451,7 @@ export class PvsLanguageServer {
 			this.notifyServerMode("pvsio");
 		} else {
 			this.pvsErrorManager?.handleEvaluationError({ request, response: <PvsError> response, taskId });
+			this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 		}
 	}
 
