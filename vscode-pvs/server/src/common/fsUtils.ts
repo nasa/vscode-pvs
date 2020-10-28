@@ -47,11 +47,11 @@ import * as os from 'os';
 export const HOME_DIR: string = require('os').homedir();
 export const MAX_RECURSION: number = 4;
 // nodeJS does not support tilde expansion for the home folder
-export function tildeExpansion(path: string): string {
-	if (path && (path.startsWith("~/") || path === "~")) {
-		path = path.replace("~", HOME_DIR);
+export function tildeExpansion(pathName: string): string {
+	if (pathName && (pathName.startsWith("~/") || pathName === "~")) {
+		pathName = pathName.replace("~", HOME_DIR);
 	}
-	return path;
+	return path.normalize(pathName);
 }
 export function stat(fname: string): Promise<fs.Stats> {
 	if (fname) {

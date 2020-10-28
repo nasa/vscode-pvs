@@ -339,5 +339,43 @@ describe("pvs", () => {
 
 	}, 10000);
 
+
+	fit(`can run find-declaration without hitting breaks`, async () => {
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		fsUtils.deleteFolder(path.join(baseFolder, "data"));
+		execSync(`cd ${baseFolder} && unzip data.zip`);
+
+		const dataFolder: string = path.join(baseFolder, "data");
+		const TypeCheckPVS: string = fsUtils.desc2fname({
+			fileName: "TypeCheck", 
+			fileExtension: ".pvs", 
+			contextFolder: dataFolder
+		});
+		const LiteralPVS: string = fsUtils.desc2fname({
+			fileName: "Literal", 
+			fileExtension: ".pvs", 
+			contextFolder: dataFolder
+		});
+		let response: PvsResponse = null;
+		const externalServer: boolean = false;
+
+		response = await pvsProxy.lisp(`(change-workspace "${dataFolder}" t)`, { externalServer: true });
+		response = await pvsProxy.lisp(`(parse-file "${TypeCheckPVS}" nil)`, { externalServer });
+		response = await pvsProxy.lisp(`(change-workspace "${dataFolder}" t)`, { externalServer });
+		response = await pvsProxy.lisp(`(typecheck-file "${TypeCheckPVS}" nil nil nil nil t)`, { externalServer });
+		response = await pvsProxy.lisp(`(change-workspace "${dataFolder}" t)`, { externalServer: true });
+		response = await pvsProxy.lisp(`(parse-file "${LiteralPVS}" nil)`, { externalServer });
+		response = await pvsProxy.lisp(`(change-workspace "${dataFolder}" t)`, { externalServer });
+		response = await pvsProxy.lisp(`(typecheck-file "${LiteralPVS}" nil nil nil nil t)`, { externalServer: true });
+		
+		response = await pvsProxy.lisp(`(find-declaration "PrimitiveValue")`);
+		console.dir(response);
+
+		expect(response).toBeDefined();
+		expect(response.result).toBeDefined();
+		expect(response.error).not.toBeDefined();
+	}, 16000);
 });
 

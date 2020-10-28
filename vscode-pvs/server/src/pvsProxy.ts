@@ -2050,12 +2050,15 @@ export class PvsProxy {
 		opt = opt || {};
 		const lp: string = opt.pvsLibraryPath || this.pvsLibraryPath;
 		const libs: string[] = (lp) ? lp.split(":").map((elem: string) => {
-			return elem.trim();
+			elem = elem.trim();
+			elem = fsUtils.tildeExpansion(elem);
+			return elem.endsWith("/") ? elem : `${elem}/`
 		}) : [];
 		if (libs && libs.length) {
 			const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
 			for (let i = 0; i < libs.length; i++) {
-				const path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
+				let path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
+				path = fsUtils.tildeExpansion(path);
 				if (!pvsLibraries.includes(path)) {
 					return (opt.useLisp) ? await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`)
 						: await this.pvsRequest('add-pvs-library', [ path ]);
