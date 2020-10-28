@@ -337,11 +337,14 @@ export class PvsProxyLegacy {
 
             const res: string = (response) ? response.result : "";
             const matchTypecheckError: RegExpMatchArray = /\b(?:pvs)?error\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
+            const matchTypecheckError2: RegExpMatchArray = /<pvserror msg=\"(?:[\w\W\s]+)\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)(?:\s+\(line\s+(\d+)\s*,\s*col\s+(\d+))?\"/gm.exec(res);
             const matchLibraryError: RegExpMatchArray = /\bError: ([\w\W\s]+)\b/gm.exec(res);
-            if (matchTypecheckError || matchLibraryError) {
+            if (matchTypecheckError || matchTypecheckError2 || matchLibraryError) {
                 const error_string: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[1].trim().replace(/\\n/g, "\n")
+                    : (matchTypecheckError2 && matchTypecheckError2.length > 3) ? matchTypecheckError2[1].trim().replace(/\\n/g, "\n")
                     : `Libraries imported by the theory cannot be found`;
                 let file_name: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[2].trim()
+                    : (matchTypecheckError2 && matchTypecheckError2.length > 3) ? matchTypecheckError2[2].trim()
                     : fname;
                 if (!file_name.includes('/')) {
                     // pvs has not returned the true name, this happens when the file is in the current context
@@ -351,9 +354,11 @@ export class PvsProxyLegacy {
                     // pvs has not returned the true name, this happens when the file is in the current context
                     file_name = file_name + ".pvs";
                 }
-                const line: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[3]
+                const line: string = (matchTypecheckError && matchTypecheckError.length > 3 && !isNaN(+matchTypecheckError[4])) ? matchTypecheckError[3]
+                    : (matchTypecheckError2 && matchTypecheckError2.length > 3 && !isNaN(+matchTypecheckError2[3])) ? matchTypecheckError2[3]
                     : "1";
-                const character: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[4]
+                const character: string = (matchTypecheckError && matchTypecheckError.length > 3 && !isNaN(+matchTypecheckError[4])) ? matchTypecheckError[4]
+                    : (matchTypecheckError2 && matchTypecheckError2.length > 3 && !isNaN(+matchTypecheckError2[3])) ? matchTypecheckError2[4]
                     : "0" ;
                 pvsResponse.error = {
                     data: {
