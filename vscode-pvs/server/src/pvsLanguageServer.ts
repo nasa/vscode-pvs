@@ -518,7 +518,7 @@ export class PvsLanguageServer {
 						};
 						this.sendDiagnostics("Typecheck");
 					} else {
-						if (response.error.data) {
+						if (response.error?.data) {
 							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(args);
 							this.diags[fname] = {
 								pvsResponse: response,
@@ -567,7 +567,7 @@ export class PvsLanguageServer {
 						// 	isTypecheckError: true
 						// };
 						// this.sendDiagnostics("Typecheck");
-						this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} typechecked successfully!` });
+						this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} typechecks successfully!` });
 					} else {
 						this.pvsErrorManager?.handleTypecheckError({ response: <PvsError> response, taskId, request });
 						// send diagnostics
@@ -1247,7 +1247,7 @@ export class PvsLanguageServer {
 						const errorEnd: Position = (info.error.data.place.length > 3) ? { 
 							line: info.error.data.place[2], 
 							character: info.error.data.place[3]
-						} : null;
+						} : errorStart;
 						const txt: string = await fsUtils.readFile(fname);
 						if (txt) {
 							const errorRange: Range = getErrorRange(txt, errorStart, errorEnd);

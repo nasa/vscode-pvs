@@ -149,18 +149,20 @@ class PvsIoProcess {
 				if (lib) {
 					lib = lib.endsWith("/") ? lib : `${lib}/`;
 					if (fsUtils.folderExists(lib)) {
-						libraries.push(lib);
+						libraries.push(fsUtils.tildeExpansion(lib));
 					}
 				}
 			}
 			if (this.nasalibPath && fsUtils.folderExists(this.nasalibPath)) {
 				let lib: string = this.nasalibPath.endsWith("/") ? this.nasalibPath : `${this.nasalibPath}/`;
-				libraries.push(lib);
+				libraries.push(fsUtils.tildeExpansion(lib));
 			}
 			process.env["PVS_LIBRARY_PATH"] = (libraries && libraries.length) ? libraries.join(":") : "";
 			console.log(`\nPVS_LIBRARY_PATH=${process.env["PVS_LIBRARY_PATH"]}\n`);
 			const fileExists: boolean = fsUtils.fileExists(pvsioExecutable);
+			let bootData: string = "";
 			if (fileExists && !this.pvsioProcess) {
+				console.log(pvsioExecutable + " " + args.join(" "));
 				this.pvsioProcess = spawn(pvsioExecutable, args);
 				// console.dir(this.pvsProcess, { depth: null });
 				this.pvsioProcess.stdout.setEncoding("utf8");
@@ -192,6 +194,7 @@ class PvsIoProcess {
 					// const match: RegExpMatchArray = /\s*<PVSio>\s*/g.exec(data);
 					if (readyPrompt) {
 						if (!this.ready) {
+							bootData = data;
 							this.ready = true;
 							resolve(true);
 						}
@@ -213,6 +216,10 @@ class PvsIoProcess {
 					// console.dir(err, { depth: null });
 				});
 				this.pvsioProcess.on("exit", (code: number, signal: string) => {
+					if (!this.ready) {
+						this.error(bootData);
+						resolve(false);
+					}
 					console.log("[pvsio-process] Process exited with code ", code);
 					// console.dir({ code, signal });
 				});

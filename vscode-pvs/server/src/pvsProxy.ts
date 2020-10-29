@@ -816,8 +816,9 @@ export class PvsProxy {
 				fname = path.join(desc.contextFolder, `${desc.fileName}.pvs`);
 			}
 
-			// show library path, it's useful when debugging problems with importings
+			// show library path and temporary folders, it's useful when debugging problems with importings
 			await this.getPvsLibraryPath();
+			await this.getPvsTemporaryFolder();
 			// typecheck file
 			await this.changeContext(desc);
 			const res: PvsResponse = await this.legacy.typecheckFile(fname);
@@ -1997,6 +1998,16 @@ export class PvsProxy {
 		return await this.pvsRequest('reset');
 	}
 
+	async getPvsTemporaryFolder (opt?: { externalServer?: boolean }): Promise<string[]> {
+		const ans: string[] = [];
+		let response: PvsResponse = await this.lisp(`uiop:*temporary-directory*`);
+		ans.push(response?.result);
+		response = await this.lisp(`(uiop:default-temporary-directory)`);
+		ans.push(response?.result);
+		response = await this.lisp(`(uiop:temporary-directory)`);
+		ans.push(response?.result);
+		return ans;
+	}
 	async getPvsLibraryPath (opt?: { externalServer?: boolean }): Promise<string[]> {
 		const response: PvsResponse = await this.lisp(`*pvs-library-path*`, opt);
 		if (response && response.result) {
