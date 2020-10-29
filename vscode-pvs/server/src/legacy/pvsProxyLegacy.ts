@@ -337,7 +337,7 @@ export class PvsProxyLegacy {
 
             const res: string = (response) ? response.result : "";
             const matchTypecheckError: RegExpMatchArray = /\b(?:pvs)?error\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)\s*\)/gm.exec(res);
-            const matchTypecheckError2: RegExpMatchArray = /<pvserror msg=\"(?:[\w\W\s]+)\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)(?:\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)\s*\))?\"/gm.exec(res);
+            const matchTypecheckError2: RegExpMatchArray = /<pvserror msg=\"(?:[\w\W\s]+)\"\>\s*\"([\w\W\s]+)\bIn file\s+([^\()]+)(?:\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)\s*\))?\"/gm.exec(res);
             const matchLibraryError: RegExpMatchArray = /\bError: ([\w\W\s]+)\b/gm.exec(res);
             if (matchTypecheckError || matchTypecheckError2 || matchLibraryError) {
                 let error_string: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[1].trim().replace(/\\n/g, "\n")
