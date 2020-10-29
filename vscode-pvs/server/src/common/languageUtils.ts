@@ -2071,11 +2071,21 @@ export function siblingBranchComplete (result: { commentary: string[] }, newBran
 }
 
 export function branchHasChanged (desc: { newBranch: string, previousBranch: string }): boolean {
-	return desc && (desc.newBranch !== desc.previousBranch || desc.previousBranch !== "" && !desc.newBranch.startsWith(desc.previousBranch));
+	if (desc) {
+		const newBranch: string = desc.newBranch.replace(/T/g, "");
+		const previousBranch: string = desc.previousBranch.replace(/T/g, "");
+		return (newBranch !== previousBranch || previousBranch !== "" && !newBranch.startsWith(previousBranch));
+	}
+	return false;
 }
 
 export function pathHasChanged (desc: { newBranch: string, previousBranch: string }): boolean {
-	return desc && !desc.newBranch.startsWith(desc.previousBranch);
+	if (desc) {
+		const newBranch: string = desc.newBranch.replace(/T/g, "");
+		const previousBranch: string = desc.previousBranch.replace(/T/g, "");
+		return !newBranch.startsWith(previousBranch);
+	}
+	return false;
 }
 
 // these icons are shown correctly only on recent os distributions that include the proper font set.

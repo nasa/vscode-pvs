@@ -2690,6 +2690,7 @@ export class PvsProofExplorer {
 		}
 		if (utils.isInterruptCommand(request.cmd)) {
 			await this.interruptProofCommand();
+			this.running = false;
 			request.cmd = "(skip)";
 		}
 		if (utils.isQEDCommand(request.cmd)) {
