@@ -340,7 +340,7 @@ describe("pvs", () => {
 	}, 10000);
 
 
-	fit(`can run find-declaration without hitting breaks`, async () => {
+	it(`can run find-declaration without hitting breaks`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 

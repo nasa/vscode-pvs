@@ -109,7 +109,7 @@ export const isense: IntellisenseTriggers = {
  */
 export function findTheoryName(fileContent: string, line: number): string | null {
 	if (fileContent) {
-		const txt = fileContent.replace(commentRegexp, ""); // this removes all commented text
+		let txt = fileContent.replace(commentRegexp, ""); // this removes all commented text
 		const regexp: RegExp = theoryRegexp;
 		let candidates: string[] = [];
 
@@ -129,17 +129,23 @@ export function findTheoryName(fileContent: string, line: number): string | null
 		}
 
 		// keep searching theory names -- the first element in candidates will be the closest to the current line number
-		const text: string = txt.split("\n").slice(0, line + 1).join("\n");
-		let match: RegExpMatchArray = null;
-		while (match = regexp.exec(text)) {
+		txt = txt.split("\n").slice(0, line + 1).join("\n");
+		let match: RegExpMatchArray = regexp.exec(txt);
+		while (match) {
 			if (match.length > 1 && match[1]) {
 				const theoryName: string = match[1];
-
 				const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
 				if (matchEnd && matchEnd.length) {
-					regexp.lastIndex = matchEnd.index; // restart the search from here
+					const endIndex: number = matchEnd.index + matchEnd[0].length;
+					txt = txt.slice(endIndex);
+					// need to create a new regexp when txt is updated
+					match = new RegExp(regexp).exec(txt);
 					candidates = [ theoryName ].concat(candidates);
+				} else {
+					match = regexp.exec(txt);
 				}
+			} else {
+				match = regexp.exec(txt);
 			}
 		}
 		if (candidates.length > 0) {
@@ -159,18 +165,25 @@ export function findTheoryName(fileContent: string, line: number): string | null
 export function listTheoryNames (fileContent: string): string[] {
 	const ans: string[] = [];
 	if (fileContent) {
-		const txt = fileContent.replace(commentRegexp, "");
-		let match: RegExpMatchArray = null;
+		let txt = fileContent.replace(commentRegexp, "");
 		const regexp: RegExp = theoryRegexp;
-		while (match = regexp.exec(txt)) {
+		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
+		while (match) {
 			if (match.length > 1 && match[1]) {
 				const theoryName: string = match[1];
 
 				const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
 				if (matchEnd && matchEnd.length) {
-					regexp.lastIndex = matchEnd.index; // restart the search from here
+					const endIndex: number = matchEnd.index + matchEnd[0].length;
+					txt = txt.slice(endIndex);
+					// need to create a new regexp when txt is updated
+					match = new RegExp(regexp).exec(txt);
 					ans.push(theoryName);
+				} else {
+					match = regexp.exec(txt);
 				}
+			} else {
+				match = regexp.exec(txt);
 			}
 		}
 	}
@@ -2235,12 +2248,16 @@ export function decodePvsLibraryPath (pvsLibraryPath: string): string[] {
 	return libs.filter((elem: string) => {
 		return elem !== "";
 	}).map((elem: string) => {
-		return elem.endsWith("/") ? elem : `${elem}/`
+		return elem.endsWith("/") ? elem : `${elem}/`;
 	});
 }
 export function createPvsLibraryPath (libs: string[]): string {
 	if (libs && libs.length) {
-		return libs.join(":");
+		return libs.filter((elem: string) => {
+			return elem.trim() !== "";
+		}).map((elem: string) => {
+			return elem.trim().endsWith("/") ? elem.trim() : `${elem.trim()}/`;
+		}).join(":");
 	}
 	return "";
 }

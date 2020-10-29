@@ -1252,7 +1252,13 @@ export class EventsDispatcher {
                 this.statusBar.showProgress(desc.msg);
             }
         });
-        this.client.onNotification("server.important-notification", (desc?: { msg?: string }) => {
+        this.client.onNotification("server.status.warning", (desc?: { msg?: string }) => {
+            this.statusBar.ready();
+            if (desc && desc.msg) {
+                vscodeUtils.showWarningMessage(desc.msg);
+            }
+        });
+        this.client.onNotification("server.status.info", (desc?: { msg?: string }) => {
             this.statusBar.ready();
             if (desc && desc.msg) {
                 vscodeUtils.showInformationMessage(desc.msg);

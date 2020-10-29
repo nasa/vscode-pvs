@@ -190,7 +190,7 @@ export class PvsLanguageServer {
 		this.connection?.sendNotification("server.status.progress", desc);
 	}
 	protected notifyEndExecution (desc?: { msg?: string }): void {
-		this.connection?.sendNotification("server.important-notification", desc);
+		this.connection?.sendNotification("server.status.info", desc);
 	}
 	protected notifyStartImportantTask (desc: { id: string, msg: string }): void {
 		this.connection?.sendNotification(`server.status.start-important-task`, desc);
@@ -202,7 +202,7 @@ export class PvsLanguageServer {
 		this.connection?.sendNotification(`server.status.end-important-task-${desc.id}`, desc);
 	}
 	protected notifyMessage (desc: { msg: string }): void {
-		this.connection?.sendNotification("server.important-notification", desc);
+		this.connection?.sendNotification("server.status.warning", desc);
 	}
 
 	/**
@@ -1600,7 +1600,12 @@ export class PvsLanguageServer {
 					await this.pvsProxy?.killPvsServer();
 				}
 			});
-			this.connection?.onRequest(serverRequest.startPvsServer, async (request: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean }) => {
+			this.connection?.onRequest(serverRequest.startPvsServer, async (request: { 
+				pvsPath: string, 
+				pvsLibraryPath: string, 
+				contextFolder?: string, 
+				externalServer?: boolean
+			}) => {
 				// this should be called just once at the beginning
 				const success: boolean = await this.startPvsServerRequest(request);
 				if (success) {

@@ -178,7 +178,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
 			// re-initialise pvs if the executable is different
 			const pvsPath: string = vscodeUtils.getConfiguration("pvs.path").trim();
-			const pvsLibraryPath: string = vscodeUtils.getConfiguration("pvs.pvsLibraryPath").trim();
+			const pvsLibraryPath: string = vscodeUtils.getPvsLibraryPath();
 			if (pvsPath !== this.pvsPath || this.pvsLibraryPath !== pvsLibraryPath) {
 				this.pvsPath = pvsPath || this.pvsPath;
 				this.pvsLibraryPath = pvsLibraryPath;
@@ -186,7 +186,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					const msg: string = `Restarting PVS from ${this.pvsPath}`;
 					this.statusBar.showProgress(msg);
 					// window.showInformationMessage(msg);
-					this.client.sendRequest(comm.serverRequest.startPvsServer, { pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath }); // the server will use the last context folder it was using	
+					this.client.sendRequest(comm.serverRequest.startPvsServer, {
+						pvsPath: this.pvsPath, 
+						pvsLibraryPath: this.pvsLibraryPath
+					}); // the server will use the last context folder it was using	
 				}
 			}
 		}, null, this.context.subscriptions);
@@ -304,7 +307,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			const contextFolder = vscodeUtils.getEditorContextFolder();
 			// console.log(`Context folder: ${contextFolder}`);
 			this.pvsPath = vscodeUtils.getConfiguration("pvs.path");
-			this.pvsLibraryPath = vscodeUtils.getConfiguration("pvs.pvsLibraryPath");
+			this.pvsLibraryPath = vscodeUtils.getPvsLibraryPath();
 			// setTimeout(() => {
 			this.client.sendRequest(comm.serverRequest.startPvsServer, {
 				pvsPath: this.pvsPath,

@@ -216,7 +216,8 @@ export function showErrorMessage (message: string, timeout?: number): void {
     showInformationMessage(`${utils.icons.bang} ${message}`, { timeout: 4000 });
 }
 export function showWarningMessage (message: string, timeout?: number): void {
-    showInformationMessage(`${utils.icons.sparkles} ${message}`, { timeout: 4000 });
+    vscode.window.showWarningMessage(`${utils.icons.sparkles} ${message}`);
+    // showInformationMessage(`${utils.icons.sparkles} ${message}`, { timeout: 4000 });
 }
 
 /**
@@ -246,8 +247,14 @@ export async function addPvsLibraryFolderWizard (): Promise<boolean> {
 export async function clearPvsLibraryPath (): Promise<void> {
     await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", undefined, vscode.ConfigurationTarget.Global);
 }
-export async function getPvsLibraryPath (): Promise<string> {
-    return getConfiguration("pvs.pvsLibraryPath");
+export function getPvsLibraryPath (): string {
+    const pvsLibraryPath: string = getConfiguration("pvs.pvsLibraryPath").trim();
+    const currentWorkspace: string = getCurrentWorkspace();
+    return pvsLibraryPath ? currentWorkspace + ":" + pvsLibraryPath : currentWorkspace;
+}
+export function getCurrentWorkspace (): string {
+    return (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length) ?
+        vscode.workspace.workspaceFolders[0]?.uri?.path : "";
 }
 export async function addPvsLibraryFolder (folder: string): Promise<boolean> {
     if (folder) {
