@@ -982,6 +982,7 @@ export const pvsioBanner: string = `
 ║ 
 ║ To exit the evalutor, enter 'exit'.
 ║ You can use TAB to complete commands at the PVSio prompt.
+║ UP/DOWN arrow keys recall previous/next command.
 ╚════════════════════════════════════════════════════════════════════════════════════
 `
 ;
