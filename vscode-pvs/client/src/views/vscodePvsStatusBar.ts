@@ -208,7 +208,7 @@ export class VSCodePvsStatusBar {
         + '```lisp\n' + msg + '\n```'
         + '\n\nThis error is likely caused by temporary files used by PVS that might have gotten corrupted.\n\n'
         + '[Recommended action]():  `M-x clean-bin`  (this command will remove the corrupted temporary files)\n\n'
-        + 'If the above action does not resolve the problem, please make sure you are using the latest version of VSCode-PVS, PVS and NASALib.\n\n'
+        + 'If the above action does not resolve the problem, please restart vscode and make sure you are using the latest version of VSCode-PVS, PVS and NASALib.\n\n'
         + `If the problem persists, please report the error on [github](https://github.com/nasa/vscode-pvs/issues), we will look into it.`;
 
         vscodeUtils.showMarkdownContent(content);
@@ -222,7 +222,7 @@ export class VSCodePvsStatusBar {
         const content: string = `# Missing dependency\n`
         + 'VSCode-PVS failed to start: a required dependency could not be detected:\n\n'
         + '```\n' + msg + '\n```\n\n'
-        + 'If the above action does not resolve the problem, please make sure you are using the latest version of VSCode-PVS.\n\n'
+        + 'If the above action does not resolve the problem, please restart vscode make sure you are using the latest version of VSCode-PVS.\n\n'
         + `If the problem persists, please report the error on [github](https://github.com/nasa/vscode-pvs/issues), we will look into it.`;
 
         vscodeUtils.showMarkdownContent(content);

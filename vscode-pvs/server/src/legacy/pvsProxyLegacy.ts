@@ -352,6 +352,10 @@ export class PvsProxyLegacy {
                 let file_name: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[2].trim()
                     : (matchTypecheckError2 && matchTypecheckError2.length > 3) ? matchTypecheckError2[2].trim()
                     : fname;
+                if (!file_name.endsWith('.pvs')) {
+                    // pvs has not returned the true name, this happens when the file is in the current context
+                    file_name = file_name + ".pvs";
+                }
                 if (!file_name.includes('/')) {
                     // pvs has not returned the true name, we include the name in the error message if the file is not in the current context
                     const candidate: string = path.join(fsUtils.getContextFolder(fname), file_name);
@@ -363,10 +367,6 @@ export class PvsProxyLegacy {
                         character = "0";
                         file_name = fname; //path.join(fsUtils.getContextFolder(fname), file_name);
                     }
-                }
-                if (!file_name.endsWith('.pvs')) {
-                    // pvs has not returned the true name, this happens when the file is in the current context
-                    file_name = file_name + ".pvs";
                 }
                 pvsResponse.error = {
                     data: {
