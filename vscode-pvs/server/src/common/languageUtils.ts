@@ -1702,8 +1702,8 @@ export function isQuitCommand (cmd: string): boolean {
 		|| cmd === "exit;"
 		|| cmd === "(exit)"
 		|| cmd.toLocaleLowerCase() === "(exit)y")
-		|| /\(?\s*quit\s*\)?\s*y?;?/gi.test(cmd)
-		|| /\(?\s*exit\s*\)?\s*y?;?/gi.test(cmd)
+		|| /^\(?\s*quit\s*\)?\s*y?;?/gi.test(cmd)
+		|| /^\(?\s*exit\s*\)?\s*y?;?/gi.test(cmd)
 		;
 }
 
@@ -1742,12 +1742,13 @@ export function isUndoCommand (cmd: string): boolean {
 		|| cmd === "undo;"
 		|| cmd === "(undo)"
 		|| cmd.toLocaleLowerCase() === "(undo)y"
-		|| /\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.test(cmd))
+		|| /^\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.test(cmd))
 		;
 }
 
 export function unfoldUndoCommand (cmd: string): string[] {
-	const match: RegExpMatchArray = /\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.exec(cmd);
+	cmd = (cmd) ? cmd.trim() : cmd;
+	const match: RegExpMatchArray = /^\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.exec(cmd);
 	let cmds: string[] = [];
 	if (match) {
 		if (match.length > 1 && match[1]) {
@@ -1763,19 +1764,22 @@ export function unfoldUndoCommand (cmd: string): string[] {
 }
 
 export function isRedoCommand (cmd: string): boolean {
-	return cmd && /\(?\s*\bredo\b/g.test(cmd);
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*\bredo\b/g.test(cmd);
 }
 
 export function isUndoUndoCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
 	if (cmd) {
 		const cm: string = (cmd.startsWith("(")) ? cmd : `(${cmd})`;
-		return /\(\s*\bundo\s+undo\b\s*\)/g.test(cm);
+		return /^\(\s*\bundo\s+undo\b\s*\)/g.test(cm);
 	}
 	return false;
 }
 
 export function isUndoUndoPlusCommand (cmd: string): boolean {
-	return cmd && /\(?(\s*\bundo)+/g.test(cmd);
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?(\s*\bundo)+/g.test(cmd);
 }
 
 export function isUndoStarCommand (cmd: string): boolean {
@@ -1783,6 +1787,7 @@ export function isUndoStarCommand (cmd: string): boolean {
 }
 
 export function isPostponeCommand (cmd: string, result?: { commentary: string | string[] }): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
 	if (result && result.commentary) {
 		if (typeof result.commentary === "string") {
 			return result.commentary.toLocaleLowerCase().startsWith("postponing ");
@@ -1794,23 +1799,27 @@ export function isPostponeCommand (cmd: string, result?: { commentary: string | 
 				}).length > 0;
 		}
 	}
-	return cmd && /\(?\s*\bpostpone\b/g.test(cmd);
+	return cmd && /^\(?\s*\bpostpone\b/g.test(cmd);
 }
 
 export function isSkipCommand (cmd: string): boolean {
-	return cmd && /\(?\s*\bskip\b/g.test(cmd);
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*\bskip\b/g.test(cmd);
 }
 
 export function isFailCommand (cmd: string): boolean {
-	return cmd && /\(?\s*\bfail\b/g.test(cmd);
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*\bfail\b/g.test(cmd);
 }
 
 export function isShowHiddenCommand (cmd: string): boolean {
-	return cmd && /\(?\s*show-hidden\b/g.test(cmd);
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*show-hidden\b/g.test(cmd);
 }
 
 export function isGrindCommand (cmd: string): boolean {
-	return cmd && /\(?\s*grind\b/g.test(cmd);
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*grind\b/g.test(cmd);
 }
 
 export function isProofliteGlassbox (cmd: string): boolean {
@@ -1818,20 +1827,22 @@ export function isProofliteGlassbox (cmd: string): boolean {
 }
 
 export function isHelpCommand (cmd: string): boolean {
-	return cmd && /\(?\s*help\b/g.test(cmd);
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*help\b/g.test(cmd);
 }
 
 // group 1 is the command argument
-export const helpCommandRegexp: RegExp = /\(?\s*help\s*\"?([^\)]+)/g;
+export const helpCommandRegexp: RegExp = /^\(?\s*help\s*\"?([^\)]+)/g;
 
 export function isCommentCommand (cmd: string): boolean {
-	return cmd && /\(?\s*comment\b/g.test(cmd);
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*comment\b/g.test(cmd);
 }
 
 export function isQEDCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
 	return cmd && (cmd.trim() === "Q.E.D."
-		|| /\(?\s*Q\.E\.D\./g.test(cmd))
+		|| /^\(?\s*Q\.E\.D\./g.test(cmd))
 		;
 }
 
@@ -1858,6 +1869,7 @@ export function isSameCommand (cmd1: string, cmd2: string): boolean {
 }
 
 export function isPropax (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
 	return cmd && cmd === "(propax)";
 }
 
@@ -2013,7 +2025,7 @@ export function isInterruptCommand (cmd: string): boolean {
 	return cmd && (cmd === "interrupt" 
 		|| cmd === "interrupt;"
 		|| cmd === "(interrupt)"
-		|| /\(\s*interrupt\s*\);?/gi.test(cmd))
+		|| /^\(\s*interrupt\s*\);?/gi.test(cmd))
 		;
 }
 
