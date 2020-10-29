@@ -319,7 +319,7 @@ export class PvsLanguageServer {
 
 			// make sure file exists
 			const fname: string = fsUtils.desc2fname(desc);
-			if (!fsUtils.fileExists(fname)) {
+			if (desc.fileExtension === ".pvs" && !fsUtils.fileExists(fname)) {
 				this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
 				return;
 			}

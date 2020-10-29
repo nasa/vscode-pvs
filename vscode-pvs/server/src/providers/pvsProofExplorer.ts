@@ -2707,10 +2707,8 @@ export class PvsProofExplorer {
 			if (this.connection) {
 				this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 			}
-			// re-generate tccs, if this is a pvs file
-			if (this.formula.fileExtension === ".pvs") {
-				await this.pvsLanguageServer.generateTccsRequest(request, { quiet: true });
-			}
+			// re-generate tccs
+			await this.pvsLanguageServer.generateTccsRequest(request, { quiet: true });
 			// stop the loop & don't send proof-state to cli gateway
 			return;
 		}
