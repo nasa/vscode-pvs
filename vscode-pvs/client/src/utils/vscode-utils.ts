@@ -41,7 +41,7 @@ import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem } from "../views/vscodePvsWorkspaceExplorer";
-import { PvsTheory, PvsFile } from '../common/serverInterface';
+import { PvsTheory, PvsFile, FileDescriptor } from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 
 
@@ -143,18 +143,15 @@ export async function previewTextDocument (name: string, content: string, opt?: 
  * Utility function, creates a text document in the editor with the given content
  * @param content 
  */
-export async function createTextDocument (name: string, content: string, opt?: { contextFolder?: string, viewColumn?: vscode.ViewColumn }): Promise<vscode.Uri> {
-    opt = opt || {};
-    let viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
-    
-    const folder: string = opt.contextFolder || vscode.workspace.rootPath || os.homedir();
-    const fname: string = path.join(folder, name);
+export async function createTextDocument (desc: FileDescriptor): Promise<vscode.Uri> {
+    const folder: string = desc.contextFolder || getPreviewFolder();
+    const fname: string = path.join(folder, desc.fileName);
     const preview: vscode.Uri = vscode.Uri.file(fname);
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${fname}`);
 
     const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
     edit.createFile(preview, { overwrite: true });
-    edit.insert(preview, new vscode.Position(0, 0), content);
+    edit.insert(preview, new vscode.Position(0, 0), desc.fileContent);
     let success: boolean = await vscode.workspace.applyEdit(edit);
     // FIXME: applyEdit fails if the document is already open and active in the editor, understand why this is the case.
     if (!success) {
@@ -163,23 +160,32 @@ export async function createTextDocument (name: string, content: string, opt?: {
     return preview;
 }
 
+export function getPreviewFolder (): string {
+    return vscode.workspace.rootPath || os.homedir() || os.tmpdir();
+}
+
 export function showMarkdownFile (uri: vscode.Uri): void {
     if (uri) {
         vscode.commands.executeCommand('markdown.showPreview', uri);
     }
 }
 
-export async function showMarkdownContent (content: string): Promise<void> {
-    if (content) {
-        const fname: string = `${os.tmpdir()}/pvs.error`;
-        const fileUri: vscode.Uri = await createTextDocument(fname, content);
+export async function showMarkdownContent (fileContent: string): Promise<void> {
+    if (fileContent) {
+        const desc: FileDescriptor = {
+            fileName: "pvs",
+            fileExtension: ".error",
+            contextFolder: os.tmpdir(),
+            fileContent
+        };
+        const fileUri: vscode.Uri = await createTextDocument(desc);
         vscode.commands.executeCommand('markdown.showPreview', fileUri);
     }
 }
 
-export async function showMarkdownPreview (desc: { fname: string, content: string }): Promise<void> {
-    if (desc && desc.fname && desc.content) {
-        const fileUri: vscode.Uri = await createTextDocument(desc.fname, desc.content);
+export async function showMarkdownPreview (desc: FileDescriptor): Promise<void> {
+    if (desc && desc.fileName && desc.fileContent) {
+        const fileUri: vscode.Uri = await createTextDocument(desc);
         if (fileUri) {
             showMarkdownFile(fileUri);
         }

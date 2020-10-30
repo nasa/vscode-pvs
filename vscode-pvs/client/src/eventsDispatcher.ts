@@ -489,7 +489,7 @@ export class EventsDispatcher {
                         vscodeUtils.showErrorMessage(`Unexpected error while saving file ${fsUtils.desc2fname(desc.args)} (please check pvs-server output for details)`);
                     }
                     if (desc.response.script) {
-                        const content: string = `# Proof for ${desc.args.formulaName}\n`
+                        const fileContent: string = `# Proof for ${desc.args.formulaName}\n`
                             + 'An error occurred while trying to save your proof in PVS.\n'
                             + 'You might be using an obsolete version of PVS. Please try to re-install PVS with the command `M-x reinstall-pvs`.\n'
                             + 'The command will open a dialog, select `Download PVS` to install the latest version of PVS.\n'
@@ -501,8 +501,13 @@ export class EventsDispatcher {
                             + '```lisp\n'
                             + desc.response.script
                             + '\n```';
-                        const fname: string = desc.args.formulaName + ".md";
-                        await vscodeUtils.showMarkdownPreview({ fname, content });
+                        const fdesc: FileDescriptor = {
+                            fileName: desc.args.formulaName,
+                            fileExtension: ".md",
+                            contextFolder: vscodeUtils.getPreviewFolder(),
+                            fileContent
+                        };
+                        await vscodeUtils.showMarkdownPreview(fdesc);
                     }
                 }
             }

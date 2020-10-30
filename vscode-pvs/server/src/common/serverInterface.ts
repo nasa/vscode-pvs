@@ -364,6 +364,7 @@ export declare interface PvsContextDescriptor extends ContextFolder {
 export declare interface PvsFile extends ContextFolder {
 	fileName: string;
 	fileExtension: string;
+	fileContent?: string;
 }
 export declare type FileDescriptor = PvsFile;
 export declare interface PvsTheory extends PvsFile {
