@@ -589,9 +589,10 @@ export class PvsLanguageServer {
 			console.error("[pvs-language-server] Warning: pvs.typecheck-file invoked with null request");
 		}
 	}
-	async generateSummaryRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, content?: string }): Promise<void> {
+	async generateTheorySummaryRequest (request: PvsTheory, opt?: { showSummaryRequest?: boolean }): Promise<void> {
+		opt = opt || {};
 		if (request) {
-			const content: string = request.content || "";
+			const fileContent: string = request.fileContent || "";
 			const contextFolder: string = request.contextFolder;
 			const fileName: string = request.fileName;
 			const fileExtension: string = ".summary";
@@ -607,16 +608,47 @@ export class PvsLanguageServer {
 				contextFolder,
 				fileName,
 				fileExtension
-			}), request.theoryName, content);
+			}), request.theoryName, fileContent);
 
-			this.connection?.sendRequest(serverEvent.generateSummaryResponse, {
-				response: {
-					contextFolder,
-					fileName,
-					fileExtension
-				}, 
-				args: request 
-			});
+			if (opt.showSummaryRequest) {
+				this.connection?.sendRequest(serverEvent.showTheorySummaryResponse, {
+					response: {
+						contextFolder,
+						fileName,
+						fileExtension,
+						fileContent
+					}, 
+					args: request 
+				});
+			}
+		}
+	}
+	async generateWorkspaceSummaryRequest (request: FileDescriptor, opt?: { showSummaryRequest?: boolean }): Promise<void> {
+		opt = opt || {};
+		if (request) {
+			const fileContent: string = request.fileContent || "";
+			const contextFolder: string = request.contextFolder;
+			const fileName: string = request.fileName;
+			const fileExtension: string = ".workspace.summary";
+
+			// save content
+			await fsUtils.writeFile(fsUtils.desc2fname({
+				contextFolder,
+				fileName,
+				fileExtension
+			}), fileContent);
+
+			if (opt.showSummaryRequest) {
+				this.connection?.sendRequest(serverEvent.showWorkspaceSummaryResponse, {
+					response: {
+						contextFolder,
+						fileName,
+						fileExtension,
+						fileContent
+					}, 
+					args: request 
+				});
+			}
 		}
 	}
 	async generateTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { quiet?: boolean, showTccsRequest?: boolean }): Promise<void> {
@@ -700,7 +732,7 @@ export class PvsLanguageServer {
 		if (request) {
 			opt = opt || {};
 			if (request) {
-				if (fsUtils.isPvsFile(request)) {
+				if (fsUtils.isPvsFile(request) && !fsUtils.isSummaryFile(request)) {
 					if (request.contextFolder === path.join(this.lastParsedContext, "pvsbin")) {
 						// nothing to do
 						return;
@@ -1665,8 +1697,17 @@ export class PvsLanguageServer {
 			this.connection?.onRequest(serverRequest.generateTccs, async (request: { fileName: string, fileExtension: string, contextFolder: string, quiet?: boolean }) => {
 				this.generateTccsRequest(request, { quiet: request && request.quiet }); // async call
 			});
-			this.connection?.onRequest(serverRequest.generateSummary, async (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, content?: string }) => {
-				this.generateSummaryRequest(request); // async call
+			this.connection?.onRequest(serverRequest.generateTheorySummary, async (request: PvsTheory) => {
+				this.generateTheorySummaryRequest(request); // async call
+			});
+			this.connection?.onRequest(serverRequest.showTheorySummary, async (request: PvsTheory) => {
+				this.generateTheorySummaryRequest(request, { showSummaryRequest: true }); // async call
+			});
+			this.connection?.onRequest(serverRequest.generateWorkspaceSummary, async (request: FileDescriptor) => {
+				this.generateWorkspaceSummaryRequest(request); // async call
+			});
+			this.connection?.onRequest(serverRequest.showWorkspaceSummary, async (request: FileDescriptor) => {
+				this.generateWorkspaceSummaryRequest(request, { showSummaryRequest: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.listContext, async (request: ContextFolder) => {
 				this.listContextFilesRequest(request); // async call

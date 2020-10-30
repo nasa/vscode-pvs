@@ -40,8 +40,8 @@ import * as fsUtils from '../common/fsUtils';
 import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
-import { TheoryItem } from "../views/vscodePvsWorkspaceExplorer";
-import { PvsTheory, PvsFile, FileDescriptor } from '../common/serverInterface';
+import { TheoryItem, WorkspaceItem } from "../views/vscodePvsWorkspaceExplorer";
+import { PvsTheory, PvsFile, FileDescriptor, ContextFolder } from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 
 
@@ -481,6 +481,24 @@ export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: s
                     };
                 }
             }
+            return resource;
+        }
+    }
+    return null;
+}
+
+export async function getPvsWorkspace (resource: ContextFolder | WorkspaceItem | { path: string }): Promise<ContextFolder | null> {
+	if (resource) {
+        if (resource["contextValue"]) {
+            return {
+                contextFolder: (<TheoryItem> resource).contextFolder
+            };    
+        } else if (resource["path"]) {
+            return {
+                contextFolder: fsUtils.getContextFolder(resource["path"])
+            };
+		} else if (resource["contextFolder"]) {
+            resource = <ContextFolder> resource;
             return resource;
         }
     }

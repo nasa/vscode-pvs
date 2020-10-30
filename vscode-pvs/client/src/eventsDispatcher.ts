@@ -39,10 +39,10 @@
 import { LanguageClient } from "vscode-languageclient";
 import { VSCodePvsStatusBar } from "./views/vscodePvsStatusBar";
 import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindingsProvider";
-import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem } from "./views/vscodePvsWorkspaceExplorer";
+import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem, WorkspaceItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, ProofExecInterruptAndQuitProver, FileDescriptor } from "./common/serverInterface";
+import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
@@ -613,21 +613,24 @@ export class EventsDispatcher {
             this.vscodePvsTerminal.deactivate();
         });
 
-        this.client.onRequest(serverEvent.generateSummaryResponse, (desc: { 
+        this.client.onRequest(serverEvent.showTheorySummaryResponse, (desc: { 
             response: PvsFile,
-            args: { 
-                contextFolder: string,
-                fileName: string, 
-                fileExtension: string, 
-                theoryName: string,
-                content?: string
-            }
+            args: PvsTheory
         }) => {
             if (desc && desc.response) {
                 vscodeUtils.showTextDocument(desc.response);
             }
         });
         
+        this.client.onRequest(serverEvent.showWorkspaceSummaryResponse, (desc: { 
+            response: PvsFile,
+            args: PvsTheory
+        }) => {
+            if (desc && desc.response) {
+                vscodeUtils.showTextDocument(desc.response);
+            }
+        });
+
         this.client.onNotification(serverEvent.profilerData, (data: string) => {
             this.logger.profilerData(data);
         });
@@ -1067,6 +1070,44 @@ export class EventsDispatcher {
         // this request comes from workspace explorer
         context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs-explorer", async (resource: TccsOverviewItem) => {
             commands.executeCommand("vscode-pvs.discharge-tccs", resource);
+        }));
+
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-workspace-inline", async (resource: WorkspaceItem | { path: string }) => {
+            commands.executeCommand("vscode-pvs.prove-workspace", resource);
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.jprove-workspace", async (resource: WorkspaceItem | { path: string }) => {
+            commands.executeCommand("vscode-pvs.prove-workspace", resource, { useJprf: true });
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-workspace", async (resource: WorkspaceItem | { path: string }, opt?: { useJprf?: boolean }) => {
+            if (window.activeTextEditor && window.activeTextEditor.document) {
+                // if the file is currently open in the editor, save file first
+                await window.activeTextEditor.document.save();
+                if (!resource) {
+                    resource = { path: window.activeTextEditor.document.fileName };
+                }
+            }
+
+            const desc: ContextFolder = await vscodeUtils.getPvsWorkspace(resource);
+            if (desc && desc.contextFolder) {
+                opt = opt || {};
+                // ask the user confirmation before discharging
+                const yesno: string[] = [ "Yes", "No" ];
+                const contextFolderName: string = fsUtils.getContextFolderName(desc.contextFolder);
+                const msg: string = opt.useJprf ? `Re-run J-PRF proofs in workspace ${contextFolderName}?` : `Re-run all proofs in workspace ${contextFolderName}?`;
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+                if (ans === yesno[0]) {
+                    this.quietMode = true;
+                    this.proofMate.disableView();
+                    this.proofExplorer.disableView();
+
+                    await this.workspaceExplorer.proveWorkspaceWithProgress(desc, { useJprf: opt.useJprf });
+
+                    this.statusBar.ready();
+                    this.quietMode = false;
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-tccs invoked with null resource", resource);
+            }
         }));
         
         context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-bin", async () => {

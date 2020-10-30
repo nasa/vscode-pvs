@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, ConfigurationTarget } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, PvsFile } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, PvsFile, ContextFolder, FileDescriptor } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -557,7 +557,7 @@ class PvsFilesOverviewItem extends OverviewItem {
 		}
 	}
 }
-export class WorkspaceOverviewItem extends OverviewItem {
+export class WorkspaceItem extends OverviewItem {
 	contextValue: string = "workspace-overview";
 
 	protected path: string; // full path of the workspace
@@ -652,7 +652,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	protected providerView: string;
 	
 	protected view: TreeView<TreeItem>;
-	protected root: WorkspaceOverviewItem;
+	protected root: WorkspaceItem;
 	protected loading: LoadingItem = new LoadingItem();
 
 	protected filterOnTypeActive: boolean = false;
@@ -800,7 +800,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			if (this.root) {
 				this.root.updateContextFolder(desc, opt);
 			} else {
-				this.root = new WorkspaceOverviewItem(desc);
+				this.root = new WorkspaceItem(desc);
 			}
 		} else {
 			this.root = null;
@@ -849,7 +849,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 						resolve(null);
 					});
 					// create one summary for each theory
-					const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]} = {
+					const summary: utils.TheorySummary = {
 						theoryName: desc.theoryName,
 						theorems: [],
 						tccsOnly: opt.tccsOnly,
@@ -896,17 +896,153 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 					commands.executeCommand('setContext', 'autorun', false);
 					this.client.sendRequest(serverRequest.getContextDescriptor, desc);
 					if (summary && summary.total) {
-						this.client.sendRequest(serverRequest.generateSummary, {
+						this.client.sendRequest(serverRequest.showTheorySummary, {
 							contextFolder: desc.contextFolder,
 							fileName: desc.fileName,
 							fileExtension: desc.fileExtension,
 							theoryName: desc.theoryName,
-							content: utils.makeProofSummary(summary)
+							fileContent: utils.makeTheorySummary(summary)
 						});
 					} else {
 						// vscodeUtils.showInformationMessage(`0 proofs attempted`);
 					}
 					resolve();
+				});
+			});
+		}
+	}
+
+	// event dispatcher invokes this function with the command vscode-pvs.prove-theory
+	async proveWorkspaceWithProgress (desc: ContextFolder, opt?: {
+		useJprf?: boolean
+	}): Promise<void> {
+		if (desc && desc.contextFolder) {
+			opt = opt || {};
+			// show dialog with progress
+			await window.withProgress({
+				location: ProgressLocation.Notification,
+				cancellable: true
+			}, async (progress, token) => {
+				// show initial dialog with spinning progress
+				const message: string = `Preparing to prove theorems in workspace ${desc.contextFolder}`;
+				progress.report({ increment: -1, message });
+
+				const contextDescriptor: PvsContextDescriptor = await utils.getContextDescriptor(desc.contextFolder);
+
+				// update the dialog
+				return new Promise(async (resolve, reject) => {
+					let stop: boolean = false;
+					commands.executeCommand('setContext', 'autorun', true);
+					// show output panel for feedback
+					// commands.executeCommand("workbench.action.output.toggleOutput", true);
+					token.onCancellationRequested(async () => {
+						// stop loop
+						stop = true;
+						// stop proof explorer
+						commands.executeCommand("vscode-pvs.interrupt-and-quit-prover");
+						commands.executeCommand('setContext', 'autorun', false);
+						// dispose of the dialog
+						resolve(null);
+					});
+
+					if (contextDescriptor && contextDescriptor.fileDescriptors && !stop) {
+						// collect formulas
+						let totFormulas: number = 0;
+						for (let fileName in contextDescriptor.fileDescriptors) {
+							const fdesc: PvsFileDescriptor = contextDescriptor.fileDescriptors[fileName];
+							const theories: TheoryDescriptor[] = fdesc?.theories;
+							for (let k = 0; k < theories?.length; k++) {
+								totFormulas += theories[k].theorems?.length;
+							}
+						}
+						// create the workspace summary
+						const summary: utils.WorkspaceSummary = {
+							contextFolder: desc.contextFolder,
+							theories: [],
+							total: totFormulas
+						};
+
+						// re-run proofs
+						for (let fileName in contextDescriptor.fileDescriptors) {
+							const fdesc: PvsFileDescriptor = contextDescriptor.fileDescriptors[fileName];
+							const theories: TheoryDescriptor[] = fdesc?.theories;
+							// run all proofs in each theory
+							const stats: { ok: number, miss: number, total: number } = { ok: 0, miss: 0, total: 0 };
+							for (let k = 0; !stop && k < theories?.length; k++) {
+								const start: number = new Date().getTime();
+								const theory: TheoryDescriptor = theories[k];
+								if (theory.theorems) {
+									const formulas: FormulaDescriptor[] = theory.theorems;
+									for (let i = 0; !stop && i < formulas.length && !stop; i ++) {
+										const formula: FormulaDescriptor = formulas[i];
+										const theoryName: string = formula.theoryName;
+										const formulaName: string = formula.formulaName;
+										const contextFolderName: string = fsUtils.getContextFolderName(formula.contextFolder);
+
+										const message: string = `Re-running proofs in workspace ${contextFolderName} (${i + 1}/${totFormulas}) '${theoryName}.${formulaName}'`;
+										if (formulas.length > 1) {
+											progress.report({
+												increment: 1 / totFormulas * 100, // all increments must add up to 100
+												message
+											});
+										}
+										const status: ProofStatus = await new Promise((resolve, reject) => {
+											const autorunRequest: string = (opt.useJprf) ? serverRequest.autorunFormulaFromJprf : serverRequest.autorunFormula;
+											this.client.sendRequest(autorunRequest, {
+												contextFolder: formulas[i].contextFolder,
+												fileName: formulas[i].fileName,
+												fileExtension: formulas[i].fileExtension,
+												theoryName: formulas[i].theoryName,
+												formulaName
+											});
+											this.client.onRequest(serverEvent.autorunFormulaResponse, (desc: { status: ProofStatus, error?: string }) => {
+												if (desc && desc.error) {
+													vscodeUtils.showErrorMessage(desc.error);
+												}
+												setTimeout(() => {
+													// this timeout gives time to the front end to refresh the content
+													resolve(desc.status);
+												}, 250);
+											});
+										});
+										(status === "proved") ? stats.ok++ : stats.miss++;
+										stats.total++;
+									}
+								}
+								// create summary for the theory
+								const ms: number = new Date().getTime() - start;
+								const summaryItem: utils.WorkspaceSummaryItem = {
+									contextFolder: theory.contextFolder,
+									fileName: theory.fileName,
+									fileExtension: theory.fileExtension,
+									theoryName: theory.theoryName,
+									ok: stats.ok,
+									miss: stats.miss,
+									total: stats.total,
+									ms
+								};
+								summary.theories.push(summaryItem);
+							}
+						}
+
+						// generate summary
+						if (summary && summary.total) {
+							// when the summary is ready, the editor will receive a response from the server and open the summary
+							const summaryFile: FileDescriptor = {
+								contextFolder: desc.contextFolder,
+								fileName: fsUtils.getContextFolderName(desc.contextFolder),
+								fileExtension: ".workspace.summary",
+								fileContent: utils.makeWorkspaceSummary(summary)
+							}
+							this.client.sendRequest(serverRequest.showWorkspaceSummary, summaryFile);
+						}
+					}
+
+					// end of task
+					commands.executeCommand('setContext', 'autorun', false);
+					this.client.sendRequest(serverRequest.getContextDescriptor, desc);
+					resolve();
+
 				});
 			});
 		}
@@ -978,7 +1114,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							resolve(null);
 						});
 						// create one summary for each theory
-						const summary: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]} = {
+						const summary: utils.TheorySummary = {
 							theoryName: desc.theoryName,
 							theorems: [],
 							total: formulas.length
@@ -1016,12 +1152,12 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							summary.theorems.push({ theoryName, formulaName, status, ms });
 						}
 						this.client.sendRequest(serverRequest.getContextDescriptor, desc);
-						this.client.sendRequest(serverRequest.generateSummary, {
+						this.client.sendRequest(serverRequest.showTheorySummary, {
 							contextFolder: desc.contextFolder,
 							fileName: desc.fileName,
 							fileExtension: desc.fileExtension,
 							theoryName: desc.theoryName,
-							content: utils.makeProofSummary(summary)
+							fileContent: utils.makeTheorySummary(summary)
 						});
 						
 						commands.executeCommand('setContext', 'autorun', false);

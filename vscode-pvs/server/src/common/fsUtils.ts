@@ -38,7 +38,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileDescriptor, FileList} from '../common/serverInterface';
+import { ContextFolder, FileDescriptor, FileList} from '../common/serverInterface';
 import { execSync } from 'child_process';
 import * as crypto from 'crypto';
 import * as os from 'os';
@@ -343,6 +343,15 @@ export function isPvsFile(desc: string | { fileName: string, fileExtension: stri
 	}
 	return false;
 }
+export function isSummaryFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
+	if (desc) {
+		const ext: string = (typeof desc === "string") ? desc : (desc) ? desc.fileExtension : null;
+		if (ext) {
+			return ext.endsWith(".summary");
+		}
+	}
+	return false;
+}
 export function fileExists(fname: string): boolean {
 	return pathExists(fname);
 }
@@ -465,6 +474,15 @@ export function getOs (): { version?: string, error?: string } {
 		console.log(`[pvs-server] ${error}`);
 		return { error };
 	}
+}
+
+export function listSubFolders (folder: string): string[] {
+	if (folder) {
+		return fs.readdirSync(folder, { withFileTypes: true })
+			.filter((dir: fs.Dirent) => { return dir.isDirectory(); })
+			.map((dir: fs.Dirent) => { return dir.name; });
+	}
+	return null;
 }
 
 export function decodeURIComponents (desc) {

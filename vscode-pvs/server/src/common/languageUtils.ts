@@ -2167,7 +2167,59 @@ ${theoryName}: THEORY
 `;
 }
 
-export function makeProofSummary (desc: { total: number, tccsOnly?: boolean, theoryName: string, theorems: { theoryName: string, formulaName: string, status: ProofStatus, ms: number }[]}): string {
+export interface WorkspaceSummaryItem extends PvsTheory {
+	ok: number,
+	miss: number,
+	total: number,
+	ms: number	
+}
+export type WorkspaceSummary = {
+	total: number, 
+	contextFolder: string,
+	theories: WorkspaceSummaryItem[]
+}
+export function makeWorkspaceSummary (desc: WorkspaceSummary): string {
+	const header: string = "Proof summary";
+	const workspaceName: string = fsUtils.getContextFolderName(desc.contextFolder);
+	let ans: string = `${header} for workspace ${workspaceName}\n`;
+	let nProved: number = 0;
+	let nMissed: number = 0;
+	let totTime: number = 0;
+	let libraries: { [name: string]: boolean } = {};
+	for (let i = 0; i < desc.theories.length; i++) {
+		const theory: WorkspaceSummaryItem = desc.theories[i];
+		libraries[theory.contextFolder] = true;
+
+		const points: number = 64 - theory.theoryName.length;
+		const overall: string = (theory.miss) ? `[ MISS: ${theory.miss} unsuccessful / ${theory.total} formulas ]`
+			: `[ OK: ${theory.ok} proofs ]`;
+		const spaces: number = 20 - overall.length;
+		nProved += theory.ok;
+		nMissed += theory.miss;
+		ans += `\n\t${theory.theoryName}` + ".".repeat(points) + " " + overall + " ".repeat(spaces) + `(${Math.floor(theory.ms / 1000)} sec)`;
+		totTime += theory.ms;
+	}
+	ans += `\n\nWorkspace ${workspaceName} totals: ${desc.total} formulas, ${nProved + nMissed} attempted, ${nProved} succeeded (${Math.floor(totTime / 1000)} sec)`;
+// 	ans += `\n
+// *** Grand Totals: ${nProved} proofs / ${desc.total} formulas. Missed: ${nMissed} formulas.
+// *** Number of libraries: ${Object.keys(libraries).length}`;	
+	return ans;
+}
+
+
+export interface TheorySummaryItem {
+	theoryName: string, 
+	formulaName: string, 
+	status: ProofStatus, 
+	ms: number 
+}
+export type TheorySummary = { 
+	total: number, 
+	tccsOnly?: boolean, 
+	theoryName: string,
+	theorems: TheorySummaryItem[]
+}
+export function makeTheorySummary (desc: TheorySummary): string {
 	const header: string = desc.tccsOnly ? "TCCs summary" : "Proof summary";
 	let ans: string = `${header} for theory ${desc.theoryName}\n`;
 	let nProved: number = 0;

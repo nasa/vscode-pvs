@@ -232,6 +232,19 @@
 				"icon": "icons/play-circle-icon.png"
 			},
 			{
+				"command": "vscode-pvs.prove-workspace",
+				"title": "Re-run All Proofs",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem == workspace-overview",
+				"category": "pvs"
+			},
+			{
+				"command": "vscode-pvs.prove-workspace-inline",
+				"title": "Prove-All",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem == workspace-overview",
+				"category": "pvs",
+				"icon": "icons/play-circle-icon.png"
+			},
+			{
 				"command": "vscode-pvs.prove-importchain",
 				"title": "Re-run ImportChain",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
@@ -627,6 +640,11 @@
 				{
 					"command": "vscode-pvs.prove-theory-inline",
 					"when": "view == workspace-explorer-view && viewItem == theory",
+					"group": "inline"
+				},
+				{
+					"command": "vscode-pvs.prove-workspace-inline",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
 					"group": "inline"
 				},
 				{
