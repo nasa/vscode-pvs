@@ -42,14 +42,20 @@ describe("pvs-prover", () => {
 
 	// utility function, quits the prover if the prover status is active
 	const quitProverIfActive = async (): Promise<void> => {
-		// quit prover if prover status is active
-		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
-		expect(proverStatus.result).toBeDefined();
-		expect(proverStatus.error).not.toBeDefined();
-		// console.log(proverStatus);
+		let proverStatus: PvsResult = await pvsProxy.pvsRequest('prover-status'); // await pvsProxy.getProverStatus();		
+		// console.dir(proverStatus);
 		if (proverStatus && proverStatus.result !== "inactive") {
 			await pvsProxy.proofCommand({ cmd: 'quit' });
 		}
+
+		// // quit prover if prover status is active
+		// const proverStatus: PvsResult = await pvsProxy.getProverStatus();
+		// expect(proverStatus.result).toBeDefined();
+		// expect(proverStatus.error).not.toBeDefined();
+		// // console.log(proverStatus);
+		// if (proverStatus && proverStatus.result !== "inactive") {
+		// 	await pvsProxy.proofCommand({ cmd: 'quit' });
+		// }
 	}
 
 	// @Sam: this first test fails intermittently.
@@ -537,6 +543,55 @@ describe("pvs-prover", () => {
 
 		await quitProverIfActive();
     });
+
+
+	fit(`can prove omega_2D_continuous without triggering stack overflow`, async () => {
+        await quitProverIfActive();
+
+        const formula: PvsFormula = {
+            contextFolder: path.join(__dirname, "nasalib/ACCoRD"),
+            fileExtension: ".pvs",
+            fileName: "omega_2D",
+            theoryName: "omega_2D",
+            formulaName: "omega_2D_continuous"
+        };
+
+        let response: PvsResponse = await pvsProxy.proveFormula(formula);
+		// console.dir(response);
+		const cmds: string[] = [
+			`(skosimp*)`,
+			`(lemma "curried_min_is_cont_2D")`,
+			`(inst - "(LAMBDA (t: real, v: Vect2): IF (B <= t AND t <= T) THEN horiz_dist_scaf(s!1)(t,v) ELSE 0 ENDIF)" "B" "T")`,
+			`(ground)`,
+			`(expand "continuous?")`,
+			`(expand "continuous?")`,
+			`(expand "continuous_at?")`,
+			`(skosimp*)`,
+			`(inst - "x!1")`,
+			`(inst - "epsilon!1")`,
+			`(skosimp*)`,
+			`(inst + "delta!1")`,
+			`(skosimp*)`,
+			`(inst - "y!1")`,
+			`(expand "member")`,
+			`(expand "ball")`,
+			`(lemma "omega_2D_min_rew")`,
+			`(inst-cp - "s!1" "x!1")`,
+			`(inst - "s!1" "y!1")`,
+			`(assert)`,
+			`(case "{r: real | EXISTS (t: Lookahead): horiz_dist_scaf(s!1)(t, y!1) = r} = {r: real | EXISTS (t_1: (LAMBDA (x: real): B <= x AND x <= T)): r = horiz_dist_scaf(s!1)(t_1, y!1)} AND {r: real | EXISTS (t: Lookahead): horiz_dist_scaf(s!1)(t, x!1) = r} = {r: real | EXISTS (t_1: (LAMBDA (x: real): B <= x AND x <= T)): r = horiz_dist_scaf(s!1)(t_1, x!1)}")`,
+			`(flatten)`,
+			`(assert)`
+		]
+		for (let i = 0; i < cmds.length; i++) {
+			response = await pvsProxy.proofCommand({ cmd: cmds[i] });
+		}
+		console.dir(response);
+		expect(response.error).not.toBeDefined();
+		expect(response.result).toBeDefined();
+
+	}, 80000);
+	
 
 	xit(`stuck thread`, async () => {
         await quitProverIfActive();

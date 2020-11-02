@@ -799,7 +799,8 @@ export class PvsProxy {
 	 * Typechecks a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
 	 */
-  	async typecheckFile (desc: PvsFile): Promise<PvsResponse> {
+  	async typecheckFile (desc: PvsFile, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
+		opt = opt || {};
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			let fname: string = fsUtils.desc2fname(desc);
 			if (this.isProtectedFolder(desc.contextFolder)) {
@@ -821,9 +822,9 @@ export class PvsProxy {
 			await this.getPvsTemporaryFolder();
 			// typecheck file
 			await this.changeContext(desc);
-			const res: PvsResponse = await this.legacy.typecheckFile(fname);
-			// const res: PvsResponse = (this.useLegacy) ? await this.legacy.typecheckFile(fname)
-			// 		: await this.pvsRequest('typecheck', [ fname ]);
+			// const res: PvsResponse = await this.legacy.typecheckFile(fname);
+			const res: PvsResponse = (opt.externalServer) ? await this.pvsRequest('typecheck', [ fname ])
+				: await this.legacy.typecheckFile(fname);
 			if (res && (res.error && res.error.data) || res.result) {
 				if (res.error) {
 					// the typecheck error might be generated from an imported file --- we need to check res.error.file_name
@@ -1306,6 +1307,7 @@ export class PvsProxy {
 								shasum,
 								status: jpdesc?.info?.status || "untried"
 							});
+							// console.log(pdesc);
 						}
 						if (!utils.isEmptyProof(pdesc)) {
 							break;

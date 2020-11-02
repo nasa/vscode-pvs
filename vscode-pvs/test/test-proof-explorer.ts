@@ -398,5 +398,27 @@ describe("proof-explorer", () => {
 		}, request5);
 		expect(success).toBeTrue();
 	});
+
+	// fit(`can prove omega_2D_continuous without triggering stack overflow`, async () => {
+	// 	let proverStatus: PvsResult = await server.getPvsProxy().pvsRequest('prover-status'); // await pvsProxy.getProverStatus();		
+	// 	// console.dir(proverStatus);
+	// 	if (proverStatus && proverStatus.result !== "inactive") {
+	// 		await server.getPvsProxy().proofCommand({ cmd: 'quit' });
+	// 	}
+
+    //     const formula: PvsFormula = {
+    //         contextFolder: path.join(__dirname, "nasalib/ACCoRD"),
+    //         fileExtension: ".pvs",
+    //         fileName: "omega_2D",
+    //         theoryName: "omega_2D",
+    //         formulaName: "omega_2D_continuous"
+    //     };
+
+	// 	await server.proveFormulaRequest(formula, { autorun: true, externalServer: true });
+	// 	await server.
+	// 	// const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
+	// 	// console.dir(res);
+	// 	// expect(res.success).toBeTrue();
+	// }, 80000);
 });
 

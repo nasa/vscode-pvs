@@ -303,7 +303,13 @@ export class PvsLanguageServer {
 		theoryName: string, 
 		formulaName: string,
 		proofFile?: FileDescriptor 
-	}, opt?: { autorun?: boolean, newProof?: boolean, useJprf?: boolean, skipSave?: boolean }): Promise<void> {
+	}, opt?: { 
+		autorun?: boolean, 
+		newProof?: boolean, 
+		useJprf?: boolean, 
+		skipSave?: boolean,
+		externalServer?: boolean
+	}): Promise<void> {
 		opt = opt || {};
 		if (desc && desc.formulaName && desc.theoryName && desc.fileName && desc.contextFolder) {
 			desc = fsUtils.decodeURIComponents(desc);
@@ -338,7 +344,7 @@ export class PvsLanguageServer {
 					contextFolder: desc.contextFolder,
 					fileName: desc.fileName,
 					fileExtension: ".pvs" // this allows to check the pvs file for .tccs
-				});
+				}, opt);
 				if (response && response.error) {
 					const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(desc);
 					this.diags[fname] = {
@@ -503,11 +509,12 @@ export class PvsLanguageServer {
 	 * Typecheck file
 	 * @param args Handler arguments: filename, file extension, context folder
 	 */
-	async typecheckFile (args: PvsFile): Promise<PvsResponse | null> {
+	async typecheckFile (args: PvsFile, opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
+		opt = opt || {};
 		if (args && args.fileName && args.fileExtension && args.contextFolder) {
 			try {
 				args = fsUtils.decodeURIComponents(args);
-				const response: PvsResponse = await this.pvsProxy?.typecheckFile(args);
+				const response: PvsResponse = await this.pvsProxy?.typecheckFile(args, opt);
 				// send diagnostics
 				if (response) {
 					if (response.result) {
