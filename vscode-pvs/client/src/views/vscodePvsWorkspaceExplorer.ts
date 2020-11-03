@@ -817,7 +817,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	// event dispatcher invokes this function with the command vscode-pvs.prove-theory
 	async proveTheoryWithProgress (desc: PvsTheory, opt?: {
 		tccsOnly?: boolean,
-		useJprf?: boolean
+		useJprf?: boolean,
+		unprovedOnly?: boolean
 	}): Promise<void> {
 		if (desc && desc.theoryName) {
 			opt = opt || {};
@@ -831,7 +832,39 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				progress.report({ increment: -1, message });
 
 				const formulas: PvsFormula[] = (opt.tccsOnly) ? await this.getTccs(desc) : await this.getTheorems(desc);
+				let skip: PvsFormula[] = [];
+				
+				if (opt.unprovedOnly) {
+					const provedTheorems: FormulaItem[] = this.root?.getTheoryItem(desc)?.getTheorems()?.filter(item => {
+						return item.getStatus() === "proved";
+					}) || [];
+					const provedTCCs: FormulaItem[] = this.root?.getTheoryItem(desc)?.getTCCs()?.filter(item => {
+						return item.getStatus() === "proved";
+					}) || [];
+					const proved: PvsFormula[] = formulas.filter(formula => {
+						for (let i = 0; i < provedTheorems.length; i++) {
+							if (provedTheorems[i].getFormulaName() === formula.formulaName) {
+								return true;
+							}
+						}
+						for (let i = 0; i < provedTCCs.length; i++) {
+							if (provedTCCs[i].getFormulaName() === formula.formulaName) {
+								return true;
+							}
+						}
+						return false;
+					});
+					skip = proved;
+				}
 
+				// create summary template
+				const summary: utils.TheorySummary = {
+					theoryName: desc.theoryName,
+					theorems: [],
+					tccsOnly: opt.tccsOnly,
+					total: (formulas) ? formulas.length : 0
+				};
+				
 				progress.report({ increment: -1, message });
 				// update the dialog
 				return new Promise(async (resolve, reject) => {
@@ -848,17 +881,11 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 						// dispose of the dialog
 						resolve(null);
 					});
-					// create one summary for each theory
-					const summary: utils.TheorySummary = {
-						theoryName: desc.theoryName,
-						theorems: [],
-						tccsOnly: opt.tccsOnly,
-						total: (formulas) ? formulas.length : 0
-					};
 					if (formulas && formulas.length) {
 						for (let i = 0; i < formulas.length && !stop; i ++) {
-							const theoryName: string = formulas[i].theoryName;
-							const formulaName: string = formulas[i].formulaName;
+							const formula: PvsFormula = formulas[i];
+							const theoryName: string = formula.theoryName;
+							const formulaName: string = formula.formulaName;
 							const message: string = (opt.tccsOnly) ? `Discharging proof obligations in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
 								: `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
 							if (formulas.length > 1) {
@@ -868,8 +895,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 								});
 							}
 							const start: number = new Date().getTime();
-
-							const status: ProofStatus = await new Promise((resolve, reject) => {
+							const status: ProofStatus =  skip.includes(formula) ? "proved" : await new Promise((resolve, reject) => {
 								const autorunRequest: string = (opt.useJprf) ? serverRequest.autorunFormulaFromJprf : serverRequest.autorunFormula;
 								this.client.sendRequest(autorunRequest, {
 									contextFolder: formulas[i].contextFolder,
@@ -888,7 +914,6 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 									}, 250);
 								});
 							});
-
 							const ms: number = new Date().getTime() - start;
 							summary.theorems.push({ theoryName, formulaName, status, ms });
 						}

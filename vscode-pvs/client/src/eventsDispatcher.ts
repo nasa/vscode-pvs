@@ -982,19 +982,22 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.jprove-theory", async (resource: TheoryItem | { path: string }) => {
             commands.executeCommand("vscode-pvs.prove-theory", resource, { useJprf: true });
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-theory", async (resource: TheoryItem | { path: string }, opt?: { useJprf?: boolean }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-theory", async (resource: TheoryItem | { path: string }, opt?: { useJprf?: boolean, unprovedOnly?: boolean }) => {
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
             if (desc && desc.theoryName) {
                 opt = opt || {};
                 // ask the user confirmation before restarting pvs
-                const yesno: string[] = [ "Yes", "No" ];
+                const yesno: string[] = [ "Yes", "Unproved Only", "No" ];
                 const msg: string = opt.useJprf ? `Re-run J-PRF proofs in theory ${desc.theoryName}?` : `Re-run all proofs in theory ${desc.theoryName}?`;
-                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
-                if (ans === yesno[0]) {
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0], yesno[1]);
+                if (ans === yesno[0] || ans === yesno[1]) {
+                    opt.unprovedOnly = ans === yesno[1];
                     this.quietMode = true;
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
-                    const msg: string = opt.useJprf ? `Re-running J-PRF proofs (theory ${desc.theoryName})` : `Re-running proofs in theory ${desc.theoryName}`
+                    const msg: string = (opt.unprovedOnly) ? 
+                        opt.useJprf ? `Running unproved J-PRF proofs (theory ${desc.theoryName})` : `Running unproved proofs in theory ${desc.theoryName}`
+                            : opt.useJprf ? `Re-running J-PRF proofs (theory ${desc.theoryName})` : `Re-running proofs in theory ${desc.theoryName}`;
                     this.statusBar.showProgress(msg);
 
                     await this.workspaceExplorer.proveTheoryWithProgress(desc, opt);
@@ -1034,7 +1037,7 @@ export class EventsDispatcher {
             }
         }));
         // this request comes from the context menu displayed by the editor
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: TheoryItem | { path: string }, opt?: { useJprf?: boolean }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: TheoryItem | { path: string }, opt?: { useJprf?: boolean, unprovedOnly?: boolean }) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();
@@ -1047,15 +1050,20 @@ export class EventsDispatcher {
             if (desc && desc.theoryName) {
                 opt = opt || {};
                 // ask the user confirmation before discharging
-                const yesno: string[] = [ "Yes", "No" ];
+                const yesno: string[] = [ "Yes", "Unproved Only", "No" ];
                 const msg: string = opt.useJprf ? `Discharge TCCs using J-PRF?` : `Discharge all TCCs?`;
-                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
-                if (ans === yesno[0]) {
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0], yesno[1]);
+                if (ans === yesno[0] || ans === yesno[1]) {
+                    opt.unprovedOnly = ans === yesno[1];
                     this.quietMode = true;
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
+                    const msg: string = (opt.unprovedOnly) ? 
+                        opt.useJprf ? `Running unproved J-PRF TCCs (theory ${desc.theoryName})` : `Running unproved TCCs in theory ${desc.theoryName}`
+                            : opt.useJprf ? `Re-running J-PRF TCCs (theory ${desc.theoryName})` : `Re-running TCCs in theory ${desc.theoryName}`;
+                    this.statusBar.showProgress(msg);
 
-                    await this.workspaceExplorer.proveTheoryWithProgress(desc, { tccsOnly: true, useJprf: opt.useJprf });
+                    await this.workspaceExplorer.proveTheoryWithProgress(desc, { tccsOnly: true, useJprf: opt.useJprf, unprovedOnly: opt.unprovedOnly });
 
                     this.statusBar.ready();
                     this.quietMode = false;
