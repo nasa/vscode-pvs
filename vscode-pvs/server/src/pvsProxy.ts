@@ -685,7 +685,12 @@ export class PvsProxy {
 					if (!opt.tccsOnly) {
 						const formulaDescriptors: FormulaDescriptor[] = await utils.listTheoremsInFile(fsUtils.desc2fname(theories[i]));
 						if (formulaDescriptors && formulaDescriptors.length) {
-							ans = ans.concat(formulaDescriptors);
+							const theorems: FormulaDescriptor[] = formulaDescriptors.filter(formula => {
+								return formula.theoryName === desc.theoryName;
+							});
+							if (theorems && theorems.length) {
+								ans = ans.concat(theorems);
+							}
 						}
 					}
 					// generate tccs for the given theory
