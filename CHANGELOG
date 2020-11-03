@@ -1,4 +1,8 @@
 ## ChangeLog
+### 1.0.28 (2020.11.xx)
+- Added option for re-running only unproved proofs
+- Improved Proof Explorer (prove-workspace)
+
 ### 1.0.27 (2020.10.29)
 - Improved dialogs and feedback for errors
 - Added interrupt command (ctrl+c) to stop the execution of a proof command in the theorem prover
@@ -7,7 +11,7 @@
 - Improved PVSio terminal
 - Improved dialogs and icons
 - Improved installation wizard
-- Improver Proof Explorer (import/export proof, automatic backup of proof script)
+- Improved Proof Explorer (import/export proof, automatic backup of proof script)
 
 ### 1.0.25 (2020.09.23)
 - Proof files are now saved using legacy .prf format

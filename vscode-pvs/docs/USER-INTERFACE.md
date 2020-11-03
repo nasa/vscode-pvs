@@ -5,7 +5,12 @@ This document illustrates the layout and functionalities of VSCode-PVS.
 
 ## Layout
 
-The layout of VSCode-PVS includes 6 main elements:
+The layout of VSCode-PVS includes 6 main elements.
+
+<img src="../screenshots/vscode-pvs-user-interface-annotated.png">
+
+<br>
+
 1. [PVS]() button. Located in the vscode activity bar, this button activates three custom views created for PVS: *Workspace Explorer*, *Proof Explorer*, and *Proof Mate*.
 2. [Workspace Explorer]() view. Located in the vscode side panel, this view shows the name of the PVS theories defined in the current workspace, as well as the list of theorems defined in each theory. Contextual menus and in-line actions provide quick access to functionalities such as *typechecking* and *prove formula*.
 3. [Proof Explorer]() view. Located in the vscode side panel, this view shows the proof tree for the current proof. Contextual menus and in-line actions provide quick access to functionalities such as *run proof* and *step proof*.
@@ -13,23 +18,21 @@ The layout of VSCode-PVS includes 6 main elements:
 5. [Editor]() view. Located in the vscode central panel, this view allows to edit PVS files.
 6. [Prover Terminal]() view. Located in the vscode lower panel, this view provides an interactive prompt for sending proof commands to the PVS theorem prover.
 
-<img src="../screenshots/vscode-pvs-user-interface-annotated.png">
-
 <br><br>
 
 ## Navigation
 
-<br> <img src="../screenshots/vscode-pvs-theory-explorer.gif" width="600">
-
 VSCode-PVS provides an interactive tree view, `Workspace Explorer`, to facilitate the navigation of folders containing PVS files (such folders are called *PVS workspaces*).
 
-The interactive tree view includes two main types of nodes:
-- `theory nodes`: top-level nodes, representing *theories* defined in the current PVS workspace.
-- `formula nodes`: second-level nodes, representing *formulas* (theorems, lemmas, TCCs, etc.) defined within a theory.
+<br> <img src="../screenshots/vscode-pvs-theory-explorer.gif" width="600">
 
-Click on a node to select the node and open files in the Editor:
-- Click on a theory node to open in the Editor the PVS file where the theory is defined.
-- Click on a formula node to jump to the formula definition.
+The interactive tree view includes two main types of elements:
+- `theories`: represent *theories* defined in the current PVS workspace.
+- `formulas`: represent *formulas* (theorems, lemmas, TCCs, etc.) defined within a theory.
+
+Clicking on the elements in the tree view triggers specific actions:
+- Click on a theory to open in the Editor the PVS file where the theory is defined.
+- Click on a formula to jump to the formula definition.
 
 Right-click on a node to open contextual menus providing common actions on PVS files:
 - `Typecheck file`: typechecks the selected file or theory
