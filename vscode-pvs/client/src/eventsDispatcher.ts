@@ -754,6 +754,7 @@ export class EventsDispatcher {
             // ask the user confirmation before restarting pvs
             const action: ProofExecInterruptAndQuitProver = { action: "interrupt-and-quit-prover" };
             this.client.sendRequest(serverRequest.proverCommand, action);
+            this.statusBar.ready();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.download-nasalib", async () => {
             const success: boolean = await this.packageManager.nasalibInstallationWizard();
@@ -1086,7 +1087,7 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.jprove-workspace", async (resource: WorkspaceItem | { path: string }) => {
             commands.executeCommand("vscode-pvs.prove-workspace", resource, { useJprf: true });
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-workspace", async (resource: WorkspaceItem | { path: string }, opt?: { useJprf?: boolean }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-workspace", async (resource: WorkspaceItem | { path: string }, opt?: { useJprf?: boolean, unprovedOnly?: boolean }) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();
@@ -1099,16 +1100,17 @@ export class EventsDispatcher {
             if (desc && desc.contextFolder) {
                 opt = opt || {};
                 // ask the user confirmation before discharging
-                const yesno: string[] = [ "Yes", "No" ];
+                const yesno: string[] = [ "Yes", "Unproved Only", "No" ];
                 const contextFolderName: string = fsUtils.getContextFolderName(desc.contextFolder);
                 const msg: string = opt.useJprf ? `Re-run J-PRF proofs in workspace ${contextFolderName}?` : `Re-run all proofs in workspace ${contextFolderName}?`;
-                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
-                if (ans === yesno[0]) {
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0], yesno[1])
+                if (ans === yesno[0] || ans === yesno[1]) {
+                    opt.unprovedOnly = ans === yesno[1];
                     this.quietMode = true;
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
 
-                    await this.workspaceExplorer.proveWorkspaceWithProgress(desc, { useJprf: opt.useJprf });
+                    await this.workspaceExplorer.proveWorkspaceWithProgress(desc, opt);
 
                     this.statusBar.ready();
                     this.quietMode = false;
@@ -1270,7 +1272,7 @@ export class EventsDispatcher {
                 let desc = this.resource2desc(resource);
                 if (desc) {
                     // send parse request to pvs-server
-                    this.client.sendRequest(serverRequest.typecheckWorkspace, desc);
+                    this.client.sendRequest(serverRequest.typecheckWorkspaceWithFeedback, desc);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);

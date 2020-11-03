@@ -403,6 +403,7 @@ export const serverRequest = {
 	parseWorkspace: "pvs.parse-workspace",
 	parseWorkspaceWithFeedback: "pvs.parse-workspace.with-feedback",
 	typecheckWorkspace: "pvs.typecheck-workspace",
+	typecheckWorkspaceWithFeedback: "pvs.typecheck-workspace.with-feedback",
 	listContext: "pvs.list-context",
 	generateTccs: "pvs.generate-tccs",
 	showTccs: "pvs.show-tccs",
@@ -440,6 +441,7 @@ export const serverRequest = {
 
 export const serverEvent = {
 	typecheckFileResponse: "pvs.response.typecheck-file",
+	typecheckWorkspaceResponse: "pvs.response.typecheck-workspace",
 	proveFormulaResponse: "pvs.response.prove-formula",
 	autorunFormulaResponse: "pvs.response.autorun-formula",
 	loadProofResponse: "pvs.response.load-proof",

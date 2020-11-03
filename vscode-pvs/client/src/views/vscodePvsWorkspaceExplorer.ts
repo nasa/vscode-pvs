@@ -814,6 +814,16 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		this._onDidChangeTreeData.fire();
 	}
 
+	getProvedTheorems (desc: PvsTheory): FormulaItem[] {
+		const provedTheorems: FormulaItem[] = this.root?.getTheoryItem(desc)?.getTheorems()?.filter(item => {
+			return item.getStatus() === "proved";
+		}) || [];
+		const provedTCCs: FormulaItem[] = this.root?.getTheoryItem(desc)?.getTCCs()?.filter(item => {
+			return item.getStatus() === "proved";
+		}) || [];
+		return provedTheorems.concat(provedTCCs);
+	}
+
 	// event dispatcher invokes this function with the command vscode-pvs.prove-theory
 	async proveTheoryWithProgress (desc: PvsTheory, opt?: {
 		tccsOnly?: boolean,
@@ -835,20 +845,10 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				let skip: PvsFormula[] = [];
 				
 				if (opt.unprovedOnly) {
-					const provedTheorems: FormulaItem[] = this.root?.getTheoryItem(desc)?.getTheorems()?.filter(item => {
-						return item.getStatus() === "proved";
-					}) || [];
-					const provedTCCs: FormulaItem[] = this.root?.getTheoryItem(desc)?.getTCCs()?.filter(item => {
-						return item.getStatus() === "proved";
-					}) || [];
+					const provedTheorems: FormulaItem[] = this.getProvedTheorems(desc);
 					const proved: PvsFormula[] = formulas.filter(formula => {
 						for (let i = 0; i < provedTheorems.length; i++) {
 							if (provedTheorems[i].getFormulaName() === formula.formulaName) {
-								return true;
-							}
-						}
-						for (let i = 0; i < provedTCCs.length; i++) {
-							if (provedTCCs[i].getFormulaName() === formula.formulaName) {
 								return true;
 							}
 						}
@@ -939,7 +939,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 
 	// event dispatcher invokes this function with the command vscode-pvs.prove-theory
 	async proveWorkspaceWithProgress (desc: ContextFolder, opt?: {
-		useJprf?: boolean
+		useJprf?: boolean,
+		unprovedOnly?: boolean
 	}): Promise<void> {
 		if (desc && desc.contextFolder) {
 			opt = opt || {};
@@ -949,11 +950,32 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				cancellable: true
 			}, async (progress, token) => {
 				// show initial dialog with spinning progress
-				const message: string = `Preparing to prove theorems in workspace ${desc.contextFolder}`;
+				const workspaceName: string = fsUtils.getContextFolderName(desc.contextFolder);
+				const message: string = `Preparing to prove theorems in workspace ${workspaceName}`;
 				progress.report({ increment: -1, message });
 
-				const contextDescriptor: PvsContextDescriptor = await utils.getContextDescriptor(desc.contextFolder);
+				// typecheck the workspace first, so all TCCs are generated
+				await this.typecheckWorkspace(desc);
+				// get context descriptor with the list of all theorems in the workspace
+				const contextDescriptor: PvsContextDescriptor = await utils.getContextDescriptor(desc.contextFolder, { includeTccs: true });
 
+				// collect formulas
+				let totFormulas: number = 0;
+				for (let fileName in contextDescriptor.fileDescriptors) {
+					const fdesc: PvsFileDescriptor = contextDescriptor.fileDescriptors[fileName];
+					const theories: TheoryDescriptor[] = fdesc?.theories;
+					for (let k = 0; k < theories?.length; k++) {
+						totFormulas += theories[k].theorems?.length;
+					}
+				}
+				
+				// create the workspace summary
+				const summary: utils.WorkspaceSummary = {
+					contextFolder: desc.contextFolder,
+					theories: [],
+					total: totFormulas
+				};
+				
 				// update the dialog
 				return new Promise(async (resolve, reject) => {
 					let stop: boolean = false;
@@ -971,23 +993,8 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 					});
 
 					if (contextDescriptor && contextDescriptor.fileDescriptors && !stop) {
-						// collect formulas
-						let totFormulas: number = 0;
-						for (let fileName in contextDescriptor.fileDescriptors) {
-							const fdesc: PvsFileDescriptor = contextDescriptor.fileDescriptors[fileName];
-							const theories: TheoryDescriptor[] = fdesc?.theories;
-							for (let k = 0; k < theories?.length; k++) {
-								totFormulas += theories[k].theorems?.length;
-							}
-						}
-						// create the workspace summary
-						const summary: utils.WorkspaceSummary = {
-							contextFolder: desc.contextFolder,
-							theories: [],
-							total: totFormulas
-						};
-
 						// re-run proofs
+						let counter: number = 1;
 						for (let fileName in contextDescriptor.fileDescriptors) {
 							const fdesc: PvsFileDescriptor = contextDescriptor.fileDescriptors[fileName];
 							const theories: TheoryDescriptor[] = fdesc?.theories;
@@ -998,20 +1005,22 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 								const theory: TheoryDescriptor = theories[k];
 								if (theory.theorems) {
 									const formulas: FormulaDescriptor[] = theory.theorems;
-									for (let i = 0; !stop && i < formulas.length && !stop; i ++) {
+									for (let i = 0; !stop && i < formulas.length && !stop; i++) {
 										const formula: FormulaDescriptor = formulas[i];
 										const theoryName: string = formula.theoryName;
 										const formulaName: string = formula.formulaName;
 										const contextFolderName: string = fsUtils.getContextFolderName(formula.contextFolder);
 
-										const message: string = `Re-running proofs in workspace ${contextFolderName} (${i + 1}/${totFormulas}) '${theoryName}.${formulaName}'`;
+										const message: string = (opt.unprovedOnly) ? 
+											`Re-running unproved formulas in workspace ${contextFolderName} (${counter++}/${totFormulas}) '${theoryName}.${formulaName}'`
+											: `Re-running proofs in workspace ${contextFolderName} (${counter++}/${totFormulas}) '${theoryName}.${formulaName}'`;
 										if (formulas.length > 1) {
 											progress.report({
 												increment: 1 / totFormulas * 100, // all increments must add up to 100
 												message
 											});
 										}
-										const status: ProofStatus = await new Promise((resolve, reject) => {
+										const status: ProofStatus = (opt.unprovedOnly && formula.status === "proved") ? "proved" : await new Promise((resolve, reject) => {
 											const autorunRequest: string = (opt.useJprf) ? serverRequest.autorunFormulaFromJprf : serverRequest.autorunFormula;
 											this.client.sendRequest(autorunRequest, {
 												contextFolder: formulas[i].contextFolder,
@@ -1049,25 +1058,26 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 								summary.theories.push(summaryItem);
 							}
 						}
-
-						// generate summary
-						if (summary && summary.total) {
-							// when the summary is ready, the editor will receive a response from the server and open the summary
-							const summaryFile: FileDescriptor = {
-								contextFolder: desc.contextFolder,
-								fileName: fsUtils.getContextFolderName(desc.contextFolder),
-								fileExtension: ".workspace.summary",
-								fileContent: utils.makeWorkspaceSummary(summary)
-							}
-							this.client.sendRequest(serverRequest.showWorkspaceSummary, summaryFile);
-						}
 					}
 
 					// end of task
 					commands.executeCommand('setContext', 'autorun', false);
-					this.client.sendRequest(serverRequest.getContextDescriptor, desc);
 					resolve();
 
+					// generate summary
+					if (summary && summary.total) {
+						// when the summary is ready, the editor will receive a response from the server and open the summary
+						const summaryFile: FileDescriptor = {
+							contextFolder: desc.contextFolder,
+							fileName: fsUtils.getContextFolderName(desc.contextFolder),
+							fileExtension: ".workspace.summary",
+							fileContent: utils.makeWorkspaceSummary(summary)
+						}
+						this.client.sendRequest(serverRequest.showWorkspaceSummary, summaryFile);
+					}
+					
+					// update context descriptor
+					// this.client.sendRequest(serverRequest.getContextDescriptor, desc);
 				});
 			});
 		}
@@ -1095,6 +1105,15 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 					vscodeUtils.showProblemsPanel();
 				}
 				return response ? resolve(response.theorems) : resolve(null);
+			});
+		});
+	}
+
+	async typecheckWorkspace (desc: ContextFolder): Promise<boolean> {
+		return new Promise((resolve, reject) => {
+			this.client.sendRequest(serverRequest.typecheckWorkspace, desc);
+			this.client.onRequest(serverEvent.typecheckWorkspaceResponse, (response: { args: ContextFolder, success: boolean }) => {
+				return resolve(response?.success);
 			});
 		});
 	}

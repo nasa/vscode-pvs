@@ -814,9 +814,10 @@ export class PvsLanguageServer {
 			suppressFinalMessage?: boolean, 
 			suppressDialogCreation?: boolean,
 			keepDialogOpen?: boolean,
-			msg?: string, 
+			msg?: string,
+			generateTCCs?: boolean,
 			actionId?: string }
-	): Promise<void> {
+	): Promise<boolean> {
 		opt = opt || {};
 		return new Promise (async (resolve, reject) => {
 			request = fsUtils.decodeURIComponents(request);
@@ -827,6 +828,7 @@ export class PvsLanguageServer {
 			if (request) {
 				const actionId: string = opt.actionId || action;
 				const contextFolder: string = (typeof request === "string") ? request : request.contextFolder;
+				let success: boolean = true;
 
 				// send feedback to the front-end
 				const taskId: string = `${actionId}-${contextFolder}`;
@@ -875,7 +877,7 @@ export class PvsLanguageServer {
 						// worker
 						const workspaceActionAux = async (
 							actionName: "parseFile" | "typecheckFile", 
-							desc: { fileName: string, fileExtension: string, contextFolder: string }
+							desc: PvsFile
 						) => {
 							const response: PvsResponse = await this[actionName](desc);
 							completed_tasks++;
@@ -894,6 +896,9 @@ export class PvsLanguageServer {
 							
 							// update feedback every time a file has been processed
 							if (response) {
+								if (opt.generateTCCs) {
+									await this.pvsProxy.generateTccs(desc)
+								}
 								completed++;
 								if (opt.withFeedback) {
 									const msg: string = opt.msg	|| `${actionFriendlyNameContinuous} workspace ${workspaceName} (${completed}/${nfiles} files processed)`;
@@ -941,6 +946,7 @@ export class PvsLanguageServer {
 							if (completed_tasks >= contextFiles.fileNames.length) {
 								if (opt.withFeedback) {
 									if (errors.length) {
+										success = false;
 										let msg: string = (opt.suppressFinalMessage) ? ""
 											: (opt.msg) ? opt.msg
 												: (errors.length === 1) ? errors[0] 
@@ -957,7 +963,7 @@ export class PvsLanguageServer {
 										}
 									}
 								}
-								resolve();
+								resolve(success);
 							} else {
 								if (next_file_index < contextFiles.fileNames.length) {
 									const fname: string = path.join(contextFolder, contextFiles.fileNames[next_file_index++]);
@@ -978,7 +984,7 @@ export class PvsLanguageServer {
 								workspaceActionAux(actionFunction, { fileName, fileExtension, contextFolder });
 							}
 						} else {
-							resolve();
+							resolve(success);
 						}
 					} else {
 						console.log(`[pvs-language-server] Workspace ${workspaceName} does not contain pvs files`);
@@ -987,17 +993,19 @@ export class PvsLanguageServer {
 								: (opt.msg) ? opt.msg : `Workspace ${workspaceName} ${actionFriendlyNamePast.toLocaleLowerCase()} (0 files processed)`;
 							this.notifyEndImportantTask({ id: taskId, msg });
 						}
-						resolve();
+						resolve(success);
 					}
 				} else {
 					console.warn(`[pvs-language-server] Warning: workspace name is null`);
+					resolve(false);
 				}
 			} else {
 				console.error(`[pvs-language-server] Warning: pvs.${action} invoked with null request`);
+				resolve(false);
 			}
 		});
 	}
-	async parseWorkspaceRequest (request: { contextFolder: string }, opt?: {
+	async parseWorkspaceRequest (request: ContextFolder, opt?: {
 		withFeedback?: boolean, 
 		suppressFinalMessage?: boolean,
 		keepDialogOpen?: boolean,
@@ -1005,19 +1013,21 @@ export class PvsLanguageServer {
 		msg?: string 
 	}): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
-		return await this.workspaceActionRequest("parse-workspace", request, opt);
+		await this.workspaceActionRequest("parse-workspace", request, opt);
 	}
-	async typecheckWorkspaceRequest (request: { contextFolder: string }, opt?: { 
+	async typecheckWorkspaceRequest (request: ContextFolder, opt?: { 
 		withFeedback?: boolean,
-		suppressDialogCreation?: boolean
+		suppressDialogCreation?: boolean,
+		generateTCCs?: boolean
 	}): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
-		return await this.workspaceActionRequest("typecheck-workspace", request, opt);
+		const success: boolean = await this.workspaceActionRequest("typecheck-workspace", request, opt);
+		this.connection.sendRequest(serverEvent.typecheckWorkspaceResponse, { args: request, success });
 	}
 	/**
 	 * Returns the list of pvs files in a given context folder
 	 */
-	async listContextFiles (args: { contextFolder: string }): Promise<FileList> {
+	async listContextFiles (args: ContextFolder): Promise<FileList> {
 		args = fsUtils.decodeURIComponents(args);
 		if (args && args.contextFolder) {
 			return await fsUtils.listPvsFiles(args.contextFolder);
@@ -1677,20 +1687,11 @@ export class PvsLanguageServer {
 			this.connection?.onRequest(serverRequest.parseWorkspaceWithFeedback, async (request: { contextFolder: string }) => {
 				this.parseWorkspaceRequest(request, { withFeedback: true }); // async call
 			});
+			this.connection?.onRequest(serverRequest.typecheckWorkspaceWithFeedback, async (request: { contextFolder: string }) => {
+				this.typecheckWorkspaceRequest(request, { withFeedback: true, generateTCCs: true }); // async call
+			});
 			this.connection?.onRequest(serverRequest.typecheckWorkspace, async (request: { contextFolder: string }) => {
-				// const workspaceName: string = request.contextFolder;
-				// const shortName: string = fsUtils.getContextFolderName(workspaceName);
-				// await this.parseWorkspaceRequest(request, {
-				// 	withFeedback: true, 
-				// 	suppressFinalMessage: true, 
-				// 	keepDialogOpen: true,
-				// 	actionId: "typecheck-workspace", // this is done to keep the same dialog on the front-end
-				// 	msg: `Preparing to typecheck workspace ${shortName}` 
-				// });
-				await this.typecheckWorkspaceRequest(request, {
-					withFeedback: true//,
-					// suppressDialogCreation: true
-				});
+				this.typecheckWorkspaceRequest(request, { generateTCCs: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.hp2pvs, async (request: PvsFile) => {
 				this.hp2pvsRequest(request); // async call
@@ -1720,35 +1721,35 @@ export class PvsLanguageServer {
 				this.listContextFilesRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.proveFormula, async (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, proofFile?: FileDescriptor }) => {
-				await this.proveFormulaRequest(args);
+				await this.proveFormulaRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.getImportChainTheorems, async (args: PvsTheory) => {
-				await this.getImportChainTheoremsRequest(args);
+				await this.getImportChainTheoremsRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.getTheorems, async (args: PvsTheory) => {
-				await this.getTheoremsRequest(args);
+				await this.getTheoremsRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.getTccs, async (args: PvsTheory) => {
-				await this.getTccsRequest(args);
+				await this.getTccsRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.autorunFormula, async (args: PvsFormula) => {
-				await this.proveFormulaRequest(args, { autorun: true });
+				await this.proveFormulaRequest(args, { autorun: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.autorunFormulaFromJprf, async (args: PvsFormula) => {
-				await this.proveFormulaRequest(args, { autorun: true, useJprf: true });
+				await this.proveFormulaRequest(args, { autorun: true, useJprf: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.showProofLite, async (args: PvsFormula) => {
-				await this.showProofLiteRequest(args);
+				await this.showProofLiteRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.proofCommand, async (args: PvsProofCommand) => {
-				await this.proofExplorer?.proofCommandRequest(args);
+				await this.proofExplorer?.proofCommandRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.getGatewayConfig, async () => {
 				const port: number = this.getGatewayPort();
 				this.connection?.sendRequest(serverEvent.getGatewayConfigResponse, { port });
 			});
 			this.connection?.onRequest(serverRequest.viewPreludeFile, async () => {
-				this.viewPreludeFileRequest();
+				this.viewPreludeFileRequest(); // async call
 			});
 			this.connection?.onRequest(serverRequest.quitProof, async () => {
 				this.quitProofRequest(); // this method will send a quitProofResponse to the client

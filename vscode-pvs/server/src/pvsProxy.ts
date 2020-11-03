@@ -280,11 +280,12 @@ export class PvsProxy {
 								if (this.pvsErrorManager) {
 									this.pvsErrorManager.notifyPvsFailure({ msg: `Error: unable to connect to pvs-server at http://${this.clientAddress}:${this.clientPort}` });
 								}
-							} else if (error['code'] === 'ECONNRESET') {
-								// do nothing -- this usually occurs when the user reboots pvs-server
 							} else {
+							// if (error['code'] === 'ECONNRESET') {
+							// 	// do nothing -- this usually occurs when the user reboots pvs-server
+							// } else {
 								if (this.pvsErrorManager) {
-									this.pvsErrorManager.notifyPvsFailure({ method });
+									this.pvsErrorManager.notifyPvsFailure({ method: jsonReq, msg: error.message });
 								}
 								resolve({
 									jsonrpc: "2.0", 

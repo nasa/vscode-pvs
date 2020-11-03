@@ -226,7 +226,7 @@
 			},
 			{
 				"command": "vscode-pvs.prove-theory-inline",
-				"title": "Prove-All",
+				"title": "Prove Theory",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
 				"category": "pvs",
 				"icon": "icons/play-circle-icon.png"
@@ -239,7 +239,7 @@
 			},
 			{
 				"command": "vscode-pvs.prove-workspace-inline",
-				"title": "Prove-All",
+				"title": "Prove Workspace",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem == workspace-overview",
 				"category": "pvs",
 				"icon": "icons/play-circle-icon.png"
@@ -644,7 +644,7 @@
 				},
 				{
 					"command": "vscode-pvs.prove-workspace-inline",
-					"when": "false && view == workspace-explorer-view && viewItem == workspace-overview",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
 					"group": "inline"
 				},
 				{
