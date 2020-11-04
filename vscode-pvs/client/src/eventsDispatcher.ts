@@ -1123,7 +1123,7 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-bin", async () => {
             // ask the user confirmation before deleting bin files
 			const yesno: string[] = [ "Yes", "No" ];
-			const msg: string = `Delete pvsbin folder?\n\nThis action can resolve situations where the server crashes because of corrupted pvsbin files.`;
+			const msg: string = `Delete pvsbin folder?\n\nThis action can resolve situations where pvs fails to start or execute proof commands.`;
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
                 const currentContext: string = vscode.workspace.rootPath;

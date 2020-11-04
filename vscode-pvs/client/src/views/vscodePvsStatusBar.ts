@@ -206,8 +206,8 @@ export class VSCodePvsStatusBar {
         const content: string = `# PVS error\n`
         + 'The following error occurred:\n\n'
         + '```lisp\n' + msg + '\n```'
-        + '\n\nThis error is likely caused by temporary files used by PVS that might have gotten corrupted.\n\n'
-        + '[Recommended action]():  `M-x clean-bin`  (this command will remove the corrupted temporary files)\n\n'
+        + '\n\nThis error is usually caused by temporary files that PVS failed to update.\n\n'
+        + '[Recommended action]():  `M-x clean-bin`  (this command will remove the temporary files)\n\n'
         + 'If the above action does not resolve the problem, please restart vscode and make sure you are using the latest version of VSCode-PVS, PVS and NASALib.\n\n'
         + `If the problem persists, please report the error on [github](https://github.com/nasa/vscode-pvs/issues), we will look into it.`;
 
