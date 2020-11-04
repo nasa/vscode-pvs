@@ -201,6 +201,9 @@ export class PvsLanguageServer {
 	protected notifyEndImportantTask (desc: { id: string, msg?: string }): void {
 		this.connection?.sendNotification(`server.status.end-important-task-${desc.id}`, desc);
 	}
+	notifyEndImportantTaskWithErrors (desc: { id: string, msg: string }) {
+        this.connection?.sendNotification(`server.status.end-important-task-${desc.id}-with-errors`, desc);
+	}
 	protected notifyMessage (desc: { msg: string }): void {
 		this.connection?.sendNotification("server.status.warning", desc);
 	}
@@ -790,7 +793,7 @@ export class PvsLanguageServer {
 						// send feedback to the front-end
 						if (opt.withFeedback) {
 							if (response.error) {
-								this.pvsErrorManager?.handleParseFileError({ taskId, request, source });
+								this.notifyEndImportantTaskWithErrors({ id: taskId, msg: `${source} errors in ${request.fileName}${request.fileExtension}` });
 							} else {
 								this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} parsed successfully!` });
 							}
@@ -951,10 +954,7 @@ export class PvsLanguageServer {
 											: (opt.msg) ? opt.msg
 												: (errors.length === 1) ? errors[0] 
 													: `Workspace ${workspaceName} contains ${actionFriendlyName.toLocaleLowerCase()} errors`;
-										// for (let i = 0; i < errors.length && errors.length > 1; i++) {
-										// 	this.notifyError({ msg: errors[i] });
-										// }
-										this.pvsErrorManager?.handleWorkspaceActionError({ taskId, msg, request });
+										this.notifyEndImportantTaskWithErrors({ id: taskId, msg });
 									} else {
 										if (!opt.keepDialogOpen) {
 											const msg: string = (opt.suppressFinalMessage) ? ""

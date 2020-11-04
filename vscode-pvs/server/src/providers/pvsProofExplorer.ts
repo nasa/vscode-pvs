@@ -730,12 +730,17 @@ export class PvsProofExplorer {
 						// await this.quitProof();
 					}
 					// return;
-				} else if (utils.isInvalidCommand(this.proofState) || utils.interruptedByClient(this.proofState)) {
+				} else if (utils.isInvalidCommand(this.proofState)) {
 					if (utils.isSameCommand(activeNode.name, cmd) || utils.isSameCommand(activeNode.name, userCmd)) {
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 						// mark the sub tree of the invalid node as not visited
 						activeNode.treeNotVisited();
 					}
+				} else if (utils.interruptedByClient(this.proofState)) {
+					this.running = false;
+					this.stopAt = null;
+					this.rewindTarget = null;
+					this.rewinding = false;
 				} else if (utils.noChange(this.proofState) || utils.isEmptyCommand(cmd)) {
 					const command: string = utils.getNoChangeCommand(this.proofState);
 					// check if the command that produced no change comes from the proof tree -- if so advance indicator

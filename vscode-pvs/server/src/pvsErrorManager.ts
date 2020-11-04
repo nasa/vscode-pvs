@@ -75,28 +75,30 @@ export class PvsErrorManager {
         response: PvsError
     }): void {
         if (desc) {
-            this.notifyError({ msg: `Error: tccs could not be generated (please check pvs-server output for details)` });
+            const msg: string = (desc?.response?.error) ? JSON.stringify(desc.response.error)
+                : `Error: tccs could not be generated (please check pvs-server output for details)`;
+            this.notifyError({ msg });
             console.error(`[pvs-language-server.showTccs] Error: tccs could not be generated`, desc.response);
         }
     }
-    handleParseFileError (desc: {
-        taskId: string,
-        request: { fileName: string, fileExtension: string, contextFolder: string },
-        source: string
-    }): void {
-        if (desc) {
-            this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `${desc.source} errors in ${desc.request.fileName}${desc.request.fileExtension}` });
-        }
-    }
-    handleWorkspaceActionError (desc: {
-        taskId: string,
-        request: { contextFolder: string },
-        msg: string
-    }): void {
-        if (desc) {
-            this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: desc.msg });
-        }
-    }
+    // handleParseFileError (desc: {
+    //     taskId: string,
+    //     request: { fileName: string, fileExtension: string, contextFolder: string },
+    //     source: string
+    // }): void {
+    //     if (desc) {
+    //         this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `${desc.source} errors in ${desc.request.fileName}${desc.request.fileExtension}` });
+    //     }
+    // }
+    // handleWorkspaceActionError (desc: {
+    //     taskId: string,
+    //     request: { contextFolder: string },
+    //     msg: string
+    // }): void {
+    //     if (desc) {
+    //         this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: desc.msg });
+    //     }
+    // }
     handleStartPvsServerError (success: ProcessCode): void {
         if (success === ProcessCode.PVSNOTFOUND) {
             this.connection?.sendRequest(serverEvent.pvsNotPresent);
