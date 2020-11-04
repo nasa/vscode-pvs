@@ -27,11 +27,11 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 <br>
 
 ## ChangeLog
-- [1.0.28 (2020.11.xx)]()
+- [1.0.28 (2020.11.xx)]()  
   -Added option for re-running only unproved proofs  
   -Improved Proof Explorer (prove-workspace, rewind)   
 
-- [1.0.27 (2020.10.29)]()
+- [1.0.27 (2020.10.29)]()  
   -Improved dialogs and feedback for errors  
   -Added interrupt command (ctrl+c) to stop the execution of a proof command in the theorem prover  
 

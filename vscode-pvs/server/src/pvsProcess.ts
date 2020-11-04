@@ -101,7 +101,7 @@ export class PvsProcess {
 					this.connection.console.log(msg);
 					if (this.progressInfoEnabled) {
 						const ln: string[] = msg.trim().split("\n").filter(line => {
-							return line.trim() && !line.trim().startsWith("pvs(") && !(line.trim() === "nil");
+							return line.trim() && !line.includes("pvs(") && !(line.trim() === "nil");
 						});
 						this.sendProgressInfo(ln[ln.length - 1]);
 					}
