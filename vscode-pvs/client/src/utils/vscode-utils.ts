@@ -192,7 +192,7 @@ export function showFailure (msg: string): void {
     const fileContent: string = `# PVS error\n`
     + 'The following error occurred:\n\n'
     + '```lisp\n' + msg + '\n```'
-    + '\n\nThis error is usually caused by temporary files that PVS failed to update.\n\n'
+    + '\n\nThis error may be caused by temporary files that PVS failed to update.\n\n'
     + '[Recommended action]():  `M-x clean-bin`  (this command will remove the temporary files)\n\n'
     + 'If the above action does not resolve the problem, please restart vscode and make sure you are using the latest version of VSCode-PVS, PVS and NASALib.\n\n'
     + `If the problem persists, please report the error on [github](https://github.com/nasa/vscode-pvs/issues), we will look into it.`;
@@ -201,13 +201,13 @@ export function showFailure (msg: string): void {
 }
 
 export function showDependencyError (msg: string): void {
-    const content: string = `# Missing dependency\n`
+    const fileContent: string = `# Missing dependency\n`
     + 'VSCode-PVS failed to start: a required dependency could not be detected:\n\n'
     + '```\n' + msg + '\n```\n\n'
     + 'If the above action does not resolve the problem, please restart vscode make sure you are using the latest version of VSCode-PVS.\n\n'
     + `If the problem persists, please report the error on [github](https://github.com/nasa/vscode-pvs/issues), we will look into it.`;
 
-    showMarkdownContent(content);
+    showMarkdownContent(fileContent);
 }
 
 export async function showMarkdownPreview (desc: FileDescriptor): Promise<void> {
