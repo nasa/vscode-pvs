@@ -68,7 +68,7 @@ import {
 	CliGatewayQuit,
 	ProofFile,
 	ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor
+	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -143,6 +143,8 @@ export class PvsProofExplorer {
 	protected running: boolean = false; // status flag, indicates whether we are running all proof commands, as opposed to stepping through the proof commands
 	protected stopAt: ProofItem = null; // indicates which node we are fast-forwarding to
 
+	protected rewinding: boolean = false; // status flag, indicates whether we are iteratively running undo
+	protected rewindTarget: ProofItem = null; // indicates which node we are rewinding to
 	protected undoundoTarget: ProofItem = null;
 	// protected previousPath: string = "";
 
@@ -307,8 +309,8 @@ export class PvsProofExplorer {
 		}
 	}
 	/**
-	 * Executes all proof commands in the proof tree, starting from the active node, 
-	 * up to the selected node specified as parameter.
+	 * Fast-forwards to the selected node, 
+	 * i.e., executes proof commands in the proof tree until the selected node becomes the active node.
 	 * The execution stops either at the end of the proof tree, or when an anomaly 
 	 * is detected in the proof tree (e.g,. the prover generates more goals than those 
 	 * indicated in the proof tree)
@@ -320,7 +322,7 @@ export class PvsProofExplorer {
 			const target: ProofItem = (desc.selected && desc.selected.contextValue === "proof-branch" 
 				&& this.activeNode.children && this.activeNode.children.length) ? desc.selected.children[0]
 					: desc.selected;
-			if (!target.isVisited() && this.activeNode && this.ghostNode && !this.ghostNode.isActive()) {
+			if (!target?.isVisited() && this.activeNode && !this.ghostNode?.isActive()) {
 				this.stopAt = target;
 				this.running = true;
 				await this.step({ feedbackToTerminal: true });
@@ -342,6 +344,36 @@ export class PvsProofExplorer {
 		}
 	}
 	
+	/**
+	 * Rewinds to the selected node, i.e., executed undo until the selected node is either not visited.
+	 * @param desc 
+	 */
+	async rewindTo (desc: { selected: ProofItem }): Promise<void> {
+		if (desc && desc.selected) {
+			// adjust selected --- if it's a branch node, select the first children
+			const target: ProofItem = (desc.selected && desc.selected.contextValue === "proof-branch" 
+				&& this.activeNode.children && this.activeNode.children.length) ? desc.selected.children[0]
+					: desc.selected;
+			if (target?.isVisited() && this.activeNode) {
+				this.rewindTarget = target;
+				this.rewinding = true;
+				await this.step({ cmd: "(undo)", feedbackToTerminal: true });
+			}
+		} else {
+			console.warn(`[proof-explorer] Warning: failed to fast forward (selected node is null)`);
+		}
+	}
+	async rewindToNodeX (desc: ProofExecRewind): Promise<void> {
+		if (desc && desc.selected) {
+			const selected: ProofItem = this.findNode(desc.selected.id);
+			if (selected) {
+				await this.rewindTo({ selected });
+			}
+		} else {
+			console.warn(`[proof-explorer] Warning: failed to perform proof exec/fast forward (selected node is null)`);
+		}
+	}
+
 	/**
 	 * repeats the last command
 	 */
@@ -480,7 +512,7 @@ export class PvsProofExplorer {
 	 * Utility function invoked after step(). Updates the data structures of proof-explorer and sends messages to the front-end.
 	 * @param desc Descriptor specifying the reponse of the prover, as well as the actual values of the arguments used to invoke the step function.
 	 */
-	protected async onStepExecutedNew (desc: { proofState: SequentDescriptor, args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
+	async onStepExecutedNew (desc: { proofState: SequentDescriptor, args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
 		if (desc && desc.proofState) {
 			// get command and proof state
 			let userCmd: string = desc.args ? desc.args.cmd : null; // command entered by the user
@@ -585,6 +617,15 @@ export class PvsProofExplorer {
 					}
 				} else {
 					this.moveIndicatorBack({ keepSameBranch: true });
+				}
+				if (this.rewinding) {
+					if (this.rewindTarget?.isActive() || !this.rewindTarget?.isVisitedOrPending()) {
+						this.rewinding = false;
+						this.rewindTarget = null;	
+					} else {
+						// iterate undo
+						this.step({ cmd: "(undo)", feedbackToTerminal: true });
+					}
 				}
 				return;
 			}

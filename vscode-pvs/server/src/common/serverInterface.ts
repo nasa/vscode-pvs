@@ -787,7 +787,7 @@ export type ProofEditDidStartNewProof = {
 // ProofExec
 export type ProofExecCommand = ProofExecForward | ProofExecBack | ProofExecFastForward | ProofExecRun
 	| ProofExecQuit | ProofExecOpenProof | ProofExecStartNewProof | ProofExecInterruptProver | ProofExecQuitAndSave
-	| ProofExecInterruptAndQuitProver | ProofExecImportProof;
+	| ProofExecInterruptAndQuitProver | ProofExecImportProof | ProofExecRewind;
 export type ProofExecForward = {
 	action: "forward"
 };
@@ -796,6 +796,10 @@ export type ProofExecBack = {
 };
 export type ProofExecFastForward = {
 	action: "fast-forward",
+	selected: { id: string, name: string }
+};
+export type ProofExecRewind = {
+	action: "rewind",
 	selected: { id: string, name: string }
 };
 export type ProofExecRun = {

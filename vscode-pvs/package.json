@@ -567,6 +567,12 @@
 				"category": "pvs"
 			},
 			{
+				"command": "proof-explorer.rewind",
+				"title": "️️Rewind here",
+				"enablement": "view == proof-explorer-view && in-checker == true && !proof-explorer.running",
+				"category": "pvs"
+			},
+			{
 				"command": "proof-mate.activate-basic-profile",
 				"title": "Switch to Basic Profile",
 				"enablement": "in-checker == true && !basic-profile-active",
@@ -745,6 +751,16 @@
 				{
 					"command": "proof-explorer.fast-forward",
 					"when": "view == proof-explorer-view && viewItem != root",
+					"group": "inline"
+				},
+				{
+					"command": "proof-explorer.rewind",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/ctrl"
+				},
+				{
+					"command": "proof-explorer.rewind",
+					"when": "false && view == proof-explorer-view",
 					"group": "inline"
 				},
 				{

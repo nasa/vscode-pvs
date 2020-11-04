@@ -46,7 +46,7 @@ import {
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, FileDescriptor 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, FileDescriptor, ProofExecRewind 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -818,6 +818,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// fast forward proof to a given proof command
 			const action: ProofExecFastForward = { action: "fast-forward", selected: { id: resource.id, name: resource.name } };
 			console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
+			this.client.sendRequest(serverRequest.proverCommand, action);
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.rewind", (resource: ProofItem) => {
+			// rewind to a given proof command
+			const action: ProofExecRewind = { action: "rewind", selected: { id: resource.id, name: resource.name } };
+			console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-node", (resource: ProofItem) => {
