@@ -1,7 +1,7 @@
 ## ChangeLog
 ### 1.0.28 (2020.11.xx)
 - Added option for re-running only unproved proofs
-- Improved Proof Explorer (prove-workspace)
+- Improved Proof Explorer (prove-workspace, rewind)
 
 ### 1.0.27 (2020.10.29)
 - Improved dialogs and feedback for errors
