@@ -201,12 +201,52 @@ export class VSCodePvsStatusBar {
     getVersionInfo (): PvsVersionDescriptor {
         return this.pvsVersionInfo;
     }
-
+    showVersionDialog (opt?: { trailingNote?: string, downloadButtons?: boolean }): void {
+        opt = opt || {};
+        opt.trailingNote = opt.trailingNote || "";
+        if (this.pvsVersionInfo) {
+            this.versionInfo.icon("");
+            this.versionInfo.text(this.pvsVersionInfo["pvs-version"]);
+            let msg: string = `PVS ${this.pvsVersionInfo["pvs-version"]}`;
+            let extras: string[] = [];
+            if (this.pvsVersionInfo["lisp-version"]) {
+                extras.push(this.pvsVersionInfo["lisp-version"]);
+            }
+            if (this.pvsVersionInfo["nasalib-version"]) {
+                extras.push(this.pvsVersionInfo["nasalib-version"]);
+            }
+            if (extras && extras.length) {
+                msg += ` (${extras.join(" + ")})`;
+            }
+            if (opt.trailingNote) {
+                msg += opt.trailingNote;
+            }
+            if (opt.downloadButtons) {
+                const options: string[] = [ "Reboot PVS", "Show Welcome Screen"]
+                window.showInformationMessage(msg, options[0], options[1]).then((sel: string) => {
+                    switch (sel) {
+                        case options[0]: {
+                            commands.executeCommand('vscode-pvs.reboot-pvs');
+                            break;
+                        }
+                        case options[1]: {
+                            vscodeUtils.showReleaseNotes();
+                            break;
+                        }
+                        default: // do nothing
+                    }    
+                });
+            } else {
+                vscodeUtils.showInformationMessage(msg);
+            }
+        }
+        this.versionInfo.show();
+    }
     showVersionInfo (): void {
         if (this.pvsVersionInfo) {
             this.versionInfo.icon("");
             this.versionInfo.text(this.pvsVersionInfo["pvs-version"]);
-            this.versionInfo.command("vscode-pvs.show-version-info");
+            this.versionInfo.command("vscode-pvs.show-version-dialog");
         }
         this.versionInfo.show();
     }
