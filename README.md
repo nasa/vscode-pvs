@@ -7,7 +7,6 @@ The environment redefines the way developers interact with PVS, and better align
 ## Latest version
 [vscode-pvs-1.0.28-alpha](https://github.com/nasa/vscode-pvs/tree/master/releases/vscode-pvs-1.0.28-alpha.vsix)
 
-<br>
 
 ## Getting started
 - [Quick reference guide](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/USER-INTERFACE.md) for the VSCode-PVS User Interface
@@ -15,23 +14,19 @@ The environment redefines the way developers interact with PVS, and better align
 - Are you new to PVS? Try out our [tutorial](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/TUTORIAL.md)!
 - Join the new [PVS group on Google](https://groups.google.com/g/pvs-group)
 
-<br>
 
 ## Requirements
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
 - Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
 
-<br>
 
 ## Installation instructions
 VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitHub.
 
-<br>
 
 **Automatic installation from Visual Studio Code Marketplace**
 - Search vscode-pvs in https://marketplace.visualstudio.com and select `install`
 
-<br>
 
 **Manual installation from GitHub**
 1. Download the .vsix file of VSCode-PVS from [github](https://github.com/nasa/vscode-pvs/tree/master/releases).
@@ -44,7 +39,6 @@ VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitH
 >Note: If you have used earlier releases of VSCode-PVS (`< 1.0.26`), you will need to download and install the latest version of PVS and NASALib. You can do this in VSCode-PVS, with the commands `M-x install-pvs` and `M-x install-nasalib`. 
 
 
-<br>
 
 ## Updating VSCode-PVS
 When a new release of VSCode-PVS is available in [github](https://github.com/nasa/vscode-pvs/tree/master/releases), download the new release and install it in Visual Studio Code:
@@ -53,12 +47,10 @@ When a new release of VSCode-PVS is available in [github](https://github.com/nas
 
 All settings and preferences from the previous version of VSCode-PVS will be maintained.
 
-<br>
 
 ## Publications
 Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)]
 
-<br>
 
 ## Functionalities
 The main functionalities provided by the environment are as follows:
