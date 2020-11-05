@@ -2,10 +2,12 @@
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
-![](vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
+![](https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.28-alpha](releases/vscode-pvs-1.0.28-alpha.vsix)
+[vscode-pvs-1.0.28-alpha](https://github.com/nasa/vscode-pvs/tree/master/releases/vscode-pvs-1.0.28-alpha.vsix)
+
+<br>
 
 ## Getting started
 - [Quick reference guide](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/USER-INTERFACE.md) for the VSCode-PVS User Interface
@@ -13,31 +15,50 @@ The environment redefines the way developers interact with PVS, and better align
 - Are you new to PVS? Try out our [tutorial](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/TUTORIAL.md)!
 - Join the new [PVS group on Google](https://groups.google.com/g/pvs-group)
 
+<br>
+
 ## Requirements
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
-- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com`
+- Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
+
+<br>
 
 ## Installation instructions
-1. Download the latest release of VSCode-PVS from the [github repository](releases)
-2. Install VSCode-PVS in Visual Studio Code: 
-- `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
-3. Have fun using the extension!
+VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitHub.
 
-<img src="vscode-pvs/screenshots/how-to-install-vscode-pvs.gif" width="600">
+<br>
+
+**Automatic installation from Visual Studio Code Marketplace**
+- Search vscode-pvs in https://marketplace.visualstudio.com and select `install`
+
+<br>
+
+**Manual installation from GitHub**
+1. Download the .vsix file of VSCode-PVS from [github](https://github.com/nasa/vscode-pvs/tree/master/releases).
+2. Install the downloaded .vsix file in Visual Studio Code
+  <br>`View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
+<br><br><img src="vscode-pvs/screenshots/how-to-install-vscode-pvs.gif" width="600">
 
 >Note: When installing VSCode-PVS for the first time, it will check if PVS Allegro v7.1.0 is present on your system. If not, VSCode-PVS will show a dialog that allows you to download PVS.
 
 >Note: If you have used earlier releases of VSCode-PVS (`< 1.0.26`), you will need to download and install the latest version of PVS and NASALib. You can do this in VSCode-PVS, with the commands `M-x install-pvs` and `M-x install-nasalib`. 
 
+
+<br>
+
 ## Updating VSCode-PVS
-When a new release of VSCode-PVS is available in the [github repository](releases), download the new release and install it in Visual Studio Code:
+When a new release of VSCode-PVS is available in [github](https://github.com/nasa/vscode-pvs/tree/master/releases), download the new release and install it in Visual Studio Code:
 
 - `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
 
 All settings and preferences from the previous version of VSCode-PVS will be maintained.
 
+<br>
+
 ## Publications
 Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)]
+
+<br>
 
 ## Functionalities
 The main functionalities provided by the environment are as follows:
@@ -59,6 +80,8 @@ The main functionalities provided by the environment are as follows:
 
 - **Proof Explorer + Integrated Terminal**: Interactive tree view for viewing and editing the current proof. An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
 <br><br> <img src="vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
+
+<br>
 
 ## Structure
 ```
@@ -90,6 +113,8 @@ The main functionalities provided by the environment are as follows:
         ├── pvsLisp.ts           // Lisp reader for parsing PVS responses
         └── pvsLanguageServer.ts // PVS Language Server implementation
 ```
+
+<br>
 
 ## Notices
 ### Copyright 
