@@ -1,7 +1,7 @@
 # **VSCode-PVS FAQ**
 This document contains answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.
 
-If you don't find an answer to your question here or on [github](https://github.com/nasa/vscode-pvs/issues), you can open an issue on [github](https://github.com/nasa/vscode-pvs/issues) or [get in touch with us](mailto:paolo.masci@nianet.org).
+If you don't find an answer to your question here or on [github](https://github.com/nasa/vscode-pvs/issues), you can open an issue on [github](https://github.com/nasa/vscode-pvs/issues) or get in touch with us on the [PVS group on Google](https://groups.google.com/g/pvs-group).
 
 <br>
 
