@@ -5,13 +5,12 @@ If you don't find an answer to your question here or on [github](https://github.
 
 <br>
 
-
 ## General questions
 
 ### **Q1: Which OS is supported?**
 VSCode-PVS currently runs on Linux and MacOS. For Windows systems, you will need to install the extension in a virtual machine with Linux.
 
-<br>
+
 
 ### **Q2: How do I start VSCode-PVS?**
 VSCode-PVS will automatically start with Visual Studio Code.
@@ -21,20 +20,21 @@ If this is not happening, please go through the following checklist, to make sur
 - [PVS Allegro](http://www.csl.sri.com/users/owre/drop/pvs-snapshots) (v7.1.0 or greater) is installed
 - [VSCode-PVS](https://github.com/nasa/vscode-pvs) is installed and enabled in Visual Studio Code
 
-<br>
+
 
 ### **Q3: I'm new to PVS, is there a tutorial I can use to get started?**
 Yes, you we have a [tutorial](TUTORIAL.md) on VSCode-PVS, that introduces the basics functions of PVS, and a [NASA PVS Class](https://shemesh.larc.nasa.gov/PVSClass2012/) that covers a broader range of topics.
 
-<br>
+
 
 ### **Q4: I'm not familiar with Visual Studio Code, is there a quick tutorial?**
 Yes, you can find tutorials on the Visual Studio Code website, see https://code.visualstudio.com/docs/editor/codebasics
 
-<br>
+
 
 ### **Q6: What is NASALib and how do I install it?**
 NASALib is an extensive PVS library developed and maintained by the NASA Langley Formal Methods Team.
+
 To install NASALib in VSCode-PVS, click the `Download NASALib` button in the status bar.
 
 <img src="../screenshots/how-to-install-nasalib.gif" width="600">
@@ -60,23 +60,22 @@ If the problem persists, please report an issue on [github](https://github.com/n
 
 >Note: There is an output channel `pvs-server` in Visual Studio Code. You can use it to inspect the raw output of PVS, including errors thrown by the reasoning engine, when errors occur.
 
-<br>
+
 
 ### **Q8: A proof because a pop-up message "Typechecking files necessary to prove formula" does not go away, what can I do?**
 An unexpected error might have occurred while processing one of the pvs files. Please try to reboot PVS (see also Q6).
 
-<br>
+
 
 ### **Q9: The terminal reports an error "node does not exist", what does it mean?**
 The error indicates that one of the required software packages is not installed on your system: you need to install [NodeJS](https://nodejs.org/en/download).
 
-<br>
+
 
 ### **Q10: Can I use Emacs plugins for Visual Studio Code together with VSCode-PVS?**
 No, we do not recommend installing Emacs plugins in Visual Studio Code, as they may interfere with the VSCode-PVS hot-keys (see also Q14).
 
-<br><br>
-
+<br>
 
 ## Functionalities
 
@@ -87,12 +86,12 @@ The easiest way to open PVS files and workspaces is through PVS Workspace Explor
 
 <img src="../screenshots/how-to-open-pvs-workspace.gif" width="400">
 
-<br><br>
+<br>
 
 ### **Q12: Can I develop my pvs theories on my `Desktop`, or in a sub-folder of my pvs installation folder?**
 **No, that's a bad idea.** The recommended way to proceed is to create a folder `workspaces` in your home directory, and use a sub-folder of workspaces to store all the pvs files of your PVS projects.
 
-<br>
+
 
 ### **Q13: Can I use the classic PVS Emacs hot-keys combinations?**
 Yes, you can use most of the PVS hot-keys combinations in VSCode-PVS:
@@ -122,28 +121,27 @@ Additional hot-keys provided by VSCode-PVS:
 - `M-x settings` *(shows vscode-pvs settings)*
 - `M-x release-notes` *(shows vscode-pvs release notes)*
 
-<br>
 
 ### **Q14: What is `M-x`, and how do I use it?**
 `M-x` is a key combination obtained by pressing the `META` key and the `x` letter simultaneously.
 The `META` key on Linux `Alt`. On MacOS, it's usually the `option` key.
 
-<br>
+
 
 ### **Q15: Can I add external pvs libraries so that the typechecker finds them?**
 Yes, you can add external libraries with the hot-key combination `M-x add-pvs-library`. This command will open a file browser that allows you to select the folder to be included. The full list of external libraries can be viewed with the command `M-x pvs-library-path`.
 
-<br>
+
 
 ### **Q16: In the prover session, can I move the cursor with the mouse using point-click actions?**
 Yes, point-click actions are enabled in the prover session when pressing the `META` key, where the `META` key is `Alt` on Linux, and `option` on MacOS.
 
-<br>
+
 
 ### **Q17: In the prover session, can enter or copy-paste a multi-line proof commands?**
 Yes, but you need enclose your multi-line proof command within round brackets.
 
-<br>
+
 
 ### **Q18: Can I edit a proof tree, e.g., copy/paste proof branches?**
 Yes, PVS Proof Explorer is also a proof editor. You can right click anywhere in the proof tree, and perform the following operations:
@@ -152,12 +150,12 @@ Yes, PVS Proof Explorer is also a proof editor. You can right click anywhere in 
 - trim proof commands
 - delete proof commands and sub-trees
 
-<br>
+
 
 ### **Q19: How do I save the proof?**
 VSCode-PVS will automatically save the proof at the end of the prover session. If a proof is already present for the formula being proved, VSCode-PVS will ask confirmation before overwriting the old proof. 
 
-<br>
+
 
 ### **Q20: Can I save multiple proofs for the same theorem?**
 No, the current version of VSCode-PVS stores only one proof for each theorem.
