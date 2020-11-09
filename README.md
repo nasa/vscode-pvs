@@ -5,7 +5,7 @@ The environment redefines the way developers interact with PVS, and better align
 ![](https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.28-alpha](https://github.com/nasa/vscode-pvs/tree/master/releases/vscode-pvs-1.0.28-alpha.vsix)
+[vscode-pvs-1.0.28-beta](https://github.com/nasa/vscode-pvs/tree/master/releases/vscode-pvs-1.0.28-beta.vsix)
 
 
 ## Getting started
@@ -25,13 +25,13 @@ VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitH
 
 
 **Automatic installation from Visual Studio Code Marketplace**
-- Search vscode-pvs in https://marketplace.visualstudio.com and select `install`
+- Search `vscode-pvs` in https://marketplace.visualstudio.com and select `install`
 
 
 **Manual installation from GitHub**
 1. Download the .vsix file of VSCode-PVS from [github](https://github.com/nasa/vscode-pvs/tree/master/releases).
-2. Install the downloaded .vsix file in Visual Studio Code
-  <br>`View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
+2. Click on the Extensions icon in the Activity Bar 
+3. Click on the `...` menu in the title bar, and use `Install from VSIX` to select the downloaded .vsix file
 <br><br><img src="vscode-pvs/screenshots/how-to-install-vscode-pvs.gif" width="600">
 
 >Note: When installing VSCode-PVS for the first time, it will check if PVS Allegro v7.1.0 is present on your system. If not, VSCode-PVS will show a dialog that allows you to download PVS.
@@ -41,11 +41,9 @@ VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitH
 
 
 ## Updating VSCode-PVS
-When a new release of VSCode-PVS is available in [github](https://github.com/nasa/vscode-pvs/tree/master/releases), download the new release and install it in Visual Studio Code:
+New releases of VSCode-PVS will be available on [github](https://github.com/nasa/vscode-pvs/tree/master/releases) and in the [Visual Studio Code marketplace](https://marketplace.visualstudio.com).
 
-- `View` -> `Extensions` -> `...` -> `Install from VSIX` -> Select the downloaded `.vsix` file
-
-All settings and preferences from the previous version of VSCode-PVS will be maintained.
+All settings and preferences will be maintained when installing the new version.
 
 
 ## Publications
