@@ -191,7 +191,7 @@ export async function showMarkdownContent (msg: string, contextFolder?: string):
  */
 export function showFailure (msg: string, src?: string): void {
     src = src || "";
-    const fileContent: string = `# PVS error ${src ? "(" + src + ")" : ""}\n`
+    const fileContent: string = `\n# PVS error ${src ? "(" + src + ")" : ""}\n`
     + 'The following error occurred:\n\n'
     + '```lisp\n' + msg + '\n```'
     + '\n\nThis error may be caused by temporary files that PVS failed to update.\n\n'
@@ -203,7 +203,7 @@ export function showFailure (msg: string, src?: string): void {
 }
 
 export function showDependencyError (msg: string): void {
-    const fileContent: string = `# Missing dependency\n`
+    const fileContent: string = `\n# Missing dependency\n`
     + 'VSCode-PVS failed to start: a required dependency could not be detected:\n\n'
     + '```\n' + msg + '\n```\n\n'
     + 'If the above action does not resolve the problem, please restart Visual Studio Code and make sure you are using the latest version of VSCode-PVS.\n\n'
