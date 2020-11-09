@@ -55,15 +55,14 @@ describe("pvs", () => {
 
 	// utility function, quits the prover if the prover status is active
 	const quitProverIfActive = async (): Promise<void> => {
-		// quit prover if prover status is active
-		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
-		// console.log(proverStatus);
-		expect(proverStatus.result).toBeDefined();
-		expect(proverStatus.error).not.toBeDefined();
+		let proverStatus: PvsResult = await pvsProxy.pvsRequest('prover-status'); // await pvsProxy.getProverStatus();		
+		// console.dir(proverStatus);
 		if (proverStatus && proverStatus.result !== "inactive") {
 			await pvsProxy.proofCommand({ cmd: 'quit' });
 		}
 	}
+
+
 
 	// this test case requires pvs-experimental/monitors in the pvs-library-path
 	// or alternatively folder vscode-pvs/test/pvs-context/nasalib-monitors-stack-limit-error in the library path
@@ -340,7 +339,7 @@ describe("pvs", () => {
 	}, 10000);
 
 
-	it(`can run find-declaration without hitting breaks`, async () => {
+	fit(`can run find-declaration without hitting breaks`, async () => {
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
@@ -361,14 +360,14 @@ describe("pvs", () => {
 		let response: PvsResponse = null;
 		const externalServer: boolean = false;
 
-		response = await pvsProxy.lisp(`(change-workspace "${dataFolder}" t)`, { externalServer: true });
+		response = await pvsProxy.lisp(`(change-workspace "${dataFolder}" t)`, { externalServer });
 		response = await pvsProxy.lisp(`(parse-file "${TypeCheckPVS}" nil)`, { externalServer });
 		response = await pvsProxy.lisp(`(change-workspace "${dataFolder}" t)`, { externalServer });
 		response = await pvsProxy.lisp(`(typecheck-file "${TypeCheckPVS}" nil nil nil nil t)`, { externalServer });
-		response = await pvsProxy.lisp(`(change-workspace "${dataFolder}" t)`, { externalServer: true });
+		response = await pvsProxy.lisp(`(change-workspace "${dataFolder}" t)`, { externalServer });
 		response = await pvsProxy.lisp(`(parse-file "${LiteralPVS}" nil)`, { externalServer });
 		response = await pvsProxy.lisp(`(change-workspace "${dataFolder}" t)`, { externalServer });
-		response = await pvsProxy.lisp(`(typecheck-file "${LiteralPVS}" nil nil nil nil t)`, { externalServer: true });
+		response = await pvsProxy.lisp(`(typecheck-file "${LiteralPVS}" nil nil nil nil t)`, { externalServer });
 		
 		response = await pvsProxy.lisp(`(find-declaration "PrimitiveValue")`);
 		console.dir(response);
@@ -377,5 +376,6 @@ describe("pvs", () => {
 		expect(response.result).toBeDefined();
 		expect(response.error).not.toBeDefined();
 	}, 16000);
+
 });
 

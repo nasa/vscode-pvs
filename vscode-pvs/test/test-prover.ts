@@ -545,7 +545,8 @@ describe("pvs-prover", () => {
     });
 
 
-	fit(`can prove omega_2D_continuous without triggering stack overflow`, async () => {
+	// this test fails no MacOS -- a fix is not available at the moment, to be resolved in the next release of pvs
+	xit(`can prove omega_2D_continuous without triggering stack overflow`, async () => {
         await quitProverIfActive();
 
         const formula: PvsFormula = {
@@ -593,6 +594,7 @@ describe("pvs-prover", () => {
 	}, 80000);
 	
 
+	// this test fails no MacOS -- a fix is not available at the moment, to be resolved in the next release of pvs
 	xit(`stuck thread`, async () => {
         await quitProverIfActive();
 
