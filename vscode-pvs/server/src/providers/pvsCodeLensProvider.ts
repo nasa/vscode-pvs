@@ -41,7 +41,6 @@ import { CancellationToken, CodeLens, CodeLensRequest, Range, CodeLensParams } f
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 import { PvsFormula } from '../common/serverInterface';
-import * as path from 'path';
 
 export class PvsCodeLensProvider {    
     /**
@@ -59,7 +58,7 @@ export class PvsCodeLensProvider {
             
             let match: RegExpMatchArray = null;
             const codeLens: CodeLens[] = [];
-            let content: string = document.txt.replace(utils.commentRegexp, "");
+            const content: string = document.txt.replace(utils.commentRegexp, "");
 
             if (fileExtension === ".pvs" || fileExtension === ".tccs") {
                 while (match = utils.theoremRegexp.exec(content)) {
@@ -111,21 +110,29 @@ export class PvsCodeLensProvider {
                     }
                 }
                 
-                while (match = utils.datatypeRegexp.exec(content)) {
+                let txt: string = content;
+                match = utils.datatypeRegexp.exec(txt);
+                let lineOffset: number = 0;
+                while (match) {
                     if (match.length > 1 && match[1]) {
                         const theoryName: string = match[1];
 
-                        const matchEnd: RegExpMatchArray = utils.endTheoryRegexp(theoryName).exec(content);
+                        const matchEnd: RegExpMatchArray = utils.endTheoryOrDatatypeRegexp(theoryName).exec(txt);
                         if (matchEnd && matchEnd.length) {
-                            utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
+                            // utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
+                            const endIndex: number = matchEnd.index + matchEnd[0].length;
+                            const fullClip = txt.slice(0, endIndex);
                             
-                            const docUp: string = content.slice(0, match.index + theoryName.length);
+                            const docUp: string = txt.slice(0, match.index + theoryName.length);
                             const lines: string[] = docUp.split("\n");
-                            const line: number = lines.length - 1;
+                            const line: number = lines.length - 1 + lineOffset;
                             const character: number = lines[lines.length - 1].indexOf(match[1]);
+
+                            txt = txt.slice(endIndex);
+                            lineOffset += fullClip.split("\n").length - 1;
                             
-                            const superTheory: string = utils.findTheoryName(content, line);
-                            if (!superTheory) { // this additional check is necessary to ensure that the datatype is not encapsulated within a theory
+                            // const superTheory: string = utils.findTheoryName(txt, line);
+                            // if (!superTheory) { // this additional check is necessary to ensure that the datatype is not encapsulated within a theory
                                 const args = {
                                     fileName,
                                     fileExtension,
@@ -147,25 +154,40 @@ export class PvsCodeLensProvider {
                                         arguments: [ args ]
                                     }
                                 });
-                            }
+                                match = new RegExp(utils.datatypeRegexp).exec(txt);
+                            // } 
+                            // else {
+                            //     match = utils.datatypeRegexp.exec(txt);
+                            // }
+                        } else {
+                            match = utils.datatypeRegexp.exec(txt);
                         }
+                    } else {
+                        match = utils.datatypeRegexp.exec(txt);
                     }
                 }
 
                 if (fileExtension === ".pvs") {
-                    match = utils.theoryRegexp.exec(content);
+                    txt = content;
+                    match = utils.theoryRegexp.exec(txt);
+                    lineOffset = 0;
                     while (match) {
                         if (match.length > 1 && match[1]) {
                             const theoryName: string = match[1];
 
-                            const matchEnd: RegExpMatchArray = utils.endTheoryRegexp(theoryName).exec(content);
+                            const matchEnd: RegExpMatchArray = utils.endTheoryOrDatatypeRegexp(theoryName).exec(txt);
                             if (matchEnd && matchEnd.length) {
                                 // utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
+                                const endIndex: number = matchEnd.index + matchEnd[0].length;
+                                const fullClip = txt.slice(0, endIndex);
                                 
-                                const docUp: string = content.slice(0, match.index + theoryName.length);
+                                const docUp: string = txt.slice(0, match.index + theoryName.length);
                                 const lines: string[] = docUp.split("\n");
-                                const line: number = lines.length - 1;
+                                const line: number = lines.length - 1 + lineOffset;
                                 const character: number = lines[lines.length - 1].indexOf(match[1]);
+
+                                txt = txt.slice(endIndex);
+                                lineOffset += fullClip.split("\n").length - 1;
                                 
                                 const args = {
                                     fileName,
@@ -196,15 +218,12 @@ export class PvsCodeLensProvider {
                                         arguments: [ args ]
                                     }
                                 });
-
-                                const endIndex: number = matchEnd.index + matchEnd[0].length;
-                                content = content.slice(endIndex);
-                                match = new RegExp(utils.theoryRegexp).exec(content);
+                                match = new RegExp(utils.theoryRegexp).exec(txt);
                             } else {
-                                match = utils.theoryRegexp.exec(content);
+                                match = utils.theoryRegexp.exec(txt);
                             }
                         } else {
-                            match = utils.theoryRegexp.exec(content);
+                            match = utils.theoryRegexp.exec(txt);
                         }
                     }
                 }

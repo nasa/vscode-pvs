@@ -59,7 +59,7 @@ export const RECORD: { [key: string]: RegExp } = {
 export const commentRegexp: RegExp = /%.*/g;
 // group 1 is theoryName, group 2 is comma-separated list of theory parameters -- NB: this regexp is fast but not accurate, because it does not check the end of the theory. See example use in codelense.
 export const theoryRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*THEORY\s+BEGIN\b/gi;
-export function endTheoryRegexp(theoryName: string): RegExp {
+export function endTheoryOrDatatypeRegexp(theoryName: string): RegExp {
 	return new RegExp(`(\\bEND\\s*)(${theoryName})(\\b)`, "gi");
 }
 export const datatypeRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*DATATYPE\s+(?:BEGIN|WITH)\b/gi;
@@ -118,7 +118,7 @@ export function findTheoryName(fileContent: string, line: number): string | null
 		if (matchFirstTheory && matchFirstTheory.length > 1) {
 			const theoryName: string = matchFirstTheory[1];
 
-			const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
+			const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
 			if (matchEnd && matchEnd.length) {
 				regexp.lastIndex = matchEnd.index; // restart the search from here
 
@@ -134,7 +134,7 @@ export function findTheoryName(fileContent: string, line: number): string | null
 		while (match) {
 			if (match.length > 1 && match[1]) {
 				const theoryName: string = match[1];
-				const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
+				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
 				if (matchEnd && matchEnd.length) {
 					const endIndex: number = matchEnd.index + matchEnd[0].length;
 					txt = txt.slice(endIndex);
@@ -172,7 +172,7 @@ export function listTheoryNames (fileContent: string): string[] {
 			if (match.length > 1 && match[1]) {
 				const theoryName: string = match[1];
 
-				const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
+				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
 				if (matchEnd && matchEnd.length) {
 					const endIndex: number = matchEnd.index + matchEnd[0].length;
 					txt = txt.slice(endIndex);
@@ -255,7 +255,7 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 			if (match.length > 1 && match[1]) {
 				const theoryName: string = match[1];
 
-				const matchEnd: RegExpMatchArray = endTheoryRegexp(theoryName).exec(txt);
+				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
 				if (matchEnd && matchEnd.length) {
 					const endIndex: number = matchEnd.index + matchEnd[0].length;
 					const fullClip = txt.slice(0, endIndex);

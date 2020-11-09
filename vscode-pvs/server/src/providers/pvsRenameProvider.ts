@@ -82,7 +82,7 @@ export class PvsRenameProvider {
                                 // change text in the theory
                                 const mod: string = ln.substring(0, range.start.character) + newTheoryName + ln.substring(range.end.character);
                                 const newLines: string[] = lines.slice(0, desc.position.line).concat(mod).concat(lines.slice(desc.position.line + 1, lines.length + 1));
-                                const theoryEndRegexp: RegExp = utils.endTheoryRegexp(theoryName);
+                                const theoryEndRegexp: RegExp = utils.endTheoryOrDatatypeRegexp(theoryName);
                                 const newContent: string = newLines.join("\n").replace(theoryEndRegexp, `$1${newTheoryName}$3`);
                                 await fsUtils.writeFile(fname, newContent);
                                 const textEdit: TextEdit = {
