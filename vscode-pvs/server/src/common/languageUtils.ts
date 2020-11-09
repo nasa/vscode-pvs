@@ -2196,10 +2196,10 @@ export function makeWorkspaceSummary (desc: WorkspaceSummary): string {
 		const spaces: number = (20 - overall.length) > 0 ? 20 - overall.length : 0;
 		nProved += theory.ok;
 		nMissed += theory.miss;
-		ans += `\n\t${theory.theoryName}` + ".".repeat(points) + " " + overall + " ".repeat(spaces) + `(${Math.floor(theory.ms / 1000 / 1000) * 1000} s)`;
+		ans += `\n\t${theory.theoryName}` + ".".repeat(points) + " " + overall + " ".repeat(spaces) + `(${(+theory.ms / 1000).toFixed(3)} s)`;
 		totTime += theory.ms;
 	}
-	ans += `\n\nWorkspace ${workspaceName} totals: ${desc.total} formulas, ${nProved + nMissed} attempted, ${nProved} succeeded (${Math.floor(totTime / 1000)} s)`;
+	ans += `\n\nWorkspace ${workspaceName} totals: ${desc.total} formulas, ${nProved + nMissed} attempted, ${nProved} succeeded (${(+totTime / 1000).toFixed(3)} s)`;
 // 	ans += `\n
 // *** Grand Totals: ${nProved} proofs / ${desc.total} formulas. Missed: ${nMissed} formulas.
 // *** Number of libraries: ${Object.keys(libraries).length}`;	
@@ -2240,9 +2240,9 @@ export function makeTheorySummary (desc: TheorySummary): string {
 		if (isProved(status)) { nProved++; }
 		totTime += ms;
 
-		ans += `\n\t${formulaName}` + ".".repeat(points) + getIcon(status) + " " + status + " ".repeat(spaces) + `(${Math.floor(ms / 1000 / 1000) * 1000} s)`;
+		ans += `\n\t${formulaName}` + ".".repeat(points) + getIcon(status) + " " + status + " ".repeat(spaces) + `(${(+ms / 1000)} s)`;
 	}
-	ans += `\n\nTheory ${desc.theoryName} totals: ${desc.total} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${totTime / 1000} s)`;
+	ans += `\n\nTheory ${desc.theoryName} totals: ${desc.total} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${+(totTime / 1000).toFixed(3)} s)`;
 	return ans;
 }
 
