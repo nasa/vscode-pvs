@@ -5,7 +5,7 @@ The environment redefines the way developers interact with PVS, and better align
 ![](https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 ## Latest version
-[vscode-pvs-1.0.28-beta](https://github.com/nasa/vscode-pvs/tree/master/releases/vscode-pvs-1.0.28-beta.vsix)
+[vscode-pvs-1.0.28-gamma](https://github.com/nasa/vscode-pvs/tree/master/releases/vscode-pvs-1.0.28-gamma.vsix)
 
 
 ## Getting started
