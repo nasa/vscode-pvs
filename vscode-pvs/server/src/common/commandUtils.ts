@@ -51,7 +51,7 @@ export function formatHelp (desc: HelpDescriptor, opt?: { useColors?: boolean })
 }
 
 export function printHelp (helpCommand: string, opt?: { useColors?: boolean }): string {
-    const match: RegExpMatchArray = utils.helpCommandRegexp.exec(helpCommand);
+    const match: RegExpMatchArray = new RegExp(utils.helpCommandRegexp).exec(helpCommand);
     if (match && match.length > 1) {
         const availableHelp: HelpDescriptor = PROOF_COMMANDS[match[1]]
             || PROOF_TACTICS[match[1]]
