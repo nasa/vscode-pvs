@@ -492,7 +492,7 @@ export class EventsDispatcher {
                             + 'An error occurred while trying to save your proof in PVS.\n'
                             + 'You might be using an obsolete version of PVS. Please try to re-install PVS with the command `M-x reinstall-pvs`.\n'
                             + 'The command will open a dialog, select `Download PVS` to install the latest version of PVS.\n'
-                            + `If the problem persists, please report an issue on [github](https://github.com/nasa/vscode-pvs/issues).\n\n`
+                            + `If the problem persists, please report an issue on [github](https://github.com/nasa/vscode-pvs/issues) or on the [PVS group](https://groups.google.com/g/pvs-group), we will look into it.\n\n`
                             + `## Your proof attempt\n`
                             + `Don't panic, your proof attempt for ${desc.args.formulaName} is not lost.\n`
                             + `Proof Explorer saved your proof attempt, and you can load it with the 'Restore Proof' functionality next time you start the proof with VSCode-PVS.\n`
