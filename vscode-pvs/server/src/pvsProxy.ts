@@ -839,6 +839,12 @@ export class PvsProxy {
 					// the typecheck error might be generated from an imported file --- we need to check res.error.file_name
 					fname = (res.error && res.error.data && res.error.data.file_name) ? res.error.data.file_name : fname;
 					if (res.error && res.error.data) {
+						if (res.error.data?.error_string?.includes("Error: the assertion")) {
+							this.pvsErrorManager.notifyPvsFailure({
+								src: "pvs-proxy.typecheck-file",
+								msg: res.error.data.error_string
+							});
+						}
 						return {
 							jsonrpc: "2.0",
 							id: this.get_fresh_id(),

@@ -59,7 +59,7 @@ export class PvsCodeLensProvider {
             
             let match: RegExpMatchArray = null;
             const codeLens: CodeLens[] = [];
-            const content: string = document.txt.replace(utils.commentRegexp, "");
+            let content: string = document.txt.replace(utils.commentRegexp, "");
 
             if (fileExtension === ".pvs" || fileExtension === ".tccs") {
                 while (match = utils.theoremRegexp.exec(content)) {
@@ -153,13 +153,14 @@ export class PvsCodeLensProvider {
                 }
 
                 if (fileExtension === ".pvs") {
-                    while (match = utils.theoryRegexp.exec(content)) {
+                    match = utils.theoryRegexp.exec(content);
+                    while (match) {
                         if (match.length > 1 && match[1]) {
                             const theoryName: string = match[1];
 
                             const matchEnd: RegExpMatchArray = utils.endTheoryRegexp(theoryName).exec(content);
                             if (matchEnd && matchEnd.length) {
-                                utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
+                                // utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
                                 
                                 const docUp: string = content.slice(0, match.index + theoryName.length);
                                 const lines: string[] = docUp.split("\n");
@@ -195,7 +196,15 @@ export class PvsCodeLensProvider {
                                         arguments: [ args ]
                                     }
                                 });
+
+                                const endIndex: number = matchEnd.index + matchEnd[0].length;
+                                content = content.slice(endIndex);
+                                match = new RegExp(utils.theoryRegexp).exec(content);
+                            } else {
+                                match = utils.theoryRegexp.exec(content);
                             }
+                        } else {
+                            match = utils.theoryRegexp.exec(content);
                         }
                     }
                 }
