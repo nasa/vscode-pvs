@@ -556,20 +556,22 @@ class PvsCli {
 		let hits: string[] = [];
 		// console.log(`[pvs-cli] trying to auto-complete ${line}`);
 		if (line.startsWith("(expand") || line.startsWith("expand")
-			|| line.startsWith("(rewrite") || line.startsWith("rewrite")) {
+			|| line.startsWith("(rewrite") || line.startsWith("rewrite")
+			|| line.startsWith("(eval-expr") || line.startsWith("eval-expr")) {
 			// autocomplete symbol names
 			const symbols: string[] = utils.listSymbols(this.proofState);
 			// console.dir(symbols, { depth: null });
+			const expandCommands: string[] = [
+				"expand", "rewrite", "eval-expr"
+			];
 			if (symbols && symbols.length) {
 				for (let i = 0; i < symbols.length; i++) {
-					if (`(expand "${symbols[i]}"`.startsWith(line)) {
-						hits.push(`(expand "${symbols[i]}"`);
-					} else if (`expand "${symbols[i]}"`.startsWith(line)) {
-						hits.push(`expand "${symbols[i]}"`);
-					} else if (`(rewrite "${symbols[i]}"`.startsWith(line)) {
-						hits.push(`(rewrite "${symbols[i]}"`);
-					} else if (`rewrite "${symbols[i]}"`.startsWith(line)) {
-						hits.push(`rewrite "${symbols[i]}"`);
+					for (let j = 0; j < expandCommands.length; j++) {
+						if (`(${expandCommands[j]} "${symbols[i]}"`.startsWith(line)) {
+							hits.push(`(${expandCommands[j]} "${symbols[i]}"`);
+						} else if (`${expandCommands[j]} "${symbols[i]}"`.startsWith(line)) {
+							hits.push(`${expandCommands[j]} "${symbols[i]}"`);
+						} 
 					}
 				}
 			}
@@ -577,16 +579,17 @@ class PvsCli {
 					|| line.startsWith("(apply-lemma") || line.startsWith("apply-lemma")) {
 			if (this.mathObjects) {
 				const symbols: string[] = this.mathObjects.lemmas;
+				const lemmaCommands: string[] = [
+					"lemma", "apply-lemma"
+				];	
 				if (symbols && symbols.length) {
 					for (let i = 0; i < symbols.length; i++) {
-						if (`(lemma "${symbols[i]}"`.startsWith(line)) {
-							hits.push(`(lemma "${symbols[i]}"`);
-						} else if (`lemma "${symbols[i]}"`.startsWith(line)) {
-							hits.push(`lemma "${symbols[i]}"`);
-						} else if (`(apply-lemma "${symbols[i]}"`.startsWith(line)) {
-							hits.push(`(apply-lemma "${symbols[i]}"`);
-						} else if (`apply-lemma "${symbols[i]}"`.startsWith(line)) {
-							hits.push(`apply-lemma "${symbols[i]}"`);
+						for (let j = 0; j < lemmaCommands.length; j++) {
+							if (`(${lemmaCommands[j]} "${symbols[i]}"`.startsWith(line)) {
+								hits.push(`(${lemmaCommands[j]} "${symbols[i]}"`);
+							} else if (`${lemmaCommands[j]} "${symbols[i]}"`.startsWith(line)) {
+								hits.push(`${lemmaCommands[j]} "${symbols[i]}"`);
+							}							
 						}
 					}
 				}
