@@ -1427,7 +1427,8 @@ export class PvsLanguageServer {
 			console.error(msg);
 			this.pvsErrorManager?.notifyPvsFailure({
 				msg,
-				error_type: "dependency"
+				error_type: "dependency",
+				src: "pvs-language-server"
 			});
 			return false;
 		}
@@ -1435,7 +1436,8 @@ export class PvsLanguageServer {
 			console.error(osVersion.error);
 			this.pvsErrorManager?.notifyPvsFailure({
 				msg: osVersion.error,
-				error_type: "dependency"
+				error_type: "dependency",
+				src: "pvs-language-server"
 			});
 			return false;
 		}

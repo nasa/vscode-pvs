@@ -186,10 +186,12 @@ export async function showMarkdownContent (msg: string, contextFolder?: string):
 
 /**
  * Shows a failure (i.e., an error that cannot be recovered), typically a pvs-server bug (e.g, assertion error)
- * @param msg message
+ * @param msg error message
+ * @param src software component that generated the error message -- useful for debugging purposes
  */
-export function showFailure (msg: string): void {
-    const fileContent: string = `# PVS error\n`
+export function showFailure (msg: string, src?: string): void {
+    src = src || "";
+    const fileContent: string = `# PVS error ${src ? "(" + src + ")" : ""}\n`
     + 'The following error occurred:\n\n'
     + '```lisp\n' + msg + '\n```'
     + '\n\nThis error may be caused by temporary files that PVS failed to update.\n\n'

@@ -1394,8 +1394,9 @@ export class EventsDispatcher {
 
         });
 
-        this.client.onNotification("server.status.pvs-failure", (opt?: { msg?: string, fname?: string, method?: string, error_type?: string }) => {
+        this.client.onNotification("server.status.pvs-failure", (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src?: string }) => {
             opt = opt || {};
+            const src: string = opt.src || "pvs";
             let msg: string = opt.msg || "";
             msg = msg.replace("[pvs-server]", "").trim();
             if (opt.error_type === "dependency") {
@@ -1411,7 +1412,7 @@ export class EventsDispatcher {
                 }
                 msg = (msg && msg.startsWith("Error:")) ? msg : `Error: ` + msg;
                 // vscodeUtils.showErrorMessage(msg);
-                vscodeUtils.showFailure(msg);
+                vscodeUtils.showFailure(msg, src);
             }
         });
     }

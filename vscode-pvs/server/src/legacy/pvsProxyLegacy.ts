@@ -78,7 +78,8 @@ export class PvsProxyLegacy {
             await this.pvsProcess.activate({ externalServer: true });
         }
     }
-    async lisp (cmd: string): Promise<PvsResponse> {
+    async lisp (cmd: string, opt?: { quiet?: boolean }): Promise<PvsResponse> {
+        opt = opt || {};
         // let data: string = await this.pvsProcess.sendText(`(lisp (let ((*in-checker* nil)) ${cmd}))`);
         let data: string = (this.pvsProcess) ? await this.pvsProcess.sendText(`(lisp ${cmd})`) : "";
         if (data) {
@@ -98,7 +99,9 @@ export class PvsProxyLegacy {
             const msg: string = (error_string.includes("not find lib-path")) ? 
                 error_string + ". Please add external pvs libraries to vscode-pvs settings" 
                     : error_string;
-            this.pvsErrorManager.notifyPvsFailure({ msg });
+            if (!opt.quiet) {
+                this.pvsErrorManager.notifyPvsFailure({ msg, src: "pvs-proxy-legacy" });
+            }
             return {
                 jsonrpc: "2.0",
                 id: "pvs-process-legacy",
@@ -301,7 +304,7 @@ export class PvsProxyLegacy {
             id: "pvs-process-legacy"
         };
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
-            const response: PvsResponse = await this.lisp(`(parse-file "${fname}" nil)`);
+            const response: PvsResponse = await this.lisp(`(parse-file "${fname}" nil)`, { quiet: true });
             const res: string = (response) ? response.result : "";
             const matchParseError: RegExpMatchArray = /\berror\"\>\s*\"([\w\W\s]+)\bIn file\s+([\w\W\s]+)\s+\(line\s+(\d+)\s*,\s*col\s+(\d+)/gm.exec(res);
             const matchAssertionError: RegExpMatchArray = /\bError:[\w\W\s]+/gm.exec(res);
@@ -330,7 +333,7 @@ export class PvsProxyLegacy {
             id: "pvs-process-legacy"
         };
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
-            const response: PvsResponse = await this.lisp(`(typecheck-file "${fname}" nil nil nil nil t)`);
+            const response: PvsResponse = await this.lisp(`(typecheck-file "${fname}" nil nil nil nil t)`, { quiet: true });
             if (response && response.error) {
                 return response;
             }
@@ -389,7 +392,7 @@ export class PvsProxyLegacy {
                     }
                 };
                 if (this.pvsErrorManager) {
-                    this.pvsErrorManager.notifyPvsFailure({ fname, msg: error_string });
+                    this.pvsErrorManager.notifyPvsFailure({ fname, msg: error_string, src: "pvs-proxy-legacy" });
                 }
                 return pvsResponse;
             }

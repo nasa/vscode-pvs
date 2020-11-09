@@ -278,14 +278,17 @@ export class PvsProxy {
 									error
 								});
 								if (this.pvsErrorManager) {
-									this.pvsErrorManager.notifyPvsFailure({ msg: `Error: unable to connect to pvs-server at http://${this.clientAddress}:${this.clientPort}` });
+									this.pvsErrorManager.notifyPvsFailure({ 
+										msg: `Error: unable to connect to pvs-server at http://${this.clientAddress}:${this.clientPort}`,
+										src: "pvs-proxy"
+									});
 								}
 							} else {
 							// if (error['code'] === 'ECONNRESET') {
 							// 	// do nothing -- this usually occurs when the user reboots pvs-server
 							// } else {
 								if (this.pvsErrorManager) {
-									this.pvsErrorManager.notifyPvsFailure({ method: jsonReq, msg: error.message });
+									this.pvsErrorManager.notifyPvsFailure({ method: jsonReq, msg: error.message, src: "pvs-proxy" });
 								}
 								resolve({
 									jsonrpc: "2.0", 
