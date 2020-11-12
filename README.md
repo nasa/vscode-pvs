@@ -1,14 +1,17 @@
 # VSCode-PVS: An Integrated Development Environment for the Prototype Verification System
+
+[![version](https://vsmarketplacebadge.apphb.com/version/paolomasci.vscode-pvs.svg)](https://vsmarketplacebadge.apphb.com/version/paolomasci.vscode-pvs.svg)
+[![downloads](https://vsmarketplacebadge.apphb.com/downloads-short/paolomasci.vscode-pvs.svg)](https://vsmarketplacebadge.apphb.com/downloads-short/paolomasci.vscode-pvs.svg)
+[![installs](https://vsmarketplacebadge.apphb.com/installs-short/paolomasci.vscode-pvs.svg)](https://vsmarketplacebadge.apphb.com/installs-short/paolomasci.vscode-pvs.svg)
+[![license](https://img.shields.io/badge/license-NASA-blue.svg)](https://opensource.org/licenses/NASA-1.3)
+
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
 ![](https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
-## Latest version
-[vscode-pvs-1.0.28](https://github.com/nasa/vscode-pvs/tree/master/releases/vscode-pvs-1.0.28.vsix)
 
-
-## Getting started
+## Documentation
 - [Quick reference guide](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/USER-INTERFACE.md) for the VSCode-PVS User Interface
 - [FAQs](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/FAQ.md) on VSCode-PVS, including troubleshooting techniques for basic problems.
 - Are you new to PVS? Try out our [tutorial](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/TUTORIAL.md)!
@@ -16,17 +19,17 @@ The environment redefines the way developers interact with PVS, and better align
 
 
 ## Requirements
+- Linux or MacOS operating system
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
 - Visual Studio Code (v1.32.3 or greater) https://code.visualstudio.com
-
 
 ## Installation instructions
 VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitHub.
 
 
 **Automatic installation from Visual Studio Code Marketplace**
-- Search `vscode-pvs` in https://marketplace.visualstudio.com and select `install`
-
+- Search `pvs` in https://marketplace.visualstudio.com and select `install`
+<br><br><img src="vscode-pvs/screenshots/how-to-install-vscode-pvs-from-marketplace.gif" width="600">
 
 **Manual installation from GitHub**
 1. Download the .vsix file of VSCode-PVS from [github](https://github.com/nasa/vscode-pvs/tree/master/releases).
@@ -39,11 +42,12 @@ VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitH
 >Note: If you have used earlier releases of VSCode-PVS (`< 1.0.26`), you will need to download and install the latest version of PVS and NASALib. You can do this in VSCode-PVS, with the commands `M-x install-pvs` and `M-x install-nasalib`. 
 
 
-
 ## Updating VSCode-PVS
-New releases of VSCode-PVS will be available on [github](https://github.com/nasa/vscode-pvs/tree/master/releases) and in the [Visual Studio Code marketplace](https://marketplace.visualstudio.com).
+VSCode-PVS will be automatically updated every time we publish a new release in the marketplace.
 
-All settings and preferences will be maintained when installing the new version.
+All settings and preferences will be maintained when installing a new release.
+
+If you would like to perform manual updates or try out nightly builds, you can download the .vsix file on [github](https://github.com/nasa/vscode-pvs/tree/master/releases).
 
 
 ## Publications
