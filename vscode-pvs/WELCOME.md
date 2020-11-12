@@ -24,7 +24,7 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
-- [1.0.28 (2020.11.xx)]()  
+- [1.0.29 (2020.11.12)]()  
   -Improved codelens  
   -Added rename theory / formula  
 
