@@ -535,7 +535,7 @@ export async function getPvsWorkspace (resource: ContextFolder | WorkspaceItem |
 }
 
 export function showReleaseNotes (): void {
-    const fileUri: vscode.Uri = vscode.Uri.file(path.join(__dirname, "..", "..", "..", "README.md"));
+    const fileUri: vscode.Uri = vscode.Uri.file(path.join(__dirname, "..", "..", "..", "WELCOME.md"));
     vscode.commands.executeCommand('markdown.showPreview', fileUri);
 }
 
