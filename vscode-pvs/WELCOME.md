@@ -1,4 +1,4 @@
-# Welcome to VSCode-PVS (version 1.0.28)
+# Welcome to VSCode-PVS (version 1.0.29)
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications. The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
 
@@ -24,6 +24,10 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.28 (2020.11.xx)]()  
+  -Improved codelens  
+  -Added rename theory / formula  
+
 - [1.0.28 (2020.11.09)]()  
   -Added option for re-running only unproved proofs  
   -Improved Proof Explorer (prove-workspace, rewind)   

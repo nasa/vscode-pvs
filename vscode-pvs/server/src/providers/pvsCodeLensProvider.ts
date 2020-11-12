@@ -60,6 +60,72 @@ export class PvsCodeLensProvider {
             const codeLens: CodeLens[] = [];
             const content: string = document.txt.replace(utils.commentRegexp, "");
 
+            // typecheck-file | evaluate-in-pvsio
+            if (fileExtension === ".pvs") {
+                let txt: string = content;
+                let lineOffset: number = 0;
+
+                txt = content;
+                lineOffset = 0;
+                match = new RegExp(utils.theoryOrDatatypeRegexp).exec(txt);
+                while (match) {
+                    if (match.length > 1 && match[1]) {
+                        const theoryName: string = match[1];
+
+                        const matchEnd: RegExpMatchArray = utils.endTheoryOrDatatypeRegexp(theoryName).exec(txt);
+                        if (matchEnd && matchEnd.length) {
+                            const endIndex: number = matchEnd.index + matchEnd[0].length;
+                            const fullClip = txt.slice(0, endIndex);
+                            
+                            const docUp: string = txt.slice(0, match.index + theoryName.length);
+                            const lines: string[] = docUp.split("\n");
+                            const line: number = lines.length - 1 + lineOffset;
+                            const character: number = lines[lines.length - 1].indexOf(match[1]);
+
+                            txt = txt.slice(endIndex);
+                            lineOffset += fullClip.split("\n").length - 1;
+                            
+                            const args = {
+                                fileName,
+                                fileExtension,
+                                contextFolder,
+                                theoryName, 
+                                line
+                            };
+
+                            // pvsio codelens
+                            const range: Range = {
+                                start: { line, character },
+                                end: { line, character: character + theoryName.length }
+                            };
+                            codeLens.push({
+                                range,
+                                command: {
+                                    title: "typecheck-file",
+                                    command: "vscode-pvs.typecheck-file",
+                                    arguments: [ args ]
+                                }
+                            });
+                            codeLens.push({
+                                range,
+                                command: {
+                                    title: "evaluate-in-pvsio",
+                                    command: "vscode-pvs.pvsio-evaluator",
+                                    arguments: [ args ]
+                                }
+                            });
+                            // create a new regexp every time txt changes
+                            match = new RegExp(utils.theoryOrDatatypeRegexp).exec(txt);
+                        } else {
+                            match = utils.theoryOrDatatypeRegexp.exec(txt);
+                        }
+                    } else {
+                        match = utils.theoryOrDatatypeRegexp.exec(txt);
+                    }
+                }
+            }
+
+            // show-prooflite | prove-formula
             if (fileExtension === ".pvs" || fileExtension === ".tccs") {
                 while (match = utils.theoremRegexp.exec(content)) {
                     if (match.length > 1 && match[1]) {
@@ -109,126 +175,9 @@ export class PvsCodeLensProvider {
                         }
                     }
                 }
-                
-                let txt: string = content;
-                match = utils.datatypeRegexp.exec(txt);
-                let lineOffset: number = 0;
-                while (match) {
-                    if (match.length > 1 && match[1]) {
-                        const theoryName: string = match[1];
-
-                        const matchEnd: RegExpMatchArray = utils.endTheoryOrDatatypeRegexp(theoryName).exec(txt);
-                        if (matchEnd && matchEnd.length) {
-                            // utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
-                            const endIndex: number = matchEnd.index + matchEnd[0].length;
-                            const fullClip = txt.slice(0, endIndex);
-                            
-                            const docUp: string = txt.slice(0, match.index + theoryName.length);
-                            const lines: string[] = docUp.split("\n");
-                            const line: number = lines.length - 1 + lineOffset;
-                            const character: number = lines[lines.length - 1].indexOf(match[1]);
-
-                            txt = txt.slice(endIndex);
-                            lineOffset += fullClip.split("\n").length - 1;
-                            
-                            // const superTheory: string = utils.findTheoryName(txt, line);
-                            // if (!superTheory) { // this additional check is necessary to ensure that the datatype is not encapsulated within a theory
-                                const args = {
-                                    fileName,
-                                    fileExtension,
-                                    contextFolder,
-                                    theoryName, 
-                                    line
-                                };
-
-                                // pvsio codelens
-                                const range: Range = {
-                                    start: { line, character },
-                                    end: { line, character: character + theoryName.length }
-                                };
-                                codeLens.push({
-                                    range,
-                                    command: {
-                                        title: "typecheck-file",
-                                        command: "vscode-pvs.typecheck-file",
-                                        arguments: [ args ]
-                                    }
-                                });
-                                match = new RegExp(utils.datatypeRegexp).exec(txt);
-                            // } 
-                            // else {
-                            //     match = utils.datatypeRegexp.exec(txt);
-                            // }
-                        } else {
-                            match = utils.datatypeRegexp.exec(txt);
-                        }
-                    } else {
-                        match = utils.datatypeRegexp.exec(txt);
-                    }
-                }
-
-                if (fileExtension === ".pvs") {
-                    txt = content;
-                    match = utils.theoryRegexp.exec(txt);
-                    lineOffset = 0;
-                    while (match) {
-                        if (match.length > 1 && match[1]) {
-                            const theoryName: string = match[1];
-
-                            const matchEnd: RegExpMatchArray = utils.endTheoryOrDatatypeRegexp(theoryName).exec(txt);
-                            if (matchEnd && matchEnd.length) {
-                                // utils.theoryRegexp.lastIndex = matchEnd.index; // restart the search from here
-                                const endIndex: number = matchEnd.index + matchEnd[0].length;
-                                const fullClip = txt.slice(0, endIndex);
-                                
-                                const docUp: string = txt.slice(0, match.index + theoryName.length);
-                                const lines: string[] = docUp.split("\n");
-                                const line: number = lines.length - 1 + lineOffset;
-                                const character: number = lines[lines.length - 1].indexOf(match[1]);
-
-                                txt = txt.slice(endIndex);
-                                lineOffset += fullClip.split("\n").length - 1;
-                                
-                                const args = {
-                                    fileName,
-                                    fileExtension,
-                                    contextFolder,
-                                    theoryName, 
-                                    line
-                                };
-
-                                // pvsio codelens
-                                const range: Range = {
-                                    start: { line, character },
-                                    end: { line, character: character + theoryName.length }
-                                };
-                                codeLens.push({
-                                    range,
-                                    command: {
-                                        title: "typecheck-file",
-                                        command: "vscode-pvs.typecheck-file",
-                                        arguments: [ args ]
-                                    }
-                                });
-                                codeLens.push({
-                                    range,
-                                    command: {
-                                        title: "evaluate-in-pvsio",
-                                        command: "vscode-pvs.pvsio-evaluator",
-                                        arguments: [ args ]
-                                    }
-                                });
-                                match = new RegExp(utils.theoryRegexp).exec(txt);
-                            } else {
-                                match = utils.theoryRegexp.exec(txt);
-                            }
-                        } else {
-                            match = utils.theoryRegexp.exec(txt);
-                        }
-                    }
-                }
             }
 
+            // prove-formula
             if (fileExtension === ".prlite" || fileExtension === ".prl") {
                 while (match = utils.proofRegexp.exec(content)) {
                     if (match.length > 1 && match[1]) {
