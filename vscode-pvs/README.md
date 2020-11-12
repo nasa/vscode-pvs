@@ -8,7 +8,7 @@
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
-![](https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
+![](https://github.com/nasa/vscode-pvs/tree/master/https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
 
 
 ## Documentation
@@ -29,13 +29,13 @@ VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitH
 
 **Automatic installation from Visual Studio Code Marketplace**
 - Search `pvs` in https://marketplace.visualstudio.com and select `install`
-<br><br><img src="vscode-pvs/screenshots/how-to-install-vscode-pvs-from-marketplace.gif" width="600">
+<br><br><img src="https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/how-to-install-vscode-pvs-from-marketplace.gif" width="600">
 
 **Manual installation from GitHub**
 1. Download the .vsix file of VSCode-PVS from [github](https://github.com/nasa/vscode-pvs/tree/master/releases).
 2. Click on the Extensions icon in the Activity Bar 
 3. Click on the `...` menu in the title bar, and use `Install from VSIX` to select the downloaded .vsix file
-<br><br><img src="vscode-pvs/screenshots/how-to-install-vscode-pvs.gif" width="600">
+<br><br><img src="https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/how-to-install-vscode-pvs.gif" width="600">
 
 >Note: When installing VSCode-PVS for the first time, it will check if PVS Allegro v7.1.0 is present on your system. If not, VSCode-PVS will show a dialog that allows you to download PVS.
 
@@ -58,22 +58,22 @@ Paolo Masci and César Muñoz, [An Integrated Development Environment for the Pr
 The main functionalities provided by the environment are as follows:
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
 - **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented in the editor when placing the mouse over a symbol name. Code snippets are provided for frequent modeling blocks, e.g., if-then-else. 
-<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-autocompletion.gif" width="600">
+<br><br> <img src="https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-autocompletion.gif" width="600">
 
 - **Hover information for symbol definitions**: Hover boxes providing information about identifiers are automatically displayed when the user places the cursor over an identifier.
-<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-hover.gif" width="600">
+<br><br> <img src="https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-hover.gif" width="600">
 
 - **Go-to definition**: Click on the name of the identifier while holding down the Ctrl key to jump to the location where the identifier is declared.
-<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-goto-definition.gif" width="600">
+<br><br> <img src="https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-goto-definition.gif" width="600">
 
 - **Live diagnostics**: Parsing is automatically performed in the background, and errors are reported in-line in the editor. Problematic expressions are underlined with red wavy lines. Tooltips presenting the error details are shown when the user places the cursor over the wavy lines.
-<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-live-diagnostics.gif" width="600">
+<br><br> <img src="https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-live-diagnostics.gif" width="600">
 
 - **Workspace Explorer**: Interactive tree view showing all theories in the current workspace, name and status of theorems and typecheck conditions.
-<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-theory-explorer.gif" width="600">
+<br><br> <img src="https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-theory-explorer.gif" width="600">
 
 - **Proof Explorer + Integrated Terminal**: Interactive tree view for viewing and editing the current proof. An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
-<br><br> <img src="vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
+<br><br> <img src="https://github.com/nasa/vscode-pvs/tree/master/vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
 <br>
 
