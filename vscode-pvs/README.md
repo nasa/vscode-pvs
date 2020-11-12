@@ -8,7 +8,7 @@
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
-![](https://github.com/nasa/vscode-pvs/raw/master/https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png "")
+<img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png" width="800">
 
 
 ## Documentation
