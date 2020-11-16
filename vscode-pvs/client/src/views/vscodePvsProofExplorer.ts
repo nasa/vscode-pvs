@@ -1059,8 +1059,8 @@ export class ProofItem extends TreeItem {
 		this.notVisited();
 	}
 	updateTooltip (sequent?: utils.SequentDescriptor): void {
-		this.tooltip = (sequent) ? utils.formatSequent(sequent)
-			: (this.proofState) ? utils.formatSequent(this.proofState) 
+		this.tooltip = (sequent) ? utils.formatSequent(sequent).trim()
+			: (this.proofState) ? utils.formatSequent(this.proofState)?.trim()
 				: " ";
 	}
 	updateStatus (status: ProofNodeStatus): void {
