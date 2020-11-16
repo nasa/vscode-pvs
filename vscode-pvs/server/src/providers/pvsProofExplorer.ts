@@ -658,8 +658,6 @@ export class PvsProofExplorer {
 					if (targetBranch) {
 						// before moving to the target branch, mark current branch as open (i.e., not visited)
 						if (this.activeNode.contextValue !== "proof-command") {
-						// 	this.activeNode.parent.notVisited();
-						// } else {
 							this.activeNode.notVisited();
 						}
 						// find the last visited child in the new branch
@@ -667,7 +665,9 @@ export class PvsProofExplorer {
 							return elem.contextValue === "proof-command" && elem.isVisited();
 						});
 						const targetNode: ProofItem = (visitedChildren.length) ? visitedChildren[visitedChildren.length - 1] : targetBranch;
-						// targetNode.pending();
+						// update proof state and tooltip for target node
+						targetNode.sequentDescriptor = this.proofState;
+						targetNode.updateTooltip({ internalAction: this.autorunFlag });
 						// mark the target node as active
 						this.markAsActive({ selected: targetNode });
 						// window.showInformationMessage(msg);
