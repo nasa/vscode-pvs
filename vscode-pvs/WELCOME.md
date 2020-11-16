@@ -24,6 +24,9 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.31 (2020.11.16)]()  
+  -Fixed bug with proof-explorer (missing tooltip / proof state update)    
+
 - [1.0.30 (2020.11.16)]()  
   -Fixed bug with summary produced by `M-x pri`
   -Fixed issue with saving proof files from .jprf to .prf   
