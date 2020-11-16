@@ -73,7 +73,7 @@ import {
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
 import { PvsResponse, PvsError } from '../common/pvs-gui';
-import { SequentDescriptor } from '../common/languageUtils';
+import { ProofOrigin, SequentDescriptor } from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
 import { PvsProxy } from '../pvsProxy';
 import { PvsLanguageServer } from '../pvsLanguageServer';
@@ -95,6 +95,7 @@ abstract class TreeItem {
  */
 export class PvsProofExplorer {
 	protected shasum: string;
+	protected origin: ProofOrigin;
 
 	protected interruptFlag: boolean = false;
 
@@ -1697,15 +1698,15 @@ export class PvsProofExplorer {
 		// save proof if status has changed
 		const fname: string = fsUtils.desc2fname({
 			fileName: this.formula.theoryName,
-			fileExtension: ".prl",
+			fileExtension: ".prf",
 			contextFolder: this.formula.contextFolder
 		});
-		const proofliteExists: boolean = await utils.containsProoflite(fname, this.formula.formulaName);
-		if (this.root.proofStatusChanged() || this.dirtyFlag || !proofliteExists) {
+		// const proofliteExists: boolean = await utils.containsProoflite(fname, this.formula.formulaName);
+		if (this.root.proofStatusChanged() || this.dirtyFlag || this.origin !== ".prf") { // || !proofliteExists) {
 			await this.quitProofAndSave(); // proof descriptor is automatically updated by saveproof
 		} else {
 			// update proof descriptor
-			this.proofDescriptor = this.makeProofDescriptor();
+			this.proofDescriptor = this.makeProofDescriptor(this.origin);
 		}
 
 		// notify server mode change to the client
@@ -1831,6 +1832,8 @@ export class PvsProofExplorer {
 			if (pdesc) {
 				// re-compute the shasum for the pvs file --- the shasum in the proof descriptor is from the last proof attempt, and it might be different if the file has been modified
 				this.shasum = await fsUtils.shasumFile(formula);
+				// save information on the proof origin -- useful when saving the proof file
+				this.origin = pdesc?.origin || ".prf";
 				// load proof descriptor
 				this.loadProofDescriptor(pdesc);
 				// return the descriptor to the caller
@@ -1925,7 +1928,7 @@ export class PvsProofExplorer {
 	/**
 	 * Internal function, builds a proof descriptor based on the structure of the current proof tree known to proof-explorer (i.e, this.root)
 	 */
-	protected makeProofDescriptor (): ProofDescriptor {
+	protected makeProofDescriptor (origin: ProofOrigin): ProofDescriptor {
 		const makeProofStructure = (node: ProofItem): ProofNode => {
 			const res: ProofNode = {
 				branch: node.branchId,
@@ -1946,7 +1949,7 @@ export class PvsProofExplorer {
 			status: this.root.getProofStatus(),
 			prover: (this.pvsProxy) ? utils.pvsVersionToString(this.pvsProxy.getPvsVersionInfo()) : "PVS 7.x",
 			shasum: this.shasum
-		}, proofTree);
+		}, origin, proofTree);
 		return proofDescriptor;
 	}
 	protected isOnFirstCommand (): boolean {
@@ -2050,7 +2053,7 @@ export class PvsProofExplorer {
 	async exportProof (desc: { fileExtension: string }): Promise<void> {
 		if (desc) {
 			// update proof descriptor
-			this.proofDescriptor = this.makeProofDescriptor();
+			this.proofDescriptor = this.makeProofDescriptor(this.origin);
 			const proofFile: PvsFile = {
 				fileName: this.formula.fileName,
 				fileExtension: desc.fileExtension,
@@ -2134,7 +2137,7 @@ export class PvsProofExplorer {
 			contextFolder: this.formula.contextFolder,
 		}
 		// update proof descriptor so it reflects the current proof structure
-		this.proofDescriptor = this.makeProofDescriptor();
+		this.proofDescriptor = this.makeProofDescriptor(this.origin);
 		await utils.saveProofDescriptor(this.formula, this.proofDescriptor, { saveProofTree: true });
 		// save proof backup file -- just to be save in the case pvs hungs up and is unable to save
 		const script: string = this.copyTree({ selected: this.root });

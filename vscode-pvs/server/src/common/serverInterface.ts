@@ -38,7 +38,7 @@
 
 import { PvsResponse } from "./pvs-gui";
 import { ProofMateProfile } from "./commandUtils";
-import { SequentDescriptor } from "./languageUtils";
+import { ProofOrigin, SequentDescriptor } from "./languageUtils";
 
 export declare interface Position {
 	line: number, // this attribute ranges from 1 to n, while vscode.line ranges from 0 to n-1 
@@ -199,6 +199,7 @@ export declare interface ProofFile {
 	[key: string]: [ProofDescriptor] // key is theoryName.formulaName
 }
 export class ProofDescriptor {
+	origin: ProofOrigin; // proof file that generated the proof (.jprf, .prf, .prl)
 	info: {
 		theory: string, // theory name
 		formula: string, // formula name
@@ -216,8 +217,9 @@ export class ProofDescriptor {
 		prover: string, // prover version
 		shasum: string, // digest, obtained from the file content after removing all spaces
 		date?: string // day and time the proof was saved, ISO format, e.g., 2011-10-10T14:48:00
-	}, proofTree?: ProofNode) {
+	}, origin: ProofOrigin, proofTree?: ProofNode) {
 		this.info = info;
+		this.origin = origin;
 		this.proofTree = proofTree;
 	}
 	isEmpty (): boolean {

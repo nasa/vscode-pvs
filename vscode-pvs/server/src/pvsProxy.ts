@@ -1299,6 +1299,7 @@ export class PvsProxy {
 	 * @returns Proof descriptor
 	 */
 	async openProofFile (desc: FileDescriptor, formula: PvsFormula, opt?: { quiet?: boolean }): Promise<ProofDescriptor> {
+		let origin: utils.ProofOrigin = ".prf";
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
 				&& formula && formula.fileName && formula.fileExtension 
 				&& formula.theoryName && formula.formulaName) {
@@ -1339,7 +1340,8 @@ export class PvsProxy {
 						const key: string = `${formula.theoryName}.${formula.formulaName}`;
 						// try to load the proof from the .jprf file
 						if (proofFile && proofFile[key] && proofFile[key].length > 0) {
-							pdesc = new ProofDescriptor (proofFile[key][0].info, proofFile[key][0].proofTree);
+							origin = ".jprf";
+							pdesc = new ProofDescriptor (proofFile[key][0].info, origin, proofFile[key][0].proofTree);
 						}
 						break;
 					}
@@ -1361,6 +1363,7 @@ export class PvsProxy {
 										version: pvsVersionDescriptor,
 										shasum
 									});
+									origin = ".prl";
 								} else {
 									let msg: string = `Error: Unable to associate prooflite script to ${formula.formulaName}`;
 									const error_msg: string = (response && response.error && response.error.data && response.error.data.error_string) ?
@@ -1391,7 +1394,7 @@ export class PvsProxy {
 						status: "untried",
 						prover: utils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
 						shasum
-					});		
+					}, origin);
 				}
 				return pdesc;
 			}
@@ -1410,7 +1413,7 @@ export class PvsProxy {
 			status,
 			prover: utils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
 			shasum
-		});
+		}, ".prf");
 		return empty_pdesc;
 	}
 

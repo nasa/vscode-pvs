@@ -1284,10 +1284,11 @@ export function proofLite2proofTree (desc: { prf: string, parent?: ProofNode, pr
 	}
 	return null;
 }
+export type ProofOrigin = ".prf" | ".prl" | ".jprf";
 export function proofLite2ProofDescriptor (prf: string, info: {
 	theory: string, formula: string, status: ProofStatus, prover: string, shasum: string, date?: string
 }): ProofDescriptor {
-	const pdesc: ProofDescriptor = new ProofDescriptor(info);
+	const pdesc: ProofDescriptor = new ProofDescriptor(info, ".prl");
 	const script: string = prf.replace(/\s*\n+\s*/g, " "); // remove all \n introduced by pvs in the expression
 	// capture group 1 is proofName
 	// capture group 2 is formulaName,
@@ -1667,7 +1668,7 @@ export function prf2jprf (desc: {
 			prover: pvsVersionToString(desc.version) || "PVS 7.x",
 			shasum: desc.shasum,
 			date: new Date().toISOString()
-		});
+		}, ".prf");
 		if (desc.prf) {
 			const script: string = desc.prf.replace(/\s*\n+\s*/g, " "); // remove all \n introduced by pvs in the expression
 			// capture group 1 is proofName
