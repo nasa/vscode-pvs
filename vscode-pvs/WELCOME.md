@@ -1,4 +1,4 @@
-# Welcome to VSCode-PVS (version 1.0.29)
+# Welcome to VSCode-PVS
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications. The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
 
