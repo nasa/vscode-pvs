@@ -494,8 +494,8 @@ export class EventsDispatcher {
                             + 'The command will open a dialog, select `Download PVS` to install the latest version of PVS.\n'
                             + `If the problem persists, please report an issue on [github](https://github.com/nasa/vscode-pvs/issues) or on the [PVS group](https://groups.google.com/g/pvs-group), we will look into it.\n\n`
                             + `## Your proof attempt\n`
-                            + `Don't panic, your proof attempt for ${desc.args.formulaName} is not lost.\n`
-                            + `Proof Explorer saved your proof attempt, and you can load it with the **Restore Proof** functionality next time you start the proof with VSCode-PVS.\n\n`
+                            + `Don't panic, your proof attempt for ${desc.args.formulaName} is not lost.<br>\n`
+                            + `VSCode-PVS saved your proof attempt, and you can restore it in Proof Explorer (**...** -> **Restore Proof**).<br>\n\n`
                             + `If everything else fails, below you can find the complete proof script, which you can paste in the prover terminal to repeat the proof:\n`
                             + '```lisp\n'
                             + desc.response.script
