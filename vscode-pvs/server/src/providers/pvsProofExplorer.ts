@@ -269,9 +269,7 @@ export class PvsProofExplorer {
 				if (next === this.ghostNode) {
 					this.ghostNode.parent = this.activeNode.parent;
 					this.ghostNode.realNode = this.activeNode;
-					this.ghostNode.sequentDescriptor = opt.proofState;
-					this.ghostNode.updateTooltip({ internalAction: this.autorunFlag });
-					// this.ghostNode.setTooltip(this.activeNode.tooltip);
+					this.ghostNode.updateTooltip(opt.proofState, { internalAction: this.autorunFlag });
 					this.ghostNode.active();
 					this.revealNode({ selected: this.ghostNode });
 					if (this.ghostNode.parent.contextValue === "proof-command" || opt.branchComplete) {
@@ -279,14 +277,12 @@ export class PvsProofExplorer {
 					} else {
 						this.ghostNode.parent.pending();
 					}
-					// this.root.pending();
 				} else {
 					this.markAsActive({ selected: next });
 					this.revealNode({ selected: next });
 					if (opt.proofState) {
-						this.proofState = this.activeNode.sequentDescriptor = opt.proofState;
-						this.activeNode.updateTooltip({ internalAction: this.autorunFlag });
-						// this.activeNode.setTooltip(utils.formatProofState(this.activeNode.proofState));		
+						this.proofState = opt.proofState;
+						this.activeNode.updateTooltip(this.proofState, { internalAction: this.autorunFlag });
 					}
 				}
 				return next;
@@ -535,16 +531,11 @@ export class PvsProofExplorer {
 					const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);
 					// append before selected node (the active not has not been executed yet)
 					if (activeNode.isActive()) {
-						elem.sequentDescriptor = activeNode.sequentDescriptor;
-						elem.updateTooltip({ internalAction: this.autorunFlag });
-						// elem.setTooltip(activeNode.tooltip);
 						activeNode.notVisited(); // this resets the tooltip in activeNode
-						this.appendNode({ selected: activeNode, elem }, { beforeSelected: true, internalAction: this.autorunFlag });
+						this.appendNode({ selected: activeNode, elem, tooltip: activeNode.sequentDescriptor }, { beforeSelected: true, internalAction: this.autorunFlag });
 					} else {
-						elem.sequentDescriptor = (this.ghostNode.isActive()) ? this.ghostNode.sequentDescriptor : activeNode.sequentDescriptor;
-						elem.updateTooltip({ internalAction: this.autorunFlag });
-						// elem.setTooltip(utils.formatProofState(proofState));
-						this.appendNode({ selected: activeNode, elem }, { internalAction: this.autorunFlag });
+						const tooltip: SequentDescriptor = (this.ghostNode.isActive()) ? this.ghostNode.sequentDescriptor : activeNode.sequentDescriptor;
+						this.appendNode({ selected: activeNode, elem, tooltip }, { internalAction: this.autorunFlag });						
 					}
 					this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
 					activeNode = this.activeNode; // update local variable because the following instructions are using it
@@ -666,8 +657,7 @@ export class PvsProofExplorer {
 						});
 						const targetNode: ProofItem = (visitedChildren.length) ? visitedChildren[visitedChildren.length - 1] : targetBranch;
 						// update proof state and tooltip for target node
-						targetNode.sequentDescriptor = this.proofState;
-						targetNode.updateTooltip({ internalAction: this.autorunFlag });
+						targetNode.updateTooltip(this.proofState, { internalAction: this.autorunFlag });
 						// mark the target node as active
 						this.markAsActive({ selected: targetNode });
 						// window.showInformationMessage(msg);
@@ -761,14 +751,12 @@ export class PvsProofExplorer {
 						const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);
 						// append before selected node (the active not has not been executed yet)
 						if (activeNode.isActive()) {
-							elem.sequentDescriptor = activeNode.sequentDescriptor;
-							elem.updateTooltip({ internalAction: this.autorunFlag });
+							const tooltip: SequentDescriptor = activeNode.sequentDescriptor;
 							activeNode.notVisited(); // this resets the tooltip in activeNode
-							this.appendNode({ selected: activeNode, elem }, { beforeSelected: true });
+							this.appendNode({ selected: activeNode, elem, tooltip }, { beforeSelected: true });
 						} else {
-							elem.sequentDescriptor = (this.ghostNode.isActive()) ? this.ghostNode.sequentDescriptor : activeNode.sequentDescriptor;
-							elem.updateTooltip({ internalAction: this.autorunFlag });
-							this.appendNode({ selected: activeNode, elem });
+							const tooltip: SequentDescriptor = (this.ghostNode.isActive()) ? this.ghostNode.sequentDescriptor : activeNode.sequentDescriptor;
+							this.appendNode({ selected: activeNode, elem, tooltip });
 						}
 						this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
 						activeNode = this.activeNode; // update local variable because the following instructions are using it
@@ -813,11 +801,9 @@ export class PvsProofExplorer {
 						const targetBranch: ProofItem = this.findProofBranch(currentBranchName) || this.createBranchRecursive({ id: currentBranchName }, { internalAction: this.autorunFlag });
 						if (targetBranch) {
 							// update tooltip in target branch
-							targetBranch.sequentDescriptor = this.proofState;
-							targetBranch.updateTooltip({ internalAction: this.autorunFlag });					
+							targetBranch.updateTooltip(this.proofState, { internalAction: this.autorunFlag });					
 							// go to the new branch
 							activeNode.visited();
-							// activeNode.parent.visited();
 							// find the last visited child in the new branch
 							const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
 								return elem.contextValue === "proof-command" && elem.isVisited();
@@ -1072,7 +1058,7 @@ export class PvsProofExplorer {
 	 * 				If the new element is not specified, the function automatically queries the user to enter a proof command
 	 * @param opt Options: beforeSelected (boolean) allows to append the new element before the selected node (rather than after)
 	 */
-	appendNode (desc: { selected: ProofItem, elem?: ProofItem | string }, opt?: { beforeSelected?: boolean, internalAction?: boolean }): ProofItem {
+	appendNode (desc: { selected: ProofItem, elem?: ProofItem | string, tooltip: SequentDescriptor }, opt?: { beforeSelected?: boolean, internalAction?: boolean }): ProofItem {
 		if (desc && desc.selected) {
 			this.dirtyProof();
 			opt = opt || {};
@@ -1087,11 +1073,13 @@ export class PvsProofExplorer {
 					case "root":
 					case "proof-branch": {
 						selectedNode.appendChildAtBeginning(newNode, opt);
+						newNode.updateTooltip(desc.tooltip, { internalAction: this.autorunFlag });
 						break;
 					}
 					case "ghost":
 					case "proof-command": {
 						selectedNode.appendSibling(newNode, opt);
+						newNode.updateTooltip(desc.tooltip, { internalAction: this.autorunFlag });
 						break;
 					}
 					default: {
@@ -1112,7 +1100,7 @@ export class PvsProofExplorer {
 		if (desc) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
-				const elem: ProofItem = this.appendNode({ selected, elem: desc.name }, opt);
+				const elem: ProofItem = this.appendNode({ selected, elem: desc.name, tooltip: this.proofState }, opt);
 				return elem;
 			}
 		} else {
@@ -1155,9 +1143,7 @@ export class PvsProofExplorer {
 						}
 						newBranch = new ProofBranch(branchId, branchId, selectedNode, this.connection);
 						if (opt.proofState) {
-							newBranch.sequentDescriptor = opt.proofState;
-							newBranch.updateTooltip({ internalAction: this.autorunFlag });
-							// newBranch.setTooltip(utils.formatProofState(opt.proofState));
+							newBranch.updateTooltip(opt.proofState, { internalAction: this.autorunFlag });
 						}
 					}
 					if (newBranch) {
@@ -1308,12 +1294,12 @@ export class PvsProofExplorer {
 		if (desc && desc.selected) {
 			opt = opt || {};
 			if (this.clipboard) {
-				this.appendNode({ selected: desc.selected, elem: this.clipboard.clone() }, opt);
+				this.appendNode({ selected: desc.selected, elem: this.clipboard.clone(), tooltip: null }, opt);
 				return true;
 			}
 			if (this.clipboardTree && this.clipboardTree.length) {
 				// append just the first node from clipboardtree
-				this.appendNode({ selected: desc.selected, elem: this.clipboardTree[0].cloneTree() });
+				this.appendNode({ selected: desc.selected, elem: this.clipboardTree[0].cloneTree(), tooltip: null });
 				return true;
 			} 
 			//else
@@ -1343,7 +1329,7 @@ export class PvsProofExplorer {
 			opt = opt || {};
 			if (this.clipboardTree) {
 				for (let i = 0; i < this.clipboardTree.length; i++) {
-					this.appendNode({ selected: desc.selected, elem: this.clipboardTree[this.clipboardTree.length - i - 1].cloneTree() });
+					this.appendNode({ selected: desc.selected, elem: this.clipboardTree[this.clipboardTree.length - i - 1].cloneTree(), tooltip: null });
 				}
 				return true;
 			} else {
@@ -1707,6 +1693,7 @@ export class PvsProofExplorer {
 		} else {
 			// update proof descriptor
 			this.proofDescriptor = this.makeProofDescriptor(this.origin);
+			await this.quitProofAndSave({ jprfOnly: true });
 		}
 
 		// notify server mode change to the client
@@ -1757,8 +1744,7 @@ export class PvsProofExplorer {
 				}
 			};
 
-			this.root.sequentDescriptor = this.initialProofState;
-			this.root.updateTooltip({ internalAction: this.autorunFlag });
+			this.root.updateTooltip(this.initialProofState, { internalAction: this.autorunFlag });
 			this.root.pending();
 			this.root.setProofStatus(this.proofDescriptor.info.status);
 			// select either the first child or the root if children are not present
@@ -1767,8 +1753,9 @@ export class PvsProofExplorer {
 			this.initActiveNode({ selected }); 
 			// update the user interface
 			this.markAsActive({ selected: this.activeNode }, { force: true });
-			this.activeNode.sequentDescriptor = this.initialProofState;
-			this.activeNode.updateTooltip({ internalAction: this.autorunFlag });
+			if (this.activeNode.id !== this.root.id) {
+				this.activeNode.updateTooltip(this.initialProofState, { internalAction: this.autorunFlag });
+			}
 			this.dirtyFlag = false;
 			this.running = false;
 
@@ -2567,8 +2554,9 @@ export class ProofItem extends TreeItem {
 		if (this.prevFlags.visitedFlag) { return this.visited(); }
 		if (this.prevFlags.pendingFlag) { return this.pending(); }
 	}
-	updateTooltip (opt?: { internalAction?: boolean }): void {
+	updateTooltip (tooltip: SequentDescriptor, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
+		this.sequentDescriptor = tooltip;
 		this.tooltip = (this.sequentDescriptor) ? utils.formatSequent(this.sequentDescriptor) : " ";
 		if (!opt.internalAction && this.connection) {
 			const evt: ProofExecDidUpdateSequent = {

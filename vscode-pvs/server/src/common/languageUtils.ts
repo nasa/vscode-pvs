@@ -2193,8 +2193,8 @@ export function makeWorkspaceSummary (desc: WorkspaceSummary): string {
 		libraries[theory.contextFolder] = true;
 
 		const points: number = (64 - theory.theoryName.length) > 0 ? 64 - theory.theoryName.length : 0;
-		const overall: string = (theory.miss) ? `${icons.sparkles} missed ${theory.miss}/${theory.total}`
-			: `${icons.checkmark} proved`;
+		const overall: string = (theory.miss) ? `${icons.sparkles} partly proved [${theory.ok}/${theory.total}]`
+			: `${icons.checkmark}  fully proved [${theory.ok}/${theory.total}]`;
 		const spaces: number = (20 - overall.length) > 0 ? 20 - overall.length : 0;
 		nProved += theory.ok;
 		nMissed += theory.miss;

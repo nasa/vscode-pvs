@@ -101,6 +101,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	protected welcome: WelcomeScreen = new WelcomeScreen();
 	protected loading: LoadingItem = new LoadingItem();
+
+	/**
+	 * Pointers to relevant nodes
+	 */
 	protected root: RootNode = null // the root of the tree
 	protected ghostNode: GhostNode = null; // this is a floating node that follows activeNode. It is used during proof development, to signpost where the next proof command will be appended in the proof tree
 	protected activeNode: ProofCommand | ProofBranch | GhostNode = null;
@@ -352,6 +356,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 	resetView (): void {
 		this.root = null;
+		this.ghostNode = null;
+		this.activeNode = null;
 		this.refreshView();
 	}
 
@@ -622,7 +628,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	activate(context: ExtensionContext): void {
 		// -- handler for node updates
 		this.client.onNotification(serverEvent.proofNodeUpdate, (desc: { id: string, name: string, status: ProofNodeStatus }) => {
-			if (this.root) {
+			if (this.root && desc) {
 				const node: ProofItem = this.findNode(desc.id);
 				if (node) {
 					if (desc.status === "active") {
@@ -985,11 +991,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 			}
 			return Promise.resolve(children);
-		} else if (this.ghostNode && this.ghostNode.isActive() && this.ghostNode.realNode === this.root) {
-			return Promise.resolve([ this.root, this.ghostNode ]);
 		} else if (this.root) {
 			this.loading.stop();
-			return Promise.resolve([ this.root ]);
+			return (this.root.children?.length) ? Promise.resolve([ this.root ])
+				: Promise.resolve([ this.root, this.ghostNode ]);
 		} else {
 			this.loading.start().then(() => { this.refreshView(); });
 			return Promise.resolve([ this.loading ]);
