@@ -1862,6 +1862,7 @@ export class PvsProxy {
 	 */
 	async killPvsServer(): Promise<void> {
 		if (this.pvsServer) {// && !this.externalServer) {
+			await this.interrupt();
 			await this.pvsServer.kill();
 			if (this.debugMode) {
 				console.info("[pvs-proxy] Killed pvs-server");

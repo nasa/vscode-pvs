@@ -38,10 +38,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { ContextFolder, FileDescriptor, FileList} from '../common/serverInterface';
+import { FileDescriptor, FileList} from '../common/serverInterface';
 import { execSync } from 'child_process';
 import * as crypto from 'crypto';
-import * as os from 'os';
 
 
 export const HOME_DIR: string = require('os').homedir();

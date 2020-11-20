@@ -638,11 +638,13 @@ export interface NasalibDownloadDescriptor { pvsPath: string };
 
 // useful constants
 export const sriUrl: string = "www.csl.sri.com";
-export const pvsSnapshotsUrl: string = `http://${sriUrl}/users/owre/drop/pvs-snapshots/`;
-export const allegroLicenseUrl: string = `http://pvs.csl.sri.com/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;
+export const pvsUrl: string = "pvs.csl.sri.com";
+// export const pvsSnapshotsUrl: string = `http://${sriUrl}/users/owre/drop/pvs-snapshots/`;
+export const pvsDownloadUrl: string = `https://${pvsUrl}/downloads/`;
+export const allegroLicenseUrl: string = `http://${pvsUrl}/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;
 export const nasalibUrl: string = "https://github.com/nasa/pvslib";
-export const nasalibFile: string = "https://github.com/nasa/pvslib/archive/pvs7.0.zip";
-export const nasalibBranch: string = "v7.1.0";
+export const nasalibBranch: string = "master";
+export const nasalibFile: string = `https://github.com/nasa/pvslib/archive/${nasalibBranch}.zip`;
 
 // ProofEdit
 export type ProofEditCommand = ProofEditAppendNode | ProofEditCopyNode | ProofEditPasteNode | ProofEditCopyTree

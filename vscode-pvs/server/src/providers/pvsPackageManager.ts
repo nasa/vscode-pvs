@@ -39,7 +39,8 @@
 import { execSync } from 'child_process';
 import * as os from 'os';
 import * as fsUtils from '../common/fsUtils';
-import { pvsSnapshotsUrl, PvsDownloadDescriptor } from '../common/serverInterface';
+import { PvsDownloadDescriptor, pvsDownloadUrl } from '../common/serverInterface';
+import * as path from 'path';
 
 export class PvsPackageManager {
 
@@ -50,17 +51,17 @@ export class PvsPackageManager {
     static async listDownloadableVersions (): Promise<PvsDownloadDescriptor[]> {
         const osName: { version?: string, error?: string } = fsUtils.getOs();
         if (osName && osName.version) {
-            const preferredVersion: string = "ge7a69672"; //"g762f82aa"; //"ga3f9dbb7";//"g03fe2100";
-            const lsCommand: string = `${fsUtils.downloadCommand(pvsSnapshotsUrl)} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${preferredVersion} | grep ${osName.version} | grep allegro`;
+            const preferredVersion: string = "7.1.0";//"ge7a69672"; //"g762f82aa"; //"ga3f9dbb7";//"g03fe2100";
+            // const lsCommand: string = `${fsUtils.downloadCommand(pvsSnapshotsUrl)} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${preferredVersion} | grep ${osName.version} | grep allegro`;
+            const lsCommand: string = `${fsUtils.downloadCommand(pvsDownloadUrl)} | grep -oE '(pvs.*\.tgz)\"' | sed 's/"$//' | grep ${preferredVersion} | grep ${osName.version} | grep allegro`;
             const ls: Buffer = execSync(lsCommand);
             if (ls) {
-                const res: string = ls.toLocaleString();
+                const res: string = ls.toLocaleString().trim();
                 const elems: string[] = res.split("\n");
-                const versions: PvsDownloadDescriptor[] = elems.map(url => {
-                    const components: string[] = url.split("/");
-                    const fileName: string = components.slice(-1)[0];
-                    const match: RegExpMatchArray = /pvs([\d\.\-]+)\-\w+/.exec(fileName);
+                const versions: PvsDownloadDescriptor[] = elems.map((fileName: string) => {
+                    const match: RegExpMatchArray = /pvs-?([\d\.\-]+)\-\w+/.exec(fileName);
                     const version: string = (match && match.length > 1) ? match[1].replace(/\-/g,".") : null;
+                    const url: string = path.join(pvsDownloadUrl, fileName);
                     return { url, fileName, version };
                 });
                 return versions;

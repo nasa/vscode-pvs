@@ -38,7 +38,7 @@
 
 import { LanguageClient } from "vscode-languageclient";
 import { window, Uri, workspace, ConfigurationTarget, Progress, CancellationToken, ProgressLocation, Terminal, ViewColumn, WebviewPanel, ExtensionContext, commands } from "vscode";
-import { serverEvent, sriUrl, serverRequest, PvsDownloadDescriptor, nasalibUrl, nasalibFile, nasalibBranch } from "../common/serverInterface";
+import { serverEvent, sriUrl, serverRequest, PvsDownloadDescriptor, nasalibUrl, nasalibFile, nasalibBranch, pvsUrl } from "../common/serverInterface";
 import * as os from 'os';
 import * as path from 'path';
 import { VSCodePvsStatusBar } from "../views/vscodePvsStatusBar";
@@ -153,7 +153,7 @@ export class VSCodePvsPackageManager {
 
                 const message: string = `NASALib installed successfully in ${desc.targetFolder}`;
                 progress.report({ increment: 100, message });
-                window.showInformationMessage(message);
+                // window.showInformationMessage(message);
 
                 resolveInstall(true);
             });
@@ -212,7 +212,7 @@ export class VSCodePvsPackageManager {
                                 const tmpdir: string = os.tmpdir();
                                 downloadCommand = fsUtils.downloadCommand(nasalibFile, { out: fname }) 
                                     + ` && unzip -o -qq ${fname} -d ${tmpdir}`
-                                    + ` && mv ${path.join(tmpdir, "pvslib-pvs7.0")} ${targetFolder}`;
+                                    + ` && mv ${path.join(tmpdir, "pvslib-master")} ${targetFolder}`;
                                 break;                
                             }
                         }
@@ -291,7 +291,7 @@ export class VSCodePvsPackageManager {
                 accept: "I Accept",
                 doNotAccept: "I DO NOT Accept"
             };
-            const info: string = `The PVS version you are about to download from ${sriUrl} is freely available, `
+            const info: string = `The PVS version you are about to download from ${pvsUrl} is freely available, `
                                 + `but requires a license agreement. Please read carefully the terms of the PVS license and click "I Accept" `
                                 + `if you agree with its terms.`;
             const item = await window.showInformationMessage(info, { modal: false }, agreement.accept, agreement.doNotAccept);
@@ -419,7 +419,7 @@ export class VSCodePvsPackageManager {
 						resolve(true);
 					}, 1000)
 				} else {
-					progress.report({ increment: 100, message: `Error: ${sriUrl} is not responding, please try later` });
+					progress.report({ increment: 100, message: `Error: ${sriUrl} is currently not responding, please try again later` });
 					resolve(false);
 				}
 			});
@@ -469,13 +469,13 @@ export class VSCodePvsPackageManager {
                 this.client.sendRequest(serverRequest.listDownloadableVersions);
                 this.client.onRequest(serverEvent.listDownloadableVersionsResponse, (desc: { response: PvsDownloadDescriptor[] }) => {
                     if (desc && desc.response && desc.response && desc.response.length > 0) {
-                        progress.report({ increment: -1, message: `Downloading PVS ${desc.response[0].version} from ${sriUrl}` });
+                        progress.report({ increment: -1, message: `Downloading PVS ${desc.response[0].version} from ${pvsUrl}` });
 
                         // download PVS with curl or wget in terminal
                         const label: string = `Downloading PVS`;
                         const fname: string = `${os.tmpdir()}/${desc.response[0].fileName}`;
                         const version: string = desc.response[0].version;
-                        const downloadCommand: string = fsUtils.downloadCommand(desc.response[0].url, { out: fname }) + ` && exit`;
+                        const downloadCommand: string = fsUtils.downloadCommand(desc.response[0].url, { out: fname }) + ` && sleep 1 && exit`;
 
                         terminal = window.createTerminal({ name: label });
                         terminal.show();

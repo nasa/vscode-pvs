@@ -76,6 +76,8 @@ export const tccFormulaRegexp: RegExp = /[A-Za-z][\w\?₀₁₂₃₄₅₆₇�
 export function isTccFormula (desc: PvsFormula): boolean {
 	return desc && desc.formulaName && new RegExp(tccFormulaRegexp).test(desc.formulaName);
 }
+// group 1 is a list of comma-separated list of imported theories. This regexp works only for theory names without parameters
+export const simpleImportingRegexp: RegExp = /\bIMPORTING\s+((?:(?:[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)+)(?:\s*,\s*(?:[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)+)*)/gi;
 
 
 // capture group 1 is proofName

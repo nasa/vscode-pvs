@@ -288,11 +288,13 @@ export class PvsProcess {
 				// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
 				this.pvsProcess.on("close", (code: number, signal: string) => {
 					console.log("[pvs-process] Process terminated");
+					this.ready = false;
 					resolve(true);
 					// console.dir({ code, signal }, { depth: null });
 				});
 				this.pvsProcess.on("error", (code: number, signal: string) => {
 					console.log("[pvs-process] Process terminated");
+					this.ready = false;
 					resolve(true);
 					// console.dir({ code, signal }, { depth: null });
 				});
@@ -303,13 +305,14 @@ export class PvsProcess {
 							if (!this.pvsProcess?.stdin?.destroyed) {
 								this.pvsProcess?.stdin?.write("(quit)Y\n");
 							}
+							// give pvs some time to quit before resolving the promise
 							setTimeout(() => {
-								resolve();
+								resolve(true);
 							}, 200);
 						});
 					} else {
 						// execSync(`kill -9 ${pid}`);
-						process?.kill(pid, "SIGTERM");
+						process?.kill(pid, "SIGKILL");
 					} 
 				} finally {
 					this.pvsProcess = null;

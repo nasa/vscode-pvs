@@ -477,8 +477,12 @@ export class EventsDispatcher {
             if (desc && desc.response && desc.response.success && desc.response.proofFile && desc.response.formula) {
                 const fname: string = fsUtils.desc2fname(desc.response.proofFile);
                 if (!this.quietMode) {
-                    const msg: string = `Proof ${desc.response.formula.formulaName} saved in file ${fname}`;
-                    window.showInformationMessage(msg);
+                    const msg: string = `Proof ${desc.response.formula.formulaName} saved`;// in file ${fname}`;
+                    this.statusBar.showMsg(msg);
+                    setTimeout(() => {
+                        this.statusBar.ready();
+                    }, 1000);
+                    // window.showInformationMessage(msg);
                 }
             } else {
                 if (desc && desc.args) {
