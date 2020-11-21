@@ -79,6 +79,34 @@ export function isTccFormula (desc: PvsFormula): boolean {
 // group 1 is a list of comma-separated list of imported theories. This regexp works only for theory names without parameters
 export const simpleImportingRegexp: RegExp = /\bIMPORTING\s+((?:(?:[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)+)(?:\s*,\s*(?:[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)+)*)/gi;
 
+// group 1 is the list of comma-separated values contained in the expression 
+export const listRegexp: RegExp = /^\s*\(:([\s\w\,\/]*):\)/g;
+
+export function isListExpr (expr: string): boolean {
+	if (expr) {
+		return new RegExp(listRegexp).test(expr);
+	}
+	return false;
+}
+export function listExpr2doubleArray (data: string): number[] {
+	const res: number[] = []
+	const match: RegExpMatchArray = new RegExp(listRegexp).exec(data);
+	if (match && match.length > 1) {
+		const values: string[] = match[1]?.split(",");
+		for (let i = 0; i < values.length; i++) {
+			const val: string = values[i]?.trim();
+			if (val && val.includes("/")) {
+				const elems: string[] = val.split("/");
+				const d1: number = +elems[0];
+				const d2: number = +elems[1];
+				res.push(d1/d2);
+			} else {
+				res.push(+val);
+			}
+		}
+	}
+	return res;
+}
 
 // capture group 1 is proofName
 // capture group 2 is formulaName,

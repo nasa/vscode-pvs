@@ -208,7 +208,7 @@ class PvsCli {
 				if (utils.isQuitCommand(cmd)) {
 					this.isActive = false;
 					this.wsClient.send(JSON.stringify({
-						type: serverRequest.evaluateExpression,
+						type: serverRequest.evaluatorCommand,
 						cmd: "quit",
 						fileName: this.args.fileName,
 						fileExtension: this.args.fileExtension,
@@ -228,7 +228,7 @@ class PvsCli {
 					if (this.isActive) {
 						// cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
 						this.wsClient.send(JSON.stringify({
-							type: serverRequest.evaluateExpression,
+							type: serverRequest.evaluatorCommand,
 							cmd,
 							fileName: this.args.fileName,
 							fileExtension: this.args.fileExtension,

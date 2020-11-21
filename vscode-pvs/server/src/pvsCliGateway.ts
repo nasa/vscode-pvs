@@ -198,10 +198,10 @@ export class PvsCliGateway {
 										}
 										break;
 									}
-									case "pvs.evaluate-expression": {
+									case "pvs.evaluator-command": {
 										if (data && data.cmd) {
 											// console.info('[pvs-cli-gateway] received new evaluation request from pvs-cli', data.cmd);
-											this.pvsLanguageServer.evaluateExpressionRequest(data);
+											this.pvsLanguageServer.pvsioEvaluatorCommandRequest(data);
 										}
 										break;
 									}

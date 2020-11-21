@@ -59,7 +59,7 @@ import {
 	PvsFile,
 	ContextFolder,
 	PvsTheory,
-	PvsProofCommand, FormulaDescriptor, FileDescriptor
+	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -417,10 +417,15 @@ export class PvsLanguageServer {
 			}
 		}
 	}
-	async evaluateExpressionRequest (request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd: string }): Promise<void> {
+	async evalExpressionRequest (request: EvalExpressionRequest): Promise<void> {
+		request = fsUtils.decodeURIComponents(request);
+		const response: PvsResponse = await this.pvsioProxy?.evalExpression(request);
+		this.connection?.sendRequest(serverEvent.evalExpressionResponse, { request, response });
+	}
+	async pvsioEvaluatorCommandRequest (request: PvsioEvaluatorCommand): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		const channelID: string = utils.desc2id(request);
-		const response: PvsResponse = await this.pvsioProxy?.evaluateExpression(request, {
+		const response: PvsResponse = await this.pvsioProxy?.evaluatorCommand(request, {
 			cb: (data: string, readyPrompt?: boolean) => {
 				const result: PvsResult = {
 					jsonrpc: "2.0",
@@ -1777,8 +1782,11 @@ export class PvsLanguageServer {
 			this.connection?.onRequest(serverRequest.startEvaluator, async (args: PvsTheory) => {
 				this.startEvaluatorRequest(args);
 			});
-			this.connection?.onRequest(serverRequest.evaluateExpression, async (args: PvsProofCommand) => {
-				this.evaluateExpressionRequest(args);
+			this.connection?.onRequest(serverRequest.evaluatorCommand, async (args: PvsioEvaluatorCommand) => {
+				this.pvsioEvaluatorCommandRequest(args);
+			});
+			this.connection?.onRequest(serverRequest.evalExpression, async (args: EvalExpressionRequest) => {
+				this.evalExpressionRequest(args);
 			});
 
 

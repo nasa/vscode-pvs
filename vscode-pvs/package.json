@@ -387,6 +387,12 @@
 				"category": "pvs"
 			},
 			{
+				"command": "vscode-pvs.plot-expression",
+				"title": "Plot Highlighted Expression",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs"
+			},
+			{
 				"command": "proof-mate.exec-proof-command",
 				"title": "Execute",
 				"enablement": "pvs-server-active == true",
@@ -636,6 +642,11 @@
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
 					"group": "yyyy_commands"
+				},
+				{
+					"command": "vscode-pvs.plot-expression",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
+					"group": "yyyy_commands"
 				}
 			],
 			"view/item/context": [
@@ -696,6 +707,11 @@
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
+					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
+					"group": "context-menu/ctrl-common-4"
+				},
+				{
+					"command": "vscode-pvs.plot-expression",
 					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
 					"group": "context-menu/ctrl-common-4"
 				},
@@ -927,6 +943,11 @@
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
 					"group": "yyyy_commands"
+				},
+				{
+					"command": "vscode-pvs.plot-expression",
+					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
+					"group": "yyyy_commands"
 				}
 			],
 			"editor/context": [
@@ -972,6 +993,11 @@
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
+					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
+					"group": "yyyy_commands"
+				},
+				{
+					"command": "vscode-pvs.plot-expression",
 					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
 					"group": "yyyy_commands"
 				}

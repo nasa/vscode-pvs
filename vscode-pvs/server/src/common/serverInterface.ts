@@ -378,6 +378,12 @@ export declare interface PvsFormula extends PvsTheory {
 export declare interface PvsProofCommand extends PvsFormula {
 	cmd: string;
 }
+export declare interface PvsioEvaluatorCommand extends PvsTheory {
+	cmd: string;
+}
+export declare interface EvalExpressionRequest extends PvsTheory {
+	expr: string;
+}
 export declare interface FormulaDescriptor extends PvsFormula {
 	position: Position;
 	status: ProofStatus; // proof status
@@ -399,7 +405,8 @@ export const serverRequest = {
 	autorunFormulaFromJprf: "pvs.autorun-formula-from-jprf",
 	showProofLite: "pvs.show-prooflite",
 	proofCommand: "pvs.proof-command",
-	evaluateExpression: "pvs.evaluate-expression",
+	evalExpression: "pvs.eval-expression",
+	evaluatorCommand: "pvs.evaluator-command",
 	parseFile: "pvs.parse-file",
 	parseFileWithFeedback: "pvs.parse-file.with-feedback",
 	parseWorkspace: "pvs.parse-workspace",
@@ -450,6 +457,7 @@ export const serverEvent = {
 	saveProofResponse: "pvs.response.save-proof",
 	showProofLiteResponse: "pvs.response.show-prooflite",
 	proofCommandResponse: "pvs.response.proof-command",
+	evalExpressionResponse: "pvs.response.eval-expression",
 	parseFileResponse: "pvs.response.parse-file",
 	listContextResponse: "pvs.response.list-context",
 	generateTccsResponse: "pvs.response.generate-tccs",
@@ -523,7 +531,7 @@ export declare type ServerDidRenameFile = {
 
 // CliGateway
 export declare type CliGatewayRequest = CliGatewaySubscribeServerRequest | CliGatewaySubscribeClientRequest
-	| CliGatewayUnsubscribeRequest | CliGatewayExecProofCommandRequest | CliGatewayEvaluateExpressionRequest
+	| CliGatewayUnsubscribeRequest | CliGatewayExecProofCommandRequest | CliGatewayEvaluatorCommandRequest
 	| CliGatewaySaveProofRequest | CliGatewayPublishRequest | CliGatewaySelectProfileRequest
 export declare type CliGatewaySubscribeServerRequest = { 
 	type: "subscribe", clientID: string, channelID: string 
@@ -538,8 +546,8 @@ export declare type CliGatewayExecProofCommandRequest = {
 	type: "pvs.proof-command", fileName: string, fileExtension: string, contextFolder: string, 
 	theoryName: string, formulaName: string, cmd: string 
 };
-export declare type CliGatewayEvaluateExpressionRequest = { 
-	type: "pvs.evaluate-expression", fileName: string, fileExtension: string, contextFolder: string, 
+export declare type CliGatewayEvaluatorCommandRequest = { 
+	type: "pvs.evaluator-command", fileName: string, fileExtension: string, contextFolder: string, 
 	theoryName: string, cmd: string 
 };
 export declare type CliGatewaySaveProofRequest = {

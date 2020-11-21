@@ -42,8 +42,8 @@ import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindin
 import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem, WorkspaceItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem } from "./views/vscodePvsProofExplorer";
 import { VSCodePvsTerminal } from "./views/vscodePvsTerminal";
-import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder } from "./common/serverInterface";
-import { window, commands, ExtensionContext, ProgressLocation } from "vscode";
+import { PvsContextDescriptor, serverEvent, serverRequest, PvsVersionDescriptor, ProofDescriptor, ServerMode, FormulaDescriptor, PvsFormula, ProofNodeX, ProofEditEvent, PvsProofCommand, PvsFile, ProofStatus, ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, PvsioEvaluatorCommand, EvalExpressionRequest } from "./common/serverInterface";
+import { window, commands, ExtensionContext, ProgressLocation, Selection } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
 import * as fsUtils from './common/fsUtils';
@@ -53,7 +53,7 @@ import * as commandUtils from './common/commandUtils';
 import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsLogger } from "./views/vscodePvsLogger";
 import { VSCodePvsPackageManager } from "./providers/vscodePvsPackageManager";
-import * as path from 'path';
+import { VSCodePvsPlotter } from "./views/vscodePvsPlotter";
 
 // FIXME: use publish-subscribe to allow easier introduction of new components
 export class EventsDispatcher {
@@ -66,6 +66,7 @@ export class EventsDispatcher {
     protected proofMate: VSCodePvsProofMate;
     protected logger: VSCodePvsLogger;
     protected packageManager: VSCodePvsPackageManager;
+    protected plotter: VSCodePvsPlotter;
 
     protected inChecker: boolean = false;
     protected quietMode: boolean = false;
@@ -80,7 +81,8 @@ export class EventsDispatcher {
         vscodePvsTerminal: VSCodePvsTerminal,
         proofMate: VSCodePvsProofMate,
         logger: VSCodePvsLogger,
-        packageManager: VSCodePvsPackageManager
+        packageManager: VSCodePvsPackageManager,
+        plotter: VSCodePvsPlotter,
     }) {
         this.client = client;
         this.statusBar = handlers.statusBar;
@@ -91,6 +93,7 @@ export class EventsDispatcher {
         this.proofMate = handlers.proofMate;
         this.logger = handlers.logger;
         this.packageManager = handlers.packageManager;
+        this.plotter = handlers.plotter;
     }
     protected resource2desc (resource: string | { 
         fileName?: string, fileExtension?: string, contextFolder?: string, theoryName?: string, formulaName?: string,
@@ -871,6 +874,49 @@ export class EventsDispatcher {
                     }
                     if (desc.theoryName) {
                         await this.vscodePvsTerminal.startEvaluatorSession(desc);
+                    } else {
+                        vscodeUtils.showErrorMessage(`Error while trying to invoke PVSio (could not identify theory name, please check that the file typechecks correctly)`);
+                    }
+                } else {
+                    console.error("[vscode-events-dispatcher] Error: pvsio-evaluator invoked over an unknown resource", resource);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Error: pvsio-evaluator invoked with null resource", resource);
+            }
+        }));
+
+        // pvsio-plot
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.plot-expression", async (resource: string | { path: string } | { contextValue: string }) => {
+            if (window.activeTextEditor && window.activeTextEditor.document) {
+                // if the file is currently open in the editor, save file first
+                await window.activeTextEditor.document.save();
+                if (!resource) {
+                    resource = { path: window.activeTextEditor.document.fileName };
+                }
+            }
+            if (resource) {
+                let desc: PvsTheory = this.resource2desc(resource);
+                if (desc) {
+                    if (!desc.theoryName) {
+                        // const document: vscode.TextDocument = window.activeTextEditor.document;
+                        const info: { content: string, line: number } = (resource && resource["path"]) ? { content: await fsUtils.readFile(resource["path"]), line: 0 }
+                            : { content: window.activeTextEditor.document.getText(), line: window.activeTextEditor.selection.active.line };
+                        const theoryName: string = utils.findTheoryName(info.content, info.line);
+                        desc.theoryName = theoryName;
+                    }
+                    if (desc.theoryName) {
+                        const selection: Selection = window?.activeTextEditor?.selection;
+                        const expr: string = window?.activeTextEditor.document.getText(selection);
+                        if (expr) {
+                            const request: EvalExpressionRequest = {
+                                contextFolder: desc.contextFolder,
+                                fileName: desc.fileName,
+                                fileExtension: desc.fileExtension,
+                                theoryName: desc.theoryName,
+                                expr
+                            };
+                            this.plotter.plot(request);
+                        }
                     } else {
                         vscodeUtils.showErrorMessage(`Error while trying to invoke PVSio (could not identify theory name, please check that the file typechecks correctly)`);
                     }

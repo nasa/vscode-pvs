@@ -38,7 +38,7 @@
 
 import { spawn, ChildProcess, execSync } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
-import { PvsVersionDescriptor, SimpleConnection, PvsTheory } from './common/serverInterface'
+import { PvsVersionDescriptor, SimpleConnection, PvsTheory, EvalExpressionRequest } from './common/serverInterface'
 import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import * as utils from './common/languageUtils';
@@ -56,6 +56,7 @@ class PvsIoProcess {
 	protected pvsLibraryPath: string;
 	protected nasalibPath: string;
 
+	protected patchesLoaded: boolean = false;
 	protected ready: boolean = false;
 	protected data: string = "";
 	protected cb: (data: string, readyPrompt?: boolean) => void;
@@ -118,8 +119,14 @@ class PvsIoProcess {
 		this.pvsioProcess.stdin.write("exit; Y");
 	}
 
-	async loadPvsPatches (): Promise<void> {
+	/**
+	 * Loads pvs patches. 
+	 * This command is not exposed in the APIs because it will produce an addional PVSio prompt 
+	 * that can be handled correctly only within the activate method.
+	 */
+	protected async loadPvsPatches (): Promise<void> {
 		await this.sendText(`(load-pvs-patches)!`);
+		this.patchesLoaded = true;
 	}
 
 	/**
@@ -174,15 +181,15 @@ class PvsIoProcess {
 					} else {
 						console.log(data);
 					}
-					// this.data += data;
+					this.data += data;
 
 					const readyPrompt: boolean = data.trim().endsWith(utils.pvsioPrompt);
 					if (this.cb && typeof this.cb === "function") {
 						// the prompt will be added by CLI
 						if (readyPrompt) {
 							data = data.replace(utils.pvsioPrompt, "");
+							this.cb(data, readyPrompt);
 						}
-						this.cb(data, readyPrompt);
 					}
 					// console.dir({ 
 					// 	type: "memory usage",
@@ -193,10 +200,14 @@ class PvsIoProcess {
 					// wait for the pvs prompt, to make sure pvs-server is operational
 					// const match: RegExpMatchArray = /\s*<PVSio>\s*/g.exec(data);
 					if (readyPrompt) {
-						if (!this.ready) {
-							bootData = data;
-							this.ready = true;
-							resolve(true);
+						if (!this.patchesLoaded) {
+							this.loadPvsPatches();
+						} else {
+							if (!this.ready) {
+								bootData = data;
+								this.ready = true;
+								resolve(true);
+							}
 						}
 						// if (this.cb && typeof this.cb === "function") {
 						// 	this.cb(this.data);
@@ -308,12 +319,11 @@ export class PvsIoProxy {
 			this.processRegistry[processId] = pvsioProcess;
 			const data: string = pvsioProcess.getData();
 			pvsioProcess.resetData();
-			pvsioProcess.loadPvsPatches();
 			return {
 				jsonrpc: "2.0",
 				id: processId,
 				result: data
-			};
+			};	
 		}
 		return {
 			jsonrpc: "2.0",
@@ -321,7 +331,7 @@ export class PvsIoProxy {
 			error: "Failed to start PVSio"
 		}
 	}
-	async evaluateExpression (desc: {
+	async evaluatorCommand (desc: {
 		contextFolder: string, 
 		fileName: string, 
 		fileExtension: string, 
@@ -335,10 +345,16 @@ export class PvsIoProxy {
 			// if (desc.cmd === ";") { desc.cmd = `"";`; }
 			// console.dir(desc);
 			// let cmd: string = (desc.cmd.endsWith(";") || desc.cmd.endsWith("!")) ? desc.cmd : `${desc.cmd};`;
+			console.log(desc.cmd);
 			if (utils.isQuitCommand(desc.cmd)) {
 				this.processRegistry[processId].kill();
 			} else {
 				data = await this.processRegistry[processId].sendText(desc.cmd, opt);
+				// clean up output, there's a ==> symbol at the start
+				const match: RegExpMatchArray = /(\s*==>)?([\w\W\s]+)/g.exec(data);
+				if (match && match.length > 2) {
+					data = match[2]?.replace(/\s+/g, ""); // remove all unnencessary spaces
+				}
 			}
 		} else {
 			data = "Error: PVSio could not be started. Please check pvs-server log for details.";
@@ -348,5 +364,18 @@ export class PvsIoProxy {
 			id: processId,
 			result: data
 		};
+	}
+	async evalExpression (req: EvalExpressionRequest): Promise<PvsResponse> {
+		let response: PvsResponse = await this.startEvaluator(req);
+		if (response && !response.error) {
+			response = await this.evaluatorCommand({
+				contextFolder: req.contextFolder,
+				fileName: req.fileName,
+				fileExtension: req.fileExtension,
+				theoryName: req.theoryName,
+				cmd: req.expr + ";"
+			});
+		}
+		return response;
 	}
 }
