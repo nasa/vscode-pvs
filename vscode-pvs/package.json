@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.32",
+	"version": "1.0.33",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -388,7 +388,7 @@
 			},
 			{
 				"command": "vscode-pvs.plot-expression",
-				"title": "Plot Highlighted Expression",
+				"title": "Plot Selected PVS Expression",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs"
 			},

@@ -24,7 +24,10 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
-- [1.0.32 (2020.11.xx)]()  
+- [1.0.33 (2020.11.23)]()  
+  -Added functionality to plot ground PVS expressions       
+
+- [1.0.32 (2020.11.20)]()  
   -Improved feedback and boot sequence    
 
 - [1.0.31 (2020.11.16)]()  
