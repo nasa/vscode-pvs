@@ -43,6 +43,7 @@ import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import * as utils from './common/languageUtils';
 import { PvsResponse } from './common/pvs-gui';
+import { read } from 'fs';
 
 /**
  * Wrapper class for PVSio: spawns a PVSio process, and exposes the PVSio REPL interface as an asyncronous server.
@@ -61,6 +62,10 @@ class PvsIoProcess {
 	protected data: string = "";
 	protected cb: (data: string, readyPrompt?: boolean) => void;
 
+	protected errorFlag: boolean = false;
+
+	protected desc: PvsTheory;
+
 	protected connection: SimpleConnection;
 
 	/**
@@ -73,6 +78,12 @@ class PvsIoProcess {
 				this.connection.sendNotification('pvs-error', msg);
 			}
 			console.log('[pvsio-process] pvs-error', msg);
+		}
+	}
+
+	protected checkError (data: string): void {
+		if (data.includes("Error:") || data.includes("<pvserror msg=")) {
+			this.errorFlag = true;
 		}
 	}
 
@@ -134,12 +145,10 @@ class PvsIoProcess {
 	 * @param desc Descriptor indicating the pvs file and theory for this pvsio process
 	 * @returns true if the process has been created; false if the process could not be created.
 	 */
-	async activate (desc: {
-		fileName: string, 
-		fileExtension: string, 
-		contextFolder: string, 
-		theoryName: string 
-	}): Promise<boolean> {
+	async activate (desc: PvsTheory, opt?: { showBanner?: boolean }): Promise<boolean> {
+		opt = opt || {};
+		this.desc = desc;
+		this.resetData();
 		return new Promise (async (resolve, reject) => {
 			if (this.pvsioProcess) {
 				// process already running, nothing to do
@@ -175,20 +184,26 @@ class PvsIoProcess {
 				this.pvsioProcess.stdout.setEncoding("utf8");
 				this.pvsioProcess.stderr.setEncoding("utf8");
 				this.pvsioProcess.stdout.on("data", (data: string) => {
-					data = data.trim();
+					// data = data.trim();
 					if (this.connection) {
 						this.connection.console.log(data);
 					} else {
 						console.log(data);
 					}
+
 					this.data += data;
+					this.checkError(data);
 
 					const readyPrompt: boolean = data.trim().endsWith(utils.pvsioPrompt);
 					if (this.cb && typeof this.cb === "function") {
 						// the prompt will be added by CLI
 						if (readyPrompt) {
-							data = data.replace(utils.pvsioPrompt, "");
-							this.cb(data, readyPrompt);
+							this.data = this.data.replace(utils.pvsioPrompt, "").trim();
+							if (this.data.includes("+----") && !opt.showBanner) {
+								this.cb("", readyPrompt);								
+							} else {
+								this.cb(this.data, readyPrompt);
+							}
 						}
 					}
 					// console.dir({ 
@@ -226,12 +241,26 @@ class PvsIoProcess {
 					console.log("[pvsio-process] Process error", err);
 					// console.dir(err, { depth: null });
 				});
-				this.pvsioProcess.on("exit", (code: number, signal: string) => {
+				this.pvsioProcess.on("exit", async (code: number, signal: string) => {
+					this.pvsioProcess = null;
+					this.patchesLoaded = false;
 					if (!this.ready) {
 						this.error(bootData);
+						console.log("[pvsio-process] Process exited with code ", code);
 						resolve(false);
+						return;
 					}
-					console.log("[pvsio-process] Process exited with code ", code);
+					if (this.errorFlag) {
+						this.cb(this.data, true);
+						console.error("[pvsio-process] Evaluation error ", this.data);
+						// re-activate pvsio process
+						console.log(`[pvsio-process] Re-activating pvsio...`);
+						this.resetData();
+						this.ready = false;
+						const success: boolean = await this.activate(this.desc, { showBanner: false });
+						console.log(success);
+						return;
+					}
 					// console.dir({ code, signal });
 				});
 				this.pvsioProcess.on("message", (message: any) => {
@@ -318,7 +347,6 @@ export class PvsIoProxy {
 		if (success) {
 			this.processRegistry[processId] = pvsioProcess;
 			const data: string = pvsioProcess.getData();
-			pvsioProcess.resetData();
 			return {
 				jsonrpc: "2.0",
 				id: processId,

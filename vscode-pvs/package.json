@@ -384,7 +384,8 @@
 				"command": "vscode-pvs.pvsio-evaluator",
 				"title": "Evaluate in PVSio",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
-				"category": "pvs"
+				"category": "pvs",
+				"icon": "$(debug-console-view-icon)"
 			},
 			{
 				"command": "vscode-pvs.plot-expression",
@@ -896,6 +897,11 @@
 					"command": "vscode-pvs.typecheck-file",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "navigation@1"
+				},
+				{
+					"command": "vscode-pvs.pvsio-evaluator",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "navigation@2"
 				}
 			],
 			"editor/title/context": [
