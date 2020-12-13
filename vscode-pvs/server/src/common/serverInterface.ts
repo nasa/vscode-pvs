@@ -426,6 +426,7 @@ export const serverRequest = {
 	hp2pvs: "pvs.hp-to-pvs-file",
 	startEvaluator: "pvs.start-evaluator",
 	quitProof: "pvs.quit-proof",
+	clearTheories: "pvs.clear-theories",
 
 	viewPreludeFile: "pvs.view-prelude-file",
 

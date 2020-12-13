@@ -189,7 +189,8 @@ export class PvsProxy {
 	}
 
 	async getMode (): Promise<ServerMode> {
-		return this.mode;
+		return await this.getServerMode();
+		// return this.mode;
 	}
 
 	async enableExternalServer (opt?: { enabled?: boolean }): Promise<void> {
@@ -954,6 +955,11 @@ export class PvsProxy {
 			return ans;
 		}
 		return null;
+	}
+
+	async clearTheories (): Promise<void> {
+		console.log(`[pvs-proxy] Resetting cache of theory names`);
+		await this.lisp("(clear-theories t)");
 	}
 
 

@@ -1682,6 +1682,9 @@ export class PvsLanguageServer {
 			this.connection?.onRequest(serverRequest.rebootPvsServer, async (desc?: { pvsPath?: string, cleanFolder?: string }) => {
 				this.rebootPvsServer(desc);
 			});
+			this.connection?.onRequest(serverRequest.clearTheories, async () => {
+				await this.pvsProxy?.clearTheories();
+			});
 			this.connection?.onRequest(serverRequest.parseFile, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.parseFileRequest(request); // async call
 			});

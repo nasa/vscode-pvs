@@ -810,7 +810,7 @@ export class EventsDispatcher {
                             const message: string = `Generating ProofLite script for formula ${desc.formulaName}`;
                             progress.report({ increment: -1, message });
 
-                            return new Promise((resolve, reject) => {
+                            return new Promise<void>((resolve, reject) => {
                                 this.client.sendRequest(serverRequest.showProofLite, desc);
 
                                 this.client.onRequest(serverEvent.showProofLiteResponse, async (desc: { 
@@ -1150,8 +1150,11 @@ export class EventsDispatcher {
 			const msg: string = `Delete pvsbin folder?\n\nThis action can resolve situations where pvs fails to start or execute proof commands.`;
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
-                const currentContext: string = vscode.workspace.rootPath;
-                await fsUtils.cleanBin(currentContext, { removePvsbinFolder: true, keepTccs: true, recursive: fsUtils.MAX_RECURSION });
+                const folders: vscode.WorkspaceFolder[] = vscode.workspace?.workspaceFolders;
+                if (folders && folders.length) {
+                    const currentContext: string = folders[0].uri.path;
+                    await fsUtils.cleanBin(currentContext, { removePvsbinFolder: true, keepTccs: true, recursive: fsUtils.MAX_RECURSION });
+                }
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-tccs", async () => {
@@ -1160,11 +1163,14 @@ export class EventsDispatcher {
 			const msg: string = `Delete .tccs files?`;
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
-                const currentContext: string = vscode.workspace.rootPath;
-                await fsUtils.cleanTccs(currentContext, { recursive: fsUtils.MAX_RECURSION });
-                // request context descriptor, so pvs explorer can refresh the view
-                const desc: PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
-                this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
+                const folders: vscode.WorkspaceFolder[] = vscode.workspace?.workspaceFolders;
+                if (folders && folders.length) {
+                    const currentContext: string = folders[0].uri.path;
+                    await fsUtils.cleanTccs(currentContext, { recursive: fsUtils.MAX_RECURSION });
+                    // request context descriptor, so pvs explorer can refresh the view
+                    const desc: PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
+                    this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
+                }
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-all", async () => {
@@ -1173,8 +1179,11 @@ export class EventsDispatcher {
 			const msg: string = `Delete temporary files (.tccs and pvsbin) created by PVS?`;
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
-                const currentContext: string = vscode.workspace.rootPath;
-                await fsUtils.cleanBin(currentContext, { removePvsbinFolder: true, keepTccs: false, recursive: fsUtils.MAX_RECURSION });
+                const folders: vscode.WorkspaceFolder[] = vscode.workspace?.workspaceFolders;
+                if (folders && folders.length) {
+                    const currentContext: string = folders[0].uri.path;
+                    await fsUtils.cleanBin(currentContext, { removePvsbinFolder: true, keepTccs: false, recursive: fsUtils.MAX_RECURSION });
+                }
             }
         }));
         // vscode-pvs.typecheck-file
@@ -1374,7 +1383,7 @@ export class EventsDispatcher {
                         }
                     }, 8000);
                     // update the dialog
-                    return new Promise((resolve, reject) => {
+                    return new Promise<void>((resolve, reject) => {
                         token.onCancellationRequested(() => {
                             if (!complete) {
                                 complete = true;

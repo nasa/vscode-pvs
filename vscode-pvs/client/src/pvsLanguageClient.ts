@@ -37,7 +37,7 @@
  **/
 import * as path from 'path';
 import * as comm from './common/serverInterface';
-import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation, Uri, WorkspaceConfiguration, Progress } from 'vscode';
+import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation, Uri, WorkspaceConfiguration, Progress, FileRenameEvent, WorkspaceFolder } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, CancellationToken } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
@@ -148,6 +148,28 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
+			}
+		});
+
+		workspace.onDidRenameFiles(async (event: FileRenameEvent) => {
+			const pvsFiles: { oldUri: Uri, newUri: Uri }[] = event?.files?.filter((value: { oldUri: Uri, newUri: Uri }) => {
+				return value?.oldUri?.path?.endsWith(".pvs");
+			}) || [];
+			if (pvsFiles.length > 0
+				|| (window.activeTextEditor && 
+						(fsUtils.isPvsFile(window.activeTextEditor.document?.fileName)
+							|| window.activeTextEditor.document?.languageId === "Log"))) {
+				// send clear theory command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
+				this.client.sendRequest(comm.serverRequest.clearTheories);
+				// remove tccs file for the renamed file, if the file exists
+				const folders: WorkspaceFolder[] = workspace?.workspaceFolders;
+                if (folders && folders.length) {
+					for (let i in pvsFiles) {
+						const tccFile: Uri = Uri.file(pvsFiles[i].oldUri.path.replace(".pvs", ".tccs"));
+						console.log(`[pvs-client] Removing file ${tccFile}`);
+						workspace.fs.delete(tccFile);
+					}
+				}
 			}
 		});
 
