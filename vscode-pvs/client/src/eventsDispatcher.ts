@@ -870,9 +870,12 @@ export class EventsDispatcher {
                         const info: { content: string, line: number } = (resource && resource["path"]) ? { content: await fsUtils.readFile(resource["path"]), line: 0 }
                             : { content: window.activeTextEditor.document.getText(), line: window.activeTextEditor.selection.active.line };
                         const theoryName: string = utils.findTheoryName(info.content, info.line);
-                        desc.theoryName = theoryName;
+                        desc.theoryName = (desc.fileExtension === ".tccs") ? 
+                            theoryName.substr(0, theoryName.length - 5) // the theory name in the .tccs file ends with _TCCS
+                                : theoryName;
                     }
                     if (desc.theoryName) {
+                        desc.fileExtension = ".pvs"; // only pvs files can be evaluated
                         await this.vscodePvsTerminal.startEvaluatorSession(desc);
                     } else {
                         vscodeUtils.showErrorMessage(`Error while trying to invoke PVSio (could not identify theory name, please check that the file typechecks correctly)`);

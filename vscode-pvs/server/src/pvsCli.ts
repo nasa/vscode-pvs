@@ -430,6 +430,7 @@ class PvsCli {
 									if (pvsResponse.result) {
 										this.rl.setPrompt("");
 										console.log(utils.formatPvsIoState(pvsResponse.result, { useColors: true }));
+										console.log("\n");
 									}
 								}
 								// readline.moveCursor(process.stdin, 8, -1);
