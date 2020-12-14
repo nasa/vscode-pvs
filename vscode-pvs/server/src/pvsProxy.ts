@@ -189,8 +189,8 @@ export class PvsProxy {
 	}
 
 	async getMode (): Promise<ServerMode> {
-		return await this.getServerMode();
-		// return this.mode;
+		// return await this.getServerMode(); // pvs is not always able to return the prover status -- the workaround is to use this.mode to keep track of the prover status, and ask pvs the status only when stricly necessary
+		return this.mode;
 	}
 
 	async enableExternalServer (opt?: { enabled?: boolean }): Promise<void> {
