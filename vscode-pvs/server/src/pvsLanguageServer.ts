@@ -1862,7 +1862,8 @@ export class PvsLanguageServer {
 			if (this.completionProvider && isEnabled) {
 				const uri: string = tpp.textDocument.uri;
 				if (uri.endsWith(".pvs") && this.completionProvider) {
-					const txt: string = await this.readFile(uri);
+					const document: TextDocument = this.documents?.get(tpp?.textDocument.uri);
+					const txt: string = document?.getText(); //await this.readFile(uri);
 					const completionItems: CompletionItem[] = await this.completionProvider.provideCompletionItems({ txt, uri }, tpp.position);
 					return completionItems;
 				}
@@ -1885,8 +1886,8 @@ export class PvsLanguageServer {
 				// const isEnabled = await this.connection?.workspace.getConfiguration("pvs").settings.hoverProvider;
 				const uri: string = args.textDocument.uri;
 				if (fsUtils.isPvsFile(uri) && this.hoverProvider) {
-					// const document: TextDocument = this.documents.get(tpp.textDocument.uri);
-					const txt: string = await this.readFile(uri);
+					const document: TextDocument = this.documents?.get(args?.textDocument.uri);
+					const txt: string = document?.getText() || await this.readFile(uri);
 					const hover: Hover = await this.hoverProvider.provideHover({ txt, uri, position: args.position });
 					return hover;
 				}
@@ -1898,8 +1899,8 @@ export class PvsLanguageServer {
 			if (this.codeLensProvider && isEnabled) {
 				const uri: string = args.textDocument.uri;
 				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
-					// const doc: TextDocument = this.documents.get(tpp.textDocument.uri);
-					const txt: string = await this.readFile(uri);
+					const document: TextDocument = this.documents?.get(args?.textDocument.uri);
+					const txt: string = document?.getText() || await this.readFile(uri);
 					const codelens: CodeLens[] = await this.codeLensProvider.provideCodeLens({ txt, uri });
 					return codelens;
 				}
@@ -1919,7 +1920,8 @@ export class PvsLanguageServer {
 			if (this.definitionProvider && isEnabled) {
 				const uri: string = args.textDocument.uri;
 				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
-					const txt: string = await this.readFile(args.textDocument.uri);
+					const document: TextDocument = this.documents?.get(args?.textDocument.uri);
+					const txt: string = document?.getText() || await this.readFile(uri);
 					const def: Definition = await this.definitionProvider.provideDefinition({ uri, position: args.position, txt });
 					return def;
 				}
@@ -1931,7 +1933,8 @@ export class PvsLanguageServer {
 			if (this.renameProvider && isEnabled) {
 				const uri: string = args.textDocument.uri;
 				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
-					const txt: string = await this.readFile(uri);
+					const document: TextDocument = this.documents?.get(args?.textDocument.uri);
+					const txt: string = document?.getText() || await this.readFile(uri);
 					const wsEdit: WorkspaceEdit = await this.renameProvider.provideRename({ txt, uri, position: args.position, newName: args.newName });
 					if (wsEdit && wsEdit.changes && Object.keys(wsEdit.changes) && Object.keys(wsEdit.changes).length) {
 						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: fsUtils.getContextFolder(uri) });
