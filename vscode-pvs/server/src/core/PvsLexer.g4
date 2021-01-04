@@ -194,8 +194,6 @@ PI: 'pi';
 //------------------------
 ID: LETTER IDCHAR*;
 
-ANY: (ESC | .);
-
 //------------------------
 // Fragments necessary for the lexer that we choose not to tokenize individually
 //------------------------
@@ -245,8 +243,8 @@ fragment Z : [zZ];
 //------------------------
 // Whitespace and comments
 //------------------------
-SPACE: ' ' -> channel(1);
-TAB: '\t' -> channel(2);
-CR: [\r\n\u000C] -> channel(3);
+SPACE: [ ]+ -> channel(1);
+TAB: [\t]+ -> channel(2);
+CR: [\r\n\u000C]+ -> channel(3);
 COMMENT: '%' ~[\r\n]* -> channel(4);
 UnrecognizedChar: .;
