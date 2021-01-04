@@ -684,7 +684,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	 * Opens a context folder and adds it to file explorer
 	 */
 	async openWorkspace (): Promise<void> {
-		return await vscodeUtils.openWorkspace();
+		// we need to clear theories otherwise pvs may indicate parse errors if theories with the same name have been defined in the previous workspace
+		this.client?.sendRequest(serverRequest.clearTheories);
+		await vscodeUtils.openWorkspace();
 	}
 	/**
 	 * Opens a pvs file in the editor and adds the containing folder in file explorer
@@ -867,7 +869,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				
 				progress.report({ increment: -1, message });
 				// update the dialog
-				return new Promise(async (resolve, reject) => {
+				return new Promise<void>(async (resolve, reject) => {
 					let stop: boolean = false;
 					commands.executeCommand('setContext', 'autorun', true);
 					// show output panel for feedback
@@ -977,7 +979,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				};
 				
 				// update the dialog
-				return new Promise(async (resolve, reject) => {
+				return new Promise<void>(async (resolve, reject) => {
 					let stop: boolean = false;
 					commands.executeCommand('setContext', 'autorun', true);
 					// show output panel for feedback
@@ -1143,7 +1145,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 
 				if (formulas && formulas.length) {
 					// update the dialog
-					return new Promise(async (resolve, reject) => {
+					return new Promise<void>(async (resolve, reject) => {
 						let stop: boolean = false;
 						commands.executeCommand('setContext', 'autorun', true);
 						// show output panel for feedback
