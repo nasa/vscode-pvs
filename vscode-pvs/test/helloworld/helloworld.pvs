@@ -7,7 +7,7 @@
 helloworld: THEORY
   BEGIN
 
-    abs (x: real): real = IF x > 0 THEN x ELSE -x ENDIF
+    abs (x: nnreal): real = IF x > 0 THEN x ELSE -x ENDIF
 
     always_positive: THEOREM
       FORALL (x: real): abs(x) >= 0
@@ -50,3 +50,49 @@ helloworld: THEORY
 
   END helloworld
 
+
+helloworld1: THEORY
+  BEGIN
+
+    abs (x: nnreal): real = IF x > 0 THEN x ELSE -x ENDIF
+
+    always_positive: THEOREM
+      FORALL (x: real): abs(x) >= 0
+
+    always_negative: THEOREM
+      FORALL (x: negreal): x < 0
+
+    foo: LEMMA
+      true
+
+    % Computes the square root of a non-negative real number
+    % by recursively applying Newton's method n times
+    sqrt_newton(a: nnreal, n: nat): RECURSIVE posreal =
+      IF n = 0 THEN a + 1
+      ELSE LET r = sqrt_newton(a, n - 1) 
+            IN (1/2) * (r + a/r)
+      ENDIF
+    MEASURE n + 1
+
+    newton: void =
+      println("Newton's iterative method to compute the square root") &
+      LET a: nnreal = query_real("Enter a non-negative real number:") IN
+      LET n: int = query_int("Enter number of iterations:") IN
+      LET res: posreal = sqrt_newton(a, n)
+      IN println(newline + "sqrt_newton(" + a + ", " + n + ") ≈ " + res)
+
+    % sqrt upper bound
+    sqrt_ub(a: nnreal): posreal = sqrt_newton(a, 10)
+
+    % sqrt lower bound
+    sqrt_lb(a: nnreal): nnreal = a / sqrt_newton(a, 10)
+
+    sqrt2: LEMMA
+      sqrt_lb(2) < sqrt_ub(2)
+
+    sqrt_lb2: LEMMA
+      2/3 <= 1 / sqrt_lb(2)
+
+    dummy: LEMMA 1 = 0
+
+  END helloworld1

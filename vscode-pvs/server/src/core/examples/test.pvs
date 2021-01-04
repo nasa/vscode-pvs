@@ -10,8 +10,5 @@ lem1: LEMMA FORALL (v1,v2:Vect2): norm(v1) = 1 AND norm(v2) = 1
   	      	     		       norm(v3) = 1
     IMPLIES ((v1*v3 <= v2*v3) IFF norm(v1-v3)>=norm(v2-v3)) AND
     	    ((v1*v3 < v2*v3) IFF norm(v1-v3)>norm(v2-v3))
-
-  
-
      
 end test

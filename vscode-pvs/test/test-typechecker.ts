@@ -19,7 +19,7 @@ describe("pvs-typechecker", () => {
 		// console.log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
-		pvsProxy = new PvsProxy(pvsPath, { externalServer: true });
+		pvsProxy = new PvsProxy(pvsPath, { externalServer: false });
 		await pvsProxy.activate({ debugMode: true, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files and .pvscontext
@@ -39,7 +39,7 @@ describe("pvs-typechecker", () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
-		await new Promise((resolve, reject) => {
+		await new Promise<void>((resolve, reject) => {
 			setTimeout(async () => {
 				await fsUtils.cleanBin(sandboxExamples);
 				await fsUtils.cleanBin(stever);

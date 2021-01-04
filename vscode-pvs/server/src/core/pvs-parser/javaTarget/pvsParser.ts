@@ -36,7 +36,7 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess, execFileSync, execSync } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import * as fsUtils from '../../../common/fsUtils';
 import { Diagnostic } from 'vscode-languageserver';
@@ -75,6 +75,10 @@ export class PvsParser {
     protected workers: { [ fname: string ]: ChildProcess } = {};
     protected processWorker (fname: string, args: string[]): Promise<string> {
         return new Promise((resolve, reject) => {
+            // const cmd: string = `java ${args.concat(fname).join(" ")}`;
+            // console.log(cmd);
+            // const res: Buffer = execSync(cmd);
+            // console.log(res.toLocaleString());
             const worker: ChildProcess = spawn("java", args.concat(fname));
             this.workers[fname] = worker;
             worker.stdout.setEncoding("utf8");
@@ -83,7 +87,7 @@ export class PvsParser {
                 resolve(diags);
             });
             worker.stderr.on("data", (data: string) => {
-                console.log("[pvs-parser] Error: ", data);
+                console.error(data);
                 // resolve(false);
             });
             worker.on("error", (err: Error) => {

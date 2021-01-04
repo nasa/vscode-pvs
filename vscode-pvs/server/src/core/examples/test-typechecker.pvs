@@ -1,4 +1,4 @@
-test: theory begin
+testtt: theory begin
 
 %-- testing ability of typechecker to identify duplicate declarations
 foo: T = (LAMBDA(X:real):val(x) >= X+cnst(1)) 
@@ -13,4 +13,4 @@ nat: TYPE % this should trigger a typecheck error: duplicate declaration (nat is
   
 
      
-end test
+end testtt

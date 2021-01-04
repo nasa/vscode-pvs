@@ -75,6 +75,9 @@ public class PvsParser {
         double parseStart = System.currentTimeMillis();
 
         CharStream input = CharStreams.fromFileName(ifname);
+        // System.err.println("------INPUT START");
+        // System.err.println(input.getText(new Interval(0, input.size())));
+        // System.err.println("INPUT END-------");
         lexer = new PvsLanguageLexer(input);
         tokens = new CommonTokenStream(lexer);
         parser = new PvsLanguageParser(tokens);

@@ -305,15 +305,17 @@ export class PvsDefinitionProvider {
 			// sanity check
 			if (symbolRange && symbolRange.end && symbolRange.start && symbolRange.end.character > document.position.character) {
 				const symbolName: string = fsUtils.getText(document.txt, symbolRange);
-				const line: number = symbolRange.start.line + 1; // vscode starts lines from 0, we want to start from 1 (as in pvs)
-				const character: number = symbolRange.start.character;
-				// const fileName: string = document.uri;
-				// const theoryName: string = this.findTheory(document, line);
-				// console.log("(line, character) ", line, character);
-				// await this.getTermAt(document, { line, character });
+				if (symbolName) {
+					const line: number = symbolRange.start.line + 1; // vscode starts lines from 0, we want to start from 1 (as in pvs)
+					const character: number = symbolRange.start.character;
+					// const fileName: string = document.uri;
+					// const theoryName: string = this.findTheory(document, line);
+					// console.log("(line, character) ", line, character);
+					// await this.getTermAt(document, { line, character });
 
-				const definitions: PvsDefinition[] = await this.findSymbolDefinition(document.uri, symbolName, { line: line, character: character });
-				return { symbolName, definitions };
+					const definitions: PvsDefinition[] = await this.findSymbolDefinition(document.uri, symbolName, { line: line, character: character });
+					return { symbolName, definitions };
+				}
 			}
 		}
 		return null;
@@ -330,22 +332,24 @@ export class PvsDefinitionProvider {
 						const ans: Location[] = [];
 						for (let i: number = 0; i < pvsDefinitions.length; i++) {
 							const def: PvsDefinition = pvsDefinitions[i];
-							const uri: string = def.symbolDeclarationFile;
-							const range: Range = {
-								start: {
-									line: def.symbolDeclarationRange.start.line - 1,
-									character: def.symbolDeclarationRange.start.character
-								},
-								end: {
-									line: def.symbolDeclarationRange.end.line - 1,
-									character: def.symbolDeclarationRange.end.character
+							if (def) {
+								const uri: string = def.symbolDeclarationFile;
+								const range: Range = {
+									start: {
+										line: def.symbolDeclarationRange.start.line - 1,
+										character: def.symbolDeclarationRange.start.character
+									},
+									end: {
+										line: def.symbolDeclarationRange.end.line - 1,
+										character: def.symbolDeclarationRange.end.character
+									}
 								}
+								const location: Location = {
+									uri: "file://" + uri,
+									range: range
+								}
+								ans.push(location);
 							}
-							const location: Location = {
-								uri: "file://" + uri,
-								range: range
-							}
-							ans.push(location);
 						}
 						return ans.reverse();
 					}

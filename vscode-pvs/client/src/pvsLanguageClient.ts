@@ -341,7 +341,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.client.sendRequest(comm.serverRequest.startPvsServer, {
 				pvsPath: this.pvsPath,
 				pvsLibraryPath: this.pvsLibraryPath,
-				contextFolder
+				contextFolder,
+				externalServer: false
 			});
 			// }, 1000);
 			// create handler for pvsServerReady event

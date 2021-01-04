@@ -1,3 +1,4 @@
 helloworld: theory begin
-
+ asd: theorem
+    FORALL (x: real): true ∧ true
 end helloworld

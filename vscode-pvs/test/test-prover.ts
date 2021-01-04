@@ -610,7 +610,7 @@ describe("pvs-prover", () => {
         // console.dir(response);
         response = await pvsProxy.proofCommand({ cmd: "(assert)" });
 		// console.dir(response);
-		await new Promise((resolve, reject) => {
+		await new Promise<void>((resolve, reject) => {
 			setTimeout(() => {
 				let info: string = execSync("ps -o pcpu").toLocaleString();
 				const cpus: number[] = info.split("\n").slice(1).map(line => {

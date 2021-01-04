@@ -1,5 +1,4 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import * as test from "./test-constants";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { label, configFile, sandboxExamples,
@@ -19,7 +18,8 @@ describe("pvs-parser", () => {
 		// console.log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
-		pvsProxy = new PvsProxy(pvsPath, { externalServer: true });
+		// NOTE: we need to use the lisp interface because the server breaks with parse
+		pvsProxy = new PvsProxy(pvsPath, { externalServer: false });
 		await pvsProxy.activate({ debugMode: false, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files and .pvscontext

@@ -405,7 +405,7 @@ export function normalizePath(p: string) {
 }
 
 export function getText(txt: string, range: { start: { line: number, character?: number }, end: { line: number, character?: number } }): string {
-	if (txt) {
+	if (txt && range) {
 		const lines: string[] = txt.split("\n");
 		let ans: string[] = lines.slice(range.start.line, range.end.line + 1);
 		if (ans && ans.length > 0) {
