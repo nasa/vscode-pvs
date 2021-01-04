@@ -66,7 +66,6 @@ import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
 import { getErrorRange, SequentDescriptor } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
-import * as os from 'os';
 import { PvsErrorManager } from './pvsErrorManager';
 
 export class PvsProgressInfo {
@@ -120,7 +119,6 @@ export class PvsProxy {
 	protected pvsLibraryPath: string; // these are external libraries
 	protected pvsServer: PvsProcess;
 	protected connection: SimpleConnection; // connection to the client
-	protected externalServer: boolean;
 	protected cliListener: (data: string) => void; // useful to show progress feedback
 
 	protected pvsErrorManager: PvsErrorManager;
@@ -131,6 +129,7 @@ export class PvsProxy {
 	protected legacy: PvsProxyLegacy;
 	protected useLegacy: boolean = true;
 	protected useNasalib: boolean = false;
+	protected externalServer: boolean;
 
 	protected mode: ServerMode = "lisp";
 	protected proverBusy: boolean = false;
@@ -170,7 +169,8 @@ export class PvsProxy {
 		// create antlr parser for pvs
 		this.parser = new Parser();
 
-		this.legacy = new PvsProxyLegacy(pvsPath, opt);
+		this.legacy = //this.externalServer ? null : 
+			new PvsProxyLegacy(pvsPath, opt); // this is needed for find-declaration, which breaks the server.
 	}
 
 	setClientPort (p: number): boolean {
@@ -425,9 +425,11 @@ export class PvsProxy {
 		fileExtension: string 
 	}, opt?: { 
 		test?: boolean,
+		externalServer?: boolean,
 		enableEParser?: boolean
 	}): Promise<PvsResponse | null> {
 		opt = opt || {};
+		// console.log(desc);
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 			const fileExists: boolean = fsUtils.fileExists(fname);
@@ -454,8 +456,9 @@ export class PvsProxy {
 							};
 						}
 						const startTime: number = Date.now();
-						const res: PvsResponse = (this.useLegacy) ? await this.legacy.parseFile(fname)
-								: await this.pvsRequest('parse', [fname]);
+						// const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
+						const res: PvsResponse = (this.useLegacy) ? await this.legacy?.parseFile(fname)
+							: await this.pvsRequest('parse', [fname]);
 						if (opt.test) { return res; }
 
 						// testing antlr parser
@@ -643,8 +646,8 @@ export class PvsProxy {
 			// change context
 			await this.changeContext(desc);
 
-			// const res: PvsResponse = await this.legacy.lisp(`(prog2 (show-tccs "${fullName}") 
-			const res: PvsResponse = await this.legacy.lisp(`
+			// const res: PvsResponse = await this.legacy?.lisp(`(prog2 (show-tccs "${fullName}") 
+			const res: PvsResponse = await this.legacy?.lisp(`
 		(let ((theoryname "${desc.theoryName}"))
 				(let ((usings (remove-if #'(lambda (th)
 				(or (from-prelude? th)
@@ -832,9 +835,11 @@ export class PvsProxy {
 			await this.getPvsTemporaryFolder();
 			// typecheck file
 			await this.changeContext(desc);
-			// const res: PvsResponse = await this.legacy.typecheckFile(fname);
-			const res: PvsResponse = (opt.externalServer) ? await this.pvsRequest('typecheck', [ fname ])
-				: await this.legacy.typecheckFile(fname);
+			// NOTE: we need to use the lisp interface because typecheck-file breaks the server
+			const res: PvsResponse = await this.legacy?.typecheckFile(fname);
+			// const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
+			// const res: PvsResponse = externalServer ? await this.pvsRequest('typecheck', [ fname ])
+			// 	: await this.legacy?.typecheckFile(fname);
 			if (res && (res.error && res.error.data) || res.result) {
 				if (res.error) {
 					// the typecheck error might be generated from an imported file --- we need to check res.error.file_name
@@ -1029,13 +1034,15 @@ export class PvsProxy {
 	 * Changes context
 	 * @param contextFolder 
 	 */
-	async changeContext (desc: string | { contextFolder: string }): Promise<PvsResponse> {
+	async changeContext (desc: string | { contextFolder: string }, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
 		if (desc) {
+			opt = opt || {};
 			const ctx: string = (typeof desc === "string") ? desc : desc.contextFolder;
-			// if (this.useLegacy) {
-				return await this.legacy.changeContext(ctx);
-			// }
-			// return await this.pvsRequest('change-context', [ ctx ]);
+			const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
+			if (externalServer) {
+				return await this.pvsRequest('change-context', [ ctx ]);
+			}
+			return await this.legacy?.changeContext(ctx);
 		}
 		return null;
 	}
@@ -1045,7 +1052,7 @@ export class PvsProxy {
 	 */
 	async currentContext (): Promise<PvsResponse> {
 		// const res: PvsResponse = await this.lisp('(pvs-current-directory)');
-		const res: PvsResponse = await this.legacy.lisp('(pvs-current-directory)');
+		const res: PvsResponse = await this.legacy?.lisp('(pvs-current-directory)');
 		if (res && res.result && typeof res.result === "string") {
 			res.result = res.result.replace(/"/g, ""); // pvs returns the folder name adorned with double quotes
 		}
@@ -1058,11 +1065,15 @@ export class PvsProxy {
 	 */
 	async lisp(cmd: string, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
 		opt = opt || {};
-		// don't use legacy apis here --- this command might be used during a prover session, and pvs process is unable to process requests during prover sessions
+		// const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
+		// if (externalServer) {
+		// 	return await this.pvsRequest('lisp', [ cmd ]);
+		// }
+		// return await this.legacy?.lisp(cmd);
+		// we need to use the lisp interface because the server breaks
 		if (this.useLegacy && !opt.externalServer) {
-			return await this.legacy.lisp(cmd);
+			return await this.legacy?.lisp(cmd);
 		}
-		// else
 		return await this.pvsRequest('lisp', [ cmd ]);
 	}
 
@@ -1125,43 +1136,14 @@ export class PvsProxy {
 	 * @param symbolName Symbol name 
 	 */
 	// protected findDeclarationQueue: Promise<PvsResponse> = null; // we are using this queue to reduce the strain on the server --- pvs-server tends to crash on MacOS if too many requests are sent in a short time frame
-	async findDeclaration (symbolName: string): Promise<PvsResponse> {
-		// we want to use the server, otherwise find-declaration won't work while in a prover session
-		const ans: PvsResponse = (this.useLegacy) ? await this.legacy.findDeclaration(symbolName)
-			: await this.pvsRequest('find-declaration', [ symbolName ]);
-
-		// const promiseFindDeclaration: Promise<PvsResponse> = new Promise ((resolve, reject) => {
-		// 	setTimeout(async () => {
-		// 		const ans: PvsResponse = await this.pvsRequest('find-declaration', [ symbolName ]);
-		// 		// console.log(ans);
-		// 		if (ans && ans.result) {
-		// 			if (typeof ans.result !== "object") {
-		// 				// disabling this warning for now, as we know how to recover from this bug
-		// 				// console.error(`[pvs-proxy] Warning: pvs-server returned malformed result for find-declaration (expecting object found ${typeof ans.result})`);
-		// 			}
-		// 			if (typeof ans.result === "string") {
-		// 				ans.result = JSON.parse(ans.result);
-		// 			}
-		// 		}
-		// 		resolve(ans);
-		// 	}, 200);
-		// })
-		// this.findDeclarationQueue = (this.findDeclarationQueue) ? this.findDeclarationQueue.then(() => {
-		// 	return promiseFindDeclaration;
-		// }): promiseFindDeclaration;
-		// return this.findDeclarationQueue;
-
-		// const ans: PvsResponse = await this.pvsRequest('find-declaration', [ symbolName ]);
-		// if (ans && ans.result) {
-		// 	if (typeof ans.result !== "object") {
-		// 		// disabling this warning for now, as we know how to recover from this bug
-		// 		// console.error(`[pvs-proxy] Warning: pvs-server returned malformed result for find-declaration (expecting object found ${typeof ans.result})`);
-		// 	}
-		// 	if (typeof ans.result === "string") {
-		// 		ans.result = JSON.parse(ans.result);
-		// 	}
+	async findDeclaration (symbolName: string, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
+		opt = opt || {};
+		// find-declaration breaks the server, we need to use the lisp interface for now
+		// const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
+		// if (externalServer) {
+		// 	return await this.pvsRequest('find-declaration', [ symbolName ]);
 		// }
-		return ans;
+		return await this.legacy?.findDeclaration(symbolName);
 	}
 
 	async findTheory (theoryName: string): Promise<PvsResponse> {
@@ -1269,7 +1251,7 @@ export class PvsProxy {
 	 */
 	async getProverStatus(): Promise<PvsResponse> {
 		const ans1: PvsResponse = await this.pvsRequest('prover-status'); // this uses info provided by the xmlrpc server
-		const ans2: PvsResponse = await this.legacy.getProverStatus();  // this other uses the lisp interface to test flag *in-checker*
+		const ans2: PvsResponse = await this.legacy?.getProverStatus();  // this other uses the lisp interface to test flag *in-checker*
 		// sanity check
 		if (ans1 && ans1.result && ans2 && ans2.result) {
 			return ans1;
@@ -1284,16 +1266,21 @@ export class PvsProxy {
 	/**
 	 * Returns the pvs proof script for a given formula
 	 */
-	async getDefaultProofScript (formula: PvsFormula): Promise<PvsResponse> {
+	async getDefaultProofScript (formula: PvsFormula, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
 		if (formula) {
+			opt = opt || {};
 			formula = fsUtils.decodeURIComponents(formula);
 			// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
 			const fname: string = fsUtils.desc2fname({ contextFolder: formula.contextFolder, fileName: formula.fileName, fileExtension: ".pvs" });
-			if (this.useLegacy) {
-				return await this.legacy.getDefaultProofScript(formula);
-			} else {
-				return await this.pvsRequest('proof-script', [ fname, formula.formulaName ]);
+			// const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
+			// if (externalServer) {
+			// 	return await this.pvsRequest('proof-script', [ fname, formula.formulaName ]);
+			// }
+			// return await this.legacy?.getDefaultProofScript(formula);
+			if (this.useLegacy && !opt.externalServer) {
+				return await this.legacy?.getDefaultProofScript(formula);
 			}
+			return await this.pvsRequest('proof-script', [ fname, formula.formulaName ]);
 		}
 		return null;
 	}
@@ -1636,13 +1623,21 @@ export class PvsProxy {
 			return res;
 		}
 	}
-	protected async showTccs(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponse> {
+	protected async showTccs(desc: PvsTheory, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
 		if (desc) {
+			opt = opt || {};
+
 			await this.changeContext(desc.contextFolder);
-			if (this.useLegacy) {
-				return await this.legacy.showTccs(fsUtils.desc2fname(desc), desc.theoryName);
-			}
+
 			const fullName: string = path.join(desc.contextFolder, desc.fileName + ".pvs" + "#" + desc.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
+			// const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
+			// if (externalServer) {
+			// 	return await this.pvsRequest('show-tccs', [ fullName ]);
+			// }
+			// return await this.legacy?.showTccs(fsUtils.desc2fname(desc), desc.theoryName);
+			if (this.useLegacy && !opt.externalServer) {
+				return await this.legacy?.showTccs(fsUtils.desc2fname(desc), desc.theoryName);
+			}
 			return await this.pvsRequest('show-tccs', [ fullName ]);
 		}
 		return null;
@@ -1678,11 +1673,14 @@ export class PvsProxy {
 	 * Loads pvs version information
 	 */
 	async loadPvsVersionInfo(): Promise<PvsVersionDescriptor | null> {
-		// try to load nasalib and patches
-		await this.loadPvsLibraryPathAndPatches();
-
-		// const res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
-		const res: PvsResponse = await this.legacy.lisp(`(get-pvs-version-information)`);
+		let res: PvsResponse = null
+		if (this.externalServer) {
+			res = await this.lisp(`(get-pvs-version-information)`);
+		} else {
+			// try to load nasalib and patches
+			await this.loadPvsLibraryPathAndPatches();
+			res = await this.legacy?.lisp(`(get-pvs-version-information)`);
+		}
 		const nasalib: string = await this.getNasalibVersionInfo();
 		if (res && res.result) {
 			const regexp: RegExp = /\(\"?(\d+(?:.?\d+)*)\"?[\s|nil]*\"?([\w\s\d\.]*)\"?/g; // group 1 is pvs version, group 2 is lisp version
@@ -1705,7 +1703,8 @@ export class PvsProxy {
 	async getNasalibVersionInfo(): Promise<string | null> {
 		const nasalibPresent: boolean = await this.NasalibPresent();
 		if (nasalibPresent) {
-			const nasalibVersion: PvsResponse = await this.legacy.lisp(`*nasalib-version*`);
+			const nasalibVersion: PvsResponse = this.externalServer ? await this.lisp(`*nasalib-version*`)
+				: await this.legacy?.lisp(`*nasalib-version*`);
 			const regexp: RegExp = /(\d+(?:.?\d+)*)/g; // group 1 is nasalib
 			const info: RegExpMatchArray = regexp.exec(nasalibVersion.result);
 			if (info && info.length > 1) {
@@ -1822,6 +1821,15 @@ export class PvsProxy {
 		verbose?: boolean
 	}): Promise<ProcessCode> {
 		opt = opt || {};
+		const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
+		if (externalServer) {
+			console.log(`[pvs-proxy] +-- EXTERNAL SERVER CONFIGURATION --`);
+			console.log(`[pvs-proxy] |  Address: ${this.serverAddress}`);
+			console.log(`[pvs-proxy] |  Port: ${this.serverPort}`);
+			console.log(`[pvs-proxy] +-----------------------------------`)
+			return ProcessCode.SUCCESS;
+		}
+
 		const connection: SimpleConnection = (opt.enableNotifications) ? this.connection : null;
 		const proc: PvsProcess = new PvsProcess(this.pvsPath, { connection, pvsErrorManager: this.pvsErrorManager });
 
@@ -1968,7 +1976,7 @@ export class PvsProxy {
 			this.pvsErrorManager.handleStartPvsServerError(pvsProcessActive);
 		}
 		// activate proxy for Lisp interface
-		await this.legacy.activate(this.pvsServer, {
+		await this.legacy?.activate(this.pvsServer, {
 			pvsErrorManager: this.pvsErrorManager
 		});
 
@@ -2068,14 +2076,19 @@ export class PvsProxy {
 	}
 
 	async NasalibPresent (): Promise<boolean> {
-		const response: PvsResponse = await this.legacy.lisp(`(boundp '*nasalib-version*)`);
+		const response: PvsResponse = this.externalServer ? await this.lisp(`(boundp '*nasalib-version*)`)
+			: await this.legacy?.lisp(`(boundp '*nasalib-version*)`);
 		return response && response.result === "t";
 	}
 
 	async installProofliteScript (desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {
 		const nasalibPresent: boolean = await this.NasalibPresent();
 		if (nasalibPresent) {
-			return await this.legacy.installProofliteScript(desc, proofLiteScript);
+			if (this.externalServer) {
+				// TODO: investigate if this can be done when using the server
+				return null;
+			}
+			return await this.legacy?.installProofliteScript(desc, proofLiteScript);
 		}
 		return null;
 	}
@@ -2098,7 +2111,7 @@ export class PvsProxy {
 				let path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
 				path = fsUtils.tildeExpansion(path);
 				if (!pvsLibraries.includes(path)) {
-					return (opt.useLisp) ? await this.legacy.lisp(`(push "${path}" *pvs-library-path*)`)
+					return (opt.useLisp) ? await this.legacy?.lisp(`(push "${path}" *pvs-library-path*)`)
 						: await this.pvsRequest('add-pvs-library', [ path ]);
 				}
 			}
@@ -2107,7 +2120,7 @@ export class PvsProxy {
 	}
 
 	async patchesLoaded (): Promise<boolean> {
-		const response: PvsResponse = await this.legacy.lisp(`(boundp '*pvs-patches*)`);
+		const response: PvsResponse = await this.legacy?.lisp(`(boundp '*pvs-patches*)`);
 		return response && response.result === "t";
 	}
 
@@ -2126,7 +2139,7 @@ export class PvsProxy {
 	 */
 	async activate(opt?: { debugMode?: boolean, showBanner?: boolean, verbose?: boolean, pvsErrorManager?: PvsErrorManager }): Promise<boolean> {
 		opt = opt || {};
-		console.log(`[pvs-proxy] Activating pvs-proxy...`)
+		console.log(`[pvs-proxy] Starting pvs-proxy...`)
 		this.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
 		this.debugMode = !!opt.debugMode;
 		this.verbose = !!opt.verbose;
@@ -2136,9 +2149,9 @@ export class PvsProxy {
 		}
 		const success: boolean = await this.restartPvsServer();
 		if (success) {
-			console.log(`[pvs-proxy] Activation complete!`);
+			console.log(`[pvs-proxy] Ready!`);
 		} else {
-			console.error(`[pvs-proxy] Activation failed :/`);
+			console.error(`[pvs-proxy] Failed to start proxy :/`);
 		}
 		return success;
 	}
@@ -2158,7 +2171,7 @@ export class PvsProxy {
 			}
 			if (portIsAvailable) {
 				this.banner = `GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
-				console.log(`[pvs-proxy] Activating GUI Server on http://${this.clientAddress}:${this.clientPort}`)
+				console.log(`[pvs-proxy] Starting GUI Server on http://${this.clientAddress}:${this.clientPort}`)
 				this.client = xmlrpc.createClient({
 					host: this.serverAddress, port: this.serverPort, path: "/RPC2"
 				});

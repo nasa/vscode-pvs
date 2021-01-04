@@ -16,7 +16,8 @@ describe("pvs-proxy", () => {
 		// console.log(content);
 		const pvsPath: string = content.pvsPath;
 		// log("Activating xmlrpc proxy...");
-		pvsProxy = new PvsProxy(pvsPath, { externalServer: true });
+		// NOTE: find-declaration can only be executed with the lisp interface, as the server crashes
+		pvsProxy = new PvsProxy(pvsPath, { externalServer: false });
 		await pvsProxy.activate({ debugMode: false, showBanner: false }); // this will also start pvs-server
 
 		// delete pvsbin files and .pvscontext
@@ -63,7 +64,7 @@ describe("pvs-proxy", () => {
 
 		const result: FindDeclarationResult = response["result"];
 		expect(typeof result).toEqual("object");
-		expect(result.length).toEqual(1);
+		expect(result?.length).toEqual(1);
 		expect(result[0].declname).toEqual(test.find_declaration_result[0].declname);
 		expect(result[0].theoryid).toEqual(test.find_declaration_result[0].theoryid);
 		expect(result[0].filename.endsWith(test.find_declaration_result[0].filename)).toBeTruthy();
