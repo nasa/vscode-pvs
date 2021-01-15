@@ -55,7 +55,7 @@ import { VSCodePvsLogger } from "./views/vscodePvsLogger";
 import { VSCodePvsPackageManager } from "./providers/vscodePvsPackageManager";
 import { VSCodePvsPlotter } from "./views/vscodePvsPlotter";
 
-// FIXME: use publish-subscribe to allow easier introduction of new components
+// FIXME: use Backbone.Model
 export class EventsDispatcher {
     protected client: LanguageClient;
     protected statusBar: VSCodePvsStatusBar;
@@ -82,7 +82,7 @@ export class EventsDispatcher {
         proofMate: VSCodePvsProofMate,
         logger: VSCodePvsLogger,
         packageManager: VSCodePvsPackageManager,
-        plotter: VSCodePvsPlotter,
+        plotter: VSCodePvsPlotter
     }) {
         this.client = client;
         this.statusBar = handlers.statusBar;
@@ -955,6 +955,9 @@ export class EventsDispatcher {
                 this.statusBar.showProgress(`Starting J-PRF proof for ${desc.formulaName}`);
             }
         }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula-at-cursor-position", async () => {
+            this.proofExplorer.proveFormulaAtCursorPosition();
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula", async (desc: {
             contextFolder: string,
             fileName: string,
@@ -967,7 +970,7 @@ export class EventsDispatcher {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();
             }
-            if (desc && desc.theoryName && desc.formulaName) {
+            if (desc && desc.theoryName && desc.formulaName && desc.fileName && desc.fileExtension && desc.contextFolder) {
                 if (desc.fileExtension === ".tccs" &&  desc.theoryName.endsWith("_TCCS")) {
                     desc.theoryName = desc.theoryName.substr(0, desc.theoryName.length - 5);
                 }
@@ -983,7 +986,7 @@ export class EventsDispatcher {
                 //      3.1 typecheck
                 //      3.2 loadProofDescriptor
                 //      3.3 proveFormula
-                await this.vscodePvsTerminal.startProverSession(desc);
+                await this.vscodePvsTerminal.startProverSession(<PvsFormula> desc);
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-formula invoked with null or incomplete descriptor", desc);
             }
@@ -1175,6 +1178,13 @@ export class EventsDispatcher {
                     this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
                 }
             }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.x-show-proof", async () => {
+            this.proofExplorer?.showWebView({ recenter: true });
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.x-prove", async () => {
+            commands.executeCommand("vscode-pvs.prove-formula-at-cursor-position");
+            commands.executeCommand("vscode-pvs.x-show-proof");
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-all", async () => {
             // ask the user confirmation before deleting bin files

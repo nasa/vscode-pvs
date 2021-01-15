@@ -272,6 +272,7 @@ export class VSCodePvsStatusBar {
         this.interruptProver.hide();
     }
     showDownloadNasalibButton (showButton?: boolean): void {
+        showButton = showButton === undefined ? true : !!showButton;
         if (showButton === true) {
             this.downloadNasalib.icon("");
             this.downloadNasalib.text(`$(symbol-function)  Download NASALib`);

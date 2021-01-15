@@ -2285,7 +2285,7 @@ export class PvsProofExplorer {
 		// ask if the proof needs to be saved
 		if (this.connection) {
 			this.connection.sendRequest(serverEvent.querySaveProof, { args: formula }); // this will trigger the confirmation dialog
-			await Promise.resolve(new Promise((resolve, reject) => {
+			await Promise.resolve(new Promise<void>((resolve, reject) => {
 				this.connection.onRequest(serverEvent.querySaveProofResponse, async (response: ProofExecQuitAndSave | ProofExecQuit) => {
 					if (response && response.action && response.action === "quit-proof-and-save") {
 						await this.quitProofAndSave();
@@ -2581,12 +2581,13 @@ export class ProofItem extends TreeItem {
 		}
 	}
 	pending (): void {
+		const changed: boolean = !this.pendingFlag;
 		this.activeFlag = false;
 		this.visitedFlag = false;
 		this.pendingFlag = true;
 		this.noChangeFlag = false;
-		if (this.connection) {
-			this.connection.sendNotification(serverEvent.proofNodeUpdate, {
+		if (changed) {
+			this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
 				id: this.id,
 				name: this.name,
 				status: "pending"
@@ -2594,13 +2595,14 @@ export class ProofItem extends TreeItem {
 		}
 	}
 	visited (): void {
+		const changed: boolean = !this.visitedFlag;
 		this.previousState.tooltip = this.tooltip;
 		this.activeFlag = false;
 		this.visitedFlag = true;
 		this.pendingFlag = false;
 		this.noChangeFlag = false;
-		if (this.connection) {
-			this.connection.sendNotification(serverEvent.proofNodeUpdate, {
+		if (changed) {
+			this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
 				id: this.id,
 				name: this.name,
 				status: "visited"
@@ -2615,8 +2617,8 @@ export class ProofItem extends TreeItem {
 		this.noChangeFlag = false;
 		this.completeFlag = false;
 		opt = opt || {};
-		if (!opt.internalAction && this.connection) {
-			this.connection.sendNotification(serverEvent.proofNodeUpdate, {
+		if (!opt.internalAction) {
+			this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
 				id: this.id,
 				name: this.name,
 				status: "not-visited"
@@ -2624,20 +2626,26 @@ export class ProofItem extends TreeItem {
 		}
 	}
 	complete(): void {
+		const changed: boolean = !this.completeFlag;
 		this.completeFlag = true;
-		this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
-			id: this.id,
-			name: this.name,
-			status: "complete"
-		});
+		if (changed) {
+			this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
+				id: this.id,
+				name: this.name,
+				status: "complete"
+			});
+		}
 	}
 	notComplete(): void {
+		const changed: boolean = this.completeFlag;
 		this.completeFlag = false;
-		this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
-			id: this.id,
-			name: this.name,
-			status: "not-complete"
-		});
+		if (changed) {
+			this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
+				id: this.id,
+				name: this.name,
+				status: "not-complete"
+			});
+		}
 	}
 	// noChange (): void {
 	// 	this.previousState.tooltip = this.tooltip;

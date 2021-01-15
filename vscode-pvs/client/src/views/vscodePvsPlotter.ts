@@ -41,7 +41,6 @@ import * as vscode from 'vscode';
 import { PvsResponse } from "../common/pvs-gui";
 import { LanguageClient } from "vscode-languageclient";
 import * as utils from '../common/languageUtils';
-import * as path from 'path';
 
 export class VSCodePvsPlotter {
     protected client: LanguageClient;

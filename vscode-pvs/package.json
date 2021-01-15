@@ -217,7 +217,14 @@
 				"title": "Typecheck File",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
-				"icon": "$(debug-start)"
+				"icon": "$(tools)"
+			},
+			{
+				"command": "vscode-pvs.x-show-proof",
+				"title": "Show Proof Tree",
+				"enablement": "pvs-server-active == true && in-checker && !autorun",
+				"category": "pvs",
+				"icon": "icons/vm-active-green-icon.png"
 			},
 			{
 				"command": "vscode-pvs.prove-theory",
@@ -302,7 +309,7 @@
 			{
 				"command": "vscode-pvs.open-pvs-workspace",
 				"title": "Open PVS Workspace...",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active == true && !in-checker",
 				"category": "pvs",
 				"icon": "icons/open-workspace.png"
 			},
@@ -361,6 +368,13 @@
 				"icon": "icons/play-circle-icon.png"
 			},
 			{
+				"command": "vscode-pvs.prove-formula-at-cursor-position",
+				"title": "Prove Formula At Cursor Position",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs",
+				"icon": "icons/play-circle-icon.png"
+			},
+			{
 				"command": "vscode-pvs.command-palette",
 				"title": "Command Palette...",
 				"enablement": "pvs-server-active == true",
@@ -385,7 +399,7 @@
 				"title": "Evaluate in PVSio",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
-				"icon": "$(debug-console-view-icon)"
+				"icon": "$(debug-console)"
 			},
 			{
 				"command": "vscode-pvs.plot-expression",
@@ -894,14 +908,28 @@
 			],
 			"editor/title": [
 				{
-					"command": "vscode-pvs.typecheck-file",
+					"command": "vscode-pvs.x-show-proof",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
-					"group": "navigation@1"
+					"group": "navigation@5"
+				},
+				{
+					"command": "vscode-pvs.prove-formula-at-cursor-position",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "navigation@4"
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "navigation@3"
+				},
+				{
+					"command": "vscode-pvs.typecheck-file",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "navigation@2"
+				},
+				{
+					"command": "vscode-pvs.open-pvs-workspace",
+					"group": "navigation@1"
 				}
 			],
 			"editor/title/context": [
@@ -1058,6 +1086,11 @@
 					"command": "proof-explorer.export-prooflite",
 					"when": "view == proof-explorer-view",
 					"group": "ctrl-1.1"
+				},
+				{
+					"command": "vscode-pvs.x-show-proof",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1.2"
 				},
 				{
 					"command": "proof-explorer.quit-proof",
@@ -1360,6 +1393,8 @@
 		}
 	},
 	"dependencies": {
+		"d3": "^6.3.1",
+		"handlebars": "^4.7.6",
 		"typescript": "^3.9.3",
 		"vsce": "^1.83.0",
 		"xmlrpc": "^1.3.2"
@@ -1370,9 +1405,9 @@
 		"@types/vscode": "^1.32.3",
 		"@typescript-eslint/eslint-plugin": "^2.25.0",
 		"@typescript-eslint/parser": "^2.25.0",
+		"eslint": "^6.8.0",
 		"jasmine": "^3.5.0",
 		"jasmine-ts": "^0.3.0",
-		"eslint": "^6.8.0",
 		"ts-node": "^7.0.0"
 	},
 	"resolutions": {

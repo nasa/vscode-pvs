@@ -54,6 +54,7 @@ import { SequentDescriptor } from '../common/languageUtils';
 import * as vscode from 'vscode';
 import * as vscodeUtils from '../utils/vscode-utils';
 import * as path from 'path';
+import { VSCodePvsVizTree } from './vscodePvsProofTreeViz';
 
 /**
  * TreeData provider for Proof Explorer
@@ -74,6 +75,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	protected client: LanguageClient;
 	protected serverMode: ServerMode = "lisp";
+
+	protected viztree: VSCodePvsVizTree;
+	// protected viztreeEnabled: boolean = false;
 
 	/**
 	 * Flag indicating whether the view is enabled
@@ -134,6 +138,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		// Register tree view; use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
+		this.viztree = new VSCodePvsVizTree();
 	}
 
 	didUpdateServerMode (mode: ServerMode): void {
@@ -152,6 +157,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
 			// this.step();
 		}
+	}
+
+	showWebView (opt?: { recenter?: boolean }): void {
+		this.viztree.render(this.root, { reveal: true, ...opt });
+
 	}
 
 	protected findNode (id: string): ProofBranch {
@@ -274,6 +284,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// set vscode context variable proof-explorer.clipboard-contains-tree and clipboard-contains-node to true
 			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);				
 			this.refreshView();
+			this.viztree?.render(this.root);
 		}
 	}
 
@@ -286,6 +297,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);
 			// refresh view
 			this.refreshView();
+			this.viztree?.render(this.root);
 			// append elems to sketchpad
 			let sketchpadItems: ProofItem[] = [];
 			for (let i = 0; i < desc.elems.length; i++) {
@@ -302,6 +314,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.revealNode(desc.selected)
 		}
 		this.refreshView();
+		this.viztree?.render(this.root);
 	}
 
 	didRenameNode (desc: ProofEditDidRenameNode): void {
@@ -310,6 +323,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (item) {
 				item.rename(desc.newName);
 				this.refreshView();
+				this.viztree?.rename(desc.selected.id, desc.newName);
 			} else {
 				console.warn(`[vscode-proof-explorer] Warning: could not find item ${desc.selected.name} necessary for proofEdit/renameNode (${desc.selected.id})`)
 			}
@@ -368,6 +382,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				const items: ProofItem[] = this.convertNodeX2ProofItem(desc.elems[i]);
 				sketchpadItems = sketchpadItems.concat(items);
 			}
+			this.refreshView();
+			this.viztree?.render(this.root);
 			commands.executeCommand("proof-explorer.trim", { items: sketchpadItems });
 		} else {
 			console.warn(`[vscode-proof-explorer] Warning: unable to complete proofEdit/trimNode`);
@@ -380,6 +396,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (item && item.parent) {
 				item.parent.deleteChild(item);
 				this.refreshView();
+				this.viztree?.render(this.root);
 				console.log(`[vscode-proof-explorer] Did delete ${desc.selected.name} (${desc.selected.id})`);
 			} else {
 				console.warn(`[vscode-proof-explorer] Warning: could not find item ${desc.selected.name} necessary for proofEdit/deleteNode (${desc.selected.id})`)
@@ -402,6 +419,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				})).concat(children2);
 				parent.collapsibleState = TreeItemCollapsibleState.Expanded;
 				this.refreshView();
+				this.viztree?.render(this.root);
 				console.log(`[vscode-proof-explorer] Did append ${desc.elem.name} (${desc.elem.id})`);
 			} else {
 				console.warn(`[vscode-proof-explorer] Warning: could not find parent ${desc.elem.parent} necessary for proofEdit/appendNode (${desc.elem.name})`)
@@ -414,8 +432,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Force refresh of the tree view
 	 */
-	refreshView(): void {
-		if (this.enabled) {
+	refreshView(opt?: { force?: boolean }): void {
+		if (this.enabled){
 			this._onDidChangeTreeData.fire();
 		}
 	}
@@ -464,7 +482,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	}
 
 	startProof (): void {
-		this.refreshView();
+		this.refreshView({ force: true });
+		this.viztree?.render(this.root);
 		if (this.root && this.root.children && this.root.children.length) {
 			if (utils.isGlassboxTactic(this.root.children[0].name)) {
 				this.queryUnfoldGlassbox();
@@ -621,11 +640,41 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
 		return ans === yesno[0];
 	}
+	async proveFormulaAtCursorPosition (): Promise<PvsFormula> {
+		if (window.activeTextEditor && window.activeTextEditor.document) {
+			// if the file is currently open in the editor, save file first
+			await window.activeTextEditor.document.save();
+			// get information necessary to start the proof
+			const fname: string = window.activeTextEditor.document.fileName;
+			const cursorPosition: vscode.Position = window.activeTextEditor.selection?.active;
+			// const range: vscode.Range = new vscode.Range(new vscode.Position(0, 0), cursorPosition);
+			const text: string = window.activeTextEditor.document.getText();
+			const desc: PvsFormula = {
+				theoryName: utils.findTheoryName(text, cursorPosition.line),
+				formulaName: utils.findFormulaName(text, cursorPosition.line),
+				fileName: fsUtils.getFileName(fname),
+				fileExtension: fsUtils.getFileExtension(fname),
+				contextFolder: fsUtils.getContextFolder(fname)
+			};
+			if (desc && desc.theoryName && desc.formulaName && desc.fileName && desc.fileExtension && desc.contextFolder) {
+								// ask the user confirmation before restarting pvs
+				const yesno: string[] = [ "Yes", "No" ];
+				const msg: string = `Prove formula ${desc.formulaName}?`;
+				const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
+				if (ans === yesno[0] || ans === yesno[1]) {
+					commands.executeCommand("vscode-pvs.prove-formula", desc);
+				}
+			}
+			return desc;
+		}
+		return null;
+	}
 	/**
 	 * Activation function, installs all proof-explorer command handlers.
 	 * @param context Client context 
 	 */
 	activate(context: ExtensionContext): void {
+		this.viztree.activate(context);
 		// -- handler for node updates
 		this.client.onNotification(serverEvent.proofNodeUpdate, (desc: { id: string, name: string, status: ProofNodeStatus }) => {
 			if (this.root && desc) {
@@ -641,6 +690,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						this.expandNode(desc);
 					}
 					this.refreshView();
+
+					if (this.viztree) {
+						this.viztree.updateStatus(desc);
+					}
 				} else {
 					console.warn(`[vscode-proof-explorer] Warning: could not update status of node ${desc.name} to ${desc.status}`);
 				}

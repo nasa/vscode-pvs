@@ -91,6 +91,9 @@ const cmds: string[] = [
 	"welcome", // show release notes
 	"about", // show release notes
 
+	"x-show-proof",
+	"x-pr", "x-prove",
+
 	"step-proof",
 	"show-tccs",
 	"show-proof-summary",
@@ -270,6 +273,15 @@ export class VSCodePvsEmacsBindingsProvider {
 				}
 				case "clean-all": {
 					commands.executeCommand('vscode-pvs.clean-all');
+					break;
+				}
+				case "x-show-proof": {
+					commands.executeCommand('vscode-pvs.x-show-proof');
+					break;
+				}
+				case "x-pr": 
+				case "x-prove": {
+					commands.executeCommand('vscode-pvs.x-prove');
 					break;
 				}
 				default: {

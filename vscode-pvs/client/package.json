@@ -20,6 +20,9 @@
 		"vscode": "*"
 	},
 	"dependencies": {
+		"bootstrap": "^4.5.3",
+		"font-awesome": "4.7.0",
+		"jquery": "^3.5.1",
 		"typescript": "^3.9.7",
 		"vscode-languageclient": "^5.2.1",
 		"ws": "^7.2.0"
