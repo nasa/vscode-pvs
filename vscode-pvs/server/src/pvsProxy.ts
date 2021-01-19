@@ -259,7 +259,7 @@ export class PvsProxy {
 						// console.dir(jsonReq);
 						const msg: string = (req.params) ? req.method + " " + JSON.stringify(req.params)
 							: req.method;
-						console.log(msg);
+						// console.log(msg);
 					}
 					this.proverBusy = true;
 					this.client.methodCall("pvs.request", [jsonReq, `http://${this.clientAddress}:${this.clientPort}`], (error: Error, value: string) => {

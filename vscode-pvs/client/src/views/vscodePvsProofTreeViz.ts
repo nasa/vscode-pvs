@@ -100,8 +100,8 @@ const htmlTemplate: string = `
         <svg id="proof-tree" style="width:{{width}}px; height:{{height}}px;">
             <g class="links">
             {{#each links}}
-                <g class="link {{source.data.id}}">
-                    <line from="{{source.name}}" to="{{target.name}}" x1="{{source.x}}" y1="{{source.y}}" x2="{{target.x}}" y2="{{target.y}}"></line>
+                <g class="link {{source.data.id}} {{target.data.id}}">
+                    <line x1="{{source.x}}" y1="{{source.y}}" x2="{{target.x}}" y2="{{target.y}}"></line>
                 </g>
             {{/each}}
             </g>
@@ -197,6 +197,16 @@ const htmlTemplate: string = `
                     }
                     break;
                 }
+                case 'deactivate-cursor': {
+                    if (node) {
+                        console.log("removing " + node.id);
+                        // remove node
+                        $("#" + node.id).remove();
+                        // remove links connected to the node
+                        $("." + node.id).remove();
+                    }
+                    break;
+                }
                 // other commands
                 case 'zoom': {
                     if (message?.scale) {
@@ -209,9 +219,28 @@ const htmlTemplate: string = `
                     break;
                 }
                 case 'recenter': {
-                    const $active = $(".active");
+                    let $active = $(".active");
                     if ($active[0]) {
                         $active[0].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+                    } else {
+                        // center on root
+                        $active = $(".root-node");
+                        if (active[0]) {
+                            $active[0].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+                        }
+                    }
+                    break;
+                }
+                case 'recenter-fast': {
+                    let $active = $(".active");
+                    if ($active[0]) {
+                        $active[0].scrollIntoView({ block: "center", inline: "center" });
+                    } else {
+                        // center on root
+                        $active = $(".root-node");
+                        if ($active[0]) {
+                            $active[0].scrollIntoView({ block: "center", inline: "center" });
+                        }
                     }
                     break;
                 }
@@ -331,39 +360,6 @@ export class LayoutFactory {
         this.links = [];
     }
 
-    // convert (item: ProofItem): TreeStructure {
-    //     if (item) {
-    //         const ans: TreeStructure = {
-    //             id: item.id,
-    //             name: item.name,
-    //             status: {
-    //                 complete: item.isComplete(),
-    //                 visited: item.isVisited(),
-    //                 active: item.isActive(),
-    //                 pending: item.isPending()
-    //             }
-    //         };
-    //         let root: TreeStructure = ans;
-    //         let parent: TreeStructure = ans;
-    //         if (item.children?.length) {
-    //             for (let i = 0; i < item.children.length; i++) {
-    //                 // ProofItems are encoded in a compact way: the first child is a child, the others are descendents
-    //                 // the parent of child(i) is child(i-1)
-    //                 if (i > 0 && item.children[i].contextValue !== "proof-branch") {
-    //                     parent = root.children[root.children.length - 1];
-    //                     root = parent;
-    //                 }
-    //                 parent.children = parent.children || [];
-    //                 parent.children.push(this.convert(item.children[i]));
-    //             }
-    //         } else {
-    //             this.span++;
-    //         }
-    //         return ans;
-    //     }
-    //     return null;
-    // }
-
 	createLayout (root: TreeStructure): d3HierarchyNode<TreeStructure> {
         this.clearLayout();
         const structure: TreeStructure = { children: [ root ]}; // this is done to create some extra space at the top of the view, it's necessary to correctly render the proof name
@@ -415,6 +411,15 @@ export class VSCodePvsVizTree {
     readonly zoomStep: number = 20;
     protected visible: boolean = false;
 
+    /**
+	 * Timer used to implement a delayed refresh of the view, useful to improve performance
+	 */
+	protected timer: NodeJS.Timer = null;
+	protected tcounter: number = 0;
+	readonly maxSkip: number = 10;
+	readonly maxTimer: number = 500; //ms
+
+
     constructor () {
         this.layout = new LayoutFactory();
     }
@@ -432,9 +437,10 @@ export class VSCodePvsVizTree {
     isVisible (): boolean {
         return this.visible;
     }
-    recenter (): void {
+    recenter (opt?: { fast?: boolean }): void {
+        opt = opt || {};
         this.panel?.webview?.postMessage({
-            command: "recenter"
+            command: opt.fast ? "recenter-fast" : "recenter"
         });
     }
     zoomMinus (): void {
@@ -453,95 +459,136 @@ export class VSCodePvsVizTree {
             scale
         });
     }
-    async render (treeStructure: TreeStructure, opt?: { reveal?: boolean, recenter?: boolean }): Promise<boolean> {
+    protected createWebView (title: string) {
+        if (!this.panel) {
+            this.panel = vscode.window.createWebviewPanel(
+                'proof-tree', // Identifies the type of the webview. Used internally
+                `Proof: ${title}`, // Title of the panel displayed to the user
+                vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
+                {
+                    enableScripts: true
+                }
+            );
+            // Clean up data structures when webview is disposed
+            this.panel.onDidDispose(
+                () => {
+                    this.panel = null;
+                    this.visible = false;
+                },
+                null,
+                this.context.subscriptions
+            );
+            // Handle messages from the webview
+            this.panel.webview.onDidReceiveMessage(
+                message => {
+                    switch (message.command) {
+                        case 'recenter': {
+                            this.recenter();
+                            break;
+                        }
+                        case 'zoom-minus': {
+                            this.zoomMinus();
+                            setTimeout(() => {
+                                this.recenter({ fast: true });
+                            }, 250);
+                            break;
+                        }
+                        case 'zoom-plus': {
+                            this.zoomPlus();
+                            setTimeout(() => {
+                                this.recenter({ fast: true });
+                            }, 250);
+                            break;
+                        }
+                        case 'next': {
+                            vscode.commands.executeCommand("proof-explorer.forward");
+                            break;
+                        }
+                        case 'prev': {
+                            vscode.commands.executeCommand("proof-explorer.back");
+                            break;
+                        }
+                        case 'play': {
+                            vscode.commands.executeCommand("proof-explorer.run-proof");
+                            break;
+                        }
+                        default: {
+                            break;
+                        }
+                    }
+                },
+                undefined,
+                this.context.subscriptions
+            );
+        }
+    }
+    /**
+     * creates the entire html content
+     * @param root 
+     */
+    protected createContent (root: TreeStructure): void {
+        // set webview content                
+        const bootstrapJsOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js'));
+        const bootstrapCssOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/css/bootstrap.min.css'));
+        const jqueryOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/jquery/dist/jquery.min.js'));
+        const fontawesomeCssOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/font-awesome/css/font-awesome.min.css'));
+
+        const css = [
+            this.panel.webview.asWebviewUri(bootstrapCssOnDisk),
+            this.panel.webview.asWebviewUri(fontawesomeCssOnDisk)
+        ];
+        const js = [
+            this.panel.webview.asWebviewUri(jqueryOnDisk), // jquery needs to be loaded before bootstrap
+            this.panel.webview.asWebviewUri(bootstrapJsOnDisk)
+        ];
+        this.panel.webview.html = this.createHtmlContent(root, { css, js, style: webviewStyle });
+    }
+    /**
+     * Renders the content of the webview
+     * @param root 
+     * @param opt 
+     */
+    render (root: TreeStructure, opt?: { reveal?: boolean, recenter?: boolean, source?: string, cursor?: string }): void {
         opt = opt || {};
         this.visible = opt.reveal !== undefined ? !!opt.reveal : this.visible;
-        return new Promise((resolve, reject) => {
-            if (treeStructure && this.visible) {
+        opt.recenter = opt.recenter === undefined ? true : opt.recenter;
+
+        if (root && this.visible) {
+            const refresh = () => {
                 // create webview
-                if (!this.panel) {
-                    this.panel = vscode.window.createWebviewPanel(
-                        'proof-tree', // Identifies the type of the webview. Used internally
-                        `Proof: ${treeStructure.name}`, // Title of the panel displayed to the user
-                        vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
-                        {
-                            enableScripts: true
+                this.createWebView(root.name);
+
+                switch (opt.source) {
+                    case "did-update-tooltip":
+                    case "did-rename-node":
+                    case "did-update-node-status": {
+                        // todo: check if we can implement a lightweight refresh
+                    }
+                    default: {
+                        // create webview content
+                        this.createContent(root);
+                        if (opt.recenter) {
+                            this.recenter({ fast: true });
                         }
-                    );
-                    // Clean up data structures when webview is disposed
-                    this.panel.onDidDispose(
-                        () => {
-                            this.panel = null;
-                            this.visible = false;
-                        },
-                        null,
-                        this.context.subscriptions
-                    );
-                    // Handle messages from the webview
-                    this.panel.webview.onDidReceiveMessage(
-                        message => {
-                            switch (message.command) {
-                                case 'recenter': {
-                                    this.recenter();
-                                    break;
-                                }
-                                case 'zoom-minus': {
-                                    this.zoomMinus();
-                                    setTimeout(() => {
-                                        this.recenter();
-                                    }, 250);
-                                    break;
-                                }
-                                case 'zoom-plus': {
-                                    this.zoomPlus();
-                                    setTimeout(() => {
-                                        this.recenter();
-                                    }, 250);
-                                    break;
-                                }
-                                case 'next': {
-                                    vscode.commands.executeCommand("proof-explorer.forward");
-                                    break;
-                                }
-                                case 'prev': {
-                                    vscode.commands.executeCommand("proof-explorer.back");
-                                    break;
-                                }
-                                case 'play': {
-                                    vscode.commands.executeCommand("proof-explorer.run-proof");
-                                    break;
-                                }
-                                default: {
-                                    break;
-                                }
-                            }
-                        },
-                        undefined,
-                        this.context.subscriptions
-                    );
+                        break;
+                    }
                 }
-
-                // set webview content                
-                const bootstrapJsOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js'));
-                const bootstrapCssOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/css/bootstrap.min.css'));
-                const jqueryOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/jquery/dist/jquery.min.js'));
-                const fontawesomeCssOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/font-awesome/css/font-awesome.min.css'));
-
-                const css = [
-                    this.panel.webview.asWebviewUri(bootstrapCssOnDisk),
-                    this.panel.webview.asWebviewUri(fontawesomeCssOnDisk)
-                ];
-                const js = [
-                    this.panel.webview.asWebviewUri(jqueryOnDisk), // jquery needs to be loaded before bootstrap
-                    this.panel.webview.asWebviewUri(bootstrapJsOnDisk)
-                ];
-                this.panel.webview.html = this.createHtmlContent(treeStructure, { css, js, style: webviewStyle });
-                if (opt.recenter) {
-                    this.recenter();
-                }
-                resolve(true);
             }
-        });
+            const delayedRefresh = () => {
+                clearTimeout(this.timer);
+                this.timer = setTimeout(() => {
+                    refresh();
+                }, this.maxTimer);
+            }
+            this.tcounter++;
+            if (this.tcounter > this.maxSkip) {
+                this.tcounter = 0;
+                clearTimeout(this.timer);
+                refresh();
+            } else {
+                delayedRefresh();
+            }
+        }
     }
     rename (id: string, name: string): void {
         if (id) {
@@ -551,6 +598,11 @@ export class VSCodePvsVizTree {
     active (id: string): void {
         if (id) {
             this.panel?.webview?.postMessage({ command: "active", id });
+        }
+    }
+    deactivateCursor (id: string): void {
+        if (id) {
+            this.panel?.webview?.postMessage({ command: "deactivate-cursor", id });
         }
     }
     visited (id: string): void {
