@@ -723,12 +723,16 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.interrupt-prover", async () => {
             // ask the user confirmation before restarting pvs
-			const yesno: string[] = [ "Yes", "No" ];
-			const msg: string = `Interrupt the execution of the current proof command?`;
-			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
-			if (ans === yesno[0]) {
-                const action: ProofExecInterruptProver = { action: "interrupt-prover" };
-                this.client.sendRequest(serverRequest.proverCommand, action);
+            if (this.proofExplorer) {
+                this.proofExplorer.queryPauseProof();
+            } else {
+                const yesno: string[] = [ "Yes", "No" ];
+                const msg: string = `Interrupt the execution of the current proof command?`;
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+                if (ans === yesno[0]) {
+                    const action: ProofExecInterruptProver = { action: "interrupt-prover" };
+                    this.client.sendRequest(serverRequest.proverCommand, action);
+                }
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.interrupt-and-quit-prover", async () => {

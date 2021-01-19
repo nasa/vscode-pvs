@@ -582,6 +582,13 @@
 				"category": "pvs"
 			},
 			{
+				"command": "proof-explorer.pause-proof",
+				"title": "️️Pause proof",
+				"enablement": "view == proof-explorer-view && proof-explorer.running",
+				"icon": "icons/pause-circle-icon.png",
+				"category": "pvs"
+			},
+			{
 				"command": "proof-explorer.fast-forward",
 				"title": "️️Fast forward here",
 				"icon": "icons/fast-forward-icon-alt-2.png",
@@ -807,7 +814,7 @@
 				},
 				{
 					"command": "proof-explorer.create-proof-branch",
-					"when": "view == proof-explorer-view",
+					"when": "false && view == proof-explorer-view",
 					"group": "context-menu/edit-0"
 				},
 				{
@@ -1049,7 +1056,12 @@
 				},
 				{
 					"command": "proof-explorer.run-proof",
-					"when": "view == proof-explorer-view",
+					"when": "view == proof-explorer-view && !proof-explorer.running",
+					"group": "navigation"
+				},
+				{
+					"command": "proof-explorer.pause-proof",
+					"when": "view == proof-explorer-view && proof-explorer.running",
 					"group": "navigation"
 				},
 				{
@@ -1091,6 +1103,26 @@
 					"command": "vscode-pvs.x-show-proof",
 					"when": "view == proof-explorer-view",
 					"group": "ctrl-1.2"
+				},
+				{
+					"command": "proof-explorer.back",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1.3"
+				},
+				{
+					"command": "proof-explorer.forward",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1.3"
+				},
+				{
+					"command": "proof-explorer.pause-proof",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1.3"
+				},
+				{
+					"command": "proof-explorer.run-proof",
+					"when": "view == proof-explorer-view",
+					"group": "ctrl-1.3"
 				},
 				{
 					"command": "proof-explorer.quit-proof",

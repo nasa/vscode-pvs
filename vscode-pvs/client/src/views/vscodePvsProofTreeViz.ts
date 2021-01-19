@@ -80,23 +80,37 @@ const htmlTemplate: string = `
 </head>
 <body style="margin-left:20px; margin-top:60px; padding:0; overflow:auto; background:whitesmoke;">
     <nav class="navbar navbar-light bg-dark fixed-top" style="width:100%; margin:0; padding:0;">
-        <div class="container-fluid">
-        <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups" style="transform:scale(0.8);">
-            <div class="btn-group" role="group" style="margin-left:20px;">
-                <button type="button" class="btn btn-sm btn-outline-warning" aria-label="Zoom minus" id="zoom-minus"><i class="fa fa-minus"></i></button>
-                <button type="button" class="btn btn-sm btn-outline-light" aria-label="Zoom plus" id="zoom-plus"><i class="fa fa-plus"></i></button>
-            </div>
-            <div class="btn-group" role="group" style="margin-left:20px;">
-                <button id="recenter" class="btn btn-sm btn-outline-light" aria-label="Recenter" type="button">Recenter</button>
-            </div>
-            <div class="btn-group" role="group" style="margin-left:20px;">
-                <button type="button" id="prev" class="btn btn-sm btn-outline-light" alt="Back one step" aria-label="Back one step" style="width:80px;"><i class="fa fa-step-backward"></i></button>
-                <button type="button" id="play" class="btn btn-sm btn-outline-light" alt="Run proof" aria-label="Run proof" style="width:40px;"><i class="fa fa-play-circle"></i></button>
-                <button type="button" id="next" class="btn btn-sm btn-outline-light" alt="Step proof" aria-label="Step proof" style="width:80px;"><i class="fa fa-step-forward"></i></button>
+        <div class="container-fluid" style="margin:0; padding:0;">
+            <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups" style="transform:scale(0.8); transform-origin: left;">
+                <div class="dropdown" style="margin-left:20px;">
+                    <button type="button" id="dropdown" data-toggle="dropdown" class="btn btn-sm btn-outline-light" aria-label="Settings"><i class="fa fa-bars"></i></button>
+                    <div class="dropdown-menu dropdown-menu-left" style="padding:10px; width:250px;">
+                        <b>Settings</b>
+                        {{#each settings}}
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend"><span class="input-group-text" style="min-width:64px;">{{@key}}</span></div>
+                            <input type="text" id="{{@key}}" class="settings form-control" placeholder="{{this}}" value="{{this}}">
+                        </div>
+                        {{/each}}
+                    </div>
+                </div>
+                <div class="btn-group" role="group" style="margin-left:20px;">
+                    <button type="button" id="zoom-minus" class="btn btn-sm btn-outline-warning" aria-label="Zoom minus"><i class="fa fa-minus"></i></button>
+                    <button type="button" id="zoom-plus" class="btn btn-sm btn-outline-light" aria-label="Zoom plus"><i class="fa fa-plus"></i></button>
+                </div>
+                <div class="btn-group" role="group" style="margin-left:20px;">
+                    <button type="button" id="recenter" class="btn btn-sm btn-outline-light" aria-label="Recenter">Recenter</button>
+                </div>
+                <div class="btn-group" role="group" style="margin-left:20px;">
+                    <button type="button" id="prev" class="btn btn-sm btn-outline-light" alt="Back one step" aria-label="Back one step" style="width:80px;"><i class="fa fa-step-backward"></i></button>
+                    <button type="button" id="pause" class="btn btn-sm btn-outline-light" alt="Pause proof" aria-label="Pause proof" style="width:40px;"><i class="fa fa-pause"></i></button>
+                    <button type="button" id="play" class="btn btn-sm btn-outline-light" alt="Run proof" aria-label="Run proof" style="width:40px;"><i class="fa fa-play-circle"></i></button>
+                    <button type="button" id="next" class="btn btn-sm btn-outline-light" alt="Step proof" aria-label="Step proof" style="width:80px;"><i class="fa fa-step-forward"></i></button>
+                </div>
             </div>
         </div>
     </nav>
-    <div id="content">
+    <div id="content" style="transform: scale({{scale}}); transform-origin: top left";>
         <svg id="proof-tree" style="width:{{width}}px; height:{{height}}px;">
             <g class="links">
             {{#each links}}
@@ -110,7 +124,7 @@ const htmlTemplate: string = `
                 {{#if @first}}
                 <g id={{data.id}} class="node{{#if data.status.visited}} visited{{/if}}{{#if data.status.pending}} pending{{/if}}{{#if data.status.active}} active{{/if}}{{#if data.status.complete}} complete{{/if}}" transform="translate({{x}},{{y}})">
                     <circle class="root-node" r="2"></circle>
-                    <text dy="-1em" text-anchor="middle">Proof: {{data.name}}</text>
+                    <text dy="-0.5em" text-anchor="middle" style="font:{{../settings.font}};">Proof: {{data.name}}</text>
                 </g>
                 {{else}}
                 <g id={{data.id}} class="node{{#if data.status.visited}} visited{{/if}}{{#if data.status.pending}} pending{{/if}}{{#if data.status.active}} active{{/if}}{{#if data.status.complete}} complete{{/if}}" transform="translate({{x}},{{y}})">
@@ -118,7 +132,7 @@ const htmlTemplate: string = `
                     <path class="checkmark" fill="none" d="M-3 0l2 3 6-6"></path>
                     <path class="star" d="M0 -6l1.379 4.246h4.465l-3.612 2.625 1.379 4.246-3.611-2.625-3.612 2.625 1.379-4.246-3.612-2.625h4.465l1.38-4.246"></path>
                     <!-- <rect y="-1.1em" x="-0.4em" width="0.8em" height="0.6em" style="fill:whitesmoke; fill-opacity:0.6; stroke:transparent;"></rect> -->
-                    <text class="name" dy="0.25em" dx="1em" text-anchor="start">{{data.name}}</text>
+                    <text class="name" dy="0.25em" dx="1em" text-anchor="start" style="font:{{../settings.font}};">{{data.name}}</text>
                 </g>
                 {{/if}}
             {{/each}}
@@ -134,6 +148,26 @@ const htmlTemplate: string = `
             vscode.postMessage({ command: '{{this}}' });
         });
         {{/each}}
+        $(".settings").on("input", (evt) => {
+            const $elem = $(evt?.currentTarget);
+            const id = $elem.attr("id")
+            const val = $elem.val();
+            vscode.postMessage({ command: 'settings', id, val });
+        });
+        $(".settings").on("keydown", (evt) => {
+            const $elem = $(evt?.currentTarget);
+            const id = $elem.attr("id")
+            const val = $elem.val();
+            const num = parseFloat(val);
+            const valpp = evt.code === "ArrowUp" ? num + 1 
+                : evt.code === "ArrowDown" ? num - 1
+                    : num;
+            if (valpp > 0) {
+                const newval = val.replace(num, valpp);
+                $elem.val(newval)
+                vscode.postMessage({ command: 'settings', id, val: newval });    
+            }
+        });
     }());
     // Handle the message inside the webview
     window.addEventListener('message', event => {
@@ -165,7 +199,7 @@ const htmlTemplate: string = `
                     if (node) {
                         node.classList?.add("visited");
                         node.classList?.remove("pending");
-                        node.classList?.remove("complete");
+                        // node.classList?.remove("complete");
                     }
                     break;
                 }
@@ -179,7 +213,6 @@ const htmlTemplate: string = `
                 }
                 case 'complete': {
                     if (node) {
-                        node.classList?.remove("visited");
                         node.classList?.remove("pending");
                         node.classList?.add("complete");
                     }
@@ -211,8 +244,8 @@ const htmlTemplate: string = `
                 case 'zoom': {
                     if (message?.scale) {
                         $("#content").css({
-                            transform: "scale(" + message.scale + ")",
-                            "transform-origin": "top left"
+                            transform: "scale(" + message.scale + ")"
+                            //, "transform-origin": "top left"
                             //, transition: "200ms ease-out"
                         });
                     }
@@ -244,6 +277,10 @@ const htmlTemplate: string = `
                     }
                     break;
                 }
+                case 'update-font': {
+                    $(".node text").css("font", message.val);
+                    break;
+                }
                 default: {
                     break;
                 }
@@ -255,6 +292,9 @@ const htmlTemplate: string = `
 </html>`;
 
 const webviewStyle: string = `
+.btn {
+    min-width: 40px;
+}
 .node {
     cursor: pointer;
     fill: white;
@@ -343,12 +383,10 @@ export class LayoutFactory {
     protected span: number = 0;
     protected width: number = 0;
     protected height: number = 0;
-    protected hsep: number = 4 * MAX_NAME_LEN; //px
-    protected vsep: number = 32; //px
     protected layout: d3HierarchyNode<TreeStructure>;
     protected nodes: LayoutNode[] = [];
     protected links: LayoutLink[] = [];
-    
+
     readonly marginTop: number = 20;
 
     clearLayout (): void {
@@ -360,7 +398,7 @@ export class LayoutFactory {
         this.links = [];
     }
 
-	createLayout (root: TreeStructure): d3HierarchyNode<TreeStructure> {
+	createLayout (root: TreeStructure, style: { hsep: number, vsep: number }): d3HierarchyNode<TreeStructure> {
         this.clearLayout();
         const structure: TreeStructure = { children: [ root ]}; // this is done to create some extra space at the top of the view, it's necessary to correctly render the proof name
         const layout: LayoutNode = d3.hierarchy(structure);
@@ -383,8 +421,8 @@ export class LayoutFactory {
                 }
             });
 
-            this.width = this.span * this.hsep;
-            this.height = this.depth * this.vsep;
+            this.width = this.span * style.hsep;
+            this.height = this.depth * style.vsep;
             const d3Layout = d3.tree().size([ this.width, this.height]);
             this.layout = d3Layout(layout);
         }
@@ -410,6 +448,15 @@ export class VSCodePvsVizTree {
     readonly maxZoomLevel: number = 1000;
     readonly zoomStep: number = 20;
     protected visible: boolean = false;
+
+    protected root: TreeStructure;
+
+    /**
+	 * Settings
+	 */
+    protected font: string = "12px sans-serif";
+    protected hsep: number = 4 * MAX_NAME_LEN; //px
+    protected vsep: number = 32; //px
 
     /**
 	 * Timer used to implement a delayed refresh of the view, useful to improve performance
@@ -437,6 +484,13 @@ export class VSCodePvsVizTree {
     isVisible (): boolean {
         return this.visible;
     }
+    refreshFont (): void {
+        this.panel?.webview?.postMessage({
+            command: "update-font",
+            val: this.font
+        });
+
+    }
     recenter (opt?: { fast?: boolean }): void {
         opt = opt || {};
         this.panel?.webview?.postMessage({
@@ -460,7 +514,9 @@ export class VSCodePvsVizTree {
         });
     }
     protected createWebView (title: string) {
-        if (!this.panel) {
+        if (this.panel) {
+            this.panel.title = title;
+        } else {
             this.panel = vscode.window.createWebviewPanel(
                 'proof-tree', // Identifies the type of the webview. Used internally
                 `Proof: ${title}`, // Title of the panel displayed to the user
@@ -488,16 +544,12 @@ export class VSCodePvsVizTree {
                         }
                         case 'zoom-minus': {
                             this.zoomMinus();
-                            setTimeout(() => {
-                                this.recenter({ fast: true });
-                            }, 250);
+                            this.recenter({ fast: true });
                             break;
                         }
                         case 'zoom-plus': {
                             this.zoomPlus();
-                            setTimeout(() => {
-                                this.recenter({ fast: true });
-                            }, 250);
+                            this.recenter({ fast: true });
                             break;
                         }
                         case 'next': {
@@ -510,6 +562,28 @@ export class VSCodePvsVizTree {
                         }
                         case 'play': {
                             vscode.commands.executeCommand("proof-explorer.run-proof");
+                            break;
+                        }
+                        case 'pause': {
+                            vscode.commands.executeCommand("proof-explorer.pause-proof");
+                            break;
+                        }
+                        case 'settings': {
+                            switch (message.id) {
+                                case "font": {
+                                    this.font = message.val;
+                                    this.refreshFont();
+                                    break;
+                                }
+                                case "vsep":
+                                case "hsep": {
+                                    if (parseFloat(message.val) > 0) {
+                                        this[message.id] = parseFloat(message.val);
+                                        this.refreshView();
+                                    }
+                                    break;
+                                }
+                            }
                             break;
                         }
                         default: {
@@ -546,17 +620,26 @@ export class VSCodePvsVizTree {
     /**
      * Renders the content of the webview
      * @param root 
-     * @param opt 
+     * @param opt
      */
-    render (root: TreeStructure, opt?: { reveal?: boolean, recenter?: boolean, source?: string, cursor?: string }): void {
+    renderView (root: TreeStructure, opt?: { reveal?: boolean, recenter?: boolean, source?: string, cursor?: string }): void {
+        this.root = root;
+        this.refreshView(opt);
+    }
+    /**
+     * Refreshed the content of the webview
+     * @param opt
+     */
+    refreshView (opt?: { reveal?: boolean, recenter?: boolean, source?: string, cursor?: string }): void {
         opt = opt || {};
         this.visible = opt.reveal !== undefined ? !!opt.reveal : this.visible;
         opt.recenter = opt.recenter === undefined ? true : opt.recenter;
 
-        if (root && this.visible) {
+        const ready: boolean = !!this.panel;
+        if (this.root && this.visible) {
             const refresh = () => {
                 // create webview
-                this.createWebView(root.name);
+                this.createWebView(this.root.name);
 
                 switch (opt.source) {
                     case "did-update-tooltip":
@@ -566,7 +649,7 @@ export class VSCodePvsVizTree {
                     }
                     default: {
                         // create webview content
-                        this.createContent(root);
+                        this.createContent(this.root);
                         if (opt.recenter) {
                             this.recenter({ fast: true });
                         }
@@ -581,7 +664,7 @@ export class VSCodePvsVizTree {
                 }, this.maxTimer);
             }
             this.tcounter++;
-            if (this.tcounter > this.maxSkip) {
+            if (!ready || this.tcounter > this.maxSkip) {
                 this.tcounter = 0;
                 clearTimeout(this.timer);
                 refresh();
@@ -654,7 +737,7 @@ export class VSCodePvsVizTree {
      * <li>style: inline css style</li>
      */
     protected createHtmlContent (root: TreeStructure, opt?: { css?: vscode.Uri[], js?: vscode.Uri[], style?: string }): string {
-        this.layout.createLayout(root);
+        this.layout.createLayout(root, { hsep: this.hsep, vsep: this.vsep });
         const nodes: LayoutNode[] = this.layout.getNodes();
         const links: LayoutLink[] = this.layout.getLinks();
         const height: number = this.layout.getHeight();
@@ -665,13 +748,20 @@ export class VSCodePvsVizTree {
             links,
             width: width * 1.1,
             height: height * 1.1,
+            scale: this.zoomLevel / 100,
+            settings: {
+                font: this.font,
+                // vsep: this.vsep + "px",
+                // hsep: this.hsep + "px"
+            },
             controls: [
                 "recenter",
                 "zoom-minus",
                 "zoom-plus",
                 "next",
                 "prev",
-                "play"
+                "play",
+                "pause"
             ],
             ...opt
         });

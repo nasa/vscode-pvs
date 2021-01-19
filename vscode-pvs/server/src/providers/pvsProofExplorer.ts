@@ -315,9 +315,9 @@ export class PvsProofExplorer {
 	 */
 	async fastForwardTo (desc: { selected: ProofItem }): Promise<void> {
 		if (desc && desc.selected) {
-			// adjust selected --- if it's a branch node, select the first children
+			// adjust selected target --- if it's a branch, stop at the first child
 			const target: ProofItem = (desc.selected && desc.selected.contextValue === "proof-branch" 
-				&& this.activeNode.children && this.activeNode.children.length) ? desc.selected.children[0]
+				&& desc.selected.children && desc.selected.children.length) ? desc.selected.children[0]
 					: desc.selected;
 			if (!target?.isVisited() && this.activeNode && !this.ghostNode?.isActive()) {
 				this.stopAt = target;
@@ -2246,6 +2246,7 @@ export class PvsProofExplorer {
 	async interruptProofCommand (): Promise<PvsResponse> {
 		if (this.pvsProxy && !this.interruptFlag) {
 			this.interruptFlag = true;
+			this.running = false;
 			return await this.pvsProxy.interrupt();
 		}
 		return null;
@@ -2585,6 +2586,7 @@ export class ProofItem extends TreeItem {
 		this.activeFlag = false;
 		this.visitedFlag = false;
 		this.pendingFlag = true;
+		this.completeFlag = false; // pending automatically removes complete flag
 		this.noChangeFlag = false;
 		if (changed) {
 			this.connection?.sendNotification(serverEvent.proofNodeUpdate, {
@@ -2615,7 +2617,7 @@ export class ProofItem extends TreeItem {
 		this.visitedFlag = false;
 		this.pendingFlag = false;
 		this.noChangeFlag = false;
-		this.completeFlag = false;
+		this.completeFlag = false; // not visited automatically resets complete flag
 		opt = opt || {};
 		if (!opt.internalAction) {
 			this.connection?.sendNotification(serverEvent.proofNodeUpdate, {

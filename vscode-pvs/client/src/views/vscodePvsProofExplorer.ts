@@ -46,7 +46,7 @@ import {
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, FileDescriptor, ProofExecRewind 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, FileDescriptor, ProofExecRewind, ProofExecInterruptProver 
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -177,16 +177,20 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * indicated in the proof tree)
 	 */
 	run (): void {
-		if (!this.running) {
-			this.running = true;
-			vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
-			// this.step();
+		this.running = true;
+		vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
+		if (this.serverMode === "in-checker") {
+			// run entire proof
+			const action: ProofExecRun = { action: "run" };
+			this.client.sendRequest(serverRequest.proverCommand, action);
+		} else {
+			commands.executeCommand("vscode-pvs.prove-formula", this.formula);
 		}
 	}
 
 	showWebView (opt?: { recenter?: boolean }): void {
 		const treeStructure: TreeStructure = this.getTreeStructure();
-		this.treeviz?.render(treeStructure, { reveal: true, ...opt });
+		this.treeviz?.renderView(treeStructure, { reveal: true, ...opt });
 	}
 
 	protected findNode (id: string): ProofBranch {
@@ -219,7 +223,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					selected = this.ghostNode;
 					this.ghostNode.parent = this.ghostNode.parent || this.ghostNode.realNode;
 					if (this.treeviz?.isVisible()) {
-						this.treeviz?.render(this.getTreeStructure(), { source: "did-reveal-node" });
+						this.treeviz?.renderView(this.getTreeStructure(), { source: "did-reveal-node" });
 					}
 				}
 				if (selected && selected.parent && !selected.parent.isComplete()) {
@@ -231,20 +235,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				}
 			// }
 		}
-	}
-	protected collapseNode (desc: { id: string, name: string }): void {
-		// FIXME: this function is not working
-		// if (desc && desc.id) {
-		// 	let selected: ProofItem = this.findNode(desc.id);
-		// 	if (selected && selected.parent) {
-		// 		// selected.collapsibleState = TreeItemCollapsibleState.None;
-		// 		this.view.reveal(selected, { expand: false, select: false, focus: false }).then(() => {
-		// 		}, (error: any) => {
-		// 			// console.error(selected);
-		// 			// console.error(error);
-		// 		});
-		// 	}
-		// }
 	}
 	protected expandNode (desc: { id: string, name: string }): void {
 		if (desc && desc.id) {
@@ -385,6 +375,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				this.root.QED();
 				// clear sketchpad
 				commands.executeCommand("proof-explorer.trim", { items: [] });
+				// clear running flag
+				this.running = false;
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);		
 			} else {
 				this.root.pending();
 				this.root.setProofStatus(desc.proofStatus);
@@ -461,7 +454,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		const refresh = () => {
 			this._onDidChangeTreeData.fire();
 			if (this.treeviz?.isVisible()) {
-				this.treeviz?.render(this.getTreeStructure(), { cursor: this.ghostNode?.id, ...opt });
+				this.treeviz?.renderView(this.getTreeStructure(), { cursor: this.ghostNode?.id, ...opt });
 			}
 		}
 		const delayedRefresh = () => {
@@ -776,6 +769,40 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 		return null;
 	}
+	async queryPauseProof (): Promise<boolean> {
+		// ask the user confirmation before pausing
+		const yesno: string[] = [ "Yes", "No" ];
+		const msg: string = `Pause the execution of the current proof?`;
+		const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+		if (ans === yesno[0]) {
+			this.pauseProof();
+			return true;
+		}
+		return false;
+	}
+	pauseProof (): void {
+		this.running = false;
+		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
+		const action: ProofExecInterruptProver = { action: "interrupt-prover" };
+		this.client.sendRequest(serverRequest.proverCommand, action);
+	}
+	protected onDidUpdateNodeStatus (desc: { id: string, name: string, status: ProofNodeStatus }): void{
+		if (this.root && desc) {
+			const node: ProofItem = this.findNode(desc.id);
+			if (node) {
+				if (desc.status === "active") {
+					this.activeNode = node;
+				}
+				node.updateStatus(desc.status);
+				if (desc.status === "not-complete") {
+					this.expandNode(desc);
+				}
+				this.refreshView({ source: "did-update-node-status" });
+			} else {
+				console.warn(`[vscode-proof-explorer] Warning: could not update status of node ${desc.name} to ${desc.status}`);
+			}
+		}
+	}
 	/**
 	 * Activation function, installs all proof-explorer command handlers.
 	 * @param context Client context 
@@ -784,23 +811,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.treeviz?.activate(context);
 		// -- handler for node updates
 		this.client.onNotification(serverEvent.proofNodeUpdate, (desc: { id: string, name: string, status: ProofNodeStatus }) => {
-			if (this.root && desc) {
-				const node: ProofItem = this.findNode(desc.id);
-				if (node) {
-					if (desc.status === "active") {
-						this.activeNode = node;
-					}
-					node.updateStatus(desc.status);
-					if (desc.status === "complete") {
-						this.collapseNode(desc);
-					} else if (desc.status === "not-complete") {
-						this.expandNode(desc);
-					}
-					this.refreshView({ source: "did-update-node-status" });
-				} else {
-					console.warn(`[vscode-proof-explorer] Warning: could not update status of node ${desc.name} to ${desc.status}`);
-				}
-			}
+			this.onDidUpdateNodeStatus(desc);
 		});
 		context.subscriptions.push(commands.registerCommand("proof-explorer.reveal-node", (desc: { id: string, name: string }) => {
             this.revealNode(desc);
@@ -968,14 +979,18 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.run-proof", () => {
-			if (this.serverMode === "in-checker") {
-				// run entire proof
-				const action: ProofExecRun = { action: "run" };
-				this.client.sendRequest(serverRequest.proverCommand, action);
-			} else {
-				commands.executeCommand("vscode-pvs.prove-formula", this.formula);
-			}
+			this.run();
+			// if (this.serverMode === "in-checker") {
+			// 	// run entire proof
+			// 	const action: ProofExecRun = { action: "run" };
+			// 	this.client.sendRequest(serverRequest.proverCommand, action);
+			// } else {
+			// 	commands.executeCommand("vscode-pvs.prove-formula", this.formula);
+			// }
 		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.pause-proof", async () => {
+            this.queryPauseProof();
+        }));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.fast-forward", (resource: ProofItem) => {
 			// fast forward proof to a given proof command
 			const action: ProofExecFastForward = { action: "fast-forward", selected: { id: resource.id, name: resource.name } };
@@ -1266,49 +1281,40 @@ export class ProofItem extends TreeItem {
 	}
 	rename (name: string): void {
 		this.name = name;
-		this.label = this.name;//`${this.icon}${this.name}`;
+		this.label = this.name;
 	}
 	complete (): void { this.completeFlag = true; }
 	notComplete (): void { this.completeFlag = false; }
 	isComplete(): boolean { return this.completeFlag; }
 	pending (): void {
-		// this.icon = "🔶";
-		this.label = this.name;//`${this.icon}${this.name}`;
+		this.label = this.name;
 		this.activeFlag = false;
 		this.visitedFlag = false;
 		this.pendingFlag = true;
+		this.completeFlag = false; // pending automatically removes complete flag
 		// this.noChangeFlag = false;
 		this.iconPath = {
 			light: path.join(__dirname, "..", "..", "..", "icons", "svg-star-gray.svg"),
             dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
-            // light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
-            // dark: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")
         };
 	}
 	visited (): void {
-		// this.previousState.tooltip = this.tooltip;
-		// this.previousState.icon = 
-		// this.icon = " ★ ";
-		this.label = this.name;//`${this.icon}${this.name}`;
+		this.label = this.name;
 		this.activeFlag = false;
 		this.visitedFlag = true;
 		this.pendingFlag = false;
 		// this.noChangeFlag = false;
 		this.iconPath = {
-            // light: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg"),
-            // dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
             light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
             dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
         };
 	}
 	notVisited (): void {
-		// this.previousState.tooltip = this.tooltip;
-		// this.previousState.icon = 
-		// this.icon = " ∘  ";
-		this.label = this.name;//`${this.icon}${this.name}`;
+		this.label = this.name;
 		this.activeFlag = false;
 		this.visitedFlag = false;
 		this.pendingFlag = false;
+		this.completeFlag = false; // not visited automatically resets complete flag -- see implementation of proof explorer in the server
 		// this.noChangeFlag = false;
 		this.iconPath = {
             light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
@@ -1316,8 +1322,7 @@ export class ProofItem extends TreeItem {
         };
 	}
 	active (): void {
-		// this.icon = "🔷";
-		this.label = this.name;//`${this.icon}${this.name}`;
+		this.label = this.name;
 		this.activeFlag = true;
 		this.visitedFlag = false;
 		this.pendingFlag = false;
