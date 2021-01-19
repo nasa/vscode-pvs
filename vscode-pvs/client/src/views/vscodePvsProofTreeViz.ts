@@ -37,8 +37,8 @@
  **/
 
 import * as vscode from 'vscode';
-import * as d3 from 'd3';
-import Handlebars = require("handlebars");
+import * as d3 from 'd3-hierarchy';
+import * as Handlebars from "handlebars";
 import { ExtensionContext, WebviewPanel } from 'vscode';
 import { ProofNodeStatus } from '../common/serverInterface';
 import * as path from 'path';
