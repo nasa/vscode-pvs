@@ -40,6 +40,9 @@ VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitH
 
 >Note: If you have used earlier releases of VSCode-PVS (`< 1.0.26`), you will need to download and install the latest version of PVS and NASALib. You can do this in VSCode-PVS, with the commands `M-x install-pvs` and `M-x install-nasalib`. 
 
+**Manual installation of PVS**
+
+In the case VSCode-PVS is unable to automatically install PVS, please download PVS Allegro v7.1.0 for [MacOS](https://pvs.csl.sri.com/license.html?tgzfile=pvs7.1.0-ix86_64-Linux-allegro.tgz) or [Linux](https://pvs.csl.sri.com/license.html?tgzfile=pvs-6.0-ix86_64-Linux-allegro.tgz) and follow the installation instructions reported in the `INSTALL` file included in the downloaded package. Once PVS is installed on your machine, you can link up PVS and VSCode-PVS by indicating the location of the PVS executables in the VSCode-PVS settings.
 
 ## Updating VSCode-PVS
 VSCode-PVS will be automatically updated every time we publish a new release in the marketplace.

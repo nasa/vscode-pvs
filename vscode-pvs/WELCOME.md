@@ -24,6 +24,12 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.35 (2020.01.19)]()  
+  -Added new proof tree visualization  
+  -Added new command shortcuts (M-x x-show-proof, M-x x-prove, M-x x-pr)  
+  -Added controls for pausing a proof in proof-explorer  
+  -Added icons in editor toolbar for core pvs functions (open workspace, typecheck, prove, pvsio, x-show-proof)  
+
 - [1.0.34 (2020.12.14)]()  
   -Fixed issues with PVSio terminal and file renaming       
 
