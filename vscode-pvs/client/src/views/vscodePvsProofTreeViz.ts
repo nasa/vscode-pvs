@@ -38,11 +38,11 @@
 
 import * as vscode from 'vscode';
 import * as d3 from 'd3';
-import { ProofItem, RootNode } from "./vscodePvsProofExplorer";
 import Handlebars = require("handlebars");
 import { ExtensionContext, WebviewPanel } from 'vscode';
 import { ProofNodeStatus } from '../common/serverInterface';
 import * as path from 'path';
+import { TreeStructure } from '../common/languageUtils';
 
 export type d3Iterable<T> = (node: T) => void;
 export interface d3HierarchyNode<T>{
@@ -56,22 +56,6 @@ export interface d3HierarchyNode<T>{
     height?: number // greatest distance from any descendant. height = 0 for leaf nodes
 };
 
-export interface TreeStructure {
-    id?: string,
-    name?: string,
-    status?: {
-        visited: boolean,
-        pending: boolean,
-        complete: boolean,
-        active: boolean
-    },
-    children?: TreeStructure[],
-    parent?: TreeStructure,
-    depth?: number, // distance from the root node. height = 0 for the root node
-    height?: number // greatest distance from any descendant. height = 0 for leaf nodes
-};
-
-export const green: string = '#7ac142';
 
 const htmlTemplate: string = `
 <!DOCTYPE html>
@@ -80,6 +64,9 @@ const htmlTemplate: string = `
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{title}}</title>
+    {{#if style}}
+    <style type="text/css">{{style}}</style>
+    {{/if}}
     {{#each css}}
     <link rel="stylesheet" href="{{this}}">
     {{/each}}
@@ -90,101 +77,22 @@ const htmlTemplate: string = `
         href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" 
         integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" 
         crossorigin="anonymous">-->
-    <style type="text/css">
-        .node {
-            cursor: pointer;
-            fill: white;
-            stroke: darkgray;
-        }
-        .node .checkmark {
-            stroke: transparent;
-        }
-        .node .star {
-            stroke: transparent;
-            fill: transparent;
-        }
-        .node:hover {
-            cursor: pointer;
-            stroke: steelblue;
-        }
-        .node.active {
-            fill: steelblue !important;
-            stroke: steelblue !important;
-        }
-        .node.active circle {
-            fill: steelblue !important;
-            stroke: steelblue !important;
-            animation: pulser 2s linear infinite !important;
-        }
-        .node.active .star {
-            fill: transparent !important;
-            stroke: transparent !important;
-        }
-        .node.visited {
-            fill: transparent;
-            stroke: transparent;
-        }
-        .node.visited .star {
-            fill: steelblue;
-            stroke: steelblue;
-        }
-        .node.complete {
-            fill: ${green};
-            stroke: darkgray;
-        }
-        .node.complete .checkmark {
-            stroke: white;
-        }
-        .node.complete .star {
-            fill: transparent;
-            stroke: transparent;
-        }
-        .node.pending {
-            fill: transparent;
-            stroke: transparent;
-        }
-        .node.pending .star {
-            fill: white;
-            stroke: steelblue;
-        }
-        .node text {
-            font: 10px sans-serif;
-            fill: darkslateblue;
-            stroke: transparent;
-        }
-        .spacer {
-            display: none;
-        }
-        .link {
-            fill: none;
-            stroke: #ccc;
-            stroke-width: 1.5px;
-        }          
-        @keyframes pulser {
-            0% {
-                opacity: 1;
-            }
-            70% {
-                opacity: 0.6;
-            }
-        }
-    </style>
 </head>
 <body style="margin-left:20px; margin-top:60px; padding:0; overflow:auto; background:whitesmoke;">
     <nav class="navbar navbar-light bg-dark fixed-top" style="width:100%; margin:0; padding:0;">
         <div class="container-fluid">
-        <div class="btn-toolbar container-fluid" role="toolbar" aria-label="Toolbar with button groups" style="transform:scale(0.8);">
-            <div class="btn-group" role="group">
+        <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups" style="transform:scale(0.8);">
+            <div class="btn-group" role="group" style="margin-left:20px;">
                 <button type="button" class="btn btn-sm btn-outline-warning" aria-label="Zoom minus" id="zoom-minus"><i class="fa fa-minus"></i></button>
                 <button type="button" class="btn btn-sm btn-outline-light" aria-label="Zoom plus" id="zoom-plus"><i class="fa fa-plus"></i></button>
             </div>
-            <div class="btn-group" role="group">
+            <div class="btn-group" role="group" style="margin-left:20px;">
+                <button id="recenter" class="btn btn-sm btn-outline-light" aria-label="Recenter" type="button">Recenter</button>
+            </div>
+            <div class="btn-group" role="group" style="margin-left:20px;">
                 <button type="button" id="prev" class="btn btn-sm btn-outline-light" alt="Back one step" aria-label="Back one step" style="width:80px;"><i class="fa fa-step-backward"></i></button>
                 <button type="button" id="play" class="btn btn-sm btn-outline-light" alt="Run proof" aria-label="Run proof" style="width:40px;"><i class="fa fa-play-circle"></i></button>
                 <button type="button" id="next" class="btn btn-sm btn-outline-light" alt="Step proof" aria-label="Step proof" style="width:80px;"><i class="fa fa-step-forward"></i></button>
-            </div>
-            <div class="btn-group" role="group">
-                <button id="recenter" class="btn btn-sm btn-outline-light" aria-label="Recenter" type="button">Recenter</button>
             </div>
         </div>
     </nav>
@@ -193,7 +101,7 @@ const htmlTemplate: string = `
             <g class="links">
             {{#each links}}
                 <g class="link {{source.data.id}}">
-                    <line x1="{{source.x}}" y1="{{source.y}}" x2="{{target.x}}" y2="{{target.y}}"></line>
+                    <line from="{{source.name}}" to="{{target.name}}" x1="{{source.x}}" y1="{{source.y}}" x2="{{target.x}}" y2="{{target.y}}"></line>
                 </g>
             {{/each}}
             </g>
@@ -201,7 +109,7 @@ const htmlTemplate: string = `
             {{#each nodes}}
                 {{#if @first}}
                 <g id={{data.id}} class="node{{#if data.status.visited}} visited{{/if}}{{#if data.status.pending}} pending{{/if}}{{#if data.status.active}} active{{/if}}{{#if data.status.complete}} complete{{/if}}" transform="translate({{x}},{{y}})">
-                    <circle class="root-node" r="1"></circle>
+                    <circle class="root-node" r="2"></circle>
                     <text dy="-1em" text-anchor="middle">Proof: {{data.name}}</text>
                 </g>
                 {{else}}
@@ -209,8 +117,8 @@ const htmlTemplate: string = `
                     <circle r="6"></circle>
                     <path class="checkmark" fill="none" d="M-3 0l2 3 6-6"></path>
                     <path class="star" d="M0 -6l1.379 4.246h4.465l-3.612 2.625 1.379 4.246-3.611-2.625-3.612 2.625 1.379-4.246-3.612-2.625h4.465l1.38-4.246"></path>
-                    <rect y="-1.1em" x="-0.4em" width="0.8em" height="0.6em" style="fill:whitesmoke; fill-opacity:0.6; stroke:transparent;"></rect>
-                    <text class="name" dy="-1em" text-anchor="middle">{{data.name}}</text>
+                    <!-- <rect y="-1.1em" x="-0.4em" width="0.8em" height="0.6em" style="fill:whitesmoke; fill-opacity:0.6; stroke:transparent;"></rect> -->
+                    <text class="name" dy="0.25em" dx="1em" text-anchor="start">{{data.name}}</text>
                 </g>
                 {{/if}}
             {{/each}}
@@ -221,25 +129,11 @@ const htmlTemplate: string = `
     // utility functions to send messages to vscode-pvs from the webview
     (function() {
         const vscode = acquireVsCodeApi();
-
-        $("#recenter").on("click", (evt) => {
-            vscode.postMessage({ command: 'recenter' });
+        {{#each controls}}
+        $("#{{this}}").on("click", (evt) => {
+            vscode.postMessage({ command: '{{this}}' });
         });
-        $("#zoom-minus").on("click", (evt) => {
-            vscode.postMessage({ command: 'zoom-minus' });
-        });
-        $("#zoom-plus").on("click", (evt) => {
-            vscode.postMessage({ command: 'zoom-plus' });
-        });
-        $("#next").on("click", (evt) => {
-            vscode.postMessage({ command: 'next' });
-        });
-        $("#prev").on("click", (evt) => {
-            vscode.postMessage({ command: 'prev' });
-        });
-        $("#play").on("click", (evt) => {
-            vscode.postMessage({ command: 'play' });
-        });
+        {{/each}}
     }());
     // Handle the message inside the webview
     window.addEventListener('message', event => {
@@ -308,8 +202,8 @@ const htmlTemplate: string = `
                     if (message?.scale) {
                         $("#content").css({
                             transform: "scale(" + message.scale + ")",
-                            "transform-origin": "top left",
-                            transition: "500ms ease-out"
+                            "transform-origin": "top left"
+                            //, transition: "200ms ease-out"
                         });
                     }
                     break;
@@ -329,19 +223,98 @@ const htmlTemplate: string = `
     });
     </script>
 </body>
-</html>`
+</html>`;
+
+const webviewStyle: string = `
+.node {
+    cursor: pointer;
+    fill: white;
+    stroke: darkgray;
+}
+.node .checkmark {
+    stroke: transparent;
+}
+.node .star {
+    stroke: transparent;
+    fill: transparent;
+}
+.node:hover {
+    cursor: pointer;
+    stroke: steelblue;
+}
+.node.active {
+    fill: steelblue !important;
+    stroke: steelblue !important;
+}
+.node.active circle {
+    fill: steelblue !important;
+    stroke: steelblue !important;
+    animation: pulser 2s linear infinite !important;
+}
+.node.active .star {
+    fill: transparent !important;
+    stroke: transparent !important;
+}
+.node.visited {
+    fill: transparent;
+    stroke: transparent;
+}
+.node.visited .star {
+    fill: steelblue;
+    stroke: steelblue;
+}
+.node.complete {
+    fill: #7ac142;
+    stroke: darkgray;
+}
+.node.complete .checkmark {
+    stroke: white;
+}
+.node.complete .star {
+    fill: transparent;
+    stroke: transparent;
+}
+.node.pending {
+    fill: transparent;
+    stroke: transparent;
+}
+.node.pending .star {
+    fill: white;
+    stroke: steelblue;
+}
+.node text {
+    font: 10px sans-serif;
+    fill: darkslateblue;
+    stroke: transparent;
+}
+.spacer {
+    display: none;
+}
+.link {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 1.5px;
+}          
+@keyframes pulser {
+    0% {
+        opacity: 1;
+    }
+    70% {
+        opacity: 0.6;
+    }
+}`;
 
 export type LayoutNode = d3HierarchyNode<TreeStructure>;
 export type LayoutLink = { source: LayoutNode, target: LayoutNode };
 
-const MAX_NAME_LEN: number = 32;
+const MAX_NAME_LEN: number = 64;
 
 export class LayoutFactory {
     protected depth: number = 0;
     protected span: number = 0;
     protected width: number = 0;
     protected height: number = 0;
-    protected hsep: number = MAX_NAME_LEN; //px
+    protected hsep: number = 4 * MAX_NAME_LEN; //px
     protected vsep: number = 32; //px
     protected layout: d3HierarchyNode<TreeStructure>;
     protected nodes: LayoutNode[] = [];
@@ -358,61 +331,66 @@ export class LayoutFactory {
         this.links = [];
     }
 
-    convert (item: ProofItem): TreeStructure {
-        if (item) {
-            const ans: TreeStructure = {
-                id: item.id,
-                name: item.name,
-                status: {
-                    complete: item.isComplete(),
-                    visited: item.isVisited(),
-                    active: item.isActive(),
-                    pending: item.isPending()
-                }
-            };
-            let root: TreeStructure = ans;
-            let parent: TreeStructure = ans;
-            if (item.children?.length) {
-                for (let i = 0; i < item.children.length; i++) {
-                    // ProofItems are encoded in a compact way: the first child is a child, the others are descendents
-                    // the parent of child(i) is child(i-1)
-                    if (i > 0 && item.children[i].contextValue !== "proof-branch") {
-                        parent = root.children[root.children.length - 1];
-                        root = parent;
-                    }
-                    parent.children = parent.children || [];
-                    parent.children.push(this.convert(item.children[i]));
-                }
-            } else {
-                this.span++;
-            }
-            return ans;
-        }
-        return null;
-    }
+    // convert (item: ProofItem): TreeStructure {
+    //     if (item) {
+    //         const ans: TreeStructure = {
+    //             id: item.id,
+    //             name: item.name,
+    //             status: {
+    //                 complete: item.isComplete(),
+    //                 visited: item.isVisited(),
+    //                 active: item.isActive(),
+    //                 pending: item.isPending()
+    //             }
+    //         };
+    //         let root: TreeStructure = ans;
+    //         let parent: TreeStructure = ans;
+    //         if (item.children?.length) {
+    //             for (let i = 0; i < item.children.length; i++) {
+    //                 // ProofItems are encoded in a compact way: the first child is a child, the others are descendents
+    //                 // the parent of child(i) is child(i-1)
+    //                 if (i > 0 && item.children[i].contextValue !== "proof-branch") {
+    //                     parent = root.children[root.children.length - 1];
+    //                     root = parent;
+    //                 }
+    //                 parent.children = parent.children || [];
+    //                 parent.children.push(this.convert(item.children[i]));
+    //             }
+    //         } else {
+    //             this.span++;
+    //         }
+    //         return ans;
+    //     }
+    //     return null;
+    // }
 
-	createLayout (item: ProofItem): d3HierarchyNode<TreeStructure> {
+	createLayout (root: TreeStructure): d3HierarchyNode<TreeStructure> {
         this.clearLayout();
-        const structure: TreeStructure = { children: [ this.convert(item) ] }; // this is done to add some space on top, otherwise the root node would be out of the view
-        const root: LayoutNode = d3.hierarchy(structure);
-        if (root) {
-            this.depth = root.height;
-            this.width = this.span * this.hsep;
-            this.height = this.depth * this.vsep;
-            const d3Layout = d3.tree().size([ this.width, this.height]);
-            this.layout = d3Layout(root);
+        const structure: TreeStructure = { children: [ root ]}; // this is done to create some extra space at the top of the view, it's necessary to correctly render the proof name
+        const layout: LayoutNode = d3.hierarchy(structure);
+        if (layout) {
+            this.depth = layout.height;
 
-            root?.each((node: LayoutNode) => {
-                if (node.data?.name) {
+            layout?.each((node: LayoutNode) => {
+                if (node?.depth && node?.data?.name) {
                     if (node.data.name?.length > MAX_NAME_LEN) {
                         node.data.name = node.data.name.substring(0, MAX_NAME_LEN) + "...";
                     }
                     this.nodes.push(node);
-                    if (node.parent?.data?.name) {
+                    // the root node is special, the parent of the root is the root itself. Not sure this design is a good choice, the parent of the root should be null/undefined, maybe change this in the future.
+                    if (node.parent?.data?.name && node.parent.data.id !== node.data.id) {
                         this.links.push({ source: node.parent, target: node });
                     }
                 }
+                if (node?.children?.length === 0 || !node.children) {
+                    this.span++;
+                }
             });
+
+            this.width = this.span * this.hsep;
+            this.height = this.depth * this.vsep;
+            const d3Layout = d3.tree().size([ this.width, this.height]);
+            this.layout = d3Layout(layout);
         }
         return this.layout;
     }
@@ -432,7 +410,7 @@ export class VSCodePvsVizTree {
     protected context: ExtensionContext;
 
     protected zoomLevel: number = 100;
-    readonly minZoomLevel: number = 1;
+    readonly minZoomLevel: number = 10;
     readonly maxZoomLevel: number = 1000;
     readonly zoomStep: number = 20;
     protected visible: boolean = false;
@@ -450,6 +428,9 @@ export class VSCodePvsVizTree {
     hide (): void {
         this.panel.dispose();
         this.visible = false;
+    }
+    isVisible (): boolean {
+        return this.visible;
     }
     recenter (): void {
         this.panel?.webview?.postMessage({
@@ -472,16 +453,16 @@ export class VSCodePvsVizTree {
             scale
         });
     }
-    async render (root: RootNode, opt?: { reveal?: boolean, recenter?: boolean }): Promise<boolean> {
+    async render (treeStructure: TreeStructure, opt?: { reveal?: boolean, recenter?: boolean }): Promise<boolean> {
         opt = opt || {};
         this.visible = opt.reveal !== undefined ? !!opt.reveal : this.visible;
         return new Promise((resolve, reject) => {
-            if (root && this.visible) {
+            if (treeStructure && this.visible) {
                 // create webview
                 if (!this.panel) {
                     this.panel = vscode.window.createWebviewPanel(
                         'proof-tree', // Identifies the type of the webview. Used internally
-                        `Proof: ${root.name}`, // Title of the panel displayed to the user
+                        `Proof: ${treeStructure.name}`, // Title of the panel displayed to the user
                         vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
                         {
                             enableScripts: true
@@ -506,10 +487,16 @@ export class VSCodePvsVizTree {
                                 }
                                 case 'zoom-minus': {
                                     this.zoomMinus();
+                                    setTimeout(() => {
+                                        this.recenter();
+                                    }, 250);
                                     break;
                                 }
                                 case 'zoom-plus': {
                                     this.zoomPlus();
+                                    setTimeout(() => {
+                                        this.recenter();
+                                    }, 250);
                                     break;
                                 }
                                 case 'next': {
@@ -548,7 +535,7 @@ export class VSCodePvsVizTree {
                     this.panel.webview.asWebviewUri(jqueryOnDisk), // jquery needs to be loaded before bootstrap
                     this.panel.webview.asWebviewUri(bootstrapJsOnDisk)
                 ];
-                this.panel.webview.html = this.createHtmlContent(root, { css, js });
+                this.panel.webview.html = this.createHtmlContent(treeStructure, { css, js, style: webviewStyle });
                 if (opt.recenter) {
                     this.recenter();
                 }
@@ -591,7 +578,7 @@ export class VSCodePvsVizTree {
             this.panel?.webview?.postMessage({ command: "not-complete", id });
         }
     }
-    updateStatus (desc: { id: string, status: ProofNodeStatus }): void {
+    protected updateStatus (desc: { id: string, status: ProofNodeStatus }): void {
         if (desc && this.visible) {
             switch (desc.status) {
                 case "active": { this.active(desc.id); break; }
@@ -605,8 +592,16 @@ export class VSCodePvsVizTree {
                 }
             }
         }
-	}
-    createHtmlContent (root: RootNode, opt?: { css?: vscode.Uri[], js?: vscode.Uri[] }): string {
+    }
+    /**
+     * Creates the html rendered in the webview
+     * @param root Proof tree
+     * @param opt Options
+     * <li>css: css style files;</li>
+     * <li>js: js files;</li>
+     * <li>style: inline css style</li>
+     */
+    protected createHtmlContent (root: TreeStructure, opt?: { css?: vscode.Uri[], js?: vscode.Uri[], style?: string }): string {
         this.layout.createLayout(root);
         const nodes: LayoutNode[] = this.layout.getNodes();
         const links: LayoutLink[] = this.layout.getLinks();
@@ -618,6 +613,14 @@ export class VSCodePvsVizTree {
             links,
             width: width * 1.1,
             height: height * 1.1,
+            controls: [
+                "recenter",
+                "zoom-minus",
+                "zoom-plus",
+                "next",
+                "prev",
+                "play"
+            ],
             ...opt
         });
         return html;

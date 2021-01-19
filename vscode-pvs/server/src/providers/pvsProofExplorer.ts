@@ -2204,44 +2204,44 @@ export class PvsProofExplorer {
 	 * Returns the children of a node in the proof tree
 	 * @param item A node in the proof tree 
 	 */
-	getChildren(item: TreeItem): Thenable<TreeItem[]> {
-		// node
-		if (item) {
-			let children: TreeItem[] = (<ProofItem> item).getChildren();
-			if (this.ghostNode && this.ghostNode.isActive()) {
-				for (let i = 0; i < children.length; i++) {
-					if (children[i] === this.ghostNode.realNode) {
-						const res: TreeItem[] = children.slice(0, i + 1).concat([this.ghostNode]).concat(children.slice(i + 1));
-						return Promise.resolve(res);
-					}
-				}
-			}
-			return Promise.resolve(children);
-		} else if (this.ghostNode && this.ghostNode.isActive() && this.ghostNode.realNode === this.root) {
-			return Promise.resolve([ this.root, this.ghostNode ]);
-		} else if (this.root) {
-			return Promise.resolve([ this.root ]);
-		} else {
-			return Promise.resolve([ this.welcome ]);
-		}
-	}
+	// getChildren(item: TreeItem): Thenable<TreeItem[]> {
+	// 	// node
+	// 	if (item) {
+	// 		let children: TreeItem[] = (<ProofItem> item).getChildren();
+	// 		if (this.ghostNode && this.ghostNode.isActive()) {
+	// 			for (let i = 0; i < children.length; i++) {
+	// 				if (children[i] === this.ghostNode.realNode) {
+	// 					const res: TreeItem[] = children.slice(0, i + 1).concat([this.ghostNode]).concat(children.slice(i + 1));
+	// 					return Promise.resolve(res);
+	// 				}
+	// 			}
+	// 		}
+	// 		return Promise.resolve(children);
+	// 	} else if (this.ghostNode && this.ghostNode.isActive() && this.ghostNode.realNode === this.root) {
+	// 		return Promise.resolve([ this.root, this.ghostNode ]);
+	// 	} else if (this.root) {
+	// 		return Promise.resolve([ this.root ]);
+	// 	} else {
+	// 		return Promise.resolve([ this.welcome ]);
+	// 	}
+	// }
 	/**
 	 * Returns the requested node
 	 * @param item Node to be returned
 	 */
-	getTreeItem(item: TreeItem): TreeItem {
-		return item;
-	}
+	// getTreeItem(item: TreeItem): TreeItem {
+	// 	return item;
+	// }
 	/**
 	 * Returns the parent of a node. This method is necessaty for the correct execution of view.reveal()
 	 * @param item Node whose parent should be returned
 	 */
-	getParent(item: ProofItem): ProofItem {
-		if (item.contextValue === "root") {
-			return null;
-		}
-		return item.parent;
-	}
+	// getParent(item: ProofItem): ProofItem {
+	// 	if (item.contextValue === "root") {
+	// 		return null;
+	// 	}
+	// 	return item.parent;
+	// }
 
 	async interruptProofCommand (): Promise<PvsResponse> {
 		if (this.pvsProxy && !this.interruptFlag) {
@@ -2707,7 +2707,6 @@ export class ProofItem extends TreeItem {
 			this.parent.treeComplete();
 			this.parent.bubbleVisitedAndComplete();
 		}
-
 	}
 	isActive (): boolean {
 		return this.activeFlag;
@@ -2823,7 +2822,7 @@ export class ProofItem extends TreeItem {
 			this.visited();
 		} else {
 			// proof branch or root
-			this.pending();
+			this.completeFlag ? this.complete() : this.pending();
 		}
 		// check if this node has children, if so, return the first non-visited child
 		const proofState: SequentDescriptor = opt.proofState || this.sequentDescriptor;

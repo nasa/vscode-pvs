@@ -50,11 +50,27 @@ import {
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
-import { SequentDescriptor } from '../common/languageUtils';
+import { SequentDescriptor, TreeStructure, NodeType } from '../common/languageUtils';
 import * as vscode from 'vscode';
 import * as vscodeUtils from '../utils/vscode-utils';
 import * as path from 'path';
 import { VSCodePvsVizTree } from './vscodePvsProofTreeViz';
+import { updateLabel } from 'typescript';
+
+// export interface TreeStructure {
+//     id?: string,
+//     name?: string,
+//     status?: {
+//         visited: boolean,
+//         pending: boolean,
+//         complete: boolean,
+//         active: boolean
+//     },
+//     children?: TreeStructure[],
+//     parent?: TreeStructure,
+//     depth?: number, // distance from the root node. height = 0 for the root node
+// 	height?: number, // greatest distance from any descendant. height = 0 for leaf nodes
+// };
 
 /**
  * TreeData provider for Proof Explorer
@@ -113,7 +129,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	protected ghostNode: GhostNode = null; // this is a floating node that follows activeNode. It is used during proof development, to signpost where the next proof command will be appended in the proof tree
 	protected activeNode: ProofCommand | ProofBranch | GhostNode = null;
 
-	protected running: boolean = false; // status flag, indicates whether we are running all proof commands, as opposed to stepping through the proof commands
+	/**
+	 * Status flag, indicates whether we are running all proof commands, as opposed to stepping through the proof commands
+	 */
+	protected running: boolean = false;
 
 	/**
 	 * JSON representation of the proof script for the current proof.
@@ -160,7 +179,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	}
 
 	showWebView (opt?: { recenter?: boolean }): void {
-		this.viztree.render(this.root, { reveal: true, ...opt });
+		const treeStructure: TreeStructure = this.getTreeStructure();
+		this.viztree.render(treeStructure, { reveal: true, ...opt });
 
 	}
 
@@ -193,6 +213,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				if (!selected && this.ghostNode.isActive()) {
 					selected = this.ghostNode;
 					this.ghostNode.parent = this.ghostNode.parent || this.ghostNode.realNode;
+					if (this.viztree?.isVisible()) {
+						this.viztree?.render(this.getTreeStructure());
+					}
 				}
 				if (selected && selected.parent && !selected.parent.isComplete()) {
 					this.view.reveal(selected, { expand: 2, select: true, focus: false }).then(() => {
@@ -284,7 +307,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// set vscode context variable proof-explorer.clipboard-contains-tree and clipboard-contains-node to true
 			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);				
 			this.refreshView();
-			this.viztree?.render(this.root);
+			if (this.viztree?.isVisible()) {
+				this.viztree?.render(this.getTreeStructure());
+			}
 		}
 	}
 
@@ -297,7 +322,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);
 			// refresh view
 			this.refreshView();
-			this.viztree?.render(this.root);
+			if (this.viztree?.isVisible()) {
+				this.viztree?.render(this.getTreeStructure());
+			}
 			// append elems to sketchpad
 			let sketchpadItems: ProofItem[] = [];
 			for (let i = 0; i < desc.elems.length; i++) {
@@ -314,7 +341,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.revealNode(desc.selected)
 		}
 		this.refreshView();
-		this.viztree?.render(this.root);
+		if (this.viztree?.isVisible()) {
+			this.viztree?.render(this.getTreeStructure());
+		}
 	}
 
 	didRenameNode (desc: ProofEditDidRenameNode): void {
@@ -323,7 +352,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (item) {
 				item.rename(desc.newName);
 				this.refreshView();
-				this.viztree?.rename(desc.selected.id, desc.newName);
+				if (this.viztree?.isVisible()) {
+					this.viztree?.rename(desc.selected.id, desc.newName);
+				}
 			} else {
 				console.warn(`[vscode-proof-explorer] Warning: could not find item ${desc.selected.name} necessary for proofEdit/renameNode (${desc.selected.id})`)
 			}
@@ -350,6 +381,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.ghostNode.parent = null;
 		this.ghostNode.notActive();
 		this.refreshView();
+		if (this.viztree?.isVisible()) {
+			this.viztree?.render(this.getTreeStructure());
+		}
 	}
 
 	didUpdateProofStatus (desc: ProofEditDidUpdateProofStatus): void {
@@ -383,7 +417,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				sketchpadItems = sketchpadItems.concat(items);
 			}
 			this.refreshView();
-			this.viztree?.render(this.root);
+			if (this.viztree?.isVisible()) {
+				this.viztree?.render(this.getTreeStructure());
+			}
 			commands.executeCommand("proof-explorer.trim", { items: sketchpadItems });
 		} else {
 			console.warn(`[vscode-proof-explorer] Warning: unable to complete proofEdit/trimNode`);
@@ -396,7 +432,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (item && item.parent) {
 				item.parent.deleteChild(item);
 				this.refreshView();
-				this.viztree?.render(this.root);
+				if (this.viztree?.isVisible()) {
+					this.viztree?.render(this.getTreeStructure());
+				}
 				console.log(`[vscode-proof-explorer] Did delete ${desc.selected.name} (${desc.selected.id})`);
 			} else {
 				console.warn(`[vscode-proof-explorer] Warning: could not find item ${desc.selected.name} necessary for proofEdit/deleteNode (${desc.selected.id})`)
@@ -419,7 +457,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				})).concat(children2);
 				parent.collapsibleState = TreeItemCollapsibleState.Expanded;
 				this.refreshView();
-				this.viztree?.render(this.root);
+				if (this.viztree?.isVisible()) {
+					this.viztree?.render(this.getTreeStructure());
+				}
 				console.log(`[vscode-proof-explorer] Did append ${desc.elem.name} (${desc.elem.id})`);
 			} else {
 				console.warn(`[vscode-proof-explorer] Warning: could not find parent ${desc.elem.parent} necessary for proofEdit/appendNode (${desc.elem.name})`)
@@ -483,13 +523,78 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 	startProof (): void {
 		this.refreshView({ force: true });
-		this.viztree?.render(this.root);
+		if (this.viztree?.isVisible()) {
+			this.viztree?.render(this.getTreeStructure());
+		}
 		if (this.root && this.root.children && this.root.children.length) {
 			if (utils.isGlassboxTactic(this.root.children[0].name)) {
 				this.queryUnfoldGlassbox();
 			}
 		}
 	}
+
+	/**
+	 * Utility function that can be used by other classes to obtain the tree structure of the proof tree
+	 * Attributes span, depths and height of the tree structure are not computed in the current implementation.
+	 * @param item Current node being processed.
+	 */
+	getTreeStructure (): TreeStructure {
+		return this.createTreeStructure();
+	}
+
+	/**
+	 * Generates a tree structure that takes into account cursor and parent-child relation of nodes
+	 * Attributes span, depths and height of the tree structure are not computed in the current implementation.
+	 * @param item Current node being processed.
+	 */
+	protected createTreeStructure (item?: ProofItem): TreeStructure {
+		if (item === undefined) { item = this.root; }
+		if (item) {
+			const ans: TreeStructure = {
+				id: item?.id,
+				name: item?.name,
+				type: item?.getType(),
+				status: {
+					complete: item?.isComplete(),
+					visited: item?.isVisited(),
+					active: item?.isActive(),
+					pending: item?.isPending()
+				}
+			};
+			const children: ProofItem[] = item.children;
+			let p: TreeStructure = ans;
+			let q: TreeStructure = ans;
+			if (children?.length) {
+				for (let i = 0; i < children.length; i++) {
+					// ProofItems are encoded in a compact way: the first child is a child, the others are descendents
+					// i.e., the parent of child(i) is child(i-1)
+					if (i > 0 && children[i].contextValue !== "proof-branch") {
+						q = p.children[p.children.length - 1];
+						p = q;
+					}
+					q.children = q.children || [];
+					q.children.push(this.createTreeStructure(children[i]));
+				}
+			}
+			// handle ghost node
+			if (this.ghostNode && this.ghostNode.isActive() && this.ghostNode.realNode?.id === item.id) {
+				q.children = q.children || [];
+				q.children.push({
+					id: this.ghostNode.id,
+					name: "...",
+					status: {
+						complete: false,
+						visited: false,
+						active: true,
+						pending: false
+					}
+				});
+				// ans.status.active = true;
+			}
+			return ans;
+		}
+		return null;
+    }
 	
 	protected convertNodeX2ProofItem (elem: ProofNodeX, parent?: ProofItem): ProofItem[] {
 		const fromNodeX2 = (elem: ProofNodeX, parent?: ProofItem): ProofItem => {
@@ -691,8 +796,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					}
 					this.refreshView();
 
-					if (this.viztree) {
-						this.viztree.updateStatus(desc);
+					if (this.viztree?.isVisible()) {
+						// this.viztree.updateStatus(desc);
+						this.viztree?.render(this.getTreeStructure());
 					}
 				} else {
 					console.warn(`[vscode-proof-explorer] Warning: could not update status of node ${desc.name} to ${desc.status}`);
@@ -1031,23 +1137,38 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Returns the children of a node in the proof tree
 	 * @param item A node in the proof tree 
 	 */
-	getChildren(item: TreeItem): Thenable<TreeItem[]> {
-		// node
+	getAllChildren (item?: TreeItem): ProofItem[] {
 		if (item) {
-			let children: TreeItem[] = (<ProofItem> item).getChildren();
+			let children: ProofItem[] = (<ProofItem> item).getChildren();
 			if (this.ghostNode && this.ghostNode.isActive()) {
 				for (let i = 0; i < children.length; i++) {
 					if (children[i] === this.ghostNode.realNode) {
-						const res: TreeItem[] = children.slice(0, i + 1).concat([this.ghostNode]).concat(children.slice(i + 1));
-						return Promise.resolve(res);
+						const res: ProofItem[] = children.slice(0, i + 1).concat([this.ghostNode]).concat(children.slice(i + 1));
+						return res;
 					}
 				}
 			}
+			return children;	
+		} else if (this.root) {
+			return (this.root.children?.length) ? [ this.root ]
+			: [ this.root, this.ghostNode ];
+		}
+		return null;
+	}
+
+	/**
+	 * Function inherited from tree data provider
+	 * @param item A node in the proof tree 
+	 */
+	getChildren(item: TreeItem): Thenable<TreeItem[]> {
+		// node
+		if (item) {
+			const children: TreeItem[] = this.getAllChildren(item);
 			return Promise.resolve(children);
 		} else if (this.root) {
 			this.loading.stop();
-			return (this.root.children?.length) ? Promise.resolve([ this.root ])
-				: Promise.resolve([ this.root, this.ghostNode ]);
+			const children: TreeItem[] = this.getAllChildren();
+			return Promise.resolve(children);
 		} else {
 			this.loading.start().then(() => { this.refreshView(); });
 			return Promise.resolve([ this.loading ]);
@@ -1104,6 +1225,18 @@ export class ProofItem extends TreeItem {
 	protected visitedFlag: boolean = false;
 	protected pendingFlag: boolean = false;
 	protected completeFlag: boolean = false;
+
+	getType(): NodeType {
+		switch (this.contextValue) {
+			case "root": { return "root"; }
+			case "proof-branch": { return "proof-branch"; }
+			case "proof-node": { return "proof-node"; }
+			case "ghost": { return "ghost"; }
+			default: {
+				return null;
+			}
+		}
+	}
 
 	proofState: SequentDescriptor = null; // sequents *before* the execution of the node
 	constructor (desc: { id?: string, type: string, name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
@@ -1459,10 +1592,10 @@ export class RootNode extends ProofItem {
 		// }
 	}
 }
-class GhostNode extends ProofItem {
+export class GhostNode extends ProofItem {
 	realNode: ProofItem;
 	constructor (desc: { id?: string, parent: ProofItem, node: ProofItem }) {
-		super({ type: "ghost", name: "", branchId: "", parent: desc.parent, collapsibleState: TreeItemCollapsibleState.None });
+		super({ type: "ghost", name: "...", branchId: "", parent: desc.parent, collapsibleState: TreeItemCollapsibleState.None });
 		this.realNode = desc.node;
 		this.tooltip = "Waiting for proof command...";
 	}

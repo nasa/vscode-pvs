@@ -2440,3 +2440,24 @@ export async function saveSummary (fname: string, theoryName: string, summary: s
 	}
 	return false;
 }
+
+/**
+ * Structure representing a proof tree
+ */
+export type NodeType = "root" | "proof-branch" | "proof-node" | "ghost";
+export interface TreeStructure {
+    id?: string,
+	name?: string,
+	type?: NodeType,
+    status?: {
+        visited: boolean,
+        pending: boolean,
+        complete: boolean,
+        active: boolean
+    },
+    children?: TreeStructure[],
+    parent?: TreeStructure,
+    depth?: number, // distance from the root node. height = 0 for the root node
+	height?: number, // greatest distance from any descendant. height = 0 for leaf nodes
+	span?: number // total number of leaf nodes
+};

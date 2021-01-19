@@ -224,7 +224,7 @@
 				"title": "Show Proof Tree",
 				"enablement": "pvs-server-active == true && in-checker && !autorun",
 				"category": "pvs",
-				"icon": "icons/vm-active-green-icon.png"
+				"icon": "$(vm-running)"
 			},
 			{
 				"command": "vscode-pvs.prove-theory",
@@ -372,7 +372,7 @@
 				"title": "Prove Formula At Cursor Position",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
-				"icon": "icons/play-circle-icon.png"
+				"icon": "$(play-circle)"
 			},
 			{
 				"command": "vscode-pvs.command-palette",
@@ -910,12 +910,12 @@
 				{
 					"command": "vscode-pvs.x-show-proof",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
-					"group": "navigation@5"
+					"group": "navigation@1"
 				},
 				{
 					"command": "vscode-pvs.prove-formula-at-cursor-position",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
-					"group": "navigation@4"
+					"group": "navigation@2"
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
@@ -925,11 +925,11 @@
 				{
 					"command": "vscode-pvs.typecheck-file",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
-					"group": "navigation@2"
+					"group": "navigation@4"
 				},
 				{
 					"command": "vscode-pvs.open-pvs-workspace",
-					"group": "navigation@1"
+					"group": "navigation@5"
 				}
 			],
 			"editor/title/context": [
