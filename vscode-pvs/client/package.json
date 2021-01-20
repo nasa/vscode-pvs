@@ -23,14 +23,13 @@
 		"bootstrap": "^4.5.3",
 		"d3-hierarchy": "^2.0.0",
 		"font-awesome": "4.7.0",
-		"handlebars": "^4.7.6",
 		"jquery": "^3.5.1",
 		"typescript": "^3.9.7",
 		"vscode-languageclient": "^5.2.1",
 		"ws": "^7.2.0"
 	},
 	"devDependencies": {
-		"@types/node": "^12.12.2",
+		"@types/node": "^14.14.22",
 		"@types/vscode": "^1.32.3"
 	},
 	"scripts": {

@@ -138,5 +138,7 @@ server/src
 **/client/node_modules/d3-hierarchy/src/
 **/client/node_modules/d3-hierarchy/dist/d3-hierarchy.min.js
 
-**/client/node_modules/minimist/
-**/client/node_modules/uglify-js/
+**/node_modules/handlebars/release-notes.md
+
+**/node_modules/minimist/
+**/node_modules/uglify-js/

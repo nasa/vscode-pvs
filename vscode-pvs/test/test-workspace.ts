@@ -1,15 +1,15 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import * as test from "./test-constants";
-import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
+import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy';
-import { label, log, dir, configFile, sandboxExamples } from './test-utils';
+import { label, configFile, sandboxExamples } from './test-utils';
+import { expect } from 'chai';
 
 //----------------------------
 //   Test cases for parser
 //----------------------------
 describe("pvs-proxy", () => {
 	let pvsProxy: PvsProxy = null;
-	beforeAll(async () => {
+	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
 		// console.dir(content);
@@ -25,7 +25,7 @@ describe("pvs-proxy", () => {
 		console.log("test-workspace");
 		console.log("----------------------");
 	});
-	afterAll(async () => {
+	after(async () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
@@ -38,9 +38,9 @@ describe("pvs-proxy", () => {
 		await pvsProxy.lisp("(clear-theories t)");
 
 		const current: PvsResponse = await pvsProxy.currentContext();
-		expect(current).not.toBeNull();
-		expect(current.result).not.toContain("~"); // tilde should be expanded
-		expect(current.result).toMatch(/\/.*/); // path should be absolute, therefore it should start with /
+		expect(current).not.to.equal(null);
+		expect(current.result).not.to.contain("~"); // tilde should be expanded
+		expect(current.result).to.match(/\/.*/); // path should be absolute, therefore it should start with /
 	});
 
 	it(`can change context`, async () => {
@@ -50,9 +50,9 @@ describe("pvs-proxy", () => {
 
 		const home: PvsResponse = await pvsProxy.changeContext("~");
 		// console.dir(home);
-		expect(home).not.toBeNull();
-		expect(home.result).not.toContain("~"); // tilde should be expanded
-		expect(home.result).toMatch(/\/.*/); // path should be absolute, therefore it should start with /
+		expect(home).not.to.equal(null);
+		expect(home.result).not.to.contain("~"); // tilde should be expanded
+		expect(home.result).to.match(/\/.*/); // path should be absolute, therefore it should start with /
 	});
 
 	// it(`change-context is equivalent to change-workspace`, async () => {

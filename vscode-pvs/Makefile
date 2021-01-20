@@ -46,8 +46,8 @@ loc-client:
 
 release: all install-vsce
 	node_modules/vsce/out/vsce package
-	make resolutions
-	make resolutions
+	#make resolutions
+	#make resolutions
 
 package:
 	node_modules/vsce/out/vsce package
@@ -62,37 +62,34 @@ install-vsce:
 vsce:
 	node_modules/vsce/out/vsce package
 
-install-jasmine:
-	npm install --no-save jasmine ts-node jasmine-ts
-
 install: install-tsc
 	npm install
 
-test-proxy: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proxy.json
-test-parser: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-parser.json
-test-find-declaration: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-find-declaration.json
-test-typechecker: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-typechecker.json
-test-prover: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-prover.json
-test-proof-script: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proof-script.json
-test-workspace: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-workspace.json
-test-pvscontext: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-pvscontext.json
-test: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-all.json
+test-proxy:
+	npm run test-proxy
+test-parser:
+	npm run test-parser
+test-find-declaration:
+	npm run test-find-declaration
+test-typechecker:
+	npm run test-typechecker
+test-prover:
+	npm run test-prover
+test-proof-script:
+	npm run test-proof-script
+test-workspace:
+	npm run test-workspace
+test-pvs-context:
+	npm run test-pvs-context
+test-pvs-language-server:
+	npm run test-pvs-laguage-server
+test-proof-explorer:
+	npm run test-proof-explorer
+test-tacticals:
+	npm run test-tacticals
+test:
+	npm run test
 test-all: test
-test-pvs-language-server: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-pvs-language-server.json
-test-proof-explorer: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-proof-explorer.json
-test-tacticals: install-jasmine
-	node_modules/jasmine-ts/lib/index.js --config=test/jasmine-specs/jasmine-test-tacticals.json
 
 core:
 	-mkdir server/out && mkdir server/out/core

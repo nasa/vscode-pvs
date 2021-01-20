@@ -1,18 +1,17 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import * as test from "./test-constants";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { label, log, configFile, sandboxExamples, helloworldExamples } from './test-utils';
 import { ProofDescriptor, ProofFile, PvsFormula, PvsTheory } from "../server/src/common/serverInterface";
 import * as path from 'path';
-
+import { expect } from 'chai';
 
 //----------------------------
 //   Test cases for proofScript
 //----------------------------
 describe("proofScript", () => {
 	let pvsProxy: PvsProxy = null;
-	beforeAll(async () => {
+	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
 		log(content);
@@ -28,7 +27,7 @@ describe("proofScript", () => {
 		console.log("test-proof-script");
 		console.log("----------------------");
 	});
-	afterAll(async () => {
+	after(async () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
@@ -41,8 +40,8 @@ describe("proofScript", () => {
 	const quitProverIfActive = async (): Promise<void> => {
 		// quit prover if prover status is active
 		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
-		expect(proverStatus.result).toBeDefined();
-		expect(proverStatus.error).not.toBeDefined();
+		expect(proverStatus.result).not.to.be.undefined;
+		expect(proverStatus.error).to.be.undefined;
 		// console.log(proverStatus);
 		if (proverStatus && proverStatus.result !== "inactive") {
 			await pvsProxy.proofCommand({ cmd: 'quit' });
@@ -59,10 +58,10 @@ describe("proofScript", () => {
 		};
 		const response: PvsResponse = await pvsProxy.getDefaultProofScript(formula);
 		// console.dir(response);
-		expect(response.error).not.toBeDefined();
-		expect(response.result).toBeDefined();
+		expect(response.error).to.be.undefined;
+		expect(response.result).not.to.be.undefined;
 		const proof_header: string = response.result.split("\n")[0];
-		expect(proof_header).toEqual(`;;; Proof sq_neg-1 for formula sq.sq_neg`);
+		expect(proof_header).to.deep.equal(`;;; Proof sq_neg-1 for formula sq.sq_neg`);
 	});
 	
 	it(`returns a well-formed empty pvs proof script when the proof file is not available`, async () => {
@@ -76,9 +75,9 @@ describe("proofScript", () => {
 		};
 		const response: PvsResponse = await pvsProxy.getDefaultProofScript(formula);
 		// console.dir(response);
-		expect(response.result).not.toBeDefined();
-		expect(response.error).toBeDefined();
-		expect(response.error.data.error_string).toMatch(/(.*) does not have a proof/);
+		expect(response.result).to.be.undefined;
+		expect(response.error).not.to.be.undefined;
+		expect(response.error.data.error_string).to.match(/(.*) does not have a proof/);
 
 		const formula1: PvsFormula = {
 			contextFolder: sandboxExamples,
@@ -89,9 +88,9 @@ describe("proofScript", () => {
 		}
 		const response1: PvsResponse = await pvsProxy.getDefaultProofScript(formula1);
 		// console.dir(response);
-		expect(response1.result).not.toBeDefined();
-		expect(response1.error).toBeDefined();
-		expect(response1.error.data.error_string).toMatch(/(.*) does not have a proof/);
+		expect(response1.result).to.be.undefined;
+		expect(response1.error).not.to.be.undefined;
+		expect(response1.error.data.error_string).to.match(/(.*) does not have a proof/);
 
 		const formula3: PvsFormula = {
 			contextFolder: sandboxExamples,
@@ -106,10 +105,10 @@ describe("proofScript", () => {
 		// const response3: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${formula3.theoryName}" "${formula3.formulaName}")`);
 		// console.dir(response3.result);
 
-		expect(response3.result).not.toBeDefined();
-		expect(response3.error).toBeDefined();
-		expect(response3.error.data.error_string).toMatch(/(.*) does not have a proof/);
-	});
+		expect(response3.result).to.be.undefined;
+		expect(response3.error).not.to.be.undefined;
+		expect(response3.error.data.error_string).to.match(/(.*) does not have a proof/);
+	}).timeout(10000);
 	
 	it(`can load & save vscode-pvs proof files`, async () => {
 		await quitProverIfActive();
@@ -132,7 +131,7 @@ describe("proofScript", () => {
 			response = await pvsProxy.pvsRequest("change-context", [ formula.contextFolder ]);
 			response = await pvsProxy.pvsRequest("save-all-proofs", [ fullTheoryName ]);
 		}
-		expect(response.result).toBeDefined();
+		expect(response.result).not.to.be.undefined;
 		// console.dir(response);
 	});
 
@@ -149,9 +148,9 @@ describe("proofScript", () => {
 		}
 		let response1: PvsResponse = await pvsProxy.getDefaultProofScript(formula1);
 		// console.dir(response1);
-		expect(response1.result).not.toBeDefined();
-		expect(response1.error).toBeDefined();
-		expect(response1.error.data.error_string).toMatch(/(.*) does not have a proof/);
+		expect(response1.result).to.be.undefined;
+		expect(response1.error).not.to.be.undefined;
+		expect(response1.error.data.error_string).to.match(/(.*) does not have a proof/);
 
 		await quitProverIfActive();
 		const formula: PvsFormula = {
@@ -175,9 +174,9 @@ describe("proofScript", () => {
 
 		response1 = await pvsProxy.getDefaultProofScript(formula1);
 		// console.dir(response1);
-		expect(response1.result).not.toBeDefined();
-		expect(response1.error).toBeDefined();
-		expect(response1.error.data.error_string).toMatch(/(.*) does not have a proof/);
+		expect(response1.result).to.be.undefined;
+		expect(response1.error).not.to.be.undefined;
+		expect(response1.error.data.error_string).to.match(/(.*) does not have a proof/);
 	});
 
 	it(`can generate backup files if vscode-pvs proof file is corrupted`, async () => {
@@ -209,16 +208,16 @@ describe("proofScript", () => {
 			fileName: formula.fileName,
 			fileExtension: ".jprf"
 		}, formula, { quiet: true });
-		expect(proofDescriptor).toBeDefined();
+		expect(proofDescriptor).not.to.be.undefined;
 
 		const backup: string = await fsUtils.readFile(`${fname}.err`);
-		expect(backup).toBeDefined();
-		expect(backup).toEqual(content);
+		expect(backup).not.to.be.undefined;
+		expect(backup).to.deep.equal(content);
 		// console.log(backup);
 
 		const msg: string = await fsUtils.readFile(`${fname}.err.msg`);
-		expect(msg).toBeDefined();
-		expect(msg).toEqual("Unexpected token : in JSON at position 36");
+		expect(msg).not.to.be.undefined;
+		expect(msg).to.deep.equal("Unexpected token : in JSON at position 36");
 		// console.log(msg);
 
 		fsUtils.deleteFile(fname);
@@ -243,7 +242,7 @@ describe("proofScript", () => {
 		// const response2: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`);
 		// console.dir(response1.result);
 		// console.dir(response2.result);
-		expect(response1.result).toEqual(response2.result);
+		expect(response1.result).to.deep.equal(response2.result);
 	});
 
 	it(`can provide default proof script for tccs`, async () => {
@@ -258,9 +257,9 @@ describe("proofScript", () => {
 		// const response: PvsResponse = await pvsProxy.lisp(`(get-default-proof-script "${desc.theoryName}" "${desc.formulaName}")`);
 		const response: PvsResponse = await pvsProxy.getDefaultProofScript(desc);
 		// console.dir(response);
-		expect(response.error).not.toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.result).toContain(`("" (subtype-tcc))`)
+		expect(response.error).to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+		expect(response.result).to.contain(`("" (subtype-tcc))`)
 		// console.dir(response.result);
 	});
 
@@ -277,7 +276,7 @@ describe("proofScript", () => {
 		response = await pvsProxy.lisp(`(typecheck-file "${fsUtils.desc2fname(formula)}" nil nil nil nil t)`, { externalServer: true });
 		response = await pvsProxy.lisp(`(get-default-proof-script "helloworld" "dummy")`, { externalServer: true });
 		// console.dir(response);
-		expect(response.result).toBeNull();
+		expect(response.result).to.equal(null);
 	});
 
 });

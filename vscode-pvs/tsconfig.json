@@ -7,7 +7,7 @@
 		"lib": [ "es6" ],
 		"sourceMap": true,
 		"types": [
-			"handlebars"
+			"handlebars", "mocha"
 		]
 	},
 	"include": [

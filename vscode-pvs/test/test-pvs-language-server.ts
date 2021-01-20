@@ -2,16 +2,18 @@ import * as fsUtils from "../server/src/common/fsUtils";
 import { configFile } from './test-utils';
 import * as path from 'path';
 import { PvsLanguageServer } from '../server/src/pvsLanguageServer'
-import { ProofDescriptor, ProofFile, PvsFormula } from "../server/src/common/serverInterface";
+import { ProofDescriptor, PvsFormula } from "../server/src/common/serverInterface";
 import { execSync } from "child_process";
 import { PvsResult } from "../server/src/common/pvs-gui";
+import { expect } from 'chai';
+
 //----------------------------
 //   Test cases for pvs language server
 //----------------------------
 
 describe("pvs-language-server", () => {
 	let server: PvsLanguageServer = new PvsLanguageServer();
-	beforeAll(async () => {
+	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
 		// console.log(content);
@@ -22,15 +24,15 @@ describe("pvs-language-server", () => {
 		console.log("test-pvs-language-server");
 		console.log("----------------------");
 	});
-	afterAll(async () => {
+	after(async () => {
 	});
 
 	// utility function, quits the prover if the prover status is active
 	const quitProverIfActive = async (): Promise<void> => {
 		// quit prover if prover status is active
 		const proverStatus: PvsResult = await server.getPvsProxy().getProverStatus();
-		expect(proverStatus.result).toBeDefined();
-		expect(proverStatus.error).not.toBeDefined();
+		expect(proverStatus.result).not.to.be.undefined;
+		expect(proverStatus.error).to.be.undefined;
 		console.log(proverStatus);
 		if (proverStatus && proverStatus.result !== "inactive") {
 			await server.getPvsProxy().proofCommand({ cmd: 'quit' });
@@ -58,13 +60,13 @@ describe("pvs-language-server", () => {
 			fileExtension: ".prf"
 		}, formula);
 		// console.dir(desc, { depth: null });
-		expect(desc.info.theory).toEqual("sq");
-		expect(desc.info.formula).toEqual("triangle_rectangle");
-		expect(desc.info.status).toEqual("untried");
-		expect(desc.info.prover).toContain("PVS");
-		expect(desc.info.shasum).toEqual("90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a");
+		expect(desc.info.theory).to.deep.equal("sq");
+		expect(desc.info.formula).to.deep.equal("triangle_rectangle");
+		expect(desc.info.status).to.deep.equal("untried");
+		expect(desc.info.prover).to.contain("PVS");
+		expect(desc.info.shasum).to.deep.equal("90d0630453df76b0a749b92ac10e7e51b0c59e2cb0e3711bb009a7b4191b802a");
 
-	}, 20000);
+	}).timeout(20000);
 
 });
 

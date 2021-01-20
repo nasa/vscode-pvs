@@ -1,8 +1,0 @@
-{
-  "spec_dir": "test",
-  "spec_files": [
-    "test-typechecker.ts"
-  ],
-  "stopSpecOnExpectationFailure": false,
-  "random": false
-}

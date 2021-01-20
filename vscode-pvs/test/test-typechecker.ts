@@ -1,19 +1,18 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import * as test from "./test-constants";
 import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { configFile, sandboxExamples,
 	stever, steverFiles, pillbox, pillboxFiles, pvsioweb, pvsiowebFiles, pvsiowebFolders, 
 	dependable_plus_safe } from './test-utils';
 import * as path from 'path';
-import * as os from 'os';
+import { expect } from 'chai';
 
 //----------------------------
 //   Test cases for typechecker
 //----------------------------
 describe("pvs-typechecker", () => {
 	let pvsProxy: PvsProxy = null;
-	beforeAll(async () => {
+	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
 		// console.log(content);
@@ -35,7 +34,7 @@ describe("pvs-typechecker", () => {
 		console.log("test-typechecker");
 		console.log("----------------------");
 	});
-	afterAll(async () => {
+	after(async () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
@@ -49,16 +48,16 @@ describe("pvs-typechecker", () => {
 				}
 				await fsUtils.cleanBin(dependable_plus_safe);
 				resolve();
-			}, 2000);
+			}, 1500);
 		});
 	});
 
 	it(`can typecheck files`, async () => {
 		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		// console.dir(response);
-		expect(response).not.toBeNull();
-		expect(response.result).not.toBeNull();
-	}, 100000);
+		expect(response).not.to.equal(null);
+		expect(response.result).not.to.equal(null);
+	}).timeout(100000);
 
 
 	it(`can typecheck theories with parameters`, async () => {
@@ -72,18 +71,18 @@ describe("pvs-typechecker", () => {
 		};
 		let response: PvsResponse = await pvsProxy.typecheckFile(desc);
 		// console.dir(response);
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 		
-	}, 10000);
+	}).timeout(10000);
 
 	it(`can typecheck pvs files that import other files`, async () => {
 		// const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "main", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		// console.dir(response);
-		expect(response).toBeDefined();
+		expect(response).not.to.be.undefined;
 		// expect(response.result).toEqual(test.typecheck1_result);
-	}, 100000);
+	}).timeout(100000);
 
 	it(`can generate .tcc file content`, async () => {
 		const response: PvsResponse = await pvsProxy.generateTccsFile({ 
@@ -93,8 +92,8 @@ describe("pvs-typechecker", () => {
 			contextFolder: sandboxExamples 
 		});
 		// console.dir("response", response);
-		expect(response.error).not.toBeDefined();
-		expect(response.result).not.toBeNull();
+		expect(response.error).to.be.undefined;
+		expect(response.result).not.to.equal(null);
 
 		const response1: PvsResponse = await pvsProxy.generateTccsFile({
 			fileName:"alaris2lnewmodes", 
@@ -103,9 +102,9 @@ describe("pvs-typechecker", () => {
 			contextFolder: sandboxExamples
 		});
 		// console.dir("response", response1);
-		expect(response1.error).not.toBeDefined();
-		expect(response1.result).not.toBeNull();
-	}, 20000);
+		expect(response1.error).to.be.undefined;
+		expect(response1.result).not.to.equal(null);
+	}).timeout(20000);
 
 	it(`can typecheck files in folders whose name contains utf8 symbols`, async () => {
 
@@ -115,10 +114,10 @@ describe("pvs-typechecker", () => {
 			contextFolder: dependable_plus_safe
 		});
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-	}, 100000);
+		expect(response).not.to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
+	}).timeout(100000);
 
 	//-----------------------
 	// additional test cases
@@ -134,10 +133,10 @@ describe("pvs-typechecker", () => {
 				contextFolder: stever
 			});
 			// console.dir(response);
-			expect(response).toBeDefined();
-			expect(response.error).not.toBeDefined();
+			expect(response).not.to.be.undefined;
+			expect(response.error).to.be.undefined;
 			
-		}, 40000);
+		}).timeout(40000);
 
 	}
 	for (let i = 0; i < pillboxFiles.length; i++) {
@@ -151,10 +150,10 @@ describe("pvs-typechecker", () => {
 				contextFolder: pillbox
 			});
 			// console.dir(response);
-			expect(response).toBeDefined();
-			expect(response.error).not.toBeDefined();
+			expect(response).not.to.be.undefined;
+			expect(response.error).to.be.undefined;
 			
-		}, 40000);
+		}).timeout(40000);
 	}
 	for (let i = 0; i < pvsiowebFiles.length; i++) {
 		it(`can typecheck pvsioweb/${pvsiowebFiles[i]}.pvs`, async () => {
@@ -167,15 +166,15 @@ describe("pvs-typechecker", () => {
 				contextFolder: pvsioweb
 			});
 			// console.dir(response);
-			expect(response).toBeDefined();
+			expect(response).not.to.be.undefined;
 			if (pvsiowebFiles[i].endsWith("MDNumberpad")) {
-				expect(response.error).toBeDefined(); // theory 'limits' declared in twice in the same workspace
+				expect(response.error).not.to.be.undefined; // theory 'limits' declared in twice in the same workspace
 			} else {
-				expect(response.result).toBeDefined();
-				expect(response.error).not.toBeDefined();
+				expect(response.result).not.to.be.undefined;
+				expect(response.error).to.be.undefined;
 			}
 
-		}, 60000);
+		}).timeout(60000);
 	}
 
 

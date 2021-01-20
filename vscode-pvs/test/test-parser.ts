@@ -4,15 +4,15 @@ import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { label, configFile, sandboxExamples,
 	stever, steverFiles, pillbox, pillboxFiles, pvsioweb, pvsiowebFiles, pvsiowebFolders,
 	dependable_plus_safe } from './test-utils';
-import * as os from 'os';
 import * as path from 'path';
+import { expect } from 'chai';
 
 //----------------------------
 //   Test cases for parser
 //----------------------------
 describe("pvs-parser", () => {
 	let pvsProxy: PvsProxy = null;
-	beforeAll(async () => {
+	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
 		// console.log(content);
@@ -35,7 +35,7 @@ describe("pvs-parser", () => {
 		console.log("test-parser");
 		console.log("----------------------");
 	});
-	afterAll(async () => {
+	after(async () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
@@ -55,10 +55,10 @@ describe("pvs-parser", () => {
 
 		const response: PvsResponse = await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples }, { test: true });
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-	}, 4000);
+		expect(response).not.to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
+	}).timeout(4000);
 
 	it(`can report parse errors`, async () => {
 		label(`can report parse errors`);
@@ -74,11 +74,11 @@ describe("pvs-parser", () => {
 				place: [3, 14, 3, 14]
 			}
 		};
-		expect(response.error).toBeDefined();
-		expect(response.error.data).toBeDefined();
-		expect(response.error.data.place).toEqual(exp.data.place.slice(0, 2));
-		expect(response.error.data.error_string.startsWith(exp.data.error_string.split("\n")[0])).toBeTruthy();
-	}, 100000);
+		expect(response.error).not.to.be.undefined;
+		expect(response.error.data).not.to.be.undefined;
+		expect(response.error.data.place).to.deep.equal(exp.data.place.slice(0, 2));
+		expect(response.error.data.error_string.startsWith(exp.data.error_string.split("\n")[0])).to.equal(true);
+	}).timeout(100000);
 
 	it(`can parse file with inline declarations`, async () => {
 		label(`can parse file with inline declarations`);
@@ -87,18 +87,18 @@ describe("pvs-parser", () => {
 
 		const response: PvsResponse = await pvsProxy.parseFile({ fileName: "test", fileExtension: ".pvs", contextFolder: sandboxExamples }, { test: true });
 		// console.dir(response);
-		expect(response).toBeDefined();
-	}, 100000);
+		expect(response).not.to.be.undefined;
+	}).timeout(100000);
 
 	it(`can parse file when filename contains '.'`, async () => {
 		label(`can parse file when filename contains '.'`);
 
 		let response: PvsResponse = await pvsProxy.parseFile({ fileName: "alaris2lnewmodes.pump", fileExtension: ".pvs", contextFolder: sandboxExamples }, { test: true });
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-	}, 100000);
+		expect(response).not.to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
+	}).timeout(100000);
 
 	it(`can parse files in folders whose name contains utf8 symbols`, async () => {
 		label(`can parse files in folders whose name contains utf8 symbols`);
@@ -109,10 +109,10 @@ describe("pvs-parser", () => {
 			contextFolder: dependable_plus_safe
 		}, { test: true });
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-	}, 100000);
+		expect(response).not.to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
+	}).timeout(100000);
 
 	it(`is robust when asked to parse file that does not exist / is not readable`, async () => {
 		label(`is robust when asked to parse file that does not exist / is not readable`);
@@ -123,10 +123,10 @@ describe("pvs-parser", () => {
 			contextFolder: sandboxExamples
 		}, { test: true });
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).not.toBeDefined();
-		expect(response.error).toBeDefined();
-	}, 100000);
+		expect(response).not.to.be.undefined;
+		expect(response.result).to.be.undefined;
+		expect(response.error).not.to.be.undefined;
+	}).timeout(100000);
 
 
 	//-----------------------
@@ -144,10 +144,10 @@ describe("pvs-parser", () => {
 				contextFolder: stever
 			}, { test: true });
 			// console.dir(response);
-			expect(response).toBeDefined();
-			expect(response.result).toBeDefined();
-			expect(response.error).not.toBeDefined();
-		}, 8000);
+			expect(response).not.to.be.undefined;
+			expect(response.result).not.to.be.undefined;
+			expect(response.error).to.be.undefined;
+		}).timeout(8000);
 	}
 
 	for (let i = 0; i < pillboxFiles.length; i++) {
@@ -162,10 +162,10 @@ describe("pvs-parser", () => {
 				contextFolder: pillbox
 			}, { test: true });
 			// console.dir(response);
-			expect(response).toBeDefined();
-			expect(response.result).toBeDefined();
-			expect(response.error).not.toBeDefined();
-		}, 8000);
+			expect(response).not.to.be.undefined;
+			expect(response.result).not.to.be.undefined;
+			expect(response.error).to.be.undefined;
+		}).timeout(8000);
 	}
 
 	for (let i = 0; i < pvsiowebFiles.length; i++) {
@@ -181,12 +181,12 @@ describe("pvs-parser", () => {
 			}, { test: true });
 			// console.dir(response);
 			if (pvsiowebFiles[i].endsWith("MDNumberpad")) {
-				expect(response.error).toBeDefined(); // theory 'limits' declared in twice in the same workspace
+				expect(response.error).not.to.be.undefined; // theory 'limits' declared in twice in the same workspace
 			} else {
-				expect(response.result).toBeDefined();
-				expect(response.error).not.toBeDefined();
+				expect(response.result).not.to.be.undefined;
+				expect(response.error).to.be.undefined;
 			}
-		}, 8000);
+		}).timeout(8000);
 	}
 
 });

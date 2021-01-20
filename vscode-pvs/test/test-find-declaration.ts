@@ -1,16 +1,16 @@
 import * as fsUtils from "../server/src/common/fsUtils";
 import * as test from "./test-constants";
-import * as path from 'path';
 import { PvsResponse, FindDeclarationResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { label, configFile, sandboxExamples } from './test-utils';
+import { expect } from 'chai';
 
 //----------------------------
 //   Test cases for find-declaration
 //----------------------------
 describe("pvs-proxy", () => {
 	let pvsProxy: PvsProxy = null;
-	beforeAll(async () => {
+	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
 		// console.log(content);
@@ -27,7 +27,7 @@ describe("pvs-proxy", () => {
 		console.log("test-find-declaration");
 		console.log("----------------------");
 	});
-	afterAll(async () => {
+	after(async () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
@@ -43,11 +43,11 @@ describe("pvs-proxy", () => {
 		label(`can provide the definition of pred`);
 
 		const response: PvsResponse = await pvsProxy.findDeclaration("pred");
-		expect(response).not.toBeNull();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response).not.to.equal(null);
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 
-	}, 2000);
+	}).timeout(2000);
 
 	// this test case fails under MacOS --- the parser seems unable to populate the data structures necessary for find-declaration
 	it(`can invoke find-declaration`, async () => {
@@ -58,20 +58,20 @@ describe("pvs-proxy", () => {
 		await pvsProxy.parseFile({ fileName: "sqrt", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		const response: PvsResponse = await pvsProxy.findDeclaration("sqrt");
 		// console.dir(response);
-		expect(response).not.toBeNull();
-		expect(response["error"]).not.toBeDefined();
-		expect(response["result"]).not.toBeNull();
+		expect(response).not.to.equal(null);
+		expect(response["error"]).to.be.undefined;
+		expect(response["result"]).not.to.be.undefined;
 
 		const result: FindDeclarationResult = response["result"];
-		expect(typeof result).toEqual("object");
-		expect(result?.length).toEqual(1);
-		expect(result[0].declname).toEqual(test.find_declaration_result[0].declname);
-		expect(result[0].theoryid).toEqual(test.find_declaration_result[0].theoryid);
-		expect(result[0].filename.endsWith(test.find_declaration_result[0].filename)).toBeTruthy();
-		expect(result[0].place).toEqual(test.find_declaration_result[0].place);
-		expect(result[0]['decl-ppstring']).toEqual(test.find_declaration_result[0]['decl-ppstring']);
+		expect(result).to.be.an("array");
+		expect(result?.length).to.equal(1);
+		expect(result[0].declname).to.equal(test.find_declaration_result[0].declname);
+		expect(result[0].theoryid).to.equal(test.find_declaration_result[0].theoryid);
+		expect(result[0].filename.endsWith(test.find_declaration_result[0].filename)).to.equal(true);
+		expect(result[0].place).to.deep.equal(test.find_declaration_result[0].place);
+		expect(result[0]['decl-ppstring']).to.equal(test.find_declaration_result[0]['decl-ppstring']);
 
-	}, 4000);
+	}).timeout(4000);
 
 	it(`is robust to heavy workload with find-declaration`, async () => {
 		label(`is robust to heavy workload with find-declaration`);
@@ -99,11 +99,11 @@ describe("pvs-proxy", () => {
 			response = await pvsProxy.findDeclaration("forall_not");
 			response = await pvsProxy.findDeclaration("forall_or");
 		}
-		expect(response).not.toBeNull();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response).not.to.equal(null);
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 
-	}, 10000);
+	}).timeout(10000);
 
 	it(`is robust to multiple parallel invocation of find-declaration`, async () => {
 		label(`is robust to multiple parallel invocation of find-declaration `);
@@ -129,24 +129,24 @@ describe("pvs-proxy", () => {
 		pvsProxy.findDeclaration("forall_not");
 		const response: PvsResponse = await pvsProxy.findDeclaration("forall_or");
 
-		expect(response).not.toBeNull();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response).not.to.equal(null);
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 
-	}, 4000);
+	}).timeout(4000);
 
 	it(`returns a full and well-formed filename in find-declaration`, async () => {
 		label(`returns a full and well-formed filename in find-declaration`);
 
 		const response: PvsResponse = await pvsProxy.findDeclaration("boolean");
-		expect(response).not.toBeNull();
-		expect(response.result).toBeDefined();
-		expect(response.result[0].filename).toContain("/"); // a simple way to that filename includes a path is to check that there is at least one path separator
-		expect(response.result[0].filename).not.toContain("//"); // consecutive double slashes should not be present
-		expect(response.result[0].filename).not.toContain("~"); // tilde should be expanded
-		expect(response.result[0].filename).toMatch(/\/.*/); // path should be absolute, i.e., start with /
+		expect(response).not.to.equal(null);
+		expect(response.result).not.to.be.undefined;
+		expect(response.result[0].filename).to.contain("/"); // a simple way to check that the filename includes a path is to check that there is at least one path separator
+		expect(response.result[0].filename).not.to.contain("//"); // consecutive double slashes should not be present
+		expect(response.result[0].filename).not.to.contain("~"); // tilde should be expanded
+		expect(response.result[0].filename).to.match(/\/.*/); // path should be absolute, i.e., start with /
 
-	}, 4000);
+	}).timeout(4000);
 
 	it(`can execute find-declaration while parsing`, async () => {
 		label(`can execute find-declaration while parsing`);
@@ -155,10 +155,10 @@ describe("pvs-proxy", () => {
 		pvsProxy.parseFile({ fileName: "alaris2lnewmodes", fileExtension: ".pvs", contextFolder: sandboxExamples });
 		
 		const response: PvsResponse = await pvsProxy.findDeclaration("boolean");
-		expect(response).not.toBeNull();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-	}, 4000);
+		expect(response).not.to.equal(null);
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
+	}).timeout(4000);
 
 	//-----------------------------------------
 	// test cases for term-at

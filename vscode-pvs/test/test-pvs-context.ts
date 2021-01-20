@@ -1,11 +1,11 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import * as test from "./test-constants";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
-import { label, configFile } from './test-utils';
+import { configFile } from './test-utils';
 import * as path from 'path';
 import { execSync } from "child_process";
 import { PvsIoProxy } from '../server/src/pvsioProxy';
+import { expect } from 'chai';
 
 //----------------------------
 //   Test cases for checking behavior of pvs with corrupted .pvscontext
@@ -27,7 +27,7 @@ describe("pvs", () => {
 		fsUtils.deleteFolder(path.join(baseFolder, "nasalib-monitors-stack-limit-error"));
 	}
 
-	beforeAll(async () => {
+	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
 		// console.log(content);
@@ -42,14 +42,14 @@ describe("pvs", () => {
 		console.log("test-pvscontext");
 		console.log("----------------------");
 	});
-	afterAll(async () => {
+	after(async () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		await new Promise<void>((resolve, reject) => {
 			setTimeout(() => {
 				cleanAll();
 				resolve();
-			}, 2000);
+			}, 1500);
 		})
 	});
 
@@ -85,8 +85,8 @@ describe("pvs", () => {
 			theoryName: "trace",
 			formulaName: "null_null_after_satisfaction_ft"
 		});
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 		// console.dir(response);
 
 		const commands: string[] = [
@@ -113,9 +113,9 @@ describe("pvs", () => {
 		for (let i = 0; i < commands.length; i++) {
 			response = await pvsProxy.proofCommand({ cmd: commands[i] });
 		}
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-	}, 300000);
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
+	}).timeout(300000);
 
 	it(`can typecheck nasalib-monitors/trace.pvs (nasalib-monitors.zip)`, async () => {
 		await quitProverIfActive();
@@ -135,17 +135,17 @@ describe("pvs", () => {
 			theoryName: "trace",
 			formulaName: "null_null_always_satisfaction"
 		});
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 		// console.dir(response);
 
 		response = await pvsProxy.proofCommand({ cmd: `(skeep)` });
 		response = await pvsProxy.proofCommand({ cmd: `(fretex)` });
 		// response = await pvsProxy.proofCommand({ cmd: `(skeep)(fretex)(iff)(split)(flatten)(inst -1 "0")(skeep)(inst 2 "n-1")(case "i > n-1")(expand "Trace_equiv")(inst -3 "n-1")(assert)(flatten)(assert)(expand "last_atom")(expand "always")(split)(inst -1 "i")(split)(expand "Trace_equiv")(inst -2 "i")(flatten)(hide -2 -3 -4 -5 -7)(expand "post_condition_atom")(assert)(typepred "i")(assert)(expand "nth")(typepred "i")(grind)(expand "nth")(grind)(inst -1 "i")(expand "nth")(grind)(expand "nth")(typepred "i")(grind)(expand "length")(grind)(flatten)(skeep)(expand "always")(skeep)(typepred "i_1")(inst -2 "i_1")(expand "nth")(assert)(typepred "i")(grind)` });
 		// console.dir(response);
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-	}, 300000);
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
+	}).timeout(300000);
 
 	it(`identified typecheck errors for datatypes in type_theory (type-theory-error-with-datatypes.zip)`, async () => {
 		await quitProverIfActive();
@@ -163,11 +163,11 @@ describe("pvs", () => {
 			contextFolder: path.join(baseFolder, "type_theory")
 		});
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).not.toBeDefined();
-		expect(response.error).toBeDefined();
+		expect(response).not.to.be.undefined;
+		expect(response.result).to.be.undefined;
+		expect(response.error).not.to.be.undefined;
 
-	}, 10000);
+	}).timeout(10000);
 
 	it(`identifies typecheck errors when processing baxterSigmaSpectrum.pvs`, async () => {
 		await quitProverIfActive();
@@ -185,15 +185,15 @@ describe("pvs", () => {
 			contextFolder: path.join(baseFolder, "baxter")
 		});
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).not.toBeDefined();
-		expect(response.error).toBeDefined();
+		expect(response).not.to.be.undefined;
+		expect(response.result).to.be.undefined;
+		expect(response.error).not.to.be.undefined;
 		// console.dir(response.error);
-		expect(response.error.data).toBeDefined();
-		expect(response.error.data.error_string).toBeDefined();
+		expect(response.error.data).not.to.be.undefined;
+		expect(response.error.data.error_string).not.to.be.undefined;
 		// expect(response.error.data.error_string).toMatch(/\blimits\b/g);
 
-	}, 10000);
+	}).timeout(10000);
 	
 	//-- all tests below this line are completed successfully
 
@@ -214,11 +214,11 @@ describe("pvs", () => {
 			theoryName: "alaris_th"
 		});
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response).not.to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 
-	}, 20000);
+	}).timeout(20000);
 
 	it(`can typecheck datatypes in trace`, async () => {
 		await quitProverIfActive();
@@ -248,11 +248,11 @@ describe("pvs", () => {
 			contextFolder: path.join(baseFolder, "trace")
 		});
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response).not.to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 
-	}, 10000);
+	}).timeout(10000);
 
 	// this test case fails with the assertion error "the assertion (directory-p path) failed."
 	it(`ignores non-existing folders indicated in pvs-library-path`, async () => {
@@ -275,9 +275,9 @@ describe("pvs", () => {
 			theoryName: "trace",
 			formulaName: "null_null_always_satisfaction"
 		});
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-	}, 40000);
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
+	}).timeout(40000);
 
 
 	it(`can find typecheck error in ICEcoordinator.pvs (wrong field type)`, async () => {
@@ -296,11 +296,11 @@ describe("pvs", () => {
 			contextFolder: path.join(baseFolder, "pvsICEipandvs2")
 		});
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).not.toBeDefined();
-		expect(response.error).toBeDefined();
+		expect(response).not.to.be.undefined;
+		expect(response.result).to.be.undefined;
+		expect(response.error).not.to.be.undefined;
 
-	}, 10000);
+	}).timeout(10000);
 
 	it(`can typecheck strings defined in pillboxv7`, async () => {
 		await quitProverIfActive();
@@ -325,11 +325,11 @@ describe("pvs", () => {
 			}, 4000);
 		});
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response).not.to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 
-	}, 40000);
+	}).timeout(40000);
 
 	it(`can typecheck lists defined in pillboxv7`, async () => {
 		await quitProverIfActive();
@@ -347,11 +347,11 @@ describe("pvs", () => {
 			contextFolder: path.join(baseFolder, "pillboxv7")
 		});
 		// console.dir(response);
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response).not.to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 
-	}, 10000);
+	}).timeout(10000);
 
 
 	it(`can run find-declaration without hitting breaks`, async () => {
@@ -389,10 +389,10 @@ describe("pvs", () => {
 		response = await pvsProxy.lisp(`(find-declaration "PrimitiveValue")`);
 		// console.dir(response);
 
-		expect(response).toBeDefined();
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
-	}, 16000);
+		expect(response).not.to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
+	}).timeout(16000);
 
 });
 

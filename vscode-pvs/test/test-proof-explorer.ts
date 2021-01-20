@@ -2,17 +2,18 @@ import * as fsUtils from "../server/src/common/fsUtils";
 import { configFile, sandboxExamples } from './test-utils';
 import * as path from 'path';
 import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
-import { ProofDescriptor, ProofNodeX, PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
+import { ProofNodeX, PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
 import { PvsLanguageServer } from "../server/src/pvsLanguageServer";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { SequentDescriptor } from "../server/src/common/languageUtils";
+import { expect } from 'chai';
 
 //----------------------------
 //   Test cases for checking behavior of pvs with corrupted .pvscontext
 //----------------------------
 describe("proof-explorer", () => {
 	let server: PvsLanguageServer = new PvsLanguageServer();
-	beforeAll(async () => {
+	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
 		// console.log(content);
@@ -23,7 +24,7 @@ describe("proof-explorer", () => {
 		console.log("test-proof-explorer");
 		console.log("----------------------");
 	});
-	afterAll(async () => {
+	after(async () => {
 	});
 
 	const baseFolder: string = path.join(__dirname, "proof-explorer");
@@ -74,17 +75,17 @@ describe("proof-explorer", () => {
 
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
 		let root: ProofNodeX = proofExplorer.getProofX();
-		expect(root.name).toEqual(request.formulaName);
-		expect(root.rules.length).toEqual(0);
+		expect(root.name).to.deep.equal(request.formulaName);
+		expect(root.rules.length).to.equal(0);
 
 		request.cmd = "(skosimp*)";
 		await proofExplorer.proofCommandRequest(request);
 		root = proofExplorer.getProofX();
 		// console.dir(root);
-		expect(root.name).toEqual(request.formulaName);
-		expect(root.rules[0].name).toEqual("(skosimp*)");
-		expect(root.rules[0].type).toEqual("proof-command");
-		expect(root.rules[0].parent).toEqual(root.id);
+		expect(root.name).to.deep.equal(request.formulaName);
+		expect(root.rules[0].name).to.deep.equal("(skosimp*)");
+		expect(root.rules[0].type).to.deep.equal("proof-command");
+		expect(root.rules[0].parent).to.deep.equal(root.id);
 	});
 	it(`can step a series of proof commands`, async () => {
 		request.cmd = `(assert)(grind)(case "x!1 > 0")(postpone)(grind)`;
@@ -93,22 +94,22 @@ describe("proof-explorer", () => {
 		await proofExplorer.proofCommandRequest(request);
 		const root: ProofNodeX = proofExplorer.getProofX();
 		// console.dir(root, { depth: null });
-		expect(root.rules.length).toEqual(4);
-		expect(root.rules[0].name).toEqual("(skosimp*)");
-		expect(root.rules[1].name).toEqual("(assert)");
-		expect(root.rules[2].name).toEqual("(grind)");
-		expect(root.rules[3].name).toEqual(`(case "x!1 > 0")`);
-		expect(root.rules[3].rules.length).toEqual(2);
-		expect(root.rules[3].rules[0].name).toEqual("(1)");
-		expect(root.rules[3].rules[0].rules.length).toEqual(0); // postpone is never added to the proof
-		expect(root.rules[3].rules[1].name).toEqual("(2)");
-		expect(root.rules[3].rules[1].rules.length).toEqual(1);
-		expect(root.rules[3].rules[1].rules[0].name).toEqual("(grind)"); // this will close branch 2
+		expect(root.rules.length).to.equal(4);
+		expect(root.rules[0].name).to.deep.equal("(skosimp*)");
+		expect(root.rules[1].name).to.deep.equal("(assert)");
+		expect(root.rules[2].name).to.deep.equal("(grind)");
+		expect(root.rules[3].name).to.deep.equal(`(case "x!1 > 0")`);
+		expect(root.rules[3].rules.length).to.equal(2);
+		expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
+		expect(root.rules[3].rules[0].rules.length).to.equal(0); // postpone is never added to the proof
+		expect(root.rules[3].rules[1].name).to.deep.equal("(2)");
+		expect(root.rules[3].rules[1].rules.length).to.equal(1);
+		expect(root.rules[3].rules[1].rules[0].name).to.deep.equal("(grind)"); // this will close branch 2
 
 		const activeNode: ProofNodeX = proofExplorer.getActiveNode();
 		// console.dir(activeNode);
-		expect(activeNode.name).toEqual("(1)");
-		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
+		expect(activeNode.name).to.deep.equal("(1)");
+		expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
 	});
 	it(`can perform (undo)`, async () => {
 		request.cmd = "(undo)";
@@ -118,23 +119,23 @@ describe("proof-explorer", () => {
 		// the proof structure should be unchanged, and the active node should be `(case "x!1 > 0")`
 		const root: ProofNodeX = proofExplorer.getProofX();
 		// console.dir(root, { depth: null });
-		expect(root.rules.length).toEqual(4);
-		expect(root.rules[0].name).toEqual("(skosimp*)");
-		expect(root.rules[1].name).toEqual("(assert)");
-		expect(root.rules[2].name).toEqual("(grind)");
-		expect(root.rules[3].name).toEqual(`(case "x!1 > 0")`);
-		expect(root.rules[3].rules.length).toEqual(2);
-		expect(root.rules[3].rules[0].name).toEqual("(1)");
-		expect(root.rules[3].rules[0].rules.length).toEqual(0); // postpone is never added to the proof
-		expect(root.rules[3].rules[1].name).toEqual("(2)");
-		expect(root.rules[3].rules[1].rules.length).toEqual(1);
-		expect(root.rules[3].rules[1].rules[0].name).toEqual("(grind)"); // this will close branch 2
+		expect(root.rules.length).to.equal(4);
+		expect(root.rules[0].name).to.deep.equal("(skosimp*)");
+		expect(root.rules[1].name).to.deep.equal("(assert)");
+		expect(root.rules[2].name).to.deep.equal("(grind)");
+		expect(root.rules[3].name).to.deep.equal(`(case "x!1 > 0")`);
+		expect(root.rules[3].rules.length).to.equal(2);
+		expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
+		expect(root.rules[3].rules[0].rules.length).to.equal(0); // postpone is never added to the proof
+		expect(root.rules[3].rules[1].name).to.deep.equal("(2)");
+		expect(root.rules[3].rules[1].rules.length).to.equal(1);
+		expect(root.rules[3].rules[1].rules[0].name).to.deep.equal("(grind)"); // this will close branch 2
 
 		const activeNode: ProofNodeX = proofExplorer.getActiveNode();
 		// console.dir(activeNode);
-		expect(activeNode.name).toEqual(`(case "x!1 > 0")`);
-		expect(proofExplorer.ghostNodeIsActive()).toBeFalse();
-	}, 6000);
+		expect(activeNode.name).to.deep.equal(`(case "x!1 > 0")`);
+		expect(proofExplorer.ghostNodeIsActive()).to.equal(false);
+	}).timeout(6000);
 	it(`can perform (undo undo)`, async () => {
 		request.cmd = "(undo undo)";
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
@@ -143,34 +144,34 @@ describe("proof-explorer", () => {
 		// the proof structure should be unchanged, and the active node should be (1)
 		let root: ProofNodeX = proofExplorer.getProofX();
 		// console.dir(root, { depth: null });
-		expect(root.rules.length).toEqual(4);
-		expect(root.rules[0].name).toEqual("(skosimp*)");
-		expect(root.rules[1].name).toEqual("(assert)");
-		expect(root.rules[2].name).toEqual("(grind)");
-		expect(root.rules[3].name).toEqual(`(case "x!1 > 0")`);
-		expect(root.rules[3].rules.length).toEqual(2);
-		expect(root.rules[3].rules[0].name).toEqual("(1)");
-		expect(root.rules[3].rules[0].rules.length).toEqual(0); // postpone is never added to the proof
-		expect(root.rules[3].rules[1].name).toEqual("(2)");
-		expect(root.rules[3].rules[1].rules.length).toEqual(1);
-		expect(root.rules[3].rules[1].rules[0].name).toEqual("(grind)"); // this will close branch 2
+		expect(root.rules.length).to.equal(4);
+		expect(root.rules[0].name).to.deep.equal("(skosimp*)");
+		expect(root.rules[1].name).to.deep.equal("(assert)");
+		expect(root.rules[2].name).to.deep.equal("(grind)");
+		expect(root.rules[3].name).to.deep.equal(`(case "x!1 > 0")`);
+		expect(root.rules[3].rules.length).to.equal(2);
+		expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
+		expect(root.rules[3].rules[0].rules.length).to.equal(0); // postpone is never added to the proof
+		expect(root.rules[3].rules[1].name).to.deep.equal("(2)");
+		expect(root.rules[3].rules[1].rules.length).to.equal(1);
+		expect(root.rules[3].rules[1].rules[0].name).to.deep.equal("(grind)"); // this will close branch 2
 
 		const activeNode: ProofNodeX = proofExplorer.getActiveNode();
 		// console.dir(activeNode);
-		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
-		expect(activeNode.name).toEqual(`ghost`);
+		expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
+		expect(activeNode.name).to.deep.equal(`ghost`);
 
 		// can attach a node at the ghost position
 		request.cmd = "(all-typepreds)";
 		await proofExplorer.proofCommandRequest(request);
 		// the proof structure should be unchanged, and the active node should be (1)
 		root = proofExplorer.getProofX();
-		expect(root.rules[3].rules[0].name).toEqual("(1)");
-		expect(root.rules[3].rules[0].rules.length).toEqual(1); // postpone is never added to the proof
-		expect(root.rules[3].rules[0].rules[0].name).toEqual("(all-typepreds)");
-		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
-		expect(activeNode.name).toEqual(`ghost`);
-	}, 6000);
+		expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
+		expect(root.rules[3].rules[0].rules.length).to.equal(1); // postpone is never added to the proof
+		expect(root.rules[3].rules[0].rules[0].name).to.deep.equal("(all-typepreds)");
+		expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
+		expect(activeNode.name).to.deep.equal(`ghost`);
+	}).timeout(6000);
 	it(`can automatically trim branches if proof structure has changed`, async () => {
 		request.cmd = `(undo)(case "x!1 > 2")`; // the second command will generate two proof branches, so all-typepreds should be trimmed
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
@@ -179,22 +180,22 @@ describe("proof-explorer", () => {
 		// the proof structure should be unchanged, and the active node should be (1)
 		let root: ProofNodeX = proofExplorer.getProofX();
 		// console.dir(root, { depth: null });
-		expect(root.rules.length).toEqual(4);
-		expect(root.rules[0].name).toEqual("(skosimp*)");
-		expect(root.rules[1].name).toEqual("(assert)");
-		expect(root.rules[2].name).toEqual("(grind)");
-		expect(root.rules[3].name).toEqual(`(case "x!1 > 0")`);
-		expect(root.rules[3].rules.length).toEqual(2);
-		expect(root.rules[3].rules[0].name).toEqual("(1)");
-		expect(root.rules[3].rules[0].rules.length).toEqual(1); // the first proof branch is automatically proved by pvs
-		expect(root.rules[3].rules[0].rules[0].name).toEqual(`(case "x!1 > 2")`);
-		expect(root.rules[3].rules[1].name).toEqual("(2)");
-		expect(root.rules[3].rules[1].rules.length).toEqual(1);
-		expect(root.rules[3].rules[1].rules[0].name).toEqual("(grind)"); // this will close branch 2
+		expect(root.rules.length).to.equal(4);
+		expect(root.rules[0].name).to.deep.equal("(skosimp*)");
+		expect(root.rules[1].name).to.deep.equal("(assert)");
+		expect(root.rules[2].name).to.deep.equal("(grind)");
+		expect(root.rules[3].name).to.deep.equal(`(case "x!1 > 0")`);
+		expect(root.rules[3].rules.length).to.equal(2);
+		expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
+		expect(root.rules[3].rules[0].rules.length).to.equal(1); // the first proof branch is automatically proved by pvs
+		expect(root.rules[3].rules[0].rules[0].name).to.deep.equal(`(case "x!1 > 2")`);
+		expect(root.rules[3].rules[1].name).to.deep.equal("(2)");
+		expect(root.rules[3].rules[1].rules.length).to.equal(1);
+		expect(root.rules[3].rules[1].rules[0].name).to.deep.equal("(grind)"); // this will close branch 2
 
 		let activeNode: ProofNodeX = proofExplorer.getActiveNode();
-		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
-		expect(activeNode.name).toEqual(`(1.1)`);
+		expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
+		expect(activeNode.name).to.deep.equal(`(1.1)`);
 
 		// this sequence will trim again the node
 		request.cmd = `(undo)(case "x!1 > 1")`;
@@ -203,23 +204,23 @@ describe("proof-explorer", () => {
 		// the proof structure should be unchanged, and the active node should be (1)
 		root = proofExplorer.getProofX();
 		// console.dir(root, { depth: null });
-		expect(root.rules.length).toEqual(4);
-		expect(root.rules[0].name).toEqual("(skosimp*)");
-		expect(root.rules[1].name).toEqual("(assert)");
-		expect(root.rules[2].name).toEqual("(grind)");
-		expect(root.rules[3].name).toEqual(`(case "x!1 > 0")`);
-		expect(root.rules[3].rules.length).toEqual(2);
-		expect(root.rules[3].rules[0].name).toEqual("(1)");
-		expect(root.rules[3].rules[0].rules.length).toEqual(1); // the first proof branch is automatically proved by pvs
-		expect(root.rules[3].rules[0].rules[0].name).toEqual(`(case "x!1 > 1")`); // <<<<<
-		expect(root.rules[3].rules[1].name).toEqual("(2)");
-		expect(root.rules[3].rules[1].rules.length).toEqual(1);
-		expect(root.rules[3].rules[1].rules[0].name).toEqual("(grind)"); // this will close branch 2
+		expect(root.rules.length).to.equal(4);
+		expect(root.rules[0].name).to.deep.equal("(skosimp*)");
+		expect(root.rules[1].name).to.deep.equal("(assert)");
+		expect(root.rules[2].name).to.deep.equal("(grind)");
+		expect(root.rules[3].name).to.deep.equal(`(case "x!1 > 0")`);
+		expect(root.rules[3].rules.length).to.equal(2);
+		expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
+		expect(root.rules[3].rules[0].rules.length).to.equal(1); // the first proof branch is automatically proved by pvs
+		expect(root.rules[3].rules[0].rules[0].name).to.deep.equal(`(case "x!1 > 1")`); // <<<<<
+		expect(root.rules[3].rules[1].name).to.deep.equal("(2)");
+		expect(root.rules[3].rules[1].rules.length).to.equal(1);
+		expect(root.rules[3].rules[1].rules[0].name).to.deep.equal("(grind)"); // this will close branch 2
 
 		activeNode = proofExplorer.getActiveNode();
-		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
-		expect(activeNode.name).toEqual(`(1.1)`);
-	}, 6000);
+		expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
+		expect(activeNode.name).to.deep.equal(`(1.1)`);
+	}).timeout(6000);
 
 	//-----
 	it(`can start another proof when a prover session has already started`, async () => {
@@ -241,18 +242,18 @@ describe("proof-explorer", () => {
 			fileName: request5.fileName,
 			fileExtension: ".jprf"
 		}, request5);
-		expect(success).toBeTrue();
+		expect(success).to.equal(true);
 
 		root = proofExplorer.getProofX();
 		// console.dir(root);
 
-		expect(root.name).toEqual(request5.formulaName);
-		expect(root.rules.length).toEqual(2);
-		expect(root.rules[0].name).toEqual("(skosimp*)");
-		expect(root.rules[1].name).toEqual("(grind)");
+		expect(root.name).to.deep.equal(request5.formulaName);
+		expect(root.rules.length).to.equal(2);
+		expect(root.rules[0].name).to.deep.equal("(skosimp*)");
+		expect(root.rules[1].name).to.deep.equal("(grind)");
 
 		const initial_tooltip: string = proofExplorer.getTooltip({ selected: root.rules[0] });
-		expect(initial_tooltip).toContain(request5.formulaName);
+		expect(initial_tooltip).to.contain(request5.formulaName);
 
 	});
 
@@ -264,9 +265,9 @@ describe("proof-explorer", () => {
 		proofExplorer.deleteNodeX({ action: "delete-node", selected: { id: root.id, name: root.name }});
 
 		root = proofExplorer.getProofX();
-		expect(root.name).toEqual(request5.formulaName);
-		expect(root.rules.length).toEqual(0);
-		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
+		expect(root.name).to.deep.equal(request5.formulaName);
+		expect(root.rules.length).to.equal(0);
+		expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
 		expect(proofExplorer.isPending({ id: root.id, name: root.name }));
 	});
 
@@ -280,26 +281,26 @@ describe("proof-explorer", () => {
 			fileName: request2.fileName,
 			fileExtension: ".jprf"
 		}, request2);
-		expect(success).toBeTrue();
+		expect(success).to.equal(true);
 
 		let root: ProofNodeX = proofExplorer.getProofX();
-		expect(root.name).toEqual(request2.formulaName);
-		expect(root.rules[0].name).toEqual("(skosimp*)");
+		expect(root.name).to.deep.equal(request2.formulaName);
+		expect(root.rules[0].name).to.deep.equal("(skosimp*)");
 
-		expect(proofExplorer.ghostNodeIsActive()).not.toBeTrue();
+		expect(proofExplorer.ghostNodeIsActive()).not.to.equal(true);
 		let activeNode: ProofNodeX = proofExplorer.getActiveNode();
-		expect(activeNode.name).toEqual(`(skosimp*)`);
+		expect(activeNode.name).to.deep.equal(`(skosimp*)`);
 
 		request2.cmd = "(grind)";
 		await proofExplorer.proofCommandRequest(request2);
 
-		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
+		expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
 
 		root = proofExplorer.getProofX();
-		expect(root.rules[0].name).toEqual("(grind)");
-		expect(root.rules[0].rules[0].name).toEqual("(1)");
+		expect(root.rules[0].name).to.deep.equal("(grind)");
+		expect(root.rules[0].rules[0].name).to.deep.equal("(1)");
 		activeNode = proofExplorer.getActiveNode();
-		expect(activeNode.name).toEqual(`(1)`);
+		expect(activeNode.name).to.deep.equal(`(1)`);
 	});
 
 	it(`can trim branches with active nodes and correctly re-position the active node`, async () => {
@@ -312,35 +313,35 @@ describe("proof-explorer", () => {
 			fileName: request2a.fileName,
 			fileExtension: ".jprf"
 		}, request2a);
-		expect(success).toBeTrue();
+		expect(success).to.equal(true);
 
 		let root: ProofNodeX = proofExplorer.getProofX();
-		expect(root.name).toEqual(request2a.formulaName);
-		expect(root.rules[0].name).toEqual("(grind)");
+		expect(root.name).to.deep.equal(request2a.formulaName);
+		expect(root.rules[0].name).to.deep.equal("(grind)");
 
-		expect(proofExplorer.ghostNodeIsActive()).not.toBeTrue();
+		expect(proofExplorer.ghostNodeIsActive()).not.to.equal(true);
 		let activeNode: ProofNodeX = proofExplorer.getActiveNode();
-		expect(activeNode.name).toEqual(`(grind)`);
+		expect(activeNode.name).to.deep.equal(`(grind)`);
 
 		request2.cmd = "(skosimp*)";
 		await proofExplorer.proofCommandRequest(request2);
 
-		expect(proofExplorer.ghostNodeIsActive()).toBeFalse();
+		expect(proofExplorer.ghostNodeIsActive()).to.equal(false);
 
 		root = proofExplorer.getProofX();
-		expect(root.rules.length).toEqual(2);
-		expect(root.rules[0].name).toEqual(`(skosimp*)`);
-		expect(root.rules[1].name).toEqual(`(grind)`);
+		expect(root.rules.length).to.equal(2);
+		expect(root.rules[0].name).to.deep.equal(`(skosimp*)`);
+		expect(root.rules[1].name).to.deep.equal(`(grind)`);
 		activeNode = proofExplorer.getActiveNode();
-		expect(activeNode.name).toEqual(`(grind)`);
+		expect(activeNode.name).to.deep.equal(`(grind)`);
 
 		proofExplorer.trimNodeX({ action: "trim-node", selected: { id: root.rules[0].id, name: root.rules[0].name }});
 		root = proofExplorer.getProofX();
 		// console.dir(root, { depth: null });
-		expect(root.rules.length).toEqual(1);
-		expect(proofExplorer.ghostNodeIsActive()).toBeTrue();
+		expect(root.rules.length).to.equal(1);
+		expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
 		activeNode = proofExplorer.getActiveNode();
-		expect(activeNode.name).toEqual(`ghost`);
+		expect(activeNode.name).to.deep.equal(`ghost`);
 
 	});
 
@@ -358,7 +359,7 @@ describe("proof-explorer", () => {
 		await server.proveFormulaRequest(formula, { autorun: true });
 		const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
 		// console.dir(res);
-		expect(res.success).toBeTrue();
+		expect(res.success).to.equal(true);
 	});
 
 	it(`can start a proof, then interrupt, quit and save current proof`, async () => {
@@ -381,13 +382,13 @@ describe("proof-explorer", () => {
 		await server.getPvsProxy().interrupt();
 		const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
 		// console.dir(res);
-		expect(res.success).toBeTrue();
+		expect(res.success).to.equal(true);
 
 		// try to start other proofs, to double check that everything is still working fine
 		await server.getPvsProxy().proofCommand({ cmd: 'quit' });
 		const pvsResponse: PvsResponse = await server.proveFormula(request);
-		expect(pvsResponse.error).not.toBeDefined();
-		expect(pvsResponse.result).toBeDefined();
+		expect(pvsResponse.error).to.be.undefined;
+		expect(pvsResponse.result).not.to.be.undefined;
 
 		await server.proveFormulaRequest(request5);
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
@@ -396,7 +397,7 @@ describe("proof-explorer", () => {
 			fileName: request5.fileName,
 			fileExtension: ".jprf"
 		}, request5);
-		expect(success).toBeTrue();
+		expect(success).to.equal(true);
 	});
 
 	// fit(`can prove omega_2D_continuous without triggering stack overflow`, async () => {

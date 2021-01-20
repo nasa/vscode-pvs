@@ -1412,7 +1412,19 @@
 		"watch": "tsc -b -w",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
 		"test:server": "node_modules/jasmine-ts/lib/index.js --config=server/test/jasmine-specs/jasmine-test-all.json",
-		"lint": "eslint --ext .ts server/src && eslint --ext .ts client/src"
+		"lint": "eslint --ext .ts server/src && eslint --ext .ts client/src",
+		"test": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/*.ts'",
+		"test-find-declaration": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-find-declaration.ts'",
+		"test-parser": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-parser.ts'",
+		"test-proof-explorer": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-proof-explorer.ts'",
+		"test-proof-script": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-proof-script.ts'",
+		"test-prover": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-prover.ts'",
+		"test-proxy": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-proxy.ts'",
+		"test-pvs-context": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-pvs-context.ts'",
+		"test-pvs-language-server": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-pvs-language-server.ts'",
+		"test-tacticals": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-tacticals.ts'",
+		"test-typechecker": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-typechecker.ts'",
+		"test-workspace": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -r ts-node/register -reporter dot 'test/test-workspace.ts'"
 	},
 	"eslintConfig": {
 		"env": {
@@ -1425,20 +1437,23 @@
 		}
 	},
 	"dependencies": {
+		"handlebars": "^4.7.6",
 		"typescript": "^3.9.3",
-		"vsce": "^1.83.0",
+		"vsce": "^1.84.0",
 		"xmlrpc": "^1.3.2"
 	},
 	"devDependencies": {
-		"@types/jasmine": "^3.5.0",
-		"@types/node": "12.12.2",
+		"@types/chai": "4.1.3",
+		"@types/mocha": "^8.2.0",
+		"@types/node": "^14.14.22",
 		"@types/vscode": "^1.32.3",
 		"@typescript-eslint/eslint-plugin": "^2.25.0",
 		"@typescript-eslint/parser": "^2.25.0",
+		"assert": "^2.0.0",
+		"chai": "4.2.0",
 		"eslint": "^6.8.0",
-		"jasmine": "^3.5.0",
-		"jasmine-ts": "^0.3.0",
-		"ts-node": "^7.0.0"
+		"mocha": "8.1.3",
+		"ts-node": "^9.1.1"
 	},
 	"resolutions": {
 		"mem": "^6.1.0",

@@ -6,13 +6,14 @@ import { PvsFormula } from "../server/src/common/serverInterface";
 import * as path from 'path';
 import { execSync } from "child_process";
 import * as languageUtils from '../server/src/common/languageUtils';
+import { expect } from 'chai';
 
 //----------------------------
 //   Test cases for prover
 //----------------------------
 describe("pvs-prover", () => {
 	let pvsProxy: PvsProxy = null;
-	beforeAll(async () => {
+	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
 		// log(content);
@@ -28,7 +29,7 @@ describe("pvs-prover", () => {
 		console.log("test-tacticals");
 		console.log("----------------------");
 	});
-	afterAll(async () => {
+	after(async () => {
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		// delete pvsbin files and .pvscontext
@@ -39,8 +40,8 @@ describe("pvs-prover", () => {
 	const quitProverIfActive = async (): Promise<void> => {
 		// quit prover if prover status is active
 		const proverStatus: PvsResult = await pvsProxy.getProverStatus();
-		expect(proverStatus.result).toBeDefined();
-		expect(proverStatus.error).not.toBeDefined();
+		expect(proverStatus.result).not.to.be.undefined;
+		expect(proverStatus.error).to.be.undefined;
 		// console.log(proverStatus);
 		if (proverStatus && proverStatus.result !== "inactive") {
 			await pvsProxy.proofCommand({ cmd: 'quit' });
@@ -70,8 +71,8 @@ describe("pvs-prover", () => {
 			theoryName: "trace",
 			formulaName: "eventually_nulltiming"
 		});
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 		// console.dir(response);
 
 		const cmd: string = `(then (skeep) (expand "check_fretish_req_semantics") (expand* "Timing_fun"))`;
@@ -79,9 +80,9 @@ describe("pvs-prover", () => {
 		// console.log(cmd);
 		// console.dir(response);
 
-		expect(response.error).not.toBeDefined();
-		expect(response.result).toBeDefined();
-	}, 20000);
+		expect(response.error).to.be.undefined;
+		expect(response.result).not.to.be.undefined;
+	}).timeout(20000);
 
 	// this test requires nasalib and patch-20291231-server-output
 	it(`can handle branches with propax`, async () => {
@@ -104,8 +105,8 @@ describe("pvs-prover", () => {
 			theoryName: "trace",
 			formulaName: "null_null_always_satisfaction"
 		});
-		expect(response.result).toBeDefined();
-		expect(response.error).not.toBeDefined();
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
 		// console.dir(response);
 
 		const cmds: string[] = `(skeep)(fretex)(iff)(split)(flatten)(inst -1 "0")(skeep)(inst 2 "n-1")(case "i > n-1")(expand "Trace_equiv")(inst -3 "n-1")(assert)(flatten)(assert)(expand "last_atom")`.replace(/\)/g, ")\n").split("\n").filter(cmd => { return cmd && cmd.trim() !== ""; });
@@ -116,8 +117,8 @@ describe("pvs-prover", () => {
 			// console.dir(response);
 		}
 
-		expect(response.result[0]["prev-cmd"]).toEqual(`(expand "last_atom")`);
-	}, 20000);
+		expect(response.result[0]["prev-cmd"]).to.deep.equal(`(expand "last_atom")`);
+	}).timeout(20000);
 
 	it(`provides correct prev-cmd when branch closes (test 1)`, async () => {
 		await quitProverIfActive();
@@ -131,24 +132,24 @@ describe("pvs-prover", () => {
 		};
 		let response: PvsResponse = await pvsProxy.proveFormula(request);
 		// console.dir(response, { depth: null });
-		expect(response.error).not.toBeDefined();
-		expect(response.result).toBeDefined();
+		expect(response.error).to.be.undefined;
+		expect(response.result).not.to.be.undefined;
 
 		response = await pvsProxy.proofCommand({ cmd: "(skosimp*)" });
-		expect(response.result[0]["prev-cmd"]).toEqual("(skosimp*)");
+		expect(response.result[0]["prev-cmd"]).to.deep.equal("(skosimp*)");
 		// console.dir(response);
 
 		response = await pvsProxy.proofCommand({ cmd: "(split)" });
-		expect(response.result[0]["prev-cmd"]).toEqual("(split)");
+		expect(response.result[0]["prev-cmd"]).to.deep.equal("(split)");
 		// console.dir(response);
 
 		response = await pvsProxy.proofCommand({ cmd: "(flatten)" });
-		expect(response.result[0]["prev-cmd"]).toEqual("(flatten)");
+		expect(response.result[0]["prev-cmd"]).to.deep.equal("(flatten)");
 		// console.dir(response);
 
 		response = await pvsProxy.proofCommand({ cmd: "(grind)" });
-		expect(response.result[0]["prev-cmd"]).toEqual("(grind)");
-		expect(languageUtils.branchComplete(response.result[0], request.formulaName, `1`)).toBeTrue();
+		expect(response.result[0]["prev-cmd"]).to.deep.equal("(grind)");
+		expect(languageUtils.branchComplete(response.result[0], request.formulaName, `1`)).to.equal(true);
 		// console.dir(response);
 
 	});
@@ -166,22 +167,23 @@ describe("pvs-prover", () => {
 		};
 		let response: PvsResponse = await pvsProxy.proveFormula(request);
 		// console.dir(response, { depth: null });
-		expect(response.error).not.toBeDefined();
-		expect(response.result).toBeDefined();
+		expect(response.error).to.be.undefined;
+		expect(response.result).not.to.be.undefined;
 
 		const skosimp_response: PvsResponse = await pvsProxy.proofCommand({ cmd: "(skosimp*)" });
 		// console.dir(skosimp_response, { depth: null });
-		expect(skosimp_response.result[0]["prev-cmd"]).toEqual("(skosimp*)");
+		expect(skosimp_response.result[0]["prev-cmd"]).to.deep.equal("(skosimp*)");
 
 		const split_response: PvsResponse = await pvsProxy.proofCommand({ cmd: "(split)" });
 		// console.dir(split_response, { depth: null });
-		expect(split_response.result[0]["prev-cmd"]).toEqual("(split)");
+		expect(split_response.result[0]["prev-cmd"]).to.deep.equal("(split)");
 
 		await pvsProxy.proofCommand({ cmd: "(quit)" });
 
 		// re-run the proof commands with the tactical
 		response = await pvsProxy.proveFormula(request);
 		response = await pvsProxy.proofCommand({ cmd: "(then (skosimp*) (split))" });
+		await pvsProxy.proofCommand({ cmd: "(quit)" });
 		// console.dir(response, { depth: null });
 		
 		// pvs-server should returns an ordered array of sequents for glassbox tactics such as (then (skosimp*) (split))
@@ -191,21 +193,21 @@ describe("pvs-prover", () => {
 		// - the last sequent is the active sequent
 		// - all sequents must have a label that identifies the subgoal in the proof tree where the sequent belongs
 		// - all sequents must have a field "prev-cmd" of type string, indicating the command that produced the executed command 
-		expect(response.result.length).toEqual(4); // two commands + two postpone for the two branches
+		expect(response.result.length).to.equal(4); // two commands + two postpone for the two branches
 
-		expect(response.result[0]["prev-cmd"]).toEqual("(skosimp*)");
-		expect(response.result[0].label).toEqual(skosimp_response.result[0].label);
-		expect(response.result[0]["num-subgoals"]).toEqual(skosimp_response.result[0]["num-subgoals"]);
-		expect(response.result[0].commentary).toEqual(skosimp_response.result[0].commentary);
-		expect(response.result[0].sequent).toEqual(skosimp_response.result[0].sequent);
+		expect(response.result[0]["prev-cmd"]).to.deep.equal("(skosimp*)");
+		expect(response.result[0].label).to.deep.equal(skosimp_response.result[0].label);
+		expect(response.result[0]["num-subgoals"]).to.deep.equal(skosimp_response.result[0]["num-subgoals"]);
+		expect(response.result[0].commentary).to.deep.equal(skosimp_response.result[0].commentary);
+		expect(response.result[0].sequent).to.deep.equal(skosimp_response.result[0].sequent);
 
-		expect(response.result[1]["prev-cmd"]).toEqual("(split)");
-		expect(response.result[1].label).toEqual(split_response.result[0].label);
-		expect(response.result[1]["num-subgoals"]).toEqual(split_response.result[0]["num-subgoals"]);
-		expect(response.result[1].commentary).toEqual(split_response.result[0].commentary);
-		expect(response.result[1].sequent).toEqual(split_response.result[0].sequent);
+		expect(response.result[1]["prev-cmd"]).to.deep.equal("(split)");
+		expect(response.result[1].label).to.deep.equal(split_response.result[0].label);
+		expect(response.result[1]["num-subgoals"]).to.deep.equal(split_response.result[0]["num-subgoals"]);
+		expect(response.result[1].commentary).to.deep.equal(split_response.result[0].commentary);
+		expect(response.result[1].sequent).to.deep.equal(split_response.result[0].sequent);
 
-		expect(response.result[3].label).toEqual(`foo1.1`);
+		expect(response.result[3].label).to.deep.equal(`foo1.1`);
 	});
 
 
