@@ -58,7 +58,7 @@ describe("pvs-prover", () => {
 		let res2: PvsResult = await pvsioProxy.evalExpression(req2);
 		expect(res2.result).to.be.deep.equal("TRUE");
 
-	});
+	}).timeout(6000);
 
 
 });
