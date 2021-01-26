@@ -10,6 +10,7 @@ export const safeSandboxExamples: string = path.join(__dirname, "safesandbox");
 export const radixExamples: string = path.join(__dirname, "radix_sort_7");
 export const dependable_plus_safe: string = path.join(__dirname, "dependable+safe");
 export const tacticalsExamples: string = path.join(__dirname, "tacticals");
+export const pvsioExamples: string = path.join(__dirname, "pvsio");
 
 export const stever: string = path.join(__dirname, "stever"); // examples courtesy of steve reeves (waikato university)
 export const steverFiles: string[] = [

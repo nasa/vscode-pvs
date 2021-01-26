@@ -1479,7 +1479,7 @@ export class PvsLanguageServer {
 					await this.pvsProxy?.restartPvsServer({ pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath, externalServer });
 				} else {
 					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath, externalServer });
-					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath })
+					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath });
 					this.createServiceProviders();
 					const success: boolean = await this.pvsProxy?.activate({
 						debugMode: opt.debugMode, 

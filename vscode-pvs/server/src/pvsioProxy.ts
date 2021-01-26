@@ -43,7 +43,6 @@ import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import * as utils from './common/languageUtils';
 import { PvsResponse } from './common/pvs-gui';
-import { read } from 'fs';
 
 /**
  * Wrapper class for PVSio: spawns a PVSio process, and exposes the PVSio REPL interface as an asyncronous server.
