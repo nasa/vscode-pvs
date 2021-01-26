@@ -59,6 +59,7 @@ export function printHelp (helpCommand: string, opt?: { useColors?: boolean }): 
         return (availableHelp) ? formatHelp(availableHelp, opt)
             : `Help not available for ${match[1]}`;
     }
+    return "";
 }
 
 // the following list of commands obtained from pvs-server with collect-strategy-names

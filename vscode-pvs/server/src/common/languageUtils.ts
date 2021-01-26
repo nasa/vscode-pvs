@@ -1858,13 +1858,13 @@ export function isProofliteGlassbox (cmd: string): boolean {
 	return cmd && cmd.trim().startsWith("(then ");
 }
 
+// group 1 is the command argument
+export const helpCommandRegexp: RegExp = /^\s*\(?\s*help\s*\"?([^\)]+)/g;
+
 export function isHelpCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && /^\(?\s*help\b/g.test(cmd);
+	return cmd && new RegExp(helpCommandRegexp).test(cmd);
 }
-
-// group 1 is the command argument
-export const helpCommandRegexp: RegExp = /^\(?\s*help\s*\"?([^\)]+)/g;
 
 export function isCommentCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
