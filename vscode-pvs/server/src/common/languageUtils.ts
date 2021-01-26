@@ -1474,8 +1474,12 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 						buildProofTree_aux({ prf: subexpr, proofName: desc.proofName, parent: currentBranch });
 					} else {
 						// proof command
+						// check if there's a comment at the beginning 
+						const cmd: string = (expr.trim().startsWith(`";;; `)) ?
+							expr.replace(/\";;;\s[^"]*\"\s*\(/g, "(") 
+								: expr;
 						desc.parent.rules.push({
-							name: expr,
+							name: cmd,
 							rules: [],
 							type: "proof-command",
 							branch: expr

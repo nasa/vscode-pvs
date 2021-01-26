@@ -696,7 +696,7 @@ export class PvsProofExplorer {
 				}
 
 				// handle (show-hidden) and (comment "xxx")
-				if (utils.isShowHiddenCommand(userCmd) || utils.isCommentCommand(userCmd)) {
+				if (utils.isShowHiddenCommand(userCmd)) {
 					// nothing to do, the prover will simply show the hidden formulas
 					return;
 				}

@@ -221,6 +221,7 @@ export class PvsProxy {
 								: res["commentary"],
 				"num-subgoals": (res["result"]) ? 0 : res["num-subgoals"],
 				sequent: (res["result"]) ? {} : res["sequent"],
+				comment: res["comment"] || "",
 				"prev-cmd": (res["prev-cmd"] && typeof res["prev-cmd"] === "string") ? res["prev-cmd"].replace(/\s+/, " ") : res["prev-cmd"]
 			}
 			sequent["commentary"] = sequent["commentary"] || [];
@@ -1185,6 +1186,7 @@ export class PvsProxy {
 				const cmd: string = showHidden ? "(skip)"
 					// : isGrind ? utils.applyTimeout(desc.cmd, opt.timeout)
 						: desc.cmd;
+				if (!this.externalServer) { console.log(cmd); }
 				res = await this.pvsRequest('proof-command', [ cmd ]);
 				if (res && res.result) {
 					const proofStates: SequentDescriptor[] = res.result;
