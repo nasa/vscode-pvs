@@ -24,6 +24,12 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.36 (2020.01.27)]()  
+  -Added support for prover command 'comment'  
+  -Improved rendering in proof-explorer  
+  -Fixed rendering of proof commands in proof-explorer   
+  -Fixed command 'help' in prover CLI  
+  
 - [1.0.35 (2020.01.19)]()  
   -Added new proof tree visualization  
   -Added new command shortcuts (M-x x-show-proof, M-x x-prove, M-x x-pr)  
