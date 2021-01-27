@@ -222,7 +222,7 @@ export class PvsProxy {
 				"num-subgoals": (res["result"]) ? 0 : res["num-subgoals"],
 				sequent: (res["result"]) ? {} : res["sequent"],
 				comment: res["comment"] || "",
-				"prev-cmd": (res["prev-cmd"] && typeof res["prev-cmd"] === "string") ? res["prev-cmd"].replace(/\s+/, " ") : res["prev-cmd"]
+				"prev-cmd": (res["prev-cmd"] && typeof res["prev-cmd"] === "string") ? res["prev-cmd"].replace(/\s+/g, " ") : res["prev-cmd"]
 			}
 			sequent["commentary"] = sequent["commentary"] || [];
 			if (typeof sequent["commentary"] === "string") { sequent["commentary"] = [ sequent["commentary"] ]; }
