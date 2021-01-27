@@ -68,7 +68,7 @@ import {
 	CliGatewayQuit,
 	ProofFile,
 	ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind
+	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind, ProofExecDidStopRunning
 } from '../common/serverInterface';
 import * as utils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -357,7 +357,7 @@ export class PvsProofExplorer {
 				await this.step({ cmd: "(undo)", feedbackToTerminal: true });
 			}
 		} else {
-			console.warn(`[proof-explorer] Warning: failed to fast forward (selected node is null)`);
+			console.warn(`[proof-explorer] Warning: failed to rewind (selected node is null)`);
 		}
 	}
 	async rewindToNodeX (desc: ProofExecRewind): Promise<void> {
@@ -409,6 +409,12 @@ export class PvsProofExplorer {
 		if (this.stopAt && this.activeNode && this.stopAt.id === this.activeNode.id) {
 			this.stopAt = null;
 			this.running = false;
+			if (this.connection) {
+				const evt: ProofExecDidStopRunning = {
+					action: "did-stop-running"
+				};
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
+			}
 			return null;
 		}
 
@@ -504,6 +510,34 @@ export class PvsProofExplorer {
 			}).length === 0;
 		}
 		return false;
+	}
+	/**
+	 * Utility function, stops rewinding a proof
+	 */
+	// stopRewind (): void {
+	// 	this.rewinding = false;
+	// 	this.rewindTarget = null;
+	// 	if (this.connection) {
+	// 		const evt: ProofExecDidStopRunning = {
+	// 			action: "did-stop-running"
+	// 		};
+	// 		this.connection.sendNotification(serverEvent.proverEvent, evt);
+	// 	}
+	// }
+	/**
+	 * Utility function, stops running / rewinding a proof
+	 */
+	stopRun (): void {
+		this.running = false;
+		this.stopAt = null;
+		this.rewindTarget = null;
+		this.rewinding = false;
+		if (this.connection) {
+			const evt: ProofExecDidStopRunning = {
+				action: "did-stop-running"
+			};
+			this.connection.sendNotification(serverEvent.proverEvent, evt);
+		}
 	}
 	/**
 	 * Utility function invoked after step(). Updates the data structures of proof-explorer and sends messages to the front-end.
@@ -612,8 +646,7 @@ export class PvsProofExplorer {
 				}
 				if (this.rewinding) {
 					if (this.rewindTarget?.isActive() || !this.rewindTarget?.isVisitedOrPending()) {
-						this.rewinding = false;
-						this.rewindTarget = null;	
+						this.stopRun();
 					} else {
 						// iterate undo
 						this.step({ cmd: "(undo)", feedbackToTerminal: true });
@@ -728,10 +761,7 @@ export class PvsProofExplorer {
 						activeNode.treeNotVisited();
 					}
 				} else if (utils.interruptedByClient(this.proofState)) {
-					this.running = false;
-					this.stopAt = null;
-					this.rewindTarget = null;
-					this.rewinding = false;
+					this.stopRun();
 				} else if (utils.noChange(this.proofState) || utils.isEmptyCommand(cmd)) {
 					const command: string = utils.getNoChangeCommand(this.proofState);
 					// check if the command that produced no change comes from the proof tree -- if so advance indicator
@@ -847,6 +877,12 @@ export class PvsProofExplorer {
 		} else {
 			this.running = false;
 			console.error("[proof-explorer] Error: could not read proof state information returned by pvs-server.");
+			if (this.connection) {
+				const evt: ProofExecDidStopRunning = {
+					action: "did-stop-running"
+				};
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
+			}
 		}
 	}
 

@@ -423,6 +423,10 @@ export class EventsDispatcher {
                     }
                     break;    
                 }
+                case "did-stop-running": {
+                    this.proofExplorer?.didStopRunning();
+                    break;
+                }
                 case "did-open-proof": {
                     if (desc && desc.formula) {
                         if (desc.proof) {

@@ -858,7 +858,7 @@ export type ProofExecInterruptAndQuitProver = {
 
 export type ProofExecEvent = ProofExecDidStartProof | ProofExecDidLoadProof | ProofExecDidLoadSequent
 	| ProofExecDidQuitProof | ProofExecDidUpdateSequent | ProofExecDidOpenProof | ProofExecDidImportProof
-	| ProofExecDidFailToStartProof;
+	| ProofExecDidFailToStartProof | ProofExecDidStopRunning;
 export type ProofExecDidStartProof = {
 	action: "did-start-proof"
 };
@@ -873,6 +873,9 @@ export type ProofExecDidUpdateSequent = {
 	action: "did-update-sequent",
 	selected: { id: string, name: string },
 	sequent: SequentDescriptor
+};
+export type ProofExecDidStopRunning = {
+	action: "did-stop-running"
 };
 export type ProofExecDidLoadProof = {
 	action: "did-load-proof",

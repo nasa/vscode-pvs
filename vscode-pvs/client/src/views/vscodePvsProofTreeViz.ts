@@ -640,7 +640,6 @@ export class VSCodePvsVizTree {
             const refresh = () => {
                 // create webview
                 this.createWebView(this.root.name);
-
                 switch (opt.source) {
                     case "did-update-tooltip":
                     case "did-rename-node":

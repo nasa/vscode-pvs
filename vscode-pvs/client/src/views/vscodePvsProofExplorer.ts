@@ -160,10 +160,21 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	constructor(client: LanguageClient, providerView: string) {
 		this.client = client;
 		this.providerView = providerView;
-		// Register tree view; use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
+
+		// Register tree view; 
+		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this });
 		this.treeviz = new VSCodePvsVizTree();
+
+		// install view handlers
+		this.view.onDidChangeVisibility((evt: vscode.TreeViewVisibilityChangeEvent) => {
+			// refresh the tree view
+			this.refreshView({ force: true });
+			// highlight active node
+			this.focusActiveNode();
+		});
+	
 	}
 
 	didUpdateServerMode (mode: ServerMode): void {
@@ -188,6 +199,28 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
+	fastForwardTo (resource: { id: string, name: string }): void {
+		if (resource && this.serverMode === "in-checker") {
+			this.running = true;
+			vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
+			// fast forward proof to a given proof command
+			const action: ProofExecFastForward = { action: "fast-forward", selected: { id: resource.id, name: resource.name } };
+			console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
+			this.client.sendRequest(serverRequest.proverCommand, action);
+		}
+	}
+
+	rewindTo (resource: { id: string, name: string }): void {
+		if (resource && this.serverMode === "in-checker") {
+			this.running = true;
+			vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
+			// rewind to a given proof command
+			const action: ProofExecRewind = { action: "rewind", selected: { id: resource.id, name: resource.name } };
+			console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
+			this.client.sendRequest(serverRequest.proverCommand, action);
+		}
+	}
+
 	showWebView (opt?: { recenter?: boolean }): void {
 		const treeStructure: TreeStructure = this.getTreeStructure();
 		this.treeviz?.renderView(treeStructure, { reveal: true, ...opt });
@@ -209,17 +242,26 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		return findNodeAux(id, this.root);
 	}
 	/**
-	 * Internal function, reveals a node in the view.
+	 * Places focus on the active node in the view.
 	 */
-	protected revealNode (desc: { id: string, name: string }): void {
-		if (desc && desc.id) {
+	focusActiveNode (): void {
+		if (this.activeNode) {
+			this.revealNode({ id: this.activeNode.id, name: this.activeNode.name });
+			this.focusNode({ id: this.activeNode.id, name: this.activeNode.name })
+		}
+	}
+	/**
+	 * Reveals a node in the view.
+	 */
+	revealNode (desc: { id: string, name: string }): void {
+		if (desc && desc.id && this.isVisible()) {
 			// there is something I don't understand in the APIs of TreeItem 
 			// because I'm getting exceptions (node not found / element already registered)
 			// when option 'select' is set to true.
 			// Sometimes the exception occurs also with option 'expand'
 			// if (desc.selected.isActive() === false) {
 				let selected: ProofItem = this.findNode(desc.id);
-				if (!selected && this.ghostNode.isActive()) {
+				if (!selected && this.ghostNode?.isActive()) {
 					selected = this.ghostNode;
 					this.ghostNode.parent = this.ghostNode.parent || this.ghostNode.realNode;
 					if (this.treeviz?.isVisible()) {
@@ -236,8 +278,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// }
 		}
 	}
-	protected expandNode (desc: { id: string, name: string }): void {
-		if (desc && desc.id) {
+	/**
+	 * Expands a node in the view.
+	 */
+	expandNode (desc: { id: string, name: string }): void {
+		if (desc && desc.id && this.isVisible()) {
 			let selected: ProofItem = this.findNode(desc.id);
 			if (selected && selected.parent) {
 				this.view.reveal(selected, { expand: true, select: false, focus: false }).then(() => {
@@ -248,8 +293,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 		}
 	}
-	protected focusNode (desc: { id: string, name: string }): void {
-		if (desc && desc.id) {
+	/**
+	 * Places the focus on a node in the view.
+	 */
+	focusNode (desc: { id: string, name: string }): void {
+		if (desc && desc.id && this.isVisible()) {
 			let selected: ProofItem = this.findNode(desc.id);
 			if (!selected && this.ghostNode.isActive()) {
 				selected = this.ghostNode;
@@ -263,6 +311,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 				});
 			}
 		}
+	}
+	/**
+	 * Resets running flags
+	 */
+	didStopRunning (): void {
+		this.running = false;
+		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
+		// select active node
+		this.focusActiveNode();
 	}
 	/**
 	 * Copies the selected node to the clipboard (i.e., the clipboard will store a copy of the selected node)
@@ -446,13 +503,19 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
+	isVisible (): boolean  {
+		return this.view?.visible;
+	}
+
 	/**
-	 * Force refresh of the tree view
+	 * Refresh tree views (explorer and external treeviz)
 	 */
 	refreshView(opt?: { force?: boolean, source?: string }): void {
 		opt = opt || {};
 		const refresh = () => {
-			this._onDidChangeTreeData.fire();
+			if (this.isVisible()) {
+				this._onDidChangeTreeData.fire();
+			}
 			if (this.treeviz?.isVisible()) {
 				this.treeviz?.renderView(this.getTreeStructure(), { cursor: this.ghostNode?.id, ...opt });
 			}
@@ -491,7 +554,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.root = null;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', false);
 		vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', false);
-		// this.refreshView();
+		this.resetView();
 		this.disableView();
 	}
 
@@ -993,15 +1056,21 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
         }));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.fast-forward", (resource: ProofItem) => {
 			// fast forward proof to a given proof command
-			const action: ProofExecFastForward = { action: "fast-forward", selected: { id: resource.id, name: resource.name } };
-			console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
-			this.client.sendRequest(serverRequest.proverCommand, action);
+			if (resource) {
+				this.fastForwardTo({ id: resource.id, name: resource.name });
+			}
+			// const action: ProofExecFastForward = { action: "fast-forward", selected: { id: resource.id, name: resource.name } };
+			// console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
+			// this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.rewind", (resource: ProofItem) => {
 			// rewind to a given proof command
-			const action: ProofExecRewind = { action: "rewind", selected: { id: resource.id, name: resource.name } };
-			console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
-			this.client.sendRequest(serverRequest.proverCommand, action);
+			if (resource) {
+				this.rewindTo({ id: resource.id, name: resource.name });
+			}
+			// const action: ProofExecRewind = { action: "rewind", selected: { id: resource.id, name: resource.name } };
+			// console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
+			// this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-node", (resource: ProofItem) => {
 			// copy selected node
@@ -1283,9 +1352,50 @@ export class ProofItem extends TreeItem {
 		this.name = name;
 		this.label = this.name;
 	}
-	complete (): void { this.completeFlag = true; }
-	notComplete (): void { this.completeFlag = false; }
+	protected updateIcon (): void {
+		if (this.completeFlag) {
+			if (this.contextValue === "root") {
+				this.iconPath = {
+					light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
+					dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
+				};
+			} else {
+				this.iconPath = {
+					light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-round.svg"),
+					dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-round.svg")
+				};
+			}
+		} else if (this.activeFlag) {
+			this.iconPath = {
+				light: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg"),
+				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg")
+			};	
+		} else if (this.pendingFlag) {
+			this.iconPath = {
+				light: path.join(__dirname, "..", "..", "..", "icons", "svg-star-gray.svg"),
+				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
+			};	
+		} else if (this.visitedFlag) {
+			this.iconPath = {
+				light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
+				dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
+			};	
+		} else {
+			this.iconPath = {
+				light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
+				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")
+			};	
+		}
+	}
 	isComplete(): boolean { return this.completeFlag; }
+	complete (): void {
+		this.completeFlag = true;
+		this.updateIcon();
+	}
+	notComplete (): void {
+		this.completeFlag = false;
+		this.updateIcon();
+	}
 	pending (): void {
 		this.label = this.name;
 		this.activeFlag = false;
@@ -1293,10 +1403,11 @@ export class ProofItem extends TreeItem {
 		this.pendingFlag = true;
 		this.completeFlag = false; // pending automatically removes complete flag
 		// this.noChangeFlag = false;
-		this.iconPath = {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-star-gray.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
-        };
+		this.updateIcon();
+		// this.iconPath = {
+		// 	light: path.join(__dirname, "..", "..", "..", "icons", "svg-star-gray.svg"),
+        //     dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
+        // };
 	}
 	visited (): void {
 		this.label = this.name;
@@ -1304,10 +1415,11 @@ export class ProofItem extends TreeItem {
 		this.visitedFlag = true;
 		this.pendingFlag = false;
 		// this.noChangeFlag = false;
-		this.iconPath = {
-            light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
-        };
+		this.updateIcon();
+		// this.iconPath = {
+        //     light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
+        //     dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
+        // };
 	}
 	notVisited (): void {
 		this.label = this.name;
@@ -1316,10 +1428,11 @@ export class ProofItem extends TreeItem {
 		this.pendingFlag = false;
 		this.completeFlag = false; // not visited automatically resets complete flag -- see implementation of proof explorer in the server
 		// this.noChangeFlag = false;
-		this.iconPath = {
-            light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")
-        };
+		this.updateIcon();
+		// this.iconPath = {
+        //     light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
+        //     dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")
+        // };
 	}
 	active (): void {
 		this.label = this.name;
@@ -1328,10 +1441,11 @@ export class ProofItem extends TreeItem {
 		this.pendingFlag = false;
 		// this.noChangeFlag = false;
 		vscode.commands.executeCommand("proof-explorer.reveal-node", { id: this.id, name: this.name });
-		this.iconPath = {
-            light: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg")
-        };
+		this.updateIcon();
+		// this.iconPath = {
+        //     light: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg"),
+        //     dark: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg")
+        // };
 	}
 	isActive (): boolean {
 		return this.activeFlag;
@@ -1561,9 +1675,6 @@ export class RootNode extends ProofItem {
             light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
             dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
 		};
-		setTimeout(() => {
-			vscode.commands.executeCommand("proof-explorer.focus-node", { id: this.id, name: this.name });
-		}, 400);
 	}
 	isQED (): boolean {
 		return this.proofStatus === QED;
