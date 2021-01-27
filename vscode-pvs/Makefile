@@ -87,6 +87,8 @@ test-proof-explorer:
 	npm run test-proof-explorer
 test-tacticals:
 	npm run test-tacticals
+test-pvsio:
+	npm run test-pvsio
 test:
 	npm run test
 test-all: test
