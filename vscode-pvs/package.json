@@ -220,6 +220,13 @@
 				"icon": "$(tools)"
 			},
 			{
+				"command": "vscode-pvs.search-nasalib",
+				"title": "Search NASALib",
+				"enablement": "pvs-server-active == true && nasalib-present",
+				"category": "pvs",
+				"icon": "$(search-view-icon)"
+			},
+			{
 				"command": "vscode-pvs.x-show-proof",
 				"title": "Show Proof Tree",
 				"enablement": "pvs-server-active == true && in-checker && !autorun",
@@ -914,6 +921,11 @@
 				}
 			],
 			"editor/title": [
+				{
+					"command": "vscode-pvs.search-nasalib",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "navigation@0"
+				},
 				{
 					"command": "vscode-pvs.x-show-proof",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",

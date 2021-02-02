@@ -59,7 +59,7 @@ import {
 	PvsFile,
 	ContextFolder,
 	PvsTheory,
-	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest
+	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, SearchRequest, SearchResponse, SearchResult
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -79,6 +79,7 @@ import { PvsErrorManager } from './pvsErrorManager';
 import { ProcessCode } from './pvsProcess';
 import { PvsProofExplorer } from './providers/pvsProofExplorer';
 import { PvsRenameProvider } from './providers/pvsRenameProvider';
+import { PvsSearchEngine } from './providers/pvsSearchEngine';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -140,6 +141,7 @@ export class PvsLanguageServer {
 	protected renameProvider: PvsRenameProvider;
 	protected linter: PvsLinter;
 	protected proofExplorer: PvsProofExplorer;
+	protected pvsSearchEngine: PvsSearchEngine;
 
 	cliGateway: PvsCliGateway;
 	pvsErrorManager: PvsErrorManager;
@@ -183,6 +185,12 @@ export class PvsLanguageServer {
 
 	getPvsProxy (): PvsProxy {
 		return this.pvsProxy;
+	}
+	getPvsPath (): string {
+		return this.pvsPath ? `${this.pvsPath}` : "";
+	}
+	getNasalibPath (): string {
+		return this.pvsPath ? path.join(this.pvsPath, "nasalib") : "";
 	}
 	
 	//-- utility functions for notifiying the client
@@ -1266,6 +1274,7 @@ export class PvsLanguageServer {
 		this.linter = new PvsLinter();
 		this.cliGateway = new PvsCliGateway(this);
 		this.proofExplorer = new PvsProofExplorer(this.connection, this.pvsProxy, this);
+		this.pvsSearchEngine = new PvsSearchEngine(this.connection, this);
 	}
 
 	getProofExplorer (): PvsProofExplorer {
@@ -1792,6 +1801,12 @@ export class PvsLanguageServer {
 				this.evalExpressionRequest(args);
 			});
 
+			// search request
+			this.connection?.onRequest(serverRequest.search, async (req: SearchRequest) => {
+				const ans: SearchResult[] = await this.pvsSearchEngine?.searchNasalib(req.searchString);
+				const res: SearchResponse = { req, ans };
+				this.connection?.sendNotification(serverEvent.searchResponse, res);
+			});
 
 			// prover commands
 			this.connection?.onRequest(serverRequest.proverCommand, async (desc: ProofExecCommand | ProofEditCommand) => {

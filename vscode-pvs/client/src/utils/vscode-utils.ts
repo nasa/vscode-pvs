@@ -373,8 +373,8 @@ export async function openWorkspace (): Promise<void> {
 /**
  * Opens a pvs file in the editor and adds the containing folder in file explorer
  */
-export async function openPvsFile (opt?: PvsFile): Promise<void> {
-    const selection: vscode.Uri[] = (opt) ? [ vscode.Uri.file(fsUtils.desc2fname(opt)) ] : await vscode.window.showOpenDialog({
+export async function openPvsFile (file?: PvsFile): Promise<void> {
+    const selectedFiles: vscode.Uri[] = (file) ? [ vscode.Uri.file(fsUtils.desc2fname(file)) ] : await vscode.window.showOpenDialog({
         canSelectFiles: true,
         canSelectFolders: false,
         canSelectMany: false,
@@ -383,8 +383,8 @@ export async function openPvsFile (opt?: PvsFile): Promise<void> {
             "PVS": [ ".pvs" ]
         }
     });
-    if (selection && selection.length === 1) {
-        const fname: string = selection[0].path;
+    if (selectedFiles && selectedFiles.length === 1) {
+        const fname: string = selectedFiles[0].path;
         const contextFolder: string = fsUtils.getContextFolder(fname);
         const fileUri: vscode.Uri = vscode.Uri.file(fname);
         const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
@@ -393,6 +393,18 @@ export async function openPvsFile (opt?: PvsFile): Promise<void> {
             vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
         }
         vscode.window.showTextDocument(fileUri, { preserveFocus: true });
+    }
+}
+/**
+ * Open a pvs file without adding the file to the workspace
+ * @param file 
+ * @param opt 
+ */
+export async function previewPvsFile (fname?: string, opt?: { selection?: vscode.Range }): Promise<void> {
+    opt = opt || {};
+    if (fname) {
+        const fileUri: vscode.Uri = vscode.Uri.file(fname);
+        vscode.window.showTextDocument(fileUri, { viewColumn: vscode.ViewColumn.One, preserveFocus: true, selection: opt?.selection, preview: true });
     }
 }
 /**

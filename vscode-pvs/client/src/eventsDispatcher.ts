@@ -54,6 +54,7 @@ import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsLogger } from "./views/vscodePvsLogger";
 import { VSCodePvsPackageManager } from "./providers/vscodePvsPackageManager";
 import { VSCodePvsPlotter } from "./views/vscodePvsPlotter";
+import { VSCodePvsSearch } from "./views/vscodePvsSearch";
 
 // FIXME: use Backbone.Model
 export class EventsDispatcher {
@@ -67,6 +68,7 @@ export class EventsDispatcher {
     protected logger: VSCodePvsLogger;
     protected packageManager: VSCodePvsPackageManager;
     protected plotter: VSCodePvsPlotter;
+    protected search: VSCodePvsSearch;
 
     protected inChecker: boolean = false;
     protected quietMode: boolean = false;
@@ -82,7 +84,8 @@ export class EventsDispatcher {
         proofMate: VSCodePvsProofMate,
         logger: VSCodePvsLogger,
         packageManager: VSCodePvsPackageManager,
-        plotter: VSCodePvsPlotter
+        plotter: VSCodePvsPlotter,
+        search: VSCodePvsSearch
     }) {
         this.client = client;
         this.statusBar = handlers.statusBar;
@@ -94,6 +97,7 @@ export class EventsDispatcher {
         this.logger = handlers.logger;
         this.packageManager = handlers.packageManager;
         this.plotter = handlers.plotter;
+        this.search = handlers.search;
     }
     protected resource2desc (resource: string | { 
         fileName?: string, fileExtension?: string, contextFolder?: string, theoryName?: string, formulaName?: string,
@@ -184,6 +188,7 @@ export class EventsDispatcher {
 		this.client.onRequest(serverEvent.pvsVersionInfo, (version: PvsVersionDescriptor) => {
 			if (version) {
                 this.statusBar.pvsReady(version);
+                vscode.commands.executeCommand('setContext', 'nasalib-present', !!version["nasalib-version"]);
                 this.statusBar.showDownloadNasalibButton(!version["nasalib-version"]);
                 // this.proofExplorer.pvsReady(version);
                 // make sure a valid workspace is open in vscode
@@ -654,6 +659,9 @@ export class EventsDispatcher {
         // commands invoked using code lens, emacs bindings, explorer, etc
         //---------------------------------------------------------
 
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.search-nasalib", () => {
+            this.search.reveal();
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.view-prelude-file", () => {
             this.client.onRequest(serverEvent.viewPreludeFileResponse, (desc: { contextFolder: string, fileName: string, fileExtension: string }) => {
                 vscodeUtils.showTextDocument(desc);

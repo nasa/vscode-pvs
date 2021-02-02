@@ -396,7 +396,16 @@ export declare interface TheoryDescriptor extends PvsTheory {
 export declare interface PvsFileDescriptor extends PvsFile {
 	theories: TheoryDescriptor[];
 }
-
+export declare interface SearchRequest {
+	searchString: string
+}
+export interface SearchResult extends PvsFile {
+	line: number
+};
+export declare interface SearchResponse {
+	req: SearchRequest,
+	ans: SearchResult[]
+}
 
 export const serverRequest = {
 	typecheckFile: "pvs.typecheck-file",
@@ -441,6 +450,8 @@ export const serverRequest = {
 
 	proverCommand: "pvs.prover-command",
 
+	search: "pvs.search",
+
 	listDownloadableVersions: "pvs.list-downloadable-versions",
 	downloadPvs: "pvs.download-pvs",
 	downloadLicensePage: "pvs.download-license-page",
@@ -468,6 +479,7 @@ export const serverEvent = {
 	startEvaluatorResponse: "pvs.response.start-evaluator",
 	hp2pvsResponse: "pvs.response.hp-to-pvs-file",
 	quitProofResponse: "pvs.response.quit-proof",
+	searchResponse: "pvs.response.search",
 
 	viewPreludeFileResponse: "pvs.response.view-prelude-file",
 
