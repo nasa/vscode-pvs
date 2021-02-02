@@ -24,6 +24,9 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.37 (2021.02.02)]()  
+  -Added interface to search NASALib definitions      
+
 - [1.0.36 (2020.01.27)]()  
   -Added support for prover command 'comment'  
   -Improved rendering in proof-explorer  
