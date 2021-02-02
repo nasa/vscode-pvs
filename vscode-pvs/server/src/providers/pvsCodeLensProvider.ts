@@ -188,11 +188,14 @@ export class PvsCodeLensProvider {
                         const lines: string[] = docUp.split("\n");
                         const line: number = lines.length - 1;
                         const character: number = 0;
+
+                        const realContextFolder: string = contextFolder.endsWith("/pvsbin") || contextFolder.endsWith("/pvsbin/") ?
+                            contextFolder.substring(0, contextFolder.lastIndexOf("/pvsbin")) : contextFolder;
                         
                         const args = {
                             fileName,
                             fileExtension: (utils.tccFormulaRegexp.test(formulaName)) ? ".tccs" : ".pvs",
-                            contextFolder,
+                            contextFolder: realContextFolder,
                             theoryName, 
                             formulaName,
                             proofFile: {

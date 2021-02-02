@@ -1505,10 +1505,16 @@ export class PvsProxy {
 		formulaName: string, 
 		contextFolder: string, 
 		proofDescriptor: ProofDescriptor
+	}, opt?: { 
+		usePvsBinFolder?: boolean
 	}): Promise<string> {
+		opt = opt || {};
+		// by default, save under pvsbin
+		opt.usePvsBinFolder = opt.usePvsBinFolder === undefined ? true : !!opt.usePvsBinFolder;
+		const contextFolder: string = opt.usePvsBinFolder ? path.join(desc.contextFolder, "pvsbin") : desc.contextFolder;
 		// save prooflite
 		const fname: string = fsUtils.desc2fname({
-			contextFolder: desc.contextFolder,
+			contextFolder,
 			fileName: desc.theoryName,
 			fileExtension: ".prl"
 		});
