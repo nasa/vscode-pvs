@@ -81,6 +81,12 @@ The main functionalities provided by the environment are as follows:
 - **Proof Explorer + Integrated Terminal**: Interactive tree view for viewing and editing the current proof. An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
+- **Plot Executable Functions**: Executable functions that return a list of real numbers can be rendered in a plot diagram.
+<br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-plot-expression.gif" width="600">
+
+- **Search NASALib**: Search definitions and theorems in [NASALib](https://github.com/nasa/pvslib), an extensive PVS library developed and maintained by the NASA Langley Formal Methods Team.
+<br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-search-nasalib.gif" width="600">
+
 <br>
 
 ## Structure
