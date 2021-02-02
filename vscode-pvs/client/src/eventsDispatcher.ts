@@ -659,6 +659,9 @@ export class EventsDispatcher {
         // commands invoked using code lens, emacs bindings, explorer, etc
         //---------------------------------------------------------
 
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.comment-prooflite-line", () => {
+            vscodeUtils.commentProofliteInActiveEditor();
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.search-nasalib", () => {
             this.search.reveal();
         }));

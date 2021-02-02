@@ -213,6 +213,12 @@
 		},
 		"commands": [
 			{
+				"command": "vscode-pvs.comment-prooflite-line",
+				"title": "Add prooflite comment %|-",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
 				"command": "vscode-pvs.typecheck-file",
 				"title": "Typecheck File",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
@@ -1221,6 +1227,16 @@
 			{
 				"key": "shift+alt+x",
 				"command": "vscode-pvs.metax"
+			},
+			{
+				"key": "ctrl+cmd+/",
+				"command": "vscode-pvs.comment-prooflite-line",
+				"when": "resourceLangId == pvs"
+			},
+			{
+				"key": "ctrl+alt+/",
+				"command": "vscode-pvs.comment-prooflite-line",
+				"when": "resourceLangId == pvs"
 			},
 			{
 				"key": "ctrl+alt+t",

@@ -482,6 +482,49 @@ export async function openProofFile (opt?: { defaultFolder?: string, defaultExte
     return null;
 }
 
+/**
+ * Toggles a %|- comment on the selected line(s) in the active document opened in the editor
+ */
+export async function commentProofliteInActiveEditor (): Promise<boolean> {
+    const activeTextEditor: vscode.TextEditor = vscode.window?.activeTextEditor;
+    if (activeTextEditor) {
+        const activeDocument: vscode.TextDocument = activeTextEditor?.document;
+        if (activeDocument) {
+            const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
+            const selection: vscode.Selection = activeTextEditor.selection;
+            if (selection?.start) {
+                const endLine: number = selection.end.line;
+                let addComment: boolean = true;
+                for (let i = selection.start.line; i <= endLine; i++) {
+                    const textline: vscode.TextLine = activeDocument.lineAt(i);
+                    if (textline) {
+                        if (i === selection.start.line) {
+                            // the first line decides whether we are adding or removing the comment
+                            addComment = !textline.text?.trim().startsWith("%|-");
+                        }
+                        if (addComment) {
+                            // add %|- if not present
+                            if (!textline.text?.trim().startsWith("%|-")) {
+                                const newContent: string = "%|-" + textline.text;
+                                edit.replace(activeDocument.uri, textline.range, newContent);
+                            }
+                        } else {
+                            // remove %|- if present
+                            if (textline.text?.trim().startsWith("%|-")) {
+                                const newContent: string = textline.text.replace("%|-", "");
+                                edit.replace(activeDocument.uri, textline.range, newContent);
+                            }
+                        }
+                    }
+                }
+                const success: boolean = await vscode.workspace.applyEdit(edit);
+                return success;
+            }
+        }
+    }
+    return false;
+}
+
 export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: string }): Promise<PvsTheory | null> {
 	if (resource) {
         if (resource["contextValue"]) {
