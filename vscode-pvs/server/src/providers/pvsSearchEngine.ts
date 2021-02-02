@@ -55,7 +55,8 @@ export class PvsSearchEngine {
     async searchNasalib (searchString: string): Promise<SearchResult[]> {
 		if (searchString) {
 			const nasalibPath: string = this.pvsLanguageServer.getNasalibPath();
-			const findAll: string = `cd ${nasalibPath} && ./find-all ${searchString}`;
+			const normalizedSearchString: string = searchString.replace(/\|/g, "\\|");
+			const findAll: string = `cd ${nasalibPath} && ./find-all "${normalizedSearchString}"`;
 			console.log(`[pvs-search-engine] ${findAll}`);
 			process.env["PVS_DIR"] = this.pvsLanguageServer.getPvsPath();
 			process.env["PVS_LIBRARY_PATH"] = nasalibPath;
@@ -94,7 +95,7 @@ export class PvsSearchEngine {
 						}
 					}
 				}
-				console.log(res);
+				// console.log(res);
 				return res;
 			}
 		}

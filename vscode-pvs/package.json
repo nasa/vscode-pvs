@@ -765,6 +765,11 @@
 					"group": "context-menu/ctrl-1.1"
 				},
 				{
+					"command": "vscode-pvs.search-nasalib",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "context-menu/ctrl-1.1.1"
+				},
+				{
 					"command": "vscode-pvs.view-prelude-file",
 					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
 					"group": "context-menu/ctrl-1.2"
@@ -1175,6 +1180,11 @@
 					"command": "vscode-pvs.open-pvs-workspace",
 					"when": "view == workspace-explorer-view",
 					"group": "navigation"
+				},
+				{
+					"command": "vscode-pvs.search-nasalib",
+					"when": "view == workspace-explorer-view",
+					"group": "ctrl-1.1.1"
 				},
 				{
 					"command": "vscode-pvs.view-prelude-file",

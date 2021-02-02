@@ -79,14 +79,14 @@ $(document).ready(function() {
 });
 </script>
 <body style="overflow:auto; background:whitesmoke; font-size:small; padding-top:1em;">
-    <div class="container-fluid mb-3" style="position:sticky; top:0px; padding:4px; z-index:1;">
+    <div class="container-fluid mb-1" style="position:sticky; top:0px; padding:4px; z-index:1;">
         <div class="input-group input-group-sm mb-1">
-            <input type="text" class="form-control search-input" placeholder="Search NASALib..." aria-label="Search NASALib" value="{{searchString}}">
+            <input type="text" class="form-control search-input" placeholder="{{#if searchString}}{{searchString}}{{else}}Search NASALib...{{/if}}" aria-label="Search NASALib" value="{{searchString}}">
             <div class="input-group-append">
                 <button class="btn btn-primary search-btn" type="button"><i class="fa fa-search"></i></button>
             </div>
         </div>
-        <div class="card filter">
+        <div class="card filter" style="display:{{#if res}}block{{else}}none{{/if}};">
             <input class="form-control form-control-sm filter-input" type="text" placeholder="Filter results...">
         </div>
     </div>
@@ -153,7 +153,6 @@ $(document).ready(function() {
 </html>`;
 
 import * as vscodeUtils from '../utils/vscode-utils';
-import * as fsUtils from '../common/fsUtils';
 
 export class VSCodePvsSearch {
     protected panel: WebviewPanel;
