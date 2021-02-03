@@ -59,6 +59,27 @@ export class PvsCompletionProvider {
 		body: string[]
 	}[];
 
+	protected lowerAndUpperCase (elems: string[], kind: CompletionItemKind): CompletionItem[] {
+		if (elems) {
+			return elems.map(keyword => {
+				return {
+					label: keyword !== "o" ? keyword.toLocaleUpperCase() : keyword,
+					insertText: keyword.toLocaleUpperCase(),
+					commitCharacters: ['\n'],
+					kind
+				};
+			}).concat(elems.map(keyword => {
+				return {
+					label: keyword.toLocaleLowerCase(),
+					insertText: keyword.toLocaleUpperCase(),
+					commitCharacters: ['\n'],
+					kind
+				};
+			}));
+		}
+		return [];
+	}
+
 	/**
 	 * @constructor
 	 * @param declarationProvider Service used by IntelliSense engine to retrieve type information
@@ -73,30 +94,9 @@ export class PvsCompletionProvider {
 				kind: CompletionItemKind.Constant
 			};
 		});
-		const keywords: CompletionItem[] = PVS_KEYWORDS.map((keyword) => {
-			return {
-				label: keyword,
-				insertText: keyword,
-				commitCharacters: ['\n'],
-				kind: CompletionItemKind.Keyword
-			};
-		});
-		const declarationKeywords: CompletionItem[] = INNER_DECLARATION_KEYWORDS.map((keyword) => {
-			return {
-				label: keyword,
-				insertText: keyword,
-				commitCharacters: ['\n'],
-				kind: CompletionItemKind.Keyword
-			};
-		});
-		const truefalse: CompletionItem[] = PVS_TRUE_FALSE.map((x) => {
-			return {
-				label: x.toUpperCase(),
-				insertText: x.toUpperCase(),
-				commitCharacters: ['\n'],
-				kind: CompletionItemKind.Constant
-			};
-		});
+		const keywords: CompletionItem[] = this.lowerAndUpperCase(PVS_KEYWORDS, CompletionItemKind.Keyword);
+		const declarationKeywords: CompletionItem[] = this.lowerAndUpperCase(INNER_DECLARATION_KEYWORDS, CompletionItemKind.Keyword);
+		const truefalse: CompletionItem[] = this.lowerAndUpperCase(PVS_TRUE_FALSE, CompletionItemKind.Constant);
 		const functions: CompletionItem[] = PVS_LIBRARY_FUNCTIONS.map((x) => {
 			return {
 				label: x,
@@ -105,6 +105,7 @@ export class PvsCompletionProvider {
 				kind: CompletionItemKind.Function
 			};
 		});
+
 		this.coreCompletionItems = keywords.concat(truefalse).concat(functions);
 		this.declarationCompletionItems = types.concat(declarationKeywords);
 		this.loadMathSymbols(); // async call, no need to wait the completion of the call
@@ -232,9 +233,9 @@ export class PvsCompletionProvider {
 						ans = ans.concat(this.declarationCompletionItems.filter((item: CompletionItem) => {
 							return item.label.toUpperCase().startsWith(currentInput.toUpperCase());
 						}));
-						if (ans && ans.length) {
-							return ans;
-						}
+						// if (ans && ans.length) {
+						// 	return ans;
+						// }
 					}
 
 					let match: RegExpMatchArray = null;
@@ -289,7 +290,7 @@ export class PvsCompletionProvider {
 					
 					// add core completion items
 					ans = ans.concat(this.coreCompletionItems.filter((item: CompletionItem) => {
-						return item.label.startsWith(currentInput.toUpperCase());
+						return item.label.startsWith(currentInput);
 					}));
 					return Promise.resolve(ans);
 				}

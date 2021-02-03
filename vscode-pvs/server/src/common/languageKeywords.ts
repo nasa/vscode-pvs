@@ -120,8 +120,8 @@ export const PVS_KEYWORDS = [
 	"WHEN", "WHERE", "WITH", "XOR"
 ];
 
-export const PVS_TRUE_FALSE: string[] = [ "true", "false" ];
-export const PVS_TRUE_FALSE_REGEXP_SOURCE: string = "true|false";
+export const PVS_TRUE_FALSE: string[] = [ "TRUE", "FALSE" ];
+export const PVS_TRUE_FALSE_REGEXP_SOURCE: string = PVS_TRUE_FALSE.join("|");
 
 export const PVS_RESERVED_WORDS_REGEXP_SOURCE: string = regExpSource(PVS_KEYWORDS.concat(DECLARATION_KEYWORDS));
 export const PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE: string = BRACKETS_REGEXP + "|" + PVS_OPERATORS_REGEXP_SOURCE;// + "|" + regExp(PVS_OPERATORS);
