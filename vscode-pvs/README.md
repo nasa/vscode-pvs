@@ -3,6 +3,7 @@
 [![version](https://vsmarketplacebadge.apphb.com/version/paolomasci.vscode-pvs.svg)](https://marketplace.visualstudio.com/items?itemName=paolomasci.vscode-pvs)
 [![installs](https://vsmarketplacebadge.apphb.com/installs-short/paolomasci.vscode-pvs.svg)](https://marketplace.visualstudio.com/items?itemName=paolomasci.vscode-pvs)
 [![license](https://img.shields.io/badge/license-NASA-blue.svg)](https://opensource.org/licenses/NASA-1.3)
+[![chat](https://img.shields.io/badge/Chat%20on-PVS%20Google%20Group-blue.svg)](https://groups.google.com/g/pvs-group)
 
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
 The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
