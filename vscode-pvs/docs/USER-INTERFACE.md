@@ -1,11 +1,11 @@
 # VSCode-PVS User Interface
-This document illustrates the layout and functionalities of VSCode-PVS.
+This document illustrates the layout and functionalities of VSCode-PVS, as well as tips on how to optimize the user interface to improve your user experience with VSCode-PVS and Visual Studio Code in general.
 
 <br>
 
 ## Layout
 
-The layout of VSCode-PVS includes 6 main elements.
+The layout of VSCode-PVS includes 7 main elements.
 
 <img src="../screenshots/vscode-pvs-user-interface-annotated.png">
 
@@ -17,6 +17,7 @@ The layout of VSCode-PVS includes 6 main elements.
 4. [Proof Mate]() view. Located in the vscode side panel, this view provides *hints* on proof commands that can be used to make progress with the current proof. It also contains a *sketchpad* that stores proof commands clipped from the current proof shown in Proof Explorer (e.g., when editing or repairing a proof).
 5. [Editor]() view. Located in the vscode central panel, this view allows to edit PVS files.
 6. [Prover Terminal]() view. Located in the vscode lower panel, this view provides an interactive prompt for sending proof commands to the PVS theorem prover.
+7. [Quick Access]() toolbar. Located above the central editor panel, this toolbar provides convenient access to frequently used PVS functions, including: *search NASALib*, *show proof tree*, *prove formula*, *evaluate in PVSio*, *typecheck*, and *change PVS workspace*.
 
 <br><br>
 
@@ -117,9 +118,9 @@ Auto-completion is provided (using the TAB key) for prover commands, as well as 
 <br><br>
 
 ## Hot-Keys combinations
-VSCode-PVS provides a series of hot-key combinations providing shortcuts to frequent commands and editor functions.
+VSCode-PVS provides a series of hot-key combinations providing shortcuts to frequent PVS commands and editor functions.
 
-### Command Shortcuts
+### Commands Shortcuts
 Command shortcuts are initiated with the `M-x` sequence, which is obtained by pressing the `META` key and the `x` letter simultaneously. The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` (`⌥`) key.
 
 Frequent commands:
@@ -184,9 +185,10 @@ Editor shortcuts do not require an initialization sequence, and most of them are
 <br><br>
 
 ## Survival Tips
-The following tips will help improve your user experience with VSCode-PVS and, in general, with Visual Studio Code.
+The following tips can improve your user experience with VSCode-PVS and, in general, with Visual Studio Code.
 
-1. Optimize the `activity bar`, by hiding functions that you never use or use rarely. PVS users may want to consider hiding the following functions: `Accounts`, `Source Control`, and `Run`.
-2. Optimize the `status bar`, by hiding elements that you never use. PVS users may want to consider hiding the following functions: `Problems`, `Editor Encoding`, `Editor End of Line`, `Tweet Feedback`.
-3. Optimize the `explorer view`, by hiding components that you never use. PVS users may want to consider hiding the following components: `Open Editors`, `Outline`, `NPM Scripts`
-4. Select the `PVS Icon Theme`, which will improve the visibility of .pvs files in the native File Explorer provided by Visual Studio Code.
+1. Optimize the `activity bar`. PVS users may want to consider hiding the following functions: `Accounts`, `Source Control`, and `Run`. See [guidance on how to hide/reveal/reorder items in the activity bar](https://code.visualstudio.com/docs/getstarted/userinterface#_activity-bar)
+2. Optimize the `status bar`. PVS users may want to consider hiding the following functions: `Problems`, `Editor Encoding`, `Editor End of Line`, `Tweet Feedback`.
+3. Optimize the `side panel`. PVS users may want to consider hiding the following components: `Open Editors`, `Outline`, `NPM Scripts`. See [guidance on how to hide/reveal views in the side panel](https://code.visualstudio.com/docs/getstarted/userinterface#_views).
+4. Select the `PVS` file icon theme. The theme will improve the visibility of `.pvs` files in File Explorer. See [guidance on how to select an icon theme](https://code.visualstudio.com/docs/getstarted/themes#_file-icon-themes).
+5. Select a color theme that is comfortable for you. Visual Studio Code uses a `dark theme` by default. If you prefer a `light theme`, see [guidance on how to change the color theme](https://code.visualstudio.com/docs/getstarted/themes#_selecting-the-color-theme).
