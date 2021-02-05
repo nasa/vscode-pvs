@@ -187,7 +187,7 @@ Editor shortcuts do not require an initialization sequence, and most of them are
 ## Survival Tips
 The following tips can improve your user experience with VSCode-PVS and, in general, with Visual Studio Code.
 
-1. Optimize the `activity bar`. PVS users may want to consider hiding the following functions: `Accounts`, `Source Control`, and `Run`. See [guidance on how to hide/reveal/reorder items in the activity bar](https://code.visualstudio.com/docs/getstarted/userinterface#_activity-bar)
+1. Optimize the `activity bar`. PVS users may want to consider hiding the following functions: `Accounts`, `Source Control`, and `Run`. See [guidance on how to hide/reveal/reorder items in the activity bar](https://code.visualstudio.com/docs/getstarted/userinterface#_activity-bar).
 2. Optimize the `status bar`. PVS users may want to consider hiding the following functions: `Problems`, `Editor Encoding`, `Editor End of Line`, `Tweet Feedback`.
 3. Optimize the `side panel`. PVS users may want to consider hiding the following components: `Open Editors`, `Outline`, `NPM Scripts`. See [guidance on how to hide/reveal views in the side panel](https://code.visualstudio.com/docs/getstarted/userinterface#_views).
 4. Select the `PVS` file icon theme. The theme will improve the visibility of `.pvs` files in File Explorer. See [guidance on how to select an icon theme](https://code.visualstudio.com/docs/getstarted/themes#_file-icon-themes).

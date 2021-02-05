@@ -394,10 +394,11 @@ export class EventsDispatcher {
                     break;
                 }
                 //---------------
-                case "did-start-proof": {
+                case "did-start-proof": { // this event is for interactive proof sessions
                     this.proofExplorer.startProof();
                     this.proofMate.startProof();
                     await this.proofMate.loadSketchpadClips(); // loads sketchpad clips from the .jprf file
+                    this.proofExplorer.focusActiveNode({ force: true }); // this will automatically open the view, in the case the view was hidden
                     // this.statusBar.showInterruptButton();
                     // this.vscodePvsTerminal.maximizePanel();
                     break;

@@ -169,10 +169,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 
 		// install view handlers
 		this.view.onDidChangeVisibility((evt: vscode.TreeViewVisibilityChangeEvent) => {
-			// refresh the tree view
-			this.refreshView({ force: true });
-			// highlight active node
-			this.focusActiveNode();
+			if (evt?.visible) {
+				// refresh the tree view
+				this.refreshView({ force: true });
+				// highlight active node
+				this.focusActiveNode();
+			}
 		});
 	
 	}
@@ -244,17 +246,20 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Places focus on the active node in the view.
 	 */
-	focusActiveNode (): void {
+	focusActiveNode (opt?: { force?: boolean }): void {
 		if (this.activeNode) {
-			this.revealNode({ id: this.activeNode.id, name: this.activeNode.name });
-			this.focusNode({ id: this.activeNode.id, name: this.activeNode.name })
+			this.revealNode({ id: this.activeNode.id, name: this.activeNode.name }, opt);
+			this.focusNode({ id: this.activeNode.id, name: this.activeNode.name }, opt);
+			if (opt?.force) {
+				this.refreshView({ force: true });
+			}
 		}
 	}
 	/**
 	 * Reveals a node in the view.
 	 */
-	revealNode (desc: { id: string, name: string }): void {
-		if (desc && desc.id && this.isVisible()) {
+	revealNode (desc: { id: string, name: string }, opt?: { force?: boolean }): void {
+		if (desc && desc.id && (this.isVisible() || opt?.force)) {
 			// there is something I don't understand in the APIs of TreeItem 
 			// because I'm getting exceptions (node not found / element already registered)
 			// when option 'select' is set to true.
@@ -296,8 +301,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Places the focus on a node in the view.
 	 */
-	focusNode (desc: { id: string, name: string }): void {
-		if (desc && desc.id && this.isVisible()) {
+	focusNode (desc: { id: string, name: string }, opt?: { force?: boolean }): void {
+		if (desc && desc.id && (this.isVisible() || opt?.force)) {
 			let selected: ProofItem = this.findNode(desc.id);
 			if (!selected && this.ghostNode.isActive()) {
 				selected = this.ghostNode;
@@ -306,7 +311,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			if (selected && selected.parent) {
 				this.view.reveal(selected, { expand: 2, select: true, focus: true }).then(() => {
 				}, (error: any) => {
-					// console.error(selected);
+					console.error(selected);
 					// console.error(error);
 				});
 			}
@@ -513,7 +518,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	refreshView(opt?: { force?: boolean, source?: string }): void {
 		opt = opt || {};
 		const refresh = () => {
-			if (this.isVisible()) {
+			if (this.isVisible() || opt?.force) {
 				this._onDidChangeTreeData.fire();
 			}
 			if (this.treeviz?.isVisible()) {
