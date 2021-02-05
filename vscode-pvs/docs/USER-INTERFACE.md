@@ -117,10 +117,12 @@ Auto-completion is provided (using the TAB key) for prover commands, as well as 
 <br><br>
 
 ## Hot-Keys combinations
-VSCode-PVS provides a series of hot-key combinations that facilitate access to frequent functions.
-The hot-key combinations is activated by the `M-x` sequence, which is obtained by pressing the `META` key and the `x` letter simultaneously. The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` key.
+VSCode-PVS provides a series of hot-key combinations providing shortcuts to frequent commands and editor functions.
 
-Hot-keys for frequent commands on pvs files:
+### Command Shortcuts
+Command shortcuts are initiated with the `M-x` sequence, which is obtained by pressing the `META` key and the `x` letter simultaneously. The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` (`⌥`) key.
+
+Frequent commands:
 - `M-x show-tccs` *(show proof obligations for the file open in the editor)*
 - `M-x tc` *(typecheck the file open in the editor)*
 - `M-x tcp` *(typecheck the file open in the editor and re-run all proofs in the file)*
@@ -129,10 +131,11 @@ Hot-keys for frequent commands on pvs files:
 - `M-x prt` *(prove theory, i.e., re-run all proofs in the current theory)*
 - `M-x pri` *(prove importchain, i.e., re-run all proofs in the current theory and in the imported theories)*
 - `M-x pvsio` *(start an interactive PVSio evaluator session for the theory opened in the editor)*
+- `M-x x-show-proof` *(shows the proof tree. This command is available only when a prover session is active)*
 - `M-x show-proof-summary` *(show proof summary)*
 - `M-x vpf` *(view prelude file)*
 
-Additional hot-keys:
+Additional commands:
 - `M-x add-pvs-library` *(adds a folder to the vscode-pvs library path)*
 - `M-x pvs-library-path` *(shows the pvs library path specified in vscode-pvs settings)*
 - `M-x reset-pvs-library-path` *(resets the vscode-pvs library path to empty)*
@@ -147,22 +150,43 @@ Additional hot-keys:
 - `M-x settings` *(shows vscode-pvs settings)*
 - `M-x welcome` *(shows vscode-pvs welcome screen)*
 
-<br><br>
+<br>
 
-## Useful Visual Studio Code shortcuts
+### Editor Shortcuts
+Editor shortcuts do not require an initialization sequence, and most of them are native functions of Visual Studio Code. 
 
 [Linux](https://code.visualstudio.com/shortcuts/keyboard-shortcuts-linux.pdf)
+- `ctrl f ` *(find in file)*
+- `ctrl shift f ` *(find in workspace)*
+- `ctrl | ` *(split screen)*
+
+- `ctrl / ` *(comment selected lines)*
+- `ctrl alt / ` *(comment as inline prooflite script)*
+
 - `ctrl shift p ` *(command palette)*
 - `ctrl shift l ` *(add more cursors at each occurrence of the current selected text)*
 - `ctrl alt ↓ ` *(add a cursor at the line below)*
-- `ctrl shift f ` *(find in workspace)*
-- `ctrl f ` *(find in file)*
 
 <br>
 
 [MacOS](https://code.visualstudio.com/shortcuts/keyboard-shortcuts-macos.pdf)
+- `⌘ f ` *(find in file)*
+- `⌘ ⇧ f ` *(find in workspace)*
+- `⌘ | ` *(split screen)*
+
+- `⌘ / ` *(comment selected lines)*
+- `⌘ ^ / ` *(comment as inline prooflite script)*
+
 - `⌘ ⇧ p ` *(command palette)*
 - `⌘ ⇧ l ` *(add more cursors at each occurrence of the current selected text)*
 - `⌘ ⌥ ↓ ` *(add a cursor at the line below)*
-- `⌘ ⇧ f ` *(find in workspace)*
-- `⌘ f ` *(find in file)*
+
+<br><br>
+
+## Survival Tips
+The following tips will help improve your user experience with VSCode-PVS and, in general, with Visual Studio Code.
+
+1. Optimize the `activity bar`, by hiding functions that you never use or use rarely. PVS users may want to consider hiding the following functions: `Accounts`, `Source Control`, and `Run`.
+2. Optimize the `status bar`, by hiding elements that you never use. PVS users may want to consider hiding the following functions: `Problems`, `Editor Encoding`, `Editor End of Line`, `Tweet Feedback`.
+3. Optimize the `explorer view`, by hiding components that you never use. PVS users may want to consider hiding the following components: `Open Editors`, `Outline`, `NPM Scripts`
+4. Select the `PVS Icon Theme`, which will improve the visibility of .pvs files in the native File Explorer provided by Visual Studio Code.
