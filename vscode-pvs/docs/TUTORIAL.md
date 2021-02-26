@@ -21,8 +21,8 @@ This first example demonstrates the following functionalities of VSCode-PVS:
 
 Try the following actions in VSCode-PVS:
 
-1. Create a new folder `workspaces` under your Home folder. You will be storing all your pvs files in this folder.
-> Important: Please do not store your `pvs` files on your `Desktop`, because PVS may be unable to operate in that folder. Do not use your `pvs installation folder` either. The recommended way to proceed is to create a subfolder in your home directory, and develop your pvs theories in such subfolder.
+1. Create a new folder `workspaces` under your Home folder. You can use it as a base to create sub-folders containing your pvs developments.
+> Important: Please **do not** store your `pvs` files on your `Desktop`, because that folder may have special permission on certain OS, and PVS may be unable to operate in that folder. **Do not** use your `pvs installation folder` either. The recommended way to proceed is to create a folder (e.g., `workspaces`) in your home directory, and develop your pvs theories under such folder.
 
 2. Open the folder in Visual Studio Code, and then create a new file `helloworld.pvs` in it.
 
@@ -156,24 +156,41 @@ always_positive :
  >> 
 ```
 
-3. To prove the theorem, enter the following proof command at the prover prompt: `grind`
-> Hint 1: Formulate a theorem that is not true, and check how the theorem prover is able to provide useful diagnostics that can help fix the formulation. For example, try to prove the following theorem `always_positive_alt`, where the condition expressed in `always_positive` has been changed from `>=` to `>`:  
-> ```pvs
-> always_positive_alt: THEOREM
->   FORALL (x: real): abs(x) > 0
-> ```
-> The proof of this theorem cannot be completed with `grind`, and the theorem prover returns the following diagnostic information:
-> ```
-> {-1}   real_pred(x!1)
->   ├───────
-> {1}   x!1 > 0
-> {2}   -x!1 > 0
-> ```
-> Formula `{-1}` (called antecedent) indicates that `x` is a real number (`x!1` is a skolem constant representing a generic `x`).
-> Formulas `{1}` and `{2}` (called succedents) indicate that the theorem is true when `x > 0` and `x < 0`, respectively.
-> Based on these diagnostics, one can deduce that the theorem prover was unable to complete the proof when `x = 0`, as it is the only missing case.
+3. To prove the theorem, enter the following proof command at the prover prompt: `(grind)`
 
-> Hint 2: Check the functionalities of `PVS Proof Explorer` located in the side panel, under file explorer. It shows the proof steps and provides functions for proof playback and proof editing.
+```
+ >> (grind)
+
+Q.E.D.
+```
+> Hint 1: Check the functionalities of `PVS Proof Explorer` located in the side panel, under file explorer. It shows the proof steps and provides functions for proof playback and proof editing.
+
+<br>
+
+## Diagnostic messages
+During proof attempts, the PVS theorem prover provides diagnostic messages that can help you make progress with a proof, or fix broken proof specifications in the case there is an error. To become fluent with PVS, you should try to get familiar with these diagnostic messages.
+
+For example, try to prove the following incorrect theorem `always_positive_broken`:  
+
+```pvs
+always_positive_broken: THEOREM
+    FORALL (x: real): abs(x) > 0
+```
+
+Differently from `always_positive`, this incorrect theorem cannot be completed with `(grind)`, and the theorem prover returns the following diagnostic message:
+
+```
+ {-1}   real_pred(x!1)
+   ├───────
+ {1}   x!1 > 0
+ {2}   -x!1 > 0
+```
+
+The diagnostic message indicates the following:
+- Formula `{-1}` (called antecedent) indicates that `x` is a real number (`x!1` is a skolem constant representing a generic `x`).
+- Formulas `{1}` and `{2}` (called succedents) indicate that the theorem is true when `x > 0` and `x < 0`, respectively.
+
+Based on these diagnostics, one can deduce that PVS was unable to complete the proof when `x = 0`, as it is the only missing case. As you can see, PVS was able to spot the specification error, and this information can be used to fix the broken proof. 
 
 <br>
 
