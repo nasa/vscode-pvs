@@ -332,7 +332,7 @@ export class PvsDefinitionProvider {
 						const ans: Location[] = [];
 						for (let i: number = 0; i < pvsDefinitions.length; i++) {
 							const def: PvsDefinition = pvsDefinitions[i];
-							if (def) {
+							if (def?.symbolDeclarationRange) {
 								const uri: string = def.symbolDeclarationFile;
 								const range: Range = {
 									start: {
