@@ -179,6 +179,16 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	
 	}
 
+	/**
+	 * Returns the name of the current proof
+	 */
+	getProofName (): string {
+		return this.root?.name || "";
+	}
+
+	/**
+	 * Updates server mode
+	 */
 	didUpdateServerMode (mode: ServerMode): void {
 		this.serverMode = mode;
 	}
@@ -252,6 +262,15 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.focusNode({ id: this.activeNode.id, name: this.activeNode.name }, opt);
 			if (opt?.force) {
 				this.refreshView({ force: true });
+			}
+		} else {
+			// empty proof -- try to focus the ghost node
+			if (this.ghostNode?.isActive()) {
+				this.revealNode({ id: this.ghostNode.id, name: this.ghostNode.name }, opt);
+				this.focusNode({ id: this.ghostNode.id, name: this.ghostNode.name }, opt);
+				if (opt?.force) {
+					this.refreshView({ force: true });
+				}
 			}
 		}
 	}
@@ -550,6 +569,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	enableView (): void {
 		this.enabled = true;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.visible', true);
+		this.focusActiveNode();
 	}
 
 	/**
@@ -562,7 +582,6 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.resetView();
 		this.disableView();
 	}
-
 
 	/**
 	 * Utility function, used to set the initial proof state.
@@ -588,6 +607,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	}
 
 	startProof (): void {
+		this.running = false;
+		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 		this.refreshView({ force: true, source: "did-start-proof" });
 		if (this.root && this.root.children && this.root.children.length) {
 			if (utils.isGlassboxTactic(this.root.children[0].name)) {
@@ -750,6 +771,10 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		this.refreshView({ source: "did-load-descriptor" });
 	}
 
+	/**
+	 * Shows a yes/no query to the user, to confirm the run-proof action
+	 * @param msg 
+	 */
 	async queryRunProof (msg: string): Promise<boolean> {
 		const yesno: string[] = [ "Run Proof", "No" ];
 		const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
@@ -848,6 +873,9 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}
 		return false;
 	}
+	/**
+	 * Sends interrupt-prover to the server
+	 */
 	pauseProof (): void {
 		this.running = false;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
@@ -875,7 +903,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Activation function, installs all proof-explorer command handlers.
 	 * @param context Client context 
 	 */
-	activate(context: ExtensionContext): void {
+	activate (context: ExtensionContext): void {
 		this.treeviz?.activate(context);
 		// -- handler for node updates
 		this.client.onNotification(serverEvent.proofNodeUpdate, (desc: { id: string, name: string, status: ProofNodeStatus }) => {
@@ -1046,8 +1074,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			const action: ProofExecBack = { action: "back" };
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.run-proof", () => {
-			this.run();
+		context.subscriptions.push(commands.registerCommand("proof-explorer.run-proof", async () => {
+			const confirm: boolean = await this.queryConfirmation(`Run proof ${this.getProofName()}?`);
+			if (confirm) {
+				this.run();
+			}
 			// if (this.serverMode === "in-checker") {
 			// 	// run entire proof
 			// 	const action: ProofExecRun = { action: "run" };
@@ -1171,11 +1202,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.show-sequent", (resource: ProofItem) => {
 			const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
-			vscodeUtils.previewTextDocument(name, resource.tooltip, { contextFolder: path.join(vscode.workspace.rootPath, "pvsbin")});
+			vscodeUtils.previewTextDocument(name, resource.tooltip, { contextFolder: path.join(vscodeUtils.getRootPath(), "pvsbin")});
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.show-active-sequent", (resource: ProofItem) => {
 			const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
-			vscodeUtils.previewTextDocument(name, resource.tooltip, { contextFolder: path.join(vscode.workspace.rootPath, "pvsbin")});
+			vscodeUtils.previewTextDocument(name, resource.tooltip, { contextFolder: path.join(vscodeUtils.getRootPath(), "pvsbin")});
 		}));
 
 		let cmd: string = null;

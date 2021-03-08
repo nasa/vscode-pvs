@@ -36,7 +36,7 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { spawn, ChildProcess, execFileSync, execSync } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
 import * as fsUtils from '../../../common/fsUtils';
 import { Diagnostic } from 'vscode-languageserver';
@@ -114,6 +114,11 @@ export class PvsParser {
                 this.workers[key].kill();
             }
         }
+    }
+
+    async parseExpression (expr: string): Promise<ParserDiagnostics> {
+        // TODO
+        return null;
     }
 
     /**

@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.39",
+	"version": "1.0.40",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -24,7 +24,12 @@
 	"keywords": [
 		"vscode-pvs",
 		"pvs",
-		"prototype verification system"
+		"prototype verification system",
+		"theorem prover",
+		"proof assistant",
+		"mathematical logic",
+		"formal methods",
+		"formalized mathematics"
 	],
 	"engines": {
 		"vscode": "^1.32.3"
@@ -102,15 +107,15 @@
 						"default": true,
 						"description": "Support for renaming of theories & formulas"
 					},
-					"pvs.xtras.enableErrorTolerantParser": {
+					"pvs.xtras.enableAntlrParser": {
 						"type": "boolean",
 						"default": false,
-						"description": "Enable error tolerant parser. Requires Java JDK v1.8 or greater (https://openjdk.java.net)"
+						"description": "Enable ANTLR parser. Requires Java JDK v1.8 or greater (https://openjdk.java.net)"
 					},
-					"pvs.xtras.enableProfiler": {
-						"type": "boolean",
-						"default": false,
-						"description": "Log profiler data (output channel vscode-pvs:profiler)"
+					"pvs.xtras.pvsioweb.widgetLibs": {
+						"type": "string",
+						"default": "",
+						"description": "PVSio-Web Widget library files (colon-separated list of paths to pvsio-web widget library files). NOTE: library files must be located in a folder within the current vscode workspace."
 					}
 				},
 				"disabled_properties": {
@@ -232,7 +237,10 @@
 				"title": "Show Proof Tree",
 				"enablement": "pvs-server-active == true && in-checker && !autorun",
 				"category": "pvs",
-				"icon": "$(vm-running)"
+				"icon": {
+					"light": "icons/tree-black-icon.png",
+					"dark": "icons/tree-white-icon.png"
+				}
 			},
 			{
 				"command": "vscode-pvs.prove-theory",
@@ -245,7 +253,10 @@
 				"title": "Prove Theory",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
 				"category": "pvs",
-				"icon": "icons/play-circle-icon.png"
+				"icon": {
+					"dark": "icons/play-circle-icon.png",
+					"light": "icons/play-circle-icon.png"
+				}
 			},
 			{
 				"command": "vscode-pvs.prove-workspace",
@@ -258,7 +269,10 @@
 				"title": "Prove Workspace",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem == workspace-overview",
 				"category": "pvs",
-				"icon": "icons/play-circle-icon.png"
+				"icon": {
+					"dark": "icons/play-circle-icon.png",
+					"light": "icons/play-circle-icon.png"
+				}
 			},
 			{
 				"command": "vscode-pvs.prove-importchain",
@@ -325,7 +339,10 @@
 				"title": "Open PVS Workspace...",
 				"enablement": "pvs-server-active == true && !in-checker",
 				"category": "pvs",
-				"icon": "icons/open-workspace.png"
+				"icon": {
+					"dark": "icons/open-workspace.png",
+					"light": "icons/open-workspace.png"
+				}
 			},
 			{
 				"command": "vscode-pvs.view-prelude-file",
@@ -379,7 +396,10 @@
 				"title": "Prove Formula",
 				"enablement": "pvs-server-active == true && !autorun",
 				"category": "pvs",
-				"icon": "icons/play-circle-icon.png"
+				"icon": {
+					"dark": "icons/play-circle-icon.png",
+					"light": "icons/play-circle-icon.png"
+				}
 			},
 			{
 				"command": "vscode-pvs.prove-formula-at-cursor-position",
@@ -399,14 +419,20 @@
 				"title": "Discharge",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
-				"icon": "icons/play-circle-icon.png"
+				"icon": {
+					"dark": "icons/play-circle-icon.png",
+					"light": "icons/play-circle-icon.png"
+				}
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs",
 				"title": "Discharge TCCs",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
-				"icon": "icons/play-circle-icon.png"
+				"icon": {
+					"dark": "icons/play-circle-icon.png",
+					"light": "icons/play-circle-icon.png"
+				}
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
@@ -414,6 +440,16 @@
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": "$(debug-console)"
+			},
+			{
+				"command": "vscode-pvs.pvsio-web",
+				"title": "Build Prototype in PVSio-web",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs",
+				"icon": {
+					"light": "icons/cube-black-icon.png",
+					"dark": "icons/cube-white-icon.png"
+				}
 			},
 			{
 				"command": "vscode-pvs.plot-expression",
@@ -425,14 +461,20 @@
 				"command": "proof-mate.exec-proof-command",
 				"title": "Execute",
 				"enablement": "pvs-server-active == true",
-				"icon": "icons/play-icon.png",
+				"icon": {
+					"dark": "icons/play-icon.png",
+					"light": "icons/play-icon.png"
+				},
 				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.exec-subtree",
 				"title": "Execute Subtree",
 				"enablement": "pvs-server-active == true",
-				"icon": "icons/play-circle-icon.png",
+				"icon": {
+					"dark": "icons/play-circle-icon.png",
+					"light": "icons/play-circle-icon.png"
+				},
 				"category": "pvs"
 			},
 			{
@@ -481,7 +523,10 @@
 				"command": "proof-explorer.show-sequent",
 				"title": "Show sequent",
 				"enablement": "view == proof-explorer-view && pvs-server-active == true",
-				"icon": "icons/browser-arrow-icon.png",
+				"icon": {
+					"dark": "icons/browser-arrow-icon.png",
+					"light": "icons/browser-arrow-icon.png"
+				},
 				"category": "pvs"
 			},
 			{
@@ -577,42 +622,57 @@
 			{
 				"command": "proof-explorer.back",
 				"title": "Back one step",
-				"icon": "icons/prev-icon.png",
-				"enablement": "in-checker == true && !proof-explorer.running",
+				"icon": {
+					"dark": "icons/prev-icon.png",
+					"light": "icons/prev-icon.png"
+				},
+				"enablement": "in-checker == true",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.forward",
 				"title": "Step proof",
-				"icon": "icons/next-icon.png",
-				"enablement": "in-checker == true && !proof-explorer.running",
+				"icon": {
+					"dark": "icons/next-icon.png",
+					"light": "icons/next-icon.png"
+				},
+				"enablement": "in-checker == true",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.run-proof",
 				"title": "️️Run proof",
-				"icon": "icons/play-circle-1-icon.png",
-				"enablement": "view == proof-explorer-view && !proof-explorer.running",
+				"icon": {
+					"dark": "icons/play-circle-1-icon.png",
+					"light": "icons/play-circle-1-icon.png"
+				},
+				"enablement": "view == proof-explorer-view",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.pause-proof",
 				"title": "️️Pause proof",
-				"enablement": "view == proof-explorer-view && proof-explorer.running",
-				"icon": "icons/pause-circle-icon.png",
+				"enablement": "view == proof-explorer-view",
+				"icon": {
+					"dark": "icons/pause-icon.png",
+					"light": "icons/pause-icon.png"
+				},
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.fast-forward",
 				"title": "️️Fast forward here",
-				"icon": "icons/fast-forward-icon-alt-2.png",
-				"enablement": "view == proof-explorer-view && viewItem != root && in-checker == true && !proof-explorer.running",
+				"icon": {
+					"dark": "icons/fast-forward-icon-alt-2.png",
+					"light": "icons/fast-forward-icon-alt-2.png"
+				},
+				"enablement": "view == proof-explorer-view && viewItem != root && in-checker == true",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.rewind",
 				"title": "️️Rewind here",
-				"enablement": "view == proof-explorer-view && in-checker == true && !proof-explorer.running",
+				"enablement": "view == proof-explorer-view && in-checker == true",
 				"category": "pvs"
 			},
 			{
@@ -803,7 +863,8 @@
 				},
 				{
 					"command": "proof-explorer.fast-forward",
-					"when": "view == proof-explorer-view && viewItem != root",
+					"when": "false && view == proof-explorer-view && viewItem != root",
+					"comment": "this is disabled as the icon can be easily confused with the play icon -- the user expects to be able to execute the command, but the function runs up-to the command",
 					"group": "inline"
 				},
 				{
@@ -927,6 +988,7 @@
 					"group": "context-menu/exec-1"
 				}
 			],
+			"editor/title/run": [],
 			"editor/title": [
 				{
 					"command": "vscode-pvs.search-nasalib",
@@ -940,22 +1002,28 @@
 				},
 				{
 					"command": "vscode-pvs.prove-formula-at-cursor-position",
-					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"when": "false",
+					"was": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "navigation@2"
 				},
 				{
-					"command": "vscode-pvs.pvsio-evaluator",
+					"command": "vscode-pvs.pvsio-web",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "navigation@3"
 				},
 				{
-					"command": "vscode-pvs.typecheck-file",
+					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "navigation@4"
 				},
 				{
-					"command": "vscode-pvs.open-pvs-workspace",
+					"command": "vscode-pvs.typecheck-file",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "navigation@5"
+				},
+				{
+					"command": "vscode-pvs.open-pvs-workspace",
+					"group": "navigation@6"
 				}
 			],
 			"editor/title/context": [
@@ -1085,12 +1153,12 @@
 				},
 				{
 					"command": "proof-explorer.run-proof",
-					"when": "view == proof-explorer-view && !proof-explorer.running",
+					"when": "view == proof-explorer-view",
 					"group": "navigation"
 				},
 				{
 					"command": "proof-explorer.pause-proof",
-					"when": "view == proof-explorer-view && proof-explorer.running",
+					"when": "view == proof-explorer-view",
 					"group": "navigation"
 				},
 				{
@@ -1346,7 +1414,10 @@
 					".prl",
 					".hpvs",
 					".summary",
-					".pvstest"
+					".pvstest",
+					".io",
+					".web",
+					".log"
 				],
 				"firstLine": "\\s*((%+\\w+)|((\\w+)\\s*(?:\\[([\\w\\W\\s]*)\\])?\\s*\\:\\s*(THEORY|theory|Theory)\\b))",
 				"filenames": [
@@ -1482,22 +1553,20 @@
 		}
 	},
 	"dependencies": {
-		"handlebars": "^4.7.6",
-		"typescript": "^3.9.3",
-		"vsce": "^1.85.0",
-		"xmlrpc": "^1.3.2"
+		"typescript": "^4.2.2",
+		"vsce": "^1.85.0"
 	},
 	"devDependencies": {
-		"@types/chai": "4.1.3",
+		"@types/chai": "^4.2.15",
 		"@types/mocha": "^8.2.0",
 		"@types/node": "^14.14.22",
 		"@types/vscode": "^1.32.3",
 		"@typescript-eslint/eslint-plugin": "^2.25.0",
 		"@typescript-eslint/parser": "^2.25.0",
 		"assert": "^2.0.0",
-		"chai": "4.2.0",
+		"chai": "^4.3.0",
 		"eslint": "^6.8.0",
-		"mocha": "8.1.3",
+		"mocha": "^8.3.0",
 		"ts-node": "^9.1.1"
 	},
 	"resolutions": {

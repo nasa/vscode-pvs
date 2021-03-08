@@ -1,2 +1,2 @@
 Main-Class: DdlPrettyPrinter
-Class-Path: antlr-4.9-complete.jar
+Class-Path: antlr-4.9.1-complete.jar

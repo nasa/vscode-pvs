@@ -1,4 +1,9 @@
 ## ChangeLog
+### 1.0.40 (2021.03.08)    
+- Added new visual component: PVSio-web Prototype Builder   
+- Improved proof explorer (header actions, dialogs, icons)   
+- Improved prover terminal (auto-focus, help, interrupt)  
+
 ### 1.0.39 (2021.02.05)    
 - Improved quick user guide       
 - Fixed minor bugs (icon theme, visibility of proof-explorer)   

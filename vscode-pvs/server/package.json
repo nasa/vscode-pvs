@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs-server",
 	"description": "Implementation of a language server for PVS.",
-	"version": "1.0.24",
+	"version": "1.0.40",
 	"author": "Paolo Masci",
 	"publisher": "paolomasci",
 	"license": "NASA-1.3",
@@ -17,10 +17,10 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "xxx"
+		"url": "https://github.com/nasa/vscode-pvs"
 	},
 	"dependencies": {
-		"typescript": "^3.9.7",
+		"typescript": "^4.2.3",
 		"vscode-languageserver": "^5.2.1",
 		"ws": "^7.2.0",
 		"xmlrpc": "^1.3.2"

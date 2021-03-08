@@ -373,4 +373,10 @@ export class PvsProcess {
 	quit (): void {
 		this.pvsProcess.stdin.write("exit; Y");
 	}
+	/**
+	 * returns the current output of the process
+	 */
+	getLispInterfaceOutput (): string {
+		return this.data || "";
+	}
 }

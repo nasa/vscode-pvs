@@ -115,9 +115,9 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     //     // vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);
     //     vscode.window.showTextDocument(document.uri, { preserveFocus: true, preview: true, viewColumn });
     // });
-    // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${path.join(vscode.workspace.rootPath, "pvsbin", "preview")}`);
+    // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${path.join(getRootPath(), "pvsbin", "preview")}`);
     
-    const folder: string = opt.contextFolder || vscode.workspace.rootPath || os.homedir();
+    const folder: string = opt.contextFolder || getRootPath() || os.homedir();
     const fname: string = path.join(folder, name);
     const preview: vscode.Uri = vscode.Uri.file(fname);
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${fname}`);
@@ -161,7 +161,7 @@ export async function createTextDocument (desc: FileDescriptor): Promise<vscode.
 }
 
 export function getPreviewFolder (): string {
-    return vscode.workspace.rootPath || os.homedir() || os.tmpdir();
+    return getRootPath() || os.homedir() || os.tmpdir();
 }
 
 export function showMarkdownFile (uri: vscode.Uri): void {
@@ -170,9 +170,19 @@ export function showMarkdownFile (uri: vscode.Uri): void {
     }
 }
 
+/**
+ * Returns the root path of the current vscode workspace
+ */
+export function getRootPath (): string {
+    const workspaceFolder: vscode.Uri = (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length) ? 
+        vscode.workspace.workspaceFolders[0].uri 
+            : null;
+    return (workspaceFolder) ? workspaceFolder.path : null;
+}
+
 export async function showMarkdownContent (msg: string, contextFolder?: string): Promise<void> {
     if (msg) {
-        contextFolder = contextFolder || vscode.workspace.rootPath || os.homedir() || os.tmpdir();
+        contextFolder = os.tmpdir();
         const tmp: FileDescriptor = {
             fileName: "pvs",
             fileExtension: ".error.log",
@@ -594,9 +604,118 @@ export function showReleaseNotes (): void {
     vscode.commands.executeCommand('markdown.showPreview', fileUri);
 }
 
+/**
+ * Returns the value of a vscode configuration key
+ */
 export function getConfiguration (key: string): string {
     const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
     const res = config.get(key);
     return (typeof res === "string") ? res : "";
+}
+/**
+ * Sets the value of a vscode configuration
+ */
+export async function setConfiguration (key: string, value: string | boolean): Promise<void> {
+    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+    await config.update(key, value);
+}
+/**
+ * Returns the current vscode toolbar visibility (toolbar = header actions)
+ */
+export function getToolbarVisibility (): boolean {
+    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+    const res = config.get("workbench.view.alwaysShowHeaderActions");
+    return !!res;
+}
+/**
+ * Sets the vscode toolbar visibility
+ */
+export async function setToolbarVisibility (viz: boolean): Promise<void> {
+    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+    const res = config.update("workbench.view.alwaysShowHeaderActions", !!viz);
+}
 
+export function resource2desc (resource: string | { 
+    fileName?: string, fileExtension?: string, contextFolder?: string, theoryName?: string, formulaName?: string,
+    path?: string,
+    contextValue?: string
+}): { 
+    contextFolder: string,
+    fileName: string,
+    fileExtension: string,
+    theoryName: string, 
+    formulaName: string
+} {
+    if (resource) {
+        if (typeof resource === "string") {
+            const isFolder: boolean = !fsUtils.isPvsFile(resource);
+            if (isFolder) {
+                return { 
+                    contextFolder: fsUtils.normalizeContextFolder(resource),
+                    fileName: null,
+                    fileExtension: null,
+                    theoryName: null,
+                    formulaName: null
+                };
+            }
+            return {
+                fileName: fsUtils.getFileName(resource),
+                fileExtension: fsUtils.getFileExtension(resource),
+                contextFolder: fsUtils.getContextFolder(resource),
+                theoryName: null,
+                formulaName: null
+            };
+        } else if (resource.contextFolder) {
+            //@ts-ignore
+            return {
+                fileName: resource.fileName,
+                fileExtension: resource.fileExtension,
+                contextFolder: resource.contextFolder,
+                theoryName: resource.theoryName,
+                formulaName: resource.formulaName
+            };
+        } else if (resource.path) {
+            // resource coming from the editor
+            // resource is of type vscode.Uri
+            const isFolder: boolean = !fsUtils.isPvsFile(resource.path);
+            if (isFolder) {
+                return {
+                    contextFolder: fsUtils.normalizeContextFolder(resource.path),
+                    fileName: null,
+                    fileExtension: null,
+                    theoryName: null,
+                    formulaName: null
+                };
+            }
+            return {
+                fileName: fsUtils.getFileName(resource.path),
+                fileExtension: fsUtils.getFileExtension(resource.path),
+                contextFolder: fsUtils.getContextFolder(resource.path),
+                theoryName: null,
+                formulaName: null
+            };
+        } else if (resource.contextValue) {
+            // resource coming from explorer
+            // resource is of type FormulaItem or OverviewItem
+            if (resource.contextValue.endsWith("-overview")) {
+                return {
+                    contextFolder: resource["getContextFolder"](),
+                    fileName: null,
+                    fileExtension: null,
+                    theoryName: null,
+                    formulaName: null
+                };    
+            }
+            return {
+                fileName: fsUtils.getFileName(resource["getFileName"]()),
+                fileExtension: ".pvs",
+                contextFolder: resource["getContextFolder"](),
+                formulaName: resource["getFormulaName"](),
+                theoryName: resource["getTheoryName"]()
+                //, line: resource.getPosition().line
+            };
+        }
+    }
+    console.error(`[event-dispatcher] Warning: could not describe resource `, resource);
+    return null;
 }

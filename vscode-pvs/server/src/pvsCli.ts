@@ -340,6 +340,21 @@ class PvsCli {
 						});
 						return;
 					}
+					if (utils.isHelpBangCommand(cmd)) {
+						const match: RegExpMatchArray = new RegExp(utils.helpBangCommandRegexp).exec(cmd);
+						if (match && match.length > 1) {
+							this.wsClient.send(JSON.stringify({
+								type: serverRequest.proofCommand, 
+								cmd,
+								fileName: this.args.fileName,
+								fileExtension: this.args.fileExtension,
+								contextFolder: this.args.contextFolder,
+								theoryName: this.args.theoryName,
+								formulaName: this.args.formulaName
+							}));
+						}
+						return;
+					}
 					if (utils.isHelpCommand(cmd)) {
 						console.log();
 						console.log(commandUtils.printHelp(cmd, { useColors: true }));
@@ -438,7 +453,8 @@ class PvsCli {
 								// readline.moveCursor(process.stdin, 0, -1);
 								// readline.clearScreenDown(process.stdin);
 								// show prompt
-								// this.rl.prompt();
+								this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
+								this.rl.prompt();
 								// readline.clearLine(process.stdin, 1); // clear any previous input
 								break;
 							}

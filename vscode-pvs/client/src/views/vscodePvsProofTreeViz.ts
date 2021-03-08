@@ -489,7 +489,6 @@ export class VSCodePvsVizTree {
             command: "update-font",
             val: this.font
         });
-
     }
     recenter (opt?: { fast?: boolean }): void {
         opt = opt || {};

@@ -80,6 +80,7 @@ import { ProcessCode } from './pvsProcess';
 import { PvsProofExplorer } from './providers/pvsProofExplorer';
 import { PvsRenameProvider } from './providers/pvsRenameProvider';
 import { PvsSearchEngine } from './providers/pvsSearchEngine';
+import { arch } from 'os';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -425,54 +426,60 @@ export class PvsLanguageServer {
 			}
 		}
 	}
-	async evalExpressionRequest (request: EvalExpressionRequest): Promise<void> {
-		request = fsUtils.decodeURIComponents(request);
-		const response: PvsResponse = await this.pvsioProxy?.evalExpression(request);
-		this.connection?.sendRequest(serverEvent.evalExpressionResponse, { request, response });
+	async evalExpressionRequest (req: EvalExpressionRequest): Promise<void> {
+		req = fsUtils.decodeURIComponents(req);
+		const response: PvsResponse = await this.pvsioProxy?.evalExpression(req);
+		this.connection?.sendRequest(serverEvent.evalExpressionResponse, { request: req, response });
 	}
-	async pvsioEvaluatorCommandRequest (request: PvsioEvaluatorCommand): Promise<void> {
-		request = fsUtils.decodeURIComponents(request);
-		const channelID: string = utils.desc2id(request);
-		const response: PvsResponse = await this.pvsioProxy?.evaluatorCommand(request, {
-			cb: (data: string, readyPrompt?: boolean) => {
+	/**
+	 * Evaluator command handler
+	 */
+	async pvsioEvaluatorCommandRequest (req: PvsioEvaluatorCommand): Promise<void> {
+		req = fsUtils.decodeURIComponents(req);
+		const channelID: string = utils.desc2id(req);
+		const response: PvsResponse = await this.pvsioProxy?.evalCommand(req, {
+			cb: (data: string, state: string) => {
 				const result: PvsResult = {
 					jsonrpc: "2.0",
 					id: channelID,
 					result: data
 				};
 				this.cliGateway?.publish({ type: "pvs.event.evaluator-state", channelID, data: result });
-				if (readyPrompt) {
-					this.cliGateway?.publish({ type: "pvs.event.evaluator-ready", channelID });
-				}
+				this.connection.sendRequest(serverEvent.evaluatorCommandResponse, { req, res: data, state });
 			}
 		});
 		if (response && response.error) {
-			this.pvsErrorManager?.handleEvaluationError({ request, response: <PvsError> response });
+			this.pvsErrorManager?.handleEvaluationError({ request: req, response: <PvsError> response });
 		}
 	}
-	async startEvaluatorRequest (request: { fileName: string, fileExtension: string, theoryName: string, contextFolder: string }): Promise<void> {
+	async quitEvaluatorRequest (theory: PvsTheory): Promise<void> {
+		await this.pvsioProxy?.quitEvaluator(theory);
+	}
+	async startEvaluatorRequest (theory: PvsTheory): Promise<void> {
 		const mode: string = await this.getMode();
 		if (mode !== "lisp") {
 			return;
 		}
-		request = fsUtils.decodeURIComponents(request);
+		theory = fsUtils.decodeURIComponents(theory);
 		// send feedback to the front-end
-		const taskId: string = `pvsio-${request.fileName}@${request.theoryName}`;
-		const channelID: string = utils.desc2id(request);
-		this.notifyStartImportantTask({ id: taskId, msg: `Loading files necessary to evaluate theory ${request.theoryName}` });
+		const taskId: string = `pvsio-${theory.fileName}@${theory.theoryName}`;
+		const channelID: string = utils.desc2id(theory);
+		this.notifyStartImportantTask({ id: taskId, msg: `Loading files necessary to evaluate theory ${theory.theoryName}` });
 		// make sure the theory typechecks before starting the evaluator
-		const response: PvsResponse = await this.typecheckFile(request);
+		const response: PvsResponse = await this.typecheckFile(theory);
 		if (response && response.result) {
 			// start pvsio evaluator
-			let pvsioResponse: PvsResponse = await this.pvsioProxy?.startEvaluator(request, { pvsLibraryPath: this.pvsLibraryPath });
+			let pvsioResponse: PvsResponse = await this.pvsioProxy?.startEvaluator(theory, {
+				pvsLibraryPath: this.pvsLibraryPath
+			});
 			// replace standard banner
 			const banner: string = utils.colorText(utils.pvsioBanner, utils.textColor.green);// + "\n\n" + utils.pvsioPrompt;
 			this.cliGateway?.publish({ type: "pvs.event.evaluator-ready", channelID, banner });
-			this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: request });
+			this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: theory });
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
 			this.notifyServerMode("pvsio");
 		} else {
-			this.pvsErrorManager?.handleEvaluationError({ request, response: <PvsError> response, taskId });
+			this.pvsErrorManager?.handleEvaluationError({ request: theory, response: <PvsError> response, taskId });
 			this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 		}
 	}
@@ -736,7 +743,7 @@ export class PvsLanguageServer {
 	async parseFile (args: PvsFile): Promise<PvsResponse> {
 		args = fsUtils.decodeURIComponents(args);
 		if (args && args.fileName && args.fileExtension && args.contextFolder) {			
-			const enableEParser: boolean = !!(this.connection && await this.connection?.workspace.getConfiguration("pvs.xtras.enableErrorTolerantParser"));
+			const enableEParser: boolean = !!(this.connection && await this.connection?.workspace.getConfiguration("pvs.xtras.enableAntlrParser"));
 			try {
 				return await this.pvsProxy?.parseFile(args, { enableEParser });
 			} catch (ex) {
@@ -1790,12 +1797,15 @@ export class PvsLanguageServer {
 				const licensePage: string = await PvsPackageManager.downloadPvsLicensePage();
 				this.connection?.sendRequest(serverEvent.downloadLicensePageResponse, { response: licensePage });
 			});
-
-			this.connection?.onRequest(serverRequest.startEvaluator, async (args: PvsTheory) => {
-				this.startEvaluatorRequest(args);
+			this.connection?.onRequest(serverRequest.startEvaluator, async (args: PvsioEvaluatorCommand) => {
+				await this.startEvaluatorRequest(args);
+			});
+			this.connection?.onRequest(serverRequest.quitEvaluator, async (args: PvsTheory) => {
+				await this.quitEvaluatorRequest(args);
+				this.connection.sendRequest(serverEvent.quitEvaluatorResponse);
 			});
 			this.connection?.onRequest(serverRequest.evaluatorCommand, async (args: PvsioEvaluatorCommand) => {
-				this.pvsioEvaluatorCommandRequest(args);
+				await this.pvsioEvaluatorCommandRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.evalExpression, async (args: EvalExpressionRequest) => {
 				this.evalExpressionRequest(args);

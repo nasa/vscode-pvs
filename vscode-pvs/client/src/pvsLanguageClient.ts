@@ -56,6 +56,7 @@ import { VSCodePvsSnippetsProvider } from './providers/vscodePvsSnippetsProvider
 import { VSCodePvsLogger } from './views/vscodePvsLogger';
 import { VSCodePvsPlotter } from './views/vscodePvsPlotter';
 import { VSCodePvsSearch } from './views/vscodePvsSearch';
+import { VSCodePvsioWeb } from './views/vscodePvsioWeb';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -110,6 +111,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// search
 	protected search: VSCodePvsSearch;
+
+	// pvsioweb
+	protected pvsioweb: VSCodePvsioWeb;
 
 	/**
 	 * Internal function, returns the current pvs path, as indicated in the configuration file
@@ -315,6 +319,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.plotter.activate(this.context);
 			this.search = new VSCodePvsSearch(this.client);
 			this.search.activate(this.context);
+			this.pvsioweb = new VSCodePvsioWeb(this.client);
+			this.pvsioweb.activate(this.context);
 	
 			// enable decorations for pvs syntax
 			this.decorationProvider = new VSCodePvsDecorationProvider();
@@ -334,7 +340,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				logger: this.logger,
 				packageManager: this.packageManager,
 				plotter: this.plotter,
-				search: this.search
+				search: this.search,
+				pvsioweb: this.pvsioweb
 			});
 			this.eventsDispatcher.activate(context);
 			
@@ -364,6 +371,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				commands.executeCommand('setContext', 'proof-explorer.visible', false);
 				commands.executeCommand('setContext', 'autorun', false);
 
+				// make toolbars (aka header actions) always visible
+				vscodeUtils.setToolbarVisibility(true);
+
 				// update status bar
 				this.statusBar.ready();
 
@@ -378,7 +388,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					// or get the descriptor of the current folder
 					const workspaceFolder: Uri = (workspace.workspaceFolders && workspace.workspaceFolders.length) ? workspace.workspaceFolders[0].uri : null;
 					const folder: string = (workspaceFolder) ? workspaceFolder.path : 
-							contextFolder ? contextFolder : vscodeUtils.getDefaultContextFolder();
+						contextFolder ? contextFolder : vscodeUtils.getDefaultContextFolder();
 					if (folder) {
 						this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: folder });
 					}

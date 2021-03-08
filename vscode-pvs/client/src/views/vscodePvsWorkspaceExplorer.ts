@@ -701,7 +701,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Creates a new pvs file in the current workspace folder
 	 */
-	async newPvsFile (): Promise<void> {
+	async newPvsFile (contextFolder: string): Promise<void> {
 		const fileName: string = await window.showInputBox({
 			prompt: `Please enter PVS file name`,
 			placeHolder: ``,
@@ -710,7 +710,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		});
 		if (fileName) {
 			const theoryName = fsUtils.getFileName(fileName); // this will remove the extension, if any has been specified in the dialog
-			const contextFolder: string = this.getCurrentWorkspace() || workspace.rootPath;
+			contextFolder = contextFolder || this.getCurrentWorkspace() || vscodeUtils.getRootPath();
 			const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
 			const uri: Uri = Uri.parse(`file://${fname}`, true);
 
@@ -738,7 +738,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 
 			}
 			// const theoryName = fsUtils.getFileName(fileName); // this will remove the extension
-			// const contextFolder: string = this.getCurrentWorkspace() || workspace.rootPath;
+			// const contextFolder: string = this.getCurrentWorkspace() || vscodeUtils.getRootPath();
 			// const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
 			// const file: Uri = Uri.parse(`untitled:${theoryName}.pvs`);
 			// const edit = new WorkspaceEdit();

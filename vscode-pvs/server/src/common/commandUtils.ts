@@ -50,6 +50,9 @@ export function formatHelp (desc: HelpDescriptor, opt?: { useColors?: boolean })
     return "";
 }
 
+/**
+ * Prints a compact help for a given command
+ */
 export function printHelp (helpCommand: string, opt?: { useColors?: boolean }): string {
     const match: RegExpMatchArray = new RegExp(utils.helpCommandRegexp).exec(helpCommand);
     if (match && match.length > 1) {

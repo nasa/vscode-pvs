@@ -40,6 +40,13 @@ import { PvsResponse } from "./pvs-gui";
 import { ProofMateProfile } from "./commandUtils";
 import { ProofOrigin, SequentDescriptor } from "./languageUtils";
 
+/**
+ * PVSio modes
+ * - standard: classic pvsio behavior
+ * - state-machine: the pvs specification is considered as a state machine, with an initial state and transition functions
+ */
+export type PvsIoMode = "standard" | "state-machine";
+
 export declare interface Position {
 	line: number, // this attribute ranges from 1 to n, while vscode.line ranges from 0 to n-1 
 	character: number
@@ -363,12 +370,12 @@ export declare interface PvsContextDescriptor extends ContextFolder {
 	contextFolder: string,
 	fileDescriptors: { [fname: string]: PvsFileDescriptor }
 }
-export declare interface PvsFile extends ContextFolder {
+export declare interface FileDescriptor extends ContextFolder {
 	fileName: string;
 	fileExtension: string;
 	fileContent?: string;
 }
-export declare type FileDescriptor = PvsFile;
+export declare type PvsFile = FileDescriptor;
 export declare interface PvsTheory extends PvsFile {
 	theoryName: string;
 }
@@ -379,7 +386,12 @@ export declare interface PvsProofCommand extends PvsFormula {
 	cmd: string;
 }
 export declare interface PvsioEvaluatorCommand extends PvsTheory {
-	cmd: string;
+	cmd?: string,
+	
+	mode?: PvsIoMode,
+	initialState?: string,
+	sendResponse?: boolean,
+	showCommandInTerminal?: boolean
 }
 export declare interface EvalExpressionRequest extends PvsTheory {
 	expr: string;
@@ -435,6 +447,7 @@ export const serverRequest = {
 	hp2pvs: "pvs.hp-to-pvs-file",
 	startEvaluator: "pvs.start-evaluator",
 	quitProof: "pvs.quit-proof",
+	quitEvaluator: "pvs.quit-evaluator",
 	clearTheories: "pvs.clear-theories",
 
 	viewPreludeFile: "pvs.view-prelude-file",
@@ -470,6 +483,7 @@ export const serverEvent = {
 	showProofLiteResponse: "pvs.response.show-prooflite",
 	proofCommandResponse: "pvs.response.proof-command",
 	evalExpressionResponse: "pvs.response.eval-expression",
+	evaluatorCommandResponse: "pvs.response.evaluator-command",
 	parseFileResponse: "pvs.response.parse-file",
 	listContextResponse: "pvs.response.list-context",
 	generateTccsResponse: "pvs.response.generate-tccs",
@@ -478,6 +492,7 @@ export const serverEvent = {
 	showWorkspaceSummaryResponse: "pvs.response.show-workspace-summary",
 	startEvaluatorResponse: "pvs.response.start-evaluator",
 	hp2pvsResponse: "pvs.response.hp-to-pvs-file",
+	quitEvaluatorResponse: "pvs.response.quit-evaluator",
 	quitProofResponse: "pvs.response.quit-proof",
 	searchResponse: "pvs.response.search",
 

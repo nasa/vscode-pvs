@@ -47,10 +47,13 @@ export const HOME_DIR: string = require('os').homedir();
 export const MAX_RECURSION: number = 4;
 // nodeJS does not support tilde expansion for the home folder
 export function tildeExpansion(pathName: string): string {
-	if (pathName && (pathName.startsWith("~/") || pathName === "~")) {
-		pathName = pathName.replace("~", HOME_DIR);
+	if (pathName) {
+		if (pathName.startsWith("~/") || pathName === "~") {
+			pathName = pathName.replace("~", HOME_DIR);
+		}
+		return path.normalize(pathName);
 	}
-	return path.normalize(pathName);
+	return pathName;
 }
 export function stat(fname: string): Promise<fs.Stats> {
 	if (fname) {
@@ -76,19 +79,21 @@ export function readDir(contextFolder: string): Promise<string[]> {
 	}
 	return null;
 }
-export async function readFile(fname: string): Promise<string> {
+export async function readFile(fname: string, opt?: { encoding?: BufferEncoding }): Promise<string> {
 	if (fname) {
+		opt = opt || {};
+		opt.encoding = opt.encoding || "utf8";
 		fname = fname.replace("file://", "");
 		fname = tildeExpansion(fname);
 		try {
 			const exists: boolean = await fileExists(fname);
 			if (exists) {
-				const data: Buffer = fs.readFileSync(fname);
-				if (data) {
-					return data.toLocaleString();
-				}
-				return "";
-			} 
+				const data: string = fs.readFileSync(fname, { encoding: opt.encoding });
+				// if (data) {
+				// 	return data.toLocaleString();
+				// }
+				return data || "";
+			}
 		}
 		catch (error) {
 			console.error(`[fs-utils] Error while reading file ${fname}`, error);
@@ -249,8 +254,9 @@ export async function createFolder(path: string): Promise<void> {
 		fs.mkdirSync(path);
 	}
 }
-export async function writeFile(fname: string, content: string, opt?: { append?: boolean }): Promise<boolean> {
+export async function writeFile(fname: string, content: string, opt?: { append?: boolean, encoding?: BufferEncoding }): Promise<boolean> {
 	opt = opt || {};
+	opt.encoding = opt.encoding || "utf8";
 	if (fname) {
 		try {
 			fname = fname.replace("file://", "");
@@ -262,7 +268,7 @@ export async function writeFile(fname: string, content: string, opt?: { append?:
 				content = previousContent + "\n\n" + content;
 				content = content.trim();
 			}
-			fs.writeFileSync(fname, content);
+			fs.writeFileSync(fname, content, { encoding: opt.encoding });
 		} catch (error) {
 			console.error(`[fs-utils] Error while writing file ${fname}`, error);
 			return false;
@@ -281,11 +287,13 @@ export async function renameFile(old_fname: string, new_fname: string): Promise<
 	}
 	return false;
 }
-export function getFileName(fname: string): string {
+export function getFileName(fname: string, opt?: { keepExtension?: boolean }): string {
 	if (fname) {
 		fname = fname.replace("file://", "");
 		fname = fname.includes("/") ? fname.split("/").slice(-1)[0] : fname;
-		fname = fname.includes(".") ? fname.split(".").slice(0, -1).join(".") : fname;
+		if (!opt?.keepExtension) {
+			fname = fname.includes(".") ? fname.split(".").slice(0, -1).join(".") : fname;
+		}
 		return fname;
 	}
 	return null;
@@ -484,6 +492,9 @@ export function listSubFolders (folder: string): string[] {
 	return null;
 }
 
+/**
+ * Gets the unencoded version of an encoded components of a descriptor.
+ */
 export function decodeURIComponents (desc) {
 	if (desc) {
 		if (typeof desc === "string") {

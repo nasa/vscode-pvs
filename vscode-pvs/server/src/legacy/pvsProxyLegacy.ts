@@ -100,7 +100,7 @@ export class PvsProxyLegacy {
                 error_string + ". Please add external pvs libraries to vscode-pvs settings" 
                     : error_string;
             if (!opt.quiet) {
-                this.pvsErrorManager.notifyPvsFailure({ msg, src: "pvs-proxy-legacy" });
+                // this.pvsErrorManager.notifyPvsFailure({ msg, src: "pvs-server (pvs-proxy-legacy)" });
             }
             return {
                 jsonrpc: "2.0",

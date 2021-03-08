@@ -137,7 +137,7 @@ export class PvsProxy {
 	/**
 	 * Parser
 	 */
-	protected parser: Parser;
+	parser: Parser;
 
 	/** The constructor simply sets various properties in the PvsProxy class. */
 	constructor(pvsPath: string,
@@ -268,7 +268,7 @@ export class PvsProxy {
 						// console.log(value);
 						this.proverBusy = false;
 
-						if (error) {		
+						if (error) {
 							console.error("[pvs-proxy] Error returned by pvs-server: "); 
 							console.dir(error, { depth: null }); 
 							if (error['code'] === 'ECONNREFUSED') {
@@ -282,7 +282,7 @@ export class PvsProxy {
 								if (this.pvsErrorManager) {
 									this.pvsErrorManager.notifyPvsFailure({ 
 										msg: `Error: unable to connect to pvs-server at http://${this.clientAddress}:${this.clientPort}`,
-										src: "pvs-proxy"
+										src: "pvs-server"
 									});
 								}
 							} else {
@@ -290,7 +290,7 @@ export class PvsProxy {
 							// 	// do nothing -- this usually occurs when the user reboots pvs-server
 							// } else {
 								if (this.pvsErrorManager) {
-									this.pvsErrorManager.notifyPvsFailure({ method: jsonReq, msg: error.message, src: "pvs-proxy" });
+									this.pvsErrorManager.notifyPvsFailure({ method: jsonReq, msg: error.message, src: "pvs-server" });
 								}
 								resolve({
 									jsonrpc: "2.0", 
@@ -647,7 +647,8 @@ export class PvsProxy {
 			// change context
 			await this.changeContext(desc);
 
-			// const res: PvsResponse = await this.legacy?.lisp(`(prog2 (show-tccs "${fullName}") 
+			// const res: PvsResponse = await this.legacy?.lisp(`(prog2 (show-tccs "${fullName}")
+			// new lisp command for importing proof chain
 			const res: PvsResponse = await this.legacy?.lisp(`
 		(let ((theoryname "${desc.theoryName}"))
 				(let ((usings (remove-if #'(lambda (th)
@@ -1165,6 +1166,25 @@ export class PvsProxy {
 	}
 
 	/**
+     * Returns the help message for a given command
+     */
+	async showHelpBang (cmd: string): Promise<PvsResponse> {
+		const match: RegExpMatchArray = new RegExp(utils.helpBangCommandRegexp).exec(cmd);
+		if (match && match.length > 1 && match[1]) {
+			const ans: PvsResponse = await this.pvsRequest('proof-command', [ `(help ${match[1]})` ]);
+			if (ans && ans.result && ans.result.length) {
+				let help: string = this.pvsServer.getLispInterfaceOutput();
+				help = help.substring(help.indexOf(`${match[1]}`), help.indexOf("No change on"));
+				ans.result[ans.result.length - 1].action = "";
+				ans.result[ans.result.length - 1].commentary = [ help.trim() ];
+			}
+			return ans;
+		}
+		return null;
+	}
+	
+
+	/**
 	 * Executes a proof command. The command is always adorned with round parentheses, e.g., (skosimp*)
 	 * @param desc Descriptor of the proof command
 	 */
@@ -1183,11 +1203,10 @@ export class PvsProxy {
 				// const isGrind: boolean = utils.isGrindCommand(desc.cmd);
 				// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
 				// the front-end will handle the command, and reveal the hidden sequents.
-				const cmd: string = showHidden ? "(skip)"
-					// : isGrind ? utils.applyTimeout(desc.cmd, opt.timeout)
-						: desc.cmd;
+				const cmd: string = showHidden ? "(skip)" : desc.cmd;
 				if (!this.externalServer) { console.log(cmd); }
-				res = await this.pvsRequest('proof-command', [ cmd ]);
+				res = utils.isHelpBangCommand(cmd) ? await this.showHelpBang(cmd) :
+					await this.pvsRequest('proof-command', [ cmd ]);
 				if (res && res.result) {
 					const proofStates: SequentDescriptor[] = res.result;
 					if (showHidden) {
@@ -1884,7 +1903,7 @@ export class PvsProxy {
 	 */
 	async killPvsServer(): Promise<void> {
 		if (this.pvsServer) {// && !this.externalServer) {
-			await this.interrupt();
+			await this.interruptProver();
 			await this.pvsServer.kill();
 			if (this.debugMode) {
 				console.info("[pvs-proxy] Killed pvs-server");
@@ -2216,7 +2235,10 @@ export class PvsProxy {
 		});
 	}
 
-	async interrupt (): Promise<PvsResponse | null> {
+	/**
+	 * interrupts the prover
+	 */
+	async interruptProver (): Promise<PvsResponse | null> {
 		return await this.pvsRequest('interrupt');
 	}
 

@@ -1,5 +1,6 @@
 **/*.ts
 **/*.js.map
+**/*.css.map
 **/*.java
 **/*.g4
 **/*.old
@@ -22,7 +23,6 @@
 **/node_modules/azure-devops-node-api/
 **/node_modules/os/
 **/node_modules/tunnel/
-**/node_modules/underscore/
 **/node_modules/chalk/
 **/node_modules/ansi-styles/
 **/node_modules/color-convert/
@@ -92,25 +92,6 @@ screenshots/
 extra/
 server/src
 
-**/client/node_modules/bootstrap/dist/css/bootstrap-grid.css
-**/client/node_modules/bootstrap/dist/css/bootstrap-grid.css.map
-**/client/node_modules/bootstrap/dist/css/bootstrap-grid.min.css
-**/client/node_modules/bootstrap/dist/css/bootstrap-grid.min.css.map
-**/client/node_modules/bootstrap/dist/css/bootstrap-reboot.css
-**/client/node_modules/bootstrap/dist/css/bootstrap-reboot.css.map
-**/client/node_modules/bootstrap/dist/css/bootstrap-reboot.min.css
-**/client/node_modules/bootstrap/dist/css/bootstrap-reboot.min.css.map
-**/client/node_modules/bootstrap/dist/css/bootstrap.css
-**/client/node_modules/bootstrap/dist/css/bootstrap.css.map
-**/client/node_modules/bootstrap/dist/css/bootstrap.min.css.map
-**/client/node_modules/bootstrap/dist/js/bootstrap.bundle.js
-**/client/node_modules/bootstrap/dist/js/bootstrap.js
-**/client/node_modules/bootstrap/dist/js/bootstrap.min.js
-**/client/node_modules/bootstrap/js/
-**/client/node_modules/bootstrap/package.json
-**/client/node_modules/bootstrap/README.md
-**/client/node_modules/bootstrap/scss/
-
 **/client/node_modules/font-awesome/css/font-awesome.css
 **/client/node_modules/font-awesome/css/font-awesome.css.map
 **/client/node_modules/font-awesome/HELP-US-OUT.txt
@@ -133,6 +114,8 @@ server/src
 **/client/node_modules/jquery/package.json
 **/client/node_modules/jquery/src/
 
+**/client/node_modules/bootstrap/js/src/
+
 **/client/node_modules/popper.js/src/
 
 **/client/node_modules/d3-hierarchy/src/
@@ -142,3 +125,8 @@ server/src
 
 **/node_modules/minimist/
 **/node_modules/uglify-js/
+
+**/node_modules/source-map/
+
+**/server/out/core/lib/PvsTypechecker.jar
+**/server/out/core/lib/DdlParser.jar

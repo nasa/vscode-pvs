@@ -77,7 +77,6 @@ import { ProofOrigin, SequentDescriptor } from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
 import { PvsProxy } from '../pvsProxy';
 import { PvsLanguageServer } from '../pvsLanguageServer';
-import * as path from 'path';
 
 abstract class TreeItem {
 	id: string;
@@ -457,8 +456,7 @@ export class PvsProofExplorer {
 					await this.quitProof();
 					return null;
 				}
-				// else
-				return response;
+				// else -- keep processing the response as usual
 			}
 			// console.dir(response, { depth: null });
 			if (response && response.result && response.result.length) {
@@ -741,7 +739,9 @@ export class PvsProofExplorer {
 
 				//--- check special conditions: empty/null command, invalid command, no change before proceeding
 				// if command is invalid command, stop execution and provide feedback to the user 
-				if (utils.isUndoUndoPlusCommand(userCmd)) {
+				if (utils.isHelpBangCommand(userCmd)) {
+					// nothing to do
+				} else if (utils.isUndoUndoPlusCommand(userCmd)) {
 					// this.running = false;
 					// vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 					if (this.autorunFlag) {
@@ -2210,7 +2210,7 @@ export class PvsProofExplorer {
 		this.running = false;
 
 		// interrupt proof commands if necessary
-		const res: PvsResponse = await this.pvsProxy.interrupt();
+		const res: PvsResponse = await this.pvsProxy.interruptProver();
 
 		const inchecker: boolean = await this.inChecker();
 		if (this.formula && inchecker) {
@@ -2283,7 +2283,7 @@ export class PvsProofExplorer {
 		if (this.pvsProxy && !this.interruptFlag) {
 			this.interruptFlag = true;
 			this.running = false;
-			return await this.pvsProxy.interrupt();
+			return await this.pvsProxy.interruptProver();
 		}
 		return null;
 	}

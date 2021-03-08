@@ -39,20 +39,31 @@
 import { PvsParser, ParserDiagnostics } from './pvs-parser/javaTarget/pvsParser';
 import { DdlParser } from './ddl-parser/javaTarget/ddlParser';
 import * as path from 'path';
+// import { PvsParserJS } from './pvs-parser/jsTarget/pvsParserJS';
+import { FileDescriptor } from '../common/serverInterface';
+import { Diagnostic } from 'vscode-languageserver';
+
+export type AntlrTarget = "js" | "java";
 
 export class Parser {
     protected pvsParser = new PvsParser();
     protected ddlParser = new DdlParser();
+    // protected pvsParserJS = new PvsParserJS();
 
     /**
      * Parse a pvs file
      * @param desc File descriptor, includes file name, file extension, and context folder
      */
-    async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<ParserDiagnostics> {
+    async parseFile (desc: FileDescriptor, opt?: { useTarget?: AntlrTarget }): Promise<ParserDiagnostics> {
         if (desc) {
+            opt = opt || {};
             switch (desc.fileExtension) {
-                case ".pvs": { return await this.pvsParser.parseFile(desc); }
-                case ".hpvs": { return await this.ddlParser.parseFile(desc); }
+                case ".pvs": {
+                    return //opt.useTarget === "js" ? await this.pvsParserJS.parseFile(desc)
+                        //: 
+                        await this.pvsParser.parseFile(desc);
+                } // requires Java
+                case ".hpvs": { return await this.ddlParser.parseFile(desc); } // requires Java
                 default: {
                     console.error(`[parser.parseFile] Error: unrecognized extension ${desc.fileExtension}`);
                 }
@@ -60,6 +71,13 @@ export class Parser {
         }
         return null;
     }
+
+    // parseExpression (expr: string): Diagnostic[] | true {
+    //     if (expr) {
+    //         return this.pvsParserJS.parseExpression(expr);
+    //     }
+    //     return null;
+    // }
     
     async hp2pvs (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<ParserDiagnostics> {
         if (desc) {

@@ -132,7 +132,7 @@ export class VSCodePvsEmacsBindingsProvider {
 			const desc: PvsFormula = { 
 				fileName: (document) ? fsUtils.getFileName(document.fileName) : null,
 				fileExtension: (document) ? fsUtils.getFileExtension(document.fileName) : null,
-				contextFolder: (document) ? fsUtils.getContextFolder(document.fileName) : workspace.rootPath,
+				contextFolder: (document) ? fsUtils.getContextFolder(document.fileName) : vscodeUtils.getRootPath(),
 				theoryName: (document) ? utils.findTheoryName(document.getText(), line) : null,
 				formulaName: (document) ? utils.findFormulaName(document.getText(), line) : null
 			};

@@ -38,11 +38,13 @@
 
 import { spawn, ChildProcess, execSync } from 'child_process';
 // note: ./common is a symbolic link. if vscode does not find it, try to restart TS server: CTRL + SHIFT + P to show command palette, and then search for Typescript: Restart TS Server
-import { PvsVersionDescriptor, SimpleConnection, PvsTheory, EvalExpressionRequest } from './common/serverInterface'
+import { PvsVersionDescriptor, SimpleConnection, PvsTheory, EvalExpressionRequest, PvsioEvaluatorCommand, PvsIoMode } from './common/serverInterface'
 import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import * as utils from './common/languageUtils';
 import { PvsResponse } from './common/pvs-gui';
+
+export const pvsioResultRegExp: RegExp = /(\s*==>)?([\w\W\s]+)/g;
 
 /**
  * Wrapper class for PVSio: spawns a PVSio process, and exposes the PVSio REPL interface as an asyncronous server.
@@ -63,8 +65,12 @@ class PvsIoProcess {
 
 	protected errorFlag: boolean = false;
 
+	// pvs theory associated to this pvsio process
 	protected desc: PvsTheory;
 
+	/**
+	 * Connection to the client
+	 */
 	protected connection: SimpleConnection;
 
 	/**
@@ -80,10 +86,27 @@ class PvsIoProcess {
 		}
 	}
 
+	/**
+	 * Internal function, checks if the evaluation result indicates error
+	 * @param data 
+	 */
 	protected checkError (data: string): void {
-		if (data.includes("Error:") || data.includes("<pvserror msg=")) {
-			this.errorFlag = true;
-		}
+		this.errorFlag = data?.includes("Expecting an expression")
+			|| data?.includes("does not uniquely resolve")
+			|| data?.includes("Parser error")
+			|| data?.includes("Error:") 
+			|| data?.includes("<pvserror msg=")
+			|| data?.includes("Type mismatch in application")
+			|| data?.includes("can't be translated to PVS syntax")
+			|| data?.includes("#<Function");
+	}
+
+	/**
+	 * Returns the error flag, useful to check if the evaluation returned an error
+	 * TODO: improve the APIs
+	 */
+	getErrorFlag (): boolean {
+		return this.errorFlag;
 	}
 
 	/**
@@ -103,6 +126,16 @@ class PvsIoProcess {
 	getData (): string { return this.data; }
 	resetData (): void { this.data = ""; }
 
+	/**
+	 * Internal function, loads pvs patches. 
+	 * This command is not exposed in the APIs because it will produce an addional PVSio prompt 
+	 * that can be handled correctly only within the activate method.
+	 */
+	protected async loadPvsPatches (): Promise<void> {
+		await this.sendText(`(load-pvs-patches)!`);
+		this.patchesLoaded = true;
+	}
+
 
 	//----------------------------------------------------------------------------------------------------
 	//--------------------- The following functions are the main APIs provided by PvsIoProcess
@@ -112,31 +145,21 @@ class PvsIoProcess {
 	 * Sends an expression at the PVSio prompt
 	 * @param data Expression to be evaluated at the PVSio prompt 
 	 */
-	async sendText (data: string, opt?: { cb?: (data: string) => void }): Promise<string> {
-		opt = opt || {};
+	async sendText (data: string, cb?: (data: string) => void): Promise<string> {
 		return new Promise((resolve, reject) => {
-			this.cb = opt.cb ? opt.cb : (data: string) => {
+			this.cb = (data: string) => {
+				if (cb) { cb(data); } 
 				resolve(data);
-			}
+			};
 			this.resetData();
-			this.pvsioProcess.stdin.write(data + "\n");
+			this.pvsioProcess?.stdin.write(data + "\n");
 		});
 	}
 	/**
 	 * Sends the quit command (followed by a confirmation) to PVSio
 	 */
 	quit (): void {
-		this.pvsioProcess.stdin.write("exit; Y");
-	}
-
-	/**
-	 * Loads pvs patches. 
-	 * This command is not exposed in the APIs because it will produce an addional PVSio prompt 
-	 * that can be handled correctly only within the activate method.
-	 */
-	protected async loadPvsPatches (): Promise<void> {
-		await this.sendText(`(load-pvs-patches)!`);
-		this.patchesLoaded = true;
+		this.pvsioProcess?.stdin.write("exit; Y");
 	}
 
 	/**
@@ -228,7 +251,7 @@ class PvsIoProcess {
 						// }
 					}
 				});
-				this.pvsioProcess.stdin.on("data", (data: string) => {
+				this.pvsioProcess?.stdin.on("data", (data: string) => {
 					console.log("stdin", data);
 				});
 				this.pvsioProcess.stderr.on("data", (data: string) => {
@@ -293,7 +316,7 @@ class PvsIoProcess {
 				// before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
 				// because the destruction of the process is immediate but previous calls to write() may not have drained
 				// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
-				this.pvsioProcess.stdin.destroy();
+				this.pvsioProcess?.stdin.destroy();
 				// try {
 				// 	execSync(`kill -9 ${pid}`);
 				// } finally {
@@ -322,11 +345,41 @@ class PvsIoProcess {
 }
 
 export class PvsIoProxy {
+	/**
+	 * pvs path
+	 */
 	protected pvsPath: string;
-	protected pvsLibPath: string; // internal libraries
-	protected pvsLibraryPath: string; // external libraries
-	protected connection: SimpleConnection; // connection to the client
+	/**
+	 * path to the internal pvs libraries
+	 */
+	protected pvsLibPath: string;
+	/**
+	 * path to external pvs libraries
+	 */
+	protected pvsLibraryPath: string;
+	/**
+	 * connection to the client
+	 */
+	protected connection: SimpleConnection;
+	/**
+	 * pvsio process map, key is given by utils.desc2id(theory), see also startEvaluator
+	 */
 	protected processRegistry: { [key: string]: PvsIoProcess } = {};
+
+	/**
+	 * queue for incoming command requests
+	 */
+	protected queue: Promise<void> = Promise.resolve(null);
+
+	/**
+	 * attributes used when in "state-machine" mode
+	 */
+	protected initialState: string = ""; // initial machine state
+	protected lastState: string = ""; // last machine state
+
+	/**
+	 * Constructor
+	 */
 	constructor (pvsPath: string, opt?: { connection?: SimpleConnection, pvsLibraryPath?: string }) {
 		opt = opt || {};
 		this.pvsPath = pvsPath;
@@ -334,8 +387,12 @@ export class PvsIoProxy {
 		this.pvsLibPath = path.join(pvsPath, "lib");
 		this.connection = opt.connection;
 	}
+
+	/**
+	 * start pvsio programmatically
+	 */
 	async startEvaluator (desc: PvsTheory, opt?: { pvsLibraryPath?: string }): Promise<PvsResponse> {
-		const pvsioProcess: PvsIoProcess = new PvsIoProcess({ pvsPath: this.pvsPath }, opt, this.connection);
+		const pvsioProcess: PvsIoProcess = new PvsIoProcess({ pvsPath: this.pvsPath }, opt, this.connection);		
 		const processId: string = utils.desc2id(desc);
 		const success: boolean = await pvsioProcess.activate({
 			fileName: desc.fileName, 
@@ -358,44 +415,105 @@ export class PvsIoProxy {
 			error: "Failed to start PVSio"
 		}
 	}
-	async evaluatorCommand (desc: {
-		contextFolder: string, 
-		fileName: string, 
-		fileExtension: string, 
-		theoryName: string, 
-		cmd: string
-	}, opt?: { cb?: (data: string) => void }): Promise<PvsResponse> {
+	/**
+	 * Set the initial state
+	 */
+	setInitialState (state: string): void {
+		this.initialState = state || this.initialState;
+	}
+	/**
+	 * Terminates the pvsio session for the given theory
+	 */
+	async quitEvaluator (desc: PvsTheory): Promise<void> {
 		const processId: string = utils.desc2id(desc);
-		let data: string = "";
-		if (this.processRegistry && this.processRegistry[processId] && desc.cmd) {
-			// console.dir(desc);
-			// if (desc.cmd === ";") { desc.cmd = `"";`; }
-			// console.dir(desc);
-			// let cmd: string = (desc.cmd.endsWith(";") || desc.cmd.endsWith("!")) ? desc.cmd : `${desc.cmd};`;
-			console.log(desc.cmd);
-			if (utils.isQuitCommand(desc.cmd)) {
-				this.processRegistry[processId].kill();
-			} else {
-				data = await this.processRegistry[processId].sendText(desc.cmd, opt);
-				// clean up output, there's a ==> symbol at the start
-				const match: RegExpMatchArray = /(\s*==>)?([\w\W\s]+)/g.exec(data);
-				if (match && match.length > 2) {
-					data = match[2]?.replace(/\s+/g, ""); // remove all unnencessary spaces
-				}
-			}
-		} else {
-			data = "Error: PVSio could not be started. Please check pvs-server log for details.";
-		}
-		return {
+		const pvsio: PvsIoProcess = this.processRegistry ? this.processRegistry[processId] : null;
+		await pvsio?.kill();
+		this.lastState = this.initialState;
+	}
+	/**
+	 * Evaluate a pvs command in a pvsio evaluator session (unbuffered version)
+	 * Requires an evaluator session already started.
+	 */
+	protected async evalCmd (desc: PvsioEvaluatorCommand, opt?: {
+		cb?: (data: string, state: string) => void
+	}): Promise<PvsResponse> {
+		opt = opt || {};
+		const processId: string = utils.desc2id(desc);
+		const res: PvsResponse = {
 			jsonrpc: "2.0",
 			id: processId,
-			result: data
+			result: null
 		};
+		const pvsio: PvsIoProcess = this.processRegistry ? this.processRegistry[processId] : null;
+		if (pvsio && desc && desc.contextFolder && desc.fileName && desc.fileExtension) {
+			if (desc.cmd) {
+				let cmd: string = desc.cmd;
+				// console.log(cmd);
+				// check if this is a quit command
+				if (utils.isQuitCommand(cmd)) {
+					await pvsio.kill();
+					return res;
+				}
+				// initialize state machine if field desc.initialState is provided
+				if (desc.initialState) {
+					this.initialState = desc.initialState;
+					this.lastState = this.initialState;
+				}
+				// in state-machine mode, replay the last state as function parameter
+				if (desc.mode === "state-machine" && this.lastState && this.initialState) {
+					// remove semicolor at the end
+					cmd = cmd.substring(0, cmd.length - 1 );
+					// replay last state
+					cmd = `LET st = ${this.lastState} IN ${cmd}(st);`;
+				}
+				// evaluate the command
+				res.result = await pvsio.sendText(cmd, (state: string) => {
+					// clean up output, there's a ==> symbol at the start
+					const match: RegExpMatchArray = new RegExp(pvsioResultRegExp).exec(state);
+					if (match && match.length > 2) {
+						state = match[2]?.trim(); // remove all unnencessary spaces
+					}
+					if (!pvsio.getErrorFlag()) {
+						// set the initial state
+						this.initialState = this.initialState || state;
+						// update last state
+						this.lastState = state;
+					}
+					if (opt?.cb) {
+						const data: string = desc.showCommandInTerminal ?
+							`${cmd}\n==>\n${state}` 
+								: `==>\n${state}`
+						opt.cb(data, state);
+					}	
+				});
+			}
+			return res;
+		}
+		res.result = "Error: PVSio could not be started. Please check pvs-server log for details.";
+		return res;
 	}
+	/**
+	 * Evaluate a pvs command in a pvsio evaluator session. Requires an evaluator session already started.
+	 */
+	async evalCommand (desc: PvsioEvaluatorCommand, opt?: {
+		cb?: (data: string, state: string) => void
+	}): Promise<PvsResponse> {
+		return new Promise ((resolve, reject) => {
+			this.queue = this.queue.then(async () => {
+				const res: PvsResponse = await this.evalCmd(desc, opt);
+				resolve(res);
+			});
+		});
+	}
+
+	/**
+	 * Evaluate a pvs expression
+	 * @param req 
+	 */
 	async evalExpression (req: EvalExpressionRequest): Promise<PvsResponse> {
 		let response: PvsResponse = await this.startEvaluator(req);
 		if (response && !response.error) {
-			response = await this.evaluatorCommand({
+			response = await this.evalCommand({
 				contextFolder: req.contextFolder,
 				fileName: req.fileName,
 				fileExtension: req.fileExtension,

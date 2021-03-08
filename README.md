@@ -88,6 +88,9 @@ The main functionalities provided by the environment are as follows:
 - **Search NASALib**: Search definitions and theorems in [NASALib](https://github.com/nasa/pvslib), an extensive PVS library developed and maintained by the NASA Langley Formal Methods Team.
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-search-nasalib.gif" width="600">
 
+- **Prototype Builder**: Build interactive visual prototypes to demonstrate the behavior of executable PVS specifications.
+<br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-rapid-prototyping.gif" width="600">
+
 <br>
 
 ## Structure

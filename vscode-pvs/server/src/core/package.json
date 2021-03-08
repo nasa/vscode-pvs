@@ -1,6 +1,6 @@
 {
     "scripts": {
-        "antlr4JS": "java -jar antlr-4.9-complete.jar -Dlanguage=JavaScript PvsLanguage.g4 -o ./js",
-        "antlr4Java": "java -jar antlr-4.9-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./java"
+        "antlr4JS": "java -jar antlr-4.9.1-complete.jar -Dlanguage=JavaScript PvsLanguage.g4 -o ./js",
+        "antlr4Java": "java -jar antlr-4.9.1-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./java"
     }
 }
