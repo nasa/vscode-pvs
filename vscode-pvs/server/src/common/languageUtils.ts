@@ -1002,15 +1002,16 @@ export function listSymbols(txt: string): string[] {
 
 export const pvsioBanner: string = `
 ╔════════════════════════════════════════════════════════════════════════════════════
-║ PVSio
+║ PVSio Evaluator
 ║
-║ How to use the evaluator:
+║ Usage:
 ║ - Enter a PVS expression followed by ';'
 ║  or
 ║ - Enter a Lisp expresssion followed by '!'
-║ 
-║ To exit the evalutor, enter 'exit'.
-║ You can use TAB to complete commands at the PVSio prompt.
+║  or
+║ - Exit the evaluator with 'quit;' 
+║
+║ TAB completes commands.
 ║ UP/DOWN arrow keys recall previous/next command.
 ╚════════════════════════════════════════════════════════════════════════════════════
 `
