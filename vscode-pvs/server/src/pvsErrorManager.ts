@@ -13,7 +13,7 @@ export class PvsErrorManager {
     }
 
     handleProofCommandError (desc: { cmd: string, response: PvsError }): void {
-        this.notifyError({ msg: `Error: proof-command ${desc.cmd} returned error (please check pvs-server output for details)` });
+        // this.notifyError({ msg: `Error: proof-command ${desc.cmd} returned error (please check pvs-server output for details)` });
         console.error(`[pvs-language-server.proofCommandRequest] Error: proof-command ${desc.cmd} returned error`, desc.response);
     }
     handleProveFormulaError (desc: {

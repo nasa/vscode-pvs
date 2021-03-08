@@ -106,6 +106,13 @@ export class EventsDispatcher {
     }
 	activate (context: ExtensionContext): void {
         // -- handlers for server responses
+        this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: {
+            req: PvsioEvaluatorCommand,
+            res: string,
+            state: string
+        }) => {
+            // do nothing -- this is just a placeholder, the actual handler is in vscoePvsioWeb.ts
+        });
 		this.client.onRequest(serverEvent.pvsVersionInfo, (version: PvsVersionDescriptor) => {
 			if (version) {
                 this.statusBar.pvsReady(version);

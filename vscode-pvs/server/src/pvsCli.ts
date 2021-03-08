@@ -156,7 +156,6 @@ class PvsCli {
 
 	protected connection: CliConnection;
 
-	protected cmds: string[] = []; // queue of commands to be executed
 	protected tabCompleteMode: boolean = false;
 
 	protected args: PvsCliInterface;
@@ -180,7 +179,7 @@ class PvsCli {
 		this.args = args;
 		this.clientID = fsUtils.get_fresh_id();
 	}
-	// FIXME: the evaluator crashes into lisp when trying to evaluate malformed expressions, e.g., LET x = 1;
+	// FIXME: the evaluator breaks into lisp when trying to evaluate malformed expressions, e.g., LET x = 1;
 	async startEvaluatorCli (): Promise<void> {
 		// read input file so we can autocomplete symbol names
 		this.mainContent = await fsUtils.readFile(fsUtils.desc2fname(this.args));
@@ -188,7 +187,7 @@ class PvsCli {
 			// this is necessary for correct handling of navigation keys and tab-autocomplete in the prover prompt
 			process.stdin.setRawMode(true);
 		}
-		// readline.emitKeypressEvents(process.stdin);
+		readline.emitKeypressEvents(process.stdin);
 		// activate readline
 		this.rl = readline.createInterface({ 
 			output: process.stdout, 
@@ -198,48 +197,64 @@ class PvsCli {
 			},
 			removeHistoryDuplicates: true
 		});
-		// this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
-		this.rl.setPrompt("");
-		this.isActive = true;
-
 		this.rl.on("line", async (ln: string) => {
-			if (ln) {
-				let cmd: string = ln.trim();
-				if (utils.isQuitCommand(cmd)) {
-					this.isActive = false;
-					this.wsClient.send(JSON.stringify({
-						type: serverRequest.evaluatorCommand,
-						cmd: "quit",
-						fileName: this.args.fileName,
-						fileExtension: this.args.fileExtension,
-						contextFolder: this.args.contextFolder,
-						theoryName: this.args.theoryName,
-						formulaName: this.args.formulaName
-					}));	
-					console.log();
-					console.log("PVSio evaluator session terminated.");
-					console.log();
-					this.rl.question("Press Enter to close the terminal. ", () => {
-						this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
-						this.wsClient.close();
-					});
-					return;
-				} else {
-					if (this.isActive) {
-						// cmd = (cmd.endsWith(";") || cmd.endsWith("!")) ? cmd : `${cmd};`;
-						this.wsClient.send(JSON.stringify({
-							type: serverRequest.evaluatorCommand,
-							cmd,
-							fileName: this.args.fileName,
-							fileExtension: this.args.fileExtension,
-							contextFolder: this.args.contextFolder,
-							theoryName: this.args.theoryName,
-							formulaName: this.args.formulaName
-						}));
+			if (this.isActive) {
+				this.lines += " " + ln;
+			}
+		});
+		this.isActive = true;
+		let semicolorEntered: boolean = false;
+		process.stdin.on("keypress", (input: string, key: readline.Key) => {
+			try {
+				if (key?.sequence.trim().endsWith(";")) {
+					semicolorEntered = true;
+				}
+				if (key?.sequence.includes("\r")) {
+					this.rl.setPrompt("");
+					if (utils.balancedPar(this.lines) && semicolorEntered) {
+						const cmd: string = this.lines;
+						semicolorEntered = false;
+						this.lines = "";
+
+						if (utils.isQuitCommand(cmd)) {
+							this.isActive = false;
+							this.wsClient.send(JSON.stringify({
+								type: serverRequest.evaluatorCommand,
+								cmd: "quit",
+								fileName: this.args.fileName,
+								fileExtension: this.args.fileExtension,
+								contextFolder: this.args.contextFolder,
+								theoryName: this.args.theoryName,
+								formulaName: this.args.formulaName
+							}));	
+							console.log();
+							console.log("PVSio evaluator session terminated.");
+							console.log();
+							this.rl.question("Press Enter to close the terminal. ", () => {
+								this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+								this.wsClient.close();
+							});
+							return;
+						} else {
+							if (this.isActive) {
+								this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
+								this.wsClient.send(JSON.stringify({
+									type: serverRequest.evaluatorCommand,
+									cmd,
+									fileName: this.args.fileName,
+									fileExtension: this.args.fileExtension,
+									contextFolder: this.args.contextFolder,
+									theoryName: this.args.theoryName,
+									formulaName: this.args.formulaName
+								}));
+							}
+						}
 					}
 				}
+			} catch (err) {
+				console.error(err);
 			}
-		});		
+		});
 		this.connection = new CliConnection();
 	}
 	async startProverCli (): Promise<void> {
@@ -257,92 +272,98 @@ class PvsCli {
 			},
 			removeHistoryDuplicates: true
 		});
-		this.rl.setPrompt("");
+		this.rl.on("line", async (ln: string) => {
+			if (this.isActive) {
+				this.lines += " " + ln;
+			}
+		});
 		this.isActive = true;
-
 		process.stdin.on("keypress", (input: string, key: readline.Key) => {
-			// console.log(input);
-			// console.dir(key);
-			// this.rl.setPrompt("");
-			if (key && key.sequence.includes("\r") && utils.balancedPar(this.lines)) {
-				// const test: { success: boolean, msg: string } = utils.parCheck(this.lines);
-				const cmd: string = this.lines;
-				// if (test.success) {
-					// console.dir(key);
-					this.lines = "";
-					// if (utils.isSaveCommand(cmd)) {
-					// 	console.log();
-					// 	console.log("Proof saved successfully!");
-					// 	console.log();
-					// 	this.wsClient.send(JSON.stringify({
-					// 		type: serverRequest.proofCommand,
-					// 		cmd: "save",
-					// 		fileName: this.args.fileName,
-					// 		fileExtension: this.args.fileExtension,
-					// 		contextFolder: this.args.contextFolder,
-					// 		theoryName: this.args.theoryName,
-					// 		formulaName: this.args.formulaName
-					// 	}));
-					// 	// show prompt
-					// 	this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
-					// 	this.rl.prompt();
-					// 	return;
-					// }
-					if (utils.isSaveThenQuitCommand(cmd)) {
-						console.log();
-						console.log("Proof saved successfully!");
-						console.log();
-						console.log("Prover session terminated.");
-						this.wsClient.send(JSON.stringify({
-							type: serverRequest.proofCommand,
-							cmd: "save-then-quit",
-							fileName: this.args.fileName,
-							fileExtension: this.args.fileExtension,
-							contextFolder: this.args.contextFolder,
-							theoryName: this.args.theoryName,
-							formulaName: this.args.formulaName
-						}));
-						this.isActive = false;
-						this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
-						this.wsClient.close();
-						return;
-					}
-					if (utils.isQuitCommand(cmd)) {
-						console.log();
-						console.log("Prover session terminated.");
-						console.log();
-						this.wsClient.send(JSON.stringify({
-							type: serverRequest.proofCommand,
-							cmd: "quit",
-							fileName: this.args.fileName,
-							fileExtension: this.args.fileExtension,
-							contextFolder: this.args.contextFolder,
-							theoryName: this.args.theoryName,
-							formulaName: this.args.formulaName
-						}));
-						this.isActive = false;
-						this.rl.question("Press Enter to close the terminal.", (answer: string) => {
+			try {
+				if (key && key.sequence.includes("\r")) {
+					this.rl.setPrompt("");
+					if (utils.balancedPar(this.lines)) {
+						const cmd: string = this.lines;
+						this.lines = "";
+
+						if (utils.isSaveThenQuitCommand(cmd)) {
+							console.log();
+							console.log("Proof saved successfully!");
+							console.log();
+							console.log("Prover session terminated.");
+							this.wsClient.send(JSON.stringify({
+								type: serverRequest.proofCommand,
+								cmd: "save-then-quit",
+								fileName: this.args.fileName,
+								fileExtension: this.args.fileExtension,
+								contextFolder: this.args.contextFolder,
+								theoryName: this.args.theoryName,
+								formulaName: this.args.formulaName
+							}));
+							this.isActive = false;
 							this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
 							this.wsClient.close();
-						});
-						return;
-					}
-					if (utils.isQEDCommand(cmd)) {
-						readline.moveCursor(process.stdin, 0, -1);
-						readline.clearScreenDown(process.stdin);
-						console.log();
-						console.log(utils.colorText("Q.E.D.", utils.textColor.green));
-						console.log();
-						this.isActive = false;
-						this.rl.question("Press Enter to close the terminal.", () => {
-							this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
-							this.wsClient.close();
-						});
-						return;
-					}
-					if (utils.isHelpBangCommand(cmd)) {
-						const match: RegExpMatchArray = new RegExp(utils.helpBangCommandRegexp).exec(cmd);
-						if (match && match.length > 1) {
+							return;
+						}
+						if (utils.isQuitCommand(cmd)) {
+							console.log();
+							console.log("Prover session terminated.");
+							console.log();
+							this.wsClient.send(JSON.stringify({
+								type: serverRequest.proofCommand,
+								cmd: "quit",
+								fileName: this.args.fileName,
+								fileExtension: this.args.fileExtension,
+								contextFolder: this.args.contextFolder,
+								theoryName: this.args.theoryName,
+								formulaName: this.args.formulaName
+							}));
+							this.isActive = false;
+							this.rl.question("Press Enter to close the terminal.", (answer: string) => {
+								this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+								this.wsClient.close();
+							});
+							return;
+						}
+						if (utils.isQEDCommand(cmd)) {
+							readline.moveCursor(process.stdin, 0, -1);
+							readline.clearScreenDown(process.stdin);
+							console.log();
+							console.log(utils.colorText("Q.E.D.", utils.textColor.green));
+							console.log();
+							this.isActive = false;
+							this.rl.question("Press Enter to close the terminal.", () => {
+								this.wsClient.send(JSON.stringify({ type: "unsubscribe", channelID: this.args.channelID, clientID: this.clientID }));
+								this.wsClient.close();
+							});
+							return;
+						}
+						if (utils.isHelpBangCommand(cmd)) {
+							const match: RegExpMatchArray = new RegExp(utils.helpBangCommandRegexp).exec(cmd);
+							if (match && match.length > 1) {
+								this.wsClient.send(JSON.stringify({
+									type: serverRequest.proofCommand, 
+									cmd,
+									fileName: this.args.fileName,
+									fileExtension: this.args.fileExtension,
+									contextFolder: this.args.contextFolder,
+									theoryName: this.args.theoryName,
+									formulaName: this.args.formulaName
+								}));
+							}
+							return;
+						}
+						if (utils.isHelpCommand(cmd)) {
+							console.log();
+							console.log(commandUtils.printHelp(cmd, { useColors: true }));
+							console.log();
+							// show prompt
+							this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+							this.rl.prompt();						
+							return;
+						}
+						if (this.isActive) {
+							this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
 							this.wsClient.send(JSON.stringify({
 								type: serverRequest.proofCommand, 
 								cmd,
@@ -353,42 +374,10 @@ class PvsCli {
 								formulaName: this.args.formulaName
 							}));
 						}
-						return;
 					}
-					if (utils.isHelpCommand(cmd)) {
-						console.log();
-						console.log(commandUtils.printHelp(cmd, { useColors: true }));
-						console.log();
-						// show prompt
-						this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
-						this.rl.prompt();						
-						return;
-					}
-					// console.log(`Sending command ${cmd}`);
-					this.wsClient.send(JSON.stringify({
-						type: serverRequest.proofCommand, 
-						cmd,
-						fileName: this.args.fileName,
-						fileExtension: this.args.fileExtension,
-						contextFolder: this.args.contextFolder,
-						theoryName: this.args.theoryName,
-						formulaName: this.args.formulaName
-					}));
-					console.log();
-				// } else {
-				// 	console.log();
-				// 	console.log(test.msg);
-				// 	this.wsClient.send(JSON.stringify({
-				// 		type: serverCommand.proofCommand, 
-				// 		cmd,
-				// 		fileName: this.args.fileName,
-				// 		fileExtension: this.args.fileExtension,
-				// 		contextFolder: this.args.contextFolder,
-				// 		theoryName: this.args.theoryName,
-				// 		formulaName: this.args.formulaName
-				// 	}));
-				// }
-				// this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+				}
+			} catch (err) {
+				console.error(err);
 			}
 		});
 		// this.rl.on("pause", async () => {
@@ -397,11 +386,6 @@ class PvsCli {
 		// this.rl.on("resume", async () => {
 		// 	console.log("RESUME");
 		// });
-		this.rl.on("line", async (ln: string) => {
-			if (this.isActive) {
-				this.lines += " " + ln;
-			}
-		});
 		this.connection = new CliConnection();
 	}
 	async subscribe (channelID: string): Promise<boolean> {

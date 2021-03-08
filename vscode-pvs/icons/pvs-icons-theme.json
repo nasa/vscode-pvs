@@ -1,21 +1,25 @@
 {
 	"iconDefinitions": {
 		"pvs-file-icon": {
-			"iconPath": "pvs-file-icon.png",
+			"iconPath": "./pvs-file-icon.png",
 			"description": "pvs theory file"
 		},
 		"tccs-file-icon": {
-			"iconPath": "tccs-file-icon.png",
+			"iconPath": "./tccs-file-icon.png",
 			"description": "tccs file"
 		},
 		"summary-file-icon": {
-			"iconPath": "summary-file-icon.png",
+			"iconPath": "./summary-file-icon.png",
 			"description": "summary file"
 		},
 		"internal-pvs-file-icon": {
-			"iconPath": "internal-pvs-file-icon.png",
+			"iconPath": "./internal-pvs-file-icon.png",
 			"description": "pvs proof file"
 		}
+	},
+	"folderNames": {
+		"pvsbin": "internal-pvs-file-icon",
+		"pvsioweb": "internal-pvs-file-icon"
 	},
 	"fileExtensions": {
 		"pvs": "pvs-file-icon",
