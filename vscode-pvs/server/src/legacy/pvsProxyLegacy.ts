@@ -41,9 +41,9 @@ import { SimpleConnection, PvsFileDescriptor, TheoryDescriptor, FormulaDescripto
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import { PvsProcess } from '../pvsProcess';
-import * as utils from '../common/languageUtils';
 import { PvsErrorManager } from '../pvsErrorManager';
-import { SequentDescriptor } from '../common/languageUtils';
+import { SequentDescriptor } from '../common/fsUtils';
+
 
 interface ProofSessionStatus {
     label: string,

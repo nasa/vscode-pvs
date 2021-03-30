@@ -36,8 +36,10 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
+import { PvsColor } from "./colorUtils";
+
  // utility function for creating regexp
-function regExpSource(v: Array<string>): string {
+export function regExpSource(v: Array<string>): string {
 	if (v) {
 		v = v.filter((elem:string) => {
 			return elem !== "AUTO_REWRITE+" && elem !== "AUTO_REWRITE-" && elem !== "TYPE+";
@@ -59,7 +61,7 @@ function regExpSource(v: Array<string>): string {
 									: elem.includes("!") ? "!" : null;
 				return (op) ? "\\b" + elem.replace(op, `\\${op}`)
 							// : "\\b" + elem + "\\b";
-							: "\\b(?!" + elem + "[\\?\\!])" + elem + "\\b";
+							: "(?!\\b" + elem + "[?!])(?<!-)\\b" + elem + "\\b";
 			});
 			return v.join("|");
 		}
@@ -169,7 +171,42 @@ export interface SnippetType {
 	body: string[]
 };
 
-// export function regexpOr(regexpSourceV: string[], mod?: string): RegExp {
-// 	mod = mod || "g";
-// 	return new RegExp(regexpSourceV.join("|"), mod);
-// }
+export interface PvsColorThemeItem { id: string, regex: string, flags: "g" | "gi", color: PvsColor };
+export const pvsColorTheme: PvsColorThemeItem[] = [
+	{
+		id: "number",
+		regex: PVS_NUMBER_REGEXP_SOURCE,
+		flags: "g",
+		color: PvsColor.yellow
+	},
+	{
+		id: "operators",
+		regex: PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE,
+		flags: "g",
+		color: PvsColor.blue
+	},
+	{
+		id: "keywords",
+		regex: PVS_RESERVED_WORDS_REGEXP_SOURCE,
+		flags: "gi",
+		color: PvsColor.blue
+	},
+	{
+		id: "function",
+		regex: PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE,
+		flags: "g",
+		color: PvsColor.green
+	},
+	{
+		id: "builtin_types",
+		regex: PVS_BUILTIN_TYPE_REGEXP_SOURCE,
+		flags: "g",
+		color: PvsColor.green
+	},
+	{
+		id: "true_false",
+		regex: PVS_TRUE_FALSE_REGEXP_SOURCE,
+		flags: "gi",
+		color: PvsColor.blue
+	}
+];

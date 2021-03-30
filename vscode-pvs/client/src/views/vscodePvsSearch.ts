@@ -40,7 +40,7 @@ import { ExtensionContext, Position, Range, Uri, ViewColumn, WebviewPanel, windo
 import * as path from 'path';
 import { LanguageClient } from "vscode-languageclient";
 import * as Handlebars from "handlebars";
-import { SearchRequest, SearchResponse, SearchResult, serverEvent, serverRequest } from "../common/serverInterface";
+import { FindSymbolDeclarationRequest, SearchRequest, SearchResponse, SearchResult, serverEvent, serverRequest } from "../common/serverInterface";
 
 const htmlTemplate: string = `
 <!DOCTYPE html>
@@ -289,6 +289,8 @@ export class VSCodePvsSearch {
         this.createWebView();
         // create webview content
         this.createContent(data);
+        // set language to pvs
+        vscodeUtils.setEditorLanguage();
     }
     /**
      * Creates the html rendered in the webview

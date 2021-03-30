@@ -1,7 +1,10 @@
 
 
-import { HelpDescriptor } from "./serverInterface";
-import * as utils from './languageUtils';
+import { CommandDescriptor, CommandsMap } from "./serverInterface";
+import * as languageUtils from './languageUtils';
+import { SessionType } from "./xtermInterface";
+import * as colorUtils from '../common/colorUtils';
+import { PVS_KEYWORDS, PVS_LIBRARY_FUNCTIONS } from "./languageKeywords";
 
 // export function printHelp (cmd: string, opt?: { optionals?: boolean, note?: boolean }): string {
 //     opt = opt || {};
@@ -25,14 +28,15 @@ import * as utils from './languageUtils';
 //     return help;
 // }
 
-export function formatHelp (desc: HelpDescriptor, opt?: { useColors?: boolean }): string {
+
+export function formatHelp (desc: CommandDescriptor, opt?: { useColors?: boolean }): string {
     opt = opt || {};
     if (desc) {
         let msg: string = "  ";
-        msg += (opt.useColors) ? `${utils.colorText(desc.description, utils.textColor.green)}` : desc.description;
+        msg += (opt.useColors) ? `${colorUtils.colorText(desc.description, colorUtils.PvsColor.green)}` : desc.description;
         if (desc.syntax) {
             msg += "\n  Syntax: ";
-            msg += (opt.useColors) ? `${utils.colorText(desc.syntax, utils.textColor.yellow)}` : desc.syntax;
+            msg += (opt.useColors) ? `${colorUtils.colorText(desc.syntax, colorUtils.PvsColor.yellow)}` : desc.syntax;
         }
         if (desc.optionals) {
             const opts: string[] = Object.keys(desc.optionals);
@@ -40,7 +44,7 @@ export function formatHelp (desc: HelpDescriptor, opt?: { useColors?: boolean })
                 msg += "\n  Optionals: ";
                 for (let i = 0; i < opts.length; i++) {
                     msg += "\n    ";
-                    msg += (opt.useColors) ? `${utils.colorText(opts[i], utils.textColor.yellow)}` : opts[i];
+                    msg += (opt.useColors) ? `${colorUtils.colorText(opts[i], colorUtils.PvsColor.yellow)}` : opts[i];
                     msg += " " + desc.optionals[opts[i]];
                 }
             }
@@ -54,9 +58,9 @@ export function formatHelp (desc: HelpDescriptor, opt?: { useColors?: boolean })
  * Prints a compact help for a given command
  */
 export function printHelp (helpCommand: string, opt?: { useColors?: boolean }): string {
-    const match: RegExpMatchArray = new RegExp(utils.helpCommandRegexp).exec(helpCommand);
+    const match: RegExpMatchArray = new RegExp(languageUtils.helpCommandRegexp).exec(helpCommand);
     if (match && match.length > 1) {
-        const availableHelp: HelpDescriptor = PROOF_COMMANDS[match[1]]
+        const availableHelp: CommandDescriptor = PROOF_COMMANDS[match[1]]
             || PROOF_TACTICS[match[1]]
             || EVALUATOR_COMMANDS[match[1]];
         return (availableHelp) ? formatHelp(availableHelp, opt)
@@ -68,7 +72,7 @@ export function printHelp (helpCommand: string, opt?: { useColors?: boolean }): 
 // the following list of commands obtained from pvs-server with collect-strategy-names
 // the descriptions are based on those illustrated in the pvs prover guide
 // some commands are commented out in this list are they were not deemed useful for the typical PVS user
-export const PROOF_COMMANDS: { [key:string]: HelpDescriptor } = {
+export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
     // 	"abs-simp": {
     // 		description: ``
     // },
@@ -117,13 +121,13 @@ export const PROOF_COMMANDS: { [key:string]: HelpDescriptor } = {
     //         "(hide t)": `Hide the equality formula to which extensionality is applied, rather than deleting the formula.` 
     //     }
     // },
-    // "apply-lemma": { 
-    //     description: `Apply a lemma`,
-    //     syntax: ``,
-    //     optionals: { 
-    //         "EXPR-SPECS": ``
-    //     }
-    // },
+    "apply-lemma": { 
+        description: `Apply lemma with expressions`,
+        syntax: `apply-lemma LEMMA EXPR-SPECS`,
+        optionals: { 
+            "EXPR-SPECS": ``
+        }
+    },
     // "apply-rewrite": {
     //     description:`Apply a purely equational rewrite rule`,
     //     syntax: `apply-rewrite`,
@@ -517,26 +521,26 @@ export const PROOF_COMMANDS: { [key:string]: HelpDescriptor } = {
         }
     },
     "induct": { 
-        description: `Perform an induction on VAR`,
+        description: `Perform induction on VAR`,
         syntax: `induct VAR`
     },
     "induct-and-rewrite": { 
-        description: `Perform an induction on VAR and then simplify using rewrites`,
+        description: `Perform induction on VAR and then simplify using rewrites`,
         syntax: `induct-and-rewrite VAR`,
         optionals: {
             "FNUM": `Apply the command to sequent formula FNUM.`,
             "REWRITES": `Simplify using the given rewrite rules.`
         },
         note: `An example invocation is (induct-and-rewrite "x" 1 "append" "reverse"). This invocation 
-            inducts on "x" in formula 1, then simplifies the base and induction using the definitions 
+            inducts on "x" in formula 1, then simplifies the base and the induction step using definitions 
             "append" and "reverse".`
     },
     "induct-and-rewrite!": { 
-        description: `Perform an induction on VAR and then simplify using rewrites while expanding all definitions`,
+        description: `Perform induction on VAR and then simplify using rewrites while expanding all definitions`,
         syntax: `induct-and-rewrite! VAR`
     },
     "induct-and-simplify": { 
-        description: `Perform an induction on VAR and then simplify using rewrites rules defined in the given theories`,
+        description: `Perform induction on VAR and then simplify using rewrites rules defined in the given theories`,
         syntax: `induct-and-simplify VAR :theories THEORIES`,
         optionals: {
             ":rewrites REWRITES": `Simplify using the given rewrite rules.`
@@ -1296,7 +1300,7 @@ export const PROOF_COMMANDS: { [key:string]: HelpDescriptor } = {
 };
 
 
-export const PROOF_TACTICS: { [key:string]: HelpDescriptor } = {
+export const PROOF_TACTICS: { [key:string]: CommandDescriptor } = {
     "apply": {
         description: `In-line definition of user-defined strategies.`,
         syntax: `apply strategy COMMENT`,
@@ -1756,18 +1760,10 @@ export const PROOF_TACTICS: { [key:string]: HelpDescriptor } = {
 };
 
 // TODO: add more commands
-export const EVALUATOR_COMMANDS: { [key:string]: HelpDescriptor } = {
+export const EVALUATOR_COMMANDS: { [key:string]: CommandDescriptor } = {
     "RANDOM": {
         description: `Generate a random number.`,
         syntax: `RANDOM`
-    },
-    "quit": {
-        description: `Exit the evaluator with confirmation`,
-        syntax: `quit`
-    },
-    "exit": {
-        description: `Exit the evaluator without confirmation`,
-        syntax: `exit`
     },
     "help": {
         description: `Shows evaluator commands`,
@@ -1812,7 +1808,7 @@ export const EVALUATOR_COMMANDS: { [key:string]: HelpDescriptor } = {
 };
 
 // a selection of 32 useful commands for advanced users. The selection has been based on statistics from nasalib and feedback from experienced pvs users
-export const PROOF_COMMANDS_ADVANCED_PROFILE: { [key: string]: HelpDescriptor } = {
+export const PROOF_COMMANDS_ADVANCED_PROFILE: { [key: string]: CommandDescriptor } = {
     "all-typepreds": PROOF_COMMANDS["all-typepreds"],
     "apply-ext": PROOF_COMMANDS["apply-ext"],
     "assert": PROOF_COMMANDS["assert"],
@@ -1847,7 +1843,7 @@ export const PROOF_COMMANDS_ADVANCED_PROFILE: { [key: string]: HelpDescriptor } 
     "use": PROOF_COMMANDS["use"]
 };
 
-export const PROOF_COMMANDS_BASIC_PROFILE: { [key: string]: HelpDescriptor } = {
+export const PROOF_COMMANDS_BASIC_PROFILE: { [key: string]: CommandDescriptor } = {
     "all-typepreds": PROOF_COMMANDS["all-typepreds"],
     "assert": PROOF_COMMANDS["assert"],
     "beta": PROOF_COMMANDS["beta"],
@@ -1864,7 +1860,7 @@ export const PROOF_COMMANDS_BASIC_PROFILE: { [key: string]: HelpDescriptor } = {
     "split": PROOF_COMMANDS["split"]
 };
 
-export function getCommands(profile: ProofMateProfile): { [key: string]: HelpDescriptor } {
+export function getCommands(profile: ProofMateProfile): { [key: string]: CommandDescriptor } {
     switch (profile) {
         case "basic": { return PROOF_COMMANDS_BASIC_PROFILE; }
         case "advanced": { return PROOF_COMMANDS_ADVANCED_PROFILE; }
@@ -1873,3 +1869,382 @@ export function getCommands(profile: ProofMateProfile): { [key: string]: HelpDes
 }
 
 export declare type ProofMateProfile = "basic" | "advanced";
+
+// list of evaluator commands
+export const evaluatorCommands: CommandsMap = {
+    "quit": {
+        description: `Quit the evaluator`,
+        syntax: `quit`
+    },
+    "exit": {
+        description: `Quit the evaluator`,
+        syntax: `exit`
+    },
+    ...EVALUATOR_COMMANDS
+};
+// list of prover commands
+export const proverCommands: CommandsMap = {
+    "undo": {
+        description: `Undo last prover command`,
+        syntax: `undo`,
+        optionals: {
+            "N": `Repeat undo N times.`
+        }
+    },
+    "quit": {
+        description: `Quit prover`,
+        syntax: `quit`
+    },
+    "postpone": {
+        description: `Postpone current proof goal`,
+        syntax: `postpone`
+    },
+    ...PROOF_COMMANDS//_ADVANCED_PROFILE
+};
+
+export interface HintsObject {
+    keywords?: string[],
+    libs?: string[],
+    symbols?: string[],
+    commands?: { [key: string]: CommandDescriptor }
+};
+
+export interface MathObjects {
+	lemmas?: string[], 
+	types?: string[], 
+	definitions?: string[]
+};
+
+
+/**
+ * Returns a list of hints for the evaluator/prover prompt.
+ * Hints include:
+ * - words from the last evaluator/prover state
+ * - words from the theory specification
+ * - evaluator/prover commands
+ * If active line is provided, the function tries to match the hints with the given line
+ */
+export function getHints (type: SessionType, req?: { activeLine?: string, lastState?: string, theoryContent?: string }): HintsObject {
+    req = req || {};
+    let hints: HintsObject = {
+        symbols: []
+    };
+    const activeLine: string = req.activeLine || "";
+    if (req.theoryContent) {
+        let txt = colorUtils.getPlainText(req.theoryContent).replace(new RegExp(languageUtils.commentRegexp), "") // this removes all commented text
+            .replace(new RegExp(languageUtils.stringRegexp), "") // this removes all strings
+        // autocomplete symbol names
+        const symbols: string[] = languageUtils.listSymbols(txt);
+        // console.dir(symbols, { depth: null });
+        if (symbols?.length) {
+            hints.symbols = symbols.filter((c: string) => c.startsWith(activeLine));
+        }
+    }
+    if (req.lastState) {
+        // autocomplete symbol names
+        const symbols: string[] = languageUtils.listSymbols(colorUtils.getPlainText(req.lastState));
+        // console.dir(symbols, { depth: null });
+        if (symbols?.length) {
+            hints.symbols = hints.symbols.concat(symbols.filter((c: string) => c.startsWith(activeLine)));
+        }
+    }
+    // include pvs keywords and library functions
+    hints.keywords = PVS_KEYWORDS;
+    hints.libs = PVS_LIBRARY_FUNCTIONS;
+    // Include evaluator/prover commands in the list
+    hints.commands = type === "evaluator" ? evaluatorCommands : proverCommands
+    return hints;
+}
+
+// utility function, checks if open brackets match closed brackets
+export interface CheckParResult { success: boolean, msg: string }
+export function checkPar (content: string): CheckParResult {
+	let par: number = 0;
+	let quotes: number = 0;
+	content = content.trim();
+	for (let i = 0; i < content.length; i++) {
+		switch (content[i]) {
+			case `(`: {
+				par++;
+				break;
+			}
+			case `)`: {
+				par--; 
+				if (quotes && quotes % 2 === 0 && par % 2 !== 0) {
+					// unbalanced double quotes
+					let msg: string = `Error: Unbalanced double quotes at position ${i}.`;
+					msg += "\n" + content.substring(0, i);
+					msg += "\n" + " ".repeat(i) + "^";
+					return { success: false, msg };
+				}
+				break;
+			}
+		}
+	}
+	const success: boolean = par <= 0;
+	return { success, msg: (success) ? "" : "Error: Unbalanced parentheses." };
+}
+
+
+// utility function, returns a command with balanced parentheses
+export function balancePar (cmd: string): string {
+	if (cmd && !cmd.trim().startsWith("(")) {
+		const openRegex: RegExp = new RegExp(/\(/g);
+		const closeRegex: RegExp = new RegExp(/\)/g);
+		let par: number = 0;
+		while (openRegex.exec(cmd)) {
+			par++;
+		}
+		while (closeRegex.exec(cmd)) {
+			par--;
+		}
+		if (par > 0) {
+			// missing closed brackets
+			cmd = cmd.trimRight() + ')'.repeat(par);
+			// console.log(`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
+		} else if (par < 0) {
+			cmd = '('.repeat(-par) + cmd;
+			// console.log(`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
+		}
+		return cmd.startsWith('(') ? cmd : `(${cmd})`; // add outer parentheses if they are missing
+	}
+	return cmd;
+}
+
+export function isQuitCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && (cmd === "quit" 
+		|| cmd === "quit;"
+		|| cmd === "(quit)"
+		|| cmd.toLocaleLowerCase() === "(quit)y"
+		|| cmd === "exit"
+		|| cmd === "exit;"
+		|| cmd === "(exit)"
+		|| cmd.toLocaleLowerCase() === "(exit)y")
+		|| /^\(?\s*quit\s*\)?\s*y?;?/gi.test(cmd)
+		|| /^\(?\s*exit\s*\)?\s*y?;?/gi.test(cmd)
+		;
+}
+
+export function isSaveThenQuitCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && (cmd === "save-then-quit" 
+		|| cmd === "save-then-quit;"
+		|| cmd === "(save-then-quit)"
+		|| cmd === "save-force-exit"
+		|| cmd === "save-force-exit;"
+		|| cmd === "(save-force-exit)")
+		;
+}
+
+export function isQuitDontSaveCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && (cmd === "quit-dont-save" 
+		|| cmd === "quit-dont-save;"
+		|| cmd === "(quit-dont-save)"
+		|| cmd === "exit-dont-save"
+		|| cmd === "exit-dont-save;"
+		|| cmd === "(exit-dont-save)")
+		;
+}
+
+export function isEmptyCommand (cmd: string): boolean {
+	return !cmd
+		|| cmd.trim() === "" 
+		|| cmd.trim() === "()"
+		;
+}
+
+export function isUndoCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && (cmd === "undo" 
+		|| cmd === "undo;"
+		|| cmd === "(undo)"
+		|| cmd.toLocaleLowerCase() === "(undo)y"
+		|| /^\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.test(cmd))
+		;
+}
+
+export function unfoldUndoCommand (cmd: string): string[] {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	const match: RegExpMatchArray = /^\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.exec(cmd);
+	let cmds: string[] = [];
+	if (match) {
+		if (match.length > 1 && match[1]) {
+			const n: number = +match[1];
+			for (let i = 0; i < n; i++) {
+				cmds.push('(undo)');
+			}
+		} else {
+			cmds.push('(undo)');
+		}
+	}
+	return cmds;
+}
+
+export function isRedoCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*\bredo\b/g.test(cmd);
+}
+
+export function isUndoUndoCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	if (cmd) {
+		const cm: string = (cmd.startsWith("(")) ? cmd : `(${cmd})`;
+		return /^\(\s*\bundo\s+undo\b\s*\)/g.test(cm);
+	}
+	return false;
+}
+
+export function isUndoUndoPlusCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?(\s*\bundo)+/g.test(cmd);
+}
+
+export function isUndoStarCommand (cmd: string): boolean {
+	return isUndoCommand(cmd) || isUndoUndoCommand(cmd) || isUndoUndoPlusCommand(cmd);
+}
+
+export function isPostponeCommand (cmd: string, result?: { commentary: string | string[] }): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	if (result && result.commentary) {
+		if (typeof result.commentary === "string") {
+			return result.commentary.toLocaleLowerCase().startsWith("postponing ");
+		} else if (typeof result.commentary === "object") {
+			return result.commentary.length
+				&& typeof result.commentary[0] === "string"
+				&& result.commentary.filter((comment: string)=> {
+					return comment.toLocaleLowerCase().startsWith("postponing ");
+				}).length > 0;
+		}
+	}
+	return cmd && /^\(?\s*\bpostpone\b/g.test(cmd);
+}
+
+export function isSkipCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*\bskip\b/g.test(cmd);
+}
+
+export function isFailCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*\bfail\b/g.test(cmd);
+}
+
+export function isShowHiddenCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*show-hidden\b/g.test(cmd);
+}
+
+export function isGrindCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*grind\b/g.test(cmd);
+}
+
+export function isProofliteGlassbox (cmd: string): boolean {
+	return cmd && cmd.trim().startsWith("(then ");
+}
+
+export function splitCommands (cmd: string): string[] {
+	let cmds: string[] = [];
+	if (cmd && cmd.trim().startsWith("(")) {
+		let input: string = cmd.trim().replace(/\)y/gi, ")");
+		let par: number = 0;
+		let start: number = 0;
+		let stop: number = 0;
+		let validStart: boolean = false;
+		for (let i = 0; i < input.length; i++) {
+			if (input[i] === "(") {
+				if (par === 0) {
+					start = i;
+					validStart = true;
+				}
+				par++;
+			} else if (input[i] === ")") {
+				par--;
+				if (par === 0) {
+					stop = i;
+				}
+			}
+			if (par === 0) {
+				if (stop > start && validStart) { // sanity check
+					let cmd: string = input.substring(start, stop + 1);
+					if (isUndoCommand(cmd)) {
+						cmds = cmds.concat(unfoldUndoCommand(cmd));
+					} else {
+						cmds = cmds.concat(cmd);
+					}
+					validStart = false;
+				}
+			}
+			if (par < 0) {
+				// too many closed parentheses -- try to skip
+				par = 0;
+			}
+		}
+	} else if (cmd && isUndoCommand(cmd)) {
+		cmds = unfoldUndoCommand(cmd);
+	}
+	return cmds;
+}
+
+export function isCommentCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && /^\(?\s*comment\b/g.test(cmd);
+}
+
+export function isQEDCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && (cmd.trim() === "Q.E.D."
+		|| /^\(?\s*Q\.E\.D\./g.test(cmd))
+		;
+}
+
+export function isSameCommand (cmd1: string, cmd2: string): boolean {
+	if (cmd1 && cmd2) {
+		const c1: string = cmd1.replace(/[\s+\"\(\)]/g, ""); // remove all spaces, round parens, and double quotes
+		const c2: string = cmd2.replace(/[\s+\"\(\)]/g, "");
+		return c1 === c2;
+	}
+	return false;
+}
+
+export function isPropax (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && cmd === "(propax)";
+}
+
+export function isInvalidCommand (result: { commentary: string | string[] }): boolean {
+	const proverErrorMessages: string[] = [
+		"Error:",
+		"not a valid prover command",
+		"Found 'eof' when expecting",
+		"bad proof command",
+		"Expecting an expression",
+		"Not enough arguments for prover command",
+		"Could not find formula number",
+		"There is garbage at the end"
+	];
+	const isInvalid = (cmd: string): boolean => {
+		if (cmd) {
+			for (let i = 0; i < proverErrorMessages.length; i++) {
+				if (cmd.includes(proverErrorMessages[i])) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	if (result && result.commentary) {
+		if (typeof result.commentary === "string") {
+			return isInvalid(result.commentary);
+		} else if (typeof result.commentary === "object") {
+			return result.commentary.length
+				&& typeof result.commentary[0] === "string"
+				&& result.commentary.filter((comment: string)=> {
+					return isInvalid(comment);
+				}).length > 0;
+		}
+	}
+	return false;
+}

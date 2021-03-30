@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, ConfigurationTarget } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, PvsFile, ContextFolder, FileDescriptor } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, ContextFolder, FileDescriptor } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -813,7 +813,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	 * Force refresh of the tree view
 	 */
 	refreshView(): void {
-		this._onDidChangeTreeData.fire();
+		this._onDidChangeTreeData.fire(null);
 	}
 
 	getProvedTheorems (desc: PvsTheory): FormulaItem[] {
@@ -860,7 +860,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				}
 
 				// create summary template
-				const summary: utils.TheorySummary = {
+				const summary: fsUtils.TheorySummary = {
 					theoryName: desc.theoryName,
 					theorems: [],
 					tccsOnly: opt.tccsOnly,
@@ -928,7 +928,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							fileName: desc.fileName,
 							fileExtension: desc.fileExtension,
 							theoryName: desc.theoryName,
-							fileContent: utils.makeTheorySummary(summary)
+							fileContent: fsUtils.makeTheorySummary(summary)
 						});
 					} else {
 						// vscodeUtils.showInformationMessage(`0 proofs attempted`);
@@ -959,7 +959,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				// typecheck the workspace first, so all TCCs are generated
 				await this.typecheckWorkspace(desc);
 				// get context descriptor with the list of all theorems in the workspace
-				const contextDescriptor: PvsContextDescriptor = await utils.getContextDescriptor(desc.contextFolder, { includeTccs: true });
+				const contextDescriptor: PvsContextDescriptor = await fsUtils.getContextDescriptor(desc.contextFolder, { includeTccs: true });
 
 				// collect formulas
 				let totFormulas: number = 0;
@@ -972,7 +972,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				}
 				
 				// create the workspace summary
-				const summary: utils.WorkspaceSummary = {
+				const summary: fsUtils.WorkspaceSummary = {
 					contextFolder: desc.contextFolder,
 					theories: [],
 					total: totFormulas
@@ -1047,7 +1047,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 								}
 								// create summary for the theory
 								const ms: number = new Date().getTime() - start;
-								const summaryItem: utils.WorkspaceSummaryItem = {
+								const summaryItem: fsUtils.WorkspaceSummaryItem = {
 									contextFolder: theory.contextFolder,
 									fileName: theory.fileName,
 									fileExtension: theory.fileExtension,
@@ -1073,7 +1073,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							contextFolder: desc.contextFolder,
 							fileName: fsUtils.getContextFolderName(desc.contextFolder),
 							fileExtension: ".workspace.summary",
-							fileContent: utils.makeWorkspaceSummary(summary)
+							fileContent: fsUtils.makeWorkspaceSummary(summary)
 						}
 						this.client.sendRequest(serverRequest.showWorkspaceSummary, summaryFile);
 					}
@@ -1160,7 +1160,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							resolve(null);
 						});
 						// create one summary for each theory
-						const summary: utils.TheorySummary = {
+						const summary: fsUtils.TheorySummary = {
 							theoryName: desc.theoryName,
 							theorems: [],
 							total: formulas.length
@@ -1206,7 +1206,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 							fileName: desc.fileName,
 							fileExtension: desc.fileExtension,
 							theoryName: desc.theoryName,
-							fileContent: utils.makeTheorySummary(summary)
+							fileContent: fsUtils.makeTheorySummary(summary)
 						});
 						
 						commands.executeCommand('setContext', 'autorun', false);
@@ -1224,7 +1224,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 
 	async showProofSummary (desc: PvsTheory): Promise<void> {
 		if (desc && desc.theoryName) {
-			const summaryFile: PvsFile = {
+			const summaryFile: FileDescriptor = {
 				fileName: desc.fileName,
 				fileExtension: ".summary",
 				contextFolder: desc.contextFolder
@@ -1235,7 +1235,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			const fileExists: boolean = await fsUtils.fileExists(fname);
 			let theorySummaryExists: boolean = false;
 			if (fileExists) {
-				theorySummaryExists = await utils.containsSummary(fname, desc.theoryName);
+				theorySummaryExists = await fsUtils.containsSummary(fname, desc.theoryName);
 			}
 
 			// show the summary file if the summary exists, or generate the summary file

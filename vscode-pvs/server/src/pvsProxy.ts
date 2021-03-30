@@ -54,8 +54,9 @@
 
 import * as xmlrpc from 'xmlrpc';
 import { PvsProcess, ProcessCode } from "./pvsProcess";
-import { PvsResponse, ParseResult, ShowTCCsResult, PvsError, PvsResult } from "./common/pvs-gui.d";
+import { PvsResponse, ParseResult, ShowTCCsResult, PvsError } from "./common/pvs-gui.d";
 import * as fsUtils from './common/fsUtils';
+import * as commandUtils from './common/commandUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
@@ -63,10 +64,12 @@ import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, Proof
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
-import { getErrorRange, SequentDescriptor } from './common/languageUtils';
-import * as utils from './common/languageUtils';
+import { getErrorRange } from './common/languageUtils';
+import * as languageUtils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import { PvsErrorManager } from './pvsErrorManager';
+import { MathObjects } from './common/commandUtils';
+import { SequentDescriptor } from './common/fsUtils';
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -394,7 +397,7 @@ export class PvsProxy {
 	/**
 	 * Utility function, returns the list of known math objects
 	 */
-	listMathObjects (): { lemmas: string[], types: string[], definitions: string[] } {
+	listMathObjects (): MathObjects {
 		return this.mathObjectsCache;
 	} 
 	/**
@@ -693,7 +696,7 @@ export class PvsProxy {
 			if (theories && theories.length) {
 				for (let i = 0; i < theories.length; i++) {
 					if (!opt.tccsOnly) {
-						const formulaDescriptors: FormulaDescriptor[] = await utils.listTheoremsInFile(fsUtils.desc2fname(theories[i]));
+						const formulaDescriptors: FormulaDescriptor[] = await fsUtils.listTheoremsInFile(fsUtils.desc2fname(theories[i]));
 						if (formulaDescriptors && formulaDescriptors.length) {
 							const theorems: FormulaDescriptor[] = formulaDescriptors.filter(formula => {
 								return formula.theoryName === desc.theoryName;
@@ -754,7 +757,7 @@ export class PvsProxy {
 					contextFolder: desc.contextFolder
 				}));
 				// fetch theory names
-				const theories: TheoryDescriptor[] = await utils.listTheoriesInFile(fname);
+				const theories: TheoryDescriptor[] = await fsUtils.listTheoriesInFile(fname);
 				const TCC_START_OFFSET: number = 5; // this depends on the size of the header and theory information added before the tccs returned by pvs-server, see this.showTccs
 				if (theories) {
 					for (let i = 0; i < theories.length; i++) {
@@ -1169,7 +1172,7 @@ export class PvsProxy {
      * Returns the help message for a given command
      */
 	async showHelpBang (cmd: string): Promise<PvsResponse> {
-		const match: RegExpMatchArray = new RegExp(utils.helpBangCommandRegexp).exec(cmd);
+		const match: RegExpMatchArray = new RegExp(languageUtils.helpBangCommandRegexp).exec(cmd);
 		if (match && match.length > 1 && match[1]) {
 			const ans: PvsResponse = await this.pvsRequest('proof-command', [ `(help ${match[1]})` ]);
 			if (ans && ans.result && ans.result.length) {
@@ -1192,20 +1195,20 @@ export class PvsProxy {
 		if (desc) {
 			opt = opt || {};
 
-			const test: { success: boolean, msg: string } = utils.parCheck(desc.cmd);
+			const test: commandUtils.CheckParResult = commandUtils.checkPar(desc.cmd);
 			let res: PvsResponse = {
 				jsonrpc: "2.0", 
 				id: ""
 			};
 			if (test.success) {
 				// console.dir(desc, { depth: null });
-				const showHidden: boolean = utils.isShowHiddenCommand(desc.cmd);
+				const showHidden: boolean = commandUtils.isShowHiddenCommand(desc.cmd);
 				// const isGrind: boolean = utils.isGrindCommand(desc.cmd);
 				// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
 				// the front-end will handle the command, and reveal the hidden sequents.
 				const cmd: string = showHidden ? "(skip)" : desc.cmd;
 				if (!this.externalServer) { console.log(cmd); }
-				res = utils.isHelpBangCommand(cmd) ? await this.showHelpBang(cmd) :
+				res = languageUtils.isHelpBangCommand(cmd) ? await this.showHelpBang(cmd) :
 					await this.pvsRequest('proof-command', [ cmd ]);
 				if (res && res.result) {
 					const proofStates: SequentDescriptor[] = res.result;
@@ -1235,13 +1238,13 @@ export class PvsProxy {
 					// }
 					for (let i = 0; i < proofStates.length; i++) {
 						const result: SequentDescriptor = proofStates[i];
-						if (utils.QED(result)) {
+						if (languageUtils.QED(result)) {
 							this.mode = "lisp";
 						}
 					}
-					if (utils.isQuitCommand(desc.cmd) 
-							|| utils.isQuitDontSaveCommand(desc.cmd) 
-							|| utils.isSaveThenQuitCommand(desc.cmd)) {
+					if (commandUtils.isQuitCommand(desc.cmd) 
+							|| commandUtils.isQuitDontSaveCommand(desc.cmd) 
+							|| commandUtils.isSaveThenQuitCommand(desc.cmd)) {
 						this.mode = "lisp";
 					}
 				}
@@ -1313,23 +1316,23 @@ export class PvsProxy {
 	 * @returns Proof descriptor
 	 */
 	async openProofFile (desc: FileDescriptor, formula: PvsFormula, opt?: { quiet?: boolean }): Promise<ProofDescriptor> {
-		let origin: utils.ProofOrigin = ".prf";
+		let origin: languageUtils.ProofOrigin = ".prf";
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
 				&& formula && formula.fileName && formula.fileExtension 
 				&& formula.theoryName && formula.formulaName) {
 			let pdesc: ProofDescriptor = null;
 			try {
 				// create proof descriptor
-				const isTcc: boolean = utils.isTccFormula(formula);
+				const isTcc: boolean = languageUtils.isTccFormula(formula);
 				switch (desc.fileExtension) {
 					case ".prf": {
 						const response: PvsResponse = await this.getDefaultProofScript(formula);
 						if (response && response.result) {
 							const pvsVersionDescriptor: PvsVersionDescriptor = this.getPvsVersionInfo();
 							const shasum: string = await fsUtils.shasumFile(formula);
-							const jpdesc: ProofDescriptor = await utils.getProofDescriptor(formula);
+							const jpdesc: ProofDescriptor = await fsUtils.getProofDescriptor(formula);
 							// const status: ProofStatus = await this.getProofStatus(formula); <<< we can't use this because pvs doesn't know the proof status until the proof has been re-run
-							pdesc = utils.prf2jprf({
+							pdesc = languageUtils.prf2jprf({
 								prf: response.result,
 								theoryName: formula.theoryName, 
 								formulaName: formula.formulaName, 
@@ -1339,7 +1342,7 @@ export class PvsProxy {
 							});
 							// console.log(pdesc);
 						}
-						if (!utils.isEmptyProof(pdesc)) {
+						if (!languageUtils.isEmptyProof(pdesc)) {
 							break;
 						}
 						// else, try to load from .jprf
@@ -1350,7 +1353,7 @@ export class PvsProxy {
 							fileExtension: ".jprf",
 							contextFolder: desc.contextFolder
 						});
-						const proofFile: ProofFile = await utils.readJprfProofFile(fname, opt);
+						const proofFile: ProofFile = await fsUtils.readJprfProofFile(fname, opt);
 						const key: string = `${formula.theoryName}.${formula.formulaName}`;
 						// try to load the proof from the .jprf file
 						if (proofFile && proofFile[key] && proofFile[key].length > 0) {
@@ -1361,7 +1364,7 @@ export class PvsProxy {
 					}
 					case ".prl": {
 						const fname: string = fsUtils.desc2fname(desc);
-						const prl: string = await utils.readProoflite(fname, formula.formulaName);
+						const prl: string = await fsUtils.readProoflite(fname, formula.formulaName);
 						if (prl) {
 							// FIXME: this does not seem to be working!
 							const pvsResponse: PvsResponse = await this.installProofliteScript(formula, prl); // this will load the prl in pvs and save the proof as .prf
@@ -1370,7 +1373,7 @@ export class PvsProxy {
 								if (response && response.result) {
 									const pvsVersionDescriptor = this.getPvsVersionInfo();
 									const shasum: string = await fsUtils.shasumFile(formula);
-									pdesc = utils.prf2jprf({
+									pdesc = languageUtils.prf2jprf({
 										prf: response.result,
 										theoryName: formula.theoryName, 
 										formulaName: formula.formulaName, 
@@ -1406,7 +1409,7 @@ export class PvsProxy {
 						theory: formula.theoryName,
 						formula: formula.formulaName,
 						status: "untried",
-						prover: utils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
+						prover: languageUtils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
 						shasum
 					}, origin);
 				}
@@ -1425,7 +1428,7 @@ export class PvsProxy {
 			theory: formula.theoryName,
 			formula: formula.formulaName,
 			status,
-			prover: utils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
+			prover: languageUtils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
 			shasum
 		}, ".prf");
 		return empty_pdesc;
@@ -1537,11 +1540,11 @@ export class PvsProxy {
 			fileName: desc.theoryName,
 			fileExtension: ".prl"
 		});
-		const content: string[] = utils.proofDescriptor2ProofLite(desc.proofDescriptor);
+		const content: string[] = languageUtils.proofDescriptor2ProofLite(desc.proofDescriptor);
 		if (content && content.length) {
-			const header: string = utils.makeProofliteHeader(desc.formulaName, desc.theoryName, desc.proofDescriptor.info.status);
+			const header: string = languageUtils.makeProofliteHeader(desc.formulaName, desc.theoryName, desc.proofDescriptor.info.status);
 			const proofLite: string = content.join("\n");
-			const success: boolean = await utils.saveProoflite(fname, desc.formulaName, header + proofLite);
+			const success: boolean = await fsUtils.saveProoflite(fname, desc.formulaName, header + proofLite);
 			// try to save into .prf -- disabled for now
 			// const prl: string = utils.proofTree2Prl(desc.proofDescriptor);
 			// await this.saveProofWithFormula(desc, prl);
@@ -1615,7 +1618,7 @@ export class PvsProxy {
 						if (result[i].id) {
 							const formulaName: string = result[i].id;
 							// try to fetch the last know status from  the .jprf file
-							const lastKnownStatus: ProofStatus = await utils.getProofStatus({
+							const lastKnownStatus: ProofStatus = await fsUtils.getProofStatus({
 								fileName: desc.fileName,
 								fileExtension: ".tccs",
 								contextFolder: desc.contextFolder,

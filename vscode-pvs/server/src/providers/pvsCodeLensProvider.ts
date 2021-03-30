@@ -137,7 +137,7 @@ export class PvsCodeLensProvider {
                         const line: number = lines.length - 1;
                         const character: number = lines[lines.length - 1].indexOf(match[1]);
                         
-                        let theoryName: string = utils.findTheoryName(content, line);
+                        let theoryName: string = fsUtils.findTheoryName(content, line);
                         if (theoryName) {
                             const args: PvsFormula = {
                                 fileName,

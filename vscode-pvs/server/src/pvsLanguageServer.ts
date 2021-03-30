@@ -59,15 +59,15 @@ import {
 	PvsFile,
 	ContextFolder,
 	PvsTheory,
-	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, SearchRequest, SearchResponse, SearchResult
+	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, ProofCommandResponse, ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
 import { PvsHoverProvider } from './providers/pvsHoverProvider';
 import { PvsCodeLensProvider } from './providers/pvsCodeLensProvider';
 import { PvsLinter } from './providers/pvsLinter';
-import { PvsCliGateway } from './pvsCliGateway';
-import { getErrorRange, SequentDescriptor } from './common/languageUtils';
+// import { PvsCliGateway } from './pvsCliGateway';
+import { getErrorRange } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
@@ -80,7 +80,6 @@ import { ProcessCode } from './pvsProcess';
 import { PvsProofExplorer } from './providers/pvsProofExplorer';
 import { PvsRenameProvider } from './providers/pvsRenameProvider';
 import { PvsSearchEngine } from './providers/pvsSearchEngine';
-import { arch } from 'os';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -144,7 +143,7 @@ export class PvsLanguageServer {
 	protected proofExplorer: PvsProofExplorer;
 	protected pvsSearchEngine: PvsSearchEngine;
 
-	cliGateway: PvsCliGateway;
+	// cliGateway: PvsCliGateway;
 	pvsErrorManager: PvsErrorManager;
 
 	/**
@@ -308,14 +307,7 @@ export class PvsLanguageServer {
 			}
 		}
 	}
-	async proveFormulaRequest (desc: {
-		fileName: string, 
-		fileExtension: string, 
-		contextFolder: string, 
-		theoryName: string, 
-		formulaName: string,
-		proofFile?: FileDescriptor 
-	}, opt?: { 
+	async proveFormulaRequest (desc: ProveFormulaRequest, opt?: { 
 		autorun?: boolean, 
 		newProof?: boolean, 
 		useJprf?: boolean, 
@@ -378,15 +370,15 @@ export class PvsLanguageServer {
 			if (response?.result) {
 				const channelID: string = utils.desc2id(desc);
 				// the initial response should include only one sequent descriptor
-				const result: SequentDescriptor[] = response.result;
+				const result: fsUtils.SequentDescriptor[] = response.result;
 				if (result && result.length) {
 					// notify the client that the server is in prover mode
 					this.notifyServerMode("in-checker");
 
 					// publish the sequent on the cligateway, so it is visible in the prover terminal
-					this.cliGateway?.publish({ type: "pvs.event.proof-state", channelID, data: result[0] });
-					this.cliGateway?.publish({ type: "pvs.event.prover-ready", channelID });
-					this.cliGateway?.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy?.listMathObjects() });
+					// this.cliGateway?.publish({ type: "pvs.event.proof-state", channelID, data: result[0] });
+					// this.cliGateway?.publish({ type: "pvs.event.prover-ready", channelID });
+					// this.cliGateway?.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy?.listMathObjects() });
 
 					// load initial sequent in proof explorer
 					this.proofExplorer?.loadInitialSequent(result[0]);
@@ -396,13 +388,15 @@ export class PvsLanguageServer {
 
 					if (result.length > 1) {
 						for (let i = 1; i < response.result.length; i++) {
-							const proofState: SequentDescriptor = response.result[i]; // process proof commands
+							const proofState: fsUtils.SequentDescriptor = response.result[i]; // process proof commands
 							await this.proofExplorer?.onStepExecutedNew({ proofState, lastSequent: i === response.result.length - 1 }, { feedbackToTerminal: true });
 						}
 					}
 
 					if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
 						this.notifyEndImportantTask({ id: taskId });
+						const ans: ProveFormulaResponse = { res: result[0], req: desc, mathObjects: this.pvsProxy?.listMathObjects() };
+						this.connection?.sendRequest(serverEvent.proveFormulaResponse, ans);
 					} else {
 						const msg: string = opt.useJprf ? `Re-running J-PRF proof for ${desc.formulaName}` : `Re-running proof for ${desc.formulaName}`
 						this.connection?.sendNotification("pvs.progress-info", msg);
@@ -416,7 +410,7 @@ export class PvsLanguageServer {
 				} else {
 					console.error(response);
 				}
-				this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
+				// this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 			}
 		} else {
 			if (this.pvsErrorManager) {
@@ -438,14 +432,19 @@ export class PvsLanguageServer {
 		req = fsUtils.decodeURIComponents(req);
 		const channelID: string = utils.desc2id(req);
 		const response: PvsResponse = await this.pvsioProxy?.evalCommand(req, {
-			cb: (data: string, state: string) => {
+			cb: (res: string | "bye!", state: string) => {
 				const result: PvsResult = {
 					jsonrpc: "2.0",
 					id: channelID,
-					result: data
+					result: res
 				};
-				this.cliGateway?.publish({ type: "pvs.event.evaluator-state", channelID, data: result });
-				this.connection.sendRequest(serverEvent.evaluatorCommandResponse, { req, res: data, state });
+				// this.cliGateway?.publish({ type: "pvs.event.evaluator-state", channelID, data: result });
+				const data: EvaluatorCommandResponse = {
+					req,
+					res,
+					state
+				};
+				this.connection.sendRequest(serverEvent.evaluatorCommandResponse, data);
 			}
 		});
 		if (response && response.error) {
@@ -456,6 +455,7 @@ export class PvsLanguageServer {
 		await this.pvsioProxy?.quitEvaluator(theory);
 	}
 	async startEvaluatorRequest (theory: PvsTheory): Promise<void> {
+		theory.fileExtension = ".pvs";
 		const mode: string = await this.getMode();
 		if (mode !== "lisp") {
 			return;
@@ -473,14 +473,14 @@ export class PvsLanguageServer {
 				pvsLibraryPath: this.pvsLibraryPath
 			});
 			// replace standard banner
-			const banner: string = utils.colorText(utils.pvsioBanner, utils.textColor.green);// + "\n\n" + utils.pvsioPrompt;
-			this.cliGateway?.publish({ type: "pvs.event.evaluator-ready", channelID, banner });
+			// const banner: string = utils.colorText(utils.pvsioBanner, utils.vscodeColor.green);// + "\n\n" + utils.pvsioPrompt;
+			// this.cliGateway?.publish({ type: "pvs.event.evaluator-ready", channelID, banner });
 			this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: theory });
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
 			this.notifyServerMode("pvsio");
 		} else {
 			this.pvsErrorManager?.handleEvaluationError({ request: theory, response: <PvsError> response, taskId });
-			this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
+			// this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 		}
 	}
 
@@ -634,7 +634,7 @@ export class PvsLanguageServer {
 				fileExtension
 			}));
 			// save new content
-			await utils.saveSummary(fsUtils.desc2fname({
+			await fsUtils.saveSummary(fsUtils.desc2fname({
 				contextFolder,
 				fileName,
 				fileExtension
@@ -1077,7 +1077,7 @@ export class PvsLanguageServer {
 		let res: { [ fname: string ]: PvsResponse } = {};
 		// fetch theory names
 		const fname: string = fsUtils.desc2fname(args);
-		const theories: TheoryDescriptor[] = await utils.listTheoriesInFile(fname);
+		const theories: TheoryDescriptor[] = await fsUtils.listTheoriesInFile(fname);
 		for (let i = 0; i < theories.length; i++) {
 			const proofStatus: PvsResponse = await this.statusProofTheory({
 				contextFolder: args.contextFolder,
@@ -1111,7 +1111,7 @@ export class PvsLanguageServer {
 					return await this.getPreludeDescriptor();
 				} // else
 				const contextFolder: string = (args.contextFolder.endsWith("pvsbin") || args.contextFolder.endsWith("pvsbin/")) ? path.join(args.contextFolder, "..") : args.contextFolder;
-				return await utils.getContextDescriptor(contextFolder, { listTheorems: true, includeTccs: true });
+				return await fsUtils.getContextDescriptor(contextFolder, { listTheorems: true, includeTccs: true });
 			} else {
 				console.error('[pvs-language-server.listTheories] Error: pvs proxy is null');
 			}
@@ -1142,7 +1142,7 @@ export class PvsLanguageServer {
 					}
 				} // else
 				const fname: string = fsUtils.desc2fname(args);
-				return await utils.getFileDescriptor(fname, opt);
+				return await fsUtils.getFileDescriptor(fname, opt);
 			} else {
 				console.error('[pvs-language-server.listTheories] Error: pvs proxy is null');
 			}
@@ -1279,7 +1279,7 @@ export class PvsLanguageServer {
 		this.renameProvider = new PvsRenameProvider(this.connection);
 		this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
 		this.linter = new PvsLinter();
-		this.cliGateway = new PvsCliGateway(this);
+		// this.cliGateway = new PvsCliGateway(this);
 		this.proofExplorer = new PvsProofExplorer(this.connection, this.pvsProxy, this);
 		this.pvsSearchEngine = new PvsSearchEngine(this.connection, this);
 	}
@@ -1288,12 +1288,12 @@ export class PvsLanguageServer {
 		return this.proofExplorer;
 	}
 
-	getGatewayPort(): number {
-		if (this.cliGateway) {
-			return this.cliGateway?.getPort();
-		}
-		return 0;
-	}
+	// getGatewayPort(): number {
+	// 	if (this.cliGateway) {
+	// 		return this.cliGateway?.getPort();
+	// 	}
+	// 	return 0;
+	// }
 	/**
 	 * Internal function, sends diagnostics to the client
 	 * @param data Diagnostics data
@@ -1402,7 +1402,7 @@ export class PvsLanguageServer {
 			}	
 		}
 		// else, cache file not present or in wrong format, create it again
-		const cdesc: PvsContextDescriptor = await utils.getContextDescriptor(libPath);
+		const cdesc: PvsContextDescriptor = await fsUtils.getContextDescriptor(libPath);
 		await fsUtils.writeFile(preludeCache, JSON.stringify(cdesc, null, " "));
 		return cdesc;
 	}
@@ -1509,7 +1509,7 @@ export class PvsLanguageServer {
 					}
 				}
 				// activate cli gateway
-				await this.cliGateway?.activate();
+				// await this.cliGateway?.activate();
 				this.notifyServerMode("lisp");
 				return true;
 			} else {
@@ -1744,10 +1744,10 @@ export class PvsLanguageServer {
 				this.generateWorkspaceSummaryRequest(request, { showSummaryRequest: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.listContext, async (request: ContextFolder) => {
-				this.listContextFilesRequest(request); // async call
+				await this.listContextFilesRequest(request);
 			});
-			this.connection?.onRequest(serverRequest.proveFormula, async (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, proofFile?: FileDescriptor }) => {
-				await this.proveFormulaRequest(args); // async call
+			this.connection?.onRequest(serverRequest.proveFormula, async (req: ProveFormulaRequest) => {
+				await this.proveFormulaRequest(req);
 			});
 			this.connection?.onRequest(serverRequest.getImportChainTheorems, async (args: PvsTheory) => {
 				await this.getImportChainTheoremsRequest(args); // async call
@@ -1758,11 +1758,11 @@ export class PvsLanguageServer {
 			this.connection?.onRequest(serverRequest.getTccs, async (args: PvsTheory) => {
 				await this.getTccsRequest(args); // async call
 			});
-			this.connection?.onRequest(serverRequest.autorunFormula, async (args: PvsFormula) => {
-				await this.proveFormulaRequest(args, { autorun: true }); // async call
+			this.connection?.onRequest(serverRequest.autorunFormula, async (req: PvsFormula) => {
+				await this.proveFormulaRequest(req, { autorun: true }); // async call
 			});
-			this.connection?.onRequest(serverRequest.autorunFormulaFromJprf, async (args: PvsFormula) => {
-				await this.proveFormulaRequest(args, { autorun: true, useJprf: true }); // async call
+			this.connection?.onRequest(serverRequest.autorunFormulaFromJprf, async (req: PvsFormula) => {
+				await this.proveFormulaRequest(req, { autorun: true, useJprf: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.showProofLite, async (args: PvsFormula) => {
 				await this.showProofLiteRequest(args); // async call
@@ -1771,8 +1771,8 @@ export class PvsLanguageServer {
 				await this.proofExplorer?.proofCommandRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.getGatewayConfig, async () => {
-				const port: number = this.getGatewayPort();
-				this.connection?.sendRequest(serverEvent.getGatewayConfigResponse, { port });
+				// const port: number = this.getGatewayPort();
+				this.connection?.sendRequest(serverEvent.getGatewayConfigResponse, { port: 0 });
 			});
 			this.connection?.onRequest(serverRequest.viewPreludeFile, async () => {
 				this.viewPreludeFileRequest(); // async call
@@ -1818,6 +1818,13 @@ export class PvsLanguageServer {
 				this.connection?.sendNotification(serverEvent.searchResponse, res);
 			});
 
+			// find declaration request
+			this.connection?.onRequest(serverRequest.findSymbolDeclaration, async (req: FindSymbolDeclarationRequest) => {
+				const ans: PvsDefinition[] = await this.definitionProvider.findSymbolDefinitionInTheory(req?.theory, req?.symbolName);
+				const res: FindSymbolDeclarationResponse = { req, ans };
+				this.connection?.sendRequest(serverEvent.findSymbolDeclarationResponse, res);
+			});
+
 			// prover commands
 			this.connection?.onRequest(serverRequest.proverCommand, async (desc: ProofExecCommand | ProofEditCommand) => {
 				if (desc) {
@@ -1828,9 +1835,9 @@ export class PvsLanguageServer {
 						case "rewind": { this.proofExplorer?.rewindToNodeX(desc); break; }
 						case "run": { await this.proofExplorer?.run({ feedbackToTerminal: true }); break; }
 						
-						case "quit-proof": { await this.proofExplorer?.quitProof({ notifyCliGateway: true }); break; }
+						case "quit-proof": { await this.proofExplorer?.quitProof({ notifyClient: true }); break; }
 						case "quit-proof-and-save": { await this.proofExplorer?.quitProofAndSave(); break; }
-						//------
+						
 						case "append-node": { this.proofExplorer?.appendNodeX(desc); break; }
 						case "copy-node": { this.proofExplorer?.copyNodeX(desc); break; }
 						case "paste-node": { this.proofExplorer?.pasteNodeX(desc); break; }
@@ -1889,7 +1896,7 @@ export class PvsLanguageServer {
 				if (uri.endsWith(".pvs") && this.completionProvider) {
 					const document: TextDocument = this.documents?.get(tpp?.textDocument.uri);
 					const txt: string = document?.getText(); //await this.readFile(uri);
-					const completionItems: CompletionItem[] = await this.completionProvider.provideCompletionItems({ txt, uri }, tpp.position);
+					const completionItems: CompletionItem[] = await this.completionProvider.provideCompletionItems({ txt, fname: uri }, tpp.position);
 					return completionItems;
 				}
 			}

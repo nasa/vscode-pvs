@@ -133,8 +133,8 @@ export class VSCodePvsEmacsBindingsProvider {
 				fileName: (document) ? fsUtils.getFileName(document.fileName) : null,
 				fileExtension: (document) ? fsUtils.getFileExtension(document.fileName) : null,
 				contextFolder: (document) ? fsUtils.getContextFolder(document.fileName) : vscodeUtils.getRootPath(),
-				theoryName: (document) ? utils.findTheoryName(document.getText(), line) : null,
-				formulaName: (document) ? utils.findFormulaName(document.getText(), line) : null
+				theoryName: (document) ? fsUtils.findTheoryName(document.getText(), line) : null,
+				formulaName: (document) ? fsUtils.findFormulaName(document.getText(), line) : null
 			};
 			switch (userInput) {
 				case "add-pvs-library": {

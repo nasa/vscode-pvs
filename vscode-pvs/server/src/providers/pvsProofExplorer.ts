@@ -68,15 +68,17 @@ import {
 	CliGatewayQuit,
 	ProofFile,
 	ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind, ProofExecDidStopRunning
+	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind, ProofExecDidStopRunning, ProofCommandResponse, ProofExecCommand, ProofEditCommand
 } from '../common/serverInterface';
-import * as utils from '../common/languageUtils';
+import * as commandUtils from '../common/commandUtils';
+import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
 import { PvsResponse, PvsError } from '../common/pvs-gui';
-import { ProofOrigin, SequentDescriptor } from '../common/languageUtils';
+import { desc2id, ProofOrigin } from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
 import { PvsProxy } from '../pvsProxy';
 import { PvsLanguageServer } from '../pvsLanguageServer';
+import { saveProofDescriptor, SequentDescriptor } from '../common/fsUtils';
 
 abstract class TreeItem {
 	id: string;
@@ -422,7 +424,7 @@ export class PvsProofExplorer {
 					this.activeNode?.name 
 						: null;
 		if (cmd) {
-			if (this.running && !this.autorunFlag && utils.isPostponeCommand(cmd)) {
+			if (this.running && !this.autorunFlag && commandUtils.isPostponeCommand(cmd)) {
 				if (this.stopAt) {
 					if (this.stopAt === this.activeNode) {
 						// stop the proof at the first postpone when running the proof in proof explorer, except if this is a re-run triggered by M-x prt or M-x pri (autorunFlag)
@@ -434,9 +436,9 @@ export class PvsProofExplorer {
 				}
 			}
 			if (opt.feedbackToTerminal && !this.autorunFlag) {
-				const channelID: string = utils.desc2id(this.formula);
+				const channelID: string = desc2id(this.formula);
 				const evt: CliGatewayPrintProofCommand = { type: "pvs.event.print-proof-command", channelID, data: { cmd } };
-				this.pvsLanguageServer.cliGateway.publish(evt);
+				// this.pvsLanguageServer.cliGateway.publish(evt);
 			}
 			const command: PvsProofCommand = {
 				fileName: this.formula.fileName,
@@ -553,12 +555,12 @@ export class PvsProofExplorer {
 
 			//--- check meta-commands that will terminate the proof session: (QED), (quit)
 			// if QED, update proof status and stop execution
-			if (utils.QED(this.proofState)) {
+			if (languageUtils.QED(this.proofState)) {
 				this.running = false;
 				this.stopAt = null;
 
 				// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
-				if (this.proofState.sequent && (utils.isSameCommand(activeNode.name, cmd) === false || utils.isSameCommand(activeNode.name, userCmd) === false || this.ghostNode.isActive())) {
+				if (this.proofState.sequent && (commandUtils.isSameCommand(activeNode.name, cmd) === false || commandUtils.isSameCommand(activeNode.name, userCmd) === false || this.ghostNode.isActive())) {
 					// concatenate new command
 					const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);
 					// append before selected node (the active not has not been executed yet)
@@ -575,7 +577,7 @@ export class PvsProofExplorer {
 
 				// trim the node if necessary
 				if (activeNode) {
-					if (utils.isProofliteGlassbox(activeNode.name)) {
+					if (commandUtils.isProofliteGlassbox(activeNode.name)) {
 						this.deleteNode({ selected: activeNode });
 					} else {
 						this.trimNode({ selected: activeNode });
@@ -590,7 +592,7 @@ export class PvsProofExplorer {
 				return;
 			}
 			// if command is quit, stop execution
-			if (utils.isQuitCommand(cmd)) {
+			if (commandUtils.isQuitCommand(cmd)) {
 				this.running = false;
 				this.stopAt = null;
 				return;	
@@ -598,31 +600,32 @@ export class PvsProofExplorer {
 
 			// identify previous and current (new) branch
 			const previousBranchName: string = activeNode.branchId;
-			const currentBranchName: string = utils.getBranchId(this.proofState.label);
+			const currentBranchName: string = languageUtils.getBranchId(this.proofState.label);
 			const previousBranch: ProofBranch = this.findProofBranch(previousBranchName);
 			const currentBranch: ProofBranch = this.findProofBranch(currentBranchName);
-			const branchCompleted: boolean = (previousBranch && !previousBranch.isComplete() && utils.branchComplete(this.proofState, this.formula.formulaName, previousBranchName))
-					|| (currentBranch && !currentBranch.isComplete() && utils.branchComplete(this.proofState, this.formula.formulaName, currentBranchName));
+			const branchCompleted: boolean = (previousBranch && !previousBranch.isComplete() && languageUtils.branchComplete(this.proofState, this.formula.formulaName, previousBranchName))
+					|| (currentBranch && !currentBranch.isComplete() && languageUtils.branchComplete(this.proofState, this.formula.formulaName, currentBranchName));
 
 			// const currentPath: string = this.proofState.path;
 			// const pathHasChanged: boolean = utils.pathHasChanged({ newBranch: currentPath, previousBranch: this.previousPath });
-			const pathHasChanged: boolean = utils.pathHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName }) && !branchCompleted;
+			const pathHasChanged: boolean = languageUtils.pathHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName }) && !branchCompleted;
 
 			// show sequent in the terminal, if feedback was requested
 			if (opt.feedbackToTerminal && !this.autorunFlag) {
-				const channelID: string = utils.desc2id(this.formula);
+				const channelID: string = languageUtils.desc2id(this.formula);
 				const evt: CliGatewayProofState = { type: "pvs.event.proof-state", channelID, data: this.proofState };
-				this.pvsLanguageServer.cliGateway.publish(evt);
+				// this.pvsLanguageServer.cliGateway.publish(evt);
+				this.pvsLanguageServer.getConnection()?.sendRequest(serverEvent.proofCommandResponse, { res: this.proofState, req: desc?.args });
 			}
 
 			//--- check other meta-commands: (undo), (undo undo), (postpone), (show-hidden), (comment "..."), (help xxx)
 			// if command is undo, go back to the last visited node
-			if (utils.isUndoCommand(userCmd)) {
+			if (commandUtils.isUndoCommand(userCmd)) {
 				this.running = false;
 				this.stopAt = null;
 				this.undoundoTarget = this.activeNode;
 				this.saveTreeAttributes();
-				if (utils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
+				if (languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
 					const targetBranch: ProofBranch = this.findProofBranch(currentBranchName);
 					if (targetBranch) {
 						this.activeNode.notVisited();
@@ -654,9 +657,9 @@ export class PvsProofExplorer {
 			}
 
 			// if command is postpone, move to the new branch
-			if (utils.isPostponeCommand(userCmd, this.proofState) || pathHasChanged) {
+			if (commandUtils.isPostponeCommand(userCmd, this.proofState) || pathHasChanged) {
 				// this.previousPath = currentPath;
-				if (this.running && utils.isPostponeCommand(userCmd, this.proofState)) {
+				if (this.running && commandUtils.isPostponeCommand(userCmd, this.proofState)) {
 					if (this.autorunFlag) {
 						this.running = false;
 						this.stopAt = null;	
@@ -670,7 +673,7 @@ export class PvsProofExplorer {
 						return;
 					}
 				}
-				if (utils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
+				if (languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
 					if (this.ghostNode.isActive()) {
 						this.ghostNode.notActive();
 					} else {
@@ -707,7 +710,7 @@ export class PvsProofExplorer {
 				}
 			} else {
 				// handle the special command (undo undo)
-				if (utils.isUndoUndoCommand(userCmd)) {
+				if (commandUtils.isUndoUndoCommand(userCmd)) {
 					if (this.undoundoTarget) {
 						let target: ProofItem = this.undoundoTarget;
 						// the (undo undo) target is typically a visited node
@@ -727,21 +730,21 @@ export class PvsProofExplorer {
 				}
 
 				// handle (show-hidden) and (comment "xxx")
-				if (utils.isShowHiddenCommand(userCmd)) {
+				if (commandUtils.isShowHiddenCommand(userCmd)) {
 					// nothing to do, the prover will simply show the hidden formulas
 					return;
 				}
 
-				if (utils.isHelpCommand(userCmd)) {
+				if (languageUtils.isHelpCommand(userCmd)) {
 					// do nothing, CLI will show the help message
 					return;
 				}
 
 				//--- check special conditions: empty/null command, invalid command, no change before proceeding
 				// if command is invalid command, stop execution and provide feedback to the user 
-				if (utils.isHelpBangCommand(userCmd)) {
+				if (languageUtils.isHelpBangCommand(userCmd)) {
 					// nothing to do
-				} else if (utils.isUndoUndoPlusCommand(userCmd)) {
+				} else if (commandUtils.isUndoUndoPlusCommand(userCmd)) {
 					// this.running = false;
 					// vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 					if (this.autorunFlag) {
@@ -754,19 +757,19 @@ export class PvsProofExplorer {
 						// await this.quitProof();
 					}
 					// return;
-				} else if (utils.isInvalidCommand(this.proofState)) {
-					if (utils.isSameCommand(activeNode.name, cmd) || utils.isSameCommand(activeNode.name, userCmd)) {
+				} else if (commandUtils.isInvalidCommand(this.proofState)) {
+					if (commandUtils.isSameCommand(activeNode.name, cmd) || commandUtils.isSameCommand(activeNode.name, userCmd)) {
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 						// mark the sub tree of the invalid node as not visited
 						activeNode.treeNotVisited();
 					}
-				} else if (utils.interruptedByClient(this.proofState)) {
+				} else if (languageUtils.interruptedByClient(this.proofState)) {
 					this.stopRun();
-				} else if (utils.noChange(this.proofState) || utils.isEmptyCommand(cmd)) {
-					const command: string = utils.getNoChangeCommand(this.proofState);
+				} else if (languageUtils.noChange(this.proofState) || commandUtils.isEmptyCommand(cmd)) {
+					const command: string = languageUtils.getNoChangeCommand(this.proofState);
 					// check if the command that produced no change comes from the proof tree -- if so advance indicator
 					// here we need to check both command and userCmd, as pvs may clean up the command, eg., (hide 01) is returned as (hide 1)
-					if ((utils.isSameCommand(activeNode.name, command) || utils.isSameCommand(activeNode.name, userCmd) || utils.isSameCommand(activeNode.name, cmd))
+					if ((commandUtils.isSameCommand(activeNode.name, command) || commandUtils.isSameCommand(activeNode.name, userCmd) || commandUtils.isSameCommand(activeNode.name, cmd))
 							&& !this.ghostNode.isActive()) {
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 						// mark the sub tree of the invalid node as not visited
@@ -776,7 +779,7 @@ export class PvsProofExplorer {
 					// regular prover command
 					// else, the prover has made progress with the provided proof command
 					// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
-					if (!(utils.isSameCommand(activeNode.name, cmd) || utils.isSameCommand(activeNode.name, userCmd)) || this.ghostNode.isActive()) {
+					if (!(commandUtils.isSameCommand(activeNode.name, cmd) || commandUtils.isSameCommand(activeNode.name, userCmd)) || this.ghostNode.isActive()) {
 						// concatenate new command
 						const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);
 						// append before selected node (the active not has not been executed yet)
@@ -791,17 +794,17 @@ export class PvsProofExplorer {
 						this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
 						activeNode = this.activeNode; // update local variable because the following instructions are using it
 						// if the branch has changed, then we will be moving to a sub-goal --- we need to trim the node
-						if (utils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
+						if (languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
 							this.trimNode({ selected: activeNode });
 						}
 					}
-					if (utils.isSameCommand(activeNode.name, cmd) || utils.isSameCommand(activeNode.name, userCmd)) {
+					if (commandUtils.isSameCommand(activeNode.name, cmd) || commandUtils.isSameCommand(activeNode.name, userCmd)) {
 						// replace the command entered by the user with the one polished by pvs
 						this.activeNode.rename(cmd);
 					}
 
 					// check if current or previous branch have been completed
-					if (utils.branchComplete(this.proofState, this.formula.formulaName, previousBranchName)) {
+					if (languageUtils.branchComplete(this.proofState, this.formula.formulaName, previousBranchName)) {
 						// PVS has automatically discharged the previous proof branch
 						// trim the rest of the tree if necessary
 						const selected: ProofBranch = this.findProofBranch(previousBranchName);
@@ -809,7 +812,7 @@ export class PvsProofExplorer {
 						selected.treeVisited();
 						selected.treeComplete();
 					}
-					if (utils.branchComplete(this.proofState, this.formula.formulaName, currentBranchName)) {
+					if (languageUtils.branchComplete(this.proofState, this.formula.formulaName, currentBranchName)) {
 						// PVS has automatically discharged the previous proof branch
 						// trim the rest of the tree if necessary
 						const selected: ProofBranch = this.findProofBranch(currentBranchName);
@@ -820,7 +823,7 @@ export class PvsProofExplorer {
 					}
 
 					// if the branch has changed, move to the new branch
-					if (utils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
+					if (languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
 						// trim node if the number of subgoals has changed
 						// children.length === 0 means this branch does not have sub-goals
 						// this.proofState["num-subgoals"] === 1 when branch does not have subgoals
@@ -1167,14 +1170,14 @@ export class PvsProofExplorer {
 						if (opt.firstBranch && opt.firstBranch.indexOf(".") > 0) {
 							firstGoal = +opt.firstBranch.split(".").slice(-1);
 						}
-						let branchId: string = utils.makeBranchId({ branchId: selectedNode.branchId, goalId: firstGoal });
+						let branchId: string = languageUtils.makeBranchId({ branchId: selectedNode.branchId, goalId: firstGoal });
 						// check which is the first available branch name -- there might be holes if branches have been deleted/renamed by the user
 						let found: boolean = false;
 						for (let i = 0; i < selectedNode.children.length && !found; i++) {
 							if (selectedNode.children[i].branchId !== branchId) {
 								found = true
 							} else {
-								branchId = utils.makeBranchId({ branchId: selectedNode.branchId, goalId: firstGoal + i + 1 });
+								branchId = languageUtils.makeBranchId({ branchId: selectedNode.branchId, goalId: firstGoal + i + 1 });
 							}
 						}
 						newBranch = new ProofBranch(branchId, branchId, selectedNode, this.connection);
@@ -1937,7 +1940,7 @@ export class PvsProofExplorer {
 			this.ghostNode = new GhostNode({ parent: this.root, node: this.root, connection: this.connection });
 			if (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length
 					// when proof is simply (postpone), this is an empty proof, don't append postpone
-					&& !(desc.proofTree.rules.length === 1 && utils.isPostponeCommand(desc.proofTree.rules[0].name))) {
+					&& !(desc.proofTree.rules.length === 1 && commandUtils.isPostponeCommand(desc.proofTree.rules[0].name))) {
 				desc.proofTree.rules.forEach((child: ProofNode) => {
 					createTree(child, this.root);
 				});
@@ -1970,7 +1973,7 @@ export class PvsProofExplorer {
 			theory: this.formula.theoryName,
 			formula: this.formula.formulaName,
 			status: this.root.getProofStatus(),
-			prover: (this.pvsProxy) ? utils.pvsVersionToString(this.pvsProxy.getPvsVersionInfo()) : "PVS 7.x",
+			prover: (this.pvsProxy) ? languageUtils.pvsVersionToString(this.pvsProxy.getPvsVersionInfo()) : "PVS 7.x",
 			shasum: this.shasum
 		}, origin, proofTree);
 		return proofDescriptor;
@@ -1990,7 +1993,7 @@ export class PvsProofExplorer {
 			const pdesc: ProofDescriptor = await this.pvsProxy.openProofFile(desc, formula);
 			if (pdesc) {
 				// save proof descriptor
-				await utils.saveProofDescriptor(this.formula, pdesc, { saveProofTree: false });
+				await saveProofDescriptor(this.formula, pdesc, { saveProofTree: false });
 				// load proof descriptor
 				this.loadProofDescriptor(pdesc);
 				// send feedback to the client
@@ -2037,7 +2040,7 @@ export class PvsProofExplorer {
 					pdesc.proofTree.name = pdesc.info.formula;
 				}
 				// save proof descriptor
-				await utils.saveProofDescriptor(this.formula, pdesc, { saveProofTree: false });
+				await saveProofDescriptor(this.formula, pdesc, { saveProofTree: false });
 				// load proof descriptor
 				this.loadProofDescriptor(pdesc);
 				// mark as dirty
@@ -2161,7 +2164,7 @@ export class PvsProofExplorer {
 		}
 		// update proof descriptor so it reflects the current proof structure
 		this.proofDescriptor = this.makeProofDescriptor(this.origin);
-		await utils.saveProofDescriptor(this.formula, this.proofDescriptor, { saveProofTree: true });
+		await saveProofDescriptor(this.formula, this.proofDescriptor, { saveProofTree: true });
 		// save proof backup file -- just to be save in the case pvs hungs up and is unable to save
 		const script: string = this.copyTree({ selected: this.root });
 		let success: boolean = true;
@@ -2205,16 +2208,16 @@ export class PvsProofExplorer {
 	 * Quit the current proof
 	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
 	 */
-	async quitProof (opt?: { notifyCliGateway?: boolean }): Promise<void> {
+	async quitProof (opt?: { notifyClient?: boolean }): Promise<void> {
 		opt = opt || {};
 		this.running = false;
 
 		// interrupt proof commands if necessary
-		const res: PvsResponse = await this.pvsProxy.interruptProver();
+		let res: PvsResponse = await this.pvsProxy.interruptProver();
 
 		const inchecker: boolean = await this.inChecker();
 		if (this.formula && inchecker) {
-			await this.proofCommand({
+			res = await this.proofCommand({
 				fileName: this.formula.fileName,
 				fileExtension: this.formula.fileExtension,
 				theoryName: this.formula.theoryName,
@@ -2228,10 +2231,17 @@ export class PvsProofExplorer {
 			this.autorunFlag = false;
 			this.autorunCallback(status);
 		}
-		if (opt.notifyCliGateway) {
-			const channelID: string = utils.desc2id(this.formula);
+		if (opt.notifyClient) {
+			const req: PvsProofCommand = {
+				...this.formula,
+				cmd: "quit"
+			};
+			const ans: ProofCommandResponse = { res: "bye!", req };
+			this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
+
+			const channelID: string = languageUtils.desc2id(this.formula);
 			const evt: CliGatewayQuit = { type: "pvs.event.quit", channelID };
-			this.pvsLanguageServer.cliGateway.publish(evt);
+			// this.pvsLanguageServer.cliGateway.publish(evt);
 		}
 		this.connection?.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
 	}
@@ -2288,7 +2298,7 @@ export class PvsProofExplorer {
 		return null;
 	}
 	
-	async interruptAndQuitProof (opt?: { notifyCliGateway?: boolean }): Promise<void> {
+	async interruptAndQuitProof (opt?: { notifyClient?: boolean }): Promise<void> {
 		await this.interruptProofCommand();
 		await this.quitProof(opt);
 	}
@@ -2297,8 +2307,8 @@ export class PvsProofExplorer {
 	 * Send proof command
 	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name, prover command
 	 */
-	async proofCommand (args: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }): Promise<PvsResponse | null> {
-		if (args) {
+	async proofCommand (args: PvsProofCommand): Promise<PvsResponse | null> {
+		if (args?.cmd) {
 			args = fsUtils.decodeURIComponents(args);
 			// const timeout: number = (this.connection) ? await this.connection.workspace.getConfiguration("pvs.pvsProver.watchdog") : 0;
 			const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
@@ -2333,6 +2343,7 @@ export class PvsProofExplorer {
 		}
 	}
 	// this handler is for commands entered by the user at the prover terminal
+	// ATTN: request.cmd must be a string surrounded by round parentheses.
 	async proofCommandRequest (request: PvsProofCommand): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		
@@ -2341,47 +2352,56 @@ export class PvsProofExplorer {
 		// 	await this.quitProofAndSave();
 		// 	return;
 		// }
-		if (utils.isSaveThenQuitCommand(request.cmd)) {
+		if (commandUtils.isSaveThenQuitCommand(request.cmd)) {
 			await this.quitProofAndSave();
-			// await this.quitProof();
+			const ans: ProofCommandResponse = { res: "bye!", req: request };
+			this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 			return;
 		}
-		if (utils.isQuitCommand(request.cmd)) {
+		if (commandUtils.isQuitCommand(request.cmd)) {
 			if (this.dirtyFlag) {
 				// ask if the proof needs to be saved
 				await this.querySaveProof(request)
 			}
-			await this.quitProof();
+			await this.quitProof({ notifyClient: true });
+			// const ans: ProofCommandResponse = { res: "bye!", req: request };
+			// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 			return;
 		}
-		if (utils.isQuitDontSaveCommand(request.cmd)) {
-			await this.quitProof();
+		if (commandUtils.isQuitDontSaveCommand(request.cmd)) {
+			await this.quitProof({ notifyClient: true });
+			// const ans: ProofCommandResponse = { res: "bye!", req: request };
+			// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 			return;
 		}
-		if (utils.isFailCommand(request.cmd)) {
+		if (commandUtils.isFailCommand(request.cmd)) {
 			if (this.activeNode.branchId === "") {
 				// fail at the root sequent is equivalent to quit
 				if (this.dirtyFlag) {
 					// ask if the proof needs to be saved
 					await this.querySaveProof(request)
 				}
-				await this.quitProof({ notifyCliGateway: true });
+				await this.quitProof({ notifyClient: true });
+				// const ans: ProofCommandResponse = { res: "bye!", req: request };
+				// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);	
 				return;	
 			} else {
 				// fail in a branch is equivalent to postpone
 				request.cmd = "(postpone)";
 			}
 		}
-		if (utils.isInterruptCommand(request.cmd)) {
+		if (languageUtils.isInterruptCommand(request.cmd)) {
 			await this.interruptProofCommand();
 			this.running = false;
 			request.cmd = "(skip)";
 		}
-		if (utils.isQEDCommand(request.cmd)) {
+		if (commandUtils.isQEDCommand(request.cmd)) {
 			// print QED in the terminal and close the terminal session
-			const channelID: string = utils.desc2id(this.formula);
-			const evt: CliGatewayQED = { type: "pvs.event.QED", channelID };
-			this.pvsLanguageServer.cliGateway.publish(evt);
+			// const channelID: string = utils.desc2id(this.formula);
+			// const evt: CliGatewayQED = { type: "pvs.event.QED", channelID };
+			const ans: ProofCommandResponse = { res: "Q.E.D.", req: request };
+			this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
+			// this.pvsLanguageServer.cliGateway.publish(evt);
 			
 			if (this.connection) {
 				this.connection.sendRequest(serverEvent.QED, { response: { result: request.cmd }, args: request });
@@ -2399,7 +2419,7 @@ export class PvsProofExplorer {
 		}
 
 		// else, relay command to pvs-server
-		const cmdArray: string[] = utils.splitCommands(request.cmd);
+		const cmdArray: string[] = commandUtils.splitCommands(request.cmd);
 		if (cmdArray) {
 			for (let i = 0; i < cmdArray.length; i++) {
 				const cmd: string = cmdArray[i];
@@ -2416,7 +2436,7 @@ export class PvsProofExplorer {
 				// console.dir(response, { depth: null });
 				if (response) {
 					if (response.result) {
-						const channelID: string = utils.desc2id(req);
+						const channelID: string = languageUtils.desc2id(req);
 						const result: SequentDescriptor[] = response.result;
 						if (result.length) {
 							const sequent: SequentDescriptor = result[result.length - 1];
@@ -2428,24 +2448,24 @@ export class PvsProofExplorer {
 								// FIXME: pvs-server needs to provide a string representation of the command, not its structure!
 								const command: string = 
 									(sequent && sequent["last-cmd"] 
-										&& !utils.isUndoCommand(cmd)
-										&& !utils.isUndoUndoCommand(cmd)
-										&& !utils.isPostponeCommand(cmd)) ? sequent["last-cmd"] : cmd;
-								if (this.connection) {
-									this.connection.sendRequest(serverEvent.proofCommandResponse, { 
-										response: { result: sequent }, 
-										args: { 
-											fileName: req.fileName,
-											fileExtension: req.fileExtension,
-											contextFolder: req.contextFolder,
-											theoryName: req.theoryName,
-											formulaName: req.formulaName,
-											cmd: command
-										}
-									});
-								}
+										&& !commandUtils.isUndoCommand(cmd)
+										&& !commandUtils.isUndoUndoCommand(cmd)
+										&& !commandUtils.isPostponeCommand(cmd)) ? sequent["last-cmd"] : cmd;
+								// if (this.connection) {
+								// 	this.connection.sendRequest(serverEvent.proofCommandResponse, { 
+								// 		response: { result: sequent }, 
+								// 		args: { 
+								// 			fileName: req.fileName,
+								// 			fileExtension: req.fileExtension,
+								// 			contextFolder: req.contextFolder,
+								// 			theoryName: req.theoryName,
+								// 			formulaName: req.formulaName,
+								// 			cmd: command
+								// 		}
+								// 	});
+								// }
 								// check if the proof is complete
-								if (utils.QED(sequent)) {
+								if (languageUtils.QED(sequent)) {
 									if (this.connection) {
 										this.connection.sendRequest(serverEvent.QED, { response: { result: sequent }, args: req });
 										// trigger a context update, so proof status will be updated on the front-end
@@ -2459,7 +2479,8 @@ export class PvsProofExplorer {
 								}
 								// show feedback in CLI only after executing the last command in the sequence
 								if (i === cmdArray.length - 1) {
-									this.pvsLanguageServer.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: sequent, cmd });
+									// this.pvsLanguageServer.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: sequent, cmd });
+									this.pvsLanguageServer.getConnection()?.sendRequest(serverEvent.proofCommandResponse, { res: sequent, req: request });
 								}
 							}
 						}	
@@ -2594,7 +2615,7 @@ export class ProofItem extends TreeItem {
 	updateTooltip (tooltip: SequentDescriptor, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
 		this.sequentDescriptor = tooltip;
-		this.tooltip = (this.sequentDescriptor) ? utils.formatSequent(this.sequentDescriptor) : " ";
+		this.tooltip = (this.sequentDescriptor) ? languageUtils.formatSequent(this.sequentDescriptor) : " ";
 		if (!opt.internalAction && this.connection) {
 			const evt: ProofExecDidUpdateSequent = {
 				action: "did-update-sequent", 
@@ -2868,7 +2889,7 @@ export class ProofItem extends TreeItem {
 			if (!proofState) {
 				console.error(`[pvs-explorer] Error: proofstate is null. Please restart the proof and report this error to the vscode-pvs developers.`);
 			}
-			const activeBranchId: string = utils.getBranchId(proofState.label);
+			const activeBranchId: string = languageUtils.getBranchId(proofState.label);
 			if (opt.keepSameBranch && !this.children[0].branchNameEquals(activeBranchId)) {
 				return null;
 			}
@@ -3090,7 +3111,7 @@ class ProofCommand extends ProofItem {
 	constructor (cmd: string, branchId: string, parent: ProofItem, connection: Connection) {
 		super("proof-command", cmd, branchId, parent, connection);
 		cmd = cmd.trim();
-		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || utils.isUndoCommand(cmd) ? cmd : `(${cmd})`;
+		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || commandUtils.isUndoCommand(cmd) ? cmd : `(${cmd})`;
 		this.notVisited({ internalAction: true });
 	}
 	// @override

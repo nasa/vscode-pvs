@@ -41,8 +41,8 @@ import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem, WorkspaceItem } from "../views/vscodePvsWorkspaceExplorer";
-import { PvsTheory, PvsFile, FileDescriptor, ContextFolder } from '../common/serverInterface';
-import { CancellationToken } from 'vscode-languageclient';
+import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula } from '../common/serverInterface';
+import { CancellationToken, TextDocument } from 'vscode-languageclient';
 
 
 /**
@@ -258,7 +258,7 @@ export function showInformationMessage (message: string, opt?: { timeout?: numbe
     }
 }
 export function showErrorMessage (message: string, timeout?: number): void {
-    showInformationMessage(`${utils.icons.bang} ${message}`, { timeout: 4000 });
+    showInformationMessage(`${utils.icons.bang} ${message}`, { timeout: 6000 });
 }
 export function showWarningMessage (message: string, timeout?: number): void {
     vscode.window.showWarningMessage(`${utils.icons.sparkles} ${message}`);
@@ -305,9 +305,9 @@ export async function addPvsLibraryFolder (folder: string): Promise<boolean> {
     if (folder) {
         folder = (folder.endsWith("/")) ? folder : `${folder}/`;
         const pvsLibraryPath: string = getConfiguration("pvs.pvsLibraryPath");
-        const libs: string[] = utils.decodePvsLibraryPath(pvsLibraryPath);
+        const libs: string[] = fsUtils.decodePvsLibraryPath(pvsLibraryPath);
         if (!libs.includes(folder)) {
-            const newPvsLibraryPath: string = utils.createPvsLibraryPath(libs.concat([ folder ]));
+            const newPvsLibraryPath: string = fsUtils.createPvsLibraryPath(libs.concat([ folder ]));
             await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", newPvsLibraryPath, vscode.ConfigurationTarget.Global);
             return true;
         }
@@ -381,9 +381,19 @@ export async function openWorkspace (): Promise<void> {
     }
 }
 /**
+ * Opens a file in the editor
+ */
+export async function openFile (fname: string, opt?: { selection?: vscode.Range }): Promise<void> {
+    opt = opt || {};
+    if (fname) {
+        const fileUri: vscode.Uri = vscode.Uri.file(fname);
+        vscode.window.showTextDocument(fileUri, { preserveFocus: true, ...opt });
+    }
+}
+/**
  * Opens a pvs file in the editor and adds the containing folder in file explorer
  */
-export async function openPvsFile (file?: PvsFile): Promise<void> {
+ export async function openPvsFile (file?: FileDescriptor): Promise<void> {
     const selectedFiles: vscode.Uri[] = (file) ? [ vscode.Uri.file(fsUtils.desc2fname(file)) ] : await vscode.window.showOpenDialog({
         canSelectFiles: true,
         canSelectFolders: false,
@@ -550,7 +560,7 @@ export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: s
                 // const document: vscode.TextDocument = window.activeTextEditor.document;
                 const line: number = (vscode.window.activeTextEditor && vscode.window.activeTextEditor.selection && vscode.window.activeTextEditor.selection.active) ?
                     vscode.window.activeTextEditor.selection.active.line : 0;
-                const theoryName: string = utils.findTheoryName(content, line);
+                const theoryName: string = fsUtils.findTheoryName(content, line);
                 return {
                     contextFolder: fsUtils.getContextFolder(resource["path"]),
                     fileName: fsUtils.getFileName(resource["path"]),
@@ -566,7 +576,7 @@ export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: s
                 if (content) {
                     const line: number = (vscode.window.activeTextEditor && vscode.window.activeTextEditor.selection && vscode.window.activeTextEditor.selection.active) ?
                         vscode.window.activeTextEditor.selection.active.line : 0;
-                    const theoryName: string = utils.findTheoryName(content, line);
+                    const theoryName: string = fsUtils.findTheoryName(content, line);
                     return {
                         contextFolder: resource.contextFolder,
                         fileName: resource.fileName,
@@ -639,13 +649,7 @@ export function resource2desc (resource: string | {
     fileName?: string, fileExtension?: string, contextFolder?: string, theoryName?: string, formulaName?: string,
     path?: string,
     contextValue?: string
-}): { 
-    contextFolder: string,
-    fileName: string,
-    fileExtension: string,
-    theoryName: string, 
-    formulaName: string
-} {
+}): PvsFormula {
     if (resource) {
         if (typeof resource === "string") {
             const isFolder: boolean = !fsUtils.isPvsFile(resource);
@@ -716,6 +720,64 @@ export function resource2desc (resource: string | {
             };
         }
     }
-    console.error(`[event-dispatcher] Warning: could not describe resource `, resource);
+    console.warn(`[vscode-utils] Warning: could not describe resource `, resource);
     return null;
+}
+
+/**
+ * Utility function, returns the list of pvs editors visible in vscode
+ * ATTN: vscode classifies the Log window as a document.
+ * To find out which pvs file is open in the editor, we need to use visibleTextEditors and filter by languageId
+ */
+export function getVisiblePvsEditors (): vscode.TextEditor[] {
+    const visiblePvsEditors: vscode.TextEditor[] = vscode.window.visibleTextEditors?.filter(editor => {
+        return editor?.document?.languageId === "pvs";
+    });
+    return visiblePvsEditors || [];
+}
+
+/**
+ * Utility function, returns the active document file in the editor
+ */
+export function getActivePvsEditor (): vscode.TextEditor {
+    const visiblePvsEditors: vscode.TextEditor[] = getVisiblePvsEditors();
+    return visiblePvsEditors?.length ? visiblePvsEditors[0] : null;
+}
+
+/**
+ * Utility function, returns the list of pvs documents visible in the editor
+ */
+export function getVisiblePvsFiles (): vscode.TextDocument[] {
+    const visiblePvsEditors: vscode.TextEditor[] = getVisiblePvsEditors();
+    const visiblePvsFiles: vscode.TextDocument[] = visiblePvsEditors?.map(editor => {
+        return editor?.document;
+    });
+    return visiblePvsFiles || [];
+}
+
+/**
+ * Utility function, returns the active document file in the editor
+ */
+export function getActivePvsFile (): vscode.TextDocument {
+    const visiblePvsFiles: vscode.TextDocument[] = getVisiblePvsFiles();
+    return visiblePvsFiles?.length ? visiblePvsFiles[0] : null;
+}
+
+/**
+ * Utility function, resets global vscode-pvs variables to their default values
+ */
+export function resetGlobals (): void {
+    // reset other globals
+    vscode.commands.executeCommand('setContext', 'in-checker', false);
+    vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
+    vscode.commands.executeCommand('setContext', 'proof-mate.visible', false);
+    vscode.commands.executeCommand('setContext', 'proof-explorer.visible', false);
+    vscode.commands.executeCommand('setContext', 'autorun', false);
+}
+
+/**
+ * Sets the editor language to pvs
+ */
+export function setEditorLanguage (): void {
+    vscode.commands.executeCommand("setContext", "editorLangId", "pvs");
 }

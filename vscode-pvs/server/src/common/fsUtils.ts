@@ -38,9 +38,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileDescriptor, FileList} from '../common/serverInterface';
+import { FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor, ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsFileDescriptor, PvsFormula, PvsTheory, TheoryDescriptor} from '../common/serverInterface';
 import { execSync } from 'child_process';
 import * as crypto from 'crypto';
+import { commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremRegexp, theoryRegexp } from './languageUtils';
 
 
 export const HOME_DIR: string = require('os').homedir();
@@ -582,3 +583,1043 @@ export const pvsFolderName: string = "pvs-7.1.0";
 // 	}
 // 	return null;
 // }
+
+
+/**
+ * @function findTheoryName
+ * @description Utility function, finds the name of the theory that immediately preceeds a given line
+ * @param fileContent The text where the theory should be searched 
+ * @param line The line in the document where search should end
+ * @returns { string | null } The theory name if any is found, null otherwise
+ */
+ export function findTheoryName(fileContent: string, line: number): string | null {
+	if (fileContent) {
+		let txt = fileContent.replace(commentRegexp, ""); // this removes all commented text
+		const regexp: RegExp = theoryRegexp;
+		let candidates: string[] = [];
+
+		// check that line number is not before keyword begin -- if so adjust line number otherwise regexp won't find theory name
+		const matchFirstTheory: RegExpMatchArray = regexp.exec(txt)
+		if (matchFirstTheory && matchFirstTheory.length > 1) {
+			const theoryName: string = matchFirstTheory[1];
+
+			const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
+			if (matchEnd && matchEnd.length) {
+				regexp.lastIndex = matchEnd.index; // restart the search from here
+
+				const min: number = matchFirstTheory[0].split("\n").length;
+				line = (line < min) ? min : line;
+				candidates.push(theoryName);
+			}
+		}
+
+		// keep searching theory names -- the first element in candidates will be the closest to the current line number
+		txt = txt.split("\n").slice(0, line + 1).join("\n");
+		let match: RegExpMatchArray = regexp.exec(txt);
+		while (match) {
+			if (match.length > 1 && match[1]) {
+				const theoryName: string = match[1];
+				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
+				if (matchEnd && matchEnd.length) {
+					const endIndex: number = matchEnd.index + matchEnd[0].length;
+					txt = txt.slice(endIndex);
+					// need to create a new regexp when txt is updated
+					match = new RegExp(regexp).exec(txt);
+					candidates = [ theoryName ].concat(candidates);
+				} else {
+					match = regexp.exec(txt);
+				}
+			} else {
+				match = regexp.exec(txt);
+			}
+		}
+		if (candidates.length > 0) {
+			return candidates[0];
+		}
+	}
+	return null;
+};
+
+
+/**
+ * @function listTheoryNames
+ * @description Utility function, returns a list of all theories in the given file
+ * @param fileContent The text where the theory should be searched 
+ * @returns string[] the list of theories in the given text
+ */
+export function listTheoryNames (fileContent: string): string[] {
+	const ans: string[] = [];
+	if (fileContent) {
+		let txt = fileContent.replace(commentRegexp, "");
+		const regexp: RegExp = theoryRegexp;
+		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
+		while (match) {
+			if (match.length > 1 && match[1]) {
+				const theoryName: string = match[1];
+
+				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
+				if (matchEnd && matchEnd.length) {
+					const endIndex: number = matchEnd.index + matchEnd[0].length;
+					txt = txt.slice(endIndex);
+					// need to create a new regexp when txt is updated
+					match = new RegExp(regexp).exec(txt);
+					ans.push(theoryName);
+				} else {
+					match = regexp.exec(txt);
+				}
+			} else {
+				match = regexp.exec(txt);
+			}
+		}
+	}
+	return ans;
+};
+
+/**
+ * Utility function, returns the list of theories defined in a given pvs file
+ * @param fname Path to a pvs file
+ */
+export async function listTheoriesInFile (fname: string, opt?: { content?: string }): Promise<TheoryDescriptor[]> {
+	// console.log(`listing theories in file ${fname}`);
+	opt = opt || {};
+	if (fname) {
+		const fileName: string = getFileName(fname);
+		const fileExtension: string = getFileExtension(fname);
+		const contextFolder: string = getContextFolder(fname);
+		const fileContent: string = (opt.content) ? opt.content : await readFile(fname);
+		if (fileContent) {
+			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
+			// console.dir(response);
+			return response;
+		}
+	}
+	return null;
+}
+
+
+/**
+ * Utility function, returns the list of theories defined in a given pvs file
+ * @param fname Path to a pvs file
+ */
+export async function mapTheoriesInFile (fname: string): Promise<{ [ key: string ]: TheoryDescriptor }> {
+	if (fname) {
+		const fileName: string = getFileName(fname);
+		const fileExtension: string = getFileExtension(fname);
+		const contextFolder: string = getContextFolder(fname);
+		const fileContent: string = await readFile(fname);
+		if (fileContent) {
+			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
+			const theoryMap: { [ key: string ]: TheoryDescriptor } = {};
+			for (const i in response) {
+				theoryMap[ response[i].theoryName ] = response[i];
+			}
+			return theoryMap;
+		}
+	}
+	return null;
+}
+
+
+/**
+ * Utility function, finds all theories in a given file
+ * @param desc Descriptor indicating filename, file extension, context folder, and file content
+ */
+export function listTheories(desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean }): TheoryDescriptor[] {
+	// console.log(`[language-utils] Listing theorems in file ${desc.fileName}${desc.fileExtension}`);
+	let ans: TheoryDescriptor[] = [];
+	if (desc && desc.fileContent) {
+		let txt: string = desc.fileContent.replace(commentRegexp, "");
+		// console.log(txt);
+		const start: number = Date.now();
+		const regexp: RegExp = theoryRegexp;
+		// let lastIndex: number = 0;
+		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
+		let lineOffset: number = 0;
+		while (match) {
+			// console.log(`[language-utils] Found ${match[0]}`);
+			if (match.length > 1 && match[1]) {
+				const theoryName: string = match[1];
+
+				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
+				if (matchEnd && matchEnd.length) {
+					const endIndex: number = matchEnd.index + matchEnd[0].length;
+					const fullClip = txt.slice(0, endIndex);
+
+					const clipStart = txt.slice(0, match.index);
+					const lines: string[] = clipStart.split("\n"); 
+					const line: number = lines.length + lineOffset;
+					const character: number = 0;
+
+					txt = txt.slice(endIndex);
+					lineOffset += fullClip.split("\n").length - 1;
+
+					ans.push({
+						theoryName: desc.fileExtension === ".tccs" && theoryName.endsWith("_TCCS") ? theoryName.substr(0, theoryName.length - 5) : theoryName,
+						position: {
+							line: line,
+							character: character
+						},
+						fileName: desc.fileName,
+						fileExtension: desc.fileExtension,
+						contextFolder: desc.contextFolder
+					});
+					// need to create a new regexp when txt is updated
+					match = new RegExp(regexp).exec(txt);
+				} else {
+					match = regexp.exec(txt);
+				}
+			} else {
+				match = regexp.exec(txt);
+			}
+			// console.log(match);
+		}
+		const stats: number = Date.now() - start;
+		// console.log(`[languageUtils] listTheories(${desc.fileName}) completed in ${stats}ms`);
+	}
+	return ans;
+}
+
+/**
+ * Utility function, returns the list of theories defined in a given pvs file
+ * @param fname Path to a pvs file
+ */
+export async function listTheoremsInFile (fname: string, opt?: { content?: string }): Promise<FormulaDescriptor[]> {
+	opt = opt || {};
+	if (fname) {
+		const fileName: string = getFileName(fname);
+		const fileExtension: string = getFileExtension(fname);
+		const contextFolder: string = getContextFolder(fname);
+		const fileContent: string = (opt.content) ? opt.content : await readFile(fname);
+		if (fileContent) {
+			const response: FormulaDescriptor[] = await listTheorems({ fileName, fileExtension, contextFolder, fileContent });
+			return response;
+		}
+	}
+	return null;
+};
+
+export interface SFormula {
+	labels: string[];
+	changed: 'true' | 'false';
+	formula: string;
+	'names-info': any[];
+};
+export type SequentDescriptor = {
+	path?: string, // unique identifier representing the current position in the proof tree, e.g., 1.2.1
+	label: string, // ???
+	commentary: string[] | string, // commentary text describing the result of the execution of the proof command
+	action?: string   // this field reports some additional commentary
+	"num-subgoals"?: number, // number of sub-goals generated by the last command executed
+	"prev-cmd"?: Object | string; // object representing the last command executed
+	comment?: string, // text comment attached to the proof goal (introduced with the 'comment' command during a proof)
+	sequent?: { // sequent formulas generated by the prover
+		succedents?: SFormula[], 
+		antecedents?: SFormula[],
+		"hidden-succedents"?: SFormula[], 
+		"hidden-antecedents"?: SFormula[]
+	}
+};
+
+
+export function getActualProofStatus (desc: ProofDescriptor, shasum: string): ProofStatus {
+	if (desc) {
+		if (shasum === desc.info.shasum) {
+			return desc.info.status;
+		} else {
+			return (desc.info.status === "proved") ? "unchecked"
+				: (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length) ?
+					"unfinished" : "untried";
+		}
+	}
+	return "untried";
+}	
+
+/**
+ * Utility function, returns the status of the proof for the theorem indicated in the fuction arguments
+ * @param desc 
+ */
+export async function getProofStatus (desc: { 
+	fileName: string, 
+	fileExtension: string, 
+	contextFolder: string, 
+	theoryName: string, 
+	formulaName: string
+}): Promise<ProofStatus> {
+	if (desc) {
+		let status: ProofStatus = "untried";
+		// check if the .jprf file contains the proof status
+		const jprf_file: string = desc2fname({
+			fileName: desc.fileName, 
+			fileExtension: ".jprf", 
+			contextFolder: desc.contextFolder
+		});
+		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
+		if (proofFile) {
+			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
+			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
+				if (desc.fileExtension === ".tccs") {
+					status = proofDescriptors[0].info.status; // for tccs we choose not to adjust the status because tccs are automatically generated by pvs and status of the formula is visible to the user as a comment -- we don't want to confuse them
+				} else {
+					// compute shasum for the file, and check it with the shasum saved in the proof descriptor. If the two differ, then the file has changed and the proof status is not valid anymore
+					const shasum: string = await shasumFile(desc);
+					status = getActualProofStatus(proofDescriptors[0], shasum);
+				}
+			}
+		}
+		return status;
+	}
+	return null;
+}
+
+/**
+ * Utility function, returns the proof descriptor for a given formula
+ * @param formula 
+ */
+export async function getProofDescriptor (formula: PvsFormula): Promise<ProofDescriptor> {
+	if (formula) {
+		// check if the .jprf file contains the proof status
+		const jprf_file: string = desc2fname({
+			fileName: formula.fileName, 
+			fileExtension: ".jprf", 
+			contextFolder: formula.contextFolder
+		});
+		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
+		if (proofFile) {
+			const proofDescriptors: ProofDescriptor[] = proofFile[`${formula.theoryName}.${formula.formulaName}`];
+			if (proofDescriptors && proofDescriptors.length) {
+				return proofDescriptors[0];
+			}
+		}
+	}
+	return null;
+}
+
+/**
+ * Utility function, updates the proof descriptor for a given formula
+ * @param formula 
+ */
+export async function saveProofDescriptor (formula: PvsFormula, newDesc: ProofDescriptor, opt?: { saveProofTree?: boolean }): Promise<boolean> {
+	if (formula && newDesc) {
+		opt = opt || {};
+		const fname: string = desc2fname({
+			fileName: formula.fileName,
+			fileExtension: ".jprf",
+			contextFolder: formula.contextFolder
+		});
+		const key: string = `${formula.theoryName}.${formula.formulaName}`;
+		let fdesc: ProofFile = await readJprfProofFile(fname);
+		// check if file contains a proof for the given formula
+		if (fdesc && fdesc[key] && fdesc[key].length) {
+			// we are updating only the default proof, this might be changed in the future
+			const pdesc: ProofDescriptor = fdesc[key][0];
+			if (pdesc.info) {
+				pdesc.info.shasum = newDesc.info.shasum ? newDesc.info.shasum : pdesc.info.shasum;
+				pdesc.info.prover = newDesc.info.prover ? newDesc.info.prover : pdesc.info.prover;
+				pdesc.info.status = newDesc.info.status ? newDesc.info.status : pdesc.info.status;
+				pdesc.info.date = newDesc.info.date ? newDesc.info.date : pdesc.info.date;
+			}
+			if (opt.saveProofTree) {
+				pdesc.proofTree = newDesc.proofTree ? newDesc.proofTree : pdesc.proofTree;
+			}
+		} else {
+			fdesc[key] = fdesc[key] || [ newDesc ];
+		}
+		// write descriptor to file
+		const newContent: string = JSON.stringify(fdesc, null, " ");
+		return await writeFile(fname, newContent);		
+	}
+	return false;
+}
+
+/**
+ * Utility function, saves the sketchpad with proof clips for a given formula
+ * @param formula 
+ */
+export async function saveSketchpad (formula: PvsFormula, clips: ProofNode[]): Promise<boolean> {
+	if (formula) {
+		const fname: string = desc2fname({
+			fileName: formula.fileName,
+			fileExtension: ".jprf",
+			contextFolder: formula.contextFolder
+		});
+		const key: string = `${formula.theoryName}.${formula.formulaName}`;
+		let fdesc: ProofFile = await readJprfProofFile(fname);
+		// check if file contains a proof for the given formula
+		if (fdesc && fdesc[key] && fdesc[key].length) {
+			// update clips for default proof
+			const pdesc: ProofDescriptor = fdesc[key][0];
+			pdesc.clips = clips || [];
+			// write descriptor to file
+			const newContent: string = JSON.stringify(fdesc, null, " ");
+			return await writeFile(fname, newContent);		
+		}
+	}
+	return false;
+}
+
+/**
+ * Utility function, opens the sketchpad with proof clips for a given formula
+ * @param formula 
+ */
+export async function openSketchpad (formula: PvsFormula): Promise<ProofNode[] | null> {
+	if (formula) {
+		const fname: string = desc2fname({
+			fileName: formula.fileName,
+			fileExtension: ".jprf",
+			contextFolder: formula.contextFolder
+		});
+		const key: string = `${formula.theoryName}.${formula.formulaName}`;
+		let fdesc: ProofFile = await readJprfProofFile(fname);
+		// check if file contains a proof for the given formula
+		if (fdesc && fdesc[key] && fdesc[key].length) {
+			// update clips for default proof
+			const pdesc: ProofDescriptor = fdesc[key][0];
+			return pdesc.clips;
+		}
+	}
+	return null;
+}
+
+/**
+ * Utility function, returns the date (day and time) a given proof was saved
+ * @param desc 
+ */
+export async function getProofDate (desc: { 
+	fileName: string, 
+	fileExtension: string, 
+	contextFolder: string, 
+	theoryName: string, 
+	formulaName: string
+}): Promise<string | null> {
+	if (desc) {
+		// check if the .jprf file contains the date
+		const jprf_file: string = desc2fname({
+			fileName: desc.fileName, 
+			fileExtension: ".jprf", 
+			contextFolder: desc.contextFolder
+		});
+		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
+		if (proofFile) {
+			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
+			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
+				return proofDescriptors[0].info.date;
+			}
+		}
+	}
+	return null;
+}
+
+
+/**
+ * Reads the content of a .jprf file
+ * @param fname Name of the prooflite file
+ * @param opt Optionals
+ *               - quiet (boolean): if true, the function will not print any message to the console. 
+ */
+ export async function readJprfProofFile (fname: string, opt?: { quiet?: boolean }): Promise<ProofFile> {
+	opt = opt || {};
+	let proofFile: ProofFile = {};
+	fname = fname.replace("file://", "");
+	fname = tildeExpansion(fname);
+	const content: string = await readFile(fname);
+	if (content) {
+		try {
+			proofFile = JSON.parse(content);
+		} catch (jsonError) {
+			if (!opt.quiet) {
+				console.error(`[fs-utils] Error: Unable to parse proof file ${fname}`, jsonError.message);
+				console.error(`[fs-utils] Storing corrupted file content to ${fname}.err`);
+			}
+			// create a backup copy of the corrupted jprf file, because it might get over-written
+			await renameFile(fname, `${fname}.err`);
+			await writeFile(`${fname}.err.msg`, jsonError.message);
+		} finally {
+			return proofFile;
+		}
+	}
+	return proofFile;
+}
+
+// /**
+//  * Utility function, appends a prooflite script at the end of a given file
+//  * @param fname Name of the prooflite file
+//  * @param script The prooflite script to be appended
+//  */
+// export async function appendProoflite (fname: string, script: string): Promise<boolean> {
+// 	if (fname && script) {
+// 		const content: string = await readFile(fname);
+// 		const newContent: string = (content && content.trim()) ? content + `\n\n${script}` : script;
+// 		return await writeFile(fname, newContent);
+// 	}
+// 	return false;
+// }
+/**
+ * Utility function, removes a prooflite script from a given file
+ * @param fname Name of the prooflite file
+ * @param formulaName name of the prooflite script to be removed
+ */
+export async function updateProoflite (fname: string, formulaName: string, newProoflite: string): Promise<boolean> {
+	if (fname && formulaName) {
+		fname = decodeURIComponents(fname);
+		const success: boolean = await fileExists(fname);
+		if (!success) {
+			writeFile(fname, "");
+		}
+		const content: string = await readFile(fname);
+
+		// group 1 is the header (this group can be null)
+		// group 2 is the prooflite script
+		const formula: string = formulaName.replace(/\?/g, "\\?");
+		const regex: RegExp = new RegExp(`(%-*\\s%\\s*@formula\\s*:\\s*${formula}\\s[\\w\\W\\s]+%-*)?\\s*\\b(${formula}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
+		if (regex.test(content)) {
+			let newContent: string =  newProoflite + "\n\n\n" + content.replace(regex, "").trim();
+			// update content
+			return await writeFile(fname, newContent.trim());
+		} else {
+			const newContent: string = newProoflite + "\n\n\n" + content.trim();
+			return await writeFile(fname, newContent.trim());
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, checks if a prooflite script is present in a given file
+ * @param fname Name of the prooflite file
+ * @param formulaName name of the prooflite script
+ */
+export async function containsProoflite (fname: string, formulaName: string): Promise<boolean> {
+	if (fname && formulaName) {
+		fname = decodeURIComponents(fname);
+		const success: boolean = await fileExists(fname);
+		if (success) {
+			const content: string = await readFile(fname);
+			if (content) {
+				// group 1 is the header (this group can be null)
+				// group 2 is the prooflite script
+				const formula: string = formulaName.replace(/\?/g, "\\?");
+				const regex: RegExp = new RegExp(`\\b(${formula}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
+				return regex.test(content);
+			}
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, returns the prooflite script without tags
+ * @param fname Name of the prooflite file
+ * @param formulaName name of the prooflite script
+ */
+export async function readProoflite (fname: string, formulaName: string): Promise<string | null> {
+	if (fname && formulaName) {
+		fname = decodeURIComponents(fname);
+		const success: boolean = await fileExists(fname);
+		if (success) {
+			const content: string = await readFile(fname);
+			if (content) {
+				// group 1 is the header (this group can be null)
+				// group 2 is the prooflite script (with tags)
+				// group 3 is the prooflite script (without tags)
+				const formula: string = formulaName.replace(/\?/g, "\\?");
+				const regex: RegExp = new RegExp(`\\s*\\b(${formula}\\s*:\\s*PROOF\\b([\\s\\w\\W]+)\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
+				const match: RegExpMatchArray = regex.exec(content);
+				if (match && match.length > 2) {
+					return match[2].trim();
+				}
+			}
+		}
+	}
+	return null;
+}
+/**
+ * Utility function, saves a prooflite script for a given formula in the given file
+ * @param fname Name of the prooflite file
+ * @param formulaName name of the prooflite
+ * @param script The prooflite script to be saved in the file
+ */
+export async function saveProoflite (fname: string, formulaName: string, script: string): Promise<boolean> {
+	if (fname && formulaName && script) {
+		fname = decodeURIComponents(fname);
+		return await updateProoflite(fname, formulaName, script);
+	}
+	return false;
+}
+
+export async function getProofliteScript (desc: { 
+	fileName: string, 
+	fileExtension: string, 
+	contextFolder: string, 
+	theoryName: string, 
+	formulaName: string 
+}): Promise<string> {
+	const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+	const txt: string = await readFile(fname);
+	const matchProoflite: RegExpMatchArray = proofliteRegexp(desc).exec(txt);
+	return matchProoflite ? matchProoflite[0] : null;
+}
+export async function getProofLitePosition (desc: { formula: PvsFormula, proofFile: FileDescriptor }): Promise<number> {
+	if (desc && desc.formula && desc.proofFile) {
+		const fname: string = desc2fname(desc.proofFile);
+		const txt: string = await readFile(fname);
+		const matchProoflite: RegExpMatchArray = proofliteDeclRegexp(desc.formula).exec(txt);
+		if (matchProoflite) {
+			const slice: string = txt.slice(0, matchProoflite.index);
+			const lines: string[] = slice.split("\n");
+			return lines.length;
+		}
+	}
+	return 0;
+}
+
+/**
+ * Utility function, returns the list of theorems defined in a given pvs file
+ * @param desc Descriptor indicating filename, file extension, context folder, file content, and whether the file in question is the prelude (flag prelude)
+ */
+ export async function listTheorems (desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean, cache?: { theories?: TheoryDescriptor[] } }): Promise<FormulaDescriptor[]> {
+	if (desc && desc.fileContent) {
+		const theories: TheoryDescriptor[] = (desc.cache && desc.cache.theories) ? desc.cache.theories : listTheories(desc);
+		const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories
+		if (theories) {
+			const start: number = Date.now();
+			const fileContent: string = desc.fileContent.replace(commentRegexp, ""); // first, remove all comments
+			const slices: string[] = fileContent.split("\n");
+			for (let i = 0; i < theories.length; i++) {
+				boundaries.push({
+					theoryName: theories[i].theoryName,
+					from: theories[i].position.line,
+					to: (i + 1 < theories.length) ? theories[i + 1].position.line : slices.length
+				});
+			}
+			const formulaDescriptors: FormulaDescriptor[] = [];
+			for (let i = 0; i < boundaries.length; i++) {
+				const content: string = slices.slice(boundaries[i].from - 1, boundaries[i].to - 1).join("\n");
+				if (content && content.trim()) {
+					const regex: RegExp = theoremRegexp;
+					let match: RegExpMatchArray = null;
+					while (match = regex.exec(content)) {
+						if (match.length > 1 && match[1]) {
+							const formulaName: string = match[1];
+							const slice: string = content.slice(0, match.index);
+							const offset: number = (slice) ? slice.split("\n").length : 0;
+							const line: number = boundaries[i].from + offset - 1;
+							const isTcc: boolean = desc.fileExtension === ".tccs";
+							let status: ProofStatus = "untried";
+							// if (isTcc) {
+							// 	const matchStatus: RegExpMatchArray = tccStatusRegExp.exec(slice);
+							// 	if (matchStatus && matchStatus.length > 1 && matchStatus[1]) {
+							// 		status = <ProofStatus> matchStatus[1];
+							// 	}
+							// } else {
+							if (desc.prelude) {
+								status = "proved";
+							} else {
+								// check if the .jprf file contains the proof status
+								const theoryName: string = boundaries[i].theoryName;
+								status = await getProofStatus({
+									fileName: desc.fileName, 
+									fileExtension: desc.fileExtension, 
+									contextFolder: desc.contextFolder,
+									formulaName,
+									theoryName
+								});
+							}
+							const fdesc: FormulaDescriptor = {
+								fileName: desc.fileName,
+								fileExtension: desc.fileExtension,
+								contextFolder: desc.contextFolder,
+								theoryName: boundaries[i].theoryName,
+								formulaName,
+								position: { line, character: 0 },
+								status,
+								isTcc
+							}
+							formulaDescriptors.push(fdesc);
+						}
+					}
+				} else {
+					console.error("Error while finding theory names :/");
+				}
+			}
+			const stats: number = Date.now() - start;
+			// console.log(`[languageUtils] listTheorems(${desc.fileName}) completed in ${stats}ms`);
+			return formulaDescriptors;
+		}
+	}
+	return [];
+}
+
+/**
+ * @function findFormulaName
+ * @description Utility function, finds the name of a theorem that immediately preceeds a given line
+ * @param fileContent The text where the theory should be searched 
+ * @param line The line in the document where search should end
+ * @returns { string | null } The theory name if any is found, null otherwise
+ */
+export function findFormulaName(fileContent: string, line: number): string | null {
+	if (fileContent) {
+		const txt: string = fileContent.replace(commentRegexp, "");
+		let text: string = txt.split("\n").slice(0, line + 1).join("\n");
+		let candidates: string[] = [];
+		// (?:\%.*\s)* removes comments
+		const regexp: RegExp = formulaRegexp;
+		let match: RegExpMatchArray = null;
+		while(match = regexp.exec(text)) {
+			if (match && match.length > 1 && match[1]) {
+				candidates.push(match[1]);
+			}
+		}
+		if (candidates.length > 0) {
+			return candidates[candidates.length - 1];
+		}
+	}
+	return null;
+};
+
+/**
+ * @function findProofObligation
+ * @description Utility function, finds the line of a proof obligation
+ * @param txt The text where the proof obligation should be searched 
+ * @returns { string | null } The theory name if any is found, null otherwise
+ */
+export function findProofObligation(formulaName: string, txt: string): number {
+	const formula: string = formulaName.replace("?", "\\?");
+	const regexp: RegExp = new RegExp(`\\b${formula}:\\s*OBLIGATION\\b`, "g");
+	let match: RegExpMatchArray = regexp.exec(txt);
+	if (match) {
+		const trim: string = txt.substr(0, match.index);
+		if (trim && trim.length > 0) {
+			return trim.split("\n").length;
+		}
+	}
+	return 0;
+};
+
+
+
+/**
+ * Lists all theorems in a given context folder
+ */
+ export async function getContextDescriptor (contextFolder: string, opt?: { listTheorems?: boolean, includeTccs?: boolean }): Promise<PvsContextDescriptor> {
+	// console.log(`[language-utils] Generating context descriptor for ${contextFolder}...`);
+	const response: PvsContextDescriptor = {
+		fileDescriptors: {},
+		contextFolder
+	};
+	const fileList: FileList = await listPvsFiles(contextFolder);
+	if (fileList) {
+		for (let i in fileList.fileNames) {
+			const fname: string = path.join(contextFolder, fileList.fileNames[i]);
+			// console.log(`[language-utils] Processing file ${fname}`);
+			const desc: PvsFileDescriptor = await getFileDescriptor(fname, opt);
+			response.fileDescriptors[fname] = desc;
+		}
+	}
+	// console.log("[language-utils] Done");
+	return response;
+}
+
+export async function getFileDescriptor (fname: string, opt?: { listTheorems?: boolean, includeTccs?: boolean }): Promise<PvsFileDescriptor> {
+	opt = opt || {};
+	opt.listTheorems = (opt.listTheorems !== undefined) ? opt.listTheorems : true;
+	const start: number = Date.now();
+	const contextFolder: string = getContextFolder(fname);
+	const fileName: string = getFileName(fname);
+	const fileExtension: string = getFileExtension(fname);
+	const response: PvsFileDescriptor = {
+		theories: [],
+		contextFolder,
+		fileName,
+		fileExtension
+	};
+	const pvsFileContent: string = await readFile(fname);
+	const tccsFileContent: string = (opt.includeTccs) ? await readFile(path.join(contextFolder, `${fileName}.tccs`)) : null;
+	// console.log(`[languageUtils.getFileDescriptor] listTheories(${fileName})`);
+	const theories: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent });
+	if (theories) {
+		// if (opt.listTheorems) { console.log(`[languageUtils.getFileDescriptor] listTheorems(${fileName})`);	}
+		const lemmas: FormulaDescriptor[] = 
+			(opt.listTheorems) 
+				? await listTheorems({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent, prelude: false, cache: { theories } })
+					: [];
+		const tccs: FormulaDescriptor[] = 
+			(opt.listTheorems && fileExtension !== ".tccs" && tccsFileContent) 
+				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: false })
+					: [];
+		const descriptors: FormulaDescriptor[] = lemmas.concat(tccs);
+		// console.log(`[language-utils] Processing ${theories.length} theories`);
+		for (let i = 0; i < theories.length; i++) {
+			const theoryName: string = theories[i].theoryName;
+			// console.log(`[language-utils] Processing theory ${theoryName}`);
+			const position: Position = theories[i].position;
+			const theoryDescriptor: TheoryDescriptor = {
+				fileName, fileExtension, contextFolder, theoryName, position, 
+				theorems: (descriptors && descriptors.length) ? descriptors.filter((desc: FormulaDescriptor) => {
+					return desc.theoryName === theoryName;
+				}) : []
+			}
+			// console.log(`[language-utils] Done`);
+			response.theories.push(theoryDescriptor);
+		}
+	}
+	const stats: number = Date.now() - start;
+	// console.log(`[languageUtils.getFileDescriptor] File descriptor for ${fname} created in ${stats}ms`);
+	return response;
+}
+
+export async function renameFormulaInProofFile (formula: PvsFormula, newInfo: { newFormulaName: string, newShasum?: string }): Promise<boolean> {
+	if (formula && newInfo && newInfo.newFormulaName) {
+		const fname: string = desc2fname({
+			fileName: formula.fileName,
+			fileExtension: ".jprf",
+			contextFolder: formula.contextFolder
+		});
+		const fdesc: ProofFile = await readJprfProofFile(fname);
+		// check if file contains a proof for the given formula
+		const key: string = `${formula.theoryName}.${formula.formulaName}`;
+		if (fdesc && fdesc[key] && fdesc[key].length) {
+			const newKey: string = `${formula.theoryName}.${newInfo.newFormulaName}`;
+			// we are updating only the default proof, this might be changed in the future
+			const pdesc: ProofDescriptor = fdesc[key][0];
+			if (pdesc.info) {
+				pdesc.info.formula = newInfo.newFormulaName;
+				pdesc.info.shasum = newInfo.newShasum || pdesc.info.shasum;
+			}
+			if (pdesc.proofTree) {
+				pdesc.proofTree.name = newKey;
+			}
+			// delete old fdesc entry
+			delete fdesc[key];
+			// change old shasum for all other proofs
+			const keys: string[] = Object.keys(fdesc);
+			for (let i = 0; i < keys.length; i++) {
+				if (fdesc[keys[i]] && fdesc[keys[i]].length && fdesc[keys[i]][0].info) {
+					fdesc[keys[i]][0].info.shasum = newInfo.newShasum;
+				}
+			}
+			// add new key
+			fdesc[newKey] = [ pdesc ];			
+			// write to file
+			const newContent: string = JSON.stringify(fdesc, null, " ");
+			return await writeFile(fname, newContent);
+		}
+	}
+	return false;
+}
+export async function renameTheoryInProofFile (theory: PvsTheory, newInfo: { newTheoryName: string, newShasum?: string }): Promise<boolean> {
+	if (theory && newInfo && newInfo.newTheoryName) {
+		const fname: string = desc2fname({
+			fileName: theory.fileName,
+			fileExtension: ".jprf",
+			contextFolder: theory.contextFolder
+		});
+		const fdesc: ProofFile = await readJprfProofFile(fname);
+		// update all proofs
+		// check if file contains a proof for the given formula
+		if (fdesc) {
+			const keys: string[] = Object.keys(fdesc);
+			if (keys && keys.length) {
+				const newFdesc: ProofFile = {};
+				for (let i = 0; i < keys.length; i++) {
+					const key: string = keys[i];
+					// we are updating only the default proof, this might be changed in the future
+					const pdesc: ProofDescriptor = fdesc[key][0];
+					if (pdesc.info) {
+						pdesc.info.theory = newInfo.newTheoryName;
+						pdesc.info.shasum = newInfo.newShasum || pdesc.info.shasum;
+					}
+					const newKey: string = `${newInfo.newTheoryName}.${pdesc.info.formula}`;
+					if (pdesc.proofTree) {
+						pdesc.proofTree.name = newKey;
+					}
+					newFdesc[newKey] = [ pdesc ];
+				}	
+				// write to file
+				const newContent: string = JSON.stringify(newFdesc, null, " ");
+				const newFname: string = desc2fname({
+					fileName: (theory.fileName === theory.theoryName) ? newInfo.newTheoryName : theory.fileName,
+					fileExtension: ".jprf",
+					contextFolder: theory.contextFolder		
+				});
+				const fileAlreadyExists: boolean = await fileExists(newFname);
+				const success: boolean = (fileAlreadyExists) ? await writeFile(fname, newContent)
+					: await writeFile(newFname, newContent);
+				if (success && !fileAlreadyExists && fname !== newFname) {
+					deleteFile(fname);
+				}
+				return success;
+			}
+		}
+	}
+	return false;
+}
+
+export interface WorkspaceSummaryItem extends PvsTheory {
+	ok: number,
+	miss: number,
+	total: number,
+	ms: number	
+}
+export type WorkspaceSummary = {
+	total: number, 
+	contextFolder: string,
+	theories: WorkspaceSummaryItem[]
+}
+export function makeWorkspaceSummary (desc: WorkspaceSummary): string {
+	const header: string = "Proof summary";
+	const workspaceName: string = getContextFolderName(desc.contextFolder);
+	let ans: string = `${header} for workspace ${workspaceName}\n`;
+	let nProved: number = 0;
+	let nMissed: number = 0;
+	let totTime: number = 0;
+	let libraries: { [name: string]: boolean } = {};
+	for (let i = 0; i < desc.theories.length; i++) {
+		const theory: WorkspaceSummaryItem = desc.theories[i];
+		libraries[theory.contextFolder] = true;
+
+		const points: number = (64 - theory.theoryName.length) > 0 ? 64 - theory.theoryName.length : 0;
+		const overall: string = (theory.miss) ? `${icons.sparkles} partly proved [${theory.ok}/${theory.total}]`
+			: `${icons.checkmark}  fully proved [${theory.ok}/${theory.total}]`;
+		const spaces: number = (20 - overall.length) > 0 ? 20 - overall.length : 0;
+		nProved += theory.ok;
+		nMissed += theory.miss;
+		ans += `\n\t${theory.theoryName}` + ".".repeat(points) + " " + overall + " ".repeat(spaces) + `(${(+theory.ms / 1000).toFixed(3)} s)`;
+		totTime += theory.ms;
+	}
+	ans += `\n\nWorkspace ${workspaceName} totals: ${desc.total} formulas, ${nProved + nMissed} attempted, ${nProved} succeeded (${(+totTime / 1000).toFixed(3)} s)`;
+// 	ans += `\n
+// *** Grand Totals: ${nProved} proofs / ${desc.total} formulas. Missed: ${nMissed} formulas.
+// *** Number of libraries: ${Object.keys(libraries).length}`;	
+	return ans;
+}
+
+
+export interface TheorySummaryItem {
+	theoryName: string, 
+	formulaName: string, 
+	status: ProofStatus, 
+	ms: number 
+}
+export type TheorySummary = { 
+	total: number, 
+	tccsOnly?: boolean, 
+	theoryName: string,
+	theorems: TheorySummaryItem[]
+}
+export function makeTheorySummary (desc: TheorySummary): string {
+	const header: string = desc.tccsOnly ? "TCCs summary" : "Proof summary";
+	let ans: string = `${header} for theory ${desc.theoryName}\n`;
+	let nProved: number = 0;
+	let totTime: number = 0;
+	let importChainFlag: boolean = false;
+	for (let i = 0; i < desc.theorems.length; i++) {
+		if (desc.theorems[i].theoryName !== desc.theoryName && !importChainFlag) {
+			importChainFlag = true;
+			ans += `\n\t%-- importchain`;
+		}
+		const formulaName: string = desc.theorems[i].formulaName;
+		const status: ProofStatus = desc.theorems[i].status;
+		const ms: number = desc.theorems[i].ms;
+
+		const points: number = (64 - formulaName.length) > 0 ? 64 - formulaName.length : 0;
+		const spaces: number = (20 - status.length) > 0 ? 20 - status.length : 0;
+
+		if (isProved(status)) { nProved++; }
+		totTime += ms;
+
+		ans += `\n\t${formulaName}` + ".".repeat(points) + getIcon(status) + " " + status + " ".repeat(spaces) + `(${(+ms / 1000)} s)`;
+	}
+	ans += `\n\nTheory ${desc.theoryName} totals: ${desc.total} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${+(totTime / 1000).toFixed(3)} s)`;
+	return ans;
+}
+
+export function decodePvsLibraryPath (pvsLibraryPath: string): string[] {
+	const libs: string[] = (pvsLibraryPath) ? pvsLibraryPath.split(":").map((elem: string) => {
+		return elem.trim();
+	}) : [];
+	return libs.filter((elem: string) => {
+		return elem !== "";
+	}).map((elem: string) => {
+		return elem.endsWith("/") ? elem : `${elem}/`;
+	});
+}
+export function createPvsLibraryPath (libs: string[]): string {
+	if (libs && libs.length) {
+		return libs.filter((elem: string) => {
+			return elem.trim() !== "";
+		}).map((elem: string) => {
+			return elem.trim().endsWith("/") ? elem.trim() : `${elem.trim()}/`;
+		}).join(":");
+	}
+	return "";
+}
+
+/**
+ * Utility function, appends a proof summary at the end of a given file
+ * @param fname Name of the summary file
+ * @param summary The summary to be appended
+ */
+export async function appendSummary (fname: string, summary: string): Promise<boolean> {
+	if (fname && summary) {
+		const content: string = await readFile(fname);
+		const newContent: string = (content && content.trim()) ? content + `\n\n${summary}` : summary;
+		return await writeFile(fname, newContent);
+	}
+	return false;
+}
+/**
+ * Utility function, removes a proof summary from a given file
+ * @param fname Name of the summary file
+ * @param theoryName name of the theory whose summary should be removed
+ */
+export async function removeSummary (fname: string, theoryName: string): Promise<boolean> {
+	if (fname && theoryName) {
+		fname = decodeURIComponents(fname);
+		const success: boolean = await fileExists(fname);
+		if (success) {
+			const content: string = await readFile(fname);
+			if (content) {
+				const regex: RegExp = new RegExp(`\\bProof summary for theory ${theoryName}\\s[\\s\\w\\W]+\\bTheory ${theoryName}\\s.*`, "g");
+				const newContent: string = content.replace(regex, "");
+				return await writeFile(fname, newContent);
+			}
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, checks if a summary is present in a given file
+ * @param fname Name of the summary file
+ * @param theoryName name of the theory whose summary should be removed
+ */
+export async function containsSummary (fname: string, theoryName: string): Promise<boolean> {
+	if (fname && theoryName) {
+		fname = decodeURIComponents(fname);
+		const success: boolean = await fileExists(fname);
+		if (success) {
+			const content: string = await readFile(fname);
+			if (content) {
+				const regex: RegExp = new RegExp(`\\bProof summary for theory ${theoryName}\\s[\\s\\w\\W]+\\bTheory ${theoryName}\\s.*`, "g");
+				return regex.test(content);
+			}
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, saves a summary for a given theory in the given file
+ * @param fname Name of the summary file
+ * @param theoryName name of the theory whose summary should be saved
+ * @param summary The summary to be saved in the file
+ */
+export async function saveSummary (fname: string, theoryName: string, summary: string): Promise<boolean> {
+	if (fname && theoryName && summary) {
+		fname = decodeURIComponents(fname);
+		const success: boolean = await fileExists(fname);
+		if (success) {
+			// deleted any previous version of the summary
+			await removeSummary(fname, theoryName);
+		}
+		// append the new summary
+		return await appendSummary(fname, summary);
+	}
+	return false;
+}

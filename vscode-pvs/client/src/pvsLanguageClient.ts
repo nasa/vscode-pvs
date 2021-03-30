@@ -42,7 +42,7 @@ import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, Ca
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
-import { VSCodePvsTerminal } from './views/vscodePvsTerminal';
+// import { VSCodePvsTerminal } from './views/vscodePvsTerminal';
 import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsStatusBar } from './views/vscodePvsStatusBar';
@@ -57,6 +57,8 @@ import { VSCodePvsLogger } from './views/vscodePvsLogger';
 import { VSCodePvsPlotter } from './views/vscodePvsPlotter';
 import { VSCodePvsSearch } from './views/vscodePvsSearch';
 import { VSCodePvsioWeb } from './views/vscodePvsioWeb';
+// import { VSCodePvsTerminalLinkProvider } from './providers/vscodePvsTerminalLinkProvider';
+import { VSCodePvsXTerm } from './views/vscodePvsXTerm';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -88,8 +90,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	// snippets provider
 	protected snippetsProvider: VSCodePvsSnippetsProvider;
 
-	// integrated command line interfaces
-	protected vscodePvsTerminal: VSCodePvsTerminal;
+	// integrated terminal panel and terminal link provider
+	// protected vscodePvsTerminal: VSCodePvsTerminal;
+	// protected terminalLinkProvider: VSCodePvsTerminalLinkProvider
+	protected xterm: VSCodePvsXTerm;
 
 	// status bar
 	protected statusBar: VSCodePvsStatusBar;
@@ -170,8 +174,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// send clear theory command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
 				this.client.sendRequest(comm.serverRequest.clearTheories);
 				// remove tccs file for the renamed file, if the file exists
-				const folders: WorkspaceFolder[] = workspace?.workspaceFolders;
-                if (folders && folders.length) {
+                if (workspace?.workspaceFolders?.length) {
 					for (let i in pvsFiles) {
 						const tccFile: Uri = Uri.file(pvsFiles[i].oldUri.path.replace(".pvs", ".tccs"));
 						console.log(`[pvs-client] Removing file ${tccFile}`);
@@ -307,8 +310,15 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.outlineProvider.activate(this.context);
 			this.snippetsProvider = new VSCodePvsSnippetsProvider(this.client);
 			this.snippetsProvider.activate(this.context);
-			this.vscodePvsTerminal = new VSCodePvsTerminal(this.client);
-			this.vscodePvsTerminal.activate(this.context);
+
+			// this.vscodePvsTerminal = new VSCodePvsTerminal(this.client);
+			// this.vscodePvsTerminal.activate(this.context);
+			// this.terminalLinkProvider = new VSCodePvsTerminalLinkProvider(this.client);
+			// this.terminalLinkProvider.activate(this.context);
+
+			this.xterm = new VSCodePvsXTerm(this.client);
+			this.xterm.activate(this.context);
+
 			this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');
 			this.proofMate.activate(this.context);
 			this.packageManager = new VSCodePvsPackageManager(this.client, this.statusBar);
@@ -335,7 +345,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				emacsBindings: this.emacsBindingsProvider,
 				workspaceExplorer: this.workspaceExplorer,
 				proofExplorer: this.proofExplorer,
-				vscodePvsTerminal: this.vscodePvsTerminal,
+
+				// vscodePvsTerminal: this.vscodePvsTerminal,
+				xterm: this.xterm,
+
 				proofMate: this.proofMate,
 				logger: this.logger,
 				packageManager: this.packageManager,
@@ -365,11 +378,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 
 				// reset other globals
-				commands.executeCommand('setContext', 'in-checker', false);
-				commands.executeCommand('setContext', 'proof-explorer.running', false);
-				commands.executeCommand('setContext', 'proof-mate.visible', false);
-				commands.executeCommand('setContext', 'proof-explorer.visible', false);
-				commands.executeCommand('setContext', 'autorun', false);
+				vscodeUtils.resetGlobals();
 
 				// make toolbars (aka header actions) always visible
 				vscodeUtils.setToolbarVisibility(true);

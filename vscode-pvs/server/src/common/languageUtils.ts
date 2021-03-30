@@ -36,13 +36,13 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import * as fsUtils from './fsUtils';
-import * as path from 'path';
 import * as language from './languageKeywords';
-import { FileList, FormulaDescriptor, PvsContextDescriptor, 
-	TheoryDescriptor, ProofNode,  PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, 
-	ProofFile, ProofStatus, Position, Range, ProofTree, PvsFormula, PvsTheory, FileDescriptor 
+import { ProofNode, PvsVersionDescriptor, ProofDescriptor, 
+	ProofStatus, Position, Range, ProofTree, PvsFormula
 } from '../common/serverInterface';
+import { colorText, PvsColor } from "./colorUtils";
+import { splitCommands, isPostponeCommand, isUndoStarCommand, isShowHiddenCommand } from './commandUtils';
+import { SequentDescriptor, SFormula } from './fsUtils';
 
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
@@ -56,6 +56,7 @@ export const RECORD: { [key: string]: RegExp } = {
 }
 
 export const commentRegexp: RegExp = /%.*/g;
+export const stringRegexp: RegExp = /\"[^\"]+\"/g;
 // group 1 is theoryName, group 2 is comma-separated list of theory parameters -- NB: this regexp is fast but not accurate, because it does not check the end of the theory. See example use in codelense.
 export const theoryRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*THEORY\s+BEGIN\b/gi;
 export function endTheoryOrDatatypeRegexp(theoryName: string): RegExp {
@@ -80,6 +81,9 @@ export const simpleImportingRegexp: RegExp = /\bIMPORTING\s+((?:(?:[A-Za-z][\w\?
 
 // group 1 is the list of comma-separated values contained in the expression 
 export const listRegexp: RegExp = /^\s*\(:([\s\w\,\/]*):\)/g;
+
+// generic regular expression for symbol names, group 1 is the symbol name
+export const symbolRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)/g;
 
 export function isListExpr (expr: string): boolean {
 	if (expr) {
@@ -130,266 +134,54 @@ export const isense: IntellisenseTriggers = {
 	declaration: declarationRegexp
 };
 
-/**
- * @function findTheoryName
- * @description Utility function, finds the name of the theory that immediately preceeds a given line
- * @param fileContent The text where the theory should be searched 
- * @param line The line in the document where search should end
- * @returns { string | null } The theory name if any is found, null otherwise
- */
-export function findTheoryName(fileContent: string, line: number): string | null {
-	if (fileContent) {
-		let txt = fileContent.replace(commentRegexp, ""); // this removes all commented text
-		const regexp: RegExp = theoryRegexp;
-		let candidates: string[] = [];
-
-		// check that line number is not before keyword begin -- if so adjust line number otherwise regexp won't find theory name
-		const matchFirstTheory: RegExpMatchArray = regexp.exec(txt)
-		if (matchFirstTheory && matchFirstTheory.length > 1) {
-			const theoryName: string = matchFirstTheory[1];
-
-			const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
-			if (matchEnd && matchEnd.length) {
-				regexp.lastIndex = matchEnd.index; // restart the search from here
-
-				const min: number = matchFirstTheory[0].split("\n").length;
-				line = (line < min) ? min : line;
-				candidates.push(theoryName);
-			}
-		}
-
-		// keep searching theory names -- the first element in candidates will be the closest to the current line number
-		txt = txt.split("\n").slice(0, line + 1).join("\n");
-		let match: RegExpMatchArray = regexp.exec(txt);
-		while (match) {
-			if (match.length > 1 && match[1]) {
-				const theoryName: string = match[1];
-				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
-				if (matchEnd && matchEnd.length) {
-					const endIndex: number = matchEnd.index + matchEnd[0].length;
-					txt = txt.slice(endIndex);
-					// need to create a new regexp when txt is updated
-					match = new RegExp(regexp).exec(txt);
-					candidates = [ theoryName ].concat(candidates);
-				} else {
-					match = regexp.exec(txt);
-				}
-			} else {
-				match = regexp.exec(txt);
-			}
-		}
-		if (candidates.length > 0) {
-			return candidates[0];
-		}
-	}
-	return null;
-};
-
-
-/**
- * @function listTheoryNames
- * @description Utility function, returns a list of all theories in the given file
- * @param fileContent The text where the theory should be searched 
- * @returns string[] the list of theories in the given text
- */
-export function listTheoryNames (fileContent: string): string[] {
-	const ans: string[] = [];
-	if (fileContent) {
-		let txt = fileContent.replace(commentRegexp, "");
-		const regexp: RegExp = theoryRegexp;
-		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
-		while (match) {
-			if (match.length > 1 && match[1]) {
-				const theoryName: string = match[1];
-
-				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
-				if (matchEnd && matchEnd.length) {
-					const endIndex: number = matchEnd.index + matchEnd[0].length;
-					txt = txt.slice(endIndex);
-					// need to create a new regexp when txt is updated
-					match = new RegExp(regexp).exec(txt);
-					ans.push(theoryName);
-				} else {
-					match = regexp.exec(txt);
-				}
-			} else {
-				match = regexp.exec(txt);
-			}
-		}
-	}
-	return ans;
-};
-
-/**
- * Utility function, returns the list of theories defined in a given pvs file
- * @param fname Path to a pvs file
- */
-export async function listTheoriesInFile (fname: string, opt?: { content?: string }): Promise<TheoryDescriptor[]> {
-	// console.log(`listing theories in file ${fname}`);
-	opt = opt || {};
-	if (fname) {
-		const fileName: string = fsUtils.getFileName(fname);
-		const fileExtension: string = fsUtils.getFileExtension(fname);
-		const contextFolder: string = fsUtils.getContextFolder(fname);
-		const fileContent: string = (opt.content) ? opt.content : await fsUtils.readFile(fname);
-		if (fileContent) {
-			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
-			// console.dir(response);
-			return response;
-		}
-	}
-	return null;
-}
-
-
-/**
- * Utility function, returns the list of theories defined in a given pvs file
- * @param fname Path to a pvs file
- */
-export async function mapTheoriesInFile (fname: string): Promise<{ [ key: string ]: TheoryDescriptor }> {
-	if (fname) {
-		const fileName: string = fsUtils.getFileName(fname);
-		const fileExtension: string = fsUtils.getFileExtension(fname);
-		const contextFolder: string = fsUtils.getContextFolder(fname);
-		const fileContent: string = await fsUtils.readFile(fname);
-		if (fileContent) {
-			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
-			const theoryMap: { [ key: string ]: TheoryDescriptor } = {};
-			for (const i in response) {
-				theoryMap[ response[i].theoryName ] = response[i];
-			}
-			return theoryMap;
-		}
-	}
-	return null;
-}
-
-
-/**
- * Utility function, finds all theories in a given file
- * @param desc Descriptor indicating filename, file extension, context folder, and file content
- */
-export function listTheories(desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean }): TheoryDescriptor[] {
-	// console.log(`[language-utils] Listing theorems in file ${desc.fileName}${desc.fileExtension}`);
-	let ans: TheoryDescriptor[] = [];
-	if (desc && desc.fileContent) {
-		let txt: string = desc.fileContent.replace(commentRegexp, "");
-		// console.log(txt);
-		const start: number = Date.now();
-		const regexp: RegExp = theoryRegexp;
-		// let lastIndex: number = 0;
-		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
-		let lineOffset: number = 0;
-		while (match) {
-			// console.log(`[language-utils] Found ${match[0]}`);
-			if (match.length > 1 && match[1]) {
-				const theoryName: string = match[1];
-
-				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
-				if (matchEnd && matchEnd.length) {
-					const endIndex: number = matchEnd.index + matchEnd[0].length;
-					const fullClip = txt.slice(0, endIndex);
-
-					const clipStart = txt.slice(0, match.index);
-					const lines: string[] = clipStart.split("\n"); 
-					const line: number = lines.length + lineOffset;
-					const character: number = 0;
-
-					txt = txt.slice(endIndex);
-					lineOffset += fullClip.split("\n").length - 1;
-
-					ans.push({
-						theoryName: desc.fileExtension === ".tccs" && theoryName.endsWith("_TCCS") ? theoryName.substr(0, theoryName.length - 5) : theoryName,
-						position: {
-							line: line,
-							character: character
-						},
-						fileName: desc.fileName,
-						fileExtension: desc.fileExtension,
-						contextFolder: desc.contextFolder
-					});
-					// need to create a new regexp when txt is updated
-					match = new RegExp(regexp).exec(txt);
-				} else {
-					match = regexp.exec(txt);
-				}
-			} else {
-				match = regexp.exec(txt);
-			}
-			// console.log(match);
-		}
-		const stats: number = Date.now() - start;
-		// console.log(`[languageUtils] listTheories(${desc.fileName}) completed in ${stats}ms`);
-	}
-	return ans;
-}
-
-/**
- * Utility function, returns the list of theories defined in a given pvs file
- * @param fname Path to a pvs file
- */
-export async function listTheoremsInFile (fname: string, opt?: { content?: string }): Promise<FormulaDescriptor[]> {
-	opt = opt || {};
-	if (fname) {
-		const fileName: string = fsUtils.getFileName(fname);
-		const fileExtension: string = fsUtils.getFileExtension(fname);
-		const contextFolder: string = fsUtils.getContextFolder(fname);
-		const fileContent: string = (opt.content) ? opt.content : await fsUtils.readFile(fname);
-		if (fileContent) {
-			const response: FormulaDescriptor[] = await listTheorems({ fileName, fileExtension, contextFolder, fileContent });
-			return response;
-		}
-	}
-	return null;
-};
-
-export interface SFormula {
-	labels: string[];
-	changed: 'true' | 'false';
-	formula: string;
-	'names-info': any[];
-};
-export type SequentDescriptor = {
-	path?: string, // unique identifier representing the current position in the proof tree, e.g., 1.2.1
-	label: string, // ???
-	commentary: string[] | string, // commentary text describing the result of the execution of the proof command
-	action?: string   // this field reports some additional commentary
-	"num-subgoals"?: number, // number of sub-goals generated by the last command executed
-	"prev-cmd"?: Object | string; // object representing the last command executed
-	comment?: string, // text comment attached to the proof goal (introduced with the 'comment' command during a proof)
-	sequent?: { // sequent formulas generated by the prover
-		succedents?: SFormula[], 
-		antecedents?: SFormula[],
-		"hidden-succedents"?: SFormula[], 
-		"hidden-antecedents"?: SFormula[]
-	}
-};
-
 // export type ProverResult = ProofState | ProofState[]
 
-function sequentToString(s: SFormula[], opt?: { useColors?: boolean }): string {
+function sequentToString(sequents: SFormula[], opt?: { useColors?: boolean, htmlEncoding?: boolean }): string {
 	let res: string = "";
 	opt = opt || {};
-	s.forEach((sequent: SFormula) => {
+	for (let i = 0; i < sequents.length; i++) {
+		const sequent: SFormula = sequents[i];
 		let label: string = sequent.labels.join(" ");
 		label = (sequent.changed === 'true') ? `{${label}}` : `[${label}]` ;
-		label = (sequent.changed === 'true' && opt.useColors) ? `${colorText(label, textColor.green)}` : `${label}` ;
-		const formula: string = (opt.useColors) ? `${pvsCliSyntaxHighlighting(sequent.formula)}` : sequent.formula;
-		res += `${label}   ${formula}\n`;
-	});
+		label = (sequent.changed === 'true' && opt.useColors) ? `${colorText(label, PvsColor.green)}` : `${label}` ;
+		const formula: string = (opt.useColors) ? `${pvsCliSyntaxHighlighting(sequent.formula, opt)}` : sequent.formula;
+		res += `${label}   ${formula}`;
+		res += opt.htmlEncoding ? "<br>" : "\n";
+	}
 	return res;
 }
 
-function labelToString (label: string, opt?: { useColors?: boolean }): string {
+function labelToString (label: string, opt?: { useColors?: boolean, htmlEncoding?: boolean }): string {
+	opt = opt || {};
 	return (opt && opt.useColors)?
-		`\n${colorText(`${label} :`, textColor.blue)}\n`
+		`\n${colorText(`${label} :`, PvsColor.green)}\n`
 			: `\n${label} :\n`;
 }
 
-function commentToString (label: string, opt?: { useColors?: boolean }): string {
-	return (opt && opt.useColors)?
-		`\n${colorText(`${label} :`, textColor.yellow)}\n`
-			: `\n${label} :\n`;
+function commentToString (txt: string, opt?: { useColors?: boolean, htmlEncoding?: boolean }): string {
+	opt = opt || {};
+	const content: string = (opt && opt.useColors)? 
+		`${colorText(`${txt}`, PvsColor.yellow)}`
+			: `${txt}`;
+	return opt.htmlEncoding ? `<br>${content}<br>` : `\n${content}\n`;
+}
+
+function commentaryToString (txt: string | string[], opt?: { htmlEncoding?: boolean }): string {
+	let res = "";
+	if (typeof txt === "string") {
+		txt = txt.trim().endsWith(",") ? txt.trim().slice(0, -1) : txt.trim();
+		res += opt.htmlEncoding ? `<br>${txt}<br>` : `\n${colorText(`${txt}`, PvsColor.gray)}\n`;
+	} else {
+		res += opt.htmlEncoding ? "<br>" : "\n";
+		for (let i = 0; i < txt.length; i++) {
+			let line: string = txt[i];
+			if (i === txt.length - 1) {
+				line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
+			}
+			res += opt.htmlEncoding ? `${line}<br>` : `${colorText(`${line}`, PvsColor.gray)}\n`;
+		}
+	}
+	return res;
 }
 
 export function desc2id (desc: { fileName: string, formulaName?: string, theoryName?: string }): string {
@@ -405,32 +197,33 @@ export function desc2id (desc: { fileName: string, formulaName?: string, theoryN
 	return null;
 }
 
-export function pvsCliSyntaxHighlighting(text: string): string {
+export function pvsCliSyntaxHighlighting(text: string, opt?: { htmlEncoding?: boolean }): string {
 	if (text) {
+		opt = opt || {};
 		// numbers and operators should be highlighted first, otherwise the regexp will change characters introduced to colorize the string
 		const number_regexp: RegExp = new RegExp(language.PVS_NUMBER_REGEXP_SOURCE, "g");
 		text = text.replace(number_regexp, (number: string) => {
-			return colorText(number, textColor.yellow);
+			return colorText(number, PvsColor.yellow);
 		});
 		const operators_regexp: RegExp = new RegExp(language.PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE, "g");
 		text = text.replace(operators_regexp, (op: string) => {
-			return colorText(op, textColor.blue);
+			return colorText(op, PvsColor.blue);
 		});
 		const keywords_regexp: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
 		text = text.replace(keywords_regexp, (keyword: string) => {
-			return colorText(keyword, textColor.blue);
+			return colorText(keyword, PvsColor.blue);
 		});
 		const function_regexp: RegExp = new RegExp(language.PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE, "g");
 		text = text.replace(function_regexp, (fname: string) => {
-			return colorText(fname, textColor.green);
+			return colorText(fname, PvsColor.green);
 		});
 		const builtin_types_regexp: RegExp = new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g");
 		text = text.replace(builtin_types_regexp, (tname: string) => {
-			return colorText(tname, textColor.green);
+			return colorText(tname, PvsColor.green);
 		});
 		const truefalse_regexp: RegExp = new RegExp(language.PVS_TRUE_FALSE_REGEXP_SOURCE, "gi");
 		text = text.replace(truefalse_regexp, (tf: string) => {
-			return colorText(tf, textColor.blue);
+			return colorText(tf, PvsColor.blue);
 		});
 	}
 	return text;
@@ -471,222 +264,65 @@ export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: { use
 	return null;
 }
 
-export function formatSequent (proofState: SequentDescriptor, opt?: { useColors?: boolean, showAction?: boolean }): string {
-	if (proofState) {
+/**
+ * Utility function, converts sequent formulas into a string
+ */
+export function sformulas2string (desc: SequentDescriptor): string {
+	let res: string = "";
+	if (desc?.sequent) { // print label and comment only if the sequent is non-empty (sequent empty means proof completed)
+		if (desc.sequent.antecedents) {
+			res += sequentToString(desc.sequent.antecedents);
+		}
+		// res += "  |-------\n";
+		res += "  ├─────── \n";
+		if (desc.sequent.succedents) {
+			res += sequentToString(desc.sequent.succedents);
+		}
+	}
+	return res;
+}
+
+/**
+ * Prettyprints sequents. Syntax highlighting is introduced as ansi codes when option useColors is true.
+ */
+export function formatSequent (desc: SequentDescriptor, opt?: {
+	useColors?: boolean, 
+	showAction?: boolean,
+	htmlEncoding?: boolean,
+	formulasOnly?: boolean
+}): string {
+	if (desc) {
 		opt = opt || {};
 		let res: string = "";
-		if (proofState.action && opt.showAction) {
-			const action: string = proofState.action.endsWith(",") ? proofState.action.substr(0, proofState.action.length - 1) : proofState.action;
-			res += `\n${action}.\n`;
+		if (!opt.formulasOnly) {
+			if (desc.action && opt.showAction) {
+				const action: string = desc.action.endsWith(",") ? desc.action.substr(0, desc.action.length - 1) : desc.action;
+				res += opt.htmlEncoding ? `<br>${action}.<br>` : `\n${action}.\n`;
+			}
+			if (desc.commentary) {
+				res += commentaryToString(desc.commentary, opt);
+			}
 		}
-		if (proofState.label) {
-			res += labelToString(proofState.label, opt);
-		}
-		if (proofState.comment) {
-			res += commentToString(proofState.comment, opt);
-		}
-		if (proofState.sequent) {
-			res += "\n";
-			if (proofState.sequent.antecedents) {
-				res += sequentToString(proofState.sequent.antecedents, opt);
+		if (desc.sequent) { // print label and comment only if the sequent is non-empty (sequent empty means proof completed)
+			if (desc.label) {
+				res += labelToString(desc.label, opt);
+			}
+			if (desc.comment) {
+				res += commentToString(desc.comment, opt);
+			}
+			res += opt.htmlEncoding ? "<br>" : "\n";
+			if (desc.sequent.antecedents) {
+				res += sequentToString(desc.sequent.antecedents, opt);
 			}
 			// res += "  |-------\n";
-			res += "  ├───────\n";
-			if (proofState.sequent.succedents) {
-				res += sequentToString(proofState.sequent.succedents, opt);
+			res += opt.htmlEncoding ? "  ├─────── <br>" : "  ├─────── \n";
+			if (desc.sequent.succedents) {
+				res += sequentToString(desc.sequent.succedents, opt);
 			}
 		}
-		return "\n" + res.trim();
+		return (opt.htmlEncoding ? "<br>" : "\n") + res.trimRight();
 	} else {
 		console.error("[language-utils.format-proof-state] Error: proof state is null :/");
-	}
-	return null;
-}
-
-export function getActualProofStatus (desc: ProofDescriptor, shasum: string): ProofStatus {
-	if (desc) {
-		if (shasum === desc.info.shasum) {
-			return desc.info.status;
-		} else {
-			return (desc.info.status === "proved") ? "unchecked"
-				: (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length) ?
-					"unfinished" : "untried";
-		}
-	}
-	return "untried";
-}	
-
-/**
- * Utility function, returns the status of the proof for the theorem indicated in the fuction arguments
- * @param desc 
- */
-export async function getProofStatus (desc: { 
-	fileName: string, 
-	fileExtension: string, 
-	contextFolder: string, 
-	theoryName: string, 
-	formulaName: string
-}): Promise<ProofStatus> {
-	if (desc) {
-		let status: ProofStatus = "untried";
-		// check if the .jprf file contains the proof status
-		const jprf_file: string = fsUtils.desc2fname({
-			fileName: desc.fileName, 
-			fileExtension: ".jprf", 
-			contextFolder: desc.contextFolder
-		});
-		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
-		if (proofFile) {
-			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
-			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
-				if (desc.fileExtension === ".tccs") {
-					status = proofDescriptors[0].info.status; // for tccs we choose not to adjust the status because tccs are automatically generated by pvs and status of the formula is visible to the user as a comment -- we don't want to confuse them
-				} else {
-					// compute shasum for the file, and check it with the shasum saved in the proof descriptor. If the two differ, then the file has changed and the proof status is not valid anymore
-					const shasum: string = await fsUtils.shasumFile(desc);
-					status = getActualProofStatus(proofDescriptors[0], shasum);
-				}
-			}
-		}
-		return status;
-	}
-	return null;
-}
-
-/**
- * Utility function, returns the proof descriptor for a given formula
- * @param formula 
- */
-export async function getProofDescriptor (formula: PvsFormula): Promise<ProofDescriptor> {
-	if (formula) {
-		// check if the .jprf file contains the proof status
-		const jprf_file: string = fsUtils.desc2fname({
-			fileName: formula.fileName, 
-			fileExtension: ".jprf", 
-			contextFolder: formula.contextFolder
-		});
-		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
-		if (proofFile) {
-			const proofDescriptors: ProofDescriptor[] = proofFile[`${formula.theoryName}.${formula.formulaName}`];
-			if (proofDescriptors && proofDescriptors.length) {
-				return proofDescriptors[0];
-			}
-		}
-	}
-	return null;
-}
-
-/**
- * Utility function, updates the proof descriptor for a given formula
- * @param formula 
- */
-export async function saveProofDescriptor (formula: PvsFormula, newDesc: ProofDescriptor, opt?: { saveProofTree?: boolean }): Promise<boolean> {
-	if (formula && newDesc) {
-		opt = opt || {};
-		const fname: string = fsUtils.desc2fname({
-			fileName: formula.fileName,
-			fileExtension: ".jprf",
-			contextFolder: formula.contextFolder
-		});
-		const key: string = `${formula.theoryName}.${formula.formulaName}`;
-		let fdesc: ProofFile = await readJprfProofFile(fname);
-		// check if file contains a proof for the given formula
-		if (fdesc && fdesc[key] && fdesc[key].length) {
-			// we are updating only the default proof, this might be changed in the future
-			const pdesc: ProofDescriptor = fdesc[key][0];
-			if (pdesc.info) {
-				pdesc.info.shasum = newDesc.info.shasum ? newDesc.info.shasum : pdesc.info.shasum;
-				pdesc.info.prover = newDesc.info.prover ? newDesc.info.prover : pdesc.info.prover;
-				pdesc.info.status = newDesc.info.status ? newDesc.info.status : pdesc.info.status;
-				pdesc.info.date = newDesc.info.date ? newDesc.info.date : pdesc.info.date;
-			}
-			if (opt.saveProofTree) {
-				pdesc.proofTree = newDesc.proofTree ? newDesc.proofTree : pdesc.proofTree;
-			}
-		} else {
-			fdesc[key] = fdesc[key] || [ newDesc ];
-		}
-		// write descriptor to file
-		const newContent: string = JSON.stringify(fdesc, null, " ");
-		return await fsUtils.writeFile(fname, newContent);		
-	}
-	return false;
-}
-
-/**
- * Utility function, saves the sketchpad with proof clips for a given formula
- * @param formula 
- */
-export async function saveSketchpad (formula: PvsFormula, clips: ProofNode[]): Promise<boolean> {
-	if (formula) {
-		const fname: string = fsUtils.desc2fname({
-			fileName: formula.fileName,
-			fileExtension: ".jprf",
-			contextFolder: formula.contextFolder
-		});
-		const key: string = `${formula.theoryName}.${formula.formulaName}`;
-		let fdesc: ProofFile = await readJprfProofFile(fname);
-		// check if file contains a proof for the given formula
-		if (fdesc && fdesc[key] && fdesc[key].length) {
-			// update clips for default proof
-			const pdesc: ProofDescriptor = fdesc[key][0];
-			pdesc.clips = clips || [];
-			// write descriptor to file
-			const newContent: string = JSON.stringify(fdesc, null, " ");
-			return await fsUtils.writeFile(fname, newContent);		
-		}
-	}
-	return false;
-}
-
-/**
- * Utility function, opens the sketchpad with proof clips for a given formula
- * @param formula 
- */
-export async function openSketchpad (formula: PvsFormula): Promise<ProofNode[] | null> {
-	if (formula) {
-		const fname: string = fsUtils.desc2fname({
-			fileName: formula.fileName,
-			fileExtension: ".jprf",
-			contextFolder: formula.contextFolder
-		});
-		const key: string = `${formula.theoryName}.${formula.formulaName}`;
-		let fdesc: ProofFile = await readJprfProofFile(fname);
-		// check if file contains a proof for the given formula
-		if (fdesc && fdesc[key] && fdesc[key].length) {
-			// update clips for default proof
-			const pdesc: ProofDescriptor = fdesc[key][0];
-			return pdesc.clips;
-		}
-	}
-	return null;
-}
-
-/**
- * Utility function, returns the date (day and time) a given proof was saved
- * @param desc 
- */
-export async function getProofDate (desc: { 
-	fileName: string, 
-	fileExtension: string, 
-	contextFolder: string, 
-	theoryName: string, 
-	formulaName: string
-}): Promise<string | null> {
-	if (desc) {
-		// check if the .jprf file contains the date
-		const jprf_file: string = fsUtils.desc2fname({
-			fileName: desc.fileName, 
-			fileExtension: ".jprf", 
-			contextFolder: desc.contextFolder
-		});
-		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
-		if (proofFile) {
-			const proofDescriptors: ProofDescriptor[] = proofFile[`${desc.theoryName}.${desc.formulaName}`];
-			if (proofDescriptors && proofDescriptors.length && proofDescriptors[0] && proofDescriptors[0].info) {
-				return proofDescriptors[0].info.date;
-			}
-		}
 	}
 	return null;
 }
@@ -761,154 +397,7 @@ export function proofliteDeclRegexp(desc: { theoryName: string, formulaName: str
 }
 // group 1 is formula name
 export const proofRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(%.+)?\s*:\s*(%.+)?\s*(?:PROOF)\b/gim;
-export async function getProofliteScript (desc: { 
-	fileName: string, 
-	fileExtension: string, 
-	contextFolder: string, 
-	theoryName: string, 
-	formulaName: string 
-}): Promise<string> {
-	const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-	const txt: string = await fsUtils.readFile(fname);
-	const matchProoflite: RegExpMatchArray = proofliteRegexp(desc).exec(txt);
-	return matchProoflite ? matchProoflite[0] : null;
-}
-export async function getProofLitePosition (desc: { formula: PvsFormula, proofFile: FileDescriptor }): Promise<number> {
-	if (desc && desc.formula && desc.proofFile) {
-		const fname: string = fsUtils.desc2fname(desc.proofFile);
-		const txt: string = await fsUtils.readFile(fname);
-		const matchProoflite: RegExpMatchArray = proofliteDeclRegexp(desc.formula).exec(txt);
-		if (matchProoflite) {
-			const slice: string = txt.slice(0, matchProoflite.index);
-			const lines: string[] = slice.split("\n");
-			return lines.length;
-		}
-	}
-	return 0;
-}
 
-/**
- * Utility function, returns the list of theorems defined in a given pvs file
- * @param desc Descriptor indicating filename, file extension, context folder, file content, and whether the file in question is the prelude (flag prelude)
- */
-export async function listTheorems (desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean, cache?: { theories?: TheoryDescriptor[] } }): Promise<FormulaDescriptor[]> {
-	if (desc && desc.fileContent) {
-		const theories: TheoryDescriptor[] = (desc.cache && desc.cache.theories) ? desc.cache.theories : listTheories(desc);
-		const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories
-		if (theories) {
-			const start: number = Date.now();
-			const fileContent: string = desc.fileContent.replace(commentRegexp, ""); // first, remove all comments
-			const slices: string[] = fileContent.split("\n");
-			for (let i = 0; i < theories.length; i++) {
-				boundaries.push({
-					theoryName: theories[i].theoryName,
-					from: theories[i].position.line,
-					to: (i + 1 < theories.length) ? theories[i + 1].position.line : slices.length
-				});
-			}
-			const formulaDescriptors: FormulaDescriptor[] = [];
-			for (let i = 0; i < boundaries.length; i++) {
-				const content: string = slices.slice(boundaries[i].from - 1, boundaries[i].to - 1).join("\n");
-				if (content && content.trim()) {
-					const regex: RegExp = theoremRegexp;
-					let match: RegExpMatchArray = null;
-					while (match = regex.exec(content)) {
-						if (match.length > 1 && match[1]) {
-							const formulaName: string = match[1];
-							const slice: string = content.slice(0, match.index);
-							const offset: number = (slice) ? slice.split("\n").length : 0;
-							const line: number = boundaries[i].from + offset - 1;
-							const isTcc: boolean = desc.fileExtension === ".tccs";
-							let status: ProofStatus = "untried";
-							// if (isTcc) {
-							// 	const matchStatus: RegExpMatchArray = tccStatusRegExp.exec(slice);
-							// 	if (matchStatus && matchStatus.length > 1 && matchStatus[1]) {
-							// 		status = <ProofStatus> matchStatus[1];
-							// 	}
-							// } else {
-							if (desc.prelude) {
-								status = "proved";
-							} else {
-								// check if the .jprf file contains the proof status
-								const theoryName: string = boundaries[i].theoryName;
-								status = await getProofStatus({
-									fileName: desc.fileName, 
-									fileExtension: desc.fileExtension, 
-									contextFolder: desc.contextFolder,
-									formulaName,
-									theoryName
-								});
-							}
-							const fdesc: FormulaDescriptor = {
-								fileName: desc.fileName,
-								fileExtension: desc.fileExtension,
-								contextFolder: desc.contextFolder,
-								theoryName: boundaries[i].theoryName,
-								formulaName,
-								position: { line, character: 0 },
-								status,
-								isTcc
-							}
-							formulaDescriptors.push(fdesc);
-						}
-					}
-				} else {
-					console.error("Error while finding theory names :/");
-				}
-			}
-			const stats: number = Date.now() - start;
-			// console.log(`[languageUtils] listTheorems(${desc.fileName}) completed in ${stats}ms`);
-			return formulaDescriptors;
-		}
-	}
-	return [];
-}
-
-/**
- * @function findFormulaName
- * @description Utility function, finds the name of a theorem that immediately preceeds a given line
- * @param fileContent The text where the theory should be searched 
- * @param line The line in the document where search should end
- * @returns { string | null } The theory name if any is found, null otherwise
- */
-export function findFormulaName(fileContent: string, line: number): string | null {
-	if (fileContent) {
-		const txt: string = fileContent.replace(commentRegexp, "");
-		let text: string = txt.split("\n").slice(0, line + 1).join("\n");
-		let candidates: string[] = [];
-		// (?:\%.*\s)* removes comments
-		const regexp: RegExp = formulaRegexp;
-		let match: RegExpMatchArray = null;
-		while(match = regexp.exec(text)) {
-			if (match && match.length > 1 && match[1]) {
-				candidates.push(match[1]);
-			}
-		}
-		if (candidates.length > 0) {
-			return candidates[candidates.length - 1];
-		}
-	}
-	return null;
-};
-
-/**
- * @function findProofObligation
- * @description Utility function, finds the line of a proof obligation
- * @param txt The text where the proof obligation should be searched 
- * @returns { string | null } The theory name if any is found, null otherwise
- */
-export function findProofObligation(formulaName: string, txt: string): number {
-	const formula: string = formulaName.replace("?", "\\?");
-	const regexp: RegExp = new RegExp(`\\b${formula}:\\s*OBLIGATION\\b`, "g");
-	let match: RegExpMatchArray = regexp.exec(txt);
-	if (match) {
-		const trim: string = txt.substr(0, match.index);
-		if (trim && trim.length > 0) {
-			return trim.split("\n").length;
-		}
-	}
-	return 0;
-};
 
 
 /**
@@ -973,9 +462,8 @@ export function getWordRange(txt: string, position: Position): Range {
  * @param position Position in the document
  */
 export function listSymbols(txt: string): string[] {
-
 	if (txt) {
-		const symbols: RegExp = /(\w+\??)/g; // TODO: negative lookahead to remove strings
+		const symbols: RegExp = /(\w+\??)/g;
 		const keywords: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
 
 		let symbolsMap: { [ symbol: string ]: { line: number, character: number } } = {};
@@ -1018,6 +506,8 @@ export const pvsioBanner: string = `
 ;
 
 export const pvsioPrompt: string = "<PVSio>";
+export const proverPrompt: string = ">>";
+
 // ║
 // ║ Note: Evaluating PVS expressions which depend on unproven TCCs may be unsound
 // ║       and result in the evaluator becoming unresponsive or breaking into Lisp. 
@@ -1057,90 +547,6 @@ export function getErrorRange(txt: string, start: Position, end: Position): Rang
 	}
 }
 
-// based on the 256 color scheme, see colors at https://misc.flogisoft.com/bash/tip_colors_and_formatting
-export const textColor: { [ key: string ]: number } = {
-	blue: 32,
-	yellow: 3,
-	green: 10,
-	red: 90 // this is actually magenta
-}
-
-export function colorText(text: string, colorCode: number): string {
-    // \x1b[0m resets all attributes
-	return `\x1b[38;5;${colorCode}m${text.toLocaleString()}\x1b[0m`;
-}
-
-
-/**
- * Lists all theorems in a given context folder
- */
-export async function getContextDescriptor (contextFolder: string, opt?: { listTheorems?: boolean, includeTccs?: boolean }): Promise<PvsContextDescriptor> {
-	// console.log(`[language-utils] Generating context descriptor for ${contextFolder}...`);
-	const response: PvsContextDescriptor = {
-		fileDescriptors: {},
-		contextFolder
-	};
-	const fileList: FileList = await fsUtils.listPvsFiles(contextFolder);
-	if (fileList) {
-		for (let i in fileList.fileNames) {
-			const fname: string = path.join(contextFolder, fileList.fileNames[i]);
-			// console.log(`[language-utils] Processing file ${fname}`);
-			const desc: PvsFileDescriptor = await getFileDescriptor(fname, opt);
-			response.fileDescriptors[fname] = desc;
-		}
-	}
-	// console.log("[language-utils] Done");
-	return response;
-}
-
-export async function getFileDescriptor (fname: string, opt?: { listTheorems?: boolean, includeTccs?: boolean }): Promise<PvsFileDescriptor> {
-	opt = opt || {};
-	opt.listTheorems = (opt.listTheorems !== undefined) ? opt.listTheorems : true;
-	const start: number = Date.now();
-	const contextFolder: string = fsUtils.getContextFolder(fname);
-	const fileName: string = fsUtils.getFileName(fname);
-	const fileExtension: string = fsUtils.getFileExtension(fname);
-	const response: PvsFileDescriptor = {
-		theories: [],
-		contextFolder,
-		fileName,
-		fileExtension
-	};
-	const pvsFileContent: string = await fsUtils.readFile(fname);
-	const tccsFileContent: string = (opt.includeTccs) ? await fsUtils.readFile(path.join(contextFolder, `${fileName}.tccs`)) : null;
-	// console.log(`[languageUtils.getFileDescriptor] listTheories(${fileName})`);
-	const theories: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent });
-	if (theories) {
-		// if (opt.listTheorems) { console.log(`[languageUtils.getFileDescriptor] listTheorems(${fileName})`);	}
-		const lemmas: FormulaDescriptor[] = 
-			(opt.listTheorems) 
-				? await listTheorems({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent, prelude: false, cache: { theories } })
-					: [];
-		const tccs: FormulaDescriptor[] = 
-			(opt.listTheorems && fileExtension !== ".tccs" && tccsFileContent) 
-				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: false })
-					: [];
-		const descriptors: FormulaDescriptor[] = lemmas.concat(tccs);
-		// console.log(`[language-utils] Processing ${theories.length} theories`);
-		for (let i = 0; i < theories.length; i++) {
-			const theoryName: string = theories[i].theoryName;
-			// console.log(`[language-utils] Processing theory ${theoryName}`);
-			const position: Position = theories[i].position;
-			const theoryDescriptor: TheoryDescriptor = {
-				fileName, fileExtension, contextFolder, theoryName, position, 
-				theorems: (descriptors && descriptors.length) ? descriptors.filter((desc: FormulaDescriptor) => {
-					return desc.theoryName === theoryName;
-				}) : []
-			}
-			// console.log(`[language-utils] Done`);
-			response.theories.push(theoryDescriptor);
-		}
-	}
-	const stats: number = Date.now() - start;
-	// console.log(`[languageUtils.getFileDescriptor] File descriptor for ${fname} created in ${stats}ms`);
-	return response;
-}
-
 
 export function makeBranchId (desc: { branchId: string, goalId: number }): string {
 	if (desc) {
@@ -1165,92 +571,7 @@ export function pvsVersionToString (version: PvsVersionDescriptor): string {
 	return null;
 }
 
-export async function renameFormulaInProofFile (formula: PvsFormula, newInfo: { newFormulaName: string, newShasum?: string }): Promise<boolean> {
-	if (formula && newInfo && newInfo.newFormulaName) {
-		const fname: string = fsUtils.desc2fname({
-			fileName: formula.fileName,
-			fileExtension: ".jprf",
-			contextFolder: formula.contextFolder
-		});
-		const fdesc: ProofFile = await readJprfProofFile(fname);
-		// check if file contains a proof for the given formula
-		const key: string = `${formula.theoryName}.${formula.formulaName}`;
-		if (fdesc && fdesc[key] && fdesc[key].length) {
-			const newKey: string = `${formula.theoryName}.${newInfo.newFormulaName}`;
-			// we are updating only the default proof, this might be changed in the future
-			const pdesc: ProofDescriptor = fdesc[key][0];
-			if (pdesc.info) {
-				pdesc.info.formula = newInfo.newFormulaName;
-				pdesc.info.shasum = newInfo.newShasum || pdesc.info.shasum;
-			}
-			if (pdesc.proofTree) {
-				pdesc.proofTree.name = newKey;
-			}
-			// delete old fdesc entry
-			delete fdesc[key];
-			// change old shasum for all other proofs
-			const keys: string[] = Object.keys(fdesc);
-			for (let i = 0; i < keys.length; i++) {
-				if (fdesc[keys[i]] && fdesc[keys[i]].length && fdesc[keys[i]][0].info) {
-					fdesc[keys[i]][0].info.shasum = newInfo.newShasum;
-				}
-			}
-			// add new key
-			fdesc[newKey] = [ pdesc ];			
-			// write to file
-			const newContent: string = JSON.stringify(fdesc, null, " ");
-			return await fsUtils.writeFile(fname, newContent);
-		}
-	}
-	return false;
-}
-export async function renameTheoryInProofFile (theory: PvsTheory, newInfo: { newTheoryName: string, newShasum?: string }): Promise<boolean> {
-	if (theory && newInfo && newInfo.newTheoryName) {
-		const fname: string = fsUtils.desc2fname({
-			fileName: theory.fileName,
-			fileExtension: ".jprf",
-			contextFolder: theory.contextFolder
-		});
-		const fdesc: ProofFile = await readJprfProofFile(fname);
-		// update all proofs
-		// check if file contains a proof for the given formula
-		if (fdesc) {
-			const keys: string[] = Object.keys(fdesc);
-			if (keys && keys.length) {
-				const newFdesc: ProofFile = {};
-				for (let i = 0; i < keys.length; i++) {
-					const key: string = keys[i];
-					// we are updating only the default proof, this might be changed in the future
-					const pdesc: ProofDescriptor = fdesc[key][0];
-					if (pdesc.info) {
-						pdesc.info.theory = newInfo.newTheoryName;
-						pdesc.info.shasum = newInfo.newShasum || pdesc.info.shasum;
-					}
-					const newKey: string = `${newInfo.newTheoryName}.${pdesc.info.formula}`;
-					if (pdesc.proofTree) {
-						pdesc.proofTree.name = newKey;
-					}
-					newFdesc[newKey] = [ pdesc ];
-				}	
-				// write to file
-				const newContent: string = JSON.stringify(newFdesc, null, " ");
-				const newFname: string = fsUtils.desc2fname({
-					fileName: (theory.fileName === theory.theoryName) ? newInfo.newTheoryName : theory.fileName,
-					fileExtension: ".jprf",
-					contextFolder: theory.contextFolder		
-				});
-				const fileAlreadyExists: boolean = await fsUtils.fileExists(newFname);
-				const success: boolean = (fileAlreadyExists) ? await fsUtils.writeFile(fname, newContent)
-					: await fsUtils.writeFile(newFname, newContent);
-				if (success && !fileAlreadyExists && fname !== newFname) {
-					fsUtils.deleteFile(fname);
-				}
-				return success;
-			}
-		}
-	}
-	return false;
-}
+
 export function proofTree2Prl (proofDescriptor: ProofDescriptor): string | null {
 	const content: string[] = proofDescriptor2ProofLite(proofDescriptor, { omitTags: true, escape: true });
 	if (content && content.length) {
@@ -1532,140 +853,6 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 }
 
 /**
- * Reads the content of a .jprf file
- * @param fname Name of the prooflite file
- * @param opt Optionals
- *               - quiet (boolean): if true, the function will not print any message to the console. 
- */
-export async function readJprfProofFile (fname: string, opt?: { quiet?: boolean }): Promise<ProofFile> {
-	opt = opt || {};
-	let proofFile: ProofFile = {};
-	fname = fname.replace("file://", "");
-	fname = fsUtils.tildeExpansion(fname);
-	const content: string = await fsUtils.readFile(fname);
-	if (content) {
-		try {
-			proofFile = JSON.parse(content);
-		} catch (jsonError) {
-			if (!opt.quiet) {
-				console.error(`[fs-utils] Error: Unable to parse proof file ${fname}`, jsonError.message);
-				console.error(`[fs-utils] Storing corrupted file content to ${fname}.err`);
-			}
-			// create a backup copy of the corrupted jprf file, because it might get over-written
-			await fsUtils.renameFile(fname, `${fname}.err`);
-			await fsUtils.writeFile(`${fname}.err.msg`, jsonError.message);
-		} finally {
-			return proofFile;
-		}
-	}
-	return proofFile;
-}
-
-// /**
-//  * Utility function, appends a prooflite script at the end of a given file
-//  * @param fname Name of the prooflite file
-//  * @param script The prooflite script to be appended
-//  */
-// export async function appendProoflite (fname: string, script: string): Promise<boolean> {
-// 	if (fname && script) {
-// 		const content: string = await fsUtils.readFile(fname);
-// 		const newContent: string = (content && content.trim()) ? content + `\n\n${script}` : script;
-// 		return await fsUtils.writeFile(fname, newContent);
-// 	}
-// 	return false;
-// }
-/**
- * Utility function, removes a prooflite script from a given file
- * @param fname Name of the prooflite file
- * @param formulaName name of the prooflite script to be removed
- */
-export async function updateProoflite (fname: string, formulaName: string, newProoflite: string): Promise<boolean> {
-	if (fname && formulaName) {
-		fname = fsUtils.decodeURIComponents(fname);
-		const fileExists: boolean = await fsUtils.fileExists(fname);
-		if (!fileExists) {
-			fsUtils.writeFile(fname, "");
-		}
-		const content: string = await fsUtils.readFile(fname);
-
-		// group 1 is the header (this group can be null)
-		// group 2 is the prooflite script
-		const formula: string = formulaName.replace(/\?/g, "\\?");
-		const regex: RegExp = new RegExp(`(%-*\\s%\\s*@formula\\s*:\\s*${formula}\\s[\\w\\W\\s]+%-*)?\\s*\\b(${formula}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
-		if (regex.test(content)) {
-			let newContent: string =  newProoflite + "\n\n\n" + content.replace(regex, "").trim();
-			// update content
-			return await fsUtils.writeFile(fname, newContent.trim());
-		} else {
-			const newContent: string = newProoflite + "\n\n\n" + content.trim();
-			return await fsUtils.writeFile(fname, newContent.trim());
-		}
-	}
-	return false;
-}
-/**
- * Utility function, checks if a prooflite script is present in a given file
- * @param fname Name of the prooflite file
- * @param formulaName name of the prooflite script
- */
-export async function containsProoflite (fname: string, formulaName: string): Promise<boolean> {
-	if (fname && formulaName) {
-		fname = fsUtils.decodeURIComponents(fname);
-		const fileExists: boolean = await fsUtils.fileExists(fname);
-		if (fileExists) {
-			const content: string = await fsUtils.readFile(fname);
-			if (content) {
-				// group 1 is the header (this group can be null)
-				// group 2 is the prooflite script
-				const formula: string = formulaName.replace(/\?/g, "\\?");
-				const regex: RegExp = new RegExp(`\\b(${formula}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
-				return regex.test(content);
-			}
-		}
-	}
-	return false;
-}
-/**
- * Utility function, returns the prooflite script without tags
- * @param fname Name of the prooflite file
- * @param formulaName name of the prooflite script
- */
-export async function readProoflite (fname: string, formulaName: string): Promise<string | null> {
-	if (fname && formulaName) {
-		fname = fsUtils.decodeURIComponents(fname);
-		const fileExists: boolean = await fsUtils.fileExists(fname);
-		if (fileExists) {
-			const content: string = await fsUtils.readFile(fname);
-			if (content) {
-				// group 1 is the header (this group can be null)
-				// group 2 is the prooflite script (with tags)
-				// group 3 is the prooflite script (without tags)
-				const formula: string = formulaName.replace(/\?/g, "\\?");
-				const regex: RegExp = new RegExp(`\\s*\\b(${formula}\\s*:\\s*PROOF\\b([\\s\\w\\W]+)\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
-				const match: RegExpMatchArray = regex.exec(content);
-				if (match && match.length > 2) {
-					return match[2].trim();
-				}
-			}
-		}
-	}
-	return null;
-}
-/**
- * Utility function, saves a prooflite script for a given formula in the given file
- * @param fname Name of the prooflite file
- * @param formulaName name of the prooflite
- * @param script The prooflite script to be saved in the file
- */
-export async function saveProoflite (fname: string, formulaName: string, script: string): Promise<boolean> {
-	if (fname && formulaName && script) {
-		fname = fsUtils.decodeURIComponents(fname);
-		return await updateProoflite(fname, formulaName, script);
-	}
-	return false;
-}
-
-/**
  * Utility function, checks if the provided proof script is null or empty
  * @param prf proof script
  */
@@ -1726,140 +913,6 @@ export function prf2jprf (desc: {
 	return null;
 }
 
-// quit
-export function isQuitCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && (cmd === "quit" 
-		|| cmd === "quit;"
-		|| cmd === "(quit)"
-		|| cmd.toLocaleLowerCase() === "(quit)y"
-		|| cmd === "exit"
-		|| cmd === "exit;"
-		|| cmd === "(exit)"
-		|| cmd.toLocaleLowerCase() === "(exit)y")
-		|| /^\(?\s*quit\s*\)?\s*y?;?/gi.test(cmd)
-		|| /^\(?\s*exit\s*\)?\s*y?;?/gi.test(cmd)
-		;
-}
-
-export function isSaveThenQuitCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && (cmd === "save-then-quit" 
-		|| cmd === "save-then-quit;"
-		|| cmd === "(save-then-quit)"
-		|| cmd === "save-force-exit"
-		|| cmd === "save-force-exit;"
-		|| cmd === "(save-force-exit)")
-		;
-}
-
-export function isQuitDontSaveCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && (cmd === "quit-dont-save" 
-		|| cmd === "quit-dont-save;"
-		|| cmd === "(quit-dont-save)"
-		|| cmd === "exit-dont-save"
-		|| cmd === "exit-dont-save;"
-		|| cmd === "(exit-dont-save)")
-		;
-}
-
-export function isEmptyCommand (cmd: string): boolean {
-	return !cmd
-		|| cmd.trim() === "" 
-		|| cmd.trim() === "()"
-		;
-}
-
-export function isUndoCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && (cmd === "undo" 
-		|| cmd === "undo;"
-		|| cmd === "(undo)"
-		|| cmd.toLocaleLowerCase() === "(undo)y"
-		|| /^\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.test(cmd))
-		;
-}
-
-export function unfoldUndoCommand (cmd: string): string[] {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	const match: RegExpMatchArray = /^\(\s*undo(\s*\d+)?\s*\)\s*y?;?/gi.exec(cmd);
-	let cmds: string[] = [];
-	if (match) {
-		if (match.length > 1 && match[1]) {
-			const n: number = +match[1];
-			for (let i = 0; i < n; i++) {
-				cmds.push('(undo)');
-			}
-		} else {
-			cmds.push('(undo)');
-		}
-	}
-	return cmds;
-}
-
-export function isRedoCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && /^\(?\s*\bredo\b/g.test(cmd);
-}
-
-export function isUndoUndoCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	if (cmd) {
-		const cm: string = (cmd.startsWith("(")) ? cmd : `(${cmd})`;
-		return /^\(\s*\bundo\s+undo\b\s*\)/g.test(cm);
-	}
-	return false;
-}
-
-export function isUndoUndoPlusCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && /^\(?(\s*\bundo)+/g.test(cmd);
-}
-
-export function isUndoStarCommand (cmd: string): boolean {
-	return isUndoCommand(cmd) || isUndoUndoCommand(cmd) || isUndoUndoPlusCommand(cmd);
-}
-
-export function isPostponeCommand (cmd: string, result?: { commentary: string | string[] }): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	if (result && result.commentary) {
-		if (typeof result.commentary === "string") {
-			return result.commentary.toLocaleLowerCase().startsWith("postponing ");
-		} else if (typeof result.commentary === "object") {
-			return result.commentary.length
-				&& typeof result.commentary[0] === "string"
-				&& result.commentary.filter((comment: string)=> {
-					return comment.toLocaleLowerCase().startsWith("postponing ");
-				}).length > 0;
-		}
-	}
-	return cmd && /^\(?\s*\bpostpone\b/g.test(cmd);
-}
-
-export function isSkipCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && /^\(?\s*\bskip\b/g.test(cmd);
-}
-
-export function isFailCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && /^\(?\s*\bfail\b/g.test(cmd);
-}
-
-export function isShowHiddenCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && /^\(?\s*show-hidden\b/g.test(cmd);
-}
-
-export function isGrindCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && /^\(?\s*grind\b/g.test(cmd);
-}
-
-export function isProofliteGlassbox (cmd: string): boolean {
-	return cmd && cmd.trim().startsWith("(then ");
-}
 
 // group 1 is the command argument
 export const helpCommandRegexp: RegExp = /^\s*\(?\s*help\s*\"?([^\)]+)/g;
@@ -1875,18 +928,6 @@ export function isHelpBangCommand (cmd: string): boolean {
 	return cmd && new RegExp(helpBangCommandRegexp).test(cmd);
 }
 
-export function isCommentCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && /^\(?\s*comment\b/g.test(cmd);
-}
-
-export function isQEDCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && (cmd.trim() === "Q.E.D."
-		|| /^\(?\s*Q\.E\.D\./g.test(cmd))
-		;
-}
-
 // export function isSaveCommand (cmd: string): boolean {
 // 	cmd = (cmd) ? cmd.trim() : cmd;
 // 	return cmd && (cmd === "save" 
@@ -1900,62 +941,6 @@ export function isMetaProofCommand (cmd: string): boolean {
 	return isPostponeCommand(cmd) || isUndoStarCommand(cmd) || isShowHiddenCommand(cmd);
 }
 
-export function isSameCommand (cmd1: string, cmd2: string): boolean {
-	if (cmd1 && cmd2) {
-		const c1: string = cmd1.replace(/[\s+\"\(\)]/g, ""); // remove all spaces, round parens, and double quotes
-		const c2: string = cmd2.replace(/[\s+\"\(\)]/g, "");
-		return c1 === c2;
-	}
-	return false;
-}
-
-export function isPropax (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && cmd === "(propax)";
-}
-
-export function splitCommands (cmd: string): string[] {
-	let cmds: string[] = [];
-	if (cmd && cmd.trim().startsWith("(")) {
-		let input: string = cmd.trim().replace(/\)y/gi, ")");
-		let par: number = 0;
-		let start: number = 0;
-		let stop: number = 0;
-		let validStart: boolean = false;
-		for (let i = 0; i < input.length; i++) {
-			if (input[i] === "(") {
-				if (par === 0) {
-					start = i;
-					validStart = true;
-				}
-				par++;
-			} else if (input[i] === ")") {
-				par--;
-				if (par === 0) {
-					stop = i;
-				}
-			}
-			if (par === 0) {
-				if (stop > start && validStart) { // sanity check
-					let cmd: string = input.substring(start, stop + 1);
-					if (isUndoCommand(cmd)) {
-						cmds = cmds.concat(unfoldUndoCommand(cmd));
-					} else {
-						cmds = cmds.concat(cmd);
-					}
-					validStart = false;
-				}
-			}
-			if (par < 0) {
-				// too many closed parentheses -- try to skip
-				par = 0;
-			}
-		}
-	} else if (cmd && isUndoCommand(cmd)) {
-		cmds = unfoldUndoCommand(cmd);
-	}
-	return cmds;
-}
 
 export function proofTree2commandSequence (node: ProofNode): string | null {
 	if (node) {
@@ -1976,41 +961,6 @@ export function applyTimeout (cmd: string, sec?: number): string {
 		return `(apply ${c} :timeout ${sec})`;
 	}
 	return cmd;
-}
-
-export function isInvalidCommand (result: { commentary: string | string[] }): boolean {
-	const proverErrorMessages: string[] = [
-		"Error:",
-		"not a valid prover command",
-		"Found 'eof' when expecting",
-		"bad proof command",
-		"Expecting an expression",
-		"Not enough arguments for prover command",
-		"Could not find formula number",
-		"There is garbage at the end"
-	];
-	const isInvalid = (cmd: string): boolean => {
-		if (cmd) {
-			for (let i = 0; i < proverErrorMessages.length; i++) {
-				if (cmd.includes(proverErrorMessages[i])) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	if (result && result.commentary) {
-		if (typeof result.commentary === "string") {
-			return isInvalid(result.commentary);
-		} else if (typeof result.commentary === "object") {
-			return result.commentary.length
-				&& typeof result.commentary[0] === "string"
-				&& result.commentary.filter((comment: string)=> {
-					return isInvalid(comment);
-				}).length > 0;
-		}
-	}
-	return false;
 }
 
 export function noChange (result: { commentary: string | string[] }): boolean {
@@ -2207,247 +1157,6 @@ ${theoryName}: THEORY
 `;
 }
 
-export interface WorkspaceSummaryItem extends PvsTheory {
-	ok: number,
-	miss: number,
-	total: number,
-	ms: number	
-}
-export type WorkspaceSummary = {
-	total: number, 
-	contextFolder: string,
-	theories: WorkspaceSummaryItem[]
-}
-export function makeWorkspaceSummary (desc: WorkspaceSummary): string {
-	const header: string = "Proof summary";
-	const workspaceName: string = fsUtils.getContextFolderName(desc.contextFolder);
-	let ans: string = `${header} for workspace ${workspaceName}\n`;
-	let nProved: number = 0;
-	let nMissed: number = 0;
-	let totTime: number = 0;
-	let libraries: { [name: string]: boolean } = {};
-	for (let i = 0; i < desc.theories.length; i++) {
-		const theory: WorkspaceSummaryItem = desc.theories[i];
-		libraries[theory.contextFolder] = true;
-
-		const points: number = (64 - theory.theoryName.length) > 0 ? 64 - theory.theoryName.length : 0;
-		const overall: string = (theory.miss) ? `${icons.sparkles} partly proved [${theory.ok}/${theory.total}]`
-			: `${icons.checkmark}  fully proved [${theory.ok}/${theory.total}]`;
-		const spaces: number = (20 - overall.length) > 0 ? 20 - overall.length : 0;
-		nProved += theory.ok;
-		nMissed += theory.miss;
-		ans += `\n\t${theory.theoryName}` + ".".repeat(points) + " " + overall + " ".repeat(spaces) + `(${(+theory.ms / 1000).toFixed(3)} s)`;
-		totTime += theory.ms;
-	}
-	ans += `\n\nWorkspace ${workspaceName} totals: ${desc.total} formulas, ${nProved + nMissed} attempted, ${nProved} succeeded (${(+totTime / 1000).toFixed(3)} s)`;
-// 	ans += `\n
-// *** Grand Totals: ${nProved} proofs / ${desc.total} formulas. Missed: ${nMissed} formulas.
-// *** Number of libraries: ${Object.keys(libraries).length}`;	
-	return ans;
-}
-
-
-export interface TheorySummaryItem {
-	theoryName: string, 
-	formulaName: string, 
-	status: ProofStatus, 
-	ms: number 
-}
-export type TheorySummary = { 
-	total: number, 
-	tccsOnly?: boolean, 
-	theoryName: string,
-	theorems: TheorySummaryItem[]
-}
-export function makeTheorySummary (desc: TheorySummary): string {
-	const header: string = desc.tccsOnly ? "TCCs summary" : "Proof summary";
-	let ans: string = `${header} for theory ${desc.theoryName}\n`;
-	let nProved: number = 0;
-	let totTime: number = 0;
-	let importChainFlag: boolean = false;
-	for (let i = 0; i < desc.theorems.length; i++) {
-		if (desc.theorems[i].theoryName !== desc.theoryName && !importChainFlag) {
-			importChainFlag = true;
-			ans += `\n\t%-- importchain`;
-		}
-		const formulaName: string = desc.theorems[i].formulaName;
-		const status: ProofStatus = desc.theorems[i].status;
-		const ms: number = desc.theorems[i].ms;
-
-		const points: number = (64 - formulaName.length) > 0 ? 64 - formulaName.length : 0;
-		const spaces: number = (20 - status.length) > 0 ? 20 - status.length : 0;
-
-		if (isProved(status)) { nProved++; }
-		totTime += ms;
-
-		ans += `\n\t${formulaName}` + ".".repeat(points) + getIcon(status) + " " + status + " ".repeat(spaces) + `(${(+ms / 1000)} s)`;
-	}
-	ans += `\n\nTheory ${desc.theoryName} totals: ${desc.total} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${+(totTime / 1000).toFixed(3)} s)`;
-	return ans;
-}
-
-// utility function, checks if parentheses are balanced
-export function balancedPar (cmd: string): boolean {
-	const openRegex: RegExp = new RegExp(/\(/g);
-	const closeRegex: RegExp = new RegExp(/\)/g);
-	let par: number = 0;
-	while (openRegex.exec(cmd)) {
-		par++;
-	}
-	while (closeRegex.exec(cmd)) {
-		par--;
-	}
-	return par <= 0;
-}
-
-// utility function, ensures open brackets match closed brackets for commands
-export function parCheck (cmd: string, opt?: { useColors?: boolean }): { success: boolean, msg: string } {
-	opt = opt || {};
-	let par: number = 0;
-	let quotes: number = 0;
-	cmd = cmd.trim();
-	for (let i = 0; i < cmd.length; i++) {
-		switch (cmd[i]) {
-			case `(`: {
-				par++;
-				break;
-			}
-			case `)`: {
-				par--; 
-				if (quotes && quotes % 2 === 0 && par % 2 !== 0) {
-					// unbalanced double quotes
-					let msg: string = `Error: Unbalanced double quotes at position ${i}.`;
-					msg += "\n" + cmd.substring(0, i);
-					// msg += (opt.useColors) ? colorText(cmd[i], textColor.red) : cmd[i];
-					msg += "\n" + " ".repeat(i) + "^";
-					return { success: false, msg };
-				}
-				break;
-			}
-		}
-	}
-	const success: boolean = par <= 0;
-	return { success, msg: (success) ? "" : "Error: Unbalanced parentheses." };
-}
-
-
-// utility function, returns a command with balanced parentheses
-export function parMatch (cmd: string): string {
-	if (cmd && !cmd.trim().startsWith("(")) {
-		const openRegex: RegExp = new RegExp(/\(/g);
-		const closeRegex: RegExp = new RegExp(/\)/g);
-		let par: number = 0;
-		while (openRegex.exec(cmd)) {
-			par++;
-		}
-		while (closeRegex.exec(cmd)) {
-			par--;
-		}
-		if (par > 0) {
-			// missing closed brackets
-			cmd = cmd.trimRight() + ')'.repeat(par);
-			// console.log(`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
-		} else if (par < 0) {
-			cmd = '('.repeat(-par) + cmd;
-			// console.log(`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
-		}
-		return cmd.startsWith('(') ? cmd : `(${cmd})`; // add outer parentheses if they are missing
-	}
-	return cmd;
-}
-
-export function decodePvsLibraryPath (pvsLibraryPath: string): string[] {
-	const libs: string[] = (pvsLibraryPath) ? pvsLibraryPath.split(":").map((elem: string) => {
-		return elem.trim();
-	}) : [];
-	return libs.filter((elem: string) => {
-		return elem !== "";
-	}).map((elem: string) => {
-		return elem.endsWith("/") ? elem : `${elem}/`;
-	});
-}
-export function createPvsLibraryPath (libs: string[]): string {
-	if (libs && libs.length) {
-		return libs.filter((elem: string) => {
-			return elem.trim() !== "";
-		}).map((elem: string) => {
-			return elem.trim().endsWith("/") ? elem.trim() : `${elem.trim()}/`;
-		}).join(":");
-	}
-	return "";
-}
-
-/**
- * Utility function, appends a proof summary at the end of a given file
- * @param fname Name of the summary file
- * @param summary The summary to be appended
- */
-export async function appendSummary (fname: string, summary: string): Promise<boolean> {
-	if (fname && summary) {
-		const content: string = await fsUtils.readFile(fname);
-		const newContent: string = (content && content.trim()) ? content + `\n\n${summary}` : summary;
-		return await fsUtils.writeFile(fname, newContent);
-	}
-	return false;
-}
-/**
- * Utility function, removes a proof summary from a given file
- * @param fname Name of the summary file
- * @param theoryName name of the theory whose summary should be removed
- */
-export async function removeSummary (fname: string, theoryName: string): Promise<boolean> {
-	if (fname && theoryName) {
-		fname = fsUtils.decodeURIComponents(fname);
-		const fileExists: boolean = await fsUtils.fileExists(fname);
-		if (fileExists) {
-			const content: string = await fsUtils.readFile(fname);
-			if (content) {
-				const regex: RegExp = new RegExp(`\\bProof summary for theory ${theoryName}\\s[\\s\\w\\W]+\\bTheory ${theoryName}\\s.*`, "g");
-				const newContent: string = content.replace(regex, "");
-				return await fsUtils.writeFile(fname, newContent);
-			}
-		}
-	}
-	return false;
-}
-/**
- * Utility function, checks if a summary is present in a given file
- * @param fname Name of the summary file
- * @param theoryName name of the theory whose summary should be removed
- */
-export async function containsSummary (fname: string, theoryName: string): Promise<boolean> {
-	if (fname && theoryName) {
-		fname = fsUtils.decodeURIComponents(fname);
-		const fileExists: boolean = await fsUtils.fileExists(fname);
-		if (fileExists) {
-			const content: string = await fsUtils.readFile(fname);
-			if (content) {
-				const regex: RegExp = new RegExp(`\\bProof summary for theory ${theoryName}\\s[\\s\\w\\W]+\\bTheory ${theoryName}\\s.*`, "g");
-				return regex.test(content);
-			}
-		}
-	}
-	return false;
-}
-/**
- * Utility function, saves a summary for a given theory in the given file
- * @param fname Name of the summary file
- * @param theoryName name of the theory whose summary should be saved
- * @param summary The summary to be saved in the file
- */
-export async function saveSummary (fname: string, theoryName: string, summary: string): Promise<boolean> {
-	if (fname && theoryName && summary) {
-		fname = fsUtils.decodeURIComponents(fname);
-		const fileExists: boolean = await fsUtils.fileExists(fname);
-		if (fileExists) {
-			// deleted any previous version of the summary
-			await removeSummary(fname, theoryName);
-		}
-		// append the new summary
-		return await appendSummary(fname, summary);
-	}
-	return false;
-}
 
 /**
  * Structure representing a proof tree

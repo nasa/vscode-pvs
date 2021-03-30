@@ -36,8 +36,6 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { TreeItem, TreeItemCollapsibleState, TreeDataProvider, EventEmitter, Event, ExtensionContext, TreeView, window, commands } from "vscode";
-import { SequentDescriptor, SFormula } from "../common/languageUtils";
 import { LanguageClient } from "vscode-languageclient";
 import { ProofMateProfile } from '../common/commandUtils';
 import * as vscode from 'vscode';
@@ -45,20 +43,21 @@ import { ProofBranch, ProofCommand, ProofItem, RootNode } from "./vscodePvsProof
 import * as utils from '../common/languageUtils';
 import { ProofNode, PvsFormula } from "../common/serverInterface";
 import * as path from 'path';
+import { openSketchpad, saveSketchpad, SequentDescriptor, SFormula } from "../common/fsUtils";
 
 declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
 
  /**
  * Definition of tree items
  */
-class ProofMateItem extends TreeItem {
+class ProofMateItem extends vscode.TreeItem {
 	contextValue: string = "proofmate-item";
 	name: string; // prover command
 	command: vscode.Command; // vscode action
 	children: ProofItem[] = [];
 
     constructor (desc: ProofMateItemDescriptor) {
-		super(desc.name, TreeItemCollapsibleState.None);
+		super(desc.name, vscode.TreeItemCollapsibleState.None);
 		this.name = desc.name;
 		this.tooltip = desc.tooltip;
 		this.label = this.name;
@@ -75,14 +74,14 @@ class ProofMateItem extends TreeItem {
 
 
 }
-abstract class ProofMateGroup extends TreeItem {
+abstract class ProofMateGroup extends vscode.TreeItem {
 	contextValue: string = "proofmate-group";
-    constructor (label: string, contextValue: string, collapsibleState: TreeItemCollapsibleState, tooltip: string) {
+    constructor (label: string, contextValue: string, collapsibleState: vscode.TreeItemCollapsibleState, tooltip: string) {
 		super(label, collapsibleState);
 		this.contextValue = contextValue;
 		this.tooltip = tooltip;
 	}
-	getChildren (): TreeItem[] {
+	getChildren (): vscode.TreeItem[] {
 		return [];
 	}
 }
@@ -209,9 +208,9 @@ const r5: TestFunction = (sequent: { succedents?: SFormula[], antecedents?: SFor
 class ProofMateHints extends ProofMateGroup {
 	hints: ProofMateItem[] = [];
 	constructor () {
-		super("Hints", "proofmate-hints", TreeItemCollapsibleState.Expanded, "Proof Hints");
+		super("Hints", "proofmate-hints", vscode.TreeItemCollapsibleState.Expanded, "Proof Hints");
 	}
-	getChildren (): TreeItem[] {
+	getChildren (): vscode.TreeItem[] {
 		return this.hints;
 	}
 	addRecommendation (rec: { cmd: string, tooltip?: string }): void {
@@ -240,9 +239,9 @@ class ProofMateHints extends ProofMateGroup {
 class ProofMateSketchpad extends ProofMateGroup {
 	clips: ProofItem[] = [];
 	constructor () {
-		super("Sketchpad", "proofmate-sketchpad", TreeItemCollapsibleState.Expanded, "Proof Sketches");
+		super("Sketchpad", "proofmate-sketchpad", vscode.TreeItemCollapsibleState.Expanded, "Proof Sketches");
 	}
-	getChildren (): TreeItem[] {
+	getChildren (): vscode.TreeItem[] {
 		return this.clips;
 	}
 	add (items: ProofItem[]): void {
@@ -295,19 +294,19 @@ class ProofMateSketchpad extends ProofMateGroup {
 /**
  * Data provider for PVS Proof Mate view
  */
-export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
+export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeItem> {
 	/**
 	 * Events for updating the tree structure
 	 */
-	protected _onDidChangeTreeData: EventEmitter<TreeItem> = new EventEmitter<TreeItem>();
-    readonly onDidChangeTreeData: Event<TreeItem> = this._onDidChangeTreeData.event;
+	protected _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
+    readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
 	protected profile: ProofMateProfile;
 
-	protected context: ExtensionContext;	
+	protected context: vscode.ExtensionContext;	
 	protected client: LanguageClient;
 	protected providerView: string;
-	protected view: TreeView<TreeItem>;
+	protected view: vscode.TreeView<vscode.TreeItem>;
 
 	protected enabled: boolean = false;
 
@@ -349,10 +348,10 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		vscode.commands.executeCommand('setContext', 'proof-mate.visible', true);
 	}
 	async saveSketchpadClips (): Promise<void> {
-		await utils.saveSketchpad(this.formula, this.sketchpad?.getNodes());
+		await saveSketchpad(this.formula, this.sketchpad?.getNodes());
 	}
 	async loadSketchpadClips (): Promise<void> {
-		const clips: ProofNode[] = await utils.openSketchpad(this.formula);
+		const clips: ProofNode[] = await openSketchpad(this.formula);
 		if (clips && clips.length) {
 			const items: ProofItem[] = [];
 			for (let i = 0; i < clips.length; i++) {
@@ -408,7 +407,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		this.profile = "basic";
 
 		// register data provider
-		this.view = window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
+		this.view = vscode.window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
 	}
 	
 	/**
@@ -416,7 +415,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	 */
 	protected refreshView(): void {
 		if (this.enabled) {
-			this._onDidChangeTreeData.fire();
+			this._onDidChangeTreeData.fire(null);
 		}
 	}
 	/**
@@ -429,7 +428,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	/**
 	 * Internal function, reveals a node in the view.
 	 */
-	protected revealNode (selected: TreeItem): void {
+	protected revealNode (selected: vscode.TreeItem): void {
 		if (selected) {
 			// there is something I don't understand in the APIs of TreeItem 
 			// because I'm getting exceptions (node not found / element already registered)
@@ -446,10 +445,10 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	 * Handler activation function
 	 * @param context Client context 
 	 */
-	activate(context: ExtensionContext) {
+	activate(context: vscode.ExtensionContext) {
 		this.context = context;
 		this.selectProfile("basic");
-		context.subscriptions.push(commands.registerCommand("proof-mate.run-sketchpad", (resource: ProofMateSketchpad) => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.run-sketchpad", (resource: ProofMateSketchpad) => {
 			if (resource && resource.clips && resource.clips.length) {
 				let seq: string = "";
 				for (let i = 0; i < resource.clips.length; i++) {
@@ -462,7 +461,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-mate.exec-subtree", (resource: ProofMateItem | ProofItem) => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.exec-subtree", (resource: ProofMateItem | ProofItem) => {
 			if (resource && resource.name) {
 				const seq: string = resource.printProofCommands({ markExecuted: true });
 				this.sendProofCommand(seq);
@@ -471,7 +470,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-mate.exec-proof-command", (resource: ProofMateItem | ProofItem) => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.exec-proof-command", (resource: ProofMateItem | ProofItem) => {
 			if (resource && resource.name) {
 				resource.iconPath = {
 					light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
@@ -483,7 +482,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-mate.send-to-terminal", (resource: ProofMateItem | ProofItem) => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.send-to-terminal", (resource: ProofMateItem | ProofItem) => {
 			if (resource && resource.name) {
 				const dd = { 
 					fileName: this.formula.fileName,
@@ -493,20 +492,20 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 					formulaName: this.formula.formulaName,
 					cmd: resource.name
 				}
-				commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
+				vscode.commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
 		} else {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-mate.activate-basic-profile", () => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.activate-basic-profile", () => {
 			this.selectProfile("basic");
         }));
-		context.subscriptions.push(commands.registerCommand("proof-mate.activate-advanced-profile", () => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.activate-advanced-profile", () => {
 			this.selectProfile("advanced");
 		}));
 
 		let cmd: string = null;
-		context.subscriptions.push(commands.registerCommand("proof-mate.did-click-hint", (desc: { cmd: string }) => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.did-click-hint", (desc: { cmd: string }) => {
 			// register double click handler
 			if (desc) {
 				if (!cmd || cmd !== desc.cmd) {
@@ -523,7 +522,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 						formulaName: this.formula.formulaName,
 						cmd: desc.cmd
 					}
-					commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
+					vscode.commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
 					cmd = null;
 				}
 			}
@@ -541,7 +540,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 
 	sendProofCommand (cmd: string): void {
 		if (this.formula) {
-			commands.executeCommand("vscode-pvs.send-proof-command", {
+			vscode.commands.executeCommand("vscode-pvs.send-proof-command", {
 				fileName: this.formula.fileName,
 				fileExtension: this.formula.fileExtension,
 				theoryName: this.formula.theoryName,
@@ -560,7 +559,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		vscode.commands.executeCommand('setContext', 'advanced-profile-active', profile === "advanced");
 		this.refreshView();
 		// forward the selection to PvsCli via event-dispatcher and cli-gateway
-		commands.executeCommand("vscode-pvs.select-profile", {
+		vscode.commands.executeCommand("vscode-pvs.select-profile", {
 			profile
 		});
 	}
@@ -634,7 +633,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 	 * Returns the list of theories defined in the active pvs file
 	 * @param item Element clicked by the user 
 	 */
-	getChildren(item: TreeItem): Thenable<TreeItem[]> {
+	getChildren(item: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
 		if (item) {
 			const group: ProofMateGroup = <ProofMateGroup> item;
 			return Promise.resolve(group.getChildren());
@@ -642,7 +641,7 @@ export class VSCodePvsProofMate implements TreeDataProvider<TreeItem> {
 		// root node
 		return Promise.resolve([ this.hints, this.sketchpad ]);
 	}
-	getTreeItem(item: TreeItem): TreeItem {
+	getTreeItem(item: vscode.TreeItem): vscode.TreeItem {
 		return item;
     }
 

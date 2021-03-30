@@ -36,13 +36,12 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { PvsDefinition, ProofStatus, TheoryDescriptor } from '../common/serverInterface';
+import { PvsDefinition, ProofStatus, TheoryDescriptor, PvsTheory } from '../common/serverInterface';
 import * as language from "../common/languageKeywords";
 import { Connection, Position, Range, CancellationToken, TextDocuments, TextDocumentPositionParams, Definition, TextDocument, Location } from 'vscode-languageserver';
-import { findTheoryName, getWordRange } from '../common/languageUtils';
-import * as fs from '../common/fsUtils';
-import { PvsProxy } from '../pvsProxy';
+import { getWordRange } from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
+import { PvsProxy } from '../pvsProxy';
 import { FindDeclarationResult, Place, PvsResponse } from '../common/pvs-gui';
 import * as path from 'path';
 import * as utils from '../common/languageUtils';
@@ -90,27 +89,50 @@ export class PvsDefinitionProvider {
 	// } 
 
 	/**
-	 * Utility function, finds a symbol definition
-	 * @param document The document that contains the symbol
+	 * Utility function, finds a symbol definition for a given position within a file
+	 * @param fname The document that contains the symbol
 	 * @param symbolName The symbol whose definition needs to be found
 	 * @param position Position where the symbol is used, helps to narrow down the list of potential definitions in the case of symbol overloading
 	 */
-	async findSymbolDefinition (uri: string, symbolName: string, position: Position): Promise<PvsDefinition[]> {
-		symbolName = (symbolName.toUpperCase() === "TRUE" || symbolName.toUpperCase() === "FALSE") ? symbolName.toUpperCase() : symbolName;
-		let currentTheory: string = null;
-		// uri = uri.replace("file://", "");
-		if (uri && uri.endsWith(".tccs") && position) {
-			currentTheory = fs.getFileName(uri);
-		} else {
+	async findSymbolDefinition (fname: string, symbolName: string, position: Position): Promise<PvsDefinition[]> {
+		if (fname) {
+			if (fname.endsWith(".tccs")) {
+				const theoryName: string = fsUtils.getFileName(fname);
+				const theory: PvsTheory = {
+					...fsUtils.fname2desc(fname),
+					theoryName
+				};
+				return await this.findSymbolDefinitionInTheory(theory, symbolName, position);
+			}
 			// .pvs file
-			const txt: string = await fsUtils.readFile(uri);
-			currentTheory = (position) ? findTheoryName(txt, position.line) : null;
+			const content: string = await fsUtils.readFile(fname);
+			const theoryName: string = fsUtils.findTheoryName(content, position?.line);
+			if (theoryName) {
+				const theory: PvsTheory = {
+					...fsUtils.fname2desc(fname),
+					theoryName
+				};
+				return await this.findSymbolDefinitionInTheory(theory, symbolName, position);
+			}			
+		}
+		return null;
+	}
+
+	/**
+	 * Utility function, finds a symbol definition in a given theory
+	 * @param fname The document that contains the symbol
+	 * @param symbolName The symbol whose definition needs to be found
+	 * @param position Position where the symbol is used, helps to narrow down the list of potential definitions in the case of symbol overloading
+	 */
+	async findSymbolDefinitionInTheory (theory: PvsTheory, symbolName: string, position?: Position): Promise<PvsDefinition[]> {
+		if (!theory || !symbolName) {
+			return null;
 		}
 		let response: PvsDefinition = {
-			file: uri,
-			theory: currentTheory,
-			line: (position) ? position.line : null,
-			character: (position) ? position.character : null,
+			file: fsUtils.desc2fname(theory),
+			theory: theory.theoryName,
+			line: position?.line || 0,
+			character: position?.character || 0,
 			symbolName: symbolName,
 			symbolTheory: null,
 			symbolDeclaration: null,
@@ -120,6 +142,7 @@ export class PvsDefinitionProvider {
 			comment: null,
 			error: null
 		};
+		symbolName = (symbolName.toUpperCase() === "TRUE" || symbolName.toUpperCase() === "FALSE") ? symbolName.toUpperCase() : symbolName;
 		const isNumber: boolean = new RegExp(language.PVS_NUMBER_REGEXP_SOURCE).test(symbolName);
 		if (isNumber) {
 			this.printInfo(`Number ${symbolName}`);
@@ -139,21 +162,11 @@ export class PvsDefinitionProvider {
 			response.comment = symbolName === 'o' ? `Keyword ${symbolName}` : `Keyword ${symbolName.toUpperCase()}`;
 			return [ response ];
 		}
+
 		// else
-		// const fileName: string = fsUtils.getFilename(document.uri);
-		// find-declaration works even if a pvs file does not parse correctly 
 		const ans: PvsResponse = await this.pvsProxy.findDeclaration(symbolName); //await this.pvsProcess.findDeclaration(symbolName);
 
-		// const fileName: string = fsUtils.getFileName(uri);
-		// const fileExtension: string = fsUtils.getFileExtension(uri);
-		// const contextFolder: string = fsUtils.getContextFolder(uri);
-		// let ans1: PvsResponse = await this.pvsProxy.termAt({
-		// 	fileName, fileExtension, contextFolder, 
-		// 	line: position.line, 
-		// 	character: position.character
-		// });
-
-		// find-declaration may return more than one result -- the file is not typechecked
+		// find-declaration may return more than one result -- e.g., because the file is not typechecked
 		// we can narrow down the results by traversing the importchain
 		// part of this extra logic can be removed when Sam completes the implementation of find-object
 		const candidates: PvsDefinition[] = [];
@@ -174,7 +187,7 @@ export class PvsDefinitionProvider {
 						// FIXME: pvs-server does not include path when the file is in the current context
 						if (fname && fname.indexOf("/") < 0) {
 							// add contextFolder to fname, check if this is the pvslog folder (if so, remove /pvsbin)
-							let contextFolder: string = fsUtils.getContextFolder(uri);
+							let contextFolder: string = theory.contextFolder;
 							if (contextFolder.endsWith("/pvsbin") || contextFolder.endsWith("pvsbin/")) {
 								contextFolder = contextFolder.split("/").slice(0, -1).join("/");
 							}
@@ -183,7 +196,7 @@ export class PvsDefinitionProvider {
 						let comment: string = "";
 						if (fname && info.type === "theorem" || info.type === "lemma") {
 							// check if the theorem has been proved, and if so add the proof status to the tooltip
-							const proofStatus: ProofStatus = await utils.getProofStatus({
+							const proofStatus: ProofStatus = await fsUtils.getProofStatus({
 								contextFolder: fsUtils.getContextFolder(fname),
 								fileName: fsUtils.getFileName(fname),
 								fileExtension: fsUtils.getFileExtension(fname),
@@ -192,7 +205,7 @@ export class PvsDefinitionProvider {
 							});
 							comment += `Formula ${info.declname} (${utils.getIcon(proofStatus)}${proofStatus})`;
 							// try to fetch proof date
-							const date: string = await utils.getProofDate({
+							const date: string = await fsUtils.getProofDate({
 								contextFolder: fsUtils.getContextFolder(fname),
 								fileName: fsUtils.getFileName(fname),
 								fileExtension: fsUtils.getFileExtension(fname),
@@ -204,10 +217,10 @@ export class PvsDefinitionProvider {
 							}
 						}
 						const def: PvsDefinition = {
-							theory: currentTheory,
+							theory: theory.theoryName,
 							line: (position) ? position.line : null,
 							character: (position) ? position.character : null,
-							file: uri,
+							file: fsUtils.desc2fname(theory),
 							symbolName: symbolName,
 							symbolTheory: (info) ? info.theoryid : null,
 							symbolDeclaration: (info) ? info["decl-ppstring"] : null,
@@ -228,7 +241,7 @@ export class PvsDefinitionProvider {
 			const importedTheory: PvsResponse = await this.pvsProxy.findTheory(symbolName);
 			if (importedTheory && importedTheory.result) {
 				const fname: string = importedTheory.result;
-				let desc: TheoryDescriptor[] = await utils.listTheoriesInFile(fname);
+				let desc: TheoryDescriptor[] = await fsUtils.listTheoriesInFile(fname);
 				desc = desc.filter(tdesc => {
 					return tdesc.theoryName = symbolName;
 				});
@@ -277,15 +290,14 @@ export class PvsDefinitionProvider {
 			return [ response ];
 		} else {
 			// more than one candidate -- return the definition from the current file as best guess
-			const uriFolder: string = fsUtils.getContextFolder(uri);
-			const uriFileName: string = fsUtils.getFileName(uri);
 			const currentFile: PvsDefinition[] = candidates.filter(elem => {
-				return fsUtils.getContextFolder(elem.symbolDeclarationFile) === uriFolder
-					&& fsUtils.getFileName(elem.symbolDeclarationFile) === uriFileName;
+				return fsUtils.getContextFolder(elem.symbolDeclarationFile) === theory.contextFolder
+							&& fsUtils.getFileName(elem.symbolDeclarationFile) === theory.fileName;
 			});
 			if (currentFile && currentFile.length) {
 				return currentFile.concat(candidates.filter(elem => {
-					elem.file !== uri;
+					return !(fsUtils.getContextFolder(elem.symbolDeclarationFile) === theory.contextFolder
+								&& fsUtils.getFileName(elem.symbolDeclarationFile) === theory.fileName);
 				}));
 			}
 		}

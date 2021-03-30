@@ -42,10 +42,12 @@ import { LanguageClient } from "vscode-languageclient";
 import * as Handlebars from "handlebars";
 import { PvsioEvaluatorCommand, PvsIoMode, PvsTheory, serverEvent, serverRequest } from "../common/serverInterface";
 import * as fsUtils from '../common/fsUtils';
-import { TerminalEvents, VSCodePvsTerminal } from "./vscodePvsTerminal";
+// import { TerminalEvents, VSCodePvsTerminal } from "./vscodePvsTerminal";
 import * as vscodeUtils from '../utils/vscode-utils';
+import { XTermEvent } from '../common/xtermInterface';
 
 import * as builderUtils from '../utils/builderUtils';
+import { VSCodePvsXTerm } from "./vscodePvsXTerm";
 
 const ioFileExt: string = ".io";
 const webFileExt: string = ".web";
@@ -202,7 +204,7 @@ export class VSCodePvsioWeb {
     // theory associated with the pvsioweb session
     protected theory: PvsTheory;
     // terminal associated with the pvsioweb session
-    protected terminal: VSCodePvsTerminal;
+    protected terminal: VSCodePvsXTerm;
 
     // title of the webview
     readonly title: string = "PVSio-Web Prototyping Toolkit";
@@ -266,9 +268,9 @@ export class VSCodePvsioWeb {
      * Connects pvsioweb to a terminal with pvsio
      * @param terminal 
      */
-    setTerminal (terminal: VSCodePvsTerminal): void {
+    setTerminal (terminal: VSCodePvsXTerm): void {
         this.terminal = terminal;
-        this.terminal.on(TerminalEvents.DidCloseTerminal, async () => {
+        this.terminal.on(XTermEvent.DidCloseTerminal, async () => {
             await this.dispose();
         });
     }
@@ -881,21 +883,20 @@ export class VSCodePvsioWeb {
     }
     /**
      * Renders the content of the webview
-     * @param root 
-     * @param opt
      */
     renderView (): void {
         this.refreshView();
     }
     /**
-     * Refreshed the content of the webview
-     * @param opt
+     * Refresh the content of the webview
      */
     refreshView (): void {
         // create webview
         this.createWebView();
         // create webview content
         this.createContent();
+        // set language to pvs
+        vscodeUtils.setEditorLanguage();
     }
     /**
      * Creates the html rendered in the webview

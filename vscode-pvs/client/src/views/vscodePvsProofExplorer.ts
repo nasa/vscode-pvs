@@ -46,15 +46,23 @@ import {
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
-	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, PvsFile, ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, FileDescriptor, ProofExecRewind, ProofExecInterruptProver 
+	ProofEditCutNode, ProofEditAppendNode, ProofEditAppendBranch, ProofEditRenameNode, 
+	ProofEditDidTrimNode, ProofEditDidDeleteNode, ProofEditDidCutNode, ProofEditDidCutTree, 
+	ProofEditDidPasteTree, PvsProofCommand, ProofEditDidRenameNode, ProofEditDidActivateCursor, 
+	ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, 
+	ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, 
+	ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, 
+	FileDescriptor, ProofExecRewind, ProofExecInterruptProver 
 } from '../common/serverInterface';
-import * as utils from '../common/languageUtils';
+import * as commandUtils from '../common/commandUtils';
 import * as fsUtils from '../common/fsUtils';
-import { SequentDescriptor, TreeStructure, NodeType } from '../common/languageUtils';
+import { TreeStructure, NodeType, formatSequent, isGlassboxTactic } from '../common/languageUtils';
+import { findTheoryName, findFormulaName } from '../common/fsUtils';
 import * as vscode from 'vscode';
 import * as vscodeUtils from '../utils/vscode-utils';
 import * as path from 'path';
 import { VSCodePvsVizTree } from './vscodePvsProofTreeViz';
+import Backbone = require('backbone');
 
 // export interface TreeStructure {
 //     id?: string,
@@ -71,10 +79,14 @@ import { VSCodePvsVizTree } from './vscodePvsProofTreeViz';
 // 	height?: number, // greatest distance from any descendant. height = 0 for leaf nodes
 // };
 
+export enum ProofExplorerEvent {
+	didAcquireFocus = "didAcquireFocus"
+};
+
 /**
  * TreeData provider for Proof Explorer
  */
-export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
+export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataProvider<TreeItem> {
 	protected pvsVersionDescriptor: PvsVersionDescriptor;
 
 	protected pendingExecution: boolean = false; // indicates whether step() has been triggered and we need to wait for onStepExecuted before doing anything else
@@ -149,7 +161,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Current proof state
 	 */
-	protected proofState: SequentDescriptor;
+	protected proofState: fsUtils.SequentDescriptor;
 
 	
 	/**
@@ -158,6 +170,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * @param providerView Name of the VSCode view linked to proof explorer
 	 */
 	constructor(client: LanguageClient, providerView: string) {
+		super();
 		this.client = client;
 		this.providerView = providerView;
 
@@ -298,6 +311,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 						// console.error(selected);
 						// console.error(error);
 					});
+					this.trigger(ProofExplorerEvent.didAcquireFocus);
 				}
 			// }
 		}
@@ -333,6 +347,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 					console.error(selected);
 					// console.error(error);
 				});
+
 			}
 		}
 	}
@@ -538,7 +553,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		opt = opt || {};
 		const refresh = () => {
 			if (this.isVisible() || opt?.force) {
-				this._onDidChangeTreeData.fire();
+				this._onDidChangeTreeData.fire(null);
 			}
 			if (this.treeviz?.isVisible()) {
 				this.treeviz?.renderView(this.getTreeStructure(), { cursor: this.ghostNode?.id, ...opt });
@@ -587,12 +602,12 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 	 * Utility function, used to set the initial proof state.
 	 * @param sequent 
 	 */
-	didLoadSequent (sequent: SequentDescriptor): void {
+	didLoadSequent (sequent: fsUtils.SequentDescriptor): void {
 		this.proofState = sequent;
 		if (this.activeNode) {
 			this.activeNode.updateTooltip(sequent);
 		} else {
-			this.root.tooltip = utils.formatSequent(sequent);
+			this.root.tooltip = formatSequent(sequent, { formulasOnly: true });
 		}
 	}
 
@@ -611,7 +626,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 		this.refreshView({ force: true, source: "did-start-proof" });
 		if (this.root && this.root.children && this.root.children.length) {
-			if (utils.isGlassboxTactic(this.root.children[0].name)) {
+			if (isGlassboxTactic(this.root.children[0].name)) {
 				this.queryUnfoldGlassbox();
 			}
 		}
@@ -756,7 +771,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			this.ghostNode = new GhostNode({ parent: this.root, node: this.root });
 			if (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length
 					// when proof is simply (postpone), this is an empty proof, don't append postpone
-					&& !(desc.proofTree.rules.length === 1 && utils.isPostponeCommand(desc.proofTree.rules[0].name))) {
+					&& !(desc.proofTree.rules.length === 1 && commandUtils.isPostponeCommand(desc.proofTree.rules[0].name))) {
 				desc.proofTree.rules.forEach((child: ProofNode) => {
 					createTree(child, this.root);
 				});
@@ -800,11 +815,11 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		const msg: string = (this.root) ? note + `Save proof ${this.root.name}?` : note + "Save proof?";
 		const actionConfirmed: boolean = await this.queryConfirmation(msg);
 		if (actionConfirmed) {
-			// send quit to the terminal
+			// send quit-and-save to the server
 			const action: ProofExecQuitAndSave = { action: "quit-proof-and-save" };
 			this.client.sendRequest(serverEvent.querySaveProofResponse, action);
 		} else {
-			// send quit to the terminal
+			// send quit to the server
 			const action: ProofExecQuit = { action: "quit-proof" };
 			this.client.sendRequest(serverEvent.querySaveProofResponse, action);
 		}
@@ -818,14 +833,22 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
 		if (actionConfirmed) {
 			// send quit to the terminal
-			commands.executeCommand("vscode-pvs.send-proof-command", {
+			this.client.sendRequest(serverRequest.proofCommand, {
 				fileName: this.formula.fileName,
 				fileExtension: this.formula.fileExtension,
 				theoryName: this.formula.theoryName,
 				formulaName: this.formula.formulaName,
 				contextFolder: this.formula.contextFolder,
 				cmd: "save-then-quit"
-			});
+			});			
+			// commands.executeCommand("vscode-pvs.send-proof-command", {
+			// 	fileName: this.formula.fileName,
+			// 	fileExtension: this.formula.fileExtension,
+			// 	theoryName: this.formula.theoryName,
+			// 	formulaName: this.formula.formulaName,
+			// 	contextFolder: this.formula.contextFolder,
+			// 	cmd: "save-then-quit"
+			// });
 		}
 	}
 	async queryConfirmation (msg: string): Promise<boolean> {
@@ -843,8 +866,8 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			// const range: vscode.Range = new vscode.Range(new vscode.Position(0, 0), cursorPosition);
 			const text: string = window.activeTextEditor.document.getText();
 			const desc: PvsFormula = {
-				theoryName: utils.findTheoryName(text, cursorPosition.line),
-				formulaName: utils.findFormulaName(text, cursorPosition.line),
+				theoryName: findTheoryName(text, cursorPosition.line),
+				formulaName: findFormulaName(text, cursorPosition.line),
 				fileName: fsUtils.getFileName(fname),
 				fileExtension: fsUtils.getFileExtension(fname),
 				contextFolder: fsUtils.getContextFolder(fname)
@@ -938,7 +961,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.import-proof", async () => {
 			if (this.formula && this.formula.theoryName && this.formula.formulaName) {
-				const desc: PvsFile = {
+				const desc: FileDescriptor = {
 					contextFolder: this.formula.contextFolder,
 					fileName: this.formula.fileName,
 					fileExtension: ".prf"
@@ -990,7 +1013,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.open-proof", async () => {
 			if (this.formula && this.formula.theoryName && this.formula.formulaName) {
-				const desc: PvsFile = await vscodeUtils.openProofFile();
+				const desc: FileDescriptor = await vscodeUtils.openProofFile();
 				if (desc && desc.fileExtension) {
 					const action: ProofExecOpenProof = {
 						action: "open-proof",
@@ -1003,7 +1026,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.import-prooflite", async () => {
 			if (this.formula && this.formula.theoryName && this.formula.formulaName) {
-				const desc: PvsFile = await vscodeUtils.openProofFile({ defaultExtension: ".prl" });
+				const desc: FileDescriptor = await vscodeUtils.openProofFile({ defaultExtension: ".prl" });
 				if (desc && desc.fileExtension) {
 					const action: ProofExecOpenProof = {
 						action: "open-proof",
@@ -1019,7 +1042,7 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.import-jprf", async () => {
 			if (this.formula && this.formula.theoryName && this.formula.formulaName) {
-				const desc: PvsFile = await vscodeUtils.openProofFile({ defaultExtension: ".jprf" });
+				const desc: FileDescriptor = await vscodeUtils.openProofFile({ defaultExtension: ".jprf" });
 				if (desc && desc.fileExtension) {
 					const action: ProofExecOpenProof = {
 						action: "open-proof",
@@ -1201,12 +1224,18 @@ export class VSCodePvsProofExplorer implements TreeDataProvider<TreeItem> {
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.show-sequent", (resource: ProofItem) => {
-			const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
-			vscodeUtils.previewTextDocument(name, resource.tooltip, { contextFolder: path.join(vscodeUtils.getRootPath(), "pvsbin")});
+			if (resource?.tooltip) {
+				const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
+				const info: string = typeof resource.tooltip === "string" ? resource.tooltip : resource.tooltip.value;
+				vscodeUtils.previewTextDocument(name, info, { contextFolder: path.join(vscodeUtils.getRootPath(), "pvsbin")});
+			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.show-active-sequent", (resource: ProofItem) => {
-			const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
-			vscodeUtils.previewTextDocument(name, resource.tooltip, { contextFolder: path.join(vscodeUtils.getRootPath(), "pvsbin")});
+			if (resource?.tooltip) {
+				const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
+				const info: string = typeof resource.tooltip === "string" ? resource.tooltip : resource.tooltip.value;
+				vscodeUtils.previewTextDocument(name, info, { contextFolder: path.join(vscodeUtils.getRootPath(), "pvsbin")});
+			}
 		}));
 
 		let cmd: string = null;
@@ -1355,7 +1384,7 @@ export class ProofItem extends TreeItem {
 		}
 	}
 
-	proofState: SequentDescriptor = null; // sequents *before* the execution of the node
+	proofState: fsUtils.SequentDescriptor = null; // sequents *before* the execution of the node
 	constructor (desc: { id?: string, type: string, name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
 		super(desc.type, (desc.collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : desc.collapsibleState);
 		this.contextValue = desc.type;
@@ -1366,9 +1395,9 @@ export class ProofItem extends TreeItem {
 		this.tooltip = "Double click sends command to terminal"; // the tooltip will shows the sequent before the execution of the proof command, as soon as the node becomes active
 		this.notVisited();
 	}
-	updateTooltip (sequent?: utils.SequentDescriptor): void {
-		this.tooltip = (sequent) ? utils.formatSequent(sequent).trim()
-			: (this.proofState) ? utils.formatSequent(this.proofState)?.trim()
+	updateTooltip (sequent?: fsUtils.SequentDescriptor): void {
+		this.tooltip = (sequent) ? formatSequent(sequent, { formulasOnly: true }).trim()
+			: (this.proofState) ? formatSequent(this.proofState, { formulasOnly: true })?.trim()
 				: " ";
 	}
 	updateStatus (status: ProofNodeStatus): void {
@@ -1600,7 +1629,7 @@ export class ProofCommand extends ProofItem {
 	constructor (desc: { id?: string, cmd: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
 		super({ id: desc.id, type: "proof-command", name: desc.cmd, branchId: desc.branchId, parent: desc.parent, collapsibleState: desc.collapsibleState });
 		const cmd: string = desc.cmd.trim();
-		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || utils.isUndoCommand(cmd) ? cmd : `(${cmd})`;
+		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || commandUtils.isUndoCommand(cmd) ? cmd : `(${cmd})`;
 		this.notVisited();
 		this.command = {
 			title: this.contextValue,

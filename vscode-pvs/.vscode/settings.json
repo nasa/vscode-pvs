@@ -1,5 +1,6 @@
 {
     "git.ignoreLimitWarning": true,
     "java.dependency.syncWithFolderExplorer": true,
-    "java.dependency.packagePresentation": "flat"
+    "java.dependency.packagePresentation": "flat",
+    "workbench.view.alwaysShowHeaderActions": true
 }

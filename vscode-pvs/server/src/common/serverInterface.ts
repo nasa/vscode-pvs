@@ -37,8 +37,9 @@
  **/
 
 import { PvsResponse } from "./pvs-gui";
-import { ProofMateProfile } from "./commandUtils";
-import { ProofOrigin, SequentDescriptor } from "./languageUtils";
+import { MathObjects, ProofMateProfile } from "./commandUtils";
+import { ProofOrigin } from "./languageUtils";
+import { SequentDescriptor } from './fsUtils';
 
 /**
  * PVSio modes
@@ -141,12 +142,16 @@ export declare interface PvsListDeclarationsRequest {
 // 	error?: ErrorType;
 // }[];
 
-export declare interface HelpDescriptor {
+export declare interface CommandDescriptor {
 	// name: string,
 	description?: string,
 	syntax: string,
 	note?: string,
 	optionals?: { [key:string]: string }
+};
+
+export declare interface CommandsMap  {
+	[key: string]: CommandDescriptor
 };
 
 // export declare interface PvsErrorType {
@@ -235,7 +240,7 @@ export class ProofDescriptor {
 }
 export declare interface PvsListProofStrategies extends PvsResponseType {
 	error: ErrorType,
-	res: HelpDescriptor[],
+	res: CommandDescriptor[],
 	raw: string
 }
 
@@ -383,7 +388,8 @@ export declare interface PvsFormula extends PvsTheory {
 	formulaName: string;
 }
 export declare interface PvsProofCommand extends PvsFormula {
-	cmd: string;
+	cmd?: string, // the command must be surrounded by round parentheses
+	origin?: string // the component that has originated this request
 }
 export declare interface PvsioEvaluatorCommand extends PvsTheory {
 	cmd?: string,
@@ -411,9 +417,17 @@ export declare interface PvsFileDescriptor extends PvsFile {
 export declare interface SearchRequest {
 	searchString: string
 }
+export declare interface FindSymbolDeclarationRequest {
+	theory: PvsTheory,
+	symbolName: string
+}
+export declare interface FindSymbolDeclarationResponse {
+	req: FindSymbolDeclarationRequest,
+	ans: PvsDefinition[]
+}
 export interface SearchResult extends PvsFile {
 	line: number
-};
+}
 export declare interface SearchResponse {
 	req: SearchRequest,
 	ans: SearchResult[]
@@ -449,6 +463,7 @@ export const serverRequest = {
 	quitProof: "pvs.quit-proof",
 	quitEvaluator: "pvs.quit-evaluator",
 	clearTheories: "pvs.clear-theories",
+	findSymbolDeclaration: "pvs.find-symbol-declaration",
 
 	viewPreludeFile: "pvs.view-prelude-file",
 
@@ -495,6 +510,7 @@ export const serverEvent = {
 	quitEvaluatorResponse: "pvs.response.quit-evaluator",
 	quitProofResponse: "pvs.response.quit-proof",
 	searchResponse: "pvs.response.search",
+	findSymbolDeclarationResponse: "pvs.response.find-symbol-declaration",
 
 	viewPreludeFileResponse: "pvs.response.view-prelude-file",
 
@@ -547,6 +563,23 @@ export const serverEvent = {
 
 	profilerData: "pvs.event.profiler-data"
 };
+
+export interface EvaluatorCommandResponse {
+	res: string | "bye!",
+	req: PvsioEvaluatorCommand,
+	state: string
+}
+export interface ProofCommandResponse {
+	res: SequentDescriptor | "Q.E.D." | "bye!",
+	req: PvsProofCommand
+}
+export interface ProveFormulaResponse extends ProofCommandResponse {
+	mathObjects?: MathObjects
+}
+
+export interface ProveFormulaRequest extends PvsFormula {
+	proofFile?: FileDescriptor
+}
 
 export declare type ServerMode = "lisp" | "in-checker" | "pvsio";
 

@@ -60,7 +60,7 @@ export class PvsRenameProvider {
                 let range: Range = utils.getWordRange(desc.txt, desc.position);
 
                 // check if the user is trying to rename a theory
-                const theories: TheoryDescriptor[] = await utils.listTheoriesInFile(fname, { content: desc.txt });
+                const theories: TheoryDescriptor[] = await fsUtils.listTheoriesInFile(fname, { content: desc.txt });
                 if (theories && theories.length) {
                     const candidates: TheoryDescriptor[] = theories.filter((tdesc: TheoryDescriptor) => {
                         return tdesc.position.line === desc.position.line + 1; // line in rename parameters start from 0
@@ -94,7 +94,7 @@ export class PvsRenameProvider {
                                 // change theory name in the jprf file, and all shasum for all proofs
                                 const newShasum: string = fsUtils.shasum(newContent);
                                 const theory: PvsTheory = { fileName, fileExtension, contextFolder, theoryName };
-                                await utils.renameTheoryInProofFile(theory, { newTheoryName, newShasum });
+                                await fsUtils.renameTheoryInProofFile(theory, { newTheoryName, newShasum });
 
                                 // if the theory name was identical to the file name, then change also the file name
                                 if (theoryName === fileName && fileExtension === ".pvs") {
@@ -126,7 +126,7 @@ export class PvsRenameProvider {
 
                 // check if the user is trying to rename a formula
                 // const oldShasum: string = fsUtils.shasum(desc.txt);
-                const theorems: FormulaDescriptor[] = await utils.listTheoremsInFile(fname, { content: desc.txt });
+                const theorems: FormulaDescriptor[] = await fsUtils.listTheoremsInFile(fname, { content: desc.txt });
                 if (theorems && theorems.length) {
                     const candidates: FormulaDescriptor[] = theorems.filter((fdesc: FormulaDescriptor) => {
                         return fdesc.position.line === desc.position.line + 1; // line in rename parameters start from 0
@@ -155,7 +155,7 @@ export class PvsRenameProvider {
 
                                 // change formula name in the jprf file, and all shasum for all proofs
                                 const newShasum: string = fsUtils.shasum(newContent);
-                                const theoryName: string = utils.findTheoryName(desc.txt, line);
+                                const theoryName: string = fsUtils.findTheoryName(desc.txt, line);
                                 const formula: PvsFormula = {
                                     fileName: fsUtils.getFileName(fname),
                                     fileExtension: fsUtils.getFileExtension(fname),
@@ -163,7 +163,7 @@ export class PvsRenameProvider {
                                     theoryName,
                                     formulaName
                                 };
-                                await utils.renameFormulaInProofFile(formula, { newFormulaName, newShasum });
+                                await fsUtils.renameFormulaInProofFile(formula, { newFormulaName, newShasum });
                                 return { changes };
                             }
                         }

@@ -37,7 +37,7 @@
 all: install
 	npm run compile
 	make core
-	make pvs-parser-js
+	make xterm-pvs
 
 loc-server:
 	find . -name '*.ts' ! -name '*.d.ts' -path '*server/src/*' | xargs wc -l
@@ -97,6 +97,9 @@ test-all: test
 core:
 	-mkdir server/out && mkdir server/out/core
 	cd server/src/core/ && make
+
+xterm-pvs:
+	cd extra/xterm-pvs && make
 
 pvs-parser-js:
 	cd server/src/core/ && make pvs-parser-js

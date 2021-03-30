@@ -41,7 +41,8 @@ import { spawn, ChildProcess, execSync } from 'child_process';
 import { PvsVersionDescriptor, SimpleConnection, PvsTheory, EvalExpressionRequest, PvsioEvaluatorCommand, PvsIoMode } from './common/serverInterface'
 import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
-import * as utils from './common/languageUtils';
+import * as languageUtils from './common/languageUtils';
+import * as commandUtils from './common/commandUtils';
 import { PvsResponse } from './common/pvs-gui';
 
 export const pvsioResultRegExp: RegExp = /(\s*==>)?([\w\W\s]+)/g;
@@ -216,11 +217,11 @@ class PvsIoProcess {
 					this.data += data;
 					this.checkError(data);
 
-					const readyPrompt: boolean = data.trim().endsWith(utils.pvsioPrompt);
+					const readyPrompt: boolean = data.trim().endsWith(languageUtils.pvsioPrompt);
 					if (this.cb && typeof this.cb === "function") {
 						// the prompt will be added by CLI
 						if (readyPrompt) {
-							this.data = this.data.replace(utils.pvsioPrompt, "").trim();
+							this.data = this.data.replace(languageUtils.pvsioPrompt, "").trim();
 							if (this.data.includes("+----") && !opt.showBanner) {
 								this.cb("", readyPrompt);								
 							} else {
@@ -393,7 +394,7 @@ export class PvsIoProxy {
 	 */
 	async startEvaluator (desc: PvsTheory, opt?: { pvsLibraryPath?: string }): Promise<PvsResponse> {
 		const pvsioProcess: PvsIoProcess = new PvsIoProcess({ pvsPath: this.pvsPath }, opt, this.connection);		
-		const processId: string = utils.desc2id(desc);
+		const processId: string = languageUtils.desc2id(desc);
 		const success: boolean = await pvsioProcess.activate({
 			fileName: desc.fileName, 
 			fileExtension: desc.fileExtension,
@@ -425,7 +426,7 @@ export class PvsIoProxy {
 	 * Terminates the pvsio session for the given theory
 	 */
 	async quitEvaluator (desc: PvsTheory): Promise<void> {
-		const processId: string = utils.desc2id(desc);
+		const processId: string = languageUtils.desc2id(desc);
 		const pvsio: PvsIoProcess = this.processRegistry ? this.processRegistry[processId] : null;
 		await pvsio?.kill();
 		this.lastState = this.initialState;
@@ -438,7 +439,7 @@ export class PvsIoProxy {
 		cb?: (data: string, state: string) => void
 	}): Promise<PvsResponse> {
 		opt = opt || {};
-		const processId: string = utils.desc2id(desc);
+		const processId: string = languageUtils.desc2id(desc);
 		const res: PvsResponse = {
 			jsonrpc: "2.0",
 			id: processId,
@@ -447,45 +448,58 @@ export class PvsIoProxy {
 		const pvsio: PvsIoProcess = this.processRegistry ? this.processRegistry[processId] : null;
 		if (pvsio && desc && desc.contextFolder && desc.fileName && desc.fileExtension) {
 			if (desc.cmd) {
-				let cmd: string = desc.cmd;
-				// console.log(cmd);
-				// check if this is a quit command
-				if (utils.isQuitCommand(cmd)) {
-					await pvsio.kill();
-					return res;
-				}
-				// initialize state machine if field desc.initialState is provided
-				if (desc.initialState) {
-					this.initialState = desc.initialState;
-					this.lastState = this.initialState;
-				}
-				// in state-machine mode, replay the last state as function parameter
-				if (desc.mode === "state-machine" && this.lastState && this.initialState) {
-					// remove semicolor at the end
-					cmd = cmd.substring(0, cmd.length - 1 );
-					// replay last state
-					cmd = `LET st = ${this.lastState} IN ${cmd}(st);`;
-				}
-				// evaluate the command
-				res.result = await pvsio.sendText(cmd, (state: string) => {
-					// clean up output, there's a ==> symbol at the start
-					const match: RegExpMatchArray = new RegExp(pvsioResultRegExp).exec(state);
-					if (match && match.length > 2) {
-						state = match[2]?.trim(); // remove all unnencessary spaces
-					}
-					if (!pvsio.getErrorFlag()) {
-						// set the initial state
-						this.initialState = this.initialState || state;
-						// update last state
-						this.lastState = state;
-					}
-					if (opt?.cb) {
-						const data: string = desc.showCommandInTerminal ?
-							`${cmd}\n==>\n${state}` 
-								: `==>\n${state}`
-						opt.cb(data, state);
-					}	
+				const cmdSeq: string[] = desc.cmd?.split(";").filter(cmd => {
+					return cmd.trim() !== "";
+				}).map(cmd => {
+					return cmd + ";";
 				});
+				let data: string = "";
+				for (let i = 0; i < cmdSeq.length; i++) {
+					let cmd: string = cmdSeq[i];
+					// console.log(cmd);
+					// check if this is a quit command
+					if (commandUtils.isQuitCommand(cmd)) {
+						await pvsio.kill();
+						if (opt?.cb && i === cmdSeq.length - 1) {
+							opt.cb("bye!", null);
+						}
+						return res;
+					}
+					// initialize state machine if field desc.initialState is provided
+					if (desc.initialState) {
+						this.initialState = desc.initialState;
+						this.lastState = this.initialState;
+					}
+					// in state-machine mode, replay the last state as function parameter
+					if (desc.mode === "state-machine" && this.lastState && this.initialState) {
+						// remove semicolor at the end
+						cmd = cmd.substring(0, cmd.length - 1 );
+						// replay last state
+						cmd = `LET st = ${this.lastState} IN ${cmd}(st);`;
+					}
+					// evaluate the command
+					res.result = res.result || "";
+					res.result += "\n" + await pvsio.sendText(cmd, (state: string) => {
+						// clean up output, there's a ==> symbol at the start
+						const match: RegExpMatchArray = new RegExp(pvsioResultRegExp).exec(state);
+						if (match && match.length > 2) {
+							state = match[2]?.trim(); // remove all unnencessary spaces
+						}
+						if (!pvsio.getErrorFlag()) {
+							// set the initial state
+							this.initialState = this.initialState || state;
+							// update last state
+							this.lastState = state;
+						}
+						data = data !== "" ? data + "\n" : data;
+						data += desc.showCommandInTerminal ? `${cmd}\n==>\n${state}` 
+							: `==>\n${state}`
+						// execute callback, if any, on the last command
+						if (opt?.cb && i === cmdSeq.length - 1) {
+							opt.cb(data, state);
+						}	
+					});
+				}
 			}
 			return res;
 		}

@@ -32,7 +32,7 @@
 		"formalized mathematics"
 	],
 	"engines": {
-		"vscode": "^1.32.3"
+		"vscode": "^1.49.0"
 	},
 	"activationEvents": [
 		"onStartupFinished"
@@ -992,33 +992,33 @@
 			"editor/title": [
 				{
 					"command": "vscode-pvs.search-nasalib",
-					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"when": "editorLangId == pvs",
 					"group": "navigation@0"
 				},
 				{
 					"command": "vscode-pvs.x-show-proof",
-					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"when": "editorLangId == pvs",
 					"group": "navigation@1"
 				},
 				{
 					"command": "vscode-pvs.prove-formula-at-cursor-position",
 					"when": "false",
-					"was": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"was": "editorLangId == pvs",
 					"group": "navigation@2"
 				},
 				{
 					"command": "vscode-pvs.pvsio-web",
-					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"when": "editorLangId == pvs",
 					"group": "navigation@3"
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
-					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"when": "editorLangId == pvs",
 					"group": "navigation@4"
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"when": "editorLangId == pvs",
 					"group": "navigation@5"
 				},
 				{
@@ -1233,12 +1233,12 @@
 				},
 				{
 					"command": "proof-mate.activate-basic-profile",
-					"when": "view == proof-mate-view",
+					"when": "false && view == proof-mate-view",
 					"group": "profile-0"
 				},
 				{
 					"command": "proof-mate.activate-advanced-profile",
-					"when": "view == proof-mate-view",
+					"when": "false && view == proof-mate-view",
 					"group": "profile-1"
 				},
 				{
@@ -1560,7 +1560,7 @@
 		"@types/chai": "^4.2.15",
 		"@types/mocha": "^8.2.0",
 		"@types/node": "^14.14.22",
-		"@types/vscode": "^1.32.3",
+		"@types/vscode": "^1.49.0",
 		"@typescript-eslint/eslint-plugin": "^2.25.0",
 		"@typescript-eslint/parser": "^2.25.0",
 		"assert": "^2.0.0",

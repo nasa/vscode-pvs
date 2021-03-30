@@ -203,7 +203,7 @@ export class PvsProcess {
 				
 				this.pvsProcess.stdout.on("data", async (data: string) => {
 					if (addressInUse) {
-						return; // the promise has already been resolved -- don't resolve the promise again, otherwise the caller will erroneously see another resolve
+						return; // the promise has already been resolved at this point -- don't resolve the promise again, otherwise the caller will erroneously see another resolve
 					}
 
 					this.ready = false;
@@ -371,7 +371,7 @@ export class PvsProcess {
 	 * Sends the quit command (followed by a confirmation) to the Emacs REPL of PVS
 	 */
 	quit (): void {
-		this.pvsProcess.stdin.write("exit; Y");
+		this.pvsProcess?.stdin?.write("exit; Y");
 	}
 	/**
 	 * returns the current output of the process

@@ -49,9 +49,10 @@ import { PvsProxy } from './pvsProxy';
 import { PvsResponse } from './common/pvs-gui';
 
 import * as WebSocket from 'ws';
+import { colorText, PvsColor } from './common/colorUtils';
 
 const usage: string = `
-${utils.colorText("PVS Prover Command Line Interface (PVS-CLI)", utils.textColor.blue)}
+${colorText("PVS Prover Command Line Interface (PVS-CLI)", PvsColor.blue)}
 Usage: node pvsCli '{ "pvsPath": "<path-to-pvs-installation>", "contextFolder": "<context-folder>" }'
 `;
 
@@ -166,7 +167,7 @@ class PvsCli {
 
 	protected wsClient: WebSocket;
 
-	protected proverPrompt: string = " >> ";
+	protected proverPrompt: string = languageUtils.proverPrompt + " ";
 	protected evaluatorPrompt: string = languageUtils.pvsioPrompt + " ";
 
 	protected lines: string = "";
@@ -206,17 +207,25 @@ class PvsCli {
 		let semicolorEntered: boolean = false;
 		process.stdin.on("keypress", (input: string, key: readline.Key) => {
 			try {
+				if (key?.meta && key?.name === "up") {
+					// move cursor up one line
+					readline.moveCursor(process.stdin, 0, -1);
+				}
+				if (key?.meta && key?.name === "down") {
+					// move cursor down one line
+					readline.moveCursor(process.stdin, 0, 1);
+				}
 				if (key?.sequence.trim().endsWith(";")) {
 					semicolorEntered = true;
 				}
 				if (key?.sequence.includes("\r")) {
 					this.rl.setPrompt("");
-					if (utils.balancedPar(this.lines) && semicolorEntered) {
+					if (commandUtils.checkPar(this.lines)?.success && semicolorEntered) {
 						const cmd: string = this.lines;
 						semicolorEntered = false;
 						this.lines = "";
 
-						if (utils.isQuitCommand(cmd)) {
+						if (commandUtils.isQuitCommand(cmd)) {
 							this.isActive = false;
 							this.wsClient.send(JSON.stringify({
 								type: serverRequest.evaluatorCommand,
@@ -237,7 +246,7 @@ class PvsCli {
 							return;
 						} else {
 							if (this.isActive) {
-								this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
+								this.rl.setPrompt(colorText(this.evaluatorPrompt, PvsColor.blue));
 								this.wsClient.send(JSON.stringify({
 									type: serverRequest.evaluatorCommand,
 									cmd,
@@ -282,11 +291,11 @@ class PvsCli {
 			try {
 				if (key && key.sequence.includes("\r")) {
 					this.rl.setPrompt("");
-					if (utils.balancedPar(this.lines)) {
+					if (commandUtils.checkPar(this.lines)?.success) {
 						const cmd: string = this.lines;
 						this.lines = "";
 
-						if (utils.isSaveThenQuitCommand(cmd)) {
+						if (commandUtils.isSaveThenQuitCommand(cmd)) {
 							console.log();
 							console.log("Proof saved successfully!");
 							console.log();
@@ -305,7 +314,7 @@ class PvsCli {
 							this.wsClient.close();
 							return;
 						}
-						if (utils.isQuitCommand(cmd)) {
+						if (commandUtils.isQuitCommand(cmd)) {
 							console.log();
 							console.log("Prover session terminated.");
 							console.log();
@@ -325,11 +334,11 @@ class PvsCli {
 							});
 							return;
 						}
-						if (utils.isQEDCommand(cmd)) {
+						if (commandUtils.isQEDCommand(cmd)) {
 							readline.moveCursor(process.stdin, 0, -1);
 							readline.clearScreenDown(process.stdin);
 							console.log();
-							console.log(utils.colorText("Q.E.D.", utils.textColor.green));
+							console.log(colorText("Q.E.D.", PvsColor.green));
 							console.log();
 							this.isActive = false;
 							this.rl.question("Press Enter to close the terminal.", () => {
@@ -358,12 +367,12 @@ class PvsCli {
 							console.log(commandUtils.printHelp(cmd, { useColors: true }));
 							console.log();
 							// show prompt
-							this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+							this.rl.setPrompt(colorText(this.proverPrompt, PvsColor.blue));
 							this.rl.prompt();						
 							return;
 						}
 						if (this.isActive) {
-							this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+							this.rl.setPrompt(colorText(this.proverPrompt, PvsColor.blue));
 							this.wsClient.send(JSON.stringify({
 								type: serverRequest.proofCommand, 
 								cmd,
@@ -414,12 +423,12 @@ class PvsCli {
 								if (evt.banner) {
 									console.log(evt.banner + "\n");
 								}
-								this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
+								this.rl.setPrompt(colorText(this.evaluatorPrompt, PvsColor.blue));
 								this.rl.prompt();
 								break;
 							}
 							case "pvs.event.prover-ready": {
-								this.rl.setPrompt(utils.colorText(this.proverPrompt, utils.textColor.blue));
+								this.rl.setPrompt(colorText(this.proverPrompt, PvsColor.blue));
 								this.rl.prompt();
 								break;
 							}
@@ -437,16 +446,16 @@ class PvsCli {
 								// readline.moveCursor(process.stdin, 0, -1);
 								// readline.clearScreenDown(process.stdin);
 								// show prompt
-								this.rl.setPrompt(utils.colorText(this.evaluatorPrompt, utils.textColor.blue));
+								this.rl.setPrompt(colorText(this.evaluatorPrompt, PvsColor.blue));
 								this.rl.prompt();
 								// readline.clearLine(process.stdin, 1); // clear any previous input
 								break;
 							}
 							case "pvs.event.proof-state": {
 								if (this.isActive) {
-									const result: utils.SequentDescriptor = evt.data;
+									const result: fsUtils.SequentDescriptor = evt.data;
 									if (result) {
-										const showHidden: boolean = utils.isShowHiddenCommand(evt.cmd);
+										const showHidden: boolean = commandUtils.isShowHiddenCommand(evt.cmd);
 										if (showHidden) {
 											console.log(utils.formatHiddenFormulas(result, { useColors: true, showAction: true })); // show proof state
 										} else {
@@ -475,7 +484,7 @@ class PvsCli {
 								readline.moveCursor(process.stdin, 0, -1);
 								readline.clearScreenDown(process.stdin);
 								console.log();
-								console.log(utils.colorText("Q.E.D.", utils.textColor.green));
+								console.log(colorText("Q.E.D.", PvsColor.green));
 								console.log();
 								this.isActive = false;
 								this.rl.question("Press Enter to close the terminal.", () => {
@@ -523,7 +532,7 @@ class PvsCli {
 							// case serverEvent.typecheckFileResponse: {
 							// 	const pvsResponse: PvsResponse = data.response;
 							// 	if (pvsResponse.error) {
-							// 		console.log(`${utils.colorText("Typecheck error", utils.textColor.red)}`);
+							// 		console.log(`${colorText("Typecheck error", PvsColor.red)}`);
 							// 		console.dir(data.response, { colors: true, depth: null });
 							// 	} else {
 							// 		console.log(`[pvs-cli] Typechecking completed successfully!`);
@@ -647,12 +656,12 @@ if (process.argv.length > 2) {
 		if (success) {
 			switch (args.type) {
 				case cliSessionType.proveFormula: {
-					console.log(`\nStarting new prover session for ${utils.colorText(args.theoryName + "@" + args.formulaName, utils.textColor.blue)}\n`);
+					console.log(`\nStarting new prover session for ${colorText(args.theoryName + "@" + args.formulaName, PvsColor.blue)}\n`);
 					await pvsCli.startProverCli();
 					break;
 				}
 				case cliSessionType.pvsioEvaluator: {
-					console.log(`\nStarting new PVSio evaluator session for theory ${utils.colorText(args.theoryName, utils.textColor.blue)}\n`);
+					console.log(`\nStarting new PVSio evaluator session for theory ${colorText(args.theoryName, PvsColor.blue)}\n`);
 					await pvsCli.startEvaluatorCli();
 					break;
 				}

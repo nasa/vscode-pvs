@@ -1,0 +1,30 @@
+{
+	"compilerOptions": {
+		"target": "es6",
+		"module": "commonjs", // webpack required commonjs but ultimately creates a UMD bundle
+		"moduleResolution": "node",
+		"removeComments": true,
+		"sourceMap": false,
+		"outDir": "dist",
+		"rootDir": "src",
+		"lib": [ "es6", "dom" ],
+		"baseUrl": ".",
+		"paths": {
+			"*": [ "node_modules/*", "node_modules/@types/*" ]
+		},
+		"types": [
+			"handlebars", "jquery", "node"
+		],
+		"typeRoots": [
+            "node_modules/@types"
+        ],
+        "diagnostics": true,
+		"allowJs": true
+	},
+	"include": [
+		"./src/**/*",
+	],
+	"exclude": [
+		"node_modules"
+	]
+}

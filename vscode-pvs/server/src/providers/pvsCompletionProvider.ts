@@ -128,7 +128,7 @@ export class PvsCompletionProvider {
 	 * @param position Current position of the cursor
 	 * @param token Cancellation token
 	 */
-	async provideCompletionItems(document: { uri: string, txt: string }, position: Position): Promise<CompletionItem[]> {
+	async provideCompletionItems(document: { fname: string, txt: string }, position: Position): Promise<CompletionItem[]> {
 		if (document && document.txt) {
 			const lastCharacter: string = fsUtils.getText(document.txt, {
 				start: { line: position.line, character: (position.character > 0) ? position.character - 1 : 0 },
@@ -246,7 +246,7 @@ export class PvsCompletionProvider {
 						if (!currentLine.endsWith(":=")) {
 							// resolve accessor
 							const symbolName: string = match[1];
-							let declarations: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.uri, symbolName, position);
+							let declarations: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.fname, symbolName, position);
 							if (declarations && declarations.length === 1 && declarations[0].symbolDeclaration) {
 								let decl: PvsDefinition = declarations[0];
 								let tmp: RegExpExecArray = utils.RECORD.declaration.exec(decl.symbolDeclaration);
@@ -256,7 +256,7 @@ export class PvsCompletionProvider {
 								// const isUninterpreted: boolean = !tmp[3];
 								if (!isTypeDeclaration) {
 									const typeName: string = tmp[2];
-									let definitions: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.uri, typeName, position);
+									let definitions: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.fname, typeName, position);
 									decl = (definitions && definitions.length === 1) ? definitions[0] : null;
 								}
 								if (decl) {
