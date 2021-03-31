@@ -11,7 +11,7 @@ The environment redefines the way developers interact with PVS, and better align
 <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png" width="800">
 
 ## Latest version
-[vscode-pvs-1.0.39](releases/vscode-pvs-1.0.39.vsix)
+[vscode-pvs-1.0.41](releases/vscode-pvs-1.0.41.vsix)
 
 
 ## Documentation
@@ -24,7 +24,7 @@ The environment redefines the way developers interact with PVS, and better align
 ## Requirements
 - Linux or MacOS operating system
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
-- Visual Studio Code (v1.49.0 or greater) https://code.visualstudio.com
+- Visual Studio Code (v1.54.0 or greater) https://code.visualstudio.com
 
 ## Installation instructions
 VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitHub.
