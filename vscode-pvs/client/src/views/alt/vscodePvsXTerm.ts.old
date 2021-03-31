@@ -1,0 +1,486 @@
+
+/**
+ * @module vscodePvsXTerm
+ * @author Paolo Masci
+ * @date 2021.03.10
+ * @copyright 
+ * Copyright 2019 United States Government as represented by the Administrator 
+ * of the National Aeronautics and Space Administration. All Rights Reserved.
+ *
+ * Disclaimers
+ *
+ * No Warranty: THE SUBJECT SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY
+ * WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
+ * INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE SUBJECT SOFTWARE
+ * WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
+ * INFRINGEMENT, ANY WARRANTY THAT THE SUBJECT SOFTWARE WILL BE ERROR
+ * FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM TO
+ * THE SUBJECT SOFTWARE. THIS AGREEMENT DOES NOT, IN ANY MANNER,
+ * CONSTITUTE AN ENDORSEMENT BY GOVERNMENT AGENCY OR ANY PRIOR RECIPIENT
+ * OF ANY RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY
+ * OTHER APPLICATIONS RESULTING FROM USE OF THE SUBJECT SOFTWARE.
+ * FURTHER, GOVERNMENT AGENCY DISCLAIMS ALL WARRANTIES AND LIABILITIES
+ * REGARDING THIRD-PARTY SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE,
+ * AND DISTRIBUTES IT "AS IS."
+ *
+ * Waiver and Indemnity: RECIPIENT AGREES TO WAIVE ANY AND ALL CLAIMS
+ * AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
+ * SUBCONTRACTORS, AS WELL AS ANY PRIOR RECIPIENT.  IF RECIPIENT'S USE OF
+ * THE SUBJECT SOFTWARE RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES,
+ * EXPENSES OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM
+ * PRODUCTS BASED ON, OR RESULTING FROM, RECIPIENT'S USE OF THE SUBJECT
+ * SOFTWARE, RECIPIENT SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED
+ * STATES GOVERNMENT, ITS CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY
+ * PRIOR RECIPIENT, TO THE EXTENT PERMITTED BY LAW.  RECIPIENT'S SOLE
+ * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
+ * TERMINATION OF THIS AGREEMENT.
+ **/
+
+import {
+    Uri, WebviewPanel, ExtensionContext, Terminal, TerminalOptions, 
+    ExtensionTerminalOptions, TerminalExitStatus, window, ViewColumn
+} from 'vscode';
+import * as path from 'path';
+import * as Handlebars from "handlebars";
+import Backbone = require('backbone');
+import * as utils from '../common/languageUtils';
+import { LanguageClient } from 'vscode-languageclient';
+import { PvsFormula, PvsioEvaluatorCommand, PvsTheory, serverEvent, serverRequest } from '../common/serverInterface';
+import { PvsResponse } from '../common/pvs-gui';
+import * as vscodeUtils from '../utils/vscode-utils';
+import * as fsUtils from '../common/fsUtils';
+
+export interface XTermMessage {
+    command: string,
+    data?: any
+};
+
+enum xtermCommands {
+    writeln = "writeln",
+    write = "write",
+    search = "search"
+};
+
+export enum XTermEvents {
+    sendText = "sendText",
+    didMoveCursor = "didMoveCursor",
+    didFindMatchingBracket = "didFindMatchingBracket"
+};
+
+const htmlTemplate: string = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    {{#if style}}
+    <style type="text/css">{{style}}</style>
+    {{/if}}
+    {{#each css}}
+    <link rel="stylesheet" href="{{this}}">
+    {{/each}}
+    {{#each js}}
+    <script src="{{this}}"></script>
+    {{/each}}
+</head>
+<body>
+    <div id="terminal"></div>
+    <script>
+    const vscode = acquireVsCodeApi();
+    const xterm = new Terminal();
+
+    xterm.loadAddon(new ParMatchAddon());
+
+    // resize terminal
+    let cols = 80;
+    let rows = 60;
+    const maxRows = 1024;
+    xterm.resize(cols, rows);
+
+    // set a good font family
+    xterm.setOption("fontFamily", "SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace");
+    xterm.setOption("fontSize", "12");
+
+    xterm.setOption("altClickMovesCursor", true); // this is not working??
+    xterm.setOption("macOptionIsMeta", true);
+
+    // create the terminal panel
+    xterm.open(document.getElementById('terminal'));
+
+    // get the focus
+    xterm.focus();
+
+    function mouseUp(n) { xterm.write("\x9B" + n + "A"); }
+    function mouseDown(n) { xterm.write("\x9B" + n + "B"); }
+
+    function findMatchingOpenBracketIndex (text) {
+        let par = 0;
+        let quotes = 0;
+        content = content.trim();
+        for (let i = 0; i < content.length; i++) {
+            switch (content[i]) {
+                case "(": {
+                    if (quotes % 2 === 0) {
+                        par++;
+                    }
+                    if (par === 1) {
+                        return i;
+                    }
+                    break;
+                }
+                case ")": {
+                    if (quotes % 2 === 0) {
+                        par--;
+                    }
+                    break;
+                }
+            }
+        }
+        return -1;
+    }
+
+    function getPos (index, text) {
+        if (text && index) {
+            const crop = text.substring(0,index);
+            const lines = crop.split("\\n");
+            const x = lines.length;
+            const y = lines[lines.length - 1].length;
+            return { x, y };
+        }
+        return null;
+    }
+    console.log(xterm);
+
+    let content = "";
+
+    xterm.onKey((e) => {
+        const ev = e.domEvent; // KeyboardEvent
+        const key = e.key; // string
+        const modKey = ev.altKey || ev.ctrlKey || ev.metaKey;
+        const arrowKey = ev.keyCode >= 37 && ev.keyCode <= 40;
+    
+        if (!modKey) {
+            if (ev.keyCode === 13) {// enter
+                xterm.writeln("");
+                // resize terminal if necessary
+                if (xterm._core.buffer.y === (rows - 1) && rows < maxRows) {
+                    // console.log("resizing terminal", rows);
+                    rows += rows;
+                    xterm.resize(rows, cols);
+                }
+                if (content.endsWith(";")) {
+                    vscode.postMessage({
+                        command: "${XTermEvents.sendText}",
+                        data: content
+                    });
+                    content = "";
+                }
+            } else if (ev.keyCode === 8) { // backspace
+                xterm.write('\b \b');
+                content = content && content.length > 0 ? 
+                    content.substr(0, content.length - 1) 
+                        : content;
+            } else if (ev.keyCode >= 37 || ev.keyCode <= 40) {
+                // arrow key
+                console.log("scrolling to line", xterm._core.buffer.y);
+                xterm.scrollLines(xterm._core.buffer.y);
+            } else if (key === ")") {
+                // find matching bracket
+                const index = findMatchingOpenBracketIndex(content);
+                const pos = getPos(index, content);
+                if (pos) {
+                    console.log("match", pos);
+                    
+                    xterm.selectAll();
+                    // xterm.select(pos.x, pos.y, 1);
+                    vscode.postMessage({
+                        command: "${XTermEvents.didFindMatchingBracket}",
+                        data: pos
+                    });
+                }
+            }
+            xterm.write(key);
+            if (!arrowKey) {
+                content += key;
+            }
+            // vscode.postMessage({
+            //     command: "${XTermEvents.didMoveCursor}",
+            //     data: { x: xterm._core.buffer.x, y: xterm._core.buffer.y }
+            // });
+        }
+    });
+
+    // Handlers for messages exchanged between vscode and pvsioweb
+    window.addEventListener('message', async (event) => {
+        const message = event.data; // JSON data sent by vscode-pvs
+        switch (message.command) {
+            {{#each xtermCommands}}
+            case "{{this}}": {
+                console.log("[xterm] {{this}} data", message.data);
+                xterm["{{this}}"](message.data);
+                break;
+            }
+            {{/each}}
+            default: {
+                break;
+            }
+        }
+    })
+    </script>
+</body>
+</html>`;
+
+export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
+    protected client: LanguageClient;
+    protected context: ExtensionContext;
+    protected prompt: string = "";
+    protected theory: PvsTheory;
+    protected panel: WebviewPanel;
+
+    name: string;
+    processId: Thenable<number>;
+    creationOptions: Readonly<TerminalOptions | ExtensionTerminalOptions>;
+    exitStatus: TerminalExitStatus;
+
+    /**
+     * Constructor
+     */
+    constructor (client: LanguageClient) {
+        super();
+        this.client = client;
+    }
+
+    /**
+     * Start evaluator
+     */
+    async startEvaluator (resource: string | { path: string } | { contextValue: string }): Promise<boolean> {
+        if (window.activeTextEditor && window.activeTextEditor.document) {
+            // if the file is currently open in the editor, save file first
+            await window.activeTextEditor.document.save();
+            if (!resource) {
+                resource = { path: window.activeTextEditor.document.fileName };
+            }
+        }
+        if (resource) {
+            const desc: PvsFormula = vscodeUtils.resource2desc(resource);
+            if (desc) {
+                if (!desc.theoryName) {
+                    // const document: vscode.TextDocument = window.activeTextEditor.document;
+                    const info: { content: string, line: number } = (resource && resource["path"]) ? { content: await fsUtils.readFile(resource["path"]), line: 0 }
+                        : { content: window.activeTextEditor.document.getText(), line: window.activeTextEditor.selection.active.line };
+                    const theoryName: string = utils.findTheoryName(info.content, info.line);
+                    desc.theoryName = (desc.fileExtension === ".tccs") ? 
+                        theoryName.substr(0, theoryName.length - 5) // the theory name in the .tccs file ends with _TCCS
+                            : theoryName;
+                }
+                if (desc.theoryName) {
+                    desc.fileExtension = ".pvs"; // only pvs files can be evaluated
+                    const success: boolean = await this.startEvaluatorSession(desc);
+                    return success;
+                } else {
+                    vscodeUtils.showErrorMessage(`Error while trying to invoke PVSio (could not identify theory name, please check that the file typechecks correctly)`);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Error: pvsio-evaluator invoked over an unknown resource", resource);
+            }
+        } else {
+            console.error("[vscode-events-dispatcher] Error: pvsio-evaluator invoked with null resource", resource);
+        }
+        return false;
+    }
+
+    /**
+     * Internal function, sends a startEvaluator message to pvs-server
+     */
+    protected async startEvaluatorSession (theory: PvsTheory): Promise<boolean> {
+        this.theory = theory;
+        this.setPrompt("\r\n\n" + utils.pvsioPrompt + " ");
+        this.reveal();
+        // send start-pvsio request to pvs-server
+        this.client.sendRequest(serverRequest.startEvaluator, theory);
+        const success: boolean = await new Promise((resolve, reject) => {
+            this.client.onRequest(serverEvent.startEvaluatorResponse, (desc: { response: PvsResponse, args: PvsTheory }) => {
+                this.log(`\r\nStarting new PVSio evaluator session for theory ${utils.colorText(desc.args.theoryName, utils.textColor.blue)}\r\n`);
+                const banner: string = utils.colorText(utils.pvsioBanner, utils.textColor.green);
+                this.log(banner);
+                this.showPrompt();
+                resolve(true);
+            });
+        });
+        return success;
+    }
+
+    /**
+     * Sends a command to pvs-server
+     */
+    sendText(text: string, addNewLine?: boolean): void {
+        const command: PvsioEvaluatorCommand = {
+            cmd: text,
+            ...this.theory
+        };
+        this.client.sendRequest(serverRequest.evaluatorCommand, command);
+        this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: {
+            req: PvsioEvaluatorCommand,
+            res: string,
+            state: string
+        }) => {
+            this.log(data?.res);
+            this.showPrompt();
+        });
+    }
+    show(preserveFocus?: boolean): void {
+        this.reveal();
+    }
+    dispose(): void {
+        this.hide();
+    }
+    
+    activate (context: ExtensionContext) {
+        this.context = context;
+        // context.subscriptions.push(vscode.commands.registerCommand("vscode-pvs.x-term", () => {
+        //     this.reveal();
+        // }));
+    }
+    /**
+     * write a string in the webview
+     */
+    log (txt: string): void {
+        // the pseudo terminal needs \r\n, because \n moves to the next line but keeps the column
+        const data: string = txt.replace(/\n/g, "\r\n");
+        const message: XTermMessage = {
+            command: xtermCommands.write,
+            data
+        };
+        this.panel?.webview?.postMessage(message);
+    }
+    reveal (): void {
+        if (!this.panel) {
+            this.renderView();
+        }
+        this.panel.reveal()
+    }
+    hide (): void {
+        this.panel.dispose();
+    }
+    /**
+     * Renders the content of the webview
+     */
+    renderView (): void {
+        this.refreshView();
+    }
+    /**
+     * Refresh the content of the webview
+     */
+    refreshView (): void {
+        // create webview
+        this.createWebView();
+    }
+    /**
+     * Sets the prompt
+     */
+    setPrompt (prompt: string): void {
+        this.prompt = prompt;
+    }
+    /**
+     * Show the prompt
+     */
+    showPrompt (): void {
+        const message: XTermMessage = {
+            command: xtermCommands.write,
+            data: utils.colorText(this.prompt, utils.textColor.blue)
+        };
+        this.panel?.webview?.postMessage(message);
+    }
+    /**
+     * Internal function, creates the webview
+     */
+    protected createWebView () {
+        if (this.panel) {
+            this.panel.title = "x-term-pvs";
+        } else {
+            this.panel = this.panel || window.createWebviewPanel(
+                'x-term-pvs', // Identifies the type of the webview. Used internally
+                'x-term-pvs', // Title of the panel displayed to the user
+                ViewColumn.One, // Editor column to show the new webview panel in.
+                {
+                    enableScripts: true,
+                    retainContextWhenHidden: true
+                }
+            );
+            try {
+                // clean up data structures when webview is disposed
+                this.panel.onDidDispose(
+                    async () => {
+                        // delete panel
+                        this.panel = null;
+                    },
+                    null,
+                    this.context.subscriptions
+                );
+                // Handle messages from the webview
+                this.panel.webview.onDidReceiveMessage(
+                    async (message: XTermMessage) => {
+                        console.log("[vscode-xterm] Received message", message);
+                        if (message) {
+                            switch (message.command) {
+                                case XTermEvents.sendText: {
+                                    this.sendText(message?.data);
+                                    break;
+                                }
+                                case XTermEvents.didFindMatchingBracket: {
+                                    console.log("matching bracket at position", message.data);
+                                    break;
+                                }
+                                case XTermEvents.didMoveCursor: {
+                                    console.log(message.data);
+                                    break;
+                                }
+                                default: {
+                                    break;
+                                }
+                            }
+                        }
+                    },
+                    undefined,
+                    this.context.subscriptions
+                );
+                // Create webview content
+                this.createContent();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    }
+    /**
+     * Internal function, creates the html content of the webview
+     */
+    protected createContent (): void {
+        // set webview content
+        const xtermJsOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/xterm/lib/xterm.js'));
+        const xtermCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/xterm/css/xterm.css'));
+
+        const highlightAddonOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/out/views/addons/xtermParMatch.js'));
+
+        const css: Uri[] = [
+            this.panel.webview.asWebviewUri(xtermCssOnDisk)
+        ];
+        const js: Uri[] = [
+            this.panel.webview.asWebviewUri(xtermJsOnDisk),
+            this.panel.webview.asWebviewUri(highlightAddonOnDisk)
+        ];
+        try {
+            const content: string = Handlebars.compile(htmlTemplate, { noEscape: true })({
+                css, js,
+                xtermCommands: [
+                    xtermCommands.write
+                ]
+            });
+            this.panel.webview.html = content;
+        } catch (err) {
+            console.error(err);
+        }
+    }
+    
+}

@@ -1,0 +1,117 @@
+/**
+ * @module XTermParMatch
+ * @author Paolo Masci
+ * @date 2021.03.10
+ * @copyright 
+ * Copyright 2019 United States Government as represented by the Administrator 
+ * of the National Aeronautics and Space Administration. All Rights Reserved.
+ *
+ * Disclaimers
+ *
+ * No Warranty: THE SUBJECT SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY
+ * WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
+ * INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE SUBJECT SOFTWARE
+ * WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
+ * INFRINGEMENT, ANY WARRANTY THAT THE SUBJECT SOFTWARE WILL BE ERROR
+ * FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM TO
+ * THE SUBJECT SOFTWARE. THIS AGREEMENT DOES NOT, IN ANY MANNER,
+ * CONSTITUTE AN ENDORSEMENT BY GOVERNMENT AGENCY OR ANY PRIOR RECIPIENT
+ * OF ANY RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY
+ * OTHER APPLICATIONS RESULTING FROM USE OF THE SUBJECT SOFTWARE.
+ * FURTHER, GOVERNMENT AGENCY DISCLAIMS ALL WARRANTIES AND LIABILITIES
+ * REGARDING THIRD-PARTY SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE,
+ * AND DISTRIBUTES IT "AS IS."
+ *
+ * Waiver and Indemnity: RECIPIENT AGREES TO WAIVE ANY AND ALL CLAIMS
+ * AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
+ * SUBCONTRACTORS, AS WELL AS ANY PRIOR RECIPIENT.  IF RECIPIENT'S USE OF
+ * THE SUBJECT SOFTWARE RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES,
+ * EXPENSES OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM
+ * PRODUCTS BASED ON, OR RESULTING FROM, RECIPIENT'S USE OF THE SUBJECT
+ * SOFTWARE, RECIPIENT SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED
+ * STATES GOVERNMENT, ITS CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY
+ * PRIOR RECIPIENT, TO THE EXTENT PERMITTED BY LAW.  RECIPIENT'S SOLE
+ * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
+ * TERMINATION OF THIS AGREEMENT.
+ **/
+
+import { Terminal, IDisposable, ITerminalAddon, ISelectionPosition } from 'xterm';
+
+export class MatchAddon implements ITerminalAddon {
+    protected terminal: Terminal;
+    protected disposables: IDisposable[] = [];
+
+    activate(terminal: Terminal): void {
+        this.terminal = terminal;
+        this.disposables.push(
+            this.terminal.onKey((e: { key: string, domEvent: KeyboardEvent }) => {
+                if (e?.key === ")") {
+                    // highlight matching bracket
+                    this.highlightMatch();
+                }
+            })
+        );
+    }
+    dispose(): void {
+        for (let i = 0; i < this.disposables.length; i++) {
+            this.disposables[i].dispose();
+        }
+    }
+
+    /**
+     * Finds the index in the buffer of the matching parenthesis
+     */
+    findMatchIndex (): number {
+        let par: number = 0;
+        let quotes: number = 0;
+        const content: string = this.terminal?.textarea?.value;
+        for (let i = 0; i < content.length; i++) {
+            switch (content[i]) {
+                case "(": {
+                    if (quotes % 2 === 0) {
+                        par++;
+                    }
+                    if (par === 1) {
+                        return i;
+                    }
+                    break;
+                }
+                case ")": {
+                    if (quotes % 2 === 0) {
+                        par--;
+                    }
+                    break;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Finds the position of the matching bracket
+     */
+    findMatchPosition (): { x: number, y: number } {
+        const index: number = this.findMatchIndex();
+        if (index >= 0) {
+            const content: string = this.terminal?.textarea?.value;
+            const crop: string = content.substring(0, index);
+            const lines: string[] = crop.split("\\n");
+            const x: number = lines.length;
+            const y: number = lines[lines.length - 1].length;
+            return { x, y };
+        }
+        return null;
+    }
+
+    /**
+     * Highlights the matching parenthesis
+     */
+    highlightMatch (): void {
+        const pos: { x: number, y: number } = this.findMatchPosition();
+        if (pos) {
+            this.terminal.select(pos.x, pos.y, 1);
+        }
+    }
+    
+}

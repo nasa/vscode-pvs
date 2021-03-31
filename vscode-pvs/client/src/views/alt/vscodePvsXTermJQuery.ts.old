@@ -1,0 +1,907 @@
+
+/**
+ * @module vscodePvsXTerm
+ * @author Paolo Masci
+ * @date 2021.03.10
+ * @copyright 
+ * Copyright 2019 United States Government as represented by the Administrator 
+ * of the National Aeronautics and Space Administration. All Rights Reserved.
+ *
+ * Disclaimers
+ *
+ * No Warranty: THE SUBJECT SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY
+ * WARRANTY OF ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY,
+ * INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY THAT THE SUBJECT SOFTWARE
+ * WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR FREEDOM FROM
+ * INFRINGEMENT, ANY WARRANTY THAT THE SUBJECT SOFTWARE WILL BE ERROR
+ * FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM TO
+ * THE SUBJECT SOFTWARE. THIS AGREEMENT DOES NOT, IN ANY MANNER,
+ * CONSTITUTE AN ENDORSEMENT BY GOVERNMENT AGENCY OR ANY PRIOR RECIPIENT
+ * OF ANY RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY
+ * OTHER APPLICATIONS RESULTING FROM USE OF THE SUBJECT SOFTWARE.
+ * FURTHER, GOVERNMENT AGENCY DISCLAIMS ALL WARRANTIES AND LIABILITIES
+ * REGARDING THIRD-PARTY SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE,
+ * AND DISTRIBUTES IT "AS IS."
+ *
+ * Waiver and Indemnity: RECIPIENT AGREES TO WAIVE ANY AND ALL CLAIMS
+ * AGAINST THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND
+ * SUBCONTRACTORS, AS WELL AS ANY PRIOR RECIPIENT.  IF RECIPIENT'S USE OF
+ * THE SUBJECT SOFTWARE RESULTS IN ANY LIABILITIES, DEMANDS, DAMAGES,
+ * EXPENSES OR LOSSES ARISING FROM SUCH USE, INCLUDING ANY DAMAGES FROM
+ * PRODUCTS BASED ON, OR RESULTING FROM, RECIPIENT'S USE OF THE SUBJECT
+ * SOFTWARE, RECIPIENT SHALL INDEMNIFY AND HOLD HARMLESS THE UNITED
+ * STATES GOVERNMENT, ITS CONTRACTORS AND SUBCONTRACTORS, AS WELL AS ANY
+ * PRIOR RECIPIENT, TO THE EXTENT PERMITTED BY LAW.  RECIPIENT'S SOLE
+ * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
+ * TERMINATION OF THIS AGREEMENT.
+ **/
+
+import {
+    Uri, WebviewPanel, ExtensionContext, Terminal, TerminalOptions, 
+    ExtensionTerminalOptions, TerminalExitStatus, window, ViewColumn
+} from 'vscode';
+import * as path from 'path';
+import * as Handlebars from "handlebars";
+import Backbone = require('backbone');
+import * as utils from '../common/languageUtils';
+import { pvsColor, theme } from '../common/languageUtils';
+import { LanguageClient } from 'vscode-languageclient';
+import { EvaluatorCommandResponse, FileDescriptor, ProofCommandResponse, ProveFormulaResponse, PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, serverEvent, serverRequest } from '../common/serverInterface';
+import { PvsResponse } from '../common/pvs-gui';
+import * as vscodeUtils from '../utils/vscode-utils';
+import * as fsUtils from '../common/fsUtils';
+import * as language from '../common/languageKeywords';
+import { getEvaluatorHints, getProverHints } from '../common/commandUtils';
+
+export interface XTermMessage {
+    command: string,
+    data?: any
+};
+
+enum xtermCommands {
+    write = "write",
+    hints = "hints",
+    clear = "clear",
+    setPrompt = "setPrompt"
+};
+
+export enum XTermEvents {
+    sendText = "sendText",
+    didMoveCursor = "didMoveCursor",
+    didFindMatchingBracket = "didFindMatchingBracket"
+};
+
+export declare type SessionType = "prover" | "evaluator";
+
+const htmlTemplate: string = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    {{#if style}}
+    <style type="text/css">{{style}}</style>
+    {{/if}}
+    {{#each css}}
+    <link rel="stylesheet" href="{{this}}">
+    {{/each}}
+    {{#each js}}
+    <script src="{{this}}"></script>
+    {{/each}}
+</head>
+<style>
+.terminal h1::selection,
+.terminal h2::selection,
+.terminal h3::selection,
+.terminal h4::selection,
+.terminal h5::selection,
+.terminal h6::selection,
+.terminal pre::selection,
+.terminal td::selection,
+.terminal .terminal-output::selection,
+.terminal .terminal-output div div::selection,
+.terminal .terminal-output div div a::selection,
+.terminal .terminal-output span[data-text]:not(.emoji)::selection,
+.terminal .terminal-output span[data-text]:not(.far):not(.fa):not(.fas):not(.emoji) span::selection,
+.terminal .terminal-output .raw div::selection,
+.cmd span[data-text]:not(.far):not(.fa):not(.fas):not(.emoji) span::selection {
+    background: rgba(135, 206, 250, 0.5) !important;
+    color: white !important;
+}
+.terminal .terminal-output div div a:hover::selection {
+    background: rgba(135, 206, 250, 0.5) !important;
+    color: white !important;
+}
+
+.terminal,span,.cmd,div {
+    --color: whitesmoke;
+    --background: transparent;
+}
+.cmd-cursor {
+    background: transparent;
+    border: 1px solid white;
+    --animation: none;
+}
+.list-group-item {
+    background: transparent;
+}
+.tooltip-inner {
+    max-height: 60px;
+}
+span, .terminal-output {
+    line-height: 26px !important;
+    font-family: monospace !important;
+    font-weight: normal !important;
+    font-size: 13px !important;
+}
+body {
+    background: transparent !important;
+}
+</style>
+<body class="p-0 m-0 animated fadeIn" style="height:100%;">
+    <div id="terminal" class="terminal animate__animated animate__fadeIn"></div>
+
+    <script>
+    const vscode = acquireVsCodeApi();
+    const sessionType = "{{sessionType}}"; // "evaluator" | "prover"
+
+    //--------------------
+    // utility functions
+    //--------------------
+    function parMatch (cmd) {
+        if (cmd) {
+            const regex = new RegExp(/\"[^\"]*\"/g);
+            const text = cmd.replace(regex, ""); // remove text in double quotes, they are strings, and may contain parentheses as characters
+            const openRegex = new RegExp(/\\(/g);
+            const closeRegex = new RegExp(/\\)/g);
+            let par = 0;
+            while (openRegex.exec(text)) {
+                par++;
+            }
+            while (closeRegex.exec(text)) {
+                par--;
+            }
+            return par === 0;
+        }
+        return true;
+    }
+    function colorText(str, color) {
+        return "[[b;" + color + ";]" + str + "]";
+    }
+    function pvsCliSyntaxHighlighting(text) {
+        if (text) {
+            {{#each syntax}}
+            const {{id}}_regexp = new RegExp({{regex}});
+            // console.log("applying syntax highlighing to {{id}}s", text, {{id}}_regexp.test(text));
+            text = text.replace({{id}}_regexp, (str) => {
+                return colorText(str, "{{color}}");
+            });
+            {{/each}}
+        }
+        return text;
+    }
+    function findMatchingOpenBracketIndex (text) {
+        let par = 0;
+        let quotes = 0;
+        for (let i = 0; i < text.length; i++) {
+            const pos = text.length - 1 - i;
+            switch (text[pos]) {
+                case "(": {
+                    if (quotes % 2 === 0) { par++; }
+                    if (par === 0) {
+                        return pos;
+                    }
+                    break;
+                }
+                case ")": {
+                    if (quotes % 2 === 0) { par--; }
+                    break;
+                }
+                case '"': {
+                    quotes++;
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+        }
+        return -1;
+    }
+    function highlightBrackets (text, idx1, idx2) {
+        const color = idx1 === -1 ? "${theme.dark.red}" : "${theme.dark.yellow}";
+        function highlightIndex (frag, index) {
+            if (index >= 0 && index < frag.length) {
+                const pre = frag.substr(0, index);
+                const par = "[[b;black;" + color + ";]" + frag[index] + "]";
+                const post = frag.substr(index + 1);
+                return pre + par + post;
+            }
+            return frag;
+        }
+        if (text && (idx2 > idx1)) {
+            const p1 = text.substr(0, idx1 + 1);
+            const p2 = text.substr(idx1 + 1);
+            return highlightIndex(p1, idx1) + highlightIndex(p2, idx2 - idx1 - 1);
+        }
+        return text;
+    }
+    function scrollToBottom () {
+        $(document).scrollTop($(document).height());
+    }
+
+    //--------------------
+    // global vars and constants
+    //--------------------
+    let term = null; // global pointer to the terminal
+    let hints = [ ]; // global pointer to hints to be shown in the terminal
+    let timeout = null; // timeout for hints
+    const TOOLTIP_DELAY = 1000; // ms
+    const OUTPUT_LIMIT = 1024; // lines
+    //--------------------
+    // formatters + parenthesis matcher
+    //--------------------
+    $.terminal.defaults.formatters.push((text) => {
+        let content = text;
+        // parenthesis matcher
+        const beforeCursor = term.before_cursor(false); // false means return the entire content before the cursor
+        const parBeforeCursor = new RegExp(/\\)$/g).test(beforeCursor);
+        if (parBeforeCursor) {
+            // console.log("searching matching parenthesis...", beforeCursor);
+            let index = findMatchingOpenBracketIndex(beforeCursor);
+            // console.log("match found at ", index);
+            // highlight matching brackets
+            content = highlightBrackets(text, index, beforeCursor.length - 1);
+        }
+        // syntax highligher
+        return pvsCliSyntaxHighlighting(content);
+    });
+    $.terminal.defaults.prompt = "";
+    //--------------------
+    // terminal
+    //--------------------
+    $("#terminal").terminal(function (cmd) {
+        vscode.postMessage({
+            command: "${XTermEvents.sendText}",
+            data: cmd
+        });
+    }, {
+        name: "{{name}}",
+        greetings: false,
+        outputLimit: OUTPUT_LIMIT,
+        keymap: {
+            ENTER: function (e, original) {
+                const cmd = this.get_command();
+                const readyToSend = (sessionType === "evaluator" && cmd && cmd.endsWith(";"))
+                    || (sessionType === "prover" && parMatch(cmd));
+                if (readyToSend) {
+                    original();
+                } else {
+                    this.insert("\\n");
+                }
+            }
+        },
+        onInit: function(t) {
+            term = t;
+            // set listener for receiving messages from vscode-pvs
+            window.addEventListener('message', async (event) => {
+                const message = event.data; // JSON data sent by vscode-pvs
+                switch (message.command) {
+                    {{#each xtermCommands}}
+                    case "{{this}}": {
+                        // console.log("[echo] {{this}} data", message.data);
+                        term.echo(message.data + "\\r\\n", {
+                            finalize: () => {
+                                scrollToBottom();
+                            },
+                            raw: true // syntax highlighting is off-loaded from the webview script
+                        });
+                        break;
+                    }
+                    {{/each}}
+                    case "${xtermCommands.hints}": {
+                        hints = message.data;
+                        // console.log("autocomplete data", hints);
+                        break;
+                    }
+                    case "${xtermCommands.clear}": {
+                        hints = [];
+                        term.clear();
+                        break;
+                    }
+                    case "${xtermCommands.setPrompt}": {
+                        term.set_prompt(message.data);
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+            });
+            // autocompletion
+            // const wrapper = term.find('.cmd-cursor-line').wrap('<span/>').parent().addClass('cmd-wrapper');
+            // ul = $('<ul></ul>').appendTo(wrapper);
+            // console.log("wrapper", wrapper);
+            // ul.on('click', 'li', function() {
+            //     term.insert($(this).text());
+            //     ul.empty();
+            // });
+        },
+        autocompleteMenu: false,
+        keydown: function(e) {
+            console.log(e);
+            if (e && e.originalEvent) {
+                console.log("key", e.originalEvent.key);
+
+                // utility functions
+                function clearTooltips () {
+                    // clear timeout
+                    window.clearTimeout(timeout);
+                    // remove tooltips
+                    $(".tooltip").remove();
+                }
+                function isControlKey (key) {
+                    return e.originalEvent.ctrlKey;
+                }
+                function autocomplete () {
+                    const cursor = $(".cmd-cursor");
+                    if (hints) {
+                        const cursorLine = $(".cmd-cursor-line");
+                        const input = term.get_command();
+                        const name = input.match(/^([^\s]*)/)[0];
+                        if (name) {
+                            const word = term.before_cursor(true);
+                            const regex = new RegExp('^' + $.terminal.escape_regex(word));
+
+                            if (word) {
+                                const match = [];
+                                for (let i = 0; i < hints.length; i++) {
+                                    if (regex.test(hints[i])) {
+                                        match.push(hints[i]);
+                                    }
+                                }
+                                if (match.length) {
+                                    if (e.originalEvent.key === "Tab") {
+                                        term.complete(match);
+                                        // console.log("complete", match);
+                                        // remove tooltip
+                                        $(".tooltip").remove();
+                                    } else {
+                                        // update tooltip
+                                        const tooltip = document.createElement("div");
+                                        for (let i = 0; i < match.length; i++) {
+                                            let item = document.createElement("li");
+                                            item.className = "list-group-item";
+                                            item.textContent = match[i];
+                                            $(item).appendTo(tooltip);
+                                        }
+                                        // append tooltip to cursor
+                                        cursor.attr("data-toggle", "tooltip");
+                                        cursor.attr("data-html", "true");
+                                        cursor.attr("data-placement", "bottom");
+                                        cursor.attr("title", $(tooltip).html());
+                                        cursor.tooltip({ boundary: 'window' });
+                                        // remove old tooltips
+                                        $(".tooltip").remove();
+                                        // show new tooltip                    
+                                        cursor.tooltip('show');
+                                    }
+                                } else {
+                                    // remove tooltip
+                                    $(".tooltip").remove();
+                                }
+                            }
+                        } else {
+                            // remove tooltips
+                            clearTooltips();
+                        }
+                    }
+                }
+                // decision logic for showing / hiding tooltips
+                switch (e.originalEvent.key) {
+                    case "Escape": {
+                        // remove tooltips
+                        clearTooltips();
+                        // return false to ignore keydown
+                        return false;    
+                    }
+                    case "Tab": {
+                        // remove tooltips
+                        clearTooltips();
+                        // autocomplete now
+                        autocomplete();
+                        // return false to ignore keydown
+                        return false;
+                    }
+                    case " ": {
+                        // remove tooltips
+                        clearTooltips();
+                        if (e.originalEvent.ctrlKey) {
+                            // ctrl + space shows tooltip
+                            return false;
+                        }
+                        // return true, space characters need to be rendered
+                        return true;    
+                    }
+                    default: {
+                        // nothing to do
+                    }
+                }
+                if (isControlKey(e.originalEvent.key)) {
+                    // show tooltip
+                    autocomplete();
+                    return false;
+                }
+                clearTooltips();
+                timeout = window.setTimeout(autocomplete, TOOLTIP_DELAY);
+            }
+        }
+    });
+    </script>
+</body>
+</html>`;
+
+export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
+    protected client: LanguageClient;
+    protected context: ExtensionContext;
+
+    // terminal name
+    name: string;
+
+    // session type
+    protected sessionType: SessionType;
+
+    // theory or formula associated with this terminal
+    protected theory: PvsTheory | PvsFormula;
+
+    // webview panel
+    protected panel: WebviewPanel;
+
+    processId: Thenable<number>;
+    creationOptions: Readonly<TerminalOptions | ExtensionTerminalOptions>;
+    exitStatus: TerminalExitStatus;
+
+    // timer and data for delayed write in the webview
+    protected timer: NodeJS.Timeout = null;
+    protected SEND_TIMEOUT: number = 500; //ms
+    protected data: string = "";
+
+    /**
+     * Constructor
+     */
+    constructor (client: LanguageClient) {
+        super();
+        this.client = client;
+    }
+
+    /**
+     * Start evaluator
+     */
+    async startEvaluator (resource: string | { path: string } | { contextValue: string }): Promise<boolean> {
+        if (window.activeTextEditor && window.activeTextEditor.document) {
+            // if the file is currently open in the editor, save the file first
+            await window.activeTextEditor.document.save();
+            if (!resource) { resource = { path: window.activeTextEditor.document.fileName }; }
+        }
+        const desc: PvsFormula = vscodeUtils.resource2desc(resource);
+        if (desc) {
+            if (!desc.theoryName) {
+                // const document: vscode.TextDocument = window.activeTextEditor.document;
+                const info: { content: string, line: number } = (resource && resource["path"]) ? { content: await fsUtils.readFile(resource["path"]), line: 0 }
+                    : { content: window.activeTextEditor.document.getText(), line: window.activeTextEditor.selection.active.line };
+                const theoryName: string = utils.findTheoryName(info.content, info.line);
+                desc.theoryName = (desc.fileExtension === ".tccs") ? 
+                    theoryName.substr(0, theoryName.length - 5) // the theory name in the .tccs file ends with _TCCS
+                        : theoryName;
+            }
+            if (desc.theoryName) {
+                desc.fileExtension = ".pvs"; // only pvs files can be evaluated
+                const success: boolean = await this.startEvaluatorSession(desc);
+                return success;
+            } else {
+                vscodeUtils.showErrorMessage(`[vscode-xterm] Error while trying to invoke PVSio (could not identify theory name, please check that the file typechecks correctly)`);
+            }
+        } else {
+            console.error("[vscode-xterm] Error: pvsio-evaluator invoked over an unknown resource", resource);
+        }
+        return false;
+    }
+
+    /**
+     * Internal function, sends a startEvaluator message to pvs-server
+     */
+    protected async startEvaluatorSession (theory: PvsTheory): Promise<boolean> {
+        this.theory = theory;
+        this.sessionType = "evaluator"
+        this.setName(theory.theoryName);
+        this.reveal();
+        // clear terminal content and show welcome message
+        this.clearTerminal();
+        const header: string = `\r\nStarting PVSio evaluator session for ${utils.colorText(theory.theoryName, pvsColor.blue, true)}`;
+        this.log(header);
+        // send start-pvsio request to pvs-server
+        this.client.sendRequest(serverRequest.startEvaluator, theory);
+        const success: boolean = await new Promise((resolve, reject) => {
+            this.client.onRequest(serverEvent.startEvaluatorResponse, (data: { response: PvsResponse, args: PvsTheory }) => {
+                const banner: string = utils.colorText(utils.pvsioBanner, pvsColor.green, true);
+                this.log(banner, { autocomplete: true, hints: getEvaluatorHints() });
+                this.setPrompt(utils.pvsioPrompt + " ");
+                resolve(true);
+            });
+            this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: EvaluatorCommandResponse) => {
+                this.onEvaluatorResponse(data);
+            });
+        });
+        return success;
+    }
+
+    /**
+     * Handler for evaluator response
+     */
+    protected onEvaluatorResponse (data: EvaluatorCommandResponse): void {
+        if (data?.res === "bye!") {
+            this.setPrompt("");
+            this.log(utils.colorText(data.res, pvsColor.green, true), {
+                sessionEnd: true
+            });
+        } else {
+            this.log(data?.res, { autocomplete: true });
+        }
+    }
+
+    /**
+     * Start prover
+     */
+     async startProver (desc: {
+        contextFolder: string,
+        fileName: string,
+        fileExtension: string,
+        theoryName: string,
+        formulaName: string,
+        proofFile?: FileDescriptor
+    }): Promise<boolean> {
+        if (window.activeTextEditor && window.activeTextEditor.document) {
+            // if the file is currently open in the editor, save the file first
+            await window.activeTextEditor.document.save();
+        }
+        if (desc && desc.theoryName && desc.formulaName && desc.fileName && desc.fileExtension && desc.contextFolder) {
+            if (desc.fileExtension === ".tccs" &&  desc.theoryName.endsWith("_TCCS")) {
+                desc.theoryName = desc.theoryName.substr(0, desc.theoryName.length - 5);
+            }
+            // the sequence of events triggered by this command is:
+            // 1. vscodePvsTerminal.startProverSession(desc) 
+            // 2. vscodePvsTerminal.sendRequest(serverCommand.proveFormula, desc)
+            // 3. pvsLanguageServer.proveFormulaRequest(desc)
+            //      3.1 typecheck
+            //      3.2 loadProofDescriptor
+            //      3.3 proveFormula
+            return await this.startProverSession(desc);
+        }
+        console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-formula invoked with null or incomplete descriptor", desc);
+        return false;
+    }
+    /**
+     * Internal function, sends a startEvaluator message to pvs-server
+     */
+     protected async startProverSession (formula: PvsFormula): Promise<boolean> {
+        this.theory = formula;
+        this.sessionType = "prover"
+        this.setName(formula.formulaName);
+        this.reveal();
+        // clear terminal content and show welcome message
+        this.clearTerminal();
+        const header: string = `\r\nStarting prover session for ${utils.colorText(formula.formulaName, pvsColor.blue, true)}`;
+        this.log(header, { autocomplete: true, hints: getProverHints() });
+        // send start-pvsio request to pvs-server
+        this.client.sendRequest(serverRequest.proveFormula, formula);
+        const success: boolean = await new Promise((resolve, reject) => {
+            this.client.onRequest(serverEvent.proveFormulaResponse, (data: ProveFormulaResponse) => {
+                this.onProverResponse(data);
+                this.setPrompt(utils.proverPrompt + " ");
+                resolve(true);
+            });
+            this.client.onRequest(serverEvent.proofCommandResponse, (data: ProofCommandResponse) => {
+                this.onProverResponse(data);
+            });
+        });
+        return success;
+    }
+
+    /**
+     * Handler for prover response
+     */
+    protected onProverResponse (data: ProofCommandResponse): void {
+        if (typeof data?.res === "string") {
+            // Q.E.D.
+            this.setPrompt("");
+            // show Q.E.D.
+            this.log(utils.colorText(data.res, pvsColor.green, true), {
+                sessionEnd: true
+            });
+        } else {
+            // echo last command
+            if (data?.req?.cmd) {
+                this.log(`${utils.colorText(utils.proverPrompt, pvsColor.blue, true)} ${data.req.cmd}`,);
+            }
+            const sequent: string = utils.formatSequent(data?.res, { useColors: true, htmlEncoding: true });
+            this.log(sequent, { autocomplete: true, hints: getProverHints() });
+        }
+    };    
+
+    /**
+     * Sends a command to pvs-server
+     */
+    sendText(text: string, addNewLine?: boolean): void {
+        switch (this.sessionType) {
+            case "evaluator": {
+                const command: PvsioEvaluatorCommand = {
+                    cmd: text,
+                    ...this.theory
+                };
+                this.client.sendRequest(serverRequest.evaluatorCommand, command);
+                // serverEvent.evaluatorCommandResponse is registered when the evaluator is started
+                break;
+            }
+            case "prover": {
+                const command: PvsProofCommand = {
+                    cmd: text,
+                    ...(<PvsFormula> this.theory)
+                };
+                this.client.sendRequest(serverRequest.proofCommand, command);
+                // serverEvent.proofCommandResponse is registered when the prover session is started
+                break;
+            }
+            default: {
+                console.warn("[vscode-xterm] Warning: unrecognized session type", this.sessionType);
+                break;
+            }
+        }
+    }
+    show(preserveFocus?: boolean): void {
+        this.reveal();
+    }
+    async dispose(): Promise<void> {
+        if (this.sessionType === "evaluator") {
+            this.client.sendRequest(serverRequest.quitEvaluator, this.theory);
+            await new Promise ((resolve, reject) => {
+                this.client.onRequest(serverEvent.quitEvaluatorResponse, () => {
+                    resolve(true);
+                });    
+            });
+        } else {
+            //...
+        }
+        this.hide();
+    }
+    
+    activate (context: ExtensionContext) {
+        this.context = context;
+        // context.subscriptions.push(vscode.hints.registerCommand("vscode-pvs.x-term", () => {
+        //     this.reveal();
+        // }));
+    }
+    /**
+     * Clears the content of the terminal
+     */
+    clearTerminal (): void {
+        const message: XTermMessage = {
+            command: xtermCommands.clear
+        };
+        this.panel?.webview?.postMessage(message);
+    }
+    /**
+     * write a string in the webview
+     */
+    log (txt: string, opt?: {
+        autocomplete?: boolean, 
+        hints?: string[],
+        sessionEnd?: boolean
+    }): void {
+        // the pseudo terminal needs \r\n, because \n moves to the next line but keeps the column
+        this.data += (this.data ? "\r\n\n" : "") + txt.replace(/\n/g, "\r\n");
+
+        clearTimeout(this.timer);
+        this.timer = setTimeout(() => {
+            const data: string = this.data;
+            this.data = "";
+            const message: XTermMessage = {
+                command: xtermCommands.write,
+                data
+            };
+            this.panel?.webview?.postMessage(message);
+            if (opt?.sessionEnd) {
+                message.data = (this.sessionType === "evaluator" ? "Evaluator" : "Prover") 
+                    + " session terminated.";
+                this.panel?.webview?.postMessage(message);
+                return;
+            }
+            if (opt?.autocomplete) {
+                this.updateAutocomplete(data, opt?.hints);
+            }
+        }, this.SEND_TIMEOUT);
+    }
+    /**
+     * Updates autocomplete based on the current content of the terminal
+     */
+    updateAutocomplete (line: string, hints?: string[]): void {
+        hints = hints || getEvaluatorHints(line, "");
+        const message: XTermMessage = {
+            command: xtermCommands.hints,
+            data: hints
+        };
+        this.panel?.webview?.postMessage(message);
+    }
+    /**
+     * Reveal the terminal
+     */
+    reveal (): void {
+        if (!this.panel) {
+            this.renderView();
+        }
+        this.panel.reveal()
+    }
+    /**
+     * Hide the terminal
+     */
+    hide (): void {
+        this.panel.dispose();
+    }
+    /**
+     * Renders the content of the webview
+     */
+    renderView (): void {
+        this.createWebView();
+    }
+    /**
+     * Sets the prompt
+     */
+    setPrompt (prompt: string): void {
+        const message: XTermMessage = {
+            command: xtermCommands.setPrompt,
+            data: "[[b;" + theme.dark.blue + ";]" + prompt + "]"
+        };
+        this.panel?.webview?.postMessage(message);
+    }
+    /**
+     * Sets the terminal name
+     */
+    setName (name: string): void {
+        this.name = name;
+    }
+    /**
+     * Internal function, creates the webview
+     */
+    protected createWebView () {
+        if (this.panel) {
+            this.panel.title = "x-term-pvs";
+        } else {
+            this.panel = this.panel || window.createWebviewPanel(
+                'x-term-pvs', // Identifies the type of the webview. Used internally
+                'x-term-pvs', // Title of the panel displayed to the user
+                ViewColumn.One, // Editor column to show the new webview panel in.
+                {
+                    enableScripts: true,
+                    retainContextWhenHidden: true
+                }
+            );
+            try {
+                // clean up data structures when webview is disposed
+                this.panel.onDidDispose(
+                    async () => {
+                        // delete panel
+                        this.panel = null;
+                    },
+                    null,
+                    this.context.subscriptions
+                );
+                // Handle messages from the webview
+                this.panel.webview.onDidReceiveMessage(
+                    async (message: XTermMessage) => {
+                        console.log("[vscode-xterm] Received message", message);
+                        if (message) {
+                            switch (message.command) {
+                                case XTermEvents.sendText: {
+                                    this.sendText(message?.data);
+                                    break;
+                                }
+                                case XTermEvents.didFindMatchingBracket: {
+                                    console.log("matching bracket at position", message.data);
+                                    break;
+                                }
+                                case XTermEvents.didMoveCursor: {
+                                    console.log(message.data);
+                                    break;
+                                }
+                                default: {
+                                    break;
+                                }
+                            }
+                        }
+                    },
+                    undefined,
+                    this.context.subscriptions
+                );
+                // Create webview content
+                this.createHtmlContent();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    }
+    /**
+     * Internal function, creates the html content of the webview
+     */
+    protected createHtmlContent (): void {
+        // set webview content
+        const termJsOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/jquery.terminal/js/jquery.terminal.min.js'));
+        const termCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/jquery.terminal/css/jquery.terminal.css'));
+        
+        const bootstrapJsOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js'));
+        const bootstrapCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/css/bootstrap.min.css'));
+        
+        const jqueryOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/jquery/dist/jquery.min.js'));
+        const fontawesomeCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/font-awesome/css/font-awesome.min.css'));
+
+        const animateCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/animate.css/animate.min.css'));
+
+        const css: Uri[] = [
+            this.panel.webview.asWebviewUri(bootstrapCssOnDisk),
+            this.panel.webview.asWebviewUri(fontawesomeCssOnDisk),
+            this.panel.webview.asWebviewUri(termCssOnDisk),
+            this.panel.webview.asWebviewUri(animateCssOnDisk)
+        ];
+        const js: Uri[] = [
+            this.panel.webview.asWebviewUri(jqueryOnDisk),
+            this.panel.webview.asWebviewUri(termJsOnDisk),
+            this.panel.webview.asWebviewUri(bootstrapJsOnDisk)
+        ];
+        try {
+            const content: string = Handlebars.compile(htmlTemplate, { noEscape: true })({
+                css, js,
+                xtermCommands: [
+                    xtermCommands.write
+                ],
+                name: this.name,
+                sessionType: this.sessionType,
+                syntax: [
+                    {
+                        id: "number",
+                        regex: new RegExp(language.PVS_NUMBER_REGEXP_SOURCE, "g"),
+                        color: theme.dark.yellow
+                    },
+                    {
+                        id: "operators",
+                        regex: new RegExp(language.PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE, "g"),
+                        color: theme.dark.blue
+                    },
+                    {
+                        id: "keywords",
+                        regex: new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi"),
+                        color: theme.dark.blue
+                    },
+                    {
+                        id: "function",
+                        regex: new RegExp(language.PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE, "g"),
+                        color: theme.dark.green
+                    },
+                    {
+                        id: "builtin_types",
+                        regex: new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g"),
+                        color: theme.dark.green
+                    },
+                    {
+                        id: "true_false",
+                        regex: new RegExp(language.PVS_TRUE_FALSE_REGEXP_SOURCE, "gi"),
+                        color: theme.dark.blue
+                    }
+                ]
+            });
+            this.panel.webview.html = content;
+        } catch (err) {
+            console.error(err);
+        }
+    }
+    
+}
