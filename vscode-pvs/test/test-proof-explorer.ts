@@ -5,7 +5,6 @@ import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
 import { ProofNodeX, PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
 import { PvsLanguageServer } from "../server/src/pvsLanguageServer";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
-import { SequentDescriptor } from "../server/src/common/languageUtils";
 import { expect } from 'chai';
 
 //----------------------------
@@ -230,7 +229,7 @@ describe("proof-explorer", () => {
 		// console.log(response);
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
 
-		const result: SequentDescriptor[] = response.result;
+		const result: fsUtils.SequentDescriptor[] = response.result;
 		// load initial sequent in proof explorer
 		proofExplorer.loadInitialSequent(result[0]);
 
@@ -379,7 +378,7 @@ describe("proof-explorer", () => {
 
 		await server.proveFormulaRequest(formula);
 		await server.getPvsProxy().proofCommand({ cmd: "skosimp*" });
-		await server.getPvsProxy().interrupt();
+		await server.getPvsProxy().interruptProver();
 		const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
 		// console.dir(res);
 		expect(res.success).to.equal(true);
