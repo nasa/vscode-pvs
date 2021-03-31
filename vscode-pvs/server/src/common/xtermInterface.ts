@@ -14,7 +14,8 @@ export enum XTermCommands {
     enableInput = "enableInput",
     updateCommandHistory = "updateCommandHistory",
     updateHelp = "updateHelp",
-    clearCommandLine = "clearCommandLine"
+    clearCommandLine = "clearCommandLine",
+    showWelcomeMessage = "showWelcomeMessage"
 };
 
 export interface UpdateCommandHistoryData { cmd: string, successHistory?: boolean }

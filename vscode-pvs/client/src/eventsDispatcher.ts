@@ -112,8 +112,8 @@ export class EventsDispatcher {
 
         this.proofExplorer.on(ProofExplorerEvent.didAcquireFocus, () => {
             setTimeout(() => {
-                this.xterm.focus(); // place focus on the terminal. this is done after a timeout to ensure proof-explorer does not steal the focus
-            }, 500);
+                this.xterm.focus(); // use a timeout so that proof-explorer does not steal the focus
+            }, 250);
         });
 
         // this.vscodePvsTerminal = handlers.vscodePvsTerminal;

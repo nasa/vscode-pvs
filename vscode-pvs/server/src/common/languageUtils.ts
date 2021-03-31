@@ -499,8 +499,20 @@ export const pvsioBanner: string = `
 ║  or
 ║ - Exit the evaluator with 'quit;' 
 ║
-║ TAB completes commands.
+║ TAB autocompletes commands.
 ║ UP/DOWN arrow keys recall previous/next command.
+╚════════════════════════════════════════════════════════════════════════════════════
+`
+;
+
+export const pvsioBannerAlt: string = `
+╔════════════════════════════════════════════════════════════════════════════════════
+║ PVSio Evaluator
+║
+║ Usage:
+║ - Enter a PVS expression followed by ';'
+║  or
+║ - Enter a Lisp expresssion followed by '!'
 ╚════════════════════════════════════════════════════════════════════════════════════
 `
 ;

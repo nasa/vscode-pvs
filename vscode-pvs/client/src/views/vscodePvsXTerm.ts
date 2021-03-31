@@ -94,7 +94,7 @@ const htmlTemplate: string = `
         font-family:monospace;
         text-align:left;
         margin-top:10px;
-        padding-top:4px;
+        padding-top:4px !important;
         border-top:1px solid gray;
         overflow:auto;
     }    
@@ -284,7 +284,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.mathObjects = data?.mathObjects || {};
                 this.onProverResponse(data);
                 this.enableTerminalInput();
-                // this.showPrompt();
+                this.showWelcomeMessage();
                 resolve(true);
             });
             // The following handler is registered here because proof commands may originate from proof-explorer.
@@ -334,7 +334,6 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             // if (!data?.res?.sequent || data?.req?.origin !== "xterm-pvs") {
                 this.showPrompt();
             // }
-            this.focus();
         }
     };
 
@@ -403,13 +402,14 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.client.sendRequest(serverRequest.startEvaluator, theory);
         const success: boolean = await new Promise((resolve, reject) => {
             this.client.onRequest(serverEvent.startEvaluatorResponse, (data: { response: PvsResponse, args: PvsTheory }) => {
-                const banner: string = colorUtils.colorText(utils.pvsioBanner, colorUtils.PvsColor.green);
+                const banner: string = colorUtils.colorText(utils.pvsioBannerAlt, colorUtils.PvsColor.green);
                 const hints: commandUtils.HintsObject = commandUtils.getHints(this.sessionType, {
                     theoryContent: this.target?.fileContent
                 });
                 this.log(banner, { hints });
                 this.showPrompt();
                 this.enableTerminalInput();
+                this.showWelcomeMessage();
                 resolve(true);
             });
         });
@@ -503,6 +503,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     focus (): void {
         this.reveal();
+        // Use a timeout so that the webview has time to render its content
         setTimeout(() => {
             const message: XTermMessage = {
                 command: XTermCommands.focus
@@ -632,6 +633,16 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.panel?.webview?.postMessage(message);
     }
     /**
+     * Shows welcome message in the prover terminal
+     */
+    showWelcomeMessage (): void {
+        const message: XTermMessage = {
+            command: XTermCommands.showWelcomeMessage,
+            data: this.prompt
+        };
+        this.panel?.webview?.postMessage(message);    
+    }
+    /**
      * Clears the command line in the terminal
      */
     clearCommandLine (): void {
@@ -748,7 +759,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     XTermCommands.enableInput,
                     XTermCommands.updateCommandHistory,
                     XTermCommands.updateHelp,
-                    XTermCommands.clearCommandLine
+                    XTermCommands.clearCommandLine,
+                    XTermCommands.showWelcomeMessage
                 ],
                 sessionType: this.sessionType
             });

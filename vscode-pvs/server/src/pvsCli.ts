@@ -347,7 +347,7 @@ class PvsCli {
 							});
 							return;
 						}
-						if (utils.isHelpBangCommand(cmd)) {
+						if (utils.isHelpBangCommand(cmd) || utils.isHelpCommand(cmd)) {
 							const match: RegExpMatchArray = new RegExp(utils.helpBangCommandRegexp).exec(cmd);
 							if (match && match.length > 1) {
 								this.wsClient.send(JSON.stringify({
@@ -362,15 +362,15 @@ class PvsCli {
 							}
 							return;
 						}
-						if (utils.isHelpCommand(cmd)) {
-							console.log();
-							console.log(commandUtils.printHelp(cmd, { useColors: true }));
-							console.log();
-							// show prompt
-							this.rl.setPrompt(colorText(this.proverPrompt, PvsColor.blue));
-							this.rl.prompt();						
-							return;
-						}
+						// if (utils.isHelpCommand(cmd)) {
+						// 	console.log();
+						// 	console.log(commandUtils.printHelp(cmd, { useColors: true }));
+						// 	console.log();
+						// 	// show prompt
+						// 	this.rl.setPrompt(colorText(this.proverPrompt, PvsColor.blue));
+						// 	this.rl.prompt();						
+						// 	return;
+						// }
 						if (this.isActive) {
 							this.rl.setPrompt(colorText(this.proverPrompt, PvsColor.blue));
 							this.wsClient.send(JSON.stringify({

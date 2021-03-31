@@ -286,6 +286,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				}
 			}
 		}
+		this.trigger(ProofExplorerEvent.didAcquireFocus);
 	}
 	/**
 	 * Reveals a node in the view.
@@ -311,7 +312,6 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 						// console.error(selected);
 						// console.error(error);
 					});
-					this.trigger(ProofExplorerEvent.didAcquireFocus);
 				}
 			// }
 		}

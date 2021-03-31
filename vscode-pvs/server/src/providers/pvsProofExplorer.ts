@@ -735,16 +735,17 @@ export class PvsProofExplorer {
 					return;
 				}
 
-				if (languageUtils.isHelpCommand(userCmd)) {
+				if (languageUtils.isHelpCommand(userCmd) || languageUtils.isHelpBangCommand(userCmd)) {
 					// do nothing, CLI will show the help message
-					return;
+					// return;
 				}
 
 				//--- check special conditions: empty/null command, invalid command, no change before proceeding
 				// if command is invalid command, stop execution and provide feedback to the user 
-				if (languageUtils.isHelpBangCommand(userCmd)) {
-					// nothing to do
-				} else if (commandUtils.isUndoUndoPlusCommand(userCmd)) {
+				// if (languageUtils.isHelpBangCommand(userCmd)) {
+				// 	// nothing to do
+				// } 
+				else if (commandUtils.isUndoUndoPlusCommand(userCmd)) {
 					// this.running = false;
 					// vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 					if (this.autorunFlag) {

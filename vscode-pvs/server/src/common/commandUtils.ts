@@ -1899,7 +1899,8 @@ export const proverCommands: CommandsMap = {
         description: `Postpone current proof goal`,
         syntax: `postpone`
     },
-    ...PROOF_COMMANDS//_ADVANCED_PROFILE
+    ...PROOF_COMMANDS,
+    ...PROOF_TACTICS
 };
 
 export interface HintsObject {
