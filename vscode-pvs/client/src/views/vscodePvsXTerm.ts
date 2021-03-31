@@ -55,12 +55,13 @@ import * as vscodeUtils from '../utils/vscode-utils';
 import * as fsUtils from '../common/fsUtils';
 import * as colorUtils from '../common/colorUtils';
 import * as commandUtils from '../common/commandUtils';
-import { XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData } from '../common/xtermInterface';
+import { XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData, XTermMessage } from '../common/xtermInterface';
 
-export interface XTermMessage {
-    command: string,
-    data?: any
-};
+
+export enum XTermPvsEvent {
+    DidCloseTerminal = "DidCloseTerminal",
+    DidReceiveEvaluatorResponse = "DidReceiveEvaluatorResponse"
+}
 
 const HELP_PANEL_HEIGHT: number = 52; //px
 
@@ -417,7 +418,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     }
 
     /**
-     * Internal function, handles evaluator responses
+     * Handler for evaluator responses
      */
     protected onEvaluatorResponse (data: EvaluatorCommandResponse): void {
         if (data?.res === "bye!") {
@@ -432,6 +433,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     theoryContent: this.target?.fileContent
                 });
                 this.log(data.res, { hints });
+                // trigger event for interested listeners, e.g., pvsioweb
+                this.trigger(XTermPvsEvent.DidReceiveEvaluatorResponse, data);
             }
             this.showPrompt();
         }
@@ -471,24 +474,59 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      * Sends a command to pvs-server
      */
     async sendTextToServer (text: string, addNewLine?: boolean): Promise<EvaluatorCommandResponse | ProofCommandResponse | null> {
-        return new Promise((resolve, reject) => {
+        // return new Promise((resolve, reject) => {
             if (this.sessionType === "evaluator") {
                 const command: PvsioEvaluatorCommand = {
                     cmd: text,
                     ...this.target
-                };    
-                this.client.sendRequest(serverRequest.evaluatorCommand, command);
-                this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: EvaluatorCommandResponse) => {
-                    this.onEvaluatorResponse(data);
-                    resolve(data)
-                });
-            } else if (this.sessionType === "prover") {
+                };
+                return await this.sendEvaluatorCommand(command);
+                // this.client.sendRequest(serverRequest.evaluatorCommand, command);
+                // this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: EvaluatorCommandResponse) => {
+                //     this.onEvaluatorResponse(data);
+                //     resolve(data)
+                // });
+            } 
+            if (this.sessionType === "prover") {
                 const command: PvsProofCommand = {
                     cmd: commandUtils.balancePar(text.trim()),
                     ...<PvsFormula> this.target,
                     origin: "xterm-pvs"
                 };
-                this.client.sendRequest(serverRequest.proofCommand, command);
+                return await this.sendProverCommand(command);
+                // this.client.sendRequest(serverRequest.proofCommand, command);
+                // this.client.onRequest(serverEvent.proofCommandResponse, (data: ProofCommandResponse) => {
+                //     this.onProverResponse(data);
+                //     resolve(data);
+                // });
+            } //else {
+                return null;
+            //}
+        // });
+    }
+    /**
+     * Sends an evaluator command to the server
+     */
+    async sendEvaluatorCommand (req: PvsioEvaluatorCommand): Promise<EvaluatorCommandResponse> {
+        return new Promise((resolve, reject) => {
+            if (this.sessionType === "evaluator") {
+                this.client.sendRequest(serverRequest.evaluatorCommand, req);
+                this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: EvaluatorCommandResponse) => {
+                    this.onEvaluatorResponse(data);
+                    resolve(data)
+                });
+            } else {
+                resolve(null);
+            }
+        });
+    }
+    /**
+     * Sends a prover command to the server
+     */
+    async sendProverCommand (req: PvsProofCommand): Promise<ProofCommandResponse> {
+        return new Promise((resolve, reject) => {
+            if (this.sessionType === "prover") {
+                this.client.sendRequest(serverRequest.proofCommand, req);
                 this.client.onRequest(serverEvent.proofCommandResponse, (data: ProofCommandResponse) => {
                     this.onProverResponse(data);
                     resolve(data);
@@ -522,7 +560,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     dispose (): void {
         this.panel.dispose();
-        this.trigger(XTermEvent.DidCloseTerminal);
+        this.trigger(XTermPvsEvent.DidCloseTerminal);
     }
     /**
      * Reveals the terminal
@@ -653,17 +691,35 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.panel?.webview?.postMessage(message);        
     }
     /**
+     * Returns true if the current session is an evaluator session
+     */
+    evaluatorSession (): boolean {
+        return this.sessionType === "evaluator";
+    }
+    /**
+     * Returns true if the current session is a prover session
+     */
+    proverSession (): boolean {
+        return this.sessionType === "prover";
+    }
+    /**
+     * Returns the theory associated to the active session
+     */
+    getTheory (): PvsTheory {
+        return this.target;
+    }
+    /**
      * Internal function, creates the webview
      */
     protected createWebView () {
-        const title: string = this.sessionType === "prover" ? "X-Term PVS" : "X-Term PVS.io";
+        const title: string = this.sessionType === "prover" ? "X-Term PVS" : "X-Term PVSio";
         if (this.panel) {
             this.panel.title = title;
         } else {
             this.panel = this.panel || window.createWebviewPanel(
                 'x-term-pvs', // Identifies the type of the webview. Used internally
                 title, // Title of the panel displayed to the user
-                ViewColumn.One, // Editor column to show the new webview panel in.
+                ViewColumn.Active, // Editor column to show the new webview panel in.
                 {
                     enableScripts: true,
                     retainContextWhenHidden: true,
@@ -676,6 +732,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     async () => {
                         // delete panel
                         this.panel = null;
+                        // reset session type
+                        this.sessionType = null;
                         // send quit command to the server
                         this.sendTextToServer("quit");
                         // reset global vscode-pvs variables so other views can be updated properly

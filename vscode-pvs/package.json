@@ -988,22 +988,10 @@
 					"group": "context-menu/exec-1"
 				}
 			],
-			"editor/title/run": [],
-			"editor/title": [
-				{
-					"command": "vscode-pvs.search-nasalib",
-					"when": "editorLangId == pvs",
-					"group": "navigation@0"
-				},
-				{
-					"command": "vscode-pvs.x-show-proof",
-					"when": "editorLangId == pvs",
-					"group": "navigation@1"
-				},
+			"editor/title/run": [
 				{
 					"command": "vscode-pvs.prove-formula-at-cursor-position",
-					"when": "false",
-					"was": "editorLangId == pvs",
+					"when": "editorLangId == pvs",
 					"group": "navigation@2"
 				},
 				{
@@ -1015,6 +1003,18 @@
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "editorLangId == pvs",
 					"group": "navigation@4"
+				}
+			],
+			"editor/title": [
+				{
+					"command": "vscode-pvs.search-nasalib",
+					"when": "editorLangId == pvs",
+					"group": "navigation@0"
+				},
+				{
+					"command": "vscode-pvs.x-show-proof",
+					"when": "editorLangId == pvs",
+					"group": "navigation@1"
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",

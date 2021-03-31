@@ -40,14 +40,13 @@ import { ExtensionContext, Uri, ViewColumn, WebviewPanel, window, workspace } fr
 import * as path from 'path';
 import { LanguageClient } from "vscode-languageclient";
 import * as Handlebars from "handlebars";
-import { PvsioEvaluatorCommand, PvsIoMode, PvsTheory, serverEvent, serverRequest } from "../common/serverInterface";
+import { PvsioEvaluatorCommand, PvsIoMode, PvsTheory, serverEvent, EvaluatorCommandResponse } from "../common/serverInterface";
 import * as fsUtils from '../common/fsUtils';
 // import { TerminalEvents, VSCodePvsTerminal } from "./vscodePvsTerminal";
 import * as vscodeUtils from '../utils/vscode-utils';
-import { XTermEvent } from '../common/xtermInterface';
 
 import * as builderUtils from '../utils/builderUtils';
-import { VSCodePvsXTerm } from "./vscodePvsXTerm";
+import { VSCodePvsXTerm, XTermPvsEvent } from "./vscodePvsXTerm";
 
 const ioFileExt: string = ".io";
 const webFileExt: string = ".web";
@@ -101,7 +100,7 @@ const htmlTemplate: string = `
     -->
 </head>
 <body style="overflow:auto; background:whitesmoke; font-size:small; padding-top:1em;">
-    <div id="pvsio-web" class="container-fluid p-0" style="position:absolute;left:0;top:0;"></div>
+    <div id="pvsio-web" class="container-fluid p-0" style="position:absolute;left:0;top:0;min-width:400px;"></div>
     
     {{#each js}}
     <script src="{{this}}"></script>
@@ -198,13 +197,16 @@ export class VSCodePvsioWeb {
     // vscode context
     protected context: ExtensionContext;
 
-    // dispose callback
+    // dispose view callback
     protected disposeCallback: () => void;
+
+    // evaluator response callback
+    protected evaluatorResponseCallback: (res: EvaluatorCommandResponse) => void;
 
     // theory associated with the pvsioweb session
     protected theory: PvsTheory;
     // terminal associated with the pvsioweb session
-    protected terminal: VSCodePvsXTerm;
+    protected xterm: VSCodePvsXTerm;
 
     // title of the webview
     readonly title: string = "PVSio-Web Prototyping Toolkit";
@@ -226,6 +228,9 @@ export class VSCodePvsioWeb {
      */
     constructor (client: LanguageClient) {
 		this.client = client;
+        this.evaluatorResponseCallback = (res: EvaluatorCommandResponse) => {
+            this.renderState(res?.state)
+        }
     }
     /**
      * Activate the webview
@@ -269,9 +274,14 @@ export class VSCodePvsioWeb {
      * @param terminal 
      */
     setTerminal (terminal: VSCodePvsXTerm): void {
-        this.terminal = terminal;
-        this.terminal.on(XTermEvent.DidCloseTerminal, async () => {
+        this.xterm = terminal;
+        this.xterm.on(XTermPvsEvent.DidCloseTerminal, async () => {
             await this.dispose();
+        });
+        this.xterm.on(XTermPvsEvent.DidReceiveEvaluatorResponse, (data: EvaluatorCommandResponse) => {
+            if (this.evaluatorResponseCallback) {
+                this.evaluatorResponseCallback(data);
+            }
         });
     }
     /**
@@ -401,7 +411,7 @@ export class VSCodePvsioWeb {
      */
     async sendCommand (command: string, opt?: { mode?: PvsIoMode }): Promise<string> {
         opt = opt || {};
-        if (this.terminal) {
+        if (this.xterm) {
             // make sure the command ends with ';'
             let cmd: string = command.trim();
             if (!cmd.endsWith(";")) { cmd = cmd + ";"; }
@@ -416,19 +426,17 @@ export class VSCodePvsioWeb {
                 showCommandInTerminal: true // this flag tells the server to show both the command and the result in the pvsio terminal
             };
 
-            // send request and wait for response
-            this.client.sendRequest(serverRequest.evaluatorCommand, req);
+            // send request through xterm and wait for callback
+            const oldHandler = this.evaluatorResponseCallback;
+            this.xterm.sendEvaluatorCommand(req);
             const ans: string = await new Promise ((resolve, reject) => {
-                this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: {
-                    req: PvsioEvaluatorCommand,
-                    res: string,
-                    state: string
-                }) => {
+                this.evaluatorResponseCallback = (data: EvaluatorCommandResponse) => {
                     log(`[vscode-pvsioweb] Received data from pvsio`, data);
                     this.renderState(data?.state);
                     resolve(data?.state);
-                });
+                }
             });
+            this.evaluatorResponseCallback = oldHandler;
             return ans;
         }
         console.warn(`[vscode-pvsioweb] Warning: terminal session is closed -- cannot send command`, command);
@@ -613,7 +621,7 @@ export class VSCodePvsioWeb {
      */
     async rebootEvaluator (): Promise<void> {
         log(`[vscode-pvsioweb] Rebooting evaluator...`);
-        await this.terminal.rebootEvaluatorSession(this.theory);
+        await this.xterm.rebootEvaluatorSession(this.theory);
         log(`[vscode-pvsioweb] Reboot complete!`);        
     }
     /**
@@ -627,19 +635,22 @@ export class VSCodePvsioWeb {
             const state: string = await this.sendCommand(initState); // sendCommand will register a listere for serverEvent.evaluatorCommandResponse
             this.stateMachineInitialized = true;
             return state;
-        } else {
-            // register serverEvent.evaluatorCommandResponse listener so evaluator responses 
-            // can be rendered in the prototype
-            this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: {
-                req: PvsioEvaluatorCommand,
-                res: string,
-                state: string
-            }) => {
-                log(`[vscode-pvsioweb] Received data from pvsio`, data);
-                this.renderState(data?.state);
-            });
-            this.stateMachineInitialized = false;
-        }
+        } 
+        // else {
+        //     // register serverEvent.evaluatorCommandResponse listener so evaluator responses 
+        //     // can be rendered in the prototype
+
+            
+        //     this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: {
+        //         req: PvsioEvaluatorCommand,
+        //         res: string,
+        //         state: string
+        //     }) => {
+        //         log(`[vscode-pvsioweb] Received data from pvsio`, data);
+        //         this.renderState(data?.state);
+        //     });
+            // this.stateMachineInitialized = false;
+        // }
         return null;
     }
     /**
@@ -652,7 +663,7 @@ export class VSCodePvsioWeb {
             this.panel = this.panel || window.createWebviewPanel(
                 'pvsioweb', // Identifies the type of the webview. Used internally
                 this.title, // Title of the panel displayed to the user
-                ViewColumn.One, // Editor column to show the new webview panel in.
+                ViewColumn.Beside, // Editor column to show the new webview panel in.
                 {
                     enableScripts: true,
                     retainContextWhenHidden: true

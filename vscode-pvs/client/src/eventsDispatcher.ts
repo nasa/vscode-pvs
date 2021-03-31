@@ -796,30 +796,31 @@ export class EventsDispatcher {
 
         context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-web", async (resource: string | { path: string } | { contextValue: string }) => {
             // TODO
-            // let activeSessions: TerminalSession[] = this.vscodePvsTerminal.getActiveSessions("evaluator");
-            // if (activeSessions?.length) {
+            const success: boolean = await this.xterm.onStartEvaluatorRequest();
+            // let evalSession: boolean = this.xterm.evaluatorSession();
+            // if (evalSession) {
             //     // check if the current session corresponds to that indicated in the request
-            //     const terminal: TerminalSession = activeSessions[0];
-            //     const theory: PvsTheory = terminal.getTheory();
+            //     const theory: PvsTheory = this.xterm.getTheory();
             //     const fname: string = fsUtils.desc2fname(theory);
             //     if (fname && fname !== resource && fname !== resource["path"]) {
-            //         await this.pvsioweb.dispose();
-            //         await this.vscodePvsTerminal.closeSession(theory, "evaluator");
-            //         await this.vscodePvsTerminal.startEvaluator(resource);
+            //         // await this.pvsioweb.dispose();
+            //         await this.xterm.closeSession(theory, "evaluator");
+            //         await this.xterm.onStartEvaluatorRequest();
             //     }
             // } else {
-            //     await this.vscodePvsTerminal.startEvaluator(resource);
+            //     await this.xterm.onStartEvaluatorRequest();
             // }
-            // activeSessions = this.vscodePvsTerminal.getActiveSessions("evaluator");
-            // if (activeSessions?.length) {
-            //     const terminal: TerminalSession = activeSessions[0];
-            //     const theory: PvsTheory = terminal.getTheory();
-            //     if (theory) {
-            //         this.pvsioweb.setTheory(theory);
-            //         this.pvsioweb.setTerminal(this.vscodePvsTerminal);
-            //     }
-            // }
-            // this.pvsioweb.reveal();
+            // evalSession = this.xterm.evaluatorSession();
+            if (success) {
+                const theory: PvsTheory = this.xterm.getTheory();
+                if (theory) {
+                    this.pvsioweb.setTheory(theory);
+                    this.pvsioweb.setTerminal(this.xterm);
+                    this.pvsioweb.reveal();
+                }
+            } else {
+                vscodeUtils.showWarningMessage("Unable to create a new PVSio Evaluator session");
+            }
         }));
         // pvsio-evaluator
         context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-evaluator", async () => {

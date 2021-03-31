@@ -1,6 +1,5 @@
 export enum XTermEvent {
-    sendText = "sendText",
-    DidCloseTerminal = "DidCloseTerminal",
+    sendText = "sendText"
 };
 export enum XTermCommands {
     write = "write",
@@ -16,6 +15,11 @@ export enum XTermCommands {
     updateHelp = "updateHelp",
     clearCommandLine = "clearCommandLine",
     showWelcomeMessage = "showWelcomeMessage"
+};
+
+export interface XTermMessage {
+    command: string,
+    data?: any
 };
 
 export interface UpdateCommandHistoryData { cmd: string, successHistory?: boolean }
