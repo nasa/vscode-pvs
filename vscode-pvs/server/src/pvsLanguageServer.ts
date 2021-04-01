@@ -307,6 +307,9 @@ export class PvsLanguageServer {
 			}
 		}
 	}
+	/**
+	 * Handler for prove formula requests
+	 */
 	async proveFormulaRequest (desc: ProveFormulaRequest, opt?: { 
 		autorun?: boolean, 
 		newProof?: boolean, 

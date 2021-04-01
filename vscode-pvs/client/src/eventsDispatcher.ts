@@ -328,6 +328,7 @@ export class EventsDispatcher {
                     this.proofExplorer.disableView();
                     this.proofMate.disableView();
                     this.proofExplorer.resetView();
+                    this.xterm.dispose();
                     break;
                 }
                 //---------------
@@ -528,6 +529,8 @@ export class EventsDispatcher {
 
 		this.client.onRequest(serverEvent.getContextDescriptorResponse, (desc: PvsContextDescriptor) => {
             this.workspaceExplorer.updateContextFolder(desc);
+            // use pvs file icons
+            vscodeUtils.loadPvsFileIcons();
         });
 
 		this.client.onRequest(serverEvent.querySaveProof, async (request: {

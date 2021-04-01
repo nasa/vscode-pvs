@@ -387,9 +387,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// declutter vscode
 				vscodeUtils.declutterVscode();
 
-				// use pvs file icons
-				vscodeUtils.loadPvsFileIcons();
-
 				// update status bar
 				this.statusBar.ready();
 

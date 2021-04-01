@@ -289,7 +289,8 @@ export function formatSequent (desc: SequentDescriptor, opt?: {
 	useColors?: boolean, 
 	showAction?: boolean,
 	htmlEncoding?: boolean,
-	formulasOnly?: boolean
+	formulasOnly?: boolean,
+    ignoreCommentary?: boolean
 }): string {
 	if (desc) {
 		opt = opt || {};
@@ -299,7 +300,7 @@ export function formatSequent (desc: SequentDescriptor, opt?: {
 				const action: string = desc.action.endsWith(",") ? desc.action.substr(0, desc.action.length - 1) : desc.action;
 				res += opt.htmlEncoding ? `<br>${action}.<br>` : `\n${action}.\n`;
 			}
-			if (desc.commentary) {
+			if (desc.commentary && !opt.ignoreCommentary) {
 				res += commentaryToString(desc.commentary, opt);
 			}
 		}

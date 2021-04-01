@@ -298,7 +298,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         const success: boolean = await new Promise((resolve, reject) => {
             this.client.onRequest(serverEvent.proveFormulaResponse, (data: ProveFormulaResponse) => {
                 this.mathObjects = data?.mathObjects || {};
-                this.onProverResponse(data);
+                this.onProverResponse(data, { ignoreCommentary: true });
                 this.enableTerminalInput();
                 this.showWelcomeMessage();
                 resolve(true);
@@ -315,13 +315,17 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Internal function, handles prover responses
      */
-    protected onProverResponse (data: ProofCommandResponse): void {
+    protected onProverResponse (data: ProofCommandResponse, opt?: { ignoreCommentary?: boolean }): void {
+        opt = opt || {};
         if (typeof data?.res === "string") {
             if (data.res === "Q.E.D." || data.res === "bye!") {
                 // Q.E.D.
                 this.log(colorUtils.colorText(data.res, colorUtils.PvsColor.green), {
                     sessionEnd: true
                 });
+                const msg: string = data.res === "Q.E.D." ? "Proof completed successfully!\nThe proof has been saved. You can now close the terminal panel."
+                    : "Prover session terminated.\nYou can now close the terminal panel."
+                this.showHelpMessage(msg)
             } else {
                 console.log(data.res);
             }
@@ -338,7 +342,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             }
 
             // const sequent: string = utils.formatSequent(data?.res, { useColors: true, htmlEncoding: true });
-            const sequent: string = utils.formatSequent(data?.res, { useColors: true });
+            const sequent: string = utils.formatSequent(data?.res, { useColors: true, ...opt });
             const lastState: string = utils.sformulas2string(data.res);
             const theoryContent: string = this.target?.fileContent;
             const hints: HintsObject = getHints(this.sessionType, {
@@ -441,6 +445,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             this.log(colorUtils.colorText(data.res, colorUtils.PvsColor.green), {
                 sessionEnd: true
             });
+            const msg: string = "Evaluator session terminated.\nYou can now close the terminal panel."
+            this.showHelpMessage(msg)
         } else {
             if (data?.res) {
                 const hints: HintsObject = getHints(this.sessionType, {
@@ -696,6 +702,16 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.panel?.webview?.postMessage(message);    
     }
     /**
+     * Shows a help message in the integrated help panel
+     */
+    showHelpMessage (msg: string): void {
+        const message: XTermMessage = {
+            command: XTermCommands.showHelpMessage,
+            data: msg
+        };
+        this.panel?.webview?.postMessage(message);    
+    }
+    /**
      * Clears the command line in the terminal
      */
     clearCommandLine (): void {
@@ -834,7 +850,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     XTermCommands.updateHelp,
                     XTermCommands.clearCommandLine,
                     XTermCommands.showWelcomeMessage,
-                    XTermCommands.updateColorTheme
+                    XTermCommands.updateColorTheme,
+                    XTermCommands.showHelpMessage
                 ],
                 sessionType: this.sessionType
             });

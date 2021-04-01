@@ -15,7 +15,8 @@ export enum XTermCommands {
     updateHelp = "updateHelp",
     clearCommandLine = "clearCommandLine",
     showWelcomeMessage = "showWelcomeMessage",
-    updateColorTheme = "updateColorTheme"
+    updateColorTheme = "updateColorTheme",
+    showHelpMessage = "showHelpMessage"
 };
 
 export interface XTermMessage {

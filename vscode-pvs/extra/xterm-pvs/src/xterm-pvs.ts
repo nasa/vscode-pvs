@@ -27,7 +27,6 @@ export const welcomeMessage: string = `
 `
 ;
 
-
 /**
  * Virtual content of the terminal, keeps track of the content of the cursor position
  */
@@ -2495,10 +2494,19 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
-     * Shows a welcome message in the integrated help
+     * Shows a welcome message in the integrated help panel
      */
     showWelcomeMessage (): void {
         this.autocomplete.showHelp(welcomeMessage.trim().replace(/\n/g, "<br>"));
+    }
+
+    /**
+     * Shows a message in the integrated help panel
+     */
+    showHelpMessage (msg: string): void {
+        if (msg) {
+            this.autocomplete.showHelp(msg.trim().replace(/\n/g, "<br>"));
+        }
     }
 
     /**
