@@ -1,8 +1,9 @@
 import * as fsUtils from "../server/src/common/fsUtils";
 import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy';
-import { label, configFile, sandboxExamples } from './test-utils';
+import { mValue2Examples, configFile, sandboxExamples } from './test-utils';
 import { expect } from 'chai';
+import * as path from "path";
 
 //----------------------------
 //   Test cases for parser
@@ -33,7 +34,6 @@ describe("pvs-proxy", () => {
 	});
 
 	it(`can tell what is the current context and returns a well-formed path`, async () => {
-		label(`can tell what is the current context and returns a well-formed path`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
@@ -44,7 +44,6 @@ describe("pvs-proxy", () => {
 	});
 
 	it(`can change context`, async () => {
-		label(`can change context`);
 		// Need to clear-theories, in case rerunning with the same server.
 		await pvsProxy.lisp("(clear-theories t)");
 
@@ -53,6 +52,23 @@ describe("pvs-proxy", () => {
 		expect(home).not.to.equal(null);
 		expect(home.result).not.to.contain("~"); // tilde should be expanded
 		expect(home.result).to.match(/\/.*/); // path should be absolute, therefore it should start with /
+	});
+
+	it(`can find the correct theory name`, async () => {
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		const fname: string = path.join(mValue2Examples, "value.pvs");
+		const content: string = await fsUtils.readFile(fname);
+		let theoryName: string = ""
+		theoryName = fsUtils.findTheoryName(content, 50);
+		expect(theoryName).to.equal("test");
+		theoryName = fsUtils.findTheoryName(content, 36);
+		expect(theoryName).to.equal("value");
+		theoryName = fsUtils.findTheoryName(content, 12);
+		expect(theoryName).to.equal("HashTable");
+		theoryName = fsUtils.findTheoryName(content, 3);
+		expect(theoryName).to.equal("HashTableType");
 	});
 
 	// it(`change-context is equivalent to change-workspace`, async () => {

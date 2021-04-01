@@ -2,7 +2,7 @@ import * as fsUtils from "../server/src/common/fsUtils";
 import { configFile, sandboxExamples } from './test-utils';
 import * as path from 'path';
 import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
-import { ProofNodeX, PvsFormula, PvsProofCommand } from "../server/src/common/serverInterface";
+import { ProofNodeX, PvsFormula, PvsProofCommand, SequentDescriptor } from "../server/src/common/serverInterface";
 import { PvsLanguageServer } from "../server/src/pvsLanguageServer";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { expect } from 'chai';
@@ -229,7 +229,7 @@ describe("proof-explorer", () => {
 		// console.log(response);
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
 
-		const result: fsUtils.SequentDescriptor[] = response.result;
+		const result: SequentDescriptor[] = response.result;
 		// load initial sequent in proof explorer
 		proofExplorer.loadInitialSequent(result[0]);
 

@@ -3,7 +3,8 @@ import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy'; // XmlRpcSystemMethods
 import { configFile, sandboxExamples,
 	stever, steverFiles, pillbox, pillboxFiles, pvsioweb, pvsiowebFiles, pvsiowebFolders, 
-	dependable_plus_safe } from './test-utils';
+	dependable_plus_safe, 
+	mValueExamples} from './test-utils';
 import * as path from 'path';
 import { expect } from 'chai';
 
@@ -59,6 +60,15 @@ describe("pvs-typechecker", () => {
 		expect(response.result).not.to.equal(null);
 	}).timeout(100000);
 
+	it(`can report typecheck errors in imported files`, async () => {
+		const response: PvsResponse = await pvsProxy.typecheckFile({ fileName: "test", fileExtension: ".pvs", contextFolder: mValueExamples });
+		expect(response).not.to.equal(null);
+		expect(response.result).not.to.equal(null);
+		expect(response.error.data.error_string).to.include("No resolution for s");
+		expect(response.error.data.file_name).to.equal(path.join(mValueExamples, "value.pvs"));
+		expect(response.error.data.place).to.deep.equal([7, 24]);
+		// console.dir(response.error.data);
+	}).timeout(100000);
 
 	it(`can typecheck theories with parameters`, async () => {
 		let desc = {

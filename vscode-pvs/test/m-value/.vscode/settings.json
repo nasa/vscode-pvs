@@ -1,0 +1,22 @@
+{
+    "workbench.view.alwaysShowHeaderActions": true,
+    "editor.renderIndentGuides": false,
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/*.olean": true,
+        "out": false,
+        "**/*.???~": true,
+        "**/.pvscontext": true,
+        "**/pvsbin": true,
+        "**/*.jprf": true,
+        "**/*.prf": true,
+        "**/orphaned-proofs.prf": true,
+        "**/*.log": true,
+        "**/.vscode": true
+    },
+    "workbench.iconTheme": "pvs"
+}
