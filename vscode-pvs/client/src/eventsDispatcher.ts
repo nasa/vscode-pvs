@@ -47,7 +47,7 @@ import {
     ProofDescriptor, ServerMode, PvsFormula, ProofEditEvent, PvsProofCommand, 
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
-    PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, ProofCommandResponse
+    PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection } from "vscode";
 import * as vscode from 'vscode';
@@ -55,7 +55,6 @@ import { PvsResponse } from "./common/pvs-gui";
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsProofMate } from "./views/vscodePvsProofMate";
 import * as utils from './common/languageUtils';
-import * as commandUtils from './common/commandUtils';
 import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsLogger } from "./views/vscodePvsLogger";
 import { VSCodePvsPackageManager } from "./providers/vscodePvsPackageManager";
@@ -584,10 +583,10 @@ export class EventsDispatcher {
             this.search.reveal();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.view-prelude-file", () => {
-            this.client.onRequest(serverEvent.viewPreludeFileResponse, (desc: { contextFolder: string, fileName: string, fileExtension: string }) => {
+            this.client.sendRequest(serverRequest.viewPreludeFile);
+            this.client.onRequest(serverEvent.viewPreludeFileResponse, (desc: PvsFile) => {
                 vscodeUtils.showTextDocument(desc);
             });
-            this.client.sendRequest(serverRequest.viewPreludeFile);
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", async () => {
             await this.packageManager.pvsInstallationWizard();
@@ -616,7 +615,7 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             this.client.sendRequest(serverRequest.proofCommand, desc);
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.select-profile", (desc: { profile: commandUtils.ProofMateProfile }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.select-profile", (desc: { profile: ProofMateProfile }) => {
             // this.vscodePvsTerminal.selectProfile(desc);
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.new-pvs-file", async (resource: { path: string }) => {
@@ -753,7 +752,6 @@ export class EventsDispatcher {
 
                             return new Promise<void>((resolve, reject) => {
                                 this.client.sendRequest(serverRequest.showProofLite, desc);
-
                                 this.client.onRequest(serverEvent.showProofLiteResponse, async (desc: { 
                                     response: { proofFile: FileDescriptor }, 
                                     args: PvsFormula
@@ -899,18 +897,11 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula-at-cursor-position", async () => {
             this.proofExplorer.proveFormulaAtCursorPosition();
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula", async (desc: {
-            contextFolder: string,
-            fileName: string,
-            fileExtension: string,
-            theoryName: string,
-            formulaName: string,
-            proofFile?: FileDescriptor
-        }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula", async (req: ProveFormulaRequest) => {
             this.proofExplorer.resetView();
             this.proofExplorer.enableView();
             this.proofMate.enableView();
-            const success: boolean = await this.xterm.onStartProverRequest(desc);
+            const success: boolean = await this.xterm.onStartProverRequest(req);
             if (!success) {
                 this.proofExplorer.disposeView();
                 this.proofMate.disposeView();
@@ -1128,7 +1119,7 @@ export class EventsDispatcher {
             }
         }));
         // vscode-pvs.typecheck-file
-		context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-file", async (resource: string | { path: string } | { contextValue: string }) => {
+		context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-file", async (resource: string | { path: string } | { contextValue: string } | PvsFile) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();

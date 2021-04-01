@@ -14,6 +14,8 @@ export enum PvsColor {
 	gray = "gray"
 };
 
+export declare type XTermColorTheme = "dark" | "light";
+
 export const ANSI_ESC: string = "\x1b[";
 export const ANSI_FOREGROUND: string = "38;";
 export const ANSI_BACKGROUND: string = "48;";
@@ -27,8 +29,8 @@ export const htmlColorCode: { [ key in PvsColor ]: string } = {
 	yellow: "yellow",
 	gold: "gold",
 	red: "red",
-	black: "black",
-	white: "white",
+	black: "#1e1e1e",
+	white: "#f3f3f3",
 	gray: "gray"
 };
 

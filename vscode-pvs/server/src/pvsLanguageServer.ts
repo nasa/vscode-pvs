@@ -59,7 +59,7 @@ import {
 	PvsFile,
 	ContextFolder,
 	PvsTheory,
-	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, ProofCommandResponse, ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse
+	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, ProofCommandResponse, ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, SequentDescriptor
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -329,8 +329,8 @@ export class PvsLanguageServer {
 
 			// make sure file exists
 			const fname: string = fsUtils.desc2fname(desc);
-			if (desc.fileExtension === ".pvs" && !fsUtils.fileExists(fname)) {
-				this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
+			if (desc.fileExtension === ".pvs" && desc.origin !== "prooflite" && !fsUtils.fileExists(fname)) {
+				this.notifyMessage({ msg: `Warning: file ${fname} does not exist. (source: Prover)` });
 				return;
 			}
 			
@@ -370,7 +370,7 @@ export class PvsLanguageServer {
 			if (response?.result) {
 				const channelID: string = utils.desc2id(desc);
 				// the initial response should include only one sequent descriptor
-				const result: fsUtils.SequentDescriptor[] = response.result;
+				const result: SequentDescriptor[] = response.result;
 				if (result && result.length) {
 					// notify the client that the server is in prover mode
 					this.notifyServerMode("in-checker");
@@ -388,7 +388,7 @@ export class PvsLanguageServer {
 
 					if (result.length > 1) {
 						for (let i = 1; i < response.result.length; i++) {
-							const proofState: fsUtils.SequentDescriptor = response.result[i]; // process proof commands
+							const proofState: SequentDescriptor = response.result[i]; // process proof commands
 							await this.proofExplorer?.onStepExecutedNew({ proofState, lastSequent: i === response.result.length - 1 }, { feedbackToTerminal: true });
 						}
 					}
@@ -578,7 +578,7 @@ export class PvsLanguageServer {
 				const fname: string = fsUtils.desc2fname(request);
 				// make sure file exists
 				if (!fsUtils.fileExists(fname)) {
-					this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
+					this.notifyMessage({ msg: `Warning: file ${fname} does not exist. (source: Typechecker)` });
 					return;
 				}
 				const taskId: string = `typecheck-${fname}`;
@@ -762,7 +762,7 @@ export class PvsLanguageServer {
 		if (request) {
 			opt = opt || {};
 			if (request) {
-				if (fsUtils.isPvsFile(request) && !fsUtils.isSummaryFile(request)) {
+				if (fsUtils.isPvsFile(request) && !fsUtils.isSummaryFile(request) && !fsUtils.isProofliteFile(request) && !this.isPreludeFile(request)) {
 					if (request.contextFolder === path.join(this.lastParsedContext, "pvsbin")) {
 						// nothing to do
 						return;
@@ -778,7 +778,7 @@ export class PvsLanguageServer {
 					const fname: string = fsUtils.desc2fname(request);
 					// make sure file exists
 					if (!fsUtils.fileExists(fname)) {
-						this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
+						this.notifyMessage({ msg: `Warning: file ${fname} does not exist. (source: Parser)` });
 						return;
 					}
 					const taskId: string = `parse-${fname}`;
@@ -1260,8 +1260,8 @@ export class PvsLanguageServer {
 				// reset diagnostics for this file
 				const fname: string = fsUtils.desc2fname({ contextFolder, fileName, fileExtension });
 				delete this.diags[fname];
-				// trigger parsing
-				await this.parseFileRequest({ fileName, fileExtension, contextFolder }); // async call, will automatically send diags to the client
+				// trigger parsing if this is a .pvs file
+				await this.parseFileRequest({ fileName, fileExtension, contextFolder }); // this call will automatically send new diags to the client
 			}
 		});
 
@@ -1578,13 +1578,29 @@ export class PvsLanguageServer {
 		this.connection?.sendRequest(serverEvent.quitProofResponse);
 	}
 
-	async viewPreludeFileRequest (): Promise<void> {
-		this.connection?.sendRequest(serverEvent.viewPreludeFileResponse, {
+	/**
+	 * Utility function, return the file name of the prelude
+	 */
+	getPreludeFileName (): FileDescriptor {
+		return {
 			contextFolder: path.join(this.pvsPath, "lib"),
 			fileName: "prelude",
 			fileExtension: ".pvs"
-		});
+		};
 	}
+
+	/**
+	 * Utility function, checks if the given file name is the prelude file
+	 */
+	isPreludeFile (desc: string | FileDescriptor): boolean {
+		if (desc) {
+			const fname: string = typeof desc === "string" ? desc : fsUtils.desc2fname(desc);
+			const prelude: string = fsUtils.desc2fname(this.getPreludeFileName());
+			return fname === prelude;
+		}
+		return false;
+	}
+
 	/**
 	 * Internal function, used to setup LSP event listeners
 	 */
@@ -1775,7 +1791,7 @@ export class PvsLanguageServer {
 				this.connection?.sendRequest(serverEvent.getGatewayConfigResponse, { port: 0 });
 			});
 			this.connection?.onRequest(serverRequest.viewPreludeFile, async () => {
-				this.viewPreludeFileRequest(); // async call
+				this.connection?.sendRequest(serverEvent.viewPreludeFileResponse, this.getPreludeFileName());
 			});
 			this.connection?.onRequest(serverRequest.quitProof, async () => {
 				this.quitProofRequest(); // this method will send a quitProofResponse to the client

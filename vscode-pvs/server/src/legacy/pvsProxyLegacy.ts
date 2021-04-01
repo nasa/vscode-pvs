@@ -37,13 +37,11 @@
  **/
 // import { PvsProcessLegacy } from './pvsProcessLegacy';
 import { PvsResponse, ShowTCCsResult, PvsResult, FindDeclarationResult } from '../common/pvs-gui';
-import { SimpleConnection, PvsFileDescriptor, TheoryDescriptor, FormulaDescriptor, PvsFormula } from '../common/serverInterface'
+import { SimpleConnection, PvsFileDescriptor, TheoryDescriptor, FormulaDescriptor, PvsFormula, SequentDescriptor } from '../common/serverInterface'
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import { PvsProcess } from '../pvsProcess';
 import { PvsErrorManager } from '../pvsErrorManager';
-import { SequentDescriptor } from '../common/fsUtils';
-
 
 interface ProofSessionStatus {
     label: string,
@@ -346,6 +344,7 @@ export class PvsProxyLegacy {
                 let error_string: string = (matchTypecheckError && matchTypecheckError.length > 3) ? matchTypecheckError[1].trim().replace(/\\n/g, "\n")
                     : (matchTypecheckError2 && matchTypecheckError2.length > 3) ? matchTypecheckError2[1].trim().replace(/\\n/g, "\n")
                     : `Libraries imported by the theory cannot be found`;
+                error_string = error_string.replace(/\n+/g, "\n");
                 let line: string = (matchTypecheckError && matchTypecheckError.length > 3 && !isNaN(+matchTypecheckError[4])) ? matchTypecheckError[3]
                     : (matchTypecheckError2 && matchTypecheckError2.length > 3 && !isNaN(+matchTypecheckError2[3])) ? matchTypecheckError2[3]
                     : "1";
@@ -363,7 +362,7 @@ export class PvsProxyLegacy {
                     // pvs has not returned the true name, we include the name in the error message if the file is not in the current context
                     const candidate: string = path.join(fsUtils.getContextFolder(fname), file_name);
                     if (fsUtils.fileExists(candidate)) {
-                        file_name = fname;
+                        file_name = candidate;
                     } else {
                         error_string = `In imported file ${file_name} (line ${line}, col ${character}): ` + error_string;
                         line = "1";

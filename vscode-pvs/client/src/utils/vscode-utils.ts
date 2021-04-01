@@ -42,8 +42,8 @@ import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem, WorkspaceItem } from "../views/vscodePvsWorkspaceExplorer";
 import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula } from '../common/serverInterface';
-import { CancellationToken, TextDocument } from 'vscode-languageclient';
-
+import { CancellationToken } from 'vscode-languageclient';
+import { XTermColorTheme } from '../common/colorUtils';
 
 /**
  * Returns the context folder of the editor
@@ -643,6 +643,57 @@ export function getToolbarVisibility (): boolean {
 export async function setToolbarVisibility (viz: boolean): Promise<void> {
     const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
     const res = config.update("workbench.view.alwaysShowHeaderActions", !!viz);
+}
+
+/**
+ * Detects if the color theme is light or dark, based on the theme name
+ */
+export function detectColorTheme (): XTermColorTheme {
+    const colorTheme: string = getConfiguration("workbench.colorTheme");
+    return colorTheme.toLocaleLowerCase().trim().endsWith("light") ? "light" : "dark";
+}
+
+/**
+ * Updates vscode settings with the aim to declutter the interface 
+ */
+export function declutterVscode (): void {
+    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+    // remove indent lines in explorer
+    config.update("editor.renderIndentGuides", false);
+    // config.update("workbench.tree.indent", 8);
+
+    const filesExclude: { [key:string]: boolean } = config.get("files.exclude") || {};
+    // do not display temporary files created by pvs, e.g., .prf~
+    filesExclude["**/*.???~"] = true;
+    // do not display internal files and folders that the user should not be touching
+    filesExclude["**/.pvscontext"] = true;
+    filesExclude["**/pvsbin"] = true;
+    filesExclude["**/*.jprf"] = true;
+    filesExclude["**/*.prf"] = true;
+    filesExclude["**/orphaned-proofs.prf"] = true;
+    filesExclude["**/*_adt.pvs"] = true;
+    // hide log files
+    filesExclude["**/*.log"] = true;
+    // hide .vscode folder
+    filesExclude["**/.vscode"] = true;
+    // save workspace settings
+    config.update("files.exclude", filesExclude);
+}
+
+/**
+ * Loads pvs file icons
+ */
+export function loadPvsFileIcons (): void {
+    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+    config.update("workbench.iconTheme", "pvs");
+}
+
+/**
+ * Unloads pvs file icons
+ */
+ export function unloadPvsFileIcons (): void {
+    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+    config.update("workbench.iconTheme", undefined);
 }
 
 export function resource2desc (resource: string | { 

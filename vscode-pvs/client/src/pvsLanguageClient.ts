@@ -59,6 +59,7 @@ import { VSCodePvsSearch } from './views/vscodePvsSearch';
 import { VSCodePvsioWeb } from './views/vscodePvsioWeb';
 // import { VSCodePvsTerminalLinkProvider } from './providers/vscodePvsTerminalLinkProvider';
 import { VSCodePvsXTerm } from './views/vscodePvsXTerm';
+import { XTermColorTheme } from './common/colorUtils';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -213,6 +214,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 		// onDidChangeConfiguration is emitted when the configuration file changes
 		workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
+			// get color theme
+			const colorTheme: XTermColorTheme = vscodeUtils.detectColorTheme();
+			this.xterm.updateColorTheme(colorTheme);
+
 			// re-initialise pvs if the executable is different
 			const pvsPath: string = vscodeUtils.getConfiguration("pvs.path").trim();
 			const pvsLibraryPath: string = vscodeUtils.getPvsLibraryPath();
@@ -311,11 +316,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.snippetsProvider = new VSCodePvsSnippetsProvider(this.client);
 			this.snippetsProvider.activate(this.context);
 
-			// this.vscodePvsTerminal = new VSCodePvsTerminal(this.client);
-			// this.vscodePvsTerminal.activate(this.context);
-			// this.terminalLinkProvider = new VSCodePvsTerminalLinkProvider(this.client);
-			// this.terminalLinkProvider.activate(this.context);
-
 			this.xterm = new VSCodePvsXTerm(this.client);
 			this.xterm.activate(this.context);
 
@@ -329,6 +329,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.plotter.activate(this.context);
 			this.search = new VSCodePvsSearch(this.client);
 			this.search.activate(this.context);
+			
 			this.pvsioweb = new VSCodePvsioWeb(this.client);
 			this.pvsioweb.activate(this.context);
 	
@@ -382,6 +383,12 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 				// make toolbars (aka header actions) always visible
 				vscodeUtils.setToolbarVisibility(true);
+
+				// declutter vscode
+				vscodeUtils.declutterVscode();
+
+				// use pvs file icons
+				vscodeUtils.loadPvsFileIcons();
 
 				// update status bar
 				this.statusBar.ready();

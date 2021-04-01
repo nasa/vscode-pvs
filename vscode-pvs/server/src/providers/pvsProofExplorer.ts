@@ -68,17 +68,16 @@ import {
 	CliGatewayQuit,
 	ProofFile,
 	ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind, ProofExecDidStopRunning, ProofCommandResponse, ProofExecCommand, ProofEditCommand
+	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind, ProofExecDidStopRunning, ProofCommandResponse, ProofExecCommand, ProofEditCommand, ProofOrigin, SequentDescriptor, ProveFormulaRequest
 } from '../common/serverInterface';
-import * as commandUtils from '../common/commandUtils';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
 import { PvsResponse, PvsError } from '../common/pvs-gui';
-import { desc2id, ProofOrigin } from '../common/languageUtils';
+import { desc2id, isEmptyCommand, isFailCommand, isInvalidCommand, isPostponeCommand, isProofliteGlassbox, isQEDCommand, isQuitCommand, isQuitDontSaveCommand, isSameCommand, isSaveThenQuitCommand, isShowHiddenCommand, isUndoCommand, isUndoUndoCommand, isUndoUndoPlusCommand, splitCommands } from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
 import { PvsProxy } from '../pvsProxy';
 import { PvsLanguageServer } from '../pvsLanguageServer';
-import { saveProofDescriptor, SequentDescriptor } from '../common/fsUtils';
+import { saveProofDescriptor } from '../common/fsUtils';
 
 abstract class TreeItem {
 	id: string;
@@ -424,7 +423,7 @@ export class PvsProofExplorer {
 					this.activeNode?.name 
 						: null;
 		if (cmd) {
-			if (this.running && !this.autorunFlag && commandUtils.isPostponeCommand(cmd)) {
+			if (this.running && !this.autorunFlag && isPostponeCommand(cmd)) {
 				if (this.stopAt) {
 					if (this.stopAt === this.activeNode) {
 						// stop the proof at the first postpone when running the proof in proof explorer, except if this is a re-run triggered by M-x prt or M-x pri (autorunFlag)
@@ -560,7 +559,7 @@ export class PvsProofExplorer {
 				this.stopAt = null;
 
 				// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
-				if (this.proofState.sequent && (commandUtils.isSameCommand(activeNode.name, cmd) === false || commandUtils.isSameCommand(activeNode.name, userCmd) === false || this.ghostNode.isActive())) {
+				if (this.proofState.sequent && (isSameCommand(activeNode.name, cmd) === false || isSameCommand(activeNode.name, userCmd) === false || this.ghostNode.isActive())) {
 					// concatenate new command
 					const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);
 					// append before selected node (the active not has not been executed yet)
@@ -577,7 +576,7 @@ export class PvsProofExplorer {
 
 				// trim the node if necessary
 				if (activeNode) {
-					if (commandUtils.isProofliteGlassbox(activeNode.name)) {
+					if (isProofliteGlassbox(activeNode.name)) {
 						this.deleteNode({ selected: activeNode });
 					} else {
 						this.trimNode({ selected: activeNode });
@@ -592,7 +591,7 @@ export class PvsProofExplorer {
 				return;
 			}
 			// if command is quit, stop execution
-			if (commandUtils.isQuitCommand(cmd)) {
+			if (isQuitCommand(cmd)) {
 				this.running = false;
 				this.stopAt = null;
 				return;	
@@ -620,7 +619,7 @@ export class PvsProofExplorer {
 
 			//--- check other meta-commands: (undo), (undo undo), (postpone), (show-hidden), (comment "..."), (help xxx)
 			// if command is undo, go back to the last visited node
-			if (commandUtils.isUndoCommand(userCmd)) {
+			if (isUndoCommand(userCmd)) {
 				this.running = false;
 				this.stopAt = null;
 				this.undoundoTarget = this.activeNode;
@@ -657,9 +656,9 @@ export class PvsProofExplorer {
 			}
 
 			// if command is postpone, move to the new branch
-			if (commandUtils.isPostponeCommand(userCmd, this.proofState) || pathHasChanged) {
+			if (isPostponeCommand(userCmd, this.proofState) || pathHasChanged) {
 				// this.previousPath = currentPath;
-				if (this.running && commandUtils.isPostponeCommand(userCmd, this.proofState)) {
+				if (this.running && isPostponeCommand(userCmd, this.proofState)) {
 					if (this.autorunFlag) {
 						this.running = false;
 						this.stopAt = null;	
@@ -710,7 +709,7 @@ export class PvsProofExplorer {
 				}
 			} else {
 				// handle the special command (undo undo)
-				if (commandUtils.isUndoUndoCommand(userCmd)) {
+				if (isUndoUndoCommand(userCmd)) {
 					if (this.undoundoTarget) {
 						let target: ProofItem = this.undoundoTarget;
 						// the (undo undo) target is typically a visited node
@@ -730,7 +729,7 @@ export class PvsProofExplorer {
 				}
 
 				// handle (show-hidden) and (comment "xxx")
-				if (commandUtils.isShowHiddenCommand(userCmd)) {
+				if (isShowHiddenCommand(userCmd)) {
 					// nothing to do, the prover will simply show the hidden formulas
 					return;
 				}
@@ -745,7 +744,7 @@ export class PvsProofExplorer {
 				// if (languageUtils.isHelpBangCommand(userCmd)) {
 				// 	// nothing to do
 				// } 
-				else if (commandUtils.isUndoUndoPlusCommand(userCmd)) {
+				else if (isUndoUndoPlusCommand(userCmd)) {
 					// this.running = false;
 					// vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 					if (this.autorunFlag) {
@@ -758,19 +757,19 @@ export class PvsProofExplorer {
 						// await this.quitProof();
 					}
 					// return;
-				} else if (commandUtils.isInvalidCommand(this.proofState)) {
-					if (commandUtils.isSameCommand(activeNode.name, cmd) || commandUtils.isSameCommand(activeNode.name, userCmd)) {
+				} else if (isInvalidCommand(this.proofState)) {
+					if (isSameCommand(activeNode.name, cmd) || isSameCommand(activeNode.name, userCmd)) {
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 						// mark the sub tree of the invalid node as not visited
 						activeNode.treeNotVisited();
 					}
 				} else if (languageUtils.interruptedByClient(this.proofState)) {
 					this.stopRun();
-				} else if (languageUtils.noChange(this.proofState) || commandUtils.isEmptyCommand(cmd)) {
+				} else if (languageUtils.noChange(this.proofState) || isEmptyCommand(cmd)) {
 					const command: string = languageUtils.getNoChangeCommand(this.proofState);
 					// check if the command that produced no change comes from the proof tree -- if so advance indicator
 					// here we need to check both command and userCmd, as pvs may clean up the command, eg., (hide 01) is returned as (hide 1)
-					if ((commandUtils.isSameCommand(activeNode.name, command) || commandUtils.isSameCommand(activeNode.name, userCmd) || commandUtils.isSameCommand(activeNode.name, cmd))
+					if ((isSameCommand(activeNode.name, command) || isSameCommand(activeNode.name, userCmd) || isSameCommand(activeNode.name, cmd))
 							&& !this.ghostNode.isActive()) {
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 						// mark the sub tree of the invalid node as not visited
@@ -780,7 +779,7 @@ export class PvsProofExplorer {
 					// regular prover command
 					// else, the prover has made progress with the provided proof command
 					// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
-					if (!(commandUtils.isSameCommand(activeNode.name, cmd) || commandUtils.isSameCommand(activeNode.name, userCmd)) || this.ghostNode.isActive()) {
+					if (!(isSameCommand(activeNode.name, cmd) || isSameCommand(activeNode.name, userCmd)) || this.ghostNode.isActive()) {
 						// concatenate new command
 						const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);
 						// append before selected node (the active not has not been executed yet)
@@ -799,7 +798,7 @@ export class PvsProofExplorer {
 							this.trimNode({ selected: activeNode });
 						}
 					}
-					if (commandUtils.isSameCommand(activeNode.name, cmd) || commandUtils.isSameCommand(activeNode.name, userCmd)) {
+					if (isSameCommand(activeNode.name, cmd) || isSameCommand(activeNode.name, userCmd)) {
 						// replace the command entered by the user with the one polished by pvs
 						this.activeNode.rename(cmd);
 					}
@@ -1873,25 +1872,18 @@ export class PvsProofExplorer {
 
 	/**
 	 * Loads the proof for a given formula
-	 * @param desc 
+	 * @param req 
 	 */
-	async loadProofRequest (desc: {
-		fileName: string, 
-		fileExtension: string, 
-		contextFolder: string, 
-		theoryName: string, 
-		formulaName: string,
-		proofFile?: FileDescriptor 
-	}, opt?: { newProof?: boolean, useJprf?: boolean }): Promise<ProofDescriptor> {
+	async loadProofRequest (req: ProveFormulaRequest, opt?: { newProof?: boolean, useJprf?: boolean }): Promise<ProofDescriptor> {
 		opt = opt || {};
-		this.formula = desc;
+		this.formula = req;
 		if (this.pvsProxy) {
-			const fdesc: PvsFile = desc.proofFile || {
-				fileName: desc.fileName,
+			const fdesc: PvsFile = req.proofFile || {
+				fileName: req.fileName,
 				fileExtension: (opt.useJprf) ? ".jprf" : ".prf",
-				contextFolder: desc.contextFolder
+				contextFolder: req.contextFolder
 			};
-			const pdesc: ProofDescriptor = (opt.newProof) ? await this.pvsProxy.newProof(desc) : await this.openProofFile(fdesc, desc, opt);
+			const pdesc: ProofDescriptor = (opt.newProof) ? await this.pvsProxy.newProof(req) : await this.openProofFile(fdesc, req, opt);
 			// send feedback to the client
 			const structure: ProofNodeX = this.root.getNodeXStructure();
 			const evt: ProofExecDidLoadProof = { 
@@ -1941,7 +1933,7 @@ export class PvsProofExplorer {
 			this.ghostNode = new GhostNode({ parent: this.root, node: this.root, connection: this.connection });
 			if (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length
 					// when proof is simply (postpone), this is an empty proof, don't append postpone
-					&& !(desc.proofTree.rules.length === 1 && commandUtils.isPostponeCommand(desc.proofTree.rules[0].name))) {
+					&& !(desc.proofTree.rules.length === 1 && isPostponeCommand(desc.proofTree.rules[0].name))) {
 				desc.proofTree.rules.forEach((child: ProofNode) => {
 					createTree(child, this.root);
 				});
@@ -2353,13 +2345,13 @@ export class PvsProofExplorer {
 		// 	await this.quitProofAndSave();
 		// 	return;
 		// }
-		if (commandUtils.isSaveThenQuitCommand(request.cmd)) {
+		if (isSaveThenQuitCommand(request.cmd)) {
 			await this.quitProofAndSave();
 			const ans: ProofCommandResponse = { res: "bye!", req: request };
 			this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 			return;
 		}
-		if (commandUtils.isQuitCommand(request.cmd)) {
+		if (isQuitCommand(request.cmd)) {
 			if (this.dirtyFlag) {
 				// ask if the proof needs to be saved
 				await this.querySaveProof(request)
@@ -2369,13 +2361,13 @@ export class PvsProofExplorer {
 			// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 			return;
 		}
-		if (commandUtils.isQuitDontSaveCommand(request.cmd)) {
+		if (isQuitDontSaveCommand(request.cmd)) {
 			await this.quitProof({ notifyClient: true });
 			// const ans: ProofCommandResponse = { res: "bye!", req: request };
 			// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 			return;
 		}
-		if (commandUtils.isFailCommand(request.cmd)) {
+		if (isFailCommand(request.cmd)) {
 			if (this.activeNode.branchId === "") {
 				// fail at the root sequent is equivalent to quit
 				if (this.dirtyFlag) {
@@ -2396,7 +2388,7 @@ export class PvsProofExplorer {
 			this.running = false;
 			request.cmd = "(skip)";
 		}
-		if (commandUtils.isQEDCommand(request.cmd)) {
+		if (isQEDCommand(request.cmd)) {
 			// print QED in the terminal and close the terminal session
 			// const channelID: string = utils.desc2id(this.formula);
 			// const evt: CliGatewayQED = { type: "pvs.event.QED", channelID };
@@ -2420,7 +2412,7 @@ export class PvsProofExplorer {
 		}
 
 		// else, relay command to pvs-server
-		const cmdArray: string[] = commandUtils.splitCommands(request.cmd);
+		const cmdArray: string[] = splitCommands(request.cmd);
 		if (cmdArray) {
 			for (let i = 0; i < cmdArray.length; i++) {
 				const cmd: string = cmdArray[i];
@@ -2449,9 +2441,9 @@ export class PvsProofExplorer {
 								// FIXME: pvs-server needs to provide a string representation of the command, not its structure!
 								const command: string = 
 									(sequent && sequent["last-cmd"] 
-										&& !commandUtils.isUndoCommand(cmd)
-										&& !commandUtils.isUndoUndoCommand(cmd)
-										&& !commandUtils.isPostponeCommand(cmd)) ? sequent["last-cmd"] : cmd;
+										&& !isUndoCommand(cmd)
+										&& !isUndoUndoCommand(cmd)
+										&& !isPostponeCommand(cmd)) ? sequent["last-cmd"] : cmd;
 								// if (this.connection) {
 								// 	this.connection.sendRequest(serverEvent.proofCommandResponse, { 
 								// 		response: { result: sequent }, 
@@ -3112,7 +3104,7 @@ class ProofCommand extends ProofItem {
 	constructor (cmd: string, branchId: string, parent: ProofItem, connection: Connection) {
 		super("proof-command", cmd, branchId, parent, connection);
 		cmd = cmd.trim();
-		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || commandUtils.isUndoCommand(cmd) ? cmd : `(${cmd})`;
+		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || isUndoCommand(cmd) ? cmd : `(${cmd})`;
 		this.notVisited({ internalAction: true });
 	}
 	// @override

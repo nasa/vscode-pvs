@@ -1,12 +1,12 @@
 import { Terminal as XTerm } from 'xterm';
-import { CommandDescriptor, CommandsMap, Position } from './common/serverInterface';
+import { CommandDescriptor, CommandsMap, MathObjects, HintsObject, Position } from './common/serverInterface';
 import * as colorUtils from './common/colorUtils';
-import * as commandUtils from './common/commandUtils';
 import { pvsColorTheme } from './common/languageKeywords';
 import { interruptCommand, SessionType, UpdateCommandHistoryData, XTermEvent } from './common/xtermInterface';
 import * as Backbone from 'backbone';
 import * as Handlebars from 'handlebars';
-import { HintsObject, MathObjects } from './common/commandUtils';
+import { checkPar, evaluatorCommands, proverCommands, splitCommands } from './common/languageUtils';
+import { htmlColorCode, XTermColorTheme } from './common/colorUtils';
 
 interface KeyEvent { key: string, domEvent: KeyboardEvent };
 interface MatchBrackets { pos1?: Position, pos2: Position }; // if idx1 is not present, then bracket idx2 is mismatched
@@ -22,8 +22,7 @@ interface RebaseEvent {
 };
 
 export const welcomeMessage: string = `
-Hints:
-- Ctrl + SPACE shows the full list of prover commands.
+- Ctrl+SPACE shows the full list of commands.
 - TAB autocompletes commands, UP/DOWN arrow keys recall previous/next command.
 `
 ;
@@ -790,7 +789,7 @@ const tooltipStyle: string = `<style>
     font-family:monospace;
     text-align:left;
     cursor:default;
-    background:#1e1e1e;
+    background:${htmlColorCode.black};
     border: 1px solid;
     white-space: nowrap;
 }
@@ -1043,7 +1042,7 @@ export class Autocomplete extends Backbone.Model {
     updateCommandHistory (cmd: string, opt?: { successHistory?: boolean }): void {
         if (cmd) {
             // split commands in the case the user has entered multiple commands at the same time, e.g., (skosimp*)(grind)
-            const cmdArray: string[] = commandUtils.splitCommands(cmd);
+            const cmdArray: string[] = splitCommands(cmd);
             if (cmdArray?.length) {
                 const hints: string[] = this.getHints({ fullSet: true });
                 for (let i = 0; i < cmdArray.length; i++) {
@@ -1292,8 +1291,8 @@ export class Autocomplete extends Backbone.Model {
         const cmd: string = this.getSelectedHint() || this.getCurrentInput({ regex: /[\w\+\@\-\*\?\!]+/ });
         // console.log("[xterm-autocomplete] updateHelp", { cmd });
         const desc: CommandDescriptor = this.sessionType === "evaluator" ?
-            commandUtils.evaluatorCommands[cmd]
-                : commandUtils.proverCommands[cmd];
+            evaluatorCommands[cmd]
+                : proverCommands[cmd];
         const integratedHelp: string = Handlebars.compile(terminalHelpTemplate, { noEscape: true })({
             cmd,
             ...desc,
@@ -1442,7 +1441,16 @@ export class Autocomplete extends Backbone.Model {
     }
 }
 
-
+const colorThemes = {
+    dark: {
+        background: htmlColorCode.black,
+        color: htmlColorCode.white
+    },
+    light: {
+        background: htmlColorCode.white,
+        color: htmlColorCode.black
+    }
+}
 
 /**
  * XTermPvs extends the functionalities of xterm.js by introducing:
@@ -1533,7 +1541,7 @@ export class XTermPvs extends Backbone.Model {
             fontSize: this.fontSize,
             fontFamily: "monospace",
             theme: {
-                background: "#1e1e1e" // dark gray
+                background: htmlColorCode.black
             }
         });
     
@@ -1541,13 +1549,16 @@ export class XTermPvs extends Backbone.Model {
         this.parent = opt?.parent || "terminal";
         this.xterm.open(document.getElementById(this.parent));
         $(".terminal").append(tooltipStyle);
-        $(".terminal").append(cursorStyle);
+        // $(".terminal").append(cursorStyle);
     
         // install handlers
         this.installHandlers();
 
         // get the focus
         this.xterm.focus();
+
+        // set theme
+        this.nightMode();
 
         // @ts-ignore
         // this.xterm.buffer.active._buffer.lines.onTrim((n: number) => {
@@ -1570,6 +1581,24 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
+     * Sets dark color theme
+     */
+    nightMode (): void {
+        console.log("[xterm-pvs] nightMode");
+        this.xterm.setOption("theme", colorThemes.dark);
+        $("body").css(colorThemes.dark);
+    }
+
+    /**
+     * Sets light color theme
+     */
+    lightMode (): void {
+        console.log("[xterm-pvs] lightMode");
+        this.xterm.setOption("theme", colorThemes.light);
+        $("body").css(colorThemes.light);
+    }
+
+    /**
      * Disables terminal input
      */
     disableInput (): void {
@@ -1581,6 +1610,16 @@ export class XTermPvs extends Backbone.Model {
      */
     enableInput (): void {
         this.inputEnabled = true;
+    }
+
+    /**
+     * Utility function, updates color theme
+     */
+    updateColorTheme (theme: XTermColorTheme): void {
+        this.nightMode()
+        // TODO
+        // console.log("[xterm-pvs] updateColorTheme", { theme });
+        // theme === "dark" ? this.nightMode() : this.lightMode();
     }
 
     /**
@@ -1637,6 +1676,7 @@ export class XTermPvs extends Backbone.Model {
         this.pos = {
             ...MIN_POS
         };
+        this.xterm.clear();
         this.xterm.write("\x1B[2J"); // erase entire screen
         this.xterm.write("\x1B[H"); // move cursor to home position
     }
@@ -1778,7 +1818,7 @@ export class XTermPvs extends Backbone.Model {
                     break;
                 }
                 case "prover": {
-                    if (commandUtils.checkPar(cmd)?.success || cmd?.trim() === "quit") {
+                    if (checkPar(cmd)?.success || cmd?.trim() === "quit") {
                         // send command
                         this.trigger(XTermEvent.sendText, { data: cmd });
                         // push command in the history

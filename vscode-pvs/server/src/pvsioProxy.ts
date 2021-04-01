@@ -42,8 +42,8 @@ import { PvsVersionDescriptor, SimpleConnection, PvsTheory, EvalExpressionReques
 import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import * as languageUtils from './common/languageUtils';
-import * as commandUtils from './common/commandUtils';
 import { PvsResponse } from './common/pvs-gui';
+import { isQuitCommand } from './common/languageUtils';
 
 export const pvsioResultRegExp: RegExp = /(\s*==>)?([\w\W\s]+)/g;
 
@@ -458,7 +458,7 @@ export class PvsIoProxy {
 					let cmd: string = cmdSeq[i];
 					// console.log(cmd);
 					// check if this is a quit command
-					if (commandUtils.isQuitCommand(cmd)) {
+					if (isQuitCommand(cmd)) {
 						await pvsio.kill();
 						if (opt?.cb && i === cmdSeq.length - 1) {
 							opt.cb("bye!", null);

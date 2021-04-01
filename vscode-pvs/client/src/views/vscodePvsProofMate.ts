@@ -37,13 +37,12 @@
  **/
 
 import { LanguageClient } from "vscode-languageclient";
-import { ProofMateProfile } from '../common/commandUtils';
 import * as vscode from 'vscode';
 import { ProofBranch, ProofCommand, ProofItem, RootNode } from "./vscodePvsProofExplorer";
 import * as utils from '../common/languageUtils';
-import { ProofNode, PvsFormula } from "../common/serverInterface";
+import { ProofMateProfile, ProofNode, PvsFormula, SequentDescriptor, SFormula } from "../common/serverInterface";
 import * as path from 'path';
-import { openSketchpad, saveSketchpad, SequentDescriptor, SFormula } from "../common/fsUtils";
+import { openSketchpad, saveSketchpad } from "../common/fsUtils";
 
 declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
 

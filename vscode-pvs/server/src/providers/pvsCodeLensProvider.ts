@@ -40,7 +40,7 @@
 import { CancellationToken, CodeLens, CodeLensRequest, Range, CodeLensParams } from 'vscode-languageserver';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
-import { PvsFormula } from '../common/serverInterface';
+import { ProveFormulaRequest, PvsFormula } from '../common/serverInterface';
 
 export class PvsCodeLensProvider {    
     /**
@@ -52,7 +52,7 @@ export class PvsCodeLensProvider {
 	 */
 	provideCodeLens(document: { txt: string, uri: string }, token?: CancellationToken): Thenable<CodeLens[]> {
         if (document) {
-            const fileName: string = fsUtils.getFileName(document.uri);
+            let fileName: string = fsUtils.getFileName(document.uri);
             const fileExtension: string = fsUtils.getFileExtension(document.uri);
             const contextFolder: string = fsUtils.getContextFolder(document.uri);
             
@@ -183,6 +183,12 @@ export class PvsCodeLensProvider {
                     if (match.length > 1 && match[1]) {
                         const formulaName: string = match[1];
                         const theoryName: string = fileName; // by convention, .prlite filename is the theoryName
+
+                        // check if a file name is specified in the tags
+                        const matchFileName: RegExpMatchArray = utils.proofliteTagsRegexp({ theoryName, formulaName }).exec(document.txt);
+                        if (matchFileName && matchFileName.length > 1) {
+                            fileName = fsUtils.getFileName(matchFileName[1]);
+                        }
                             
                         const docUp: string = content.slice(0, match.index + theoryName.length);
                         const lines: string[] = docUp.split("\n");
@@ -192,12 +198,13 @@ export class PvsCodeLensProvider {
                         const realContextFolder: string = contextFolder.endsWith("/pvsbin") || contextFolder.endsWith("/pvsbin/") ?
                             contextFolder.substring(0, contextFolder.lastIndexOf("/pvsbin")) : contextFolder;
                         
-                        const args = {
+                        const args: ProveFormulaRequest = {
                             fileName,
                             fileExtension: (utils.tccFormulaRegexp.test(formulaName)) ? ".tccs" : ".pvs",
                             contextFolder: realContextFolder,
                             theoryName, 
                             formulaName,
+                            origin: "proofilte",
                             proofFile: {
                                 fileName,
                                 fileExtension,

@@ -52,11 +52,10 @@ import {
 	ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, 
 	ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, 
 	ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, 
-	FileDescriptor, ProofExecRewind, ProofExecInterruptProver 
+	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, SequentDescriptor 
 } from '../common/serverInterface';
-import * as commandUtils from '../common/commandUtils';
 import * as fsUtils from '../common/fsUtils';
-import { TreeStructure, NodeType, formatSequent, isGlassboxTactic } from '../common/languageUtils';
+import { TreeStructure, NodeType, formatSequent, isGlassboxTactic, isPostponeCommand, isUndoCommand } from '../common/languageUtils';
 import { findTheoryName, findFormulaName } from '../common/fsUtils';
 import * as vscode from 'vscode';
 import * as vscodeUtils from '../utils/vscode-utils';
@@ -161,7 +160,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	/**
 	 * Current proof state
 	 */
-	protected proofState: fsUtils.SequentDescriptor;
+	protected proofState: SequentDescriptor;
 
 	
 	/**
@@ -602,7 +601,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 * Utility function, used to set the initial proof state.
 	 * @param sequent 
 	 */
-	didLoadSequent (sequent: fsUtils.SequentDescriptor): void {
+	didLoadSequent (sequent: SequentDescriptor): void {
 		this.proofState = sequent;
 		if (this.activeNode) {
 			this.activeNode.updateTooltip(sequent);
@@ -771,7 +770,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			this.ghostNode = new GhostNode({ parent: this.root, node: this.root });
 			if (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length
 					// when proof is simply (postpone), this is an empty proof, don't append postpone
-					&& !(desc.proofTree.rules.length === 1 && commandUtils.isPostponeCommand(desc.proofTree.rules[0].name))) {
+					&& !(desc.proofTree.rules.length === 1 && isPostponeCommand(desc.proofTree.rules[0].name))) {
 				desc.proofTree.rules.forEach((child: ProofNode) => {
 					createTree(child, this.root);
 				});
@@ -1384,7 +1383,7 @@ export class ProofItem extends TreeItem {
 		}
 	}
 
-	proofState: fsUtils.SequentDescriptor = null; // sequents *before* the execution of the node
+	proofState: SequentDescriptor = null; // sequents *before* the execution of the node
 	constructor (desc: { id?: string, type: string, name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
 		super(desc.type, (desc.collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : desc.collapsibleState);
 		this.contextValue = desc.type;
@@ -1395,7 +1394,7 @@ export class ProofItem extends TreeItem {
 		this.tooltip = "Double click sends command to terminal"; // the tooltip will shows the sequent before the execution of the proof command, as soon as the node becomes active
 		this.notVisited();
 	}
-	updateTooltip (sequent?: fsUtils.SequentDescriptor): void {
+	updateTooltip (sequent?: SequentDescriptor): void {
 		this.tooltip = (sequent) ? formatSequent(sequent, { formulasOnly: true }).trim()
 			: (this.proofState) ? formatSequent(this.proofState, { formulasOnly: true })?.trim()
 				: " ";
@@ -1629,7 +1628,7 @@ export class ProofCommand extends ProofItem {
 	constructor (desc: { id?: string, cmd: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
 		super({ id: desc.id, type: "proof-command", name: desc.cmd, branchId: desc.branchId, parent: desc.parent, collapsibleState: desc.collapsibleState });
 		const cmd: string = desc.cmd.trim();
-		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || commandUtils.isUndoCommand(cmd) ? cmd : `(${cmd})`;
+		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || isUndoCommand(cmd) ? cmd : `(${cmd})`;
 		this.notVisited();
 		this.command = {
 			title: this.contextValue,

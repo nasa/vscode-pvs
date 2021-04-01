@@ -41,10 +41,6 @@ import * as language from "../common/languageKeywords";
 import * as fs from '../common/fsUtils';
 import { window, TextEditor, TextDocument, DecorationOptions, Position, Range } from 'vscode';
 
-const regexp = {
-	keywords: new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi"),
-	comments: new RegExp(language.PVS_COMMENT_REGEXP_SOURCE)
-};
 const keywordsDecorator: TextEditorDecorationType = window.createTextEditorDecorationType({
 	cursor: 'text',
 	color: { id: 'pvs.keywords.color' }, // See package.json for declaration and default values.
@@ -52,38 +48,42 @@ const keywordsDecorator: TextEditorDecorationType = window.createTextEditorDecor
 });
 
 export class VSCodePvsDecorationProvider {
+	// this code is obsolete -- syntax highlighting is performed by vscode -- see pvs-language.json
 	updateDecorations(editor: TextEditor) {
-		if (editor && fs.isPvsFile(editor.document.fileName)) {
-			const document: TextDocument = editor.document;
-			const text: string = document.getText();
-			let keywordsDecorations: DecorationOptions[] = [];
-			let commentedSections: Position[] = [];
-			let match = null;
-			while (match = regexp.comments.exec(text)) {
-				const startPos: Position = document.positionAt(match.index);
-				// Syntax highlighting for comments is performed using pvs-language.json
-				// const endPos: Position = document.positionAt(match.index + match[0].length);
-				// const decoration: DecorationOptions = { range: new Range(startPos, endPos), hoverMessage: null };
-				// decorations.comments.push(decoration);
-				commentedSections.push(startPos);
-			}
-			regexp.keywords.lastIndex = 0;
-			// syntax highlighting for comments, strings, builtin types, operators is performed using pvs-language.json for performance reason	
-			while (match = regexp.keywords.exec(text)) {
-				const startPos: Position = document.positionAt(match.index);
-				let isComment: boolean = commentedSections.some((pos: Position) => {
-					return pos.line === startPos.line && pos.character <= startPos.character;
-				});
-				if (!isComment) {
-					const endPos: Position = document.positionAt(match.index + match[0].length);
-					const decoration: DecorationOptions = {
-						range: new Range(startPos, endPos)
-					};
-					keywordsDecorations.push(decoration);
-				}
-			}
-			regexp.comments.lastIndex = 0;
-			editor.setDecorations(keywordsDecorator, keywordsDecorations);
-		}
+		// if (editor && fs.isPvsFile(editor.document.fileName)) {
+		// 	const document: TextDocument = editor.document;
+		// 	const text: string = document.getText();
+		// 	let keywordsDecorations: DecorationOptions[] = [];
+		// 	let commentedSections: Position[] = [];
+		// 	let match = null;
+
+		// 	const regexComment: RegExp = new RegExp(language.PVS_COMMENT_REGEXP_SOURCE);
+		// 	while (match = regexComment.exec(text)) {
+		// 		const startPos: Position = document.positionAt(match.index);
+		// 		// Syntax highlighting for comments is performed using pvs-language.json
+		// 		// const endPos: Position = document.positionAt(match.index + match[0].length);
+		// 		// const decoration: DecorationOptions = { range: new Range(startPos, endPos), hoverMessage: null };
+		// 		// decorations.comments.push(decoration);
+		// 		commentedSections.push(startPos);
+		// 	}
+
+		// 	// syntax highlighting for comments, strings, builtin types, operators is performed using pvs-language.json for performance reasons	
+		// 	const regexKeywords: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
+		// 	while (match = regexKeywords.exec(text)) {
+		// 		const startPos: Position = document.positionAt(match.index);
+		// 		let isComment: boolean = commentedSections.some((pos: Position) => {
+		// 			return pos.line === startPos.line && pos.character <= startPos.character;
+		// 		});
+		// 		if (!isComment) {
+		// 			const endPos: Position = document.positionAt(match.index + match[0].length);
+		// 			const decoration: DecorationOptions = {
+		// 				range: new Range(startPos, endPos)
+		// 			};
+		// 			keywordsDecorations.push(decoration);
+		// 		}
+		// 	}
+
+		// 	editor.setDecorations(keywordsDecorator, keywordsDecorations);
+		// }
 	}
 }

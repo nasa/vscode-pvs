@@ -254,8 +254,10 @@ export class FormulaOverviewItem extends OverviewItem {
 			// this.label = `${utils.icons.whitecircle} ${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
 			this.label = `${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
 			this.iconPath = {
-				light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
-				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
+				// light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
+				// dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
+				light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"),
+				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")
 			};
 		}
 		this.collapsibleState = (this.theorems.length > 0) ?

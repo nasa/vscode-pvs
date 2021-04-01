@@ -37,11 +37,9 @@
  **/
 
 import * as utils from './common/languageUtils';
-import { PROOF_COMMANDS_BASIC_PROFILE, EVALUATOR_COMMANDS, ProofMateProfile, PROOF_COMMANDS_ADVANCED_PROFILE } from './common/commandUtils';
 import * as readline from 'readline';
-import { PvsCliInterface, SimpleConsole, SimpleConnection, serverRequest, CliGatewaySubscriberEvent } from './common/serverInterface';
+import { PvsCliInterface, SimpleConsole, SimpleConnection, serverRequest, CliGatewaySubscriberEvent, ProofMateProfile, SequentDescriptor } from './common/serverInterface';
 import * as fsUtils from './common/fsUtils';
-import * as commandUtils from './common/commandUtils';
 import * as languageUtils from './common/languageUtils';
 
 import { cliSessionType } from './common/serverInterface';
@@ -50,6 +48,7 @@ import { PvsResponse } from './common/pvs-gui';
 
 import * as WebSocket from 'ws';
 import { colorText, PvsColor } from './common/colorUtils';
+import { checkPar, EVALUATOR_COMMANDS, isQEDCommand, isQuitCommand, isSaveThenQuitCommand, isShowHiddenCommand, PROOF_COMMANDS_ADVANCED_PROFILE, PROOF_COMMANDS_BASIC_PROFILE } from './common/languageUtils';
 
 const usage: string = `
 ${colorText("PVS Prover Command Line Interface (PVS-CLI)", PvsColor.blue)}
@@ -220,12 +219,12 @@ class PvsCli {
 				}
 				if (key?.sequence.includes("\r")) {
 					this.rl.setPrompt("");
-					if (commandUtils.checkPar(this.lines)?.success && semicolorEntered) {
+					if (checkPar(this.lines)?.success && semicolorEntered) {
 						const cmd: string = this.lines;
 						semicolorEntered = false;
 						this.lines = "";
 
-						if (commandUtils.isQuitCommand(cmd)) {
+						if (isQuitCommand(cmd)) {
 							this.isActive = false;
 							this.wsClient.send(JSON.stringify({
 								type: serverRequest.evaluatorCommand,
@@ -291,11 +290,11 @@ class PvsCli {
 			try {
 				if (key && key.sequence.includes("\r")) {
 					this.rl.setPrompt("");
-					if (commandUtils.checkPar(this.lines)?.success) {
+					if (checkPar(this.lines)?.success) {
 						const cmd: string = this.lines;
 						this.lines = "";
 
-						if (commandUtils.isSaveThenQuitCommand(cmd)) {
+						if (isSaveThenQuitCommand(cmd)) {
 							console.log();
 							console.log("Proof saved successfully!");
 							console.log();
@@ -314,7 +313,7 @@ class PvsCli {
 							this.wsClient.close();
 							return;
 						}
-						if (commandUtils.isQuitCommand(cmd)) {
+						if (isQuitCommand(cmd)) {
 							console.log();
 							console.log("Prover session terminated.");
 							console.log();
@@ -334,7 +333,7 @@ class PvsCli {
 							});
 							return;
 						}
-						if (commandUtils.isQEDCommand(cmd)) {
+						if (isQEDCommand(cmd)) {
 							readline.moveCursor(process.stdin, 0, -1);
 							readline.clearScreenDown(process.stdin);
 							console.log();
@@ -364,7 +363,7 @@ class PvsCli {
 						}
 						// if (utils.isHelpCommand(cmd)) {
 						// 	console.log();
-						// 	console.log(commandUtils.printHelp(cmd, { useColors: true }));
+						// 	console.log(printHelp(cmd, { useColors: true }));
 						// 	console.log();
 						// 	// show prompt
 						// 	this.rl.setPrompt(colorText(this.proverPrompt, PvsColor.blue));
@@ -453,9 +452,9 @@ class PvsCli {
 							}
 							case "pvs.event.proof-state": {
 								if (this.isActive) {
-									const result: fsUtils.SequentDescriptor = evt.data;
+									const result: SequentDescriptor = evt.data;
 									if (result) {
-										const showHidden: boolean = commandUtils.isShowHiddenCommand(evt.cmd);
+										const showHidden: boolean = isShowHiddenCommand(evt.cmd);
 										if (showHidden) {
 											console.log(utils.formatHiddenFormulas(result, { useColors: true, showAction: true })); // show proof state
 										} else {

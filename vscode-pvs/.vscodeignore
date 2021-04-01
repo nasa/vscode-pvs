@@ -1,5 +1,8 @@
 **/*.ts
+**/*.d.ts
 **/*.js.map
+**/*.ts.map
+**/*.d.ts.map
 **/*.css.map
 **/*.java
 **/*.g4
@@ -130,3 +133,19 @@ server/src
 
 **/server/out/core/lib/PvsTypechecker.jar
 **/server/out/core/lib/DdlParser.jar
+**/server/out/core/pvs-typechecker/javaTarget/
+
+**/HISTORY.md
+**/.travis.yml
+**/.npmignore
+**/.idea/
+**/.eslintrc.json
+
+**/client/node_modules/xterm/lib/xterm.js
+**/client/node_modules/xterm/package.json
+**/client/node_modules/xterm/README.md
+**/client/node_modules/xterm/src/
+**/client/node_modules/xterm/tsconfig.all.json
+
+**/server/out/core/pvs-outline-parser/
+**/server/out/core/pvs-parser/jsTarget/

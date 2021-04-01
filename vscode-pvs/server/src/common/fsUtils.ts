@@ -38,10 +38,17 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor, ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsFileDescriptor, PvsFormula, PvsTheory, TheoryDescriptor} from '../common/serverInterface';
 import { execSync } from 'child_process';
 import * as crypto from 'crypto';
-import { commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremRegexp, theoryRegexp } from './languageUtils';
+import { 
+	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor, 
+	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsFileDescriptor, 
+	PvsFormula, PvsTheory, TheoryDescriptor
+} from '../common/serverInterface';
+import { 
+	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, 
+	icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremRegexp, theoryRegexp 
+} from './languageUtils';
 
 
 export const HOME_DIR: string = require('os').homedir();
@@ -360,6 +367,15 @@ export function isSummaryFile(desc: string | { fileName: string, fileExtension: 
 	}
 	return false;
 }
+export function isProofliteFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
+	if (desc) {
+		const ext: string = (typeof desc === "string") ? desc : (desc) ? desc.fileExtension : null;
+		if (ext) {
+			return ext.endsWith(".prl") || ext.endsWith(".prlite") || ext.endsWith('.pr');
+		}
+	}
+	return false;
+}
 export function fileExists(fname: string): boolean {
 	return pathExists(fname);
 }
@@ -587,7 +603,7 @@ export const pvsFolderName: string = "pvs-7.1.0";
 
 /**
  * @function findTheoryName
- * @description Utility function, finds the name of the theory that immediately preceeds a given line
+ * @description Utility function, finds the name of the theory that includes the expression at a given line
  * @param fileContent The text where the theory should be searched 
  * @param line The line in the document where search should end
  * @returns { string | null } The theory name if any is found, null otherwise
@@ -595,7 +611,7 @@ export const pvsFolderName: string = "pvs-7.1.0";
  export function findTheoryName(fileContent: string, line: number): string | null {
 	if (fileContent) {
 		let txt = fileContent.replace(commentRegexp, ""); // this removes all commented text
-		const regexp: RegExp = theoryRegexp;
+		const regexp: RegExp = new RegExp(theoryRegexp);
 		let candidates: string[] = [];
 
 		// check that line number is not before keyword begin -- if so adjust line number otherwise regexp won't find theory name
@@ -607,28 +623,35 @@ export const pvsFolderName: string = "pvs-7.1.0";
 			if (matchEnd && matchEnd.length) {
 				regexp.lastIndex = matchEnd.index; // restart the search from here
 
-				const min: number = matchFirstTheory[0].split("\n").length;
-				line = (line < min) ? min : line;
+				// const min: number = matchFirstTheory[0].split("\n").length;
+				// line = (line < min) ? min : line;
 				candidates.push(theoryName);
 			}
 		}
 
 		// keep searching theory names -- the first element in candidates will be the closest to the current line number
-		txt = txt.split("\n").slice(0, line + 1).join("\n");
+		txt = txt.split("\n").slice(0, line).join("\n");
+		// console.log({ line, txt: txt.split("\n") });
 		let match: RegExpMatchArray = regexp.exec(txt);
-		while (match) {
+		const maxIterations: number = 64;
+		// while (match) {
+		for (let i = 0; i < maxIterations && match; i++) {
 			if (match.length > 1 && match[1]) {
 				const theoryName: string = match[1];
 				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
 				if (matchEnd && matchEnd.length) {
+					// found theory end, the definition is not in this theory
 					const endIndex: number = matchEnd.index + matchEnd[0].length;
 					txt = txt.slice(endIndex);
 					// need to create a new regexp when txt is updated
 					match = new RegExp(regexp).exec(txt);
-					candidates = [ theoryName ].concat(candidates);
+					// candidates = [ theoryName ].concat(candidates);
 				} else {
+					// theory end not found, this is a good candidate
+					candidates = [ theoryName ].concat(candidates);
 					match = regexp.exec(txt);
 				}
+				// console.log("match", { theoryName, candidates });
 			} else {
 				match = regexp.exec(txt);
 			}
@@ -798,27 +821,6 @@ export async function listTheoremsInFile (fname: string, opt?: { content?: strin
 	return null;
 };
 
-export interface SFormula {
-	labels: string[];
-	changed: 'true' | 'false';
-	formula: string;
-	'names-info': any[];
-};
-export type SequentDescriptor = {
-	path?: string, // unique identifier representing the current position in the proof tree, e.g., 1.2.1
-	label: string, // ???
-	commentary: string[] | string, // commentary text describing the result of the execution of the proof command
-	action?: string   // this field reports some additional commentary
-	"num-subgoals"?: number, // number of sub-goals generated by the last command executed
-	"prev-cmd"?: Object | string; // object representing the last command executed
-	comment?: string, // text comment attached to the proof goal (introduced with the 'comment' command during a proof)
-	sequent?: { // sequent formulas generated by the prover
-		succedents?: SFormula[], 
-		antecedents?: SFormula[],
-		"hidden-succedents"?: SFormula[], 
-		"hidden-antecedents"?: SFormula[]
-	}
-};
 
 
 export function getActualProofStatus (desc: ProofDescriptor, shasum: string): ProofStatus {

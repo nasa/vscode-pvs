@@ -47,15 +47,16 @@ import Backbone = require('backbone');
 import * as utils from '../common/languageUtils';
 import { LanguageClient } from 'vscode-languageclient';
 import {
-    EvaluatorCommandResponse, FileDescriptor, ProofCommandResponse, ProveFormulaResponse, 
+    EvaluatorCommandResponse, FileDescriptor, HintsObject, MathObjects, ProofCommandResponse, ProveFormulaRequest, ProveFormulaResponse, 
     PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, serverEvent, serverRequest 
 } from '../common/serverInterface';
 import { PvsResponse } from '../common/pvs-gui';
 import * as vscodeUtils from '../utils/vscode-utils';
 import * as fsUtils from '../common/fsUtils';
 import * as colorUtils from '../common/colorUtils';
-import * as commandUtils from '../common/commandUtils';
 import { XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData, XTermMessage } from '../common/xtermInterface';
+import { balancePar, getHints, isInvalidCommand } from '../common/languageUtils';
+import { htmlColorCode } from '../common/colorUtils';
 
 
 export enum XTermPvsEvent {
@@ -63,7 +64,7 @@ export enum XTermPvsEvent {
     DidReceiveEvaluatorResponse = "DidReceiveEvaluatorResponse"
 }
 
-const HELP_PANEL_HEIGHT: number = 52; //px
+const HELP_PANEL_HEIGHT: number = 42; //px
 
 const htmlTemplate: string = `
 <!DOCTYPE html>
@@ -84,12 +85,12 @@ const htmlTemplate: string = `
 
     <style>
     body {
-        background: transparent;
+        background: ${htmlColorCode.black};
     }
     .terminal-help {
         height:${HELP_PANEL_HEIGHT}px;
         width:100%;
-        background:transparent;
+        background:"transparent";
         color:white;
         font-size:11px;
         font-family:monospace;
@@ -98,7 +99,7 @@ const htmlTemplate: string = `
         padding-top:4px !important;
         border-top:1px solid gray;
         overflow:auto;
-    }    
+    }
     </style>
 </head>
 <body>
@@ -141,9 +142,7 @@ const htmlTemplate: string = `
 </body>
 </html>`;
 
-export interface StartXTermProverRequest extends PvsFormula {
-    proofFile?: FileDescriptor
-};
+export type StartXTermProverRequest = ProveFormulaRequest;
 export interface StartXTermEvaluatorRequest extends PvsTheory { };
 
 export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
@@ -153,8 +152,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     protected target: PvsTheory | PvsFormula;
     protected panel: WebviewPanel;
 
+    protected colorTheme: "dark" | "light" = "dark";
+
     // lemmas, types, and definitions provided by the typechecker, used by the autocompletion engine
-    protected mathObjects: commandUtils.MathObjects = {};
+    protected mathObjects: MathObjects = {};
 
     // session type
     protected sessionType: SessionType;
@@ -219,6 +220,20 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         }
         vscodeUtils.showErrorMessage(`Error: Could not start Prover session. Please check that the file typechecks correctly.`);
         return false;
+    }
+
+    /**
+     * Utility function, updates color theme
+     */
+     updateColorTheme (theme: colorUtils.XTermColorTheme): void {
+        if (theme && this.colorTheme !== theme) {
+            this.colorTheme = theme;
+            const message: XTermMessage = {
+                command: XTermCommands.updateColorTheme,
+                data: this.colorTheme
+            };
+            this.panel?.webview?.postMessage(message);
+        }
     }
 
     /**
@@ -318,7 +333,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.clearCommandLine();
                 this.log(data.req.cmd);
             }
-            if (data?.req?.cmd && !commandUtils.isInvalidCommand(data.res)) {
+            if (data?.req?.cmd && !isInvalidCommand(data.res)) {
                 this.updateCommandHistory(data.req.cmd);
             }
 
@@ -326,7 +341,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             const sequent: string = utils.formatSequent(data?.res, { useColors: true });
             const lastState: string = utils.sformulas2string(data.res);
             const theoryContent: string = this.target?.fileContent;
-            const hints: commandUtils.HintsObject = commandUtils.getHints(this.sessionType, {
+            const hints: HintsObject = getHints(this.sessionType, {
                 lastState, 
                 theoryContent
             });
@@ -404,7 +419,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         const success: boolean = await new Promise((resolve, reject) => {
             this.client.onRequest(serverEvent.startEvaluatorResponse, (data: { response: PvsResponse, args: PvsTheory }) => {
                 const banner: string = colorUtils.colorText(utils.pvsioBannerAlt, colorUtils.PvsColor.green);
-                const hints: commandUtils.HintsObject = commandUtils.getHints(this.sessionType, {
+                const hints: HintsObject = getHints(this.sessionType, {
                     theoryContent: this.target?.fileContent
                 });
                 this.log(banner, { hints });
@@ -428,7 +443,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             });
         } else {
             if (data?.res) {
-                const hints: commandUtils.HintsObject = commandUtils.getHints(this.sessionType, {
+                const hints: HintsObject = getHints(this.sessionType, {
                     lastState: data.res, 
                     theoryContent: this.target?.fileContent
                 });
@@ -489,7 +504,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             } 
             if (this.sessionType === "prover") {
                 const command: PvsProofCommand = {
-                    cmd: commandUtils.balancePar(text.trim()),
+                    cmd: balancePar(text.trim()),
                     ...<PvsFormula> this.target,
                     origin: "xterm-pvs"
                 };
@@ -603,8 +618,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     log (data: string, opt?: { 
         sessionEnd?: boolean, 
-        hints?: commandUtils.HintsObject, 
-        mathObjects?: commandUtils.MathObjects
+        hints?: HintsObject, 
+        mathObjects?: MathObjects
     }): void {
         const message: XTermMessage = {
             command: XTermCommands.log,
@@ -818,7 +833,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     XTermCommands.updateCommandHistory,
                     XTermCommands.updateHelp,
                     XTermCommands.clearCommandLine,
-                    XTermCommands.showWelcomeMessage
+                    XTermCommands.showWelcomeMessage,
+                    XTermCommands.updateColorTheme
                 ],
                 sessionType: this.sessionType
             });
@@ -826,5 +842,5 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         } catch (err) {
             console.error(err);
         }
-    }    
+    }
 }

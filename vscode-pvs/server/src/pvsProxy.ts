@@ -56,20 +56,17 @@ import * as xmlrpc from 'xmlrpc';
 import { PvsProcess, ProcessCode } from "./pvsProcess";
 import { PvsResponse, ParseResult, ShowTCCsResult, PvsError } from "./common/pvs-gui.d";
 import * as fsUtils from './common/fsUtils';
-import * as commandUtils from './common/commandUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode, TheoryDescriptor, PvsTheory, FormulaDescriptor, PvsFile, PvsContextDescriptor, FileDescriptor } from './common/serverInterface';
+import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode, TheoryDescriptor, PvsTheory, FormulaDescriptor, PvsFile, PvsContextDescriptor, FileDescriptor, SequentDescriptor, MathObjects, ProofOrigin } from './common/serverInterface';
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
-import { getErrorRange } from './common/languageUtils';
+import { checkPar, CheckParResult, getErrorRange, isQuitCommand, isQuitDontSaveCommand, isSaveThenQuitCommand, isShowHiddenCommand } from './common/languageUtils';
 import * as languageUtils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import { PvsErrorManager } from './pvsErrorManager';
-import { MathObjects } from './common/commandUtils';
-import { SequentDescriptor } from './common/fsUtils';
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -1195,14 +1192,14 @@ export class PvsProxy {
 		if (desc) {
 			opt = opt || {};
 
-			const test: commandUtils.CheckParResult = commandUtils.checkPar(desc.cmd);
+			const test: CheckParResult = checkPar(desc.cmd);
 			let res: PvsResponse = {
 				jsonrpc: "2.0", 
 				id: ""
 			};
 			if (test.success) {
 				// console.dir(desc, { depth: null });
-				const showHidden: boolean = commandUtils.isShowHiddenCommand(desc.cmd);
+				const showHidden: boolean = isShowHiddenCommand(desc.cmd);
 				// const isGrind: boolean = utils.isGrindCommand(desc.cmd);
 				// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
 				// the front-end will handle the command, and reveal the hidden sequents.
@@ -1242,9 +1239,9 @@ export class PvsProxy {
 							this.mode = "lisp";
 						}
 					}
-					if (commandUtils.isQuitCommand(desc.cmd) 
-							|| commandUtils.isQuitDontSaveCommand(desc.cmd) 
-							|| commandUtils.isSaveThenQuitCommand(desc.cmd)) {
+					if (isQuitCommand(desc.cmd) 
+							|| isQuitDontSaveCommand(desc.cmd) 
+							|| isSaveThenQuitCommand(desc.cmd)) {
 						this.mode = "lisp";
 					}
 				}
@@ -1316,7 +1313,7 @@ export class PvsProxy {
 	 * @returns Proof descriptor
 	 */
 	async openProofFile (desc: FileDescriptor, formula: PvsFormula, opt?: { quiet?: boolean }): Promise<ProofDescriptor> {
-		let origin: languageUtils.ProofOrigin = ".prf";
+		let origin: ProofOrigin = ".prf";
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
 				&& formula && formula.fileName && formula.fileExtension 
 				&& formula.theoryName && formula.formulaName) {
@@ -1542,7 +1539,12 @@ export class PvsProxy {
 		});
 		const content: string[] = languageUtils.proofDescriptor2ProofLite(desc.proofDescriptor);
 		if (content && content.length) {
-			const header: string = languageUtils.makeProofliteHeader(desc.formulaName, desc.theoryName, desc.proofDescriptor.info.status);
+			const header: string = languageUtils.makeProofliteHeader(
+				`${desc.fileName}.pvs`,
+				desc.formulaName, 
+				desc.theoryName, 
+				desc.proofDescriptor.info.status
+			);
 			const proofLite: string = content.join("\n");
 			const success: boolean = await fsUtils.saveProoflite(fname, desc.formulaName, header + proofLite);
 			// try to save into .prf -- disabled for now
