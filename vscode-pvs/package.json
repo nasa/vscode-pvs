@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.40",
+	"version": "1.0.41",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -32,7 +32,7 @@
 		"formalized mathematics"
 	],
 	"engines": {
-		"vscode": "^1.54.0"
+		"vscode": "^1.49.0"
 	},
 	"activationEvents": [
 		"onStartupFinished"
@@ -988,10 +988,21 @@
 					"group": "context-menu/exec-1"
 				}
 			],
-			"editor/title/run": [
+			"editor/title/run": [],
+			"editor/title": [
+				{
+					"command": "vscode-pvs.search-nasalib",
+					"when": "editorLangId == pvs",
+					"group": "navigation@0"
+				},
+				{
+					"command": "vscode-pvs.x-show-proof",
+					"when": "editorLangId == pvs",
+					"group": "navigation@1"
+				},
 				{
 					"command": "vscode-pvs.prove-formula-at-cursor-position",
-					"when": "editorLangId == pvs",
+					"when": "false && editorLangId == pvs",
 					"group": "navigation@2"
 				},
 				{
@@ -1003,18 +1014,6 @@
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "editorLangId == pvs",
 					"group": "navigation@4"
-				}
-			],
-			"editor/title": [
-				{
-					"command": "vscode-pvs.search-nasalib",
-					"when": "editorLangId == pvs",
-					"group": "navigation@0"
-				},
-				{
-					"command": "vscode-pvs.x-show-proof",
-					"when": "editorLangId == pvs",
-					"group": "navigation@1"
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",
@@ -1409,6 +1408,7 @@
 					".tccs",
 					".ppe",
 					".prf",
+					".prf~",
 					".jprf",
 					".pr",
 					".prl",
@@ -1554,13 +1554,13 @@
 	},
 	"dependencies": {
 		"typescript": "^4.2.2",
-		"vsce": "^1.85.0"
+		"vsce": "^1.87.1"
 	},
 	"devDependencies": {
 		"@types/chai": "^4.2.15",
 		"@types/mocha": "^8.2.0",
 		"@types/node": "^14.14.22",
-		"@types/vscode": "^1.54.0",
+		"@types/vscode": "^1.49.0",
 		"@typescript-eslint/eslint-plugin": "^2.25.0",
 		"@typescript-eslint/parser": "^2.25.0",
 		"assert": "^2.0.0",

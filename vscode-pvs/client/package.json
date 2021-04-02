@@ -31,7 +31,6 @@
 		"typescript": "^4.2.3",
 		"underscore": "1.12.0",
 		"vscode-languageclient": "^5.2.1",
-		"ws": "^7.2.0",
 		"xterm": "^4.11.0"
 	},
 	"devDependencies": {

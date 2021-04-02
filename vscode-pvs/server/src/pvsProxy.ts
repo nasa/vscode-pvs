@@ -1171,10 +1171,12 @@ export class PvsProxy {
 	async showHelpBang (cmd: string): Promise<PvsResponse> {
 		const match: RegExpMatchArray = new RegExp(languageUtils.helpBangCommandRegexp).exec(cmd);
 		if (match && match.length > 1 && match[1]) {
-			const ans: PvsResponse = await this.pvsRequest('proof-command', [ `(help ${match[1]})` ]);
+			const helpCmd: string = `(help ${match[1]})`;
+			const ans: PvsResponse = await this.pvsRequest('proof-command', [ helpCmd ]);
 			if (ans && ans.result && ans.result.length) {
 				let help: string = this.pvsServer.getLispInterfaceOutput();
-				help = help.substring(help.indexOf(`${match[1]}`), help.indexOf("No change on"));
+				this.pvsServer.clearLispInterfaceOutput();
+				help = help.substring(help.indexOf(`(${match[1]}`), help.indexOf("No change on"));
 				ans.result[ans.result.length - 1].action = "";
 				ans.result[ans.result.length - 1].commentary = [ help.trim() ];
 			}
@@ -1182,7 +1184,6 @@ export class PvsProxy {
 		}
 		return null;
 	}
-	
 
 	/**
 	 * Executes a proof command. The command is always adorned with round parentheses, e.g., (skosimp*)

@@ -942,7 +942,7 @@ export function isHelpCommand (cmd: string): boolean {
 }
 
 // group 1 is the command argument
-export const helpBangCommandRegexp: RegExp = /^\s*\(?\s*help!\s*\"?([^\)"]+)/g;
+export const helpBangCommandRegexp: RegExp = /^\s*\(?\s*help!?\s*\"?([^\)"]+)/g;
 export function isHelpBangCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
 	return cmd && new RegExp(helpBangCommandRegexp).test(cmd);
@@ -1672,7 +1672,10 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
             ":sign -": `Claim that a given expression is negative.`
         }
     },
-    // "help": { description:""},
+    "help": {
+        description: `Displays information about commands, including description and syntax`,
+        syntax: `help CMD`
+    },
     "hide": { 
         description: `Hide sequent formulas`,
         syntax: `hide FNUMS`,
@@ -2937,10 +2940,6 @@ export const EVALUATOR_COMMANDS: { [key:string]: CommandDescriptor } = {
         description: `Generate a random number.`,
         syntax: `RANDOM`
     },
-    "help": {
-        description: `Shows evaluator commands`,
-        syntax: `help`
-    },
     "debug": {
         description: "Turn on printing of debugging information",
         syntax: "debug"
@@ -3050,6 +3049,10 @@ export const evaluatorCommands: CommandsMap = {
         description: `Quit the evaluator`,
         syntax: `exit`
     },
+    "help": {
+        description: `Displays the list of available evaluator commands`,
+        syntax: `help`
+    },
     ...EVALUATOR_COMMANDS
 };
 // list of prover commands
@@ -3068,6 +3071,10 @@ export const proverCommands: CommandsMap = {
     "postpone": {
         description: `Postpone current proof goal`,
         syntax: `postpone`
+    },
+    "help": {
+        description: `Displays information about commands, including description and syntax`,
+        syntax: `help CMD`
     },
     ...PROOF_COMMANDS,
     ...PROOF_TACTICS

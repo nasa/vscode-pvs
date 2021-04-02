@@ -379,4 +379,11 @@ export class PvsProcess {
 	getLispInterfaceOutput (): string {
 		return this.data || "";
 	}
+
+	/**
+	 * Clears the current lisp output
+	 */
+	clearLispInterfaceOutput (): void {
+		this.data = "";
+	}
 }

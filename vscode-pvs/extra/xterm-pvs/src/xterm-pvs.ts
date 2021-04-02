@@ -1,11 +1,11 @@
-import { Terminal as XTerm } from 'xterm';
+import { ISelectionPosition, Terminal as XTerm } from 'xterm';
 import { CommandDescriptor, CommandsMap, MathObjects, HintsObject, Position } from './common/serverInterface';
 import * as colorUtils from './common/colorUtils';
 import { pvsColorTheme } from './common/languageKeywords';
 import { interruptCommand, SessionType, UpdateCommandHistoryData, XTermEvent } from './common/xtermInterface';
 import * as Backbone from 'backbone';
 import * as Handlebars from 'handlebars';
-import { checkPar, evaluatorCommands, proverCommands, splitCommands } from './common/languageUtils';
+import { checkPar, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, proverCommands, splitCommands } from './common/languageUtils';
 import { htmlColorCode, XTermColorTheme } from './common/colorUtils';
 
 interface KeyEvent { key: string, domEvent: KeyboardEvent };
@@ -23,9 +23,8 @@ interface RebaseEvent {
 
 export const welcomeMessage: string = `
 - Ctrl+SPACE shows the full list of commands.
-- TAB autocompletes commands, UP/DOWN arrow keys recall previous/next command.
-`
-;
+- TAB autocompletes commands, UP/DOWN arrow keys recall previous/next command. Double click expands definitions.
+`.trim().replace(/\n/g, "<br>");
 
 /**
  * Virtual content of the terminal, keeps track of the content of the cursor position
@@ -815,8 +814,17 @@ const cursorStyle: string = `<style>
     animation: pulser 2s linear infinite !important;
 }
 </style>`;
-
+const scroolbarStyle: string = `<style>
+body::-webkit-scrollbar {
+    height: 2px;
+    width: 2px;
+}
+body {
+    overflow: overlay;
+}
+</style>`
 const terminalHelpTemplate: string = `
+{{#if description}}
 <style>
 .terminal-help .cmd {
     color: #00b0ff;
@@ -829,7 +837,6 @@ const terminalHelpTemplate: string = `
     user-select: none;
 }
 </style>
-{{#if description}}
 <div class="syntax">Syntax: {{syntax}}</div>
 <div class="description">Description: {{description}}</div>
 {{#each optionals}}
@@ -838,6 +845,9 @@ const terminalHelpTemplate: string = `
 {{/each}}
 {{#if note}}
 <div class="optionals">Note: {{note}}</div>
+{{/if}}
+{{#if footnote}}
+<div class="optionals">{{footnote}}</div>
 {{/if}}
 {{/if}}
 `;
@@ -875,14 +885,11 @@ export interface DidAutocompleteEvent {
             if (elem.startsWith("(") && elem.endsWith(")")) {
                 elem = elem.substring(1, elem.length - 1).trim();
             }
-            if (opt.successHistory) {
-                if (!this.successHistory.includes(elem)) {
-                    this.successHistory = [ elem ].concat(this.successHistory);
-                }
-            } else {
-                if (!this.history.includes(elem)) {
-                    this.history = [ elem ].concat(this.history);
-                }
+            if (!this.history.includes(elem)) {
+                this.history = [ elem ].concat(this.history);
+            }
+            if (opt.successHistory && !this.successHistory.includes(elem)) {
+                this.successHistory = [ elem ].concat(this.successHistory);
             }
             this.current = "";
             this.index = -1;
@@ -977,6 +984,9 @@ export class Autocomplete extends Backbone.Model {
     protected currentHints: string[] = [];
     protected currentInput: string = "";
 
+    // selection mode
+    protected triggerMode: "standard" | "single-click" = "standard";
+
     // command history
     history: History = new History();
 
@@ -1028,12 +1038,12 @@ export class Autocomplete extends Backbone.Model {
     /**
      * Shows a tooltip with the provided hints
      */
-    showTooltip (hints: string[]): void {
+    showTooltip (hints: string[], opt?: { top?: number, left?: number }): void {
         if (!this.sameHints(hints, this.currentHints)) {
             this.deleteTooltips();
             this.currentHints = hints || [];
         }
-        this.renderTooltip(this.currentHints);
+        this.renderTooltip(this.currentHints, opt);
     }
     /**
      * Updates the command history with the provided command, if the command is not one of the hints already known to autocomplete and history
@@ -1096,8 +1106,9 @@ export class Autocomplete extends Backbone.Model {
     /**
      * Internal function, shows tooltip at the cursor position
      */
-    protected renderTooltip (hints: string[]): void {
+    protected renderTooltip (hints: string[], opt?: { top?: number, left?: number }): void {
         if (hints?.length) {
+            opt = opt || {};
             const tooltip: string = Handlebars.compile(tooltipTemplate, { noEscape: true })({
                 hints
             });
@@ -1113,6 +1124,23 @@ export class Autocomplete extends Backbone.Model {
                 html: true,
                 boundary: "viewport"
             }).tooltip('show');
+            if (this.sessionType === "prover" && opt.top !== undefined && opt.left !== undefined && $(".tooltip-inner")[0]) {
+                // adjust tooltip position so it is displayed next to the current mouse position
+                const top: string = cursor.css("top");
+                const left: string = cursor.css("left");
+                const height: string = $(".tooltip").css("height");
+                console.log({ base: {top, left, height }});
+                $(".tooltip-inner").css({
+                    "margin-left": `${opt.left - parseFloat(left)}px`,
+                    "margin-top": `${opt.top - parseFloat(top) - parseFloat(height)}px`
+                });
+                // update integrated help
+                this.updateHelp({ cmd: "expand" });
+                // enable single-click triggers for the tooltip
+                this.triggerMode = "single-click";
+            } else {
+                this.triggerMode = "standard";
+            }
             // install mouse and keypress handlers for the autocompletion items
             $(".autocompletion-item").on("mouseover", (evt: JQuery.MouseOverEvent) => {
                 // console.log("[xterm-autocomplete] mouseover", { target: evt.target });
@@ -1122,6 +1150,10 @@ export class Autocomplete extends Backbone.Model {
                 // console.log("[xterm-autocomplete] click", { target: evt.target });
                 const index: number = this.getIndex(evt.target);
                 this.select(index);
+                if (this.triggerMode === "single-click") {
+                    this.triggerAutocomplete();
+                    this.triggerMode = "standard";
+                }
             }).on("dblclick", (evt: JQuery.DoubleClickEvent) => {
                 // console.log("[xterm-autocomplete] dblclick", { target: evt.target });
                 const index: number = this.getIndex(evt.target);
@@ -1147,12 +1179,13 @@ export class Autocomplete extends Backbone.Model {
             const commands: string[] = Object.keys(this.hintsObject?.commands);
             return symbols.concat(mathObjects).concat(commands);
         }
-        if (this.currentInput) {
+        const currentInput: string = this.currentInput.trimRight();
+        if (currentInput) {
             let hints: string[] = [];
             // console.log(`[xterm-autocomplete] trying to auto-complete ${currentInput}`);
-            if (this.currentInput.startsWith("expand")
-                || this.currentInput.startsWith("rewrite")
-                || this.currentInput.startsWith("eval-expr")) {
+            if (currentInput.startsWith("expand")
+                || currentInput.startsWith("rewrite")
+                || currentInput.startsWith("eval-expr")) {
                 // autocomplete symbol names
                 const symbols: string[] = this.hintsObject?.symbols; //utils.listSymbols(this.proofState);
                 // console.dir(symbols, { depth: null });
@@ -1161,29 +1194,40 @@ export class Autocomplete extends Backbone.Model {
                 ];
                 for (let i = 0; i < symbols?.length; i++) {
                     for (let j = 0; j < expandCommands.length; j++) {
-                        if (`${expandCommands[j]} "${symbols[i]}"`.toLocaleLowerCase().startsWith(this.currentInput)) {
-                            hints.push(`${expandCommands[j]} "${symbols[i]}"`);
+                        const hint: string = `${expandCommands[j]} "${symbols[i]}"`;
+                        if (hint.toLocaleLowerCase().startsWith(currentInput)) {
+                            hints.push(hint);
                         } 
                     }
                 }
-            } else if (this.currentInput.startsWith("lemma")
-                        || this.currentInput.startsWith("apply-lemma")) {
+            } else if (currentInput.startsWith("lemma")
+                        || currentInput.startsWith("apply-lemma")) {
                 if (this.mathObjects?.lemmas?.length) {
                     const symbols: string[] = this.mathObjects?.lemmas;
                     const lemmaCommands: string[] = [
                         "lemma", "apply-lemma"
-                    ];	
+                    ];
                     for (let i = 0; i < symbols?.length; i++) {
                         for (let j = 0; j < lemmaCommands.length; j++) {
-                            if (`${lemmaCommands[j]} "${symbols[i]}"`.toLocaleLowerCase().startsWith(this.currentInput)) {
-                                hints.push(`${lemmaCommands[j]} "${symbols[i]}"`);
+                            const hint: string = `${lemmaCommands[j]} "${symbols[i]}"`;
+                            if (hint.toLocaleLowerCase().startsWith(currentInput)) {
+                                hints.push(hint);
                             }							
                         }
                     }
                 }
+            } else if (currentInput.startsWith("help")) {
+                const cmds: string[] = this.sessionType === "prover" ? Object.keys({ ...PROOF_COMMANDS, ...PROOF_TACTICS }) 
+                    : Object.keys(EVALUATOR_COMMANDS);
+                for (let i = 0; i < cmds?.length; i++) {
+                    const hint: string = `help ${cmds[i]}`;
+                    if (hint.toLocaleLowerCase().startsWith(currentInput)) {
+                        hints.push(hint);
+                    }
+                }
             } else {
                 // other prover command
-                hints = Object.keys(this.hintsObject?.commands)?.filter((c: string) => c.toLocaleLowerCase().startsWith(this.currentInput));
+                hints = Object.keys(this.hintsObject?.commands)?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput));
             }
             return hints;
         }
@@ -1231,8 +1275,12 @@ export class Autocomplete extends Backbone.Model {
                 : this.autocompleteProverCommand(opt);
         if (opt.includeHistory) {
             // get list of commands previously accepted by the prover
-            const successHistory: string[] = opt?.fullSet ? this.history.getSuccessHistory()
-                : this.history.getSuccessHistory({ match: this.currentInput })
+            let successHistory: string[] = opt?.fullSet ? this.history.getSuccessHistory()
+                : this.history.getSuccessHistory({ match: this.currentInput });
+            // avoid the creation of duplicates
+            successHistory = successHistory.filter((elem: string) => {
+                return !hints.includes(elem);
+            });
             hints = hints.concat(successHistory);
         }
         // sort hints
@@ -1241,9 +1289,9 @@ export class Autocomplete extends Backbone.Model {
         }) || [];
     }
     /**
-     * Updates autocomplete information and shows tooltip if the list of hints is non-empty
+     * Updates autocomplete information shown in the tooltip
      */
-    updateAutocomplete (): void {
+    updateTooltip (): void {
         const hints: string[] = this.getHints();
         this.showTooltip(hints);
         // update integrated help
@@ -1286,8 +1334,10 @@ export class Autocomplete extends Backbone.Model {
     /**
      * Updates integrated help
      */
-    updateHelp (): void {
-        const cmd: string = this.getSelectedHint() || this.getCurrentInput({ regex: /[\w\+\@\-\*\?\!]+/ });
+    updateHelp (opt?: { cmd?: string }): void {
+        opt = opt || {};
+        const currentInput: string = this.getCurrentInput({ regex: /[\w\+\@\-\*\?\!]+/ });
+        const cmd: string = opt.cmd || this.getSelectedHint() || currentInput;
         // console.log("[xterm-autocomplete] updateHelp", { cmd });
         const desc: CommandDescriptor = this.sessionType === "evaluator" ?
             evaluatorCommands[cmd]
@@ -1295,9 +1345,13 @@ export class Autocomplete extends Backbone.Model {
         const integratedHelp: string = Handlebars.compile(terminalHelpTemplate, { noEscape: true })({
             cmd,
             ...desc,
-            syntax: this.sessionType === "prover" ? `(${desc?.syntax})` : `${desc?.syntax};`
+            syntax: this.sessionType === "prover" ? `(${desc?.syntax})` : `${desc?.syntax};`,
+            footnote: this.sessionType === "prover" ? `Use (help ${cmd}) to display additional help information.` : ""
         });
-        $(".terminal-help").html(integratedHelp);
+        this.showHelp(integratedHelp);
+        if (!currentInput && integratedHelp) {
+            this.showHelp(welcomeMessage);
+        }
     }
     /**
      * Shows message in the integrated help
@@ -1405,11 +1459,11 @@ export class Autocomplete extends Backbone.Model {
     autocompleteOnKeyPress (ev: KeyboardEvent | JQuery.KeyDownEvent): void {
         switch (ev.key) {
             case "Backspace": {
-                this.updateAutocomplete();
+                this.updateTooltip();
                 break;
             }
             case "Delete": {
-                this.updateAutocomplete();
+                this.updateTooltip();
                 break;
             }
             case "ArrowUp":
@@ -1420,11 +1474,13 @@ export class Autocomplete extends Backbone.Model {
                 break;
             }
             case " ": {
-                this.deleteTooltips();
+                this.updateTooltip();
+                // this.deleteTooltips();
                 break;
             }
             case "Escape": {
                 this.deleteTooltips();
+                this.updateHelp();
                 break;
             }
             case "Enter":
@@ -1433,7 +1489,7 @@ export class Autocomplete extends Backbone.Model {
                 break;
             }
             default: {
-                this.updateAutocomplete();
+                this.updateTooltip();
                 break;
             }
         }
@@ -1548,6 +1604,7 @@ export class XTermPvs extends Backbone.Model {
         this.parent = opt?.parent || "terminal";
         this.xterm.open(document.getElementById(this.parent));
         $(".terminal").append(tooltipStyle);
+        $("body").append(scroolbarStyle);
         // $(".terminal").append(cursorStyle);
     
         // install handlers
@@ -1955,7 +2012,7 @@ export class XTermPvs extends Backbone.Model {
      * Updates autocompletion tooltip
      */
     updateAutocomplete (): void {
-        this.autocomplete.updateAutocomplete();
+        this.autocomplete.updateTooltip();
     }
 
     /**
@@ -2080,9 +2137,14 @@ export class XTermPvs extends Backbone.Model {
             const rows: number = Math.floor((window.innerHeight - this.paddingBottom) / (this.fontSize * this.lineHeight)) || MIN_VIEWPORT_ROWS;
             this.resizeLines(rows);
         });
-        $(document).on("click", (evt: JQuery.ClickEvent) => {
-            // console.log("[xterm-pvs] click", { evt: evt });
+        $(document).on("dblclick", (evt: JQuery.DoubleClickEvent) => {
             // this give the raw position of the cursor, in px, how do we convert this into lines/cols?
+            const pos: ISelectionPosition = this.xterm.getSelectionPosition();
+            const sel = this.xterm.getSelection();
+            if (sel) {
+                this.autocomplete.showTooltip([ `(expand "${sel}")` ], { top: evt.pageY, left: evt.pageX });
+            }
+            console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
         });
         // content event handlers
         this.content.on(ContentEvent.rebase, (evt: RebaseEvent) => {
@@ -2097,6 +2159,7 @@ export class XTermPvs extends Backbone.Model {
         this.autocomplete.on(AutocompleteEvent.didAutocomplete, (evt: DidAutocompleteEvent) => {
             this.onResolveAutocomplete(evt);
             this.focus();
+            this.xterm.clearSelection();
         });
     }
 
@@ -2497,7 +2560,7 @@ export class XTermPvs extends Backbone.Model {
      * Shows a welcome message in the integrated help panel
      */
     showWelcomeMessage (): void {
-        this.autocomplete.showHelp(welcomeMessage.trim().replace(/\n/g, "<br>"));
+        this.autocomplete.showHelp(welcomeMessage);
     }
 
     /**
@@ -2522,5 +2585,6 @@ export class XTermPvs extends Backbone.Model {
         this.autocomplete.clearHelp();
         // console.log("[xterm-pvs] showPrompt", { prompt: this.prompt, cprompt, content: this.content });
         this.focus();
+        this.showWelcomeMessage();
     }
 }

@@ -64,7 +64,7 @@ export enum XTermPvsEvent {
     DidReceiveEvaluatorResponse = "DidReceiveEvaluatorResponse"
 }
 
-const HELP_PANEL_HEIGHT: number = 42; //px
+const HELP_PANEL_HEIGHT: number = 40; //px
 
 const htmlTemplate: string = `
 <!DOCTYPE html>
@@ -743,7 +743,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      * Internal function, creates the webview
      */
     protected createWebView () {
-        const title: string = this.sessionType === "prover" ? "X-Term PVS" : "X-Term PVSio";
+        const title: string = this.sessionType === "prover" ?
+            `Proving formula '${(<PvsFormula> this.target).formulaName}'`
+                : `Evaluating theory ${this.target.theoryName}`;
         if (this.panel) {
             this.panel.title = title;
         } else {
