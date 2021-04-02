@@ -645,10 +645,9 @@ export class Content extends Backbone.Model {
     cursorToHome (): boolean {
         if (this.pos.line !== this.base.line || this.pos.character !== this.base.character) {
             this.savePos();
-            this.pos.line = this.base.line;
-            this.pos.character = this.base.character;
-            // console.log("[xterm-pvs] cursorToHome", { lines: this.lines });
-            return true;
+            const line: number = this.base.line;
+            const character: number = this.base.character;
+            return this.cursorTo({ line, character });
         }
         return false;
     }
@@ -658,12 +657,60 @@ export class Content extends Backbone.Model {
      */
     cursorToEnd (): boolean {
         const textAfter: string = this.textAfter(this.pos);
-        // console.log("[xterm-pvs] cursorToEnd", { textAfter });
         if (textAfter.length) {
             this.savePos();
-            this.pos.line = this.endLine();
-            this.pos.character = this.endCol(this.pos.line, { allowBesideEnd: true });
-            return true;
+            const line: number = this.endLine();
+            const character: number = this.endCol(this.pos.line, { allowBesideEnd: true });
+            return this.cursorTo({ line, character });
+        }
+        return false;
+    }
+
+    /**
+     * Cursor moves to the beginning of the previous word in the command line input.
+     */
+    cursorToPreviousWord (): boolean {
+        const textBefore: string = this.textBefore(this.pos);
+        if (textBefore.length) {
+            const blankPos: number = textBefore.trim().lastIndexOf(" ") + 1;
+            if (blankPos <= 0) {
+                this.savePos();
+                return this.cursorToHome();
+            }
+            const frag: string = textBefore.substring(0, blankPos);
+            if (frag) {
+                this.savePos();
+                const fragLines: string[] = frag.split("\n");
+                const line: number = fragLines.length;
+                const character: number = fragLines[line - 1].length + 1;
+                this.cursorTo({ line, character });
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Cursor moves to the end of the nearest word in the command line input.
+     */
+    cursorToNextWord (): boolean {
+        const textAfter: string = this.textAfter(this.pos);
+        if (textAfter.length) {
+            const leadingBlanks: number = textAfter.length - textAfter.trimLeft().length;
+            const blankPos: number = textAfter.trimLeft().indexOf(" ");
+            if (blankPos < 0) {
+                this.savePos();
+                return this.cursorToEnd();
+            }
+            const frag: string = this.textBefore(this.pos) + textAfter.substring(0, blankPos + leadingBlanks);
+            if (frag) {
+                this.savePos();
+                const fragLines: string[] = frag.split("\n");
+                const line: number = fragLines.length;
+                const character: number = fragLines[line - 1].length + 1;
+                this.cursorTo({ line, character });
+                return true;
+            }    
         }
         return false;
     }
@@ -2173,8 +2220,8 @@ export class XTermPvs extends Backbone.Model {
                 this.trigger(XTermEvent.sendText, { data: interruptCommand });
                 return false;
             }
-            // ctrl+key
-            if (this.inputEnabled && evt?.ctrlKey && !evt?.shiftKey) {
+            // ctrl+key / alt+key
+            if (this.inputEnabled && (evt?.ctrlKey || evt?.metaKey) && !evt?.shiftKey) {
                 switch (evt.key) {
                     case " ": {
                         // ctrl+space shows all autocompletions
@@ -2193,6 +2240,24 @@ export class XTermPvs extends Backbone.Model {
                     case "End": {
                         // ctrl+End moves cursor to the end of the command line
                         const success: boolean = this.content.cursorToEnd();
+                        if (success) {
+                            const pos: Position = this.content.cursorPosition();
+                            this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
+                        }
+                        break;
+                    }
+                    case "ArrowLeft": {
+                        // ctrl+ArrowLeft moves cursor to previous word
+                        const success: boolean = this.content.cursorToPreviousWord();
+                        if (success) {
+                            const pos: Position = this.content.cursorPosition();
+                            this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
+                        }
+                        break;
+                    }
+                    case "ArrowRight": {
+                        // ctrl+ArrowRight moves cursor to next word
+                        const success: boolean = this.content.cursorToNextWord();
                         if (success) {
                             const pos: Position = this.content.cursorPosition();
                             this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
