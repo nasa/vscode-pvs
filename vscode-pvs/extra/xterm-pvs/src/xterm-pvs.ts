@@ -599,6 +599,10 @@ export class Content extends Backbone.Model {
      * Generic handler for printable characters: inserts character at position index
      */
     onChar (c: string): boolean {
+        // non-printable key sequence, e.g., Home, End
+        if (c.startsWith("\x1B[")) {
+            return false;
+        }
         console.log("[onChar]", { c, pos: this.pos, prevPos: this.prevPos });
         return this.insertCharAt(this.pos, c);
     }
@@ -1090,6 +1094,13 @@ export class Autocomplete extends Backbone.Model {
         return this.currentInput;
     }
     /**
+     * Utility function, checks if a given symbol is known to the prover
+     */
+    validSymbol (sym: string): boolean {
+        const symbols: string[] = this.hintsObject?.symbols;
+        return symbols?.includes(sym);
+    }
+    /**
      * Internal function, checks if the provided hints are identical
      */
     protected sameHints (t1: string[], t2: string[]): boolean {
@@ -1129,7 +1140,6 @@ export class Autocomplete extends Backbone.Model {
                 const top: string = cursor.css("top");
                 const left: string = cursor.css("left");
                 const height: string = $(".tooltip").css("height");
-                console.log({ base: {top, left, height }});
                 $(".tooltip-inner").css({
                     "margin-left": `${opt.left - parseFloat(left)}px`,
                     "margin-top": `${opt.top - parseFloat(top) - parseFloat(height)}px`
@@ -1960,7 +1970,7 @@ export class XTermPvs extends Backbone.Model {
      * Handler for command history search
      */
     onHistorySearch (evt: KeyEvent): boolean {
-        console.log("[xterm-pvs] onHistorySearch", { history: this.autocomplete.history, evt });
+        // console.log("[xterm-pvs] onHistorySearch", { history: this.autocomplete.history, evt });
         if (this.autocomplete.history.size() && this.content.cursorIsAtHomePosition() 
                 && (evt.domEvent.key === "ArrowUp" || evt.domEvent.key === "ArrowDown")) {
             // get command from the history
@@ -1977,15 +1987,21 @@ export class XTermPvs extends Backbone.Model {
      * Handler for key press events
      */
     onKeyPress (evt: KeyEvent): void {
+        console.log("[xterm-pvs] onKeyPress", { evt });
         // check first if this is a history search
         const historySearch: boolean = this.onHistorySearch(evt);
         // process key press if this is not a history search and mod keys are not pressed
         if (!historySearch && !this.modKeyIsActive()) {
+            const key: string = evt.domEvent.key;
             // dispatch Enter events to autocomplete if there is a tooltip selected
-            if (evt.domEvent.key === "Enter" && this.autocomplete.getSelectedHint()) {
+            if (key === "Enter" && this.autocomplete.getSelectedHint()) {
                 this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
                 return;
             }
+            // ignore Home/End
+            // if (key === "Home" || key === "End" || key === "PageUp" || key === "PageDown") {
+            //     return;
+            // }
             // update content and show tooltips
             const contentHasChanged: boolean = this.content.updateContent(evt);
             this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
@@ -2110,7 +2126,7 @@ export class XTermPvs extends Backbone.Model {
             this.onData(data);
         });
         this.xterm.attachCustomKeyEventHandler ((evt: KeyboardEvent): boolean => {
-            // console.log("[xterm-pvs] attachCustomKeyEventHandler", { evt });
+            console.log("[xterm-pvs] attachCustomKeyEventHandler", { evt });
             this.modKeys = {
                 alt: !!evt?.altKey,
                 ctrl: !!evt?.ctrlKey,
@@ -2139,12 +2155,17 @@ export class XTermPvs extends Backbone.Model {
         });
         $(document).on("dblclick", (evt: JQuery.DoubleClickEvent) => {
             // this give the raw position of the cursor, in px, how do we convert this into lines/cols?
-            const pos: ISelectionPosition = this.xterm.getSelectionPosition();
+            // const pos: ISelectionPosition = this.xterm.getSelectionPosition();
             const sel = this.xterm.getSelection();
-            if (sel) {
+            if (sel && this.autocomplete.validSymbol(sel)) {
                 this.autocomplete.showTooltip([ `(expand "${sel}")` ], { top: evt.pageY, left: evt.pageX });
+            } else {
+                this.autocomplete.deleteTooltips();
             }
-            console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
+            // console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
+        });
+        $(document).on("click", (evt: JQuery.ClickEvent) => {
+            this.focus();
         });
         // content event handlers
         this.content.on(ContentEvent.rebase, (evt: RebaseEvent) => {
@@ -2398,7 +2419,7 @@ export class XTermPvs extends Backbone.Model {
      * Place focus on the terminal
      */
     focus (): void {
-        console.log("[xterm-pvs] focus");
+        // console.log("[xterm-pvs] focus");
         this.xterm.focus();
     }
 
