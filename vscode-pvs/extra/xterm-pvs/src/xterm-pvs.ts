@@ -100,13 +100,6 @@ export class Content extends Backbone.Model {
     }
 
     /**
-     * Returns max line number
-     */
-    maxLineNumber (): number {
-        return this.lines.length;
-    }
-
-    /**
      * Returns the entire content
      */
     text (): string {
@@ -415,7 +408,7 @@ export class Content extends Backbone.Model {
             this.pos.character++;
             return true;
         }
-        if (this.pos.line < this.maxLineNumber()) {
+        if (this.pos.line < this.endLine()) {
             // move one line below
             this.savePos();
             this.pos.line++;
@@ -468,6 +461,20 @@ export class Content extends Backbone.Model {
         }
         console.warn("[xterm-content] Warning: line index out of bounds @endCol", { line });
         return opt.allowBesideEnd ? MIN_POS.character + 1 : MIN_POS.character;
+    }
+
+    /**
+     * Returns max line number
+     */
+    startLine (): number {
+        return this.base.line;
+    }
+
+    /**
+     * Returns max line number
+     */
+    endLine (): number {
+        return this.lines.length;
     }
 
     /**
@@ -627,6 +634,35 @@ export class Content extends Backbone.Model {
                 line,
                 character
             };
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Cursor moves to the command line home position, i.e., after the command prompt.
+     */
+    cursorToHome (): boolean {
+        if (this.pos.line !== this.base.line || this.pos.character !== this.base.character) {
+            this.savePos();
+            this.pos.line = this.base.line;
+            this.pos.character = this.base.character;
+            // console.log("[xterm-pvs] cursorToHome", { lines: this.lines });
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Cursor moves to the end of the current input.
+     */
+    cursorToEnd (): boolean {
+        const textAfter: string = this.textAfter(this.pos);
+        // console.log("[xterm-pvs] cursorToEnd", { textAfter });
+        if (textAfter.length) {
+            this.savePos();
+            this.pos.line = this.endLine();
+            this.pos.character = this.endCol(this.pos.line, { allowBesideEnd: true });
             return true;
         }
         return false;
@@ -2137,9 +2173,36 @@ export class XTermPvs extends Backbone.Model {
                 this.trigger(XTermEvent.sendText, { data: interruptCommand });
                 return false;
             }
-            // ctrl+space is show all autocompletions
-            if (this.inputEnabled && evt?.ctrlKey && !evt?.shiftKey && evt.key === " ") {
-                this.showCommands();
+            // ctrl+key
+            if (this.inputEnabled && evt?.ctrlKey && !evt?.shiftKey) {
+                switch (evt.key) {
+                    case " ": {
+                        // ctrl+space shows all autocompletions
+                        this.showCommands();
+                        break;
+                    }
+                    case "Home": {
+                        // ctrl+Home moves cursor to command prompt home position
+                        const success: boolean = this.content.cursorToHome();
+                        if (success) {
+                            const pos: Position = this.content.cursorPosition();
+                            this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
+                        }
+                        break;
+                    }
+                    case "End": {
+                        // ctrl+End moves cursor to the end of the command line
+                        const success: boolean = this.content.cursorToEnd();
+                        if (success) {
+                            const pos: Position = this.content.cursorPosition();
+                            this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
+                        }
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
                 return false;
             }
             return this.inputEnabled && 
