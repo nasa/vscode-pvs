@@ -607,10 +607,10 @@ export class Content extends Backbone.Model {
      */
     onChar (c: string): boolean {
         // non-printable key sequence, e.g., Home, End
-        if (c.startsWith("\x1B[")) {
+        if (c.length > 1) {
             return false;
         }
-        console.log("[onChar]", { c, pos: this.pos, prevPos: this.prevPos });
+        // console.log("[onChar]", { c, pos: this.pos, prevPos: this.prevPos });
         return this.insertCharAt(this.pos, c);
     }
 
@@ -2268,6 +2268,26 @@ export class XTermPvs extends Backbone.Model {
                         break;
                     }
                 }
+                return false;
+            }
+            // F4 = proof-explorer.back
+            if (this.inputEnabled && evt.key === "F4") {
+                this.trigger(XTermEvent.proofExplorerBack);
+                return false;
+            }
+            // F5 = proof-explorer.run
+            if (this.inputEnabled && evt.key === "F5") {
+                this.trigger(XTermEvent.proofExplorerRun);
+                return false;
+            }
+            // F6 = proof-explorer.forward
+            if (this.inputEnabled && evt.key === "F6") {
+                this.trigger(XTermEvent.proofExplorerForward);
+                return false;
+            }
+            // F2 = proof-explorer.edit
+            if (this.inputEnabled && evt.key === "F2") {
+                this.trigger(XTermEvent.proofExplorerEdit);
                 return false;
             }
             return this.inputEnabled && 

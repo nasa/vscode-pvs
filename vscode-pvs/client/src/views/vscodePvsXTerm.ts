@@ -115,12 +115,14 @@ const htmlTemplate: string = `
     });
 
     // Handlers for events triggered by the terminal
-    xterm.on("${XTermEvent.sendText}", (event) => {
+    {{#each xtermEvents}}
+    xterm.on("{{this}}", (event) => {
         vscode.postMessage({
-            command: "${XTermEvent.sendText}",
+            command: "{{this}}",
             data: event.data
         });
     });
+    {{/each}}
 
     // Handlers for messages exchanged between vscode and pvsioweb
     window.addEventListener('message', async (event) => {
@@ -789,6 +791,13 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                     }
                                     break;
                                 }
+                                case XTermEvent.proofExplorerBack:
+                                case XTermEvent.proofExplorerForward:
+                                case XTermEvent.proofExplorerRun:
+                                case XTermEvent.proofExplorerEdit: {
+                                    commands.executeCommand(message.command);
+                                    break;
+                                }
                                 default: {
                                     break;
                                 }
@@ -854,6 +863,13 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     XTermCommands.showWelcomeMessage,
                     XTermCommands.updateColorTheme,
                     XTermCommands.showHelpMessage
+                ],
+                xtermEvents: [
+                    XTermEvent.sendText,
+                    XTermEvent.proofExplorerBack,
+                    XTermEvent.proofExplorerForward,
+                    XTermEvent.proofExplorerRun,
+                    XTermEvent.proofExplorerEdit
                 ],
                 sessionType: this.sessionType
             });

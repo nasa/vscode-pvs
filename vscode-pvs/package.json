@@ -646,13 +646,13 @@
 					"dark": "icons/play-circle-1-icon.png",
 					"light": "icons/play-circle-1-icon.png"
 				},
-				"enablement": "view == proof-explorer-view",
+				"enablement": "in-checker == true",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.pause-proof",
 				"title": "️️Pause proof",
-				"enablement": "view == proof-explorer-view",
+				"enablement": "in-checker == true",
 				"icon": {
 					"dark": "icons/pause-icon.png",
 					"light": "icons/pause-icon.png"
@@ -1318,26 +1318,6 @@
 			},
 			{
 				"key": "ctrl+c",
-				"command": "workbench.action.terminal.sendSequence",
-				"args": {
-					"text": ""
-				},
-				"note": "overriding default vscode command, which kills the terminal",
-				"mnemonic": "TODO: redirect to ctrl+shift+c",
-				"when": "terminalFocus && resourceLangId == pvs && !in-checker"
-			},
-			{
-				"key": "ctrl+c",
-				"command": "workbench.action.terminal.sendSequence",
-				"args": {
-					"text": "(interrupt)\n"
-				},
-				"note": "overriding default vscode command, which kills the terminal",
-				"mnemonic": "send interrupt command to the prover",
-				"when": "terminalFocus && resourceLangId == pvs && in-checker"
-			},
-			{
-				"key": "ctrl+c",
 				"command": "proof-explorer.copy-node",
 				"args": {
 					"text": ""
@@ -1366,38 +1346,22 @@
 			{
 				"key": "F2",
 				"command": "proof-explorer.edit-node",
-				"args": {
-					"text": ""
-				},
-				"note": "edit proof command in proof explorer",
-				"when": "view == proof-explorer-view && viewItem == proof-command"
+				"note": "edit proof command in proof explorer"
 			},
 			{
 				"key": "F5",
 				"command": "proof-explorer.run-proof",
-				"args": {
-					"text": ""
-				},
-				"note": "run proof in proof explorer",
-				"when": "view == proof-explorer-view && viewItem == proof-command"
+				"note": "run proof in proof explorer"
 			},
 			{
 				"key": "F6",
 				"command": "proof-explorer.forward",
-				"args": {
-					"text": ""
-				},
-				"note": "step proof in proof explorer",
-				"when": "view == proof-explorer-view && viewItem == proof-command"
+				"note": "step proof in proof explorer"
 			},
 			{
 				"key": "F4",
 				"command": "proof-explorer.back",
-				"args": {
-					"text": ""
-				},
-				"note": "one step back in proof explorer",
-				"when": "view == proof-explorer-view && viewItem == proof-command"
+				"note": "one step back in proof explorer"
 			}
 		],
 		"languages": [

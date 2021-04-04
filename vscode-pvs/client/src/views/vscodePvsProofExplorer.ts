@@ -1112,7 +1112,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		context.subscriptions.push(commands.registerCommand("proof-explorer.pause-proof", async () => {
             this.queryPauseProof();
         }));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.fast-forward", (resource: ProofItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.fast-forward", (resource?: ProofItem) => {
 			// fast forward proof to a given proof command
 			if (resource) {
 				this.fastForwardTo({ id: resource.id, name: resource.name });
@@ -1121,7 +1121,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			// console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
 			// this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.rewind", (resource: ProofItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.rewind", (resource?: ProofItem) => {
 			// rewind to a given proof command
 			if (resource) {
 				this.rewindTo({ id: resource.id, name: resource.name });
@@ -1130,106 +1130,131 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			// console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
 			// this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-node", (resource: ProofItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-node", (resource?: ProofItem) => {
 			// copy selected node
-			const action: ProofEditCopyNode = { action: "copy-node", selected: { id: resource.id, name: resource.name } };
-			console.log(`[vscode-proof-explorer] Copy node ${resource.name} (${resource.id})`);
-			this.client.sendRequest(serverRequest.proverCommand, action);
+			if (resource) {
+				const action: ProofEditCopyNode = { action: "copy-node", selected: { id: resource.id, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Copy node ${resource.name} (${resource.id})`);
+				this.client.sendRequest(serverRequest.proverCommand, action);
+			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-subtree", (resource: ProofItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-subtree", (resource?: ProofItem) => {
 			// copy selected node
-			const action: ProofEditCopyTree = { action: "copy-tree", selected: { id: resource.id, name: resource.name } };
-			console.log(`[vscode-proof-explorer] Copy tree rooted at ${resource.name} (${resource.id})`);
-			this.client.sendRequest(serverRequest.proverCommand, action);
+			if (resource) {
+				const action: ProofEditCopyTree = { action: "copy-tree", selected: { id: resource.id, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Copy tree rooted at ${resource.name} (${resource.id})`);
+				this.client.sendRequest(serverRequest.proverCommand, action);
+			}
 		}));
 		// context.subscriptions.push(commands.registerCommand("proof-explorer.paste-before-proof-command", (resource: ProofItem) => {
 		// 	this.pasteBeforeNode({ selected: resource });
 		// }));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.paste-node", (resource: ProofItem) => {
-			const action: ProofEditPasteNode = { action: "paste-node", selected: { id: resource.id, name: resource.name } };
-			console.log(`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.id})`);
-			this.client.sendRequest(serverRequest.proverCommand, action);
+		context.subscriptions.push(commands.registerCommand("proof-explorer.paste-node", (resource?: ProofItem) => {
+			if (resource) {
+				const action: ProofEditPasteNode = { action: "paste-node", selected: { id: resource.id, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.id})`);
+				this.client.sendRequest(serverRequest.proverCommand, action);
+			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.paste-subtree", (resource: ProofItem) => {
-			const action: ProofEditPasteTree = { action: "paste-tree", selected: { id: resource.id, name: resource.name } };
-			console.log(`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.id})`);
-			this.client.sendRequest(serverRequest.proverCommand, action);
+		context.subscriptions.push(commands.registerCommand("proof-explorer.paste-subtree", (resource?: ProofItem) => {
+			if (resource) {
+				const action: ProofEditPasteTree = { action: "paste-tree", selected: { id: resource.id, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.id})`);
+				this.client.sendRequest(serverRequest.proverCommand, action);
+			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.delete-node", async (resource: ProofItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.delete-node", async (resource?: ProofItem) => {
 			// ask confirmation before deleting a node
-			const msg: string = (resource.contextValue === "root") ? `Delete current proof?` : `Delete ${resource.name}?`;
-			const actionConfirmed: boolean = await this.queryConfirmation(msg);
-			if (actionConfirmed) {
-				const action: ProofEditDeleteNode = { action: "delete-node", selected: { id: resource.id, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Deleting node ${resource.name} (${resource.id})`);
+			if (resource) {
+				const msg: string = (resource.contextValue === "root") ? `Delete current proof?` : `Delete ${resource.name}?`;
+				const actionConfirmed: boolean = await this.queryConfirmation(msg);
+				if (actionConfirmed) {
+					const action: ProofEditDeleteNode = { action: "delete-node", selected: { id: resource.id, name: resource.name } };
+					console.log(`[vscode-proof-explorer] Deleting node ${resource.name} (${resource.id})`);
+					this.client.sendRequest(serverRequest.proverCommand, action);
+				}
+			}
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.trim-node", async (resource?: ProofItem) => {
+			if (resource) {
+				const msg: string = resource.contextValue === "root" ? `Delete current proof?` 
+					: resource.contextValue === "proof-branch" ? `Delete proof commands in branch ${resource.name}?`
+						: `Delete proof commands after ${resource.name}?`;
+				const actionConfirmed: boolean = await this.queryConfirmation(msg);
+				if (actionConfirmed) {
+					const action: ProofEditTrimNode = { action: "trim-node", selected: { id: resource.id, name: resource.name } };
+					console.log(`[vscode-proof-explorer] Trimming node ${resource.name} (${resource.id})`);
+					this.client.sendRequest(serverRequest.proverCommand, action);
+				}
+			}
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.delete-tree", async (resource?: ProofItem) => {
+			if (resource) {
+				const msg: string = (resource.contextValue === "root") ? `Delete current proof?` 
+						: `Delete ${resource.name}?`;
+				const actionConfirmed: boolean = await this.queryConfirmation(msg);
+				if (actionConfirmed) {
+					const action: ProofEditDeleteTree = { action: "delete-tree", selected: { id: resource.id, name: resource.name } };
+					console.log(`[vscode-proof-explorer] Deleting tree rooted at ${resource.name} (${resource.id})`);
+					this.client.sendRequest(serverRequest.proverCommand, action);
+				}
+			}
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.cut-node", (resource?: ProofItem) => {
+			if (resource) {
+				const action: ProofEditCutNode = { action: "cut-node", selected: { id: resource.id, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Cutting node ${resource.name} (${resource.id})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.trim-node", async (resource: ProofItem) => {
-			const msg: string = resource.contextValue === "root" ? `Delete current proof?` 
-				: resource.contextValue === "proof-branch" ? `Delete proof commands in branch ${resource.name}?`
-					: `Delete proof commands after ${resource.name}?`;
-			const actionConfirmed: boolean = await this.queryConfirmation(msg);
-			if (actionConfirmed) {
-				const action: ProofEditTrimNode = { action: "trim-node", selected: { id: resource.id, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Trimming node ${resource.name} (${resource.id})`);
+		context.subscriptions.push(commands.registerCommand("proof-explorer.cut-subtree", (resource?: ProofItem) => {
+			if (resource) {
+				const action: ProofEditCutTree = { action: "cut-tree", selected: { id: resource.id, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Cutting tree rooted at ${resource.name} (${resource.id})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.delete-tree", async (resource: ProofItem) => {
-			const msg: string = (resource.contextValue === "root") ? `Delete current proof?` 
-					: `Delete ${resource.name}?`;
-			const actionConfirmed: boolean = await this.queryConfirmation(msg);
-			if (actionConfirmed) {
-				const action: ProofEditDeleteTree = { action: "delete-tree", selected: { id: resource.id, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Deleting tree rooted at ${resource.name} (${resource.id})`);
+		context.subscriptions.push(commands.registerCommand("proof-explorer.new-proof-command", async (resource?: ProofItem) => {
+			if (resource) {
+				const name: string = await vscode.window.showInputBox({
+					prompt: `Please enter proof command to be appended after ${resource.name}`,
+					placeHolder: ``,
+					value: ``,
+					ignoreFocusOut: true 
+				});
+				if (name) {
+					const action: ProofEditAppendNode = { action: "append-node", selected: { id: resource.id, name: resource.name }, name };
+					// console.log(`[vscode-proof-explorer] Appending ${name} at ${resource.name} (${resource.id})`);
+					this.client.sendRequest(serverRequest.proverCommand, action);
+				}
+			}
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.create-proof-branch", (resource?: ProofItem) => {
+			if (resource) {
+				const action: ProofEditAppendBranch = { action: "append-branch", selected: { id: resource.id, name: resource.name } };
+				// console.log(`[vscode-proof-explorer] Appending new branch at ${resource.name} (${resource.id})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.cut-node", (resource: ProofItem) => {
-			const action: ProofEditCutNode = { action: "cut-node", selected: { id: resource.id, name: resource.name } };
-			console.log(`[vscode-proof-explorer] Cutting node ${resource.name} (${resource.id})`);
-			this.client.sendRequest(serverRequest.proverCommand, action);
-		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.cut-subtree", (resource: ProofItem) => {
-			const action: ProofEditCutTree = { action: "cut-tree", selected: { id: resource.id, name: resource.name } };
-			console.log(`[vscode-proof-explorer] Cutting tree rooted at ${resource.name} (${resource.id})`);
-			this.client.sendRequest(serverRequest.proverCommand, action);
-		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.new-proof-command", async (resource: ProofItem) => {
-			const name: string = await vscode.window.showInputBox({
-				prompt: `Please enter proof command to be appended after ${resource.name}`,
-				placeHolder: ``,
-				value: ``,
-				ignoreFocusOut: true 
-			});
-			if (name) {
-				const action: ProofEditAppendNode = { action: "append-node", selected: { id: resource.id, name: resource.name }, name };
-				// console.log(`[vscode-proof-explorer] Appending ${name} at ${resource.name} (${resource.id})`);
-				this.client.sendRequest(serverRequest.proverCommand, action);
+		context.subscriptions.push(commands.registerCommand("proof-explorer.edit-node", async (resource?: ProofItem) => {
+			if (resource?.name === undefined) { resource = this.activeNode; }
+			if (resource) {
+				let newName: string = await vscode.window.showInputBox({ prompt: `Editing proof command ${resource.name}`, placeHolder: `${resource.name}`, value: `${resource.name}`, ignoreFocusOut: true });
+				if (newName) {
+					const action: ProofEditRenameNode = { action: "rename-node", selected: { id: resource.id, name: resource.name }, newName };
+					console.log(`[vscode-proof-explorer] Renaming node ${resource.name} (${resource.id})`);
+					this.client.sendRequest(serverRequest.proverCommand, action);
+				}
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.create-proof-branch", (resource: ProofItem) => {
-			const action: ProofEditAppendBranch = { action: "append-branch", selected: { id: resource.id, name: resource.name } };
-			// console.log(`[vscode-proof-explorer] Appending new branch at ${resource.name} (${resource.id})`);
-			this.client.sendRequest(serverRequest.proverCommand, action);
-		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.edit-node", async (resource: ProofItem) => {
-			let newName: string = await vscode.window.showInputBox({ prompt: `Editing proof command ${resource.name}`, placeHolder: `${resource.name}`, value: `${resource.name}`, ignoreFocusOut: true });
-			if (newName) {
-				const action: ProofEditRenameNode = { action: "rename-node", selected: { id: resource.id, name: resource.name }, newName };
-				console.log(`[vscode-proof-explorer] Renaming node ${resource.name} (${resource.id})`);
-				this.client.sendRequest(serverRequest.proverCommand, action);
-			}
-		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.show-sequent", (resource: ProofItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.show-sequent", (resource?: ProofItem) => {
 			if (resource?.tooltip) {
 				const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
 				const info: string = typeof resource.tooltip === "string" ? resource.tooltip : resource.tooltip.value;
 				vscodeUtils.previewTextDocument(name, info, { contextFolder: path.join(vscodeUtils.getRootPath(), "pvsbin")});
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.show-active-sequent", (resource: ProofItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.show-active-sequent", (resource?: ProofItem) => {
 			if (resource?.tooltip) {
 				const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
 				const info: string = typeof resource.tooltip === "string" ? resource.tooltip : resource.tooltip.value;

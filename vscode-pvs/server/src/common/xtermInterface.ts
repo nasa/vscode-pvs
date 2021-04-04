@@ -1,5 +1,9 @@
 export enum XTermEvent {
-    sendText = "sendText"
+    sendText = "sendText",
+    proofExplorerBack = "proof-explorer.back", // F4
+    proofExplorerForward = "proof-explorer.forward", //F6
+    proofExplorerRun = "proof-explorer.run", // F5
+    proofExplorerEdit = "proof-explorer.edit" // F2
 };
 export enum XTermCommands {
     write = "write",
