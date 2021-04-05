@@ -322,6 +322,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.showHelpMessage(msg);
                 // disable response handlers
                 this.disableHandlers();
+                this.sessionType = null;
             } else {
                 console.log(data.res);
             }
@@ -350,6 +351,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             // if (!data?.res?.sequent || data?.req?.origin !== "xterm-pvs") {
                 this.showPrompt();
             // }
+            this.focus();
         }
     };
 
@@ -445,6 +447,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             this.showHelpMessage(msg);
             // disable response handlers
             this.disableHandlers();
+            this.sessionType = null;
         } else {
             if (data?.res) {
                 const hints: HintsObject = getHints(this.sessionType, {
@@ -586,7 +589,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     reveal (): void {
         this.renderView();
-        this.panel.reveal(ViewColumn.Active, false); // false allows the webview to get the focus
+        this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
     }
     /**
      * Hides the terminal
@@ -798,7 +801,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                 }
                                 case XTermEvent.proofExplorerBack:
                                 case XTermEvent.proofExplorerForward:
-                                case XTermEvent.proofExplorerRun:
+                                case XTermEvent.proofExplorerRun: 
                                 case XTermEvent.proofExplorerEdit: {
                                     commands.executeCommand(message.command);
                                     break;

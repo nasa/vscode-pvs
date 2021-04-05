@@ -1380,6 +1380,7 @@ export class Autocomplete extends Backbone.Model {
      */
     getHints (opt?: { fullSet?: boolean, includeHistory?: boolean, commandsOnly?: boolean }): string[] {
         opt = opt || {};
+        // console.log("[xterm-pvs] getHints", { opt });
         // include history if nothing is specified
         opt.includeHistory = (opt.includeHistory === undefined) ? true : !!opt.includeHistory;
         // update current input
@@ -1397,6 +1398,7 @@ export class Autocomplete extends Backbone.Model {
             successHistory = successHistory.filter((elem: string) => {
                 return !hints.includes(elem);
             });
+            // console.log("[xterm-pvs] getHints", { successHistory });
             hints = hints.concat(successHistory);
         }
         // sort hints
@@ -1408,11 +1410,11 @@ export class Autocomplete extends Backbone.Model {
      * Updates autocomplete information shown in the tooltip
      */
     updateTooltip (): void {
-        const hints: string[] = this.getHints();
+        const hints: string[] = this.getHints({ includeHistory: true });
         this.showTooltip(hints);
         // update integrated help
         this.updateHelp();
-        console.log("[xterm-autocomplete] updateAutocomplete", { hints });
+        // console.log("[xterm-autocomplete] updateAutocomplete", { hints });
     }
     /**
      * Handler for arrow press events
