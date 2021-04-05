@@ -308,11 +308,11 @@ export class Content extends Backbone.Model {
      */
     autocomplete (data: AutocompleteData): void {
         console.log("[xterm-content] autocomplete", { data });
-        if (data && data.substitution && data.match) {
+        if (data && data.substitution) {
             const textBeforeCursor: string = this.textBefore(this.pos);
             const textAfterCursor: string = this.textAfter(this.pos);
 
-            const completedText: string = textBeforeCursor.substring(0, textBeforeCursor.length - data.match.length) + data.substitution;
+            const completedText: string = textBeforeCursor.substring(0, textBeforeCursor.length - data.match?.length) + data.substitution;
             this.lines = (completedText + textAfterCursor).split("\n");
             // move cursor at the end of the appended text
             this.savePos();
@@ -1563,15 +1563,13 @@ export class Autocomplete extends Backbone.Model {
     protected triggerAutocomplete (): void {
         const substitution: string = this.getSelectedHint();
         const match: string = this.currentInput?.startsWith("(") ? this.currentInput.substring(1) : this.currentInput;
-        console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput: this.currentInput, match, substitution });
-        if (match) {
-            const evt: DidAutocompleteEvent = {
-                substitution,
-                currentInput: this.currentInput,
-                match
-            };
-            this.trigger(AutocompleteEvent.didAutocomplete, evt);
-        }
+        // console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput: this.currentInput, match, substitution });
+        const evt: DidAutocompleteEvent = {
+            substitution,
+            currentInput: this.currentInput,
+            match
+        };
+        this.trigger(AutocompleteEvent.didAutocomplete, evt);
         this.deleteTooltips();
     }
     /**
