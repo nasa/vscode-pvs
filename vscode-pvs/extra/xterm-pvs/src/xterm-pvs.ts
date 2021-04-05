@@ -1,4 +1,4 @@
-import { ISelectionPosition, Terminal as XTerm } from 'xterm';
+import { Terminal as XTerm } from 'xterm';
 import { CommandDescriptor, CommandsMap, MathObjects, HintsObject, Position } from './common/serverInterface';
 import * as colorUtils from './common/colorUtils';
 import { pvsColorTheme } from './common/languageKeywords';
@@ -23,7 +23,7 @@ interface RebaseEvent {
 
 export const welcomeMessage: string = `
 - Ctrl+SPACE shows the full list of commands.
-- TAB autocompletes commands, UP/DOWN arrow keys recall previous/next command. Double click expands definitions.
+- TAB autocompletes commands. Double click expands definitions.
 `.trim().replace(/\n/g, "<br>");
 
 /**
@@ -871,7 +871,7 @@ const tooltipStyle: string = `<style>
     min-width: 300px;
     overflow:auto;
     font-size:12px;
-    font-family:monospace;
+    font-family:Menlo, Monaco, monospace;
     text-align:left;
     cursor:default;
     background:${htmlColorCode.black};
@@ -901,10 +901,26 @@ const cursorStyle: string = `<style>
     animation: pulser 2s linear infinite !important;
 }
 </style>`;
-const scroolbarStyle: string = `<style>
+const terminalStyle: string = `<style>
+.terminal-help {
+    width:100%;
+    background:transparent;
+    white-space:nowrap;
+    color:whitesmoke;
+    font-size:11px;
+    font-family:Menlo, Monaco, monospace;
+    text-align:left;
+    margin-top:10px;
+    padding-top:4px !important;
+    border-top:1px solid gray;
+    overflow-y:auto;
+    overflow: overlay;
+}
+.terminal-help::-webkit-scrollbar {
+    height: 6px;
+}
 body::-webkit-scrollbar {
-    height: 2px;
-    width: 2px;
+    height: 6px;
 }
 body {
     overflow: overlay;
@@ -1687,7 +1703,7 @@ export class XTermPvs extends Backbone.Model {
             cols,
             rows,
             fontSize: this.fontSize,
-            fontFamily: "monospace",
+            fontFamily: "Menlo, Monaco, monospace",
             theme: {
                 background: htmlColorCode.black
             }
@@ -1697,7 +1713,7 @@ export class XTermPvs extends Backbone.Model {
         this.parent = opt?.parent || "terminal";
         this.xterm.open(document.getElementById(this.parent));
         $(".terminal").append(tooltipStyle);
-        $("body").append(scroolbarStyle);
+        $("body").append(terminalStyle);
         // $(".terminal").append(cursorStyle);
     
         // install handlers

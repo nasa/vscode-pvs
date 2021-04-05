@@ -89,16 +89,6 @@ const htmlTemplate: string = `
     }
     .terminal-help {
         height:${HELP_PANEL_HEIGHT}px;
-        width:100%;
-        background:"transparent";
-        color:white;
-        font-size:11px;
-        font-family:monospace;
-        text-align:left;
-        margin-top:10px;
-        padding-top:4px !important;
-        border-top:1px solid gray;
-        overflow:auto;
     }
     </style>
 </head>
@@ -767,10 +757,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     async () => {
                         // delete panel
                         this.panel = null;
-                        // reset session type
-                        this.sessionType = null;
                         // send quit command to the server
                         this.sendTextToServer("quit");
+                        // reset session type
+                        this.sessionType = null;
                         // reset global vscode-pvs variables so other views can be updated properly
                         vscodeUtils.resetGlobals();
                     },

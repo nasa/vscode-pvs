@@ -685,7 +685,10 @@ export function declutterVscode (): void {
  */
 export function loadPvsFileIcons (): void {
     const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
-    config.update("workbench.iconTheme", "pvs");
+    const val: string = config.get("workbench.iconTheme");
+    if (val !== "pvs") {
+        config.update("workbench.iconTheme", "pvs");
+    }
 }
 
 /**
@@ -693,7 +696,10 @@ export function loadPvsFileIcons (): void {
  */
  export function unloadPvsFileIcons (): void {
     const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
-    config.update("workbench.iconTheme", undefined);
+    const val: string = config.get("workbench.iconTheme");
+    if (val === "pvs") {
+        config.update("workbench.iconTheme", undefined);
+    }
 }
 
 export function resource2desc (resource: string | { 

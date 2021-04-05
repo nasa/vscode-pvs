@@ -30,7 +30,7 @@ export const htmlColorCode: { [ key in PvsColor ]: string } = {
 	gold: "gold",
 	red: "red",
 	black: "#1e1e1e",
-	white: "#f3f3f3",
+	white: "whitesmoke",
 	gray: "gray"
 };
 
@@ -47,7 +47,7 @@ export const ansiColorCode: { [ key in PvsColor ]: number } = {
 	gold: 220, // gold
 	green: 42, // springgreen
 	red: 90, // dark magenta
-	white: 15,
+	white: 254, // whitesmoke
 	black: 0,
 	gray: 7 // silver
 }
