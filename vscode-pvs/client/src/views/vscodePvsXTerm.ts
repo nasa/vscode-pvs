@@ -47,14 +47,16 @@ import Backbone = require('backbone');
 import * as utils from '../common/languageUtils';
 import { LanguageClient } from 'vscode-languageclient';
 import {
-    EvaluatorCommandResponse, FileDescriptor, HintsObject, MathObjects, ProofCommandResponse, ProveFormulaRequest, ProveFormulaResponse, 
+    EvaluatorCommandResponse, HintsObject, MathObjects, ProofCommandResponse, ProveFormulaRequest, ProveFormulaResponse, 
     PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, serverEvent, serverRequest 
 } from '../common/serverInterface';
 import { PvsResponse } from '../common/pvs-gui';
 import * as vscodeUtils from '../utils/vscode-utils';
 import * as fsUtils from '../common/fsUtils';
 import * as colorUtils from '../common/colorUtils';
-import { XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData, XTermMessage } from '../common/xtermInterface';
+import {
+    XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData, XTermMessage
+} from '../common/xtermInterface';
 import { balancePar, getHints, isInvalidCommand } from '../common/languageUtils';
 import { htmlColorCode } from '../common/colorUtils';
 
@@ -317,7 +319,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 });
                 const msg: string = data.res === "Q.E.D." ? "Proof completed successfully!\nThe proof has been saved. You can now close the terminal panel."
                     : "Prover session terminated.\nYou can now close the terminal panel."
-                this.showHelpMessage(msg)
+                this.showHelpMessage(msg);
+                // disable response handlers
+                this.disableHandlers();
             } else {
                 console.log(data.res);
             }
@@ -438,7 +442,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 sessionEnd: true
             });
             const msg: string = "Evaluator session terminated.\nYou can now close the terminal panel."
-            this.showHelpMessage(msg)
+            this.showHelpMessage(msg);
+            // disable response handlers
+            this.disableHandlers();
         } else {
             if (data?.res) {
                 const hints: HintsObject = getHints(this.sessionType, {
@@ -579,9 +585,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      * Reveals the terminal
      */
     reveal (): void {
-        if (!this.panel) {
-            this.renderView();
-        }
+        this.renderView();
         this.panel.reveal(ViewColumn.Active, false); // false allows the webview to get the focus
     }
     /**
@@ -732,6 +736,17 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         return this.target;
     }
     /**
+     * Internal function, disables prover and evaluator handlers
+     */
+    protected disableHandlers (): void {
+        this.client.onRequest(serverEvent.proofCommandResponse,() => {
+            
+        });
+        this.client.onRequest(serverEvent.evaluatorCommandResponse, () => {
+
+        });
+    }
+    /**
      * Internal function, creates the webview
      */
     protected createWebView () {
@@ -801,6 +816,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.createContent();
                 // set language to pvs
                 vscodeUtils.setEditorLanguage();
+                // set terminal visible to true
+                commands.executeCommand('setContext', 'terminal.visible', true);
             } catch (err) {
                 console.error(err);
             }

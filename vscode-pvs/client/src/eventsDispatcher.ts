@@ -832,6 +832,9 @@ export class EventsDispatcher {
             await this.xterm.onStartEvaluatorRequest();
         }));
 
+        // ignore keypress
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.ignore-keypress", () => {}));
+
         // pvsio-plot
         context.subscriptions.push(commands.registerCommand("vscode-pvs.plot-expression", async (resource: string | { path: string } | { contextValue: string }) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {

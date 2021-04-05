@@ -503,7 +503,7 @@ export const pvsioBanner: string = `
 ║ Usage:
 ║ - Enter a PVS expression followed by ';'
 ║  or
-║ - Enter a Lisp expresssion followed by '!'
+║ - Enter a Lisp expression followed by '!'
 ║  or
 ║ - Exit the evaluator with 'quit;' 
 ║
@@ -520,7 +520,7 @@ export const pvsioBannerAlt: string = `
 ║ Usage:
 ║ - Enter a PVS expression followed by ';'
 ║  or
-║ - Enter a Lisp expresssion followed by '!'
+║ - Enter a Lisp expression followed by '!'
 ╚════════════════════════════════════════════════════════════════════════════════════
 `
 ;

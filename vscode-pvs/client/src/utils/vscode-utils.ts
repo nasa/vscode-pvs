@@ -830,11 +830,12 @@ export function resetGlobals (): void {
     vscode.commands.executeCommand('setContext', 'proof-mate.visible', false);
     vscode.commands.executeCommand('setContext', 'proof-explorer.visible', false);
     vscode.commands.executeCommand('setContext', 'autorun', false);
+    vscode.commands.executeCommand('setContext', 'terminal.visible', false);
 }
 
 /**
  * Sets the editor language to pvs
  */
 export function setEditorLanguage (): void {
-    vscode.commands.executeCommand("setContext", "editorLangId", "pvs");
+    vscode.commands.executeCommand('setContext', "editorLangId", "pvs");
 }

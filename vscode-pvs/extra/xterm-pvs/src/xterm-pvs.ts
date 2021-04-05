@@ -1118,7 +1118,7 @@ export class Autocomplete extends Backbone.Model {
             switch (evt.key) {
                 case "ArrowUp":
                 case "ArrowDown":
-                    evt.preventDefault(); // this is necessary to scroll the content of the tooltip programmatically
+                    evt.preventDefault(); // this is necessary to avoid unitended scrolling of the tooltip content
                 case "ArrowLeft":
                 case "ArrowRight":
                 case "Enter": 
@@ -2261,7 +2261,7 @@ export class XTermPvs extends Backbone.Model {
                 return false;
             }
             // ctrl+key / alt+key
-            if (this.inputEnabled && (evt?.ctrlKey || evt?.metaKey) && !evt?.shiftKey) {
+            if (this.inputEnabled && (evt?.ctrlKey || evt?.metaKey || evt?.altKey) && !evt?.shiftKey) {
                 switch (evt.key) {
                     case " ": {
                         // ctrl+space shows all autocompletions
@@ -2292,6 +2292,11 @@ export class XTermPvs extends Backbone.Model {
                         if (success) {
                             const pos: Position = this.content.cursorPosition();
                             this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
+                            // attachCustomKeyEventHandler is erroneously triggered twice by vscode, I am not sure why, the following timeout is a workaround
+                            this.inputEnabled = false;
+                            setTimeout(() => {
+                                this.inputEnabled = true;
+                            }, 100);
                         }
                         break;
                     }
@@ -2301,6 +2306,11 @@ export class XTermPvs extends Backbone.Model {
                         if (success) {
                             const pos: Position = this.content.cursorPosition();
                             this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
+                            // attachCustomKeyEventHandler is erroneously triggered twice by vscode, I am not sure why, the following timeout is a workaround
+                            this.inputEnabled = false;
+                            setTimeout(() => {
+                                this.inputEnabled = true;
+                            }, 100);
                         }
                         break;
                     }

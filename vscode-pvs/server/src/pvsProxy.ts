@@ -951,7 +951,12 @@ export class PvsProxy {
 			opt = opt || {};
 			await this.changeContext(formula.contextFolder);
 			const fullName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
-			const ans: PvsResponse = await this.pvsRequest("prove-formula", [ formula.formulaName, fullName ]);
+			let ans: PvsResponse = await this.pvsRequest("prove-formula", [ formula.formulaName, fullName ]);
+			// if pvs reports that the prover was still open, try to force exit and retry prove-formula
+			if (ans?.error?.data?.error_string === "Must exit the prover first") {
+				await this.quitProof({ force: true });
+				ans = await this.pvsRequest("prove-formula", [ formula.formulaName, fullName ]);
+			}
 			// if (this.verbose) { console.dir(ans); }
 			if (ans && ans.result && ans.result["length"] === undefined) {
 				ans.result = [ ans.result ]; // the prover should return an array of proof states
@@ -1109,10 +1114,10 @@ export class PvsProxy {
 	/**
 	 * Quits the prover
 	 */
-	async quitProof (): Promise<void> {
+	async quitProof (opt?: { force?: boolean }): Promise<void> {
 		// await this.interrupt();
 		const mode: string = await this.getMode(); //await this.getServerMode(); //await this.getMode();
-		if (mode === "in-checker") {
+		if (mode === "in-checker" || opt?.force) {
 			const useLispInterface: boolean = true;
 			const response: PvsResponse = await this.proofCommand({ cmd: "(quit)" }, { useLispInterface });
 			if (response && response.error && this.pvsErrorManager) {
