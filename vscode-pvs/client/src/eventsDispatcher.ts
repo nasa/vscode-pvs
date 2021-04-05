@@ -529,10 +529,6 @@ export class EventsDispatcher {
 
 		this.client.onRequest(serverEvent.getContextDescriptorResponse, (desc: PvsContextDescriptor) => {
             this.workspaceExplorer.updateContextFolder(desc);
-            if (desc?.fileDescriptors && Object.keys(desc.fileDescriptors).length) {
-                // use pvs file icons
-                vscodeUtils.loadPvsFileIcons();
-            }
         });
 
 		this.client.onRequest(serverEvent.querySaveProof, async (request: {

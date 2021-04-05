@@ -491,6 +491,10 @@ class PvsFilesOverviewItem extends OverviewItem {
 		super("pvs-files-overview", desc, TreeItemCollapsibleState.Expanded);
 		this.files = [];
 		this.updateContextFolder(desc);
+		if (this.files.length) {
+			// use pvs file icons
+			vscodeUtils.loadPvsFileIcons();
+		}
 	}
 	getChildren (): TreeItem[] {
 		let children: TreeItem[] = [];
