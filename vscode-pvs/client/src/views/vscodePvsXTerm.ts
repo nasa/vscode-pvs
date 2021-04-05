@@ -351,7 +351,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             // if (!data?.res?.sequent || data?.req?.origin !== "xterm-pvs") {
                 this.showPrompt();
             // }
-            this.focus();
+            // this.focus();
         }
     };
 
