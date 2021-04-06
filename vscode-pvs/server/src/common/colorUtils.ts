@@ -28,7 +28,7 @@ export const htmlColorCode: { [ key in PvsColor ]: string } = {
 	green: "mediumspringgreen",
 	yellow: "yellow",
 	gold: "gold",
-	red: "red",
+	red: "#f26158",
 	black: "#1e1e1e",
 	white: "whitesmoke",
 	gray: "gray"

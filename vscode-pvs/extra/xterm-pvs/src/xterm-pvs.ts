@@ -299,7 +299,7 @@ export class Content extends Backbone.Model {
             this.savePos();
             this.pos.line = textBeforeCursor.split("\n").length || MIN_POS.line;
             this.pos.character = this.endCol(this.pos.line) + 1;
-            console.log("[xterm-content] writeData", { textAfterCursor, textBeforeCursor, newText, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
+            // console.log("[xterm-content] writeData", { textAfterCursor, textBeforeCursor, newText, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
         }
     }
 
@@ -846,7 +846,7 @@ export type ModKeys = {
     meta: boolean
 };
 
-const MIN_VIEWPORT_COLS: number = 80;
+const MIN_VIEWPORT_COLS: number = 128;
 const MIN_VIEWPORT_ROWS: number = 8;
 
 export type Bracket = "(" | ")" | "[" | "]" | "{" | "}";
@@ -873,7 +873,7 @@ const tooltipStyle: string = `<style>
     max-height: 100px; 
     min-width: 300px;
     overflow:auto;
-    font-size:12px;
+    font-size:10px;
     font-family:Menlo, Monaco, monospace;
     text-align:left;
     cursor:default;
@@ -1649,8 +1649,9 @@ export class XTermPvs extends Backbone.Model {
     // id of the DOM element where the terminal is attached
     protected parent: string;
 
-    protected fontSize: number = 12; //px default font size used in the terminal
-    protected lineHeight: number = 1.2; // normal line height is 20% larger than font size 
+    protected fontSize: number = 12; //px default font size used in the terminal -- this should be the same size used in the editor
+    protected lineHeight: number = 1.2; // normal line height is 20% larger than font size
+    // protected xtermLineHeight: number = 1.45; // line height rendered in xterm, measured experimentally by inspecting the DOM
 
     protected paddingBottom: number = 0;
 
@@ -1687,6 +1688,8 @@ export class XTermPvs extends Backbone.Model {
         character: MIN_POS.character
     };
 
+    protected initialCols: number = MIN_VIEWPORT_COLS;
+
     /**
      * Constructor
      */
@@ -1707,6 +1710,8 @@ export class XTermPvs extends Backbone.Model {
         this.paddingBottom = opt?.paddingBottom || 0;
 
         const cols: number = opt.cols || MIN_VIEWPORT_COLS;
+        this.initialCols = cols;
+
         const rows: number = opt.rows || Math.floor((window.innerHeight - this.paddingBottom) / (this.fontSize * this.lineHeight)) || MIN_VIEWPORT_ROWS;
         this.xterm = new XTerm({
             rendererType: "canvas",
@@ -1714,6 +1719,7 @@ export class XTermPvs extends Backbone.Model {
             rows,
             fontSize: this.fontSize,
             fontFamily: "Menlo, Monaco, monospace",
+            // lineHeight: this.lineHeight,
             theme: {
                 background: htmlColorCode.black
             }
@@ -1733,7 +1739,7 @@ export class XTermPvs extends Backbone.Model {
         this.xterm.focus();
 
         // set theme
-        this.nightMode();
+        this.darkMode();
 
         // @ts-ignore
         // this.xterm.buffer.active._buffer.lines.onTrim((n: number) => {
@@ -1758,8 +1764,8 @@ export class XTermPvs extends Backbone.Model {
     /**
      * Sets dark color theme
      */
-    nightMode (): void {
-        console.log("[xterm-pvs] nightMode");
+    darkMode (): void {
+        console.log("[xterm-pvs] darkMode");
         this.xterm.setOption("theme", colorThemes.dark);
         $("body").css(colorThemes.dark);
     }
@@ -1791,7 +1797,7 @@ export class XTermPvs extends Backbone.Model {
      * Utility function, updates color theme
      */
     updateColorTheme (theme: XTermColorTheme): void {
-        this.nightMode()
+        this.darkMode()
         // TODO
         // console.log("[xterm-pvs] updateColorTheme", { theme });
         // theme === "dark" ? this.nightMode() : this.lightMode();
@@ -2197,6 +2203,59 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
+     * Utility function, wraps lines by introducing additional \n if the line exceeds a target length
+     */
+    wrapLines (data: string): string {
+        const maxCol: number = this.initialCols;
+        const lines: string[] = data?.split("\n");
+        let ans: string[] = [];
+        for (let i = 0; i < lines.length; i++) {
+            const line: string = lines[i];
+            if (colorUtils.getPlainText(line).length < maxCol) {
+                ans.push(line);
+            } else {
+                const sublines: string[] = this.splitBreakable(line);
+                let ln: string = ""; // accumulator, used to create a line of the target length -- this helps to avoid creating a large number of short lines
+                for (let i = 0; i < sublines.length; i++) {
+                    const subln: string = sublines[i];
+                    const subln_length: number = colorUtils.getPlainText(subln).length;
+                    const ln_length: number = colorUtils.getPlainText(ln).length;
+                    if (ln_length > 0 && (ln_length + subln_length >= maxCol)) {
+                        ans.push(ln);
+                        ln = subln;
+                    } else {
+                        ln += sublines[i];
+                    }
+                }
+                if (ln.length > 0) {
+                    ans.push(ln);
+                }
+            }
+        }
+        // console.log("[xterm-pvs] wrapLines", { lines, ans, maxCol });
+        return ans.join("\n");
+    }
+
+    /**
+     * Utility function, breaks a string into an array of sub-strings at breakable points
+     */
+    splitBreakable (str: string): string[] {
+        let ans: string[] = [];
+        if (str) {
+            const breakablePoints: RegExp = new RegExp(/[\)\]\;\,\.\` ]/g);
+            let match: RegExpMatchArray = breakablePoints.exec(str);
+            let prevIndex: number = 0;
+            while (match) {
+                ans.push(str.slice(prevIndex, match.index));
+                prevIndex = match.index;
+                match = breakablePoints.exec(str);
+            }
+            ans.push(str.slice(prevIndex));
+        }
+        return ans;
+    }
+
+    /**
      * Handler for data events (e.g., cut/paste in the terminal)
      */
     onData (data: string): void {
@@ -2210,6 +2269,7 @@ export class XTermPvs extends Backbone.Model {
                 this.onControlSequence(seq);
                 return;
             }
+            data = this.wrapLines(data);
             // write data at the cursor position
             this.content.writeData(data);
             // refresh the terminal with updated data -- the logic is a variation of onEnter
@@ -2218,7 +2278,7 @@ export class XTermPvs extends Backbone.Model {
                 character: 1
             };
             const textAfter: string = this.content.textAfter(prevPos0);
-            console.log("[vscode-content] onData", { textAfter, prevPos0 });
+            // console.log("[vscode-content] onData", { textAfter, prevPos0 });
             // clear old text
             this.clearTextAfter(prevPos0);
             // this.clearMultiLine({
@@ -2249,7 +2309,7 @@ export class XTermPvs extends Backbone.Model {
             this.onData(data);
         });
         this.xterm.attachCustomKeyEventHandler ((evt: KeyboardEvent): boolean => {
-            console.log("[xterm-pvs] attachCustomKeyEventHandler", { evt });
+            // console.log("[xterm-pvs] attachCustomKeyEventHandler", { evt });
             this.modKeys = {
                 alt: !!evt?.altKey,
                 ctrl: !!evt?.ctrlKey,
@@ -2363,7 +2423,11 @@ export class XTermPvs extends Backbone.Model {
             // const pos: ISelectionPosition = this.xterm.getSelectionPosition();
             const sel = this.xterm.getSelection();
             if (sel && this.autocomplete.validSymbol(sel)) {
-                this.autocomplete.showTooltip([ `(expand "${sel}")` ], { top: evt.pageY, left: evt.pageX });
+                this.autocomplete.showTooltip([
+                    `(expand "${sel}")`,
+                    `(expand + "${sel}")`,
+                    `(expand - "${sel}")`
+                ], { top: evt.pageY, left: evt.pageX });
             } else {
                 this.autocomplete.deleteTooltips();
             }
@@ -2495,6 +2559,7 @@ export class XTermPvs extends Backbone.Model {
             // console.log("[xterm-pvs] write", { data });
             this.saveCursorPosition();
             data = data.replace(/\t/g, " ".repeat(this.TAB_SIZE));
+            data = this.wrapLines(data)
             this.content.writeData(data);
             this.renderData(data);
             this.restoreCursorPosition();
@@ -2558,7 +2623,6 @@ export class XTermPvs extends Backbone.Model {
     resizeCol (nCols: number): void {
         const maxCols: number = nCols > this.xterm.cols ? nCols : this.xterm.cols;
         if (maxCols > this.xterm.cols) {
-            // console.log("[xterm-pvs] resize viewport col", { maxCols });
             this.xterm.resize(maxCols, this.xterm.rows);
         }
     }

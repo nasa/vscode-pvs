@@ -106,7 +106,7 @@ const htmlTemplate: string = `
         paddingBottom: ${HELP_PANEL_HEIGHT}
     });
 
-    // Handlers for events triggered by the terminal
+    // Handlers for events triggered by xterm
     {{#each xtermEvents}}
     xterm.on("{{this}}", (event) => {
         vscode.postMessage({
@@ -116,7 +116,7 @@ const htmlTemplate: string = `
     });
     {{/each}}
 
-    // Handlers for messages exchanged between vscode and pvsioweb
+    // Handler for sending commands to xterm
     window.addEventListener('message', async (event) => {
         const message = event.data; // JSON data sent by vscode-pvs
         switch (message.command) {
