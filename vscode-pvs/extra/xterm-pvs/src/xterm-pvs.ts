@@ -2425,8 +2425,8 @@ export class XTermPvs extends Backbone.Model {
             if (sel && this.autocomplete.validSymbol(sel)) {
                 this.autocomplete.showTooltip([
                     `(expand "${sel}")`,
-                    `(expand + "${sel}")`,
-                    `(expand - "${sel}")`
+                    `(expand "${sel}" +)`,
+                    `(expand "${sel}" -)`
                 ], { top: evt.pageY, left: evt.pageX });
             } else {
                 this.autocomplete.deleteTooltips();
