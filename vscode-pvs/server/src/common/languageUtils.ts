@@ -166,7 +166,7 @@ function commentToString (txt: string, opt?: { useColors?: boolean, htmlEncoding
 	return opt.htmlEncoding ? `<br>${content}<br>` : `\n${content}\n`;
 }
 
-function commentaryToString (txt: string | string[], opt?: { htmlEncoding?: boolean }): string {
+export function commentaryToString (txt: string | string[], opt?: { htmlEncoding?: boolean }): string {
 	let res = "";
 	if (typeof txt === "string") {
 		txt = txt.trim().endsWith(",") ? txt.trim().slice(0, -1) : txt.trim();

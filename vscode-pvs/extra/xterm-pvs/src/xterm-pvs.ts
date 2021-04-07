@@ -26,6 +26,67 @@ export const welcomeMessage: string = `
 - TAB autocompletes commands. Double click expands definitions.
 `.trim().replace(/\n/g, "<br>");
 
+const MIN_VIEWPORT_COLS: number = 128;
+const MIN_VIEWPORT_ROWS: number = 8;
+
+/**
+ * Utility class, wraps the content of a line
+ */
+class LineWrapper {
+    static maxCols: number = MIN_VIEWPORT_COLS;
+    /**
+     * Utility function, wraps lines by introducing additional \n if the line exceeds a target length
+     */
+    static wrapLines (data: string): string {
+        const lines: string[] = data?.split("\n");
+        let ans: string[] = [];
+        for (let i = 0; i < lines.length; i++) {
+            const line: string = lines[i];
+            if (colorUtils.getPlainText(line).length < LineWrapper.maxCols) {
+                ans.push(line);
+            } else {
+                const sublines: string[] = LineWrapper.splitBreakable(line);
+                let ln: string = ""; // accumulator, used to create a line of the target length -- this helps to avoid creating a large number of short lines
+                for (let i = 0; i < sublines.length; i++) {
+                    const subln: string = sublines[i];
+                    const subln_length: number = colorUtils.getPlainText(subln).length;
+                    const ln_length: number = colorUtils.getPlainText(ln).length;
+                    if (ln_length > 0 && (ln_length + subln_length >= LineWrapper.maxCols)) {
+                        ans.push(ln);
+                        ln = subln;
+                    } else {
+                        ln += sublines[i];
+                    }
+                }
+                if (ln.length > 0) {
+                    ans.push(ln);
+                }
+            }
+        }
+        // console.log("[xterm-pvs] wrapLines", { lines, ans, maxCol });
+        return ans.join("\n");
+    }
+
+    /**
+     * Utility function, breaks a string into an array of sub-strings at breakable points
+     */
+    static splitBreakable (str: string): string[] {
+        let ans: string[] = [];
+        if (str) {
+            const breakablePoints: RegExp = new RegExp(/[\)\]\;\,\.\` ]/g);
+            let match: RegExpMatchArray = breakablePoints.exec(str);
+            let prevIndex: number = 0;
+            while (match) {
+                ans.push(str.slice(prevIndex, match.index));
+                prevIndex = match.index;
+                match = breakablePoints.exec(str);
+            }
+            ans.push(str.slice(prevIndex));
+        }
+        return ans;
+    }
+}
+
 /**
  * Virtual content of the terminal, keeps track of the content of the cursor position
  */
@@ -82,6 +143,16 @@ export class Content extends Backbone.Model {
     }
 
     /**
+     * Gets the base (home) position of the cursor in the command line
+     */
+    getHomePosition (): Position {
+        return {
+            character: this.base.character,
+            line: this.base.line
+        };
+    }
+
+    /**
      * Utility function, returns true if the cursor is located at the home position, i.e., at the base position
      */
     cursorIsAtHomePosition (): boolean {
@@ -120,7 +191,9 @@ export class Content extends Backbone.Model {
      */
     setCommand (cmd: string, opt?: { cursorToHome?: boolean }): void {
         this.clearCommandLine();
-        this.writeData(cmd);
+        const wrapped: string = LineWrapper.wrapLines(cmd);
+        // console.log("[xterm-content] setCommand", { wrapped, cmd });
+        this.writeData(wrapped);
         if (opt?.cursorToHome) {
             this.cursorTo(this.base);
         }
@@ -307,19 +380,21 @@ export class Content extends Backbone.Model {
      * autocompletes the current input with the provided substitution
      */
     autocomplete (data: AutocompleteData): void {
-        console.log("[xterm-content] autocomplete", { data });
+        // console.log("[xterm-content] autocomplete", { data });
         if (data && data.substitution) {
             const textBeforeCursor: string = this.textBefore(this.pos);
             const textAfterCursor: string = this.textAfter(this.pos);
 
             const completedText: string = textBeforeCursor.substring(0, textBeforeCursor.length - data.match?.length) + data.substitution;
-            this.lines = (completedText + textAfterCursor).split("\n");
+            const wrapped: string = LineWrapper.wrapLines(completedText + textAfterCursor);
+            this.lines = (wrapped).split("\n");
+
             // move cursor at the end of the appended text
             this.savePos();
-            this.pos.line = completedText.split("\n").length || MIN_POS.line;
-            this.pos.character = completedText.split("\n")[this.pos.line - 1].length + 1;
+            this.pos.line = wrapped.split("\n").length || MIN_POS.line;
+            this.pos.character = wrapped.split("\n")[this.pos.line - 1].length + 1;
 
-            console.log("[xterm-content] autocomplete", { textAfterCursor, textBeforeCursor, completedText, data: data, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
+            // console.log("[xterm-content] autocomplete", { textAfterCursor, textBeforeCursor, completedText, wrapped, data: data, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
             this.trigger(ContentEvent.didAutocompleteContent);
         }
     }
@@ -416,16 +491,16 @@ export class Content extends Backbone.Model {
             this.savePos();
             this.pos.line++;
             this.pos.character = this.startCol(this.pos.line);
-            console.log("[xterm-content] moving to next line", {
-                pos: this.pos, 
-                lines: this.lines
-            });
+            // console.log("[xterm-content] moving to next line", {
+            //     pos: this.pos, 
+            //     lines: this.lines
+            // });
             return true;
         }
-        console.log("[xterm-content] arrow right [reached text limit]", {
-            pos: this.pos, 
-            lines: this.lines
-        });
+        // console.log("[xterm-content] arrow right [reached text limit]", {
+        //     pos: this.pos, 
+        //     lines: this.lines
+        // });
         return false;
     }
 
@@ -484,22 +559,22 @@ export class Content extends Backbone.Model {
      * Cursor left. Returns true if the cursor could be moved, based on the current content.
      */
     onArrowLeft (): boolean {
-        console.log("[xterm-content] arrow left");
+        // console.log("[xterm-content] arrow left");
         this.savePos();
         const minCol: number = this.startCol(this.pos.line);
         if (this.pos.character > minCol) {
             this.pos.character--;
-            console.log("[xterm-content] arrow left moves one char back", { pos: this.pos, prev: this.prevPos, base: this.base, lines: this.lines });
+            // console.log("[xterm-content] arrow left moves one char back", { pos: this.pos, prev: this.prevPos, base: this.base, lines: this.lines });
             return true;
         }
         if (this.pos.line > this.base.line) {
             // move one line up
             this.pos.line--;
             this.pos.character = this.endCol(this.pos.line, { allowBesideEnd: true }); // move beside the end of the line
-            console.log("[xterm-content] arrow left goes to prev line", { pos: this.pos, prev: this.prevPos, base: this.base, lines: this.lines });
+            // console.log("[xterm-content] arrow left goes to prev line", { pos: this.pos, prev: this.prevPos, base: this.base, lines: this.lines });
             return true;
         }
-        console.log("[xterm-content] arrow left [reached base marker or base line]", { pos: this.pos, prev: this.prevPos, base: this.base, lines: this.lines });
+        // console.log("[xterm-content] arrow left [reached base marker or base line]", { pos: this.pos, prev: this.prevPos, base: this.base, lines: this.lines });
         return false;
     }
 
@@ -601,7 +676,7 @@ export class Content extends Backbone.Model {
         // move cursor to beginning of next line
         this.pos.line = this.pos.line + 1;
         this.pos.character = this.startCol(this.pos.line);
-        console.log("[xterm-content] onEnter", { textBefore: textBefore.split("\n"), textAfter, pos: this.pos, prevPos: this.prevPos, lines: this.lines });
+        // console.log("[xterm-content] onEnter", { textBefore: textBefore.split("\n"), textAfter, pos: this.pos, prevPos: this.prevPos, lines: this.lines });
         return true;
     }
 
@@ -621,6 +696,7 @@ export class Content extends Backbone.Model {
      * Moves the cursor to a given position
      */
     cursorTo (pos: Position): boolean {
+        // console.log("[xterm-content] cursorTo", { pos });
         const line: number =
             pos?.line < this.base.line ? this.base.line
             : pos?.line > this.lines.length? this.lines.length
@@ -846,9 +922,6 @@ export type ModKeys = {
     meta: boolean
 };
 
-const MIN_VIEWPORT_COLS: number = 128;
-const MIN_VIEWPORT_ROWS: number = 8;
-
 export type Bracket = "(" | ")" | "[" | "]" | "{" | "}";
 
 /**
@@ -990,13 +1063,12 @@ export interface DidAutocompleteEvent extends AutocompleteData {
     push (cmd: string, opt?: { successHistory?: boolean }): void {
         if (cmd) {
             opt = opt || {};
-            let elem: string = cmd.trim().replace(/\n/g, " ");
+            let elem: string = cmd.trim().replace(/\n/g, " "); // flatten command before inserting in history
             if (elem.startsWith("(") && elem.endsWith(")")) {
                 elem = elem.substring(1, elem.length - 1).trim();
             }
-            if (!this.history.includes(elem)) {
-                this.history = [ elem ].concat(this.history);
-            }
+            this.history = [ elem ].concat(this.history);
+
             if (opt.successHistory && !this.successHistory.includes(elem)) {
                 this.successHistory = [ elem ].concat(this.successHistory);
             }
@@ -1032,6 +1104,7 @@ export interface DidAutocompleteEvent extends AutocompleteData {
      * Returns the previous command in the history
      */
     prev (): string {
+        // console.log("[xterm-history] prev", { history: this.history });
         if (this.history.length) {
             this.index = (this.index + 1 < this.history.length) ? this.index + 1 : this.index;
             return `(${this.history[this.index]})`;
@@ -1043,6 +1116,7 @@ export interface DidAutocompleteEvent extends AutocompleteData {
      * Returns the next command in the history
      */
     next (): string {
+        // console.log("[xterm-history] next", { history: this.history });
         if (this.index - 1 >= 0 && this.history.length) {
             this.index--;
             return `(${this.history[this.index]})`;
@@ -1091,7 +1165,7 @@ export class Autocomplete extends Backbone.Model {
     protected hintsObject: HintsObject = {};
     protected mathObjects: MathObjects = {};
     protected currentHints: string[] = [];
-    protected currentInput: string = "";
+    // protected currentInput: string = "";
 
     // selection mode
     protected triggerMode: "standard" | "single-click" = "standard";
@@ -1164,14 +1238,15 @@ export class Autocomplete extends Backbone.Model {
             if (cmdArray?.length) {
                 const hints: string[] = this.getHints({ fullSet: true });
                 for (let i = 0; i < cmdArray.length; i++) {
-                    let elem: string = cmdArray[i];
+                    let elem: string = cmdArray[i].trim();
                     if (elem.startsWith("(") && elem.endsWith(")")) {
                         elem = elem.substring(1, elem.length - 1).trim();
                     }
-                    if (cmd && !hints?.includes(elem)) {
+                    // if (cmd && !hints?.includes(elem)) {
                         this.history.push(elem, opt);
-                    }
+                    // }
                 }
+                // console.log("[xterm-autocomplete] updateCommandHistory", { cmdArray, history: this.history, hints });
             }
         }
     }
@@ -1185,18 +1260,22 @@ export class Autocomplete extends Backbone.Model {
     /**
      * Returns the input string used to compute autocompletion
      */
-    getCurrentInput (opt?: { regex?: RegExp }): string {
+    getCurrentInput (opt?: { regex?: RegExp, removeLeadingBraket?: boolean }): string {
         opt = opt || {};
-        this.currentInput = this.content?.command({ beforeCursor: true });
-        console.log("[xterm-autocomplete] getCurrentInput", { currentInput: this.currentInput });
-        if (opt.regex && this.currentInput) {
-            const match: RegExpMatchArray = new RegExp(opt.regex).exec(this.currentInput);
+        const currentInput: string = this.content?.command({ beforeCursor: true });
+        // console.log("[xterm-autocomplete] getCurrentInput", { currentInput });
+        if (opt.regex && currentInput) {
+            const match: RegExpMatchArray = new RegExp(opt.regex).exec(currentInput);
             if (match && match.length && match[0]) {
                 return match[0];
             }
             return "";
         }
-        return this.currentInput;
+        if (opt.removeLeadingBraket) {
+            const bless: string = currentInput.startsWith("(") ? currentInput.substring(1) : currentInput;
+            return bless;
+        }
+        return currentInput;
     }
     /**
      * Utility function, checks if a given symbol is known to the prover
@@ -1283,7 +1362,7 @@ export class Autocomplete extends Backbone.Model {
     /**
      * Autocompletion logic for the prover
      */
-	autocompleteProverCommand (opt?: { fullSet?: boolean, commandsOnly?: boolean }): string[] {        
+	autocompleteProverCommand (currentInput: string, opt?: { fullSet?: boolean, commandsOnly?: boolean }): string[] {        
         // console.log("[xterm-autocomplete] autocompleteProverCommand", { currentInput: this.currentInput, hintsData: this.hintsObject });
         if (opt?.fullSet) {
             if (opt?.commandsOnly) {
@@ -1294,7 +1373,6 @@ export class Autocomplete extends Backbone.Model {
             const commands: string[] = Object.keys(this.hintsObject?.commands);
             return symbols.concat(mathObjects).concat(commands);
         }
-        const currentInput: string = this.currentInput.trimRight();
         if (currentInput) {
             let hints: string[] = [];
             // console.log(`[xterm-autocomplete] trying to auto-complete ${currentInput}`);
@@ -1352,7 +1430,7 @@ export class Autocomplete extends Backbone.Model {
     /**
      * Autocompletion logic for the evaluator
      */
-	autocompleteEvaluatorCommand (opt?: { fullSet?: boolean, commandsOnly?: boolean }): string[] {
+	autocompleteEvaluatorCommand (currentInput: string, opt?: { fullSet?: boolean, commandsOnly?: boolean }): string[] {
         if (opt?.fullSet) {
             if (opt?.commandsOnly) {
                 return Object.keys(this.hintsObject?.commands);
@@ -1361,16 +1439,16 @@ export class Autocomplete extends Backbone.Model {
             const commands: string[] = Object.keys(this.hintsObject?.commands);
             return symbols.concat(commands);
         }
-        if (this.currentInput) {
+        if (currentInput) {
             let hits: string[] = [];
             // autocomplete symbol names
             const symbols: string[] = this.hintsObject?.symbols;
             // console.dir(symbols, { depth: null });
             if (symbols?.length) {
-                hits = symbols?.filter((c: string) => c.toLocaleLowerCase().startsWith(this.currentInput));
+                hits = symbols?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput));
             }
             // Include also pvsio functions
-            hits = hits.concat(Object.keys(this.hintsObject?.commands)?.filter((c: string) => c.toLocaleLowerCase().startsWith(this.currentInput)));
+            hits = hits.concat(Object.keys(this.hintsObject?.commands)?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput)));
             return hits;
         }
         return [];
@@ -1380,20 +1458,19 @@ export class Autocomplete extends Backbone.Model {
      */
     getHints (opt?: { fullSet?: boolean, includeHistory?: boolean, commandsOnly?: boolean }): string[] {
         opt = opt || {};
-        // console.log("[xterm-pvs] getHints", { opt });
         // include history if nothing is specified
         opt.includeHistory = (opt.includeHistory === undefined) ? true : !!opt.includeHistory;
         // update current input
-        const currentInput: string = this.getCurrentInput()?.toLocaleLowerCase();
-        this.currentInput = currentInput?.startsWith("(") ? currentInput?.substring(1).trim() : currentInput;
+        const currentInput: string = this.getCurrentInput({ removeLeadingBraket: true })?.toLocaleLowerCase();
         // get command hints
         let hints: string[] = this.sessionType === "evaluator" ?
-            this.autocompleteEvaluatorCommand(opt)
-                : this.autocompleteProverCommand(opt);
+            this.autocompleteEvaluatorCommand(currentInput, opt)
+                : this.autocompleteProverCommand(currentInput, opt);
+        // console.log("[xterm-pvs] getHints", { opt, currentInput, hints });
         if (opt.includeHistory) {
             // get list of commands previously accepted by the prover
             let successHistory: string[] = opt?.fullSet ? this.history.getSuccessHistory()
-                : this.history.getSuccessHistory({ match: this.currentInput });
+                : this.history.getSuccessHistory({ match: currentInput });
             // avoid the creation of duplicates
             successHistory = successHistory.filter((elem: string) => {
                 return !hints.includes(elem);
@@ -1547,7 +1624,7 @@ export class Autocomplete extends Backbone.Model {
                 const index: number = +matchIndex[1];
                 if (index >= 0 && index < this.currentHints.length) {
                     const val: string = this.currentHints[index];
-                    console.log("[xterm-autocomplete] Selected hint", { index, val });
+                    // console.log("[xterm-autocomplete] Selected hint", { index, val });
                     return val;
                 }
             }
@@ -1562,11 +1639,11 @@ export class Autocomplete extends Backbone.Model {
      */
     protected triggerAutocomplete (): void {
         const substitution: string = this.getSelectedHint();
-        const match: string = this.currentInput?.startsWith("(") ? this.currentInput.substring(1) : this.currentInput;
+        const match: string = this.getCurrentInput({ removeLeadingBraket: true });
         // console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput: this.currentInput, match, substitution });
         const evt: DidAutocompleteEvent = {
             substitution,
-            currentInput: this.currentInput,
+            currentInput: this.getCurrentInput(),
             match
         };
         this.trigger(AutocompleteEvent.didAutocomplete, evt);
@@ -1688,8 +1765,6 @@ export class XTermPvs extends Backbone.Model {
         character: MIN_POS.character
     };
 
-    protected initialCols: number = MIN_VIEWPORT_COLS;
-
     /**
      * Constructor
      */
@@ -1710,7 +1785,7 @@ export class XTermPvs extends Backbone.Model {
         this.paddingBottom = opt?.paddingBottom || 0;
 
         const cols: number = opt.cols || MIN_VIEWPORT_COLS;
-        this.initialCols = cols;
+        LineWrapper.maxCols = cols;
 
         const rows: number = opt.rows || Math.floor((window.innerHeight - this.paddingBottom) / (this.fontSize * this.lineHeight)) || MIN_VIEWPORT_ROWS;
         this.xterm = new XTerm({
@@ -1754,9 +1829,9 @@ export class XTermPvs extends Backbone.Model {
         //     });
         // });
 
-        this.xterm.buffer.onBufferChange((evt) => {
-            console.log("onBufferChange", evt);
-        });
+        // this.xterm.buffer.onBufferChange((evt) => {
+        //     console.log("onBufferChange", evt);
+        // });
 
         console.log("[xterm-pvs] Init complete", { xterm: this.xterm, jquery: $(`#${this.parent}`) });
     }
@@ -1765,7 +1840,7 @@ export class XTermPvs extends Backbone.Model {
      * Sets dark color theme
      */
     darkMode (): void {
-        console.log("[xterm-pvs] darkMode");
+        // console.log("[xterm-pvs] darkMode");
         this.xterm.setOption("theme", colorThemes.dark);
         $("body").css(colorThemes.dark);
     }
@@ -1774,7 +1849,7 @@ export class XTermPvs extends Backbone.Model {
      * Sets light color theme
      */
     lightMode (): void {
-        console.log("[xterm-pvs] lightMode");
+        // console.log("[xterm-pvs] lightMode");
         this.xterm.setOption("theme", colorThemes.light);
         $("body").css(colorThemes.light);
     }
@@ -1863,7 +1938,8 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
-     * Internal function, clears text after position pos
+     * Internal function, clears text after position pos (character at pos excluded)
+     * Use clearTextFrom if you want to clear also the character at the given position.
      */
     protected clearTextAfter (pos: Position): void {
         this.clearTextFrom({
@@ -1873,7 +1949,7 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
-     * Internal function, clears text from position pos
+     * Internal function, clears text from position pos.
      */
     protected clearTextFrom (pos: Position): void {
         if (pos) {
@@ -1903,25 +1979,33 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
-     * Internal function, refreshes the terminal content at the active line
+     * Internal function, refreshes the command line
      */
-    protected refreshCurrentLine (): void {
+    protected refreshCommandLine (): void {
         const pos: Position = this.content.cursorPosition();
-        this.moveCursorTo({
-            line: pos.line,
-            character: MIN_POS.character
-        }, { src: "refreshCurrentLine" });
+        const base: Position = this.content.getHomePosition();
 
-        // erase current line
+        // erase current command line
+        this.moveCursorTo(base, { src: "refreshCommandLine "});
+        this.clearTextFrom(base)
+        // re-render command line
+        const cmd: string = this.content.command().replace(/\n/g, "\r\n");
+        
         this.saveCursorPosition();
-        this.xterm.write("\x1B[2K");
-        // render current line
-        const text: string = this.content.textLineAt(pos.line);
-        this.xterm.write(this.applySyntaxHighlighting(text));
+        this.xterm.write(this.applySyntaxHighlighting(cmd));
         this.restoreCursorPosition();
+        
+        // for reasons I don't understand, xterm does not handle correctly multiline input when new rows need to be created in the viewport
+        const nLines: number = cmd.split("\r\n").length;
+        const atBufferEnd: boolean = this.xterm.buffer.active.cursorY + this.xterm.buffer.active.baseY >= this.xterm.buffer.active.length - 1;
+        if (atBufferEnd && nLines > 1) {
+            // this.xterm.write("\r".repeat(nLines - 1));
+            this.cursorUp(nLines - 1);
+        }
 
         // move cursor to the current position
-        this.moveCursorTo(pos,{ src: "refreshCurrentLine" });
+        this.moveCursorTo(pos, { src: "refreshCommandLine" });
+        // console.log("[xterm-pvs] refreshCommandLine", { pos, base, cmd, nLines, atBufferEnd, rows: this.xterm.rows, length: this.xterm.buffer.active.length, cursorY: this.xterm.buffer.active.cursorY, baseY: this.xterm.buffer.active.baseY });
     }
 
     /**
@@ -1935,7 +2019,7 @@ export class XTermPvs extends Backbone.Model {
         const text: string = this.content.textAfter(pos);
         this.xterm.write(this.applySyntaxHighlighting(text));
         // move cursor to the current position
-        this.moveCursorTo(pos,{ src: "refreshCurrentLine" });
+        this.moveCursorTo(pos, { src: "refresh" });
     }
 
     /**
@@ -1999,7 +2083,7 @@ export class XTermPvs extends Backbone.Model {
     /**
      * Internal function, triggers event "sendText" when input is ready
      */
-    protected sendWhenReady (): void {
+    protected sendWhenReady (): boolean {
         const cmd: string = this.content.command().trim();
         if (cmd) {
             switch (this.sessionType) {
@@ -2009,6 +2093,7 @@ export class XTermPvs extends Backbone.Model {
                         this.trigger(XTermEvent.sendText, { data: cmd });
                         // push command in the history
                         this.autocomplete.updateCommandHistory(cmd);
+                        return true;
                     }
                     break;
                 }
@@ -2018,6 +2103,7 @@ export class XTermPvs extends Backbone.Model {
                         this.trigger(XTermEvent.sendText, { data: cmd });
                         // push command in the history
                         this.autocomplete.updateCommandHistory(cmd);
+                        return true;
                     }
                     break;
                 }
@@ -2026,6 +2112,33 @@ export class XTermPvs extends Backbone.Model {
                 }
             }
         }
+        return false;
+    }
+    /**
+     * Internal function, checks if the input is ready to be sent
+     */
+     protected readyToSend (): boolean {
+        const cmd: string = this.content.command().trim();
+        if (cmd) {
+            switch (this.sessionType) {
+                case "evaluator": {
+                    if (cmd.trim().endsWith(";") || cmd?.trim() === "quit") {
+                        return true;
+                    }
+                    break;
+                }
+                case "prover": {
+                    if (checkPar(cmd)?.success || cmd?.trim() === "quit") {
+                        return true;
+                    }
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+        }
+        return false;
     }
     /**
      * Internal function, updates the terminal view based on the information given by this.content
@@ -2089,7 +2202,7 @@ export class XTermPvs extends Backbone.Model {
      * Updates success history
      */
     updateCommandHistory (data: UpdateCommandHistoryData): void {
-        console.log("[xterm-autocomplete] updateCommandHistory", { data });
+        // console.log("[xterm-autocomplete] updateCommandHistory", { data });
         if (data.cmd) {
             this.autocomplete.updateCommandHistory(data.cmd, { successHistory: true });
         }
@@ -2099,13 +2212,12 @@ export class XTermPvs extends Backbone.Model {
      * Handler for command history search
      */
     onHistorySearch (evt: KeyEvent): boolean {
-        // console.log("[xterm-pvs] onHistorySearch", { history: this.autocomplete.history, evt });
         if (this.autocomplete.history.size() && this.content.cursorIsAtHomePosition() 
                 && (evt.domEvent.key === "ArrowUp" || evt.domEvent.key === "ArrowDown")) {
             // get command from the history
             const cmd: string = evt.domEvent.key === "ArrowUp" ? this.autocomplete.history.prev()
                     : this.autocomplete.history.next();
-            // update command line
+            // update command line -- this will automatically trigger a refresh of the terminal by triggering an event ContentEvent.didAutocompleteContent
             this.content.setCommand(cmd, { cursorToHome: true });
             return true;
         }
@@ -2116,7 +2228,7 @@ export class XTermPvs extends Backbone.Model {
      * Handler for key press events
      */
     onKeyPress (evt: KeyEvent): void {
-        console.log("[xterm-pvs] onKeyPress", { evt });
+        // console.log("[xterm-pvs] onKeyPress", { evt });
         // check first if this is a history search
         const historySearch: boolean = this.onHistorySearch(evt);
         // process key press if this is not a history search and mod keys are not pressed
@@ -2127,19 +2239,35 @@ export class XTermPvs extends Backbone.Model {
                 this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
                 return;
             }
-            // ignore Home/End
-            // if (key === "Home" || key === "End" || key === "PageUp" || key === "PageDown") {
-            //     return;
-            // }
+            // send command to the server
+            if (key === "Enter" && this.readyToSend()) {
+                // clear brackets matching info
+                this.brackets = null;
+                // remove tooltips
+                this.autocomplete.deleteTooltips();
+                // send command
+                this.sendWhenReady();
+                return;
+            }
+            // else
             // update content and show tooltips
             const contentHasChanged: boolean = this.content.updateContent(evt);
             this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
             if (contentHasChanged) {
                 this.updateView(evt);
-                if (evt.domEvent.key === "Enter") {
-                    this.sendWhenReady();
-                }
             }
+
+            // update content and show tooltips
+            // const contentHasChanged: boolean = this.content.updateContent(evt);
+            // this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
+            // if (contentHasChanged) {
+            //     this.updateView(evt);
+            //     if (evt.domEvent.key === "Enter" && this.readyToSend()) {
+            //         this.content.cursorToHome();
+            //         this.moveCursorTo(this.content.cursorPosition(), { src: "onKeyPress" });
+            //         this.sendWhenReady();
+            //     }    
+            // }
         }
     }
 
@@ -2203,59 +2331,6 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
-     * Utility function, wraps lines by introducing additional \n if the line exceeds a target length
-     */
-    wrapLines (data: string): string {
-        const maxCol: number = this.initialCols;
-        const lines: string[] = data?.split("\n");
-        let ans: string[] = [];
-        for (let i = 0; i < lines.length; i++) {
-            const line: string = lines[i];
-            if (colorUtils.getPlainText(line).length < maxCol) {
-                ans.push(line);
-            } else {
-                const sublines: string[] = this.splitBreakable(line);
-                let ln: string = ""; // accumulator, used to create a line of the target length -- this helps to avoid creating a large number of short lines
-                for (let i = 0; i < sublines.length; i++) {
-                    const subln: string = sublines[i];
-                    const subln_length: number = colorUtils.getPlainText(subln).length;
-                    const ln_length: number = colorUtils.getPlainText(ln).length;
-                    if (ln_length > 0 && (ln_length + subln_length >= maxCol)) {
-                        ans.push(ln);
-                        ln = subln;
-                    } else {
-                        ln += sublines[i];
-                    }
-                }
-                if (ln.length > 0) {
-                    ans.push(ln);
-                }
-            }
-        }
-        // console.log("[xterm-pvs] wrapLines", { lines, ans, maxCol });
-        return ans.join("\n");
-    }
-
-    /**
-     * Utility function, breaks a string into an array of sub-strings at breakable points
-     */
-    splitBreakable (str: string): string[] {
-        let ans: string[] = [];
-        if (str) {
-            const breakablePoints: RegExp = new RegExp(/[\)\]\;\,\.\` ]/g);
-            let match: RegExpMatchArray = breakablePoints.exec(str);
-            let prevIndex: number = 0;
-            while (match) {
-                ans.push(str.slice(prevIndex, match.index));
-                prevIndex = match.index;
-                match = breakablePoints.exec(str);
-            }
-            ans.push(str.slice(prevIndex));
-        }
-        return ans;
-    }
-
-    /**
      * Handler for data events (e.g., cut/paste in the terminal)
      */
     onData (data: string): void {
@@ -2269,7 +2344,7 @@ export class XTermPvs extends Backbone.Model {
                 this.onControlSequence(seq);
                 return;
             }
-            data = this.wrapLines(data);
+            data = LineWrapper.wrapLines(data);
             // write data at the cursor position
             this.content.writeData(data);
             // refresh the terminal with updated data -- the logic is a variation of onEnter
@@ -2442,7 +2517,7 @@ export class XTermPvs extends Backbone.Model {
             this.focus();
         });
         this.content.on(ContentEvent.didAutocompleteContent, () => {
-            this.refreshCurrentLine();
+            this.refreshCommandLine();
             this.focus();
         });
         // autocomplete event handlers
@@ -2491,7 +2566,7 @@ export class XTermPvs extends Backbone.Model {
             this.xterm.write(textAfter.replace(/\n/g, "\r\n"));
             this.restoreCursorPosition();
         }
-        console.log("[xterm-pvs] onRenderDelete", { textAfter, pos });
+        // console.log("[xterm-pvs] onRenderDelete", { textAfter, pos });
     }
 
     /**
@@ -2520,7 +2595,7 @@ export class XTermPvs extends Backbone.Model {
         this.restoreCursorPosition();
         
         this.moveCursorTo(pos, { src: "onRenderEnter"});
-        console.log("[xterm-pvs] renderOnEnter", { content: this.content, textAfter, pos });
+        // console.log("[xterm-pvs] renderOnEnter", { content: this.content, textAfter, pos });
     }
 
     /**
@@ -2530,10 +2605,10 @@ export class XTermPvs extends Backbone.Model {
         // get the new position of the cursor
         const pos: Position = this.content.cursorPosition();
         this.moveCursorTo(pos, { src: "onRenderArrow"});
-        console.log("[xterm-pvs] onRenderArrow", {
-            pos,
-            prevPos: this.content.previousCursorPosition()
-        });
+        // console.log("[xterm-pvs] onRenderArrow", {
+        //     pos,
+        //     prevPos: this.content.previousCursorPosition()
+        // });
     }
 
     /**
@@ -2559,7 +2634,7 @@ export class XTermPvs extends Backbone.Model {
             // console.log("[xterm-pvs] write", { data });
             this.saveCursorPosition();
             data = data.replace(/\t/g, " ".repeat(this.TAB_SIZE));
-            data = this.wrapLines(data)
+            data = LineWrapper.wrapLines(data)
             this.content.writeData(data);
             this.renderData(data);
             this.restoreCursorPosition();
@@ -2719,7 +2794,9 @@ export class XTermPvs extends Backbone.Model {
         //     this.content.onArrowUp();
         // }
         // this.moveCursorTo(this.content.cursorPosition(), { src: "cursorUp"});
-        this.xterm.write(`\x1B[${n}A`);
+        if (n > 0) {
+            this.xterm.write(`\x1B[${n}A`);
+        }
         // console.log("[xterm-pvs] cursor up", n);
     }
 
@@ -2733,7 +2810,9 @@ export class XTermPvs extends Backbone.Model {
         //     this.content.onArrowDown();
         // }
         // this.moveCursorTo(this.content.cursorPosition(), { src: "cursorDown"});
-        this.xterm.write(`\x1B[${n}B`);
+        if (n > 0) {
+            this.xterm.write(`\x1B[${n}B`);
+        }
         // console.log("[xterm-pvs] cursor down", n);
     }
 
@@ -2747,7 +2826,9 @@ export class XTermPvs extends Backbone.Model {
         //     this.content.onArrowRight();
         // }
         // this.moveCursorTo(this.content.cursorPosition(), { src: "cursorRight"});
-        this.xterm.write(`\x1B[${n}C`); // don't write directly in the terminal, otherwise the cursor position known to content will diverge from what is being displayed in the terminal
+        if (n > 0) {
+            this.xterm.write(`\x1B[${n}C`); // don't write directly in the terminal, otherwise the cursor position known to content will diverge from what is being displayed in the terminal
+        }
         // console.log("[xterm-pvs] cursor right", n);
     }
 
@@ -2761,7 +2842,9 @@ export class XTermPvs extends Backbone.Model {
         //     this.content.onArrowLeft();
         // }
         // this.moveCursorTo(this.content.cursorPosition(), { src: "cursorLeft"});
-        this.xterm.write(`\x1B[${n}D`);
+        if (n > 0) {
+            this.xterm.write(`\x1B[${n}D`);
+        }
         // console.log("[xterm-pvs] cursor left", n);
     }
 
@@ -2874,7 +2957,7 @@ export class XTermPvs extends Backbone.Model {
         this.log(cprompt);
         this.content.rebase({ prompt: this.prompt });
         this.autocomplete.clearHelp();
-        // console.log("[xterm-pvs] showPrompt", { prompt: this.prompt, cprompt, content: this.content });
+        // console.log("[xterm-pvs] showPrompt", { prompt: this.prompt, cprompt, content: this.content, xtermPos: this.pos });
         this.focus();
         this.showWelcomeMessage();
     }

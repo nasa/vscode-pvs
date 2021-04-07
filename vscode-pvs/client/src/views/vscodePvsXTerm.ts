@@ -313,8 +313,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         opt = opt || {};
         if (typeof data?.res === "string") {
             if (data.res === "Q.E.D." || data.res === "bye!") {
-                // Q.E.D.
-                this.log(colorUtils.colorText(data.res, colorUtils.PvsColor.green), {
+                this.log("\n" + colorUtils.colorText(data.res, colorUtils.PvsColor.green), {
                     sessionEnd: true
                 });
                 const msg: string = data.res === "Q.E.D." ? "Proof completed successfully!\nThe proof has been saved. You can now close the terminal panel."
@@ -328,7 +327,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             }
         } else {
             // res is a SequentDescriptor
-            // echo last command
+            // echo last command if the response was not originated by xterm
             if (data?.req?.cmd && data?.req?.origin !== "xterm-pvs") {
                 // this.log(`${utils.colorText(utils.proverPrompt, pvsColor.blue, true)} ${data.req.cmd}`,);
                 this.clearCommandLine();
@@ -347,11 +346,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 theoryContent
             });
             this.log(sequent, { hints, mathObjects: this.mathObjects });
-            // show prompt only if the request was not originated by xterm or if there's no sequent (e.g., this is an error reported from pvs)
-            // if (!data?.res?.sequent || data?.req?.origin !== "xterm-pvs") {
-                this.showPrompt();
-            // }
-            // this.focus();
+            // show prompt
+            this.showPrompt();
         }
     };
 
@@ -440,7 +436,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     protected onEvaluatorResponse (data: EvaluatorCommandResponse): void {
         if (data?.res === "bye!") {
             this.setPrompt("");
-            this.log(colorUtils.colorText(data.res, colorUtils.PvsColor.green), {
+            this.log("\n" + colorUtils.colorText(data.res, colorUtils.PvsColor.green), {
                 sessionEnd: true
             });
             const msg: string = "Evaluator session terminated.\nYou can now close the terminal panel."
