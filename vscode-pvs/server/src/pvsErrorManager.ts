@@ -23,7 +23,10 @@ export class PvsErrorManager {
         autorun?: boolean
     }): void {
         console.error(desc?.response);
-        const evt: ProofExecDidFailToStartProof = { action: "did-fail-to-start-proof" };
+        const evt: ProofExecDidFailToStartProof = {
+            action: "did-fail-to-start-proof",
+            msg: desc?.response?.error?.message
+        };
         this.connection?.sendNotification(serverEvent.proverEvent, evt);
         if (desc?.autorun) {
             this.connection?.sendRequest(serverEvent.autorunFormulaResponse, { status: "untried", error: `Unable to run proof ${desc?.request?.formulaName}` });

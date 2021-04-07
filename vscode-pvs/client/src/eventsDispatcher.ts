@@ -62,6 +62,7 @@ import { VSCodePvsPlotter } from "./views/vscodePvsPlotter";
 import { VSCodePvsSearch } from "./views/vscodePvsSearch";
 import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
 import { VSCodePvsXTerm } from "./views/vscodePvsXTerm";
+import { colorText, PvsColor } from "./common/colorUtils";
 
 // FIXME: use Backbone.Model
 export class EventsDispatcher {
@@ -328,7 +329,9 @@ export class EventsDispatcher {
                     this.proofExplorer.disableView();
                     this.proofMate.disableView();
                     this.proofExplorer.resetView();
-                    this.xterm.dispose();
+                    let msg: string = desc.msg || "could not start prover session."
+                    msg += "\nAdditional details on the error can be inspected in the Output panel, on channel pvs-server.";
+                    this.xterm.log(colorText("\nError: " + msg, PvsColor.red));
                     break;
                 }
                 //---------------

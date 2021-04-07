@@ -313,7 +313,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         opt = opt || {};
         if (typeof data?.res === "string") {
             if (data.res === "Q.E.D." || data.res === "bye!") {
-                this.log("\n" + colorUtils.colorText(data.res, colorUtils.PvsColor.green), {
+                const xtermMsg: string = colorUtils.colorText(data.res, colorUtils.PvsColor.green);
+                this.log(data.res === "bye!" ? "\n" + xtermMsg : xtermMsg, {
                     sessionEnd: true
                 });
                 const msg: string = data.res === "Q.E.D." ? "Proof completed successfully!\nThe proof has been saved. You can now close the terminal panel."
@@ -584,8 +585,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      * Reveals the terminal
      */
     reveal (): void {
-        this.renderView();
-        this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
+        const success: boolean = this.renderView();
+        if (success) {
+            this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
+        }
     }
     /**
      * Hides the terminal
@@ -657,8 +660,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Renders the webview
      */
-    renderView (): void {
-        this.createWebView();
+    renderView (): boolean {
+        return this.createWebView();
     }
     /**
      * Sets the prompt
@@ -748,79 +751,84 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Internal function, creates the webview
      */
-    protected createWebView () {
-        const title: string = this.sessionType === "prover" ?
-            `Proving formula '${(<PvsFormula> this.target).formulaName}'`
-                : `Evaluating theory ${this.target.theoryName}`;
-        if (this.panel) {
-            this.panel.title = title;
-        } else {
-            this.panel = this.panel || window.createWebviewPanel(
-                'x-term-pvs', // Identifies the type of the webview. Used internally
-                title, // Title of the panel displayed to the user
-                ViewColumn.Active, // Editor column to show the new webview panel in.
-                {
-                    enableScripts: true,
-                    retainContextWhenHidden: true,
-                    enableFindWidget: true
-                }
-            );
-            try {
-                // clean up data structures when webview is disposed
-                this.panel.onDidDispose(
-                    async () => {
-                        // delete panel
-                        this.panel = null;
-                        // send quit command to the server
-                        this.sendTextToServer("quit");
-                        // reset session type
-                        this.sessionType = null;
-                        // reset global vscode-pvs variables so other views can be updated properly
-                        vscodeUtils.resetGlobals();
-                    },
-                    null,
-                    this.context.subscriptions
+    protected createWebView (): boolean {
+        if (this.sessionType) {
+            const title: string = this.sessionType === "prover" ?
+                `Proving formula '${(<PvsFormula> this.target).formulaName}'`
+                    : `Evaluating theory ${this.target.theoryName}`;
+            if (this.panel) {
+                this.panel.title = title;
+            } else {
+                this.panel = this.panel || window.createWebviewPanel(
+                    'x-term-pvs', // Identifies the type of the webview. Used internally
+                    title, // Title of the panel displayed to the user
+                    ViewColumn.Active, // Editor column to show the new webview panel in.
+                    {
+                        enableScripts: true,
+                        retainContextWhenHidden: true,
+                        enableFindWidget: true
+                    }
                 );
-                // Handle messages from the webview
-                this.panel.webview.onDidReceiveMessage(
-                    (message: XTermMessage) => {
-                        console.log("[vscode-xterm] Received message", message);
-                        if (message) {
-                            switch (message.command) {
-                                case XTermEvent.sendText: {
-                                    if (message?.data === interruptCommand) {
-                                        commands.executeCommand("vscode-pvs.interrupt-prover");
-                                    } else {
-                                        this.sendTextToServer(message?.data);
+                try {
+                    // clean up data structures when webview is disposed
+                    this.panel.onDidDispose(
+                        async () => {
+                            // delete panel
+                            this.panel = null;
+                            // send quit command to the server
+                            this.sendTextToServer("quit");
+                            // reset session type
+                            this.sessionType = null;
+                            // reset global vscode-pvs variables so other views can be updated properly
+                            vscodeUtils.resetGlobals();
+                        },
+                        null,
+                        this.context.subscriptions
+                    );
+                    // Handle messages from the webview
+                    this.panel.webview.onDidReceiveMessage(
+                        (message: XTermMessage) => {
+                            console.log("[vscode-xterm] Received message", message);
+                            if (message) {
+                                switch (message.command) {
+                                    case XTermEvent.sendText: {
+                                        if (message?.data === interruptCommand) {
+                                            commands.executeCommand("vscode-pvs.interrupt-prover");
+                                        } else {
+                                            this.sendTextToServer(message?.data);
+                                        }
+                                        break;
                                     }
-                                    break;
-                                }
-                                case XTermEvent.proofExplorerBack:
-                                case XTermEvent.proofExplorerForward:
-                                case XTermEvent.proofExplorerRun: 
-                                case XTermEvent.proofExplorerEdit: {
-                                    commands.executeCommand(message.command);
-                                    break;
-                                }
-                                default: {
-                                    break;
+                                    case XTermEvent.proofExplorerBack:
+                                    case XTermEvent.proofExplorerForward:
+                                    case XTermEvent.proofExplorerRun: 
+                                    case XTermEvent.proofExplorerEdit: {
+                                        commands.executeCommand(message.command);
+                                        break;
+                                    }
+                                    default: {
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                    },
-                    undefined,
-                    this.context.subscriptions
-                );
-                // Create webview content
-                this.createContent();
-                // set language to pvs
-                vscodeUtils.setEditorLanguage();
-                // set terminal visible to true
-                commands.executeCommand('setContext', 'terminal.visible', true);
-            } catch (err) {
-                console.error(err);
+                        },
+                        undefined,
+                        this.context.subscriptions
+                    );
+                    // Create webview content
+                    this.createContent();
+                    // set language to pvs
+                    vscodeUtils.setEditorLanguage();
+                    // set terminal visible to true
+                    commands.executeCommand('setContext', 'terminal.visible', true);
+                    return true;
+                } catch (err) {
+                    console.error(err);
+                    return false;
+                }
             }
         }
+        return false;
     }
     /**
      * Internal function, creates the html content of the webview

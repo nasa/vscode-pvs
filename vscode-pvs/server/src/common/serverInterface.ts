@@ -937,7 +937,8 @@ export type ProofExecDidStartProof = {
 	action: "did-start-proof"
 };
 export type ProofExecDidFailToStartProof = {
-	action: "did-fail-to-start-proof"
+	action: "did-fail-to-start-proof",
+	msg: string
 };
 export type ProofExecDidLoadSequent = {
 	action: "did-load-sequent",

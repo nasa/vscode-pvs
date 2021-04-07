@@ -46,7 +46,7 @@ export const ansiColorCode: { [ key in PvsColor ]: number } = {
 	yellow: 229, // bright yellow 
 	gold: 220, // gold
 	green: 42, // springgreen
-	red: 90, // dark magenta
+	red: 160,
 	white: 254, // whitesmoke
 	black: 0,
 	gray: 7 // silver
