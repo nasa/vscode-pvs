@@ -209,6 +209,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             }
         }
         if (req && req.theoryName && req.formulaName && req.fileName && req.fileExtension && req.contextFolder) {
+            vscodeUtils.minimizeIntegratedTerminal();
             const success: boolean = await this.startProverSession(req);
             return success;
         }
@@ -394,6 +395,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             }
         }
         if (req && req.theoryName) {
+            vscodeUtils.minimizeIntegratedTerminal();
             const success: boolean = await this.startEvaluatorSession(req);
             return success;
         }

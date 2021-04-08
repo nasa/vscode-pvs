@@ -839,3 +839,21 @@ export function resetGlobals (): void {
 export function setEditorLanguage (): void {
     vscode.commands.executeCommand('setContext', "editorLangId", "pvs");
 }
+
+/**
+ * Utilify function, maximizes the terminal
+ */
+ export function maximizeIntegratedTerminal (): void {
+    vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
+}
+
+/**
+ * Utility function, minimizes the terminal.
+ */
+export function minimizeIntegratedTerminal (): void {
+    // VSCode does not have a function workbench.action.toggleMinimizePanel.
+    // The function is here emulated by reducing the panel size 10 times, which is sufficient to minimize the panel in most cases.
+    for (let i = 0; i < 10; i++) {
+        vscode.commands.executeCommand("workbench.action.terminal.resizePaneDown");
+    }
+}
