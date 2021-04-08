@@ -618,6 +618,10 @@ export class EventsDispatcher {
         // vscode-pvs.send-proof-command
         context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
             this.client.sendRequest(serverRequest.proofCommand, desc);
+            this.xterm.showFeedbackWhileExecuting(desc?.cmd);
+        }));
+        context.subscriptions.push(commands.registerCommand("xterm.showFeedbackWhileExecuting", (desc: { cmd: string }) => {
+            this.xterm.showFeedbackWhileExecuting(desc?.cmd);
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.select-profile", (desc: { profile: ProofMateProfile }) => {
             // this.vscodePvsTerminal.selectProfile(desc);

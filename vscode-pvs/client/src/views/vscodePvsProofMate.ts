@@ -526,7 +526,6 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 				}
 			}
 		}));
-	
 	}
 
 	/**

@@ -692,6 +692,14 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.panel?.webview?.postMessage(message);
     }
     /**
+     * Shows feedback while executing a proof command
+     */
+    showFeedbackWhileExecuting (cmd: string): void {
+        if (cmd && !utils.isQuitCommand(cmd)) {
+            this.showHelpMessage(`Executing ${cmd}<br>To interrupt the execution, press Ctrl+C`);
+        }
+    }
+    /**
      * Shows welcome message in the prover terminal
      */
     showWelcomeMessage (): void {
@@ -789,7 +797,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     );
                     // Handle messages from the webview
                     this.panel.webview.onDidReceiveMessage(
-                        (message: XTermMessage) => {
+                        async (message: XTermMessage) => {
                             console.log("[vscode-xterm] Received message", message);
                             if (message) {
                                 switch (message.command) {
@@ -797,7 +805,13 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                         if (message?.data === interruptCommand) {
                                             commands.executeCommand("vscode-pvs.interrupt-prover");
                                         } else {
-                                            this.sendTextToServer(message?.data);
+                                            if (message?.data) {
+                                                this.showFeedbackWhileExecuting(message.data);
+                                                await this.sendTextToServer(message.data);
+                                                if (!utils.isQuitCommand(message.data)) {
+                                                    this.showWelcomeMessage();
+                                                }
+                                            }
                                         }
                                         break;
                                     }
