@@ -606,7 +606,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		if (this.activeNode) {
 			this.activeNode.updateTooltip(sequent);
 		} else {
-			this.root.tooltip = formatSequent(sequent, { formulasOnly: true });
+			// this.root.tooltip = formatSequent(sequent, { formulasOnly: true });
 		}
 	}
 
@@ -1416,13 +1416,13 @@ export class ProofItem extends TreeItem {
 		this.name = desc.name;
 		this.branchId = desc.branchId;
 		this.parent = desc.parent;
-		this.tooltip = "Double click sends command to terminal"; // the tooltip will shows the sequent before the execution of the proof command, as soon as the node becomes active
+		this.tooltip = "Double click copies the command to the prover prompt"; // the tooltip will shows the sequent before the execution of the proof command, as soon as the node becomes active
 		this.notVisited();
 	}
 	updateTooltip (sequent?: SequentDescriptor): void {
-		this.tooltip = (sequent) ? formatSequent(sequent, { formulasOnly: true }).trim()
-			: (this.proofState) ? formatSequent(this.proofState, { formulasOnly: true })?.trim()
-				: " ";
+		// this.tooltip = (sequent) ? formatSequent(sequent, { formulasOnly: true }).trim()
+		// 	: (this.proofState) ? formatSequent(this.proofState, { formulasOnly: true })?.trim()
+		// 		: " ";
 	}
 	updateStatus (status: ProofNodeStatus): void {
 		switch (status) {
@@ -1718,6 +1718,7 @@ export class RootNode extends ProofItem {
 		this.proofStatus = desc.proofStatus || "untried"
 		this.initialProofStatus = this.proofStatus;
 		this.notVisited();
+		this.tooltip = "";
 		this.command = {
 			title: this.contextValue,
 			command: "proof-explorer.root-selected",
@@ -1799,7 +1800,7 @@ export class GhostNode extends ProofItem {
 	constructor (desc: { id?: string, parent: ProofItem, node: ProofItem }) {
 		super({ type: "ghost", name: "...", branchId: "", parent: desc.parent, collapsibleState: TreeItemCollapsibleState.None });
 		this.realNode = desc.node;
-		this.tooltip = "Waiting for proof command...";
+		this.tooltip = "Awaiting new command...";
 	}
 	qed (): void {
 		this.label = QED;
