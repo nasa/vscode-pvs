@@ -5,13 +5,17 @@
 // based on the 256 color scheme, see colors at https://misc.flogisoft.com/bash/tip_colors_and_formatting
 export enum PvsColor {
 	blue = "blue", 
+	darkblue = "darkblue",
 	yellow = "yellow",
+	darkyellow = "darkyellow",
 	gold = "gold",
 	green = "green", 
+	darkgreen = "darkgreen", 
 	red = "red",
 	white = "white",
 	black = "black",
-	gray = "gray"
+	gray = "gray",
+	darkgray = "darkgray"
 };
 
 export declare type XTermColorTheme = "dark" | "light";
@@ -23,15 +27,43 @@ export const ANSI_RESET_FOREGROUND: string = "38;39;";
 export const ANSI_RESET_BACKGROUND: string = "48;49;";
 export const ANSI_RESET: string = `${ANSI_ESC}0m`;
 
+/**
+ * Utility function, returns a color based on the theme
+ */
+export function getColor (color: PvsColor, theme: XTermColorTheme): PvsColor {
+	switch (color) {
+		case PvsColor.yellow: {
+			return theme === "dark" ? PvsColor.yellow : PvsColor.darkyellow;
+		}
+		case PvsColor.blue: {
+			return theme === "dark" ? PvsColor.blue : PvsColor.darkblue;
+		}
+		case PvsColor.green: {
+			return theme === "dark" ? PvsColor.green : PvsColor.darkgreen;
+		}
+		case PvsColor.gray: {
+			return theme === "dark" ? PvsColor.gray : PvsColor.black;
+		}
+		default: {
+			break;
+		}
+	}
+	return color;
+}
+
 export const htmlColorCode: { [ key in PvsColor ]: string } = {
 	blue: "#00b6fc",
+	darkblue: "#117AD0", // navy blue
 	green: "mediumspringgreen",
+	darkgreen: "darkgreen",
 	yellow: "yellow",
+	darkyellow: "#999900",
 	gold: "gold",
 	red: "#f26158",
 	black: "#1e1e1e",
 	white: "whitesmoke",
-	gray: "gray"
+	gray: "gray",
+	darkgray: "darkgray"
 };
 
 // export const colorMap: { [ key in vscodeColor ]: string } = {
@@ -43,24 +75,32 @@ export const htmlColorCode: { [ key in PvsColor ]: string } = {
 
 export const ansiColorCode: { [ key in PvsColor ]: number } = {
 	blue: 39, // deepskyblue
+	darkblue: 26, 
 	yellow: 229, // bright yellow 
+	darkyellow: 202, // orange-red
 	gold: 220, // gold
 	green: 42, // springgreen
+	darkgreen: 22,
 	red: 160,
 	white: 254, // whitesmoke
 	black: 0,
-	gray: 7 // silver
-}
+	gray: 7, // silver
+	darkgray: 239
+};
 
 const ansiColor256: { [color in PvsColor]: string } = {
     yellow: `5;${ansiColorCode.yellow}`,
+    darkyellow: `5;${ansiColorCode.darkyellow}`,
 	gold: `5;${ansiColorCode.gold}`,
     blue: `5;${ansiColorCode.blue}`,
+    darkblue: `5;${ansiColorCode.darkblue}`,
     red: `5;${ansiColorCode.red}`,
     white: `5;${ansiColorCode.white}`,
     black: `5;${ansiColorCode.black}`,
     green: `5;${ansiColorCode.green}`,
+	darkgreen: `5;${ansiColorCode.darkgreen}`,
 	gray: `5;${ansiColorCode.gray}`,
+	darkgray: `5;${ansiColorCode.darkgray}`,
 };
 
 export const ansiColorRegex: RegExp = /\x1b\[(\d;?)*m/g;

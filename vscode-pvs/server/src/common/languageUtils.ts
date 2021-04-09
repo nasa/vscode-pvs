@@ -134,96 +134,126 @@ export const isense: IntellisenseTriggers = {
 	declaration: declarationRegexp
 };
 
-// export type ProverResult = ProofState | ProofState[]
-
-function sequentToString(sequents: SFormula[], opt?: { useColors?: boolean, htmlEncoding?: boolean }): string {
+/**
+ * Utility function, prettyprints the sequent label
+ */
+function sequentToString(sequents: SFormula[], opt?: {
+    useColors?: boolean, 
+    colorTheme?: colorUtils.XTermColorTheme,
+    htmlEncoding?: boolean 
+}): string {
 	let res: string = "";
 	opt = opt || {};
+    const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
+    const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.green, colorTheme);
 	for (let i = 0; i < sequents.length; i++) {
 		const sequent: SFormula = sequents[i];
 		let label: string = sequent.labels.join(" ");
 		label = (sequent.changed === 'true') ? `{${label}}` : `[${label}]` ;
-		label = (sequent.changed === 'true' && opt.useColors) ? `${colorUtils.colorText(label, colorUtils.PvsColor.green)}` : `${label}` ;
-		const formula: string = (opt.useColors) ? `${pvsCliSyntaxHighlighting(sequent.formula, opt)}` : sequent.formula;
+		label = (sequent.changed === 'true' && opt.useColors) ? `${colorUtils.colorText(label, color)}` : `${label}` ;
+		const formula: string = (opt.useColors) ? `${pvsSyntaxHighlighting(sequent.formula, opt)}` : sequent.formula;
 		res += `${label}   ${formula}`;
 		res += opt.htmlEncoding ? "<br>" : "\n";
 	}
 	return res;
 }
-
-function labelToString (label: string, opt?: { useColors?: boolean, htmlEncoding?: boolean }): string {
+/**
+ * Utility function, prettyprints the sequent label
+ */
+function labelToString (label: string, opt?: {
+    useColors?: boolean, 
+    colorTheme?: colorUtils.XTermColorTheme,
+    htmlEncoding?: boolean
+}): string {
 	opt = opt || {};
+    const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
+    const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.green, colorTheme);
 	return (opt && opt.useColors)?
-		`\n${colorUtils.colorText(`${label} :`, colorUtils.PvsColor.green)}\n`
+		`\n${colorUtils.colorText(`${label} :`, color)}\n`
 			: `\n${label} :\n`;
 }
-
-function commentToString (txt: string, opt?: { useColors?: boolean, htmlEncoding?: boolean }): string {
+/**
+ * Utility function, prettyprints user comments included in the sequent returned by the prover
+ */
+function commentToString (txt: string, opt?: {
+     useColors?: boolean,
+     colorTheme?: colorUtils.XTermColorTheme,
+     htmlEncoding?: boolean
+}): string {
 	opt = opt || {};
+    const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
+    const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.yellow, colorTheme);
 	const content: string = (opt && opt.useColors)? 
-		`${colorUtils.colorText(`${txt}`, colorUtils.PvsColor.yellow)}`
+		`${colorUtils.colorText(`${txt}`, color)}`
 			: `${txt}`;
 	return opt.htmlEncoding ? `<br>${content}<br>` : `\n${content}\n`;
 }
-
-export function commentaryToString (txt: string | string[], opt?: { htmlEncoding?: boolean }): string {
+/**
+ * Utility function, prettyprints the commentary string included in the sequent returned by the prover
+ */
+export function commentaryToString (txt: string | string[], opt?: {
+    useColors?: boolean,
+    colorTheme?: colorUtils.XTermColorTheme,
+    htmlEncoding?: boolean
+}): string {
 	let res = "";
-	if (typeof txt === "string") {
-		txt = txt.trim().endsWith(",") ? txt.trim().slice(0, -1) : txt.trim();
-		res += opt.htmlEncoding ? `<br>${txt}<br>` : `\n${colorUtils.colorText(`${txt}`, colorUtils.PvsColor.gray)}\n`;
-	} else {
-		res += opt.htmlEncoding ? "<br>" : "\n";
-		for (let i = 0; i < txt.length; i++) {
-			let line: string = txt[i];
-			if (i === txt.length - 1) {
-				line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
-			}
-			res += opt.htmlEncoding ? `${line}<br>` : `${colorUtils.colorText(`${line}`, colorUtils.PvsColor.gray)}\n`;
-		}
-	}
-	return res;
+    if (txt) {
+        const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
+        const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.gray, colorTheme);
+        if (typeof txt === "string") {
+            txt = txt.trim().endsWith(",") ? txt.trim().slice(0, -1) : txt.trim();
+            res += opt.htmlEncoding ? `<br>${txt}<br>` 
+                : opt.useColors ? `\n${colorUtils.colorText(`${txt}`, color)}\n`
+                    : `\n${txt}\s`;
+        } else {
+            res += opt.htmlEncoding ? "<br>" : "\n";
+            for (let i = 0; i < txt.length; i++) {
+                let line: string = txt[i];
+                if (i === txt.length - 1) {
+                    line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
+                }
+                res += opt.htmlEncoding ? `${line}<br>` 
+                    : opt.useColors ? `${colorUtils.colorText(`${line}`, color)}\n`
+                        : `${line}\n`;
+            }
+        }
+    }
+    return res;
 }
-
-export function desc2id (desc: { fileName: string, formulaName?: string, theoryName?: string }): string {
-	if (desc) {
-		if (desc.formulaName) {
-			return desc.formulaName;
-		}
-		if (desc.fileName) {
-			return desc.fileName;
-		}
-	}
-	console.error("[languageUtils.desc2id] Warning: trying to generate ID from null descriptor");
-	return null;
-}
-
-export function pvsCliSyntaxHighlighting(text: string, opt?: { htmlEncoding?: boolean }): string {
+/**
+ * Utility function, applies pvs syntax highlighting to the provided text
+ */
+export function pvsSyntaxHighlighting(text: string, opt?: {
+    colorTheme?: colorUtils.XTermColorTheme,
+    htmlEncoding?: boolean
+}): string {
 	if (text) {
 		opt = opt || {};
+        const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
 		// numbers and operators should be highlighted first, otherwise the regexp will change characters introduced to colorize the string
 		const number_regexp: RegExp = new RegExp(language.PVS_NUMBER_REGEXP_SOURCE, "g");
 		text = text.replace(number_regexp, (number: string) => {
-			return colorUtils.colorText(number, colorUtils.PvsColor.yellow);
+			return colorUtils.colorText(number, colorUtils.getColor(colorUtils.PvsColor.yellow, colorTheme));
 		});
 		const operators_regexp: RegExp = new RegExp(language.PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE, "g");
 		text = text.replace(operators_regexp, (op: string) => {
-			return colorUtils.colorText(op, colorUtils.PvsColor.blue);
+			return colorUtils.colorText(op, colorUtils.getColor(colorUtils.PvsColor.blue, colorTheme));
 		});
 		const keywords_regexp: RegExp = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi");
 		text = text.replace(keywords_regexp, (keyword: string) => {
-			return colorUtils.colorText(keyword, colorUtils.PvsColor.blue);
+			return colorUtils.colorText(keyword, colorUtils.getColor(colorUtils.PvsColor.blue, colorTheme));
 		});
 		const function_regexp: RegExp = new RegExp(language.PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE, "g");
 		text = text.replace(function_regexp, (fname: string) => {
-			return colorUtils.colorText(fname, colorUtils.PvsColor.green);
+			return colorUtils.colorText(fname, colorUtils.getColor(colorUtils.PvsColor.green, colorTheme));
 		});
 		const builtin_types_regexp: RegExp = new RegExp(language.PVS_BUILTIN_TYPE_REGEXP_SOURCE, "g");
 		text = text.replace(builtin_types_regexp, (tname: string) => {
-			return colorUtils.colorText(tname, colorUtils.PvsColor.green);
+			return colorUtils.colorText(tname, colorUtils.getColor(colorUtils.PvsColor.green, colorTheme));
 		});
 		const truefalse_regexp: RegExp = new RegExp(language.PVS_TRUE_FALSE_REGEXP_SOURCE, "gi");
 		text = text.replace(truefalse_regexp, (tf: string) => {
-			return colorUtils.colorText(tf, colorUtils.PvsColor.blue);
+			return colorUtils.colorText(tf, colorUtils.getColor(colorUtils.PvsColor.blue, colorTheme));
 		});
 	}
 	return text;
@@ -232,7 +262,7 @@ export function pvsCliSyntaxHighlighting(text: string, opt?: { htmlEncoding?: bo
 export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolean, showAction?: boolean }): string {
 	if (pvsioState) {
 		opt = opt || {};
-		return (opt.useColors) ? pvsCliSyntaxHighlighting(pvsioState) : pvsioState;
+		return (opt.useColors) ? pvsSyntaxHighlighting(pvsioState) : pvsioState;
 	}
 	return pvsioState;
 }
@@ -264,6 +294,19 @@ export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: { use
 	return null;
 }
 
+export function desc2id (desc: { fileName: string, formulaName?: string, theoryName?: string }): string {
+	if (desc) {
+		if (desc.formulaName) {
+			return desc.formulaName;
+		}
+		if (desc.fileName) {
+			return desc.fileName;
+		}
+	}
+	console.error("[languageUtils.desc2id] Warning: trying to generate ID from null descriptor");
+	return null;
+}
+
 /**
  * Utility function, converts sequent formulas into a string
  */
@@ -287,6 +330,7 @@ export function sformulas2string (desc: SequentDescriptor): string {
  */
 export function formatSequent (desc: SequentDescriptor, opt?: {
 	useColors?: boolean, 
+    colorTheme?: colorUtils.XTermColorTheme,
 	showAction?: boolean,
 	htmlEncoding?: boolean,
 	formulasOnly?: boolean,

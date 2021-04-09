@@ -1,4 +1,4 @@
-import { Terminal as XTerm } from 'xterm';
+import { ITheme, Terminal as XTerm } from 'xterm';
 import { CommandDescriptor, CommandsMap, MathObjects, HintsObject, Position } from './common/serverInterface';
 import * as colorUtils from './common/colorUtils';
 import { pvsColorTheme } from './common/languageKeywords';
@@ -948,7 +948,7 @@ function getB2 (b1: Bracket): Bracket {
         : "}";
 };
 
-const tooltipTemplate: string = `<div style="width:100%; cursor:pointer;">
+const tooltipTemplate: string = `<div>
 {{#each hints}}
 <div class="autocompletion-item p-0 m-0 {{#if @first}}selected highlighted{{/if}} index-{{@index}}">{{this}}</div>
 {{/each}}
@@ -965,7 +965,6 @@ const tooltipStyle: string = `<style>
     font-family:Menlo, Monaco, monospace;
     text-align:left;
     cursor:default;
-    background:${htmlColorCode.black};
     border: 1px solid;
     white-space: nowrap;
 }
@@ -997,7 +996,6 @@ const terminalStyle: string = `<style>
     width:100%;
     background:transparent;
     white-space:nowrap;
-    color:whitesmoke;
     font-size:11px;
     font-family:Menlo, Monaco, monospace;
     text-align:left;
@@ -1718,14 +1716,17 @@ export class Autocomplete extends Backbone.Model {
     }
 }
 
-const colorThemes = {
+// color themes for dark and light modes
+const xtermjsColorThemes: { dark: ITheme, light: ITheme } = {
     dark: {
         background: htmlColorCode.black,
-        color: htmlColorCode.white
+        foreground: htmlColorCode.white,
+        cursor: htmlColorCode.white // cursor color
     },
     light: {
         background: htmlColorCode.white,
-        color: htmlColorCode.black
+        foreground: htmlColorCode.black,
+        cursor: htmlColorCode.black // cursor color
     }
 }
 
@@ -1785,6 +1786,9 @@ export class XTermPvs extends Backbone.Model {
     protected prompt: string = "> ";
     protected ntrims: number = 0;
 
+    // color theme
+    protected colorTheme: XTermColorTheme = "dark";
+
     // cursor position in the rendering buffer
     protected pos: Position = {
         line: MIN_POS.line,
@@ -1812,19 +1816,19 @@ export class XTermPvs extends Backbone.Model {
 
         const cols: number = opt.cols || MIN_VIEWPORT_COLS;
         LineWrapper.maxCols = cols;
-
         const rows: number = opt.rows || Math.floor((window.innerHeight - this.paddingBottom) / (this.fontSize * this.lineHeight)) || MIN_VIEWPORT_ROWS;
+
+        this.colorTheme = this.detectColorTheme();
+
         this.xterm = new XTerm({
             rendererType: "canvas",
             cols,
             rows,
             fontSize: this.fontSize,
-            fontFamily: "Menlo, Monaco, monospace",
-            // lineHeight: this.lineHeight,
-            theme: {
-                background: htmlColorCode.black
-            }
+            fontFamily: "Menlo, Monaco, monospace"
         });
+        // set color theme
+        this.updateColorTheme();
     
         // create the terminal panel
         this.parent = opt?.parent || "terminal";
@@ -1838,9 +1842,6 @@ export class XTermPvs extends Backbone.Model {
 
         // get the focus
         this.xterm.focus();
-
-        // set theme
-        this.darkMode();
 
         // @ts-ignore
         // this.xterm.buffer.active._buffer.lines.onTrim((n: number) => {
@@ -1859,16 +1860,31 @@ export class XTermPvs extends Backbone.Model {
         //     console.log("onBufferChange", evt);
         // });
 
-        console.log("[xterm-pvs] Init complete", { xterm: this.xterm, jquery: $(`#${this.parent}`) });
+        console.log("[xterm-pvs] Init complete", { colorTheme: this.colorTheme, xterm: this.xterm, jquery: $(`#${this.parent}`) });
     }
+
+    /**
+     * Detects the color theme
+     */
+     detectColorTheme (): colorUtils.XTermColorTheme {
+         const themeClass: string = $("body").attr("data-vscode-theme-kind");
+         return /light/.test(themeClass) ? "light" : "dark";
+     }
 
     /**
      * Sets dark color theme
      */
     darkMode (): void {
         // console.log("[xterm-pvs] darkMode");
-        this.xterm.setOption("theme", colorThemes.dark);
-        $("body").css(colorThemes.dark);
+        this.xterm.setOption("theme", xtermjsColorThemes.dark);
+        this.xterm.setOption("cursorStyle", "block");
+        $("body").css({
+            color: xtermjsColorThemes.dark.foreground,
+            background: xtermjsColorThemes.dark.background
+        });
+        $(".terminal-help").css({
+            color: xtermjsColorThemes.dark.foreground
+        });
     }
 
     /**
@@ -1876,8 +1892,15 @@ export class XTermPvs extends Backbone.Model {
      */
     lightMode (): void {
         // console.log("[xterm-pvs] lightMode");
-        this.xterm.setOption("theme", colorThemes.light);
-        $("body").css(colorThemes.light);
+        this.xterm.setOption("theme", xtermjsColorThemes.light);
+        this.xterm.setOption("cursorStyle", "bar");
+        $("body").css({
+            color: xtermjsColorThemes.light.foreground,
+            background: xtermjsColorThemes.light.background
+        });
+        $(".terminal-help").css({
+            color: xtermjsColorThemes.light.foreground
+        });
     }
 
     /**
@@ -1897,11 +1920,11 @@ export class XTermPvs extends Backbone.Model {
     /**
      * Utility function, updates color theme
      */
-    updateColorTheme (theme: XTermColorTheme): void {
-        this.darkMode()
-        // TODO
-        // console.log("[xterm-pvs] updateColorTheme", { theme });
-        // theme === "dark" ? this.nightMode() : this.lightMode();
+    updateColorTheme (theme?: XTermColorTheme): void {
+        this.colorTheme = theme || this.detectColorTheme();
+        (this.colorTheme === "dark") ?
+            this.darkMode() 
+                : this.lightMode();
     }
 
     /**
@@ -2018,7 +2041,7 @@ export class XTermPvs extends Backbone.Model {
         const cmd: string = this.content.command().replace(/\n/g, "\r\n");
         
         this.saveCursorPosition();
-        this.xterm.write(this.applySyntaxHighlighting(cmd));
+        this.xterm.write(this.applySyntaxHighlighting(cmd, this.colorTheme));
         this.restoreCursorPosition();
         
         // for reasons I don't understand, xterm does not handle correctly multiline input when new rows need to be created in the viewport
@@ -2043,7 +2066,7 @@ export class XTermPvs extends Backbone.Model {
         this.clearTextAfter(pos);
         // re-render content
         const text: string = this.content.textAfter(pos);
-        this.xterm.write(this.applySyntaxHighlighting(text));
+        this.xterm.write(this.applySyntaxHighlighting(text, this.colorTheme));
         // move cursor to the current position
         this.moveCursorTo(pos, { src: "refresh" });
     }
@@ -2212,7 +2235,7 @@ export class XTermPvs extends Backbone.Model {
         this.moveCursorTo({ line: pos.line, character: MIN_POS.character }, { src: "updateView" });
 
         this.saveCursorPosition();
-        this.xterm.write(this.applySyntaxHighlighting(textLine));
+        this.xterm.write(this.applySyntaxHighlighting(textLine, this.colorTheme));
         this.restoreCursorPosition();
 
         // match brackets
@@ -2377,7 +2400,7 @@ export class XTermPvs extends Backbone.Model {
             // });
             // move to the new cursor position and render text
             this.moveCursorTo(prevPos0, { src: "onData" });
-            const colorText: string = this.applySyntaxHighlighting(textAfter.replace(/\n/g, "\r\n"));
+            const colorText: string = this.applySyntaxHighlighting(textAfter.replace(/\n/g, "\r\n"), this.colorTheme);
             this.renderData(colorText);
             // make sure the cursor is rendered in the correct position
             const pos: Position = this.content.cursorPosition();
@@ -2695,7 +2718,7 @@ export class XTermPvs extends Backbone.Model {
                 // const maxLine: number = Math.max(this.content.maxLineNumber(), this.xterm.rows);
 
                 // apply syntax highlighting if the text does not already contain any syntax highlighting
-                content = colorUtils.isPlainText(content) ? this.applySyntaxHighlighting(content) : content;
+                content = colorUtils.isPlainText(content) ? this.applySyntaxHighlighting(content, this.colorTheme) : content;
                 this.saveCursorPosition();
                 this.xterm.write(content);
                 this.restoreCursorPosition();
@@ -2923,12 +2946,13 @@ export class XTermPvs extends Backbone.Model {
     /**
      * Internal function, applies pvs syntax highlighting to the provided text
      */
-    protected applySyntaxHighlighting (text: string): string {
+    protected applySyntaxHighlighting (text: string, theme?: XTermColorTheme): string {
+        theme = theme || "dark";
         if (text) {
             let htext: string = text;
             // highlight pvs keywords
             for (let i in pvsColorTheme) {
-                const color: colorUtils.PvsColor = pvsColorTheme[i].color;
+                const color: colorUtils.PvsColor = pvsColorTheme[i][theme];
                 const regexp: RegExp = new RegExp(pvsColorTheme[i].regex, pvsColorTheme[i].flags);
                 htext = htext.replace(regexp, (txt: string) => {
                     return colorUtils.colorText(txt, color );
@@ -2938,8 +2962,9 @@ export class XTermPvs extends Backbone.Model {
             const regexp: RegExp = new RegExp(`^${this.prompt.trimEnd()}\\s`);
             // console.log("[xterm-pvs] applySyntaxHighlighting", { test: regexp.test(htext), regexp, text });
             htext = htext.replace(regexp, (txt: string) => {
-                return colorUtils.colorText(txt, colorUtils.PvsColor.blue);
+                return colorUtils.colorText(txt, theme === "dark" ? colorUtils.PvsColor.blue : colorUtils.PvsColor.darkblue);
             });
+            console.log("[xterm-pvs] applySyntaxHighlighting", { text, htext });
             return htext;
         }
         return text;    
@@ -2968,7 +2993,7 @@ export class XTermPvs extends Backbone.Model {
         // Make sure the provided prompt does not contain ansi codes and has a space after, otherwise the regexp will fail. 
         // Colors will be applied in applySyntaxHighlighting.
         this.prompt = colorUtils.getPlainText(prompt) + " ";
-        const cprompt: string = "\n\n" + this.applySyntaxHighlighting(this.prompt);
+        const cprompt: string = "\n\n" + this.applySyntaxHighlighting(this.prompt, this.colorTheme);
         this.log(cprompt);
         this.content.rebase({ prompt: this.prompt });
         this.autocomplete.clearHelp();

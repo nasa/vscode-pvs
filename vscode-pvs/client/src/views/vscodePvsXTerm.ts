@@ -146,7 +146,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     protected target: PvsTheory | PvsFormula;
     protected panel: WebviewPanel;
 
-    protected colorTheme: "dark" | "light" = "dark";
+    protected colorTheme: "dark" | "light";
 
     // lemmas, types, and definitions provided by the typechecker, used by the autocompletion engine
     protected mathObjects: MathObjects = {};
@@ -165,6 +165,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     constructor (client: LanguageClient) {
         super();
         this.client = client;
+        this.colorTheme = vscodeUtils.detectColorTheme();
     }
 
     /**
@@ -282,7 +283,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.clearScreen();
         this.setPrompt(utils.proverPrompt);
         this.reveal();
-        const welcome: string = `\nStarting prover session for ${colorUtils.colorText(formula.formulaName, colorUtils.PvsColor.blue)}\n`;
+        const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.blue, this.colorTheme);
+        const welcome: string = `\nStarting prover session for ${colorUtils.colorText(formula.formulaName, color)}\n`;
         this.log(welcome);
         this.disableTerminalInput();
         // send proveFormula request to pvs-server
@@ -314,7 +316,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         opt = opt || {};
         if (typeof data?.res === "string") {
             if (data.res === "Q.E.D." || data.res === "bye!") {
-                const xtermMsg: string = colorUtils.colorText(data.res, colorUtils.PvsColor.green);
+                const xtermMsg: string = colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
                 this.log(data.res === "bye!" ? "\n" + xtermMsg : xtermMsg, {
                     sessionEnd: true
                 });
@@ -339,8 +341,11 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.updateCommandHistory(data.req.cmd);
             }
 
-            // const sequent: string = utils.formatSequent(data?.res, { useColors: true, htmlEncoding: true });
-            const sequent: string = utils.formatSequent(data?.res, { useColors: true, ...opt });
+            const sequent: string = utils.formatSequent(data?.res, { 
+                colorTheme: this.colorTheme, 
+                useColors: true, 
+                ...opt 
+            });
             const lastState: string = utils.sformulas2string(data.res);
             const theoryContent: string = this.target?.fileContent;
             const hints: HintsObject = getHints(this.sessionType, {
@@ -411,7 +416,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.sessionType = "evaluator";
         this.clearScreen();
         this.setPrompt(utils.pvsioPrompt);
-        const welcome: string = `\nStarting PVSio evaluator session for theory ${colorUtils.colorText(theory.theoryName, colorUtils.PvsColor.blue)}\n`;
+        const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.blue, this.colorTheme);
+        const welcome: string = `\nStarting PVSio evaluator session for theory ${colorUtils.colorText(theory.theoryName, color)}\n`;
         this.reveal();
         this.log(welcome);
         this.disableTerminalInput();
@@ -419,7 +425,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.client.sendRequest(serverRequest.startEvaluator, theory);
         const success: boolean = await new Promise((resolve, reject) => {
             this.client.onRequest(serverEvent.startEvaluatorResponse, (data: { response: PvsResponse, args: PvsTheory }) => {
-                const banner: string = colorUtils.colorText(utils.pvsioBannerAlt, colorUtils.PvsColor.green);
+                const banner: string = colorUtils.colorText(utils.pvsioBannerAlt, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
                 const hints: HintsObject = getHints(this.sessionType, {
                     theoryContent: this.target?.fileContent
                 });
@@ -439,7 +445,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     protected onEvaluatorResponse (data: EvaluatorCommandResponse): void {
         if (data?.res === "bye!") {
             this.setPrompt("");
-            this.log("\n" + colorUtils.colorText(data.res, colorUtils.PvsColor.green), {
+            this.log("\n" + colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme)), {
                 sessionEnd: true
             });
             const msg: string = "Evaluator session terminated.\nYou can now close the evaluator console."

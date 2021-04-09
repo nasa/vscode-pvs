@@ -171,42 +171,68 @@ export interface SnippetType {
 	body: string[]
 };
 
-export interface PvsColorThemeItem { id: string, regex: string, flags: "g" | "gi", color: PvsColor };
+export interface PvsColorThemeItem {
+	id: string, 
+	regex: string, 
+	flags: "g" | "gi", 
+	theme: { 
+		dark: PvsColor, 
+		light: PvsColor
+	}
+};
 export const pvsColorTheme: PvsColorThemeItem[] = [
 	{
 		id: "number",
 		regex: PVS_NUMBER_REGEXP_SOURCE,
 		flags: "g",
-		color: PvsColor.yellow
+		theme: {
+			dark: PvsColor.yellow,
+			light: PvsColor.yellow
+		}
 	},
 	{
 		id: "operators",
 		regex: PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE,
 		flags: "g",
-		color: PvsColor.blue
+		theme: {
+			dark: PvsColor.blue,
+			light: PvsColor.blue
+		}
 	},
 	{
 		id: "keywords",
 		regex: PVS_RESERVED_WORDS_REGEXP_SOURCE,
 		flags: "gi",
-		color: PvsColor.blue
+		theme: {
+			dark: PvsColor.blue,
+			light: PvsColor.blue
+		}
 	},
 	{
 		id: "function",
 		regex: PVS_LIBRARY_FUNCTIONS_REGEXP_SOURCE,
 		flags: "g",
-		color: PvsColor.green
+		theme: {
+			dark: PvsColor.green,
+			light: PvsColor.green
+		}
 	},
 	{
 		id: "builtin_types",
 		regex: PVS_BUILTIN_TYPE_REGEXP_SOURCE,
 		flags: "g",
-		color: PvsColor.green
+		theme: {
+			dark: PvsColor.green,
+			light: PvsColor.green
+		}
 	},
 	{
 		id: "true_false",
 		regex: PVS_TRUE_FALSE_REGEXP_SOURCE,
 		flags: "gi",
-		color: PvsColor.blue
+		theme: {
+			dark: PvsColor.blue,
+			light: PvsColor.blue
+		}
 	}
 ];
