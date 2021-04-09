@@ -47,9 +47,7 @@
  */
 import { ExtensionContext, commands, window, TextDocument, InputBox } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { workspace } from 'vscode';
 import * as fsUtils from '../common/fsUtils';
-import * as utils from '../common/languageUtils';
 import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
 import { PvsFormula } from '../common/serverInterface';
 import * as vscodeUtils from '../utils/vscode-utils';
@@ -90,6 +88,8 @@ const cmds: string[] = [
 	"release-notes", // show release notes
 	"welcome", // show release notes
 	"about", // show release notes
+
+	"show-hidden-formulas",
 
 	"x-show-proof",
 	"x-pr", "x-prove",
@@ -282,6 +282,10 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "x-pr": 
 				case "x-prove": {
 					commands.executeCommand('vscode-pvs.x-prove');
+					break;
+				}
+				case "show-hidden-formulas": {
+					commands.executeCommand('vscode-pvs.show-hidden-formulas');
 					break;
 				}
 				default: {

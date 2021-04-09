@@ -55,7 +55,7 @@ import {
 	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, SequentDescriptor 
 } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
-import { TreeStructure, NodeType, formatSequent, isGlassboxTactic, isPostponeCommand, isUndoCommand } from '../common/languageUtils';
+import { TreeStructure, NodeType, isGlassboxTactic, isPostponeCommand, isUndoCommand } from '../common/languageUtils';
 import { findTheoryName, findFormulaName } from '../common/fsUtils';
 import * as vscode from 'vscode';
 import * as vscodeUtils from '../utils/vscode-utils';

@@ -1723,7 +1723,7 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
     "hide": { 
         description: `Hide sequent formulas`,
         syntax: `hide FNUMS`,
-        note: `Hidden sequents can be restored using the 'reveal' command. Use (show-hidden) to see the list of hidden sequents.`
+        note: `Hidden sequents can be restored using the 'reveal' command. Use (show-hidden-formulas) to see the list of hidden sequents.`
     },
     // "hide-all-but": {
     // 	description: `Hide Selected Formulas: this is a variant of the hide rule that hides all the formulas indicated by
@@ -2199,7 +2199,7 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
     },
     "reveal": {
         description: `Reveal hidden formulas`,
-        note: `The list of hidden formulas can be viewed with 'show-hidden'.`,
+        note: `The list of hidden formulas can be viewed with 'show-hidden-formulas'.`,
         syntax: `reveal FNUMS`
     },
     "rewrite": { 
@@ -2253,9 +2253,13 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
     //     description: `Save current proof`,
     //     syntax: `save`
     // },
-    "show-hidden": {
+    // "show-hidden": {
+    //     description: `Show the list of hidden sequent formulas.`,
+    //     syntax: `show-hidden`
+    // },
+    "show-hidden-formulas": {
         description: `Show the list of hidden sequent formulas.`,
-        syntax: `show-hidden`
+        syntax: `show-hidden-formulas`
     },
     // "show-parens": { 
     //     description: `Show how infix operators and operands are associated by displaying formulas with full parenthesization`
@@ -3344,7 +3348,7 @@ export function isFailCommand (cmd: string): boolean {
 
 export function isShowHiddenCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && /^\(?\s*show-hidden\b/g.test(cmd);
+	return cmd && /^\(?\s*show-hidden(?:-formulas)?\b/g.test(cmd);
 }
 
 export function isGrindCommand (cmd: string): boolean {
@@ -3425,6 +3429,9 @@ export function isPropax (cmd: string): boolean {
 	return cmd && cmd === "(propax)";
 }
 
+/**
+ * Utility function, detects if pvs has returned a string indicating an invalid command
+ */
 export function isInvalidCommand (result: { commentary: string | string[] }): boolean {
 	const proverErrorMessages: string[] = [
 		"Error:",
@@ -3434,7 +3441,8 @@ export function isInvalidCommand (result: { commentary: string | string[] }): bo
 		"Expecting an expression",
 		"Not enough arguments for prover command",
 		"Could not find formula number",
-		"There is garbage at the end"
+		"There is garbage at the end",
+        "No such rule, defined rule or strategy"
 	];
 	const isInvalid = (cmd: string): boolean => {
 		if (cmd) {

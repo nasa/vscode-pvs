@@ -2232,8 +2232,8 @@ export class PvsProofExplorer {
 			const ans: ProofCommandResponse = { res: "bye!", req };
 			this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 
-			const channelID: string = languageUtils.desc2id(this.formula);
-			const evt: CliGatewayQuit = { type: "pvs.event.quit", channelID };
+			// const channelID: string = languageUtils.desc2id(this.formula);
+			// const evt: CliGatewayQuit = { type: "pvs.event.quit", channelID };
 			// this.pvsLanguageServer.cliGateway.publish(evt);
 		}
 		this.connection?.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
@@ -2291,9 +2291,19 @@ export class PvsProofExplorer {
 		return null;
 	}
 	
+	/**
+	 * Utility function, interrupts the prover and quits
+	 */
 	async interruptAndQuitProof (opt?: { notifyClient?: boolean }): Promise<void> {
 		await this.interruptProofCommand();
 		await this.quitProof(opt);
+	}
+
+	/**
+	 * Utility function, shows help for a given command
+	 */
+	async helpCommand (cmd: string): Promise<void> {
+		await this.pvsProxy.showHelpBang(cmd);
 	}
 
 	/**

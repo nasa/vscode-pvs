@@ -47,7 +47,8 @@ import {
     ProofDescriptor, ServerMode, PvsFormula, ProofEditEvent, PvsProofCommand, 
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
-    PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile
+    PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
+    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection } from "vscode";
 import * as vscode from 'vscode';
@@ -673,6 +674,12 @@ export class EventsDispatcher {
                     const action: ProofExecInterruptProver = { action: "interrupt-prover" };
                     this.client.sendRequest(serverRequest.proverCommand, action);
                 }
+            }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.show-hidden-formulas", async (desc: { cmd: string }) => {
+            if (this.xterm) {
+                this.xterm?.write("(show-hidden-formulas)");
+                this.xterm?.sendTextToServer("(show-hidden-formulas)");
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.interrupt-and-quit-prover", async () => {

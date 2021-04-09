@@ -254,12 +254,12 @@ export class PvsProxy {
 				}
 				if (this.client) {
 					const jsonReq: string = JSON.stringify(req, null, " ");
-					// console.dir(jsonReq, { depth: null });
+					// console.log(jsonReq);
 
 					if (!this.externalServer && req && req.method !== "prover-status") {
 						// console.dir(jsonReq);
-						const msg: string = (req.params) ? req.method + " " + JSON.stringify(req.params)
-							: req.method;
+						// const msg: string = (req.params) ? req.method + " " + JSON.stringify(req.params)
+						// 	: req.method;
 						// console.log(msg);
 					}
 					this.proverBusy = true;
@@ -270,7 +270,7 @@ export class PvsProxy {
 
 						if (error) {
 							console.error("[pvs-proxy] Error returned by pvs-server: "); 
-							console.dir(error, { depth: null }); 
+							console.error(error); 
 							if (error['code'] === 'ECONNREFUSED') {
 								// if the server refuses the connection, try to reboot
 								console.log(`[pvs-proxy] Connection refused when launching pvs from ${this.pvsPath}`);
@@ -1181,7 +1181,15 @@ export class PvsProxy {
 			if (ans && ans.result && ans.result.length) {
 				let help: string = this.pvsServer.getLispInterfaceOutput();
 				this.pvsServer.clearLispInterfaceOutput();
-				help = help.substring(help.indexOf(`(${match[1]}`), help.indexOf("No change on"));
+				if (languageUtils.isInvalidCommand({ commentary: help })) {
+					// check if there's some help string we can provide
+					const metaHelp: string = languageUtils.PROOF_COMMANDS[match[1]] ? 
+						`(${match[1]})    ${languageUtils.PROOF_COMMANDS[match[1]].description}`
+							: null;
+					help = metaHelp || `Help not available for ${match[1]}`;
+				} else {
+					help = help.substring(help.indexOf(`(${match[1]}`), help.indexOf("No change on"));
+				}
 				ans.result[ans.result.length - 1].action = "";
 				ans.result[ans.result.length - 1].commentary = [ help.trim() ];
 			}
@@ -1221,7 +1229,8 @@ export class PvsProxy {
 							if (result) {
 								result.action = "Showing list of hidden sequents";
 								if (result.commentary) {
-									result.commentary = [ "No change on: (show-hidden)" ];
+									const hiddenFormulas: string[] = [ languageUtils.formatHiddenFormulas(result) ];					
+									result.commentary = hiddenFormulas.concat([ "No change on: (show-hidden-formulas)" ]);
 								}
 							}
 						}
