@@ -383,9 +383,21 @@ export class Content extends Backbone.Model {
         // console.log("[xterm-content] autocomplete", { data });
         if (data && data.substitution) {
             const textBeforeCursor: string = this.textBefore(this.pos);
-            const textAfterCursor: string = this.textAfter(this.pos);
-
             const completedText: string = textBeforeCursor.substring(0, textBeforeCursor.length - data.match?.length) + data.substitution;
+
+            // check the text after the cursor position
+            let textAfterCursor: string = this.textAfter(this.pos);
+
+            // if the cursor was in the middle of a word, include the entire word in the substitution
+            if (textAfterCursor?.length && !textAfterCursor.startsWith(" ")) {
+                let termEndIndex: number = 0;
+                for (let i = 0; i < textAfterCursor.length && !/[\s\(\)\[\]]/g.test(textAfterCursor[i]); i++) {
+                    termEndIndex = i;
+                }
+                textAfterCursor = textAfterCursor.slice(termEndIndex + 1);
+            }
+
+            // reconstruct the text and wrap lines
             const wrapped: string = LineWrapper.wrapLines(completedText + textAfterCursor);
             this.lines = (wrapped).split("\n");
 
@@ -1260,7 +1272,7 @@ export class Autocomplete extends Backbone.Model {
     /**
      * Returns the input string used to compute autocompletion
      */
-    getCurrentInput (opt?: { regex?: RegExp, removeLeadingBraket?: boolean }): string {
+    getCurrentInput (opt?: { regex?: RegExp, removeLeadingBracket?: boolean }): string {
         opt = opt || {};
         const currentInput: string = this.content?.command({ beforeCursor: true });
         // console.log("[xterm-autocomplete] getCurrentInput", { currentInput });
@@ -1271,7 +1283,7 @@ export class Autocomplete extends Backbone.Model {
             }
             return "";
         }
-        if (opt.removeLeadingBraket) {
+        if (opt.removeLeadingBracket) {
             const bless: string = currentInput.startsWith("(") ? currentInput.substring(1) : currentInput;
             return bless;
         }
@@ -1461,7 +1473,7 @@ export class Autocomplete extends Backbone.Model {
         // include history if nothing is specified
         opt.includeHistory = (opt.includeHistory === undefined) ? true : !!opt.includeHistory;
         // update current input
-        const currentInput: string = this.getCurrentInput({ removeLeadingBraket: true })?.toLocaleLowerCase();
+        const currentInput: string = this.getCurrentInput({ removeLeadingBracket: true })?.toLocaleLowerCase();
         // get command hints
         let hints: string[] = this.sessionType === "evaluator" ?
             this.autocompleteEvaluatorCommand(currentInput, opt)
@@ -1639,11 +1651,12 @@ export class Autocomplete extends Backbone.Model {
      */
     protected triggerAutocomplete (): void {
         const substitution: string = this.getSelectedHint();
-        const match: string = this.getCurrentInput({ removeLeadingBraket: true });
-        // console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput: this.currentInput, match, substitution });
+        const match: string = this.getCurrentInput({ removeLeadingBracket: true });
+        const currentInput: string = this.getCurrentInput();
+        console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput, match, substitution });
         const evt: DidAutocompleteEvent = {
             substitution,
-            currentInput: this.getCurrentInput(),
+            currentInput,
             match
         };
         this.trigger(AutocompleteEvent.didAutocomplete, evt);
@@ -1663,10 +1676,14 @@ export class Autocomplete extends Backbone.Model {
                 break;
             }
             case "ArrowUp":
-            case "ArrowDown":
+            case "ArrowDown": {
+                this.onArrow(ev);
+                break;
+            }
+
             case "ArrowLeft":
             case "ArrowRight": {
-                this.onArrow(ev);
+                this.updateTooltip();
                 break;
             }
             case " ": {
