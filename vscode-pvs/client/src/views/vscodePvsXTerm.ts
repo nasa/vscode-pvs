@@ -318,8 +318,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.log(data.res === "bye!" ? "\n" + xtermMsg : xtermMsg, {
                     sessionEnd: true
                 });
-                const msg: string = data.res === "Q.E.D." ? "Proof completed successfully!\nThe proof has been saved. You can now close the terminal panel."
-                    : "Prover session terminated.\nYou can now close the terminal panel."
+                const msg: string = data.res === "Q.E.D." ? "Proof completed successfully!\nThe proof has been saved. You can now close the prover console."
+                    : "Prover session terminated.\nYou can now close the prover console."
                 this.showHelpMessage(msg);
                 // disable response handlers
                 this.disableHandlers();
@@ -442,7 +442,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             this.log("\n" + colorUtils.colorText(data.res, colorUtils.PvsColor.green), {
                 sessionEnd: true
             });
-            const msg: string = "Evaluator session terminated.\nYou can now close the terminal panel."
+            const msg: string = "Evaluator session terminated.\nYou can now close the evaluator console."
             this.showHelpMessage(msg);
             // disable response handlers
             this.disableHandlers();

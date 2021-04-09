@@ -389,22 +389,25 @@ export class Content extends Backbone.Model {
             let textAfterCursor: string = this.textAfter(this.pos);
 
             // if the cursor was in the middle of a word, include the entire word in the substitution
-            if (textAfterCursor?.length && !textAfterCursor.startsWith(" ")) {
+            if (textAfterCursor?.length && !/[\s\(\)\[\]]/g.test(textAfterCursor[0])) {
                 let termEndIndex: number = 0;
                 for (let i = 0; i < textAfterCursor.length && !/[\s\(\)\[\]]/g.test(textAfterCursor[i]); i++) {
                     termEndIndex = i;
                 }
                 textAfterCursor = textAfterCursor.slice(termEndIndex + 1);
             }
+            const completedTextWrapped: string = LineWrapper.wrapLines(completedText);
 
-            // reconstruct the text and wrap lines
-            const wrapped: string = LineWrapper.wrapLines(completedText + textAfterCursor);
+            // if the completed text is over multiple lines, replace the entire command line
+            const wrapped: string = completedTextWrapped?.split("\n")?.length > 1 ?
+                completedTextWrapped
+                    : LineWrapper.wrapLines(completedText + textAfterCursor);
             this.lines = (wrapped).split("\n");
 
-            // move cursor at the end of the appended text
+            // move cursor to the end of the completed text
             this.savePos();
-            this.pos.line = wrapped.split("\n").length || MIN_POS.line;
-            this.pos.character = wrapped.split("\n")[this.pos.line - 1].length + 1;
+            this.pos.line = completedTextWrapped.split("\n").length || MIN_POS.line;
+            this.pos.character = completedTextWrapped.split("\n")[this.pos.line - 1].length + 1;
 
             // console.log("[xterm-content] autocomplete", { textAfterCursor, textBeforeCursor, completedText, wrapped, data: data, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
             this.trigger(ContentEvent.didAutocompleteContent);
@@ -1229,6 +1232,12 @@ export class Autocomplete extends Backbone.Model {
      */
     updateMathObjects (mathObjects: MathObjects): void {
         this.mathObjects = mathObjects;
+    }
+    /**
+     * Utility function, returns true if the tooltip is visible
+     */
+    tooltipVisible (): boolean {
+        return !($(".tooltip")[0] === null || $(".tooltip")[0] === undefined);
     }
     /**
      * Shows a tooltip with the provided hints
@@ -2268,23 +2277,12 @@ export class XTermPvs extends Backbone.Model {
             }
             // else
             // update content and show tooltips
-            const contentHasChanged: boolean = this.content.updateContent(evt);
+            const selectingTooltip: boolean = (key === "ArrowUp" || key === "ArrowDown") && this.autocomplete.tooltipVisible();
+            const contentHasChanged: boolean = selectingTooltip ? false : this.content.updateContent(evt);
             this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
             if (contentHasChanged) {
                 this.updateView(evt);
             }
-
-            // update content and show tooltips
-            // const contentHasChanged: boolean = this.content.updateContent(evt);
-            // this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
-            // if (contentHasChanged) {
-            //     this.updateView(evt);
-            //     if (evt.domEvent.key === "Enter" && this.readyToSend()) {
-            //         this.content.cursorToHome();
-            //         this.moveCursorTo(this.content.cursorPosition(), { src: "onKeyPress" });
-            //         this.sendWhenReady();
-            //     }    
-            // }
         }
     }
 
