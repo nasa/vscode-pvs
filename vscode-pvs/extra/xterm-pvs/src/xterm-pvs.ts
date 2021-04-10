@@ -2435,6 +2435,15 @@ export class XTermPvs extends Backbone.Model {
                 this.trigger(XTermEvent.sendText, { data: interruptCommand });
                 return false;
             }
+            // page up/down scroll contente
+            if (evt.key === "PageUp") {
+                this.xterm.scrollLines(-4);
+                return false;
+            }
+            if (evt.key === "PageDown") {
+                this.xterm.scrollLines(4);
+                return false;
+            }
             // ctrl+key / alt+key
             if (this.inputEnabled && (evt?.ctrlKey || evt?.metaKey || evt?.altKey) && !evt?.shiftKey) {
                 switch (evt.key) {
