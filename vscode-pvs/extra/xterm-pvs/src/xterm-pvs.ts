@@ -2,7 +2,7 @@ import { ITheme, Terminal as XTerm } from 'xterm';
 import { CommandDescriptor, CommandsMap, MathObjects, HintsObject, Position } from './common/serverInterface';
 import * as colorUtils from './common/colorUtils';
 import { pvsColorTheme } from './common/languageKeywords';
-import { interruptCommand, SessionType, UpdateCommandHistoryData, XTermEvent } from './common/xtermInterface';
+import { xTermDetectColorTheme, interruptCommand, SessionType, UpdateCommandHistoryData, XTermEvent } from './common/xtermInterface';
 import * as Backbone from 'backbone';
 import * as Handlebars from 'handlebars';
 import { checkPar, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, proverCommands, splitCommands } from './common/languageUtils';
@@ -1818,7 +1818,7 @@ export class XTermPvs extends Backbone.Model {
         LineWrapper.maxCols = cols;
         const rows: number = opt.rows || Math.floor((window.innerHeight - this.paddingBottom) / (this.fontSize * this.lineHeight)) || MIN_VIEWPORT_ROWS;
 
-        this.colorTheme = this.detectColorTheme();
+        this.colorTheme = this.getColorTheme();
 
         this.xterm = new XTerm({
             rendererType: "canvas",
@@ -1866,9 +1866,11 @@ export class XTermPvs extends Backbone.Model {
     /**
      * Detects the color theme
      */
-     detectColorTheme (): colorUtils.XTermColorTheme {
+     getColorTheme (): colorUtils.XTermColorTheme {
          const themeClass: string = $("body").attr("data-vscode-theme-kind");
-         return /light/.test(themeClass) ? "light" : "dark";
+         const theme: colorUtils.XTermColorTheme = xTermDetectColorTheme(themeClass);
+         console.log("[xterm-pvs] getColorTheme", { theme, themeClass });
+         return theme;
      }
 
     /**
@@ -1921,7 +1923,7 @@ export class XTermPvs extends Backbone.Model {
      * Utility function, updates color theme
      */
     updateColorTheme (theme?: XTermColorTheme): void {
-        this.colorTheme = theme || this.detectColorTheme();
+        this.colorTheme = theme || this.getColorTheme();
         (this.colorTheme === "dark") ?
             this.darkMode() 
                 : this.lightMode();
@@ -2964,7 +2966,7 @@ export class XTermPvs extends Backbone.Model {
             htext = htext.replace(regexp, (txt: string) => {
                 return colorUtils.colorText(txt, theme === "dark" ? colorUtils.PvsColor.blue : colorUtils.PvsColor.darkblue);
             });
-            console.log("[xterm-pvs] applySyntaxHighlighting", { text, htext });
+            // console.log("[xterm-pvs] applySyntaxHighlighting", { text, htext });
             return htext;
         }
         return text;    

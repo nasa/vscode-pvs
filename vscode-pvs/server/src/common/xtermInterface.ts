@@ -1,3 +1,5 @@
+import { XTermColorTheme } from "./colorUtils";
+
 export enum XTermEvent {
     sendText = "sendText",
     proofExplorerBack = "proof-explorer.back", // F4
@@ -33,3 +35,11 @@ export interface UpdateCommandHistoryData { cmd: string, successHistory?: boolea
 export const interruptCommand: string = "ctrl+c";
 
 export declare type SessionType = "prover" | "evaluator";
+
+/**
+ * Utility function, detects the color theme used in the terminal
+ */
+export function xTermDetectColorTheme (themeClass: string): XTermColorTheme {
+    const theme: XTermColorTheme = /light/gi.test(themeClass) ? "light" : "dark";
+    return theme;
+}

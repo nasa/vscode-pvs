@@ -44,6 +44,7 @@ import { TheoryItem, WorkspaceItem } from "../views/vscodePvsWorkspaceExplorer";
 import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula } from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 import { XTermColorTheme } from '../common/colorUtils';
+import { xTermDetectColorTheme } from '../common/xtermInterface';
 
 /**
  * Returns the context folder of the editor
@@ -649,8 +650,9 @@ export async function setToolbarVisibility (viz: boolean): Promise<void> {
  * Detects if the color theme is light or dark, based on the theme name
  */
 export function detectColorTheme (): XTermColorTheme {
-    const colorTheme: string = getConfiguration("workbench.colorTheme");
-    return colorTheme.toLocaleLowerCase().trim().endsWith("light") ? "light" : "dark";
+    const themeClass: string = getConfiguration("workbench.colorTheme");
+    const theme: XTermColorTheme = xTermDetectColorTheme(themeClass);
+    return theme;
 }
 
 /**

@@ -86,9 +86,6 @@ const htmlTemplate: string = `
     {{/each}}
 
     <style>
-    body {
-        background: ${htmlColorCode.black};
-    }
     .terminal-help {
         height:${HELP_PANEL_HEIGHT}px;
     }
