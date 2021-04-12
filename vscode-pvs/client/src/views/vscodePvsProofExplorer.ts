@@ -245,9 +245,12 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 
+	/**
+	 * Shows the proof tree
+	 */
 	showWebView (opt?: { recenter?: boolean }): void {
 		const treeStructure: TreeStructure = this.getTreeStructure();
-		this.treeviz?.renderView(treeStructure, { reveal: true, ...opt });
+		this.treeviz?.renderView(treeStructure, this.formula, { reveal: true, ...opt });
 	}
 
 	protected findNode (id: string): ProofBranch {
@@ -302,7 +305,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 					selected = this.ghostNode;
 					this.ghostNode.parent = this.ghostNode.parent || this.ghostNode.realNode;
 					if (this.treeviz?.isVisible()) {
-						this.treeviz?.renderView(this.getTreeStructure(), { source: "did-reveal-node" });
+						this.treeviz?.renderView(this.getTreeStructure(), this.formula, { source: "did-reveal-node" });
 					}
 				}
 				if (selected && selected.parent && !selected.parent.isComplete()) {
@@ -555,7 +558,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				this._onDidChangeTreeData.fire(null);
 			}
 			if (this.treeviz?.isVisible()) {
-				this.treeviz?.renderView(this.getTreeStructure(), { cursor: this.ghostNode?.id, ...opt });
+				this.treeviz?.renderView(this.getTreeStructure(), this.formula, { cursor: this.ghostNode?.id, ...opt });
 			}
 		}
 		const delayedRefresh = () => {

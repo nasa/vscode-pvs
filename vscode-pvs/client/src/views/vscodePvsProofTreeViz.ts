@@ -40,9 +40,10 @@ import * as vscode from 'vscode';
 import * as d3 from 'd3-hierarchy';
 import * as Handlebars from "handlebars";
 import { ExtensionContext, WebviewPanel } from 'vscode';
-import { ProofNodeStatus } from '../common/serverInterface';
+import { ProofNodeStatus, PvsFormula } from '../common/serverInterface';
 import * as path from 'path';
 import { TreeStructure } from '../common/languageUtils';
+import * as fsUtils from '../common/fsUtils';
 
 export type d3Iterable<T> = (node: T) => void;
 export interface d3HierarchyNode<T>{
@@ -56,6 +57,25 @@ export interface d3HierarchyNode<T>{
     height?: number // greatest distance from any descendant. height = 0 for leaf nodes
 };
 
+const exportTemplate: string = `
+<!--
+@formula: {{formula}}
+@theory: {{theory}}
+@pvsfile: {{pvsfile}}
+@note: Use the Web Browser to view this file.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <style type="text/css">{{style}}</style>
+</head>
+<body style="margin-left:20px; margin-top:60px; padding:0; overflow:auto; background:whitesmoke;">
+{{svg}}
+</body>
+`;
 
 const htmlTemplate: string = `
 <!DOCTYPE html>
@@ -81,7 +101,7 @@ const htmlTemplate: string = `
 <body style="margin-left:20px; margin-top:60px; padding:0; overflow:auto; background:whitesmoke;">
     <nav class="navbar navbar-light bg-dark fixed-top" style="width:100%; margin:0; padding:0;">
         <div class="container-fluid" style="margin:0; padding:0;">
-            <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups" style="transform:scale(0.8); transform-origin: left;">
+            <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups" style="transform:scale(0.8); transform-origin:left; min-width:120%;">
                 <div class="dropdown" style="margin-left:20px;">
                     <button type="button" id="dropdown" data-toggle="dropdown" class="btn btn-sm btn-outline-light" aria-label="Settings"><i class="fa fa-bars"></i></button>
                     <div class="dropdown-menu dropdown-menu-left" style="padding:10px; width:250px;">
@@ -106,6 +126,9 @@ const htmlTemplate: string = `
                     <button type="button" id="pause" class="btn btn-sm btn-outline-light" alt="Pause proof" aria-label="Pause proof" style="width:40px;"><i class="fa fa-pause"></i></button>
                     <button type="button" id="play" class="btn btn-sm btn-outline-light" alt="Run proof" aria-label="Run proof" style="width:40px;"><i class="fa fa-play-circle"></i></button>
                     <button type="button" id="next" class="btn btn-sm btn-outline-light" alt="Step proof" aria-label="Step proof" style="width:80px;"><i class="fa fa-step-forward"></i></button>
+                </div>
+                <div class="btn-group" role="group" style="margin-left:20px;">
+                    <button type="button" id="export-proof-tree" class="btn btn-sm btn-outline-light" aria-label="Export as HTML">Export as HTML</button>
                 </div>
             </div>
         </div>
@@ -167,6 +190,31 @@ const htmlTemplate: string = `
                 $elem.val(newval)
                 vscode.postMessage({ command: 'settings', id, val: newval });    
             }
+        });
+        $("#export-proof-tree").on("click", () => {
+            const innerHtml = $("#content").html();
+            vscode.postMessage({ command: 'export-proof-tree', svg: innerHtml });
+
+            // the following code does not work, need to investigate why
+            // const xml = $("#content svg")[0];
+            // const size = xml.getBBox();
+            // const svg64 = btoa(xml);
+            // const image64 = 'data:image/svg+xml;base64,' + svg64;
+            // const image = new Image();
+            // image.onload = (res) => {
+            //     const canvas = document.createElement('canvas');
+            //     canvas.width = size.width;
+            //     canvas.height = size.height;
+            //     const ctx = canvas.getContext('2d');
+            //     ctx.drawImage(image, 0, 0, size.width, size.height);
+            //     const png = canvas.toDataURL();
+            //     vscode.postMessage({ command: 'export-proof-tree', svg: innerHtml, png });
+            // }
+            // image.onerror = (err) => {
+            //     console.warn("Failed to create picture ", err);
+            //     vscode.postMessage({ command: 'export-proof-tree', svg: innerHtml });
+            // }
+            // image.src = image64;
         });
     }());
     // Handle the message inside the webview
@@ -292,9 +340,6 @@ const htmlTemplate: string = `
 </html>`;
 
 const webviewStyle: string = `
-.btn {
-    min-width: 40px;
-}
 .node {
     cursor: pointer;
     fill: white;
@@ -310,19 +355,6 @@ const webviewStyle: string = `
 .node:hover {
     cursor: pointer;
     stroke: steelblue;
-}
-.node.active {
-    fill: steelblue !important;
-    stroke: steelblue !important;
-}
-.node.active circle {
-    fill: steelblue !important;
-    stroke: steelblue !important;
-    animation: pulser 2s linear infinite !important;
-}
-.node.active .star {
-    fill: transparent !important;
-    stroke: transparent !important;
 }
 .node.visited {
     fill: transparent;
@@ -356,21 +388,35 @@ const webviewStyle: string = `
     fill: darkslateblue;
     stroke: transparent;
 }
-.spacer {
-    display: none;
-}
 .link {
     fill: none;
     stroke: #ccc;
     stroke-width: 1.5px;
-}          
+}
+`;
+const webViewStyleAnim: string = `
+.node.active {
+    fill: steelblue !important;
+    stroke: steelblue !important;
+}
+.node.active circle {
+    fill: steelblue !important;
+    stroke: steelblue !important;
+    animation: pulser 2s linear infinite !important;
+}
+.node.active .star {
+    fill: transparent !important;
+    stroke: transparent !important;
+}
+.btn {
+    min-width: 40px;
+}
+.spacer {
+    display: none;
+}
 @keyframes pulser {
-    0% {
-        opacity: 1;
-    }
-    70% {
-        opacity: 0.6;
-    }
+    0% { opacity: 1; }
+    70% { opacity: 0.6; }
 }`;
 
 export type LayoutNode = d3HierarchyNode<TreeStructure>;
@@ -378,6 +424,9 @@ export type LayoutLink = { source: LayoutNode, target: LayoutNode };
 
 const MAX_NAME_LEN: number = 64;
 
+/**
+ * Utility class, render the tree layout
+ */
 export class LayoutFactory {
     protected depth: number = 0;
     protected span: number = 0;
@@ -438,6 +487,9 @@ export class LayoutFactory {
     getLinks (): LayoutLink[] { return this.links; }
 }
 
+/**
+ * Main class for rendering an interactive proof tree
+ */
 export class VSCodePvsVizTree {
     protected layout: LayoutFactory;
     protected panel: WebviewPanel;
@@ -466,36 +518,63 @@ export class VSCodePvsVizTree {
 	readonly maxSkip: number = 10;
 	readonly maxTimer: number = 500; //ms
 
+    // stores information about which formula is being rendered
+    protected formula: PvsFormula;
 
+    /**
+     * Constructor
+     */
     constructor () {
         this.layout = new LayoutFactory();
     }
+    /**
+     * Activates the view
+     */
     activate(context: ExtensionContext): void {
         this.context = context;
     }
+    /**
+     * Reveals the view
+     */
     reveal (): void {
         this.visible = true;
         this.panel.reveal()
     }
+    /**
+     * Hides the view
+     */
     hide (): void {
         this.panel.dispose();
         this.visible = false;
     }
+    /**
+     * Utility function, returns true if the view is visible
+     */
     isVisible (): boolean {
         return this.visible;
     }
+    /**
+     * Utility function, refreshes the font size in the view
+     */
     refreshFont (): void {
         this.panel?.webview?.postMessage({
             command: "update-font",
             val: this.font
         });
     }
+    /**
+     * Utility function, re-centers the view on the active node
+     * @param opt 
+     */
     recenter (opt?: { fast?: boolean }): void {
         opt = opt || {};
         this.panel?.webview?.postMessage({
             command: opt.fast ? "recenter-fast" : "recenter"
         });
     }
+    /**
+     * Utility function, reduces the zoom level of the view
+     */
     zoomMinus (): void {
         this.zoomLevel = this.zoomLevel - this.zoomStep < this.minZoomLevel ? this.minZoomLevel : this.zoomLevel - this.zoomStep;
         const scale = this.zoomLevel / 100;
@@ -504,6 +583,9 @@ export class VSCodePvsVizTree {
             scale
         });
     }
+    /**
+     * Utility function, increases the zoom level of the view
+     */
     zoomPlus(): void {
         this.zoomLevel = this.zoomLevel + this.zoomStep > this.maxZoomLevel ? this.maxZoomLevel : this.zoomLevel + this.zoomStep;
         const scale: number = this.zoomLevel / 100;
@@ -512,6 +594,9 @@ export class VSCodePvsVizTree {
             scale
         });
     }
+    /**
+     * Internal function, creates the webview and installs relevant handlers
+     */
     protected createWebView (title: string) {
         if (this.panel) {
             this.panel.title = title;
@@ -585,6 +670,46 @@ export class VSCodePvsVizTree {
                             }
                             break;
                         }
+                        case "export-proof-tree": {
+                            if (this.formula) {
+                                const fileName: string = `${this.formula.formulaName}`;
+                                const exportFolder: string = "htmlExports";
+                                const contextFolder: string = path.join(this.formula.contextFolder, exportFolder);
+                                fsUtils.createFolder(path.join(this.formula.contextFolder, exportFolder));
+                                if (message.png) {
+                                    const fileExtension: string = ".png";
+                                    const fname: string = fsUtils.desc2fname({
+                                        contextFolder,
+                                        fileName,
+                                        fileExtension
+                                    });
+                                    fsUtils.writeFile(fname, message.png, { encoding: 'base64' });
+                                    vscode.window.showInformationMessage(`Proof tree exported to ${exportFolder}/${fileName}${fileExtension}`);
+                                } else {
+                                    const content: string = Handlebars.compile(exportTemplate, { noEscape: true })({
+                                        svg: message.svg,
+                                        title: this.root?.name,
+                                        width: this.layout.getWidth() * 2,
+                                        height: this.layout.getHeight() * 1.1,
+                                        style: webviewStyle,
+                                        formula: this.formula.formulaName,
+                                        theory: this.formula.theoryName,
+                                        pvsfile: this.formula.fileName + this.formula.fileExtension
+                                    });
+                                    const fileExtension: string = ".html";
+                                    const fname: string = fsUtils.desc2fname({
+                                        contextFolder,
+                                        fileName: fileName,
+                                        fileExtension
+                                    });
+                                    fsUtils.writeFile(fname, content);
+                                    vscode.window.showInformationMessage(`Proof tree exported to ${exportFolder}/${fileName}${fileExtension}`);
+                                }
+                            } else {
+                                console.warn("[treeviz] Warning: could not export tree (formula is null)");
+                            }
+                            break;
+                        }
                         default: {
                             break;
                         }
@@ -614,15 +739,16 @@ export class VSCodePvsVizTree {
             this.panel.webview.asWebviewUri(jqueryOnDisk), // jquery needs to be loaded before bootstrap
             this.panel.webview.asWebviewUri(bootstrapJsOnDisk)
         ];
-        this.panel.webview.html = this.createHtmlContent(root, { css, js, style: webviewStyle });
+        this.panel.webview.html = this.createHtmlContent(root, { css, js, style: webviewStyle + webViewStyleAnim });
     }
     /**
      * Renders the content of the webview
      * @param root 
      * @param opt
      */
-    renderView (root: TreeStructure, opt?: { reveal?: boolean, recenter?: boolean, source?: string, cursor?: string }): void {
+    renderView (root: TreeStructure, formula: PvsFormula, opt?: { reveal?: boolean, recenter?: boolean, source?: string, cursor?: string }): void {
         this.root = root;
+        this.formula = formula;
         this.refreshView(opt);
     }
     /**
@@ -744,7 +870,7 @@ export class VSCodePvsVizTree {
             title: root?.name,
             nodes,
             links,
-            width: width * 1.1,
+            width: width * 2,
             height: height * 1.1,
             scale: this.zoomLevel / 100,
             settings: {
