@@ -40,7 +40,7 @@
 import { CancellationToken, CodeLens, CodeLensRequest, Range, CodeLensParams } from 'vscode-languageserver';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
-import { ProveFormulaRequest, PvsFormula } from '../common/serverInterface';
+import { ProveFormulaRequest, PvsFormula, PvsTheory } from '../common/serverInterface';
 
 export class PvsCodeLensProvider {    
     /**
@@ -61,73 +61,55 @@ export class PvsCodeLensProvider {
             const content: string = document.txt.replace(utils.commentRegexp, "");
 
             // typecheck-file | evaluate-in-pvsio
+            // use a simple match on the theory declaration, so the commands show up even if the theory does not parse (e.g., because of missing END theoryname)
             if (fileExtension === ".pvs") {
-                let txt: string = content;
-                let lineOffset: number = 0;
-
-                txt = content;
-                lineOffset = 0;
-                match = new RegExp(utils.theoryOrDatatypeRegexp).exec(txt);
-                while (match) {
+                const regex: RegExp = new RegExp(utils.theoryOrDatatypeRegexp);
+                while (match = regex.exec(content)) {
                     if (match.length > 1 && match[1]) {
                         const theoryName: string = match[1];
-
-                        const matchEnd: RegExpMatchArray = utils.endTheoryOrDatatypeRegexp(theoryName).exec(txt);
-                        if (matchEnd && matchEnd.length) {
-                            const endIndex: number = matchEnd.index + matchEnd[0].length;
-                            const fullClip = txt.slice(0, endIndex);
                             
-                            const docUp: string = txt.slice(0, match.index + theoryName.length);
-                            const lines: string[] = docUp.split("\n");
-                            const line: number = lines.length - 1 + lineOffset;
-                            const character: number = lines[lines.length - 1].indexOf(match[1]);
+                        const docUp: string = content.slice(0, match.index + theoryName.length);
+                        const lines: string[] = docUp.split("\n");
+                        const line: number = lines.length - 1;// + lineOffset;
+                        const character: number = lines[lines.length - 1].indexOf(theoryName);
+                        
+                        const args: PvsTheory = {
+                            fileName,
+                            fileExtension,
+                            contextFolder,
+                            theoryName, 
+                            // line
+                        };
 
-                            txt = txt.slice(endIndex);
-                            lineOffset += fullClip.split("\n").length - 1;
-                            
-                            const args = {
-                                fileName,
-                                fileExtension,
-                                contextFolder,
-                                theoryName, 
-                                line
-                            };
-
-                            // pvsio codelens
-                            const range: Range = {
-                                start: { line, character },
-                                end: { line, character: character + theoryName.length }
-                            };
-                            codeLens.push({
-                                range,
-                                command: {
-                                    title: "typecheck-file",
-                                    command: "vscode-pvs.typecheck-file",
-                                    arguments: [ args ]
-                                }
-                            });
-                            codeLens.push({
-                                range,
-                                command: {
-                                    title: "evaluate-in-pvsio",
-                                    command: "vscode-pvs.pvsio-evaluator",
-                                    arguments: [ args ]
-                                }
-                            });
-                            // create a new regexp every time txt changes
-                            match = new RegExp(utils.theoryOrDatatypeRegexp).exec(txt);
-                        } else {
-                            match = utils.theoryOrDatatypeRegexp.exec(txt);
-                        }
-                    } else {
-                        match = utils.theoryOrDatatypeRegexp.exec(txt);
+                        // codelens
+                        const range: Range = {
+                            start: { line, character },
+                            end: { line, character: character + theoryName.length }
+                        };
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: "typecheck-file",
+                                command: "vscode-pvs.typecheck-file",
+                                arguments: [ args ]
+                            }
+                        });
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: "evaluate-in-pvsio",
+                                command: "vscode-pvs.pvsio-evaluator",
+                                arguments: [ args ]
+                            }
+                        });
                     }
                 }
             }
 
             // show-prooflite | prove-formula
             if (fileExtension === ".pvs" || fileExtension === ".tccs") {
-                while (match = utils.theoremRegexp.exec(content)) {
+                const regex: RegExp = new RegExp(utils.theoremRegexp);
+                while (match = regex.exec(content)) {
                     if (match.length > 1 && match[1]) {
                         const formulaName: string = match[1];
 
@@ -179,7 +161,8 @@ export class PvsCodeLensProvider {
 
             // prove-formula
             if (fileExtension === ".prlite" || fileExtension === ".prl") {
-                while (match = utils.proofRegexp.exec(content)) {
+                const regex: RegExp = new RegExp(utils.proofRegexp);
+                while (match = regex.exec(content)) {
                     if (match.length > 1 && match[1]) {
                         const formulaName: string = match[1];
                         const theoryName: string = fileName; // by convention, .prlite filename is the theoryName
