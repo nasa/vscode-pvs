@@ -462,7 +462,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     lastState: data.res, 
                     theoryContent: this.target?.fileContent
                 });
-                this.log(data.res, { hints });
+                this.log("\n" + data.res, { hints });
                 // trigger event for interested listeners, e.g., pvsioweb
                 this.trigger(XTermPvsEvent.DidReceiveEvaluatorResponse, data);
             }
