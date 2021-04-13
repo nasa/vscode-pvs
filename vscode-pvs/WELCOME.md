@@ -25,8 +25,13 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.42 (2021.04.13)]()    
+  -Added new function to export proof tree as HTML/SVG file  
+  -Improved prover/evaluator console (light color theme, key bindings PageUp/PageDown to scroll content) 
+  -Improved syntax highlighting and inline command 'typecheck-file'  
+
 - [1.0.41 (2021.03.31)]()    
-  -Improved terminal (integrated help, tooltips, brackets matching, multi-line editing)  
+  -Added new prover/evaluator console (integrated help, tooltips, brackets matching, multi-line editing)  
   -Improved architecture and performance  
 
 - [1.0.40 (2021.03.08)]()    
