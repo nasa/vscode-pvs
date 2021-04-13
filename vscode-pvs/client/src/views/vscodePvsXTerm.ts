@@ -291,10 +291,13 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         });
         const success: boolean = await new Promise((resolve, reject) => {
             this.client.onRequest(serverEvent.proveFormulaResponse, (data: ProveFormulaResponse) => {
-                this.mathObjects = data?.mathObjects || {};
-                this.onProverResponse(data, { ignoreCommentary: true });
-                this.enableTerminalInput();
-                this.showWelcomeMessage();
+                if (this.sessionType) {
+                    // if session type is not defined, then the proof has already ended -- this may happen for trivial proofs
+                    this.mathObjects = data?.mathObjects || {};
+                    this.onProverResponse(data, { ignoreCommentary: true });
+                    this.enableTerminalInput();
+                    this.showWelcomeMessage();
+                }
                 resolve(true);
             });
             // The following handler is registered here because proof commands may originate from proof-explorer.
@@ -314,12 +317,15 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         if (typeof data?.res === "string") {
             if (data.res === "Q.E.D." || data.res === "bye!") {
                 const xtermMsg: string = colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
-                this.log(data.res === "bye!" ? "\n" + xtermMsg : xtermMsg, {
+                this.log("\n" + xtermMsg, {
                     sessionEnd: true
                 });
                 const msg: string = data.res === "Q.E.D." ? "Proof completed successfully!\nThe proof has been saved. You can now close the prover console."
-                    : "Prover session terminated.\nYou can now close the prover console."
-                this.showHelpMessage(msg);
+                    : "Prover session terminated.\nYou can now close the prover console.";
+                // send the message after a timeout, to avoid overwrites due to automatic updates of the help panel
+                setTimeout(() => {
+                    this.showHelpMessage(msg);
+                }, 500);
                 // disable response handlers
                 this.disableHandlers();
                 this.sessionType = null;
@@ -590,10 +596,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      * Reveals the terminal
      */
     reveal (): void {
-        const success: boolean = this.renderView();
-        if (success) {
-            this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
-        }
+        this.renderView();
+        this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
     }
     /**
      * Hides the terminal
@@ -665,8 +669,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Renders the webview
      */
-    renderView (): boolean {
-        return this.createWebView();
+    renderView (): void {
+        this.createWebView();
     }
     /**
      * Sets the prompt
@@ -764,7 +768,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Internal function, creates the webview
      */
-    protected createWebView (): boolean {
+    protected createWebView (): void {
         if (this.sessionType) {
             const title: string = this.sessionType === "prover" ?
                 `Proving formula '${(<PvsFormula> this.target).formulaName}'`
@@ -840,14 +844,11 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     vscodeUtils.setEditorLanguage();
                     // set terminal visible to true
                     commands.executeCommand('setContext', 'terminal.visible', true);
-                    return true;
                 } catch (err) {
                     console.error(err);
-                    return false;
                 }
             }
         }
-        return false;
     }
     /**
      * Internal function, creates the html content of the webview

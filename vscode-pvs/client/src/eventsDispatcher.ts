@@ -341,6 +341,7 @@ export class EventsDispatcher {
                     this.proofMate.startProof();
                     await this.proofMate.loadSketchpadClips(); // loads sketchpad clips from the .jprf file
                     this.proofExplorer.focusActiveNode({ force: true }); // this will automatically open the view, in the case the view was hidden
+                    // the following does not work, even with the timeout -- proof explorer keeps the focus, not sure why
                     // setTimeout(() => {
                     //     this.xterm.focus(); // place focus on the terminal. this is done after a timeout to ensure proof-explorer does not steal the focus
                     // }, 500);

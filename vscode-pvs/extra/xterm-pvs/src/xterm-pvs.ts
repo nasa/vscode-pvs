@@ -1165,6 +1165,13 @@ export interface DidAutocompleteEvent extends AutocompleteData {
 }
 
 /**
+ * Utility function, returns a pointer to the cursor rendered in the terminal
+ */
+function getXtermCursor (): JQuery<HTMLElement> {
+    return $(".xterm-helper-textarea");
+}
+
+/**
  * Utility class for autocomplete
  */
 export class Autocomplete extends Backbone.Model {
@@ -1326,7 +1333,7 @@ export class Autocomplete extends Backbone.Model {
             const tooltip: string = Handlebars.compile(tooltipTemplate, { noEscape: true })({
                 hints
             });
-            const cursor: JQuery<HTMLElement> = $(".xterm-helper-textarea");
+            const cursor: JQuery<HTMLElement> = getXtermCursor();
             // append tooltip to cursor
             cursor.attr("data-toggle", "tooltip");
             // show tooltip
@@ -2563,7 +2570,7 @@ export class XTermPvs extends Backbone.Model {
         // content event handlers
         this.content.on(ContentEvent.rebase, (evt: RebaseEvent) => {
             this.onRebaseContent(evt);
-            this.focus();
+            // this.focus({ src: "rebase" });
         });
         this.content.on(ContentEvent.didAutocompleteContent, () => {
             this.refreshCommandLine();
@@ -2814,6 +2821,7 @@ export class XTermPvs extends Backbone.Model {
     focus (): void {
         // console.log("[xterm-pvs] focus");
         this.xterm.focus();
+        // getXtermCursor()[0]?.focus();
     }
 
     /**
@@ -2992,6 +3000,7 @@ export class XTermPvs extends Backbone.Model {
      * Shows a message in the integrated help panel
      */
     showHelpMessage (msg: string): void {
+        console.log("[xterm-pvs] showHelpMessage", { msg });
         if (msg) {
             this.autocomplete.showHelp(msg.trim().replace(/\n/g, "<br>"));
         }
@@ -3009,7 +3018,7 @@ export class XTermPvs extends Backbone.Model {
         this.content.rebase({ prompt: this.prompt });
         this.autocomplete.clearHelp();
         // console.log("[xterm-pvs] showPrompt", { prompt: this.prompt, cprompt, content: this.content, xtermPos: this.pos });
-        this.focus();
+        // this.focus({ src: "showPrompt" });
         this.showWelcomeMessage();
     }
 }

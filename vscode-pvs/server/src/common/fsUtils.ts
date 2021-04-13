@@ -518,7 +518,7 @@ export function decodeURIComponents (desc) {
 			return decodeURIComponent(desc);
 		}
 		// else
-		const keys: string[] = [ "fileName", "fileExtension", "contextFolder"];
+		const keys: string[] = [ "fileName", "fileExtension", "contextFolder", "origin"];
 		for (let i = 0; i < keys.length; i++) {
 			if (desc[keys[i]] && typeof desc[keys[i]] === "string") {
 				desc[keys[i]] = decodeURIComponent(desc[keys[i]]);
