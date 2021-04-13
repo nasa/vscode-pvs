@@ -23,19 +23,63 @@
 			"name": "constant.numeric"
 		},
 		{
-			"match": "\\bbool\\b|\\bboolean\\b|\\bnat\\b|\\bnatural\\b|\\bint\\b|\\binteger\\b|\\breal\\b|\\brational\\b|\\bnumber\\b|\\bstring\\b|\\bvoid\\b|\\bposreal\\b|\\bnonneg_real\\b|\\bnnreal\\b|\\bnzreal\\b|\\blist\\b|\\bset\\b|\\bnegreal\\b|\\bnonzero_real\\b|\\bnonpos_real\\b|\\bnonzero_integer\\b|\\bnonneg_rat\\b|\\bposnat\\b|\\bnzint\\b|\\brat\\b|\\bnpreal\\b|\\bnonpos_rat\\b|\\bposrat\\b|\\bnegrat\\b|\\bnzrat\\b|\\bnnrat\\b|\\bnprat\\b|\\beven_int\\b|\\bodd_int\\b|\\bnonneg_int\\b|\\bnonpos_int\\b|\\bposint\\b|\\bnegint\\b|\\bbit\\b|\\bnbit\\b",
-			"name": "support.type"
-		},
-		{
-			"match": "\\bAND\\b|\\bANDTHEN\\b|\\bARRAY\\b|\\bAS\\b|\\bASSUMING\\b|\\bASSUMPTION\\b|\\b(?!AUTO_REWRITE[\\+\\-])AUTO_REWRITE\\b|\\bAUTO_REWRITE[\\+\\-]|\\bAXIOM\\b|\\bBEGIN\\b|\\bBUT\\b|\\bBY\\b|\\bCASES\\b|\\bCHALLENGE\\b|\\bCLAIM\\b|\\bCLOSURE\\b|\\bCODATATYPE\\b|\\bCOINDUCTIVE\\b|\\bCOND\\b|\\bCONJECTURE\\b|\\bCONTAINING\\b|\\bCONVERSION[\\+\\-]?|\\bCOROLLARY\\b|\\bDATATYPE\\b|\\bELSE\\b|\\bELSIF\\b|\\bEND\\b|\\bENDASSUMING\\b|\\bENDCASES\\b|\\bENDCOND\\b|\\bENDIF\\b|\\bENDTABLE\\b|\\bEXISTS\\b|\\bEXPORTING\\b|\\bFACT\\b|\\bFORALL\\b|\\bFORMULA\\b|\\bFROM\\b|\\bFUNCTION\\b|\\bHAS_TYPE\\b|\\bIF\\b|\\bIFF\\b|\\bIMPLIES\\b|\\bIMPORTING\\b|\\bIN\\b|\\bINDUCTIVE\\b|\\bJUDGEMENT\\b|\\bLAMBDA\\b|\\bLAW\\b|\\bLEMMA\\b|\\bLET\\b|\\bLIBRARY\\b|\\bMACRO\\b|\\bMEASURE\\b|\\bNONEMPTY_TYPE\\b|\\bNOT\\b|\\bO\\b|\\bOBLIGATION\\b|\\bOF\\b|\\bOR\\b|\\bORELSE\\b|\\bPOSTULATE\\b|\\bPROPOSITION\\b|\\bRECURSIVE\\b|\\bSUBLEMMA\\b|\\bSUBTYPES\\b|\\bSUBTYPE_OF\\b|\\bTABLE\\b|\\bTHEN\\b|\\bTHEOREM\\b|\\bTHEORY\\b|\\b(?!TYPE\\+)TYPE\\b|\\TYPE\\+|\\bVAR\\b|\\bWHEN\\b|\\bWHERE\\b|\\bWITH\\b|\\bXOR\\b|\\(\\:|\\:\\)|\\(\\#|\\#\\)|\\[\\#|\\#\\]|\\:\\=|\\/\\=|\\<?\\=\\>",
+			"match": "\\b[Aa][Nn][Dd]\\b|\\b[Aa][Nn][Dd][Tt][Hh][Ee][Nn]\\b|\\b[Aa][Rr][Rr][Aa][Yy]\\b|\\b[Aa][Ss]\\b|\\b[Aa][Ss][Ss][Uu][Mm][Ii][Nn][Gg]\\b|\\b[Aa][Ss][Ss][Uu][Mm][Pp][Tt][Ii][Oo][Nn]\\b|\\b(?![Aa][Uu][Tt][Oo]_[Rr][Ee][Ww][Rr][Ii][Tt][Ee][\\+\\-])[Aa][Uu][Tt][Oo]_[Rr][Ee][Ww][Rr][Ii][Tt][Ee]\\b|\\b[Aa][Uu][Tt][Oo]_[Rr][Ee][Ww][Rr][Ii][Tt][Ee][\\+\\-]|\\b[Aa][Xx][Ii][Oo][Mm]\\b",
 			"name": "keyword"
 		},
 		{
-			"match": "\\btrue\\b|\\bfalse\\b|\\bTRUE\\b|\\bFALSE\\b",
+			"match": "\\b[Bb][Ee][Gg][Ii][Nn]\\b|\\b[Bb][Uu][Tt]\\b|\\b[Bb][Yy]\\b|\\b[Cc][Aa][Ss][Ee][Ss]\\b|\\b[Cc][Hh][Aa][Ll][Ll][Ee][Nn][Gg][Ee]\\b|\\b[Cc][Ll][Aa][Ii][Mm]\\b|\\b[Cc][Ll][Oo][Ss][Uu][Rr][Ee]\\b|\\b[Cc][Oo][Dd][Aa][Tt][Aa][Tt][Yy][Pp][Ee]\\b|\\b[Cc][Oo][Ii][Nn][Dd][Uu][Cc][Tt][Ii][Vv][Ee]\\b|\\b[Cc][Oo][Nn][Dd]\\b|\\b[Cc][Oo][Nn][Jj][Ee][Cc][Tt][Uu][Rr][Ee]\\b|\\b[Cc][Oo][Nn][Tt][Aa][Ii][Nn][Ii][Nn][Gg]\\b|\\b[Cc][Oo][Nn][Vv][Ee][Rr][Ss][Ii][Oo][Nn][\\+\\-]?|\\b[Cc][Oo][Rr][Oo][Ll][Ll][Aa][Rr][Yy]\\b",
+			"name": "keyword"
+		},
+		{
+			"match": "\\b[Dd][Aa][Tt][Aa][Tt][Yy][Pp][Ee]\\b|\\b[Ee][Ll][Ss][Ee]\\b|\\b[Ee][Ll][Ss][Ii][Ff]\\b|\\b[Ee][Nn][Dd]\\b|\\b[Ee][Nn][Dd][Aa][Ss][Ss][Uu][Mm][Ii][Nn][Gg]\\b|\\b[Ee][Nn][Dd][Cc][Aa][Ss][Ee][Ss]\\b|\\b[Ee][Nn][Dd][Cc][Oo][Nn][Dd]\\b|\\b[Ee][Nn][Dd][Ii][Ff]\\b|\\b[Ee][Nn][Dd][Tt][Aa][Bb][Ll][Ee]\\b|\\b[Ee][Xx][Ii][Ss][Tt][Ss]\\b|\\b[Ee][Xx][Pp][Oo][Rr][Tt][Ii][Nn][Gg]\\b",
+			"name": "keyword"
+		},
+		{
+			"match": "\\b[Ff][Aa][Cc][Tt]\\b|\\b[Ff][Oo][Rr][Aa][Ll][Ll]\\b|\\b[Ff][Oo][Rr][Mm][Uu][Ll][Aa]\\b|\\b[Ff][Rr][Oo][Mm]\\b|\\b[Ff][Uu][Nn][Cc][Tt][Ii][Oo][Nn]\\b|\\b[Hh][Aa][Ss]_[Tt][Yy][Pp][Ee]\\b",
+			"name": "keyword"
+		},
+		{
+			"match": "\\b[Ii][Ff]\\b|\\b[Ii][Ff][Ff]\\b|\\b[Ii][Mm][Pp][Ll][Ii][Ee][Ss]\\b|\\b[Ii][Mm][Pp][Oo][Rr][Tt][Ii][Nn][Gg]\\b|\\b[Ii][Nn]\\b|\\b[Ii][Nn][Dd][Uu][Cc][Tt][Ii][Vv][Ee]\\b|\\b[Jj][Uu][Dd][Gg][Ee][Mm][Ee][Nn][Tt]\\b|\\b[Ll][Aa][Mm][Bb][Dd][Aa]\\b|\\b[Ll][Aa][Ww]\\b|\\b[Ll][Ee][Mm][Mm][Aa]\\b|\\b[Ll][Ee][Tt]\\b|\\b[Ll][Ii][Bb][Rr][Aa][Rr][Yy]\\b",
+			"name": "keyword"
+		},
+		{
+			"match": "\\b[Mm][Aa][Cc][Rr][Oo]\\b|\\b[Mm][Ee][Aa][Ss][Uu][Rr][Ee]\\b|\\b[Nn][Oo][Nn][Ee][Mm][Pp][Tt][Yy]_[Tt][Yy][Pp][Ee]\\b|\\b[Nn][Oo][Tt]\\b|\\b[Oo][Bb][Ll][Ii][Gg][Aa][Tt][Ii][Oo][Nn]\\b|\\b[Oo][Ff]\\b|\\b[Oo][Rr]\\b|\\b[Oo][Rr][Ee][Ll][Ss][Ee]\\b",
+			"name": "keyword"
+		},
+		{
+			"match": "\\b[Pp][Oo][Ss][Tt][Uu][Ll][Aa][Tt][Ee]\\b|\\b[Pp][Rr][Oo][Pp][Oo][Ss][Ii][Tt][Ii][Oo][Nn]\\b|\\b[Rr][Ee][Cc][Uu][Rr][Ss][Ii][Vv][Ee]\\b|\\b[Ss][Uu][Bb][Ll][Ee][Mm][Mm][Aa]\\b|\\b[Ss][Uu][Bb][Tt][Yy][Pp][Ee][Ss]\\b|\\b[Ss][Uu][Bb][Tt][Yy][Pp][Ee]_[Oo][Ff]\\b",
+			"name": "keyword"
+		},
+		{
+			"match": "\\b[Tt][Aa][Bb][Ll][Ee]\\b|\\b[Tt][Hh][Ee][Nn]\\b|\\b[Tt][Hh][Ee][Oo][Rr][Ee][Mm]\\b|\\b[Tt][Hh][Ee][Oo][Rr][Yy]\\b|\\b(?![Tt][Yy][Pp][Ee]\\+)[Tt][Yy][Pp][Ee]\\b|\\[Tt][Yy][Pp][Ee]\\+|\\b[Vv][Aa][Rr]\\b|\\b[Ww][Hh][Ee][Nn]\\b|\\b[Ww][Hh][Ee][Rr][Ee]\\b|\\b[Ww][Ii][Tt][Hh]\\b|\\b[Xx][Oo][Rr]\\b",
+			"name": "keyword"
+		},
+		{
+			"match": "\\bo\\b|\\(\\:|\\:\\)|\\(\\#|\\#\\)|\\[\\#|\\#\\]|\\:\\=|\\/\\=|\\<?\\=\\>",
+			"name": "keyword"
+		},
+		{
+			"match": "\\b[Tt][Rr][Uu][Ee]\\b|\\b[Ff][Aa][Ll][Ss][Ee]\\b",
 			"name": "constant.language"
 		},
 		{
-			"match": "\\bcons\\b|\\bcar\\b|\\bcdr\\b|\\bstr2pvs\\b|\\bpvs2str\\b|\\babs\\b|\\bnth\\b|\\blength\\b|\\breverse\\b|\\bceiling\\b|\\bfloor\\b|\\bfractional\\b|\\bexpt\\b|\\bpred\\b|\\bPRED\\b|\\bpredicate\\b|\\bPREDICATE\\b|\\bsetof\\b|\\bSETOF\\b|\\bunique\\?$|\\binjective\\?$|\\bsurjective\\?$|\\binverse\\?$|\\bbijective\\?$|\\bupto\\b|\\bbelow\\b|\\bupfrom\\b|\\babove\\b|\\bsubrange\\b|\\bmember\\b|\\bempty\\?$|\\bemptyset\\b|\\bnonempty\\?$|\\bfull\\?$|\\bfullset\\b|\\bnontrivial\\?$|\\bsubset\\?$|\\bstrict_subset\\?$|\\bunion\\b|\\bintersection\\b|\\bdisjoint\\?$|\\bcomplement\\b|\\bdifference\\b|\\bsymmetric_difference\\b|\\bevery\\b|\\bsome\\b|\\bsingleton\\?$|\\bsingleton\\b|\\badd\\b|\\bremove\\b|\\bchoose\\b|\\bthe\\b|\\brest\\b|\\bpowerset\\b|\\bUnion\\b|\\bIntersection\\b|\\beven\\?$|\\bodd\\?$",
+			"match": "\\bbool\\b|\\bboolean\\b|\\bnat\\b|\\bnatural\\b|\\bnaturalnumber\\b|\\bint\\b|\\binteger\\b|\\breal\\b|\\brational\\b|\\bnumber\\b|\\bstring\\b|\\bchar\\b|\\bvoid\\b|\\bposreal\\b|\\bnonneg_real\\b|\\bnnreal\\b|\\bnzreal\\b|\\blist\\b|\\bset\\b|\\bnegreal\\b|\\bnonzero_real\\b|\\bnonpos_real\\b|\\bnonzero_integer\\b|\\bnonneg_rat\\b|\\bposnat\\b|\\bnzint\\b|\\brat\\b|\\bnpreal\\b|\\bnonpos_rat\\b|\\bposrat\\b|\\bnegrat\\b|\\bnzrat\\b|\\bnnrat\\b|\\bnprat\\b|\\beven_int\\b|\\bodd_int\\b|\\bnonneg_int\\b|\\bnonpos_int\\b|\\bposint\\b|\\bnegint\\b|\\bbit\\b|\\bnbit\\b",
+			"name": "support.type"
+		},
+		{
+			"match": "\\bfinite_sequence\\b|\\bfinseq\\b",
+			"name": "support.type"
+		},
+		{
+			"match": "\\bpred(?!\\()\\b|\\bPRED(?!\\()\\b|\\bpredicate\\b|\\bPREDICATE\\b|\\bsetof\\b|\\bSETOF\\b|\\bupto\\b|\\bbelow\\b|\\bupfrom\\b|\\babove\\b",
+			"name": "support.type"
+		},
+		{
+			"match": "\\bcons\\?|\\bcons\\b|\\bnull\\?|\\bnull\\b|\\bcar\\b|\\bcdr\\b|\\bstr2pvs\\b|\\bpvs2str\\b|\\babs\\b|\\bnth\\b|\\blength\\b|\\breverse\\b|\\bceiling\\b|\\bfloor\\b|\\bfractional\\b|\\bexpt\\b|\\bunique\\?|\\bexists1\\b|\\binjective\\?|\\bsurjective\\?|\\binverse\\?|\\bbijective\\?|\\bsubrange\\b|\\bmember\\b|\\bempty\\?|\\bemptyset\\b|\\bnonempty\\?|\\bfull\\?|\\bfullset\\b|\\bnontrivial\\?|\\bsubset\\?|\\bstrict_subset\\?|\\bunion\\b|\\bintersection\\b|\\bdisjoint\\?|\\bcomplement\\b|\\bdifference\\b|\\bsymmetric_difference\\b|\\bevery\\b|\\bsome\\b|\\bsingleton\\?|\\bsingleton\\b|\\badd\\b|\\bremove\\b|\\bchoose\\b|\\bthe\\b|\\brest\\b|\\bpowerset\\b|\\bUnion\\b|\\bIntersection\\b|\\beven\\?|\\bodd\\?",
+			"name": "support.function"
+		},
+		{
+			"match": "\\bempty_seq\\b|\\^\\^?|\\bmap\\b|\\bappend\\b|\\bfilter\\b",
 			"name": "support.function"
 		}
 	],
