@@ -235,7 +235,7 @@
 			{
 				"command": "vscode-pvs.x-show-proof",
 				"title": "Show Proof Tree",
-				"enablement": "pvs-server-active == true && in-checker && !autorun",
+				"enablement": "pvs-server-active == true && proof-explorer.visible",
 				"category": "pvs",
 				"icon": {
 					"light": "icons/tree-black-icon.png",
