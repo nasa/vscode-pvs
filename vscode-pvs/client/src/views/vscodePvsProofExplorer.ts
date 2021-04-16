@@ -55,7 +55,7 @@ import {
 	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, SequentDescriptor 
 } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
-import { TreeStructure, NodeType, isGlassboxTactic, isPostponeCommand, isUndoCommand } from '../common/languageUtils';
+import { TreeStructure, NodeType, isGlassboxTactic, isPostponeCommand, isUndoCommand, formatSequent } from '../common/languageUtils';
 import { findTheoryName, findFormulaName } from '../common/fsUtils';
 import * as vscode from 'vscode';
 import * as vscodeUtils from '../utils/vscode-utils';
@@ -160,7 +160,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	/**
 	 * Current proof state
 	 */
-	protected proofState: SequentDescriptor;
+	// protected proofState: SequentDescriptor;
 
 	
 	/**
@@ -605,9 +605,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 * @param sequent 
 	 */
 	didLoadSequent (sequent: SequentDescriptor): void {
-		this.proofState = sequent;
+		// this.proofState = sequent;
 		if (this.activeNode) {
-			this.activeNode.updateTooltip(sequent);
+			this.activeNode.updateSequent(sequent);
 		} else {
 			// this.root.tooltip = formatSequent(sequent, { formulasOnly: true });
 		}
@@ -617,7 +617,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
-				selected.updateTooltip(desc.sequent);
+				selected.updateSequent(desc.sequent);
 				this.refreshView({ source: "did-update-tooltip" });
 			}
 		}
@@ -1252,17 +1252,21 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.show-sequent", (resource?: ProofItem) => {
-			if (resource?.tooltip && this.formula?.contextFolder) {
+			if (this.formula?.contextFolder && resource?.getSequent()) {
 				const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
-				const info: string = typeof resource.tooltip === "string" ? resource.tooltip : resource.tooltip.value;
+				const info: string = formatSequent(resource.getSequent(), { formulasOnly: true }).trim();
 				vscodeUtils.previewTextDocument(name, info, { contextFolder: path.join(this.formula.contextFolder, "pvsbin")});
+			} else {
+				vscodeUtils.showInformationMessage(`Sequent information not yet available for this proof node`);
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.show-active-sequent", (resource?: ProofItem) => {
-			if (resource?.tooltip && this.formula?.contextFolder) {
+			if (this.formula?.contextFolder && resource?.getSequent()) {
 				const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
-				const info: string = typeof resource.tooltip === "string" ? resource.tooltip : resource.tooltip.value;
+				const info: string = formatSequent(resource.getSequent(), { formulasOnly: true }).trim();
 				vscodeUtils.previewTextDocument(name, info, { contextFolder: path.join(this.formula.contextFolder, "pvsbin")});
+			} else {
+				vscodeUtils.showInformationMessage(`Sequent information not yet available for this proof node`);
 			}
 		}));
 
@@ -1385,9 +1389,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 export const QED: ProofStatus = "proved";
 
 /**
- * Definition of tree items
+ * Base class for proof tree items
  */
-export class ProofItem extends TreeItem {
+export abstract class ProofItem extends TreeItem {
 	contextValue: string = "proofItem";
 	name: string; // prover command or branch id
 	branchId: string = ""; // branch in the proof tree where this command is located (branchId for root is "").
@@ -1400,7 +1404,26 @@ export class ProofItem extends TreeItem {
 	protected pendingFlag: boolean = false;
 	protected completeFlag: boolean = false;
 
-	getType(): NodeType {
+	// sequent *before* the execution of the node
+	protected sequent: SequentDescriptor = null;
+
+	/**
+	 * Constructor
+	 */
+	constructor (desc: { id?: string, type: string, name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
+		super(desc.type, (desc.collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : desc.collapsibleState);
+		this.contextValue = desc.type;
+		this.id = (desc.id) ? desc.id : fsUtils.get_fresh_id();
+		this.name = desc.name;
+		this.branchId = desc.branchId;
+		this.parent = desc.parent;
+		this.tooltip = "Double click copies the command to the prover prompt";
+		this.notVisited();
+	}
+	/**
+	 * Utility function, returns the node type, one of: root, proof-branch, proof-node, ghost
+	 */
+	 getType(): NodeType {
 		switch (this.contextValue) {
 			case "root": { return "root"; }
 			case "proof-branch": { return "proof-branch"; }
@@ -1411,23 +1434,21 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
-
-	proofState: SequentDescriptor = null; // sequents *before* the execution of the node
-	constructor (desc: { id?: string, type: string, name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
-		super(desc.type, (desc.collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : desc.collapsibleState);
-		this.contextValue = desc.type;
-		this.id = (desc.id) ? desc.id : fsUtils.get_fresh_id();
-		this.name = desc.name;
-		this.branchId = desc.branchId;
-		this.parent = desc.parent;
-		this.tooltip = "Double click copies the command to the prover prompt"; // the tooltip will shows the sequent before the execution of the proof command, as soon as the node becomes active
-		this.notVisited();
+	/**
+	 * Utility function, updates sequent information for the tree item
+	 */
+	updateSequent (sequent?: SequentDescriptor): void {
+		this.sequent = sequent;
 	}
-	updateTooltip (sequent?: SequentDescriptor): void {
-		// this.tooltip = (sequent) ? formatSequent(sequent, { formulasOnly: true }).trim()
-		// 	: (this.proofState) ? formatSequent(this.proofState, { formulasOnly: true })?.trim()
-		// 		: " ";
+	/**
+	 * Utility function, returns the sequent associated to this tree item
+	 */
+	getSequent (): SequentDescriptor {
+		return this.sequent;
 	}
+	/**
+	 * Utility function, updates the status of the tree item
+	 */
 	updateStatus (status: ProofNodeStatus): void {
 		switch (status) {
 			case "active": { this.active(); break; }
@@ -1441,10 +1462,16 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
+	/**
+	 * Utility function, renames the tree item
+	 */
 	rename (name: string): void {
 		this.name = name;
 		this.label = this.name;
 	}
+	/**
+	 * Utility function, updates the icon of the tree item based on the value of the status flags of the item
+	 */
 	protected updateIcon (): void {
 		if (this.completeFlag) {
 			if (this.contextValue === "root") {
@@ -1480,15 +1507,23 @@ export class ProofItem extends TreeItem {
 			};	
 		}
 	}
-	isComplete(): boolean { return this.completeFlag; }
+	/**
+	 * Flags the tree item as complete
+	 */
 	complete (): void {
 		this.completeFlag = true;
 		this.updateIcon();
 	}
+	/**
+	 * Flags the tree item as not complete
+	 */
 	notComplete (): void {
 		this.completeFlag = false;
 		this.updateIcon();
 	}
+	/**
+	 * Flags the tree item as pending
+	 */
 	pending (): void {
 		this.label = this.name;
 		this.activeFlag = false;
@@ -1502,6 +1537,9 @@ export class ProofItem extends TreeItem {
         //     dark: path.join(__dirname, "..", "..", "..", "icons", "svg-star.svg")
         // };
 	}
+	/**
+	 * Flags the tree item as visited
+	 */
 	visited (): void {
 		this.label = this.name;
 		this.activeFlag = false;
@@ -1514,6 +1552,9 @@ export class ProofItem extends TreeItem {
         //     dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
         // };
 	}
+	/**
+	 * Flags the tree item as not visited
+	 */
 	notVisited (): void {
 		this.label = this.name;
 		this.activeFlag = false;
@@ -1527,6 +1568,9 @@ export class ProofItem extends TreeItem {
         //     dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")
         // };
 	}
+	/**
+	 * Flags the tree item as active
+	 */
 	active (): void {
 		this.label = this.name;
 		this.activeFlag = true;
@@ -1540,21 +1584,35 @@ export class ProofItem extends TreeItem {
         //     dark: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg")
         // };
 	}
-	isActive (): boolean {
-		return this.activeFlag;
-	}
-	isVisitedOrPending (): boolean {
-		return this.visitedFlag || this.pendingFlag;
-	}
-	isPending (): boolean {
-		return this.pendingFlag;
-	}
-	isVisited (): boolean {
-		return this.visitedFlag;
-	}
+	/**
+	 * Returns true if a tree item is complete
+	 */
+	isComplete(): boolean { return this.completeFlag; }
+	/**
+	 * Returns true if a tree item is active
+	 */
+	isActive (): boolean { return this.activeFlag; }
+	/**
+	 * Returns true if a tree item is visited or pending
+	 */
+	isVisitedOrPending (): boolean { return this.visitedFlag || this.pendingFlag; }
+	/**
+	 * Returns true if a tree item is pending
+	 */
+	isPending (): boolean { return this.pendingFlag; }
+	/**
+	 * Returns true if a tree item is visited
+	 */
+	isVisited (): boolean { return this.visitedFlag; }
+	/**
+	 * Utility function, replaces the children of the tree item with the provided array of children
+	 */
 	setChildren (children: ProofItem[]): void {
 		this.children = children;
 	}
+	/**
+	 * Utility function, deletes the given child from the tree item
+	 */
 	deleteChild (child: ProofItem): void {
 		this.children = this.children.filter((ch: ProofItem) => {
 			return ch.id !== child.id;
@@ -1563,6 +1621,10 @@ export class ProofItem extends TreeItem {
 			this.collapsibleState = TreeItemCollapsibleState.None;
 		}
 	}
+	/**
+	 * Utility function, returns the list of proof commands 
+	 * for this tree item and all the tree items included in the subtree rooted this tree item
+	 */
 	getProofCommands (): ProofItem[] {
 		let ans: ProofItem[] = [ this ];
 		if (this.children) {
@@ -1572,6 +1634,29 @@ export class ProofItem extends TreeItem {
 		}
 		return ans;
 	}
+	/**
+	 * Utility function, returns a string containing the proof commands 
+	 * for this tree item and all the tree items included in the subtree rooted this tree item
+	 */
+	 printProofCommands (opt?: { markExecuted?: boolean }): string | null {
+		opt = opt || {};
+		if (opt.markExecuted) {
+			this.iconPath = {
+				light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
+				dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
+			};
+		}
+		let ans: string = (this.contextValue === "proof-command") ? this.name : "";
+		if (this.children && this.children.length) {
+			for (let i = 0; i < this.children.length; i++) {
+				ans += this.children[i].printProofCommands(opt);
+			}
+		}
+		return ans;
+	}
+	/**
+	 * Utility function, appends a child to the tree item
+	 */
 	appendChild (child: ProofItem): void {
 		this.children = this.children || [];
 		child.parent = this;
@@ -1589,25 +1674,15 @@ export class ProofItem extends TreeItem {
 		});
 		this.collapsibleState = TreeItemCollapsibleState.Expanded;
 	}
+	/**
+	 * Utility function, returns the children of the tree item
+	 */
 	getChildren (): ProofItem[] {
 		return this.children;
 	}
-	printProofCommands (opt?: { markExecuted?: boolean }): string | null {
-		opt = opt || {};
-		if (opt.markExecuted) {
-			this.iconPath = {
-				light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
-				dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
-			};
-		}
-		let ans: string = (this.contextValue === "proof-command") ? this.name : "";
-		if (this.children && this.children.length) {
-			for (let i = 0; i < this.children.length; i++) {
-				ans += this.children[i].printProofCommands(opt);
-			}
-		}
-		return ans;
-	}
+	/**
+	 * Utility function, serializes the tree item into an extended node structure (ProofNodeX)
+	 */
 	getNodeXStructure (): ProofNodeX {
 		const res: ProofNodeX = {
 			id: this.id,
@@ -1632,6 +1707,9 @@ export class ProofItem extends TreeItem {
 		}
 		return res;
 	}
+	/**
+	 * Utility function, returns the structur of this tree item and all the children included in the subtree rooted at this tree item
+	 */
 	getNodeStructure (): ProofNode {
 		const res: ProofNode = {
 			branch: this.branchId,
