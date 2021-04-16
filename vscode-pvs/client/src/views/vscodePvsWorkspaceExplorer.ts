@@ -741,7 +741,6 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 				const fileAlreadyOpen: boolean = (editors && editors.length > 0);
 				const viewColumn: number = fileAlreadyOpen ? editors[0].viewColumn : ViewColumn.One;
 				await window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
-
 			}
 			// const theoryName = fsUtils.getFileName(fileName); // this will remove the extension
 			// const contextFolder: string = this.getCurrentWorkspace() || vscodeUtils.getRootPath();

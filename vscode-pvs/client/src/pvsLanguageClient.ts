@@ -47,7 +47,7 @@ import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsStatusBar } from './views/vscodePvsStatusBar';
 import { EventsDispatcher } from './eventsDispatcher';
-import { serverEvent } from "./common/serverInterface";
+import { serverEvent, serverRequest } from "./common/serverInterface";
 import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsPackageManager } from './providers/vscodePvsPackageManager';
 import { VSCodePvsProofMate } from './views/vscodePvsProofMate';
@@ -149,11 +149,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	 * Internal function, defines handlers for document events
 	 */
 	protected registerTextEditorHandlers () {
-		/**
-		 * onDidOpenTextDocument is emitted when a [text document](#TextDocument) is opened or when the language id
-		 * of a text document [has been changed](#languages.setTextDocumentLanguage).
-		*/
-		workspace.onDidOpenTextDocument((event: TextDocument) => {
+		
+		// onDidOpenTextDocument is emitted when a text file is opened in the editor or when the language id of a text document has changed.
+		workspace.onDidOpenTextDocument(async (event: TextDocument) => {
 			if ((event && event.languageId === "pvs") 
 				|| (window.activeTextEditor && 
 						(fsUtils.isPvsFile(window.activeTextEditor.document?.fileName)
@@ -161,42 +159,62 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
-			}
-		});
-
-		workspace.onDidRenameFiles(async (event: FileRenameEvent) => {
-			const pvsFiles: { oldUri: Uri, newUri: Uri }[] = event?.files?.filter((value: { oldUri: Uri, newUri: Uri }) => {
-				return value?.oldUri?.path?.endsWith(".pvs");
-			}) || [];
-			if (pvsFiles.length > 0
-				|| (window.activeTextEditor && 
-						(fsUtils.isPvsFile(window.activeTextEditor.document?.fileName)
-							|| window.activeTextEditor.document?.languageId === "Log"))) {
-				// send clear theory command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
-				this.client.sendRequest(comm.serverRequest.clearTheories);
-				// remove tccs file for the renamed file, if the file exists
-                if (workspace?.workspaceFolders?.length) {
-					for (let i in pvsFiles) {
-						const tccFile: Uri = Uri.file(pvsFiles[i].oldUri.path.replace(".pvs", ".tccs"));
-						console.log(`[pvs-client] Removing file ${tccFile}`);
-						workspace.fs.delete(tccFile);
+				// check if this is a session start and there's a file that needs to be opened
+				const fname: string = event?.fileName;
+				if (fsUtils.isPvsFile(fname)) {
+					vscodeUtils.loadPvsFileIcons();
+					const contextFolder: string = fsUtils.getContextFolder(fname);
+					const explorerWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
+					if (contextFolder !== explorerWorkspace) {
+						this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder });
+						// don't update file explorer, as any modification will create an Untitled workspace, which might be problematic for vscode-pvs users
+						// because users will be asked to save the workspace on exit, and if they choose to save the workspace, 
+						// they will also be asked whether they want to open the workspace configuration next time they will work on that folder
+						// const contextFolderUri: Uri = Uri.file(contextFolder);
+						// if (!workspace.getWorkspaceFolder(contextFolderUri)) {
+						// 	// add the folder to file explorer
+						// 	// commands.executeCommand('vscode.openFolder', Uri.file(contextFolder), { forceReuseWindow: true });
+						// 	// const nOpenFolders: number = workspace?.workspaceFolders?.length || 0;
+						// 	await vscodeUtils.updateWorkspaceFolders(0, 0, { uri: Uri.file(contextFolder) });
+						// }
 					}
+				}
+				// don't highlight the active file in the explorer -- doing so will put the focus on the file explorer
+				// and the user might be looking at the pvs workspace explorer instead, which would become hidden
+				// commands.executeCommand("workbench.files.action.showActiveFileInExplorer");
+			} else {
+				const pvsFiles: Uri[] = await workspace.findFiles("**/*.pvs", null, 1);
+				if (!pvsFiles.length) {
+					vscodeUtils.unloadPvsFileIcons();
 				}
 			}
 		});
 
 		// onDidChangeActiveTextEditor is emitted when the active editor focuses on a new document
-		window.onDidChangeActiveTextEditor((event: TextEditor) => {
+		window.onDidChangeActiveTextEditor(async (event: TextEditor) => {
 			const editor: TextEditor = window.activeTextEditor; //event || window.activeTextEditor;
-			if (editor && editor.document && (fsUtils.isPvsFile(editor.document.fileName) || editor.document.languageId === "Log")) {
+			const fname: string =  editor?.document?.fileName;
+			if (editor?.document && (fsUtils.isPvsFile(editor.document.fileName) || editor.document.languageId === "Log")) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
 				// update decorations
 				this.decorationProvider.updateDecorations(editor);
 				// trigger file parsing to get syntax diagnostics
-				const desc: comm.PvsFile = fsUtils.fname2desc(editor.document.fileName);
-				this.client.sendRequest(comm.serverRequest.parseFile, desc);
+				const contextFolder: string = fsUtils.getContextFolder(fname);
+				// update workspace-explorer if needed
+				const explorerWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
+				if (contextFolder !== explorerWorkspace) {
+					this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder });
+					// don't update file explorer, see comments in onDidOpenTextDocument
+					// const contextFolderUri: Uri = Uri.file(contextFolder);
+					// if (!workspace.getWorkspaceFolder(contextFolderUri)) {
+					// 	// add the folder to file explorer
+					// 	// commands.executeCommand('vscode.openFolder', Uri.file(contextFolder), { forceReuseWindow: true });
+					// 	// const nOpenFolders: number = workspace?.workspaceFolders?.length || 0;
+					// 	await vscodeUtils.updateWorkspaceFolders(0, 0, { uri: Uri.file(contextFolder) });
+					// }
+				}
 			} else {
 				// hide status bar
 				this.statusBar.hide();
@@ -235,6 +253,28 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				}
 			}
 		}, null, this.context.subscriptions);
+
+		// onDidRenameFiles is emitted when a file is renamed
+		workspace.onDidRenameFiles(async (event: FileRenameEvent) => {
+			const pvsFiles: { oldUri: Uri, newUri: Uri }[] = event?.files?.filter((value: { oldUri: Uri, newUri: Uri }) => {
+				return value?.oldUri?.path?.endsWith(".pvs");
+			}) || [];
+			if (pvsFiles.length > 0
+				|| (window.activeTextEditor && 
+						(fsUtils.isPvsFile(window.activeTextEditor.document?.fileName)
+							|| window.activeTextEditor.document?.languageId === "Log"))) {
+				// send clear theory command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
+				this.client.sendRequest(comm.serverRequest.clearTheories);
+				// remove tccs file for the renamed file, if the file exists
+                if (workspace?.workspaceFolders?.length) {
+					for (let i in pvsFiles) {
+						const tccFile: Uri = Uri.file(pvsFiles[i].oldUri.path.replace(".pvs", ".tccs"));
+						console.log(`[pvs-client] Removing file ${tccFile}`);
+						workspace.fs.delete(tccFile);
+					}
+				}
+			}
+		});
 	}
 
 	// event (eventName: string): void {

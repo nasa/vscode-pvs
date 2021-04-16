@@ -1252,17 +1252,17 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.show-sequent", (resource?: ProofItem) => {
-			if (resource?.tooltip) {
+			if (resource?.tooltip && this.formula?.contextFolder) {
 				const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
 				const info: string = typeof resource.tooltip === "string" ? resource.tooltip : resource.tooltip.value;
-				vscodeUtils.previewTextDocument(name, info, { contextFolder: path.join(vscodeUtils.getRootPath(), "pvsbin")});
+				vscodeUtils.previewTextDocument(name, info, { contextFolder: path.join(this.formula.contextFolder, "pvsbin")});
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.show-active-sequent", (resource?: ProofItem) => {
-			if (resource?.tooltip) {
+			if (resource?.tooltip && this.formula?.contextFolder) {
 				const name: string = `${this.formula.theoryName}${fsUtils.logFileExtension}`;
 				const info: string = typeof resource.tooltip === "string" ? resource.tooltip : resource.tooltip.value;
-				vscodeUtils.previewTextDocument(name, info, { contextFolder: path.join(vscodeUtils.getRootPath(), "pvsbin")});
+				vscodeUtils.previewTextDocument(name, info, { contextFolder: path.join(this.formula.contextFolder, "pvsbin")});
 			}
 		}));
 

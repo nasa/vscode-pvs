@@ -50,7 +50,7 @@ import {
     PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
     ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile
 } from "./common/serverInterface";
-import { window, commands, ExtensionContext, ProgressLocation, Selection } from "vscode";
+import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
 import { PvsResponse } from "./common/pvs-gui";
 import * as fsUtils from './common/fsUtils';
@@ -64,6 +64,7 @@ import { VSCodePvsSearch } from "./views/vscodePvsSearch";
 import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
 import { VSCodePvsXTerm } from "./views/vscodePvsXTerm";
 import { colorText, PvsColor } from "./common/colorUtils";
+import path = require("path");
 
 // FIXME: use Backbone.Model
 export class EventsDispatcher {
@@ -136,30 +137,55 @@ export class EventsDispatcher {
         }) => {
             // do nothing -- this is just a placeholder, the actual handler is in vscoePvsioWeb.ts
         });
-		this.client.onRequest(serverEvent.pvsVersionInfo, (version: PvsVersionDescriptor) => {
+		this.client.onRequest(serverEvent.pvsVersionInfo, async (version: PvsVersionDescriptor) => {
 			if (version) {
                 this.statusBar.pvsReady(version);
                 vscode.commands.executeCommand('setContext', 'nasalib-present', !!version["nasalib-version"]);
                 this.statusBar.showDownloadNasalibButton(!version["nasalib-version"]);
-                // this.proofExplorer.pvsReady(version);
-                // make sure a valid workspace is open in vscode
-                if (!vscode.workspace.name) {
-                    const fname: string = (vscode.window && vscode.window.activeTextEditor 
-                        && vscode.window.activeTextEditor.document
-                        && vscode.window.activeTextEditor.document.fileName) ? 
-                            vscode.window.activeTextEditor.document.fileName 
-                            : null;
-                    if (fname) {
-                        const cc: string = fsUtils.getContextFolder(fname);
-                        if (cc) {
-                            const uri: vscode.Uri = vscode.Uri.file(cc);
-                            commands.executeCommand('vscode.openFolder', uri).then(async () => {
-                                await window.showTextDocument(uri, { preserveFocus: true, preview: true });
-                                this.statusBar.showVersionDialog({ trailingNote: " :: Ready! ::"});
-                            });
+                try {
+                    // check if this is a session start and there's a file that needs to be opened
+                    const currentWorkspace: string = vscodeUtils.getRootFolder();
+                    const toBeOpened: string = await vscodeUtils.getFileToBeOpened(currentWorkspace);
+                    const fname: string = toBeOpened || vscode?.window?.activeTextEditor?.document?.fileName;
+                    // if this workspace is untitled, open a folder
+                    if (!vscode.workspace.name && fname) {
+                        if (!vscode.workspace.name) {
+                            // 'vscode.openFolder' will cause a restart of the vscode-pvs extension
+                            // any instruction after this command won't have any effect
+                            // we need to write a configuration file .vscode/file.json to instruct
+                            // the new vscode-pvs session to opened the file in the editor
+                            const contextFolder: string = fsUtils.getContextFolder(fname);
+                            if (contextFolder) {
+                                await vscodeUtils.saveFileToBeOpened(contextFolder, fname);
+                                await commands.executeCommand('vscode.openFolder', Uri.file(contextFolder), {
+                                    // forceNewWindow: true,
+                                    forceReuseWindow: true
+                                });
+                                return;
+                            }
+                            // don't update file-explorer --- any modification will create an Untitled workspace, which might be problematic for vscode-pvs users
+                            // const contextFolderUri: Uri = Uri.file(contextFolder);
+                            // if (!workspace.getWorkspaceFolder(contextFolderUri)) {
+                            //     await vscode.commands.executeCommand("workbench.action.closeAllGroups");
+                            // 	// new workspace folder: set a new root of the current workspace
+                            // 	// commands.executeCommand('vscode.openFolder', Uri.file(contextFolder), { forceReuseWindow: true });
+                            // 	const nOpenFolders: number = workspace?.workspaceFolders?.length || 0;
+                            // 	await vscodeUtils.updateWorkspaceFolders(0, nOpenFolders, { uri: Uri.file(contextFolder) });
+                            // }
                         }
                     }
-                } else {
+                    // if the configuration file indicated there's a file to be opened, then open that file in the editor
+                    if (toBeOpened) {
+                        // close all open files -- these are left-overs from a previous session
+                        await vscodeUtils.closeOpenEditors();
+                        // open file in the editor
+                        await vscodeUtils.openPvsFile(toBeOpened);
+                        // highlight file in file-explorer
+                        vscodeUtils.showActiveFileInExplorer();
+                    }
+                } catch (err) {
+                    console.error(`[event-dispatcher] Error while trying to open new workspace`, err);
+                } finally {
                     this.statusBar.showVersionDialog({ trailingNote: " :: Ready! ::"});
                 }
 			}
@@ -475,7 +501,7 @@ export class EventsDispatcher {
 
 
         this.client.onRequest(serverEvent.proveFormulaResponse, (desc: ProveFormulaResponse) => {
-            console.log(desc);
+            // console.log(desc);
             // if (desc) {
             //     // initialise proof explorer
             //     // this.proofExplorer.setLogFileName(desc);

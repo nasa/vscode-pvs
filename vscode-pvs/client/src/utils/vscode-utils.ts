@@ -161,14 +161,11 @@ export async function createTextDocument (desc: FileDescriptor): Promise<vscode.
     return preview;
 }
 
+/**
+ * Utility function, returns a folder to be used for saving temporary files
+ */
 export function getPreviewFolder (): string {
     return getRootPath() || os.homedir() || os.tmpdir();
-}
-
-export function showMarkdownFile (uri: vscode.Uri): void {
-    if (uri) {
-        vscode.commands.executeCommand('markdown.showPreview', uri);
-    }
 }
 
 /**
@@ -181,6 +178,21 @@ export function getRootPath (): string {
     return (workspaceFolder) ? workspaceFolder.path : null;
 }
 
+/**
+ * Utility function, renders a markdown file in vscode
+ */
+export async function showMarkdownPreview (desc: FileDescriptor): Promise<void> {
+    if (desc && desc.fileName && desc.fileContent) {
+        const fileUri: vscode.Uri = await createTextDocument(desc);
+        if (fileUri) {
+            vscode.commands.executeCommand('markdown.showPreview', fileUri);
+        }
+    }
+}
+
+/**
+ * Utility function, renders markdown content in vscode
+ */
 export async function showMarkdownContent (msg: string, contextFolder?: string): Promise<void> {
     if (msg) {
         contextFolder = os.tmpdir();
@@ -213,6 +225,9 @@ export function showFailure (msg: string, src?: string): void {
     showMarkdownContent(fileContent);
 }
 
+/**
+ * Shows an error messsage indicating a dependency error
+ */
 export function showDependencyError (msg: string): void {
     const fileContent: string = `\n# Missing dependency\n`
     + 'VSCode-PVS failed to start: a required dependency could not be detected:\n\n'
@@ -223,15 +238,6 @@ export function showDependencyError (msg: string): void {
     showMarkdownContent(fileContent);
 }
 
-export async function showMarkdownPreview (desc: FileDescriptor): Promise<void> {
-    if (desc && desc.fileName && desc.fileContent) {
-        const fileUri: vscode.Uri = await createTextDocument(desc);
-        if (fileUri) {
-            showMarkdownFile(fileUri);
-        }
-    }
-}
-
 /**
  *  Utility function, shows problems panel -- see also Code->Preferences->KeyboardShortcuts 
  */
@@ -239,6 +245,10 @@ export function showProblemsPanel (): void {
     vscode.commands.executeCommand("workbench.panel.markers.view.focus");
 }
 
+/**
+ * Utility function, shows a temporary dialog with an information message.
+ * The default timeout for the dialog is 3.2 seconds.
+ */
 export function showInformationMessage (message: string, opt?: { timeout?: number, cancellable?: boolean }): void {
     if (message) {
         opt = opt || {};
@@ -258,17 +268,22 @@ export function showInformationMessage (message: string, opt?: { timeout?: numbe
         }, task);
     }
 }
+/**
+ * Utility function, shows a dialog presenting an error message.
+ */
 export function showErrorMessage (message: string, timeout?: number): void {
     showInformationMessage(`${utils.icons.bang} ${message}`, { timeout: 6000 });
 }
-export function showWarningMessage (message: string, timeout?: number): void {
+/**
+ * Utility function, shows a dialog presenting a warning message.
+ */
+ export function showWarningMessage (message: string, timeout?: number): void {
     vscode.window.showWarningMessage(`${utils.icons.sparkles} ${message}`);
     // showInformationMessage(`${utils.icons.sparkles} ${message}`, { timeout: 4000 });
 }
 
 /**
  * Utility function, shows a dialog that allows the user to select the pvs installation folder in the file system
- * @param pvsPath 
  */
 export async function addPvsLibraryFolderWizard (): Promise<boolean> {
     const selection: vscode.Uri[] = await vscode.window.showOpenDialog({
@@ -290,18 +305,23 @@ export async function addPvsLibraryFolderWizard (): Promise<boolean> {
     return success;
 }
 
+/**
+ * Utility function, resets the content of the configuration variable pvs.pvsLibraryPath
+ */
 export async function clearPvsLibraryPath (): Promise<void> {
     await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", undefined, vscode.ConfigurationTarget.Global);
 }
+/**
+ * Utility function, returns the content of the configuration variable pvs.pvsLibraryPath
+ */
 export function getPvsLibraryPath (): string {
     const pvsLibraryPath: string = getConfiguration("pvs.pvsLibraryPath").trim();
-    const currentWorkspace: string = getCurrentWorkspace();
+    const currentWorkspace: string = getRootFolder();
     return pvsLibraryPath ? currentWorkspace + ":" + pvsLibraryPath : currentWorkspace;
 }
-export function getCurrentWorkspace (): string {
-    return (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length) ?
-        vscode.workspace.workspaceFolders[0]?.uri?.path : "";
-}
+/**
+ * Utility function, adds a folder to the list of folders in pvs.pvsLibraryPath
+ */
 export async function addPvsLibraryFolder (folder: string): Promise<boolean> {
     if (folder) {
         folder = (folder.endsWith("/")) ? folder : `${folder}/`;
@@ -316,6 +336,47 @@ export async function addPvsLibraryFolder (folder: string): Promise<boolean> {
     return false;
 }
 /**
+ * Utility function, returns the current root folder of file-explorer
+ */
+export function getRootFolder (): string {
+    return (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length) ?
+        vscode.workspace.workspaceFolders[0]?.uri?.path : "";
+}
+/**
+ * Utility function, retrieves information about files that need to be opened when vscode-pvs is started
+ */
+export async function getFileToBeOpened (contextFolder: string): Promise<string> {
+    if (contextFolder) {
+        const configFile: string = path.join(contextFolder, ".vscode", "file.json");
+        const config: string = await fsUtils.readFile(configFile);
+        fsUtils.deleteFile(configFile);
+        if (config) {
+            // vscode.window.showInformationMessage(`${vscodeFile}: ${vscodeFileContent}`);
+            try {
+                const info: { fname: string } = JSON.parse(config);
+                // vscode.window.showInformationMessage(`info: ${info}`);
+                return info?.fname;
+            } catch (err) {
+                console.warn(`Warning: unable to parse configuration file content`, err);
+            }
+        }
+    }
+    return null;
+}
+/**
+ * Utility function, retrieves information about files that need to be opened when vscode-pvs is started
+ */
+export async function saveFileToBeOpened (contextFolder: string, fname: string): Promise<void> {
+    if (contextFolder && fname) {
+        const point_vscode: string = path.join(contextFolder, ".vscode");
+        await fsUtils.createFolder(point_vscode);
+        const config: string = path.join(point_vscode, "file.json");
+        await fsUtils.writeFile(config, JSON.stringify({
+            fname
+        }, null, " "));
+    }
+ }    
+/**
  * Opens a folder and adds the folder to file explorer
  */
 export async function cleanPvsWorkspace (): Promise<void> {
@@ -329,12 +390,18 @@ export async function cleanPvsWorkspace (): Promise<void> {
         }
         const name: string = (vscode.workspace.name && !vscode.workspace.name.startsWith("Untitled")) ? vscode.workspace.name 
             : vscode.workspace.workspaceFolders.length ? vscode.workspace.workspaceFolders[0].name
-            : ""
+                : ""
         const msg: string = (name) ? `${nCleaned} folders cleaned in workspace ${name}` : `${nCleaned} folders cleaned.`;
         vscode.window.showInformationMessage(msg);
     } else {
         vscode.window.showInformationMessage(`Nothing to clean (no folder opened)`);
     }
+}
+/**
+ * Utility function, opens the side panel and highlights the current file active in the editor
+ */
+export function showActiveFileInExplorer (): void {
+    vscode.commands.executeCommand("workbench.files.action.showActiveFileInExplorer");
 }
 // export async function createCodeWorkspace (contextFolder: string): Promise<boolean> {
 //     const contextFolderName: string = fsUtils.getContextFolderName(contextFolder);
@@ -366,19 +433,13 @@ export async function openWorkspace (): Promise<void> {
     if (selection && selection.length === 1) {
         const contextFolder: string = selection[0].path;
         const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
-        // add folder to workspace
-        // if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
-            // save and close all open files in the editor
-            await vscode.workspace.saveAll();
-            // vscode.commands.executeCommand("workbench.action.files.saveAll");
-            vscode.commands.executeCommand("workbench.action.closeAllGroups");
-            // open the new workspace
-            vscode.commands.executeCommand('vscode.openFolder', contextFolderUri);
-            // const deleteCount: number = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0;
-            // vscode.workspace.updateWorkspaceFolders(0, deleteCount, { uri: contextFolderUri });
-
-            // await createCodeWorkspace(contextFolder);
-        // }
+        // save and close all open files in the editor
+        await vscode.workspace.saveAll();
+        // vscode.commands.executeCommand("workbench.action.closeAllGroups");
+        // open the new workspace
+        await vscode.commands.executeCommand('vscode.openFolder', contextFolderUri, { forceReuseWindow: true });
+        // const deleteCount: number = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0;
+        // vscode.workspace.updateWorkspaceFolders(0, deleteCount, { uri: contextFolderUri });
     }
 }
 /**
@@ -394,8 +455,9 @@ export async function openFile (fname: string, opt?: { selection?: vscode.Range 
 /**
  * Opens a pvs file in the editor and adds the containing folder in file explorer
  */
- export async function openPvsFile (file?: FileDescriptor): Promise<void> {
-    const selectedFiles: vscode.Uri[] = (file) ? [ vscode.Uri.file(fsUtils.desc2fname(file)) ] : await vscode.window.showOpenDialog({
+export async function openPvsFile (file?: FileDescriptor | string): Promise<void> {
+    const fname: string = typeof file === "string" ? file : fsUtils.desc2fname(file);
+    const selectedFiles: vscode.Uri[] = (file) ? [ vscode.Uri.file(fname) ] : await vscode.window.showOpenDialog({
         canSelectFiles: true,
         canSelectFolders: false,
         canSelectMany: false,
@@ -406,20 +468,56 @@ export async function openFile (fname: string, opt?: { selection?: vscode.Range 
     });
     if (selectedFiles && selectedFiles.length === 1) {
         const fname: string = selectedFiles[0].path;
-        const contextFolder: string = fsUtils.getContextFolder(fname);
         const fileUri: vscode.Uri = vscode.Uri.file(fname);
-        const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
+        // const contextFolder: string = fsUtils.getContextFolder(fname);
+        // const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
+
+        // await vscode.commands.executeCommand("workbench.action.closeAllGroups");
+        // await vscode.commands.executeCommand('vscode.open', fileUri);
+        // await vscode.commands.executeCommand('vscode.openFolder', contextFolderUri, { forceReuseWindow: true });
+
         // add folder to workspace
-        if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
-            vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: contextFolderUri });
-        }
-        vscode.window.showTextDocument(fileUri, { preserveFocus: true });
+        // if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
+        //     // vscode.commands.executeCommand('vscode.openFolder', contextFolderUri, { forceReuseWindow: true });
+        //     await vscode.commands.executeCommand("workbench.action.closeAllGroups");
+        //     const nOpenFolders: number = vscode.workspace?.workspaceFolders?.length || 0;
+        //     await updateWorkspaceFolders(0, nOpenFolders, { uri: contextFolderUri });
+        // }
+        await vscode.window.showTextDocument(fileUri, { preserveFocus: true });
     }
 }
 /**
+ * Utility function, closes all open editors
+ */
+export async function closeOpenEditors (): Promise<void> {
+    await vscode.commands.executeCommand("workbench.action.closeAllGroups");
+}
+/**
+ * Utility function, closes all open workspace folders
+ */
+// export async function closeWorkspaceFolders (): Promise<void> {
+//     const nOpenFolders: number = vscode.workspace?.workspaceFolders?.length || 0;
+//     if (nOpenFolders) {
+//         // close all open workspaces
+//         await updateWorkspaceFolders(0, nOpenFolders);
+//     }
+// }
+/**
+ * Utility function, updates workspace folders.
+ * This functions is problematic, because vscode marks the workspace as Untitled when this function is used, which in turn
+ * asks the user to save the workspace on exit.
+ */
+export async function updateWorkspaceFolders (start: number, deleteCount: number | undefined | null, ...workspaceFoldersToAdd: { uri: vscode.Uri, name?: string }[]): Promise<void> {
+    vscode.workspace.updateWorkspaceFolders(start, deleteCount, ...workspaceFoldersToAdd);
+    await new Promise<void> ((resolve, reject) => {
+        vscode.workspace.onDidChangeWorkspaceFolders(() => {
+            vscode.window.showInformationMessage("updateWorkspaceFolders");
+            resolve();
+        });
+    });
+}
+/**
  * Open a pvs file without adding the file to the workspace
- * @param file 
- * @param opt 
  */
 export async function previewPvsFile (fname?: string, opt?: { selection?: vscode.Range }): Promise<void> {
     opt = opt || {};
@@ -450,13 +548,13 @@ export async function openPvsFileOrWorkspace (): Promise<string> {
             const start: number = 0
             const end: number = (vscode.workspace.workspaceFolders) ? vscode.workspace.workspaceFolders.length - 1 : 0;
             // save and close all open files in the editor
-            vscode.commands.executeCommand("workbench.action.files.saveAll");
-            vscode.commands.executeCommand("workbench.action.closeAllGroups");
-            vscode.workspace.updateWorkspaceFolders(start, end, { uri: contextFolderUri });
+            await vscode.commands.executeCommand("workbench.action.files.saveAll");
+            // await vscode.commands.executeCommand("workbench.action.closeAllGroups");
+            // await updateWorkspaceFolders(start, end, { uri: contextFolderUri });
+            await vscode.commands.executeCommand('vscode.openFolder', contextFolderUri, { forceReuseWindow: true });
         }
         if (fname) {
-            const fileUri: vscode.Uri = vscode.Uri.file(fname);
-            vscode.window.showTextDocument(fileUri, { preserveFocus: true });
+            vscode.window.showTextDocument(vscode.Uri.file(fname), { preserveFocus: true });
         }
         return contextFolder;
     }
@@ -546,6 +644,9 @@ export async function commentProofliteInActiveEditor (): Promise<boolean> {
     return false;
 }
 
+/**
+ * Utility function, extracts theory information from a resource
+ */
 export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: string }): Promise<PvsTheory | null> {
 	if (resource) {
         if (resource["contextValue"]) {
@@ -592,6 +693,9 @@ export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: s
     return null;
 }
 
+/**
+ * Utility function, extracts context folder information from a resource
+ */
 export async function getPvsWorkspace (resource: ContextFolder | WorkspaceItem | { path: string }): Promise<ContextFolder | null> {
 	if (resource) {
         if (resource["contextValue"]) {
@@ -610,6 +714,9 @@ export async function getPvsWorkspace (resource: ContextFolder | WorkspaceItem |
     return null;
 }
 
+/**
+ * Utility function, shows a welcome message with the release notes of vscode-pvs
+ */
 export function showReleaseNotes (): void {
     const fileUri: vscode.Uri = vscode.Uri.file(path.join(__dirname, "..", "..", "..", "WELCOME.md"));
     vscode.commands.executeCommand('markdown.showPreview', fileUri);
@@ -627,8 +734,11 @@ export function getConfiguration (key: string): string {
  * Sets the value of a vscode configuration
  */
 export async function setConfiguration (key: string, value: string | boolean): Promise<void> {
-    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
-    await config.update(key, value);
+    // workspace settings can be set only if vscode has a workspace
+    if (getRootFolder()) {
+        const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+        await config.update(key, value);
+    }
 }
 /**
  * Returns the current vscode toolbar visibility (toolbar = header actions)
@@ -642,8 +752,11 @@ export function getToolbarVisibility (): boolean {
  * Sets the vscode toolbar visibility
  */
 export async function setToolbarVisibility (viz: boolean): Promise<void> {
-    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
-    const res = config.update("workbench.view.alwaysShowHeaderActions", !!viz);
+    // workspace settings can be set only if vscode has a workspace
+    if (getRootFolder()) {
+        const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+        config.update("workbench.view.alwaysShowHeaderActions", !!viz);
+    }
 }
 
 /**
@@ -659,37 +772,43 @@ export function detectColorTheme (): XTermColorTheme {
  * Updates vscode settings with the aim to declutter the interface 
  */
 export function declutterVscode (): void {
-    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
-    // remove indent lines in explorer
-    config.update("editor.renderIndentGuides", false);
-    // config.update("workbench.tree.indent", 8);
+    // workspace settings can be set only if vscode has a workspace
+    if (getRootFolder()) {
+        const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+        // remove indent lines in explorer
+        config.update("editor.renderIndentGuides", false);
+        // config.update("workbench.tree.indent", 8);
 
-    const filesExclude: { [key:string]: boolean } = config.get("files.exclude") || {};
-    // do not display temporary files created by pvs, e.g., .prf~
-    filesExclude["**/*.???~"] = true;
-    // do not display internal files and folders that the user should not be touching
-    filesExclude["**/.pvscontext"] = true;
-    filesExclude["**/pvsbin"] = true;
-    filesExclude["**/*.jprf"] = true;
-    filesExclude["**/*.prf"] = true;
-    filesExclude["**/orphaned-proofs.prf"] = true;
-    filesExclude["**/*_adt.pvs"] = true;
-    // hide log files
-    filesExclude["**/*.log"] = true;
-    // hide .vscode folder
-    filesExclude["**/.vscode"] = true;
-    // save workspace settings
-    config.update("files.exclude", filesExclude);
+        const filesExclude: { [key:string]: boolean } = config.get("files.exclude") || {};
+        // do not display temporary files created by pvs, e.g., .prf~
+        filesExclude["**/*.???~"] = true;
+        // do not display internal files and folders that the user should not be touching
+        filesExclude["**/.pvscontext"] = true;
+        filesExclude["**/pvsbin"] = true;
+        filesExclude["**/*.jprf"] = true;
+        filesExclude["**/*.prf"] = true;
+        filesExclude["**/orphaned-proofs.prf"] = true;
+        filesExclude["**/*_adt.pvs"] = true;
+        // hide log files
+        filesExclude["**/*.log"] = true;
+        // hide .vscode folder
+        filesExclude["**/.vscode"] = true;
+        // save workspace settings
+        config.update("files.exclude", filesExclude);
+    }
 }
 
 /**
  * Loads pvs file icons
  */
 export function loadPvsFileIcons (): void {
-    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
-    const val: string = config.get("workbench.iconTheme");
-    if (val !== "pvs") {
-        config.update("workbench.iconTheme", "pvs");
+    // workspace settings can be set only if vscode has a workspace
+    if (getRootFolder()) {
+        const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+        const val: string = config.get("workbench.iconTheme");
+        if (val !== "pvs") {
+            config.update("workbench.iconTheme", "pvs");
+        }
     }
 }
 
@@ -697,10 +816,13 @@ export function loadPvsFileIcons (): void {
  * Unloads pvs file icons
  */
  export function unloadPvsFileIcons (): void {
-    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
-    const val: string = config.get("workbench.iconTheme");
-    if (val === "pvs") {
-        config.update("workbench.iconTheme", undefined);
+    // workspace settings can be set only if vscode has a workspace
+    if (getRootFolder()) {
+        const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+        const val: string = config.get("workbench.iconTheme");
+        if (val === "pvs") {
+            config.update("workbench.iconTheme", undefined);
+        }
     }
 }
 

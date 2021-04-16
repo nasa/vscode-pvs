@@ -797,7 +797,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                             // reset session type
                             this.sessionType = null;
                             // reset global vscode-pvs variables so other views can be updated properly
-                            vscodeUtils.resetGlobals();
+                            await vscodeUtils.resetGlobals();
                         },
                         null,
                         this.context.subscriptions
