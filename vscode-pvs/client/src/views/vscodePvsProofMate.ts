@@ -65,6 +65,10 @@ class ProofMateItem extends vscode.TreeItem {
 			command: "proof-mate.did-click-hint",
 			arguments: [ { cmd: this.name } ]
 		};
+		this.iconPath = {
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
+			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")			
+		};
 	}
 
 	printProofCommands (): null {
@@ -203,11 +207,15 @@ const r5: TestFunction = (sequent: { succedents?: SFormula[], antecedents?: SFor
 	return false;
 }
 
-
+/**
+ * Utility class for rendering proof mate hints
+ */
 class ProofMateHints extends ProofMateGroup {
 	hints: ProofMateItem[] = [];
 	constructor () {
 		super("Hints", "proofmate-hints", vscode.TreeItemCollapsibleState.Expanded, "Proof Hints");
+		// the full list of codeicos is at https://microsoft.github.io/vscode-codicons/dist/codicon.html
+		this.iconPath = new vscode.ThemeIcon("lightbulb");
 	}
 	getChildren (): vscode.TreeItem[] {
 		return this.hints;
@@ -223,9 +231,6 @@ class ProofMateHints extends ProofMateGroup {
 	clearRecommendations (): void {
 		this.hints = [];
 	}
-	// selectProfile (profile: ProofMateProfile): void {
-
-	// }
 }
 
 /**
@@ -236,13 +241,26 @@ class ProofMateHints extends ProofMateGroup {
  * after a spec change or editing of proof commands
  */
 class ProofMateSketchpad extends ProofMateGroup {
-	clips: ProofItem[] = [];
+	// clips stored in the sketchpad
+	protected clips: ProofItem[] = [];
+	
+	/**
+	 * Constructor
+	 */
 	constructor () {
 		super("Sketchpad", "proofmate-sketchpad", vscode.TreeItemCollapsibleState.Expanded, "Proof Sketches");
+		// the full list of codeicos is at https://microsoft.github.io/vscode-codicons/dist/codicon.html
+		this.iconPath = new vscode.ThemeIcon("clippy");
 	}
-	getChildren (): vscode.TreeItem[] {
+	/**
+	 * Returns the clips in the sketchpad
+	 */
+	getChildren (): ProofItem[] {
 		return this.clips;
 	}
+	/**
+	 * Adds a node to the sketchpad
+	 */
 	add (items: ProofItem[]): void {
 		const updateCommands = (items: ProofItem[]): boolean => {
 			let hasContent: boolean = false;
@@ -251,7 +269,7 @@ class ProofMateSketchpad extends ProofMateGroup {
 					items[i].iconPath = {
 						light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
 						dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")			
-					};			
+					};
 					items[i].command = {
 						title: items[i].name,
 						command: "proof-mate.did-click-hint",
@@ -272,6 +290,9 @@ class ProofMateSketchpad extends ProofMateGroup {
 			}
 		}
 	}
+	/**
+	 * Retuns the list of nodes in the sketchpad
+	 */
 	getNodes (): ProofNode[] {
 		const nodes: ProofNode[] = [];
 		if (this.clips && this.clips.length) {
@@ -284,6 +305,9 @@ class ProofMateSketchpad extends ProofMateGroup {
 		}
 		return nodes;
 	}
+	/**
+	 * Clears the sketchpad
+	 */
 	clear (): void {
 		this.clips = [];
 	}
@@ -327,28 +351,56 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 		{ name: "let-in", description: "Remove let-in", test: r3, commands: [ "beta", "skoletin" ] },
 		{ name: "lift-if", description: "Brings if-then-else to the top level", test: r4, commands: [ "lift-if" ] },
 		{ name: "split", description: "Split cases", test: r5, commands: [ "split", "ground" ] }
-	]
+	];
 
-	// autorunStop (): void {
-	// 	this.autorunFlag = false;
-	// }
-	// autorunStart (): void {
-	// 	this.autorunFlag = true;
-	// }
+	/**
+	 * Constructor
+	 * @param client Language client for exchanging data and command with the language server
+	 * @param providerView Name of the VSCode view associated to this data provider
+	 */
+	 constructor(client: LanguageClient, providerView: string) {
+		this.client = client;
+		this.providerView = providerView;
+
+		this.hints = new ProofMateHints();
+		this.sketchpad = new ProofMateSketchpad();
+
+		// enable basic profile by default
+		this.profile = "basic";
+
+		// register data provider
+		this.view = vscode.window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
+	}
+	
+	/**
+	 * Deletes the view
+	 */
 	disposeView (): void {
 		this.disableView();
 	}
+	/**
+	 * Hides the view
+	 */
 	disableView (): void {
 		this.enabled = false;
 		vscode.commands.executeCommand('setContext', 'proof-mate.visible', false);
 	}
+	/**
+	 * Reveals the view
+	 */
 	enableView (): void {
 		this.enabled = true;
 		vscode.commands.executeCommand('setContext', 'proof-mate.visible', true);
 	}
+	/**
+	 * Saves the sketchpad as a .jprf file
+	 */
 	async saveSketchpadClips (): Promise<void> {
 		await saveSketchpad(this.formula, this.sketchpad?.getNodes());
 	}
+	/**
+	 * Loads sketchpad clips from a .jprf file
+	 */
 	async loadSketchpadClips (): Promise<void> {
 		const clips: ProofNode[] = await openSketchpad(this.formula);
 		if (clips && clips.length) {
@@ -362,6 +414,9 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 			this.sketchpad.add(items);
 		}
 	}
+	/**
+	 * Internal function, converts a proof node to a proof item that can be rendered in the view
+	 */
 	protected proofNode2proofItem (node: ProofNode): ProofItem {
 		// utility function for building the proof tree -- see also pvsProofExplorer.loadProofDescriptor
 		const createTree = (elem: ProofNode, parent: ProofItem): void => {
@@ -389,26 +444,6 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 		return item;
 	}
 
-
-	/**
-	 * Constructor
-	 * @param client Language client for exchanging data and command with the language server
-	 * @param providerView Name of the VSCode view associated to this data provider
-	 */
-	constructor(client: LanguageClient, providerView: string) {
-		this.client = client;
-		this.providerView = providerView;
-
-		this.hints = new ProofMateHints();
-		this.sketchpad = new ProofMateSketchpad();
-
-		// enable basic profile by default
-		this.profile = "basic";
-
-		// register data provider
-		this.view = vscode.window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
-	}
-	
 	/**
 	 * Refresh tree view
 	 */
@@ -441,17 +476,17 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 		}
 	}
     /**
-	 * Handler activation function
-	 * @param context Client context 
+	 * Activation function -- install relevant handlers
 	 */
 	activate(context: vscode.ExtensionContext) {
 		this.context = context;
 		this.selectProfile("basic");
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.run-sketchpad", (resource: ProofMateSketchpad) => {
-			if (resource && resource.clips && resource.clips.length) {
+			const clips: ProofItem[] = resource?.getChildren();
+			if (clips?.length) {
 				let seq: string = "";
-				for (let i = 0; i < resource.clips.length; i++) {
-					seq += resource.clips[i].printProofCommands();
+				for (let i = 0; i < clips.length; i++) {
+					seq += clips[i].printProofCommands();
 				}
 				if (seq) {
 					this.sendProofCommand(seq);
@@ -503,7 +538,7 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 			this.selectProfile("advanced");
 		}));
 
-		let cmd: string = null;
+		let cmd: string = null; // local variable for handling the detection of double-clicks, which are not directly supported by the APIs of vscode trees
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.did-click-hint", (desc: { cmd: string }) => {
 			// register double click handler
 			if (desc) {
@@ -530,12 +565,14 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 
 	/**
 	 * Utility function, used to identify which formula is being proved in the proof tree session
-	 * @param formula 
 	 */
 	loadFormula (formula: PvsFormula): void {
 		this.formula = formula;
 	}
 
+	/**
+	 * Sends a proof command to the terminal
+	 */
 	sendProofCommand (cmd: string): void {
 		if (this.formula) {
 			vscode.commands.executeCommand("vscode-pvs.send-proof-command", {
@@ -551,6 +588,9 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 		}
 	}
 
+	/**
+	 * Utility function, selects a proof-mate profile
+	 */
 	selectProfile (profile: ProofMateProfile): void {
 		this.profile = profile;
 		vscode.commands.executeCommand('setContext', 'basic-profile-active', profile === "basic");
@@ -562,6 +602,9 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 		});
 	}
 
+	/**
+	 * Utility function, updates the recommendations shown in proof mate
+	 */
 	updateRecommendations (proofState: SequentDescriptor): void {
 		if (proofState) {
 			if (this.enabled) {
@@ -579,6 +622,9 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 			console.warn(`[proof-mate] Warning: null sequent`);
 		}
 	}
+	/**
+	 * Utility function, returns the recommendated proof commands based on the given sequent and the set of rules of the recommendation
+	 */
 	getRecommendations (proofState: SequentDescriptor): { cmd: string, tooltip?: string }[] {
 		const ans: { cmd: string, tooltip?: string }[] = [];
 		if (proofState && proofState.sequent) {
@@ -601,17 +647,15 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	}
 	/**
 	 * Utility function, updates adds a new item to the sketchpad
-	 * @param desc 
 	 */
 	updateSketchpad (desc: { items: ProofItem[] }): void {
-		// TODO: remove duplicated entries, e.g., if the user cuts the same tree many times, we want to show just one instance of the tree
+		// TODO: remove duplicate entries, e.g., if the user cuts the same tree many times, we want to show just one instance of the tree
 		if (desc && desc.items && desc.items.length) {
 			this.sketchpad.add(desc.items);
 			this.revealNode(desc.items[0]);
 			this.refreshView();
 		}
 	}
-	
 	/**
 	 * Utility function, starts a new proof in proof mate
 	 */
@@ -625,7 +669,6 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	clearSketchPath (): void {
 		this.sketchpad.clear();
 	}
-
 	
 	/**
 	 * Returns the list of theories defined in the active pvs file
@@ -639,6 +682,9 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 		// root node
 		return Promise.resolve([ this.hints, this.sketchpad ]);
 	}
+	/**
+	 * Returns a given tree item
+	 */
 	getTreeItem(item: vscode.TreeItem): vscode.TreeItem {
 		return item;
     }
