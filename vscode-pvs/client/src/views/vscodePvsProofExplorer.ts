@@ -620,8 +620,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	}
 
 	/**
-	 * Utility function, used to set the initial proof state.
-	 * @param sequent 
+	 * Utility function, sets the initial sequent.
 	 */
 	didLoadSequent (sequent: SequentDescriptor): void {
 		// this.proofState = sequent;
@@ -632,12 +631,20 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 
-	updateTooltip (desc: ProofExecDidUpdateSequent): void {
+	/**
+	 * Utility function, updates the sequent of the tree item indicated in desc.
+	 */
+	didUpdateSequent (desc: ProofExecDidUpdateSequent): void {
 		if (desc && desc.selected) {
-			const selected: ProofItem = this.findNode(desc.selected.id);
-			if (selected) {
-				selected.updateSequent(desc.sequent);
+			if (desc.selected.name === "ghost") {
+				this.ghostNode.updateSequent(desc.sequent);
 				this.refreshView({ source: "did-update-tooltip" });
+			} else {
+				const selected: ProofItem = this.findNode(desc.selected.id);
+				if (selected) {
+					selected.updateSequent(desc.sequent);
+					this.refreshView({ source: "did-update-tooltip" });
+				}
 			}
 		}
 	}

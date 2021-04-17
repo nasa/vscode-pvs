@@ -386,7 +386,7 @@ export class EventsDispatcher {
                     break;
                 }
                 case "did-update-sequent": {
-                    this.proofExplorer.updateTooltip(desc);
+                    this.proofExplorer.didUpdateSequent(desc);
                     this.proofMate.updateRecommendations(desc.sequent);
                     break;
                 }
