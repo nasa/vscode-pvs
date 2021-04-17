@@ -1394,23 +1394,27 @@ export class PvsProofExplorer {
 	 * Equivalent to copyNode + deleteNode. 
 	 * @param desc Descriptor of the selected node.
 	 */
-	cutNode (desc: { selected: ProofItem }): boolean {
+	cutNode (desc: { selected: ProofItem }): string {
 		if (desc && desc.selected) {
 			this.copyNode(desc);
 			this.deleteNode(desc);
-			return true;
+			return desc.selected.name;
 		} else {
 			console.warn(`[proof-explorer] Warning: unable to cut node (selected node is null)`);
 		}
-		return false;
+		return null;
 	}
 	cutNodeX (desc: ProofEditCutNode): void {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
-			if (selected && this.cutNode({ selected })) {
-				const evt: ProofEditDidCutNode = { action: "did-cut-node", selected: desc.selected };
-				if (this.connection && !this.autorunFlag) {
-					this.connection.sendNotification(serverEvent.proverEvent, evt);
+			if (selected) {
+				const clipboard: string = this.cutNode({ selected });
+				if (clipboard && this.clipboard) {
+					const elem: ProofNodeX = this.clipboard.getNodeXStructure();
+					const evt: ProofEditDidCutNode = { action: "did-cut-node", selected: desc.selected, clipboard, elem };
+					if (this.connection && !this.autorunFlag) {
+						this.connection.sendNotification(serverEvent.proverEvent, evt);
+					}
 				}
 				return;
 			}

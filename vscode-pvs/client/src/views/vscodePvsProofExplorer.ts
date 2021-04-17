@@ -354,7 +354,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 	/**
-	 * Resets running flags
+	 * Handler executed after stopping the execution of a proof -- resets proof-explorer.running flag
 	 */
 	didStopRunning (): void {
 		this.running = false;
@@ -363,7 +363,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		this.focusActiveNode();
 	}
 	/**
-	 * Copies the selected node to the clipboard (i.e., the clipboard will store a copy of the selected node)
+	 * Handler for copy operations --- the selected node is copied to the clipboard 
+	 * (i.e., the clipboard will store a copy of the selected node)
 	 * @param desc Descriptor of the selected node.
 	 */
 	didCopyNode (desc: ProofEditDidCopyNode): void {
@@ -377,8 +378,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 	/**
-	 * Copies the tree rooted at the selected node to the clipboard, and all the siblings below the selected node
-	 * (i.e., the clipboard will store a copy of the tree rooted at the selected node)
+	 * Handler for copy-tree operations -- the tree rooted at the selected node is copied to the clipboard, 
+	 * and all the siblings below the selected node (i.e., the clipboard will store a copy of the tree rooted 
+	 * at the selected node)
 	 * @param desc Descriptor of the selected node.
 	 */
 	didCopyTree (desc: ProofEditDidCopyTree): void {
@@ -392,7 +394,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			window.showInformationMessage(`Subtree rooted in ${desc.selected.name} copied to clipboard`);
 		}
 	}
-
+	/**
+	 * Handler for cut operations -- copies to the clipboard and to the sketchpad the node that was cut 
+	 */
 	didCutNode (desc: ProofEditDidCutNode): void {
 		if (desc && desc.selected) {
 			// copy node to system clipboard
@@ -400,9 +404,16 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			// set vscode context variable proof-explorer.clipboard-contains-tree and clipboard-contains-node to true
 			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);				
 			this.refreshView({ source: "did-cut-node" });
+			// append elems to sketchpad
+			const items: ProofItem[] = this.convertNodeX2ProofItem(desc.elem);
+			let sketchpadItems: ProofItem[] = [];
+			sketchpadItems = sketchpadItems.concat(items);
+			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems });
 		}
 	}
-
+	/**
+	 * Handler for cut-tree operations -- copies to the clipboard and to the sketchpad the tree that was cut 
+	 */
 	didCutTree (desc: ProofEditDidCutTree): void {
 		if (desc && desc.selected) {
 			// copy node to system clipboard
@@ -418,10 +429,12 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				const items: ProofItem[] = this.convertNodeX2ProofItem(desc.elems[i]);
 				sketchpadItems = sketchpadItems.concat(items);
 			}
-			commands.executeCommand("proof-explorer.trim", { items: sketchpadItems });
+			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems });
 		}
 	}
-
+	/**
+	 * Handler for paste-tree operations -- reveals the structure of the subtree pasted in proof-explorer
+	 */
 	didPasteTree (desc: ProofEditDidPasteTree): void {
 		// the tree structure is automatically updated whenever a node is added to the proof tree (see did-append-node)
 		if (desc && desc.selected) {
@@ -429,7 +442,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 		this.refreshView({ source: "did-paste-tree"});
 	}
-
+	/**
+	 * Handler for rename operations
+	 */
 	didRenameNode (desc: ProofEditDidRenameNode): void {
 		if (desc && desc.selected && desc.newName) {
 			const item: ProofItem = this.findNode(desc.selected.id);
@@ -446,7 +461,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			console.warn(`[vscode-proof-explorer] Warning: unable to complete proofEdit/renameNode`);
 		}
 	}
-
+	/**
+	 * Handler for updating the tree view has become active
+	 */
 	didActivateCursor (desc: ProofEditDidActivateCursor): void {
 		if (desc && desc.cursor) {
 			const realNode: ProofItem = this.findNode(desc.cursor.parent);
@@ -460,7 +477,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			console.warn(`[vscode-proof-explorer] Warning: unable to complete proofEdit/activateCursor`)
 		}
 	}
-
+	/**
+	 * Handler for updating the tree view when the ghost node has become active
+	 */
 	didDeactivateCursor (desc: ProofEditDidDeactivateCursor): void {
 		this.ghostNode.parent = null;
 		this.ghostNode.notActive();
@@ -472,7 +491,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			if (desc.proofStatus === "proved") {
 				this.root.QED();
 				// clear sketchpad
-				commands.executeCommand("proof-explorer.trim", { items: [] });
+				commands.executeCommand("proof-mate.update-sketchpad", { items: [] });
 				// clear running flag
 				this.running = false;
 				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);		
@@ -501,7 +520,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				sketchpadItems = sketchpadItems.concat(items);
 			}
 			this.refreshView({ source: "did-trim-node" });
-			commands.executeCommand("proof-explorer.trim", { items: sketchpadItems });
+			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems });
 		} else {
 			console.warn(`[vscode-proof-explorer] Warning: unable to complete proofEdit/trimNode`);
 		}
@@ -609,7 +628,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		if (this.activeNode) {
 			this.activeNode.updateSequent(sequent);
 		} else {
-			// this.root.tooltip = formatSequent(sequent, { formulasOnly: true });
+			this.root.updateSequent(sequent);
 		}
 	}
 

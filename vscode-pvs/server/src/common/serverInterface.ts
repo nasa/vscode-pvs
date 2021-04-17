@@ -835,7 +835,9 @@ export type ProofEditDidAppendBranch = {
 };
 export type ProofEditDidCutNode = {
 	action: "did-cut-node",
-	selected: { id: string, name: string }
+	selected: { id: string, name: string },
+	clipboard: string,
+	elem: ProofNodeX
 };
 export type ProofEditDidCutTree = {
 	action: "did-cut-tree",
