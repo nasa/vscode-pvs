@@ -171,7 +171,7 @@ export class VSCodePvsStatusBar {
     showInfo (msg: string): void {
         if (msg) {
             this.pvsStatus.icon("");
-            this.pvsStatus.text(`$(megaphone)  ${msg}`);
+            this.pvsStatus.text(`$(info)  ${msg}`);
             this.pvsStatus.show();
         }
     }
@@ -193,7 +193,7 @@ export class VSCodePvsStatusBar {
     showError (msg: string): void {
         const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
         this.pvsStatus.icon("");
-        this.pvsStatus.text(`$(megaphone)  ${shortmsg}`); // messages in the status bar should always be on one line
+        this.pvsStatus.text(`$(pinned-dirty)  ${shortmsg}`); // messages in the status bar should always be on one line
         this.pvsStatus.show();
         vscodeUtils.showProblemsPanel();
     }
