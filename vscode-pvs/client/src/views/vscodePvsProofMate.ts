@@ -234,6 +234,17 @@ class ProofMateHints extends ProofMateGroup {
 }
 
 /**
+ * Utility class, creates a sketchpad label
+ */
+class ProofMateSketchpadLabel extends ProofItem {
+	contextValue: string = "sketchpad-label";
+	constructor (label: string) {
+		super({ type: "sketchpad-label", name: label, branchId: '', parent: null, collapsibleState: vscode.TreeItemCollapsibleState.Expanded });
+		this.iconPath = new vscode.ThemeIcon("pinned");
+	}
+}
+
+/**
  * Proof mate provides a sketchpad where proof explorer 
  * can save proof fragments produced during proof attempts,
  * that otherwise would be thrown away.
@@ -261,7 +272,7 @@ class ProofMateSketchpad extends ProofMateGroup {
 	/**
 	 * Adds a node to the sketchpad
 	 */
-	add (items: ProofItem[]): void {
+	add (items: ProofItem[], opt?: { label?: string }): void {
 		const updateCommands = (items: ProofItem[]): boolean => {
 			let hasContent: boolean = false;
 			if (items) {
@@ -286,6 +297,11 @@ class ProofMateSketchpad extends ProofMateGroup {
 		}
 		if (items && items.length) {
 			if (updateCommands(items)) {
+				if (opt?.label) {
+					const label: ProofMateSketchpadLabel = new ProofMateSketchpadLabel(opt.label);
+					label.children = items;
+					items = [ label ];
+				}
 				this.clips = items.concat(this.clips);
 			}
 		}
@@ -435,8 +451,10 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 			cmd: node.name, branchId: node.branch, parent: null
 		}) : (node.type === "proof-command") ? new ProofCommand({
 			cmd: node.name, branchId: node.branch, parent: null
-		}) : new RootNode({ name: node.name });
-		if (node.rules && node.rules.length) {
+		}) : (node.type === "root") ? new RootNode({
+			name: node.name
+		}) : null;
+		if (item && node.rules && node.rules.length) {
 			node.rules.forEach((child: ProofNode) => {
 				createTree(child, item);
 			});
@@ -651,7 +669,7 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	updateSketchpad (desc: { items: ProofItem[] }): void {
 		// TODO: remove duplicate entries, e.g., if the user cuts the same tree many times, we want to show just one instance of the tree
 		if (desc && desc.items && desc.items.length) {
-			this.sketchpad.add(desc.items);
+			this.sketchpad.add(desc.items, { label: new Date().toLocaleString()});
 			this.revealNode(desc.items[0]);
 			this.refreshView();
 		}

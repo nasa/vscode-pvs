@@ -68,7 +68,7 @@ import {
 	CliGatewayQuit,
 	ProofFile,
 	ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind, ProofExecDidStopRunning, ProofCommandResponse, ProofExecCommand, ProofEditCommand, ProofOrigin, SequentDescriptor, ProveFormulaRequest, ProofEditSliceTree
+	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind, ProofExecDidStopRunning, ProofCommandResponse, ProofExecCommand, ProofEditCommand, ProofOrigin, SequentDescriptor, ProveFormulaRequest, ProofEditSliceTree, ProofExecDidQuitProof
 } from '../common/serverInterface';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -2278,6 +2278,10 @@ export class PvsProofExplorer {
 			const ans: ProofCommandResponse = { res: "bye!", req };
 			this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 
+			if (!this.autorunFlag) {
+				const evt: ProofExecDidQuitProof = { action: "did-quit-proof" };
+				this.connection?.sendNotification(serverEvent.proverEvent, evt);
+			}
 			// const channelID: string = languageUtils.desc2id(this.formula);
 			// const evt: CliGatewayQuit = { type: "pvs.event.quit", channelID };
 			// this.pvsLanguageServer.cliGateway.publish(evt);

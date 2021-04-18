@@ -375,9 +375,8 @@ export class EventsDispatcher {
                 }
                 case "did-quit-proof": { // this is sent by CliGateway when the prover CLI is closed
                     this.proofExplorer.disposeView();
-                    await this.proofMate.saveSketchpadClips();  // saves sketchpad clips to the .jprf file
+                    // await this.proofMate.saveSketchpadClips();  // saves sketchpad clips to the .jprf file
                     this.proofMate.disposeView();
-                    // this.statusBar.hideInterruptButton();
                     break;
                 }
                 case "did-load-sequent": {
