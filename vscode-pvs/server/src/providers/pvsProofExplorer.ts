@@ -1101,7 +1101,7 @@ export class PvsProofExplorer {
 	 * 				If the new element is not specified, the function automatically queries the user to enter a proof command
 	 * @param opt Options: beforeSelected (boolean) allows to append the new element before the selected node (rather than after)
 	 */
-	appendNode (desc: { selected: ProofItem, elem?: ProofItem | string, sequent: SequentDescriptor }, opt?: { beforeSelected?: boolean, internalAction?: boolean }): ProofItem {
+	appendNode (desc: { selected: ProofItem, elem?: ProofItem | string, sequent: SequentDescriptor }, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): ProofItem {
 		if (desc && desc.selected) {
 			this.dirtyProof();
 			opt = opt || {};
@@ -1367,13 +1367,17 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor of the selected node where the content of the clipboard will be appended.
 	 * @param opt Optionals parameters (see appendNode)
 	 */
-	pasteTree (desc: { selected: ProofItem }, opt?: { beforeSelected?: boolean }): boolean {
+	pasteTree (desc: { selected: ProofItem }, opt?: { beforeSelected?: boolean, rebase?: boolean }): boolean {
 		if (desc && desc.selected) {
 			opt = opt || {};
 			const clips: ProofItem[] = this.clipboardTree;
 			if (clips) {
 				for (let i = 0; i < clips.length; i++) {
-					this.appendNode({ selected: desc.selected, elem: clips[clips.length - i - 1].cloneTree(), sequent: null });
+					this.appendNode({
+						selected: desc.selected, 
+						elem: clips[clips.length - i - 1].cloneTree(), 
+						sequent: null
+					}, opt);
 				}
 				return true;
 			} else {
@@ -1486,7 +1490,7 @@ export class PvsProofExplorer {
 				// trim the tree rooted at the active node
 				this.trimNode({ selected: activeNode });
 				// paste selected
-				this.pasteTree({ selected: activeNode });
+				this.pasteTree({ selected: activeNode }, { rebase: true });
 				return;
 			}
 		}
@@ -3068,7 +3072,7 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
-	appendSibling (sib: ProofItem, opt?: { beforeSelected?: boolean, internalAction?: boolean }): void {
+	appendSibling (sib: ProofItem, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): void {
 		let children: ProofItem[] = [];
 		const n: number = this.parent.children.length;
 
@@ -3078,8 +3082,10 @@ export class ProofItem extends TreeItem {
 				children.push(this.parent.children[i]);
 			}
 			if (this.parent.children[i].id === this.id) {
-				// adjust branch id for the node being pasted
-				this.rebaseBranch(sib, sib.branchId, this.parent.children[i].branchId);
+				if (opt.rebase) {
+					// adjust branch id for the node being pasted
+					this.rebaseBranch(sib, sib.branchId, this.parent.children[i].branchId);
+				}
 				if (sib.contextValue === "root") { // if the node to be appended is a root node, we append its children
 					children = children.concat(sib.children);
 				} else {
@@ -3105,15 +3111,17 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
-	appendChildAtBeginning (child: ProofItem, opt?: { internalAction?: boolean }): void {
+	appendChildAtBeginning (child: ProofItem, opt?: { internalAction?: boolean, rebase?: boolean }): void {
 		opt = opt || {};
 		this.children = this.children || [];
 		child.parent = this;
-		// adjust branch id for the node being pasted
-		const targetId: string = this.children?.length ? this.children[0].branchId
-			: this.parent ? `${this.parent.branchId}.1`
-				: ""
-		this.rebaseBranch(child, child.branchId, targetId);
+		if (opt.rebase) {
+			// adjust branch id for the node being pasted
+			const targetId: string = this.children?.length ? this.children[0].branchId
+				: this.parent ? `${this.parent.branchId}.1`
+					: ""
+			this.rebaseBranch(child, child.branchId, targetId);
+		}
 		if (child.contextValue === "root") {
 			this.children = child.children.concat(this.children);
 		} else {
