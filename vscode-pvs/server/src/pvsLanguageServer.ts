@@ -1866,6 +1866,7 @@ export class PvsLanguageServer {
 						case "append-branch": { this.proofExplorer?.appendBranchX(desc); break; }
 						case "cut-node": { this.proofExplorer?.cutNodeX(desc); break; }
 						case "cut-tree": { this.proofExplorer?.cutTreeX(desc); break; }
+						case "slice-tree": { this.proofExplorer?.sliceTreeX(desc); break; }
 						case "delete-tree": { this.proofExplorer?.deleteTreeX(desc); break; }
 						case "trim-node": { this.proofExplorer?.trimNodeX(desc); break; }
 						case "trim-unused": { this.proofExplorer?.removeNotVisitedX(desc); break; }

@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.42",
+	"version": "1.0.43-alpha",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -502,6 +502,13 @@
 				"category": "pvs"
 			},
 			{
+				"command": "proof-explorer.slice-tree",
+				"title": "Slice",
+				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"category": "pvs"
+
+			},
+			{
 				"command": "proof-explorer.trim-unused",
 				"title": "Remove Unused Commands",
 				"enablement": "view == proof-explorer-view && pvs-server-active == true",
@@ -943,9 +950,14 @@
 					"group": "context-menu/edit-4"
 				},
 				{
-					"command": "proof-explorer.trim-unused",
+					"command": "proof-explorer.slice-tree",
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-5"
+				},
+				{
+					"command": "proof-explorer.trim-unused",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/edit-6"
 				},
 				{
 					"command": "proof-mate.exec-proof-command",

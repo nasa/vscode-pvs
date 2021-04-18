@@ -68,7 +68,7 @@ import {
 	CliGatewayQuit,
 	ProofFile,
 	ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind, ProofExecDidStopRunning, ProofCommandResponse, ProofExecCommand, ProofEditCommand, ProofOrigin, SequentDescriptor, ProveFormulaRequest
+	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind, ProofExecDidStopRunning, ProofCommandResponse, ProofExecCommand, ProofEditCommand, ProofOrigin, SequentDescriptor, ProveFormulaRequest, ProofEditSliceTree
 } from '../common/serverInterface';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -460,7 +460,7 @@ export class PvsProofExplorer {
 				// else -- keep processing the response as usual
 			}
 			// console.dir(response, { depth: null });
-			if (response && response.result && response.result.length) {
+			if (response?.result?.length) {
 				for (let i = 0; i < response.result.length; i++) {
 					const proofState: SequentDescriptor = response.result[i]; // process proof commands
 					await this.onStepExecutedNew({ proofState, args: command, lastSequent: i === response.result.length - 1 }, opt);
@@ -771,9 +771,13 @@ export class PvsProofExplorer {
 					// here we need to check both command and userCmd, as pvs may clean up the command, eg., (hide 01) is returned as (hide 1)
 					if ((isSameCommand(activeNode.name, command) || isSameCommand(activeNode.name, userCmd) || isSameCommand(activeNode.name, cmd))
 							&& !this.ghostNode.isActive()) {
-						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
+						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });						
 						// mark the sub tree of the invalid node as not visited
 						activeNode.treeNotVisited();
+						// the the node has children, remove all children, otherwise branch number may collide with new branches created by other commands entered later on by the user
+						if (activeNode.children?.length) {
+							this.cutTree({ selected: activeNode, keepRoot: true });
+						}
 					}
 				} else {
 					// regular prover command
@@ -1366,9 +1370,10 @@ export class PvsProofExplorer {
 	pasteTree (desc: { selected: ProofItem }, opt?: { beforeSelected?: boolean }): boolean {
 		if (desc && desc.selected) {
 			opt = opt || {};
-			if (this.clipboardTree) {
-				for (let i = 0; i < this.clipboardTree.length; i++) {
-					this.appendNode({ selected: desc.selected, elem: this.clipboardTree[this.clipboardTree.length - i - 1].cloneTree(), sequent: null });
+			const clips: ProofItem[] = this.clipboardTree;
+			if (clips) {
+				for (let i = 0; i < clips.length; i++) {
+					this.appendNode({ selected: desc.selected, elem: clips[clips.length - i - 1].cloneTree(), sequent: null });
 				}
 				return true;
 			} else {
@@ -1426,7 +1431,7 @@ export class PvsProofExplorer {
 	 * Equivalent to copyTree + deleteNode. 
 	 * @param desc Descriptor of the selected node.
 	 */
-	cutTree (desc: { selected: ProofItem }): string {
+	cutTree (desc: { selected: ProofItem, keepRoot?: boolean }): string {
 		if (desc && desc.selected) {
 			const seq: string = this.copyTree(desc);
 			this.deleteTree(desc);
@@ -1440,7 +1445,7 @@ export class PvsProofExplorer {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
-				const clipboard: string = this.cutTree({ selected });
+				const clipboard: string = this.cutTree({ selected, keepRoot: desc.keepRoot });
 				if (clipboard && this.clipboardTree && this.clipboardTree.length) {
 					const elems: ProofNodeX[] = [];
 					for (let i = 0; i < this.clipboardTree.length; i++) {
@@ -1457,15 +1462,47 @@ export class PvsProofExplorer {
 		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
 	}
 	/**
+	 * Trims the tree between active node (not included) and the selected node (not included). 
+	 * Equivalent to cutTree(selected) + trim(activeNode) + paste(activeNode). 
+	 * @param desc Descriptor of the selected node.
+	 */
+	sliceTree (desc: { selected: ProofItem }): string {
+		if (desc && desc.selected) {
+			const seq: string = this.copyTree(desc);
+			this.deleteTree(desc);
+			return seq;
+		} else {
+			console.warn(`[proof-explorer] Warning: unable to cut selected subtree`);
+		}
+		return null;
+	}
+	sliceTreeX (desc: ProofEditSliceTree): void {
+		if (desc && desc.selected) {
+			const selected: ProofItem = this.findNode(desc.selected.id);
+			const activeNode: ProofItem = this.activeNode;
+			if (selected && activeNode && activeNode.id !== selected.id && !selected.isVisited()) {
+				// cut tree rooted at selected
+				this.cutTree({ selected });
+				// trim the tree rooted at the active node
+				this.trimNode({ selected: activeNode });
+				// paste selected
+				this.pasteTree({ selected: activeNode });
+				return;
+			}
+		}
+		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
+	}
+	/**
 	 * Deletes the subtree rooted at the selected node.
 	 * A confirmation dialog is automatically displayed (unless optional parameters indicate not to show it) to ask confirmation of the operation.
 	 * @param desc Descriptor of the selected node.
 	 * @param opt Optionals parameters: confirm (boolean) indicates whether a confirmation dialog should be displayed before deleting the node.
 	 */
-	deleteTree (desc: { selected: ProofItem }): void {
+	deleteTree (desc: { selected: ProofItem, keepRoot?: boolean }): void {
 		if (desc && desc.selected && desc.selected.parent) {
-			const parent: ProofItem = desc.selected.parent;
-			const len: number = parent.children.length - parent.children.indexOf(desc.selected);
+			const parent: ProofItem = (desc.keepRoot) ? desc.selected : desc.selected.parent;
+			const len: number = (desc.keepRoot) ? parent.children.length
+				: parent.children.length - parent.children.indexOf(desc.selected);
 			for (let i = 0; i < len; i++) {
 				this.deleteNode({ selected: parent.children[parent.children.length - 1] });
 			}
@@ -3012,6 +3049,25 @@ export class ProofItem extends TreeItem {
 		}
 		return null;
 	}
+	/**
+	 * Utility function, used to rebase branch ids
+	 */
+	protected rebaseBranch (node: ProofItem, baseId: string, targetId: string): void {
+		if (node) {
+			node.branchId = node.branchId.replace(baseId, targetId);
+			if (node.branchId.startsWith(".")) {
+				node.branchId = node.branchId.slice(1);
+			}
+			if (node.contextValue === "proof-branch") {
+				node.name = `(${node.branchId})`
+			}
+			if (node.children?.length) {
+				for (let i = 0; i < node.children.length; i++) {
+					this.rebaseBranch (node.children[i], baseId, targetId);
+				}
+			}
+		}
+	}
 	appendSibling (sib: ProofItem, opt?: { beforeSelected?: boolean, internalAction?: boolean }): void {
 		let children: ProofItem[] = [];
 		const n: number = this.parent.children.length;
@@ -3022,6 +3078,8 @@ export class ProofItem extends TreeItem {
 				children.push(this.parent.children[i]);
 			}
 			if (this.parent.children[i].id === this.id) {
+				// adjust branch id for the node being pasted
+				this.rebaseBranch(sib, sib.branchId, this.parent.children[i].branchId);
 				if (sib.contextValue === "root") { // if the node to be appended is a root node, we append its children
 					children = children.concat(sib.children);
 				} else {
@@ -3051,6 +3109,11 @@ export class ProofItem extends TreeItem {
 		opt = opt || {};
 		this.children = this.children || [];
 		child.parent = this;
+		// adjust branch id for the node being pasted
+		const targetId: string = this.children?.length ? this.children[0].branchId
+			: this.parent ? `${this.parent.branchId}.1`
+				: ""
+		this.rebaseBranch(child, child.branchId, targetId);
 		if (child.contextValue === "root") {
 			this.children = child.children.concat(this.children);
 		} else {

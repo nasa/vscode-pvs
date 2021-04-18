@@ -251,8 +251,8 @@ describe("proof-explorer", () => {
 		expect(root.rules[0].name).to.deep.equal("(skosimp*)");
 		expect(root.rules[1].name).to.deep.equal("(grind)");
 
-		const initial_tooltip: string = proofExplorer.getTooltip({ selected: root.rules[0] });
-		expect(initial_tooltip).to.contain(request5.formulaName);
+		// const initial_tooltip: string = proofExplorer.getTooltip({ selected: root.rules[0] });
+		// expect(initial_tooltip).to.contain(request5.formulaName);
 
 	});
 
