@@ -2315,6 +2315,14 @@ export class XTermPvs extends Backbone.Model {
             if (contentHasChanged) {
                 this.updateView(evt);
             }
+            // if there's one tooltip and it's identical to the command in the command line, remove the tooltip
+            const hints: string[] = this.autocomplete.getHints();
+            if (hints?.length === 1) {
+                const cmd: string = this.content.command();
+                if (hints[0] === cmd) {
+                    this.autocomplete.deleteTooltips();
+                }
+            }
         }
     }
 
