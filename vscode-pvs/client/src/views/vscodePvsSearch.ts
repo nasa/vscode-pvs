@@ -290,7 +290,7 @@ export class VSCodePvsSearch {
         // create webview content
         this.createContent(data);
         // set language to pvs
-        vscodeUtils.setEditorLanguage();
+        vscodeUtils.setEditorLanguagetoPVS();
     }
     /**
      * Creates the html rendered in the webview

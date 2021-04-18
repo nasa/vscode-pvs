@@ -58,8 +58,6 @@ import {
     XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData, XTermMessage
 } from '../common/xtermInterface';
 import { balancePar, getHints, isInvalidCommand } from '../common/languageUtils';
-import { htmlColorCode } from '../common/colorUtils';
-
 
 export enum XTermPvsEvent {
     DidCloseTerminal = "DidCloseTerminal",
@@ -841,7 +839,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     // Create webview content
                     this.createContent();
                     // set language to pvs
-                    vscodeUtils.setEditorLanguage();
+                    vscodeUtils.setEditorLanguagetoPVS();
                     // set terminal visible to true
                     commands.executeCommand('setContext', 'terminal.visible', true);
                 } catch (err) {

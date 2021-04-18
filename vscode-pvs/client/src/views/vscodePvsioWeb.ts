@@ -907,7 +907,7 @@ export class VSCodePvsioWeb {
         // create webview content
         this.createContent();
         // set language to pvs
-        vscodeUtils.setEditorLanguage();
+        vscodeUtils.setEditorLanguagetoPVS();
     }
     /**
      * Creates the html rendered in the webview

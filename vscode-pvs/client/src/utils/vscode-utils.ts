@@ -185,7 +185,7 @@ export async function showMarkdownPreview (desc: FileDescriptor): Promise<void> 
     if (desc && desc.fileName && desc.fileContent) {
         const fileUri: vscode.Uri = await createTextDocument(desc);
         if (fileUri) {
-            vscode.commands.executeCommand('markdown.showPreview', fileUri);
+            await vscode.commands.executeCommand('markdown.showPreview', fileUri);
         }
     }
 }
@@ -960,7 +960,7 @@ export function resetGlobals (): void {
 /**
  * Sets the editor language to pvs
  */
-export function setEditorLanguage (): void {
+export function setEditorLanguagetoPVS (): void {
     vscode.commands.executeCommand('setContext', "editorLangId", "pvs");
 }
 
