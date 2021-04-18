@@ -242,7 +242,7 @@ export class PvsDefinitionProvider {
 			if (importedTheory && importedTheory.result) {
 				const fname: string = importedTheory.result;
 				let desc: TheoryDescriptor[] = await fsUtils.listTheoriesInFile(fname);
-				desc = desc.filter(tdesc => {
+				desc = desc?.filter(tdesc => {
 					return tdesc.theoryName = symbolName;
 				});
 				const start: Position = (desc && desc.length) ? desc[0].position : { line: 0, character: 0 };
@@ -293,7 +293,7 @@ export class PvsDefinitionProvider {
 			const currentFile: PvsDefinition[] = candidates.filter(elem => {
 				return fsUtils.getContextFolder(elem.symbolDeclarationFile) === theory.contextFolder
 							&& fsUtils.getFileName(elem.symbolDeclarationFile) === theory.fileName;
-			});
+			}) || [];
 			if (currentFile && currentFile.length) {
 				return currentFile.concat(candidates.filter(elem => {
 					return !(fsUtils.getContextFolder(elem.symbolDeclarationFile) === theory.contextFolder

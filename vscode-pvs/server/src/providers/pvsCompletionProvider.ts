@@ -230,9 +230,11 @@ export class PvsCompletionProvider {
 					const declarationLine: boolean = new RegExp(utils.isense.declaration).test(currentLine);
 					const formulaDeclared: boolean = new RegExp(utils.isense.formulaDeclaration).test(currentLine);
 					if (declarationLine && !formulaDeclared) {
-						ans = ans.concat(this.declarationCompletionItems.filter((item: CompletionItem) => {
-							return item.label.toUpperCase().startsWith(currentInput.toUpperCase());
-						}));
+						if (this.declarationCompletionItems) {
+							ans = ans.concat(this.declarationCompletionItems.filter((item: CompletionItem) => {
+								return item.label.toUpperCase().startsWith(currentInput.toUpperCase());
+							}));
+						}
 						// if (ans && ans.length) {
 						// 	return ans;
 						// }
@@ -289,9 +291,11 @@ export class PvsCompletionProvider {
 					}
 					
 					// add core completion items
-					ans = ans.concat(this.coreCompletionItems.filter((item: CompletionItem) => {
-						return item.label.startsWith(currentInput);
-					}));
+					if (this.coreCompletionItems) {
+						ans = ans.concat(this.coreCompletionItems.filter((item: CompletionItem) => {
+							return item.label.startsWith(currentInput);
+						}));
+					}
 					return Promise.resolve(ans);
 				}
 			}
