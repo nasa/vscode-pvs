@@ -1246,9 +1246,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.slice-tree", async (resource?: ProofItem) => {
 			if (resource) {
-				if (resource.isVisited()) {
-					vscodeUtils.showInformationMessage(`Slice can be performed only on nodes that have not been executed already`);
-				} else {
+				if (!resource.isVisited() && !resource.isActive() && this.activeNode) {
 					const msg: string = `Slice all nodes between ${this.activeNode.name} and ${resource.name}?`;
 					const actionConfirmed: boolean = await this.queryConfirmation(msg);
 					if (actionConfirmed) {
@@ -1256,6 +1254,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 						console.log(`[vscode-proof-explorer] Slicing nodes between ${this.activeNode.name} and ${resource.name} (${resource.id})`);
 						this.client.sendRequest(serverRequest.proverCommand, action);
 					}
+				} else {
+					vscodeUtils.showInformationMessage(`Slice can only be performed on proof commands that have not been executed already.`);
 				}
 			}
 		}));
