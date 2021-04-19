@@ -454,10 +454,10 @@ export class EventsDispatcher {
                 proofDescriptor: ProofDescriptor
             }
         }) => {
-            if (desc && desc.response && desc.response.success && desc.response.proofFile && desc.response.formula) {
+            if (desc?.response?.success && desc?.response?.proofFile && desc?.response?.formula) {
                 // const fname: string = fsUtils.desc2fname(desc.response.proofFile);
-                await this.proofMate.saveSketchpadClips();  // saves sketchpad clips to the .jprf file
                 if (!this.quietMode) {
+                    // await this.proofMate.saveSketchpadClips();  // saves sketchpad clips to the .jprf file
                     const msg: string = `Proof ${desc.response.formula.formulaName} saved`;// in file ${fname}`;
                     this.statusBar.showMsg(msg);
                     setTimeout(() => {
@@ -466,13 +466,13 @@ export class EventsDispatcher {
                     // window.showInformationMessage(msg);
                 }
             } else {
-                if (desc && desc.args) {
-                    if (desc.response && desc.response.msg) {
+                if (desc?.args) {
+                    if (desc?.response?.msg) {
                         vscodeUtils.showErrorMessage(`Error while saving file ${fsUtils.desc2fname(desc.args)} (${desc.response.msg})`);
                     } else {
                         vscodeUtils.showErrorMessage(`Unexpected error while saving file ${fsUtils.desc2fname(desc.args)} (please check pvs-server output for details)`);
                     }
-                    if (desc.response.script) {
+                    if (desc?.response?.script) {
                         const fileContent: string = `# Proof for ${desc.args.formulaName}\n`
                             + 'An error occurred while trying to save your proof in PVS.\n'
                             + 'You might be using an obsolete version of PVS. Please try to re-install PVS with the command `M-x reinstall-pvs`.\n'
@@ -574,8 +574,8 @@ export class EventsDispatcher {
             args: PvsProofCommand
 		}) => {
             // console.log(request);
-            this.proofMate.clearSketchPath();
-            this.proofMate.saveSketchpadClips();
+            // this.proofMate.clearSketchPath();
+            // this.proofMate.saveSketchpadClips();
         });
 
         this.client.onRequest(serverEvent.showTheorySummaryResponse, (desc: { 
