@@ -367,15 +367,10 @@ export class EventsDispatcher {
                     this.proofMate.startProof();
                     await this.proofMate.loadSketchpadClips(); // loads sketchpad clips from the .jprf file
                     this.proofExplorer.focusActiveNode({ force: true }); // this will automatically open the view, in the case the view was hidden
-                    // the following does not work, even with the timeout -- proof explorer keeps the focus, not sure why
-                    // setTimeout(() => {
-                    //     this.xterm.focus(); // place focus on the terminal. this is done after a timeout to ensure proof-explorer does not steal the focus
-                    // }, 500);
                     break;
                 }
                 case "did-quit-proof": { // this is sent by CliGateway when the prover CLI is closed
                     this.proofExplorer.disposeView();
-                    // await this.proofMate.saveSketchpadClips();  // saves sketchpad clips to the .jprf file
                     this.proofMate.disposeView();
                     break;
                 }
@@ -387,6 +382,9 @@ export class EventsDispatcher {
                 case "did-update-sequent": {
                     this.proofExplorer.didUpdateSequent(desc);
                     this.proofMate.updateRecommendations(desc.sequent);
+                    if (this.proofExplorer.isRunning()) {
+                        this.xterm.showFeedbackWhileExecuting("run-proof");
+                    }
                     break;
                 }
                 case "did-load-proof": {
@@ -457,7 +455,8 @@ export class EventsDispatcher {
             }
         }) => {
             if (desc && desc.response && desc.response.success && desc.response.proofFile && desc.response.formula) {
-                const fname: string = fsUtils.desc2fname(desc.response.proofFile);
+                // const fname: string = fsUtils.desc2fname(desc.response.proofFile);
+                await this.proofMate.saveSketchpadClips();  // saves sketchpad clips to the .jprf file
                 if (!this.quietMode) {
                     const msg: string = `Proof ${desc.response.formula.formulaName} saved`;// in file ${fname}`;
                     this.statusBar.showMsg(msg);
@@ -574,6 +573,9 @@ export class EventsDispatcher {
 		this.client.onRequest(serverEvent.QED, (request: {
             args: PvsProofCommand
 		}) => {
+            // console.log(request);
+            this.proofMate.clearSketchPath();
+            this.proofMate.saveSketchpadClips();
         });
 
         this.client.onRequest(serverEvent.showTheorySummaryResponse, (desc: { 
@@ -728,7 +730,7 @@ export class EventsDispatcher {
         //         // window.showInformationMessage(`${desc.cmd} sent to terminal`)
         //     }
         // }));
-        context.subscriptions.push(commands.registerCommand("proof-mate.proof-command-dblclicked", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
+        context.subscriptions.push(commands.registerCommand("proof-mate.proof-command-dblclicked", (desc: PvsProofCommand) => {
             if (desc?.cmd) {
                 this.xterm.sendText(desc.cmd);
                 this.xterm.focus();
@@ -736,7 +738,7 @@ export class EventsDispatcher {
                 // window.showInformationMessage(`${desc.cmd} sent to terminal`)
             }
         }));
-        context.subscriptions.push(commands.registerCommand("proof-explorer.proof-command-dblclicked", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
+        context.subscriptions.push(commands.registerCommand("proof-explorer.proof-command-dblclicked", (desc: PvsProofCommand) => {
             if (desc && desc.cmd) {
                 this.xterm.sendText(desc.cmd);
                 this.xterm.focus();

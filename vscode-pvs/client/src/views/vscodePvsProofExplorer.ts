@@ -219,6 +219,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			// run entire proof
 			const action: ProofExecRun = { action: "run" };
 			this.client.sendRequest(serverRequest.proverCommand, action);
+			vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", { cmd: "run-proof" });
 		} else {
 			commands.executeCommand("vscode-pvs.prove-formula", this.formula);
 		}
@@ -472,7 +473,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				this.ghostNode.realNode = realNode;
 				this.ghostNode.parent = realNode;
 				this.ghostNode.active();
-				this.refreshView({ source: "did-activate-cursor"});
+				this.activeNode = null;
+				this.refreshView({ source: "did-activate-cursor", focusActive: true });
 			}
 		} else {
 			console.warn(`[vscode-proof-explorer] Warning: unable to complete proofEdit/activateCursor`)
@@ -506,6 +508,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 
+	/**
+	 * Resets the view
+	 */
 	resetView (): void {
 		this.root = null;
 		this.ghostNode = null;
@@ -513,6 +518,16 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		this.refreshView({ source: "did-reset-view" });
 	}
 
+	/**
+	 * Utility function, returns true if proof-explorer is re-running a proof
+	 */
+	isRunning (): boolean  {
+		return this.running;
+	}
+
+	/**
+	 * Handler for trim-node events
+	 */
 	didTrimNode (desc: ProofEditDidTrimNode): void {
 		if (desc && desc.elems && desc.elems.length) {
 			let sketchpadItems: ProofItem[] = [];
@@ -571,7 +586,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	/**
 	 * Refresh tree views (explorer and external treeviz)
 	 */
-	refreshView(opt?: { force?: boolean, source?: string, focusActive?: boolean }): void {
+	refreshView (opt?: { force?: boolean, source?: string, focusActive?: boolean }): void {
 		opt = opt || {};
 		this.tfocus = this.tfocus || opt?.focusActive;
 		const refresh = () => {
@@ -1126,9 +1141,11 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.forward", () => {
 			// execute next proof command
-			const action: ProofExecForward = { action: "forward" };
-			this.client.sendRequest(serverRequest.proverCommand, action);
-			vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", { cmd: this.activeNode.name });
+			if (!this.ghostNode?.isActive()) {
+				const action: ProofExecForward = { action: "forward" };
+				this.client.sendRequest(serverRequest.proverCommand, action);
+				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", { cmd: this.activeNode.name });
+			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.back", () => {
 			// go back one proof command
@@ -1261,11 +1278,15 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.cut-subtree", (resource?: ProofItem) => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.cut-subtree", async (resource?: ProofItem) => {
 			if (resource) {
-				const action: ProofEditCutTree = { action: "cut-tree", selected: { id: resource.id, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Cutting tree rooted at ${resource.name} (${resource.id})`);
-				this.client.sendRequest(serverRequest.proverCommand, action);
+				const msg: string = `Cut subtree rooted at ${resource.name}?`;
+				const actionConfirmed: boolean = await this.queryConfirmation(msg);
+				if (actionConfirmed) {
+					const action: ProofEditCutTree = { action: "cut-tree", selected: { id: resource.id, name: resource.name } };
+					console.log(`[vscode-proof-explorer] Cutting tree rooted at ${resource.name} (${resource.id})`);
+					this.client.sendRequest(serverRequest.proverCommand, action);
+				}
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.slice-subtree", (resource?: ProofItem) => {
@@ -1474,7 +1495,7 @@ export abstract class ProofItem extends TreeItem {
 		this.name = desc.name;
 		this.branchId = desc.branchId;
 		this.parent = desc.parent;
-		this.tooltip = "Double click copies the command to the prover prompt";
+		this.tooltip = "Double click copies command to prover console";
 		this.notVisited();
 	}
 	/**

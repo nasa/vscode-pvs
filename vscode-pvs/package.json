@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.43-alpha",
+	"version": "1.0.43-beta",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -459,7 +459,7 @@
 			},
 			{
 				"command": "proof-mate.exec-proof-command",
-				"title": "Execute",
+				"title": "Execute Proof Command",
 				"enablement": "pvs-server-active == true",
 				"icon": {
 					"dark": "icons/play-icon.png",
@@ -484,8 +484,14 @@
 				"category": "pvs"
 			},
 			{
-				"command": "proof-mate.send-to-terminal",
-				"title": "Send to terminal",
+				"command": "proof-mate.send-proof-command",
+				"title": "Copy Command to Prover Console",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
+				"command": "proof-mate.send-subtree",
+				"title": "Copy Subtree to Prover Console",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
@@ -506,7 +512,6 @@
 				"title": "Slice",
 				"enablement": "view == proof-explorer-view && pvs-server-active == true",
 				"category": "pvs"
-
 			},
 			{
 				"command": "proof-explorer.trim-unused",
@@ -960,44 +965,34 @@
 					"group": "context-menu/edit-6"
 				},
 				{
-					"command": "proof-mate.exec-proof-command",
-					"when": "view == proof-mate-view && viewItem == proofmate-item",
-					"group": "inline"
+					"command": "proof-mate.send-proof-command",
+					"when": "view == proof-mate-view && viewItem == proofmate-item || view == proof-mate-view && viewItem == proof-command",
+					"group": "context-menu/exec-1"
+				},
+				{
+					"command": "proof-mate.send-subtree",
+					"when": "view == proof-mate-view",
+					"group": "context-menu/exec-1"
 				},
 				{
 					"command": "proof-mate.exec-proof-command",
-					"when": "view == proof-mate-view && viewItem == proofmate-item",
-					"group": "context-menu/exec"
+					"when": "view == proof-mate-view && viewItem == proofmate-item || view == proof-mate-view && viewItem == proof-command",
+					"group": "context-menu/exec-2"
 				},
 				{
 					"command": "proof-mate.exec-subtree",
 					"when": "view == proof-mate-view",
-					"group": "context-menu/exec"
+					"group": "context-menu/exec-2"
+				},
+				{
+					"command": "proof-mate.exec-proof-command",
+					"when": "view == proof-mate-view && viewItem == proof-command || view == proof-mate-view && viewItem == proofmate-item",
+					"group": "inline"
 				},
 				{
 					"command": "proof-mate.run-sketchpad",
 					"when": "view == proof-mate-view && viewItem == proofmate-sketchpad",
 					"group": "inline"
-				},
-				{
-					"command": "proof-mate.send-to-terminal",
-					"when": "view == proof-mate-view && viewItem == proofmate-item",
-					"group": "context-menu/exec-1"
-				},
-				{
-					"command": "proof-mate.exec-proof-command",
-					"when": "view == proof-mate-view && viewItem == proof-command",
-					"group": "inline"
-				},
-				{
-					"command": "proof-mate.exec-proof-command",
-					"when": "view == proof-mate-view && viewItem == proof-command",
-					"group": "context-menu/exec"
-				},
-				{
-					"command": "proof-mate.send-to-terminal",
-					"when": "view == proof-mate-view && viewItem == proof-command",
-					"group": "context-menu/exec-1"
 				}
 			],
 			"editor/title/run": [],

@@ -40,7 +40,7 @@ import { LanguageClient } from "vscode-languageclient";
 import * as vscode from 'vscode';
 import { ProofBranch, ProofCommand, ProofItem, RootNode } from "./vscodePvsProofExplorer";
 import * as utils from '../common/languageUtils';
-import { ProofMateProfile, ProofNode, PvsFormula, SequentDescriptor, SFormula } from "../common/serverInterface";
+import { ProofMateProfile, ProofNode, PvsFormula, PvsProofCommand, SequentDescriptor, SFormula } from "../common/serverInterface";
 import * as path from 'path';
 import { openSketchpad, saveSketchpad } from "../common/fsUtils";
 
@@ -238,9 +238,13 @@ class ProofMateHints extends ProofMateGroup {
  */
 class ProofMateSketchpadLabel extends ProofItem {
 	contextValue: string = "sketchpad-label";
+	name: string;
 	constructor (label: string) {
 		super({ type: "sketchpad-label", name: label, branchId: '', parent: null, collapsibleState: vscode.TreeItemCollapsibleState.Expanded });
+		this.name = label;
 		this.iconPath = new vscode.ThemeIcon("pinned");
+		this.tooltip = "";
+		this.command = null;
 	}
 }
 
@@ -307,15 +311,20 @@ class ProofMateSketchpad extends ProofMateGroup {
 		}
 	}
 	/**
-	 * Retuns the list of nodes in the sketchpad
+	 * Retuns the list of clips in the sketchpad
 	 */
-	getNodes (): ProofNode[] {
+	getClips (): ProofNode[] {
 		const nodes: ProofNode[] = [];
 		if (this.clips && this.clips.length) {
 			for (let i = 0; i < this.clips.length; i++) {
-				const node: ProofNode = this.clips[i].getNodeStructure();
-				if (node) {
-					nodes.push(node);
+				const elem: ProofMateSketchpadLabel = this.clips[i];
+				if (elem.children) {
+					for (let j = 0; j < elem.children.length; j++) {
+						const node: ProofNode = elem.children[j].getNodeStructure();
+						if (node) {
+							nodes.push(node);
+						}
+					}
 				}
 			}
 		}
@@ -412,7 +421,7 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	 * Saves the sketchpad as a .jprf file
 	 */
 	async saveSketchpadClips (): Promise<void> {
-		await saveSketchpad(this.formula, this.sketchpad?.getNodes());
+		await saveSketchpad(this.formula, this.sketchpad?.getClips());
 	}
 	/**
 	 * Loads sketchpad clips from a .jprf file
@@ -420,14 +429,16 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	async loadSketchpadClips (): Promise<void> {
 		const clips: ProofNode[] = await openSketchpad(this.formula);
 		if (clips && clips.length) {
-			const items: ProofItem[] = [];
+			let items: ProofItem[] = [];
 			for (let i = 0; i < clips.length; i++) {
 				const item: ProofItem = this.proofNode2proofItem(clips[i]);
 				if (item) {
 					items.push(item);
 				}
 			}
-			this.sketchpad.add(items);
+			if (items.length) {
+				this.sketchpad.add(items, { label: "Clips from previous proof attempt" });
+			}
 		}
 	}
 	/**
@@ -436,8 +447,8 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	protected proofNode2proofItem (node: ProofNode): ProofItem {
 		// utility function for building the proof tree -- see also pvsProofExplorer.loadProofDescriptor
 		const createTree = (elem: ProofNode, parent: ProofItem): void => {
-			const node: ProofItem = (elem.type === "proof-command") ? 
-				new ProofCommand({ cmd: elem.name, branchId: elem.branch, parent }) 
+			const node: ProofItem = 
+				(elem.type === "proof-command") ? new ProofCommand({ cmd: elem.name, branchId: elem.branch, parent }) 
 				: new ProofBranch({ cmd: elem.name, branchId: elem.branch, parent });
 			parent.appendChild(node);
 			if (elem.rules && elem.rules.length) {
@@ -447,13 +458,10 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 			}
 		}
 		// initialise
-		const item: ProofItem = (node.type === "proof-branch") ? new ProofBranch({ 
-			cmd: node.name, branchId: node.branch, parent: null
-		}) : (node.type === "proof-command") ? new ProofCommand({
-			cmd: node.name, branchId: node.branch, parent: null
-		}) : (node.type === "root") ? new RootNode({
-			name: node.name
-		}) : null;
+		const item: ProofItem = 
+			(node.type === "proof-branch") ? new ProofBranch({ cmd: node.name, branchId: node.branch, parent: null }) 
+			: (node.type === "proof-command") ? new ProofCommand({ cmd: node.name, branchId: node.branch, parent: null })
+			: (node.type === "root") ? new RootNode({ name: node.name }) : null;
 		if (item && node.rules && node.rules.length) {
 			node.rules.forEach((child: ProofNode) => {
 				createTree(child, item);
@@ -528,15 +536,31 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 					light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
 					dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
 				};
-				this.refreshView();
 				this.sendProofCommand(resource.name);
+				this.refreshView();
 			} else {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
 			}
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.send-to-terminal", (resource: ProofMateItem | ProofItem) => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.send-subtree", (resource: ProofMateItem | ProofItem) => {
 			if (resource && resource.name) {
-				const dd = { 
+				const seq: string = resource.printProofCommands({ markExecuted: true });
+				const dd: PvsProofCommand = { 
+					fileName: this.formula.fileName,
+					fileExtension: this.formula.fileExtension,
+					contextFolder: this.formula.contextFolder,
+					theoryName: this.formula.theoryName, 
+					formulaName: this.formula.formulaName,
+					cmd: seq
+				}
+				vscode.commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
+		} else {
+				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
+			}
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.send-proof-command", (resource: ProofMateItem | ProofItem) => {
+			if (resource && resource.name) {
+				const dd: PvsProofCommand = { 
 					fileName: this.formula.fileName,
 					fileExtension: this.formula.fileExtension,
 					contextFolder: this.formula.contextFolder,
@@ -585,7 +609,13 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	 * Utility function, used to identify which formula is being proved in the proof tree session
 	 */
 	loadFormula (formula: PvsFormula): void {
-		this.formula = formula;
+		this.formula = {
+			contextFolder: formula?.contextFolder,
+			fileName: formula?.fileName,
+			fileExtension: formula?.fileExtension,
+			theoryName: formula?.theoryName,
+			formulaName: formula?.formulaName
+		};
 	}
 
 	/**

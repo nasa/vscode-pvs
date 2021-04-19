@@ -701,7 +701,11 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     showFeedbackWhileExecuting (cmd: string): void {
         if (cmd && !utils.isQuitCommand(cmd)) {
-            this.showHelpMessage(`Executing ${cmd}<br>To interrupt the execution, press Ctrl+C`);
+            if (cmd === "run-proof") {
+                this.showHelpMessage(`Executing all commands in the proof tree.<br>To interrupt the execution, press Ctrl+C`);
+            } else {
+                this.showHelpMessage(`Executing ${cmd}<br>To interrupt the execution, press Ctrl+C`);
+            }
         }
     }
     /**
