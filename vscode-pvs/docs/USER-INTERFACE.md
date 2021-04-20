@@ -75,12 +75,13 @@ VSCode-PVS provides all features necessary to create and edit PVS files, includi
 
 ## Proving theorems
 
-<br> <img src="../screenshots/vscode-pvs-prove-formula.gif" width="600">
-
 Interactive prover sessions can be started for each formula defined in the current PVS workspace.
 To start a prover session, click the inline `prove` command next to the theorem. Alternatively
 you can also click the `play` button displayed next to a formula name in `Workspace Explorer`.
-The prove command will activate three components:
+
+<br> <img src="../screenshots/vscode-pvs-prove-formula.gif" width="600">
+
+When a prover session is started, VSCode-PVS automatically activated the following components:
 - `Proof Explorer`: interactive tree view for displaying, executing, and editing proof files.
 - `Proof Mate`: interactive tree view providing a sketchpad and a proof command suggester.
 - `Prover Console`: interactive command line console for sending proof commands to the PVS theorem prover.
@@ -116,9 +117,9 @@ Actions provided in the title bar include:
 
 Proof Mate provides a sketchpad that automatically collects proof fragments that become detatched from the proof tree, e.g., as a consequence of cut/trim operations on the proof tree, or because a specification change broke the saved proof. These clips facilitate proof editing and proof repair, and they can be accessed and re-used throughout the entire duration of the proof session.
 
-Proof Mate provides also a proof command suggester, showing hints about proof commands that can be used to make progress with the current proof. This component currently uses simple heuristics to suggest commands, its behavior will be refined over time.
-
 <br> <img src="../screenshots/vscode-pvs-proof-mate.gif" width="600">
+
+Proof Mate has also an integrated suggester that shows hints about proof commands that can be used to make progress with the current proof. This component uses only simple heuristics at the moment. More advanced heuristics will be developed over time.
 
 <br>
 
