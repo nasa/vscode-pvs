@@ -774,9 +774,12 @@ export class PvsProofExplorer {
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });						
 						// mark the sub tree of the invalid node as not visited
 						activeNode.treeNotVisited();
-						// the the node has children, remove all children, otherwise branch number may collide with new branches created by other commands entered later on by the user
-						if (activeNode.children?.length) {
-							this.cutTree({ selected: activeNode, keepRoot: true });
+						// remove children of this node only if we are not re-running the proof,
+						// otherwise we may unintentionally break some proofs while re-running proofs
+						if (!this.running) {
+							if (activeNode.children?.length) {
+								this.cutTree({ selected: activeNode, keepRoot: true });
+							}
 						}
 					}
 				} else {

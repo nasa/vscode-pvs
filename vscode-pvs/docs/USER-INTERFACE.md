@@ -1,5 +1,5 @@
 # VSCode-PVS User Interface
-This document illustrates the layout and functionalities of VSCode-PVS, as well as tips on how to optimize the user interface to improve your user experience with VSCode-PVS and Visual Studio Code in general.
+This document illustrates the layout and functionalities of VSCode-PVS, as well as tips on how to optimize the user interface and improve your user experience with VSCode-PVS and Visual Studio Code in general.
 
 <br>
 
@@ -15,27 +15,28 @@ The layout of VSCode-PVS includes 7 main elements.
 2. [Workspace Explorer]() view. Located in the vscode side panel, this view shows the name of the PVS theories defined in the current workspace, as well as the list of theorems defined in each theory. Contextual menus and in-line actions provide quick access to functionalities such as *typechecking* and *prove formula*.
 3. [Proof Explorer]() view. Located in the vscode side panel, this view shows the proof tree for the current proof. Contextual menus and in-line actions provide quick access to functionalities such as *run proof* and *step proof*.
 4. [Proof Mate]() view. Located in the vscode side panel, this view provides *hints* on proof commands that can be used to make progress with the current proof. It also contains a *sketchpad* that stores proof commands clipped from the current proof shown in Proof Explorer (e.g., when editing or repairing a proof).
-5. [Editor]() view. Located in the vscode central panel, this view allows to edit PVS files.
-6. [Prover Terminal]() view. Located in the vscode lower panel, this view provides an interactive prompt for sending proof commands to the PVS theorem prover.
+5. [File Editor]() view. Located in the vscode central panel, this view allows to edit PVS files.
+6. [Prover Terminal]() view. Located in the vscode central panel, this view provides an interactive prompt for sending proof commands to the PVS theorem prover.
 7. [Quick Access]() toolbar. Located above the central editor panel, this toolbar provides convenient access to frequently used PVS functions, including: *search NASALib*, *show proof tree*, *prove formula*, *evaluate in PVSio*, *typecheck*, and *change PVS workspace*.
 
 <br><br>
 
-## Navigation
+## Opening PVS files
 
-VSCode-PVS provides an interactive tree view, `Workspace Explorer`, to facilitate the navigation of folders containing PVS files (such folders are called *PVS workspaces*).
+To open a PVS file in VSCode-PVS, first you need to open a **PVS workspace** in Visual Studio Code. A PVS workspace is simply a folder containing PVS files. The simplest way to open a PVS workspace in Visual Studio Code is to click the open folder icon located in the Quick Access toolbar of VSCode-PVS.
+
+<br> <img src="../screenshots/how-to-open-a-workspace.gif" width="600">
+<br>
+
+## 
+
+Once a PVS workspace is open, VSCode-PVS creates an interactive tree view, `Workspace Explorer`, which provides an overview of all theories and formulas (theorems, lemmas, TCCs, etc.) defined in the current workspace. Click on a theory to open in the Editor the PVS file where the theory is defined.
+Similarly, click on a formula to jump to the formula definition.
+
 
 <br> <img src="../screenshots/vscode-pvs-theory-explorer.gif" width="600">
 
-The interactive tree view includes two main types of elements:
-- `theories`: represent *theories* defined in the current PVS workspace.
-- `formulas`: represent *formulas* (theorems, lemmas, TCCs, etc.) defined within a theory.
-
-Clicking on the elements in the tree view triggers specific actions:
-- Click on a theory to open in the Editor the PVS file where the theory is defined.
-- Click on a formula to jump to the formula definition.
-
-Right-click on a node to open contextual menus providing common actions on PVS files:
+A left mouse click on theories and formulas will open a context menu providing the following actions:
 - `Typecheck file`: typechecks the selected file or theory
 - `Typecheck workspace`: typechecks all files in the current workspace
 - `Show Proof Summary`: shows a summary file indicating the status (proved, unfinished, untried, etc.) of each proof defined in the selected theory
@@ -45,7 +46,7 @@ Right-click on a node to open contextual menus providing common actions on PVS f
 - `Discharge TCCs`: tries to discharge all proof obligations for the selected theory
 - `Evaluate in PVSio`: starts a PVSio evaluator session for the selected theory
 
-In-line actionable commands are displayed next to each node and provide convenient access to frequent actions:
+In-line actionable commands are displayed next theories and formulas, providing convenient access to the following frequent actions:
 - `Typecheck`: typecheck the selected file or theory
 - `Prove`: start a new prover session for the selected formula
 - `Prove-All`: re-run all proofs defined in the selected theory
@@ -53,9 +54,9 @@ In-line actionable commands are displayed next to each node and provide convenie
 
 <br>
 
-## Editing
+## Editing PVS files
 
-VSCode-PVS includes the common editor features needed for creating and editing PVS theories.
+VSCode-PVS provides all features necessary to create and edit PVS files, including:
 
 - **Syntax highlighting**: PVS keywords and library functions are automatically highlighted.
 - **Autocompletion and code snippets**: Tooltips suggesting function names and language keywords are automatically presented in the editor when placing the mouse over a symbol name. Code snippets are provided for frequent modeling blocks, e.g., if-then-else. 
@@ -72,48 +73,65 @@ VSCode-PVS includes the common editor features needed for creating and editing P
 
 <br><br>
 
-## Proving
+## Proving theorems
 
-<br> <img src="../screenshots/vscode-pvs-proof-explorer.gif" width="600">
+<br> <img src="../screenshots/vscode-pvs-prove-formula.gif" width="600">
 
 Interactive prover sessions can be started for each formula defined in the current PVS workspace.
-To start a prover session, click the `Prove` button in `Workspace Explorer`.
-This action will activate three components:
-- `Proof Explorer`: interactive tree view for displaying, executing, and editing proof scripts.
-- `Proof Mate`: interactive tree view displaying hints.
-- `Integrated Prover Terminal`: interactive command line for sending proof commands to the PVS theorem prover.
+To start a prover session, click the inline `prove` command next to the theorem. Alternatively
+you can also click the `play` button displayed next to a formula name in `Workspace Explorer`.
+The prove command will activate three components:
+- `Proof Explorer`: interactive tree view for displaying, executing, and editing proof files.
+- `Proof Mate`: interactive tree view providing a sketchpad and a proof command suggester.
+- `Prover Console`: interactive command line console for sending proof commands to the PVS theorem prover.
 
 <br>
 
 **Proof Explorer**
 
-The interactive tree view provided by Proof Explorer uses the following conventions to display a proof script:
-- the root of the tree is the name of the formula currently being proved.
-- a sequence of proof commands in the proof script is represented as a series of sibling nodes.
-- sub-goals generated by a proof command are represented as children of the proof command.
+Proof Explorer allows to re-run a proof, perform step-by-step execution of proof commands, fast-forward/rewind to a proof command, and edit proof commands.
 
-Icons are displayed next to the nodes:
+<br> <img src="../screenshots/vscode-pvs-proof-explorer.gif" width="600">
+
+The proof is rendered as an interactive tree:
+- the root of the tree is the name of the formula currently being proved.
+- the icon next to the formula name is the proof status (e.g., proved, unchecked, unfinished, etc.).
+- nodes in the tree represent proof commands.
+- branches in the tree represent sub-goals generated by a proof command.
+
+The icon displayed next to a proof command identifies the state of a proof command:
 - blue diamond: indicates the *active command*, i.e., the proof command ready to be sent to the theorem prover.
 - hollow star: indicates a *visited command*, i.e., a proof command that has already been sent to the theorem prover. 
 - full star: indicates a *complete branch*, i.e., a branch that is proved and complete in the current proof. 
-- bullet: indicates a proof node that has not yet been sent to the theorem prover (for proof nodes below the active node) or proof commands that were executed by the prover but did not produce any change in the sequent (proof nodes above the active node).
+- bullet: indicates a proof node that has not been executed by the theorem prover, or has produced no change in the sequent.
 
-Action icons are provided in the title bar:
+Actions provided in the title bar include:
 - *play*: re-runs the entire proof script.
 - *forward*: sends the next command to the theorem prover.
 - *back*: sends an *undo* command to the theorem prover.
 
-Action icons are also provided next to each node:
-- *fast-forward* re-runs the proof script up to the selected node (not included).
+<br>
+
+**Proof Mate**
+
+Proof Mate provides a sketchpad that automatically collects proof fragments that become detatched from the proof tree, e.g., as a consequence of cut/trim operations on the proof tree, or because a specification change broke the saved proof. These clips facilitate proof editing and proof repair, and they can be accessed and re-used throughout the entire duration of the proof session.
+
+Proof Mate provides also a proof command suggester, showing hints about proof commands that can be used to make progress with the current proof. This component currently uses simple heuristics to suggest commands, its behavior will be refined over time.
+
+<br> <img src="../screenshots/vscode-pvs-proof-mate.gif" width="600">
 
 <br>
 
-**Integrated Prover Terminal**
+**Prover Console**
 
-A terminal session is automatically started when starting a proof.
-The user can enter proof commands in the terminal session.
-Each command executed by the prover will be automatically appended to the proof tree displayed in Proof Explorer.
-Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
+The prover console is automatically started when starting a proof.
+Proof commands can be entered at the prover prompt, and are automatically appended to the proof tree displayed in Proof Explorer.
+
+<br> <img src="../screenshots/vscode-pvs-prover-console.gif" width="600">
+
+Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history (using the ArrowUp/ArrowDown keys).
+
+An integrated help panel shown at the bottom of the console provides useful information on the proof command being entered, including a brief description and the syntax of the proof command.
 
 <br><br>
 

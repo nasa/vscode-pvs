@@ -344,8 +344,8 @@ export class FormulaItem extends TreeItem {
 			light: path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg"),
 			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg")
 		} : (icon === utils.icons.snowflake) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-snowflake.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-snowflake.svg")
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"),
+			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")
 		} : (icon === utils.icons.sparkles) ? {
 			light: path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg"),
 			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg")
