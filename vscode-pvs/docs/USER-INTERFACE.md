@@ -21,22 +21,23 @@ The layout of VSCode-PVS includes 7 main elements.
 
 <br><br>
 
-## Opening PVS files
+## Opening PVS files and PVS workspaces
 
-To open a PVS file in VSCode-PVS, first you need to open a **PVS workspace** in Visual Studio Code. A PVS workspace is simply a folder containing PVS files. The simplest way to open a PVS workspace in Visual Studio Code is to click the open folder icon located in the Quick Access toolbar of VSCode-PVS.
+To open a PVS file in VSCode-PVS, you need to add the folder containing the PVS file to the Visual Studio Code workspace. The simplest way to perform this operation is through the `open folder icon` located in the Quick Access toolbar of VSCode-PVS. A click on the open folder icon will open a window that allows you to select the folder containing the PVS file.
 
 <br> <img src="../screenshots/how-to-open-a-workspace.gif" width="600">
 <br>
 
-## 
-
-Once a PVS workspace is open, VSCode-PVS creates an interactive tree view, `Workspace Explorer`, which provides an overview of all theories and formulas (theorems, lemmas, TCCs, etc.) defined in the current workspace. Click on a theory to open in the Editor the PVS file where the theory is defined.
-Similarly, click on a formula to jump to the formula definition.
-
+Once the folder is in the Visual Studio Code workspace, click on the `PVS` button to switch `Workspace Explorer`, an interactive tree view provided by VSCode-PVS that presents an overview of all theories and formulas (theorems, lemmas, TCCs, etc.) defined in the current workspace. Click on a theory to open in the Editor the PVS file where the theory is defined. Similarly, click on a formula to jump to the formula definition.
 
 <br> <img src="../screenshots/vscode-pvs-theory-explorer.gif" width="600">
 
-A left mouse click on theories and formulas will open a context menu providing the following actions:
+In-line actionable commands are displayed next theories and formulas in Workspace Explorer, providing convenient access to the following frequent actions:
+- `Typecheck`: typecheck the selected file or theory
+- `Prove`: start a new prover session for the selected formula
+- `Prove-All`: re-run all proofs and creates a **summary file** providing an overview of the status of each proof. 
+
+A left mouse click on theories and formulas shown in Workspace Explorer opens a context menu providing the following actions:
 - `Typecheck file`: typechecks the selected file or theory
 - `Typecheck workspace`: typechecks all files in the current workspace
 - `Show Proof Summary`: shows a summary file indicating the status (proved, unfinished, untried, etc.) of each proof defined in the selected theory
@@ -45,12 +46,6 @@ A left mouse click on theories and formulas will open a context menu providing t
 - `Re-Run ImportChain`: re-runs all proof defined in the selected theory and in the imported theories
 - `Discharge TCCs`: tries to discharge all proof obligations for the selected theory
 - `Evaluate in PVSio`: starts a PVSio evaluator session for the selected theory
-
-In-line actionable commands are displayed next theories and formulas, providing convenient access to the following frequent actions:
-- `Typecheck`: typecheck the selected file or theory
-- `Prove`: start a new prover session for the selected formula
-- `Prove-All`: re-run all proofs defined in the selected theory
-
 
 <br>
 
@@ -90,7 +85,7 @@ When a prover session is started, VSCode-PVS automatically activated the followi
 
 **Proof Explorer**
 
-Proof Explorer allows to re-run a proof, perform step-by-step execution of proof commands, fast-forward/rewind to a proof command, and edit proof commands.
+Proof Explorer allows to re-run a proof, perform step-by-step execution of proof commands, fast-forward/rewind the current proof to a proof command, cut/trim/slice the proof tree, and edit proof commands.
 
 <br> <img src="../screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
@@ -137,9 +132,9 @@ An integrated help panel shown at the bottom of the console provides useful info
 <br><br>
 
 ## Hot-Keys combinations
-VSCode-PVS provides a series of hot-key combinations providing shortcuts to frequent PVS commands and editor functions.
+VSCode-PVS provides a series of hot-key combinations to access PVS commands and editor functions.
 
-### Commands Shortcuts
+### Command Shortcuts
 Command shortcuts are initiated with the `M-x` sequence, which is obtained by pressing the `META` key and the `x` letter simultaneously. The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` (`⌥`) key.
 
 Frequent commands:
@@ -173,7 +168,7 @@ Additional commands:
 <br>
 
 ### Editor Shortcuts
-Editor shortcuts do not require an initialization sequence, and most of them are native functions of Visual Studio Code. 
+Editor shortcuts do not require an initialization sequence, and most of them are key bindings pre-defined in Visual Studio Code. 
 
 [Linux](https://code.visualstudio.com/shortcuts/keyboard-shortcuts-linux.pdf)
 - `ctrl f ` *(find in file)*
@@ -207,7 +202,10 @@ Editor shortcuts do not require an initialization sequence, and most of them are
 The following tips can improve your user experience with VSCode-PVS and, in general, with Visual Studio Code.
 
 1. Optimize the `activity bar`. PVS users may want to consider hiding the following functions: `Accounts`, `Source Control`, and `Run`. See [guidance on how to hide/reveal/reorder items in the activity bar](https://code.visualstudio.com/docs/getstarted/userinterface#_activity-bar).
+<br><br> <img src="../screenshots/how-to-optimize-activity-bar.gif" height="200">
+
 2. Optimize the `status bar`. PVS users may want to consider hiding the following functions: `Problems`, `Editor Encoding`, `Editor End of Line`, `Tweet Feedback`.
-3. Optimize the `side panel`. PVS users may want to consider hiding the following components: `Open Editors`, `Outline`, `NPM Scripts`. See [guidance on how to hide/reveal views in the side panel](https://code.visualstudio.com/docs/getstarted/userinterface#_views).
-4. Select the `PVS` file icon theme. The theme will improve the visibility of `.pvs` files in File Explorer. See [guidance on how to select an icon theme](https://code.visualstudio.com/docs/getstarted/themes#_file-icon-themes).
-5. Select a color theme that is comfortable for you. Visual Studio Code uses a `dark theme` by default. If you prefer a `light theme`, see [guidance on how to change the color theme](https://code.visualstudio.com/docs/getstarted/themes#_selecting-the-color-theme).
+<br><br> <img src="../screenshots/how-to-optimize-status-bar.gif" width="600">
+
+3. Select a color theme that is comfortable for you. Visual Studio Code uses a `dark theme` by default. If you prefer a `light theme`, see [guidance on how to change the color theme](https://code.visualstudio.com/docs/getstarted/themes#_selecting-the-color-theme).
+<br><br> <img src="../screenshots/how-to-optimize-color-theme.gif" width="600">
