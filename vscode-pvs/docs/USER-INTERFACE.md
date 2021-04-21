@@ -202,7 +202,7 @@ Editor shortcuts do not require an initialization sequence, and most of them are
 The following tips can improve your user experience with VSCode-PVS and, in general, with Visual Studio Code.
 
 1. Optimize the `activity bar`. PVS users may want to consider hiding the following functions: `Accounts`, `Source Control`, and `Run`. See [guidance on how to hide/reveal/reorder items in the activity bar](https://code.visualstudio.com/docs/getstarted/userinterface#_activity-bar).
-<br><br> <img src="../screenshots/how-to-optimize-activity-bar.gif" height="200">
+<br><br> <img src="../screenshots/how-to-optimize-activity-bar.gif" height="300">
 
 2. Optimize the `status bar`. PVS users may want to consider hiding the following functions: `Problems`, `Editor Encoding`, `Editor End of Line`, `Tweet Feedback`.
 <br><br> <img src="../screenshots/how-to-optimize-status-bar.gif" width="600">
