@@ -30,7 +30,7 @@ To open a PVS file in VSCode-PVS, you need to add the folder containing the PVS 
 
 Once the folder is in the Visual Studio Code workspace, click on the `PVS` button to switch `Workspace Explorer`, an interactive tree view provided by VSCode-PVS that presents an overview of all theories and formulas (theorems, lemmas, TCCs, etc.) defined in the current workspace. Click on a theory to open in the Editor the PVS file where the theory is defined. Similarly, click on a formula to jump to the formula definition.
 
-<br> <img src="../screenshots/vscode-pvs-theory-explorer.gif" width="600">
+<br> <img src="../screenshots/vscode-pvs-workspace-explorer.gif" width="600">
 
 In-line actionable commands are displayed next theories and formulas in Workspace Explorer, providing convenient access to the following frequent actions:
 - `Typecheck`: typecheck the selected file or theory
