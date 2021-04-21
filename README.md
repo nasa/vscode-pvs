@@ -79,7 +79,7 @@ The main functionalities provided by the environment are as follows:
 - **Workspace Explorer**: Interactive tree view showing all theories in the current workspace, name and status of theorems and typecheck conditions.
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-theory-explorer.gif" width="600">
 
-- **Proof Explorer + Integrated Terminal**: Interactive tree view for viewing and editing the current proof. An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
+- **Proof Explorer + Prover Console**: Interactive tree view for viewing and editing the current proof. A prover console allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
 - **Plot Executable Functions**: Executable functions that return a list of real numbers can be rendered in a plot diagram.

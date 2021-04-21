@@ -16,7 +16,7 @@ The layout of VSCode-PVS includes 7 main elements.
 3. [Proof Explorer]() view. Located in the vscode side panel, this view shows the proof tree for the current proof. Contextual menus and in-line actions provide quick access to functionalities such as *run proof* and *step proof*.
 4. [Proof Mate]() view. Located in the vscode side panel, this view provides *hints* on proof commands that can be used to make progress with the current proof. It also contains a *sketchpad* that stores proof commands clipped from the current proof shown in Proof Explorer (e.g., when editing or repairing a proof).
 5. [File Editor]() view. Located in the vscode central panel, this view allows to edit PVS files.
-6. [Prover Terminal]() view. Located in the vscode central panel, this view provides an interactive prompt for sending proof commands to the PVS theorem prover.
+6. [Prover Console]() view. Located in the vscode central panel, this view provides an interactive prompt for sending proof commands to the PVS theorem prover.
 7. [Quick Access]() toolbar. Located above the central editor panel, this toolbar provides convenient access to frequently used PVS functions, including: *search NASALib*, *show proof tree*, *prove formula*, *evaluate in PVSio*, *typecheck*, and *change PVS workspace*.
 
 <br><br>
