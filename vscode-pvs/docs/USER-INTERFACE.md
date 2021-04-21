@@ -201,11 +201,11 @@ Editor shortcuts do not require an initialization sequence, and most of them are
 ## Survival Tips
 The following tips can improve your user experience with VSCode-PVS and, in general, with Visual Studio Code.
 
-1. Optimize the `activity bar`. PVS users may want to consider hiding the following functions: `Accounts`, `Source Control`, and `Run`. See [guidance on how to hide/reveal/reorder items in the activity bar](https://code.visualstudio.com/docs/getstarted/userinterface#_activity-bar).
+1. Optimize the `activity bar`. PVS users may want to consider hiding the following functions: `Accounts`, `Source Control`, and `Run`. See also [guidance on how to hide/reveal/reorder items in the activity bar](https://code.visualstudio.com/docs/getstarted/userinterface#_activity-bar).
 <br><br> <img src="../screenshots/how-to-optimize-activity-bar.gif" height="300">
 
 2. Optimize the `status bar`. PVS users may want to consider hiding the following functions: `Problems`, `Editor Encoding`, `Editor End of Line`, `Tweet Feedback`.
 <br><br> <img src="../screenshots/how-to-optimize-status-bar.gif" width="600">
 
-3. Select a color theme that is comfortable for you. Visual Studio Code uses a `dark theme` by default. If you prefer a `light theme`, see [guidance on how to change the color theme](https://code.visualstudio.com/docs/getstarted/themes#_selecting-the-color-theme).
+3. Select a color theme that feels comfortable for your eyes. Visual Studio Code uses a `dark theme` by default. If you prefer a `light theme`, you can select it from the settings menu. See also [guidance on how to change the color theme](https://code.visualstudio.com/docs/getstarted/themes#_selecting-the-color-theme).
 <br><br> <img src="../screenshots/how-to-optimize-color-theme.gif" width="600">
