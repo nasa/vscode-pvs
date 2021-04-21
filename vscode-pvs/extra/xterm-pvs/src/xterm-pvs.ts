@@ -1728,12 +1728,14 @@ const xtermjsColorThemes: { dark: ITheme, light: ITheme } = {
     dark: {
         background: htmlColorCode.black,
         foreground: htmlColorCode.white,
-        cursor: htmlColorCode.white // cursor color
+        cursor: htmlColorCode.white, // cursor color
+        selection: htmlColorCode.blue // selection color
     },
     light: {
         background: htmlColorCode.white,
         foreground: htmlColorCode.black,
-        cursor: htmlColorCode.black // cursor color
+        cursor: htmlColorCode.black, // cursor color
+        selection: htmlColorCode.darkblue // selection color
     }
 }
 
