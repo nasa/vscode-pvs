@@ -786,7 +786,7 @@ export type ProofEditTrimNode = {
 };
 export type ProofEditTrimUnused = {
 	action: "trim-unused",
-	selected: { id: string, name: string }
+	selected?: { id: string, name: string } // use the root node if selected is null
 };
 export type ProofEditRenameNode = {
 	action: "rename-node",

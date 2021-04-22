@@ -1694,8 +1694,9 @@ export class PvsProofExplorer {
 		return null;
 	}
 	removeNotVisitedX (desc: ProofEditTrimUnused): void {
-		if (desc && desc.selected) {
-			const selected: ProofItem = this.findNode(desc.selected.id);
+		if (desc) {
+			const id: string = desc?.selected?.id || this.root.id;
+			const selected: ProofItem = this.findNode(id);
 			if (selected) {
 				this.removeNotVisited({ selected });
 				return;

@@ -993,7 +993,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		// -- handlers for proof explorer commands
 		context.subscriptions.push(commands.registerCommand("proof-explorer.trim-unused", (resource: ProofItem) => {
 			// save proof without asking confirmation
-			const action: ProofEditTrimUnused = { action: "trim-unused", selected: { id: resource.id, name: resource.name } };
+			const action: ProofEditTrimUnused = { action: "trim-unused" };
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		// context.subscriptions.push(commands.registerCommand("proof-explorer.save-proof", () => {
