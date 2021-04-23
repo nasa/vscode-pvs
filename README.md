@@ -6,7 +6,7 @@
 [![chat](https://img.shields.io/badge/Chat%20on-PVS%20Google%20Group-blue.svg)](https://groups.google.com/g/pvs-group)
 
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications.
-The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
+The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used for programming languages such as C++ and Java.
 
 <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png" width="800">
 
