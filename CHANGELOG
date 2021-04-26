@@ -1,4 +1,8 @@
 ## ChangeLog
+### 1.0.44 (2021.04.26)    
+- Updated user interface guide   
+- Fixed minor bugs (parsing of comments in proof files, proof-explorer focus)  
+
 ### 1.0.43 (2021.04.19)    
 - Added 'slice' function in proof-explorer  
 - Improved loading/unloading of pvs icons in file-explorer  
