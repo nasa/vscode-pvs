@@ -645,7 +645,7 @@ export class EventsDispatcher {
             commands.executeCommand('workbench.action.openSettings', '@ext:paolomasci.vscode-pvs pvs-library-path');
         }));
         // vscode-pvs.send-proof-command
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string, cmd: string }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.send-proof-command", (desc: PvsProofCommand) => {
             this.client.sendRequest(serverRequest.proofCommand, desc);
             this.xterm.showFeedbackWhileExecuting(desc?.cmd);
         }));

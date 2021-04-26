@@ -114,7 +114,6 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 */
 	protected timer: NodeJS.Timer = null;
 	protected tcounter: number = 0;
-	protected tfocus: boolean = false;
 	readonly maxSkip: number = 100;
 	readonly maxTimer: number = 250; //ms
 
@@ -186,7 +185,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				// refresh the tree view
 				this.refreshView({ force: true });
 				// highlight active node
-				this.focusActiveNode();
+				// this.focusActiveNode();
+				this.selectActiveNode();
 			}
 		});
 	
@@ -293,6 +293,28 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		this.trigger(ProofExplorerEvent.didAcquireFocus);
 	}
 	/**
+	 * Selects the active node in the view.
+	 */
+	selectActiveNode (opt?: { force?: boolean }): void {
+		if (this.activeNode) {
+			this.revealNode({ id: this.activeNode.id, name: this.activeNode.name }, opt);
+			this.selectNode({ id: this.activeNode.id, name: this.activeNode.name }, opt);
+			if (opt?.force) {
+				this.refreshView({ force: true });
+			}
+		} else {
+			// empty proof -- try to focus the ghost node
+			if (this.ghostNode?.isActive()) {
+				this.revealNode({ id: this.ghostNode.id, name: this.ghostNode.name }, opt);
+				this.selectNode({ id: this.ghostNode.id, name: this.ghostNode.name }, opt);
+				if (opt?.force) {
+					this.refreshView({ force: true });
+				}
+			}
+		}
+		this.trigger(ProofExplorerEvent.didAcquireFocus);
+	}
+	/**
 	 * Reveals a node in the view.
 	 */
 	revealNode (desc: { id: string, name: string }, opt?: { force?: boolean }): void {
@@ -356,13 +378,34 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 	/**
+	 * Selects a node in the view.
+	 */
+	selectNode (desc: { id: string, name: string }, opt?: { force?: boolean }): void {
+		if (desc && desc.id && (this.isVisible() || opt?.force)) {
+			let selected: ProofItem = this.findNode(desc.id);
+			if (!selected && this.ghostNode.isActive()) {
+				selected = this.ghostNode;
+				this.ghostNode.parent = this.ghostNode.parent || this.ghostNode.realNode;
+			}
+			if (selected && selected.parent) {
+				this.view.reveal(selected, { expand: 2, select: true, focus: false }).then(() => {
+				}, (error: any) => {
+					console.error(selected);
+					// console.error(error);
+				});
+
+			}
+		}
+	}
+	/**
 	 * Handler executed after stopping the execution of a proof -- resets proof-explorer.running flag
 	 */
 	didStopRunning (): void {
 		this.running = false;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 		// select active node
-		this.focusActiveNode();
+		// this.focusActiveNode();
+		this.selectActiveNode();
 	}
 	/**
 	 * Handler for copy operations --- the selected node is copied to the clipboard 
@@ -474,7 +517,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				this.ghostNode.parent = realNode;
 				this.ghostNode.active();
 				this.activeNode = null;
-				this.refreshView({ source: "did-activate-cursor", focusActive: true });
+				this.refreshView({ source: "did-activate-cursor" });
 			}
 		} else {
 			console.warn(`[vscode-proof-explorer] Warning: unable to complete proofEdit/activateCursor`)
@@ -569,7 +612,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 					return item;
 				})).concat(children2);
 				parent.collapsibleState = TreeItemCollapsibleState.Expanded;
-				this.refreshView({ source: "did-append-node", focusActive: true });
+				this.refreshView({ source: "did-append-node" });
 				console.log(`[vscode-proof-explorer] Did append ${desc.elem.name} (${desc.elem.id})`);
 			} else {
 				console.warn(`[vscode-proof-explorer] Warning: could not find parent ${desc.elem.parent} necessary for proofEdit/appendNode (${desc.elem.name})`)
@@ -586,16 +629,12 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	/**
 	 * Refresh tree views (explorer and external treeviz)
 	 */
-	refreshView (opt?: { force?: boolean, source?: string, focusActive?: boolean }): void {
+	refreshView (opt?: { force?: boolean, source?: string }): void {
 		opt = opt || {};
-		this.tfocus = this.tfocus || opt?.focusActive;
 		const refresh = () => {
 			if (this.isVisible() || opt?.force) {
 				this._onDidChangeTreeData.fire(null);
-				if (this.tfocus) {
-					this.focusActiveNode();
-					this.tfocus = false;
-				}
+				this.selectActiveNode();
 			}
 			if (this.treeviz?.isVisible()) {
 				this.treeviz?.renderView(this.getTreeStructure(), this.formula, { cursor: this.ghostNode?.id, ...opt });
