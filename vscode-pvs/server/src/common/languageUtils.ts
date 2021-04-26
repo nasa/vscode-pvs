@@ -834,6 +834,10 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 	const buildProofTree_aux = (desc: { prf: string, proofName: string, parent: ProofNode }): void => {	
 		if (desc && desc.parent) {
 			while (desc.prf && desc.prf.length) {
+                // check if there's a comment in the prf file -- remove the comment before processing the command
+                if (desc.prf?.trim().startsWith(`";;; `)) {
+                    desc.prf = desc.prf.replace(/\";;;\s[^"]*\"\s*\(/g, "(");
+                }        
 				// series of proof branches or a proof command
 				const expr: string = getProofCommands(desc.prf);
 				if (expr && expr.length) {
@@ -858,12 +862,8 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 						buildProofTree_aux({ prf: subexpr, proofName: desc.proofName, parent: currentBranch });
 					} else {
 						// proof command
-						// check if there's a comment at the beginning 
-						const cmd: string = (expr.trim().startsWith(`";;; `)) ?
-							expr.replace(/\";;;\s[^"]*\"\s*\(/g, "(") 
-								: expr;
 						desc.parent.rules.push({
-							name: cmd,
+							name: expr,
 							rules: [],
 							type: "proof-command",
 							branch: expr
