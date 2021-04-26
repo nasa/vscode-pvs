@@ -8,4 +8,12 @@ dummy[max: posnat]: THEORY
   BEGIN 
     fl: LEMMA
         FORALL (x: real): x > max IMPLIES x > 0
+
+    % (then
+    % (comment "Suppose proc(alpha)=p!1, but this is impossible.")
+    % (case "proc!1(alpha!1)=p!1")
+    withComments: THEOREM
+      FORALL (p, alpha: posreal, proc: [real -> real] ):
+        proc(alpha) = p
+    
   END dummy

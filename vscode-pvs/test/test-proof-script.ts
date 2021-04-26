@@ -279,4 +279,76 @@ describe("proofScript", () => {
 		expect(response.result).to.equal(null);
 	});
 
+	it(`can open proofs with comments`, async () => {
+		const formula: PvsFormula = {
+			contextFolder: helloworldExamples,
+			fileExtension: ".pvs",
+			fileName: "dummy",
+			theoryName: "dummy",
+			formulaName: "withComments"
+		};
+		// const response: PvsResponse = await pvsProxy.getDefaultProofScript(formula);
+		let response: PvsResponse = await pvsProxy.lisp(`(change-workspace "${formula.contextFolder}")`, { externalServer: true });
+		response = await pvsProxy.lisp(`(typecheck-file "${fsUtils.desc2fname(formula)}" nil nil nil nil t)`, { externalServer: true });
+		const proofDescriptor: ProofDescriptor = await pvsProxy.openProofFile({
+			contextFolder: formula.contextFolder,
+			fileName: formula.fileName,
+			fileExtension: ".prf"
+		}, formula, { quiet: true });
+		expect(proofDescriptor).not.to.be.undefined;
+		expect(proofDescriptor.origin).to.deep.equal(".prf");
+		expect(proofDescriptor.proofTree).to.be.deep.equal({
+			name: 'dummy.withComments',
+			rules: [
+			  {
+				name: '(skosimp*)',
+				rules: [],
+				type: 'proof-command',
+				branch: ''
+			  },
+			  {
+				name: '(comment "Suppose proc(alpha)=p!1, but this is impossible.")',
+				rules: [],
+				type: 'proof-command',
+				branch: ''
+			  },
+			  {
+				name: '(case "proc!1(alpha!1)=p!1")',
+				rules: [
+				  {
+					name: '1',
+					rules: [
+					  {
+						name: '(propax)',
+						rules: [],
+						type: 'proof-command',
+						branch: '1'
+					  }
+					],
+					type: 'proof-branch',
+					branch: '1'
+				  },
+				  {
+					name: '2',
+					rules: [
+					  {
+						name: '(postpone)',
+						rules: [],
+						type: 'proof-command',
+						branch: '2'
+					  }
+					],
+					type: 'proof-branch',
+					branch: '2'
+				  }
+				],
+				type: 'proof-command',
+				branch: ''
+			  }
+			],
+			type: 'root',
+			branch: ''
+		});
+		// console.dir(proofDescriptor, { depth: null });
+	});
 });
