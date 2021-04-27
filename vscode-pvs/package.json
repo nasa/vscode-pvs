@@ -509,7 +509,7 @@
 			},
 			{
 				"command": "proof-explorer.slice-tree",
-				"title": "Slice",
+				"title": "Jump here",
 				"enablement": "view == proof-explorer-view && pvs-server-active == true",
 				"category": "pvs"
 			},

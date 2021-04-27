@@ -1286,7 +1286,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		context.subscriptions.push(commands.registerCommand("proof-explorer.slice-tree", async (resource?: ProofItem) => {
 			if (resource) {
 				if (!resource.isVisited() && !resource.isActive() && this.activeNode) {
-					const msg: string = `Slice all nodes between ${this.activeNode.name} and ${resource.name}?`;
+					const msg: string = `Jump to ${resource.name}?\n\nPlease note that this action will also cut all nodes from ${this.activeNode.name} to ${resource.name}.`;
 					const actionConfirmed: boolean = await this.queryConfirmation(msg);
 					if (actionConfirmed) {
 						const action: ProofEditSliceTree = { action: "slice-tree", selected: { id: resource.id, name: resource.name } };
