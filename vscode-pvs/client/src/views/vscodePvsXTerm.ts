@@ -587,15 +587,14 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      * Deletes the terminal
      */
     dispose (): void {
-        this.panel.dispose();
+        this.panel?.dispose();
         this.trigger(XTermPvsEvent.DidCloseTerminal);
     }
     /**
      * Reveals the terminal
      */
     reveal (): void {
-        this.renderView();
-        this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
+        this.renderView({ reveal: true });
     }
     /**
      * Hides the terminal
@@ -667,8 +666,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Renders the webview
      */
-    renderView (): void {
-        this.createWebView();
+    renderView (opt?: { reveal?: boolean }): void {
+        this.createWebView(opt);
     }
     /**
      * Sets the prompt
@@ -770,7 +769,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Internal function, creates the webview
      */
-    protected createWebView (): void {
+    protected createWebView (opt?: { reveal?: boolean }): void {
         if (this.sessionType) {
             const title: string = this.sessionType === "prover" ?
                 `Proving formula '${(<PvsFormula> this.target).formulaName}'`
@@ -850,68 +849,74 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     console.error(err);
                 }
             }
+            // reveal the panel 
+            if (opt?.reveal) {
+                this.panel?.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
+            }
         }
     }
     /**
      * Internal function, creates the html content of the webview
      */
     protected createContent (): void {
-        // set webview content
-        const xtermPvsJsOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/out/extra/xterm-pvs.min.js'));
-        const xtermCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/xterm/css/xterm.css'));
+        if (this.panel) {
+            // set webview content
+            const xtermPvsJsOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/out/extra/xterm-pvs.min.js'));
+            const xtermCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/xterm/css/xterm.css'));
 
-        const bootstrapJsOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js'));
-        const bootstrapCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/css/bootstrap.min.css'));
-        
-        const jqueryOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/jquery/dist/jquery.min.js'));
-        const fontawesomeCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/font-awesome/css/font-awesome.min.css'));
+            const bootstrapJsOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js'));
+            const bootstrapCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/css/bootstrap.min.css'));
+            
+            const jqueryOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/jquery/dist/jquery.min.js'));
+            const fontawesomeCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/font-awesome/css/font-awesome.min.css'));
 
-        const animateCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/animate.css/animate.min.css'));
+            const animateCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/animate.css/animate.min.css'));
 
-        const css: Uri[] = [
-            this.panel.webview.asWebviewUri(xtermCssOnDisk),
-            this.panel.webview.asWebviewUri(bootstrapCssOnDisk),
-            this.panel.webview.asWebviewUri(fontawesomeCssOnDisk),
-            this.panel.webview.asWebviewUri(animateCssOnDisk)
-        ];
-        const js: Uri[] = [
-            this.panel.webview.asWebviewUri(jqueryOnDisk),
-            this.panel.webview.asWebviewUri(bootstrapJsOnDisk),
-            this.panel.webview.asWebviewUri(xtermPvsJsOnDisk)
-        ];
+            const css: Uri[] = [
+                this.panel.webview.asWebviewUri(xtermCssOnDisk),
+                this.panel.webview.asWebviewUri(bootstrapCssOnDisk),
+                this.panel.webview.asWebviewUri(fontawesomeCssOnDisk),
+                this.panel.webview.asWebviewUri(animateCssOnDisk)
+            ];
+            const js: Uri[] = [
+                this.panel.webview.asWebviewUri(jqueryOnDisk),
+                this.panel.webview.asWebviewUri(bootstrapJsOnDisk),
+                this.panel.webview.asWebviewUri(xtermPvsJsOnDisk)
+            ];
 
-        try {
-            const content: string = Handlebars.compile(htmlTemplate, { noEscape: true })({
-                css, js,
-                xtermCommands: [
-                    XTermCommands.write,
-                    XTermCommands.log,
-                    XTermCommands.showPrompt,
-                    XTermCommands.focus,
-                    XTermCommands.updateHints,
-                    XTermCommands.updateMathObjects,
-                    XTermCommands.clearScreen,
-                    XTermCommands.disableInput,
-                    XTermCommands.enableInput,
-                    XTermCommands.updateCommandHistory,
-                    XTermCommands.updateHelp,
-                    XTermCommands.clearCommandLine,
-                    XTermCommands.showWelcomeMessage,
-                    XTermCommands.updateColorTheme,
-                    XTermCommands.showHelpMessage
-                ],
-                xtermEvents: [
-                    XTermEvent.sendText,
-                    XTermEvent.proofExplorerBack,
-                    XTermEvent.proofExplorerForward,
-                    XTermEvent.proofExplorerRun,
-                    XTermEvent.proofExplorerEdit
-                ],
-                sessionType: this.sessionType
-            });
-            this.panel.webview.html = content;
-        } catch (err) {
-            console.error(err);
+            try {
+                const content: string = Handlebars.compile(htmlTemplate, { noEscape: true })({
+                    css, js,
+                    xtermCommands: [
+                        XTermCommands.write,
+                        XTermCommands.log,
+                        XTermCommands.showPrompt,
+                        XTermCommands.focus,
+                        XTermCommands.updateHints,
+                        XTermCommands.updateMathObjects,
+                        XTermCommands.clearScreen,
+                        XTermCommands.disableInput,
+                        XTermCommands.enableInput,
+                        XTermCommands.updateCommandHistory,
+                        XTermCommands.updateHelp,
+                        XTermCommands.clearCommandLine,
+                        XTermCommands.showWelcomeMessage,
+                        XTermCommands.updateColorTheme,
+                        XTermCommands.showHelpMessage
+                    ],
+                    xtermEvents: [
+                        XTermEvent.sendText,
+                        XTermEvent.proofExplorerBack,
+                        XTermEvent.proofExplorerForward,
+                        XTermEvent.proofExplorerRun,
+                        XTermEvent.proofExplorerEdit
+                    ],
+                    sessionType: this.sessionType
+                });
+                this.panel.webview.html = content;
+            } catch (err) {
+                console.error(err);
+            }
         }
     }
 }
