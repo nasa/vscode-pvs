@@ -273,7 +273,7 @@ export class PvsProofExplorer {
 					this.ghostNode.active();
 					this.revealNode({ selected: this.ghostNode });
 					if (this.ghostNode.parent.contextValue === "proof-command" || opt.branchComplete) {
-						this.ghostNode.parent.visited();						
+						this.ghostNode.parent.visited();
 					} else {
 						this.ghostNode.parent.pending();
 					}
@@ -1471,33 +1471,35 @@ export class PvsProofExplorer {
 	/**
 	 * Trims the tree between active node (not included) and the selected node (not included). 
 	 * Equivalent to cutTree(selected) + trim(activeNode) + paste(activeNode). 
-	 * @param desc Descriptor of the selected node.
+	 * @param desc Descriptor indicating the selected node and the active node.
 	 */
-	sliceTree (desc: { selected: ProofItem }): string {
+	sliceTree (desc: { selected: ProofItem, active: ProofItem }): boolean {
 		if (desc && desc.selected) {
-			const seq: string = this.copyTree(desc);
-			this.deleteTree(desc);
-			return seq;
+			// cut tree rooted at selected
+			this.cutTree({ selected: desc.selected });
+			// trim the tree rooted at the active node -- don't cut, as we want to be sure the active node does not move
+			this.trimNode({ selected: desc.active }, { willCutSelected: true });
+			// paste selected
+			this.pasteTree({ selected: desc.active }, { rebase: true });
+			// delete root
+			this.deleteNode({ selected: desc.active });
+			return true;
 		} else {
 			console.warn(`[proof-explorer] Warning: unable to cut selected subtree`);
 		}
-		return null;
+		return false;
 	}
-	sliceTreeX (desc: ProofEditSliceTree): void {
+	sliceTreeX (desc: ProofEditSliceTree): boolean {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
-			const activeNode: ProofItem = this.activeNode;
-			if (selected && activeNode && activeNode.id !== selected.id && !selected.isVisited()) {
-				// cut tree rooted at selected
-				this.cutTree({ selected });
-				// trim the tree rooted at the active node
-				this.trimNode({ selected: activeNode });
-				// paste selected
-				this.pasteTree({ selected: activeNode }, { rebase: true });
-				return;
+			const active: ProofItem = this.activeNode;
+			if (selected && active && active.id !== selected.id && !selected.isVisited()) {
+				const success: boolean = this.sliceTree({ selected, active });
+				return success;
 			}
 		}
 		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
+		return false;
 	}
 	/**
 	 * Deletes the subtree rooted at the selected node.
@@ -1586,8 +1588,9 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor indicating which node is selected in the proof tree
 	 * @param opt Optionals: whether user confirmation is required
 	 */
-	trimNode (desc: { selected: ProofItem }): ProofItem[] | null {
+	trimNode (desc: { selected: ProofItem }, opt?: { willCutSelected?: boolean }): ProofItem[] | null {
 		if (desc && desc.selected && desc.selected.parent) {
+			opt = opt || {};
 			const selected: ProofItem = desc.selected;
 			let items: ProofItem[] = null;
 			switch (selected.contextValue) {
@@ -1648,9 +1651,11 @@ export class PvsProofExplorer {
 						};
 						this.connection.sendNotification(serverEvent.proverEvent, evt);
 					}
-					const evt: ProofEditDidTrimNode = { action: "did-trim-node", elems: items.map(item => {
-						return item.getNodeXStructure();
-					})};
+					let elems: ProofNodeX[] = opt.willCutSelected ? [ selected?.getNodeXStructure() ] : [];
+					elems = elems.concat(items.map(item => {
+							return item.getNodeXStructure();
+					}));
+					const evt: ProofEditDidTrimNode = { action: "did-trim-node", elems };
 					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
 			}
