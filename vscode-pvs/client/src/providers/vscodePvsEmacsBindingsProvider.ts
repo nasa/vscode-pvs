@@ -251,7 +251,7 @@ export class VSCodePvsEmacsBindingsProvider {
 					break;
 				}
 				case "settings": {
-					commands.executeCommand('workbench.action.openSettings', '@ext:paolomasci.vscode-pvs');
+					commands.executeCommand('vscode-pvs.open-vscode-pvs-settings');
 					break;
 				}
 				case "set-pvs-path": {

@@ -1410,7 +1410,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			if (!cmd || cmd !== resource.name) {
 				cmd = resource.name;
 				setTimeout(() => {
-					cmd = null
+					cmd = null;
 				}, 500);
 			} else {
 				const dd: PvsProofCommand = { 

@@ -626,6 +626,12 @@ export class EventsDispatcher {
             // create default workspaces folder if it doesn't exist
             await vscodeUtils.createDefaultPvsWorkspacesDirectory();
         }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.select-pvs-path", async () => {
+            await this.packageManager.pvsInstallationWizard(`Please choose one of the following actions.\n`);
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.open-vscode-pvs-settings", async () => {
+            vscodeUtils.openVscodePvsSettings();
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.set-pvs-path", () => {
             this.packageManager.pvsPathWizard();
         }));
@@ -745,6 +751,9 @@ export class EventsDispatcher {
                 this.xterm.updateHelp();
                 // window.showInformationMessage(`${desc.cmd} sent to terminal`)
             }
+        }));
+        context.subscriptions.push(commands.registerCommand("xterm.focus", () => {
+            this.xterm.focus();
         }));
 
         context.subscriptions.push(commands.registerCommand("proof-mate.update-sketchpad", (desc: { items: ProofItem[] }) => {

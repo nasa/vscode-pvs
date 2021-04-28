@@ -280,10 +280,16 @@ export class PvsProxy {
 									error
 								});
 								if (this.pvsErrorManager) {
-									this.pvsErrorManager.notifyPvsFailure({ 
-										msg: `Error: unable to connect to pvs-server at http://${this.clientAddress}:${this.clientPort}`,
-										src: "pvs-server"
-									});
+									const pvs: string = path.join(this.pvsPath, "pvs");
+									const fileExists: boolean = fsUtils.fileExists(pvs);
+									if (!fileExists) {
+										this.pvsErrorManager.notifyPvsNotFound(this.pvsPath);
+									} else {
+										this.pvsErrorManager.notifyPvsFailure({ 
+											msg: `Error: unable to connect to pvs-server at http://${this.clientAddress}:${this.clientPort}`,
+											src: "pvs-server"
+										});
+									}
 								}
 							} else {
 							// if (error['code'] === 'ECONNRESET') {
@@ -1966,10 +1972,8 @@ export class PvsProxy {
 	}
 
 	async rebootPvsServer (desc?: { pvsPath?: string }): Promise<void> {
-		if (desc && desc.pvsPath) {
-			this.pvsPath = desc.pvsPath;
-			console.log(`[pvs-proxy] New PVS path: ${this.pvsPath}`);
-		}
+		this.pvsPath = desc?.pvsPath || "";
+		console.log(`[pvs-proxy] New PVS path: ${this.pvsPath}`);
 		await this.killPvsServer();
 		await this.restartPvsServer();
 	}

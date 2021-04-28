@@ -981,3 +981,10 @@ export function minimizeIntegratedTerminal (): void {
         vscode.commands.executeCommand("workbench.action.terminal.resizePaneDown");
     }
 }
+
+/**
+ * Utility function, opens vscode-pvs settings
+ */
+export function openVscodePvsSettings (): void {
+    vscode.commands.executeCommand('workbench.action.openSettings', '@ext:paolomasci.vscode-pvs');
+}

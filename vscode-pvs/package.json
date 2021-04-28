@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.44",
+	"version": "1.0.45-alpha",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -365,6 +365,16 @@
 			{
 				"command": "vscode-pvs.reboot-pvs",
 				"title": "Reboot PVS",
+				"category": "pvs"
+			},
+			{
+				"command": "vscode-pvs.select-pvs-path",
+				"title": "Choose PVS Installation Folder",
+				"category": "pvs"
+			},
+			{
+				"command": "vscode-pvs.open-vscode-pvs-settings",
+				"title": "Open VSCode-PVS Settings",
 				"category": "pvs"
 			},
 			{
@@ -864,9 +874,14 @@
 					"group": "context-menu/ctrl-1.4"
 				},
 				{
-					"command": "vscode-pvs.reboot-pvs",
+					"command": "vscode-pvs.open-vscode-pvs-settings",
 					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
 					"group": "context-menu/ctrl-1.5"
+				},
+				{
+					"command": "vscode-pvs.reboot-pvs",
+					"when": "view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "context-menu/ctrl-1.6"
 				},
 				{
 					"command": "proof-explorer.fast-forward",
@@ -1293,9 +1308,14 @@
 					"group": "ctrl-1.4"
 				},
 				{
-					"command": "vscode-pvs.reboot-pvs",
+					"command": "vscode-pvs.open-vscode-pvs-settings",
 					"when": "view == workspace-explorer-view",
 					"group": "ctrl-1.5"
+				},
+				{
+					"command": "vscode-pvs.reboot-pvs",
+					"when": "view == workspace-explorer-view",
+					"group": "ctrl-1.6"
 				}
 			]
 		},

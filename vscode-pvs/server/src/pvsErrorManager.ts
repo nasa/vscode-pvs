@@ -122,4 +122,9 @@ export class PvsErrorManager {
 		// error shown in the status bar
         this.connection?.sendNotification("server.status.error", desc);
 	}
+    notifyPvsNotFound (pvsPath: string): void {
+        const msg: string = `PVS executable not found at ${pvsPath}`;
+        console.error(msg);
+        this.connection?.sendRequest(serverEvent.pvsNotPresent, msg);
+    }
 }
