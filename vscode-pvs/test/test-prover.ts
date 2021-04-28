@@ -94,6 +94,30 @@ describe("pvs-prover", () => {
 		expect(response.error).to.be.undefined;	
 	});
 
+	it(`can handle unicode characters`, async () => {
+        await quitProverIfActive();
+
+        const formula: PvsFormula = {
+            contextFolder: helloworldExamples,
+            fileExtension: ".pvs",
+            fileName: "dummy",
+            theoryName: "dummy",
+            formulaName: "withUnicode"
+        };
+
+        let response: PvsResponse = await pvsProxy.proveFormula(formula);
+		// console.log(response);
+		response = await pvsProxy.proofCommand({ cmd: '(expand "≥")'});
+		console.dir(response.result);
+
+		expect(response.error).not.to.be.undefined;
+		expect(response.result).to.be.undefined;
+
+		await quitProverIfActive();
+    });
+
+	return;
+
 	//----- the tests below this line are completed successfully
 	it(`can start prover session`, async () => {
 		await quitProverIfActive();
@@ -543,7 +567,6 @@ describe("pvs-prover", () => {
 
 		await quitProverIfActive();
     });
-
 
 	// this test fails no MacOS -- a fix is not available at the moment, to be resolved in the next release of pvs
 	xit(`can prove omega_2D_continuous without triggering stack overflow`, async () => {

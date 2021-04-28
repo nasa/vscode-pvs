@@ -15,5 +15,10 @@ dummy[max: posnat]: THEORY
     withComments: THEOREM
       FORALL (p, alpha: posreal, proc: [real -> real] ):
         proc(alpha) = p
+
+    ;≥(a:real, b:real): bool = a >= b
+
+    withUnicode: LEMMA
+      ∀ (x: real): x ≥ 1 ⇒ x ≥ 0
     
   END dummy
