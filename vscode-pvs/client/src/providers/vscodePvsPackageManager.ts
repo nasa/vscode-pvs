@@ -244,11 +244,11 @@ export class VSCodePvsPackageManager {
                             shellCommand,
                             targetFolder: pvsPath,
                             saveAndRestore: path.join(pvsPath, "nasalib"),
-                            installScript: {
-                                cwd: pvsPath,
-                                cmd: "./install-sh",
-                                quiet: true
-                            },
+                            installScript: //{
+                                // cwd: pvsPath,
+                                `cd ${pvsPath} && ./install-sh`,
+                                // quiet: true
+                            // },
                             cleanTarget: true
                         });
                         if (success) {            
@@ -519,11 +519,6 @@ export class VSCodePvsPackageManager {
                     const tmpdir: string = os.tmpdir();
                     const fname: string = `${tmpdir}/nasalib7.zip`;
                     shellCommand = fsUtils.getDownloadCommand(NASALibGithubFile, { out: fname });
-                    if (shellCommand?.cmd) {
-                        shellCommand.cmd += " " + shellCommand.args?.join(" ");
-                        shellCommand.cmd += ` && unzip -o -qq ${fname} -d ${tmpdir}`
-                            + ` && mv ${path.join(tmpdir, "pvslib-master")} ${desc.targetFolder}`;
-                    }
                     break;
                 }
             }
@@ -561,15 +556,17 @@ export class VSCodePvsPackageManager {
             });
             if (shellCommand && message) {
                 this.terminal.log(colorText(message, PvsColor.blue), { addNewLine: true });
+                const tmpdir: string = os.tmpdir();
+                const fname: string = `${tmpdir}/nasalib7.zip`;
                 const success: boolean = await this.installWithProgress("NASALib", {
                     shellCommand,
                     targetFolder: path.join(pvsPath, "nasalib"),
-                    installScript: {
-                        cwd: targetFolder,
-                        cmd: "./install-scripts",
-                        args: [ `--pvs-dir ${pvsPath}` ],
-                        quiet: true
-                    },
+                    installScript: //{
+                        // cwd: targetFolder,
+                        shellCommand.cmd === "git" ? `cd ${targetFolder} && ./install-scripts --pvs-dir ${pvsPath}` 
+                                : `cd ${tmpdir} && unzip -o -qq ${fname} -d ${tmpdir} && mv ${path.join(tmpdir, "pvslib-master")} ${targetFolder} && cd ${targetFolder} && ./install-scripts --pvs-dir ${pvsPath}`,
+                        // quiet: true
+                    // },
                     cleanTarget: !opt?.update
                 });
                 if (success) {
