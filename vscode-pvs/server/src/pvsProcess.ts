@@ -43,7 +43,7 @@ import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import { PvsErrorManager } from './pvsErrorManager';
 
-export enum ProcessCode { PVSNOTFOUND = 0, SUCCESS = -1, ADDRINUSE = -2, COMMFAILURE = -3, PVSSTARTFAIL = -4, PVSERROR = -5 };
+export enum ProcessCode { SUCCESS = 0, PVSNOTFOUND = -1, ADDRINUSE = -2, COMMFAILURE = -3, PVSSTARTFAIL = -4, PVSERROR = -5 };
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
  */
@@ -285,6 +285,7 @@ export class PvsProcess {
 	async kill (): Promise<boolean> {
 		return new Promise(async (resolve, reject) => {
 			if (this.pvsProcess) {
+				let done: boolean = false;
 				const pid: number = this.getProcessID();
 				// before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
 				// because the destruction of the process is immediate but previous calls to write() may not have drained
@@ -292,6 +293,8 @@ export class PvsProcess {
 				this.pvsProcess.on("close", (code: number, signal: string) => {
 					console.log("[pvs-process] Process terminated");
 					this.ready = false;
+					this.pvsProcess = null;
+					done = true;
 					resolve(true);
 					// console.dir({ code, signal }, { depth: null });
 				});
@@ -304,14 +307,16 @@ export class PvsProcess {
 				try {
 					if (this.pvsProcess) {
 						// try to exit the process gracefully
-						await new Promise((resolve, reject) => {
+						await new Promise((resolveExit, rejectExit) => {
 							if (!this.pvsProcess?.stdin?.destroyed) {
 								this.pvsProcess?.stdin?.write("(quit)Y\n");
 							}
 							// give pvs some time to quit before resolving the promise
 							setTimeout(() => {
-								resolve(true);
-							}, 200);
+								if (!done) {
+									resolveExit(true);
+								}
+							}, 400);
 						});
 					} else {
 						// execSync(`kill -9 ${pid}`);
@@ -319,7 +324,9 @@ export class PvsProcess {
 					} 
 				} finally {
 					this.pvsProcess = null;
-					resolve(true);
+					if (!done) {
+						resolve(true);
+					}
 				}
 			} else {
 				resolve(true);

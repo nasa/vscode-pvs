@@ -1536,6 +1536,7 @@ export class PvsLanguageServer {
 
 	protected async rebootPvsServer (desc?: RebootPvsServerRequest): Promise<boolean> {
 		desc = desc || {};
+		desc.pvsPath = desc.pvsPath || this.pvsPath;
 		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
 		this.checkDependencies(); // async call
 		// await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
@@ -1543,16 +1544,15 @@ export class PvsLanguageServer {
 		// 	await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
 		// }
 		if (this.pvsProxy) {
-			await this.pvsProxy?.rebootPvsServer(desc);
+			await this.pvsProxy.rebootPvsServer(desc);
 			this.notifyServerMode("lisp");
 			// send version info
 			await this.sendPvsServerReadyEvent();
 			return true;
-		} 
-		// else {
-		// 	console.error("[pvs-language-server] Error: pvs-proxy is null");
-		// 	this.connection?.sendRequest(serverEvent.pvsNotFound);
-		// }
+		} else {
+			console.error("[pvs-language-server] Error: pvs-proxy is null");
+			this.connection?.sendRequest(serverEvent.pvsNotFound);
+		}
 		return false;
 	}
 

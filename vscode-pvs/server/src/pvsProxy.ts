@@ -240,7 +240,7 @@ export class PvsProxy {
 	//--------------------------------------------------
 	//         json-rpc methods
 	//--------------------------------------------------
-	async pvsRequest(method: string, params?: string[]): Promise<PvsResponse> {
+	async pvsRequest (method: string, params?: string[]): Promise<PvsResponse> {
 		params = params || [];
 		const req = { method: method, params: params, jsonrpc: "2.0", id: this.get_fresh_id() };
 		// this.buffer = this.buffer.then(() => {
@@ -1971,7 +1971,7 @@ export class PvsProxy {
 		});
 	}
 
-	async rebootPvsServer (desc?: { pvsPath?: string }): Promise<void> {
+	async rebootPvsServer (desc: { pvsPath?: string }): Promise<void> {
 		this.pvsPath = desc?.pvsPath || "";
 		console.log(`[pvs-proxy] New PVS path: ${this.pvsPath}`);
 		await this.killPvsServer();
