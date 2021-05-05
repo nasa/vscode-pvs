@@ -622,7 +622,7 @@ export interface InstallWithProgressRequest {
 	targetFolder: string, // folder where the package will be installed/decompressed
 	cleanTarget?: boolean, // whether the content of the target folder should be cleaned (i.e., deleted) before installation
 	saveAndRestore?: string, // folder to be saved before the extraction and restored after the extraction, e.g., nasalib
-	installScript?: ShellCommand, // installation script to be executed at the end
+	installScript?: string, // installation script to be executed at the end
 	cwd?: string, // working directory
 	cancellationToken?: true
 };

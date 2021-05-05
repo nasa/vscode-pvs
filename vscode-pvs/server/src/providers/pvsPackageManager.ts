@@ -113,31 +113,31 @@ export class PvsPackageManager {
                     }
                 })
             });
-            if (success && req.installScript?.cmd) {
+            if (success && req.installScript) {
                 const cmd: InstallWithProgressResponse = {
                     progressInfo: true,
-                    stdOut: shellCommandToString(req.installScript) + "\n"
+                    stdOut: req.installScript + "\n"
                 };
                 connection?.sendNotification(serverRequest.installWithProgress, { req, res: cmd });    
                 success = success && await new Promise ((resolve, reject) => {
-                    PvsPackageManager.installProcess = fsUtils.execShellCommand(req.installScript, {
+                    PvsPackageManager.installProcess = fsUtils.execShellCommand({ cmd: req.installScript }, {
                         stdOut: (out: string) => {
-                            if (!req.installScript.quiet) {
-                                const res: InstallWithProgressResponse = {
-                                    progressInfo: true,
-                                    stdOut: out
-                                };
-                                connection?.sendNotification(serverRequest.installWithProgress, { req, res });
-                            }
+                            // if (!req.installScript.quiet) {
+                            //     const res: InstallWithProgressResponse = {
+                            //         progressInfo: true,
+                            //         stdOut: out
+                            //     };
+                            //     connection?.sendNotification(serverRequest.installWithProgress, { req, res });
+                            // }
                         },
                         stdErr: (err: string) => {
-                            if (!req.installScript.quiet) {
-                                const res: InstallWithProgressResponse = {
-                                    progressInfo: true,
-                                    stdErr: err
-                                };
-                                connection?.sendNotification(serverRequest.installWithProgress, { req, res });
-                            }
+                            // if (!req.installScript.quiet) {
+                                // const res: InstallWithProgressResponse = {
+                                //     progressInfo: true,
+                                //     stdErr: err
+                                // };
+                                // connection?.sendNotification(serverRequest.installWithProgress, { req, res });
+                            // }
                         },
                         callback: (success: boolean) => {
                             resolve(success);
