@@ -104,9 +104,9 @@ export class PvsErrorManager {
     // }
     handleStartPvsServerError (success: ProcessCode): void {
         if (success === ProcessCode.PVSNOTFOUND) {
-            this.connection?.sendRequest(serverEvent.pvsNotPresent);
+            this.connection?.sendRequest(serverEvent.pvsNotFound);
         } else if (success !== ProcessCode.SUCCESS) {
-            this.connection?.sendRequest(serverEvent.pvsServerCrash);
+            this.connection?.sendRequest(serverEvent.pvsServerFail);
         }
     }
     
@@ -125,6 +125,6 @@ export class PvsErrorManager {
     notifyPvsNotFound (pvsPath: string): void {
         const msg: string = `PVS executable not found at ${pvsPath}`;
         console.error(msg);
-        this.connection?.sendRequest(serverEvent.pvsNotPresent, msg);
+        this.connection?.sendRequest(serverEvent.pvsNotFound, msg);
     }
 }

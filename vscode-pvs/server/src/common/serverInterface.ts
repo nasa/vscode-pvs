@@ -38,7 +38,6 @@
 
 import { PvsResponse } from "./pvs-gui";
 
-
 export type ProofOrigin = ".prf" | ".prl" | ".jprf";
 export declare type ProofMateProfile = "basic" | "advanced";
 export interface MathObjects {
@@ -493,9 +492,12 @@ export const serverRequest = {
 
 	search: "pvs.search",
 
-	listDownloadableVersions: "pvs.list-downloadable-versions",
-	downloadPvs: "pvs.download-pvs",
+	listVersionsWithProgress: "pvs.list-versions-with-progress",
+	// downloadPvs: "pvs.download-pvs",
 	downloadLicensePage: "pvs.download-license-page",
+
+	downloadWithProgress: "pvs.download-with-progress",
+	installWithProgress: "pvs.install-with-progress",
 
 	getNasalibDownloader: "pvs.get-nasalib-downloader",
 	downloadNasalib: "pvs.download-nasalib",
@@ -534,11 +536,9 @@ export const serverEvent = {
 	getTheoremsResponse: "pvs.response.get-theorems",
 	getTccsResponse: "pvs.response.get-tccs",
 
-	listDownloadableVersionsResponse: "pvs.response.list-downloadable-versions",
-	downloadPvsResponse: "pvs.response.download-pvs",
+	// downloadPvsResponse: "pvs.response.download-pvs",
 	downloadLicensePageResponse: "pvs.response.download-license-page",
 
-	getNasalibDownloaderResponse: "pvs.response.get-nasalib-downloader",
 	setNasalibPathResponse: "pvs.response.set-nasalib-path",
 
 	pvsServerReady: "pvs.response.pvs-server-ready",
@@ -568,13 +568,69 @@ export const serverEvent = {
 	// loadProofStructureEvent: "pvs.event.load-proof-structure",
 	// startProofEvent: "pvs.event.start-proof",
 
-	pvsServerCrash: "pvs.event.server-crash",
+	pvsServerFail: "pvs.event.server-fail",
 
 	pvsVersionInfo: "pvs.event.version-info",
-	pvsNotPresent: "pvs.event.pvs-not-present",
+	pvsNotFound: "pvs.event.pvs-not-found",
 	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version",
 
 	profilerData: "pvs.event.profiler-data"
+};
+
+export interface RebootPvsServerRequest {
+	pvsPath?: string, 
+	cleanFolder?: string
+};
+
+export interface ShellCommand {
+	cmd: string, 
+	args?: string[], 
+	cwd?: string,
+	quiet?: boolean
+};
+export interface DownloadWithProgressRequest {
+	url: string, // the url of the file to be downloaded
+	baseFolder: string, // folder where pvs will be downloaded
+	shellCommand?: ShellCommand, // command to be executed
+	cancellationToken?: true
+};
+export interface DownloadWithProgressResponse {
+	success?: boolean,
+	fname?: string,
+	progressInfo?: boolean,
+	stdOut?: string,
+	stdErr?: string
+};
+export interface ListVersionsWithProgressRequest {
+};
+export interface ListVersionsWithProgressResponse {
+	versions?: string[],
+	progressInfo?: boolean,
+	stdOut?: string,
+	stdErr?: string
+};
+export type Downloader = "curl" | "wget";
+export type NASALibDownloader = "git" | Downloader;
+export interface NASALibDownloaderRequest {
+	preferred?: NASALibDownloader
+};
+export interface NASALibDownloaderResponse {
+	downloader: NASALibDownloader
+};
+export interface InstallWithProgressRequest {
+	shellCommand: ShellCommand, // extraction command
+	targetFolder: string, // folder where the package will be installed/decompressed
+	cleanTarget?: boolean, // whether the content of the target folder should be cleaned (i.e., deleted) before installation
+	saveAndRestore?: string, // folder to be saved before the extraction and restored after the extraction, e.g., nasalib
+	installScript?: ShellCommand, // installation script to be executed at the end
+	cwd?: string, // working directory
+	cancellationToken?: true
+};
+export interface InstallWithProgressResponse {
+	success?: boolean
+	progressInfo?: boolean,
+	stdOut?: string,
+	stdErr?: string
 };
 
 export interface EvaluatorCommandResponse {
@@ -724,10 +780,10 @@ export const sriUrl: string = "www.csl.sri.com";
 export const pvsUrl: string = "pvs.csl.sri.com";
 // export const pvsSnapshotsUrl: string = `http://${sriUrl}/users/owre/drop/pvs-snapshots/`;
 export const pvsDownloadUrl: string = `https://${pvsUrl}/downloads/`;
-export const allegroLicenseUrl: string = `http://${pvsUrl}/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;
-export const nasalibUrl: string = "https://github.com/nasa/pvslib";
-export const nasalibBranch: string = "master";
-export const nasalibFile: string = `https://github.com/nasa/pvslib/archive/${nasalibBranch}.zip`;
+// export const allegroLicenseUrl: string = `http://${pvsUrl}/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;
+export const NASALibUrl: string = "https://github.com/nasa/pvslib";
+export const NASALibGithubBranch: string = "master";
+export const NASALibGithubFile: string = `https://github.com/nasa/pvslib/archive/${NASALibGithubBranch}.zip`;
 
 // ProofEdit
 export type ProofEditCommand = ProofEditAppendNode | ProofEditCopyNode | ProofEditPasteNode | ProofEditCopyTree

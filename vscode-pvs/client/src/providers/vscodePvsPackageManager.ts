@@ -37,33 +37,57 @@
  **/
 
 import { LanguageClient } from "vscode-languageclient";
-import { window, Uri, workspace, ConfigurationTarget, Progress, CancellationToken, ProgressLocation, Terminal, ViewColumn, WebviewPanel, ExtensionContext, commands } from "vscode";
-import { serverEvent, sriUrl, serverRequest, PvsDownloadDescriptor, nasalibUrl, nasalibFile, nasalibBranch, pvsUrl } from "../common/serverInterface";
-import * as os from 'os';
+import {
+    window, Uri, workspace, ConfigurationTarget, Progress, CancellationToken, 
+    ProgressLocation, Terminal, ViewColumn, WebviewPanel, ExtensionContext
+} from "vscode";
+import {
+    serverEvent, sriUrl, serverRequest, PvsDownloadDescriptor, NASALibUrl, 
+    pvsUrl, DownloadWithProgressRequest, DownloadWithProgressResponse, 
+    InstallWithProgressRequest, InstallWithProgressResponse, RebootPvsServerRequest, 
+    NASALibDownloader, NASALibDownloaderRequest, NASALibDownloaderResponse,
+    NASALibGithubFile, ShellCommand, NASALibGithubBranch, ListVersionsWithProgressResponse, ListVersionsWithProgressRequest, PvsVersionDescriptor
+} from "../common/serverInterface";
 import * as path from 'path';
 import { VSCodePvsStatusBar } from "../views/vscodePvsStatusBar";
 import * as fsUtils from '../common/fsUtils';
 import * as vscodeUtils from '../utils/vscode-utils';
-import { pvsFolderName } from "../common/fsUtils";
+import { VSCodePvsEchoTerminal } from "./vscodePvsEchoTerminal";
+import * as os from 'os';
+import { colorText, PvsColor } from "../common/colorUtils";
+
+export const errorMsgDownloaderNotPresent: string = `Error: Unable to download the file ('curl' or 'wget' not available). Please install 'curl' or 'wget', as vscode-pvs is unable to perform downloads without them.`; 
+export const errorPvsVersionsNotAvailable: string = `Error: Unable to retrieve information on the PVS versions. Please try again later or proceed with manual installation of PVS.`; 
 
 export class VSCodePvsPackageManager {
+    // client for sending messages to the server
     protected client: LanguageClient;
+
+    // status bar, used for brief feedback messages
     protected statusBar: VSCodePvsStatusBar;
+
+    // terminal window, used to report feedback during the installation process
+    protected terminalWindow: Terminal;
+    protected terminal: VSCodePvsEchoTerminal;
+
+    // flag indicating this is the first time the package manager is executed
+    protected firstRun: boolean = true;
+
     /**
      * Common text messages displayed in different dialogs
      */
     readonly messages = {
         setPvsPath: "Select location of PVS executables",
         downloadPvs: "Download PVS",
-        chooseInstallationFolder: "Choose base folder for PVS installation",
-        selectInstallationFolder: "Use as base folder the PVS installation",
-        downloadNasalib: "Download and Install NASALib"
+        updatePvs: "Update PVS",
+        chooseInstallationFolder: "Choose installation folder",
+        selectInstallationFolder: "Use as installation folder",
+        downloadNASALib: "Download NASALib",
+        updateNASALib: "Update NASALib"
     };
 
     /**
      * Constructor
-     * @param client language client for sending messages to the server 
-     * @param statusBar pvs status bar, used for displaying progress information
      */
 	constructor (client: LanguageClient, statusBar: VSCodePvsStatusBar) {
         this.client = client;
@@ -76,244 +100,161 @@ export class VSCodePvsPackageManager {
      */
     activate (context: ExtensionContext): void {
         // pvs installation handlers
-        this.client.onRequest(serverEvent.pvsNotPresent, async () => {
-            await this.pvsInstallationWizard(`VSCode-PVS is almost ready!\n\nTo complete the installation, please choose one of the following actions.\n`);
+        this.client.onRequest(serverEvent.pvsNotFound, async () => {
             this.statusBar.ready();
+            if (this.firstRun) {
+                // show the wizard only the first time vscode is opened, to avoid annoying the user with messages if they don't want to install pvs right away during the current session
+                this.firstRun = false;
+                const success: boolean = await this.pvsInstallationWizard({
+                    msg: `VSCode-PVS is almost ready!\n\nTo complete the installation, please choose one of the following actions.\n `
+                });
+                if (success) {
+                    await this.nasalibInstallationWizard();
+                }
+            }
         });
         this.client.onRequest(serverEvent.pvsIncorrectVersion, async (msg: string) => {
-            await this.pvsInstallationWizard(msg);
             this.statusBar.ready();
-        });
-    }
-
-    /**
-     * Installation wizard for NASALib
-     * @param msg Opening message shown by the installation wizard
-     */
-    async nasalibInstallationWizard (msg?: string): Promise<boolean> {
-        msg = msg || `NASALib is an extensive PVS library developed and maintained by the NASA Langley Formal Methods Team.\n\nWould you like to download NASALib?`;
-        const ans: string = await window.showInformationMessage(msg, { modal: true }, this.messages.downloadNasalib)
-        if (ans === this.messages.downloadNasalib) {
-            const success: boolean = await this.downloadAndInstallNasalib();
-            return success;
-        }
-        return false;
-    }
-
-    async downloadAndInstallNasalib (): Promise<boolean> {
-        const pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
-        if (pvsPath) {
-            const desc: { path: string, version: string } = await this.downloadNasalibWithProgress(); // { fname: "/Users/pmasci/Downloads/pvslib-pvs7.0.zip", version: "7" };//
-            if (desc) {
-                const success: boolean = await this.installNasalib({ pvsPath, targetFolder: desc.path, version: desc.version });
-                return success;
+            if (this.firstRun) {
+                this.firstRun = false;
+                // show the wizard only the first time vscode is opened, to avoid annoying the user with messages if they don't want to install pvs right away during the current session
+                const success: boolean = await this.pvsInstallationWizard({ msg });
+                if (success) {
+                    await this.nasalibInstallationWizard();
+                }
             }
-        }
-        return false;
-    }
-    
-
-    /**
-     * Utility function, used by nasalibInstallationWizard to download and install nasalib
-     * @param desc 
-     */
-	protected async installNasalib (desc: { pvsPath: string, targetFolder: string, version: string }): Promise<boolean> {
-        return window.withProgress({
-            location: ProgressLocation.Notification,
-            cancellable: true
-        }, async (progress, token) => {
-            let terminal: Terminal = null;
-            const message: string = `Completing installation of NASALib in ${desc.targetFolder}`;
-            progress.report({ increment: -1, message });
-
-            return new Promise(async (resolveInstall, rejectInstall) => {
-                token.onCancellationRequested(() => {
-                    window.showInformationMessage("Installation cancelled");
-                    if (terminal) {
-                        terminal.dispose();
-                        resolveInstall(false);
-                    }
-                });
-
-                // const runInstallScript = async (desc: { pvsPath: string, targetFolder: string, version: string }): Promise<void> => {
-                //     const terminalName: string = "Completing installation of NASALib..."
-                //     const terminal = window.createTerminal({ name: terminalName });            
-                //     terminal.show();
-                //     return new Promise ((resolve, reject) => {
-                //         terminal.sendText(`cd ${desc.targetFolder} && ./install-scripts`);
-            
-                //         window.onDidCloseTerminal((t) => {
-                //             if (t.name === terminalName) {
-                //                 resolve();
-                //             }
-                //         });	
-                //     });
-                // }
-                // await runInstallScript(desc);
-
-                const message: string = `NASALib installed successfully in ${desc.targetFolder}`;
-                progress.report({ increment: 100, message });
-                // window.showInformationMessage(message);
-
-                resolveInstall(true);
-            });
-        });
-    }
-
-    async updateNasalibWithProgress (): Promise<{ path: string, version: string }> {
-        return this.downloadNasalibWithProgress({ update: true })
-    }
-
-    /**
-     * Utility function, downloads nasalib from github
-     * The primary download method is the 'git' command
-     * If the 'git' command is not available on the machine, then the zip file is downloaded from github
-     */
-    protected async downloadNasalibWithProgress (opt?: { update?: boolean }): Promise<{ path: string, version: string }> {
-        opt = opt || {};
-        return window.withProgress({
-            location: ProgressLocation.Notification,
-            cancellable: true
-        }, async (progress, token) => {
-            let terminal: Terminal = null;
-
-            progress.report({ increment: -1, message: `Checking NASALib versions from ${nasalibUrl}` });
-
-            return new Promise((resolve, reject) => {
-                token.onCancellationRequested(() => {
-                    window.showInformationMessage("Download cancelled");
-                    if (terminal) {
-                        terminal.dispose();
-                        resolve(null);
-                    }
-                });
-                
-                this.client.sendRequest(serverRequest.getNasalibDownloader);
-                this.client.onRequest(serverEvent.getNasalibDownloaderResponse, (desc: { response: "git" | "download" }) => {
-                    if (desc && desc.response) {
-                        let downloadCommand: string = null;
-                        let startMsg: string = null;
-                        let endMsg: string = null;
-                        const pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
-                        const targetFolder: string = path.join(pvsPath, "nasalib");
-                        switch (desc.response) {
-                            case "git": {
-                                startMsg = opt.update ? `Updating NASALib` : `Cloning NASALib`;
-                                endMsg = opt.update ? `NASALib update complete!` : `NASALib installed successfully!`;
-                                progress.report({ increment: -1, message: `${startMsg} from ${nasalibUrl}` });
-                                downloadCommand = fsUtils.cloneCommand(nasalibUrl, { update: opt.update, basePath: pvsPath, branch: nasalibBranch });
-                                break;
-                            }
-                            case "download": {
-                                startMsg = `Downloading NASALib`;
-                                endMsg = `NASALib installed successfully!`;
-                                progress.report({ increment: -1, message: `Downloading NASALib from ${nasalibUrl}` });
-                                const fname: string = `${os.tmpdir()}/nasalib7.zip`;
-                                const tmpdir: string = os.tmpdir();
-                                downloadCommand = fsUtils.downloadCommand(nasalibFile, { out: fname }) 
-                                    + ` && unzip -o -qq ${fname} -d ${tmpdir}`
-                                    + ` && mv ${path.join(tmpdir, "pvslib-master")} ${targetFolder}`;
-                                break;                
-                            }
-                        }
-                        if (downloadCommand) {
-                            if (!opt.update) {
-                                // make sure the folder does not already exist
-                                fsUtils.deleteFolder(targetFolder);
-                            }
-
-                            // execute the download command in the terminal
-                            terminal = window.createTerminal({ name: startMsg });
-                            terminal.show();
-                            terminal.sendText(downloadCommand);
-                            terminal.sendText(`sleep 1 && exit`);
-            
-                            // return nasalib version when the terminal closes
-                            window.onDidCloseTerminal((t) => {
-                                if (t.name === startMsg) {
-                                    resolve({ path: targetFolder, version: "7.1.0" });
-                                    if (endMsg) {
-                                        window.showInformationMessage(endMsg);
-                                    }
-                                }
-                            });
-                        }
-                    }
-                });
-            });
         });
     }
 
     /**
-     * Sets pvs path in vscode settings
+     * Chooses PVS path with a dialog and then sets pvs.path in vscode settings
      */
-    async pvsPathWizard (): Promise <void> {
+     async choosePvsPath (): Promise <void> {
         // choose installation folder
         const pvsPath: string = await this.choosePvsInstallationFolder();
         if (pvsPath) {
             await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
-            this.client.sendRequest(serverRequest.rebootPvsServer);
+            const req: RebootPvsServerRequest = { pvsPath };
+            this.client.sendRequest(serverRequest.rebootPvsServer, req);
             window.showInformationMessage(`PVS path is ${pvsPath}`);
         }
     }
 
     /**
-     * Installation wizard for PVS
-     * @param msg Opening message shown by the installation wizard
+     * Shows Allegro license agreement. Returns true if the user has accepted the agreement.
      */
-    async pvsInstallationWizard (msg?: string): Promise<boolean> {
-        msg = msg || "PVS Installation Wizard";
-		const item = await window.showInformationMessage(msg, { modal: true }, this.messages.downloadPvs, this.messages.setPvsPath);
-		if (item === this.messages.setPvsPath) {
-            return this.selectPvsPath();
-		} else if (item === this.messages.downloadPvs) {
+    async showPvsLicense (): Promise<boolean> {
+        // show license agreement
+        const panel: WebviewPanel = window.createWebviewPanel(
+            'pvsLicenseAgreement', // Identifies the type of the webview. Used internally
+            'PVS Allegro License Agreement', // Title of the panel displayed to the user
+            ViewColumn.One, // Editor column to show the new webview panel in.
+            { enableFindWidget: true } // Webview options. More on these later.
+        );
+        panel.webview.html = await this.downloadPvsLicensePageWithProgress();
 
-            // choose installation folder
-            const targetFolder: string = await this.choosePvsInstallationFolder(`Please choose base folder for the PVS installation. A sub-folder '${pvsFolderName}' will be created by the installation wizard.`);
-            if (!targetFolder) {
-                this.statusBar.ready();
-                // operation cancelled by the user
-                return; 
+        const agreement: { [ btn: string ]: string } = {
+            license: "View PVS License",
+            cancel: "Cancel",
+            accept: "I Accept",
+            doNotAccept: "I DO NOT Accept"
+        };
+        const info: string = `The PVS version you are about to download from ${pvsUrl} is freely available, `
+            + `but requires a license agreement. Please read carefully the terms of the PVS license and click "I Accept" `
+            + `if you agree with its terms.`;
+        const ans: string = await window.showInformationMessage(info, {
+            modal: false
+        }, agreement.accept, agreement.doNotAccept);
+
+        // close license agreement
+        panel.dispose();
+        return ans === agreement.accept;
+    }
+
+    /**
+     * Utility function, creates a terminal window for showing feedback to the user.
+     * The function does nothing if the terminal window exists already
+     */
+    async createTerminal (name: string, opt?: { clearScreen?: boolean }): Promise<boolean> {
+        this.terminal = this.terminal || new VSCodePvsEchoTerminal(this.client);
+        if (opt?.clearScreen || !this.terminalWindow) {
+            this.terminalWindow = window.createTerminal({ name, pty: this.terminal });
+        }
+        this.terminalWindow.show(true); // preserve focus    
+        return await new Promise<boolean> ((resolve, reject) => {
+            // a small timeout is needed to given the terminal the time to be rendered
+            setTimeout(async () => {
+                resolve(true);
+            }, 250);
+        });
+    }
+
+    /**
+     * Installation wizard for PVS
+     */
+    async pvsInstallationWizard (opt?: { msg?: string, update?: boolean }): Promise<boolean> {
+        opt = opt || {};
+        const label: string = opt.msg || "PVS Installation Wizard";
+		const item = await window.showInformationMessage(label, {
+            modal: true
+        }, opt.update ? this.messages.updatePvs : this.messages.downloadPvs, this.messages.setPvsPath);
+
+        if (!item) { return false; }
+        if (item === this.messages.setPvsPath) { return await this.selectPvsPath(); }
+        if (item === this.messages.downloadPvs || item === this.messages.updatePvs) {
+            // create terminal to show feedback during download/update operations
+            await this.createTerminal(label, { clearScreen: true });
+            let pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
+            let baseFolder: string = fsUtils.getContextFolder(pvsPath);
+
+            if (item === this.messages.downloadPvs || !baseFolder || !fsUtils.folderExists(baseFolder)) {
+                // choose installation folder
+                baseFolder = await this.choosePvsInstallationFolder();
+                if (baseFolder) {
+                    // show license agreement
+                    const licenseAccepted: boolean = await this.showPvsLicense();
+                    // abort installation if target folder license not accepted
+                    if (!licenseAccepted) {
+                        this.statusBar.ready();
+                        return false;
+                    }
+                }
             }
 
-            // show license agreement
-            const panel: WebviewPanel = window.createWebviewPanel(
-                'pvsLicenseAgreement', // Identifies the type of the webview. Used internally
-                'PVS Allegro License Agreement', // Title of the panel displayed to the user
-                ViewColumn.One, // Editor column to show the new webview panel in.
-                { enableFindWidget: true } // Webview options. More on these later.
-            );
-            panel.webview.html = await this.downloadPvsLicensePageWithProgress();
-            console.log(panel.webview.html)
-            const agreement: { [ btn: string ]: string } = {
-                license: "View PVS License",
-                cancel: "Cancel",
-                accept: "I Accept",
-                doNotAccept: "I DO NOT Accept"
-            };
-            const info: string = `The PVS version you are about to download from ${pvsUrl} is freely available, `
-                                + `but requires a license agreement. Please read carefully the terms of the PVS license and click "I Accept" `
-                                + `if you agree with its terms.`;
-            const item = await window.showInformationMessage(info, { modal: false }, agreement.accept, agreement.doNotAccept);
-
-            // install pvs if the user accepts the terms of the license
-            if (item === agreement.accept) {
-                // close license agreement
-                panel.dispose();
-                // download and install pvs
-                const desc: { fname: string, version: string } = await this.downloadPvsExecutableWithProgress();
-                if (desc) {
-                    if (targetFolder) {
-                        const pvsPath: string = await this.installPvs({ fname: desc.fname, baseFolder: targetFolder, version: desc.version }, { quiet: true });
-                        if (pvsPath) {
-                            // update pvs.path
-                            await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
-
-                            // uncomment the following to automatically install nasalib
-                            // await this.downloadAndInstallNasalib();
-
+            if (baseFolder) {
+                const info: { version: string, url: string } = await this.listPvsVersionsWithProgress();
+                if (info?.version && info?.url) {
+                    // download and install pvs
+                    const desc: { fname: string } = await this.downloadWithProgress("PVS", {
+                        url: info.url,
+                        baseFolder
+                    });
+                    if (desc?.fname) {
+                        // update pvsPath with the current version info
+                        pvsPath = path.join(baseFolder, `pvs-${info.version}`);
+                        this.terminal.log(colorText(`Installing PVS to ${pvsPath}`, PvsColor.blue), { addNewLine: true });
+                        const shellCommand: ShellCommand = {
+                            cmd: "tar",
+                            args: [
+                                `-C "${baseFolder}"`,
+                                `-xvf "${desc.fname}"`
+                            ]
+                        };
+                        const success: boolean = await this.installWithProgress("PVS", {
+                            shellCommand,
+                            targetFolder: pvsPath,
+                            saveAndRestore: path.join(pvsPath, "nasalib"),
+                            installScript: {
+                                cwd: pvsPath,
+                                cmd: "./install-sh",
+                                quiet: true
+                            },
+                            cleanTarget: true
+                        });
+                        if (success) {            
                             // reboot pvs-server
-                            this.client.sendRequest(serverRequest.rebootPvsServer);
+                            const req: RebootPvsServerRequest = { pvsPath };
+                            this.client.sendRequest(serverRequest.rebootPvsServer, req);
 
                             // show release info
                             vscodeUtils.showReleaseNotes();
@@ -325,18 +266,36 @@ export class VSCodePvsPackageManager {
         }
         return false;
     }
-    
 
     /**
-     * Utility function used by pvsInstallationWizard to ask the user to choose the pvs installation folder
+     * Utility function, shows a dialog that allows the user to select the pvs installation folder in the file system
      */
-	protected async choosePvsInstallationFolder (msg?: string): Promise<string> {
+    protected async selectPvsPath (): Promise<boolean> {
+        const uris: Uri[] = await window.showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            openLabel: this.messages.setPvsPath
+        });
+        if (uris?.length === 1) {
+            const pvsPath: string = uris[0].fsPath;
+            await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
+            // pvs-server will be automatically rebooted when pvs.path is updated, see workspace.onDidChangeConfiguration in pvsLanguageClient.ts
+            return pvsPath !== null && pvsPath !== undefined && pvsPath?.trim() !== "";
+        }
+        return false;
+    }
+
+    /**
+     * Utility function used by pvsInstallationWizard to ask the user to choose the pvs installation folder.
+     * The installation folder represents the basePath component of pvsPath -- pvsPath = path.join(<installation-folder>, <pvs-version>)
+     */
+     protected async choosePvsInstallationFolder (msg?: string): Promise<string> {
         const labels: { [ btn: string ]: string } = {
             browse: this.messages.chooseInstallationFolder,
             cancel: "Cancel"
         }
-        msg =  msg || `Please choose PVS installation folder.`;
-        if (this.statusBar) { this.statusBar.showProgress(msg); }
+        msg =  msg || `Please choose PVS installation folder.\nA subfolder with the PVS executables will be automatically created under the selected folder.`;
         const item = await window.showInformationMessage(msg, { modal: true }, labels.browse);//, labels.cancel);
         if (item === labels.browse) {
             const pvsInstallationFolder: Uri[] = await window.showOpenDialog({
@@ -346,179 +305,72 @@ export class VSCodePvsPackageManager {
                 openLabel: this.messages.selectInstallationFolder
             });
             if (pvsInstallationFolder && pvsInstallationFolder.length === 1) {
-                this.statusBar.ready();
-                return pvsInstallationFolder[0].fsPath;
+                const baseFolder: string = pvsInstallationFolder[0].fsPath;
+                return baseFolder;                
             }
         }
 		return null;
 	}
 
     /**
-     * Utility function, extracts the pvs executable and sets pvs.path in vscode
-     * @param desc 
+     * Utility function, returns the list of available pvs versions on the sri repository that are compatible with vscode-pvs
      */
-	protected async installPvs (desc: { fname: string, baseFolder: string, version: string }, opt?: { quiet?: boolean }): Promise<string> {
-        opt = opt || {};
-        const label: string = `PVS installation folder is ${path.join(desc.baseFolder, "pvs-7.1.0")}`;
-        if (!opt.quiet) {
-            window.showInformationMessage(label);
-        }
-        const pvsPath: string = path.join(desc.baseFolder, `pvs-${desc.version}`);
-        const nasalibPath: string = path.join(pvsPath, "nasalib");
-        const tmpdir: string = path.join(os.tmpdir(), "nasalib");
-        let restoreNasalib: boolean = false;
-        // if nasalib is under the pvs folder, save it and then copy it back
-        if (fsUtils.folderExists(nasalibPath)) {
-            console.log(`[vscode-package-manager] Saving NASALib to temporary folder ${tmpdir}`);
-            fsUtils.deleteFolder(tmpdir);
-            restoreNasalib = fsUtils.moveFolder(nasalibPath, tmpdir);
-        }
-        fsUtils.deleteFolder(pvsPath);
-        // extract pvs
-        const extractPvs = async (desc: { fname: string, baseFolder: string, version: string }): Promise<void> => {
-            const terminal = window.createTerminal({ name: label });
-    
-            const extractCommand: string = `tar -C ${desc.baseFolder} -xvf ${desc.fname} && cd ${desc.baseFolder}/pvs-${desc.version} && ./install-sh && exit`;
-            terminal.show();
-            terminal.sendText(extractCommand);
-    
-            return new Promise ((resolve, reject) => {
-                window.onDidCloseTerminal((t) => {
-                    if (t.name === label) {
-                        resolve();
+    protected async listPvsVersionsWithProgress (): Promise<{ version: string, url: string }> {
+        let message: string = `Checking PVS versions from ${pvsUrl}`;
+        await this.createTerminal(message);
+        this.terminal.log(colorText(message, PvsColor.blue), { addNewLine: true });
+        
+        // request list of versions -- this is useful in future implementation, e.g., to let the user choose a version when multiple versions are available
+        this.client.sendRequest(serverRequest.listVersionsWithProgress);
+        const lsResponse: string = await new Promise<string> ((resolve, reject) => {
+            this.client.onNotification(serverRequest.listVersionsWithProgress, async (ans: {
+                req: ListVersionsWithProgressRequest, 
+                res: ListVersionsWithProgressResponse
+            }) => {
+                if (ans?.res?.progressInfo) {
+                    if (ans?.res?.stdOut) { this.terminal.log(ans?.res?.stdOut); }
+                    if (ans?.res?.stdErr) { this.terminal.log(ans?.res?.stdErr); }
+                } else {
+                    if (ans?.res?.versions?.length) {
+                        resolve (ans?.res?.versions[0]);
+                        return;
                     }
-                });	
-            });
-        }
-        await extractPvs(desc);
-        // restore nasalib
-        if (restoreNasalib) {
-            const success: boolean = fsUtils.moveFolder(tmpdir, nasalibPath);
-            if (success) {
-                console.log(`[vscode-package-manager] NASALib restored`);
-            }
-        }
-        // set pvs.path configuration
-		await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
-        return pvsPath;
-	}
-
-    /**
-     * Utility function, used by pvsInstallationWizard to show a download dialog
-     * @param progress 
-     * @param token 
-     */
-	protected async downloadPvsDialog (progress: Progress<{ message?: string, increment?: number }>, token: CancellationToken): Promise<boolean> {
-		progress.report({ increment: 0 });
-		this.client.sendRequest(serverRequest.listDownloadableVersions);
-		return new Promise((resolve, reject) => {
-			this.client.onRequest(serverEvent.listDownloadableVersionsResponse, async (desc: { response: { versions: string[] }}) => {
-				if (desc && desc.response && desc.response.versions && desc.response.versions.length > 0) {
-					progress.report({ increment: 0 });
-					setTimeout(() => {
-						resolve(true);
-					}, 1000)
-				} else {
-					progress.report({ increment: 100, message: `Error: ${sriUrl} is currently not responding, please try again later` });
-					resolve(false);
-				}
-			});
-		});
-    }
-
-    /**
-     * Utility function, shows a dialog that allows the user to select the pvs installation folder in the file system
-     * @param pvsPath 
-     */
-    protected async selectPvsPath (): Promise<boolean> {
-        const pvsExecutable: Uri[] = await window.showOpenDialog({
-            canSelectFiles: false,
-            canSelectFolders: true,
-            canSelectMany: false,
-            openLabel: this.messages.setPvsPath
-        });
-        if (pvsExecutable && pvsExecutable.length === 1) {
-            const pvsPath: string = pvsExecutable[0].fsPath;
-            await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Utility function, downloads the list of pvs versions from SRI's pvs-snapshots website, and returns the descriptor of the most recent version
-     */
-    protected async downloadPvsExecutableWithProgress (): Promise<{ fname: string, version: string }> {
-        return window.withProgress({
-            location: ProgressLocation.Notification,
-            cancellable: true
-        }, async (progress, token) => {
-            let terminal: Terminal = null;
-
-            progress.report({ increment: -1, message: `Checking PVS versions from ${sriUrl}` });
-
-            return new Promise((resolve, reject) => {
-                token.onCancellationRequested(() => {
-                    window.showInformationMessage("Download cancelled");
-                    if (terminal) {
-                        terminal.dispose();
-                        resolve(null);
-                    }
-                });
-                
-                this.client.sendRequest(serverRequest.listDownloadableVersions);
-                this.client.onRequest(serverEvent.listDownloadableVersionsResponse, (desc: { response: PvsDownloadDescriptor[] }) => {
-                    if (desc && desc.response && desc.response && desc.response.length > 0) {
-                        progress.report({ increment: -1, message: `Downloading PVS ${desc.response[0].version} from ${pvsUrl}` });
-
-                        // download PVS with curl or wget in terminal
-                        const label: string = `Downloading PVS`;
-                        const fname: string = `${os.tmpdir()}/${desc.response[0].fileName}`;
-                        const version: string = desc.response[0].version;
-                        const downloadCommand: string = fsUtils.downloadCommand(desc.response[0].url, { out: fname }) + ` && sleep 1 && exit`;
-
-                        terminal = window.createTerminal({ name: label });
-                        terminal.show();
-                        terminal.sendText(downloadCommand);
-
-                        window.onDidCloseTerminal((t) => {
-                            if (t.name === label) {
-                                resolve({ fname, version });
-                            }
-                        });	
-                    } else {
-                        progress.report({ increment: 100, message: `Error: ${sriUrl} is not responding, please try again later.` });
-                        resolve(null);
-                    }
-                });
+                    resolve (null);
+                }
             });
         });
+        const versions: PvsDownloadDescriptor[] = fsUtils.parseLsPvsVersions(lsResponse);
+        if (versions?.length) {
+            let message: string = versions.length === 1 ?
+                `${versions.length} version available: ${versions[0].fileName}`
+                    : `${versions.length} versions available: ${versions.map(info => { return info.fileName; }).join(", ")}`;
+            this.terminal.log(message, { addNewLine: true });
+
+            const version: string = versions[0].version;
+            const url: string = versions[0].url;
+            return { version, url };
+        }
+        return null;
     }
-    
+
     /**
      * Utility function, shows the pvs license page in vscode
      */
-    protected async downloadPvsLicensePageWithProgress (): Promise<string> {
+     protected async downloadPvsLicensePageWithProgress (): Promise<string> {
         return window.withProgress({
             location: ProgressLocation.Notification,
             cancellable: true
         }, async (progress, token) => {
-            let terminal: Terminal = null;
-
-            progress.report({ increment: -1, message: `Loading PVS license page from ${sriUrl}` });
-
+            progress.report({ increment: -1, message: `Loading PVS license page...` });
             return new Promise((resolve, reject) => {
                 token.onCancellationRequested(() => {
                     window.showInformationMessage("Download cancelled");
-                    if (terminal) {
-                        terminal.dispose();
-                        resolve(null);
-                    }
+                    resolve(null);
                 });
-                
                 this.client.sendRequest(serverRequest.downloadLicensePage);
                 this.client.onRequest(serverEvent.downloadLicensePageResponse, (desc: { response: string }) => {
                     if (desc && desc.response && desc.response) {
+                        progress.report({ increment: -1, message: `Please read the PVS license agreement before proceeding` });
                         resolve(desc.response);
                     } else {
                         progress.report({ increment: 100, message: `Error: ${sriUrl} is not responding, please try again later.` });
@@ -529,4 +381,224 @@ export class VSCodePvsPackageManager {
         });
     }
 
+    /**
+     * Utility function, downloads the pvs installation file at the given url.
+     * The downloaded file will be saved in desc.baseFolder
+     */
+    protected async downloadWithProgress (name: "PVS" | "NASALib", req: DownloadWithProgressRequest): Promise<{ fname: string }> {
+        if (!fsUtils.getDownloader()) {
+            window.showErrorMessage(errorMsgDownloaderNotPresent);
+            return null;
+        }
+        if (!(req?.url && req.baseFolder)) {
+            window.showErrorMessage(errorPvsVersionsNotAvailable);
+            return null;
+        }
+
+        // create terminal to show feedback
+        const label: string = `Downloading ${name}`;
+        await this.createTerminal(label);
+
+        // download task
+        const downloadTask = (
+            progress: Progress<{ increment: number, message: string }>, 
+            token: CancellationToken
+        ): Promise<{ fname: string }> => {
+            let taskCancelled: boolean = false;
+
+            return new Promise(async (resolve, reject) => {
+                token.onCancellationRequested(() => {
+                    const msg: string = "Download cancelled";
+                    window.showInformationMessage(msg);
+                    this.terminal.log(colorText("\n" + msg, PvsColor.yellow), { addNewLine: true });
+                    // send cancellation event to the server
+                    taskCancelled = true;
+                    req.cancellationToken = true;
+                    this.client.sendRequest(serverRequest.downloadWithProgress, req);
+                    resolve(null);
+                });
+                
+                // show feedback before starting to download
+                let message: string = `Downloading ${req.url}`;
+                progress.report({ increment: -1, message });
+                this.terminal.log(colorText(message, PvsColor.blue), { addNewLine: true });
+
+                // send download request to the server
+                this.client.sendRequest(serverRequest.downloadWithProgress, req);
+                const fname: string = await new Promise<string> ((resolveDownload, rejectDownload) => {
+                    this.client.onNotification(serverRequest.downloadWithProgress, (ans: {
+                        req: DownloadWithProgressRequest, 
+                        res: DownloadWithProgressResponse 
+                    }) => {
+                        if (ans?.res?.progressInfo) {
+                            this.terminal.log(ans.res?.stdOut);
+                            this.terminal.log(ans.res?.stdErr);
+                        } else {
+                            if (!taskCancelled) {
+                                if (ans?.res?.success && ans?.res?.fname) {
+                                    message = `Download completed successfully (${ans.res.fname})`;
+                                    progress.report({ increment: 100, message });
+                                    this.terminal.log(colorText(message, PvsColor.blue), { addNewLine: true });
+                                } else {
+                                    message = `Error: Unable to download ${name} at ${req.url}. Please try again later or proceed with the manual installation of ${name}.`;
+                                    progress.report({ increment: 100, message });    
+                                    window.showErrorMessage(message);
+                                    this.terminal.log(colorText(message, PvsColor.red), { addNewLine: true });                    
+                                }
+                            }
+                            resolveDownload(ans?.res?.fname);
+                        }
+                    });
+                });
+                resolve ({ fname });
+            });
+        };
+        // create progress dialog
+        return window.withProgress({
+            location: ProgressLocation.Notification,
+            cancellable: true
+        }, downloadTask);
+    }
+
+    /**
+     * Utility function, extracts the pvs executable and sets pvs.path in vscode.
+     */
+	protected async installWithProgress (name: "PVS" | "NASALib", req: InstallWithProgressRequest, opt?: { quiet?: boolean }): Promise<boolean> {
+        opt = opt || {};
+        if (req?.shellCommand && req?.targetFolder) {
+            const label: string = `Installing ${name} to ${req.targetFolder}`;
+            await this.createTerminal(label);
+
+            // send request to the server
+            this.client?.sendRequest(serverRequest.installWithProgress, req);
+            const res: InstallWithProgressResponse = await new Promise ((resolve, reject) => {
+                this.client?.onNotification(serverRequest.installWithProgress, (desc: { req: InstallWithProgressRequest, res: InstallWithProgressResponse }) => {
+                    if (desc?.res?.progressInfo) {
+                        if (!opt.quiet) {
+                            if (desc.res.stdOut) { this.terminal.log(desc.res.stdOut); }
+                            if (desc.res.stdErr) { this.terminal.log(desc.res.stdErr); }
+                        }
+                    } else {
+                        resolve(desc?.res);
+                    }
+                });
+            });
+            if (res?.success && name === "PVS") {
+                // update pvs.path
+                await workspace.getConfiguration().update("pvs.path", req.targetFolder, ConfigurationTarget.Global);
+            }
+            return !!res?.success;
+        }
+        return false;
+	}
+
+    /**
+     * Utility function, returns NASALib download command
+     */
+    getNASALibDownloadCommand (desc: {
+        downloader: NASALibDownloader,
+        basePath: string,
+        targetFolder: string,
+        update?: boolean
+    }): ShellCommand {
+        let shellCommand: ShellCommand = null;
+        if (desc?.downloader && desc?.targetFolder && desc?.basePath) {
+            const update: boolean = fsUtils.folderExists(desc.targetFolder) && desc?.update;
+            switch (desc.downloader) {
+                case "git": {
+                    shellCommand = fsUtils.cloneNASALibCommand(NASALibUrl, {
+                        basePath: desc.basePath,
+                        branch: NASALibGithubBranch, 
+                        update
+                    });
+                    break;
+                }
+                case "curl":
+                case "wget":
+                default: {
+                    const tmpdir: string = os.tmpdir();
+                    const fname: string = `${tmpdir}/nasalib7.zip`;
+                    shellCommand = fsUtils.getDownloadCommand(NASALibGithubFile, { out: fname });
+                    if (shellCommand?.cmd) {
+                        shellCommand.cmd += " " + shellCommand.args?.join(" ");
+                        shellCommand.cmd += ` && unzip -o -qq ${fname} -d ${tmpdir}`
+                            + ` && mv ${path.join(tmpdir, "pvslib-master")} ${desc.targetFolder}`;
+                    }
+                    break;
+                }
+            }
+        }
+        return shellCommand;
+    }
+
+    /**
+     * Installation wizard for NASALib
+     */
+    async nasalibInstallationWizard (opt?: { msg?: string, update?: boolean }): Promise<boolean> {
+        opt = opt || {};
+        const label: string = opt.msg || `NASALib is an extensive PVS library developed and maintained by the NASA Langley Formal Methods Team.\n\nWould you like to download NASALib?`;
+		const item = await window.showInformationMessage(label, {
+            modal: true
+        }, opt.update ? this.messages.updateNASALib : this.messages.downloadNASALib);//, this.messages.setNasalibPath);
+
+        if (!item) { return false; }
+        // if (item === this.messages.setNasalibPath) { return await this.selectNasalibPath(); }
+        if (item === this.messages.downloadNASALib || item === this.messages.updateNASALib) {
+            const downloader: NASALibDownloader = await this.getNasalibDownloader({ preferred: "git" });
+            let pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
+            const targetFolder: string = path.join(pvsPath, "nasalib");    
+            // create terminal to show feedback during download/update operations
+            await this.createTerminal(label, { clearScreen: true });
+            const message: string = downloader === "git" && item === this.messages.downloadNASALib ?
+                `Cloning NASALib to ${targetFolder}` 
+                    : "git" && item === this.messages.updateNASALib ? `Updating NASALib installation`
+                        : `Downloading NASALib to ${targetFolder}`;
+            const shellCommand: ShellCommand = this.getNASALibDownloadCommand({
+                basePath: pvsPath,
+                targetFolder,
+                downloader,
+                update: opt?.update
+            });
+            if (shellCommand && message) {
+                this.terminal.log(colorText(message, PvsColor.blue), { addNewLine: true });
+                const success: boolean = await this.installWithProgress("NASALib", {
+                    shellCommand,
+                    targetFolder: path.join(pvsPath, "nasalib"),
+                    installScript: {
+                        cwd: targetFolder,
+                        cmd: "./install-scripts",
+                        args: [ `--pvs-dir ${pvsPath}` ],
+                        quiet: true
+                    },
+                    cleanTarget: !opt?.update
+                });
+                if (success) {
+                    // reboot pvs-server
+                    const req: RebootPvsServerRequest = { pvsPath };
+                    this.client.sendRequest(serverRequest.rebootPvsServer, req);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Get NASALib downloader --- git | curl | wget
+     */
+    async getNasalibDownloader (req?: NASALibDownloaderRequest): Promise<NASALibDownloader> {
+        if (!fsUtils.getDownloader()) {
+            window.showErrorMessage(errorMsgDownloaderNotPresent);
+            return null;
+        }
+        this.client.sendRequest(serverRequest.getNasalibDownloader, req);
+        return await new Promise ((resolve, reject) => {
+            this.client.onNotification(serverRequest.getNasalibDownloader, (ans: {
+                req: NASALibDownloaderRequest,
+                res: NASALibDownloaderResponse
+            }) => {
+                resolve(ans?.res?.downloader);
+            });
+        })
+    }
 }

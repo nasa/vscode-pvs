@@ -38,12 +38,13 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import { ChildProcess, exec, execSync } from 'child_process';
 import * as crypto from 'crypto';
 import { 
 	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor, 
-	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsFileDescriptor, 
-	PvsFormula, PvsTheory, TheoryDescriptor
+	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsDownloadDescriptor, 
+	pvsDownloadUrl, PvsFileDescriptor, 
+	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand
 } from '../common/serverInterface';
 import { 
 	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, 
@@ -257,9 +258,12 @@ export async function cleanBin(contextFolder: string, opt?: {
 	}
 	return Promise.resolve(nCleaned);
 }
+/**
+ * Creates a folder, if the folder does not exist already.
+ */
 export async function createFolder(path: string): Promise<void> {
 	if (!fs.existsSync(path)){
-		fs.mkdirSync(path);
+		fs.mkdirSync(path, { recursive: true });
 	}
 }
 export async function writeFile(fname: string, content: string, opt?: { append?: boolean, encoding?: BufferEncoding }): Promise<boolean> {
@@ -528,54 +532,133 @@ export function decodeURIComponents (desc) {
 	return desc;
 }
 
-// constants
+/** 
+ * file extension for sequent files created under pvsbin/, to show a sequent in the editor
+ */
 export const logFileExtension: string = ".pr";
 
-export function getDownloader (): string {
-	const candidates: string[] = [ "curl", "wget" ];
+/**
+ * Utility function, checks if wget or curl are available
+ */
+export function getDownloader (): Downloader {
+	const candidates: Downloader[] = [ "wget", "curl" ];
 	for (let i = 0; i < candidates.length; i++) {
-		if (execSync(`which ${candidates[i]}`)) {
-			return candidates[i];
+		try {
+			if (execSync(`which ${candidates[i]}`)) {
+				return candidates[i];
+			}
+		} catch (error) {
+			// keep going, command not found
 		}
 	}
 	return null;
 } 
 
+/**
+ * Utility function, checks if git is available
+ */
 export function getSourceControl (): "git" | null {
-	const res: Buffer = execSync(`which git`);
-	if (res) {
-		const ans: string = res.toLocaleString();
-		if (ans.trim().endsWith("git")) {
+	try {
+		if (execSync(`which git`)) {
 			return "git";
 		}
+	} catch (error) {
+		// command not found
 	}
 	return null;
 }
 
-export function cloneCommand (url: string, opt?: { update?: boolean, basePath?: string, branch?: string }): string {
-	opt = opt || {};
-	let gitCommand: string = (opt.update) ? `cd nasalib && git pull` : `git clone ${url} nasalib`;
-	if (opt.basePath) {
-		gitCommand = `cd "${opt.basePath}" && ` + gitCommand;
-	}
+/**
+ * Utility function, creates the 'git clone' / 'git pull' for nasalib
+ */
+export function cloneNASALibCommand (url: string, opt?: { update?: boolean, branch?: string, basePath }): ShellCommand {
+	const shellCommand: ShellCommand = {
+		cmd: "git",
+		args: (opt?.update) ? [ "pull" ] : [ `clone "${url}" "nasalib"` ],
+		cwd: (opt?.update) ? path.join(opt.basePath, "nasalib") : opt.basePath
+	};
 	if (opt.branch && !opt.update) {
-		gitCommand += ` -b "${opt.branch}"`;
+		shellCommand.args.push(`-b "${opt.branch}"`);
 	}
-	return gitCommand;
+	return shellCommand;
 }
 
-export function downloadCommand (url: string, opt?: { out?: string }): string {
-	opt = opt || {};
-	const downloader: string = getDownloader();
-	if (downloader) {
-		const cmd: string = (downloader === "curl") ? `${downloader} -L ` : downloader; // -L allows curl to follow redirect. wget automatically follows up to 20 redirect. Redirects may happen when downloading files from github.
-		return opt.out ? `${cmd} -o ${opt.out} ${url}` : `${cmd} ${url}`;
+/**
+ * Utility function, converts a shell command into a string
+ */
+export function shellCommandToString (shellCommand: ShellCommand): string {
+	if (shellCommand) {
+		const cmd: string = shellCommand.args ? `${shellCommand.cmd} ${shellCommand.args?.join(" ")}`
+			: shellCommand.cmd;
+		return shellCommand.cwd ? `cd ${shellCommand.cwd} && ${cmd}`
+			: cmd;
+	}
+	"";
+}
+
+/**
+ * Utility function, creates the command for downloading a file from a give URL with curl or wget
+ */
+export function getDownloadCommand (url: string, opt?: { out?: string }): ShellCommand {
+	const cmd: string = getDownloader();
+	if (cmd) {
+		let args: string[] = (cmd === "curl") ? [ "-L" ] // -L allows curl to follow URL redirect.
+			: [ "--progress=bar:force" ,"--show-progress" ]; // wget automatically follows up to 20 URL redirect.
+		args.push(url);
+		if (opt?.out) {
+			if (cmd === "curl") {
+				args.push(`-o ${opt.out}`);
+			} else {
+				args.push(`-O ${opt.out}`);
+			}
+		}
+		return { cmd, args };
 	}
 	return null;
 }
 
+/**
+ * Default folder name for the installationn of pvs
+ */
 export const pvsFolderName: string = "pvs-7.1.0";
 
+/**
+ * Utility function for executing commands in the shell
+ */
+export function execShellCommand (req: ShellCommand, opt?: {
+	stdOut?: (res: string) => void,
+	stdErr?: (res: string) => void,
+	callback?: (success: boolean) => void
+}): ChildProcess {
+	if (req?.cmd) {
+		const cmd: string = req.args ? `${req.cmd} ${req.args?.join(" ")}` : req.cmd;
+		const shellProcess: ChildProcess = exec(cmd, { cwd: req?.cwd });
+		
+		// spawn(req.cmd, req.args || [], { cwd: req?.cwd });
+        shellProcess.stdout.setEncoding("utf8");
+        shellProcess.stderr.setEncoding("utf8");
+
+		shellProcess.stdout.on("data", async (data: string) => {
+			opt?.stdOut(data);
+		});
+		shellProcess.stderr.on("data", (data: string) => {
+			opt?.stdErr(data);
+		});
+		shellProcess.once("error", (err: Error) => {
+			opt?.stdErr(`Error: ${JSON.stringify(err, null, " ")}`);
+			opt?.callback(false);
+		});
+		shellProcess.once("exit", (code: number, signal: string) => {
+			// code === 0 means success
+			opt?.callback(code === 0);
+		});
+		shellProcess.on("message", (message: any) => {
+			console.log(message);
+		});
+		return shellProcess;
+	}
+	return null;
+}
 
 // export async function getNodeJsVersion (): Promise<{ version?: string, error?: string }> {
 // 	const cmd: string = "node --version";
@@ -1624,4 +1707,46 @@ export async function saveSummary (fname: string, theoryName: string, summary: s
 		return await appendSummary(fname, summary);
 	}
 	return false;
+}
+
+/**
+ * Utility function, creates the command for downloading the list of pvs versions
+ */
+export function lsPvsVersions (): string {
+	const osName: { version?: string, error?: string } = getOs();
+	if (osName && osName.version) {
+		const preferredVersion: string = "7.1.0";//"ge7a69672"; //"g762f82aa"; //"ga3f9dbb7";//"g03fe2100";
+		const shellCommand: ShellCommand = getDownloadCommand(pvsDownloadUrl);
+		if (shellCommand?.cmd) {
+			let lsCommand: string = `${shellCommand.cmd} ${shellCommand.args?.join(" ") }`;
+			if (shellCommand.cmd === "wget") {
+				lsCommand += " -O- "; // this is needed to redirect the output of wget to stdout, otherwise wget will write a file
+			}
+			lsCommand += `| grep -oE '(pvs.*\.tgz)\"' `
+				+ `| sed 's/"$//' `
+				+ `| grep ${preferredVersion} `
+				+ `| grep ${osName.version} `
+				+ `| grep allegro`;
+			return lsCommand;
+		}
+	}
+	return null;
+}
+
+/**
+ * Utility function, parses the result of lsPvsVersions
+ */
+ export function parseLsPvsVersions (str: string): PvsDownloadDescriptor[] {
+	 if (str) {
+		const res: string = str?.toLocaleString().trim();
+		const elems: string[] = res?.split("\n");
+		const versions: PvsDownloadDescriptor[] = elems?.map((fileName: string) => {
+			const match: RegExpMatchArray = /pvs-?([\d\.\-]+)\-\w+/.exec(fileName);
+			const version: string = (match && match.length > 1) ? match[1].replace(/\-/g,".") : null;
+			const url: string = (pvsDownloadUrl.endsWith("/") ? pvsDownloadUrl : pvsDownloadUrl + "/") + fileName;
+			return { url, fileName, version };
+		});
+		return versions;
+	}
+	return null;
 }

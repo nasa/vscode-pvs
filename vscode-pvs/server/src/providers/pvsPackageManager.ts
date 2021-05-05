@@ -36,51 +36,222 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { execSync } from 'child_process';
+import { ChildProcess, execSync } from 'child_process';
 import * as os from 'os';
 import * as fsUtils from '../common/fsUtils';
-import { PvsDownloadDescriptor, pvsDownloadUrl } from '../common/serverInterface';
+import {
+    serverRequest, DownloadWithProgressRequest, DownloadWithProgressResponse, 
+    InstallWithProgressRequest, InstallWithProgressResponse, NASALibDownloader, NASALibDownloaderRequest, ShellCommand, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse
+} from '../common/serverInterface';
 import * as path from 'path';
+import { Connection } from 'vscode-languageserver';
+import { shellCommandToString } from '../common/fsUtils';
+import { colorText, PvsColor } from '../common/colorUtils';
 
 export class PvsPackageManager {
+
+    protected static installProcess: ChildProcess;
+    protected static downloadProcess: ChildProcess;
+
+    /**
+     * Installs PVS
+     */
+    static async installWithProgress (connection: Connection, req: InstallWithProgressRequest): Promise<InstallWithProgressResponse> {
+        let success: boolean = false;
+        // if the request contains a cancellation token, then kill the download task
+        if (req.cancellationToken) {
+            PvsPackageManager.installProcess?.kill();
+            if (req.cancellationToken) {
+                return;
+            }
+        }
+        if (connection && req?.targetFolder && req?.shellCommand) {
+            const tmpFolder: string = req?.saveAndRestore ? path.join(os.tmpdir(), "iwp") : null;
+            let restoreFolder: boolean = false;
+
+            // check if the request indicated there's a folder to be saved and restored after install
+            if (req?.saveAndRestore && fsUtils.folderExists(req.saveAndRestore)) {
+                const res: InstallWithProgressResponse = {
+                    progressInfo: true,
+                    stdOut: `Saving ${req.saveAndRestore}`
+                };
+                connection?.sendNotification(serverRequest.installWithProgress, { req, res });
+                fsUtils.deleteFolder(tmpFolder);
+                restoreFolder = fsUtils.moveFolder(req.saveAndRestore, tmpFolder);
+            }
+            if (req.cleanTarget) {
+                fsUtils.deleteFolder(req.targetFolder);
+            }
+            
+            const cmd: InstallWithProgressResponse = {
+                progressInfo: true,
+                stdOut: shellCommandToString(req.shellCommand) + "\n"
+            };
+            connection?.sendNotification(serverRequest.installWithProgress, { req, res: cmd });
+            success = await new Promise ((resolve, reject) => {
+                PvsPackageManager.installProcess = fsUtils.execShellCommand(req.shellCommand, {
+                    stdOut: (out: string) => {
+                        if (!req.shellCommand.quiet) {
+                            const res: InstallWithProgressResponse = {
+                                progressInfo: true,
+                                stdOut: out
+                            };
+                            connection?.sendNotification(serverRequest.installWithProgress, { req, res });
+                        }
+                    },
+                    stdErr: (err: string) => {
+                        if (!req.shellCommand.quiet) {
+                            const res: InstallWithProgressResponse = {
+                                progressInfo: true,
+                                stdErr: err
+                            };
+                            connection?.sendNotification(serverRequest.installWithProgress, { req, res });
+                        }
+                    },
+                    callback: (success: boolean) => {
+                        resolve(success);
+                    }
+                })
+            });
+            if (success && req.installScript?.cmd) {
+                const cmd: InstallWithProgressResponse = {
+                    progressInfo: true,
+                    stdOut: shellCommandToString(req.installScript) + "\n"
+                };
+                connection?.sendNotification(serverRequest.installWithProgress, { req, res: cmd });    
+                success = success && await new Promise ((resolve, reject) => {
+                    PvsPackageManager.installProcess = fsUtils.execShellCommand(req.installScript, {
+                        stdOut: (out: string) => {
+                            if (!req.installScript.quiet) {
+                                const res: InstallWithProgressResponse = {
+                                    progressInfo: true,
+                                    stdOut: out
+                                };
+                                connection?.sendNotification(serverRequest.installWithProgress, { req, res });
+                            }
+                        },
+                        stdErr: (err: string) => {
+                            if (!req.installScript.quiet) {
+                                const res: InstallWithProgressResponse = {
+                                    progressInfo: true,
+                                    stdErr: err
+                                };
+                                connection?.sendNotification(serverRequest.installWithProgress, { req, res });
+                            }
+                        },
+                        callback: (success: boolean) => {
+                            resolve(success);
+                        }
+                    })
+                });
+            }
+            // restore folder if necessary
+            if (restoreFolder) {
+                success = fsUtils.moveFolder(tmpFolder, req.saveAndRestore);
+                if (success) {
+                    const res: InstallWithProgressResponse = {
+                        progressInfo: true,
+                        stdOut: `Restoring ${req.saveAndRestore}`
+                    };
+                    connection?.sendNotification(serverRequest.installWithProgress, { req, res });
+                }
+            }
+            if (success) {
+                const res: InstallWithProgressResponse = {
+                    progressInfo: true,
+                    stdOut: colorText(`Done!`, PvsColor.green)
+                };
+                connection?.sendNotification(serverRequest.installWithProgress, { req, res });
+            }
+        }
+        return { success };
+    }
 
     /**
      * Provides the list pvs versions available for this machine's operating system at SRI's pvs-snapshots website.
      * The list is ordered by version number (the most recent version is in position 0).
      */
-    static async listDownloadableVersions (): Promise<PvsDownloadDescriptor[]> {
-        const osName: { version?: string, error?: string } = fsUtils.getOs();
-        if (osName && osName.version) {
-            const preferredVersion: string = "7.1.0";//"ge7a69672"; //"g762f82aa"; //"ga3f9dbb7";//"g03fe2100";
-            // const lsCommand: string = `${fsUtils.downloadCommand(pvsSnapshotsUrl)} | grep -oE '(http.*\.tgz)\"' | sed 's/"$//' | grep ${preferredVersion} | grep ${osName.version} | grep allegro`;
-            const lsCommand: string = `${fsUtils.downloadCommand(pvsDownloadUrl)} | grep -oE '(pvs.*\.tgz)\"' | sed 's/"$//' | grep ${preferredVersion} | grep ${osName.version} | grep allegro`;
-            const ls: Buffer = execSync(lsCommand);
+    static async listDownloadableVersionsWithProgress (connection: Connection, req: ListVersionsWithProgressRequest): Promise<ListVersionsWithProgressResponse> {
+        const cmd: string = fsUtils.lsPvsVersions();
+
+        const res: DownloadWithProgressResponse = {
+            progressInfo: true,
+            stdOut: cmd + "\n"
+        };
+        connection?.sendNotification(serverRequest.listVersionsWithProgress, { req, res });
+        try {
+            const ls: Buffer = execSync(cmd);
             if (ls) {
-                const res: string = ls.toLocaleString().trim();
-                const elems: string[] = res.split("\n");
-                const versions: PvsDownloadDescriptor[] = elems.map((fileName: string) => {
-                    const match: RegExpMatchArray = /pvs-?([\d\.\-]+)\-\w+/.exec(fileName);
-                    const version: string = (match && match.length > 1) ? match[1].replace(/\-/g,".") : null;
-                    const url: string = path.join(pvsDownloadUrl, fileName);
-                    return { url, fileName, version };
-                });
-                return versions;
+                const out: string = ls.toLocaleString().trim();
+                const res: DownloadWithProgressResponse = {
+                    progressInfo: true,
+                    stdOut: out + "\n"
+                };
+                connection?.sendNotification(serverRequest.listVersionsWithProgress, { req, res });
+                return { versions: [ out ] };
+                // return fsUtils.parseLsPvsVersions(res);
             }
+        } catch (error) {
+            const res: DownloadWithProgressResponse = {
+                progressInfo: true,
+                stdErr: error + "\n"
+            };
+            connection?.sendNotification(serverRequest.listVersionsWithProgress, { req, res });
+            return null;
+            // unable to list versions
         }
         return null;
     }
 
     /**
-     * Downloads a pvs version from SRI's pvs-snapshots website.
+     * Downloads PVS installation files and provides progress feedback to the front-end.
+     * The file will be downloaded in the pvs base folder
      */
-    static async downloadPvsExecutable (desc: PvsDownloadDescriptor): Promise<string> {
-        const fname: string = `${os.tmpdir()}/${desc.fileName}`;
-        const downloadCommand: string = fsUtils.downloadCommand(desc.url, { out: fname });
-        const dnl: Buffer = execSync(downloadCommand);
-        if (dnl) {
-            return fname;
+    static async downloadWithProgress (connection: Connection, req: DownloadWithProgressRequest): Promise<DownloadWithProgressResponse> {
+        // if the request contains a cancellation token, then kill the download task
+        if (req.cancellationToken) {
+            PvsPackageManager.downloadProcess?.kill();
+            if (req.cancellationToken) {
+                return;
+            }
         }
-        return null;
+        if (connection && req?.url && req?.baseFolder) {
+            const fileNameOnDisk: string = fsUtils.getFileName(req.url, { keepExtension: true });
+            await fsUtils.createFolder(req.baseFolder);
+            const fname: string = path.join(req.baseFolder, fileNameOnDisk);
+            const cmd: ShellCommand = req?.shellCommand || fsUtils.getDownloadCommand(req.url, { out: fname });
+            // delete fname in temporary folder before downloading
+            fsUtils.deleteFile(fname);
+            // send progress info to show command and args
+            const res: DownloadWithProgressResponse = {
+                progressInfo: true,
+                stdOut: shellCommandToString(cmd) + "\n"
+            };
+            connection?.sendNotification(serverRequest.downloadWithProgress, { req, res });
+            const success: boolean = await new Promise ((resolve, reject) => {
+                PvsPackageManager.downloadProcess = fsUtils.execShellCommand(cmd, {
+                    stdOut: (out: string) => {
+                        const res: DownloadWithProgressResponse = {
+                            progressInfo: true,
+                            stdOut: out
+                        };
+                        connection?.sendNotification(serverRequest.downloadWithProgress, { req, res });
+                    },
+                    stdErr: (err: string) => {
+                        const res: DownloadWithProgressResponse = {
+                            progressInfo: true,
+                            stdErr: err
+                        };
+                        connection?.sendNotification(serverRequest.downloadWithProgress, { req, res });
+                    },
+                    callback: (success: boolean) => {
+                        resolve(success);
+                    }
+                });
+            });
+            return { success, fname };
+        }
+        return { success: false };
     }
 
     /**
@@ -88,8 +259,9 @@ export class PvsPackageManager {
      * @param pvsPath pvs installation path
      * @returns {string} the path where nasalib is installed
      */
-    static async getNasalibDownloader (): Promise<"git" | "download"> {
-        return fsUtils.getSourceControl() || "download";
+    static async getNasalibDownloader (opt?: NASALibDownloaderRequest): Promise<NASALibDownloader> {
+        return (opt?.preferred === "git") ? fsUtils.getSourceControl() || fsUtils.getDownloader()
+            : fsUtils.getDownloader() || fsUtils.getSourceControl();
     }
 
     /**
@@ -115,7 +287,6 @@ export class PvsPackageManager {
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
-
 
 <link rel="shortcut icon" href="http://pvs.csl.sri.com/images/pvslogo.ico" />
 <link rel="icon" href="http://pvs.csl.sri.com/images/pvslogo16.gif" />

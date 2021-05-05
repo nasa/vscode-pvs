@@ -172,6 +172,9 @@ export class PvsProcess {
 			// process already running, nothing to do
 			return ProcessCode.SUCCESS;
 		}
+		if (!this.pvsPath) {
+			return ProcessCode.PVSNOTFOUND;
+		}
 		opt = opt || {};
 		this.enableNotifications = !!opt.enableNotifications;
 		this.externalServer = !!opt.externalServer;

@@ -36,18 +36,16 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 import * as path from 'path';
-import * as comm from './common/serverInterface';
 import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation, Uri, WorkspaceConfiguration, Progress, FileRenameEvent, WorkspaceFolder } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, CancellationToken } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
-// import { VSCodePvsTerminal } from './views/vscodePvsTerminal';
 import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 import * as fsUtils from './common/fsUtils';
 import { VSCodePvsStatusBar } from './views/vscodePvsStatusBar';
 import { EventsDispatcher } from './eventsDispatcher';
-import { serverEvent, serverRequest } from "./common/serverInterface";
+import { PvsFile, PvsVersionDescriptor, serverEvent, serverRequest } from "./common/serverInterface";
 import * as vscodeUtils from './utils/vscode-utils';
 import { VSCodePvsPackageManager } from './providers/vscodePvsPackageManager';
 import { VSCodePvsProofMate } from './views/vscodePvsProofMate';
@@ -57,7 +55,6 @@ import { VSCodePvsLogger } from './views/vscodePvsLogger';
 import { VSCodePvsPlotter } from './views/vscodePvsPlotter';
 import { VSCodePvsSearch } from './views/vscodePvsSearch';
 import { VSCodePvsioWeb } from './views/vscodePvsioWeb';
-// import { VSCodePvsTerminalLinkProvider } from './providers/vscodePvsTerminalLinkProvider';
 import { VSCodePvsXTerm } from './views/vscodePvsXTerm';
 import { XTermColorTheme } from './common/colorUtils';
 
@@ -166,7 +163,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					const contextFolder: string = fsUtils.getContextFolder(fname);
 					const explorerWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
 					if (contextFolder !== explorerWorkspace) {
-						this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder });
+						this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder });
 						// don't update file explorer, as any modification will create an Untitled workspace, which might be problematic for vscode-pvs users
 						// because users will be asked to save the workspace on exit, and if they choose to save the workspace, 
 						// they will also be asked whether they want to open the workspace configuration next time they will work on that folder
@@ -246,7 +243,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					const msg: string = `Restarting PVS from ${this.pvsPath}`;
 					this.statusBar.showProgress(msg);
 					// window.showInformationMessage(msg);
-					this.client.sendRequest(comm.serverRequest.startPvsServer, {
+					this.client.sendRequest(serverRequest.startPvsServer, {
 						pvsPath: this.pvsPath, 
 						pvsLibraryPath: this.pvsLibraryPath
 					}); // the server will use the last context folder it was using	
@@ -264,7 +261,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						(fsUtils.isPvsFile(window.activeTextEditor.document?.fileName)
 							|| window.activeTextEditor.document?.languageId === "Log"))) {
 				// send clear theory command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
-				this.client.sendRequest(comm.serverRequest.clearTheories);
+				this.client.sendRequest(serverRequest.clearTheories);
 				// remove tccs file for the renamed file, if the file exists
                 if (workspace?.workspaceFolders?.length) {
 					for (let i in pvsFiles) {
@@ -406,18 +403,17 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.pvsPath = vscodeUtils.getConfiguration("pvs.path");
 			this.pvsLibraryPath = vscodeUtils.getPvsLibraryPath();
 			// setTimeout(() => {
-			this.client.sendRequest(comm.serverRequest.startPvsServer, {
+			this.client.sendRequest(serverRequest.startPvsServer, {
 				pvsPath: this.pvsPath,
 				pvsLibraryPath: this.pvsLibraryPath,
 				contextFolder,
 				externalServer: false
 			});
 			// }, 1000);
+			// set vscode context variable pvs-server-active to true -- this will create the PVS icon on the activity bar
+			commands.executeCommand('setContext', 'pvs-server-active', true);
 			// create handler for pvsServerReady event
-			this.client.onRequest(serverEvent.pvsServerReady, (info: comm.PvsVersionDescriptor) => {
-				// set vscode context variable pvs-server-active to true
-				commands.executeCommand('setContext', 'pvs-server-active', true);
-
+			this.client.onRequest(serverEvent.pvsServerReady, (info: PvsVersionDescriptor) => {
 				// reset other globals
 				vscodeUtils.resetGlobals();
 
@@ -432,10 +428,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 				if (window.activeTextEditor && window.activeTextEditor.document) {
 					// parse file opened in the editor
-					const desc: comm.PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
+					const desc: PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
 					if (desc.contextFolder) {
-						this.client.sendRequest(comm.serverRequest.parseFile, desc);
-						this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
+						this.client.sendRequest(serverRequest.parseFile, desc);
+						this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
 					}
 				} else {
 					// or get the descriptor of the current folder
@@ -443,7 +439,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					const folder: string = (workspaceFolder) ? workspaceFolder.path : 
 						contextFolder ? contextFolder : vscodeUtils.getDefaultContextFolder();
 					if (folder) {
-						this.client.sendRequest(comm.serverRequest.getContextDescriptor, { contextFolder: folder });
+						this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: folder });
 					}
 				}
 			});
@@ -453,7 +449,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	async stop (): Promise<void> {
 		if (this.client) {
-			this.client.sendRequest(comm.serverRequest.stopPvsServer);
+			this.client.sendRequest(serverRequest.stopPvsServer);
 			await this.client.stop();
 			// set vscode context variable pvs-server-active to true
 			commands.executeCommand('setContext', 'pvs-server-active', false);

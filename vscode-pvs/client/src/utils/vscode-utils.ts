@@ -391,7 +391,7 @@ export async function cleanPvsWorkspace (): Promise<void> {
         const name: string = (vscode.workspace.name && !vscode.workspace.name.startsWith("Untitled")) ? vscode.workspace.name 
             : vscode.workspace.workspaceFolders.length ? vscode.workspace.workspaceFolders[0].name
                 : ""
-        const msg: string = (name) ? `${nCleaned} folders cleaned in workspace ${name}` : `${nCleaned} folders cleaned.`;
+        const msg: string = (name) ? `Workspace ${name} cleaned!` : `Workspace cleaned!`;
         vscode.window.showInformationMessage(msg);
     } else {
         vscode.window.showInformationMessage(`Nothing to clean (no folder opened)`);

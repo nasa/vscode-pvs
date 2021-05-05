@@ -43,23 +43,13 @@ import {
 	Location, TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit
 } from 'vscode-languageserver';
 import { 
-	PvsDefinition,
-	FileList, TheoryDescriptor,
-	PvsContextDescriptor,
-	serverEvent,
-	serverRequest,
-	PvsDownloadDescriptor,
-	PvsFileDescriptor,
-	PvsVersionDescriptor,
-	ProofDescriptor,
-	ServerMode,
-	PvsFormula,
-	ProofEditCommand,
-	ProofExecCommand,
-	PvsFile,
-	ContextFolder,
-	PvsTheory,
-	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, ProofCommandResponse, ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, SequentDescriptor
+	PvsDefinition, FileList, TheoryDescriptor, PvsContextDescriptor, serverEvent, serverRequest,
+	PvsDownloadDescriptor, PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ServerMode,
+	PvsFormula, ProofEditCommand, ProofExecCommand, PvsFile, ContextFolder, PvsTheory,
+	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, 
+	SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, 
+	ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, SequentDescriptor, 
+	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -72,7 +62,10 @@ import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import { PvsProxy } from './pvsProxy';
-import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl, ShowTCCsResult, DischargeTccsResult, PvsResult } from './common/pvs-gui';
+import { 
+	PvsResponse, PvsError, ImportingDecl, TypedDecl, 
+	FormulaDecl, PvsResult
+} from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
 import { PvsIoProxy } from './pvsioProxy';
 import { PvsErrorManager } from './pvsErrorManager';
@@ -1438,7 +1431,7 @@ export class PvsLanguageServer {
 		} else {
 			const msg: string = `PVS executable not found at ${this.pvsPath}`;
 			console.error(msg);
-			this.connection?.sendRequest(serverEvent.pvsNotPresent, msg);
+			this.connection?.sendRequest(serverEvent.pvsNotFound, msg);
 		}
 		return false;
 	}
@@ -1507,7 +1500,7 @@ export class PvsLanguageServer {
 					});
 					if (!success) {
 						console.error("[pvs-language-server] Error: failed to activate pvs-proxy");
-						this.connection?.sendRequest(serverEvent.pvsNotPresent);
+						this.connection?.sendRequest(serverEvent.pvsNotFound);
 						return false;
 					}
 				}
@@ -1517,7 +1510,7 @@ export class PvsLanguageServer {
 				return true;
 			} else {
 				console.error("[pvs-language-server] Error: failed to identify PVS path");
-				this.connection?.sendRequest(serverEvent.pvsNotPresent);
+				this.connection?.sendRequest(serverEvent.pvsNotFound);
 			}
 		}
 		return false;
@@ -1541,7 +1534,7 @@ export class PvsLanguageServer {
 		return false;
 	}
 
-	protected async rebootPvsServer (desc: { pvsPath?: string, cleanFolder?: string }): Promise<boolean> {
+	protected async rebootPvsServer (desc?: RebootPvsServerRequest): Promise<boolean> {
 		desc = desc || {};
 		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
 		this.checkDependencies(); // async call
@@ -1555,10 +1548,11 @@ export class PvsLanguageServer {
 			// send version info
 			await this.sendPvsServerReadyEvent();
 			return true;
-		} else {
-			console.error("[pvs-language-server] Error: pvs-proxy is null");
-			this.connection?.sendRequest(serverEvent.pvsNotPresent);
-		}
+		} 
+		// else {
+		// 	console.error("[pvs-language-server] Error: pvs-proxy is null");
+		// 	this.connection?.sendRequest(serverEvent.pvsNotFound);
+		// }
 		return false;
 	}
 
@@ -1714,8 +1708,8 @@ export class PvsLanguageServer {
 					this.pvsErrorManager?.handleStartPvsServerError(ProcessCode.PVSSTARTFAIL);
 				}
 			});
-			this.connection?.onRequest(serverRequest.rebootPvsServer, async (desc?: { pvsPath?: string, cleanFolder?: string }) => {
-				this.rebootPvsServer(desc);
+			this.connection?.onRequest(serverRequest.rebootPvsServer, async (req?: RebootPvsServerRequest) => {
+				this.rebootPvsServer(req);
 			});
 			this.connection?.onRequest(serverRequest.clearTheories, async () => {
 				await this.pvsProxy?.clearTheories();
@@ -1800,18 +1794,27 @@ export class PvsLanguageServer {
 				this.quitProofRequest(); // this method will send a quitProofResponse to the client
 			});
 
-			this.connection?.onRequest(serverRequest.getNasalibDownloader, async () => {
-				const downloader: "git" | "download" = await PvsPackageManager.getNasalibDownloader();
-				this.connection?.sendRequest(serverEvent.getNasalibDownloaderResponse, { response: downloader });
+			this.connection?.onRequest(serverRequest.getNasalibDownloader, async (req: NASALibDownloaderRequest) => {
+				const downloader: NASALibDownloader = await PvsPackageManager.getNasalibDownloader(req);
+				const res: NASALibDownloaderResponse = { downloader };
+				this.connection?.sendNotification(serverRequest.getNasalibDownloader, { req, res });
 			});
-			this.connection?.onRequest(serverRequest.listDownloadableVersions, async () => {
-				const versions: PvsDownloadDescriptor[] = await PvsPackageManager.listDownloadableVersions();
-				this.connection?.sendRequest(serverEvent.listDownloadableVersionsResponse, { response: versions });
+			this.connection?.onRequest(serverRequest.listVersionsWithProgress, async (req: ListVersionsWithProgressRequest) => {
+				const res: ListVersionsWithProgressResponse = await PvsPackageManager.listDownloadableVersionsWithProgress(this.connection, req);
+				this.connection?.sendNotification(serverRequest.listVersionsWithProgress, { req, res });
 			});
-			this.connection?.onRequest(serverRequest.downloadPvs, async (desc: PvsDownloadDescriptor) => {
-				const fname: string = await PvsPackageManager.downloadPvsExecutable(desc);
-				this.connection?.sendRequest(serverEvent.downloadPvsResponse, { response: fname });
+			this.connection?.onRequest(serverRequest.installWithProgress, async (req: InstallWithProgressRequest) => {
+				const res: InstallWithProgressResponse = await PvsPackageManager.installWithProgress(this.connection, req);
+				this.connection?.sendNotification(serverRequest.installWithProgress, { req, res });
 			});
+			this.connection?.onRequest(serverRequest.downloadWithProgress, async (req: DownloadWithProgressRequest) => {
+				const res: DownloadWithProgressResponse = await PvsPackageManager.downloadWithProgress(this.connection, req);
+				this.connection?.sendNotification(serverRequest.downloadWithProgress, { req, res });
+			});
+			// this.connection?.onRequest(serverRequest.downloadPvs, async (desc: PvsDownloadDescriptor) => {
+			// 	const fname: string = await PvsPackageManager.downloadPvsExecutable(desc);
+			// 	this.connection?.sendRequest(serverEvent.downloadPvsResponse, { response: fname });
+			// });
 			this.connection?.onRequest(serverRequest.downloadLicensePage, async () => {
 				const licensePage: string = await PvsPackageManager.downloadPvsLicensePage();
 				this.connection?.sendRequest(serverEvent.downloadLicensePageResponse, { response: licensePage });

@@ -762,12 +762,12 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	 * Removes .prlite files, .pvscontext, pvsbin in all folders open in explorer
 	 */
 	async cleanPvsWorkspace (): Promise<void> {
-		// const yesno: string[] = [ "Yes", "No" ];
-		// const msg: string = `Remove all temporary PVS files?`
-		// const ans: string = await window.showInformationMessage(msg, { modal: true }, yesno[0]);
-		// if (ans === yesno[0]) {
+		const yesno: string[] = [ "Yes", "No" ];
+		const msg: string = `Proceed with cleaning temporary files and pvsbin cache?`
+		const ans: string = await window.showInformationMessage(msg, { modal: true }, yesno[0]);
+		if (ans === yesno[0]) {
 			return await vscodeUtils.cleanPvsWorkspace();
-		// }
+		}
 	}
 	/**
 	 * @constructor

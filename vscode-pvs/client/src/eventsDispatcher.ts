@@ -48,7 +48,7 @@ import {
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
     PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
-    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile
+    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
@@ -518,7 +518,7 @@ export class EventsDispatcher {
             // }
         });
 
-        this.client.onRequest(serverEvent.pvsServerCrash, (desc: { msg?: string }) => {
+        this.client.onRequest(serverEvent.pvsServerFail, (desc: { msg?: string }) => {
             desc = desc || {};
             if (desc.msg) {
                 this.statusBar.failure(desc.msg);
@@ -626,20 +626,23 @@ export class EventsDispatcher {
             // create default workspaces folder if it doesn't exist
             await vscodeUtils.createDefaultPvsWorkspacesDirectory();
         }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.update-pvs", async () => {
+            await this.packageManager.pvsInstallationWizard({ update: true });
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.select-pvs-path", async () => {
-            await this.packageManager.pvsInstallationWizard(`Please choose one of the following actions.\n`);
+            await this.packageManager.pvsInstallationWizard({ msg: `Please choose one of the following actions.\n` });
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.open-vscode-pvs-settings", async () => {
             vscodeUtils.openVscodePvsSettings();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.set-pvs-path", () => {
-            this.packageManager.pvsPathWizard();
+            this.packageManager.choosePvsPath();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.install-nasalib", () => {
             this.packageManager.nasalibInstallationWizard();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.update-nasalib", () => {
-            this.packageManager.updateNasalibWithProgress();
+            this.packageManager.nasalibInstallationWizard({ update: true });
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.add-pvs-library", async () => {
             await vscodeUtils.addPvsLibraryFolderWizard();
@@ -691,7 +694,8 @@ export class EventsDispatcher {
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
                 const currentContext: string = vscodeUtils.getRootPath();
-                this.client.sendRequest(serverRequest.rebootPvsServer, { cleanFolder: currentContext });
+                const req: RebootPvsServerRequest = { cleanFolder: currentContext };
+                this.client.sendRequest(serverRequest.rebootPvsServer, req);
                 // terminate any prover session
                 this.xterm.dispose();
             }
