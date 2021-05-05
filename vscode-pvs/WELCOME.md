@@ -1,4 +1,4 @@
-# Welcome to VSCode-PVS
+# Welcome to VSCode-PVS!
 VSCode-PVS is a new integrated development environment for creating, evaluating and verifying PVS specifications. The environment redefines the way developers interact with PVS, and better aligns the PVS front-end to the functionalities provided by development environments used by software developers.
 
 
@@ -25,12 +25,15 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.45 (2021.05.05)]()      
+  -Added 'jump-to' function in proof-explorer  
+  -Fixed installation under Linux      
+
 - [1.0.44 (2021.04.26)]()      
   -Updated user interface guide   
   -Fixed minor bugs (parsing of comments in proof files, proof-explorer focus)  
 
 - [1.0.43 (2021.04.19)]()    
-  -Added 'slice' function in proof-explorer  
   -Improved loading/unloading of pvs icons in file-explorer  
   -Fixed minor bugs ('show sequent', cut/paste, focus-active-node, 'Open with VSCode')  
 

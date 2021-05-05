@@ -1,4 +1,8 @@
 ## ChangeLog
+### 1.0.45 (2021.05.05)      
+- Added 'jump-to' function in proof-explorer  
+- Fixed installation under Linux      
+
 ### 1.0.44 (2021.04.26)    
 - Updated user interface guide   
 - Fixed minor bugs (parsing of comments in proof files, proof-explorer focus)  
