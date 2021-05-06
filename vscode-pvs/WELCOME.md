@@ -25,6 +25,9 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.46 (2021.05.06)]()      
+  -Fixed icon theme  
+
 - [1.0.45 (2021.05.05)]()      
   -Added 'jump-to' function in proof-explorer  
   -Fixed installation under Linux      
