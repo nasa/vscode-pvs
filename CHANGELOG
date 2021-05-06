@@ -1,4 +1,7 @@
 ## ChangeLog
+### 1.0.46 (2021.05.06)      
+- Fixed icon theme     
+
 ### 1.0.45 (2021.05.05)      
 - Added 'jump-to' function in proof-explorer  
 - Fixed installation under Linux      
@@ -8,7 +11,6 @@
 - Fixed minor bugs (parsing of comments in proof files, proof-explorer focus)  
 
 ### 1.0.43 (2021.04.19)    
-- Added 'slice' function in proof-explorer  
 - Improved loading/unloading of pvs icons in file-explorer  
 - Fixed minor bugs ('show sequent', cut/paste, focus-active-node, 'Open with VSCode')  
 
