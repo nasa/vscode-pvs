@@ -63,7 +63,7 @@ import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, Proof
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
-import { checkPar, CheckParResult, getErrorRange, isQuitCommand, isQuitDontSaveCommand, isSaveThenQuitCommand, isShowHiddenCommand } from './common/languageUtils';
+import { checkPar, CheckParResult, getErrorRange, isQuitCommand, isQuitDontSaveCommand, isSaveThenQuitCommand, isShowHiddenFormulas } from './common/languageUtils';
 import * as languageUtils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import { PvsErrorManager } from './pvsErrorManager';
@@ -1219,7 +1219,7 @@ export class PvsProxy {
 			};
 			if (test.success) {
 				// console.dir(desc, { depth: null });
-				const showHidden: boolean = isShowHiddenCommand(desc.cmd);
+				const showHidden: boolean = isShowHiddenFormulas(desc.cmd);
 				// const isGrind: boolean = utils.isGrindCommand(desc.cmd);
 				// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
 				// the front-end will handle the command, and reveal the hidden sequents.
@@ -1233,11 +1233,17 @@ export class PvsProxy {
 						for (let i = 0; i < proofStates.length; i++) {
 							const result: SequentDescriptor = proofStates[i];
 							if (result) {
-								result.action = "Showing list of hidden sequents";
-								if (result.commentary) {
-									const hiddenFormulas: string[] = [ languageUtils.formatHiddenFormulas(result) ];					
-									result.commentary = hiddenFormulas.concat([ "No change on: (show-hidden-formulas)" ]);
+								result.label = "hidden formulas in " + result.label;
+								result.action = "Showing list of hidden formulas";
+								result.commentary = "Showing list of hidden formulas";
+								result.sequent = {
+									antecedents: result.sequent ? result.sequent['hidden-antecedents'] : null,
+									succedents: result.sequent ? result.sequent['hidden-succedents'] : null
 								}
+								// if (result.commentary) {
+								// 	const hiddenFormulas: string[] = [ languageUtils.formatHiddenFormulas(result) ];					
+								// 	result.commentary = hiddenFormulas.concat([ "No change on: (show-hidden-formulas)" ]);
+								// }
 							}
 						}
 					}

@@ -267,7 +267,10 @@ export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolea
 	return pvsioState;
 }
 
-export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: { useColors?: boolean, showAction?: boolean, showHidden?: boolean }) {
+export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: { 
+    useColors?: boolean, 
+    showAction?: boolean
+}): string {
 	if (proofState) {
 		opt = opt || {};
 		let res: string = "";
@@ -1002,7 +1005,7 @@ export function isHelpBangCommand (cmd: string): boolean {
 // }
 
 export function isMetaProofCommand (cmd: string): boolean {
-	return isPostponeCommand(cmd) || isUndoStarCommand(cmd) || isShowHiddenCommand(cmd);
+	return isPostponeCommand(cmd) || isUndoStarCommand(cmd) || isShowHiddenFormulas(cmd);
 }
 
 
@@ -3346,7 +3349,7 @@ export function isFailCommand (cmd: string): boolean {
 	return cmd && /^\(?\s*\bfail\b/g.test(cmd);
 }
 
-export function isShowHiddenCommand (cmd: string): boolean {
+export function isShowHiddenFormulas  (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
 	return cmd && /^\(?\s*show-hidden(?:-formulas)?\b/g.test(cmd);
 }

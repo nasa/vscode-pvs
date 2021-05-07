@@ -73,7 +73,7 @@ import {
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
 import { PvsResponse, PvsError } from '../common/pvs-gui';
-import { desc2id, isEmptyCommand, isFailCommand, isInvalidCommand, isPostponeCommand, isProofliteGlassbox, isQEDCommand, isQuitCommand, isQuitDontSaveCommand, isSameCommand, isSaveThenQuitCommand, isShowHiddenCommand, isUndoCommand, isUndoUndoCommand, isUndoUndoPlusCommand, splitCommands } from '../common/languageUtils';
+import { desc2id, isEmptyCommand, isFailCommand, isInvalidCommand, isPostponeCommand, isProofliteGlassbox, isQEDCommand, isQuitCommand, isQuitDontSaveCommand, isSameCommand, isSaveThenQuitCommand, isShowHiddenFormulas, isUndoCommand, isUndoUndoCommand, isUndoUndoPlusCommand, splitCommands } from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
 import { PvsProxy } from '../pvsProxy';
 import { PvsLanguageServer } from '../pvsLanguageServer';
@@ -729,7 +729,7 @@ export class PvsProofExplorer {
 				}
 
 				// handle (show-hidden) and (comment "xxx")
-				if (isShowHiddenCommand(userCmd)) {
+				if (isShowHiddenFormulas(userCmd)) {
 					// nothing to do, the prover will simply show the hidden formulas
 					return;
 				}

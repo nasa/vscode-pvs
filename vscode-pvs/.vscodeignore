@@ -149,3 +149,6 @@ server/src
 
 **/server/out/core/pvs-outline-parser/
 **/server/out/core/pvs-parser/jsTarget/
+
+**/node_modules/**/CHANGELOG.md
+node_modules/**/CHANGELOG.md

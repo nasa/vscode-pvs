@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.46",
+	"version": "1.0.47",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -47,6 +47,12 @@
 	"extensionKind": [
 		"ui"
 	],
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": true,
+			"description": "vscode-pvs can safely work with untrusted workspaces because it does not attempt to run code the user may have downloaded from untrusted repositories."
+		}
+	},
 	"contributes": {
 		"notes": {
 			"description": "These contributed settings can be read using vscode.workspace.getConfiguration('pvs')"
@@ -1568,7 +1574,7 @@
 	},
 	"dependencies": {
 		"typescript": "^4.2.2",
-		"vsce": "^1.87.1"
+		"vsce": "^1.88.0"
 	},
 	"devDependencies": {
 		"@types/chai": "^4.2.15",

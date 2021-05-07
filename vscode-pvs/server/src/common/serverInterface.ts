@@ -324,22 +324,6 @@ export declare interface PrettyPrintRegionResult {
 	result: string;
 }
 
-export declare interface PvsCliInterface {
-	type: string;
-	pvsPath: string;
-	contextFolder: string;
-	gateway: { port: number };
-	// pvsProxy: PvsProxy,
-	// cmd: string,
-	fileName: string;
-	fileExtension: string;
-	channelID: string;
-	theoryName?: string;
-	formulaName?: string;
-	line?: number;
-	prompt?: string;
-}
-
 export declare interface SimpleConsole {
 	log: (str: string) => void,
 	error: (str: string) => void,

@@ -25,6 +25,10 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.46 (2021.05.07)]()      
+  -Improved (show-hidden-formulas) command   
+  -Updated dependencies & code cleanup    
+
 - [1.0.46 (2021.05.06)]()      
   -Fixed icon theme  
 
