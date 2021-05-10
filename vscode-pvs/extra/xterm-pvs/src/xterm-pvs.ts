@@ -1059,6 +1059,8 @@ export interface DidAutocompleteEvent extends AutocompleteData {
  * Utility class for command line history
  */
  export class History {
+    // session type
+    protected sessionType: SessionType;
     // list of previous commands entered at the command line
     protected history: string[] = [];
     // current command being entered at the command line
@@ -1070,14 +1072,22 @@ export interface DidAutocompleteEvent extends AutocompleteData {
     protected successHistory: string[] = [];
 
     /**
+     * Constructor
+     */
+    constructor (sessionType: SessionType) {
+        this.sessionType = sessionType;
+    }
+
+    /**
      * Utility function, pushes the given command to the history, if the command is not present alreayd.
      * Additionally, the function clears the current command and resets the index
      */
     push (cmd: string, opt?: { successHistory?: boolean }): void {
+        // console.log(`[xterm-autocomplete] pushing ${cmd} to history`);
         if (cmd) {
             opt = opt || {};
             let elem: string = cmd.trim().replace(/\n/g, " "); // flatten command before inserting in history
-            if (elem.startsWith("(") && elem.endsWith(")")) {
+            if (this.sessionType === "prover" && elem.startsWith("(") && elem.endsWith(")")) {
                 elem = elem.substring(1, elem.length - 1).trim();
             }
             this.history = [ elem ].concat(this.history);
@@ -1120,7 +1130,8 @@ export interface DidAutocompleteEvent extends AutocompleteData {
         // console.log("[xterm-history] prev", { history: this.history });
         if (this.history.length) {
             this.index = (this.index + 1 < this.history.length) ? this.index + 1 : this.index;
-            return `(${this.history[this.index]})`;
+            return this.sessionType === "prover" ? `(${this.history[this.index]})`
+                : this.history[this.index];
         }
         return this.current;
     }
@@ -1132,7 +1143,8 @@ export interface DidAutocompleteEvent extends AutocompleteData {
         // console.log("[xterm-history] next", { history: this.history });
         if (this.index - 1 >= 0 && this.history.length) {
             this.index--;
-            return `(${this.history[this.index]})`;
+            return this.sessionType === "prover" ? `(${this.history[this.index]})`
+                : this.history[this.index];
         }
         this.index = -1;
         return this.current;
@@ -1191,7 +1203,7 @@ export class Autocomplete extends Backbone.Model {
     protected triggerMode: "standard" | "single-click" = "standard";
 
     // command history
-    history: History = new History();
+    history: History;
 
     /**
      * Constructor
@@ -1200,6 +1212,7 @@ export class Autocomplete extends Backbone.Model {
         super();
         this.content = content;
         this.sessionType = sessionType;
+        this.history = new History(this.sessionType);
         this.installHandlers();
     }
     /**
@@ -1258,11 +1271,12 @@ export class Autocomplete extends Backbone.Model {
      * Updates the command history with the provided command, if the command is not one of the hints already known to autocomplete and history
      */
     updateCommandHistory (cmd: string, opt?: { successHistory?: boolean }): void {
+        // console.log("[xterm-autocomplete] updateCommandHistory", { cmd, history: this.history.size() });
         if (cmd) {
             // split commands in the case the user has entered multiple commands at the same time, e.g., (skosimp*)(grind)
-            const cmdArray: string[] = splitCommands(cmd);
+            const cmdArray: string[] = this.sessionType === "prover" ? splitCommands(cmd) : [ cmd ];
             if (cmdArray?.length) {
-                const hints: string[] = this.getHints({ fullSet: true });
+                // const hints: string[] = this.getHints({ fullSet: true });
                 for (let i = 0; i < cmdArray.length; i++) {
                     let elem: string = cmdArray[i].trim();
                     if (elem.startsWith("(") && elem.endsWith(")")) {
@@ -1667,7 +1681,7 @@ export class Autocomplete extends Backbone.Model {
         const substitution: string = this.getSelectedHint();
         const match: string = this.getCurrentInput({ removeLeadingBracket: true });
         const currentInput: string = this.getCurrentInput();
-        console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput, match, substitution });
+        // console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput, match, substitution });
         const evt: DidAutocompleteEvent = {
             substitution,
             currentInput,
@@ -1878,7 +1892,7 @@ export class XTermPvs extends Backbone.Model {
      getColorTheme (): colorUtils.XTermColorTheme {
          const themeClass: string = $("body").attr("data-vscode-theme-kind");
          const theme: colorUtils.XTermColorTheme = xTermDetectColorTheme(themeClass);
-         console.log("[xterm-pvs] getColorTheme", { theme, themeClass });
+        //  console.log("[xterm-pvs] getColorTheme", { theme, themeClass });
          return theme;
      }
 
@@ -2272,6 +2286,10 @@ export class XTermPvs extends Backbone.Model {
      * Handler for command history search
      */
     onHistorySearch (evt: KeyEvent): boolean {
+        console.dir("[xterm-pvs] onHistorySearch", {
+            evt, 
+            history: this.autocomplete?.history?.getHistory()
+        });
         if (this.autocomplete.history.size() && this.content.cursorIsAtHomePosition() 
                 && (evt.domEvent.key === "ArrowUp" || evt.domEvent.key === "ArrowDown")) {
             // get command from the history
@@ -3010,7 +3028,7 @@ export class XTermPvs extends Backbone.Model {
      * Shows a message in the integrated help panel
      */
     showHelpMessage (msg: string): void {
-        console.log("[xterm-pvs] showHelpMessage", { msg });
+        // console.log("[xterm-pvs] showHelpMessage", { msg });
         if (msg) {
             this.autocomplete.showHelp(msg.trim().replace(/\n/g, "<br>"));
         }

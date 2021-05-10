@@ -3363,6 +3363,9 @@ export function isProofliteGlassbox (cmd: string): boolean {
 	return cmd && cmd.trim().startsWith("(then ");
 }
 
+/**
+ * Utility function, splits a prover command into multiple commads based on the round parentheses
+ */
 export function splitCommands (cmd: string): string[] {
 	let cmds: string[] = [];
 	if (cmd && cmd.trim().startsWith("(")) {
@@ -3402,7 +3405,9 @@ export function splitCommands (cmd: string): string[] {
 		}
 	} else if (cmd && isUndoCommand(cmd)) {
 		cmds = unfoldUndoCommand(cmd);
-	}
+	} else {
+        cmds = [ cmd ];
+    }
 	return cmds;
 }
 

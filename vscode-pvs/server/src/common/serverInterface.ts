@@ -503,7 +503,6 @@ export const serverEvent = {
 	generateTccsResponse: "pvs.response.generate-tccs",
 	showTccsResponse: "pvs.response.show-tccs",
 	showTheorySummaryResponse: "pvs.response.show-theory-summary",
-	showWorkspaceSummaryResponse: "pvs.response.show-workspace-summary",
 	startEvaluatorResponse: "pvs.response.start-evaluator",
 	hp2pvsResponse: "pvs.response.hp-to-pvs-file",
 	quitEvaluatorResponse: "pvs.response.quit-evaluator",
