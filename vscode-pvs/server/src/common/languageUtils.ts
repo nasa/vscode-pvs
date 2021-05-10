@@ -3368,45 +3368,47 @@ export function isProofliteGlassbox (cmd: string): boolean {
  */
 export function splitCommands (cmd: string): string[] {
 	let cmds: string[] = [];
-	if (cmd && cmd.trim().startsWith("(")) {
-		let input: string = cmd.trim().replace(/\)y/gi, ")");
-		let par: number = 0;
-		let start: number = 0;
-		let stop: number = 0;
-		let validStart: boolean = false;
-		for (let i = 0; i < input.length; i++) {
-			if (input[i] === "(") {
-				if (par === 0) {
-					start = i;
-					validStart = true;
-				}
-				par++;
-			} else if (input[i] === ")") {
-				par--;
-				if (par === 0) {
-					stop = i;
-				}
-			}
-			if (par === 0) {
-				if (stop > start && validStart) { // sanity check
-					let cmd: string = input.substring(start, stop + 1);
-					if (isUndoCommand(cmd)) {
-						cmds = cmds.concat(unfoldUndoCommand(cmd));
-					} else {
-						cmds = cmds.concat(cmd);
-					}
-					validStart = false;
-				}
-			}
-			if (par < 0) {
-				// too many closed parentheses -- try to skip
-				par = 0;
-			}
-		}
-	} else if (cmd && isUndoCommand(cmd)) {
-		cmds = unfoldUndoCommand(cmd);
-	} else {
-        cmds = [ cmd ];
+    if (cmd?.trim()) {
+        if (cmd.trim().startsWith("(")) {
+            let input: string = cmd.trim().replace(/\)y/gi, ")");
+            let par: number = 0;
+            let start: number = 0;
+            let stop: number = 0;
+            let validStart: boolean = false;
+            for (let i = 0; i < input.length; i++) {
+                if (input[i] === "(") {
+                    if (par === 0) {
+                        start = i;
+                        validStart = true;
+                    }
+                    par++;
+                } else if (input[i] === ")") {
+                    par--;
+                    if (par === 0) {
+                        stop = i;
+                    }
+                }
+                if (par === 0) {
+                    if (stop > start && validStart) { // sanity check
+                        let cmd: string = input.substring(start, stop + 1);
+                        if (isUndoCommand(cmd)) {
+                            cmds = cmds.concat(unfoldUndoCommand(cmd));
+                        } else {
+                            cmds = cmds.concat(cmd);
+                        }
+                        validStart = false;
+                    }
+                }
+                if (par < 0) {
+                    // too many closed parentheses -- try to skip
+                    par = 0;
+                }
+            }
+        } else if (isUndoCommand(cmd)) {
+            cmds = unfoldUndoCommand(cmd);
+        } else {
+            cmds = [ cmd ];
+        }
     }
 	return cmds;
 }
