@@ -587,15 +587,6 @@ export class EventsDispatcher {
             }
         });
         
-        this.client.onRequest(serverEvent.showWorkspaceSummaryResponse, (desc: { 
-            response: FileDescriptor,
-            args: PvsTheory
-        }) => {
-            if (desc && desc.response) {
-                vscodeUtils.showTextDocument(desc.response);
-            }
-        });
-
         this.client.onNotification(serverEvent.profilerData, (data: string) => {
             this.logger.profilerData(data);
         });
@@ -682,7 +673,8 @@ export class EventsDispatcher {
             this.workspaceExplorer.cleanPvsWorkspace(); // async method
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-version-info", () => {
-            this.statusBar.showVersionInfo();
+            // this.statusBar.showVersionInfo();
+            this.statusBar.showVersionDialog({ downloadButtons: false });
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-version-dialog", () => {
             this.statusBar.showVersionDialog({ downloadButtons: true });

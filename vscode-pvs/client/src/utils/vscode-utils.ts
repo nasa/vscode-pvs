@@ -97,8 +97,8 @@ export function showTextDocument (desc: {
     selection?: vscode.Range 
 }): void {
     opt = opt || {};
-    const viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
     if (desc) {
+        const viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
         const uri: vscode.Uri = vscode.Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
         vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn, selection: opt.selection });
     }
@@ -720,6 +720,13 @@ export async function getPvsWorkspace (resource: ContextFolder | WorkspaceItem |
 export function showReleaseNotes (): void {
     const fileUri: vscode.Uri = vscode.Uri.file(path.join(__dirname, "..", "..", "..", "WELCOME.md"));
     vscode.commands.executeCommand('markdown.showPreview', fileUri);
+}
+
+/**
+ * Utility function, shows vscode-pvs version info
+ */
+export function showVersionInfo (): void {
+    vscode.commands.executeCommand("vscode-pvs.show-version-info");
 }
 
 /**

@@ -1067,24 +1067,26 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 						}
 					}
 
-					// end of task
-					commands.executeCommand('setContext', 'autorun', false);
-					resolve();
-
 					// generate summary
 					if (summary && summary.total) {
 						// when the summary is ready, the editor will receive a response from the server and open the summary
-						const summaryFile: FileDescriptor = {
+						const req: FileDescriptor = {
 							contextFolder: desc.contextFolder,
 							fileName: fsUtils.getContextFolderName(desc.contextFolder),
 							fileExtension: ".workspace.summary",
 							fileContent: fsUtils.makeWorkspaceSummary(summary)
 						}
-						this.client.sendRequest(serverRequest.showWorkspaceSummary, summaryFile);
+						this.client.sendRequest(serverRequest.showWorkspaceSummary, req);
+						this.client.onNotification(serverRequest.showWorkspaceSummary, (ans: { res: FileDescriptor, req: FileDescriptor }) => {
+							vscodeUtils.showTextDocument(ans?.res);
+						});
 					}
-					
+
+					// end of task
+					commands.executeCommand('setContext', 'autorun', false);
 					// update context descriptor
-					// this.client.sendRequest(serverRequest.getContextDescriptor, desc);
+					this.client.sendRequest(serverRequest.getContextDescriptor, desc);
+					resolve();
 				});
 			});
 		}

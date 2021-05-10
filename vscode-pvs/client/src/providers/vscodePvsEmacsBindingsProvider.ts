@@ -222,9 +222,12 @@ export class VSCodePvsEmacsBindingsProvider {
 					break;
 				}
 				case "release-notes": 
-				case "welcome": 
-				case "about": {
+				case "welcome": {
 					vscodeUtils.showReleaseNotes();
+					break;
+				}
+				case "about": {
+					vscodeUtils.showVersionInfo();
 					break;
 				}
 				case "step-proof": {
