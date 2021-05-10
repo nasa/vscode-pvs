@@ -649,12 +649,12 @@ export class PvsLanguageServer {
 			}
 		}
 	}
-	async generateWorkspaceSummaryRequest (request: FileDescriptor, opt?: { showSummaryRequest?: boolean }): Promise<void> {
+	async generateWorkspaceSummaryRequest (req: FileDescriptor, opt?: { showSummaryRequest?: boolean }): Promise<void> {
 		opt = opt || {};
-		if (request) {
-			const fileContent: string = request.fileContent || "";
-			const contextFolder: string = request.contextFolder;
-			const fileName: string = request.fileName;
+		if (req) {
+			const fileContent: string = req.fileContent || "";
+			const contextFolder: string = req.contextFolder;
+			const fileName: string = req.fileName;
 			const fileExtension: string = ".workspace.summary";
 
 			// save content
@@ -665,14 +665,15 @@ export class PvsLanguageServer {
 			}), fileContent);
 
 			if (opt.showSummaryRequest) {
-				this.connection?.sendRequest(serverEvent.showWorkspaceSummaryResponse, {
-					response: {
-						contextFolder,
-						fileName,
-						fileExtension,
-						fileContent
-					}, 
-					args: request 
+				const res: FileDescriptor = {
+					contextFolder,
+					fileName,
+					fileExtension,
+					fileContent
+				};
+				this.connection?.sendNotification(serverRequest.showWorkspaceSummary, {
+					res, 
+					req
 				});
 			}
 		}
