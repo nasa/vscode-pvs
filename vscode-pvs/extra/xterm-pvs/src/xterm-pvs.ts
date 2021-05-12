@@ -410,7 +410,7 @@ export class Content extends Backbone.Model {
 
             // check the text after the cursor position
             let textAfterCursor: string = this.textAfter(this.pos);
-            console.log("[xterm-autocomplete] textAfterCursor", { textAfterCursor });
+            // console.log("[xterm-autocomplete] textAfterCursor", { textAfterCursor });
 
             // if the cursor was in the middle of a word, include the entire word in the substitution
             if (textAfterCursor?.length && !/[\s\(\)\[\]\"]/g.test(textAfterCursor[0])) {
@@ -433,7 +433,7 @@ export class Content extends Backbone.Model {
             this.pos.line = completedTextWrapped.split("\n").length || MIN_POS.line;
             this.pos.character = completedTextWrapped.split("\n")[this.pos.line - 1].length + 1;
 
-            console.log("[xterm-content] autocomplete", { textAfterCursor, textBeforeCursor, completedText, wrapped, data: data, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
+            // console.log("[xterm-content] autocomplete", { textAfterCursor, textBeforeCursor, completedText, wrapped, data: data, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
             this.trigger(ContentEvent.didAutocompleteContent);
         }
     }
@@ -1464,16 +1464,17 @@ export class Autocomplete extends Backbone.Model {
         }
         if (currentInput) {
             let hints: string[] = [];
-            console.log(`[xterm-autocomplete] trying to auto-complete ${currentInput}`);
+            // console.log(`[xterm-autocomplete] trying to auto-complete ${currentInput}`);
             const symCode: { symbol: string, code: string } = this.matchSymCode(currentInput);
             const syms: string[] = symCode?.code ? this.mathSymbols.filter((sym: string) => {
                 return sym && sym.startsWith(symCode.code);
             }) : null;
-            console.log("[xterm-autocomplete] Symbol hints ", { syms, symCode });
+            // console.log("[xterm-autocomplete] Symbol hints ", { syms, symCode });
             if (syms?.length) {
                 // math symbol
-                hints = syms;
-            } else if (currentInput.startsWith("expand")
+                return syms;
+            }
+            if (currentInput.startsWith("expand")
                 || currentInput.startsWith("expand*")
                 || currentInput.startsWith("rewrite")
                 || currentInput.startsWith("eval-expr")) {
@@ -1537,16 +1538,26 @@ export class Autocomplete extends Backbone.Model {
             return symbols.concat(commands);
         }
         if (currentInput) {
-            let hits: string[] = [];
+            let hints: string[] = [];
+            // console.log(`[xterm-autocomplete] trying to auto-complete ${currentInput}`);
+            const symCode: { symbol: string, code: string } = this.matchSymCode(currentInput);
+            const syms: string[] = symCode?.code ? this.mathSymbols.filter((sym: string) => {
+                return sym && sym.startsWith(symCode.code);
+            }) : null;
+            // console.log("[xterm-autocomplete] Symbol hints ", { syms, symCode });
+            if (syms?.length) {
+                // math symbol
+                return syms;
+            }
             // autocomplete symbol names
             const symbols: string[] = this.hintsObject?.symbols;
             // console.dir(symbols, { depth: null });
             if (symbols?.length) {
-                hits = symbols?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput));
+                hints = symbols?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput));
             }
             // Include also pvsio functions
-            hits = hits.concat(Object.keys(this.hintsObject?.commands)?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput)));
-            return hits;
+            hints = hints.concat(Object.keys(this.hintsObject?.commands)?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput)));
+            return hints;
         }
         return [];
 	}
@@ -1563,7 +1574,7 @@ export class Autocomplete extends Backbone.Model {
         let hints: string[] = this.sessionType === "evaluator" ?
             this.autocompleteEvaluatorCommand(currentInput, opt)
                 : this.autocompleteProverCommand(currentInput, opt);
-        console.log("[xterm-pvs] getHints", { opt, currentInput, hints });
+        // console.log("[xterm-pvs] getHints", { opt, currentInput, hints });
         if (opt.includeHistory) {
             // get list of commands previously accepted by the prover
             let successHistory: string[] = opt?.fullSet ? this.history.getSuccessHistory()
