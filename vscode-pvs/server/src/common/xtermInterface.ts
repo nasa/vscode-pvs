@@ -2,10 +2,11 @@ import { XTermColorTheme } from "./colorUtils";
 
 export enum XTermEvent {
     sendText = "sendText",
+    didCopyText = "didCopyText",
     proofExplorerBack = "proof-explorer.back", // F4
     proofExplorerForward = "proof-explorer.forward", //F6
     proofExplorerRun = "proof-explorer.run", // F5
-    proofExplorerEdit = "proof-explorer.edit" // F2
+    proofExplorerEdit = "proof-explorer.edit", // F2
 };
 export enum XTermCommands {
     write = "write",

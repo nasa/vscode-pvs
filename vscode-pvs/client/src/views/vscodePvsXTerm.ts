@@ -836,6 +836,12 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                         }
                                         break;
                                     }
+                                    case XTermEvent.didCopyText: {
+                                        if (message?.data?.length) {
+                                            vscodeUtils.showInformationMessage(`Selected text copied to clipboard.`);
+                                        }
+                                        break;
+                                    }
                                     case XTermEvent.proofExplorerBack:
                                     case XTermEvent.proofExplorerForward:
                                     case XTermEvent.proofExplorerRun: 
@@ -923,7 +929,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermEvent.proofExplorerBack,
                         XTermEvent.proofExplorerForward,
                         XTermEvent.proofExplorerRun,
-                        XTermEvent.proofExplorerEdit
+                        XTermEvent.proofExplorerEdit,
+                        XTermEvent.didCopyText
                     ],
                     sessionType: this.sessionType
                 });

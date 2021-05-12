@@ -27,8 +27,8 @@ interface RebaseEvent {
 };
 
 export const welcomeMessage: string = `
-- TAB autocompletes proof commands. Double click expands definitions.
-- ${isLinux() ? "Ctrl+" : "Command+"}c copies selected text. ${isLinux() ? "Ctrl+" : "Command+"}v pastes text.
+- Double click expands definitions.
+- Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}c / ${isLinux() ? "Ctrl+" : "Command+"}v
 `.trim().replace(/\n/g, "<br>");
 
 const MIN_VIEWPORT_COLS: number = 128;
@@ -2558,6 +2558,8 @@ export class XTermPvs extends Backbone.Model {
             // ctrl+c / ctrl+shift+c / command+c = copy
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "c") {
                 // console.log(evt);
+                const sel = this.xterm.getSelection();
+                this.trigger(XTermEvent.didCopyText, { data: sel });
                 return false;
             }
             // ctrl+x / ctrl+shift+x / command+x = cut
