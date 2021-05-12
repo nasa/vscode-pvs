@@ -2558,17 +2558,17 @@ export class XTermPvs extends Backbone.Model {
             // ctrl+c / ctrl+shift+c / command+c = copy
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "c") {
                 // console.log(evt);
-                return isLinux() ? evt?.ctrlKey : false;
+                return false;
             }
             // ctrl+x / ctrl+shift+x / command+x = cut
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "x") {
                 // console.log(evt);
-                return isLinux() ? evt?.ctrlKey : false;
+                return false;
             }
             // ctrl+v / ctrl+shift+v / command+v = paste
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "v") {
                 // console.log(evt);
-                return isLinux() ? evt?.ctrlKey : false;
+                return false;
             }
             // page up/down scroll contente
             if (evt.key === "PageUp") {
