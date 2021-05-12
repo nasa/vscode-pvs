@@ -27,7 +27,7 @@ interface RebaseEvent {
 };
 
 export const welcomeMessage: string = `
-- Double click expands definitions.
+- Double click expands definitions
 - Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}c / ${isLinux() ? "Ctrl+" : "Command+"}v
 `.trim().replace(/\n/g, "<br>");
 
@@ -2561,8 +2561,10 @@ export class XTermPvs extends Backbone.Model {
             // ctrl+c / ctrl+shift+c / command+c = copy
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "c") {
                 // console.log(evt);
-                const sel = this.xterm.getSelection();
-                this.trigger(XTermEvent.didCopyText, { data: sel });
+                if (evt.type === "keydown") { // macos fires only keydown, linux fires keydown and keyup
+                    const sel = this.xterm.getSelection();
+                    this.trigger(XTermEvent.didCopyText, { data: sel });
+                }
                 return false;
             }
             // ctrl+x / ctrl+shift+x / command+x = cut
