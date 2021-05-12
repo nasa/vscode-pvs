@@ -108,15 +108,13 @@ describe("pvs-prover", () => {
         let response: PvsResponse = await pvsProxy.proveFormula(formula);
 		// console.log(response);
 		response = await pvsProxy.proofCommand({ cmd: '(expand "≥")'});
-		console.dir(response.result);
+		// console.dir(response.result);
 
-		expect(response.error).not.to.be.undefined;
-		expect(response.result).to.be.undefined;
+		expect(response.error).to.be.undefined;
+		expect(response.result).not.to.be.undefined;
 
 		await quitProverIfActive();
     });
-
-	return;
 
 	//----- the tests below this line are completed successfully
 	it(`can start prover session`, async () => {

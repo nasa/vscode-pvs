@@ -20,5 +20,9 @@ dummy[max: posnat]: THEORY
 
     withUnicode: LEMMA
       ∀ (x: real): x ≥ 1 ⇒ x ≥ 0
-    
+
+    ;≤(a:real, b:real): bool = a <= b
+    withUnicode2: LEMMA
+      ∀ (x: real): x ≤ 0 ⇒ x ≤ 1
+
   END dummy

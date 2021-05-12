@@ -359,7 +359,7 @@ describe("proof-explorer", () => {
 		const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
 		// console.dir(res);
 		expect(res.success).to.equal(true);
-	});
+	}).timeout(4000);
 
 	it(`can start a proof, then interrupt, quit and save current proof`, async () => {
 		let proverStatus: PvsResult = await server.getPvsProxy().pvsRequest('prover-status'); // await pvsProxy.getProverStatus();		

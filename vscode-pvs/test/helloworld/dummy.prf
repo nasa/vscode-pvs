@@ -1,0 +1,54 @@
+(dummy
+ (fl 0
+  (fl-1 nil 3810682465
+   ("" (skosimp*)
+    (("" (comment "bla")
+      (("" (comment "asd") (("" (assert) nil ";;; asd")) ";;; bla"))
+      nil))
+    nil)
+   ((real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   shostak))
+ (withComments 0
+  (withComments-1 nil 3828431761
+   ("" (skosimp*)
+    (("" (comment "Suppose proc(alpha)=p!1, but this is impossible.")
+      (("" (case "proc!1(alpha!1)=p!1")
+        (("1" (propax) nil nil) ("2" (postpone) nil nil))
+        ";;; Suppose proc(alpha)=p!1, but this is impossible."))
+      nil))
+    nil)
+   nil shostak))
+ (withUnicode 0
+  (withUnicode-1 nil 3828613290
+   ("" (expand "≥") (("" (assert) (("" (grind) nil nil)) nil)) nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (≥ const-decl "bool" dummy nil))
+   shostak))
+ (withUnicode2 0
+  (withUnicode2-1 nil 3829747174
+   ("" (expand "≤") (("" (grind) nil nil)) nil)
+   ((real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (≤ const-decl "bool" dummy nil))
+   shostak)))
+

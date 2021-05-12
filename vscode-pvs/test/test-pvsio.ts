@@ -6,9 +6,9 @@ import { configFile, pvsioExamples } from './test-utils';
 import { expect } from 'chai';
 
 //----------------------------
-//   Test cases for prover --- 	THESE TESTS REQUIRE PVS RUNNING IN SERVER MODE ON PORT 22334 + NASALIB
+//   Test cases for pvsio
 //----------------------------
-describe("pvs-prover", () => {
+describe("pvsio", () => {
 	let pvsioProxy: PvsIoProxy = null;
 	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
@@ -59,6 +59,4 @@ describe("pvs-prover", () => {
 		expect(res2.result).to.be.deep.equal("TRUE");
 
 	}).timeout(6000);
-
-
 });
