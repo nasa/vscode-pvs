@@ -1182,6 +1182,7 @@ export class PvsProxy {
 	async showHelpBang (cmd: string): Promise<PvsResponse> {
 		const match: RegExpMatchArray = new RegExp(languageUtils.helpBangCommandRegexp).exec(cmd);
 		if (match && match.length > 1 && match[1]) {
+			this.pvsServer.clearLispInterfaceOutput();
 			const helpCmd: string = `(help ${match[1]})`;
 			const ans: PvsResponse = await this.pvsRequest('proof-command', [ helpCmd ]);
 			if (ans && ans.result && ans.result.length) {
