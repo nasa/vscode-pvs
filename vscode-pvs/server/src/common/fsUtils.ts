@@ -48,6 +48,7 @@ import {
 } from '../common/serverInterface';
 import { 
 	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, 
+	getOs, 
 	icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremRegexp, theoryRegexp 
 } from './languageUtils';
 
@@ -487,21 +488,6 @@ export function fname2desc (fname: string): FileDescriptor | null {
 
 export function desc2fname (desc: FileDescriptor): string {
 	return path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-}
-
-export function getOs (): { version?: string, error?: string } {
-	try {
-		if (process.platform === 'linux' || process.platform === 'freebsd' || process.platform === 'openbsd' || process.platform === 'sunos' || process.platform === 'aix') {
-			return { version: 'Linux' };
-		} else if (process.platform === 'darwin') {
-			return { version: 'MacOSX' };
-		}
-		return { version: process.platform };
-	} catch (err) {
-		const error: string = err.message + "Unable to detect OS version. This problem is likey due to missing dependency 'node' (please download node from https://nodejs.org/)";
-		console.log(`[pvs-server] ${error}`);
-		return { error };
-	}
 }
 
 export function listSubFolders (folder: string): string[] {

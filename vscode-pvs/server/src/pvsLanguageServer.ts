@@ -57,7 +57,7 @@ import { PvsHoverProvider } from './providers/pvsHoverProvider';
 import { PvsCodeLensProvider } from './providers/pvsCodeLensProvider';
 import { PvsLinter } from './providers/pvsLinter';
 // import { PvsCliGateway } from './pvsCliGateway';
-import { getErrorRange } from './common/languageUtils';
+import { getErrorRange, getOs } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
@@ -1439,7 +1439,7 @@ export class PvsLanguageServer {
 
 	async checkDependencies (): Promise<boolean> {
 		console.log(`[pvs-server] Checking dependencies...`);
-		const osVersion: { version?: string, error?: string } = fsUtils.getOs();
+		const osVersion: { version?: string, error?: string } = getOs();
 		if (osVersion && (osVersion.version !== "Linux" && osVersion.version !== "MacOSX")) {
 			let msg: string = `VSCode-PVS currently runs only under Linux or MacOSX.\nPlease use a virtual machine to run VSCode-PVS under ${osVersion.version}.`;
 			console.error(msg);

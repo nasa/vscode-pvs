@@ -5,7 +5,10 @@ import { pvsColorTheme } from './common/languageKeywords';
 import { xTermDetectColorTheme, interruptCommand, SessionType, UpdateCommandHistoryData, XTermEvent } from './common/xtermInterface';
 import * as Backbone from 'backbone';
 import * as Handlebars from 'handlebars';
-import { checkPar, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, proverCommands, splitCommands } from './common/languageUtils';
+import {
+    checkPar, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, 
+    proverCommands, splitCommands, isLinux
+} from './common/languageUtils';
 import { htmlColorCode, XTermColorTheme } from './common/colorUtils';
 
 interface KeyEvent { key: string, domEvent: KeyboardEvent };
@@ -22,8 +25,8 @@ interface RebaseEvent {
 };
 
 export const welcomeMessage: string = `
-- Ctrl+SPACE shows the full list of commands.
-- TAB autocompletes commands. Double click expands definitions.
+- TAB autocompletes proof commands. Double click expands definitions.
+- ${isLinux() ? "Ctrl+" : "Command+"}C copies selected text. ${isLinux() ? "Ctrl+" : "Command+"}V pastes text.
 `.trim().replace(/\n/g, "<br>");
 
 const MIN_VIEWPORT_COLS: number = 128;
@@ -971,7 +974,10 @@ const tooltipStyle: string = `<style>
 .arrow::before {
     border-bottom-color: white !important;
     border-top-color: white !important;
-    display: none;
+    display: none !important;
+}
+.tooltip-arrow {
+    display: none !important;
 }
 .selected {
     background: #004775 !important;
@@ -1225,7 +1231,7 @@ export class Autocomplete extends Backbone.Model {
             switch (evt.key) {
                 case "ArrowUp":
                 case "ArrowDown":
-                    evt.preventDefault(); // this is necessary to avoid unitended scrolling of the tooltip content
+                    evt.preventDefault(); // this is necessary to avoid unintended scrolling of the tooltip content
                 case "ArrowLeft":
                 case "ArrowRight":
                 case "Enter": 
@@ -1357,7 +1363,13 @@ export class Autocomplete extends Backbone.Model {
                 title: tooltip,
                 placement: "top",
                 html: true,
-                boundary: "viewport"
+                boundary: "viewport",
+                rootBoundary: "document",
+                container: "body",
+                fallbackPlacements: ['top', 'bottom'],
+                popperConfig: {
+                    placement: "top-end"
+                }
             }).tooltip('show');
             if (this.sessionType === "prover" && opt.top !== undefined && opt.left !== undefined && $(".tooltip-inner")[0]) {
                 // adjust tooltip position so it is displayed next to the current mouse position
@@ -1766,6 +1778,9 @@ export class XTermPvs extends Backbone.Model {
 
     // terminal renderer
     protected xterm: XTerm;
+
+    // running flag, indicating that the prover is running a command
+    protected runningFlag: boolean = false;
 
     // autocomplete engine and renderer
     protected autocomplete: Autocomplete;
@@ -2286,12 +2301,12 @@ export class XTermPvs extends Backbone.Model {
      * Handler for command history search
      */
     onHistorySearch (evt: KeyEvent): boolean {
-        console.dir("[xterm-pvs] onHistorySearch", {
-            evt, 
-            history: this.autocomplete?.history?.getHistory()
-        });
+        // console.dir("[xterm-pvs] onHistorySearch", {
+        //     evt, 
+        //     history: this.autocomplete?.history?.getHistory()
+        // });
         if (this.autocomplete.history.size() && this.content.cursorIsAtHomePosition() 
-                && (evt.domEvent.key === "ArrowUp" || evt.domEvent.key === "ArrowDown")) {
+                && !this.autocomplete.tooltipVisible() && (evt.domEvent.key === "ArrowUp" || evt.domEvent.key === "ArrowDown")) {
             // get command from the history
             const cmd: string = evt.domEvent.key === "ArrowUp" ? this.autocomplete.history.prev()
                     : this.autocomplete.history.next();
@@ -2465,10 +2480,25 @@ export class XTermPvs extends Backbone.Model {
                 ctrl: !!evt?.ctrlKey,
                 meta: !!evt?.metaKey
             };
-            // ctrl+c interrupts the prover. Exclude shift, because in Linux ctrl+shift+c is "copy"
-            if (this.inputEnabled && evt?.ctrlKey && !evt?.shiftKey && evt.key === "c") {
+            // ctrl+c interrupts the prover. This combo is enabled only when the prover is running.
+            if (this.runningFlag && this.inputEnabled && evt?.ctrlKey && evt.key === "c") {
                 this.trigger(XTermEvent.sendText, { data: interruptCommand });
                 return false;
+            }
+            // ctrl+c / ctrl+shift+c / command+c = copy
+            if (this.inputEnabled && this.modKeyIsActive() && evt.key === "c") {
+                // console.log(evt);
+                return isLinux() ? evt?.ctrlKey : false;
+            }
+            // ctrl+x / ctrl+shift+x / command+x = cut
+            if (this.inputEnabled && this.modKeyIsActive() && evt.key === "x") {
+                // console.log(evt);
+                return isLinux() ? evt?.ctrlKey : false;
+            }
+            // ctrl+v / ctrl+shift+v / command+v = paste
+            if (this.inputEnabled && this.modKeyIsActive() && evt.key === "v") {
+                // console.log(evt);
+                return isLinux() ? evt?.ctrlKey : false;
             }
             // page up/down scroll contente
             if (evt.key === "PageUp") {
@@ -2480,7 +2510,7 @@ export class XTermPvs extends Backbone.Model {
                 return false;
             }
             // ctrl+key / alt+key
-            if (this.inputEnabled && (evt?.ctrlKey || evt?.metaKey || evt?.altKey) && !evt?.shiftKey) {
+            if (this.inputEnabled && this.modKeyIsActive() && !evt?.shiftKey) {
                 switch (evt.key) {
                     case " ": {
                         // ctrl+space shows all autocompletions
@@ -2569,7 +2599,6 @@ export class XTermPvs extends Backbone.Model {
             return this.inputEnabled && 
                 (
                     !this.modKeyIsActive()
-                    || evt.key === "v"  // ctrl+v / command+v = paste
                     || evt.key === "ArrowUp" || evt.key === "ArrowDown" // search history
                 );
         });
@@ -3021,6 +3050,15 @@ export class XTermPvs extends Backbone.Model {
      * Shows a welcome message in the integrated help panel
      */
     showWelcomeMessage (): void {
+        this.runningFlag = false;
+        this.autocomplete.showHelp(welcomeMessage);
+    }
+
+    /**
+     * Sets/Resets the running flag, which indicates that the prover is running a command
+     */
+    running (flag: boolean): void {
+        this.runningFlag = true;
         this.autocomplete.showHelp(welcomeMessage);
     }
 

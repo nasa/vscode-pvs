@@ -696,13 +696,25 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.panel?.webview?.postMessage(message);
     }
     /**
+     * Sets the running flag in xterm, which indicates that the prover is running a command
+     */
+    running (flag: boolean): void {
+        const message: XTermMessage = {
+            command: XTermCommands.running,
+            data: !!flag
+        };
+        this.panel?.webview?.postMessage(message);
+    }
+    /**
      * Shows feedback while executing a proof command
      */
     showFeedbackWhileExecuting (cmd: string): void {
         if (cmd && !utils.isQuitCommand(cmd)) {
             if (cmd === "run-proof") {
+                this.running(true);
                 this.showHelpMessage(`Executing all commands in the proof tree.<br>To interrupt the execution, press Ctrl+C`);
             } else {
+                this.running(true)
                 this.showHelpMessage(`Executing ${cmd}<br>To interrupt the execution, press Ctrl+C`);
             }
         }
@@ -817,6 +829,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                 this.showFeedbackWhileExecuting(message.data);
                                                 await this.sendTextToServer(message.data);
                                                 if (!utils.isQuitCommand(message.data)) {
+                                                    this.running(false);
                                                     this.showWelcomeMessage();
                                                 }
                                             }
@@ -902,7 +915,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermCommands.clearCommandLine,
                         XTermCommands.showWelcomeMessage,
                         XTermCommands.updateColorTheme,
-                        XTermCommands.showHelpMessage
+                        XTermCommands.showHelpMessage,
+                        XTermCommands.running
                     ],
                     xtermEvents: [
                         XTermEvent.sendText,
