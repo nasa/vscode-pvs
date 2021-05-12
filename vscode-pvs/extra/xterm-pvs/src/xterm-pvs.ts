@@ -979,10 +979,10 @@ const tooltipTemplate: string = `<div>
 </div>`;
 const tooltipStyle: string = `<style>
 .tooltip.show {
-    opacity:0.8 !important;
+    opacity:0.9 !important;
 }
 .tooltip-inner {
-    max-height: 100px; 
+    max-height: 50px; 
     min-width: 300px;
     overflow:auto;
     font-size:10px;
