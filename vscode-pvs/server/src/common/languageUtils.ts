@@ -44,30 +44,6 @@ import * as colorUtils from "./colorUtils";
 import { SessionType } from './xtermInterface';
 import { PVS_KEYWORDS, PVS_LIBRARY_FUNCTIONS } from "./languageKeywords";
 
-/**
- * Utility function, detects the OS platform
- */
-export function getOs (): { version?: string, error?: string } {
-	try {
-		if (process.platform === 'linux' || process.platform === 'freebsd' || process.platform === 'openbsd' || process.platform === 'sunos' || process.platform === 'aix') {
-			return { version: 'Linux' };
-		} else if (process.platform === 'darwin') {
-			return { version: 'MacOSX' };
-		}
-		return { version: process.platform };
-	} catch (err) {
-		const error: string = err.message + "Unable to detect OS version. This problem is likey due to missing dependency 'node' (please download node from https://nodejs.org/)";
-		console.log(`[pvs-server] ${error}`);
-		return { error };
-	}
-}
-
-/**
- * Utility function, returns true if the OS is linux
- */
-export function isLinux (): boolean {
-    return getOs()?.version === "Linux";
-}
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]

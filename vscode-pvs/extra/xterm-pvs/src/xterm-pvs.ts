@@ -7,9 +7,11 @@ import * as Backbone from 'backbone';
 import * as Handlebars from 'handlebars';
 import {
     checkPar, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, 
-    proverCommands, splitCommands, isLinux
+    proverCommands, splitCommands
 } from './common/languageUtils';
 import { htmlColorCode, XTermColorTheme } from './common/colorUtils';
+
+import { getMathSymbols } from './common/mathSymbols';
 
 interface KeyEvent { key: string, domEvent: KeyboardEvent };
 interface MatchBrackets { pos1?: Position, pos2: Position }; // if idx1 is not present, then bracket idx2 is mismatched
@@ -26,11 +28,29 @@ interface RebaseEvent {
 
 export const welcomeMessage: string = `
 - TAB autocompletes proof commands. Double click expands definitions.
-- ${isLinux() ? "Ctrl+" : "Command+"}C copies selected text. ${isLinux() ? "Ctrl+" : "Command+"}V pastes text.
+- ${isLinux() ? "Ctrl+" : "Command+"}c copies selected text. ${isLinux() ? "Ctrl+" : "Command+"}v pastes text.
 `.trim().replace(/\n/g, "<br>");
 
 const MIN_VIEWPORT_COLS: number = 128;
 const MIN_VIEWPORT_ROWS: number = 8;
+
+/**
+ * Utility function, detects the operating system
+ */
+export function getOs (): "Linux" | "MacOSX" | string {
+    const version: string = navigator?.appVersion;
+    if (version?.includes(" Win ")) { return "Windows"; }
+    if (version?.includes(" Mac ")) { return "MacOSX"; }
+    if (version?.includes(" X11 ") || version.includes(" Linux ")) { return "Linux"; };
+    return version || "";
+}
+
+/**
+ * Utility function, returns true if the OS is Linux
+ */
+function isLinux (): boolean {
+    return getOs() === "Linux";
+}
 
 /**
  * Utility class, wraps the content of a line
@@ -390,9 +410,10 @@ export class Content extends Backbone.Model {
 
             // check the text after the cursor position
             let textAfterCursor: string = this.textAfter(this.pos);
+            console.log("[xterm-autocomplete] textAfterCursor", { textAfterCursor });
 
             // if the cursor was in the middle of a word, include the entire word in the substitution
-            if (textAfterCursor?.length && !/[\s\(\)\[\]]/g.test(textAfterCursor[0])) {
+            if (textAfterCursor?.length && !/[\s\(\)\[\]\"]/g.test(textAfterCursor[0])) {
                 let termEndIndex: number = 0;
                 for (let i = 0; i < textAfterCursor.length && !/[\s\(\)\[\]]/g.test(textAfterCursor[i]); i++) {
                     termEndIndex = i;
@@ -412,7 +433,7 @@ export class Content extends Backbone.Model {
             this.pos.line = completedTextWrapped.split("\n").length || MIN_POS.line;
             this.pos.character = completedTextWrapped.split("\n")[this.pos.line - 1].length + 1;
 
-            // console.log("[xterm-content] autocomplete", { textAfterCursor, textBeforeCursor, completedText, wrapped, data: data, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
+            console.log("[xterm-content] autocomplete", { textAfterCursor, textBeforeCursor, completedText, wrapped, data: data, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
             this.trigger(ContentEvent.didAutocompleteContent);
         }
     }
@@ -958,7 +979,7 @@ const tooltipTemplate: string = `<div>
 </div>`;
 const tooltipStyle: string = `<style>
 .tooltip.show {
-    opacity:1 !important;
+    opacity:0.8 !important;
 }
 .tooltip-inner {
     max-height: 100px; 
@@ -1203,7 +1224,7 @@ export class Autocomplete extends Backbone.Model {
     protected hintsObject: HintsObject = {};
     protected mathObjects: MathObjects = {};
     protected currentHints: string[] = [];
-    // protected currentInput: string = "";
+    protected mathSymbols: string[] = getMathSymbols();
 
     // selection mode
     protected triggerMode: "standard" | "single-click" = "standard";
@@ -1244,6 +1265,12 @@ export class Autocomplete extends Backbone.Model {
                 }
             }
         });
+    }
+    /**
+     * Returns math symbols used for autocomplete
+     */
+    getMathSymbols (): string[] {
+        return this.mathSymbols;
     }
     /**
      * Updates hints data for autocompletion
@@ -1412,6 +1439,16 @@ export class Autocomplete extends Backbone.Model {
         }
     }
     /**
+     * Internal function, checks if a math symbol can be matched on the provided input string
+     */
+    protected matchSymCode (input: string): { symbol: string, code: string } {
+        const info: string[] = input.includes("\\") ? input?.split("\\")?.slice(-1) : null;
+        return info?.length ? {
+            symbol: info[1],
+            code: "\\" + info[0]
+        } : null;
+    }
+    /**
      * Autocompletion logic for the prover
      */
 	autocompleteProverCommand (currentInput: string, opt?: { fullSet?: boolean, commandsOnly?: boolean }): string[] {        
@@ -1427,8 +1464,16 @@ export class Autocomplete extends Backbone.Model {
         }
         if (currentInput) {
             let hints: string[] = [];
-            // console.log(`[xterm-autocomplete] trying to auto-complete ${currentInput}`);
-            if (currentInput.startsWith("expand")
+            console.log(`[xterm-autocomplete] trying to auto-complete ${currentInput}`);
+            const symCode: { symbol: string, code: string } = this.matchSymCode(currentInput);
+            const syms: string[] = symCode?.code ? this.mathSymbols.filter((sym: string) => {
+                return sym && sym.startsWith(symCode.code);
+            }) : null;
+            console.log("[xterm-autocomplete] Symbol hints ", { syms, symCode });
+            if (syms?.length) {
+                // math symbol
+                hints = syms;
+            } else if (currentInput.startsWith("expand")
                 || currentInput.startsWith("expand*")
                 || currentInput.startsWith("rewrite")
                 || currentInput.startsWith("eval-expr")) {
@@ -1443,7 +1488,7 @@ export class Autocomplete extends Backbone.Model {
                         const hint: string = `${expandCommands[j]} "${symbols[i]}"`;
                         if (hint.toLocaleLowerCase().startsWith(currentInput)) {
                             hints.push(hint);
-                        } 
+                        }
                     }
                 }
             } else if (currentInput.startsWith("lemma")
@@ -1458,7 +1503,7 @@ export class Autocomplete extends Backbone.Model {
                             const hint: string = `${lemmaCommands[j]} "${symbols[i]}"`;
                             if (hint.toLocaleLowerCase().startsWith(currentInput)) {
                                 hints.push(hint);
-                            }							
+                            }
                         }
                     }
                 }
@@ -1518,7 +1563,7 @@ export class Autocomplete extends Backbone.Model {
         let hints: string[] = this.sessionType === "evaluator" ?
             this.autocompleteEvaluatorCommand(currentInput, opt)
                 : this.autocompleteProverCommand(currentInput, opt);
-        // console.log("[xterm-pvs] getHints", { opt, currentInput, hints });
+        console.log("[xterm-pvs] getHints", { opt, currentInput, hints });
         if (opt.includeHistory) {
             // get list of commands previously accepted by the prover
             let successHistory: string[] = opt?.fullSet ? this.history.getSuccessHistory()
@@ -1690,10 +1735,19 @@ export class Autocomplete extends Backbone.Model {
      * Internal function, triggers autocomplete
      */
     protected triggerAutocomplete (): void {
-        const substitution: string = this.getSelectedHint();
-        const match: string = this.getCurrentInput({ removeLeadingBracket: true });
+        let substitution: string = this.getSelectedHint();
+        let match: string = this.getCurrentInput({ removeLeadingBracket: true });
+        // handle substitution of math symbols
+        if (substitution?.startsWith("\\") && match.includes("\\")) {
+            const info: string[] = substitution?.split(" "); // the last part of the string is the symbol, the first part of the string is the symbol code
+            const symCode: { symbol: string, code: string } = this.matchSymCode(match);
+            if (info?.length > 1 && symCode?.code) {
+                match = symCode.code; // this is the fragment of math symbol code that matches the hint
+                substitution = info[1];
+            }
+        }
         const currentInput: string = this.getCurrentInput();
-        // console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput, match, substitution });
+        console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput, match, substitution });
         const evt: DidAutocompleteEvent = {
             substitution,
             currentInput,
@@ -1898,7 +1952,12 @@ export class XTermPvs extends Backbone.Model {
         //     console.log("onBufferChange", evt);
         // });
 
-        console.log("[xterm-pvs] Init complete", { colorTheme: this.colorTheme, xterm: this.xterm, jquery: $(`#${this.parent}`) });
+        console.log("[xterm-pvs] Init complete", {
+            colorTheme: this.colorTheme, 
+            xterm: this.xterm, 
+            jquery: $(`#${this.parent}`),
+            // mathSymbols: this.autocomplete.getMathSymbols()
+        });
     }
 
     /**

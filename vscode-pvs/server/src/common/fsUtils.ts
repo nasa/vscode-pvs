@@ -48,7 +48,6 @@ import {
 } from '../common/serverInterface';
 import { 
 	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, 
-	getOs, 
 	icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremRegexp, theoryRegexp 
 } from './languageUtils';
 
@@ -552,6 +551,24 @@ export function getSourceControl (): "git" | null {
 		// command not found
 	}
 	return null;
+}
+
+/**
+ * Utility function, detects the OS platform
+ */
+export function getOs (): { version?: "Linux" | "MacOSX" | string, error?: string } {
+	try {
+		if (process.platform === 'linux' || process.platform === 'freebsd' || process.platform === 'openbsd' || process.platform === 'sunos' || process.platform === 'aix') {
+			return { version: 'Linux' };
+		} else if (process.platform === 'darwin') {
+			return { version: 'MacOSX' };
+		}
+		return { version: process.platform };
+	} catch (err) {
+		const error: string = err.message + "Unable to detect OS version. This problem is likey due to missing dependency 'node' (please download node from https://nodejs.org/)";
+		console.log(`[pvs-server] ${error}`);
+		return { error };
+	}
 }
 
 /**

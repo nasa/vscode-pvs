@@ -57,7 +57,7 @@ import { PvsHoverProvider } from './providers/pvsHoverProvider';
 import { PvsCodeLensProvider } from './providers/pvsCodeLensProvider';
 import { PvsLinter } from './providers/pvsLinter';
 // import { PvsCliGateway } from './pvsCliGateway';
-import { getErrorRange, getOs } from './common/languageUtils';
+import { getErrorRange } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
@@ -73,6 +73,7 @@ import { ProcessCode } from './pvsProcess';
 import { PvsProofExplorer } from './providers/pvsProofExplorer';
 import { PvsRenameProvider } from './providers/pvsRenameProvider';
 import { PvsSearchEngine } from './providers/pvsSearchEngine';
+import { getOs } from './common/fsUtils';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
