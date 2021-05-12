@@ -106,7 +106,7 @@ const htmlTemplate: string = `
     xterm.on("{{this}}", (event) => {
         vscode.postMessage({
             command: "{{this}}",
-            data: event.data
+            data: event && event.data ? event.data : undefined
         });
     });
     {{/each}}
@@ -148,6 +148,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
 
     // session type
     protected sessionType: SessionType;
+
+    // timer for delayed focus
+    protected tfocus: NodeJS.Timeout = null;
 
     name: string;
     processId: Thenable<number>;
@@ -318,8 +321,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.log("\n" + xtermMsg, {
                     sessionEnd: true
                 });
-                const msg: string = data.res === "Q.E.D." ? "Proof completed successfully!\nThe proof has been saved. You can now close the prover console."
-                    : "Prover session terminated.\nYou can now close the prover console.";
+                const msg: string = data.res === "Q.E.D." ? `Proof completed successfully!\nThe proof has been saved. You can now <span class="btn btn-sm btn-primary btn-help close-action m-0 p-0">close</span> the prover console.`
+                    : `Prover session terminated.\nYou can now <span class="btn btn-sm btn-primary btn-help close-action m-0 p-0">close</span> the prover console.`;
                 // send the message after a timeout, to avoid overwrites due to automatic updates of the help panel
                 setTimeout(() => {
                     this.showHelpMessage(msg);
@@ -570,7 +573,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     focus (): void {
         this.reveal();
         // Use a timeout so that the webview has time to render its content
-        setTimeout(() => {
+        clearTimeout(this.tfocus);
+        this.tfocus = setTimeout(() => {
             const message: XTermMessage = {
                 command: XTermCommands.focus
             };
@@ -842,6 +846,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                         }
                                         break;
                                     }
+                                    case XTermEvent.closeConsole: {
+                                        this.dispose();
+                                        break;
+                                    }
                                     case XTermEvent.proofExplorerBack:
                                     case XTermEvent.proofExplorerForward:
                                     case XTermEvent.proofExplorerRun: 
@@ -926,6 +934,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     ],
                     xtermEvents: [
                         XTermEvent.sendText,
+                        XTermEvent.closeConsole,
                         XTermEvent.proofExplorerBack,
                         XTermEvent.proofExplorerForward,
                         XTermEvent.proofExplorerRun,

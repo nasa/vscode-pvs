@@ -2,6 +2,7 @@ import { XTermColorTheme } from "./colorUtils";
 
 export enum XTermEvent {
     sendText = "sendText",
+    closeConsole = "closeConsole",
     didCopyText = "didCopyText",
     proofExplorerBack = "proof-explorer.back", // F4
     proofExplorerForward = "proof-explorer.forward", //F6

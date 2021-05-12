@@ -1008,6 +1008,9 @@ const tooltipStyle: string = `<style>
     background: #292d2e;
     color: white;
 }
+.btn-help {
+    font-size:11px;
+}
 </style>`;
 const cursorStyle: string = `<style>
 @keyframes pulser {
@@ -3141,6 +3144,11 @@ export class XTermPvs extends Backbone.Model {
         // console.log("[xterm-pvs] showHelpMessage", { msg });
         if (msg) {
             this.autocomplete.showHelp(msg.trim().replace(/\n/g, "<br>"));
+            if (msg.includes("close-action")) {
+                $(".close-action").on("click", (evt: JQuery.ClickEvent) => {
+                    this.trigger(XTermEvent.closeConsole);
+                });
+            }
         }
     }
 
