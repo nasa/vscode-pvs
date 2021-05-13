@@ -69,15 +69,35 @@ export class VSCodePvsFileOutlineProvider implements vscode.DocumentSymbolProvid
             const fileName: string = fsUtils.getFileName(document.fileName);
             const fileExtension: string = fsUtils.getFileExtension(document.fileName);
             this.client.sendRequest(serverRequest.getFileDescriptor, { contextFolder, fileName, fileExtension });
-            this.client.onRequest(serverEvent.getFileDescriptorResponse, (fdesc: PvsFileDescriptor) => {
+            this.client.onRequest(serverEvent.getFileDescriptorResponse, async (fdesc: PvsFileDescriptor) => {
                 const dsym: vscode.DocumentSymbol[] = [];
                 if (fdesc) {
                     if (fdesc.theories && fdesc.fileName === fileName && fdesc.contextFolder === contextFolder && fdesc.fileExtension === fileExtension) {
                         for (let i = 0; i < fdesc.theories.length; i++) {
                             const theory: TheoryDescriptor = fdesc.theories[i];
+                            const startLine: number = theory.position.line - 1;
+                            let endLine: number = startLine;
+                            let endCol: number = 100;
+
+                            // find theory end
+                            if (theory?.theoryName && theory.fileName && theory.fileExtension === ".pvs") {
+                                const fname: string = fsUtils.desc2fname(theory);
+                                if (fname) {
+                                    const content: string = await fsUtils.readFile(fname);
+                                    if (content) {
+                                        const match: RegExpMatchArray = new RegExp(`\\bEND\\s+${theory.theoryName}\\b`).exec(content);
+                                        if (match && match[0]) {
+                                            const frag: string = content.substring(0, match.index);
+                                            endLine = frag.split("\n").length;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // assign range to symbol, this will feed outline view and trigger the creation of breadcrumbs in the editor, see https://code.visualstudio.com/Docs/editor/editingevolved#_breadcrumbs
                             const range: vscode.Range = new vscode.Range(
-                                new vscode.Position(theory.position.line - 1, theory.position.character),
-                                new vscode.Position(theory.position.line - 1, 100)
+                                new vscode.Position(endLine, theory.position.character),
+                                new vscode.Position(startLine, endCol)
                             );
                             const detail: string = (fileExtension === ".tccs") ? `(tccs)` : `(theory)`;
                             const symbol: vscode.DocumentSymbol = new vscode.DocumentSymbol(
