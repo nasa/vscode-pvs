@@ -724,9 +724,11 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			try {
 				stats = await workspace.fs.stat(uri);
 			} catch (fileNotFound) {
-				window.showWarningMessage(`Could not create ${theoryName}.pvs (file already exists in current workspace). Please choose a different file name.`);
+				// this error should occur: it means the file does not exist and we can create it
 			} finally {
-				if (!stats) {
+				if (stats) {
+					window.showWarningMessage(`Could not create ${theoryName}.pvs (file already exists in current workspace). Please choose a different file name.`);
+				} else {
 					const content: string = utils.makeEmptyTheory(theoryName);
 					const edit: WorkspaceEdit = new WorkspaceEdit();
 
