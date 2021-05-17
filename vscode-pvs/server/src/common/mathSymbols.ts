@@ -8,754 +8,1059 @@ export interface Symbol {
 export const symbols: Symbol[] = [
     {
         "description": "forall",
-        "prefix": "\\forall",
+        "prefix": "\\forall ∀",
         "scope": "pvs",
         "body": [ "∀" ]
     }, {
         "description": "exists",
-        "prefix": "\\exists",
+        "prefix": "\\exists ∃",
         "scope": "pvs",
         "body": [ "∃" ]
     }, {
         "description": "implies",
-        "prefix": "\\implies",
+        "prefix": "\\implies ⇒",
         "scope": "pvs",
         "body": [ "⇒" ]
     }, {
         "description": "if and only if",
-        "prefix": "\\iff",
+        "prefix": "\\iff ⇔",
         "scope": "pvs",
         "body": [ "⇔" ]
     }, {
+        "description": "if and only if",
+        "prefix": "\\Leftrightarrow ⇔",
+        "scope": "pvs",
+        "body": [ "⇔" ]
+    }, {
+        "description": "long left right double arrow",
+        "prefix": "\\Longleftrightarrow ⟺",
+        "scope": "pvs",
+        "body": [ "⟺" ]
+    }, {
         "description": "ring",
-        "prefix": "\\o",
+        "prefix": "\\o ∘",
         "scope": "pvs",
         "body": [ "∘" ]
     }, {
         "description": "ring",
-        "prefix": "\\ring",
+        "prefix": "\\ring ∘",
+        "scope": "pvs",
+        "body": [ "∘" ]
+    }, {
+        "description": "ring",
+        "prefix": "\\circ ∘",
         "scope": "pvs",
         "body": [ "∘" ]
     }, {
         "description": "ring plus",
-        "prefix": "\\oplus",
+        "prefix": "\\oplus ⊕",
         "scope": "pvs",
         "body": [ "⊕" ]
     }, {
         "description": "ring plus",
-        "prefix": "\\ringplus",
+        "prefix": "\\ringplus ⊕",
         "scope": "pvs",
         "body": [ "⊕" ]
     }, {
         "description": "circle plus",
-        "prefix": "\\circleplus",
+        "prefix": "\\circleplus ⊕",
         "scope": "pvs",
         "body": [ "⊕" ]
     }, {
         "description": "ring minus",
-        "prefix": "\\ominus",
+        "prefix": "\\ominus ⊖",
         "scope": "pvs",
         "body": [ "⊖" ]
     }, {
         "description": "ring minus",
-        "prefix": "\\ringminus",
+        "prefix": "\\ringminus ⊖",
         "scope": "pvs",
         "body": [ "⊖" ]
     }, {
         "description": "circle minus",
-        "prefix": "\\circleminus",
+        "prefix": "\\circleminus ⊖",
+        "scope": "pvs",
+        "body": [ "⊖" ]
+    }, {
+        "description": "circle minus",
+        "prefix": "\\circleddash ⊖",
         "scope": "pvs",
         "body": [ "⊖" ]
     }, {
         "description": "ring times",
-        "prefix": "\\otimes",
+        "prefix": "\\otimes ⊗",
         "scope": "pvs",
         "body": [ "⊗" ]
     }, {
         "description": "ring times",
-        "prefix": "\\ringtimes",
+        "prefix": "\\ringtimes ⊗",
         "scope": "pvs",
         "body": [ "⊗" ]
     }, {
         "description": "circle times",
-        "prefix": "\\circletimes",
+        "prefix": "\\circletimes ⊗",
         "scope": "pvs",
         "body": [ "⊗" ]
     }, {
         "description": "ring dot",
-        "prefix": "\\odot",
+        "prefix": "\\odot ⊙",
         "scope": "pvs",
         "body": [ "⊙" ]
     }, {
         "description": "ring dot",
-        "prefix": "\\ringdot",
+        "prefix": "\\ringdot ⊙",
         "scope": "pvs",
         "body": [ "⊙" ]
     }, {
         "description": "circle dot",
-        "prefix": "\\circledot",
+        "prefix": "\\circledot ⊙",
         "scope": "pvs",
         "body": [ "⊙" ]
     }, {
         "description": "ring star",
-        "prefix": "\\ostar",
+        "prefix": "\\ostar ⊛",
         "scope": "pvs",
         "body": [ "⊛" ]
     }, {
         "description": "ring star",
-        "prefix": "\\ringstar",
-        "scope": "pvs",
-        "body": [ "⊛" ]
-    },  {
-        "description": "circle star",
-        "prefix": "\\circlestar",
+        "prefix": "\\ringstar ⊛",
         "scope": "pvs",
         "body": [ "⊛" ]
     }, {
+        "description": "circle star",
+        "prefix": "\\circlestar ⊛",
+        "scope": "pvs",
+        "body": [ "⊛" ]
+    }, {
+        "description": "circle star",
+        "prefix": "\\circledast ⊛",
+        "scope": "pvs",
+        "body": [ "⊛" ]
+    }, {
+        "description": "circled circle",
+        "prefix": "\\circledcirc ⦾",
+        "scope": "pvs",
+        "body": [ "⦾" ]
+    }, {
         "description": "empty set",
-        "prefix": "\\oslash",
+        "prefix": "\\oslash ⊘",
         "scope": "pvs",
         "body": [ "⊘" ]
     }, {
         "description": "empty set",
-        "prefix": "\\ringslash",
+        "prefix": "\\ringslash ⊘",
         "scope": "pvs",
         "body": [ "⊘" ]
     }, {
         "description": "circle set",
-        "prefix": "\\circlelash",
+        "prefix": "\\circlelash ⊘",
         "scope": "pvs",
         "body": [ "⊘" ]
     }, {
         "description": "empty set",
-        "prefix": "\\emptyset",
+        "prefix": "\\emptyset ⊘",
         "scope": "pvs",
         "body": [ "⊘" ]
     }, {
         "description": "big circle plus",
-        "prefix": "\\bigcircleplus",
+        "prefix": "\\bigcircleplus ⨁",
         "scope": "pvs",
         "body": [ "⨁" ]
     }, {
         "description": "big circle times",
-        "prefix": "\\bigcircletimes",
+        "prefix": "\\bigcircletimes ⨂",
         "scope": "pvs",
         "body": [ "⨂" ]
     }, {
         "description": "big circle dot",
-        "prefix": "\\bigcircledot",
+        "prefix": "\\bigcircledot ⨀",
         "scope": "pvs",
         "body": [ "⨀" ]
     }, {
         "description": "turnstile",
-        "prefix": "\\vdash",
+        "prefix": "\\vdash ⊢",
         "scope": "pvs",
         "body": [ "⊢" ]
     }, {
         "description": "turnstile",
-        "prefix": "\\turnstile",
+        "prefix": "\\turnstile ⊢",
         "scope": "pvs",
         "body": [ "⊢" ]
     }, {
+        "description": "not turnstile",
+        "prefix": "\\nvdash ⊬",
+        "scope": "pvs",
+        "body": [ "⊬" ]
+    }, {
         "description": "double turnstile",
-        "prefix": "\\vDash",
+        "prefix": "\\vDash ⊨",
         "scope": "pvs",
         "body": [ "⊨" ]
     }, {
         "description": "double turnstile",
-        "prefix": "\\doubleturnstile",
+        "prefix": "\\doubleturnstile ⊨",
         "scope": "pvs",
         "body": [ "⊨" ]
+    }, {
+        "description": "double turnstile",
+        "prefix": "\\models ⊨",
+        "scope": "pvs",
+        "body": [ "⊨" ]
+    }, {
+        "description": "not true",
+        "prefix": "\\nvDash ⊭",
+        "scope": "pvs",
+        "body": [ "⊭" ]
     }, {
         "description": "not equal",
-        "prefix": "\\neq",
+        "prefix": "\\neq ≠",
         "scope": "pvs",
         "body": [ "≠" ]
     }, {
         "description": "plus minus",
-        "prefix": "\\plusminus",
+        "prefix": "\\plusminus ±",
         "scope": "pvs",
         "body": [ "±" ]
     },  {
         "description": "plus minus",
-        "prefix": "\\pm",
+        "prefix": "\\pm ±",
         "scope": "pvs",
         "body": [ "±" ]
     }, {
         "description": "minus plus",
-        "prefix": "\\minusplus",
+        "prefix": "\\minusplus ∓",
         "scope": "pvs",
         "body": [ "∓" ]
     }, {
         "description": "minus plus",
-        "prefix": "\\mp",
+        "prefix": "\\mp ∓",
         "scope": "pvs",
         "body": [ "∓" ]
     }, {
         "description": "dot plus",
-        "prefix": "\\dotplus",
+        "prefix": "\\dotplus ∔",
         "scope": "pvs",
         "body": [ "∔" ]
     }, {
         "description": "times",
-        "prefix": "\\times",
+        "prefix": "\\times ×",
         "scope": "pvs",
         "body": [ "×" ]
     }, {
         "description": "divide",
-        "prefix": "\\div",
+        "prefix": "\\div ÷",
         "scope": "pvs",
         "body": [ "÷" ]
     }, {
+        "description": "divideontimes",
+        "prefix": "\\divideontimes ⋇",
+        "scope": "pvs",
+        "body": [ "⋇" ]
+    }, {
         "description": "box plus",
-        "prefix": "\\boxplus",
+        "prefix": "\\boxplus ⊞",
         "scope": "pvs",
         "body": [ "⊞" ]
     }, {
         "description": "box minus",
-        "prefix": "\\boxminus",
+        "prefix": "\\boxminus ⊟",
         "scope": "pvs",
         "body": [ "⊟" ]
     }, {
         "description": "box times",
-        "prefix": "\\boxtimes",
+        "prefix": "\\boxtimes ⊠",
         "scope": "pvs",
         "body": [ "⊠" ]
     }, {
+        "description": "box dot",
+        "prefix": "\\boxdot ⊡",
+        "scope": "pvs",
+        "body": [ "⊡" ]
+    }, {
         "description": "not similar to",
-        "prefix": "\\nsim",
+        "prefix": "\\nsim ≁",
         "scope": "pvs",
         "body": [ "≁" ]
     }, {
         "description": "not similar to",
-        "prefix": "\\tildeslash",
+        "prefix": "\\tildeslash ≁",
         "scope": "pvs",
         "body": [ "≁" ]
     }, {
         "description": "similar to",
-        "prefix": "\\sim",
+        "prefix": "\\sim ∼",
         "scope": "pvs",
         "body": [ "∼" ]
     }, {
         "description": "similar to",
-        "prefix": "\\tilde",
+        "prefix": "\\tilde ∼",
         "scope": "pvs",
         "body": [ "∼" ]
+    }, {
+        "description": "backsim",
+        "prefix": "\\backsim ∽",
+        "scope": "pvs",
+        "body": [ "∽" ]
+    }, {
+        "description": "backsimeq",
+        "prefix": "\\backsimeq ⋍",
+        "scope": "pvs",
+        "body": [ "⋍" ]
     }, {
         "description": "approximately equal to",
-        "prefix": "\\simeq",
+        "prefix": "\\simeq ≃",
         "scope": "pvs",
         "body": [ "≃" ]
     }, {
+        "description": "approximately equal to",
+        "prefix": "\\approxeq ≊",
+        "scope": "pvs",
+        "body": [ "≊" ]
+    }, {
         "description": "not congruent to",
-        "prefix": "\\ncong",
+        "prefix": "\\ncong ≇",
         "scope": "pvs",
         "body": [ "≇" ]
     }, {
         "description": "congruent to",
-        "prefix": "\\cong",
+        "prefix": "\\cong ≅",
         "scope": "pvs",
         "body": [ "≅" ]
     }, {
         "description": "equivalent to",
-        "prefix": "\\equiv",
+        "prefix": "\\equiv ≡",
         "scope": "pvs",
         "body": [ "≡" ]
     }, {
         "description": "approximately equal to",
-        "prefix": "\\approx",
+        "prefix": "\\approx ≈",
         "scope": "pvs",
         "body": [ "≈" ]
     }, {
+        "description": "fallingdotseq",
+        "prefix": "\\fallingdotseq ≒",
+        "scope": "pvs",
+        "body": [ "≒" ]
+    }, {
+        "description": "risingdotseq",
+        "prefix": "\\risingdotseq ≓",
+        "scope": "pvs",
+        "body": [ "≓" ]
+    }, {
         "description": "not approximately equal to",
-        "prefix": "\\sapprox",
+        "prefix": "\\sapprox ≉",
         "scope": "pvs",
         "body": [ "≉" ]
     }, {
+        "description": "proportional to",
+        "prefix": "\\propto ∝",
+        "scope": "pvs",
+        "body": [ "∝" ]
+    }, {
+        "description": "proportional to",
+        "prefix": "\\varpropto ∝",
+        "scope": "pvs",
+        "body": [ "∝" ]
+    }, {
+        "description": "therefore",
+        "prefix": "\\therefore ∴",
+        "scope": "pvs",
+        "body": [ "∴" ]
+    }, {
+        "description": "because",
+        "prefix": "\\because ∵",
+        "scope": "pvs",
+        "body": [ "∵" ]
+    }, {
         "description": "logical negation",
-        "prefix": "\\neg",
+        "prefix": "\\neg ¬",
         "scope": "pvs",
         "body": [ "¬" ]
     }, {
         "description": "logical negation",
-        "prefix": "\\lnot",
+        "prefix": "\\lnot ¬",
         "scope": "pvs",
         "body": [ "¬" ]
     }, {
         "description": "square root",
-        "prefix": "\\sqrt",
+        "prefix": "\\sqrt √",
         "scope": "pvs",
         "body": [ "√" ]
     }, {
         "description": "square root",
-        "prefix": "\\surd",
+        "prefix": "\\surd √",
         "scope": "pvs",
         "body": [ "√" ]
     }, {
         "description": "asymptotically equivalent to",
-        "prefix": "\\asymp",
+        "prefix": "\\asymp ≍",
         "scope": "pvs",
         "body": [ "≍" ]
     }, {
         "description": "geometrically equivalent to",
-        "prefix": "\\Bumpeq",
+        "prefix": "\\Bumpeq ≎",
         "scope": "pvs",
         "body": [ "≎" ]
     }, {
+        "description": "Cap",
+        "prefix": "\\Cap ⋒",
+        "scope": "pvs",
+        "body": [ "⋒" ]
+    }, {
+        "description": "Cup",
+        "prefix": "\\Cup ⋓",
+        "scope": "pvs",
+        "body": [ "⋓" ]
+    }, {
         "description": "difference between",
-        "prefix": "\\bumpeq",
+        "prefix": "\\bumpeq ≏",
         "scope": "pvs",
         "body": [ "≏" ]
     }, {
         "description": "dot equal",
-        "prefix": "\\doteq",
+        "prefix": "\\doteq ≐",
         "scope": "pvs",
         "body": [ "≐" ]
     }, {
+        "description": "dot equal dot",
+        "prefix": "\\doteqdot ≑",
+        "scope": "pvs",
+        "body": [ "≑" ]
+    }, {
         "description": "o equal",
-        "prefix": "\\ringeq",
+        "prefix": "\\ringeq ≗",
         "scope": "pvs",
         "body": [ "≗" ]
     }, {
         "description": "o equal",
-        "prefix": "\\circeq",
+        "prefix": "\\circeq ≗",
         "scope": "pvs",
         "body": [ "≗" ]
     }, {
         "description": "o equal",
-        "prefix": "\\oeq",
+        "prefix": "\\oeq ≗",
         "scope": "pvs",
         "body": [ "≗" ]
     }, {
         "description": "defines",
-        "prefix": "\\defs",
+        "prefix": "\\defs ≙",
         "scope": "pvs",
         "body": [ "≙" ]
     }, {
+        "description": "defines",
+        "prefix": "\\triangleq ≙",
+        "scope": "pvs",
+        "body": [ "≙" ]
+    }, {
+        "description": "eqcirc",
+        "prefix": "\\eqcirc ≖",
+        "scope": "pvs",
+        "body": [ "≖" ]
+    }, {
         "description": "bowtie",
-        "prefix": "\\bowtie",
+        "prefix": "\\bowtie ⋈",
         "scope": "pvs",
         "body": [ "⋈" ]
     }, {
         "description": "bowtie",
-        "prefix": "\\Join",
+        "prefix": "\\Join ⋈",
         "scope": "pvs",
         "body": [ "⋈" ]
     }, {
         "description": "less than or equal to",
-        "prefix": "\\leq",
+        "prefix": "\\leq ≤",
         "scope": "pvs",
         "body": [ "≤" ]
     }, {
         "description": "greater than or equal to",
-        "prefix": "\\geq",
+        "prefix": "\\geq ≥",
         "scope": "pvs",
         "body": [ "≥" ]
     }, {
         "description": "less than over equal to",
-        "prefix": "\\leqq",
+        "prefix": "\\leqq ≦",
         "scope": "pvs",
         "body": [ "≦" ]
     }, {
         "description": "greater than over equal to",
-        "prefix": "\\geqq",
+        "prefix": "\\geqq ≧",
         "scope": "pvs",
         "body": [ "≧" ]
     }, {
         "description": "less than over not equal to",
-        "prefix": "\\lneqq",
+        "prefix": "\\lneqq ≨",
         "scope": "pvs",
         "body": [ "≨" ]
     }, {
         "description": "greater than over not equal to",
-        "prefix": "\\gneqq",
+        "prefix": "\\gneqq ≩",
         "scope": "pvs",
         "body": [ "≩" ]
     }, {
         "description": "much less than",
-        "prefix": "\\ll",
+        "prefix": "\\ll ≪",
         "scope": "pvs",
         "body": [ "≪" ]
     }, {
+        "description": "much much less than",
+        "prefix": "\\lll ⋘",
+        "scope": "pvs",
+        "body": [ "⋘" ]
+    }, {
         "description": "much greater than",
-        "prefix": "\\gg",
+        "prefix": "\\gg ≫",
         "scope": "pvs",
         "body": [ "≫" ]
     }, {
+        "description": "much much greater than",
+        "prefix": "\\ggg ⋙",
+        "scope": "pvs",
+        "body": [ "⋙" ]
+    }, {
         "description": "not less than",
-        "prefix": "\\nless",
+        "prefix": "\\nless ≮",
         "scope": "pvs",
         "body": [ "≮" ]
     }, {
         "description": "not greater than",
-        "prefix": "\\ngtr",
+        "prefix": "\\ngtr ≯",
         "scope": "pvs",
         "body": [ "≯" ]
     }, {
         "description": "not less than or equal to",
-        "prefix": "\\nleq",
+        "prefix": "\\nleq ≰",
         "scope": "pvs",
         "body": [ "≰" ]
     }, {
         "description": "not greater than or equal to",
-        "prefix": "\\ngeq",
+        "prefix": "\\ngeq ≱",
         "scope": "pvs",
         "body": [ "≱" ]
     }, {
         "description": "preceeds",
-        "prefix": "\\prec",
+        "prefix": "\\prec ≺",
         "scope": "pvs",
         "body": [ "≺" ]
     }, {
         "description": "succeeds",
-        "prefix": "\\succ",
+        "prefix": "\\succ ≻",
         "scope": "pvs",
         "body": [ "≻" ]
     }, {
+        "description": "lessdot",
+        "prefix": "\\lessdot ⋖",
+        "scope": "pvs",
+        "body": [ "⋖" ]
+    }, {
+        "description": "gtrdot",
+        "prefix": "\\gtrdot ⋗",
+        "scope": "pvs",
+        "body": [ "⋗" ]
+    }, {
+        "description": "lesssim",
+        "prefix": "\\lesssim ≲",
+        "scope": "pvs",
+        "body": [ "≲" ]
+    }, {
+        "description": "gtrsim",
+        "prefix": "\\gtrsim ≳",
+        "scope": "pvs",
+        "body": [ "≳" ]
+    }, {
         "description": "triangle right",
-        "prefix": "\\triangleright",
+        "prefix": "\\triangleright ▷",
         "scope": "pvs",
         "body": [ "▷" ]
     }, {
         "description": "triangle right",
-        "prefix": "\\rhd",
+        "prefix": "\\rhd ▷",
         "scope": "pvs",
         "body": [ "▷" ]
     }, {
+        "description": "not triangle right",
+        "prefix": "\\ntriangleright ⋫",
+        "scope": "pvs",
+        "body": [ "⋫" ]
+    }, {
+        "description": "triangle right equal",
+        "prefix": "\\trianglerighteq ⊵",
+        "scope": "pvs",
+        "body": [ "⊵" ]
+    }, {
+        "description": "not triangle right equal",
+        "prefix": "\\ntrianglerighteq ⋭",
+        "scope": "pvs",
+        "body": [ "⋭" ]
+    }, {
         "description": "triangle left",
-        "prefix": "\\triangleleft",
+        "prefix": "\\triangleleft ◁",
         "scope": "pvs",
         "body": [ "◁" ]
     }, {
         "description": "triangle left",
-        "prefix": "\\lhd",
+        "prefix": "\\lhd ◁",
         "scope": "pvs",
         "body": [ "◁" ]
+    }, {
+        "description": "triangle left equal",
+        "prefix": "\\trianglelefteq ⊴",
+        "scope": "pvs",
+        "body": [ "⊴" ]
+    }, {
+        "description": "not triangle left equal",
+        "prefix": "\\ntrianglelefteq ⋬",
+        "scope": "pvs",
+        "body": [ "⋬" ]
+    }, {
+        "description": "not triangle left",
+        "prefix": "\\ntriangleleft ⋪",
+        "scope": "pvs",
+        "body": [ "⋪" ]
+    }, {
+        "description": "precedes under relation",
+        "prefix": "\\prec ⊰",
+        "scope": "pvs",
+        "body": [ "⊰" ]
+    }, {
+        "description": "preceq",
+        "prefix": "\\preceq ⪯",
+        "scope": "pvs",
+        "body": [ "⪯" ]
+    }, {
+        "description": "succeeds under relation",
+        "prefix": "\\succ ⊱",
+        "scope": "pvs",
+        "body": [ "⊱" ]
+    }, {
+        "description": "succeq",
+        "prefix": "\\succeq ⪰",
+        "scope": "pvs",
+        "body": [ "⪰" ]
     }, {
         "description": "member of",
-        "prefix": "\\in",
+        "prefix": "\\in ∈",
         "scope": "pvs",
         "body": [ "∈" ]
     }, {
         "description": "not a member of",
-        "prefix": "\\notin",
+        "prefix": "\\notin ∉",
         "scope": "pvs",
         "body": [ "∉" ]
     }, {
         "description": "contains",
-        "prefix": "\\ni",
+        "prefix": "\\ni ∋",
         "scope": "pvs",
         "body": [ "∋" ]
     }, {
         "description": "intersection",
-        "prefix": "\\intersection",
+        "prefix": "\\intersection ∩",
         "scope": "pvs",
         "body": [ "∩" ]
     }, {
         "description": "union",
-        "prefix": "\\union",
+        "prefix": "\\union ∪",
         "scope": "pvs",
         "body": [ "∪" ]
     }, {
         "description": "union",
-        "prefix": "\\cup",
+        "prefix": "\\cup ∪",
         "scope": "pvs",
         "body": [ "∪" ]
     }, {
         "description": "subset of",
-        "prefix": "\\subset",
+        "prefix": "\\subset ⊂",
         "scope": "pvs",
         "body": [ "⊂" ]
     }, {
         "description": "superset of",
-        "prefix": "\\supset",
+        "prefix": "\\supset ⊃",
         "scope": "pvs",
         "body": [ "⊃" ]
     }, {
         "description": "not a subset of",
-        "prefix": "\\nsubset",
+        "prefix": "\\nsubset ⊄",
         "scope": "pvs",
         "body": [ "⊄" ]
     }, {
         "description": "not a superset of",
-        "prefix": "\\nsupset",
+        "prefix": "\\nsupset ⊅",
         "scope": "pvs",
         "body": [ "⊅" ]
     }, {
         "description": "subset of or equal to",
-        "prefix": "\\subseteq",
+        "prefix": "\\subseteq ⊆",
         "scope": "pvs",
         "body": [ "⊆" ]
     }, {
         "description": "superser of or equal to",
-        "prefix": "\\supseteq",
+        "prefix": "\\supseteq ⊇",
         "scope": "pvs",
         "body": [ "⊇" ]
     }, {
         "description": "subset of but not equal to",
-        "prefix": "\\subsetneq",
+        "prefix": "\\subsetneq ⊊",
         "scope": "pvs",
         "body": [ "⊊" ]
     }, {
         "description": "superset of but not equal to",
-        "prefix": "\\supsetneq",
+        "prefix": "\\supsetneq ⊋",
         "scope": "pvs",
         "body": [ "⊋" ]
     }, {
         "description": "multiset union",
-        "prefix": "\\uplus",
+        "prefix": "\\uplus ⊎",
         "scope": "pvs",
         "body": [ "⊎" ]
     }, {
         "description": "square image of",
-        "prefix": "\\ltsquare",
+        "prefix": "\\ltsquare ⊏",
         "scope": "pvs",
         "body": [ "⊏" ]
     }, {
         "description": "square original of",
-        "prefix": "\\gtsquare",
+        "prefix": "\\gtsquare ⊐",
         "scope": "pvs",
         "body": [ "⊐" ]
     }, {
         "description": "square image of or equal to",
-        "prefix": "\\lesquare",
+        "prefix": "\\lesquare ⊑",
         "scope": "pvs",
         "body": [ "⊑" ]
     }, {
         "description": "square original or or equal to",
-        "prefix": "\\gtsquare",
+        "prefix": "\\gtsquare ⊒",
         "scope": "pvs",
         "body": [ "⊒" ]
     }, {
         "description": "square cap",
-        "prefix": "\\sqcap",
+        "prefix": "\\sqcap ⊓",
         "scope": "pvs",
         "body": [ "⊓" ]
     }, {
         "description": "square cup",
-        "prefix": "\\sqcup",
+        "prefix": "\\sqcup ⊔",
         "scope": "pvs",
         "body": [ "⊔" ]
     }, {
         "description": "n-ary logical AND",
-        "prefix": "\\bigwedge",
+        "prefix": "\\bigwedge ⋀",
         "scope": "pvs",
         "body": [ "⋀" ]
     }, {
         "description": "n-ary logical OR",
-        "prefix": "\\bigvee",
+        "prefix": "\\bigvee ⋁",
         "scope": "pvs",
         "body": [ "⋁" ]
     }, {
         "description": "logical AND",
-        "prefix": "\\and",
+        "prefix": "\\and ∧",
         "scope": "pvs",
         "body": [ "∧" ]
     }, {
         "description": "logical OR",
-        "prefix": "\\or",
+        "prefix": "\\or ∨",
         "scope": "pvs",
         "body": [ "∨" ]
     },  {
         "description": "logical AND",
-        "prefix": "\\wedge",
+        "prefix": "\\wedge ∧",
         "scope": "pvs",
         "body": [ "∧" ]
     }, {
         "description": "logical OR",
-        "prefix": "\\vee",
+        "prefix": "\\vee ∨",
         "scope": "pvs",
         "body": [ "∨" ]
     }, {
         "description": "bullet",
-        "prefix": "\\bullet",
+        "prefix": "\\bullet •",
         "scope": "pvs",
         "body": [ "•" ]
     }, {
+        "description": "cdot",
+        "prefix": "\\cdot ·",
+        "scope": "pvs",
+        "body": [ "·" ]
+    }, {
+        "description": "cdot",
+        "prefix": "\\centerdot ·",
+        "scope": "pvs",
+        "body": [ "·" ]
+    }, {
         "description": "left arrow",
-        "prefix": "\\leftarrow",
+        "prefix": "\\leftarrow ←",
         "scope": "pvs",
         "body": [ "←" ]
     }, {
         "description": "up arrow",
-        "prefix": "\\uparrow",
+        "prefix": "\\uparrow ↑",
         "scope": "pvs",
         "body": [ "↑" ]
     }, {
         "description": "right arrow",
-        "prefix": "\\rightarrow",
+        "prefix": "\\rightarrow →",
         "scope": "pvs",
         "body": [ "→" ]
     }, {
         "description": "double right arrow",
-        "prefix": "\\Rightarrow",
+        "prefix": "\\Rightarrow ⇒",
         "scope": "pvs",
         "body": [ "⇒" ]
     }, {
         "description": "down arrow",
-        "prefix": "\\downarrow",
+        "prefix": "\\downarrow ↓",
         "scope": "pvs",
         "body": [ "↓" ]
     }, {
         "description": "right arrow squiggle",
-        "prefix": "\\leadsto",
+        "prefix": "\\leadsto ↝",
         "scope": "pvs",
         "body": [ "↝" ]
     }, {
         "description": "right arrow from bar",
-        "prefix": "\\mapsto",
+        "prefix": "\\mapsto ↦",
         "scope": "pvs",
         "body": [ "↦" ]
     }, {
+        "description": "long right arrow from bar",
+        "prefix": "\\longmapsto ⟼",
+        "scope": "pvs",
+        "body": [ "⟼" ]
+    }, {
+        "description": "long right arrow",
+        "prefix": "\\longrightarrow ⟶",
+        "scope": "pvs",
+        "body": [ "⟶" ]
+    }, {
+        "description": "long left arrow",
+        "prefix": "\\longleftarrow ⟵",
+        "scope": "pvs",
+        "body": [ "⟵" ]
+    }, {
+        "description": "long right double arrow",
+        "prefix": "\\Longrightarrow ⟹",
+        "scope": "pvs",
+        "body": [ "⟹" ]
+    }, {
+        "description": "long left double arrow",
+        "prefix": "\\Longleftarrow ⟸",
+        "scope": "pvs",
+        "body": [ "⟸" ]
+    }, {
+        "description": "dash right arrow",
+        "prefix": "\\dashrightarrow ⇢",
+        "scope": "pvs",
+        "body": [ "⇢" ]
+    }, {
+        "description": "dash left arrow",
+        "prefix": "\\dashleftarrow ⇠",
+        "scope": "pvs",
+        "body": [ "⇠" ]
+    }, {
+        "description": "rightharpoonup",
+        "prefix": "\\rightharpoonup ⇀",
+        "scope": "pvs",
+        "body": [ "⇀" ]
+    }, {
+        "description": "leftharpoonup",
+        "prefix": "\\leftharpoonup ↼",
+        "scope": "pvs",
+        "body": [ "↼" ]
+    }, {
+        "description": "rightharpoondown",
+        "prefix": "\\rightharpoondown ⇁",
+        "scope": "pvs",
+        "body": [ "⇁" ]
+    }, {
+        "description": "leftharpoondown",
+        "prefix": "\\leftharpoondown ↽",
+        "scope": "pvs",
+        "body": [ "↽" ]
+    }, {
+        "description": "hook left arrow",
+        "prefix": "\\hookleftarrow ↩",
+        "scope": "pvs",
+        "body": [ "↩" ]
+    }, {
+        "description": "hook right arrow",
+        "prefix": "\\hookrightarrow ↪",
+        "scope": "pvs",
+        "body": [ "↪" ]
+    }, {
         "description": "double left arrow",
-        "prefix": "\\Leftarrow",
+        "prefix": "\\Leftarrow ⇐",
         "scope": "pvs",
         "body": [ "⇐" ]
     }, {
         "description": "double up arrow",
-        "prefix": "\\Uparrow",
+        "prefix": "\\Uparrow ⇑",
         "scope": "pvs",
         "body": [ "⇑" ]
     }, {
         "description": "double down arrow",
-        "prefix": "\\Downarrow",
+        "prefix": "\\Downarrow ⇓",
         "scope": "pvs",
         "body": [ "⇓" ]
     }, {
         "description": "triangle down",
-        "prefix": "\\triangledown",
+        "prefix": "\\triangledown ∇",
         "scope": "pvs",
         "body": [ "∇" ]
     },  {
         "description": "triangle down",
-        "prefix": "\\nabla",
+        "prefix": "\\nabla ∇",
         "scope": "pvs",
         "body": [ "∇" ]
     }, {
         "description": "turnstile left",
-        "prefix": "\\turnstileleft",
+        "prefix": "\\turnstileleft ⊣",
         "scope": "pvs",
         "body": [ "⊣" ]
     }, {
         "description": "turnstile left",
-        "prefix": "\\dashv",
+        "prefix": "\\dashv ⊣",
         "scope": "pvs",
         "body": [ "⊣" ]
     }, {
         "description": "bottom",
-        "prefix": "\\bot",
+        "prefix": "\\bot ⊥",
         "scope": "pvs",
         "body": [ "⊥" ]
     }, {
         "description": "bar turnstile",
-        "prefix": "\\barturnstile",
+        "prefix": "\\barturnstile ⊩",
         "scope": "pvs",
         "body": [ "⊩" ]
     }, {
+        "description": "bar turnstile",
+        "prefix": "\\VDash ⊩",
+        "scope": "pvs",
+        "body": [ "⊩" ]
+    }, {
+        "description": "not bar turnstile",
+        "prefix": "\\nVDash ⊮",
+        "scope": "pvs",
+        "body": [ "⊮" ]
+    }, {
         "description": "big circle",
-        "prefix": "\\bigcirc",
+        "prefix": "\\bigcirc ◯",
         "scope": "pvs",
         "body": [ "◯" ]
     }, {
         "description": "star",
-        "prefix": "\\star",
+        "prefix": "\\star ★",
         "scope": "pvs",
         "body": [ "★" ]
     }, {
         "description": "maltese cross",
-        "prefix": "\\maltese",
+        "prefix": "\\maltese ✠",
         "scope": "pvs",
         "body": [ "✠" ]
     }, {
         "description": "box",
-        "prefix": "\\Box",
+        "prefix": "\\Box □",
+        "scope": "pvs",
+        "body": [ "□" ]
+    }, {
+        "description": "box",
+        "prefix": "\\square □",
         "scope": "pvs",
         "body": [ "□" ]
     }, {
         "description": "diamond",
-        "prefix": "\\Diamond",
+        "prefix": "\\Diamond ◇",
         "scope": "pvs",
         "body": [ "◇" ]
     }, {
         "description": "angular bracket left",
-        "prefix": "\\langle",
+        "prefix": "\\langle 〈",
         "scope": "pvs",
         "body": [ "〈" ]
     }, {
         "description": "angular bracket right",
-        "prefix": "\\rnagle",
+        "prefix": "\\rnagle 〉",
         "scope": "pvs",
         "body": [ "〉" ]
     }, {
         "description": "left ceiling",
-        "prefix": "\\lceil",
+        "prefix": "\\lceil ⌈",
         "scope": "pvs",
         "body": [ "⌈" ]
     }, {
         "description": "right ceiling",
-        "prefix": "\\rceil",
+        "prefix": "\\rceil ⌉",
         "scope": "pvs",
         "body": [ "⌉" ]
     }, {
         "description": "left floor",
-        "prefix": "\\lfloor",
+        "prefix": "\\lfloor ⌊",
         "scope": "pvs",
         "body": [ "⌊" ]
     }, {
         "description": "right floor",
-        "prefix": "\\rfloor",
+        "prefix": "\\rfloor ⌋",
         "scope": "pvs",
         "body": [ "⌋" ]
     }, {
         "description": "lambda",
-        "prefix": "\\lambda",
+        "prefix": "\\lambda λ",
         "scope": "pvs",
         "body": [ "λ" ]
     }, {
         "description": "up left corner",
-        "prefix": "\\ulcorner",
+        "prefix": "\\ulcorner ⌜",
         "scope": "pvs",
         "body": [ "⌜" ]
     }, {
         "description": "up right corner",
-        "prefix": "\\urcorner",
+        "prefix": "\\urcorner ⌝",
         "scope": "pvs",
         "body": [ "⌝" ]
     }, {
         "description": "double square bracket left",
-        "prefix": "\\llbracket",
+        "prefix": "\\llbracket ⟦",
         "scope": "pvs",
         "body": [ "⟦" ]
     }, {
         "description": "double square bracket right",
-        "prefix": "\\rrbracket",
+        "prefix": "\\rrbracket ⟧",
         "scope": "pvs",
         "body": [ "⟧" ]
     }, {
         "description": "lower left corner",
-        "prefix": "\\llcorner",
+        "prefix": "\\llcorner ⌞",
         "scope": "pvs",
         "body": [ "⌞" ]
     }, {
         "description": "lower right corner",
-        "prefix": "\\lrcorner",
+        "prefix": "\\lrcorner ⌟",
         "scope": "pvs",
         "body": [ "⌟" ]
     }, {
         "description": "double angular bracket left",
-        "prefix": "\\ldata",
+        "prefix": "\\ldata ⟪",
         "scope": "pvs",
         "body": [ "⟪" ]
     }, {
         "description": "double angular bracket right",
-        "prefix": "\\rdata",
+        "prefix": "\\rdata ⟫",
         "scope": "pvs",
         "body": [ "⟫" ]
     }, {
         "description": "section sign",
-        "prefix": "\\section",
+        "prefix": "\\section §",
         "scope": "pvs",
         "body": [ "§" ]
+    }, {
+        "description": "nmid",
+        "prefix": "\\nmid ∤",
+        "scope": "pvs",
+        "body": [ "∤" ]
+    }, {
+        "description": "wr",
+        "prefix": "\\wr ≀",
+        "scope": "pvs",
+        "body": [ "≀" ]
     }
 ];
 /**
@@ -763,6 +1068,6 @@ export const symbols: Symbol[] = [
  */
 export function getMathSymbols (): string[] {
     return symbols.map((sym: Symbol) => {
-        return sym.prefix + " " + sym.body;
+        return sym.prefix;
     }) || [];
 };
