@@ -1,0 +1,20 @@
+%%
+% @theory: pigeonhole
+% @author: pmasci
+% @date: Mon, 17 May 2021 19:08:07 GMT
+%%
+pigeonhole: THEORY
+BEGIN
+
+    n: VAR nat
+
+    swap[D, R: TYPE](f: [D -> R], (i, j: D)): [D -> R] = 
+        f WITH [(i):= f(j), (j) := f(i)]
+
+    swap_injective[D, R: TYPE]: LEMMA
+	    (FORALL (f: [D->R], (i, j: D)): injective?(f) ⇒ injective?(swap[D, R](f, i, j)))
+
+    pigeonhole: LEMMA
+	    FORALL (f: [below(n+1)-> below(n)]): NOT injective?(f)
+
+END pigeonhole

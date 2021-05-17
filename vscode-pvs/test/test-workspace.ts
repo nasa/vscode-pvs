@@ -1,9 +1,10 @@
 import * as fsUtils from "../server/src/common/fsUtils";
 import { PvsResponse } from "../server/src/common/pvs-gui";
 import { PvsProxy } from '../server/src/pvsProxy';
-import { mValue2Examples, configFile, sandboxExamples } from './test-utils';
+import { mValue2Examples, configFile, sandboxExamples, pigeonhole } from './test-utils';
 import { expect } from 'chai';
 import * as path from "path";
+import { commentRegexp, theoremRegexp } from "../server/src/common/languageUtils";
 
 //----------------------------
 //   Test cases for parser
@@ -60,7 +61,7 @@ describe("pvs-proxy", () => {
 
 		const fname: string = path.join(mValue2Examples, "value.pvs");
 		const content: string = await fsUtils.readFile(fname);
-		let theoryName: string = ""
+		let theoryName: string = "";
 		theoryName = fsUtils.findTheoryName(content, 50);
 		expect(theoryName).to.equal("test");
 		theoryName = fsUtils.findTheoryName(content, 36);
@@ -71,6 +72,27 @@ describe("pvs-proxy", () => {
 		expect(theoryName).to.equal("HashTableType");
 	});
 
+	it(`can find swap_injective and pigeonhole lemmas`, async () => {
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		const fname: string = path.join(pigeonhole, "pigeonhole.pvs");
+		let content: string = await fsUtils.readFile(fname);
+		content = content.replace(commentRegexp, "");
+
+		let lemmas: string[] = [];
+		const regex: RegExp = new RegExp(theoremRegexp);
+		let match: RegExpMatchArray = null;
+		while (match = regex.exec(content)) {
+			if (match.length > 1 && match[1]) {
+				const formulaName: string = match[1];
+				lemmas.push(formulaName)
+			}
+		}
+		expect(lemmas).to.deep.equal([
+			"swap_injective", "pigeonhole"
+		]);
+	});
 	// it(`change-context is equivalent to change-workspace`, async () => {
 	// 	label(`change-context is equivalent to change-workspace`);
 	// 	// Need to clear-theories, in case rerunning with the same server.
