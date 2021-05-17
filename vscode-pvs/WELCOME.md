@@ -25,6 +25,10 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.49 (2021.05.17)]()      
+  -Added more math symbols     
+  -Minor fixes (outline provider, codelens)       
+
 - [1.0.48 (2021.05.13)]()      
   -Improved handling of math symbols (\forall, \exists, \implies, etc.)     
   -Improved prover console (actionable buttons, copy/paste shortcuts)       
