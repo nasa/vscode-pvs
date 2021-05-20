@@ -1386,7 +1386,7 @@ export function findProofObligation(formulaName: string, txt: string): number {
 /**
  * Lists all theorems in a given context folder
  */
- export async function getContextDescriptor (contextFolder: string, opt?: { listTheorems?: boolean, includeTccs?: boolean }): Promise<PvsContextDescriptor> {
+ export async function getContextDescriptor (contextFolder: string, opt?: { listTheorems?: boolean, includeTccs?: boolean, prelude?: boolean }): Promise<PvsContextDescriptor> {
 	// console.log(`[language-utils] Generating context descriptor for ${contextFolder}...`);
 	const response: PvsContextDescriptor = {
 		fileDescriptors: {},
@@ -1405,7 +1405,7 @@ export function findProofObligation(formulaName: string, txt: string): number {
 	return response;
 }
 
-export async function getFileDescriptor (fname: string, opt?: { listTheorems?: boolean, includeTccs?: boolean }): Promise<PvsFileDescriptor> {
+export async function getFileDescriptor (fname: string, opt?: { listTheorems?: boolean, includeTccs?: boolean, prelude?: boolean }): Promise<PvsFileDescriptor> {
 	opt = opt || {};
 	opt.listTheorems = (opt.listTheorems !== undefined) ? opt.listTheorems : true;
 	const start: number = Date.now();
@@ -1426,11 +1426,11 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 		// if (opt.listTheorems) { console.log(`[languageUtils.getFileDescriptor] listTheorems(${fileName})`);	}
 		const lemmas: FormulaDescriptor[] = 
 			(opt.listTheorems) 
-				? await listTheorems({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent, prelude: false, cache: { theories } })
+				? await listTheorems({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent, prelude: opt?.prelude, cache: { theories } })
 					: [];
 		const tccs: FormulaDescriptor[] = 
 			(opt.listTheorems && fileExtension !== ".tccs" && tccsFileContent) 
-				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: false })
+				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: opt?.prelude })
 					: [];
 		const descriptors: FormulaDescriptor[] = lemmas.concat(tccs);
 		// console.log(`[language-utils] Processing ${theories.length} theories`);

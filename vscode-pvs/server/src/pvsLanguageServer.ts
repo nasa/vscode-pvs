@@ -1140,7 +1140,10 @@ export class PvsLanguageServer {
 					}
 				} // else
 				const fname: string = fsUtils.desc2fname(args);
-				return await fsUtils.getFileDescriptor(fname, opt);
+				return await fsUtils.getFileDescriptor(fname, {
+					...opt,
+					prelude: this.isPreludeFile(fname)
+				});
 			} else {
 				console.error('[pvs-language-server.listTheories] Error: pvs proxy is null');
 			}
@@ -1392,15 +1395,25 @@ export class PvsLanguageServer {
 			try {
 				const res: PvsContextDescriptor = JSON.parse(cache);
 				if (res && res.fileDescriptors) {
+					// make sure all file descriptors indicate theorems proved
+					for (let i in res.fileDescriptors) {
+						const theories: TheoryDescriptor[] = res.fileDescriptors[i].theories;
+						for (let t = 0; t < theories?.length; t++) {
+							const theorems: FormulaDescriptor[] = theories[t].theorems;
+							for (let tt = 0; tt < theorems?.length; tt++) {
+								theorems[tt].status = "proved";
+							}
+						}
+					}
 					return res;
 				}
 			} catch (jsonError) {
-				console.error("[pvs-language-server] Error: unable to parse prelude cache");
-				return null;
+				console.warn("[pvs-language-server] Warning: unable to parse prelude cache, trying to re-create the file.");
+				// return null;
 			}	
 		}
 		// else, cache file not present or in wrong format, create it again
-		const cdesc: PvsContextDescriptor = await fsUtils.getContextDescriptor(libPath);
+		const cdesc: PvsContextDescriptor = await fsUtils.getContextDescriptor(libPath, { prelude: true });
 		await fsUtils.writeFile(preludeCache, JSON.stringify(cdesc, null, " "));
 		return cdesc;
 	}
