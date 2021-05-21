@@ -25,6 +25,10 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.50 (2021.05.21)]()      
+  -Updated documentation     
+  -Minor fixes (view-prelude-file, plot) 
+
 - [1.0.49 (2021.05.17)]()      
   -Added more math symbols     
   -Minor fixes (outline provider, codelens)       
