@@ -534,6 +534,9 @@ export class PvsIoProxy {
 				theoryName: req.theoryName,
 				cmd: req.expr + ";"
 			});
+			if (response?.result?.startsWith("\n==>\n")) {
+				response.result = response.result.replace("\n==>\n", "");
+			}
 		}
 		return response;
 	}

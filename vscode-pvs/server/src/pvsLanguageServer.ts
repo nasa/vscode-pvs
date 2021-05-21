@@ -1845,7 +1845,7 @@ export class PvsLanguageServer {
 				await this.pvsioEvaluatorCommandRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.evalExpression, async (args: EvalExpressionRequest) => {
-				this.evalExpressionRequest(args);
+				await this.evalExpressionRequest(args);
 			});
 
 			// search request
