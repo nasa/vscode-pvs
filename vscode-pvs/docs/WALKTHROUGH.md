@@ -69,6 +69,10 @@ To re-run all proofs and generate a summary file that shows the proof status, cl
 # Advanced functions
 - To `evaluate` an executable pvs specification, start pvsio with the play/debug icon in the toolbar.
 
-- To `plot` a pvs expression, select the function in the editor, right click, and choose `Plot Expression`. For now, plotting is limited to expressions returning a list of numbers.
+- To create `interactive prototypes` based on executable pvs specifications, click on the `prototype` icon in the editor toolbar. Example pvs specifications and prototypes can be downloaded at [https://github.com/pvsioweb/examples](https://github.com/pvsioweb/examples)
+
+- To `plot` a pvs expression, select an expression in the pvs file, right click, and choose `Plot Expression`. For now, plotting is limited to expressions returning a list of numbers.
 
 - To `search NASALib`, use the magnifying glass icon in the toolbar. NASALib is an extensive library created and maintained by the Formal Methods Team at NASA Langley, it includes thousands of definitions and proved theorems.
+
+
