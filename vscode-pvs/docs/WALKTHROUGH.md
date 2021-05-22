@@ -13,7 +13,7 @@ The `Editor panel` shows text/code editors and integrated consoles.
 
 The `Explorer panel` shows information in the form of a tree view, akin to file browsers.
 - An `activity bar` is located on the side, and contains toggle buttons for activating explorer functions.
-- The `file button` activates File Explorer, which shows the list of files in the current workspace.
+- The `file button` activates File Explorer, which shows the list of files in the current workspace. Click on a file to open the file content in the editor. Right click on a file to perform rename/delete/copy/paste operations. 
 - The `search button` activates a Search panel, that allows to search text in all files in the current workspace.
 - The `extensions button` activates the extension manager, which shows the list of extensions currently installed in VSCode, and allows to search and install new extensions from the marketplace.
 - The `pvs button` opens pvs-related components. The default component shown in the view is Workspace Explorer, which presents the list of theories and theorems defined in the active workspace. Two additional components will become visible when proving a theorem: PVS Proof Explorer and PVS Proof Mate.
@@ -33,11 +33,8 @@ The typical workflow in VSCode-PVS is as follows:
 ## Opening a pvs workspace
 A pvs workspace is a folder that contains (or will contain) pvs files.
 - To open a pvs workspace, click the `open folder` icon located in the editor toolbar. A window will open that allows to select an existing folder or create a new folder that will be used as pvs workspace.
-- File Explorer shows the list of files in the active pvs workspace. 
-- Click on a file to open the file content in the editor.
-- Right click on a file to perform rename/delete/copy/paste operations. 
 
-Once a workspace is open, switch to `Workspace Explorer` to view the list of theories/theorems defined in the active workspace.
+Once a workspace is open, switch to `Workspace Explorer`, to view the list of theories/theorems defined in the active workspace.
 - Click on a theory/theorem to open the corresponding pvs file in the editor and jump to the line where the theory/theorem is defined.
 - Right click on a theory/theorem to open a menu with actions on files (e.g., typecheck file) and theorems (e.g., prove formula).
 - The `...` symbol at the top of PVS Workspace Explorer is a menu. You can use it to trigger actions on pvs files (e.g., create a new pvs file, view prelude file), and pvs installation and settings (e.g., update/install nasalib and pvs).
@@ -50,7 +47,6 @@ When a pvs file is open in the editor, the editor will automatically enable pvs 
 - Snippets are available for common constructs, e.g., if-then-else
 - Math symbols are entered using latex-style shortcuts (e.g., \forall).
 - Inline actionable commands are available, to typecheck theories and prove theorems
-- Parsing is automatically performed while the user enters the specification.
 
 ## Typechecking theories
 To typecheck a theory, click the `build` icon in the editor toolbar.
@@ -86,4 +82,7 @@ Interactive prototypes can be created based on executable pvs specifications.
 VSCode-PVS provides a simplified interface to search definitions and lemmas in NASALib, an extensive library created and maintained by the Formal Methods Team at NASA Langley.
 - To search NASALib, use the `magnifying glass icon` in the editor toolbar.
 
+<br>
 
+# Emergency Exit
+In the case VSCode-PVS becomes unresponsive, use the `Reboot PVS` command located in the `...` menu of Workspace Explorer. This will reboot the back-end and likely resolve the problem.
