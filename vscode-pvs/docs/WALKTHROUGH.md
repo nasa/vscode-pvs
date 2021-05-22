@@ -8,7 +8,8 @@ The `Editor panel` shows text/code editors and integrated consoles.
 - Editors and consoles can be dragged and organized in different layouts, e.g., to create split views.
 - Editors have a minimap on the side, that gives an overview of the entire text/code.
 - A toolbar located above the editor windows provides convenient access to frequent commands.
-- Ctrl+F / Command+F can be used to search strings in the active editor.
+- Ctrl+F (Command+F on Mac) can be used to search strings in the active editor.
+- Ctrl+/ (Command+/ on Mac) can be used to comment out a line in the active editor.
 
 The `Explorer panel` shows information in the form of a tree view, akin to file browsers.
 - An `activity bar` is located on the side, and contains toggle buttons for activating explorer functions.
@@ -16,6 +17,7 @@ The `Explorer panel` shows information in the form of a tree view, akin to file 
 - The `search button` activates a Search panel, that allows to search text in all files in the current workspace.
 - The `extensions button` activates the extension manager, which shows the list of extensions currently installed in VSCode, and allows to search and install new extensions from the marketplace.
 - The `pvs button` opens pvs-related components. The default component shown in the view is Workspace Explorer, which presents the list of theories and theorems defined in the active workspace. Two additional components will become visible when proving a theorem: PVS Proof Explorer and PVS Proof Mate.
+- The tree view supports the use of filter as a way to search elements in the tree view. To activate the filters, select the tree view and start typing the name that you want to search.
 
 The `Output and Debug panels` show information about warnings/errors, and an integrated terminal for running shell commands.
 
@@ -27,7 +29,6 @@ The typical workflow in VSCode-PVS is as follows:
 2. Define/Edit theories and theorems
 3. Typecheck theories
 4. Prove theorems
-5. Repeat steps 2-4 until all theorems proved
 
 ## Opening a pvs workspace
 A pvs workspace is a folder that contains (or will contain) pvs files.
