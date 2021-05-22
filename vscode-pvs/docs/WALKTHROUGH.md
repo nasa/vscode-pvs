@@ -1,23 +1,23 @@
 # Primer on Visual Studio Code (VSCode)
 `Visual Studio Code` has three main components:
-- `Editor windows`, located centrally in the user interface.
+- `Editor panel`, located centrally in the user interface.
 - `Explorer panel`, located on the side of the user interface.
 - `Output and Debug panels`, located at the bottom of the user interface.
 
-`Editor windows` show text/code editors and integrated consoles.
-- Editors and consoles can be dragged and organized in different layouts, e.g., to create a split view.
+The `Editor panel` shows text/code editors and integrated consoles.
+- Editors and consoles can be dragged and organized in different layouts, e.g., to create split views.
 - Editors have a minimap on the side, that gives an overview of the entire text/code.
 - A toolbar located above the editor windows provides convenient access to frequent commands.
 - Ctrl+F / Command+F can be used to search strings in the active editor.
 
-`Explorer panel` shows information in the form of a tree view, akin to file browsers.
+The `Explorer panel` shows information in the form of a tree view, akin to file browsers.
 - An `activity bar` is located on the side, and contains toggle buttons for activating explorer functions.
 - The `file button` activates File Explorer, which shows the list of files in the current workspace.
 - The `search button` activates a Search panel, that allows to search text in all files in the current workspace.
 - The `extensions button` activates the extension manager, which shows the list of extensions currently installed in VSCode, and allows to search and install new extensions from the marketplace.
 - The `pvs button` opens pvs-related components. The default component shown in the view is Workspace Explorer, which presents the list of theories and theorems defined in the active workspace. Two additional components will become visible when proving a theorem: PVS Proof Explorer and PVS Proof Mate.
 
-`Output and Debug panels` show information about warnings/errors, and an integrated terminal for running shell commands.
+The `Output and Debug panels` show information about warnings/errors, and an integrated terminal for running shell commands.
 
 <br>
 
