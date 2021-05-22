@@ -47,7 +47,9 @@ When a pvs file is open in the editor, the editor will automatically enable pvs 
 - Right click on a term to access functions such as "go-to definition" and "peek definitionn"
 - TAB autocompletes terms and keywords while editing
 - Snippets are available for common constructs, e.g., if-then-else
+- Math symbols are entered using latex-style shortcuts (e.g., \forall).
 - Inline actionable commands are available, to typecheck theories and prove theorems
+- Parsing is automatically performed while the user enters the specification.
 
 ## Typechecking theories
 To typecheck a theory, click the `build` icon in the editor toolbar.
@@ -62,17 +64,25 @@ To prove a theorem, click the actionable command `prove` displayed inline above 
 - `Proof Explorer` shows the proof tree, and provides an integrated toolbar with a `play button` for re-running the proof, `forward button` for stepping proof commands, and a `back button` for rewinding (i.e., undoing) proof commands. Right click on proof commands to access additional functionalities, e.g., `edit` proof command, `cut/paste` proof commands, `fast forward` to a proof command.
 - `Proof Mate` is useful when repairing proofs. A `sketchpad` collects proof branches that become detached from the proof tree, to facilitate inspection of problems and re-use of proof commands. `Hints` about proof commands that could be used to make progress with the proof are also displayed (the heuristics implemented in the command suggester are really simple at the moment, don't expect too much for now!)
 
-To re-run all proofs and generate a summary file that shows the proof status, click the `play button` located in Workspace Explorer, next to the theory name.
+To `re-run all proofs` and generate a summary file that shows the proof status, click the `play button` located in Workspace Explorer, next to the theory name.
+
+To evaluate a pvs specification in the PVSio evaluation environment, click on the play/debug icon in the editor toolbar.
+
 
 <br>
 
-# Advanced functions
-- To `evaluate` an executable pvs specification, start pvsio with the play/debug icon in the toolbar.
+# Extras
 
-- To create `interactive prototypes` based on executable pvs specifications, click on the `prototype` icon in the editor toolbar. Example pvs specifications and prototypes can be downloaded at [https://github.com/pvsioweb/examples](https://github.com/pvsioweb/examples)
+## Plotting functions
+Plot diagrams can be created for pvs expressions that return a list of numbers.
+- To generate a plot diagram, select an expression in the pvs file open in the editor, right click on the selected expression, and choose `Plot Expression` from the menu.
 
-- To `plot` a pvs expression, select an expression in the pvs file, right click, and choose `Plot Expression`. For now, plotting is limited to expressions returning a list of numbers.
+## Creating Interactive prototypes
+Interactive prototypes can be created based on executable pvs specifications.
+- To create an interactive prototype, open an executable pvs specification, click on the `prototype icon` in the editor toolbar to launch the PVSio-web prototype builder and simulator. Examples of interactive prototypes can be downloaded at [https://github.com/pvsioweb/examples](https://github.com/pvsioweb/examples)
 
-- To `search NASALib`, use the magnifying glass icon in the toolbar. NASALib is an extensive library created and maintained by the Formal Methods Team at NASA Langley, it includes thousands of definitions and proved theorems.
+## Searching NASALib
+VSCode-PVS provides a simplified interface to search definitions and lemmas in NASALib, an extensive library created and maintained by the Formal Methods Team at NASA Langley.
+- To search NASALib, use the `magnifying glass icon` in the editor toolbar.
 
 
