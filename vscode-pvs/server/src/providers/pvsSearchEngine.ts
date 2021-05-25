@@ -42,6 +42,7 @@ import { PvsLanguageServer } from "../pvsLanguageServer";
 import { SearchResult } from "../common/serverInterface";
 import * as fsUtils from "../common/fsUtils";
 import * as path from 'path';
+import * as colorUtils from '../common/colorUtils';
 
 export class PvsSearchEngine {
     protected connection: Connection;
@@ -64,18 +65,68 @@ export class PvsSearchEngine {
 			if (search) {
 				const res: SearchResult[] = [];
 				const ans: string = search.toLocaleString();
-				const matchContent: RegExpMatchArray = /\*\*\*[\w\W\n]+/g.exec(ans);
-				if (matchContent) {
-					const elems: string[] = matchContent[0].split("***");
-					for (let i = 0; i < elems.length; i++) {
-						const subfolderInfo: string[] = elems[i].trim().split("\n");
-						if (subfolderInfo && subfolderInfo.length > 1) {
-							const subfolder: string = subfolderInfo[0].trim();
-							for (let j = 1; j < subfolderInfo.length; j++) {
-								const data: string = subfolderInfo[j];
-								const sep: number = data.indexOf(":");
-								const fname: string = data.substring(0, sep);
-								let content: string = data.substring(sep + 1);
+				if (colorUtils.isPlainText(ans)) {
+					// old nasalib scripts
+					const txt: string = ans;
+					const matchContent: RegExpMatchArray = /\*\*\*[\w\W\n]+/g.exec(txt);
+					if (matchContent) {
+						const elems: string[] = matchContent[0].split("***");
+						for (let i = 0; i < elems.length; i++) {
+							const subfolderInfo: string[] = elems[i].trim().split("\n");
+							if (subfolderInfo && subfolderInfo.length > 1) {
+								const subfolder: string = subfolderInfo[0].trim();
+								for (let j = 1; j < subfolderInfo.length; j++) {
+									const data: string = subfolderInfo[j];
+									const sep: number = data.indexOf(":");
+									const fname: string = data.substring(0, sep);
+									let content: string = data.substring(sep + 1);
+									let line: number = 1;
+									// group 1 is line number, group 2 is content
+									const matchLine: RegExpMatchArray = /\s*(\d+)\:([\w\W\s]+)/g.exec(content);
+									if (matchLine && matchLine.length > 2) {
+										content = matchLine[2];
+										line = +matchLine[1];
+									}
+									const searchResult: SearchResult = {
+										fileName: fsUtils.getFileName(fname),
+										fileExtension: fsUtils.getFileExtension(fname),
+										contextFolder: path.join(nasalibPath, subfolder),
+										fileContent: content,
+										line
+									};
+									res.push(searchResult);
+								}
+							}
+						}
+					}
+				} else {
+					// new nasalib scripts
+					let txt: string = colorUtils.getPlainText(ans);
+					txt = txt.replace(/.*\s+Finding\.\.\.\s*\[NOT FOUND\]\s/g, ""); // remove not found
+					const regex: RegExp = new RegExp(/.*\s+Finding\.\.\.\s*\[FOUND\]\s/g);
+					const boundaries: { from: number, to: number }[] = [];
+					let matchContent: RegExpMatchArray = null;
+					while (matchContent = regex.exec(txt)) {
+						if (matchContent.length && matchContent[0]) {
+							boundaries.push({
+								from: boundaries.length ? boundaries[boundaries.length - 1].to : 0,
+								to: matchContent.index
+							});
+						}
+					}
+					for (let i = 0; i < boundaries.length; i++) {
+						const info: string = txt.substring(boundaries[i].from, boundaries[i].to);
+						const match: RegExpMatchArray = /(.*)\s+Finding\.\.\.\s*\[FOUND\]\s([\w\W\s]+)/g.exec(info);
+						if (match && match.length > 2 && match[1] && match[2]) {
+							const subfolder: string = match[1].trim();
+							const data: string = match[2].trim();
+
+							const lines: string[] = data.split("\n");
+							for (let l in lines) {
+								const sep: number = lines[l].indexOf(":");
+								const fname: string = lines[l].substring(0, sep);
+								let content: string = lines[l].substring(sep + 1);
+
 								let line: number = 1;
 								// group 1 is line number, group 2 is content
 								const matchLine: RegExpMatchArray = /\s*(\d+)\:([\w\W\s]+)/g.exec(content);
@@ -95,6 +146,7 @@ export class PvsSearchEngine {
 						}
 					}
 				}
+
 				// console.log(res);
 				return res;
 			}
