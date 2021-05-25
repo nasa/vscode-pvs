@@ -1,0 +1,54 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% @theory: helloworld
+% @author: pmasci
+% @date: Wed, 23 Sep 2020 16:21:52 GMT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+helloworld: THEORY
+  BEGIN
+
+    % utility function, computes the absolute value of a number
+    abs (x: real): real = IF x > 0 THEN x ELSE -x ENDIF
+
+    always_positive: THEOREM
+      FORALL (x: real): abs(x) >= 0
+
+    always_negative: THEOREM
+      FORALL (x: negreal): x < 0
+
+    foo: LEMMA
+      true
+
+    % Computes the square root of a non-negative real number
+    % by recursively applying Newton's method n times
+    sqrt_newton(a: nnreal, n: nat): RECURSIVE posreal =
+      IF n = 0 THEN a + 1
+      ELSE LET r = sqrt_newton(a, n - 1) 
+            IN (1/2) * (r + a/r)
+      ENDIF
+    MEASURE n + 1
+
+    % sqrt upper bound
+    sqrt_ub(a: nnreal): posreal = sqrt_newton(a, 10)
+
+    % sqrt lower bound
+    sqrt_lb(a: nnreal): nnreal = a / sqrt_newton(a, 10)
+
+    sqrt2: LEMMA
+      sqrt_lb(2) < sqrt_ub(2)
+
+    sqrt_lb2: LEMMA
+      2/3 <= 1 / sqrt_lb(2)
+
+    dummy: LEMMA 1 = 0
+
+    % utility function, returns a list with the output of sqrt_newton
+    % the i-th element of the list is the output produced by sqrt_newton at iteration i
+    plot_newton(a: nnreal, n: posnat): RECURSIVE list[real] =
+			IF n <= 1 THEN (: sqrt_newton(a, n) :)
+			ELSE plot_newton(a, n - 1) o (: sqrt_newton(a, n) :) ENDIF
+    MEASURE n
+
+		% this expression can be rendered using the plot functionality provided by vscode-pvs
+		plot_sqrt2: list[real] = plot_newton(2, 5)
+
+  END helloworld
