@@ -11,7 +11,7 @@ The environment redefines the way developers interact with PVS, and better align
 <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png" width="800">
 
 ## Latest version
-[vscode-pvs-1.0.50](releases/vscode-pvs-1.0.50.vsix)
+[vscode-pvs-1.0.51](releases/vscode-pvs-1.0.51.vsix)
 
 
 ## Documentation
