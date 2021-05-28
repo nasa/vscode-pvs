@@ -80,7 +80,7 @@ export function isTccFormula (desc: PvsFormula): boolean {
 export const simpleImportingRegexp: RegExp = /\bIMPORTING\s+((?:(?:[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)+)(?:\s*,\s*(?:[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)+)*)/gi;
 
 // group 1 is the list of comma-separated values contained in the expression 
-export const listRegexp: RegExp = /^\s*\(:([\s\w\,\/]*):\)/g;
+export const listRegexp: RegExp = /^\s*\(:([\s\+?\-?\d\/\,]*):\)/g;
 
 // generic regular expression for symbol names, group 1 is the symbol name
 export const symbolRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)/g;
