@@ -32,7 +32,7 @@ The typical workflow in VSCode-PVS is as follows:
 
 ## Opening a pvs workspace
 A pvs workspace is a folder that contains (or will contain) pvs files.
-- To open a pvs workspace, click the `open folder` icon located in the editor toolbar. A window will open that allows to select an existing folder or create a new folder that will be used as pvs workspace.
+- To open a pvs workspace, click the `open folder` icon located in the editor toolbar. A window will pop up, that allows to browse the file system and select an existing folder or create a new folder that will be used as pvs workspace.
 
 Once a workspace is open, switch to `Workspace Explorer`, to view the list of theories/theorems defined in the active workspace.
 - Click on a theory/theorem to open the corresponding pvs file in the editor and jump to the line where the theory/theorem is defined.
@@ -40,12 +40,12 @@ Once a workspace is open, switch to `Workspace Explorer`, to view the list of th
 - The `...` symbol at the top of PVS Workspace Explorer is a menu. You can use it to trigger actions on pvs files (e.g., create a new pvs file, view prelude file), and pvs installation and settings (e.g., update/install nasalib and pvs).
 
 ## Defining/Editing theories and theorems
-When a pvs file is open in the editor, the editor will automatically enable pvs syntax highlighting.
-- Hover the mouse on a term to show a tooltip with the definition.
-- Right click on a term to access functions such as "go-to definition" and "peek definitionn"
+When a pvs file is open in the editor, the editor will automatically highlight keywords and library functions.
+- Hover the mouse on a term to view the definition.
+- Right click on a term to access more functions, e.g., "go-to definition"
 - TAB autocompletes terms and keywords while editing
-- Snippets are available for common constructs, e.g., if-then-else
 - Math symbols are entered using latex-style shortcuts (e.g., \forall).
+- Snippets are available for common constructs, e.g., if-then-else
 - Inline actionable commands are available, to typecheck theories and prove theorems
 
 ## Typechecking theories
@@ -70,15 +70,15 @@ To evaluate a pvs specification in the PVSio evaluation environment, click on th
 
 # Extras
 
-## Plotting functions
+## Plot Diagrams
 Plot diagrams can be created for pvs expressions that return a list of numbers.
 - To generate a plot diagram, select an expression in the pvs file open in the editor, right click on the selected expression, and choose `Plot Expression` from the menu.
 
-## Creating Interactive prototypes
+## Rapid Prototyping
 Interactive prototypes can be created based on executable pvs specifications.
 - To create an interactive prototype, open an executable pvs specification, click on the `prototype icon` in the editor toolbar to launch the PVSio-web prototype builder and simulator. Examples of interactive prototypes can be downloaded at [https://github.com/pvsioweb/examples](https://github.com/pvsioweb/examples)
 
-## Searching NASALib
+## Search NASALib
 VSCode-PVS provides a simplified interface to search definitions and lemmas in NASALib, an extensive library created and maintained by the Formal Methods Team at NASA Langley.
 - To search NASALib, use the `magnifying glass icon` in the editor toolbar.
 
