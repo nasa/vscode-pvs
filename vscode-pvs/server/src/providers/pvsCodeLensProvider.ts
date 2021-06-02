@@ -211,6 +211,47 @@ export class PvsCodeLensProvider {
                     }       
                 }
             }
+
+            // plot-expression
+            if (fileExtension === ".pvs") {
+                const regexs: RegExp[] = [
+                    new RegExp(utils.linearPlotRegexp),
+                    new RegExp(utils.linearPlotSimpleRegexp),
+                    new RegExp(utils.scatterPlotRegexp)
+                ];
+                for (let i = 0; i < regexs.length; i++) {
+                    while (match = regexs[i].exec(content)) {
+                        if (match.length > 1 && match[1]) {
+                            const formulaName: string = match[1];
+
+                            // the following can be done in the resolve if necessary for performance reasons
+                            const docUp: string = content.slice(0, match.index + formulaName.length);
+                            const lines: string[] = docUp.split("\n");
+                            const line: number = lines.length - 1;
+                            const character: number = lines[lines.length - 1].indexOf(match[1]);
+                            
+                            if (fileName) {
+                                const args: { path: string, expr: string } = {
+                                    path: document.uri,
+                                    expr: formulaName
+                                };
+                                const range: Range = {
+                                    start: { line, character }, 
+                                    end: { line, character: character + formulaName.length }
+                                };
+                                codeLens.push({
+                                    range,
+                                    command: {
+                                        title: "plot-expression",
+                                        command: "vscode-pvs.plot-expression",
+                                        arguments: [ args ]
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            }
             return Promise.resolve(codeLens);
         }
         return Promise.resolve([]);

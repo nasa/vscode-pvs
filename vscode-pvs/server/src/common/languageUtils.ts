@@ -80,34 +80,140 @@ export function isTccFormula (desc: PvsFormula): boolean {
 export const simpleImportingRegexp: RegExp = /\bIMPORTING\s+((?:(?:[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)+)(?:\s*,\s*(?:[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)+)*)/gi;
 
 // group 1 is the list of comma-separated values contained in the expression 
-export const listRegexp: RegExp = /^\s*\(:([\s\+?\-?\d\/\,]*):\)/g;
+export const listRegexp: RegExp = /\(:([\(\)\s\+\-\w\/\,\.]*):\)/g;
+
+// generic regular expression for recognizing tuples
+export const tupleRegExp: RegExp = /\(([\(\)\s\+\-\w\/\,\:\#\.]*)\)/g;
+
+// generic regular expressions for recognizing plottable expression series
+export const linearPlotRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*\[\s*list\s*\[\s*(?:real|int|rat|nat)\s*\](?:\,\s*list\s*\[\s*(?:real|int|rat|nat)\s*\])*\s*\]\s*=/g;
+export const linearPlotSimpleRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*list\s*\[\s*(?:real|int|rat|nat)\s*\]\s*=/g;
+
+// generic regular expression for recognizing plottable expression series
+export const scatterPlotRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*list\s*\[\s*\[\s*(?:real|int|rat|nat)\s*,\s*(?:real|int|rat|nat)\s*\]\s*\]\s*=/g;
 
 // generic regular expression for symbol names, group 1 is the symbol name
 export const symbolRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)/g;
 
+/**
+ * Utility function, checks if a given pvs expression is a list
+ */
 export function isListExpr (expr: string): boolean {
-	if (expr) {
+	if (expr?.trim().startsWith("(:")) {
 		return new RegExp(listRegexp).test(expr);
 	}
 	return false;
 }
-export function listExpr2doubleArray (data: string): number[] {
-	const res: number[] = []
-	const match: RegExpMatchArray = new RegExp(listRegexp).exec(data);
-	if (match && match.length > 1) {
-		const values: string[] = match[1]?.split(",");
-		for (let i = 0; i < values.length; i++) {
-			const val: string = values[i]?.trim();
-			if (val && val.includes("/")) {
-				const elems: string[] = val.split("/");
-				const d1: number = +elems[0];
-				const d2: number = +elems[1];
-				res.push(d1/d2);
-			} else {
-				res.push(+val);
-			}
-		}
+/**
+ * Utility function, checks if a given pvs expression is a list
+ */
+export function isTupleExpr (expr: string): boolean {
+	if (expr?.trim().startsWith("(")) {
+		return new RegExp(tupleRegExp).test(expr);
 	}
+	return false;
+}
+/**
+ * Utility function, checks if a given pvs expression contains tuple of real numbers
+ */
+// export function containsRealTuples (expr: string): boolean {
+// 	if (expr) {
+// 		return new RegExp(realTupleRegExp).test(expr);
+// 	}
+// 	return false;
+// }
+
+/**
+ * Plot data structures
+ */
+export type PlotMode = "markers" | "lines" | "lines+markers";
+export interface PlotData {
+    x: number[], 
+    y: number[],
+    mode: PlotMode,
+    name?: string
+};
+
+/**
+ * Utility function, tries to convert a pvs list expression into plot data.
+ */
+export function list2PlotData (datapoints: string, opt?: { mode?: PlotMode, x?: string[], seriesId?: number }): PlotData {
+    const res: PlotData = {
+        x: [],
+        y: [],
+        mode: opt?.mode || "lines+markers"
+    };
+    function processSeries (desc: { xSeries: string[], ySeries: string[] }): void {
+        for (let i = 0; i < desc?.ySeries?.length; i++) {
+            const xelem: string = i < desc.xSeries?.length ? desc.xSeries[i] : `${i}`;
+            const yelem: string = desc.ySeries[i];
+            let x: number = xelem?.includes("/") ?
+                +xelem.split("/")[0] / +xelem.split("/")[1] 
+                    : +xelem;
+            let y: number = yelem?.includes("/") ?
+                +yelem.split("/")[0] / +yelem.split("/")[1] 
+                    : +yelem;
+            res.x.push(x);
+            res.y.push(y);
+            res.name = `series ${isNaN(+opt?.seriesId) ? 1 : +opt.seriesId}`
+        }
+    } 
+	const match: RegExpMatchArray = new RegExp(listRegexp).exec(datapoints);
+	if (match && match.length > 1) {
+        const dataset: string = match[1];
+        let xSeries: string[] = [];
+        let ySeries: string[] = [];
+        if (dataset.includes(")")) {
+            // list of tuples, use scatter plot
+            res.mode = "markers";
+            const tuples: string[] = dataset.split(/\s*\),\s*\(/).map((elem: string) => {
+                return elem?.replace(/[\(\)]/g, "");
+            });
+            for (let i = 0; i < tuples.length; i++) {
+                const pair: string[] = tuples[i].split(",");
+                if (pair.length > 1) {
+                    xSeries.push(pair[0]);
+                    ySeries.push(pair[1]);
+                }
+            }
+        } else {
+            // assume this is a list of numbers
+            xSeries = opt?.x;
+            ySeries = dataset?.split(",") || null;
+        }
+        processSeries({ xSeries, ySeries });
+	}
+	return res;
+}
+/**
+ * Utility function, tries to convert a pvs tuple of lists of real numbers into plot data.
+ * The first element of the tuple is treated as list of x coordinates.
+ * The other elements are data points belonging to different series.
+ */
+export function tuple2PlotData (data: string, opt?: { mode?: PlotMode }): PlotData[] {
+    opt = opt || {};
+	const res: PlotData[] = [];
+	const regexp: RegExp = new RegExp(tupleRegExp);
+    let match: RegExpMatchArray = regexp.exec(data);
+    let id: number = 1;
+    if (match?.length > 1 && match[1]) {
+        const sep: number = match[1].indexOf(":)");
+
+        // get labels
+        const x: string[] = match[1].substring(0, sep).replace("(:", "").split(",");
+
+        // get series
+        const series: string = match[1].substring(sep + 1);
+        const regexpSeries: RegExp = new RegExp(listRegexp);
+        let matchSeries: RegExpMatchArray = null;
+        while (matchSeries = regexpSeries.exec(series)) {
+            if (matchSeries?.length > 1 && matchSeries[1]) {
+                const datapoints: string = `(: ${matchSeries[1]} :)`;
+                const plot_i: PlotData = list2PlotData(datapoints, { ...opt, x, seriesId: id++ });
+                res.push(plot_i);
+            }
+        }
+    }
 	return res;
 }
 

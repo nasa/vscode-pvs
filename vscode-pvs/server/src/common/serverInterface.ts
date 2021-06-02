@@ -496,7 +496,7 @@ export const serverEvent = {
 	saveProofResponse: "pvs.response.save-proof",
 	showProofLiteResponse: "pvs.response.show-prooflite",
 	proofCommandResponse: "pvs.response.proof-command",
-	evalExpressionResponse: "pvs.response.eval-expression",
+	// evalExpressionResponse: "pvs.response.eval-expression",
 	evaluatorCommandResponse: "pvs.response.evaluator-command",
 	parseFileResponse: "pvs.response.parse-file",
 	listContextResponse: "pvs.response.list-context",

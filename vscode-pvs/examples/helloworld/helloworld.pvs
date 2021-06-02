@@ -51,4 +51,38 @@ helloworld: THEORY
 		% this expression can be rendered using the plot functionality provided by vscode-pvs
 		plot_sqrt2: list[real] = plot_newton(2, 5)
 
+    %--------------------------------------------
+    %% First example plots a list of ordered pairs
+    %  as a scatter plot
+    %--------------------------------------------
+    scatterplot: list[[real, real]] = (: (1/2, 2), (2, -1), (3, -2/3) :)
+
+    %--------------------------------------------
+    %% Second example plots a data series
+    %  as a linear plot
+    %--------------------------------------------
+    series1: list[real] = (: 1, -1 , -2/3 :)
+
+    %--------------------------------------------
+    %% Third example of wanting to plot a tuple of
+    %  two lists: the first one represents the
+    %  horizontal coordinates, the second list
+    %  represents the vertical coordinates
+    %--------------------------------------------
+    series2: [ list[real], list[real] ] = ((: 1/2, 2, 3 :), (: 1, -1, -2/3 :))
+
+    %--------------------------------------------
+    %% Fourth example, plots a tuple of
+    %  four lists: the first one represents the
+    %  horizontal coordinates, the second and third
+    %  represent the vertical coordinates of two
+    %  different series
+    %--------------------------------------------
+    multiseries: [ list[real], list[real], list[real], list[real] ] = (
+      (: 1/2 , 2 , 3 :),  % x datapoints
+      (: 1, -1 , -2/3 :), % y1 datapoints
+      (: 0, -4.1 , -3 :), % y2 datapoints
+      (: 5, 1 , -2 :)  % y3 datapoints
+    )
+
   END helloworld
