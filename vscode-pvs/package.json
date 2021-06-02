@@ -236,7 +236,10 @@
 				"title": "Search NASALib",
 				"enablement": "pvs-server-active == true && nasalib-present",
 				"category": "pvs",
-				"icon": "$(search-view-icon)"
+				"icon": {
+					"light": "icons/svg-nasa-meatball-icon.svg",
+					"dark": "icons/svg-nasa-meatball-icon.svg"
+				}
 			},
 			{
 				"command": "vscode-pvs.x-show-proof",
