@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.51",
+	"version": "1.0.52-beta",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -244,8 +244,8 @@
 				"enablement": "pvs-server-active == true && proof-explorer.visible",
 				"category": "pvs",
 				"icon": {
-					"light": "icons/tree-black-icon.png",
-					"dark": "icons/tree-white-icon.png"
+					"light": "icons/svg-tree-black-icon.svg",
+					"dark": "icons/svg-tree-white-icon.svg"
 				}
 			},
 			{
@@ -346,8 +346,8 @@
 				"enablement": "pvs-server-active == true && !in-checker",
 				"category": "pvs",
 				"icon": {
-					"dark": "icons/open-workspace.png",
-					"light": "icons/open-workspace.png"
+					"dark": "icons/svg-open-workspace.svg",
+					"light": "icons/svg-open-workspace.svg"
 				}
 			},
 			{
@@ -483,8 +483,8 @@
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
-					"light": "icons/cube-black-icon.png",
-					"dark": "icons/cube-white-icon.png"
+					"light": "icons/svg-cube-black-icon.svg",
+					"dark": "icons/svg-cube-white-icon.svg"
 				}
 			},
 			{
