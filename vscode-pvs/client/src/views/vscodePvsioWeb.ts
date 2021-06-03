@@ -120,7 +120,7 @@ const htmlTemplate: string = `
         if (builder && message && message.command) {
             switch (message.command) {
                 case "activate": {
-                    const params = { parent: "pvsio-web", ...message.data };
+                    const params = { parent: "#pvsio-web", ...message.data };
                     await builder.activate(params);
 
                     // Install handlers necessary to forward to vscode all events triggered by pvsioweb
@@ -663,7 +663,7 @@ export class VSCodePvsioWeb {
             this.panel = this.panel || window.createWebviewPanel(
                 'pvsioweb', // Identifies the type of the webview. Used internally
                 this.title, // Title of the panel displayed to the user
-                ViewColumn.Beside, // Editor column to show the new webview panel in.
+                ViewColumn.Active, // Editor column to show the new webview panel in.
                 {
                     enableScripts: true,
                     retainContextWhenHidden: true

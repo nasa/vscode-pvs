@@ -62,7 +62,7 @@ import { VSCodePvsPackageManager } from "./providers/vscodePvsPackageManager";
 import { VSCodePvsPlotter } from "./views/vscodePvsPlotter";
 import { VSCodePvsSearch } from "./views/vscodePvsSearch";
 import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
-import { VSCodePvsXTerm } from "./views/vscodePvsXTerm";
+import { StartXTermEvaluatorRequest, VSCodePvsXTerm } from "./views/vscodePvsXTerm";
 import { colorText, PvsColor } from "./common/colorUtils";
 import path = require("path");
 
@@ -841,31 +841,43 @@ export class EventsDispatcher {
         }));
 
         context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-web", async (resource: string | { path: string } | { contextValue: string }) => {
-            // TODO
-            const success: boolean = await this.xterm.onStartEvaluatorRequest();
-            // let evalSession: boolean = this.xterm.evaluatorSession();
-            // if (evalSession) {
-            //     // check if the current session corresponds to that indicated in the request
-            //     const theory: PvsTheory = this.xterm.getTheory();
-            //     const fname: string = fsUtils.desc2fname(theory);
-            //     if (fname && fname !== resource && fname !== resource["path"]) {
-            //         // await this.pvsioweb.dispose();
-            //         await this.xterm.closeSession(theory, "evaluator");
-            //         await this.xterm.onStartEvaluatorRequest();
-            //     }
-            // } else {
-            //     await this.xterm.onStartEvaluatorRequest();
-            // }
-            // evalSession = this.xterm.evaluatorSession();
-            if (success) {
-                const theory: PvsTheory = this.xterm.getTheory();
-                if (theory) {
-                    this.pvsioweb.setTheory(theory);
-                    this.pvsioweb.setTerminal(this.xterm);
-                    this.pvsioweb.reveal();
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            const fname: string = activeEditor?.document?.fileName;
+            if (fname) {
+                const contextFolder: string  = fsUtils.getContextFolder(fname);
+                const fileName: string = fsUtils.getFileName(fname);
+                const fileExtension: string = fsUtils.getFileExtension(fname);
+                const line: number = window.activeTextEditor?.selection?.active?.line || 0;
+                const fileContent: string = await fsUtils.readFile(fname);
+                const theoryName: string = fsUtils.findTheoryName(fileContent, line);
+                const req: StartXTermEvaluatorRequest = {
+                    contextFolder,
+                    theoryName,
+                    fileName,
+                    fileExtension
+                };
+                // ask the user confirmation before restarting pvs
+                const yesno: string[] = [ "Yes", "No" ];
+                const msg: string = `Start PVSio-web for theory ${theoryName}?`;
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
+                if (ans === yesno[0]) {
+                    // dispose any previous instance
+                    await this.pvsioweb.dispose();
+                    // start pvsio
+                    vscodeUtils.showInformationMessage("Loading evaluator back-end, please wait...");
+                    const success: boolean = await this.xterm.onStartEvaluatorRequest(req);
+                    if (success) {
+                        const theory: PvsTheory = this.xterm.getTheory();
+                        if (theory) {
+                            // create a new instance
+                            this.pvsioweb.setTheory(theory);
+                            this.pvsioweb.setTerminal(this.xterm);
+                            this.pvsioweb.reveal();
+                        }
+                    } else {
+                        vscodeUtils.showWarningMessage("Unable to create a new PVSio Evaluator session");
+                    }
                 }
-            } else {
-                vscodeUtils.showWarningMessage("Unable to create a new PVSio Evaluator session");
             }
         }));
         // pvsio-evaluator

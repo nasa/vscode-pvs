@@ -4,7 +4,6 @@ import * as colorUtils from './common/colorUtils';
 import { pvsColorTheme } from './common/languageKeywords';
 import { xTermDetectColorTheme, interruptCommand, SessionType, UpdateCommandHistoryData, XTermEvent } from './common/xtermInterface';
 import * as Backbone from 'backbone';
-import * as Handlebars from 'handlebars';
 import {
     checkPar, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, 
     proverCommands, splitCommands

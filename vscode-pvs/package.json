@@ -1576,8 +1576,8 @@
 		}
 	},
 	"dependencies": {
-		"typescript": "^4.2.4",
-		"vsce": "^1.88.0"
+		"typescript": "^4.3.2",
+		"vsce": "^1.91.0"
 	},
 	"devDependencies": {
 		"@types/chai": "^4.2.15",
