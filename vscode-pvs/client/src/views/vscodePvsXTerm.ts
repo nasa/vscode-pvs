@@ -894,6 +894,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             const bootstrapJsOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js'));
             const bootstrapCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/css/bootstrap.min.css'));
             
+            const backboneOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/backbone/backbone-min.js'));
+            const underscoreOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/underscore/underscore-min.js'));
+            const handlebarsOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/handlebars/dist/handlebars.min.js'));
+    
             const jqueryOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/jquery/dist/jquery.min.js'));
             const fontawesomeCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/font-awesome/css/font-awesome.min.css'));
 
@@ -907,7 +911,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             ];
             const js: Uri[] = [
                 this.panel.webview.asWebviewUri(jqueryOnDisk),
+                this.panel.webview.asWebviewUri(handlebarsOnDisk),
                 this.panel.webview.asWebviewUri(bootstrapJsOnDisk),
+                this.panel.webview.asWebviewUri(underscoreOnDisk),
+                this.panel.webview.asWebviewUri(backboneOnDisk),
                 this.panel.webview.asWebviewUri(xtermPvsJsOnDisk)
             ];
 

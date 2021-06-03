@@ -4,6 +4,7 @@ import * as colorUtils from './common/colorUtils';
 import { pvsColorTheme } from './common/languageKeywords';
 import { xTermDetectColorTheme, interruptCommand, SessionType, UpdateCommandHistoryData, XTermEvent } from './common/xtermInterface';
 import * as Backbone from 'backbone';
+// import * as Handlebars from 'handlebars';
 import {
     checkPar, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, 
     proverCommands, splitCommands
@@ -979,10 +980,11 @@ const tooltipTemplate: string = `<div>
 const tooltipStyle: string = `<style>
 .tooltip.show {
     opacity:0.9 !important;
+    left:10px !important;
 }
 .tooltip-inner {
-    max-height: 50px; 
-    min-width: 300px;
+    max-height: 18px; 
+    max-width: 300px;
     overflow:auto;
     font-size:10px;
     font-family:Menlo, Monaco, monospace;
@@ -990,6 +992,8 @@ const tooltipStyle: string = `<style>
     cursor:default;
     border: 1px solid;
     white-space: nowrap;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 .arrow::before {
     border-bottom-color: white !important;
@@ -1390,14 +1394,14 @@ export class Autocomplete extends Backbone.Model {
             cursor.tooltip({
                 trigger: "manual hover click",
                 title: tooltip,
-                placement: "top",
+                placement: "right-end",
                 html: true,
                 boundary: "viewport",
                 rootBoundary: "document",
                 container: "body",
-                fallbackPlacements: ['top', 'bottom'],
+                fallbackPlacements: ['right-end', 'top-end', 'bottom-end'],
                 popperConfig: {
-                    placement: "top-end"
+                    placement: "right-end"
                 }
             }).tooltip('show');
             if (this.sessionType === "prover" && opt.top !== undefined && opt.left !== undefined && $(".tooltip-inner")[0]) {
