@@ -263,8 +263,8 @@
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
 				"category": "pvs",
 				"icon": {
-					"dark": "icons/play-circle-icon.png",
-					"light": "icons/play-circle-icon.png"
+					"dark": "icons/svg-play-circle-icon.svg",
+					"light": "icons/svg-play-circle-icon.svg"
 				}
 			},
 			{
@@ -279,8 +279,8 @@
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem == workspace-overview",
 				"category": "pvs",
 				"icon": {
-					"dark": "icons/play-circle-icon.png",
-					"light": "icons/play-circle-icon.png"
+					"dark": "icons/svg-play-circle-icon.svg",
+					"light": "icons/svg-play-circle-icon.svg"
 				}
 			},
 			{
@@ -433,11 +433,11 @@
 			{
 				"command": "vscode-pvs.prove-formula",
 				"title": "Prove Formula",
-				"enablement": "pvs-server-active == true && !autorun",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
-					"dark": "icons/play-circle-icon.png",
-					"light": "icons/play-circle-icon.png"
+					"dark": "icons/svg-play-circle-icon.svg",
+					"light": "icons/svg-play-circle-icon.svg"
 				}
 			},
 			{
@@ -459,8 +459,8 @@
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
-					"dark": "icons/play-circle-icon.png",
-					"light": "icons/play-circle-icon.png"
+					"dark": "icons/svg-play-circle-icon.svg",
+					"light": "icons/svg-play-circle-icon.svg"
 				}
 			},
 			{
@@ -469,8 +469,8 @@
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
-					"dark": "icons/play-circle-icon.png",
-					"light": "icons/play-circle-icon.png"
+					"dark": "icons/svg-play-circle-icon.svg",
+					"light": "icons/svg-play-circle-icon.svg"
 				}
 			},
 			{
@@ -511,8 +511,8 @@
 				"title": "Execute Subtree",
 				"enablement": "pvs-server-active == true",
 				"icon": {
-					"dark": "icons/play-circle-icon.png",
-					"light": "icons/play-circle-icon.png"
+					"dark": "icons/svg-play-circle-icon.svg",
+					"light": "icons/svg-play-circle-icon.svg"
 				},
 				"category": "pvs"
 			},
@@ -674,8 +674,8 @@
 				"command": "proof-explorer.back",
 				"title": "Back one step",
 				"icon": {
-					"dark": "icons/prev-icon.png",
-					"light": "icons/prev-icon.png"
+					"dark": "icons/svg-prev-icon.svg",
+					"light": "icons/svg-prev-icon.svg"
 				},
 				"enablement": "in-checker == true",
 				"category": "pvs"
@@ -684,8 +684,8 @@
 				"command": "proof-explorer.forward",
 				"title": "Step proof",
 				"icon": {
-					"dark": "icons/next-icon.png",
-					"light": "icons/next-icon.png"
+					"dark": "icons/svg-next-icon.svg",
+					"light": "icons/svg-next-icon.svg"
 				},
 				"enablement": "in-checker == true",
 				"category": "pvs"
@@ -705,8 +705,8 @@
 				"title": "️️Pause proof",
 				"enablement": "in-checker == true",
 				"icon": {
-					"dark": "icons/pause-icon.png",
-					"light": "icons/pause-icon.png"
+					"dark": "icons/svg-pause-icon.svg",
+					"light": "icons/svg-pause-icon.svg"
 				},
 				"category": "pvs"
 			},
