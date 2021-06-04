@@ -304,6 +304,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             // The following handler is registered here because proof commands may originate from proof-explorer.
             // This handler will be replaced by the one in sendText as soon as a sendText is performed.
             this.client.onRequest(serverEvent.proofCommandResponse, (data: ProofCommandResponse) => {
+                // console.log("[vscode-pvs-xterm] proofCommandResponse", data);
                 this.onProverResponse(data);
             });
         });
@@ -635,9 +636,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         hints?: HintsObject, 
         mathObjects?: MathObjects
     }): void {
+        // console.log("[vscode-pvs-xterm] log", data);
         const message: XTermMessage = {
             command: XTermCommands.log,
-            data: data
+            data
         };
         this.panel?.webview?.postMessage(message);
         if (opt?.sessionEnd) {
@@ -822,7 +824,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     // Handle messages from the webview
                     this.panel.webview.onDidReceiveMessage(
                         async (message: XTermMessage) => {
-                            console.log("[vscode-xterm] Received message", message);
+                            // console.log("[vscode-xterm] Received message", message);
                             if (message) {
                                 switch (message.command) {
                                     case XTermEvent.sendText: {

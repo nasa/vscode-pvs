@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.52-gamma",
+	"version": "1.0.52-theta",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -694,8 +694,8 @@
 				"command": "proof-explorer.run-proof",
 				"title": "️️Run proof",
 				"icon": {
-					"dark": "icons/play-circle-1-icon.png",
-					"light": "icons/play-circle-1-icon.png"
+					"dark": "icons/svg-play-circle-1-icon.svg",
+					"light": "icons/svg-play-circle-1-icon.svg"
 				},
 				"enablement": "in-checker == true",
 				"category": "pvs"
