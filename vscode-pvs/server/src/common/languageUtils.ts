@@ -3583,3 +3583,13 @@ export function isInvalidCommand (result: { commentary: string | string[] }): bo
 	}
 	return false;
 }
+
+/**
+ * Internal function, forces locale settings needed by pvs to correctly handle utf-8 symbols
+ */
+ export function forceLocale (): void {
+	process.env["ACL_LOCALE"] = "en_US.UTF-8";
+	process.env["LANG"] = "LC_ALL";
+	console.log(`\nACL_LOCALE=${process.env["ACL_LOCALE"]}`);
+	console.log(`LANG=${process.env["LANG"]}\n`);
+}

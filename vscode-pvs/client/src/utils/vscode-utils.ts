@@ -146,7 +146,7 @@ export async function previewTextDocument (name: string, content: string, opt?: 
  */
 export async function createTextDocument (desc: FileDescriptor): Promise<vscode.Uri> {
     const folder: string = desc.contextFolder || getPreviewFolder();
-    const fname: string = path.join(folder, desc.fileName);
+    const fname: string = path.join(folder, fsUtils.desc2fname(desc));
     const preview: vscode.Uri = vscode.Uri.file(fname);
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${fname}`);
 
@@ -195,10 +195,10 @@ export async function showMarkdownPreview (desc: FileDescriptor): Promise<void> 
  */
 export async function showMarkdownContent (msg: string, contextFolder?: string): Promise<void> {
     if (msg) {
-        contextFolder = os.tmpdir();
+        contextFolder = contextFolder || os.tmpdir();
         const tmp: FileDescriptor = {
-            fileName: "pvs",
-            fileExtension: ".error.log",
+            fileName: "info",
+            fileExtension: ".log",
             contextFolder: contextFolder,
             fileContent: msg
         };
@@ -820,9 +820,9 @@ export function loadPvsFileIcons (): void {
 }
 
 /**
- * Unloads pvs file icons
+ * Sets locale to utf-8
  */
- export function unloadPvsFileIcons (): void {
+export function unloadPvsFileIcons (): void {
     // workspace settings can be set only if vscode has a workspace
     if (getRootFolder()) {
         const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();

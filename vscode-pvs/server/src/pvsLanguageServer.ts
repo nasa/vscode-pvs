@@ -49,7 +49,7 @@ import {
 	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, 
 	SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, 
 	ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, SequentDescriptor, 
-	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse
+	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, StatusProofChain
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -771,7 +771,19 @@ export class PvsLanguageServer {
 	/**
 	 * Parse file request handler
 	 */
-	 async parseFileRequest (request: PvsFile, opt?: { withFeedback?: boolean }): Promise<void> {
+	async statusProofChainRequest (req: PvsFormula): Promise<void> {
+		await this.typecheckFile(req);
+		await this.generateTccsRequest(req);
+		const ans: PvsResponse = await this.pvsProxy?.statusProofChain(req);
+		const res: StatusProofChain = {
+			message: ans?.result || ans?.error?.message
+		};
+		this.connection?.sendNotification(serverRequest.statusProofChain, { req, res });
+	}
+	/**
+	 * Parse file request handler
+	 */
+	async parseFileRequest (request: PvsFile, opt?: { withFeedback?: boolean }): Promise<void> {
 		const mode: string = await this.getMode();
 		if (mode !== "lisp") {
 			return;
@@ -1789,6 +1801,9 @@ export class PvsLanguageServer {
 			});
 			this.connection?.onRequest(serverRequest.typecheckWorkspace, async (request: { contextFolder: string }) => {
 				this.typecheckWorkspaceRequest(request, { generateTCCs: true }); // async call
+			});
+			this.connection?.onRequest(serverRequest.statusProofChain, async (req: PvsFormula) => {
+				this.statusProofChainRequest(req); // async call
 			});
 			this.connection?.onRequest(serverRequest.hp2pvs, async (request: PvsFile) => {
 				this.hp2pvsRequest(request); // async call

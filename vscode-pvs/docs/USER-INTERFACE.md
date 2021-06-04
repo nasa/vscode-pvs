@@ -148,6 +148,7 @@ Frequent commands:
 - `M-x pvsio` *(start an interactive PVSio evaluator session for the theory opened in the editor)*
 - `M-x x-show-proof` *(shows the proof tree. This command is available only when a prover session is active)*
 - `M-x show-proof-summary` *(show proof summary)*
+- `M-x status-proof-chain` *(status proof chain)*
 - `M-x vpf` *(view prelude file)*
 
 Additional commands:

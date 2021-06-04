@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, ConfigurationTarget } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, ContextFolder, FileDescriptor } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, ContextFolder, FileDescriptor, StatusProofChain } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -1231,6 +1231,26 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
+	/**
+	 * Show staus proof chain
+	 */
+	async statusProofChain (desc: PvsFormula): Promise<void> {
+		if (desc && desc.theoryName && desc.formulaName && desc.fileName && desc.fileExtension) {
+			this.client.sendRequest(serverRequest.statusProofChain, desc);
+			this.client.onNotification(serverRequest.statusProofChain, (desc: { req: PvsFormula, res: StatusProofChain }) => {
+				if (desc?.res?.message) {
+					const name: string = desc.req.formulaName + ".log";
+					const content: string = desc.res.message.replace(/\n/g, "\n\n");
+					const contextFolder: string = path.join(desc.req.contextFolder, "pvsbin");
+					vscodeUtils.previewTextDocument(name, content, { contextFolder, viewColumn: ViewColumn.Beside });
+				}
+			});
+		}
+	}
+
+	/**
+	 * Show proof summary
+	 */
 	async showProofSummary (desc: PvsTheory): Promise<void> {
 		if (desc && desc.theoryName) {
 			const summaryFile: FileDescriptor = {

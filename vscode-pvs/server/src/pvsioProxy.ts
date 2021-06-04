@@ -43,7 +43,7 @@ import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import * as languageUtils from './common/languageUtils';
 import { PvsResponse } from './common/pvs-gui';
-import { isQuitCommand } from './common/languageUtils';
+import { forceLocale, isQuitCommand } from './common/languageUtils';
 
 export const pvsioResultRegExp: RegExp = /(\s*==>)?([\w\W\s]+)/g;
 
@@ -172,6 +172,7 @@ class PvsIoProcess {
 		opt = opt || {};
 		this.desc = desc;
 		this.resetData();
+		forceLocale();
 		return new Promise (async (resolve, reject) => {
 			if (this.pvsioProcess) {
 				// process already running, nothing to do

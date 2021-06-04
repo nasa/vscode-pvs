@@ -94,7 +94,10 @@ The easiest way to open PVS files and workspaces is through PVS Workspace Explor
 
 
 ### **Q13: Can I use the classic PVS Emacs hot-keys combinations?**
-Yes, you can use most of the PVS hot-keys combinations in VSCode-PVS:
+Yes, you can use most of the PVS hot-keys combinations in VSCode-PVS.
+
+Command shortcuts are initiated with the `M-x` sequence, which is obtained by pressing the `META` key and the `x` letter simultaneously. The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` (`⌥`) key.
+
 - `M-x show-tccs` *(show proof obligations for the file open in the editor)*
 - `M-x tc` *(typecheck the file open in the editor)*
 - `M-x tcp` *(typecheck the file open in the editor and re-run all proofs in the file)*
@@ -104,6 +107,7 @@ Yes, you can use most of the PVS hot-keys combinations in VSCode-PVS:
 - `M-x pri` *(prove importchain, i.e., re-run all proofs in the current theory and in the imported theories)*
 - `M-x pvsio` *(start an interactive PVSio evaluator session for the theory opened in the editor)*
 - `M-x show-proof-summary` *(show proof summary)*
+- `M-x status-proof-chain` *(status proof chain)*
 - `M-x vpf` *(view prelude file)*
 
 Additional hot-keys provided by VSCode-PVS:

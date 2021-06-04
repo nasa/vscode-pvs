@@ -970,6 +970,11 @@ export class EventsDispatcher {
                 this.proofMate.disposeView();
             }
         }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.status-proofchain", async (req: PvsFormula) => {
+            if (req && req.theoryName && req.formulaName && req.fileName && req.fileExtension) {
+                await this.workspaceExplorer.statusProofChain(req);
+            }
+        }));
 
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-proof-summary", async (resource: TheoryItem | { path: string }) => {
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);

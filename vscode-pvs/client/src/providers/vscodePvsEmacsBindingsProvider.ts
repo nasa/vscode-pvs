@@ -90,6 +90,7 @@ const cmds: string[] = [
 	"about", // show release notes
 
 	"show-hidden-formulas",
+	"status-proofchain", "spc",
 
 	"x-show-proof",
 	"x-pr", "x-prove",
@@ -134,7 +135,8 @@ export class VSCodePvsEmacsBindingsProvider {
 				fileExtension: (document) ? fsUtils.getFileExtension(document.fileName) : null,
 				contextFolder: (document) ? fsUtils.getContextFolder(document.fileName) : vscodeUtils.getRootPath(),
 				theoryName: (document) ? fsUtils.findTheoryName(document.getText(), line) : null,
-				formulaName: (document) ? fsUtils.findFormulaName(document.getText(), line) : null
+				formulaName: (document) ? fsUtils.findFormulaName(document.getText(), line) : null,
+				line
 			};
 			switch (userInput) {
 				case "add-pvs-library": {
@@ -185,6 +187,11 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "pr":
 				case "prove": {
 					commands.executeCommand('vscode-pvs.prove-formula', desc);
+					break;
+				}
+				case "status-proofchain":
+				case "spc": {
+					commands.executeCommand('vscode-pvs.status-proofchain', desc);
 					break;
 				}
 				case "jpr":

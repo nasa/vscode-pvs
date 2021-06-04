@@ -70,10 +70,10 @@ export class PvsCodeLensProvider {
                             
                         const docUp: string = content.slice(0, match.index + theoryName.length);
                         const lines: string[] = docUp.split("\n");
-                        const line: number = lines.length - 1;// + lineOffset;
+                        const line: number = lines.length - 1;
                         const character: number = lines[lines.length - 1].indexOf(theoryName);
                         
-                        const args: PvsTheory = {
+                        const theory: PvsTheory = {
                             fileName,
                             fileExtension,
                             contextFolder,
@@ -91,7 +91,7 @@ export class PvsCodeLensProvider {
                             command: {
                                 title: "typecheck-file",
                                 command: "vscode-pvs.typecheck-file",
-                                arguments: [ args ]
+                                arguments: [ theory ]
                             }
                         });
                         codeLens.push({
@@ -99,7 +99,7 @@ export class PvsCodeLensProvider {
                             command: {
                                 title: "evaluate-in-pvsio",
                                 command: "vscode-pvs.pvsio-evaluator",
-                                arguments: [ args ]
+                                arguments: [ theory ]
                             }
                         });
                     }
@@ -121,14 +121,15 @@ export class PvsCodeLensProvider {
                         
                         let theoryName: string = fsUtils.findTheoryName(content, line);
                         if (theoryName) {
-                            const args: PvsFormula = {
+                            const formula: PvsFormula = {
                                 fileName,
                                 fileExtension,
                                 contextFolder,
                                 theoryName: (fileExtension === ".tccs") ? 
                                     theoryName.substr(0, theoryName.length - 5) // the theory name in the .tccs file ends with _TCCS
                                     : theoryName, 
-                                formulaName
+                                formulaName,
+                                line: fileExtension === ".tccs" ? line - 3 : line // -3 is necessary to take into account the header of the tcc file created by vscode-pvs
                             };
                             const range: Range = {
                                 start: { line, character }, 
@@ -139,7 +140,7 @@ export class PvsCodeLensProvider {
                                 command: {
                                     title: "prove",
                                     command: "vscode-pvs.prove-formula",
-                                    arguments: [ args ]
+                                    arguments: [ formula ]
                                 }
                                 // ,
                                 // data: {
@@ -149,9 +150,17 @@ export class PvsCodeLensProvider {
                             codeLens.push({
                                 range,
                                 command: {
+                                    title: "status-proofchain",
+                                    command: "vscode-pvs.status-proofchain",
+                                    arguments: [ formula ]
+                                }
+                            });
+                            codeLens.push({
+                                range,
+                                command: {
                                     title: "show-prooflite",
                                     command: "vscode-pvs.show-prooflite",
-                                    arguments: [ args ]
+                                    arguments: [ formula ]
                                 }
                             });
                         }

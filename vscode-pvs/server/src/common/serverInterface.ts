@@ -333,7 +333,7 @@ export declare interface SimpleConsole {
 
 export declare interface SimpleConnection {
     console: SimpleConsole,
-	sendNotification: (type: string, msg?: string) => void;
+	sendNotification: (type: string, data?: any) => void;
 	sendRequest: (type: string, data: any) => void;
 }
 
@@ -379,6 +379,7 @@ export declare interface FileDescriptor extends ContextFolder {
 export declare type PvsFile = FileDescriptor;
 export declare interface PvsTheory extends PvsFile {
 	theoryName: string;
+	line?: number;
 }
 export declare interface PvsFormula extends PvsTheory {
 	formulaName: string;
@@ -394,6 +395,9 @@ export declare interface PvsioEvaluatorCommand extends PvsTheory {
 	initialState?: string,
 	sendResponse?: boolean,
 	showCommandInTerminal?: boolean
+}
+export declare interface StatusProofChain {
+	message: string;
 }
 export declare interface EvalExpressionRequest extends PvsTheory {
 	expr: string;
@@ -462,6 +466,8 @@ export const serverRequest = {
 	findSymbolDeclaration: "pvs.find-symbol-declaration",
 
 	viewPreludeFile: "pvs.view-prelude-file",
+
+	statusProofChain: "pvs.status-proofchain",
 
 	getContextDescriptor: "pvs.get-context-descriptor",
 	getFileDescriptor: "pvs.get-file-descriptor",

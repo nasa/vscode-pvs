@@ -325,6 +325,9 @@ export class PvsProxyLegacy {
         }
         return pvsResponse;
     }
+    /**
+     * Typecheck file
+     */
     async typecheckFile (fname: string): Promise<PvsResponse> {
         const pvsResponse: PvsResponse = {
             jsonrpc: "2.0",
@@ -377,6 +380,8 @@ export class PvsProxyLegacy {
                         file_name
                     }
                 };
+                const fileName: string = fsUtils.getFileName(file_name);
+                this.connection?.sendNotification("server.status.info", { msg: `Typecheck errors in file ${fileName}` });
                 return pvsResponse;
             } 
             
@@ -393,13 +398,19 @@ export class PvsProxyLegacy {
                 if (this.pvsErrorManager) {
                     this.pvsErrorManager.notifyPvsFailure({ fname, msg: error_string, src: "pvs-proxy-legacy" });
                 }
+                const fileName: string = fsUtils.getFileName(fname);
+                this.connection?.sendNotification("server.status.info", { msg: `Error while trying to typecheck ${fileName}` });
                 return pvsResponse;
             }
 
             pvsResponse.result = res || `File ${fname} typechecks successfully`;
+            this.connection?.sendNotification("server.status.info", { msg: pvsResponse.result?.split("\n")[0] });
         }
         return pvsResponse;
     }
+    /**
+     * Find symbol declaration
+     */
     async findDeclaration (symbolName: string): Promise<PvsResponse> {
         const data: PvsResponse = await this.lisp(`(find-declaration "${symbolName}")`);
         // example result: `((("declname" . "posnat") ("type" . "type") ("theoryid" . "integers")  ("filename"   . "/Users/pmasci/Work/pvs-snapshots/pvs-7.0.1212/lib/prelude.pvs")  ("place" 2194 2 2194 32)  ("decl-ppstring" . "posnat: TYPE+ = posint")))[Current process: Initial Lisp Listener][1]`
@@ -535,5 +546,28 @@ export class PvsProxyLegacy {
             console.error(data.result);
         }
         return data;
+    }
+    /**
+     * The status-proofchain command provides a proof chain analysis of the
+     * formula at the cursor and displays it in the PVS Status buffer.  The
+     * proof chain analysis indicates whether the formula has been proved, and
+     * analyses the formulas used in the proof to insure that the proof is
+     * complete; lemmas used in the proof are proved, and sound, i.e. there are
+     * no circularities.
+     * Example invocation: (proofchain-status-at "/test/helloworld/helloworld.pvs" nil 12 "pvs")
+     */
+    async statusProofChain (desc: PvsFormula): Promise<PvsResponse> {
+        // force .pvs extension
+        const fname: string = fsUtils.desc2fname({ ...desc, fileExtension: ".pvs" });
+        // typecheck the file first, this will prevent typecheck messages to appear in the result of status-proofchain
+		let res: PvsResponse = await this.typecheckFile(fname);
+        
+        if (!res?.error || (typeof res?.result === "string" && !res?.result?.startsWith("Error:"))) {
+            const ext: string = desc.fileExtension.replace(".", "");
+            const formula: string = desc.fileExtension === ".pvs" ? `"${desc.formulaName}"` : "nil";
+            const cmd: string = `(proofchain-status-at "${desc.fileName}" ${formula} ${desc.line} "${ext}")`;
+            res = await this.lisp(cmd);
+        }
+        return res;
     }
 }

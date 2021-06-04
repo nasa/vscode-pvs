@@ -42,6 +42,7 @@ import { PvsVersionDescriptor, SimpleConnection } from './common/serverInterface
 import * as path from 'path';
 import * as fsUtils from './common/fsUtils';
 import { PvsErrorManager } from './pvsErrorManager';
+import { forceLocale } from './common/languageUtils';
 
 export enum ProcessCode { SUCCESS = 0, PVSNOTFOUND = -1, ADDRINUSE = -2, COMMFAILURE = -3, PVSSTARTFAIL = -4, PVSERROR = -5 };
 /**
@@ -187,9 +188,11 @@ export class PvsProcess {
 		// 		console.warn("[pvs-process] Warning: could not execute PVS relocation/install script");
 		// 	}
 		// }
+		// force locale settings
+		forceLocale();
+		// pvs args
 		const pvs: string = path.join(this.pvsPath, "pvs");
 		const args: string[] = opt.externalServer ?  [ "-raw" ] : [ "-raw", "-port", `${this.serverPort}` ];
-		// pvs args
 		console.info(`${this.pvsPath}/pvs ${args.join(" ")}`);
 		const fileExists: boolean = fsUtils.fileExists(pvs);
 		if (fileExists) {
