@@ -427,19 +427,19 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	 * Loads sketchpad clips from a .jprf file
 	 */
 	async loadSketchpadClips (): Promise<void> {
-		const clips: ProofNode[] = await openSketchpad(this.formula);
-		if (clips && clips.length) {
-			let items: ProofItem[] = [];
-			for (let i = 0; i < clips.length; i++) {
-				const item: ProofItem = this.proofNode2proofItem(clips[i]);
-				if (item) {
-					items.push(item);
-				}
-			}
-			if (items.length) {
-				this.sketchpad.add(items, { label: "Clips from previous proof attempt" });
-			}
-		}
+		// const clips: ProofNode[] = await openSketchpad(this.formula);
+		// if (clips && clips.length) {
+		// 	let items: ProofItem[] = [];
+		// 	for (let i = 0; i < clips.length; i++) {
+		// 		const item: ProofItem = this.proofNode2proofItem(clips[i]);
+		// 		if (item) {
+		// 			items.push(item);
+		// 		}
+		// 	}
+		// 	if (items.length) {
+		// 		this.sketchpad.add(items, { label: "Clips from previous proof attempt" });
+		// 	}
+		// }
 	}
 	/**
 	 * Internal function, converts a proof node to a proof item that can be rendered in the view

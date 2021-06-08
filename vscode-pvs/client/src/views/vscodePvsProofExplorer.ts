@@ -42,7 +42,7 @@ import { LanguageClient } from 'vscode-languageclient';
 import { 
 	ProofNode, serverRequest, PvsVersionDescriptor, ProofDescriptor, ProofStatus, 
 	serverEvent, PvsFormula, ProofNodeX, ProofNodeStatus, ProofEditCopyNode, 
-	ProofEditDidCopyNode, ProofEditEvent, ProofEditDidAppendNode, ProofEditPasteNode, 
+	ProofEditDidCopyNode, ProofEditDidAppendNode, ProofEditPasteNode, 
 	ProofExecForward, ProofExecBack, ProofExecFastForward, ProofExecRun, 
 	ProofExecQuit, ProofEditCopyTree, ProofEditDidCopyTree, ProofEditPasteTree, 
 	ProofEditDeleteNode, ProofEditTrimNode, ProofEditDeleteTree, ProofEditCutTree, 
@@ -79,7 +79,8 @@ import Backbone = require('backbone');
 // };
 
 export enum ProofExplorerEvent {
-	didAcquireFocus = "didAcquireFocus"
+	didAcquireFocus = "didAcquireFocus",
+	didStopExecution = "didStopExecution"
 };
 
 /**
@@ -114,8 +115,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 */
 	protected timer: NodeJS.Timer = null;
 	protected tcounter: number = 0;
-	readonly maxSkip: number = 100;
-	readonly maxTimer: number = 250; //ms
+	readonly maxSkip: number = 32768;
+	readonly maxTimer: number = 500; //ms
 
 	/**
 	 * Information on the formula loaded in proof explorer
@@ -156,6 +157,10 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 * The representation is updated at the beginning of the proof session.
 	 */
 	protected proofDescriptor: ProofDescriptor;
+
+	protected fft: { id: string, name: string } = null; // fast forward / rewind target
+
+	protected searchCache: { [nodeId:string]: ProofItem } = {};
 
 	/**
 	 * Current proof state
@@ -230,7 +235,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			this.running = true;
 			vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
 			// fast forward proof to a given proof command
-			const action: ProofExecFastForward = { action: "fast-forward", selected: { id: resource.id, name: resource.name } };
+			this.fft = { id: resource.id, name: resource.name };
+			const action: ProofExecFastForward = { action: "fast-forward", selected: this.fft };
 			console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}
@@ -241,7 +247,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			this.running = true;
 			vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
 			// rewind to a given proof command
-			const action: ProofExecRewind = { action: "rewind", selected: { id: resource.id, name: resource.name } };
+			this.fft = { id: resource.id, name: resource.name };
+			const action: ProofExecRewind = { action: "rewind", selected: this.fft };
 			console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}
@@ -255,9 +262,13 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		this.treeviz?.renderView(treeStructure, this.formula, { reveal: true, ...opt });
 	}
 
+	/**
+	 * Utility function, finds a node using the node id as search key
+	 */
 	protected findNode (id: string): ProofBranch {
 		const findNodeAux = (id: string, node: ProofItem): ProofBranch | null => {
-			if (node && node.id === id) {
+			if (node && node.nodeId === id) {
+				this.searchCache[id] = node;
 				return node;
 			}
 			for (let i = 0; i < node.children.length; i++) {
@@ -268,23 +279,27 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			}
 			return null;
 		}
-		return findNodeAux(id, this.root);
+		// return findNodeAux(id, this.root);
+		return this.searchCache[id] || findNodeAux(id, this.root);
 	}
 	/**
 	 * Places focus on the active node in the view.
 	 */
 	focusActiveNode (opt?: { force?: boolean }): void {
 		if (this.activeNode) {
-			this.revealNode({ id: this.activeNode.id, name: this.activeNode.name }, opt);
-			this.focusNode({ id: this.activeNode.id, name: this.activeNode.name }, opt);
+			this.revealNode({ id: this.activeNode.nodeId, name: this.activeNode.name }, opt);
+			this.focusNode({ id: this.activeNode.nodeId, name: this.activeNode.name }, opt);
 			if (opt?.force) {
 				this.refreshView({ force: true });
 			}
 		} else {
 			// empty proof -- try to focus the ghost node
 			if (this.ghostNode?.isActive()) {
-				this.revealNode({ id: this.ghostNode.id, name: this.ghostNode.name }, opt);
-				this.focusNode({ id: this.ghostNode.id, name: this.ghostNode.name }, opt);
+				this.running = false;
+				this.fft = null;
+				this.trigger(ProofExplorerEvent.didStopExecution);
+				this.revealNode({ id: this.ghostNode.nodeId, name: this.ghostNode.name }, opt);
+				this.focusNode({ id: this.ghostNode.nodeId, name: this.ghostNode.name }, opt);
 				if (opt?.force) {
 					this.refreshView({ force: true });
 				}
@@ -297,16 +312,19 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 */
 	selectActiveNode (opt?: { force?: boolean }): void {
 		if (this.activeNode) {
-			this.revealNode({ id: this.activeNode.id, name: this.activeNode.name }, opt);
-			this.selectNode({ id: this.activeNode.id, name: this.activeNode.name }, opt);
+			this.revealNode({ id: this.activeNode.nodeId, name: this.activeNode.name }, opt);
+			this.selectNode({ id: this.activeNode.nodeId, name: this.activeNode.name }, opt);
 			if (opt?.force) {
 				this.refreshView({ force: true });
 			}
 		} else {
 			// empty proof -- try to focus the ghost node
 			if (this.ghostNode?.isActive()) {
-				this.revealNode({ id: this.ghostNode.id, name: this.ghostNode.name }, opt);
-				this.selectNode({ id: this.ghostNode.id, name: this.ghostNode.name }, opt);
+				this.running = false;
+				this.fft = null;
+				this.trigger(ProofExplorerEvent.didStopExecution);
+				this.revealNode({ id: this.ghostNode.nodeId, name: this.ghostNode.name }, opt);
+				this.selectNode({ id: this.ghostNode.nodeId, name: this.ghostNode.name }, opt);
 				if (opt?.force) {
 					this.refreshView({ force: true });
 				}
@@ -348,6 +366,11 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	expandNode (desc: { id: string, name: string }): void {
 		if (desc && desc.id && this.isVisible()) {
 			let selected: ProofItem = this.findNode(desc.id);
+			// if (selected) {
+			// 	selected.id = fsUtils.get_fresh_id(); // this is a workaround -- treeview updates the collapsible state only if the node has a new ID
+			// 	selected.collapsibleState = TreeItemCollapsibleState.Expanded;
+			// 	this.refreshView();
+			// }
 			if (selected && selected.parent) {
 				this.view.reveal(selected, { expand: true, select: false, focus: false }).then(() => {
 				}, (error: any) => {
@@ -358,6 +381,37 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 	/**
+	 * Collapses a node in the view.
+	 */
+	collapseNode (desc: { id: string, name: string }): void {
+		if (desc?.id && this.isVisible()) {
+			const selected: ProofItem = this.findNode(desc.id);
+			if (selected) {
+				selected.id = fsUtils.get_fresh_id(); // this is a workaround -- treeview updates the collapsible state only if the node has a new ID
+				selected.collapsibleState = TreeItemCollapsibleState.Collapsed;
+				this.refreshView();
+			}
+		}
+	}
+	/**
+	 * Folds (i.e., collapses) proved branches.
+	 */
+	foldProvedBranches (): void {
+		const collapseAux = (node: ProofItem): void => {
+			if (node) {
+				if (node.isComplete() && node?.children?.length) {
+					console.log(`[vscode-proof-explorer] Folding branch ${node.name}`);
+					this.collapseNode({ id: node.nodeId , name: node.name });
+				} else {
+					for (let i = 0; i < node?.children?.length; i++) {
+						collapseAux(node.children[i]);
+					}
+				}
+			}
+		}
+		collapseAux(this.root);
+	}
+	/**
 	 * Places the focus on a node in the view.
 	 */
 	focusNode (desc: { id: string, name: string }, opt?: { force?: boolean }): void {
@@ -366,6 +420,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			if (!selected && this.ghostNode.isActive()) {
 				selected = this.ghostNode;
 				this.ghostNode.parent = this.ghostNode.parent || this.ghostNode.realNode;
+				this.running = false;
+				this.fft = null;
+				this.trigger(ProofExplorerEvent.didStopExecution);
 			}
 			if (selected && selected.parent) {
 				this.view.reveal(selected, { expand: 2, select: true, focus: true }).then(() => {
@@ -453,6 +510,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			const items: ProofItem[] = this.convertNodeX2ProofItem(desc.elem);
 			let sketchpadItems: ProofItem[] = [];
 			sketchpadItems = sketchpadItems.concat(items);
+			for (let i = 0; i < items?.length; i++) {
+				delete this.searchCache[items[i].nodeId];
+			}
 			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems });
 		}
 	}
@@ -558,6 +618,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		this.root = null;
 		this.ghostNode = null;
 		this.activeNode = null;
+		this.searchCache = {};
 		this.refreshView({ source: "did-reset-view" });
 	}
 
@@ -577,6 +638,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			for (let i = 0; i < desc.elems.length; i++) {
 				const items: ProofItem[] = this.convertNodeX2ProofItem(desc.elems[i]);
 				sketchpadItems = sketchpadItems.concat(items);
+				delete this.searchCache[desc.elems[i].id];
 			}
 			this.refreshView({ source: "did-trim-node" });
 			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems });
@@ -585,11 +647,15 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 
+	/**
+	 * Handler for delete-node events
+	 */
 	didDeleteNode (desc: ProofEditDidDeleteNode): void {
 		if (desc && desc.selected) {
 			const item: ProofItem = this.findNode(desc.selected.id);
 			if (item && item.parent) {
 				item.parent.deleteChild(item);
+				delete this.searchCache[desc.selected.id];
 				this.refreshView({ source: "did-delete-node" });
 				console.log(`[vscode-proof-explorer] Did delete ${desc.selected.name} (${desc.selected.id})`);
 			} else {
@@ -600,6 +666,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 
+	/**
+	 * Handler for append-node events
+	 */
 	didAppendNode (desc: ProofEditDidAppendNode): void {
 		if (desc && desc.elem) {
 			const parent: ProofItem = this.findNode(desc.elem.parent);
@@ -621,11 +690,6 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			console.warn(`[vscode-proof-explorer] Warning: unable to complete proofEdit/appendNode`);
 		}
 	}
-
-	isVisible (): boolean  {
-		return this.view?.visible;
-	}
-
 	/**
 	 * Refresh tree views (explorer and external treeviz)
 	 */
@@ -637,7 +701,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				this.selectActiveNode();
 			}
 			if (this.treeviz?.isVisible()) {
-				this.treeviz?.renderView(this.getTreeStructure(), this.formula, { cursor: this.ghostNode?.id, ...opt });
+				this.treeviz?.renderView(this.getTreeStructure(), this.formula, { cursor: this.ghostNode?.nodeId, ...opt });
 			}
 		}
 		const delayedRefresh = () => {
@@ -657,12 +721,24 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			}
 		}
 	}
+	/**
+	 * Utility function, checks if the tree view is visible
+	 */
+	isVisible (): boolean  {
+		return this.view?.visible;
+	}
+	/**
+	 * Utility function, disables the tree view (i.e., hides the view)
+	 */
 	disableView (): void {
 		this.enabled = false;
 		clearTimeout(this.timer);
 		vscode.commands.executeCommand('setContext', 'proof-explorer.visible', false);
 	}
-	enableView (): void {
+	/**
+	 * Utility function, enables the tree view (i.e., reveals the view)
+	 */
+	 enableView (): void {
 		this.enabled = true;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.visible', true);
 		this.focusActiveNode();
@@ -715,6 +791,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	didStartProof (): void {
 		this.running = false;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
+		this.searchCache = {};
 		this.refreshView({ force: true, source: "did-start-proof" });
 		if (this.root && this.root.children && this.root.children.length) {
 			if (isGlassboxTactic(this.root.children[0].name)) {
@@ -741,7 +818,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		if (item === undefined) { item = this.root; }
 		if (item) {
 			const ans: TreeStructure = {
-				id: item?.id,
+				id: item?.nodeId,
 				name: item?.name,
 				type: item?.getType(),
 				status: {
@@ -767,10 +844,10 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				}
 			}
 			// handle ghost node
-			if (this.ghostNode && this.ghostNode.isActive() && this.ghostNode.realNode?.id === item.id) {
+			if (this.ghostNode && this.ghostNode.isActive() && this.ghostNode.realNode?.nodeId === item.nodeId) {
 				q.children = q.children || [];
 				q.children.push({
-					id: this.ghostNode.id,
+					id: this.ghostNode.nodeId,
 					name: "...",
 					status: {
 						complete: false,
@@ -786,6 +863,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		return null;
     }
 	
+	/**
+	 * Internal function, converts a nodex structure sent by the servwr to a proof item for the tree view
+	 */
 	protected convertNodeX2ProofItem (elem: ProofNodeX, parent?: ProofItem): ProofItem[] {
 		const fromNodeX2 = (elem: ProofNodeX, parent?: ProofItem): ProofItem => {
 			const node: ProofItem = (elem.type === "proof-command") ? 
@@ -800,6 +880,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				});
 			} else {
 				node.collapsibleState = TreeItemCollapsibleState.None;
+			}
+			if (node?.nodeId) {
+				this.searchCache[node.nodeId] = node;
 			}
 			return node;
 		}
@@ -817,12 +900,14 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 		return items;
 	}
-
+	/**
+	 * Loads a proof structure
+	 */
 	loadProofStructure (formula: PvsFormula, desc: ProofDescriptor, proof: ProofNodeX): void {
 		this.formula = formula;
 		this.root = new RootNode({
 			id: proof.id,
-			name: proof.name, //(desc.proof) ? desc.proof.name : desc.info.formula, 
+			name: proof.name, 
 			proofStatus: (desc && desc.info && desc.info.status) ? desc.info.status : "unfinished"
 		});
 		this.ghostNode = new GhostNode({ parent: this.root, node: this.root });
@@ -834,7 +919,6 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	}
 	/**
 	 * Loads a proof descriptor in proof-explorer
-	 * @param desc The proof descriptor to be loaded
 	 */
 	loadProofDescriptor (desc: ProofDescriptor): void {
 		// utility function for building the proof tree
@@ -1002,11 +1086,16 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			if (node) {
 				if (desc.status === "active") {
 					this.activeNode = node;
+					if (this.fft?.id === this.activeNode.nodeId) {
+						this.running = false;
+						this.fft = null;
+						this.trigger(ProofExplorerEvent.didStopExecution);
+					}
 				}
 				node.updateStatus(desc.status);
-				if (desc.status === "not-complete") {
-					this.expandNode(desc);
-				}
+				// if (desc.status !== "complete") {
+				// 	this.expandNode(desc);
+				// }
 				this.refreshView({ source: "did-update-node-status" });
 			} else {
 				console.warn(`[vscode-proof-explorer] Warning: could not update status of node ${desc.name} to ${desc.status}`);
@@ -1025,6 +1114,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		});
 		context.subscriptions.push(commands.registerCommand("proof-explorer.reveal-node", (desc: { id: string, name: string }) => {
             this.revealNode(desc);
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.fold-proved-branches", (desc: { id: string, name: string }) => {
+            this.foldProvedBranches();
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.focus-node", (desc: { id: string, name: string }) => {
             this.revealNode(desc);
@@ -1171,6 +1263,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", async () => {
+			this.running = false;
 			// ask confirmation before quitting proof
 			const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
 			if (actionConfirmed) {
@@ -1179,6 +1272,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.forward", () => {
+			this.running = false;
 			// execute next proof command
 			if (!this.ghostNode?.isActive()) {
 				const action: ProofExecForward = { action: "forward" };
@@ -1187,6 +1281,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.back", () => {
+			this.running = false;
 			// go back one proof command
 			const action: ProofExecBack = { action: "back" };
 			this.client.sendRequest(serverRequest.proverCommand, action);
@@ -1210,7 +1305,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		context.subscriptions.push(commands.registerCommand("proof-explorer.fast-forward", (resource?: ProofItem) => {
 			// fast forward proof to a given proof command
 			if (resource) {
-				this.fastForwardTo({ id: resource.id, name: resource.name });
+				this.fastForwardTo({ id: resource.nodeId, name: resource.name });
 			}
 			// const action: ProofExecFastForward = { action: "fast-forward", selected: { id: resource.id, name: resource.name } };
 			// console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
@@ -1219,7 +1314,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		context.subscriptions.push(commands.registerCommand("proof-explorer.rewind", (resource?: ProofItem) => {
 			// rewind to a given proof command
 			if (resource) {
-				this.rewindTo({ id: resource.id, name: resource.name });
+				this.rewindTo({ id: resource.nodeId, name: resource.name });
 			}
 			// const action: ProofExecRewind = { action: "rewind", selected: { id: resource.id, name: resource.name } };
 			// console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
@@ -1228,16 +1323,16 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-node", (resource?: ProofItem) => {
 			// copy selected node
 			if (resource) {
-				const action: ProofEditCopyNode = { action: "copy-node", selected: { id: resource.id, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Copy node ${resource.name} (${resource.id})`);
+				const action: ProofEditCopyNode = { action: "copy-node", selected: { id: resource.nodeId, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Copy node ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-subtree", (resource?: ProofItem) => {
 			// copy selected node
 			if (resource) {
-				const action: ProofEditCopyTree = { action: "copy-tree", selected: { id: resource.id, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Copy tree rooted at ${resource.name} (${resource.id})`);
+				const action: ProofEditCopyTree = { action: "copy-tree", selected: { id: resource.nodeId, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Copy tree rooted at ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
@@ -1246,15 +1341,15 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		// }));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.paste-node", (resource?: ProofItem) => {
 			if (resource) {
-				const action: ProofEditPasteNode = { action: "paste-node", selected: { id: resource.id, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.id})`);
+				const action: ProofEditPasteNode = { action: "paste-node", selected: { id: resource.nodeId, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.paste-subtree", (resource?: ProofItem) => {
 			if (resource) {
-				const action: ProofEditPasteTree = { action: "paste-tree", selected: { id: resource.id, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.id})`);
+				const action: ProofEditPasteTree = { action: "paste-tree", selected: { id: resource.nodeId, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
@@ -1264,8 +1359,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				const msg: string = (resource.contextValue === "root") ? `Delete current proof?` : `Delete ${resource.name}?`;
 				const actionConfirmed: boolean = await this.queryConfirmation(msg);
 				if (actionConfirmed) {
-					const action: ProofEditDeleteNode = { action: "delete-node", selected: { id: resource.id, name: resource.name } };
-					console.log(`[vscode-proof-explorer] Deleting node ${resource.name} (${resource.id})`);
+					const action: ProofEditDeleteNode = { action: "delete-node", selected: { id: resource.nodeId, name: resource.name } };
+					console.log(`[vscode-proof-explorer] Deleting node ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
@@ -1277,8 +1372,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 						: `Delete proof commands after ${resource.name}?`;
 				const actionConfirmed: boolean = await this.queryConfirmation(msg);
 				if (actionConfirmed) {
-					const action: ProofEditTrimNode = { action: "trim-node", selected: { id: resource.id, name: resource.name } };
-					console.log(`[vscode-proof-explorer] Trimming node ${resource.name} (${resource.id})`);
+					const action: ProofEditTrimNode = { action: "trim-node", selected: { id: resource.nodeId, name: resource.name } };
+					console.log(`[vscode-proof-explorer] Trimming node ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
@@ -1289,8 +1384,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 					const msg: string = `Jump to ${resource.name}?\n\nPlease note that this action will also cut all nodes from ${this.activeNode.name} to ${resource.name}.`;
 					const actionConfirmed: boolean = await this.queryConfirmation(msg);
 					if (actionConfirmed) {
-						const action: ProofEditSliceTree = { action: "slice-tree", selected: { id: resource.id, name: resource.name } };
-						console.log(`[vscode-proof-explorer] Slicing nodes between ${this.activeNode.name} and ${resource.name} (${resource.id})`);
+						const action: ProofEditSliceTree = { action: "slice-tree", selected: { id: resource.nodeId, name: resource.name } };
+						console.log(`[vscode-proof-explorer] Slicing nodes between ${this.activeNode.name} and ${resource.name} (${resource.nodeId})`);
 						this.client.sendRequest(serverRequest.proverCommand, action);
 					}
 				} else {
@@ -1304,16 +1399,16 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 						: `Delete ${resource.name}?`;
 				const actionConfirmed: boolean = await this.queryConfirmation(msg);
 				if (actionConfirmed) {
-					const action: ProofEditDeleteTree = { action: "delete-tree", selected: { id: resource.id, name: resource.name } };
-					console.log(`[vscode-proof-explorer] Deleting tree rooted at ${resource.name} (${resource.id})`);
+					const action: ProofEditDeleteTree = { action: "delete-tree", selected: { id: resource.nodeId, name: resource.name } };
+					console.log(`[vscode-proof-explorer] Deleting tree rooted at ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.cut-node", (resource?: ProofItem) => {
 			if (resource) {
-				const action: ProofEditCutNode = { action: "cut-node", selected: { id: resource.id, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Cutting node ${resource.name} (${resource.id})`);
+				const action: ProofEditCutNode = { action: "cut-node", selected: { id: resource.nodeId, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Cutting node ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
@@ -1322,16 +1417,16 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				const msg: string = `Cut subtree rooted at ${resource.name}?`;
 				const actionConfirmed: boolean = await this.queryConfirmation(msg);
 				if (actionConfirmed) {
-					const action: ProofEditCutTree = { action: "cut-tree", selected: { id: resource.id, name: resource.name } };
-					console.log(`[vscode-proof-explorer] Cutting tree rooted at ${resource.name} (${resource.id})`);
+					const action: ProofEditCutTree = { action: "cut-tree", selected: { id: resource.nodeId, name: resource.name } };
+					console.log(`[vscode-proof-explorer] Cutting tree rooted at ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.slice-subtree", (resource?: ProofItem) => {
 			if (resource) {
-				const action: ProofEditSliceTree = { action: "slice-tree", selected: { id: resource.id, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Slicing tree rooted at ${resource.name} (${resource.id})`);
+				const action: ProofEditSliceTree = { action: "slice-tree", selected: { id: resource.nodeId, name: resource.name } };
+				console.log(`[vscode-proof-explorer] Slicing tree rooted at ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
@@ -1344,7 +1439,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 					ignoreFocusOut: true 
 				});
 				if (name) {
-					const action: ProofEditAppendNode = { action: "append-node", selected: { id: resource.id, name: resource.name }, name };
+					const action: ProofEditAppendNode = { action: "append-node", selected: { id: resource.nodeId, name: resource.name }, name };
 					// console.log(`[vscode-proof-explorer] Appending ${name} at ${resource.name} (${resource.id})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
@@ -1352,7 +1447,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.create-proof-branch", (resource?: ProofItem) => {
 			if (resource) {
-				const action: ProofEditAppendBranch = { action: "append-branch", selected: { id: resource.id, name: resource.name } };
+				const action: ProofEditAppendBranch = { action: "append-branch", selected: { id: resource.nodeId, name: resource.name } };
 				// console.log(`[vscode-proof-explorer] Appending new branch at ${resource.name} (${resource.id})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
@@ -1362,8 +1457,8 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			if (resource) {
 				let newName: string = await vscode.window.showInputBox({ prompt: `Editing proof command ${resource.name}`, placeHolder: `${resource.name}`, value: `${resource.name}`, ignoreFocusOut: true });
 				if (newName) {
-					const action: ProofEditRenameNode = { action: "rename-node", selected: { id: resource.id, name: resource.name }, newName };
-					console.log(`[vscode-proof-explorer] Renaming node ${resource.name} (${resource.id})`);
+					const action: ProofEditRenameNode = { action: "rename-node", selected: { id: resource.nodeId, name: resource.name }, newName };
+					console.log(`[vscode-proof-explorer] Renaming node ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
@@ -1511,6 +1606,7 @@ export const QED: ProofStatus = "proved";
 export abstract class ProofItem extends TreeItem {
 	contextValue: string = "proofItem";
 	name: string; // prover command or branch id
+	nodeId: string;
 	branchId: string = ""; // branch in the proof tree where this command is located (branchId for root is "").
 	command: Command; // vscode action associated to the node
 
@@ -1530,11 +1626,12 @@ export abstract class ProofItem extends TreeItem {
 	constructor (desc: { id?: string, type: string, name: string, branchId: string, parent: ProofItem, collapsibleState?: TreeItemCollapsibleState }) {
 		super(desc.type, (desc.collapsibleState === undefined) ? TreeItemCollapsibleState.Expanded : desc.collapsibleState);
 		this.contextValue = desc.type;
-		this.id = (desc.id) ? desc.id : fsUtils.get_fresh_id();
+		this.id = fsUtils.get_fresh_id();
+		this.nodeId = (desc.id) ? desc.id : fsUtils.get_fresh_id();
 		this.name = desc.name;
 		this.branchId = desc.branchId;
 		this.parent = desc.parent;
-		this.tooltip = "Double click copies command to prover console";
+		this.tooltip = "";//"Double click copies command to prover console";
 		this.notVisited();
 	}
 	/**
@@ -1694,7 +1791,7 @@ export abstract class ProofItem extends TreeItem {
 		this.visitedFlag = false;
 		this.pendingFlag = false;
 		// this.noChangeFlag = false;
-		vscode.commands.executeCommand("proof-explorer.reveal-node", { id: this.id, name: this.name });
+		vscode.commands.executeCommand("proof-explorer.reveal-node", { id: this.nodeId, name: this.name });
 		this.updateIcon();
 		// this.iconPath = {
         //     light: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg"),
@@ -1732,7 +1829,7 @@ export abstract class ProofItem extends TreeItem {
 	 */
 	deleteChild (child: ProofItem): void {
 		this.children = this.children.filter((ch: ProofItem) => {
-			return ch.id !== child.id;
+			return ch.nodeId !== child.nodeId;
 		});
 		if (this.contextValue !== "root" && this.children.length === 0) {
 			this.collapsibleState = TreeItemCollapsibleState.None;
@@ -1802,12 +1899,12 @@ export abstract class ProofItem extends TreeItem {
 	 */
 	getNodeXStructure (): ProofNodeX {
 		const res: ProofNodeX = {
-			id: this.id,
+			id: this.nodeId,
 			branch: this.branchId,
 			name: this.name,
 			type: <ProofNodeType> this.contextValue,
 			rules: [],
-			parent: this.parent.id
+			parent: this.parent.nodeId
 		};
 		if (this.children) {
 			for (let i = 0; i < this.children.length; i++) {
@@ -1818,7 +1915,7 @@ export abstract class ProofItem extends TreeItem {
 					name: child.name,
 					type: child.type,
 					rules: child.rules,
-					parent: this.id
+					parent: this.nodeId
 				});
 			}
 		}

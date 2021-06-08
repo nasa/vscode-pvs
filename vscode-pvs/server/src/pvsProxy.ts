@@ -1139,9 +1139,9 @@ export class PvsProxy {
 		if (mode === "in-checker" || opt?.force) {
 			const useLispInterface: boolean = true;
 			const response: PvsResponse = await this.proofCommand({ cmd: "(quit)" }, { useLispInterface });
-			if (response && response.error && this.pvsErrorManager) {
+			if (response && response.error) {
 				if (response.error.data && !response.error.data.error_string.includes("Prover is not running")) {
-					this.pvsErrorManager.handleProofCommandError({ cmd: "(quit)", response: <PvsError> response });
+					console.warn(`[pvs-proxy] Warning: Unable to quit proof`, response.error.data.error_string);
 				}
 			}
 		}

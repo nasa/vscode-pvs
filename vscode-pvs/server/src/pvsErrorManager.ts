@@ -8,14 +8,16 @@ export class PvsErrorManager {
     // connection to the client
     protected connection: Connection;
 
+    /**
+     * Constructor
+     */
     constructor (connection: Connection) {
         this.connection = connection;
     }
 
-    handleProofCommandError (desc: { cmd: string, response: PvsError }): void {
-        // this.notifyError({ msg: `Error: proof-command ${desc.cmd} returned error (please check pvs-server output for details)` });
-        console.error(`[pvs-language-server.proofCommandRequest] Error: proof-command ${desc.cmd} returned error`, desc.response);
-    }
+    /**
+     * Handler for prove-formula errors
+     */
     handleProveFormulaError (desc: {
         request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, formulaName: string }, 
         response: PvsError, 
@@ -34,6 +36,9 @@ export class PvsErrorManager {
             this.connection?.sendNotification(`server.status.end-important-task-${desc.taskId}`, desc);
         }
     }
+    /**
+     * Handler for start-evaluator errors
+     */
     handleEvaluationError (desc: {
         request: { fileName: string, fileExtension: string, contextFolder: string, theoryName: string, cmd?: string }, 
         response: PvsError,
@@ -52,6 +57,9 @@ export class PvsErrorManager {
             }
         }
     }
+    /**
+     * Handler for typecheck-file errors
+     */
     handleTypecheckError (desc: {
         request: { fileName: string, fileExtension: string, contextFolder: string },
         response: PvsError,
@@ -74,6 +82,9 @@ export class PvsErrorManager {
             }
         }
     }
+    /**
+     * Handler for show-tccs errors
+     */
     handleShowTccsError (desc: {
         response: PvsError
     }): void {
@@ -102,6 +113,10 @@ export class PvsErrorManager {
     //         this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: desc.msg });
     //     }
     // }
+    /**
+     * Handler for serverRequest.startPvsServer errors
+     * @param success 
+     */
     handleStartPvsServerError (success: ProcessCode): void {
         if (success === ProcessCode.PVSNOTFOUND) {
             this.connection?.sendRequest(serverEvent.pvsNotFound);
@@ -110,7 +125,7 @@ export class PvsErrorManager {
         }
     }
     
-    // utility functions
+    // additional utility functions for notifying errors to the client
     notifyEndImportantTaskWithErrors (desc: { id: string, msg: string }) {
         this.connection?.sendNotification(`server.status.end-important-task-${desc.id}-with-errors`, desc);
 	}

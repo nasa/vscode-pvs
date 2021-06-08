@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.52-iota",
+	"version": "1.0.52-omicron",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -32,7 +32,7 @@
 		"formalized mathematics"
 	],
 	"engines": {
-		"vscode": "^1.49.0"
+		"vscode": "^1.48.0"
 	},
 	"activationEvents": [
 		"onStartupFinished"
@@ -218,6 +218,12 @@
 			"description": "Traces the communication between VS Code and the language server."
 		},
 		"commands": [
+			{
+				"command": "vscode-pvs.status-proofchain",
+				"title": "Status Proof-Chain",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
 			{
 				"command": "vscode-pvs.comment-prooflite-line",
 				"title": "Add prooflite comment %|-",
@@ -478,7 +484,10 @@
 				"title": "Evaluate in PVSio",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
-				"icon": "$(debug-console)"
+				"icon": {
+					"light": "icons/svg-pvsio-black-icon.svg",
+					"dark": "icons/svg-pvsio-white-icon.svg"
+				}
 			},
 			{
 				"command": "vscode-pvs.pvsio-web",
@@ -486,8 +495,8 @@
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
-					"light": "icons/svg-cube-black-icon.svg",
-					"dark": "icons/svg-cube-white-icon.svg"
+					"light": "icons/svg-origami-black-icon.svg",
+					"dark": "icons/svg-origami-white-icon.svg"
 				}
 			},
 			{
@@ -533,6 +542,16 @@
 				"title": "Copy Subtree to Prover Console",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
+			},
+			{
+				"command": "proof-explorer.fold-proved-branches",
+				"title": "_Fold Proved Branches_",
+				"enablement": "view == proof-explorer-view",
+				"category": "pvs",
+				"icon": {
+					"dark": "icons/svg-fold-proved-icon.svg",
+					"light": "icons/svg-fold-proved-icon.svg"
+				}
 			},
 			{
 				"command": "proof-explorer.delete-node",
@@ -1202,6 +1221,11 @@
 			],
 			"view/title": [
 				{
+					"command": "proof-explorer.fold-proved-branches",
+					"when": "view == proof-explorer-view",
+					"group": "navigation"
+				},
+				{
 					"command": "proof-explorer.back",
 					"when": "view == proof-explorer-view",
 					"group": "navigation"
@@ -1583,7 +1607,7 @@
 		"@types/chai": "^4.2.15",
 		"@types/mocha": "^8.2.0",
 		"@types/node": "^14.14.22",
-		"@types/vscode": "^1.49.0",
+		"@types/vscode": "^1.48.0",
 		"@typescript-eslint/eslint-plugin": "^2.25.0",
 		"@typescript-eslint/parser": "^2.25.0",
 		"assert": "^2.0.0",

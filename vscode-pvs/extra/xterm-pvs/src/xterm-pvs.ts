@@ -28,7 +28,7 @@ interface RebaseEvent {
 
 export const welcomeMessage: string = `
 - Double click expands definitions
-- Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}c / ${isLinux() ? "Ctrl+" : "Command+"}v
+- Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}C / ${isLinux() ? "Ctrl+" : "Command+"}V
 `.trim().replace(/\n/g, "<br>");
 
 const MIN_VIEWPORT_COLS: number = 128;
@@ -1493,7 +1493,8 @@ export class Autocomplete extends Backbone.Model {
                 for (let i = 0; i < symbols?.length; i++) {
                     for (let j = 0; j < expandCommands.length; j++) {
                         const hint: string = `${expandCommands[j]} "${symbols[i]}"`;
-                        if (hint.toLocaleLowerCase().startsWith(currentInput)) {
+                        if (hint//.toLocaleLowerCase()
+                                .startsWith(currentInput)) {
                             hints.push(hint);
                         }
                     }
@@ -1508,7 +1509,8 @@ export class Autocomplete extends Backbone.Model {
                     for (let i = 0; i < symbols?.length; i++) {
                         for (let j = 0; j < lemmaCommands.length; j++) {
                             const hint: string = `${lemmaCommands[j]} "${symbols[i]}"`;
-                            if (hint.toLocaleLowerCase().startsWith(currentInput)) {
+                            if (hint//.toLocaleLowerCase()
+                                    .startsWith(currentInput)) {
                                 hints.push(hint);
                             }
                         }
@@ -2404,7 +2406,7 @@ export class XTermPvs extends Backbone.Model {
         if (!historySearch && !this.modKeyIsActive()) {
             const key: string = evt.domEvent.key;
             // dispatch Enter events to autocomplete if there is a tooltip selected
-            if (key === "Enter" && this.autocomplete.getSelectedHint()) {
+            if (key === "Enter" && !this.readyToSend() && this.autocomplete.getSelectedHint()) {
                 this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
                 return;
             }

@@ -309,7 +309,8 @@ export class PvsLanguageServer {
 		newProof?: boolean, 
 		useJprf?: boolean, 
 		skipSave?: boolean,
-		externalServer?: boolean
+		externalServer?: boolean,
+		quiet?: boolean
 	}): Promise<void> {
 		opt = opt || {};
 		if (desc && desc.formulaName && desc.theoryName && desc.fileName && desc.contextFolder) {
@@ -535,7 +536,7 @@ export class PvsLanguageServer {
 	/**
 	 * Typecheck file
 	 */
-	async typecheckFile (args: PvsFile, opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
+	async typecheckFile (args: PvsFile, opt?: { externalServer?: boolean, quiet?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
 		if (args && args.fileName && args.fileExtension && args.contextFolder) {
 			try {
@@ -549,7 +550,9 @@ export class PvsLanguageServer {
 							pvsResponse: response,
 							isTypecheckError: true
 						};
-						this.sendDiagnostics("Typecheck");
+						if (!opt?.quiet) {
+							this.sendDiagnostics("Typecheck");
+						}
 					} else {
 						if (response.error?.data) {
 							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(args);
@@ -1845,10 +1848,10 @@ export class PvsLanguageServer {
 				await this.getTccsRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.autorunFormula, async (req: PvsFormula) => {
-				await this.proveFormulaRequest(req, { autorun: true }); // async call
+				await this.proveFormulaRequest(req, { autorun: true, quiet: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.autorunFormulaFromJprf, async (req: PvsFormula) => {
-				await this.proveFormulaRequest(req, { autorun: true, useJprf: true }); // async call
+				await this.proveFormulaRequest(req, { autorun: true, useJprf: true, quiet: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.showProofLite, async (args: PvsFormula) => {
 				await this.showProofLiteRequest(args); // async call

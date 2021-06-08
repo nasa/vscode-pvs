@@ -3285,9 +3285,10 @@ export interface CheckParResult { success: boolean, msg: string }
 export function checkPar (content: string): CheckParResult {
 	let par: number = 0;
 	let quotes: number = 0;
-	content = content.trim();
-	for (let i = 0; i < content.length; i++) {
-		switch (content[i]) {
+	let txt: string = content?.trim() || "";
+    txt = txt.replace(/"[^"]*"/g, ""); // remove strings, to avoid counting parentheses in the string
+	for (let i = 0; i < txt.length; i++) {
+		switch (txt[i]) {
 			case `(`: {
 				par++;
 				break;
@@ -3297,7 +3298,7 @@ export function checkPar (content: string): CheckParResult {
 				if (quotes && quotes % 2 === 0 && par % 2 !== 0) {
 					// unbalanced double quotes
 					let msg: string = `Error: Unbalanced double quotes at position ${i}.`;
-					msg += "\n" + content.substring(0, i);
+					msg += "\n" + txt.substring(0, i);
 					msg += "\n" + " ".repeat(i) + "^";
 					return { success: false, msg };
 				}

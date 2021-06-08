@@ -404,7 +404,7 @@ export class PvsProxyLegacy {
             }
 
             pvsResponse.result = res || `File ${fname} typechecks successfully`;
-            this.connection?.sendNotification("server.status.info", { msg: pvsResponse.result?.split("\n")[0] });
+            // this.connection?.sendNotification("server.status.info", { msg: pvsResponse.result?.split("\n")[0] });
         }
         return pvsResponse;
     }

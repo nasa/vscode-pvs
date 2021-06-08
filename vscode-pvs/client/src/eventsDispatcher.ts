@@ -117,6 +117,12 @@ export class EventsDispatcher {
                 this.xterm.focus(); // use a timeout so that proof-explorer does not steal the focus
             }, 250);
         });
+        this.proofExplorer.on(ProofExplorerEvent.didStopExecution, () => {
+            setTimeout(() => {
+                this.xterm.focus(); // use a timeout so that proof-explorer does not steal the focus
+                this.xterm.showWelcomeMessage();
+            }, 250);
+        });
 
         // this.vscodePvsTerminal = handlers.vscodePvsTerminal;
         this.xterm = handlers.xterm;
@@ -381,9 +387,10 @@ export class EventsDispatcher {
                 }
                 case "did-update-sequent": {
                     this.proofExplorer.didUpdateSequent(desc);
-                    this.proofMate.updateRecommendations(desc.sequent);
                     if (this.proofExplorer.isRunning()) {
                         this.xterm.showFeedbackWhileExecuting("run-proof");
+                    } else {
+                        this.proofMate.updateRecommendations(desc.sequent);
                     }
                     break;
                 }

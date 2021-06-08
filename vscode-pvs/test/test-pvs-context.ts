@@ -43,6 +43,7 @@ describe("pvs", () => {
 		console.log("----------------------");
 	});
 	after(async () => {
+		await quitProverIfActive();
 		await pvsProxy.killPvsServer();
 		await pvsProxy.killPvsProxy();
 		await new Promise<void>((resolve, reject) => {
@@ -347,7 +348,6 @@ describe("pvs", () => {
 			contextFolder: path.join(baseFolder, "pillboxv7")
 		});
 		// console.dir(response);
-		expect(response).not.to.be.undefined;
 		expect(response.result).not.to.be.undefined;
 		expect(response.error).to.be.undefined;
 

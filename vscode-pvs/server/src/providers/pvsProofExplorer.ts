@@ -2547,7 +2547,7 @@ export class PvsProofExplorer {
 							}
 						}	
 					} else {
-						this.pvsLanguageServer.pvsErrorManager.handleProofCommandError({ cmd, response: <PvsError> response });
+						console.warn(`[proof-explorer] Warning: Unable to execute proof command ${cmd}`, response);
 					}
 				}
 			}
