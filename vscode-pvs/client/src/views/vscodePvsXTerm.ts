@@ -275,7 +275,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Internal function, reveals the webview and sends proveFormula request to pvs-server.
      */
-    protected async startProverSession (formula: PvsFormula): Promise<boolean> {
+    protected async startProverSession (formula: StartXTermProverRequest): Promise<boolean> {
         this.target = formula;
         this.sessionType = "prover"
         this.clearScreen();
@@ -288,8 +288,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.disableTerminalInput();
         // send proveFormula request to pvs-server
         this.client.sendRequest(serverRequest.proveFormula, {
-            ...formula,
-            origin: "xterm-pvs"
+            origin: "xterm-pvs",
+            ...formula
         });
         const success: boolean = await new Promise((resolve, reject) => {
             this.client.onRequest(serverEvent.proveFormulaResponse, (data: ProveFormulaResponse) => {

@@ -113,7 +113,7 @@ export class VSCodePvsPlotter {
                 // create webview
                 this.panel = vscode.window.createWebviewPanel(
                     'plot-expression', // Identifies the type of the webview. Used internally
-                    `Plot Expression ${label}`, // Title of the panel displayed to the user
+                    `plot-expression ${label}`, // Title of the panel displayed to the user
                     vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
                     {
                         enableScripts: true
@@ -220,7 +220,7 @@ export class VSCodePvsPlotter {
      */
     protected createContent (series: { expr: string, data?: string }, opt?: { title?: string }): string {
         opt = opt || {};
-        const title: string = opt.title || series.data || series.expr || "Plot Expression";
+        const title: string = opt.title || series.data || series.expr || "plot-expression";
         // const bootstrapJsOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js'));
         const bootstrapCssOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/css/bootstrap.min.css'));
         // const plotlyOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/plotly.js/dist/plotly.min.js'));

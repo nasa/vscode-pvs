@@ -402,14 +402,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			// console.log(`Context folder: ${contextFolder}`);
 			this.pvsPath = vscodeUtils.getConfiguration("pvs.path");
 			this.pvsLibraryPath = vscodeUtils.getPvsLibraryPath();
-			setTimeout(() => {
+			// setTimeout(() => {
 			this.client.sendRequest(serverRequest.startPvsServer, {
 				pvsPath: this.pvsPath,
 				pvsLibraryPath: this.pvsLibraryPath,
 				contextFolder,
 				externalServer: false
 			});
-			}, 1000);
+			// }, 1000);
 			// set vscode context variable pvs-server-active to true -- this will create the PVS icon on the activity bar
 			commands.executeCommand('setContext', 'pvs-server-active', true);
 			// create handler for pvsServerReady event

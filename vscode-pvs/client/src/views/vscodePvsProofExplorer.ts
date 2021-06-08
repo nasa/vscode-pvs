@@ -977,7 +977,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		const msg: string = `The proof script has been imported from ProofLite. To view the proof structure in proof-explorer, you need to run the proof.`;
 		const actionConfirmed: boolean = await this.queryRunProof(msg);
 		if (actionConfirmed) {
-			commands.executeCommand("proof-explorer.run-proof");
+			commands.executeCommand("proof-explorer.run-proof", { force: true });
 		}
 	}
 	/**
@@ -1306,8 +1306,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			// console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
 			// this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.run-proof", async () => {
-			const confirm: boolean = await this.queryConfirmation(`Run proof ${this.getProofName()}?`);
+		context.subscriptions.push(commands.registerCommand("proof-explorer.run-proof", async (opt?: { force?: boolean }) => {
+			opt = opt || {};
+			const confirm: boolean = opt.force || await this.queryConfirmation(`Run proof ${this.getProofName()}?`);
 			if (confirm) {
 				this.run();
 			}
