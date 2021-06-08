@@ -92,8 +92,9 @@ test/
 todos/
 LICENSES/
 screenshots/
-extra/
-server/src
+extra/prettify-pvs/
+extra/xterm-pvs/
+server/src/
 
 **/client/node_modules/font-awesome/css/font-awesome.css
 **/client/node_modules/font-awesome/css/font-awesome.css.map
@@ -151,4 +152,3 @@ server/src
 **/server/out/core/pvs-parser/jsTarget/
 
 **/node_modules/**/CHANGELOG.md
-node_modules/**/CHANGELOG.md

@@ -25,12 +25,14 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
-- [1.0.52 (2021.06.xx)]()      
-  -Added status-proofchain command    
-  -Improved plot functionality (codelens, plot types)   
-  -Improved prover console (tooltip location and size)      
-  -Improved icons   
-  -Fix for locale settings  
+- [1.0.52 (2021.06.08)]()      
+  -Added 'collapse proved branches' function in proof-explorer   
+  -Added inline command 'status-proofchain'    
+  -Improved plot functionality (codelens, plot types)      
+  -Improved icons, tooltips, prover console   
+  -Improved performance   
+  -Fixed minor bugs and locale settings  
+  -Automatic installation of pvs-patch for unicode symbols   
 
 - [1.0.51 (2021.05.25)]()      
   -Fix for Search NASALib      

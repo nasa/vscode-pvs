@@ -281,6 +281,12 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.clearScreen();
         this.setPrompt(utils.proverPrompt);
         this.reveal();
+        // this delay is needed to give time to the webview to render the content -- the APIs of webviews seem to be incorrect, createWebView is not async but the panel may not be ready to render when the function returns.
+        await new Promise<void> ((resolve, reject) => {
+            setTimeout(() => {
+                resolve();
+            }, 250);
+        });
         const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.blue, this.colorTheme);
         const welcome: string = `\nStarting prover session for ${colorUtils.colorText(formula.formulaName, color)}\n`;
         this.log(welcome);
