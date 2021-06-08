@@ -284,6 +284,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.blue, this.colorTheme);
         const welcome: string = `\nStarting prover session for ${colorUtils.colorText(formula.formulaName, color)}\n`;
         this.log(welcome);
+        this.showHelpMessage("Starting prover session, please wait...");
         this.disableTerminalInput();
         // send proveFormula request to pvs-server
         this.client.sendRequest(serverRequest.proveFormula, {
@@ -425,6 +426,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         const welcome: string = `\nStarting PVSio evaluator session for theory ${colorUtils.colorText(theory.theoryName, color)}\n`;
         this.reveal();
         this.log(welcome);
+        this.showHelpMessage("Starting evaluator session, please wait...");
         this.disableTerminalInput();
         // send start-pvsio request to pvs-server
         this.client.sendRequest(serverRequest.startEvaluator, theory);
@@ -436,8 +438,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 });
                 this.log(banner, { hints });
                 this.showPrompt();
-                this.enableTerminalInput();
                 this.showWelcomeMessage();
+                this.enableTerminalInput();
                 resolve(true);
             });
         });
@@ -469,6 +471,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.trigger(XTermPvsEvent.DidReceiveEvaluatorResponse, data);
             }
             this.showPrompt();
+            this.showWelcomeMessage();
         }
     }
     
@@ -714,11 +717,17 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Shows feedback while executing a proof command
      */
-    showFeedbackWhileExecuting (cmd: string): void {
+    showFeedbackWhileExecuting (cmd: "run-proof" | "fast-forward" | "rewind" | string, target?: string): void {
         if (cmd && !utils.isQuitCommand(cmd)) {
             if (cmd === "run-proof") {
                 this.running(true);
                 this.showHelpMessage(`Executing all commands in the proof tree.<br>To interrupt the execution, press Ctrl+C`);
+            } else if (cmd === "fast-forward") {
+                this.running(true);
+                this.showHelpMessage(`Fast-forward to ${target}.<br>To interrupt the execution, press Ctrl+C`);
+            } else if (cmd === "rewind") {
+                this.running(true);
+                this.showHelpMessage(`Rewinding to ${target}.<br>To interrupt the execution, press Ctrl+C`);
             } else {
                 this.running(true)
                 this.showHelpMessage(`Executing ${cmd}<br>To interrupt the execution, press Ctrl+C`);

@@ -388,7 +388,7 @@ export class EventsDispatcher {
                 case "did-update-sequent": {
                     this.proofExplorer.didUpdateSequent(desc);
                     if (this.proofExplorer.isRunning()) {
-                        this.xterm.showFeedbackWhileExecuting("run-proof");
+                        // this.xterm.showFeedbackWhileExecuting("run-proof");
                     } else {
                         this.proofMate.updateRecommendations(desc.sequent);
                     }
@@ -656,8 +656,8 @@ export class EventsDispatcher {
             this.client.sendRequest(serverRequest.proofCommand, desc);
             this.xterm.showFeedbackWhileExecuting(desc?.cmd);
         }));
-        context.subscriptions.push(commands.registerCommand("xterm.showFeedbackWhileExecuting", (desc: { cmd: string }) => {
-            this.xterm.showFeedbackWhileExecuting(desc?.cmd);
+        context.subscriptions.push(commands.registerCommand("xterm.showFeedbackWhileExecuting", (desc: { cmd: string, target?: string }) => {
+            this.xterm.showFeedbackWhileExecuting(desc?.cmd, desc?.target);
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.select-profile", (desc: { profile: ProofMateProfile }) => {
             // this.vscodePvsTerminal.selectProfile(desc);
@@ -1457,9 +1457,13 @@ export class EventsDispatcher {
                 // show progress on the status bar
                 this.statusBar.showProgress(desc.msg);
             }
-
         });
 
+        this.client.onNotification("pvs-error", (msg: string) => {
+            if (msg) {
+                vscodeUtils.showErrorMessage(msg);
+            }
+        });
         this.client.onNotification("server.status.pvs-failure", (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src?: string }) => {
             opt = opt || {};
             const src: string = opt.src || "pvs";
@@ -1477,8 +1481,8 @@ export class EventsDispatcher {
                     msg += `\nThe error occurred while executing the following method ${opt.method}`;
                 }
                 msg = (msg && msg.startsWith("Error:")) ? msg : `Error: ` + msg;
-                // vscodeUtils.showErrorMessage(msg);
-                vscodeUtils.showFailure(msg, src);
+                vscodeUtils.showErrorMessage(msg);
+                // vscodeUtils.showFailure(msg, src);
             }
         });
     }

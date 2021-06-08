@@ -1286,6 +1286,26 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			const action: ProofExecBack = { action: "back" };
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.fast-forward", (resource?: ProofItem) => {
+			// fast forward proof to a given proof command
+			if (resource?.name && resource?.id) {
+				this.fastForwardTo({ id: resource.nodeId, name: resource.name });
+				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", { cmd: "fast-forward", target: resource.name });
+			}
+			// const action: ProofExecFastForward = { action: "fast-forward", selected: { id: resource.id, name: resource.name } };
+			// console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
+			// this.client.sendRequest(serverRequest.proverCommand, action);
+		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.rewind", (resource?: ProofItem) => {
+			// rewind to a given proof command
+			if (resource?.name && resource?.id) {
+				this.rewindTo({ id: resource.nodeId, name: resource.name });
+				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", { cmd: "rewind", target: resource.name });
+			}
+			// const action: ProofExecRewind = { action: "rewind", selected: { id: resource.id, name: resource.name } };
+			// console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
+			// this.client.sendRequest(serverRequest.proverCommand, action);
+		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.run-proof", async () => {
 			const confirm: boolean = await this.queryConfirmation(`Run proof ${this.getProofName()}?`);
 			if (confirm) {
@@ -1302,24 +1322,6 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		context.subscriptions.push(commands.registerCommand("proof-explorer.pause-proof", async () => {
             this.queryPauseProof();
         }));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.fast-forward", (resource?: ProofItem) => {
-			// fast forward proof to a given proof command
-			if (resource) {
-				this.fastForwardTo({ id: resource.nodeId, name: resource.name });
-			}
-			// const action: ProofExecFastForward = { action: "fast-forward", selected: { id: resource.id, name: resource.name } };
-			// console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
-			// this.client.sendRequest(serverRequest.proverCommand, action);
-		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.rewind", (resource?: ProofItem) => {
-			// rewind to a given proof command
-			if (resource) {
-				this.rewindTo({ id: resource.nodeId, name: resource.name });
-			}
-			// const action: ProofExecRewind = { action: "rewind", selected: { id: resource.id, name: resource.name } };
-			// console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
-			// this.client.sendRequest(serverRequest.proverCommand, action);
-		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-node", (resource?: ProofItem) => {
 			// copy selected node
 			if (resource) {

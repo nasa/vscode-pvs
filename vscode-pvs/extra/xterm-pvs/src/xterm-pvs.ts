@@ -27,8 +27,8 @@ interface RebaseEvent {
 };
 
 export const welcomeMessage: string = `
-- Double click expands definitions
-- Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}C / ${isLinux() ? "Ctrl+" : "Command+"}V
+- Please enter proof command at the prover prompt.
+- Double click expands definitions. Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}C / ${isLinux() ? "Ctrl+" : "Command+"}V
 `.trim().replace(/\n/g, "<br>");
 
 const MIN_VIEWPORT_COLS: number = 128;
@@ -3169,9 +3169,9 @@ export class XTermPvs extends Backbone.Model {
         const cprompt: string = "\n\n" + this.applySyntaxHighlighting(this.prompt, this.colorTheme);
         this.log(cprompt);
         this.content.rebase({ prompt: this.prompt });
-        this.autocomplete.clearHelp();
+        // this.autocomplete.clearHelp();
         // console.log("[xterm-pvs] showPrompt", { prompt: this.prompt, cprompt, content: this.content, xtermPos: this.pos });
         // this.focus({ src: "showPrompt" });
-        this.showWelcomeMessage();
+        // this.showWelcomeMessage();
     }
 }
