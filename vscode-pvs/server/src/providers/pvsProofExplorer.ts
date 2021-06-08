@@ -1785,7 +1785,7 @@ export class PvsProofExplorer {
 		if (this.root.proofStatusChanged() || this.dirtyFlag || this.origin !== ".prf") { // || !proofliteExists) {
 			await this.quitProofAndSave(); // proof descriptor is automatically updated by saveproof
 		} else {
-			// update proof descriptor
+			// update proof descriptor, i.e., proof status and shasum
 			this.proofDescriptor = this.makeProofDescriptor(this.origin);
 			await this.quitProofAndSave({ jprfOnly: true });
 		}
@@ -1912,7 +1912,10 @@ export class PvsProofExplorer {
 			const pdesc: ProofDescriptor = (opt.newProof) ? await this.pvsProxy.newProof(formula) : await this.pvsProxy.openProofFile(desc, formula);
 			if (pdesc) {
 				// re-compute the shasum for the pvs file --- the shasum in the proof descriptor is from the last proof attempt, and it might be different if the file has been modified
-				this.shasum = await fsUtils.shasumFile(formula);
+				this.shasum = await fsUtils.shasumFile({
+					...formula,
+					fileExtension: ".pvs"
+				});
 				// save information on the proof origin -- useful when saving the proof file
 				this.origin = pdesc?.origin || ".prf";
 				// load proof descriptor

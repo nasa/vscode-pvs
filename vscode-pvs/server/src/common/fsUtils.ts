@@ -909,14 +909,17 @@ export async function listTheoremsInFile (fname: string, opt?: { content?: strin
 
 
 
-export function getActualProofStatus (desc: ProofDescriptor, shasum: string): ProofStatus {
-	if (desc) {
+/**
+ * Utility function, changes the proof status from 'proved' ro 'unchecked' if the file content has changed
+ */
+ export function getActualProofStatus (desc: ProofDescriptor, shasum: string): ProofStatus {
+	if (desc?.info) {
 		if (shasum === desc.info.shasum) {
 			return desc.info.status;
 		} else {
 			return (desc.info.status === "proved") ? "unchecked"
-				: (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length) ?
-					"unfinished" : "untried";
+				: desc?.proofTree?.rules?.length ? "unfinished" 
+				: "untried";
 		}
 	}
 	return "untried";
@@ -924,7 +927,6 @@ export function getActualProofStatus (desc: ProofDescriptor, shasum: string): Pr
 
 /**
  * Utility function, returns the status of the proof for the theorem indicated in the fuction arguments
- * @param desc 
  */
 export async function getProofStatus (desc: { 
 	fileName: string, 
