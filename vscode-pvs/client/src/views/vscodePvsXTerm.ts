@@ -497,8 +497,21 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             await this.sendTextToServer("quit");
             return true;
         }
+        return false;
     }
     
+    /**
+     * Disables a terminal session
+     */
+     async bye (): Promise<boolean> {
+        const xtermMsg: string = colorUtils.colorText("bye!", colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
+        this.log("\n" + xtermMsg, {
+            sessionEnd: true
+        });
+        this.disableHandlers();
+        return true;
+    }
+
     /**
      * Sends text to the terminal
      */

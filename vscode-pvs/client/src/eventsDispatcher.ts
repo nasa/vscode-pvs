@@ -1026,6 +1026,8 @@ export class EventsDispatcher {
                     this.quietMode = true;
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
+                    this.xterm.bye();
+
                     const msg: string = (opt.unprovedOnly) ? 
                         opt.useJprf ? `Running unproved J-PRF proofs (theory ${desc.theoryName})` : `Running unproved proofs in theory ${desc.theoryName}`
                             : opt.useJprf ? `Re-running J-PRF proofs (theory ${desc.theoryName})` : `Re-running proofs in theory ${desc.theoryName}`;
@@ -1055,6 +1057,7 @@ export class EventsDispatcher {
                     this.quietMode = true;
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
+                    this.xterm.bye();
 
                     const msg: string = opt.useJprf ? `Re-running J-PRF importchain for theory ${desc.theoryName}` : `Re-running importchain for theory ${desc.theoryName}`
                     this.statusBar.showProgress(msg);
@@ -1089,6 +1092,8 @@ export class EventsDispatcher {
                     this.quietMode = true;
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
+                    this.xterm.bye();
+
                     const msg: string = (opt.unprovedOnly) ? 
                         opt.useJprf ? `Running unproved J-PRF TCCs (theory ${desc.theoryName})` : `Running unproved TCCs in theory ${desc.theoryName}`
                             : opt.useJprf ? `Re-running J-PRF TCCs (theory ${desc.theoryName})` : `Re-running TCCs in theory ${desc.theoryName}`;
@@ -1139,6 +1144,7 @@ export class EventsDispatcher {
                     this.quietMode = true;
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
+                    this.xterm.bye();
 
                     await this.workspaceExplorer.proveWorkspaceWithProgress(desc, opt);
 
