@@ -1588,6 +1588,8 @@ export class PvsLanguageServer {
 	protected async startPvsServerRequest (desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
 		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
 		this.checkDependencies(); // async call
+		// install pvs patches
+		await PvsPackageManager.installPvsPatches(desc);
 		// start pvs
 		const success: boolean = await this.startPvsServer(desc);
 		if (success) {

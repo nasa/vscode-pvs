@@ -41,7 +41,9 @@ import * as os from 'os';
 import * as fsUtils from '../common/fsUtils';
 import {
     serverRequest, DownloadWithProgressRequest, DownloadWithProgressResponse, 
-    InstallWithProgressRequest, InstallWithProgressResponse, NASALibDownloader, NASALibDownloaderRequest, ShellCommand, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse
+    InstallWithProgressRequest, InstallWithProgressResponse, NASALibDownloader, 
+    NASALibDownloaderRequest, ShellCommand, ListVersionsWithProgressRequest, 
+    ListVersionsWithProgressResponse
 } from '../common/serverInterface';
 import * as path from 'path';
 import { Connection } from 'vscode-languageserver';
@@ -52,6 +54,11 @@ export class PvsPackageManager {
 
     protected static installProcess: ChildProcess;
     protected static downloadProcess: ChildProcess;
+
+    static readonly approvedPatches: string[] = [
+        "patch-20210511.lisp"
+    ];
+
 
     /**
      * Installs PVS
@@ -252,6 +259,28 @@ export class PvsPackageManager {
             return { success, fname };
         }
         return { success: false };
+    }
+
+    /**
+     * Utility function, installs required pvs patches
+     */
+    static async installPvsPatches (desc: { pvsPath: string }): Promise<boolean> {
+        if (desc?.pvsPath && fsUtils.folderExists(desc?.pvsPath)) {
+            const targetFolder: string = path.join(desc.pvsPath, "pvs-patches");
+            fsUtils.createFolder(targetFolder);
+            let success: boolean = true;
+            for (let i = 0; i < PvsPackageManager.approvedPatches.length; i++) {
+                const fileName: string = PvsPackageManager.approvedPatches[i];
+                const fname: string = path.join(targetFolder, fileName);
+                if (!fsUtils.fileExists(fname)) {
+                    const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", fileName);
+                    const fileContent: string = await fsUtils.readFile(src);
+                    success = success && await fsUtils.writeFile(fname, fileContent);
+                }
+            }
+            return success;
+        }
+        return false;
     }
 
     /**
