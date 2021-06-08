@@ -1063,7 +1063,7 @@ export function prf2jprf (desc: {
 			date: new Date().toISOString()
 		}, ".prf");
 		if (desc.prf) {
-			const script: string = desc.prf.replace(/\s*\n+\s*/g, " "); // remove all \n introduced by pvs in the expression
+			const script: string = desc.prf.replace(/\s*\n+\s*/g, " ").replace(/\s\s+/g, " "); // remove all \n and extra spaces introduced by pvs in the expression
 			// capture group 1 is proofName
 			// capture group 2 is formulaName,
 			// capture group 3 is proofTree

@@ -598,8 +598,8 @@ export class EventsDispatcher {
             this.logger.profilerData(data);
         });
         
-        this.client.onNotification("pvs.progress-info", (data: string) => {
-            this.statusBar.showProgress(data);
+        this.client.onNotification("pvs.progress-info", (msg: string) => {
+            this.statusBar.showProgress(msg);
         });
 
 
@@ -607,6 +607,9 @@ export class EventsDispatcher {
         // commands invoked using code lens, emacs bindings, explorer, etc
         //---------------------------------------------------------
 
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.progress-info", (msg: string) => {
+            this.statusBar.showProgress(msg);
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.comment-prooflite-line", () => {
             vscodeUtils.commentProofliteInActiveEditor();
         }));
@@ -658,6 +661,12 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("xterm.showFeedbackWhileExecuting", (desc: { cmd: string, target?: string }) => {
             this.xterm.showFeedbackWhileExecuting(desc?.cmd, desc?.target);
+        }));
+        context.subscriptions.push(commands.registerCommand("xterm.did-execute-command", (desc: { cmd: string, target?: string }) => {
+            if (!this.proofExplorer.isRunning()) {
+                this.xterm.showWelcomeMessage();
+                this.statusBar.ready();
+            }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.select-profile", (desc: { profile: ProofMateProfile }) => {
             // this.vscodePvsTerminal.selectProfile(desc);
@@ -748,7 +757,7 @@ export class EventsDispatcher {
             }
         }));
         context.subscriptions.push(commands.registerCommand("proof-explorer.proof-command-dblclicked", (desc: PvsProofCommand) => {
-            if (desc && desc.cmd) {
+            if (desc?.cmd) {
                 this.xterm.sendText(desc.cmd);
                 this.xterm.focus();
                 this.xterm.updateHelp();

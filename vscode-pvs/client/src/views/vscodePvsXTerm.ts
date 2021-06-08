@@ -361,6 +361,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             this.log(sequent, { hints, mathObjects: this.mathObjects });
             // show prompt
             this.showPrompt();
+            commands.executeCommand("xterm.did-execute-command");
         }
     };
 
@@ -722,15 +723,19 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             if (cmd === "run-proof") {
                 this.running(true);
                 this.showHelpMessage(`Executing all commands in the proof tree.<br>To interrupt the execution, press Ctrl+C`);
+                commands.executeCommand("vscode-pvs.progress-info", "Executing all commands in the proof tree.");
             } else if (cmd === "fast-forward") {
                 this.running(true);
                 this.showHelpMessage(`Fast-forward to ${target}.<br>To interrupt the execution, press Ctrl+C`);
+                commands.executeCommand("vscode-pvs.progress-info", `Fast-forward to ${target}.`);
             } else if (cmd === "rewind") {
                 this.running(true);
                 this.showHelpMessage(`Rewinding to ${target}.<br>To interrupt the execution, press Ctrl+C`);
+                commands.executeCommand("vscode-pvs.progress-info", `Rewinding to ${target}.`);
             } else {
                 this.running(true)
                 this.showHelpMessage(`Executing ${cmd}<br>To interrupt the execution, press Ctrl+C`);
+                commands.executeCommand("vscode-pvs.progress-info", `Executing ${cmd}.`);
             }
         }
     }
@@ -742,7 +747,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             command: XTermCommands.showWelcomeMessage,
             data: this.prompt
         };
-        this.panel?.webview?.postMessage(message);    
+        this.panel?.webview?.postMessage(message);
+        commands.executeCommand("vscode-pvs.progress-info");
     }
     /**
      * Shows a help message in the integrated help panel

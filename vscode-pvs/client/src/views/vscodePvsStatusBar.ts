@@ -161,6 +161,8 @@ export class VSCodePvsStatusBar {
             this.pvsStatus.icon(`$(loading~spin)`);
             this.pvsStatus.text(msg);
             this.pvsStatus.show();
+        } else {
+            this.ready();
         }
     }
 
@@ -173,6 +175,8 @@ export class VSCodePvsStatusBar {
             this.pvsStatus.icon("");
             this.pvsStatus.text(`$(info)  ${msg}`);
             this.pvsStatus.show();
+        } else {
+            this.ready();
         }
     }
 
@@ -181,9 +185,13 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     showMsg (msg: string): void {
-        this.pvsStatus.icon("");
-        this.pvsStatus.text(msg);
-        this.pvsStatus.show();
+        if (msg) {
+            this.pvsStatus.icon("");
+            this.pvsStatus.text(msg);
+            this.pvsStatus.show();
+        } else {
+            this.ready();
+        }
     }
     
     /**
@@ -191,11 +199,15 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     showError (msg: string): void {
-        const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
-        this.pvsStatus.icon("");
-        this.pvsStatus.text(`$(pinned-dirty)  ${shortmsg}`); // messages in the status bar should always be on one line
-        this.pvsStatus.show();
-        vscodeUtils.showProblemsPanel();
+        if (msg) {
+            const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
+            this.pvsStatus.icon("");
+            this.pvsStatus.text(`$(pinned-dirty)  ${shortmsg}`); // messages in the status bar should always be on one line
+            this.pvsStatus.show();
+            vscodeUtils.showProblemsPanel();
+        } else {
+            this.ready();
+        }
     }
 
     getVersionInfo (): PvsVersionDescriptor {

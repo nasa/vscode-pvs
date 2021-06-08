@@ -516,7 +516,7 @@ class PvsFilesOverviewItem extends OverviewItem {
 		return null;
 	}
 	updateFormula (desc: FormulaDescriptor): void {
-		if (desc) {
+		if (desc && !desc.formulaName.trim().startsWith("%")) {
 			const candidates: PvsFileItem[] = this.files.filter((item: PvsFileItem) => {
 				return item.fileName === desc.fileName && item.fileExtension === desc.fileExtension
 					&& item.contextFolder === desc.contextFolder;
