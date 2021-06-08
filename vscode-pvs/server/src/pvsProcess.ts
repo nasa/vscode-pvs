@@ -44,7 +44,7 @@ import * as fsUtils from './common/fsUtils';
 import { PvsErrorManager } from './pvsErrorManager';
 import { forceLocale } from './common/languageUtils';
 
-export enum ProcessCode { SUCCESS = 0, PVSNOTFOUND = -1, ADDRINUSE = -2, COMMFAILURE = -3, PVSSTARTFAIL = -4, PVSERROR = -5 };
+export enum ProcessCode { SUCCESS = 0, PVSNOTFOUND = -1, ADDRINUSE = -2, COMMFAILURE = -3, PVSSTARTFAIL = -4, PVSERROR = -5, UNSUPPORTEDPLATFORM = -6 };
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
  */
@@ -220,42 +220,49 @@ export class PvsProcess {
 					if (matchSocketAddressInUse) {
 						this.pvsProcess = null;
 						addressInUse = true;
-						resolve(ProcessCode.ADDRINUSE)
-					} else {
-						// console.dir({ 
-						// 	type: "memory usage",
-						// 	data: process.memoryUsage()
-						// }, { depth: null });
-						// console.log(data);
-						
-						// wait for the pvs prompt, to make sure pvs-server is operational
-						const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
-						if (yesNoQuery) {
-							console.log(data);
-							if (!this.pvsProcess?.stdin?.destroyed) {
-								this.pvsProcess?.stdin?.write("Yes\n");
-								this.log("Yes\n", { force: true });
-							}
-							return;
+						resolve(ProcessCode.ADDRINUSE);
+						return;
+					}
+					const matchNoExecutable: RegExpMatchArray = /No executable available in (.+)/gi.exec(data);
+					if (matchNoExecutable) {
+						this.pvsProcess = null;
+						resolve(ProcessCode.UNSUPPORTEDPLATFORM);
+						return;
+					}
+					// else
+					// console.dir({ 
+					// 	type: "memory usage",
+					// 	data: process.memoryUsage()
+					// }, { depth: null });
+					// console.log(data);
+					
+					// wait for the pvs prompt, to make sure pvs-server is operational
+					const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
+					if (yesNoQuery) {
+						console.log(data);
+						if (!this.pvsProcess?.stdin?.destroyed) {
+							this.pvsProcess?.stdin?.write("Yes\n");
+							this.log("Yes\n", { force: true });
 						}
+						return;
+					}
 
-						// const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
-						// if (matchRestartAction) {
-						// 	console.error(`[pvs-process] Error: ${this.data}`);
-						// }
-						const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/g.exec(data);
-						const matchProverPrompt: RegExpMatchArray = /\bRule\?/g.exec(data);
-						if (matchPvsPrompt || matchProverPrompt) {
-							if (!this.ready) {
-								this.ready = true;
-								resolve(ProcessCode.SUCCESS);
-							}
-							if (this.cb && typeof this.cb === "function") {
-								let res: string = this.data.replace(/(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/g, "").replace(/\bRule\?/g, "");
-								// clean up pvs output by removing unnecessary text
-								res = res.replace("[Current process: Initial Lisp Listener]", "");
-								this.cb(res.trim());
-							}
+					// const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
+					// if (matchRestartAction) {
+					// 	console.error(`[pvs-process] Error: ${this.data}`);
+					// }
+					const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/g.exec(data);
+					const matchProverPrompt: RegExpMatchArray = /\bRule\?/g.exec(data);
+					if (matchPvsPrompt || matchProverPrompt) {
+						if (!this.ready) {
+							this.ready = true;
+							resolve(ProcessCode.SUCCESS);
+						}
+						if (this.cb && typeof this.cb === "function") {
+							let res: string = this.data.replace(/(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/g, "").replace(/\bRule\?/g, "");
+							// clean up pvs output by removing unnecessary text
+							res = res.replace("[Current process: Initial Lisp Listener]", "");
+							this.cb(res.trim());
 						}
 					}
 				});

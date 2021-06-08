@@ -92,7 +92,7 @@ export class VSCodePvsStatusBar {
     protected pvsStatus: VSCodePvsStatusBarItem;
     protected workspaceStatus: VSCodePvsStatusBarItem;
     protected versionInfo: VSCodePvsStatusBarItem;
-    protected crashReport: VSCodePvsStatusBarItem;
+    // protected crashReport: VSCodePvsStatusBarItem;
     protected restartPvs: VSCodePvsStatusBarItem;
     protected interruptProver: VSCodePvsStatusBarItem;
     protected downloadNasalib: VSCodePvsStatusBarItem;
@@ -111,7 +111,7 @@ export class VSCodePvsStatusBar {
         this.versionInfo = new VSCodePvsStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
 
         this.restartPvs = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
-        this.crashReport = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        // this.crashReport = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
 
         this.interruptProver = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
         this.downloadNasalib = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
@@ -292,10 +292,9 @@ export class VSCodePvsStatusBar {
      */
     failure (msg: string): void {
         const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
-        this.crashReport.icon("");
-        this.crashReport.text(`$(debug~spin)  ${shortmsg}`); // messages in the status bar should be on one line
-        this.crashReport.show();
-        this.pvsStatus.hide();
+        this.pvsStatus.icon("");
+        this.pvsStatus.text(`$(exclude)  ${shortmsg}`); // messages in the status bar should be on one line
+        this.pvsStatus.show();
     }
 
     /**

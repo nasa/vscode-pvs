@@ -1917,6 +1917,9 @@ export class PvsProxy {
 			if (success === ProcessCode.PVSNOTFOUND) {
 				return ProcessCode.PVSNOTFOUND;
 			}
+			if (success === ProcessCode.UNSUPPORTEDPLATFORM) {
+				return ProcessCode.UNSUPPORTEDPLATFORM;
+			}
 			portIsAvailable = success === ProcessCode.SUCCESS;
 			if (portIsAvailable === false) {
 				this.serverPort++;

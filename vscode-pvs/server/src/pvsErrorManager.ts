@@ -118,10 +118,24 @@ export class PvsErrorManager {
      * @param success 
      */
     handleStartPvsServerError (success: ProcessCode): void {
-        if (success === ProcessCode.PVSNOTFOUND) {
-            this.connection?.sendRequest(serverEvent.pvsNotFound);
-        } else if (success !== ProcessCode.SUCCESS) {
-            this.connection?.sendRequest(serverEvent.pvsServerFail);
+        switch (success) {
+            case ProcessCode.SUCCESS: {
+                // nothing to do
+                break;
+            }
+            case ProcessCode.PVSNOTFOUND: {
+                this.connection?.sendRequest(serverEvent.pvsNotFound);
+                break;
+            }
+            case ProcessCode.UNSUPPORTEDPLATFORM: {
+                const platform: string = process.platform;
+                this.connection?.sendRequest(serverEvent.pvsServerFail, { msg: `Error: Unsupported platform '${platform}'.`});
+                break;
+            }
+            default: {
+                this.connection?.sendRequest(serverEvent.pvsServerFail);
+                break;
+            }
         }
     }
     
