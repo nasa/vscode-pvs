@@ -795,7 +795,7 @@ export function declutterVscode (): void {
         filesExclude["**/*.jprf"] = true;
         filesExclude["**/*.prf"] = true;
         filesExclude["**/orphaned-proofs.prf"] = true;
-        // filesExclude["**/*_adt.pvs"] = true;
+        filesExclude["**/*_adt.pvs"] = false;
         // hide log files
         filesExclude["**/*.log"] = true;
         // hide .vscode folder
