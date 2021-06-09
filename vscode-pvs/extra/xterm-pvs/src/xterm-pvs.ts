@@ -2660,22 +2660,24 @@ export class XTermPvs extends Backbone.Model {
             }
             // F4 = proof-explorer.back
             if (this.inputEnabled && evt.key === "F4") {
-                this.trigger(XTermEvent.proofExplorerBack);
+                // this shortcut is already captured by vscode, no need to trigger events
+                // this.trigger(XTermEvent.proofExplorerBack);
                 return false;
             }
             // F5 = proof-explorer.run
             if (this.inputEnabled && evt.key === "F5") {
-                this.trigger(XTermEvent.proofExplorerRun);
+                // this shortcut is already captured by vscode, no need to trigger events
+                // this.trigger(XTermEvent.proofExplorerRun);
                 return false;
             }
             // F6 = proof-explorer.forward
             if (this.inputEnabled && evt.key === "F6") {
-                this.trigger(XTermEvent.proofExplorerForward);
+                // this shortcut is already captured by vscode, no need to trigger events
                 return false;
             }
             // F2 = proof-explorer.edit
             if (this.inputEnabled && evt.key === "F2") {
-                this.trigger(XTermEvent.proofExplorerEdit);
+                // this shortcut is already captured by vscode, no need to trigger events
                 return false;
             }
             return this.inputEnabled && 
