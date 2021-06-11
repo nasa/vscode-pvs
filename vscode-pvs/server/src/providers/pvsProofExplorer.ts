@@ -37,43 +37,27 @@
  **/
 import { 
 	ProofNode, ProofNodeType, ProofDescriptor, ProofStatus, serverEvent, 
-	ProofTree, PvsFormula, ProofNodeX, PvsProofCommand, ProofEditCopyNode, ProofEditAppendNode, ProofEditDidCopyNode, 
-	ProofEditPasteNode, ProofExecFastForward, ProofEditCopyTree, ProofEditDidCopyTree, 
+	ProofTree, PvsFormula, ProofNodeX, PvsProofCommand, ProofEditCopyNode, ProofEditAppendNode, 
+	ProofEditDidCopyNode, ProofEditPasteNode, ProofExecFastForward, ProofEditCopyTree, ProofEditDidCopyTree, 
 	ProofEditPasteTree, ProofEditDeleteNode, ProofEditDidDeleteNode, ProofEditAppendBranch,
-	ProofEditCutNode,
-	ProofEditDidCutNode,
-	ProofEditCutTree,
-	ProofEditDidCutTree,
-	ProofEditDeleteTree,
-	ProofEditTrimNode,
-	ProofEditDidTrimNode,
-	ProofEditRenameNode,
-	ProofEditDidRenameNode,
-	ProofEditDidAppendNode,
-	PvsContextDescriptor,
-	ProofEditDidActivateCursor,
-	ProofEditDidDeactivateCursor,
-	CliGatewayPrintProofCommand,
-	CliGatewayProofState,
-	CliGatewayQED,
-	ProofEditDidUpdateProofStatus,
-	ProofExecDidLoadProof,
-	ProofExecDidLoadSequent,
-	ProofExecDidStartProof,
-	ProofExecDidUpdateSequent,
-	ProofEditTrimUnused,
-	ProofExecQuit,
-	ProofEditDidStartNewProof,
-	CliGatewayQuitEvent,
-	CliGatewayQuit,
-	ProofFile,
-	ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave, PvsVersionDescriptor, ProofExecDidImportProof, FileDescriptor, ProofExecRewind, ProofExecDidStopRunning, ProofCommandResponse, ProofExecCommand, ProofEditCommand, ProofOrigin, SequentDescriptor, ProveFormulaRequest, ProofEditSliceTree, ProofExecDidQuitProof
+	ProofEditCutNode, ProofEditDidCutNode, ProofEditCutTree, ProofEditDidCutTree,
+	ProofEditDeleteTree, ProofEditTrimNode, ProofEditDidTrimNode, ProofEditRenameNode,
+	ProofEditDidRenameNode, ProofEditDidAppendNode, PvsContextDescriptor, ProofEditDidActivateCursor,
+	ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidLoadProof,
+	ProofExecDidLoadSequent, ProofExecDidStartProof, ProofExecDidUpdateSequent, ProofEditTrimUnused,
+	ProofExecQuit, ProofEditDidStartNewProof, ProofExecDidOpenProof,
+	PvsFile, ProofExecQuitAndSave, ProofExecDidImportProof, ProofExecRewind, 
+	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, SequentDescriptor, 
+	ProveFormulaRequest, ProofEditSliceTree, ProofExecDidQuitProof
 } from '../common/serverInterface';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
-import { PvsResponse, PvsError } from '../common/pvs-gui';
-import { desc2id, isEmptyCommand, isFailCommand, isInvalidCommand, isPostponeCommand, isProofliteGlassbox, isQEDCommand, isQuitCommand, isQuitDontSaveCommand, isSameCommand, isSaveThenQuitCommand, isShowHiddenFormulas, isUndoCommand, isUndoUndoCommand, isUndoUndoPlusCommand, splitCommands } from '../common/languageUtils';
+import { PvsResponse } from '../common/pvs-gui';
+import { 
+	isEmptyCommand, isFailCommand, isInvalidCommand, isPostponeCommand, isProofliteGlassbox, 
+	isQEDCommand, isQuitCommand, isQuitDontSaveCommand, isSameCommand, isSaveThenQuitCommand, 
+	isShowHiddenFormulas, isUndoCommand, isUndoUndoCommand, isUndoUndoPlusCommand, splitCommands
+} from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
 import { PvsProxy } from '../pvsProxy';
 import { PvsLanguageServer } from '../pvsLanguageServer';
@@ -435,8 +419,8 @@ export class PvsProofExplorer {
 				}
 			}
 			if (opt.feedbackToTerminal && !this.autorunFlag) {
-				const channelID: string = desc2id(this.formula);
-				const evt: CliGatewayPrintProofCommand = { type: "pvs.event.print-proof-command", channelID, data: { cmd } };
+				// const channelID: string = desc2id(this.formula);
+				// const evt: CliGatewayPrintProofCommand = { type: "pvs.event.print-proof-command", channelID, data: { cmd } };
 				// this.pvsLanguageServer.cliGateway.publish(evt);
 			}
 			const command: PvsProofCommand = {
@@ -611,8 +595,8 @@ export class PvsProofExplorer {
 
 			// show sequent in the terminal, if feedback was requested
 			if (opt.feedbackToTerminal && !this.autorunFlag) {
-				const channelID: string = languageUtils.desc2id(this.formula);
-				const evt: CliGatewayProofState = { type: "pvs.event.proof-state", channelID, data: this.proofState };
+				// const channelID: string = languageUtils.desc2id(this.formula);
+				// const evt: CliGatewayProofState = { type: "pvs.event.proof-state", channelID, data: this.proofState };
 				// this.pvsLanguageServer.cliGateway.publish(evt);
 				this.pvsLanguageServer.getConnection()?.sendRequest(serverEvent.proofCommandResponse, { res: this.proofState, req: desc?.args });
 			}
@@ -760,8 +744,10 @@ export class PvsProofExplorer {
 				} else if (isInvalidCommand(this.proofState)) {
 					if (isSameCommand(activeNode.name, cmd) || isSameCommand(activeNode.name, userCmd)) {
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
-						// mark the sub tree of the invalid node as not visited
-						activeNode.treeNotVisited();
+						if (!this.ghostNode.isActive()) {
+							// mark the sub tree of the invalid node as not visited
+							activeNode.treeNotVisited();
+						}
 					}
 				} else if (languageUtils.interruptedByClient(this.proofState)) {
 					this.stopRun();
