@@ -3343,8 +3343,10 @@ class GhostNode extends ProofItem {
 	}
 	// @overrides
 	moveIndicatorBack (): ProofItem {
-		this.notActive();
-		this.realNode.active();
+		if (this.realNode.contextValue !== "root") {
+			this.notActive();
+			this.realNode.active();
+		}
 		return this.realNode;
 	}
 	// @overrides
