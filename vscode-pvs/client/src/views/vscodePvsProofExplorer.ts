@@ -79,7 +79,6 @@ import Backbone = require('backbone');
 // };
 
 export enum ProofExplorerEvent {
-	didAcquireFocus = "didAcquireFocus",
 	didStopExecution = "didStopExecution"
 };
 
@@ -305,7 +304,6 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				}
 			}
 		}
-		this.trigger(ProofExplorerEvent.didAcquireFocus);
 	}
 	/**
 	 * Selects the active node in the view.
@@ -330,7 +328,6 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				}
 			}
 		}
-		this.trigger(ProofExplorerEvent.didAcquireFocus);
 	}
 	/**
 	 * Reveals a node in the view.
@@ -430,7 +427,6 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 					console.error(selected);
 					// console.error(error);
 				});
-
 			}
 		}
 	}
@@ -1981,10 +1977,11 @@ class WelcomeScreen extends TreeItem {
 }
 class LoadingItem extends TreeItem {
 	contextValue: string = "loading-content";
-	message: string = "Loading proof"
+	message: string = "Loading proof";
+	id: string = fsUtils.get_fresh_id();
 	protected points: number = 0;
 	protected MAX_POINTS: number = 3;
-	protected timer: NodeJS.Timer;
+	protected timer: NodeJS.Timer = null;
 	constructor () {
 		super ("loading-content", TreeItemCollapsibleState.None);
 		this.label = this.message;
