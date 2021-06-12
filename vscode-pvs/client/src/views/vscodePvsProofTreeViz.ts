@@ -599,14 +599,15 @@ export class VSCodePvsVizTree {
      */
     protected createWebView (title: string) {
         if (this.panel) {
-            this.panel.title = title;
+            this.panel.title = `Proof: ${title}`;
         } else {
             this.panel = vscode.window.createWebviewPanel(
                 'proof-tree', // Identifies the type of the webview. Used internally
                 `Proof: ${title}`, // Title of the panel displayed to the user
                 vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
                 {
-                    enableScripts: true
+                    enableScripts: true,
+                    retainContextWhenHidden: true
                 }
             );
             // Clean up data structures when webview is disposed

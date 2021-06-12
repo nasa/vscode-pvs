@@ -1319,7 +1319,7 @@ export class PvsLanguageServer {
 		// Create service providers
 		this.definitionProvider = new PvsDefinitionProvider(this.pvsProxy, this.documents);
 		this.completionProvider = new PvsCompletionProvider(this.definitionProvider);
-		this.codeLensProvider = new PvsCodeLensProvider();
+		this.codeLensProvider = new PvsCodeLensProvider(this);
 		this.renameProvider = new PvsRenameProvider(this.connection);
 		this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
 		this.linter = new PvsLinter();
@@ -1666,7 +1666,9 @@ export class PvsLanguageServer {
 	 */
 	isPreludeFile (desc: string | FileDescriptor): boolean {
 		if (desc) {
-			const fname: string = typeof desc === "string" ? desc : fsUtils.desc2fname(desc);
+			let fname: string = typeof desc === "string" ? desc : fsUtils.desc2fname(desc);
+			fname = fname.replace("file://", "");
+			fname = fsUtils.tildeExpansion(fname);		
 			const prelude: string = fsUtils.desc2fname(this.getPreludeFileName());
 			return fname === prelude;
 		}

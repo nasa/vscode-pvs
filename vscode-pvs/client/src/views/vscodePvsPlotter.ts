@@ -116,7 +116,8 @@ export class VSCodePvsPlotter {
                     `plot-expression ${label}`, // Title of the panel displayed to the user
                     vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
                     {
-                        enableScripts: true
+                        enableScripts: true,
+                        retainContextWhenHidden: true
                     } // Webview options.
                 );
                 // set webview content

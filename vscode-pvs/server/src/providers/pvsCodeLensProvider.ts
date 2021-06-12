@@ -41,8 +41,20 @@ import { CancellationToken, CodeLens, CodeLensRequest, Range, CodeLensParams } f
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 import { ProveFormulaRequest, PvsFormula, PvsTheory } from '../common/serverInterface';
+import { PvsLanguageServer } from '../pvsLanguageServer';
 
-export class PvsCodeLensProvider {    
+export class PvsCodeLensProvider {
+    protected pvsLanguageServer: PvsLanguageServer;
+
+
+    /**
+     * Constructor
+     * @param pvsLanguageServer 
+     */
+    constructor (pvsLanguageServer: PvsLanguageServer) {
+        this.pvsLanguageServer = pvsLanguageServer;
+    }
+
     /**
 	 * Standard API of the language server, provides a completion list while typing a pvs expression
      * TODO: improve performance of this function
@@ -51,7 +63,7 @@ export class PvsCodeLensProvider {
 	 * @param token Cancellation token
 	 */
 	provideCodeLens(document: { txt: string, uri: string }, token?: CancellationToken): Thenable<CodeLens[]> {
-        if (document) {
+        if (document && !this.pvsLanguageServer.isPreludeFile(document.uri)) {
             let fileName: string = fsUtils.getFileName(document.uri);
             const fileExtension: string = fsUtils.getFileExtension(document.uri);
             const contextFolder: string = fsUtils.getContextFolder(document.uri);

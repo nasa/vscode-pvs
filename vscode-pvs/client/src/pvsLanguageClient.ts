@@ -158,7 +158,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				this.statusBar.show();
 				// check if this is a session start and there's a file that needs to be opened
 				const fname: string = event?.fileName;
-				if (fsUtils.isPvsFile(fname)) {
+				if (fsUtils.isPvsFile(fname) && fname === window.activeTextEditor.document?.fileName) {
 					vscodeUtils.loadPvsFileIcons();
 					const contextFolder: string = fsUtils.getContextFolder(fname);
 					const explorerWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
