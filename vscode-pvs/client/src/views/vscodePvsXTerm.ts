@@ -39,7 +39,7 @@
 
 import {
     Uri, WebviewPanel, ExtensionContext, Terminal, TerminalOptions, 
-    ExtensionTerminalOptions, TerminalExitStatus, window, ViewColumn, TextEditor, commands
+    ExtensionTerminalOptions, TerminalExitStatus, window, ViewColumn, TextEditor, commands, WebviewPanelOnDidChangeViewStateEvent
 } from 'vscode';
 import * as path from 'path';
 import * as Handlebars from "handlebars";
@@ -48,7 +48,7 @@ import * as utils from '../common/languageUtils';
 import { LanguageClient } from 'vscode-languageclient';
 import {
     EvaluatorCommandResponse, HintsObject, MathObjects, ProofCommandResponse, ProveFormulaRequest, ProveFormulaResponse, 
-    PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, serverEvent, serverRequest 
+    PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, SequentDescriptor, serverEvent, serverRequest 
 } from '../common/serverInterface';
 import { PvsResponse } from '../common/pvs-gui';
 import * as vscodeUtils from '../utils/vscode-utils';
@@ -92,14 +92,14 @@ const htmlTemplate: string = `
 <body>
     <div id="terminal" class="animate__animated animate__fadeIn"></div>
     <div class="terminal-help p-0"></div>
+
     <script>
     const vscode = acquireVsCodeApi();
-    console.log("xtermpvs", xtermpvs);
-
     const xterm = new xtermpvs.XTermPvs({
         sessionType: "{{sessionType}}",
         paddingBottom: ${HELP_PANEL_HEIGHT}
     });
+    console.log("xtermpvs", xtermpvs);
 
     // Handlers for events triggered by xterm
     {{#each xtermEvents}}
@@ -113,11 +113,12 @@ const htmlTemplate: string = `
 
     // Handler for sending commands to xterm
     window.addEventListener('message', async (event) => {
+        console.log("[xterm-webview] message", { event });
         const message = event.data; // JSON data sent by vscode-pvs
         switch (message.command) {
             {{#each xtermCommands}}
             case "{{this}}": {
-                // console.log("[xterm-webview] {{this}} data", message);
+                console.log("[xterm-webview] {{this}} data", message);
                 xterm["{{this}}"](message.data);
                 break;
             }
@@ -126,7 +127,15 @@ const htmlTemplate: string = `
                 break;
             }
         }
-    })
+    });
+
+    // ready event
+    window.addEventListener('load', async (event) => {
+        vscode.postMessage({
+            command: "${XTermEvent.ready}",
+            data: true
+        });
+    });
     </script>
 </body>
 </html>`;
@@ -280,13 +289,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.sessionType = "prover"
         this.clearScreen();
         this.setPrompt(utils.proverPrompt);
-        this.reveal();
-        // this delay is needed to give time to the webview to render the content -- the APIs of webviews seem to be incorrect, createWebView is not async but the panel may not be ready to render when the function returns.
-        await new Promise<void> ((resolve, reject) => {
-            setTimeout(() => {
-                resolve();
-            }, 250);
-        });
+        await this.reveal();
         const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.blue, this.colorTheme);
         const welcome: string = `\nStarting prover session for ${colorUtils.colorText(formula.formulaName, color)}\n`;
         this.log(welcome);
@@ -323,51 +326,53 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     protected onProverResponse (data: ProofCommandResponse, opt?: { ignoreCommentary?: boolean }): void {
         opt = opt || {};
-        if (typeof data?.res === "string") {
-            if (data.res === "Q.E.D." || data.res === "bye!") {
-                const xtermMsg: string = colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
-                this.log("\n" + xtermMsg, {
-                    sessionEnd: true
-                });
-                const msg: string = data.res === "Q.E.D." ? `Proof completed successfully!\nThe proof has been saved. You can now <span class="btn btn-sm btn-primary btn-help close-action m-0 p-0">close</span> the prover console.`
-                    : `Prover session terminated.\nYou can now <span class="btn btn-sm btn-primary btn-help close-action m-0 p-0">close</span> the prover console.`;
-                // send the message after a timeout, to avoid overwrites due to automatic updates of the help panel
-                setTimeout(() => {
-                    this.showHelpMessage(msg);
-                }, 500);
-                // disable response handlers
-                this.disableHandlers();
-                this.sessionType = null;
+        if (data) {
+            if (typeof data.res === "string") {
+                if (data.res === "Q.E.D." || data.res === "bye!") {
+                    const xtermMsg: string = colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
+                    this.log("\n" + xtermMsg, {
+                        sessionEnd: true
+                    });
+                    const msg: string = data.res === "Q.E.D." ? `Proof completed successfully!\nThe proof has been saved. You can now <span class="btn btn-sm btn-primary btn-help close-action m-0 p-0">close</span> the prover console.`
+                        : `Prover session terminated.\nYou can now <span class="btn btn-sm btn-primary btn-help close-action m-0 p-0">close</span> the prover console.`;
+                    // send the message after a timeout, to avoid overwrites due to automatic updates of the help panel
+                    setTimeout(() => {
+                        this.showHelpMessage(msg);
+                    }, 500);
+                    // disable response handlers
+                    this.disableHandlers();
+                    this.sessionType = null;
+                } else {
+                    console.log(data.res);
+                }
             } else {
-                console.log(data.res);
-            }
-        } else {
-            // res is a SequentDescriptor
-            // echo last command if the response was not originated by xterm
-            if (data?.req?.cmd && data?.req?.origin !== "xterm-pvs") {
-                // this.log(`${utils.colorText(utils.proverPrompt, pvsColor.blue, true)} ${data.req.cmd}`,);
-                this.clearCommandLine();
-                this.log(data.req.cmd);
-            }
-            if (data?.req?.cmd && !isInvalidCommand(data.res)) {
-                this.updateCommandHistory(data.req.cmd);
-            }
+                // res is a SequentDescriptor
+                // echo last command if the response was not originated by xterm
+                if (data.req?.cmd && data.req?.origin !== "xterm-pvs") {
+                    // this.log(`${utils.colorText(utils.proverPrompt, pvsColor.blue, true)} ${data.req.cmd}`,);
+                    this.clearCommandLine();
+                    this.log(data.req.cmd);
+                }
+                if (data.req?.cmd && !isInvalidCommand(data.res)) {
+                    this.updateCommandHistory(data.req.cmd);
+                }
 
-            const sequent: string = utils.formatSequent(data?.res, { 
-                colorTheme: this.colorTheme, 
-                useColors: true, 
-                ...opt 
-            });
-            const lastState: string = utils.sformulas2string(data.res);
-            const theoryContent: string = this.target?.fileContent;
-            const hints: HintsObject = getHints(this.sessionType, {
-                lastState, 
-                theoryContent
-            });
-            this.log(sequent, { hints, mathObjects: this.mathObjects });
-            // show prompt
-            this.showPrompt();
-            commands.executeCommand("xterm.did-execute-command");
+                const sequent: string = utils.formatSequent(data?.res, { 
+                    colorTheme: this.colorTheme, 
+                    useColors: true, 
+                    ...opt 
+                });
+                const lastState: string = utils.sformulas2string(data.res);
+                const theoryContent: string = this.target?.fileContent;
+                const hints: HintsObject = getHints(this.sessionType, {
+                    lastState, 
+                    theoryContent
+                });
+                this.log(sequent, { hints, mathObjects: this.mathObjects });
+                // show prompt
+                this.showPrompt();
+                commands.executeCommand("xterm.did-execute-command");
+            }
         }
     };
 
@@ -431,7 +436,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.setPrompt(utils.pvsioPrompt);
         const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.blue, this.colorTheme);
         const welcome: string = `\nStarting PVSio evaluator session for theory ${colorUtils.colorText(theory.theoryName, color)}\n`;
-        this.reveal();
+        await this.reveal();
         this.log(welcome);
         this.showHelpMessage("Starting evaluator session, please wait...");
         this.disableTerminalInput();
@@ -457,28 +462,30 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      * Handler for evaluator responses
      */
     protected onEvaluatorResponse (data: EvaluatorCommandResponse): void {
-        if (data?.res === "bye!") {
-            this.setPrompt("");
-            this.log("\n" + colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme)), {
-                sessionEnd: true
-            });
-            const msg: string = "Evaluator session terminated.\nYou can now close the evaluator console."
-            this.showHelpMessage(msg);
-            // disable response handlers
-            this.disableHandlers();
-            this.sessionType = null;
-        } else {
-            if (data?.res) {
-                const hints: HintsObject = getHints(this.sessionType, {
-                    lastState: data.res, 
-                    theoryContent: this.target?.fileContent
+        if (data) {
+            if (data.res === "bye!") {
+                this.setPrompt("");
+                this.log("\n" + colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme)), {
+                    sessionEnd: true
                 });
-                this.log("\n" + data.res, { hints });
-                // trigger event for interested listeners, e.g., pvsioweb
-                this.trigger(XTermPvsEvent.DidReceiveEvaluatorResponse, data);
+                const msg: string = "Evaluator session terminated.\nYou can now close the evaluator console."
+                this.showHelpMessage(msg);
+                // disable response handlers
+                this.disableHandlers();
+                this.sessionType = null;
+            } else {
+                if (data.res) {
+                    const hints: HintsObject = getHints(this.sessionType, {
+                        lastState: data.res, 
+                        theoryContent: this.target?.fileContent
+                    });
+                    this.log("\n" + data.res, { hints });
+                    // trigger event for interested listeners, e.g., pvsioweb
+                    this.trigger(XTermPvsEvent.DidReceiveEvaluatorResponse, data);
+                }
+                this.showPrompt();
+                this.showWelcomeMessage();
             }
-            this.showPrompt();
-            this.showWelcomeMessage();
         }
     }
     
@@ -594,22 +601,27 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Places focus on the terminal
      */
-    focus (): void {
-        this.reveal();
-        // Use a timeout so that the webview has time to render its content
-        clearTimeout(this.tfocus);
-        this.tfocus = setTimeout(() => {
-            const message: XTermMessage = {
-                command: XTermCommands.focus
-            };
-            this.panel?.webview?.postMessage(message);
-        }, 250);
+    async focus (): Promise<boolean> {
+        let success: boolean = await this.reveal();
+        if (success) {
+            // Use a timeout so that the webview has time to render its content
+            clearTimeout(this.tfocus);
+            await new Promise ((resolve, reject) => {
+                this.tfocus = setTimeout(() => {
+                    const message: XTermMessage = {
+                        command: XTermCommands.focus
+                    };
+                    this.panel?.webview?.postMessage(message);
+                }, 250);
+            });
+        }
+        return success;
     }
     /**
      * Shows the terminal
      */
-    show (preserveFocus?: boolean): void {
-        this.reveal();
+    async show (preserveFocus?: boolean): Promise<boolean> {
+        return await this.reveal();
     }
     /**
      * Deletes the terminal
@@ -621,8 +633,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Reveals the terminal
      */
-    reveal (): void {
-        this.renderView({ reveal: true });
+    async reveal (): Promise<boolean> {
+        return await this.renderView();
     }
     /**
      * Hides the terminal
@@ -635,8 +647,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     activate (context: ExtensionContext) {
         this.context = context;
-        // context.subscriptions.push(vscode.commands.registerCommand("vscode-pvs.x-term", () => {
-        //     this.reveal();
+        // context.subscriptions.push(vscode.commands.registerCommand("vscode-pvs.x-term", async () => {
+        //     await this.reveal();
         // }));
     }
     /**
@@ -644,11 +656,15 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     write (data: string): void {
         if (data) {
-            const message: XTermMessage = {
-                command: XTermCommands.write,
-                data: data
-            };
-            this.panel?.webview?.postMessage(message);
+            if (this.panel?.webview) {
+                const message: XTermMessage = {
+                    command: XTermCommands.write,
+                    data: data
+                };
+                this.panel?.webview?.postMessage(message);
+            } else {
+                console.warn("[vscode-xterm] @write Warning: panel is null");
+            }
         }
     }
     /**
@@ -668,7 +684,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         if (opt?.sessionEnd) {
             // write a closing messages.
             if (this.sessionType === "evaluator") {
-                message.data = " Evaluator session terminated.";
+                 " Evaluator session terminated.";
                 this.panel?.webview?.postMessage(message);
             } else if (this.sessionType === "prover" && data.includes("bye!")) {
                 message.data = " Prover session terminated."
@@ -695,8 +711,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Renders the webview
      */
-    renderView (opt?: { reveal?: boolean }): void {
-        this.createWebView(opt);
+    async renderView (): Promise<boolean> {
+        const success: boolean = await this.createWebView();
+        return success;
     }
     /**
      * Sets the prompt
@@ -821,102 +838,110 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Internal function, creates the webview
      */
-    protected createWebView (opt?: { reveal?: boolean }): void {
-        if (this.sessionType) {
-            const title: string = this.sessionType === "prover" ?
-                `Proving formula '${(<PvsFormula> this.target).formulaName}'`
-                    : `Evaluating theory ${this.target.theoryName}`;
-            if (this.panel) {
-                this.panel.title = title;
-            } else {
-                this.panel = this.panel || window.createWebviewPanel(
-                    'x-term-pvs', // Identifies the type of the webview. Used internally
-                    title, // Title of the panel displayed to the user
-                    ViewColumn.Active, // Editor column to show the new webview panel in.
-                    {
-                        enableScripts: true,
-                        retainContextWhenHidden: true,
-                        enableFindWidget: true
-                    }
-                );
-                try {
-                    // clean up data structures when webview is disposed
-                    this.panel.onDidDispose(
-                        async () => {
-                            // delete panel
-                            this.panel = null;
-                            // send quit command to the server
-                            this.sendTextToServer("quit");
-                            // reset session type
-                            this.sessionType = null;
-                            // reset global vscode-pvs variables so other views can be updated properly
-                            await vscodeUtils.resetGlobals();
-                        },
-                        null,
-                        this.context.subscriptions
+    protected createWebView (): Promise<boolean> {
+        return new Promise ((resolve, reject) => {
+            if (this.sessionType) {
+                const title: string = this.sessionType === "prover" ?
+                    `Proving formula '${(<PvsFormula> this.target).formulaName}'`
+                        : `Evaluating theory ${this.target.theoryName}`;
+                if (this.panel) {
+                    this.panel.title = title;
+                    // reveal the panel
+                    this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
+                    resolve(true);
+                } else {
+                    this.panel = this.panel || window.createWebviewPanel(
+                        'x-term-pvs', // Identifies the type of the webview. Used internally
+                        title, // Title of the panel displayed to the user
+                        ViewColumn.Active, // Editor column to show the new webview panel in.
+                        {
+                            enableScripts: true,
+                            retainContextWhenHidden: true,
+                            enableFindWidget: true
+                        }
                     );
-                    // Handle messages from the webview
-                    this.panel.webview.onDidReceiveMessage(
-                        async (message: XTermMessage) => {
-                            // console.log("[vscode-xterm] Received message", message);
-                            if (message) {
-                                switch (message.command) {
-                                    case XTermEvent.sendText: {
-                                        if (message?.data === interruptCommand) {
-                                            commands.executeCommand("vscode-pvs.interrupt-prover");
-                                        } else {
-                                            if (message?.data) {
-                                                this.showFeedbackWhileExecuting(message.data);
-                                                await this.sendTextToServer(message.data);
-                                                if (!utils.isQuitCommand(message.data)) {
-                                                    this.running(false);
-                                                    this.showWelcomeMessage();
+                    try {
+                        // clean up data structures when webview is disposed
+                        this.panel.onDidDispose(
+                            () => {
+                                // delete panel
+                                this.panel = null;
+                                // send quit command to the server
+                                this.sendTextToServer("quit");
+                                // reset session type
+                                this.sessionType = null;
+                                // reset global vscode-pvs variables so other views can be updated properly
+                                vscodeUtils.resetGlobals();
+                            },
+                            null,
+                            this.context?.subscriptions
+                        );
+                        // Handle messages from the webview
+                        this.panel.webview.onDidReceiveMessage(
+                            async (message: XTermMessage) => {
+                                // console.log("[vscode-xterm] Received message", message);
+                                if (message) {
+                                    switch (message.command) {
+                                        case XTermEvent.sendText: {
+                                            if (message?.data === interruptCommand) {
+                                                commands.executeCommand("vscode-pvs.interrupt-prover");
+                                            } else {
+                                                if (message?.data) {
+                                                    this.showFeedbackWhileExecuting(message.data);
+                                                    await this.sendTextToServer(message.data);
+                                                    if (!utils.isQuitCommand(message.data)) {
+                                                        this.running(false);
+                                                        this.showWelcomeMessage();
+                                                    }
                                                 }
                                             }
+                                            break;
                                         }
-                                        break;
-                                    }
-                                    case XTermEvent.didCopyText: {
-                                        if (message?.data?.length) {
-                                            vscodeUtils.showInformationMessage(`Selected text copied to clipboard.`);
+                                        case XTermEvent.didCopyText: {
+                                            if (message?.data?.length) {
+                                                vscodeUtils.showInformationMessage(`Selected text copied to clipboard.`);
+                                            }
+                                            break;
                                         }
-                                        break;
-                                    }
-                                    case XTermEvent.closeConsole: {
-                                        this.dispose();
-                                        break;
-                                    }
-                                    case XTermEvent.proofExplorerBack:
-                                    case XTermEvent.proofExplorerForward:
-                                    case XTermEvent.proofExplorerRun: 
-                                    case XTermEvent.proofExplorerEdit: {
-                                        commands.executeCommand(message.command);
-                                        break;
-                                    }
-                                    default: {
-                                        break;
+                                        case XTermEvent.closeConsole: {
+                                            this.dispose();
+                                            break;
+                                        }
+                                        case XTermEvent.proofExplorerBack:
+                                        case XTermEvent.proofExplorerForward:
+                                        case XTermEvent.proofExplorerRun: 
+                                        case XTermEvent.proofExplorerEdit: {
+                                            commands.executeCommand(message.command);
+                                            break;
+                                        }
+                                        case XTermEvent.ready: {
+                                            resolve(message?.data);
+                                            break;
+                                        }
+                                        default: {
+                                            break;
+                                        }
                                     }
                                 }
-                            }
-                        },
-                        undefined,
-                        this.context.subscriptions
-                    );
-                    // Create webview content
-                    this.createContent();
-                    // set language to pvs
-                    vscodeUtils.setEditorLanguagetoPVS();
-                    // set terminal visible to true
-                    commands.executeCommand('setContext', 'terminal.visible', true);
-                } catch (err) {
-                    console.error(err);
+                            },
+                            undefined,
+                            this.context?.subscriptions
+                        );
+                        // Create webview content
+                        this.createContent();
+                        // reveal the panel 
+                        this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
+                        // set language to pvs
+                        vscodeUtils.setEditorLanguagetoPVS();
+                        // set terminal visible to true
+                        commands.executeCommand('setContext', 'terminal.visible', true);
+                    } catch (err) {
+                        console.error(err);
+                        resolve(false);
+                    }
                 }
             }
-            // reveal the panel 
-            if (opt?.reveal) {
-                this.panel?.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
-            }
-        }
+        });
     }
     /**
      * Internal function, creates the html content of the webview

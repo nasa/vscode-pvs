@@ -112,11 +112,6 @@ export class EventsDispatcher {
         this.workspaceExplorer = handlers.workspaceExplorer;
         this.proofExplorer = handlers.proofExplorer;
 
-        this.proofExplorer.on(ProofExplorerEvent.didAcquireFocus, () => {
-            setTimeout(() => {
-                this.xterm.focus(); // use a timeout so that proof-explorer does not steal the focus
-            }, 250);
-        });
         this.proofExplorer.on(ProofExplorerEvent.didStopExecution, () => {
             setTimeout(() => {
                 this.xterm.focus(); // use a timeout so that proof-explorer does not steal the focus
@@ -356,6 +351,7 @@ export class EventsDispatcher {
                     this.proofExplorer.enableView();
                     this.proofMate.enableView();
                     this.proofExplorer.resetView();
+                    this.xterm.focus();
                     break;
                 }
                 case "did-fail-to-start-proof": {
@@ -373,6 +369,7 @@ export class EventsDispatcher {
                     this.proofMate.startProof();
                     await this.proofMate.loadSketchpadClips(); // loads sketchpad clips from the .jprf file
                     this.proofExplorer.focusActiveNode({ force: true }); // this will automatically open the view, in the case the view was hidden
+                    this.xterm.focus();
                     break;
                 }
                 case "did-quit-proof": { // this is sent by CliGateway when the prover CLI is closed
@@ -391,6 +388,7 @@ export class EventsDispatcher {
                         // this.xterm.showFeedbackWhileExecuting("run-proof");
                     } else {
                         this.proofMate.updateRecommendations(desc.sequent);
+                        this.xterm.focus();
                     }
                     break;
                 }
@@ -764,7 +762,7 @@ export class EventsDispatcher {
                 // window.showInformationMessage(`${desc.cmd} sent to terminal`)
             }
         }));
-        context.subscriptions.push(commands.registerCommand("xterm.focus", () => {
+        context.subscriptions.push(commands.registerCommand("xterm-pvs.focus", () => {
             this.xterm.focus();
         }));
 

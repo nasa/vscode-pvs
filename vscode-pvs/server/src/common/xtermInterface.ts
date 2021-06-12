@@ -1,6 +1,7 @@
 import { XTermColorTheme } from "./colorUtils";
 
 export enum XTermEvent {
+    ready = "ready",
     sendText = "sendText",
     closeConsole = "closeConsole",
     didCopyText = "didCopyText",

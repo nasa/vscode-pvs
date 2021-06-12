@@ -261,7 +261,7 @@ export class Content extends Backbone.Model {
         if (colIndex >= 0) {
             return textLine.substr(0, colIndex);
         }
-        console.warn("[xterm-content] Warning, textLineBefore position column out of range", { pos, textLine, lines: this.lines });
+        console.warn("[xterm-content] Warning, textLineBefore position column out of range", { pos, textLine, lines: this.lines, colIndex });
         return "";
     }
 
@@ -395,7 +395,7 @@ export class Content extends Backbone.Model {
             this.savePos();
             this.pos.line = textBeforeCursor.split("\n").length || MIN_POS.line;
             this.pos.character = this.endCol(this.pos.line) + 1;
-            // console.log("[xterm-content] writeData", { textAfterCursor, textBeforeCursor, newText, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
+            console.log("[xterm-content] writeData", { textAfterCursor, textBeforeCursor, newText, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
         }
     }
 
@@ -483,6 +483,9 @@ export class Content extends Backbone.Model {
      */
     insertCharAt (pos: Position, char: string): boolean {
         const lineIndex: number = pos?.line - 1;
+        if (lineIndex === 0 && this.lines.length === 0) {
+            this.lines = [""];
+        }
         if (lineIndex >= 0 && lineIndex < this.lines.length) {
             const colIndex: number = pos?.character - 1;
             if (colIndex >= 0) {
@@ -495,7 +498,7 @@ export class Content extends Backbone.Model {
                 return true;
             }
         }
-        console.warn("[xterm-content] Warning: line out of range @insertCharAt", { pos, char, lines: this.lines });
+        console.warn("[xterm-content] Warning: line out of range @insertCharAt", { lineIndex, pos, char, lines: this.lines });
         return false;
     }
 
@@ -576,7 +579,7 @@ export class Content extends Backbone.Model {
             }
             return col;
         }
-        console.warn("[xterm-content] Warning: line index out of bounds @endCol", { line });
+        console.warn("[xterm-content] Warning: line index out of bounds @endCol", { line, lineIndex });
         return opt.allowBesideEnd ? MIN_POS.character + 1 : MIN_POS.character;
     }
 
@@ -1461,11 +1464,11 @@ export class Autocomplete extends Backbone.Model {
         // console.log("[xterm-autocomplete] autocompleteProverCommand", { currentInput: this.currentInput, hintsData: this.hintsObject });
         if (opt?.fullSet) {
             if (opt?.commandsOnly) {
-                return Object.keys(this.hintsObject?.commands);
+                return this.hintsObject?.commands ? Object.keys(this.hintsObject.commands) : [];
             }
             const symbols: string[] = this.hintsObject?.symbols; //utils.listSymbols(this.proofState);
             const mathObjects: string[] = this.mathObjects?.lemmas;
-            const commands: string[] = Object.keys(this.hintsObject?.commands);
+            const commands: string[] = this.hintsObject?.commands ? Object.keys(this.hintsObject.commands) : [];
             return symbols.concat(mathObjects).concat(commands);
         }
         if (currentInput) {
@@ -1527,7 +1530,9 @@ export class Autocomplete extends Backbone.Model {
                 }
             } else {
                 // other prover command
-                hints = Object.keys(this.hintsObject?.commands)?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput));
+                hints = this.hintsObject?.commands ? 
+                    Object.keys(this.hintsObject.commands)?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput))
+                    : [];
             }
             return hints;
         }
@@ -1539,10 +1544,10 @@ export class Autocomplete extends Backbone.Model {
 	autocompleteEvaluatorCommand (currentInput: string, opt?: { fullSet?: boolean, commandsOnly?: boolean }): string[] {
         if (opt?.fullSet) {
             if (opt?.commandsOnly) {
-                return Object.keys(this.hintsObject?.commands);
+                return this.hintsObject?.commands ? Object.keys(this.hintsObject.commands) : [];
             }
             const symbols: string[] = this.hintsObject?.symbols;
-            const commands: string[] = Object.keys(this.hintsObject?.commands);
+            const commands: string[] = this.hintsObject?.commands ? Object.keys(this.hintsObject?.commands) : [];
             return symbols.concat(commands);
         }
         if (currentInput) {
@@ -1564,7 +1569,10 @@ export class Autocomplete extends Backbone.Model {
                 hints = symbols?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput));
             }
             // Include also pvsio functions
-            hints = hints.concat(Object.keys(this.hintsObject?.commands)?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput)));
+            const cmds: string[] = this.hintsObject?.commands ?
+                Object.keys(this.hintsObject.commands).filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput))
+                : []
+            hints = hints.concat(cmds);
             return hints;
         }
         return [];
@@ -1940,12 +1948,14 @@ export class XTermPvs extends Backbone.Model {
         });
         // set color theme
         this.updateColorTheme();
-    
+
+        // update styles
+        $("#terminal").append(tooltipStyle);
+        $("body").append(terminalStyle);
+
         // create the terminal panel
         this.parent = opt?.parent || "terminal";
         this.xterm.open(document.getElementById(this.parent));
-        $(".terminal").append(tooltipStyle);
-        $("body").append(terminalStyle);
         // $(".terminal").append(cursorStyle);
     
         // install handlers
@@ -2845,8 +2855,8 @@ export class XTermPvs extends Backbone.Model {
      * Write text in the terminal. The received data will become read-only
      */
     log (data: string): void {
+        console.log("[xterm-pvs] log", { data });
         if (data) {
-            // console.log("[xterm-pvs] log", { data });
             this.write(data);
             // rebase to make the received data read-only
             this.content.rebase();
