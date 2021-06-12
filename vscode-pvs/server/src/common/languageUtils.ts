@@ -457,7 +457,7 @@ export function formatSequent (desc: SequentDescriptor, opt?: {
 				res += commentaryToString(desc.commentary, opt);
 			}
 		}
-		if (desc.sequent) { // print label and comment only if the sequent is non-empty (sequent empty means proof completed)
+		if (desc.sequent && !isInvalidCommand(desc)) { // print label and comment only if the sequent is non-empty (sequent empty means proof completed)
 			if (desc.label) {
 				res += labelToString(desc.label, opt);
 			}
