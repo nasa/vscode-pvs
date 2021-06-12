@@ -886,7 +886,7 @@ export class EventsDispatcher {
                             // create a new instance
                             this.pvsioweb.setTheory(theory);
                             this.pvsioweb.setTerminal(this.xterm);
-                            this.pvsioweb.reveal();
+                            await this.pvsioweb.reveal();
                         }
                     } else {
                         vscodeUtils.showWarningMessage("Unable to create a new PVSio Evaluator session");

@@ -183,6 +183,14 @@ const htmlTemplate: string = `
             }
         }
     });
+
+    // ready event
+    window.addEventListener('load', async (event) => {
+        vscode.postMessage({
+            command: "ready",
+            data: true
+        });
+    });
     </script>
 </body>
 </html>`;
@@ -242,9 +250,9 @@ export class VSCodePvsioWeb {
     /**
      * Reveal the webview
      */
-    reveal (): void {
+    async reveal (): Promise<void> {
         if (!this.panel) {
-            this.renderView();
+            await this.renderView();
         }
         this.panel.reveal()
     }
@@ -656,179 +664,195 @@ export class VSCodePvsioWeb {
     /**
      * Internal function, creates the webview
      */
-    protected createWebView () {
-        if (this.panel) {
-            this.panel.title = this.title;
-        } else {
-            this.panel = this.panel || window.createWebviewPanel(
-                'pvsioweb', // Identifies the type of the webview. Used internally
-                this.title, // Title of the panel displayed to the user
-                ViewColumn.Active, // Editor column to show the new webview panel in.
-                {
-                    enableScripts: true,
-                    retainContextWhenHidden: true
-                }
-            );
-            // clean up data structures when webview is disposed
-            this.panel.onDidDispose(
-                async () => {
-                    // save all files
-                    await this.savePVSioWebFiles();
-                    // reset initialization flag
-                    this.stateMachineInitialized = false;
-                    // delete panel
-                    this.panel = null;
-                    // exec dispose callback
-                    if (this.disposeCallback) {
-                        this.disposeCallback();
+    protected createWebView (): Promise<boolean> {
+        return new Promise ((resolve, reject) => {
+            if (this.panel) {
+                this.panel.title = this.title;
+                // reveal the panel
+                this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
+                resolve(true);            
+            } else {
+                this.panel = this.panel || window.createWebviewPanel(
+                    'pvsioweb', // Identifies the type of the webview. Used internally
+                    this.title, // Title of the panel displayed to the user
+                    ViewColumn.Active, // Editor column to show the new webview panel in.
+                    {
+                        enableScripts: true,
+                        retainContextWhenHidden: true
                     }
-                },
-                null,
-                this.context.subscriptions
-            );
-            // Handle messages from the webview
-            this.panel.webview.onDidReceiveMessage(
-                async (message: Message) => {
-                    // all files are saved under <context-folder>/pvsioweb/
-                    log(`[vscode-pvsio-web] Received new message`, message);
-                    switch (message.command) {
-                        // builder activation event
-                        case builderUtils.PrototypeBuilderEvents.DidActivatePlugin: {
-                            await this.loadPrototype();
-                            break;
+                );
+                // clean up data structures when webview is disposed
+                this.panel.onDidDispose(
+                    async () => {
+                        // save all files
+                        await this.savePVSioWebFiles();
+                        // reset initialization flag
+                        this.stateMachineInitialized = false;
+                        // delete panel
+                        this.panel = null;
+                        // exec dispose callback
+                        if (this.disposeCallback) {
+                            this.disposeCallback();
                         }
+                    },
+                    null,
+                    this.context.subscriptions
+                );
+                // Handle messages from the webview
+                this.panel.webview.onDidReceiveMessage(
+                    async (message: Message) => {
+                        // all files are saved under <context-folder>/pvsioweb/
+                        log(`[vscode-pvsio-web] Received new message`, message);
+                        switch (message.command) {
+                            // webview ready
+                            case "ready": {
+                                resolve (true);
+                                break;
+                            }
+                            // builder activation event
+                            case builderUtils.PrototypeBuilderEvents.DidActivatePlugin: {
+                                await this.loadPrototype();
+                                break;
+                            }
 
-                        // file menu
-                        case builderUtils.PrototypeBuilderEvents.SavePrototype: {
-                            if (message.data) {
-                                this.data = message.data;
-                                await this.saveIoFile();
-                                await this.saveWebFile();
-                                await this.savePictureFile();
+                            // file menu
+                            case builderUtils.PrototypeBuilderEvents.SavePrototype: {
+                                if (message.data) {
+                                    this.data = message.data;
+                                    await this.saveIoFile();
+                                    await this.saveWebFile();
+                                    await this.savePictureFile();
+                                }
+                                break;
                             }
-                            break;
-                        }
 
-                        // run menu
-                        case builderUtils.PrototypeBuilderEvents.PauseSimulation: {
-                            this.pauseSimulation();
-                            break;
-                        }
-                        case builderUtils.PrototypeBuilderEvents.RebootSimulation: {
-                            await this.rebootEvaluator();
-                            await this.sendInit();
-                            break;
-                        }
+                            // run menu
+                            case builderUtils.PrototypeBuilderEvents.PauseSimulation: {
+                                this.pauseSimulation();
+                                break;
+                            }
+                            case builderUtils.PrototypeBuilderEvents.RebootSimulation: {
+                                await this.rebootEvaluator();
+                                await this.sendInit();
+                                break;
+                            }
 
-                        // change events
-                        case builderUtils.PrototypeBuilderEvents.DidChangePicture: {
-                            // remove old picture, if present and file path different from the new one
-                            const data: builderUtils.DidChangePictureEventData = message.data;
-                            if (data?.old?.fileName && data?.old?.fileExtension
-                                    && data?.old?.fileName !== data?.new?.fileName
-                                    && data?.old?.fileExtension !== data?.new?.fileExtension
-                                    && this.theory?.contextFolder) {
-                                // delete old picture
-                                const fname: string = path.join(this.theory.contextFolder, pvsiowebFolder, `${data.old.fileName}${data.old.fileExtension}`);
-                                fsUtils.deleteFile(fname);
-                            }
-                            if (data) {
-                                // remove extra fields
-                                delete data.old;
-                                delete data.new;
-                                // save prototype data
-                                this.data = data;
-                                await this.savePictureFile();
-                                await this.saveWebFile();
-                            }
-                            break;
-                        }
-                        case builderUtils.PrototypeBuilderEvents.DidUpdateWidgets: {
-                            if (message.data) {
-                                this.data = message.data;
-                                // autosave .web file
-                                await this.saveWebFile();
-                            }
-                            break;
-                        }
-                        case builderUtils.PrototypeBuilderEvents.DidUpdateSettings: {
-                            if (message.data) {
-                                this.data = message.data;
-                                // autosave .io file
-                                await this.saveIoFile();
-                                await this.saveWebFile();
-                            }
-                            break;
-                        }
-                        case builderUtils.PrototypeBuilderEvents.DidRemovePicture: {
-                            if (message.data) {
-                                const data: builderUtils.DidRemovePictureEventData = message.data;
-                                if (data.old && this.theory?.contextFolder) {
+                            // change events
+                            case builderUtils.PrototypeBuilderEvents.DidChangePicture: {
+                                // remove old picture, if present and file path different from the new one
+                                const data: builderUtils.DidChangePictureEventData = message.data;
+                                if (data?.old?.fileName && data?.old?.fileExtension
+                                        && data?.old?.fileName !== data?.new?.fileName
+                                        && data?.old?.fileExtension !== data?.new?.fileExtension
+                                        && this.theory?.contextFolder) {
                                     // delete old picture
                                     const fname: string = path.join(this.theory.contextFolder, pvsiowebFolder, `${data.old.fileName}${data.old.fileExtension}`);
                                     fsUtils.deleteFile(fname);
+                                }
+                                if (data) {
                                     // remove extra fields
                                     delete data.old;
+                                    delete data.new;
                                     // save prototype data
                                     this.data = data;
+                                    await this.savePictureFile();
                                     await this.saveWebFile();
                                 }
+                                break;
                             }
-                            break;
-                        }
-                        
-                        // switch events
-                        case builderUtils.PrototypeBuilderEvents.DidSwitchToBuilderView: {
-                            // stop timers
-                            this.pauseSimulation();
-                            break;
-                        }
-                        case builderUtils.PrototypeBuilderEvents.DidSwitchToSimulatorView: {
-                            if (message.data) {
-                                // send init to server
-                                this.data = message.data;
-                                if (!this.stateMachineInitialized) {
-                                    await this.sendInit();
+                            case builderUtils.PrototypeBuilderEvents.DidUpdateWidgets: {
+                                if (message.data) {
+                                    this.data = message.data;
+                                    // autosave .web file
+                                    await this.saveWebFile();
                                 }
-                                // start tick
-                                this.delayedStartTick();
+                                break;
                             }
-                            break;
-                        }
-                        case builderUtils.PrototypeBuilderEvents.DidSwitchToSettingsView: {
-                            // stop timers
-                            this.pauseSimulation();
-                            break;
-                        }
+                            case builderUtils.PrototypeBuilderEvents.DidUpdateSettings: {
+                                if (message.data) {
+                                    this.data = message.data;
+                                    // autosave .io file
+                                    await this.saveIoFile();
+                                    await this.saveWebFile();
+                                }
+                                break;
+                            }
+                            case builderUtils.PrototypeBuilderEvents.DidRemovePicture: {
+                                if (message.data) {
+                                    const data: builderUtils.DidRemovePictureEventData = message.data;
+                                    if (data.old && this.theory?.contextFolder) {
+                                        // delete old picture
+                                        const fname: string = path.join(this.theory.contextFolder, pvsiowebFolder, `${data.old.fileName}${data.old.fileExtension}`);
+                                        fsUtils.deleteFile(fname);
+                                        // remove extra fields
+                                        delete data.old;
+                                        // save prototype data
+                                        this.data = data;
+                                        await this.saveWebFile();
+                                    }
+                                }
+                                break;
+                            }
+                            
+                            // switch events
+                            case builderUtils.PrototypeBuilderEvents.DidSwitchToBuilderView: {
+                                // stop timers
+                                this.pauseSimulation();
+                                break;
+                            }
+                            case builderUtils.PrototypeBuilderEvents.DidSwitchToSimulatorView: {
+                                if (message.data) {
+                                    // send init to server
+                                    this.data = message.data;
+                                    if (!this.stateMachineInitialized) {
+                                        await this.sendInit();
+                                    }
+                                    // start tick
+                                    this.delayedStartTick();
+                                }
+                                break;
+                            }
+                            case builderUtils.PrototypeBuilderEvents.DidSwitchToSettingsView: {
+                                // stop timers
+                                this.pauseSimulation();
+                                break;
+                            }
 
-                        // widget events
-                        case WidgetEvents.DidSendRequest: {
-                            // message.data is a widget action
-                            const action: {
-                                type: "sendCommand" | string,
-                                req: any
-                            } = message.data;
-                            const init: builderUtils.IoFileAttribute = builderUtils.IoFileAttribute.initialState;
-                            if (action?.type === "sendCommand" && action?.req?.command) {
-                                // state-machine mode is enabled only when initialState is defined
-                                const mode: PvsIoMode = (this.data && this.data[init]?.value) ? "state-machine" : "standard";
-                                // make sure the state machine is initialized
-                                if (mode === "state-machine" && !this.stateMachineInitialized) {
-                                    await this.sendInit();
+                            // widget events
+                            case WidgetEvents.DidSendRequest: {
+                                // message.data is a widget action
+                                const action: {
+                                    type: "sendCommand" | string,
+                                    req: any
+                                } = message.data;
+                                const init: builderUtils.IoFileAttribute = builderUtils.IoFileAttribute.initialState;
+                                if (action?.type === "sendCommand" && action?.req?.command) {
+                                    // state-machine mode is enabled only when initialState is defined
+                                    const mode: PvsIoMode = (this.data && this.data[init]?.value) ? "state-machine" : "standard";
+                                    // make sure the state machine is initialized
+                                    if (mode === "state-machine" && !this.stateMachineInitialized) {
+                                        await this.sendInit();
+                                    }
+                                    await this.sendCommand(action.req.command, { mode });
                                 }
-                                await this.sendCommand(action.req.command, { mode });
+                                break;
                             }
-                            break;
+                            default: {
+                                break;
+                            }
                         }
-                        default: {
-                            break;
-                        }
-                    }
-                },
-                undefined,
-                this.context.subscriptions
-            );
-        }
+                    },
+                    undefined,
+                    this.context.subscriptions
+                );
+                // Create webview content
+                this.createContent();
+                // reveal the panel 
+                this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
+                // set language to pvs
+                vscodeUtils.setEditorLanguagetoPVS();                
+            }
+        });
     }
     /**
      * Internal function, creates the html content of the webview
@@ -895,20 +919,21 @@ export class VSCodePvsioWeb {
     /**
      * Renders the content of the webview
      */
-    renderView (): void {
-        this.refreshView();
+    async renderView (): Promise<boolean> {
+        const success: boolean = await this.createWebView();
+        return success;
     }
     /**
      * Refresh the content of the webview
      */
-    refreshView (): void {
-        // create webview
-        this.createWebView();
-        // create webview content
-        this.createContent();
-        // set language to pvs
-        vscodeUtils.setEditorLanguagetoPVS();
-    }
+    // refreshView (): void {
+    //     // create webview
+    //     this.createWebView();
+    //     // create webview content
+    //     this.createContent();
+    //     // set language to pvs
+    //     vscodeUtils.setEditorLanguagetoPVS();
+    // }
     /**
      * Creates the html rendered in the webview
      * @param root Proof tree
