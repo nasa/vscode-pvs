@@ -1786,7 +1786,7 @@ export class Autocomplete extends Backbone.Model {
     /**
      * updates tooltips based on keypress events
      */
-    autocompleteOnKeyPress (ev: KeyboardEvent | JQuery.KeyDownEvent): void {
+    autocompleteOnKeyPress (ev: KeyboardEvent | JQuery.KeyDownEvent, opt?: { force?: boolean }): void {
         switch (ev.key) {
             case "Backspace": {
                 this.updateTooltip();
@@ -1801,14 +1801,17 @@ export class Autocomplete extends Backbone.Model {
                 this.onArrow(ev);
                 break;
             }
-
             case "ArrowLeft":
             case "ArrowRight": {
                 this.updateTooltip();
                 break;
             }
             case " ": {
-                this.updateTooltip();
+                if (opt?.force) {
+                    this.triggerAutocomplete();
+                } else {
+                    this.updateTooltip();
+                }
                 // this.deleteTooltips();
                 break;
             }
@@ -2415,13 +2418,15 @@ export class XTermPvs extends Backbone.Model {
         // process key press if this is not a history search and mod keys are not pressed
         if (!historySearch && !this.modKeyIsActive()) {
             const key: string = evt.domEvent.key;
-            // dispatch Enter events to autocomplete if there is a tooltip selected
-            if (key === "Enter" && !this.readyToSend() && this.autocomplete.getSelectedHint()) {
+            const selectedHint: string = this.autocomplete?.getSelectedHint();
+            const commandLine: string = this.content?.command()?.trim();
+            // dispatch Enter events to autocomplete if there is a tooltip selected and command is not ready to be sent
+            if (key === "Enter" && !this.readyToSend() && selectedHint) {
                 this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
                 return;
             }
-            // send command to the server
-            if (key === "Enter" && this.readyToSend()) {
+            // send command to the server if command is ready to be sent and either there's no tooltip or the tooltip is identical to the command line
+            if (key === "Enter" && this.readyToSend() && (selectedHint === commandLine || !selectedHint)) {
                 // clear brackets matching info
                 this.brackets = null;
                 // remove tooltips
@@ -2430,6 +2435,12 @@ export class XTermPvs extends Backbone.Model {
                 this.sendWhenReady();
                 return;
             }
+            // Space triggers autocomplete for symbols
+            if (key === " " && selectedHint?.startsWith("\\")) {
+                // autocomplete symbol
+                this.autocomplete.autocompleteOnKeyPress(evt?.domEvent, { force: true });
+                return;
+            }            
             // else
             // update content and show tooltips
             const selectingTooltip: boolean = (key === "ArrowUp" || key === "ArrowDown") && this.autocomplete.tooltipVisible();
