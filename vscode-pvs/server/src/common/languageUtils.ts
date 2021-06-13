@@ -297,25 +297,26 @@ function commentToString (txt: string, opt?: {
 /**
  * Utility function, prettyprints the commentary string included in the sequent returned by the prover
  */
-export function commentaryToString (txt: string | string[], opt?: {
+export function commentaryToString (commentary: string | string[], opt?: {
     useColors?: boolean,
     colorTheme?: colorUtils.XTermColorTheme,
     htmlEncoding?: boolean
 }): string {
 	let res = "";
-    if (txt) {
+    if (commentary) {
         const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
         const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.gray, colorTheme);
-        if (typeof txt === "string") {
-            txt = txt.trim().endsWith(",") ? txt.trim().slice(0, -1) : txt.trim();
-            res += opt.htmlEncoding ? `<br>${txt}<br>` 
-                : opt.useColors ? `\n${colorUtils.colorText(`${txt}`, color)}\n`
-                    : `\n${txt}\s`;
+        if (typeof commentary === "string") {
+            commentary = commentary.trim().endsWith(",") ? commentary.trim().slice(0, -1) : commentary.trim();
+            res += opt.htmlEncoding ? `<br>${commentary}<br>` 
+                : opt.useColors ? `\n${colorUtils.colorText(`${commentary}`, color)}\n`
+                    : `\n${commentary}\s`;
         } else {
             res += opt.htmlEncoding ? "<br>" : "\n";
-            for (let i = 0; i < txt.length; i++) {
-                let line: string = txt[i];
-                if (i === txt.length - 1) {
+            const len: number = isInvalidCommand({ commentary }) ? 1 : commentary.length;
+            for (let i = 0; i < len; i++) {
+                let line: string = commentary[i];
+                if (i === commentary.length - 1) {
                     line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
                 }
                 res += opt.htmlEncoding ? `${line}<br>` 

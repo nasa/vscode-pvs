@@ -12,7 +12,7 @@
 		"node": "^12.16.1",
 		"npm": "^7.15.1",
 		"uuid": "^8.3.2",
-		"xterm": "^4.12.0"
+		"xterm": "^4.13.0"
 	},
 	"devDependencies": {
 		"@types/backbone": "^1.4.10",
