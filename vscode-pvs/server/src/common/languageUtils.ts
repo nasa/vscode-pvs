@@ -313,8 +313,7 @@ export function commentaryToString (commentary: string | string[], opt?: {
                     : `\n${commentary}\s`;
         } else {
             res += opt.htmlEncoding ? "<br>" : "\n";
-            const len: number = isInvalidCommand({ commentary }) ? 1 : commentary.length;
-            for (let i = 0; i < len; i++) {
+            for (let i = 0; i < commentary.length; i++) {
                 let line: string = commentary[i];
                 if (i === commentary.length - 1) {
                     line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
@@ -458,7 +457,10 @@ export function formatSequent (desc: SequentDescriptor, opt?: {
 				res += commentaryToString(desc.commentary, opt);
 			}
 		}
-		if (desc.sequent && !isInvalidCommand(desc)) { // print label and comment only if the sequent is non-empty (sequent empty means proof completed)
+        // print label and comment only if 
+        // - the sequent is non-empty (sequent empty means proof completed)
+        // - the commentary string does not indicate error
+		if (desc.sequent && (opt.ignoreCommentary || !isInvalidCommand(desc))) {
 			if (desc.label) {
 				res += labelToString(desc.label, opt);
 			}
