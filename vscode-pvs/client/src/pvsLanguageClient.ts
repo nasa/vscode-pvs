@@ -151,14 +151,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		workspace.onDidOpenTextDocument(async (event: TextDocument) => {
 			if ((event && event.languageId === "pvs") 
 				|| (window.activeTextEditor && 
-						(fsUtils.isPvsFile(window.activeTextEditor.document?.fileName)
-							|| window.activeTextEditor.document?.languageId === "Log"))) {
+						(fsUtils.isPvsFile(window.activeTextEditor?.document?.fileName)
+							|| window.activeTextEditor?.document?.languageId === "Log"))) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
 				// check if this is a session start and there's a file that needs to be opened
 				const fname: string = event?.fileName;
-				if (fsUtils.isPvsFile(fname) && fname === window.activeTextEditor.document?.fileName) {
+				if (fsUtils.isPvsFile(fname) && fname === window.activeTextEditor?.document?.fileName) {
 					vscodeUtils.loadPvsFileIcons();
 					const contextFolder: string = fsUtils.getContextFolder(fname);
 					const explorerWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
@@ -191,7 +191,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		window.onDidChangeActiveTextEditor(async (event: TextEditor) => {
 			const editor: TextEditor = window.activeTextEditor; //event || window.activeTextEditor;
 			const fname: string =  editor?.document?.fileName;
-			if (editor?.document && (fsUtils.isPvsFile(editor.document.fileName) || editor.document.languageId === "Log")) {
+			if (editor?.document && (fsUtils.isPvsFile(editor.document.fileName) || editor?.document?.languageId === "Log")) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
@@ -258,8 +258,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			}) || [];
 			if (pvsFiles.length > 0
 				|| (window.activeTextEditor && 
-						(fsUtils.isPvsFile(window.activeTextEditor.document?.fileName)
-							|| window.activeTextEditor.document?.languageId === "Log"))) {
+						(fsUtils.isPvsFile(window.activeTextEditor?.document?.fileName)
+							|| window.activeTextEditor?.document?.languageId === "Log"))) {
 				// send clear theory command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
 				this.client.sendRequest(serverRequest.clearTheories);
 				// remove tccs file for the renamed file, if the file exists
@@ -426,7 +426,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// update status bar
 				this.statusBar.ready();
 
-				if (window.activeTextEditor && window.activeTextEditor.document) {
+				if (window.activeTextEditor?.document) {
 					// parse file opened in the editor
 					const desc: PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
 					if (desc.contextFolder) {
