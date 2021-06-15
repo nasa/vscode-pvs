@@ -395,7 +395,7 @@ export class Content extends Backbone.Model {
             this.savePos();
             this.pos.line = textBeforeCursor.split("\n").length || MIN_POS.line;
             this.pos.character = this.endCol(this.pos.line) + 1;
-            console.log("[xterm-content] writeData", { textAfterCursor, textBeforeCursor, newText, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
+            // console.log("[xterm-content] writeData", { textAfterCursor, textBeforeCursor, newText, pos: this.pos, prevPos: this.prevPos, lines: this.lines, command: this.command() });
         }
     }
 
@@ -986,10 +986,9 @@ const tooltipStyle: string = `<style>
     left:10px !important;
 }
 .tooltip-inner {
-    max-height: 18px; 
+    max-height: 20px; 
     max-width: 300px;
-    overflow:auto;
-    font-size:10px;
+    font-size:12px;
     font-family:Menlo, Monaco, monospace;
     text-align:left;
     cursor:default;
@@ -997,6 +996,11 @@ const tooltipStyle: string = `<style>
     white-space: nowrap;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
+    overflow: overlay !important;
+}
+.tooltip-inner::-webkit-scrollbar {
+    height: 1px;
+    width: 2px;
 }
 .arrow::before {
     border-bottom-color: white !important;
@@ -1192,8 +1196,10 @@ export interface DidAutocompleteEvent extends AutocompleteData {
     getHistory (opt?: { match?: string }): string[] {
         opt = opt || {};
         if (opt.match !== undefined) {
-            return opt.match ? this.history.filter((c: string) => c.toLocaleLowerCase().startsWith(opt.match))
-                : [];
+            return opt.match ? this.history.filter((c: string) => {
+                return c//.toLocaleLowerCase()
+                        .startsWith(opt.match);
+            }) : [];
         }
         return this.history;
     }
@@ -1204,8 +1210,10 @@ export interface DidAutocompleteEvent extends AutocompleteData {
     getSuccessHistory (opt?: { match?: string }): string[] {
         opt = opt || {};
         if (opt.match !== undefined) {
-            return opt.match ? this.successHistory.filter((c: string) => c.toLocaleLowerCase().startsWith(opt.match))
-                : [];
+            return opt.match ? this.successHistory.filter((c: string) => {
+                return c//.toLocaleLowerCase()
+                        .startsWith(opt.match);
+            }) : [];
         }
         return this.history;
     }
@@ -1524,15 +1532,18 @@ export class Autocomplete extends Backbone.Model {
                     : Object.keys(EVALUATOR_COMMANDS);
                 for (let i = 0; i < cmds?.length; i++) {
                     const hint: string = `help ${cmds[i]}`;
-                    if (hint.toLocaleLowerCase().startsWith(currentInput)) {
+                    if (hint//.toLocaleLowerCase()
+                            .startsWith(currentInput)) {
                         hints.push(hint);
                     }
                 }
             } else {
                 // other prover command
                 hints = this.hintsObject?.commands ? 
-                    Object.keys(this.hintsObject.commands)?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput))
-                    : [];
+                    Object.keys(this.hintsObject.commands)?.filter((c: string) => {
+                        return c//.toLocaleLowerCase()
+                                .startsWith(currentInput);
+                    }) : [];
             }
             return hints;
         }
@@ -1566,12 +1577,17 @@ export class Autocomplete extends Backbone.Model {
             const symbols: string[] = this.hintsObject?.symbols;
             // console.dir(symbols, { depth: null });
             if (symbols?.length) {
-                hints = symbols?.filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput));
+                hints = symbols?.filter((c: string) => {
+                    return c//.toLocaleLowerCase()
+                            .startsWith(currentInput);
+                });
             }
             // Include also pvsio functions
             const cmds: string[] = this.hintsObject?.commands ?
-                Object.keys(this.hintsObject.commands).filter((c: string) => c.toLocaleLowerCase().startsWith(currentInput))
-                : []
+                Object.keys(this.hintsObject.commands).filter((c: string) => {
+                    return c//.toLocaleLowerCase()
+                            .startsWith(currentInput);
+                }) : []
             hints = hints.concat(cmds);
             return hints;
         }
@@ -1585,7 +1601,7 @@ export class Autocomplete extends Backbone.Model {
         // include history if nothing is specified
         opt.includeHistory = (opt.includeHistory === undefined) ? true : !!opt.includeHistory;
         // update current input
-        const currentInput: string = this.getCurrentInput({ removeLeadingBracket: true })?.toLocaleLowerCase();
+        const currentInput: string = this.getCurrentInput({ removeLeadingBracket: true });
         // get command hints
         let hints: string[] = this.sessionType === "evaluator" ?
             this.autocompleteEvaluatorCommand(currentInput, opt)
@@ -1604,7 +1620,9 @@ export class Autocomplete extends Backbone.Model {
         }
         // sort hints
         return hints?.sort((a: string, b: string) => {
-            return a.toLocaleLowerCase() < b.toLocaleLowerCase() ? -1 : 1;
+            return a//.toLocaleLowerCase() 
+                    < b//.toLocaleLowerCase() 
+                        ? -1 : 1;
         }) || [];
     }
     /**
@@ -1774,7 +1792,7 @@ export class Autocomplete extends Backbone.Model {
             }
         }
         const currentInput: string = this.getCurrentInput();
-        console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput, match, substitution });
+        // console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput, match, substitution });
         const evt: DidAutocompleteEvent = {
             substitution,
             currentInput,
@@ -2866,7 +2884,7 @@ export class XTermPvs extends Backbone.Model {
      * Write text in the terminal. The received data will become read-only
      */
     log (data: string): void {
-        console.log("[xterm-pvs] log", { data });
+        // console.log("[xterm-pvs] log", { data });
         if (data) {
             this.write(data);
             // rebase to make the received data read-only
