@@ -113,12 +113,12 @@ const htmlTemplate: string = `
 
     // Handler for sending commands to xterm
     window.addEventListener('message', async (event) => {
-        console.log("[xterm-webview] message", { event });
+        // console.log("[xterm-webview] message", { event });
         const message = event.data; // JSON data sent by vscode-pvs
         switch (message.command) {
             {{#each xtermCommands}}
             case "{{this}}": {
-                console.log("[xterm-webview] {{this}} data", message);
+                // console.log("[xterm-webview] {{this}} data", message);
                 xterm["{{this}}"](message.data);
                 break;
             }
