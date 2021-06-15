@@ -1636,7 +1636,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Utility function, returns the node type, one of: root, proof-branch, proof-node, ghost
 	 */
-	 getType(): NodeType {
+	getType(): NodeType {
 		switch (this.contextValue) {
 			case "root": { return "root"; }
 			case "proof-branch": { return "proof-branch"; }
@@ -1652,6 +1652,7 @@ export abstract class ProofItem extends TreeItem {
 	 */
 	updateSequent (sequent?: SequentDescriptor): void {
 		this.sequent = sequent;
+		this.tooltip = sequent ? formatSequent(sequent, { formulasOnly: true }).trim() : "";
 	}
 	/**
 	 * Utility function, returns the sequent associated to this tree item
