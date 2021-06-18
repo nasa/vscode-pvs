@@ -734,9 +734,19 @@ export function showVersionInfo (): void {
  */
 export function getConfiguration (key: string): string {
     const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
-    const res = config.get(key);
+    const res: string | Object = config.get(key);
     return (typeof res === "string") ? res : "";
 }
+
+/**
+ * Returns the value of a vscode configuration key
+ */
+ export function getConfigurationFlag (key: string): boolean {
+    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+    const res: boolean | Object = config.get(key);
+    return !!res;
+}
+
 /**
  * Sets the value of a vscode configuration
  */

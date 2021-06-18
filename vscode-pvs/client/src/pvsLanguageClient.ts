@@ -249,6 +249,12 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					}); // the server will use the last context folder it was using	
 				}
 			}
+
+			// update xterm-pvs settings, if xterm is active
+			if (this.xterm.isActive()) {
+				const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.proverConsole.autocompleteWithEnter");
+				this.xterm.autocompleteWithEnter(flag);
+			}
 		}, null, this.context.subscriptions);
 
 		// onDidRenameFiles is emitted when a file is renamed

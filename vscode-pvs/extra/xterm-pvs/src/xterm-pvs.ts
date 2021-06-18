@@ -1926,6 +1926,9 @@ export class XTermPvs extends Backbone.Model {
     protected prompt: string = "> ";
     protected ntrims: number = 0;
 
+    // autocomplete with enter flag
+    protected autocompleteWithEnterFlag: boolean = true;
+
     // color theme
     protected colorTheme: XTermColorTheme = "dark";
 
@@ -2291,6 +2294,8 @@ export class XTermPvs extends Backbone.Model {
                         this.trigger(XTermEvent.sendText, { data: cmd });
                         // push command in the history
                         this.autocomplete.updateCommandHistory(cmd);
+                        // disable input
+                        this.disableInput();
                         return true;
                     }
                     break;
@@ -2301,6 +2306,8 @@ export class XTermPvs extends Backbone.Model {
                         this.trigger(XTermEvent.sendText, { data: cmd });
                         // push command in the history
                         this.autocomplete.updateCommandHistory(cmd);
+                        // disable input
+                        this.disableInput();
                         return true;
                     }
                     break;
@@ -2435,16 +2442,22 @@ export class XTermPvs extends Backbone.Model {
         const historySearch: boolean = this.onHistorySearch(evt);
         // process key press if this is not a history search and mod keys are not pressed
         if (!historySearch && !this.modKeyIsActive()) {
-            const key: string = evt.domEvent.key;
+            const key: string = evt?.domEvent?.key;
             const selectedHint: string = this.autocomplete?.getSelectedHint();
             const commandLine: string = this.content?.command()?.trim();
+            // Enter and Space autocomplete symbols
+            if (selectedHint?.startsWith("\\") && (key === "Enter" || key === " ")) {
+                // autocomplete symbol
+                this.autocomplete.autocompleteOnKeyPress(evt?.domEvent, { force: true });
+                return;
+            }
             // dispatch Enter events to autocomplete if there is a tooltip selected and command is not ready to be sent
             if (key === "Enter" && !this.readyToSend() && selectedHint) {
                 this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
                 return;
             }
             // send command to the server if command is ready to be sent and either there's no tooltip or the tooltip is identical to the command line
-            if (key === "Enter" && this.readyToSend() && (selectedHint === commandLine || !selectedHint)) {
+            if (key === "Enter" && this.readyToSend() && (selectedHint === commandLine || !selectedHint || !this.autocompleteWithEnterFlag)) {
                 // clear brackets matching info
                 this.brackets = null;
                 // remove tooltips
@@ -2453,12 +2466,6 @@ export class XTermPvs extends Backbone.Model {
                 this.sendWhenReady();
                 return;
             }
-            // Space triggers autocomplete for symbols
-            if (key === " " && selectedHint?.startsWith("\\")) {
-                // autocomplete symbol
-                this.autocomplete.autocompleteOnKeyPress(evt?.domEvent, { force: true });
-                return;
-            }            
             // else
             // update content and show tooltips
             const selectingTooltip: boolean = (key === "ArrowUp" || key === "ArrowDown") && this.autocomplete.tooltipVisible();
@@ -2598,7 +2605,7 @@ export class XTermPvs extends Backbone.Model {
                 meta: !!evt?.metaKey
             };
             // ctrl+c interrupts the prover. This combo is enabled only when the prover is running.
-            if (this.runningFlag && this.inputEnabled && evt?.ctrlKey && evt.key === "c") {
+            if (this.runningFlag && evt?.ctrlKey && evt.key === "c") {
                 this.trigger(XTermEvent.sendText, { data: interruptCommand });
                 return false;
             }
@@ -3201,7 +3208,7 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
-     * Shows the prompt and place focus on the prompt.
+     * Shows the prompt.
      */
     showPrompt (prompt: string): void {
         // Make sure the provided prompt does not contain ansi codes and has a space after, otherwise the regexp will fail. 
@@ -3210,9 +3217,17 @@ export class XTermPvs extends Backbone.Model {
         const cprompt: string = "\n\n" + this.applySyntaxHighlighting(this.prompt, this.colorTheme);
         this.log(cprompt);
         this.content.rebase({ prompt: this.prompt });
+        this.enableInput();
         // this.autocomplete.clearHelp();
         // console.log("[xterm-pvs] showPrompt", { prompt: this.prompt, cprompt, content: this.content, xtermPos: this.pos });
         // this.focus({ src: "showPrompt" });
         // this.showWelcomeMessage();
+    }
+
+    /**
+     * Set/Reset autocompleteWithEnter flag
+     */
+    autocompleteWithEnter (flag: boolean): void {
+        this.autocompleteWithEnterFlag = !!flag;
     }
 }
