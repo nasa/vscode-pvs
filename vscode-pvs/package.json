@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.53-gamma",
+	"version": "1.0.53-iota",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -91,27 +91,32 @@
 					"pvs.serviceProvider.codelens": {
 						"type": "boolean",
 						"default": true,
-						"description": "Enable in-line actionable commands"
+						"description": "Enable in-line actionable commands (default: true)"
 					},
 					"pvs.serviceProvider.autocompletion": {
 						"type": "boolean",
 						"default": true,
-						"description": "Autocomplete symbol names and language keywords"
+						"description": "Autocomplete symbol names and language keywords (default: true)"
 					},
 					"pvs.serviceProvider.definitions": {
 						"type": "boolean",
 						"default": true,
-						"description": "Search symbol definitions"
+						"description": "Search symbol definitions (default: true)"
 					},
 					"pvs.serviceProvider.hover": {
 						"type": "boolean",
 						"default": true,
-						"description": "Show hover tooltips for symbols"
+						"description": "Show hover tooltips for symbols (default: true)"
 					},
 					"pvs.serviceProvider.rename": {
 						"type": "boolean",
 						"default": true,
-						"description": "Support for renaming of theories & formulas"
+						"description": "Support for renaming of theories & formulas (default: true)"
+					},
+					"pvs.settings.proverConsole.autocompleteWithEnter": {
+						"type": "boolean",
+						"default": true,
+						"description": "Use 'Enter' as alternate autocompletion key in the prover console (default: true)"
 					},
 					"pvs.xtras.enableAntlrParser": {
 						"type": "boolean",
@@ -122,13 +127,6 @@
 						"type": "string",
 						"default": "",
 						"description": "PVSio-Web Widget library files (colon-separated list of paths to pvsio-web widget library files). NOTE: library files must be located in a folder within the current vscode workspace."
-					}
-				},
-				"disabled_properties": {
-					"pvs.xperimental.developer.lispInterface": {
-						"type": "boolean",
-						"default": false,
-						"description": "Use Lisp interface when interacting with the theorem prover. Requires NASALib and vscode-output patch."
 					}
 				}
 			}
@@ -358,6 +356,13 @@
 					"dark": "icons/svg-open-workspace.svg",
 					"light": "icons/svg-open-workspace.svg"
 				}
+			},
+			{
+				"command": "workspace-explorer.collapse-all-theories",
+				"title": "Collapse Theories",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs",
+				"icon": "$(collapse-all)"
 			},
 			{
 				"command": "vscode-pvs.view-prelude-file",
@@ -1346,6 +1351,11 @@
 					"group": "navigation"
 				},
 				{
+					"command": "workspace-explorer.collapse-all-theories",
+					"when": "view == workspace-explorer-view",
+					"group": "navigation"
+				},
+				{
 					"command": "vscode-pvs.search-nasalib",
 					"when": "view == workspace-explorer-view",
 					"group": "ctrl-1.2"
@@ -1483,89 +1493,6 @@
 				"language": "pvs",
 				"scopeName": "source.pvs",
 				"path": "./syntax/pvs-language.json"
-			}
-		],
-		"colors": [
-			{
-				"id": "pvs.keywords.color",
-				"description": "Decoration color for reserved keywords",
-				"defaults": {
-					"dark": "#3fa9ff",
-					"light": "#4627ce55",
-					"highContrast": "#2450af55"
-				}
-			},
-			{
-				"id": "pvs.operators.color",
-				"description": "Decoration color for operators",
-				"defaults": {
-					"dark": "#3fa9ff",
-					"light": "#4627ce55",
-					"highContrast": "#2450af55"
-				}
-			},
-			{
-				"id": "pvs.builtinTypes.color",
-				"description": "Decoration color for basic types",
-				"defaults": {
-					"dark": "#31d18e",
-					"light": "#27975fd3",
-					"highContrast": "#27975fd3"
-				}
-			},
-			{
-				"id": "pvs.functions.color",
-				"description": "Decoration color for library functions",
-				"defaults": {
-					"dark": "#31d18e",
-					"light": "#27975fd3",
-					"highContrast": "#27975fd3"
-				}
-			},
-			{
-				"id": "pvs.comments.color",
-				"description": "Decoration color for basic types",
-				"defaults": {
-					"dark": "#29a385e7",
-					"light": "#174b40a8",
-					"highContrast": "#1d4b17a8"
-				}
-			},
-			{
-				"id": "pvs.numbers.color",
-				"description": "Decoration color for numbers",
-				"defaults": {
-					"dark": "#e0f584",
-					"light": "#7d8a43f8",
-					"highContrast": "#7d8a43f8"
-				}
-			},
-			{
-				"id": "pvs.strings.color",
-				"description": "Decoration color for numbers",
-				"defaults": {
-					"dark": "#f5c484",
-					"light": "#8a7443f8",
-					"highContrast": "#8a7443f8"
-				}
-			},
-			{
-				"id": "pvs.constants.color",
-				"description": "Decoration color for constants",
-				"defaults": {
-					"dark": "#3fa9ff",
-					"light": "#4627ce55",
-					"highContrast": "#2450af55"
-				}
-			},
-			{
-				"id": "pvs.error.syntax",
-				"description": "Decoration color for syntax errors",
-				"defaults": {
-					"dark": "#ff3fc5d2",
-					"light": "#ce279c4b",
-					"highContrast": "#af248155"
-				}
 			}
 		]
 	},

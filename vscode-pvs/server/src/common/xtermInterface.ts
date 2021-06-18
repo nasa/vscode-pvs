@@ -26,7 +26,8 @@ export enum XTermCommands {
     showWelcomeMessage = "showWelcomeMessage",
     updateColorTheme = "updateColorTheme",
     showHelpMessage = "showHelpMessage",
-    running = "running"
+    running = "running",
+    autocompleteWithEnter = "autocompleteWithEnter"
 };
 
 export interface XTermMessage {

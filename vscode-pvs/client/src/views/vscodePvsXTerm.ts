@@ -148,7 +148,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     protected context: ExtensionContext;
     protected prompt: string = "";
     protected target: PvsTheory | PvsFormula;
-    protected panel: WebviewPanel;
+    protected panel: WebviewPanel = null;
 
     protected colorTheme: "dark" | "light";
 
@@ -282,6 +282,21 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     }
 
     /**
+     * Returns true if the terminal is active
+     */
+    isActive (): boolean {
+        return this.panel !== null;
+    }
+
+    /**
+     * Internal function, configures xterm-pvs autocompletion based on vscode settings
+     */
+    configureAutocomplete (): void {
+        const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.proverConsole.autocompleteWithEnter");
+        this.autocompleteWithEnter(flag);
+    }
+
+    /**
      * Internal function, reveals the webview and sends proveFormula request to pvs-server.
      */
     protected async startProverSession (formula: StartXTermProverRequest): Promise<boolean> {
@@ -289,6 +304,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.sessionType = "prover"
         this.clearScreen();
         this.setPrompt(utils.proverPrompt);
+        this.configureAutocomplete();
         await this.reveal();
         const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.blue, this.colorTheme);
         const welcome: string = `\nStarting prover session for ${colorUtils.colorText(formula.formulaName, color)}\n`;
@@ -434,6 +450,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.sessionType = "evaluator";
         this.clearScreen();
         this.setPrompt(utils.pvsioPrompt);
+        this.configureAutocomplete();
         const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.blue, this.colorTheme);
         const welcome: string = `\nStarting PVSio evaluator session for theory ${colorUtils.colorText(theory.theoryName, color)}\n`;
         await this.reveal();
@@ -804,7 +821,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             command: XTermCommands.clearCommandLine,
             data: this.prompt
         };
-        this.panel?.webview?.postMessage(message);        
+        this.panel?.webview?.postMessage(message);
     }
     /**
      * Returns true if the current session is an evaluator session
@@ -823,6 +840,16 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     getTheory (): PvsTheory {
         return this.target;
+    }
+    /**
+     * Set/Reset autocomplete with Enter flag
+     */
+    autocompleteWithEnter (flag: boolean): void {
+        const message: XTermMessage = {
+            command: XTermCommands.autocompleteWithEnter,
+            data: flag
+        };
+        this.panel?.webview?.postMessage(message);
     }
     /**
      * Internal function, disables prover and evaluator handlers
@@ -998,7 +1025,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermCommands.showWelcomeMessage,
                         XTermCommands.updateColorTheme,
                         XTermCommands.showHelpMessage,
-                        XTermCommands.running
+                        XTermCommands.running,
+                        XTermCommands.autocompleteWithEnter
                     ],
                     xtermEvents: [
                         XTermEvent.sendText,
