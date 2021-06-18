@@ -63,6 +63,9 @@ class PvsFileItem extends TreeItem {
 		super("Loading file descriptor...");
 		this.theoriesOverview = new TheoriesOverviewItem();
 	}
+	collapseAllTheories (): void {
+		this.theoriesOverview?.collapseAllTheories();
+	}
 	updateFileDescriptor (desc: PvsFileDescriptor, opt?: { tccDescriptor?: boolean }): void {
 		this.label = this.fileName = desc.fileName;
 		this.fileExtension = desc.fileExtension;
@@ -131,6 +134,12 @@ export class TheoryItem extends TreeItem {
 		this.theoremsOverview = new TheoremsOverviewItem(desc);
 		this.tccsOverview = new TccsOverviewItem(desc);
 		this.refreshLabel();
+	}
+	collapse (): void {
+		if (this.collapsibleState !== TreeItemCollapsibleState.None) {
+			this.id = fsUtils.get_fresh_id();
+			this.collapsibleState = TreeItemCollapsibleState.Collapsed;
+		}
 	}
 	refreshLabel () {
 		// update label
@@ -399,6 +408,11 @@ class TheoriesOverviewItem extends TreeItem {
 		this.theories = [];
 		this.updateTheories(desc);
 	}
+	collapseAllTheories (): void {
+		 for (let i = 0; i < this.theories?.length; i++) {
+			 this.theories[i].collapse();
+		 }
+	}
 	updateTheories (desc: TheoryDescriptor[], opt?: { tccDescriptor?: boolean }) {
 		if (desc) {
 			opt = opt || {};
@@ -494,6 +508,11 @@ class PvsFilesOverviewItem extends OverviewItem {
 		if (this.files.length) {
 			// use pvs file icons
 			vscodeUtils.loadPvsFileIcons();
+		}
+	}
+	collapseAllTheories (): void {
+		for (let i = 0; i < this.files?.length; i++) {
+			this.files[i].collapseAllTheories();
 		}
 	}
 	getChildren (): TreeItem[] {
@@ -592,6 +611,9 @@ export class WorkspaceItem extends OverviewItem {
 	// 		this.updateLabel();
 	// 	}
 	// }
+	collapseAllTheories (): void {
+		this.pvsFilesOverview?.collapseAllTheories();
+	}
 	getFileItem (desc: { contextFolder: string, fileName: string, fileExtension: string }): PvsFileItem {
 		if (this.pvsFilesOverview) {
 			return this.pvsFilesOverview.getFileItem(desc);
@@ -783,7 +805,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		// register tree view.
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
-		this.view = window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: true });
+		this.view = window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
 	}
 
 	getClient (): LanguageClient {
@@ -1281,6 +1303,13 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
+	/**
+	 * Collapse all theories
+	 */
+	collapseAllTheories (): void {
+		this.root?.collapseAllTheories();
+		this.refreshView();
+	}
 
 	/**
 	 * Handler activation function
@@ -1288,6 +1317,10 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	 */
 	activate(context: ExtensionContext) {
 		// all commands in the form vscode-pvs.xxxx are handled by VSCodeEventsDispatcher
+
+		context.subscriptions.push(commands.registerCommand('workspace-explorer.collapse-all-theories', () => {
+			this.collapseAllTheories();
+		}));
 
 		// click on a tcc formula to open the file and highlight the tcc name in the theory
 		context.subscriptions.push(commands.registerCommand('explorer.tcc-selected-event', async (uri: Uri, range: Range) => {
