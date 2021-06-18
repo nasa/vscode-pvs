@@ -1341,12 +1341,23 @@ export class PvsProofExplorer {
 		}
 		return false;
 	}
-	pasteNodeX (desc: ProofEditPasteNode, opt?: { beforeSelected?: boolean }): void {
+	pasteNodeX (desc: ProofEditPasteNode, opt?: { beforeSelected?: boolean, rebase?: boolean }): void {
 		if (desc && desc.selected) {
-			const selected: ProofItem = this.findNode(desc.selected.id);
+			let selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
 				this.pasteNode({ selected }, opt);
 				return;
+			} else if (this.ghostNodeIsActive()) {
+				// append to realNode and activate realNode
+				selected = this.ghostNode.realNode;
+				this.pasteTree({ selected }, opt);
+				if (selected.contextValue === "proof-command") {
+					this.markAsActive({ selected });
+					this.ghostNode.notActive();
+				} else if (selected.children?.length) {
+					this.markAsActive({ selected: selected.children[0] });
+					this.ghostNode.notActive();
+				}
 			}
 		}
 		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
@@ -1377,12 +1388,24 @@ export class PvsProofExplorer {
 		}
 		return false;
 	}
-	pasteTreeX (desc: ProofEditPasteTree, opt?: { beforeSelected?: boolean }): void {
+	pasteTreeX (desc: ProofEditPasteTree, opt?: { beforeSelected?: boolean, rebase?: boolean }): void {
 		if (desc && desc.selected) {
-			const selected: ProofItem = this.findNode(desc.selected.id);
+			let selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
 				this.pasteTree({ selected }, opt);
 				return;
+			} else if (this.ghostNodeIsActive()) {
+				// append to realNode and activate realNode
+				selected = this.ghostNode.realNode;
+				this.pasteTree({ selected }, opt);
+				if (selected.contextValue === "proof-command") {
+					this.markAsActive({ selected });
+					this.ghostNode.notActive();
+				} else if (selected.children?.length) {
+					this.markAsActive({ selected: selected.children[0] });
+					this.ghostNode.notActive();
+				}
+				// else keep ghost node active
 			}
 		}
 		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
@@ -3056,20 +3079,25 @@ export class ProofItem extends TreeItem {
 		return null;
 	}
 	/**
-	 * Utility function, used to rebase branch ids
+	 * Utility function, used to rebase a tree rooted at a given node with the given targetId
 	 */
-	protected rebaseBranch (node: ProofItem, baseId: string, targetId: string): void {
+	protected rebaseTree (node: ProofItem, baseId: string, targetId: string): void {
 		if (node) {
-			node.branchId = node.branchId.replace(baseId, targetId);
+			node.branchId = baseId ? node.branchId.replace(baseId, targetId) : targetId;
 			if (node.branchId.startsWith(".")) {
 				node.branchId = node.branchId.slice(1);
 			}
 			if (node.contextValue === "proof-branch") {
-				node.name = `(${node.branchId})`
+				node.branchId = targetId && !baseId ?
+					`${targetId}.${node.name.slice(1, -1)}`
+						: targetId;
+				node.name = `(${node.branchId})`;
+				// update targetId to propagate branch name to the children
+				targetId = node.branchId;
 			}
 			if (node.children?.length) {
 				for (let i = 0; i < node.children.length; i++) {
-					this.rebaseBranch (node.children[i], baseId, targetId);
+					this.rebaseTree (node.children[i], baseId, targetId);
 				}
 			}
 		}
@@ -3086,7 +3114,7 @@ export class ProofItem extends TreeItem {
 			if (this.parent.children[i].id === this.id) {
 				if (opt.rebase) {
 					// adjust branch id for the node being pasted
-					this.rebaseBranch(sib, sib.branchId, this.parent.children[i].branchId);
+					this.rebaseTree(sib, sib.branchId, this.parent.children[i].branchId);
 				}
 				if (sib.contextValue === "root") { // if the node to be appended is a root node, we append its children
 					children = children.concat(sib.children);
@@ -3122,7 +3150,7 @@ export class ProofItem extends TreeItem {
 			const targetId: string = this.children?.length ? this.children[0].branchId
 				: this.parent ? `${this.parent.branchId}.1`
 					: ""
-			this.rebaseBranch(child, child.branchId, targetId);
+			this.rebaseTree(child, child.branchId, targetId);
 		}
 		if (child.contextValue === "root") {
 			this.children = child.children.concat(this.children);
@@ -3261,6 +3289,7 @@ class RootNode extends ProofItem {
 	}
 	QED (): void {
 		super.treeVisited();
+		super.treeComplete();
 		this.setProofStatus(QED);
 	}
 	proofStatusChanged (): boolean {

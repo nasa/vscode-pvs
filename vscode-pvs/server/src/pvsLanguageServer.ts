@@ -1942,9 +1942,9 @@ export class PvsLanguageServer {
 						
 						case "append-node": { this.proofExplorer?.appendNodeX(desc); break; }
 						case "copy-node": { this.proofExplorer?.copyNodeX(desc); break; }
-						case "paste-node": { this.proofExplorer?.pasteNodeX(desc); break; }
+						case "paste-node": { this.proofExplorer?.pasteNodeX(desc, { rebase: true }); break; }
 						case "copy-tree": { this.proofExplorer?.copyTreeX(desc); break; }
-						case "paste-tree": { this.proofExplorer?.pasteTreeX(desc); break; }
+						case "paste-tree": { this.proofExplorer?.pasteTreeX(desc, { rebase: true }); break; }
 						case "delete-node": { this.proofExplorer?.deleteNodeX(desc); break; }
 						case "append-branch": { this.proofExplorer?.appendBranchX(desc); break; }
 						case "cut-node": { this.proofExplorer?.cutNodeX(desc); break; }
