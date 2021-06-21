@@ -1343,21 +1343,22 @@ export class PvsProofExplorer {
 	}
 	pasteNodeX (desc: ProofEditPasteNode, opt?: { beforeSelected?: boolean, rebase?: boolean }): void {
 		if (desc && desc.selected) {
-			let selected: ProofItem = this.findNode(desc.selected.id);
+			let selected: ProofItem = this.findNode(desc.selected.id) || this.ghostNode?.realNode;
 			if (selected) {
 				this.pasteNode({ selected }, opt);
-				return;
-			} else if (this.ghostNodeIsActive()) {
-				// append to realNode and activate realNode
-				selected = this.ghostNode.realNode;
-				this.pasteTree({ selected }, opt);
-				if (selected.contextValue === "proof-command") {
-					this.markAsActive({ selected });
-					this.ghostNode.notActive();
-				} else if (selected.children?.length) {
-					this.markAsActive({ selected: selected.children[0] });
-					this.ghostNode.notActive();
+				if (this.ghostNodeIsActive() && this.ghostNode.realNode.id === selected.id) {
+					// tree appended after the last node, deactivate ghost node
+					const sibling: ProofItem = selected.getNextSibling();
+					if (sibling) {
+						this.ghostNode.notActive();
+						if (sibling.contextValue === "proof-command") {
+							this.markAsActive({ selected: sibling }, { force: true });
+						} else if (sibling.children?.length) {
+							this.markAsActive({ selected: sibling.children[0] }, { force: true });
+						}
+					}
 				}
+				return;
 			}
 		}
 		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
@@ -1390,22 +1391,22 @@ export class PvsProofExplorer {
 	}
 	pasteTreeX (desc: ProofEditPasteTree, opt?: { beforeSelected?: boolean, rebase?: boolean }): void {
 		if (desc && desc.selected) {
-			let selected: ProofItem = this.findNode(desc.selected.id);
+			let selected: ProofItem = this.findNode(desc.selected.id) || this.ghostNode?.realNode;
 			if (selected) {
 				this.pasteTree({ selected }, opt);
-				return;
-			} else if (this.ghostNodeIsActive()) {
-				// append to realNode and activate realNode
-				selected = this.ghostNode.realNode;
-				this.pasteTree({ selected }, opt);
-				if (selected.contextValue === "proof-command") {
-					this.markAsActive({ selected });
-					this.ghostNode.notActive();
-				} else if (selected.children?.length) {
-					this.markAsActive({ selected: selected.children[0] });
-					this.ghostNode.notActive();
+				if (this.ghostNodeIsActive() && this.ghostNode.realNode.id === selected.id) {
+					// tree appended after the last node, deactivate ghost node
+					const sibling: ProofItem = selected.getNextSibling();
+					if (sibling) {
+						this.ghostNode.notActive();
+						if (sibling.contextValue === "proof-command") {
+							this.markAsActive({ selected: sibling }, { force: true });
+						} else if (sibling.children?.length) {
+							this.markAsActive({ selected: sibling.children[0] }, { force: true });
+						}
+					}
 				}
-				// else keep ghost node active
+				return;
 			}
 		}
 		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
@@ -3083,18 +3084,28 @@ export class ProofItem extends TreeItem {
 	 */
 	protected rebaseTree (node: ProofItem, baseId: string, targetId: string): void {
 		if (node) {
-			node.branchId = baseId ? node.branchId.replace(baseId, targetId) : targetId;
-			if (node.branchId.startsWith(".")) {
-				node.branchId = node.branchId.slice(1);
+			switch (node.contextValue) {
+				case "proof-command": {
+					node.branchId = targetId;
+					break;
+				}
+				case "proof-branch": {
+					// the last component of the branch id represents the branch name relative to the base
+					const branchName: string = node.branchId.split(".").slice(-1)[0];
+					node.branchId = targetId ? `${targetId}.${branchName}` : branchName;
+					node.name = `(${node.branchId})`;
+					break;
+				}
+				case "root": {
+					node.branchId = targetId;
+					break;
+				}
+				default: {
+					break;
+				}
 			}
-			if (node.contextValue === "proof-branch") {
-				node.branchId = targetId && !baseId ?
-					`${targetId}.${node.name.slice(1, -1)}`
-						: targetId;
-				node.name = `(${node.branchId})`;
-				// update targetId to propagate branch name to the children
-				targetId = node.branchId;
-			}
+			// update targetId to propagate branch name to the children
+			targetId = node.branchId;
 			if (node.children?.length) {
 				for (let i = 0; i < node.children.length; i++) {
 					this.rebaseTree (node.children[i], baseId, targetId);
