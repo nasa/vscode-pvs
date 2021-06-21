@@ -1348,7 +1348,10 @@ export class PvsProofExplorer {
 				this.pasteNode({ selected }, opt);
 				if (this.ghostNodeIsActive() && this.ghostNode.realNode.id === selected.id) {
 					// tree appended after the last node, deactivate ghost node
-					const sibling: ProofItem = selected.getNextSibling();
+					const sibling: ProofItem = selected.contextValue === "proof-command" ?
+						selected.getNextSibling()
+							: selected.children?.length ? selected.children[0]
+								: null;
 					if (sibling) {
 						this.ghostNode.notActive();
 						if (sibling.contextValue === "proof-command") {
@@ -1396,7 +1399,10 @@ export class PvsProofExplorer {
 				this.pasteTree({ selected }, opt);
 				if (this.ghostNodeIsActive() && this.ghostNode.realNode.id === selected.id) {
 					// tree appended after the last node, deactivate ghost node
-					const sibling: ProofItem = selected.getNextSibling();
+					const sibling: ProofItem = selected.contextValue === "proof-command" ?
+						selected.getNextSibling()
+							: selected.children?.length ? selected.children[0]
+								: null;
 					if (sibling) {
 						this.ghostNode.notActive();
 						if (sibling.contextValue === "proof-command") {
