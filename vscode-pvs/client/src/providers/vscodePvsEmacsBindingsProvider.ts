@@ -69,6 +69,8 @@ const cmds: string[] = [
 	"jprt", "jprove-theory",
 	"jpri", "jprove-importchain",
 
+	"vpf", "view-prelude-file",
+
 	"add-pvs-library",
 	"pvs-library-path",
 	"view-pvs-library-path",
@@ -97,8 +99,7 @@ const cmds: string[] = [
 
 	"step-proof",
 	"show-tccs",
-	"show-proof-summary",
-	"vpf", "view-prelude-file"
+	"show-proof-summary"
 ];
 
 export class VSCodePvsEmacsBindingsProvider {
@@ -144,7 +145,7 @@ export class VSCodePvsEmacsBindingsProvider {
 					break;
 				}
 				case "pvs-library-path":
-				case "vscode-pvs.view-pvs-library-path": {
+				case "view-pvs-library-path": {
 					commands.executeCommand('vscode-pvs.view-pvs-library-path');
 					break;
 				}
