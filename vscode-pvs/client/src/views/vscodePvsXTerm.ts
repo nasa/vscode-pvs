@@ -99,7 +99,7 @@ const htmlTemplate: string = `
         sessionType: "{{sessionType}}",
         paddingBottom: ${HELP_PANEL_HEIGHT}
     });
-    console.log("xtermpvs", xtermpvs);
+    console.log("xterm", xterm);
 
     // Handlers for events triggered by xterm
     {{#each xtermEvents}}

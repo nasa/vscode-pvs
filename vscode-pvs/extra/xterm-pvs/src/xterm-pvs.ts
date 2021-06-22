@@ -68,7 +68,7 @@ class LineWrapper {
             if (colorUtils.getPlainText(line).length < LineWrapper.maxCols) {
                 ans.push(line);
             } else {
-                const sublines: string[] = LineWrapper.splitBreakable(line);
+                const sublines: string[] = LineWrapper.splitBreakable(line, { maxLen: MIN_VIEWPORT_COLS });
                 let ln: string = ""; // accumulator, used to create a line of the target length -- this helps to avoid creating a large number of short lines
                 for (let i = 0; i < sublines.length; i++) {
                     const subln: string = sublines[i];
@@ -93,19 +93,34 @@ class LineWrapper {
     /**
      * Utility function, breaks a string into an array of sub-strings at breakable points
      */
-    static splitBreakable (str: string): string[] {
+    static splitBreakable (str: string, opt?: { maxLen?: number }): string[] {
+        opt = opt || {};
         let ans: string[] = [];
         if (str) {
             const breakablePoints: RegExp = new RegExp(/[\)\]\;\,\.\` ]/g);
             let match: RegExpMatchArray = breakablePoints.exec(str);
             let prevIndex: number = 0;
+            const tmp: string[] = [];
             while (match) {
-                ans.push(str.slice(prevIndex, match.index));
+                tmp.push(str.slice(prevIndex, match.index));
                 prevIndex = match.index;
                 match = breakablePoints.exec(str);
             }
-            ans.push(str.slice(prevIndex));
+            tmp.push(str.slice(prevIndex));
+            // enforce row size if maxLen is specified
+            if (opt.maxLen) {
+                for (let i = 0; i < tmp.length; i++) {
+                    for (let l = 0; l < tmp[i].length; l += opt.maxLen) {
+                        const frag: string = tmp[i].slice(l, l + opt.maxLen);
+                        // console.log("[xterm-pvs] WrapLine", { frag });
+                        ans.push(frag);
+                    }
+                }
+            } else {
+                ans = tmp;
+            }
         }
+        // console.log("[xterm-pvs] WrapLine", { ans });
         return ans;
     }
 }
@@ -2877,9 +2892,13 @@ export class XTermPvs extends Backbone.Model {
             // console.log("[xterm-pvs] write", { data });
             this.saveCursorPosition();
             data = data.replace(/\t/g, " ".repeat(this.TAB_SIZE));
-            data = LineWrapper.wrapLines(data)
+            // console.log("[xterm-pvs] wrap lines", { data });
+            data = LineWrapper.wrapLines(data);
+            // console.log("[xterm-pvs] write content", { data });
             this.content.writeData(data);
+            // console.log("[xterm-pvs] render ", { data });
             this.renderData(data);
+            // console.log("[xterm-pvs] done with rendering!");
             this.restoreCursorPosition();
 
             this.moveCursorTo(this.content.cursorPosition(), { src: "write" });
@@ -2941,7 +2960,9 @@ export class XTermPvs extends Backbone.Model {
     resizeCol (nCols: number): void {
         const maxCols: number = nCols > this.xterm.cols ? nCols : this.xterm.cols;
         if (maxCols > this.xterm.cols) {
+            // console.log("[xterm-pvs] Resizing xterm rows", { from: this.xterm.cols, to: maxCols });
             this.xterm.resize(maxCols, this.xterm.rows);
+            // console.log("[xterm-pvs] Done with resizing", { to: maxCols });
         }
     }
 
