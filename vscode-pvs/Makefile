@@ -122,4 +122,11 @@ resolutions:
 	npm install -no-save npm-force-resolutions
 	node node_modules/npm-force-resolutions/index.js
 
+audit:
+	npm audit
+	cd client && npm audit
+	cd server && npm audit
+	cd extra/xterm-pvs && npm audit
+	cd extra/prettify-pvs && npm audit
+
 .PHONY: test test-proxy test-parser test-find-declaration test-typechecker test-prover test-workspace test-pvs-context resolutions

@@ -9,6 +9,8 @@
 **/*.old
 **/*.pdf
 **/*.pptx
+**/*.n64fasl
+
 **/tsconfig.json
 **/@types/
 **/node_modules/vsce/

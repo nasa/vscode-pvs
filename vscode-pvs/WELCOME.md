@@ -25,6 +25,10 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.53 (2021.06.22)]()      
+  -Improved prover console (auto-completion)   
+  -Bug fixes (F4/F5 shortcuts, blank display when starting a prover session, copy/paste in proof-explorer)   
+
 - [1.0.52 (2021.06.08)]()      
   -Added 'collapse proved branches' function in proof-explorer   
   -Added inline command 'status-proofchain'    

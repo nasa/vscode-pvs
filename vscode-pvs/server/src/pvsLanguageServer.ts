@@ -431,14 +431,14 @@ export class PvsLanguageServer {
 	 */
 	async pvsioEvaluatorCommandRequest (req: PvsioEvaluatorCommand): Promise<void> {
 		req = fsUtils.decodeURIComponents(req);
-		const channelID: string = utils.desc2id(req);
+		// const channelID: string = utils.desc2id(req);
 		const response: PvsResponse = await this.pvsioProxy?.evalCommand(req, {
 			cb: (res: string | "bye!", state: string) => {
-				const result: PvsResult = {
-					jsonrpc: "2.0",
-					id: channelID,
-					result: res
-				};
+				// const result: PvsResult = {
+				// 	jsonrpc: "2.0",
+				// 	id: channelID,
+				// 	result: res
+				// };
 				// this.cliGateway?.publish({ type: "pvs.event.evaluator-state", channelID, data: result });
 				const data: EvaluatorCommandResponse = {
 					req,
