@@ -26,10 +26,17 @@ interface RebaseEvent {
     pos: Position
 };
 
-export const welcomeMessage: string = `
-- Please enter proof command at the prover prompt.
-- Double click expands definitions. Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}C / ${isLinux() ? "Ctrl+" : "Command+"}V
-`.trim().replace(/\n/g, "<br>");
+export function welcomeMessage (session: SessionType): string {
+    const msg: string = session === "prover" ? `
+        - Please enter proof command at the prover prompt.
+        - Double click expands definitions. Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}C / ${isLinux() ? "Ctrl+" : "Command+"}V
+        `
+        : `
+        - Please enter a PVS expression followed by ';'
+        - or Enter a Lisp expression followed by '!'
+        `
+    return msg.trim().replace(/\n/g, "<br>");
+}
 
 const MIN_VIEWPORT_COLS: number = 128;
 const MIN_VIEWPORT_ROWS: number = 8;
@@ -1702,7 +1709,7 @@ export class Autocomplete extends Backbone.Model {
         });
         this.showHelp(integratedHelp);
         if (!currentInput && integratedHelp) {
-            this.showHelp(welcomeMessage);
+            this.showHelp(welcomeMessage(this.sessionType));
         }
     }
     /**
@@ -3202,7 +3209,7 @@ export class XTermPvs extends Backbone.Model {
      */
     showWelcomeMessage (): void {
         this.runningFlag = false;
-        this.autocomplete.showHelp(welcomeMessage);
+        this.autocomplete.showHelp(welcomeMessage(this.sessionType));
     }
 
     /**
@@ -3210,7 +3217,7 @@ export class XTermPvs extends Backbone.Model {
      */
     running (flag: boolean): void {
         this.runningFlag = true;
-        this.autocomplete.showHelp(welcomeMessage);
+        this.autocomplete.showHelp(welcomeMessage(this.sessionType));
     }
 
     /**
