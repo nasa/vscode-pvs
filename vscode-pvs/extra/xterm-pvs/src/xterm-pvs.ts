@@ -2466,11 +2466,6 @@ export class XTermPvs extends Backbone.Model {
                 this.autocomplete.autocompleteOnKeyPress(evt?.domEvent, { force: true });
                 return;
             }
-            // dispatch Enter events to autocomplete if there is a tooltip selected and command is not ready to be sent
-            if (key === "Enter" && !this.readyToSend() && selectedHint) {
-                this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
-                return;
-            }
             // send command to the server if command is ready to be sent and either there's no tooltip or the tooltip is identical to the command line
             if (key === "Enter" && this.readyToSend() && (selectedHint === commandLine || !selectedHint || !this.autocompleteWithEnterFlag)) {
                 // clear brackets matching info
@@ -2479,6 +2474,11 @@ export class XTermPvs extends Backbone.Model {
                 this.autocomplete.deleteTooltips();
                 // send command
                 this.sendWhenReady();
+                return;
+            }
+            // dispatch Enter events to autocomplete if there is a tooltip selected and command is not ready to be sent
+            if (key === "Enter" && selectedHint) {
+                this.autocomplete.autocompleteOnKeyPress(evt?.domEvent);
                 return;
             }
             // else
