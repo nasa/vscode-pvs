@@ -323,7 +323,7 @@ describe("pvs", () => {
 			setTimeout(() => {
 				fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
 				resolve();
-			}, 4000);
+			}, 8000);
 		});
 		// console.dir(response);
 		expect(response).not.to.be.undefined;
@@ -351,7 +351,7 @@ describe("pvs", () => {
 		expect(response.result).not.to.be.undefined;
 		expect(response.error).to.be.undefined;
 
-	}).timeout(10000);
+	}).timeout(20000);
 
 
 	it(`can run find-declaration without hitting breaks`, async () => {
