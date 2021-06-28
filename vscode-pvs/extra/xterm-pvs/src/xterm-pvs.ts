@@ -1343,7 +1343,7 @@ export class Autocomplete extends Backbone.Model {
      * Updates the command history with the provided command, if the command is not one of the hints already known to autocomplete and history
      */
     updateCommandHistory (cmd: string, opt?: { successHistory?: boolean }): void {
-        // console.log("[xterm-autocomplete] updateCommandHistory", { cmd, history: this.history.size() });
+        console.log("[xterm-autocomplete] updateCommandHistory", { cmd, history: this.history.size() });
         if (cmd) {
             // split commands in the case the user has entered multiple commands at the same time, e.g., (skosimp*)(grind)
             const cmdArray: string[] = this.sessionType === "prover" ? splitCommands(cmd) : [ cmd ];

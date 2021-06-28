@@ -3304,11 +3304,11 @@ export function getHints (type: SessionType, req?: { activeLine?: string, lastSt
 
 // utility function, checks if open brackets match closed brackets
 export interface CheckParResult { success: boolean, msg: string }
-export function checkPar (content: string): CheckParResult {
+export function checkPar (content: string, opt?: { includeStringContent?: boolean }): CheckParResult {
 	let par: number = 0;
 	let quotes: number = 0;
 	let txt: string = content?.trim() || "";
-    txt = txt.replace(/"[^"]*"/g, ""); // remove strings, to avoid counting parentheses in the string
+    txt = opt?.includeStringContent ? txt : txt.replace(/"[^"]*"/g, ""); // remove strings, to avoid counting parentheses in the string
 	for (let i = 0; i < txt.length; i++) {
 		switch (txt[i]) {
 			case `(`: {
@@ -3498,7 +3498,8 @@ export function isProofliteGlassbox (cmd: string): boolean {
 export function splitCommands (cmd: string): string[] {
 	let cmds: string[] = [];
     if (cmd?.trim()) {
-        if (cmd.trim().startsWith("(")) {
+        // try to split the command only if the parentheses match
+        if (cmd.trim().startsWith("(") && checkPar(cmd, { includeStringContent: true })?.success) {
             let input: string = cmd.trim().replace(/\)y/gi, ")");
             let par: number = 0;
             let start: number = 0;
