@@ -134,6 +134,8 @@ export interface PlotData {
     name?: string
 };
 
+const bigIntTrigger: number = 128;
+
 /**
  * Utility function, tries to convert a pvs list expression into plot data.
  */
@@ -147,12 +149,29 @@ export function list2PlotData (datapoints: string, opt?: { mode?: PlotMode, x?: 
         for (let i = 0; i < desc?.ySeries?.length; i++) {
             const xelem: string = i < desc.xSeries?.length ? desc.xSeries[i] : `${i}`;
             const yelem: string = desc.ySeries[i];
-            let x: number = xelem?.includes("/") ?
-                +xelem.split("/")[0] / +xelem.split("/")[1] 
-                    : +xelem;
-            let y: number = yelem?.includes("/") ?
-                +yelem.split("/")[0] / +yelem.split("/")[1] 
-                    : +yelem;
+
+            const xas: string = xelem.split("/")[0];
+            const xbs: string = xelem.split("/")[1] || "1";
+            let x: number = +xas / +xbs;
+            if (xas.length > bigIntTrigger || xbs.length > bigIntTrigger) {
+                // use bigint to correctly handle pvsio output
+                let scale: number = Math.max(xas.length, xbs.length);
+                scale *= scale;               
+                const xx: number = Number(BigInt(xas) * BigInt(scale) / BigInt(xbs));
+                x = xx / scale;
+            }
+
+            const yas: string = yelem.split("/")[0];
+            const ybs: string = yelem.split("/")[1] || "1";
+            let y: number = +yas / +ybs;
+            if (yas.length > bigIntTrigger || ybs.length > bigIntTrigger) {
+                // use bigint to correctly handle pvsio output
+                let scale: number = Math.max(yas.length, ybs.length);
+                scale *= scale;
+                const yy: number = Number(BigInt(yas) * BigInt(scale) / BigInt(ybs));
+                y = yy / scale;
+            }
+
             res.x.push(x);
             res.y.push(y);
             res.name = `series ${isNaN(+opt?.seriesId) ? 1 : +opt.seriesId}`

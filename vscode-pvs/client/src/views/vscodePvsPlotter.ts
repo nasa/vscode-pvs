@@ -60,6 +60,13 @@ const htmlTemplate: string = `
     {{#each css}}
     <link rel="stylesheet" href="{{this}}">
     {{/each}}
+    <style>
+    .card-header {
+        max-height: 52px !important;
+        overflow: auto;
+        font-size: small;
+    }
+    </style>
     {{#each js}}
     <script src="{{this}}"></script>
     {{/each}}
