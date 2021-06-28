@@ -314,6 +314,9 @@ export class VSCodePvsStatusBar {
      */
     activate (context: ExtensionContext) {
         this.show();
+        context.subscriptions.push(commands.registerCommand("vscode.show-statusbar-message", (msg: string) => {
+            this.showInfo(msg);
+        }));
     }
 
     show (): void {

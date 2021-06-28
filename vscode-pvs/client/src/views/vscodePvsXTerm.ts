@@ -926,7 +926,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                         }
                                         case XTermEvent.didCopyText: {
                                             if (message?.data?.length) {
-                                                vscodeUtils.showInformationMessage(`Selected text copied to clipboard.`);
+                                                vscodeUtils.showStatusBarMessage(`Selected text copied to clipboard.`);
+                                                // vscodeUtils.showInformationMessage(`Selected text copied to clipboard.`);
                                             }
                                             break;
                                         }

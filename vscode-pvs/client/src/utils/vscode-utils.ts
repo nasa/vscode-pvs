@@ -269,6 +269,20 @@ export function showInformationMessage (message: string, opt?: { timeout?: numbe
     }
 }
 /**
+ * Utility function, shows a temporary message in the status bar.
+ * The default timeout for the dialog is 3.2 seconds.
+ */
+ export function showStatusBarMessage (message: string, opt?: { timeout?: number, cancellable?: boolean }): void {
+    if (message) {
+        opt = opt || {};
+        const timeout: number = opt.timeout || 3200;
+        vscode.commands.executeCommand("vscode.show-statusbar-message", message);
+        setTimeout(() => {
+            vscode.commands.executeCommand("vscode.show-statusbar-message");
+        }, timeout);
+    }
+}
+/**
  * Utility function, shows a dialog presenting an error message.
  */
 export function showErrorMessage (message: string, timeout?: number): void {

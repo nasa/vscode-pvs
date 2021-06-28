@@ -2647,6 +2647,8 @@ export class XTermPvs extends Backbone.Model {
             }
             // ctrl+v / ctrl+shift+v / command+v = paste
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "v") {
+                // remove tooltips
+                this.autocomplete.deleteTooltips();
                 // console.log(evt);
                 return false;
             }
