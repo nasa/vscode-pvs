@@ -90,7 +90,8 @@ const htmlTemplate: string = `
     </style>
 </head>
 <body>
-    <div id="terminal" class="animate__animated animate__fadeIn"></div>
+    <!--<div id="terminal" class="animate__animated animate__fadeIn"></div>-->
+    <div id="terminal"></div>
     <div class="terminal-help p-0"></div>
 
     <script>
@@ -622,15 +623,15 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         let success: boolean = await this.reveal();
         if (success) {
             // Use a timeout so that the webview has time to render its content
-            clearTimeout(this.tfocus);
-            await new Promise ((resolve, reject) => {
-                this.tfocus = setTimeout(() => {
+            // clearTimeout(this.tfocus);
+            // await new Promise ((resolve, reject) => {
+            //     this.tfocus = setTimeout(() => {
                     const message: XTermMessage = {
                         command: XTermCommands.focus
                     };
                     this.panel?.webview?.postMessage(message);
-                }, 250);
-            });
+            //     }, 250);
+            // });
         }
         return success;
     }
@@ -910,16 +911,22 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                 if (message) {
                                     switch (message.command) {
                                         case XTermEvent.sendText: {
-                                            if (message?.data === interruptCommand) {
-                                                commands.executeCommand("vscode-pvs.interrupt-prover");
-                                            } else {
-                                                if (message?.data) {
+                                            if (message?.data) {
+                                                // check if this is a meta command
+                                                if (message.data === interruptCommand) {
+                                                    commands.executeCommand("vscode-pvs.interrupt-prover");
+                                                } else if (utils.isVSCodePlotCommand(message.data)) {
+                                                    const expr: string = utils.getVSCodePlotExpression(message.data);
+                                                    commands.executeCommand("vscode-pvs.plot-expression", { ...this.target, expr });
+                                                    this.showPrompt();
+                                                } else {
+                                                    // send command to the server
                                                     this.showFeedbackWhileExecuting(message.data);
                                                     await this.sendTextToServer(message.data);
                                                     if (!utils.isQuitCommand(message.data)) {
                                                         this.running(false);
                                                         this.showWelcomeMessage();
-                                                    }
+                                                    }    
                                                 }
                                             }
                                             break;
@@ -929,6 +936,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                 vscodeUtils.showStatusBarMessage(`Selected text copied to clipboard.`);
                                                 // vscodeUtils.showInformationMessage(`Selected text copied to clipboard.`);
                                             }
+                                            break;
+                                        }
+                                        case XTermEvent.click: {
+                                            this.focus();
                                             break;
                                         }
                                         case XTermEvent.closeConsole: {
@@ -1036,7 +1047,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermEvent.proofExplorerForward,
                         XTermEvent.proofExplorerRun,
                         XTermEvent.proofExplorerEdit,
-                        XTermEvent.didCopyText
+                        XTermEvent.didCopyText,
+                        XTermEvent.click
                     ],
                     sessionType: this.sessionType
                 });

@@ -3358,6 +3358,22 @@ export function balancePar (cmd: string): string {
 	return cmd;
 }
 
+/**
+ * Utility function, checks if the given command is vscode-plot(...)
+ */
+export function isVSCodePlotCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+    return cmd && /\bvscode-plot\s*\(/g.test(cmd);
+}
+/**
+ * Utility function, returns the expression specified as argument of vscode-plot(...)
+ */
+export function getVSCodePlotExpression (cmd: string): string {
+    return isVSCodePlotCommand(cmd) ? cmd?.replace("vscode-plot", "") : "";
+}
+/**
+ * Utility function, checks if the given command is quit or exit
+ */
 export function isQuitCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
 	return cmd && (cmd === "quit" 

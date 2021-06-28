@@ -6,7 +6,7 @@ import { xTermDetectColorTheme, interruptCommand, SessionType, UpdateCommandHist
 import * as Backbone from 'backbone';
 // import * as Handlebars from 'handlebars';
 import {
-    checkPar, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, 
+    checkPar, commentRegexp, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, 
     proverCommands, splitCommands
 } from './common/languageUtils';
 import { htmlColorCode, XTermColorTheme } from './common/colorUtils';
@@ -1148,7 +1148,8 @@ export interface DidAutocompleteEvent extends AutocompleteData {
         // console.log(`[xterm-autocomplete] pushing ${cmd} to history`);
         if (cmd) {
             opt = opt || {};
-            let elem: string = cmd.trim().replace(/\n/g, " "); // flatten command before inserting in history
+            // remove comments and flatten command before inserting in history
+            let elem: string = cmd.trim().replace(commentRegexp, "").replace(/\n/g, " ").replace(/\s\s+/g, " ");
             if (this.sessionType === "prover" && elem.startsWith("(") && elem.endsWith(")")) {
                 elem = elem.substring(1, elem.length - 1).trim();
             }
@@ -1343,7 +1344,7 @@ export class Autocomplete extends Backbone.Model {
      * Updates the command history with the provided command, if the command is not one of the hints already known to autocomplete and history
      */
     updateCommandHistory (cmd: string, opt?: { successHistory?: boolean }): void {
-        console.log("[xterm-autocomplete] updateCommandHistory", { cmd, history: this.history.size() });
+        // console.log("[xterm-autocomplete] updateCommandHistory", { cmd, history: this.history.size() });
         if (cmd) {
             // split commands in the case the user has entered multiple commands at the same time, e.g., (skosimp*)(grind)
             const cmdArray: string[] = this.sessionType === "prover" ? splitCommands(cmd) : [ cmd ];
@@ -2318,6 +2319,7 @@ export class XTermPvs extends Backbone.Model {
                         this.autocomplete.updateCommandHistory(cmd);
                         // disable input
                         this.disableInput();
+                        // console.log("[xterm-pvs] setdWhenReady", { content: this.content });
                         return true;
                     }
                     break;
@@ -2456,6 +2458,28 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
+     * Moves the cursor to the end of the command line
+     */
+    moveCursorToEnd (): void {
+        const success: boolean = this.content.cursorToEnd();
+        if (success) {
+            const pos: Position = this.content.cursorPosition();
+            this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
+        }
+    }
+
+    /**
+     * Moves the cursor to the home position
+     */
+    moveCursorToHome (): void {
+        const success: boolean = this.content.cursorToHome();
+        if (success) {
+            const pos: Position = this.content.cursorPosition();
+            this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
+        }
+    }
+
+    /**
      * Handler for key press events
      */
     onKeyPress (evt: KeyEvent): void {
@@ -2479,6 +2503,8 @@ export class XTermPvs extends Backbone.Model {
                 this.brackets = null;
                 // remove tooltips
                 this.autocomplete.deleteTooltips();
+                // move cursor to the end of the command
+                this.moveCursorToEnd();
                 // send command
                 this.sendWhenReady();
                 return;
@@ -2671,20 +2697,12 @@ export class XTermPvs extends Backbone.Model {
                     }
                     case "Home": {
                         // ctrl+Home moves cursor to command prompt home position
-                        const success: boolean = this.content.cursorToHome();
-                        if (success) {
-                            const pos: Position = this.content.cursorPosition();
-                            this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
-                        }
+                        this.moveCursorToHome();
                         break;
                     }
                     case "End": {
                         // ctrl+End moves cursor to the end of the command line
-                        const success: boolean = this.content.cursorToEnd();
-                        if (success) {
-                            const pos: Position = this.content.cursorPosition();
-                            this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
-                        }
+                        this.moveCursorToEnd();
                         break;
                     }
                     case "ArrowLeft": {
@@ -2776,7 +2794,9 @@ export class XTermPvs extends Backbone.Model {
             // console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
         });
         $(document).on("click", (evt: JQuery.ClickEvent) => {
-            this.focus();
+            // console.log("[xterm-pvs] focus");
+            // this.focus();
+            this.trigger(XTermEvent.click);
         });
         // content event handlers
         this.content.on(ContentEvent.rebase, (evt: RebaseEvent) => {

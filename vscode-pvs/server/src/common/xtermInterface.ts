@@ -9,6 +9,7 @@ export enum XTermEvent {
     proofExplorerForward = "proof-explorer.forward", //F6
     proofExplorerRun = "proof-explorer.run", // F5
     proofExplorerEdit = "proof-explorer.edit", // F2
+    click = "click"
 };
 export enum XTermCommands {
     write = "write",

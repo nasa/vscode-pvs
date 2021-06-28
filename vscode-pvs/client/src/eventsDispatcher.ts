@@ -905,7 +905,18 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.ignore-keypress", () => {}));
 
         // pvsio-plot
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.plot-expression", async (resource: string | { path: string, expr?: string } | { contextValue: string }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.plot-expression", async (
+            resource: string | {
+                path: string, expr?: string 
+            } | { 
+                contextValue: string 
+            } | { 
+                fileName?: string, 
+                fileExtension?: string, 
+                contextFolder?: string, 
+                theoryName?: string, 
+                expr?: string
+            }) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();

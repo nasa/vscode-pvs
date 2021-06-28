@@ -165,6 +165,7 @@ export class VSCodePvsPlotter {
         const plotData: utils.PlotData[] = this.getPlotData(desc?.data);
         const plotDataString: string = JSON.stringify(plotData);
         let title: string = opt?.title || "";
+        title = title.replace(utils.commentRegexp, "").replace(/\s\s+/g, " ").replace(/\n/g, "");
         title = title.length > MAX_INNER_LABEL_LEN ? title.substring(0, MAX_INNER_LABEL_LEN) + "..." : title;
         const body: string = desc.data ?`
             <p class="card-text">
@@ -201,7 +202,7 @@ export class VSCodePvsPlotter {
                             type: opt.yScale || "linear",
                             autorange: true
                         },
-                        title: "${title}"
+                        title: "${title?.length > 32 ? title?.substr(0,32) + "..." : title}"
                     }, {
                         editable: true,
                         scrollZoom: true,
