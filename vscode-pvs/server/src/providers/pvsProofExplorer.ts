@@ -1726,7 +1726,6 @@ export class PvsProofExplorer {
 		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
 	}
 
-
 	/**
 	 * Renames the selected node. The new name is entered using a dialog window.
 	 * @param desc Descriptor of the selected node.
@@ -2580,7 +2579,7 @@ export const QED: ProofStatus = "proved";
  * Definition of tree items
  */
 export class ProofItem extends TreeItem {
-	contextValue: string = "proofItem";
+	contextValue: "proof-branch" | "proof-command" | "root" | "ghost" = null;
 	name: string; // prover command or branch id
 	branchId: string = ""; // branch in the proof tree where this command is located (branchId for root is "").
 	protected previousState: {
@@ -2607,7 +2606,10 @@ export class ProofItem extends TreeItem {
 
 	isComplete(): boolean { return this.completeFlag; }
 
-	constructor (type: string, name: string, branchId: string, parent: ProofItem, connection: Connection) {
+	/**
+	 * Constructor
+	 */
+	constructor (type: "proof-branch" | "proof-command" | "root" | "ghost", name: string, branchId: string, parent: ProofItem, connection: Connection) {
 		super(type, connection);
 		this.contextValue = type;
 		this.id = fsUtils.get_fresh_id();
@@ -2706,10 +2708,23 @@ export class ProofItem extends TreeItem {
 			this.connection.sendNotification(serverEvent.proverEvent, evt);
 		}
 	}
+	/**
+	 * Rename a node
+	 * If the node is a proof-branch, the branchId is also updated for the node and the entire subtree rooted at the node
+	 */
 	rename (newName: string, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
 		const oldName: string = this.name;
 		this.name = newName;
+		// update also branch id if this is a proof branch
+		if (this.contextValue === "proof-branch") {
+			const oldBranchId: string = this.branchId;
+			this.branchId = this.name.replace(/[\(\)]/g, "");
+			// propagate branchId to all nodes in the subtree rooted at the current node
+			for (let i = 0; i < this.children?.length; i++) {
+				this.children[i].rebaseTree(oldBranchId, this.branchId, { internalAction: false });
+			}
+		}
 		if (!opt.internalAction && this.connection) {
 			const evt: ProofEditDidRenameNode = {
 				action: "did-rename-node", 
@@ -2719,6 +2734,9 @@ export class ProofItem extends TreeItem {
 			this.connection.sendNotification(serverEvent.proverEvent, evt);
 		}
 	}
+	/**
+	 * Mark node as pending
+	 */
 	pending (): void {
 		const changed: boolean = !this.pendingFlag;
 		this.activeFlag = false;
@@ -2734,6 +2752,9 @@ export class ProofItem extends TreeItem {
 			});
 		}
 	}
+	/**
+	 * Mark node as visited
+	 */
 	visited (): void {
 		const changed: boolean = !this.visitedFlag;
 		// this.previousState.tooltip = this.tooltip;
@@ -2749,6 +2770,9 @@ export class ProofItem extends TreeItem {
 			});
 		}
 	}
+	/**
+	 * Mark node as not visited
+	 */
 	notVisited (opt?: { internalAction?: boolean }): void {
 		// this.previousState.tooltip = this.tooltip;
 		this.activeFlag = false;
@@ -2765,6 +2789,9 @@ export class ProofItem extends TreeItem {
 			});
 		}
 	}
+	/**
+	 * Mark node as complete
+	 */
 	complete(): void {
 		const changed: boolean = !this.completeFlag;
 		this.completeFlag = true;
@@ -2776,6 +2803,9 @@ export class ProofItem extends TreeItem {
 			});
 		}
 	}
+	/**
+	 * Mark node as not complete
+	 */
 	notComplete(): void {
 		const changed: boolean = this.completeFlag;
 		this.completeFlag = false;
@@ -2787,13 +2817,9 @@ export class ProofItem extends TreeItem {
 			});
 		}
 	}
-	// noChange (): void {
-	// 	this.previousState.tooltip = this.tooltip;
-	// 	this.activeFlag = false;
-	// 	this.visitedFlag = false;
-	// 	this.pendingFlag = false;
-	// 	this.noChangeFlag = true;
-	// }
+	/**
+	 * Mark node as active
+	 */
 	active (): void {
 		this.activeFlag = true;
 		this.visitedFlag = false;
@@ -2807,6 +2833,9 @@ export class ProofItem extends TreeItem {
 			});
 		}
 	}
+	/**
+	 * Mark subtree as not visited
+	 */
 	treeNotVisited (): void {
 		this.notVisited();
 		if (this.children) {
@@ -2815,7 +2844,10 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
-	treeVisited (): void {
+	/**
+	 * Mark subtree as visited
+	 */
+	 treeVisited (): void {
 		this.visited();
 		if (this.children) {
 			for (let i = 0; i < this.children.length; i++) {
@@ -2823,6 +2855,9 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
+	/**
+	 * Mark subtree as complete
+	 */
 	treeComplete (): void {
 		this.complete();
 		if (this.children) {
@@ -2831,6 +2866,9 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
+	/**
+	 * Checks if all nodes in the subtree rooted at the current node are complete
+	 */
 	checkChildrenComplete (): boolean {
 		if (this.children && this.children.length) {
 			const open: ProofItem[] = this.children.filter(item => {
@@ -2840,6 +2878,9 @@ export class ProofItem extends TreeItem {
 		}
 		return true;
 	}
+	/**
+	 * Propagates visited & complete attributes to all nodes in the subtree
+	 */
 	bubbleVisitedAndComplete (): void {
 		if (this.contextValue !== "root" && this.parent && this.parent.checkChildrenComplete()) {
 			// the parent branch is also complete
@@ -2848,9 +2889,15 @@ export class ProofItem extends TreeItem {
 			this.parent.bubbleVisitedAndComplete();
 		}
 	}
+	/**
+	 * Checks if the current node is active
+	 */
 	isActive (): boolean {
 		return this.activeFlag;
 	}
+	/**
+	 * Checks if the current node or any node in the subtree rooted at the current node is active
+	 */
 	isActiveTree (opt?: { activeNode?: ProofItem }): boolean {
 		opt = opt || {};
 		let active: boolean = this.isActive();
@@ -3087,36 +3134,46 @@ export class ProofItem extends TreeItem {
 	}
 	/**
 	 * Utility function, used to rebase a tree rooted at a given node with the given targetId
+	 * - proof-branch: old branchId = baseId.branchName, new branchId = targetId.branchName
+	 * - proof-node: old branchId = baseId, new branchId = targetId
+	 * - root: old branchId = "", new branchId = targetId
 	 */
-	protected rebaseTree (node: ProofItem, baseId: string, targetId: string): void {
-		if (node) {
-			switch (node.contextValue) {
-				case "proof-command": {
-					node.branchId = targetId;
-					break;
-				}
-				case "proof-branch": {
-					// the last component of the branch id represents the branch name relative to the base
-					const branchName: string = node.branchId.split(".").slice(-1)[0];
-					node.branchId = targetId ? `${targetId}.${branchName}` : branchName;
-					node.name = `(${node.branchId})`;
-					break;
-				}
-				case "root": {
-					node.branchId = targetId;
-					break;
-				}
-				default: {
-					break;
-				}
+	rebaseTree (baseId: string, targetId: string, opt?: { internalAction?: boolean }): void {
+		opt = opt || {};
+		opt.internalAction = opt.internalAction === undefined ? true : false;
+		switch (this.contextValue) {
+			case "proof-command": {
+				this.branchId = targetId;
+				break;
 			}
-			// update targetId to propagate branch name to the children
-			targetId = node.branchId;
-			if (node.children?.length) {
-				for (let i = 0; i < node.children.length; i++) {
-					this.rebaseTree (node.children[i], baseId, targetId);
-				}
+			case "proof-branch": {
+				// the last component of the branch id represents the branch name relative to the base
+				const branchName: string = this.branchId.split(".").slice(-1)[0];
+				this.branchId = targetId ? `${targetId}.${branchName}` : branchName;
+				const oldName: string = this.name;
+				this.name = `(${this.branchId})`;
+				if (!opt.internalAction && this.connection) {
+					const evt: ProofEditDidRenameNode = {
+						action: "did-rename-node", 
+						selected: { id: this.id, name: oldName }, 
+						newName: this.name
+					};
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
+				}		
+				break;
 			}
+			case "root": {
+				this.branchId = targetId;
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+		// update targetId to propagate branch name to the children
+		targetId = this.branchId;
+		for (let i = 0; i < this.children?.length; i++) {
+			this.children[i].rebaseTree(baseId, targetId, opt);
 		}
 	}
 	appendSibling (sib: ProofItem, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): void {
@@ -3131,7 +3188,7 @@ export class ProofItem extends TreeItem {
 			if (this.parent.children[i].id === this.id) {
 				if (opt.rebase) {
 					// adjust branch id for the node being pasted
-					this.rebaseTree(sib, sib.branchId, this.parent.children[i].branchId);
+					sib.rebaseTree(sib.branchId, this.parent.children[i].branchId);
 				}
 				if (sib.contextValue === "root") { // if the node to be appended is a root node, we append its children
 					children = children.concat(sib.children);
@@ -3167,7 +3224,7 @@ export class ProofItem extends TreeItem {
 			const targetId: string = this.children?.length ? this.children[0].branchId
 				: this.parent ? `${this.parent.branchId}.1`
 					: ""
-			this.rebaseTree(child, child.branchId, targetId);
+			child.rebaseTree(child.branchId, targetId);
 		}
 		if (child.contextValue === "root") {
 			this.children = child.children.concat(this.children);
