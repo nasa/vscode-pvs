@@ -146,7 +146,7 @@ export class VSCodePvsPackageManager {
     async showPvsLicense (): Promise<boolean> {
         // show license agreement
         const panel: WebviewPanel = window.createWebviewPanel(
-            'pvsLicenseAgreement', // Identifies the type of the webview. Used internally
+            'vscode-pvs.pvs-license-agreement', // Identifies the type of the webview. Used internally
             'PVS Allegro License Agreement', // Title of the panel displayed to the user
             ViewColumn.One, // Editor column to show the new webview panel in.
             { enableFindWidget: true } // Webview options. More on these later.

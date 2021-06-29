@@ -602,7 +602,7 @@ export class VSCodePvsVizTree {
             this.panel.title = `Proof: ${title}`;
         } else {
             this.panel = vscode.window.createWebviewPanel(
-                'proof-tree', // Identifies the type of the webview. Used internally
+                'vscode-pvs.tree-viz', // Identifies the type of the webview. Used internally
                 `Proof: ${title}`, // Title of the panel displayed to the user
                 vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
                 {

@@ -673,7 +673,7 @@ export class VSCodePvsioWeb {
                 resolve(true);            
             } else {
                 this.panel = this.panel || window.createWebviewPanel(
-                    'pvsioweb', // Identifies the type of the webview. Used internally
+                    'vscode-pvs.pvsioweb', // Identifies the type of the webview. Used internally
                     this.title, // Title of the panel displayed to the user
                     ViewColumn.Active, // Editor column to show the new webview panel in.
                     {

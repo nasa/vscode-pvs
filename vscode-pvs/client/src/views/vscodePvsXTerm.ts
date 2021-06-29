@@ -879,7 +879,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     resolve(true);
                 } else {
                     this.panel = this.panel || window.createWebviewPanel(
-                        'x-term-pvs', // Identifies the type of the webview. Used internally
+                        'vscode-pvs.xterm-pvs', // Identifies the type of the webview. Used internally
                         title, // Title of the panel displayed to the user
                         ViewColumn.Active, // Editor column to show the new webview panel in.
                         {

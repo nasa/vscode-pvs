@@ -183,7 +183,7 @@ export class VSCodePvsSearch {
             this.panel.title = this.title;
         } else {
             this.panel = window.createWebviewPanel(
-                'nasalib-search', // Identifies the type of the webview. Used internally
+                'vscode-pvs.nasalib-search', // Identifies the type of the webview. Used internally
                 this.title, // Title of the panel displayed to the user
                 ViewColumn.Beside, // Editor column to show the new webview panel in.
                 {

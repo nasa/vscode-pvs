@@ -119,7 +119,7 @@ export class VSCodePvsPlotter {
                 const label: string = expr.length > MAX_INNER_LABEL_LEN ? expr.substring(0, MAX_TAB_LABEL_LEN) + "..." : expr;
                 // create webview
                 this.panel = vscode.window.createWebviewPanel(
-                    'plot-expression', // Identifies the type of the webview. Used internally
+                    'vscode-pvs.plot-expression', // Identifies the type of the webview. Used internally
                     `plot-expression ${label}`, // Title of the panel displayed to the user
                     vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
                     {
