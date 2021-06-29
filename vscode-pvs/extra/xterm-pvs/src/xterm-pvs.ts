@@ -33,7 +33,7 @@ export function welcomeMessage (session: SessionType): string {
         `
         : `
         - Please enter a PVS expression followed by ';'
-        - or Enter a Lisp expression followed by '!'
+        - or a Lisp expression followed by '!'
         `
     return msg.trim().replace(/\n/g, "<br>");
 }
