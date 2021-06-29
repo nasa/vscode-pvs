@@ -123,10 +123,17 @@ resolutions:
 	node node_modules/npm-force-resolutions/index.js
 
 audit:
+	@echo "\033[0;32m** Auditing dependencies... **\033[0m"
 	npm audit
 	cd client && npm audit
 	cd server && npm audit
 	cd extra/xterm-pvs && npm audit
 	cd extra/prettify-pvs && npm audit
+	@echo "\033[0;32m** Done with auditing! **\033[0m"
 
-.PHONY: test test-proxy test-parser test-find-declaration test-typechecker test-prover test-workspace test-pvs-context resolutions
+examples:
+	@echo "\033[0;32m** Updating examples... **\033[0m"
+	git submodule update
+	@echo "\033[0;32m** Done with examples! **\033[0m"
+
+.PHONY: test test-proxy test-parser test-find-declaration test-typechecker test-prover test-workspace test-pvs-context resolutions examples

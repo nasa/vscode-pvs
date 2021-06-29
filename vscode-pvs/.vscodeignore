@@ -154,3 +154,12 @@ server/src/
 **/server/out/core/pvs-parser/jsTarget/
 
 **/node_modules/**/CHANGELOG.md
+
+**/examples/
+**/client/node_modules/wordwrap/example/
+**/node_modules/object-inspect/example/
+**/node_modules/object-inspect/test-core-js.js
+**/client/node_modules/animate.css/source/
+**/client/node_modules/backbone/backbone-min.map
+**/client/node_modules/bootstrap/scss/
+**/client/node_modules/jquery/AUTHORS.txt

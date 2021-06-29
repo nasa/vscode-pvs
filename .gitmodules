@@ -1,0 +1,3 @@
+[submodule "vscode-pvs/examples/pvsioweb-examples"]
+	path = vscode-pvs/examples/pvsioweb-examples
+	url = https://github.com/pvsioweb/examples
