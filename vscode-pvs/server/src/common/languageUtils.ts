@@ -38,7 +38,9 @@
 
 import * as language from './languageKeywords';
 import { ProofNode, PvsVersionDescriptor, ProofDescriptor, 
-	ProofStatus, Position, Range, ProofTree, PvsFormula, SFormula, SequentDescriptor, CommandDescriptor, CommandsMap, ProofMateProfile, HintsObject
+	ProofStatus, Position, Range, ProofTree, PvsFormula, SFormula, 
+    SequentDescriptor, CommandDescriptor, CommandsMap, ProofMateProfile, 
+    HintsObject
 } from '../common/serverInterface';
 import * as colorUtils from "./colorUtils";
 import { SessionType } from './xtermInterface';

@@ -655,7 +655,7 @@ export async function commentProofliteInActiveEditor (): Promise<boolean> {
                         if (addComment) {
                             // add %|- if not present
                             if (!textline.text?.trim().startsWith("%|-")) {
-                                const newContent: string = "%|-" + textline.text;
+                                const newContent: string = "%|- " + textline.text;
                                 edit.replace(activeDocument.uri, textline.range, newContent);
                             }
                         } else {
