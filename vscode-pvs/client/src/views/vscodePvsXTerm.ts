@@ -702,7 +702,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         if (opt?.sessionEnd) {
             // write a closing messages.
             if (this.sessionType === "evaluator") {
-                 " Evaluator session terminated.";
+                message.data = " Evaluator session terminated.";
                 this.panel?.webview?.postMessage(message);
             } else if (this.sessionType === "prover" && data.includes("bye!")) {
                 message.data = " Prover session terminated."
