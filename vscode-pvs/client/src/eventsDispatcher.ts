@@ -48,7 +48,7 @@ import {
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
     PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
-    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest
+    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
@@ -720,6 +720,9 @@ export class EventsDispatcher {
                 }
             }
         }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.ready", () => {
+            this.statusBar.ready();
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-hidden-formulas", async (desc: { cmd: string }) => {
             if (this.xterm) {
                 this.xterm?.write("(show-hidden-formulas)");
@@ -783,74 +786,90 @@ export class EventsDispatcher {
             this.emacsBindings.metaxPrompt();
         }));
 
+
+                //         // if the file is currently open in the editor, save file first
+                //         await vscode.window.activeTextEditor.document.save();
+                //         let formula: PvsFormula = resource2desc(vscode.window.activeTextEditor.document.fileName);
+                
+                // // const document: vscode.TextDocument = window.activeTextEditor.document;
+                // const info: { content: string, line: number } = {
+                //     content: vscode.window.activeTextEditor.document.getText(),
+                //     line: vscode.window.activeTextEditor.selection.active.line
+                // };
+                // desc.theoryName = info.content ? fsUtils.findTheoryName(info.content, info.line) : null;
+                // desc.formulaName = desc.theoryName ? fsUtils.findFormulaName(info.content, info.line) : null;
+        
         // vscode-pvs.show-proflite
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-prooflite", async (resource: string | { path: string } | { contextValue: string }) => {
-            if (window.activeTextEditor && window.activeTextEditor.document) {
-                // if the file is currently open in the editor, save file first
-                await window.activeTextEditor.document.save();
-                if (!resource) {
-                    resource = { path: window.activeTextEditor.document.fileName };
-                }
+            if (!resource && window.activeTextEditor?.document?.fileName) {
+                resource = { path: window.activeTextEditor.document.fileName };
             }
             if (resource) {
-                let desc: PvsFormula = vscodeUtils.resource2desc(resource);
-                if (desc) {
-                    if (!desc.theoryName) {
-                        // const document: vscode.TextDocument = window.activeTextEditor.document;
-                        const info: { content: string, line: number } = (resource && resource["path"]) ? { content: await fsUtils.readFile(resource["path"]), line: 0 }
-                                : { content: window.activeTextEditor.document.getText(), line: window.activeTextEditor.selection.active.line };
-                        const theoryName: string = fsUtils.findTheoryName(info.content, info.line);
-                        desc.theoryName = theoryName;
-                    }
-                    if (desc.theoryName) {
-                        // show dialog with progress
-                        await window.withProgress({
-                            location: ProgressLocation.Notification,
-                            cancellable: true
-                        }, async (progress, token) => {
-                            // show initial dialog with spinning progress
-                            const message: string = `Generating ProofLite script for formula ${desc.formulaName}`;
-                            progress.report({ increment: -1, message });
+                const desc: PvsFormula = vscodeUtils.resource2desc(resource);
+                this.workspaceExplorer.generateProofliteFileWithProgress(desc, { showFileInEditor: true });
 
-                            return new Promise<void>((resolve, reject) => {
-                                this.client.sendRequest(serverRequest.showProofLite, desc);
-                                this.client.onRequest(serverEvent.showProofLiteResponse, async (desc: { 
-                                    response: { proofFile: FileDescriptor }, 
-                                    args: PvsFormula
-                                }) => {
-                                    if (desc && desc.args && desc.response && desc.response.proofFile) {
-                                        const line: number = await fsUtils.getProofLitePosition({ formula: desc.args, proofFile: desc.response.proofFile });
-                                        vscodeUtils.showTextDocument(desc.response.proofFile, {
-                                            viewColumn: vscode.ViewColumn.Beside,
-                                            selection: new vscode.Range(
-                                                new vscode.Position(line - 1, 0),
-                                                new vscode.Position(line, 0)
-                                            )
-                                        });
-                                        this.statusBar.ready();
-                                        progress.report({ message: `Done!`, increment: 100 });
-                                        resolve();
-                                        // vscodeUtils.previewTextDocument(`${desc.args.theoryName}.prlite`, desc.response, { 
-                                        //     contextFolder: path.join(desc.args.contextFolder, "pvsbin"), 
-                                        //     viewColumn: vscode.ViewColumn.Beside
-                                        // });
-                                    } else {
-                                        progress.report({ message: `${utils.icons.bang} Unable to generate prooflite script for formula ${desc.args.formulaName}`, increment: 100 });
-                                        setTimeout(() => {
-                                            resolve();
-                                        }, 4000)
-                                    }
-                                });
-                            });
-                        });
-                    } else {
-                        vscodeUtils.showErrorMessage(`Error while trying to display prooflite script (could not identify theory name, please check that the file typechecks correctly)`);
-                    }
-                } else {
-                    console.error("[vscode-events-dispatcher] Error: prooflite script requested for unknown resource", resource);
-                }
-            } else {
-                console.error("[vscode-events-dispatcher] Error: prooflite script request is null", resource);
+                // if (!desc.theoryName) {
+                //     // const document: vscode.TextDocument = window.activeTextEditor.document;
+                //     const info: { content: string, line: number } = (resource && resource["path"]) ? { content: await fsUtils.readFile(resource["path"]), line: 0 }
+                //             : { content: window.activeTextEditor.document.getText(), line: window.activeTextEditor.selection.active.line };
+                //     const theoryName: string = fsUtils.findTheoryName(info.content, info.line);
+                //     desc.theoryName = theoryName;
+                // }
+                // if (desc) {
+                //     if (!desc.theoryName) {
+                //         // const document: vscode.TextDocument = window.activeTextEditor.document;
+                //         const info: { content: string, line: number } = (resource && resource["path"]) ? { content: await fsUtils.readFile(resource["path"]), line: 0 }
+                //                 : { content: window.activeTextEditor.document.getText(), line: window.activeTextEditor.selection.active.line };
+                //         const theoryName: string = fsUtils.findTheoryName(info.content, info.line);
+                //         desc.theoryName = theoryName;
+                //     }
+                //     if (desc.theoryName) {
+                //         // show dialog with progress
+                //         await window.withProgress({
+                //             location: ProgressLocation.Notification,
+                //             cancellable: true
+                //         }, async (progress, token) => {
+                //             // show initial dialog with spinning progress
+                //             const message: string = `Generating ProofLite script for formula ${desc.formulaName}`;
+                //             progress.report({ increment: -1, message });
+
+                //             return new Promise<void>((resolve, reject) => {
+                //                 this.client.sendRequest(serverRequest.showProofLite, desc);
+                //                 this.client.onRequest(serverEvent.showProofLiteResponse, async (desc: { 
+                //                     response: { proofFile: FileDescriptor }, 
+                //                     args: PvsFormula
+                //                 }) => {
+                //                     if (desc && desc.args && desc.response && desc.response.proofFile) {
+                //                         const line: number = await fsUtils.getProofLitePosition({ formula: desc.args, proofFile: desc.response.proofFile });
+                //                         vscodeUtils.showTextDocument(desc.response.proofFile, {
+                //                             viewColumn: vscode.ViewColumn.Beside,
+                //                             selection: new vscode.Range(
+                //                                 new vscode.Position(line - 1, 0),
+                //                                 new vscode.Position(line, 0)
+                //                             )
+                //                         });
+                //                         this.statusBar.ready();
+                //                         progress.report({ message: `Done!`, increment: 100 });
+                //                         resolve();
+                //                         // vscodeUtils.previewTextDocument(`${desc.args.theoryName}.prlite`, desc.response, { 
+                //                         //     contextFolder: path.join(desc.args.contextFolder, "pvsbin"), 
+                //                         //     viewColumn: vscode.ViewColumn.Beside
+                //                         // });
+                //                     } else {
+                //                         progress.report({ message: `${utils.icons.bang} Unable to generate prooflite script for formula ${desc.args.formulaName}`, increment: 100 });
+                //                         setTimeout(() => {
+                //                             resolve();
+                //                         }, 4000)
+                //                     }
+                //                 });
+                //             });
+                //         });
+                //     } else {
+                //         vscodeUtils.showErrorMessage(`Error while trying to display prooflite script (could not identify theory name, please check that the file typechecks correctly)`);
+                //     }
+                // } else {
+                //     console.error("[vscode-events-dispatcher] Error: prooflite script requested for unknown resource", resource);
+                // }
             }
         }));
 
@@ -980,6 +999,12 @@ export class EventsDispatcher {
                     }
                 });
                 this.statusBar.showProgress(`Starting J-PRF proof for ${desc.formulaName}`);
+            }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.copy-prooflite", async (req: CopyProofliteRequest) => {
+            if (req?.prooflite && req?.formulaName) {
+                // copy prooflite script to system clipboard
+                vscodeUtils.copyToClipboard(utils.commentProofliteScript(req.prooflite), { msg: `Prooflite ${req.formulaName} copied to clipboard`, useDialog: true });
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula-at-cursor-position", async () => {

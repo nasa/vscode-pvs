@@ -500,7 +500,7 @@ export const serverEvent = {
 	autorunFormulaResponse: "pvs.response.autorun-formula",
 	loadProofResponse: "pvs.response.load-proof",
 	saveProofResponse: "pvs.response.save-proof",
-	showProofLiteResponse: "pvs.response.show-prooflite",
+	// showProofLiteResponse: "pvs.response.show-prooflite",
 	proofCommandResponse: "pvs.response.proof-command",
 	// evalExpressionResponse: "pvs.response.eval-expression",
 	evaluatorCommandResponse: "pvs.response.evaluator-command",
@@ -638,6 +638,10 @@ export interface ProveFormulaResponse extends ProofCommandResponse {
 export interface ProveFormulaRequest extends PvsFormula {
 	origin?: string,
 	proofFile?: FileDescriptor
+}
+
+export interface CopyProofliteRequest extends PvsFormula {
+	prooflite: string
 }
 
 export declare type ServerMode = "lisp" | "in-checker" | "pvsio";

@@ -45,12 +45,14 @@
  * - pvsio: M-x pvsio
  * - view prelude: M-x view-prelude-file
  */
-import { ExtensionContext, commands, window, TextDocument, InputBox } from 'vscode';
+import { ExtensionContext, commands, window, TextDocument, InputBox, env } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import * as fsUtils from '../common/fsUtils';
+import * as languageUtils from '../common/languageUtils';
 import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
-import { PvsFormula } from '../common/serverInterface';
+import { FileDescriptor, PvsFormula } from '../common/serverInterface';
 import * as vscodeUtils from '../utils/vscode-utils';
+import { VSCodePvsWorkspaceExplorer } from '../views/vscodePvsWorkspaceExplorer';
 /**
  * cmds is the list of commands that are supported by the emacs binding defined in this module
  * NB: The order of the commands in the array affects the behavior of autocompletion
@@ -63,6 +65,8 @@ const cmds: string[] = [
 	"pri", "prove-importchain",
 	"prt", "prove-theory",
 	"pvsio",
+
+	"insert-prooflite-script",
 
 	"jpr", "jprove",
 	"jtcp", "jtypecheck-prove",
@@ -99,7 +103,8 @@ const cmds: string[] = [
 
 	"step-proof",
 	"show-tccs",
-	"show-proof-summary"
+	"show-proof-summary",
+	"show-prooflite"
 ];
 
 export class VSCodePvsEmacsBindingsProvider {
@@ -108,10 +113,12 @@ export class VSCodePvsEmacsBindingsProvider {
 	protected metax: string = "M-x ";
 	protected userInput: string; // used by autocompletion
 	protected statusBar: VSCodePvsStatusBar;
+	protected workspaceExplorer: VSCodePvsWorkspaceExplorer;
 
-	constructor (client: LanguageClient, statusBar: VSCodePvsStatusBar) {
+	constructor (client: LanguageClient, statusBar: VSCodePvsStatusBar, workspaceExplorer: VSCodePvsWorkspaceExplorer) {
 		this.client = client;
 		this.statusBar = statusBar;
+		this.workspaceExplorer = workspaceExplorer;
 	}
 	activate (context: ExtensionContext) {
 		// do nothing for now
@@ -195,6 +202,10 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.status-proofchain', desc);
 					break;
 				}
+				case "show-prooflite": {
+					commands.executeCommand('vscode-pvs.show-prooflite', desc);
+					break;
+				}
 				case "jpr":
 				case "jprove": {
 					commands.executeCommand('vscode-pvs.jprove-formula', desc);
@@ -204,6 +215,19 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "prove-theory": {
 					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.prove-theory', desc);
+					break;
+				}
+				case "insert-prooflite-script": {
+					env.clipboard.readText().then(async (txt: string) => {
+						// try to fetch prooflite script
+						const proofliteFile: FileDescriptor = await this.workspaceExplorer?.generateProofliteFileWithProgress(desc);
+						if (proofliteFile?.fileContent) {
+							const script: string = proofliteFile?.fileContent;
+							vscodeUtils.insertTextAtCursorPosition(languageUtils.commentProofliteScript(script));
+						} else {
+							vscodeUtils.showWarningMessage("Warning: Could not generate prooflite script");
+						}
+					});
 					break;
 				}
 				case "jprt": 

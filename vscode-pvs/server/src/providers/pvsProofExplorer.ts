@@ -48,7 +48,7 @@ import {
 	ProofExecQuit, ProofEditDidStartNewProof, ProofExecDidOpenProof,
 	PvsFile, ProofExecQuitAndSave, ProofExecDidImportProof, ProofExecRewind, 
 	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, SequentDescriptor, 
-	ProveFormulaRequest, ProofEditSliceTree, ProofExecDidQuitProof
+	ProveFormulaRequest, ProofEditSliceTree, ProofExecDidQuitProof, FileDescriptor
 } from '../common/serverInterface';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -2185,7 +2185,7 @@ export class PvsProofExplorer {
 				// 	break;
 				// }
 				case ".prl": {
-					const fname: string = await this.pvsProxy.saveProoflite({ 
+					const file: FileDescriptor = await this.pvsProxy.saveProoflite({ 
 						fileName: proofFile.fileName,
 						fileExtension: ".prl",
 						contextFolder: proofFile.contextFolder,
@@ -2193,7 +2193,7 @@ export class PvsProofExplorer {
 						formulaName: this.formula.formulaName,
 						proofDescriptor: this.proofDescriptor
 					});
-					success = !!fname;
+					success = !!file;
 					break;
 				}
 				default: {

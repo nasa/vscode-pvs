@@ -467,12 +467,10 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 */
 	didCopyNode (desc: ProofEditDidCopyNode): void {
 		if (desc && desc.selected) {
-			// copy node to system clipboard
-			vscode.env.clipboard.writeText(desc.selected.name);
+			// copy node to system clipboard & show feedback
+			vscodeUtils.copyToClipboard(desc.selected.name, { msg: `${desc.selected.name} copied to clipboard` });
 			// set vscode context variable proof-explorer.clipboard-contains-node to true
 			vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);
-			// show feedback
-			window.showInformationMessage(`${desc.selected.name} copied to clipboard`);
 		}
 	}
 	/**
@@ -483,13 +481,11 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 */
 	didCopyTree (desc: ProofEditDidCopyTree): void {
 		if (desc && desc.selected) {
-			// copy node to system clipboard
-			vscode.env.clipboard.writeText(desc.clipboard);
+			// copy node to system clipboard & show feedback
+			vscodeUtils.copyToClipboard(desc.clipboard, { msg: `Subtree rooted in ${desc.selected.name} copied to clipboard` });
 			// set vscode context variable proof-explorer.clipboard-contains-tree and clipboard-contains-node to true
 			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', true);
 			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);
-			// show feedback
-			window.showInformationMessage(`Subtree rooted in ${desc.selected.name} copied to clipboard`);
 		}
 	}
 	/**
@@ -498,7 +494,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	didCutNode (desc: ProofEditDidCutNode): void {
 		if (desc && desc.selected) {
 			// copy node to system clipboard
-			vscode.env.clipboard.writeText(desc.selected.name);
+			vscodeUtils.copyToClipboard(desc.selected.name);
 			// set vscode context variable proof-explorer.clipboard-contains-tree and clipboard-contains-node to true
 			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);				
 			this.refreshView({ source: "did-cut-node" });
@@ -518,7 +514,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	didCutTree (desc: ProofEditDidCutTree): void {
 		if (desc && desc.selected) {
 			// copy node to system clipboard
-			vscode.env.clipboard.writeText(desc.clipboard);			
+			vscodeUtils.copyToClipboard(desc.clipboard);			
 			// set vscode context variable proof-explorer.clipboard-contains-tree and clipboard-contains-node to true
 			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', true);
 			commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', true);

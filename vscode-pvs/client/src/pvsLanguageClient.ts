@@ -348,12 +348,12 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.statusBar.showProgress("Starting vscode-pvs...");
 
 			// start vscode-pvs components
-			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
-			this.emacsBindingsProvider.activate(this.context);
 			this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
 			this.proofExplorer.activate(this.context);
 			this.workspaceExplorer = new VSCodePvsWorkspaceExplorer(this.client, this.proofExplorer, 'workspace-explorer-view');
 			this.workspaceExplorer.activate(this.context);
+			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar, this.workspaceExplorer);
+			this.emacsBindingsProvider.activate(this.context);
 			this.outlineProvider = new VSCodePvsFileOutlineProvider(this.client);
 			this.outlineProvider.activate(this.context);
 			this.snippetsProvider = new VSCodePvsSnippetsProvider(this.client);

@@ -499,7 +499,7 @@ export class PvsLanguageServer {
 			formula = fsUtils.decodeURIComponents(formula);
 			const pdesc: ProofDescriptor = await this.openProof(formula);
 
-			const fname: string = await this.pvsProxy?.saveProoflite({ 
+			const proofFile: FileDescriptor = await this.pvsProxy?.saveProoflite({ 
 				fileName: formula.fileName,
 				fileExtension: ".prl",
 				contextFolder: formula.contextFolder,
@@ -512,8 +512,7 @@ export class PvsLanguageServer {
 			// const proof: string[] = utils.proofDescriptor2ProofLite(pdesc);
 			// const proofScript: string = (proof && proof.length) ? header + proof.join("\n") : header;
 			// send response to the client
-			const proofFile: FileDescriptor = fsUtils.fname2desc(fname)
-			this.connection?.sendRequest(serverEvent.showProofLiteResponse, { response: { proofFile }, args: formula });
+			this.connection?.sendNotification(serverRequest.showProofLite, { response: { proofFile }, args: formula });
 		}
 	}
 
@@ -1858,7 +1857,7 @@ export class PvsLanguageServer {
 				await this.proveFormulaRequest(req, { autorun: true, useJprf: true, quiet: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.showProofLite, async (args: PvsFormula) => {
-				await this.showProofLiteRequest(args); // async call
+				await this.showProofLiteRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.proofCommand, async (args: PvsProofCommand) => {
 				await this.proofExplorer?.proofCommandRequest(args); // async call

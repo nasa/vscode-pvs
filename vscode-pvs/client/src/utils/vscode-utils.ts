@@ -41,7 +41,7 @@ import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem, WorkspaceItem } from "../views/vscodePvsWorkspaceExplorer";
-import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula } from '../common/serverInterface';
+import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent } from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 import { XTermColorTheme } from '../common/colorUtils';
 import { xTermDetectColorTheme } from '../common/xtermInterface';
@@ -106,7 +106,6 @@ export function showTextDocument (desc: {
 
 /**
  * Utility function, previews a text document in the editor
- * @param content 
  */
 export async function previewTextDocument (name: string, content: string, opt?: { contextFolder?: string, viewColumn?: vscode.ViewColumn }): Promise<void> {
     opt = opt || {};
@@ -139,6 +138,24 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     }
 }
 
+/**
+ * Utility function, insert text at the cursor position
+ */
+export async function insertTextAtCursorPosition (content: string): Promise<boolean> {
+    if (vscode.window.activeTextEditor?.document) {
+        const cursorPos: vscode.Position = vscode.window.activeTextEditor.selection.active;
+        const docUri: vscode.Uri = vscode.window.activeTextEditor.document.uri;
+        const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
+        edit.insert(docUri, cursorPos, content);
+        let success: boolean = await vscode.workspace.applyEdit(edit);
+        // FIXME: applyEdit fails if the document is already open and active in the editor, understand why this is the case.
+        if (!success) {
+            success = await vscode.workspace.applyEdit(edit);
+        }
+        return success;
+    }
+    return false;
+}
 
 /**
  * Utility function, creates a text document in the editor with the given content
@@ -857,6 +874,30 @@ export function unloadPvsFileIcons (): void {
     }
 }
 
+/**
+ * Utility function, copies the given text to the system clipboard
+ */
+export function copyToClipboard (txt: string, opt?: { msg: string, useDialog?: boolean }): void {
+    if (txt) {
+        // copy node to system clipboard
+        vscode.env.clipboard.writeText(txt);
+        // show feedback if msg is provided
+        if (opt?.msg) {
+            opt?.useDialog ? showInformationMessage(opt.msg) : showStatusBarMessage(opt.msg);
+        }
+    }
+}
+
+/**
+ * Utility function, clears the system clipboard
+ */
+export function clearClipboard (): void {
+    vscode.env.clipboard.writeText("");
+}
+
+/**
+ * Utility function, converts a resource to a PvsFormula
+ */
 export function resource2desc (resource: string | { 
     fileName?: string, fileExtension?: string, contextFolder?: string, theoryName?: string, formulaName?: string,
     path?: string,

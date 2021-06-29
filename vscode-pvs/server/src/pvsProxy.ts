@@ -1567,17 +1567,17 @@ export class PvsProxy {
 		proofDescriptor: ProofDescriptor
 	}, opt?: { 
 		usePvsBinFolder?: boolean
-	}): Promise<string> {
+	}): Promise<FileDescriptor> {
 		opt = opt || {};
 		// by default, save under pvsbin
 		opt.usePvsBinFolder = opt.usePvsBinFolder === undefined ? true : !!opt.usePvsBinFolder;
 		const contextFolder: string = opt.usePvsBinFolder ? path.join(desc.contextFolder, "pvsbin") : desc.contextFolder;
 		// save prooflite
-		const fname: string = fsUtils.desc2fname({
+		const prlFile: FileDescriptor = {
 			contextFolder,
 			fileName: desc.theoryName,
 			fileExtension: ".prl"
-		});
+		};
 		const content: string[] = languageUtils.proofDescriptor2ProofLite(desc.proofDescriptor);
 		if (content && content.length) {
 			const header: string = languageUtils.makeProofliteHeader(
@@ -1587,11 +1587,14 @@ export class PvsProxy {
 				desc.proofDescriptor.info.status
 			);
 			const proofLite: string = content.join("\n");
-			const success: boolean = await fsUtils.saveProoflite(fname, desc.formulaName, header + proofLite);
+			const success: boolean = await fsUtils.saveProoflite(fsUtils.desc2fname(prlFile), desc.formulaName, header + proofLite);
 			// try to save into .prf -- disabled for now
 			// const prl: string = utils.proofTree2Prl(desc.proofDescriptor);
 			// await this.saveProofWithFormula(desc, prl);
-			return success ? fname : null;
+			if (success) {
+				prlFile.fileContent = proofLite;
+				return prlFile;
+			}
 		}
 		return null;
 	}

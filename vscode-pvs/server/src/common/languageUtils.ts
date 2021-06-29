@@ -572,6 +572,34 @@ export function proofliteDeclRegexp(desc: { theoryName: string, formulaName: str
 	const formulaName: string = desc.formulaName.replace(/\?/g, "\\\\?");
 	return new RegExp(`\\b${formulaName}\\s*:\\s*PROOF\\b`, "g");
 }
+/**
+ * Utility function, introduces '%|- ' before each line of a given proof script
+ */
+export function commentProofliteScript (script: string): string {
+    if (script) {
+        return script.split("\n").map(line => {
+            return line.trim().startsWith("%|- ") ? line : "%|- " + line;
+        }).join("\n");
+    }
+    return script;
+}
+/**
+ * Utility function, checks if the provided script is a valid prooflite script
+ */
+export function isValidProofliteScript (script: string): boolean {
+    if (script) {
+        const lines: string[] = script.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            const line: string = lines[i].trim();
+            if (line && !line.startsWith("%|-")) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 // group 1 is formula name
 export const proofRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(%.+)?\s*:\s*(%.+)?\s*(?:PROOF)\b/gim;
 
@@ -1061,6 +1089,7 @@ export function isEmptyProof (pdesc: ProofDescriptor): boolean {
 
 const grind: string = `("" (grind))`;
 const postpone: string = `("" (postpone))`;
+
 
 /**
  * Utility function, transforms a proof tree into a json object

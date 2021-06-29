@@ -37,8 +37,8 @@
  **/
 import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
-			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, ConfigurationTarget } from 'vscode';
-import { LanguageClient } from 'vscode-languageclient';
+			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, ConfigurationTarget, Progress } from 'vscode';
+import { CancellationToken, LanguageClient } from 'vscode-languageclient';
 import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, ContextFolder, FileDescriptor, StatusProofChain } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
@@ -1363,10 +1363,83 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	}
 
 	/**
+	 * Utility function, generates a prooflite file for the given formula
+	 */
+	async generateProofliteFileWithProgress (desc: PvsFormula, opt?: { showFileInEditor?: boolean }): Promise<FileDescriptor> {
+		if (desc) {
+			if (window.activeTextEditor?.document?.fileName) {
+				// if the file is currently open in the editor, save file first
+				await window.activeTextEditor.document.save();
+			}
+
+			// try to fill any missing field in the descriptor
+			if (!desc.theoryName || !desc.formulaName) {
+				const info: { content: string, line: number } = {
+					content: desc.fileContent !== undefined && desc.fileContent !== null ? desc.fileContent
+						: desc.fileName && desc.fileExtension && desc.contextFolder ? await fsUtils.readFile(fsUtils.desc2fname(desc))
+							: window.activeTextEditor.document.getText(),
+					line: desc.line !== undefined && desc.line !== null ? desc.line : window.activeTextEditor?.selection?.active?.line
+				};
+				desc.theoryName = !desc.theoryName ? fsUtils.findTheoryName(info.content, info.line) : desc.theoryName;
+				desc.formulaName = desc.theoryName && !desc.formulaName ? fsUtils.findFormulaName(info.content, info.line) : desc.formulaName;
+			}
+
+			// try to send the request to the server
+			if (desc.theoryName && desc.formulaName) {
+				return new Promise<FileDescriptor>(async (resolve, reject) => {
+					const task = (progress: Progress<{
+						message?: string; increment?: number
+					}>, token: CancellationToken): Promise<FileDescriptor> => {
+						return new Promise<FileDescriptor>(async (resolveTask, rejectTask) => {
+							// show initial dialog with spinning progress
+							const message: string = `Generating ProofLite script for formula ${desc.formulaName}`;
+							progress.report({ increment: -1, message });
+							// send request to the server
+							this.client.sendRequest(serverRequest.showProofLite, desc);
+							this.client.onNotification(serverRequest.showProofLite, async (desc: { 
+								response: { proofFile: FileDescriptor }, 
+								args: PvsFormula
+							}) => {
+								if (desc && desc.args && desc.response && desc.response.proofFile) {
+									if (opt?.showFileInEditor) {
+										const line: number = await fsUtils.getProofLitePosition({ formula: desc.args, proofFile: desc.response.proofFile });
+										vscodeUtils.showTextDocument(desc.response.proofFile, {
+											viewColumn: ViewColumn.Beside,
+											selection: new Range( new Position(line - 1, 0), new Position(line, 0))
+										});
+									}
+									commands.executeCommand("vscode-pvs.ready");
+									progress.report({ message: `Done!`, increment: 100 });
+									resolveTask(desc.response.proofFile);
+								} else {
+									progress.report({ message: `${utils.icons.bang} Unable to generate prooflite script for formula ${desc.args.formulaName}`, increment: 100 });
+									setTimeout(() => {
+										resolveTask(null);
+									}, 4000)
+								}
+							});
+						});
+					}
+					// show dialog with progress
+					const ans: FileDescriptor = await window.withProgress({
+						location: ProgressLocation.Notification,
+						cancellable: true
+					}, task);
+					resolve(ans);
+				});
+			} else {
+				vscodeUtils.showErrorMessage(`Error: could not generate prooflite script (could not find theory name or formula name)`);
+			}
+		}
+		return null;
+	}
+
+
+	/**
 	 * Returns the list of theories defined in the active pvs file
 	 * @param element Element clicked by the user 
 	 */
-	getChildren(element: TreeItem): Thenable<TreeItem[] | null> {
+	 getChildren(element: TreeItem): Thenable<TreeItem[] | null> {
 		if (element) {
 			let children: TreeItem[] = null;
 			if (element.contextValue === "workspace-overview") {
@@ -1412,6 +1485,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		return Promise.resolve(null);
 	}
 
+	/**
+	 * Utility function, returns a tree item
+	 */
 	getTreeItem(element: TreeItem): TreeItem {
 		return element;
 	}

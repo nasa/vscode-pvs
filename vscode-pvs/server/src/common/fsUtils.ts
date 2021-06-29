@@ -348,7 +348,8 @@ export function getContextFolder(fname: string): string {
 }
 export function getContextFolderName(contextFolder: string): string {
 	if (contextFolder) {
-		return contextFolder.substring(contextFolder.lastIndexOf('/') + 1, contextFolder.length);
+		const ctx: string = normalizeContextFolder(contextFolder);
+		return ctx.substring(ctx.lastIndexOf('/') + 1, ctx.length);
 	}
 	return null;
 }
@@ -1234,6 +1235,9 @@ export async function saveProoflite (fname: string, formulaName: string, script:
 	return false;
 }
 
+/**
+ * Utility function, returns the prooflite script for a given formula
+ */
 export async function getProofliteScript (desc: { 
 	fileName: string, 
 	fileExtension: string, 
@@ -1382,8 +1386,6 @@ export function findProofObligation(formulaName: string, txt: string): number {
 	}
 	return 0;
 };
-
-
 
 /**
  * Lists all theorems in a given context folder

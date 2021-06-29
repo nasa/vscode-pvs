@@ -40,7 +40,7 @@
 import { CancellationToken, CodeLens, CodeLensRequest, Range, CodeLensParams } from 'vscode-languageserver';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
-import { ProveFormulaRequest, PvsFormula, PvsTheory } from '../common/serverInterface';
+import { CopyProofliteRequest, ProveFormulaRequest, PvsFormula, PvsTheory } from '../common/serverInterface';
 import { PvsLanguageServer } from '../pvsLanguageServer';
 
 export class PvsCodeLensProvider {
@@ -202,13 +202,13 @@ export class PvsCodeLensProvider {
                         const realContextFolder: string = contextFolder.endsWith("/pvsbin") || contextFolder.endsWith("/pvsbin/") ?
                             contextFolder.substring(0, contextFolder.lastIndexOf("/pvsbin")) : contextFolder;
                         
-                        const args: ProveFormulaRequest = {
+                        const proveFormulaArgs: ProveFormulaRequest = {
                             fileName,
                             fileExtension: (utils.tccFormulaRegexp.test(formulaName)) ? ".tccs" : ".pvs",
                             contextFolder: realContextFolder,
                             theoryName, 
                             formulaName,
-                            origin: "proofilte",
+                            origin: "prooflite",
                             proofFile: {
                                 fileName,
                                 fileExtension,
@@ -226,7 +226,30 @@ export class PvsCodeLensProvider {
                             command: {
                                 title: "prove",
                                 command: "vscode-pvs.prove-formula",
-                                arguments: [ args ]
+                                arguments: [ proveFormulaArgs ]
+                            }
+                        });
+
+                        const matchProoflite: RegExpMatchArray = utils.proofliteRegexp({
+                            theoryName, formulaName
+                        }).exec(content);
+                        const prooflite: string = matchProoflite && matchProoflite.length ? matchProoflite[0].trim() : null;
+                    
+                        const insertProofliteArgs: CopyProofliteRequest = {
+                            fileName,
+                            fileExtension: (utils.tccFormulaRegexp.test(formulaName)) ? ".tccs" : ".pvs",
+                            contextFolder: realContextFolder,
+                            theoryName, 
+                            formulaName,
+                            prooflite
+                        };
+
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: "copy-prooflite",
+                                command: "vscode-pvs.copy-prooflite",
+                                arguments: [ insertProofliteArgs ]
                             }
                         });
                     }       
