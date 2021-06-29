@@ -7,7 +7,7 @@ import * as Backbone from 'backbone';
 // import * as Handlebars from 'handlebars';
 import {
     checkPar, commentRegexp, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, 
-    proverCommands, splitCommands
+    proverCommands, splitCommands, VSCODE_COMMANDS
 } from './common/languageUtils';
 import { htmlColorCode, XTermColorTheme } from './common/colorUtils';
 
@@ -1706,7 +1706,7 @@ export class Autocomplete extends Backbone.Model {
             cmd,
             ...desc,
             syntax: this.sessionType === "prover" ? `(${desc?.syntax})` : `${desc?.syntax};`,
-            footnote: this.sessionType === "prover" ? `Use (help ${cmd}) to display additional help information.` : ""
+            footnote: this.sessionType === "prover" && !VSCODE_COMMANDS[cmd] ? `Use (help ${cmd}) to display additional help information.` : ""
         });
         this.showHelp(integratedHelp);
         if (!currentInput && integratedHelp) {

@@ -3247,7 +3247,14 @@ export function getCommands(profile: ProofMateProfile): { [key: string]: Command
         case "advanced": { return PROOF_COMMANDS_ADVANCED_PROFILE; }
         default: return {};
     }
-}
+};
+
+export const VSCODE_COMMANDS: CommandsMap = {
+    "vscode-plot": {
+        description: `Plot a PVS expression in vscode, e.g., vscode-plot((: -1/2, 1, 2 :))`,
+        syntax: `vscode-plot(<expr>)`
+    }
+};
 
 // list of evaluator commands
 export const evaluatorCommands: CommandsMap = {
@@ -3263,6 +3270,7 @@ export const evaluatorCommands: CommandsMap = {
         description: `Displays the list of available evaluator commands`,
         syntax: `help`
     },
+    ...VSCODE_COMMANDS,
     ...EVALUATOR_COMMANDS
 };
 // list of prover commands
@@ -3286,6 +3294,7 @@ export const proverCommands: CommandsMap = {
         description: `Displays information about commands, including description and syntax`,
         syntax: `help CMD`
     },
+    ...VSCODE_COMMANDS,
     ...PROOF_COMMANDS,
     ...PROOF_TACTICS
 };
