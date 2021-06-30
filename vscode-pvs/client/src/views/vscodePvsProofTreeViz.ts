@@ -120,7 +120,7 @@ const htmlTemplate: string = `
                     <button type="button" id="recenter" class="btn btn-sm btn-outline-light" aria-label="Recenter">Recenter</button>
                 </div>
                 <div class="btn-group" role="group" style="margin-left:20px;">
-                    <button type="button" id="prev" class="btn btn-sm btn-outline-light control" alt="Back one step" aria-label="Back one step" style="width:80px;"><i class="fa fa-step-backward"></i></button>
+                    <button type="button" id="prev" class="btn btn-sm btn-outline-light control" alt="Back one step" aria-label="Back one step" style="width:61px;"><i class="fa fa-step-backward"></i></button>
                     <button type="button" id="pause" class="btn btn-sm btn-outline-light control" alt="Pause proof" aria-label="Pause proof" style="width:40px;"><i class="fa fa-pause"></i></button>
                     <button type="button" id="play" class="btn btn-sm btn-outline-light control" alt="Run proof" aria-label="Run proof" style="width:40px;padding:0px;"><i class="fa fa-play-circle fa-2x"></i></button>
                     <button type="button" id="next" class="btn btn-sm btn-outline-light control" alt="Step proof" aria-label="Step proof" style="width:80px;"><i class="fa fa-step-forward"></i></button>
