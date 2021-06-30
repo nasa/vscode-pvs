@@ -25,6 +25,11 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.54 (2021.06.30)]()      
+  -Added new console command 'vscode-plot'   
+  -Added new command shortcut 'M-x insert-prooflite-script'   
+  -Bug fixes (autocompletion, integrated help, rename proof-branch. plot)   
+
 - [1.0.53 (2021.06.22)]()      
   -Improved prover console (auto-completion)   
   -Bug fixes (F4/F5 shortcuts, blank display when starting a prover session, copy/paste in proof-explorer)   

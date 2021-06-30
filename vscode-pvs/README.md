@@ -19,7 +19,7 @@ The environment redefines the way developers interact with PVS, and better align
 
 
 ## Requirements
-- Linux or MacOS operating system
+- Linux or Intel Mac
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
 - Visual Studio Code (v1.49.0 or greater) https://code.visualstudio.com
 
