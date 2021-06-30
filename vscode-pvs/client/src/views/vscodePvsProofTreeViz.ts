@@ -39,7 +39,7 @@
 import * as vscode from 'vscode';
 import * as d3 from 'd3-hierarchy';
 import * as Handlebars from "handlebars";
-import { ExtensionContext, WebviewPanel } from 'vscode';
+import { ExtensionContext, Uri, WebviewPanel } from 'vscode';
 import { ProofNodeStatus, PvsFormula } from '../common/serverInterface';
 import * as path from 'path';
 import { TreeStructure } from '../common/languageUtils';
@@ -100,7 +100,7 @@ const htmlTemplate: string = `
 </head>
 <body style="margin-left:20px; margin-top:60px; padding:0; overflow:auto; background:whitesmoke;">
     <nav class="navbar navbar-light bg-dark fixed-top" style="width:100%; margin:0; padding:0;">
-        <div class="container-fluid" style="margin:0; padding:0;">
+        <div class="container-fluid" style="margin:0; padding:2px;">
             <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups" style="transform:scale(0.8); transform-origin:left; min-width:120%;">
                 <div class="dropdown" style="margin-left:20px;">
                     <button type="button" id="dropdown" data-toggle="dropdown" class="btn btn-sm btn-outline-light" aria-label="Settings"><i class="fa fa-bars"></i></button>
@@ -117,15 +117,13 @@ const htmlTemplate: string = `
                 <div class="btn-group" role="group" style="margin-left:20px;">
                     <button type="button" id="zoom-minus" class="btn btn-sm btn-outline-warning" aria-label="Zoom minus"><i class="fa fa-minus"></i></button>
                     <button type="button" id="zoom-plus" class="btn btn-sm btn-outline-light" aria-label="Zoom plus"><i class="fa fa-plus"></i></button>
-                </div>
-                <div class="btn-group" role="group" style="margin-left:20px;">
                     <button type="button" id="recenter" class="btn btn-sm btn-outline-light" aria-label="Recenter">Recenter</button>
                 </div>
                 <div class="btn-group" role="group" style="margin-left:20px;">
-                    <button type="button" id="prev" class="btn btn-sm btn-outline-light" alt="Back one step" aria-label="Back one step" style="width:80px;"><i class="fa fa-step-backward"></i></button>
-                    <button type="button" id="pause" class="btn btn-sm btn-outline-light" alt="Pause proof" aria-label="Pause proof" style="width:40px;"><i class="fa fa-pause"></i></button>
-                    <button type="button" id="play" class="btn btn-sm btn-outline-light" alt="Run proof" aria-label="Run proof" style="width:40px;"><i class="fa fa-play-circle"></i></button>
-                    <button type="button" id="next" class="btn btn-sm btn-outline-light" alt="Step proof" aria-label="Step proof" style="width:80px;"><i class="fa fa-step-forward"></i></button>
+                    <button type="button" id="prev" class="btn btn-sm btn-outline-light control" alt="Back one step" aria-label="Back one step" style="width:80px;"><i class="fa fa-step-backward"></i></button>
+                    <button type="button" id="pause" class="btn btn-sm btn-outline-light control" alt="Pause proof" aria-label="Pause proof" style="width:40px;"><i class="fa fa-pause"></i></button>
+                    <button type="button" id="play" class="btn btn-sm btn-outline-light control" alt="Run proof" aria-label="Run proof" style="width:40px;padding:0px;"><i class="fa fa-play-circle fa-2x"></i></button>
+                    <button type="button" id="next" class="btn btn-sm btn-outline-light control" alt="Step proof" aria-label="Step proof" style="width:80px;"><i class="fa fa-step-forward"></i></button>
                 </div>
                 <div class="btn-group" role="group" style="margin-left:20px;">
                     <button type="button" id="export-proof-tree" class="btn btn-sm btn-outline-light" aria-label="Export as HTML">Export as HTML</button>
@@ -327,6 +325,14 @@ const htmlTemplate: string = `
                 }
                 case 'update-font': {
                     $(".node text").css("font", message.val);
+                    break;
+                }
+                case 'disable-controls': {
+                    $(".control").prop('disabled', true);
+                    break;
+                }
+                case 'enable-controls': {
+                    $(".control").prop('disabled', false);
                     break;
                 }
                 default: {
@@ -610,6 +616,11 @@ export class VSCodePvsVizTree {
                     retainContextWhenHidden: true
                 }
             );
+            // set panel icon
+            this.panel.iconPath = {
+                light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png")),
+                dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png"))
+            };
             // Clean up data structures when webview is disposed
             this.panel.onDidDispose(
                 () => {
@@ -741,6 +752,18 @@ export class VSCodePvsVizTree {
             this.panel.webview.asWebviewUri(bootstrapJsOnDisk)
         ];
         this.panel.webview.html = this.createHtmlContent(root, { css, js, style: webviewStyle + webViewStyleAnim });
+    }
+    /**
+     * Disables the back, forward, play controls
+     */
+    disableControls (): void {
+        this.panel?.webview?.postMessage({ command: "disable-controls" });
+    }
+    /**
+     * Enables the back, forward, play controls
+     */
+    enableControls (): void {
+        this.panel?.webview?.postMessage({ command: "enable-controls" });
     }
     /**
      * Renders the content of the webview

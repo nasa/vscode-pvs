@@ -43,6 +43,7 @@ import { LanguageClient } from "vscode-languageclient";
 import * as utils from '../common/languageUtils';
 import * as path from 'path';
 import * as Handlebars from "handlebars";
+import { Uri } from "vscode";
 
 const MAX_INNER_LABEL_LEN: number = 128;
 const MAX_TAB_LABEL_LEN: number = 24;
@@ -127,9 +128,14 @@ export class VSCodePvsPlotter {
                         retainContextWhenHidden: true
                     } // Webview options.
                 );
+                // set panel icon
+                this.panel.iconPath = {
+                    light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png")),
+                    dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png"))
+                };
                 // set webview content
                 this.panel.webview.html = this.createContent({ expr });
-
+                // send request to server
                 this.client.sendRequest(serverRequest.evalExpression, desc);
                 this.client.onNotification(serverRequest.evalExpression, async (desc: {
                     req: PvsioEvaluatorCommand,

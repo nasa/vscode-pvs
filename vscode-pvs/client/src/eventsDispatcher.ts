@@ -388,7 +388,7 @@ export class EventsDispatcher {
                         // this.xterm.showFeedbackWhileExecuting("run-proof");
                     } else {
                         this.proofMate.updateRecommendations(desc.sequent);
-                        this.xterm.focus();
+                        // this.xterm.focus();
                     }
                     break;
                 }
@@ -553,6 +553,8 @@ export class EventsDispatcher {
                         this.inEvaluator = false;
                         vscode.commands.executeCommand('setContext', 'in-checker', false);
                         vscode.commands.executeCommand('setContext', 'in-evaluator', false);
+                        // disable treeviz controls
+				        this.proofExplorer?.disableTreeVizControls();
                         break;
                     }
                 }

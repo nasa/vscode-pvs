@@ -100,7 +100,6 @@ const htmlTemplate: string = `
         sessionType: "{{sessionType}}",
         paddingBottom: ${HELP_PANEL_HEIGHT}
     });
-    console.log("xterm", xterm);
 
     // Handlers for events triggered by xterm
     {{#each xtermEvents}}
@@ -132,6 +131,8 @@ const htmlTemplate: string = `
 
     // ready event
     window.addEventListener('load', async (event) => {
+        console.log("xterm", xterm);
+        xterm.focus();
         vscode.postMessage({
             command: "${XTermEvent.ready}",
             data: true
@@ -626,14 +627,20 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             // clearTimeout(this.tfocus);
             // await new Promise ((resolve, reject) => {
             //     this.tfocus = setTimeout(() => {
-                    const message: XTermMessage = {
-                        command: XTermCommands.focus
-                    };
-                    this.panel?.webview?.postMessage(message);
+                        this.focusxterm();
             //     }, 250);
             // });
         }
         return success;
+    }
+    /**
+     * Internal function, sends a focus request to xterm
+     */
+    protected focusxterm (): void {
+        const message: XTermMessage = {
+            command: XTermCommands.focus
+        };
+        this.panel?.webview?.postMessage(message);
     }
     /**
      * Shows the terminal
@@ -665,9 +672,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     activate (context: ExtensionContext) {
         this.context = context;
-        // context.subscriptions.push(vscode.commands.registerCommand("vscode-pvs.x-term", async () => {
-        //     await this.reveal();
-        // }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.focus-xterm", () => {
+            this.focus();
+        }));
     }
     /**
      * Writes a command in the terminal
@@ -870,8 +877,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         return new Promise ((resolve, reject) => {
             if (this.sessionType) {
                 const title: string = this.sessionType === "prover" ?
-                    `Proving formula '${(<PvsFormula> this.target).formulaName}'`
-                        : `Evaluating theory ${this.target.theoryName}`;
+                    `Proving '${(<PvsFormula> this.target).formulaName}'`
+                        : `Evaluating ${this.target.theoryName}`;
                 if (this.panel) {
                     this.panel.title = title;
                     // reveal the panel
@@ -889,6 +896,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         }
                     );
                     try {
+                        this.panel.iconPath = {
+                            light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png")),
+                            dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png"))
+                        }
                         // clean up data structures when webview is disposed
                         this.panel.onDidDispose(
                             () => {
@@ -903,6 +914,13 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                             },
                             null,
                             this.context?.subscriptions
+                        );
+                        this.panel.onDidChangeViewState(
+                            (evt: WebviewPanelOnDidChangeViewStateEvent) => {
+                                if (evt?.webviewPanel?.active) {
+                                    this.focusxterm();
+                                }
+                            }
                         );
                         // Handle messages from the webview
                         this.panel.webview.onDidReceiveMessage(

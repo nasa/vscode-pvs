@@ -142,6 +142,11 @@ $(document).ready(function() {
                     $(".spinner").css("display", "block");
                     break;
                 }
+                case "focus": {
+                    console.log("[nasalib-search] focus");
+                    $(".search-input").focus();
+                    break;
+                }
                 default: {
                     break;
                 }
@@ -190,6 +195,11 @@ export class VSCodePvsSearch {
                     enableScripts: true
                 }
             );
+            // set panel icon
+            this.panel.iconPath = {
+                light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png")),
+                dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png"))
+            };
             // Clean up data structures when webview is disposed
             this.panel.onDidDispose(
                 () => {
@@ -229,6 +239,8 @@ export class VSCodePvsSearch {
                 this.context.subscriptions
             );
         }
+        // auto-focus search field
+        this.focus();
     }
     showSearching (data: { searchString: string }): void {
         this.refreshView({ ...data, showSpinner: true });
@@ -239,6 +251,14 @@ export class VSCodePvsSearch {
         //     command: "show-results",
         //     res
         // });
+    }
+    /**
+     * Focus search input field
+     */
+    focus (): void {
+        this.panel?.webview?.postMessage({
+            command: "focus"
+        });
     }
     async search (searchString: string): Promise<SearchResult[]> {
         return new Promise ((resolve, reject) => {

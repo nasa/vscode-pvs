@@ -583,7 +583,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		this.ghostNode.notActive();
 		this.refreshView({ source: "did-deactivate-cursor" });
 	}
-
+	/**
+	 * Handler for proof status updates
+	 */
 	didUpdateProofStatus (desc: ProofEditDidUpdateProofStatus): void {
 		if (this.root) {
 			if (desc.proofStatus === "proved") {
@@ -592,7 +594,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				commands.executeCommand("proof-mate.update-sketchpad", { items: [] });
 				// clear running flag
 				this.running = false;
-				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);		
+				vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
 			} else {
 				this.root.pending();
 				this.root.setProofStatus(desc.proofStatus);
@@ -601,6 +603,20 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		} else {
 			console.warn(`[vscode-proof-explorer] Warning: could not update proof status (root node is null)`);
 		}
+	}
+
+	/**
+	 * Utility function, disables treeviz controls
+	 */
+	disableTreeVizControls (): void {
+		this.treeviz?.disableControls();
+	}
+
+	/**
+	 * Utility function, enables treeviz controls
+	 */
+	enableTreeVizControls (): void {
+		this.treeviz?.enableControls();
 	}
 
 	/**
@@ -730,7 +746,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	/**
 	 * Utility function, enables the tree view (i.e., reveals the view)
 	 */
-	 enableView (): void {
+	enableView (): void {
 		this.enabled = true;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.visible', true);
 		this.focusActiveNode();

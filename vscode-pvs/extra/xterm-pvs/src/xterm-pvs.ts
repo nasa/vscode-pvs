@@ -2794,9 +2794,10 @@ export class XTermPvs extends Backbone.Model {
             // console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
         });
         $(document).on("click", (evt: JQuery.ClickEvent) => {
-            // console.log("[xterm-pvs] focus");
-            // this.focus();
-            this.trigger(XTermEvent.click);
+            // console.log("[xterm-pvs] click");
+            this.autocomplete.deleteTooltips();
+            this.focus();
+            // this.trigger(XTermEvent.click);
         });
         // content event handlers
         this.content.on(ContentEvent.rebase, (evt: RebaseEvent) => {

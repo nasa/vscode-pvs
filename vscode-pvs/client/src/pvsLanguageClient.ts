@@ -36,7 +36,10 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 import * as path from 'path';
-import { TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, commands, ConfigurationChangeEvent, ProgressLocation, Uri, WorkspaceConfiguration, Progress, FileRenameEvent, WorkspaceFolder } from 'vscode';
+import { 
+	TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, 
+	commands, ConfigurationChangeEvent, Uri, FileRenameEvent, WindowState
+} from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, CancellationToken } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
 import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
@@ -149,16 +152,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		
 		// onDidOpenTextDocument is emitted when a text file is opened in the editor or when the language id of a text document has changed.
 		workspace.onDidOpenTextDocument(async (event: TextDocument) => {
-			if ((event && event.languageId === "pvs") 
-				|| (window.activeTextEditor && 
-						(fsUtils.isPvsFile(window.activeTextEditor?.document?.fileName)
-							|| window.activeTextEditor?.document?.languageId === "Log"))) {
+			const editor: TextEditor = window.activeTextEditor;
+			if (event?.languageId === "pvs" || fsUtils.isPvsFile(editor?.document?.fileName)) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
 				// check if this is a session start and there's a file that needs to be opened
 				const fname: string = event?.fileName;
-				if (fsUtils.isPvsFile(fname) && fname === window.activeTextEditor?.document?.fileName) {
+				if (fsUtils.isPvsFile(fname) && fname === editor?.document?.fileName) {
 					vscodeUtils.loadPvsFileIcons();
 					const contextFolder: string = fsUtils.getContextFolder(fname);
 					const explorerWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
@@ -191,7 +192,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		window.onDidChangeActiveTextEditor(async (event: TextEditor) => {
 			const editor: TextEditor = window.activeTextEditor; //event || window.activeTextEditor;
 			const fname: string =  editor?.document?.fileName;
-			if (editor?.document && (fsUtils.isPvsFile(editor.document.fileName) || editor?.document?.languageId === "Log")) {
+			const state: WindowState = window.state;
+			if (event?.document?.languageId === "pvs" || fsUtils.isPvsFile(editor?.document?.fileName)) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
@@ -280,18 +282,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		});
 	}
 
-	// event (eventName: string): void {
-	// 	switch (eventName) {
-	// 		case serverEvent.pvsServerReady: {
-	// 			this.pvsServerReady = true;
-	// 			break;
-	// 		}
-	// 		default: {
-	// 			console.log(`[pvsLanguageClient] Warning: unhandled event ${eventName}`);
-	// 		}
-	// 	}
-	// }
-
 	/**
 	 * Internal function, creates the language client necessary for communicating with the language server
 	 */
@@ -344,6 +334,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// start client, which in turn will also start the server
 		this.client.start();
 		this.client.onReady().then(() => {
+			// select pvs-server output channel (there's no such API, a workaround is to show and then hide the channel)
+			this.client.outputChannel.show(true);
+			this.client.outputChannel.hide();
+
 			// initialise service providers defined on the client-side
 			this.statusBar.showProgress("Starting vscode-pvs...");
 
@@ -451,14 +445,16 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			});
 		});
 	}
-
-
+	/**
+	 * Client stop function
+	 */
 	async stop (): Promise<void> {
 		if (this.client) {
 			this.client.sendRequest(serverRequest.stopPvsServer);
 			await this.client.stop();
 			// set vscode context variable pvs-server-active to true
 			commands.executeCommand('setContext', 'pvs-server-active', false);
+			vscodeUtils.resetGlobals();
 		}
 	}
 }
