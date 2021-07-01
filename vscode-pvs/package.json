@@ -217,6 +217,12 @@
 		},
 		"commands": [
 			{
+				"command": "vscode-pvs.insert-prooflite-script",
+				"title": "Insert Prooflite Script at Cursor Position",
+				"enablement": "pvs-server-active == true",
+				"category": "pvs"
+			},
+			{
 				"command": "vscode-pvs.status-proofchain",
 				"title": "Status Proof-Chain",
 				"enablement": "pvs-server-active == true",
@@ -1197,6 +1203,11 @@
 					"command": "vscode-pvs.x-prove",
 					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "y-group2.1-commands"
+				},
+				{
+					"command": "vscode-pvs.insert-prooflite-script",
+					"when": "resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .tccs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"group": "y-group2.2-commands"
 				},
 				{
 					"command": "vscode-pvs.prove-theory",

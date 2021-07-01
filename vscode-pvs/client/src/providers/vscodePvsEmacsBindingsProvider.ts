@@ -48,9 +48,8 @@
 import { ExtensionContext, commands, window, TextDocument, InputBox, env } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import * as fsUtils from '../common/fsUtils';
-import * as languageUtils from '../common/languageUtils';
 import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
-import { FileDescriptor, PvsFormula } from '../common/serverInterface';
+import { PvsFormula } from '../common/serverInterface';
 import * as vscodeUtils from '../utils/vscode-utils';
 import { VSCodePvsWorkspaceExplorer } from '../views/vscodePvsWorkspaceExplorer';
 /**
@@ -113,12 +112,10 @@ export class VSCodePvsEmacsBindingsProvider {
 	protected metax: string = "M-x ";
 	protected userInput: string; // used by autocompletion
 	protected statusBar: VSCodePvsStatusBar;
-	protected workspaceExplorer: VSCodePvsWorkspaceExplorer;
 
-	constructor (client: LanguageClient, statusBar: VSCodePvsStatusBar, workspaceExplorer: VSCodePvsWorkspaceExplorer) {
+	constructor (client: LanguageClient, statusBar: VSCodePvsStatusBar) {
 		this.client = client;
 		this.statusBar = statusBar;
-		this.workspaceExplorer = workspaceExplorer;
 	}
 	activate (context: ExtensionContext) {
 		// do nothing for now
@@ -218,16 +215,7 @@ export class VSCodePvsEmacsBindingsProvider {
 					break;
 				}
 				case "insert-prooflite-script": {
-					env.clipboard.readText().then(async (txt: string) => {
-						// try to fetch prooflite script
-						const proofliteFile: FileDescriptor = await this.workspaceExplorer?.generateProofliteFileWithProgress(desc);
-						if (proofliteFile?.fileContent) {
-							const script: string = proofliteFile?.fileContent;
-							vscodeUtils.insertTextAtCursorPosition(languageUtils.commentProofliteScript(script));
-						} else {
-							vscodeUtils.showWarningMessage("Warning: Could not generate prooflite script");
-						}
-					});
+					commands.executeCommand("vscode-pvs.insert-prooflite-script", desc);
 					break;
 				}
 				case "jprt": 

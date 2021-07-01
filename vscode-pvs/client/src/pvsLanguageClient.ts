@@ -346,7 +346,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.proofExplorer.activate(this.context);
 			this.workspaceExplorer = new VSCodePvsWorkspaceExplorer(this.client, this.proofExplorer, 'workspace-explorer-view');
 			this.workspaceExplorer.activate(this.context);
-			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar, this.workspaceExplorer);
+			this.emacsBindingsProvider = new VSCodePvsEmacsBindingsProvider(this.client, this.statusBar);
 			this.emacsBindingsProvider.activate(this.context);
 			this.outlineProvider = new VSCodePvsFileOutlineProvider(this.client);
 			this.outlineProvider.activate(this.context);

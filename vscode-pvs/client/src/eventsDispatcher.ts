@@ -607,6 +607,31 @@ export class EventsDispatcher {
         // commands invoked using code lens, emacs bindings, explorer, etc
         //---------------------------------------------------------
 
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.insert-prooflite-script", async (desc: PvsFormula) => {
+            if (!(desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName && desc.formulaName)) {
+                const document: vscode.TextDocument = (window.activeTextEditor) ? window.activeTextEditor.document : null;
+                const line: number = window?.activeTextEditor?.selection?.active ? window.activeTextEditor.selection.active.line : 0;
+                desc = document ? { 
+                    fileName: fsUtils.getFileName(document.fileName),
+                    fileExtension: fsUtils.getFileExtension(document.fileName),
+                    contextFolder: fsUtils.getContextFolder(document.fileName),
+                    theoryName: fsUtils.findTheoryName(document.getText(), line),
+                    formulaName: fsUtils.findFormulaName(document.getText(), line),
+                    line
+                } : null;
+            }
+            if (desc) {
+                // try to fetch prooflite script
+                const proofliteFile: FileDescriptor = await this.workspaceExplorer?.generateProofliteFileWithProgress(desc);
+                if (proofliteFile?.fileContent) {
+                    // insert prooflite script at cursor position
+                    const script: string = proofliteFile?.fileContent;
+                    vscodeUtils.insertTextAtCursorPosition(utils.commentProofliteScript(script));
+                } else {
+                    vscodeUtils.showWarningMessage("Warning: Could not generate prooflite script");
+                }
+            }
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.progress-info", (msg: string) => {
             this.statusBar.showProgress(msg);
         }));
@@ -1228,7 +1253,7 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.x-prove", async () => {
             commands.executeCommand("vscode-pvs.prove-formula-at-cursor-position");
-            commands.executeCommand("vscode-pvs.x-show-proof");
+            // commands.executeCommand("vscode-pvs.x-show-proof");
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.clean-all", async () => {
             // ask the user confirmation before deleting bin files
