@@ -317,12 +317,12 @@ export class PvsLanguageServer {
 			desc = fsUtils.decodeURIComponents(desc);
 			const mode: string = await this.getMode();
 			if (mode !== "lisp") {
-				// save then quit current proof
+				// quit proof and save if the proof is dirty
 				if (this.proofExplorer?.proofIsDirty() && !opt.autorun && !opt.skipSave) {
-					// ask if the proof needs to be saved
-					await this.proofExplorer?.querySaveProof(desc);
+					await this.proofExplorer?.quitProofAndSave();
+				} else {
+					await this.quitProof();
 				}
-				await this.quitProof();
 			}
 
 			// make sure file exists
@@ -1937,7 +1937,7 @@ export class PvsLanguageServer {
 						case "run": { await this.proofExplorer?.run({ feedbackToTerminal: true }); break; }
 						
 						case "quit-proof": { await this.proofExplorer?.quitProof({ notifyClient: true }); break; }
-						case "quit-proof-and-save": { await this.proofExplorer?.quitProofAndSave(); break; }
+						case "quit-proof-and-save": { await this.proofExplorer?.quitProofAndSave({ notifyClient: true }); break; }
 						
 						case "append-node": { this.proofExplorer?.appendNodeX(desc); break; }
 						case "copy-node": { this.proofExplorer?.copyNodeX(desc); break; }

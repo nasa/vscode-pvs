@@ -353,7 +353,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.snippetsProvider = new VSCodePvsSnippetsProvider(this.client);
 			this.snippetsProvider.activate(this.context);
 
-			this.xterm = new VSCodePvsXTerm(this.client);
+			this.xterm = new VSCodePvsXTerm(this.client, this.proofExplorer);
 			this.xterm.activate(this.context);
 
 			this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');

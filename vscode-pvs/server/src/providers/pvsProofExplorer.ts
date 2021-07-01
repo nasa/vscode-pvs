@@ -45,10 +45,12 @@ import {
 	ProofEditDidRenameNode, ProofEditDidAppendNode, PvsContextDescriptor, ProofEditDidActivateCursor,
 	ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidLoadProof,
 	ProofExecDidLoadSequent, ProofExecDidStartProof, ProofExecDidUpdateSequent, ProofEditTrimUnused,
-	ProofExecQuit, ProofEditDidStartNewProof, ProofExecDidOpenProof,
-	PvsFile, ProofExecQuitAndSave, ProofExecDidImportProof, ProofExecRewind, 
+	ProofEditDidStartNewProof, ProofExecDidOpenProof,
+	PvsFile, ProofExecDidImportProof, ProofExecRewind, 
 	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, SequentDescriptor, 
-	ProveFormulaRequest, ProofEditSliceTree, ProofExecDidQuitProof, FileDescriptor
+	ProveFormulaRequest, ProofEditSliceTree, ProofExecDidQuitProof, FileDescriptor, ProofEditDidUpdateDirtyFlag, 
+	serverRequest,
+	SaveProofResponse
 } from '../common/serverInterface';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -1068,10 +1070,17 @@ export class PvsProofExplorer {
 	/**
 	 * Internal function, marks a proof as dirty, indicating that the proof structure has changed and the proof needs re-saving and re-checking
 	 */
-	protected dirtyProof (): void {
-		this.dirtyFlag = true;
-		if (this.root && this.root.getProofStatus() === "proved") {
+	protected updateDirtyFlag (flag: boolean): void {
+		// set dirty flag
+		this.dirtyFlag = !!flag;
+		// update proof status
+		if (flag && this.root && this.root.getProofStatus() === "proved") {
 			this.root.setProofStatus("unchecked");
+		}
+		// send dirtyflag notification to the client
+		if (this.connection && !this.autorunFlag) {
+			const evt: ProofEditDidUpdateDirtyFlag = { action: "did-update-dirty-flag", flag: this.dirtyFlag };
+			this.connection.sendNotification(serverEvent.proverEvent, evt);
 		}
 	}
 	/**
@@ -1092,7 +1101,7 @@ export class PvsProofExplorer {
 	 */
 	appendNode (desc: { selected: ProofItem, elem?: ProofItem | string, sequent: SequentDescriptor }, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): ProofItem {
 		if (desc && desc.selected) {
-			this.dirtyProof();
+			this.updateDirtyFlag(true);
 			opt = opt || {};
 			const selectedNode: ProofItem = (desc.selected.contextValue === "ghost") ? (<GhostNode> desc.selected).realNode : desc.selected;
 			const branchId: string = selectedNode.branchId;
@@ -1148,7 +1157,7 @@ export class PvsProofExplorer {
 	 */
 	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: SequentDescriptor, internalAction?: boolean }): boolean {
 		if (desc && desc.selected) {
-			this.dirtyProof();
+			this.updateDirtyFlag(true);
 			opt = opt || {};
 			let selectedNode: ProofItem = desc.selected;
 			const branchId: string = selectedNode.branchId;
@@ -1553,7 +1562,7 @@ export class PvsProofExplorer {
 	deleteNode (desc: { selected: ProofItem }): void {
 		if (desc && desc.selected && desc.selected.parent) {
 			const selected: ProofItem = desc.selected;
-			this.dirtyProof();
+			this.updateDirtyFlag(true);
 			if (selected.contextValue === "root") {
 				// delete children, don't deleted the root
 				if (this.connection && !this.autorunFlag) {
@@ -1657,7 +1666,7 @@ export class PvsProofExplorer {
 				}
 			}
 			if (items && items.length) {
-				this.dirtyProof();
+				this.updateDirtyFlag(true);
 				if (this.connection && !this.autorunFlag) {
 					this.log(`[proof-explorer] Trimming node ${desc.selected.name} (${desc.selected.id})`);
 					for (let i = 0; i < items.length; i++) {
@@ -1732,7 +1741,7 @@ export class PvsProofExplorer {
 	 */
 	renameNode (desc: { selected: ProofItem, newName: string }): boolean {
 		if (desc && desc.selected) {
-			this.dirtyProof();
+			this.updateDirtyFlag(true);
 			const node: ProofItem = desc.selected;
 			let newName: string = desc.newName;
 			if (newName) {
@@ -1865,7 +1874,8 @@ export class PvsProofExplorer {
 			if (this.activeNode.id !== this.root.id) {
 				this.activeNode.updateSequent(this.initialProofState, { internalAction: this.autorunFlag });
 			}
-			this.dirtyFlag = false;
+			this.updateDirtyFlag(false);
+			// this.dirtyFlag = false;
 			this.running = false;
 
 			// start the proof
@@ -2110,7 +2120,8 @@ export class PvsProofExplorer {
 				// load proof descriptor
 				this.loadProofDescriptor(pdesc);
 				// mark as dirty
-				this.dirtyFlag = true;
+				this.updateDirtyFlag(true);
+				// this.dirtyFlag = true;
 				// send feedback to the client
 				const structure: ProofNodeX = this.root.getNodeXStructure();
 				const evt: ProofExecDidImportProof = { 
@@ -2204,7 +2215,7 @@ export class PvsProofExplorer {
 				}
 			}
 			const script: string = this.copyTree({ selected: this.root });
-			this.connection.sendRequest(serverEvent.saveProofResponse, { 
+			this.connection.sendRequest(serverRequest.saveProof, { 
 				response: { 
 					success,
 					proofFile,
@@ -2221,7 +2232,7 @@ export class PvsProofExplorer {
 	/**
 	 * Quit proof and save the current proof in a .prf format
 	 */
-	async quitProofAndSave (opt?: { jprfOnly?: boolean }): Promise<{ success: boolean, msg?: string }> {
+	async quitProofAndSave (opt?: { jprfOnly?: boolean, notifyClient?: boolean }): Promise<{ success: boolean, msg?: string }> {
 		opt = opt || {};
 		const proofFile: PvsFile = {
 			fileName: this.formula.fileName,
@@ -2236,28 +2247,28 @@ export class PvsProofExplorer {
 		let success: boolean = true;
 		let msg: string = null;
 		// quit proof
-		await this.quitProof();
+		await this.quitProof(opt);
+		// clear dirty flag -- the proof is over
+		this.updateDirtyFlag(false);
 		if (!opt.jprfOnly) {
 			// save proof descriptor to file
 			const response: PvsResponse = await this.pvsProxy?.storeLastAttemptedProof(this.formula);
 			success = !!(response?.result);
-			if (success) {
-				// clear dirty flag if proof saved successfully
-				this.dirtyFlag = false;
-			} else {
+			if (!success) {
 				msg = response?.error?.data?.error_string;
 				console.error(msg);
 			}
 		}
 		// send feedback to the client
-		this.connection?.sendRequest(serverEvent.saveProofResponse, {
-			response: { 
-				success,
-				msg,
-				proofFile,
-				formula: this.formula,
-				script
-			}, 
+		const response: SaveProofResponse = { 
+			success,
+			msg,
+			proofFile,
+			formula: this.formula,
+			script
+		};
+		this.connection?.sendNotification(serverRequest.saveProof, {
+			response, 
 			args: this.formula 
 		});
 		return { success, msg };
@@ -2291,6 +2302,8 @@ export class PvsProofExplorer {
 				contextFolder: this.formula.contextFolder,
 				cmd: "quit"
 			});
+			// reset dirty flag --- the proof is over
+			this.updateDirtyFlag(false);
 		}
 		if (this.autorunFlag) {
 			const status: ProofStatus = (this.root) ? this.root.getProofStatus() : "untried";
@@ -2408,20 +2421,20 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
-	async querySaveProof (formula: PvsFormula): Promise<void> {
-		// ask if the proof needs to be saved
-		if (this.connection) {
-			this.connection.sendRequest(serverEvent.querySaveProof, { args: formula }); // this will trigger the confirmation dialog
-			await Promise.resolve(new Promise<void>((resolve, reject) => {
-				this.connection.onRequest(serverEvent.querySaveProofResponse, async (response: ProofExecQuitAndSave | ProofExecQuit) => {
-					if (response && response.action && response.action === "quit-proof-and-save") {
-						await this.quitProofAndSave();
-					}
-					resolve();
-				});
-			}));
-		}
-	}
+	// async querySaveProof (formula: PvsFormula): Promise<void> {
+	// 	// ask if the proof needs to be saved
+	// 	if (this.connection) {
+	// 		this.connection.sendRequest(serverEvent.querySaveProof, { args: formula }); // this will trigger the confirmation dialog
+	// 		await Promise.resolve(new Promise<void>((resolve, reject) => {
+	// 			this.connection.onRequest(serverEvent.querySaveProofResponse, async (response: ProofExecQuitAndSave | ProofExecQuit) => {
+	// 				if (response && response.action && response.action === "quit-proof-and-save") {
+	// 					await this.quitProofAndSave();
+	// 				}
+	// 				resolve();
+	// 			});
+	// 		}));
+	// 	}
+	// }
 	// this handler is for commands entered by the user at the prover terminal
 	// ATTN: request.cmd must be a string surrounded by round parentheses.
 	async proofCommandRequest (request: PvsProofCommand): Promise<void> {
@@ -2439,10 +2452,10 @@ export class PvsProofExplorer {
 			return;
 		}
 		if (isQuitCommand(request.cmd)) {
-			if (this.dirtyFlag) {
-				// ask if the proof needs to be saved
-				await this.querySaveProof(request)
-			}
+			// if (this.dirtyFlag) {
+			// 	// ask if the proof needs to be saved
+			// 	await this.querySaveProof(request)
+			// }
 			await this.quitProof({ notifyClient: true });
 			// const ans: ProofCommandResponse = { res: "bye!", req: request };
 			// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
@@ -2457,10 +2470,10 @@ export class PvsProofExplorer {
 		if (isFailCommand(request.cmd)) {
 			if (this.activeNode.branchId === "") {
 				// fail at the root sequent is equivalent to quit
-				if (this.dirtyFlag) {
-					// ask if the proof needs to be saved
-					await this.querySaveProof(request)
-				}
+				// if (this.dirtyFlag) {
+				// 	// ask if the proof needs to be saved
+				// 	await this.querySaveProof(request)
+				// }
 				await this.quitProof({ notifyClient: true });
 				// const ans: ProofCommandResponse = { res: "bye!", req: request };
 				// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);	

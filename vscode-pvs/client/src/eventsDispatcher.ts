@@ -48,7 +48,7 @@ import {
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
     PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
-    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest
+    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
@@ -65,6 +65,7 @@ import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
 import { StartXTermEvaluatorRequest, VSCodePvsXTerm } from "./views/vscodePvsXTerm";
 import { colorText, PvsColor } from "./common/colorUtils";
 import path = require("path");
+import { YesNoCancel } from "./utils/vscode-utils";
 
 // FIXME: use Backbone.Model
 export class EventsDispatcher {
@@ -363,6 +364,10 @@ export class EventsDispatcher {
                     this.xterm.log(colorText("\nError: " + msg, PvsColor.red));
                     break;
                 }
+                case "did-update-dirty-flag": {
+                    this.proofExplorer.updateDirtyFlag(desc);
+                    break;
+                }
                 //---------------
                 case "did-start-proof": { // this event is for interactive proof sessions
                     this.proofExplorer.didStartProof();
@@ -442,14 +447,8 @@ export class EventsDispatcher {
         });
 
         // register handler that will resolve the promise when the proof needs to be saved
-        this.client.onRequest(serverEvent.saveProofResponse, async (desc: {
-            response: { 
-                success: boolean,
-                msg?: string,
-                proofFile: FileDescriptor,
-                formula: PvsFormula,
-                script?: string
-            }, 
+        this.client.onNotification(serverRequest.saveProof, async (desc: {
+            response: SaveProofResponse, 
             args: { 
                 fileName: string, 
                 fileExtension: string, 
@@ -464,10 +463,8 @@ export class EventsDispatcher {
                 if (!this.quietMode) {
                     // await this.proofMate.saveSketchpadClips();  // saves sketchpad clips to the .jprf file
                     const msg: string = `Proof ${desc.response.formula.formulaName} saved`;// in file ${fname}`;
-                    this.statusBar.showMsg(msg);
-                    setTimeout(() => {
-                        this.statusBar.ready();
-                    }, 1000);
+                    vscodeUtils.showStatusBarMessage(msg);
+                    vscodeUtils.showInformationMessage(msg);
                     // window.showInformationMessage(msg);
                 }
             } else {
@@ -567,15 +564,15 @@ export class EventsDispatcher {
             this.workspaceExplorer.updateContextFolder(desc);
         });
 
-		this.client.onRequest(serverEvent.querySaveProof, async (request: {
-            args: PvsProofCommand
-		}) => {
-            if (request) {
-                await this.proofExplorer.queryQuitProofAndSave();
-            } else {
-                console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
-            }
-        });
+		// this.client.onRequest(serverEvent.querySaveProof, async (request: {
+        //     args: PvsProofCommand
+		// }) => {
+        //     if (request) {
+        //         await this.proofExplorer.queryQuitProofAndSave();
+        //     } else {
+        //         console.error(`[events-dispatcher] Error: null request in quitProofEvent`);
+        //     }
+        // });
 
 		this.client.onRequest(serverEvent.QED, (request: {
             args: PvsProofCommand
@@ -1038,6 +1035,14 @@ export class EventsDispatcher {
             this.proofExplorer.proveFormulaAtCursorPosition();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-formula", async (req: ProveFormulaRequest) => {
+            // check if proofExplorer is already open with another proof
+            if (this.proofExplorer?.proofIsDirty()) {
+                // ask if the proof needs to be saved
+                const yesNoCancel: YesNoCancel = await this.proofExplorer?.queryQuitProofAndSave();
+                if (yesNoCancel === "cancel") {
+                    return;
+                }
+            }
             this.proofExplorer.resetView();
             this.proofExplorer.enableView();
             this.proofMate.enableView();

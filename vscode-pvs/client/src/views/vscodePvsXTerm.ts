@@ -58,6 +58,8 @@ import {
     XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData, XTermMessage
 } from '../common/xtermInterface';
 import { balancePar, getHints, isInvalidCommand } from '../common/languageUtils';
+import { VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
+import { YesNoCancel } from '../utils/vscode-utils';
 
 export enum XTermPvsEvent {
     DidCloseTerminal = "DidCloseTerminal",
@@ -163,6 +165,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     // timer for delayed focus
     protected tfocus: NodeJS.Timeout = null;
 
+    // pointer to proof explorer
+    protected proofExplorer: VSCodePvsProofExplorer;
+
     name: string;
     processId: Thenable<number>;
     creationOptions: Readonly<TerminalOptions | ExtensionTerminalOptions>;
@@ -171,10 +176,11 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Constructor
      */
-    constructor (client: LanguageClient) {
+    constructor (client: LanguageClient, proofExplorer: VSCodePvsProofExplorer) {
         super();
         this.client = client;
         this.colorTheme = vscodeUtils.detectColorTheme();
+        this.proofExplorer = proofExplorer;
     }
 
     /**
@@ -933,6 +939,14 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                 // check if this is a meta command
                                                 if (message.data === interruptCommand) {
                                                     commands.executeCommand("vscode-pvs.interrupt-prover");
+                                                } else if (utils.isQuitCommand(message.data)) {
+                                                    if (this.proofExplorer?.proofIsDirty()) {
+                                                        // ask if the proof needs to be saved
+                                                        const yesNoCancel: YesNoCancel = await this.proofExplorer.queryQuitProofAndSave();
+                                                        if (yesNoCancel === "cancel") {
+                                                            this.showPrompt();
+                                                        }
+                                                    }
                                                 } else if (utils.isVSCodePlotCommand(message.data)) {
                                                     const expr: string = utils.getVSCodePlotExpression(message.data);
                                                     commands.executeCommand("vscode-pvs.plot-expression", { ...this.target, expr });

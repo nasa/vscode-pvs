@@ -52,7 +52,7 @@ import {
 	ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, 
 	ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, 
 	ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, 
-	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, SequentDescriptor, ProofEditSliceTree 
+	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, SequentDescriptor, ProofEditSliceTree, ProofEditDidUpdateDirtyFlag 
 } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
 import { TreeStructure, NodeType, isGlassboxTactic, isPostponeCommand, isUndoCommand, formatSequent } from '../common/languageUtils';
@@ -62,6 +62,7 @@ import * as vscodeUtils from '../utils/vscode-utils';
 import * as path from 'path';
 import { VSCodePvsVizTree } from './vscodePvsProofTreeViz';
 import Backbone = require('backbone');
+import { YesNoCancel } from '../utils/vscode-utils';
 
 // export interface TreeStructure {
 //     id?: string,
@@ -116,6 +117,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	protected tcounter: number = 0;
 	readonly maxSkip: number = 32768;
 	readonly maxTimer: number = 500; //ms
+
+	// whether the proof is dirty and needs to be saved
+	protected dirtyFlag: boolean = false;
 
 	/**
 	 * Information on the formula loaded in proof explorer
@@ -194,6 +198,24 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			}
 		});
 	
+	}
+
+	/**
+	 * Sets the dirty flag
+	 */
+	updateDirtyFlag (desc: ProofEditDidUpdateDirtyFlag): void {
+		if (desc) {
+			this.dirtyFlag = desc.flag;
+		} else {
+			console.log("[vscode-proof-explorer] Warning: dirty flag is null");
+		}
+	}
+
+	/**
+	 * Returns true if the proof is dirty
+	 */
+	 proofIsDirty (): boolean {
+		return this.dirtyFlag;
 	}
 
 	/**
@@ -992,46 +1014,89 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
-	async queryQuitProofAndSave (opt?: { msg?: string }): Promise<boolean> {
+	// async queryQuitProofAndSave (opt?: { msg?: string }): Promise<boolean> {
+	// 	opt = opt || {};
+	// 	const note: string = (opt.msg) ? `${opt.msg}\n` : "";
+	// 	const msg: string = (this.root) ? note + `Save proof ${this.root.name}?` : note + "Save proof?";
+	// 	const actionConfirmed: boolean = await this.queryConfirmation(msg);
+	// 	if (actionConfirmed) {
+	// 		// send quit-and-save to the server
+	// 		const action: ProofExecQuitAndSave = { action: "quit-proof-and-save" };
+	// 		this.client.sendRequest(serverEvent.querySaveProofResponse, action);
+	// 	} else {
+	// 		// send quit to the server
+	// 		const action: ProofExecQuit = { action: "quit-proof" };
+	// 		this.client.sendRequest(serverEvent.querySaveProofResponse, action);
+	// 	}
+	// 	return actionConfirmed;
+	// }
+	/**
+	 * Save the current proof on file
+	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
+	 */
+	 async queryQuitProofAndSave (opt?: { msg?: string }): Promise<YesNoCancel> {
 		opt = opt || {};
 		const note: string = (opt.msg) ? `${opt.msg}\n` : "";
 		const msg: string = (this.root) ? note + `Save proof ${this.root.name}?` : note + "Save proof?";
-		const actionConfirmed: boolean = await this.queryConfirmation(msg);
-		if (actionConfirmed) {
-			// send quit-and-save to the server
-			const action: ProofExecQuitAndSave = { action: "quit-proof-and-save" };
-			this.client.sendRequest(serverEvent.querySaveProofResponse, action);
-		} else {
-			// send quit to the server
-			const action: ProofExecQuit = { action: "quit-proof" };
-			this.client.sendRequest(serverEvent.querySaveProofResponse, action);
+		const ans: YesNoCancel = await this.queryYesNoCancel(msg);
+		switch (ans) {
+			case "yes": {
+				// quit-proof-and-save	
+				const action: ProofExecQuitAndSave = { action: "quit-proof-and-save" };
+				this.client.sendRequest(serverRequest.proverCommand, action);
+				break;
+			}
+			case "no": {
+				// send quit to the server
+				const action: ProofExecQuit = { action: "quit-proof" };
+				this.client.sendRequest(serverRequest.proverCommand, action);
+				break;
+			}
+			case "cancel":
+			default: {
+				// do nothing
+				break;
+			}
 		}
-		return actionConfirmed;
+		return ans;
 	}
 	/**
 	 * Quit the current proof
-	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
 	 */
-	async quitProof (): Promise<void> {
-		const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
-		if (actionConfirmed) {
-			// send quit to the terminal
-			this.client.sendRequest(serverRequest.proofCommand, {
-				fileName: this.formula.fileName,
-				fileExtension: this.formula.fileExtension,
-				theoryName: this.formula.theoryName,
-				formulaName: this.formula.formulaName,
-				contextFolder: this.formula.contextFolder,
-				cmd: "save-then-quit"
-			});			
-			// commands.executeCommand("vscode-pvs.send-proof-command", {
-			// 	fileName: this.formula.fileName,
-			// 	fileExtension: this.formula.fileExtension,
-			// 	theoryName: this.formula.theoryName,
-			// 	formulaName: this.formula.formulaName,
-			// 	contextFolder: this.formula.contextFolder,
-			// 	cmd: "save-then-quit"
-			// });
+	// async quitProof (): Promise<void> {
+	// 	const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
+	// 	if (actionConfirmed) {
+	// 		// send quit to the server
+	// 		this.client.sendRequest(serverRequest.proofCommand, {
+	// 			fileName: this.formula.fileName,
+	// 			fileExtension: this.formula.fileExtension,
+	// 			theoryName: this.formula.theoryName,
+	// 			formulaName: this.formula.formulaName,
+	// 			contextFolder: this.formula.contextFolder,
+	// 			cmd: "save-then-quit"
+	// 		});
+	// 		// commands.executeCommand("vscode-pvs.send-proof-command", {
+	// 		// 	fileName: this.formula.fileName,
+	// 		// 	fileExtension: this.formula.fileExtension,
+	// 		// 	theoryName: this.formula.theoryName,
+	// 		// 	formulaName: this.formula.formulaName,
+	// 		// 	contextFolder: this.formula.contextFolder,
+	// 		// 	cmd: "save-then-quit"
+	// 		// });
+	// 	}
+	// }
+	/**
+	 * Shows a yes-no-cancel dialog
+	 */
+	async queryYesNoCancel (msg: string): Promise<YesNoCancel> {
+		const yesnocancel: string[] = [ "Yes", "No" ];
+		const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesnocancel[0], yesnocancel[1]);
+		switch (ans) {
+			case "Yes": { return "yes"; }
+			case "No": { return "no"; }
+			default: {
+				return "cancel";
+			}
 		}
 	}
 	async queryConfirmation (msg: string): Promise<boolean> {

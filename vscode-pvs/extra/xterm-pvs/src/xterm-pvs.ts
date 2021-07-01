@@ -2372,7 +2372,7 @@ export class XTermPvs extends Backbone.Model {
     /**
      * Internal function, updates the terminal view based on the information given by this.content
      */
-    protected updateView (keyEvent: KeyEvent): void {
+    protected updateView (keyEvent: KeyEvent, opt?: { disableParMatch?: boolean }): void {
         // console.log("[xterm-pvs] onKeyPress", { evt });
         const domEvent: KeyboardEvent = keyEvent.domEvent;
         const key: string = keyEvent.key;        
@@ -2419,7 +2419,9 @@ export class XTermPvs extends Backbone.Model {
         this.restoreCursorPosition();
 
         // match brackets
-        this.matchBrackets();
+        if (!opt?.disableParMatch) {
+            this.matchBrackets();
+        }
         // move cursor to its current position
         this.moveCursorTo(pos, { src: "updateView" });
         // scroll cursor into view -- not sure why xterm.scrollToLine(...) is not working
@@ -2505,6 +2507,9 @@ export class XTermPvs extends Backbone.Model {
                 this.autocomplete.deleteTooltips();
                 // move cursor to the end of the command
                 this.moveCursorToEnd();
+                // move cursor to next line, to provide feedback that the command has been accepted
+                this.content.updateContent(evt);
+                this.updateView(evt, { disableParMatch: true });
                 // send command
                 this.sendWhenReady();
                 return;

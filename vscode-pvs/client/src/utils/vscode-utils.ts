@@ -1060,3 +1060,9 @@ export function minimizeIntegratedTerminal (): void {
 export function openVscodePvsSettings (): void {
     vscode.commands.executeCommand('workbench.action.openSettings', '@ext:paolomasci.vscode-pvs');
 }
+
+/**
+ * Yes-No-Cancel type
+ */
+export type YesNoCancel = "yes" | "no" | "cancel";
+

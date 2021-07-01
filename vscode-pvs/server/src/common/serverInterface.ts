@@ -432,6 +432,13 @@ export declare interface SearchResponse {
 	req: SearchRequest,
 	ans: SearchResult[]
 }
+export declare interface SaveProofResponse { 
+	success: boolean,
+	msg: string,
+	proofFile: PvsFile,
+	formula: PvsFormula,
+	script: string
+};
 
 export const serverRequest = {
 	typecheckFile: "pvs.typecheck-file",
@@ -464,6 +471,8 @@ export const serverRequest = {
 	quitEvaluator: "pvs.quit-evaluator",
 	clearTheories: "pvs.clear-theories",
 	findSymbolDeclaration: "pvs.find-symbol-declaration",
+
+	saveProof: "pvs.save-proof",
 
 	viewPreludeFile: "pvs.view-prelude-file",
 
@@ -499,7 +508,6 @@ export const serverEvent = {
 	proveFormulaResponse: "pvs.response.prove-formula",
 	autorunFormulaResponse: "pvs.response.autorun-formula",
 	loadProofResponse: "pvs.response.load-proof",
-	saveProofResponse: "pvs.response.save-proof",
 	// showProofLiteResponse: "pvs.response.show-prooflite",
 	proofCommandResponse: "pvs.response.proof-command",
 	// evalExpressionResponse: "pvs.response.eval-expression",
@@ -544,8 +552,8 @@ export const serverEvent = {
 	closeDontSaveEvent: "pvs.event.close-dont-save-proof",
 	serverModeUpdateEvent: "pvs.event.server-mode-update",
 
-	querySaveProof: "pvs.query.save-proof?",
-	querySaveProofResponse: "pvs.query.response.save-proof",
+	// querySaveProof: "pvs.query.save-proof?",
+	// querySaveProofResponse: "pvs.query.response.save-proof",
 
 	// proverForwardResponse: "pvs.response.prover-forward",
 	proofNodeUpdate: "pvs.event.proof-node-update",
@@ -855,7 +863,8 @@ export type ProofEditExportProof = {
 export type ProofEditEvent = ProofEditDidAppendNode | ProofEditDidCopyNode | ProofEditDidPasteNode | ProofEditDidCopyTree
 	| ProofEditDidPasteTree | ProofEditDidDeleteNode | ProofEditDidAppendBranch | ProofEditDidCutNode | ProofEditDidCutTree
 	| ProofEditDidDeleteTree | ProofEditDidTrimNode | ProofEditDidRenameNode | ProofEditDidActivateCursor 
-	| ProofEditDidDeactivateCursor | ProofEditDidUpdateProofStatus | ProofEditDidStartNewProof;
+	| ProofEditDidDeactivateCursor | ProofEditDidUpdateProofStatus | ProofEditDidStartNewProof
+	| ProofEditDidUpdateDirtyFlag;
 export type ProofEditDidAppendNode = {
 	action: "did-append-node",
 	elem: ProofNodeX,
@@ -925,6 +934,10 @@ export type ProofEditDidUpdateProofStatus = {
 };
 export type ProofEditDidStartNewProof = {
 	action: "did-start-new-proof"
+};
+export type ProofEditDidUpdateDirtyFlag = {
+	action: "did-update-dirty-flag",
+	flag: boolean
 };
 
 // ProofExec
