@@ -2011,6 +2011,8 @@ export class XTermPvs extends Backbone.Model {
         // get the focus
         this.xterm.focus();
 
+        this.xterm.setOption("cursorBlink", true);
+
         // @ts-ignore
         // this.xterm.buffer.active._buffer.lines.onTrim((n: number) => {
         //     this.ntrims += n;
