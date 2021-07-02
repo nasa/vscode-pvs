@@ -69,8 +69,9 @@ export enum XTermPvsEvent {
 const HELP_PANEL_LINE_HEIGHT: number = 20; //px
 const DEFAULT_HELP_PANEL_LINES: number = 2;
 
-function getHtmlTemplate (opt?: { integratedHelpSize?: number }): string {
+function getHtmlTemplate (sessionType: SessionType, opt?: { integratedHelpSize?: number }): string {
     const lines: number = opt?.integratedHelpSize || vscodeUtils.getIntegratedHelpSetting() || DEFAULT_HELP_PANEL_LINES;
+    const frequentCommands: string = sessionType === "prover" ? vscodeUtils.getFrequentProverCommandsSetting() : "";
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -104,7 +105,8 @@ function getHtmlTemplate (opt?: { integratedHelpSize?: number }): string {
     const xterm = new xtermpvs.XTermPvs({
         sessionType: "{{sessionType}}",
         paddingBottom: ${lines * HELP_PANEL_LINE_HEIGHT},
-        integratedHelpSize: ${lines}
+        integratedHelpSize: ${lines},
+        frequentCommands: "${frequentCommands}"
     });
 
     // Handlers for events triggered by xterm
@@ -1076,7 +1078,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             ];
 
             try {
-                const content: string = Handlebars.compile(getHtmlTemplate(), { noEscape: true })({
+                const content: string = Handlebars.compile(getHtmlTemplate(this.sessionType), { noEscape: true })({
                     css, js,
                     xtermCommands: [
                         XTermCommands.write,

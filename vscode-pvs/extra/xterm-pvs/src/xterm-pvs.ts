@@ -1266,6 +1266,7 @@ export class Autocomplete extends Backbone.Model {
     protected mathObjects: MathObjects = {};
     protected currentHints: string[] = [];
     protected mathSymbols: string[] = getMathSymbols();
+    protected frequentCommands: string[] = [];
 
     // selection mode
     protected triggerMode: "standard" | "single-click" = "standard";
@@ -1276,12 +1277,18 @@ export class Autocomplete extends Backbone.Model {
     /**
      * Constructor
      */
-    constructor (content: Content, sessionType: SessionType, opt?: { integratedHelpSize?: number }) {
+    constructor (content: Content, sessionType: SessionType, opt?: { integratedHelpSize?: number, frequentCommands?: string }) {
         super();
         this.content = content;
         this.sessionType = sessionType;
         this.history = new History(this.sessionType);
         this.integratedHelpSize = opt?.integratedHelpSize || 2;
+        this.frequentCommands = opt?.frequentCommands?.split(",")?.map(cmd => {
+            return cmd.trim();
+        }).filter(cmd => {
+            return cmd?.length;
+        }) || [];
+        console.log("[xterm-autocomplete] Frequent commands", this.frequentCommands);
         this.installHandlers();
     }
     /**
@@ -1645,6 +1652,13 @@ export class Autocomplete extends Backbone.Model {
         }
         // sort hints
         return hints?.sort((a: string, b: string) => {
+            // prioritize some frequent prover command
+            if (this.sessionType === "prover" && this.frequentCommands?.length) {
+                for (let i = 0; i < this.frequentCommands.length; i++) {
+                    if (a === this.frequentCommands[i]) { return -1; }
+                    if (b === this.frequentCommands[i]) { return 1; }
+                }
+            }
             return a//.toLocaleLowerCase() 
                     < b//.toLocaleLowerCase() 
                         ? -1 : 1;
@@ -1714,6 +1728,12 @@ export class Autocomplete extends Backbone.Model {
         if (!currentInput && integratedHelp) {
             this.showHelp(welcomeMessage(this.sessionType, this.integratedHelpSize ));
         }
+    }
+    /**
+     * Returns the size of the integrated help (in number of lines)
+     */
+    getIntegratedHelpSize (): number {
+        return this.integratedHelpSize;
     }
     /**
      * Shows message in the integrated help
@@ -1923,7 +1943,6 @@ export class XTermPvs extends Backbone.Model {
     // protected xtermLineHeight: number = 1.45; // line height rendered in xterm, measured experimentally by inspecting the DOM
 
     protected paddingBottom: number = 0;
-    protected integratedHelpSize: number = 2; // number of lines visible at once in the integrated help
 
     // status of the mod keys
     protected modKeys: ModKeys = {
@@ -1973,17 +1992,20 @@ export class XTermPvs extends Backbone.Model {
         rows?: number, 
         sessionType?: SessionType,
         paddingBottom?: number,
-        integratedHelpSize?: number
+        integratedHelpSize?: number,
+        frequentCommands?: string
     }) {
         super();
         opt = opt || {};
 
         this.content = new Content();
         this.sessionType = opt?.sessionType || "evaluator";
-        this.autocomplete = new Autocomplete(this.content, this.sessionType, { integratedHelpSize: this.integratedHelpSize });
+        this.autocomplete = new Autocomplete(this.content, this.sessionType, {
+            integratedHelpSize: opt?.integratedHelpSize,
+            frequentCommands: opt?.frequentCommands
+        });
 
         this.paddingBottom = opt?.paddingBottom || 0;
-        this.integratedHelpSize = opt?.integratedHelpSize || 2;
 
         const cols: number = opt.cols || MIN_VIEWPORT_COLS;
         LineWrapper.maxCols = cols;
@@ -3264,7 +3286,7 @@ export class XTermPvs extends Backbone.Model {
     showWelcomeMessage (): void {
         this.runningFlag = false;
         this.xterm.setOption("cursorBlink", false);
-        this.autocomplete.showHelp(welcomeMessage(this.sessionType, this.integratedHelpSize));
+        this.autocomplete.showHelp(welcomeMessage(this.sessionType, this.autocomplete.getIntegratedHelpSize()));
     }
 
     /**
@@ -3273,7 +3295,7 @@ export class XTermPvs extends Backbone.Model {
     running (flag: boolean): void {
         this.runningFlag = true;
         this.xterm.setOption("cursorBlink", true);
-        this.autocomplete.showHelp(welcomeMessage(this.sessionType, this.integratedHelpSize));
+        this.autocomplete.showHelp(welcomeMessage(this.sessionType, this.autocomplete.getIntegratedHelpSize()));
     }
 
     /**

@@ -3303,9 +3303,6 @@ export const proverCommands: CommandsMap = {
     ...PROOF_TACTICS
 };
 
-
-
-
 /**
  * Returns a list of hints for the evaluator/prover prompt.
  * Hints include:

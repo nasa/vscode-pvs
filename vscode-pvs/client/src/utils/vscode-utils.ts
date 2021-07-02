@@ -829,9 +829,20 @@ export function detectColorTheme (): XTermColorTheme {
     return theme;
 }
 
+/**
+ * Utility function, returns the vscode setting indicating the size of the integrated help
+ */
 export function getIntegratedHelpSetting (): number {
     const size: number = getConfigurationValue("pvs.settings.proverConsole.integratedHelpSize");
     return size;
+}
+
+/**
+ * Utility function, returns the vscode setting indicating a comma-separated list of frequent prover commands
+ */
+export function getFrequentProverCommandsSetting (): string {
+    const cmdList: string = getConfiguration("pvs.settings.proverConsole.frequentCommands");
+    return cmdList || "";
 }
 
 /**
