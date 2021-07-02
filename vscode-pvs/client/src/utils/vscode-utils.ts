@@ -652,17 +652,21 @@ export async function commentProofliteInActiveEditor (): Promise<boolean> {
                             // the first line decides whether we are adding or removing the comment
                             addComment = !textline.text?.trim().startsWith("%|-");
                         }
-                        if (addComment) {
-                            // add %|- if not present
-                            if (!textline.text?.trim().startsWith("%|-")) {
-                                const newContent: string = "%|- " + textline.text;
-                                edit.replace(activeDocument.uri, textline.range, newContent);
-                            }
-                        } else {
-                            // remove %|- if present
-                            if (textline.text?.trim().startsWith("%|-")) {
-                                const newContent: string = textline.text.replace("%|-", "");
-                                edit.replace(activeDocument.uri, textline.range, newContent);
+                        // treat specially the last line, as the user may have the cursor there without realizing
+                        // and this will lead to an extra line with %|-
+                        if (i < endLine || textline.text?.trim()) {
+                            if (addComment) {
+                                // add %|- if not present
+                                if (!textline.text?.trim().startsWith("%|-")) {
+                                    const newContent: string = "%|- " + textline.text;
+                                    edit.replace(activeDocument.uri, textline.range, newContent);
+                                }
+                            } else {
+                                // remove %|- if present
+                                if (textline.text?.trim().startsWith("%|-")) {
+                                    const newContent: string = textline.text.replace("%|-", "");
+                                    edit.replace(activeDocument.uri, textline.range, newContent);
+                                }
                             }
                         }
                     }

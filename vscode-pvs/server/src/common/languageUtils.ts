@@ -580,7 +580,7 @@ export function proofliteDeclRegexp(desc: { theoryName: string, formulaName: str
 export function commentProofliteScript (script: string): string {
     if (script) {
         return script.split("\n").map(line => {
-            return line.trim().startsWith("%|- ") ? line : "%|- " + line;
+            return line.trim().startsWith("%|-") ? line : "%|- " + line;
         }).join("\n");
     }
     return script;
