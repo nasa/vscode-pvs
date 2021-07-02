@@ -1030,26 +1030,38 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	// 	}
 	// 	return actionConfirmed;
 	// }
+	async queryQuitProof (): Promise<boolean> {
+		// ask confirmation before quitting proof
+		const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
+		if (actionConfirmed) {
+			const action: ProofExecQuit = { action: "quit-proof" };
+			this.client.sendRequest(serverRequest.proverCommand, action);
+			this.running = false;
+		}
+		return actionConfirmed;
+	}
 	/**
 	 * Save the current proof on file
 	 * @param opt Optionals: whether confirmation is necessary before saving (default: confirmation is not needed)  
 	 */
-	 async queryQuitProofAndSave (opt?: { msg?: string }): Promise<YesNoCancel> {
+	async queryQuitProofAndSave (opt?: { msg?: string }): Promise<YesNoCancel> {
 		opt = opt || {};
 		const note: string = (opt.msg) ? `${opt.msg}\n` : "";
-		const msg: string = (this.root) ? note + `Save proof ${this.root.name}?` : note + "Save proof?";
+		const msg: string = (this.root) ? note + `Save proof '${this.root.name}' before quitting?` : note + "Save proof before quitting?";
 		const ans: YesNoCancel = await this.queryYesNoCancel(msg);
 		switch (ans) {
 			case "yes": {
 				// quit-proof-and-save	
 				const action: ProofExecQuitAndSave = { action: "quit-proof-and-save" };
 				this.client.sendRequest(serverRequest.proverCommand, action);
+				this.running = false;
 				break;
 			}
 			case "no": {
 				// send quit to the server
 				const action: ProofExecQuit = { action: "quit-proof" };
 				this.client.sendRequest(serverRequest.proverCommand, action);
+				this.running = false;
 				break;
 			}
 			case "cancel":
@@ -1336,12 +1348,10 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.quit-proof", async () => {
-			this.running = false;
-			// ask confirmation before quitting proof
-			const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
-			if (actionConfirmed) {
-				const action: ProofExecQuit = { action: "quit-proof" };
-				this.client.sendRequest(serverRequest.proverCommand, action);
+			if (this.dirtyFlag) {
+				await this.queryQuitProofAndSave();
+			} else {
+				await this.queryQuitProof();
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.forward", () => {

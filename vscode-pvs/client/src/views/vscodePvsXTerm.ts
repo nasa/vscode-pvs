@@ -946,6 +946,11 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                         if (yesNoCancel === "cancel") {
                                                             this.showPrompt();
                                                         }
+                                                    } else {
+                                                        const actionConfirmed: boolean = await this.proofExplorer.queryQuitProof();
+                                                        if (!actionConfirmed) {
+                                                            this.showPrompt();
+                                                        }
                                                     }
                                                 } else if (utils.isVSCodePlotCommand(message.data)) {
                                                     const expr: string = utils.getVSCodePlotExpression(message.data);
