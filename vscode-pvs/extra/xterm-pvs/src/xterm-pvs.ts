@@ -2510,6 +2510,7 @@ export class XTermPvs extends Backbone.Model {
                 // move cursor to next line, to provide feedback that the command has been accepted
                 this.content.updateContent(evt);
                 this.updateView(evt, { disableParMatch: true });
+                this.xterm.setOption("cursorBlink", true);
                 // send command
                 this.sendWhenReady();
                 return;
@@ -3237,6 +3238,7 @@ export class XTermPvs extends Backbone.Model {
      */
     showWelcomeMessage (): void {
         this.runningFlag = false;
+        this.xterm.setOption("cursorBlink", false);
         this.autocomplete.showHelp(welcomeMessage(this.sessionType));
     }
 
@@ -3245,6 +3247,7 @@ export class XTermPvs extends Backbone.Model {
      */
     running (flag: boolean): void {
         this.runningFlag = true;
+        this.xterm.setOption("cursorBlink", true);
         this.autocomplete.showHelp(welcomeMessage(this.sessionType));
     }
 
@@ -3274,6 +3277,7 @@ export class XTermPvs extends Backbone.Model {
         this.log(cprompt);
         this.content.rebase({ prompt: this.prompt });
         this.enableInput();
+        this.xterm.setOption("cursorBlink", false);
         // this.autocomplete.clearHelp();
         // console.log("[xterm-pvs] showPrompt", { prompt: this.prompt, cprompt, content: this.content, xtermPos: this.pos });
         // this.focus({ src: "showPrompt" });
