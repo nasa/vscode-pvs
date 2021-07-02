@@ -1991,7 +1991,8 @@ export class XTermPvs extends Backbone.Model {
             cols,
             rows,
             fontSize: this.fontSize,
-            fontFamily: "Menlo, Monaco, monospace"
+            fontFamily: "Menlo, Monaco, monospace",
+            scrollback: 2048 // amount of rows retained in the view
         });
         // set color theme
         this.updateColorTheme();
@@ -2078,6 +2079,23 @@ export class XTermPvs extends Backbone.Model {
         $(".terminal-help").css({
             color: xtermjsColorThemes.light.foreground
         });
+    }
+
+    /**
+     * Shows all available commands and some brief info for each command
+     */
+    helpStar (): void {
+        const cmds: CommandsMap = this.sessionType === "evaluator" ? evaluatorCommands : proverCommands;
+        let ans: string = "";
+        const keys: string[] = Object.keys(cmds).sort((a: string, b: string) => { return a > b ? 1 : -1; });
+        for (let i = 0; i < keys.length; i++) {
+            if (cmds[keys[i]].description) {
+                ans += `\n${colorUtils.colorText(`(${keys[i]})`, colorUtils.PvsColor.green)}
+    ${cmds[keys[i]].description}
+    Syntax: (${cmds[keys[i]].syntax})\n`;
+            }
+        }
+        this.write(ans);
     }
 
     /**

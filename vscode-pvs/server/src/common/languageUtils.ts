@@ -1146,6 +1146,10 @@ export function isHelpCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
 	return cmd && new RegExp(helpCommandRegexp).test(cmd);
 }
+export function isHelpStarCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+    return cmd && (new RegExp(/help\s*\*/).test(cmd) || new RegExp(/\(\s*help\s*\*\s*\)/).test(cmd));
+}
 
 // group 1 is the command argument
 export const helpBangCommandRegexp: RegExp = /^\s*\(?\s*help!?\s*\"?([^\)"]+)/g;
@@ -1549,14 +1553,14 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
     },
     "both-sides": { 
         description: `Apply an operand uniformly over a conjunction of inequalities.
-            For example, given a sequent formula 'e1 ≤ e2 AND e2 ≤ e3 AND e3 ≤ e4', 
-            both-sides replaces the chain with 'e1 OP TERM ≤ e2 OP TERM AND e2 OP TERM ≤ e3 OP TERM AND e3 OP TERM ≤ e4 OP TERM'.`,
+    For example, given a sequent formula 'e1 ≤ e2 AND e2 ≤ e3 AND e3 ≤ e4', 
+    both-sides replaces the chain with 'e1 OP TERM ≤ e2 OP TERM AND e2 OP TERM ≤ e3 OP TERM AND e3 OP TERM ≤ e4 OP TERM'.`,
         syntax: `both-sides OP TERM`
     },
     "both-sides-f": { 
         description: `Apply a function to both sides of a relational expression,
-            For example, given a sequent formula FNUM in the form 'e1 = e2',
-            both-sides-f replaces the formula with 'F(e1) = F(e2)'.`,
+    For example, given a sequent formula FNUM in the form 'e1 = e2',
+    both-sides-f replaces the formula with 'F(e1) = F(e2)'.`,
         syntax: `both-sides FNUM F`,
         optionals: {
             ':postfix? t': `Add the function as a postfix string.`
@@ -1573,11 +1577,11 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
         description: `Case analysis based on given formulas`,
         syntax: `case FORMULAS`,
         note: `Sequents are split according to the truth or falsity of FORMULAS.
-            For example, given a sequent 'A ⊢ B', the command 'case "a" "b" "c"' generates four subgoals:\n
-            a, b, c, A ⊢ B\n
-            a, b, A ⊢ c, B\n
-            a, A ⊢ b, B\n
-            A ⊢ a, B.`
+        For example, given a sequent 'A ⊢ B', the command 'case "a" "b" "c"' generates four subgoals:\n
+        a, b, c, A ⊢ B\n
+        a, b, A ⊢ c, B\n
+        a, A ⊢ b, B\n
+        A ⊢ a, B.`
     },
     "case*": {
         description: `Full case analysis based on given FORMULAS`,
@@ -1596,8 +1600,8 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
         description: `Copy a sequent formula`,
         syntax: `copy FNUM`,
         note: `The command inserts a copy of sequent formula FNUM. 
-            If the formula is an antecedent, then the copy becomes the first antecedent.
-            If the formula is a succedent, then the copy becomes the first succedent.`
+        If the formula is an antecedent, then the copy becomes the first antecedent.
+        If the formula is a succedent, then the copy becomes the first succedent.`
     },
     "copy*": { 
         description: `Copy a series of formulas`,
@@ -1928,7 +1932,7 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
         }
     },
     "inst": {
-        description: `Instante existential quantifiers using the given terms`,
+        description: `Instante existential quantifiers using the given terms`,
         syntax: `inst FNUM TERMS`
     },
     // "inst!": { 
@@ -2124,7 +2128,7 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
     },
     "name-mult": { 
         description: `Select a list of factors (indicated by TERM-NUMS) from the expression found on SIDE (l or r) of relational formula FNUM.
-            Assign NAME to the product of the selected factors and replace the product by NAME`,
+    Assign NAME to the product of the selected factors and replace the product by NAME`,
         syntax: `name-mult NAME FNUM SIDE`,
         optionals: {
             "TERM-NUMS": `Indexes specifying which terms the command should be applied to.` 
@@ -2132,8 +2136,8 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
     },
     "name-mult!": { 
         description: `Select a list of factors (indicated by TERM-NUMS) from the expression found at EXPR-LOC.
-            Assign a NAME to the product of the selected factors and replace the product by NAME.
-            Can only handle first expression that results from EXPR-LOC.`,
+    Assign a NAME to the product of the selected factors and replace the product by NAME.
+    Can only handle first expression that results from EXPR-LOC.`,
         syntax: `name-mult! NAME EXPR-LOC`,
         optionals: {
             "TERM-NUMS": `Indexes specifying which terms the command should be applied to.` 
@@ -2741,9 +2745,9 @@ export const PROOF_TACTICS: { [key:string]: CommandDescriptor } = {
     },
     "equate": {
         description: `Try equating two expressions and replacing the LHS by the
-            RHS in FNUMS.  Proof of the justification step can be tried or deferred.
-            Use TRY-JUST to supply the rule for the justification proof or T for
-            the default rule (GRIND).`,
+    RHS in FNUMS.  Proof of the justification step can be tried or deferred.
+    Use TRY-JUST to supply the rule for the justification proof or T for
+    the default rule (GRIND).`,
         syntax: `equate lhs rhs`,
         optionals: {
             "FNUM": `Apply the command to sequent formula FNUM.`
@@ -2813,15 +2817,15 @@ export const PROOF_TACTICS: { [key:string]: CommandDescriptor } = {
         syntax: ``
     },
     "invoke": { 
-        description: `Invoke a rule or strategy by instantiating COMMAND with substitutions extracted from the extended expression specifications EXPR-SPECS`,
-        syntax: `invoke COMMAND`,
+        description: `Invoke a rule or strategy by instantiating CMD with substitutions extracted from the extended expression specifications EXPR-SPECS`,
+        syntax: `invoke CMD`,
         note: `Example: suppose formula 1 is f(x+y) = f(a*(z+1)).
             Then (invoke (case "%1 = %2") (? 1 "f(%1) = f(%2)"))
             would match and create the bindings %1='x+y' and %2='a*(z+1)', 
             which results in the prover command (case "x+y = a*(z+1)") being invoked.`
     },
     "just-install-proof": { 
-        description: `Installs an edited PROOF without actually checking it, declares the subgoal as finished, but then marks the proof as unfinished`,
+        description: `Installs an edited PROOF without actually checking it, declares the subgoal as finished, and marks the proof as unfinished`,
         syntax: "just-install-proof PROOF"
     },
     "let": { 
@@ -3291,7 +3295,7 @@ export const proverCommands: CommandsMap = {
         syntax: `postpone`
     },
     "help": {
-        description: `Displays information about commands, including description and syntax`,
+        description: `Displays information about commands, including description and syntax. Use (help *) to show the full list of commands.`,
         syntax: `help CMD`
     },
     ...VSCODE_COMMANDS,

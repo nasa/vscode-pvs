@@ -869,6 +869,15 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.panel?.webview?.postMessage(message);
     }
     /**
+     * Utility function, shows all available commands and some brief info for each command
+     */
+    helpStar (): void {
+        const message: XTermMessage = {
+            command: XTermCommands.helpStar
+        };
+        this.panel?.webview?.postMessage(message);
+    }
+    /**
      * Internal function, disables prover and evaluator handlers
      */
     protected disableHandlers (): void {
@@ -955,6 +964,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                             this.showPrompt();
                                                         }
                                                     }
+                                                } else if (utils.isHelpStarCommand(message.data)) {
+                                                    this.helpStar();
+                                                    this.showPrompt();
                                                 } else if (utils.isVSCodePlotCommand(message.data)) {
                                                     const expr: string = utils.getVSCodePlotExpression(message.data);
                                                     commands.executeCommand("vscode-pvs.plot-expression", { ...this.target, expr });
@@ -1078,7 +1090,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermCommands.updateColorTheme,
                         XTermCommands.showHelpMessage,
                         XTermCommands.running,
-                        XTermCommands.autocompleteWithEnter
+                        XTermCommands.autocompleteWithEnter,
+                        XTermCommands.helpStar
                     ],
                     xtermEvents: [
                         XTermEvent.sendText,
