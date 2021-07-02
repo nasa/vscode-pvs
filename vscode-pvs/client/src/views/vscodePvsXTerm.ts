@@ -66,9 +66,12 @@ export enum XTermPvsEvent {
     DidReceiveEvaluatorResponse = "DidReceiveEvaluatorResponse"
 }
 
-const HELP_PANEL_HEIGHT: number = 40; //px
+const HELP_PANEL_LINE_HEIGHT: number = 20; //px
+const DEFAULT_HELP_PANEL_LINES: number = 2;
 
-const htmlTemplate: string = `
+function getHtmlTemplate (opt?: { integratedHelpSize?: number }): string {
+    const lines: number = opt?.integratedHelpSize || vscodeUtils.getIntegratedHelpSetting() || DEFAULT_HELP_PANEL_LINES;
+    return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -87,7 +90,7 @@ const htmlTemplate: string = `
 
     <style>
     .terminal-help {
-        height:${HELP_PANEL_HEIGHT}px;
+        height:${lines * HELP_PANEL_LINE_HEIGHT}px;
     }
     </style>
 </head>
@@ -100,7 +103,8 @@ const htmlTemplate: string = `
     const vscode = acquireVsCodeApi();
     const xterm = new xtermpvs.XTermPvs({
         sessionType: "{{sessionType}}",
-        paddingBottom: ${HELP_PANEL_HEIGHT}
+        paddingBottom: ${lines * HELP_PANEL_LINE_HEIGHT},
+        integratedHelpSize: ${lines}
     });
 
     // Handlers for events triggered by xterm
@@ -143,6 +147,7 @@ const htmlTemplate: string = `
     </script>
 </body>
 </html>`;
+}
 
 const DOT_BLINK: string = `<span class="animate__animated animate__flash animate__slow animate__infinite">.</span>`;
 const PLEASE_WAIT: string = `please wait..${DOT_BLINK}`;
@@ -239,7 +244,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Utility function, updates color theme
      */
-     updateColorTheme (theme: colorUtils.XTermColorTheme): void {
+    updateColorTheme (theme: colorUtils.XTermColorTheme): void {
         if (theme && this.colorTheme !== theme) {
             this.colorTheme = theme;
             const message: XTermMessage = {
@@ -1071,7 +1076,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             ];
 
             try {
-                const content: string = Handlebars.compile(htmlTemplate, { noEscape: true })({
+                const content: string = Handlebars.compile(getHtmlTemplate(), { noEscape: true })({
                     css, js,
                     xtermCommands: [
                         XTermCommands.write,

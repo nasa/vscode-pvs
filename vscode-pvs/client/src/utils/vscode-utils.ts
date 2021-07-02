@@ -774,12 +774,21 @@ export function getConfiguration (key: string): string {
 }
 
 /**
- * Returns the value of a vscode configuration key
+ * Returns the boolean value of a vscode configuration key
  */
- export function getConfigurationFlag (key: string): boolean {
+export function getConfigurationFlag (key: string): boolean {
     const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
     const res: boolean | Object = config.get(key);
     return !!res;
+}
+
+/**
+ * Returns the numeric value of a vscode configuration key
+ */
+export function getConfigurationValue (key: string): number {
+    const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+    const res: number | Object = config.get(key);
+    return typeof res === "number" ? res : 0;
 }
 
 /**
@@ -818,6 +827,11 @@ export function detectColorTheme (): XTermColorTheme {
     const themeClass: string = getConfiguration("workbench.colorTheme");
     const theme: XTermColorTheme = xTermDetectColorTheme(themeClass);
     return theme;
+}
+
+export function getIntegratedHelpSetting (): number {
+    const size: number = getConfigurationValue("pvs.settings.proverConsole.integratedHelpSize");
+    return size;
 }
 
 /**

@@ -26,10 +26,10 @@ interface RebaseEvent {
     pos: Position
 };
 
-export function welcomeMessage (session: SessionType): string {
+export function welcomeMessage (session: SessionType, integratedHelpSize: number ): string {
     const msg: string = session === "prover" ? `
-        - Please enter proof command at the prover prompt.
-        - Double click expands definitions. Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}C / ${isLinux() ? "Ctrl+" : "Command+"}V
+        - Please enter proof command at the prover prompt
+        - Double click expands definitions${integratedHelpSize > 2 ? "\n- " : ". "}Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}C / ${isLinux() ? "Ctrl+" : "Command+"}V
         `
         : `
         - Please enter a PVS expression followed by ';'
@@ -1259,6 +1259,7 @@ export class Autocomplete extends Backbone.Model {
 
     // session type
     protected sessionType: SessionType;
+    protected integratedHelpSize: number = 2;
 
     // hints data
     protected hintsObject: HintsObject = {};
@@ -1275,11 +1276,12 @@ export class Autocomplete extends Backbone.Model {
     /**
      * Constructor
      */
-    constructor (content: Content, sessionType: SessionType) {
+    constructor (content: Content, sessionType: SessionType, opt?: { integratedHelpSize?: number }) {
         super();
         this.content = content;
         this.sessionType = sessionType;
         this.history = new History(this.sessionType);
+        this.integratedHelpSize = opt?.integratedHelpSize || 2;
         this.installHandlers();
     }
     /**
@@ -1710,7 +1712,7 @@ export class Autocomplete extends Backbone.Model {
         });
         this.showHelp(integratedHelp);
         if (!currentInput && integratedHelp) {
-            this.showHelp(welcomeMessage(this.sessionType));
+            this.showHelp(welcomeMessage(this.sessionType, this.integratedHelpSize ));
         }
     }
     /**
@@ -1921,6 +1923,7 @@ export class XTermPvs extends Backbone.Model {
     // protected xtermLineHeight: number = 1.45; // line height rendered in xterm, measured experimentally by inspecting the DOM
 
     protected paddingBottom: number = 0;
+    protected integratedHelpSize: number = 2; // number of lines visible at once in the integrated help
 
     // status of the mod keys
     protected modKeys: ModKeys = {
@@ -1969,16 +1972,18 @@ export class XTermPvs extends Backbone.Model {
         cols?: number, 
         rows?: number, 
         sessionType?: SessionType,
-        paddingBottom?: number
+        paddingBottom?: number,
+        integratedHelpSize?: number
     }) {
         super();
         opt = opt || {};
 
         this.content = new Content();
         this.sessionType = opt?.sessionType || "evaluator";
-        this.autocomplete = new Autocomplete(this.content, this.sessionType);
+        this.autocomplete = new Autocomplete(this.content, this.sessionType, { integratedHelpSize: this.integratedHelpSize });
 
         this.paddingBottom = opt?.paddingBottom || 0;
+        this.integratedHelpSize = opt?.integratedHelpSize || 2;
 
         const cols: number = opt.cols || MIN_VIEWPORT_COLS;
         LineWrapper.maxCols = cols;
@@ -3259,7 +3264,7 @@ export class XTermPvs extends Backbone.Model {
     showWelcomeMessage (): void {
         this.runningFlag = false;
         this.xterm.setOption("cursorBlink", false);
-        this.autocomplete.showHelp(welcomeMessage(this.sessionType));
+        this.autocomplete.showHelp(welcomeMessage(this.sessionType, this.integratedHelpSize));
     }
 
     /**
@@ -3268,7 +3273,7 @@ export class XTermPvs extends Backbone.Model {
     running (flag: boolean): void {
         this.runningFlag = true;
         this.xterm.setOption("cursorBlink", true);
-        this.autocomplete.showHelp(welcomeMessage(this.sessionType));
+        this.autocomplete.showHelp(welcomeMessage(this.sessionType, this.integratedHelpSize));
     }
 
     /**

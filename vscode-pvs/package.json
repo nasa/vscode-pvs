@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.55-alpha",
+	"version": "1.0.55-beta",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -117,6 +117,11 @@
 						"type": "boolean",
 						"default": true,
 						"description": "Use 'Enter' as alternate autocompletion key in the prover console (default: true)"
+					},
+					"pvs.settings.proverConsole.integratedHelpSize": {
+						"type": "number",
+						"default": 2,
+						"description": "Number of lines visible at once in the integrated help (default: 2)"
 					},
 					"pvs.xtras.enableAntlrParser": {
 						"type": "boolean",
