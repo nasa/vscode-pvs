@@ -366,7 +366,7 @@ export class PvsLanguageServer {
 
 			const response: PvsResponse = await this.proveFormula(desc);
 			if (response?.result) {
-				const channelID: string = utils.desc2id(desc);
+				// const channelID: string = utils.desc2id(desc);
 				// the initial response should include only one sequent descriptor
 				const result: SequentDescriptor[] = response.result;
 				if (result && result.length) {
