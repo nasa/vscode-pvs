@@ -951,7 +951,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                 // check if this is a meta command
                                                 if (message.data === interruptCommand) {
                                                     commands.executeCommand("vscode-pvs.interrupt-prover");
-                                                } else if (utils.isQuitCommand(message.data)) {
+                                                } else if (utils.isQuitCommand(message.data) && this.sessionType === "prover") {
                                                     if (this.proofExplorer?.proofIsDirty()) {
                                                         // ask if the proof needs to be saved
                                                         const yesNoCancel: YesNoCancel = await this.proofExplorer.queryQuitProofAndSave();
