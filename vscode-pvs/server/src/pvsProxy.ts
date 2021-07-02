@@ -2015,6 +2015,13 @@ export class PvsProxy {
 	}
 
 	/**
+	 * Utility function, sets the current mode to 'lisp'
+	 */
+	lispMode (): void {
+		this.mode = "lisp";
+	}
+
+	/**
 	 * Utility function, restarts the xml-rpc server
 	 * @param opt 
 	 */

@@ -574,6 +574,9 @@ export class PvsProofExplorer {
 
 				// mark proof as proved
 				await this.proved();
+
+				// set mode to lisp
+				this.pvsProxy.lispMode();
 				return;
 			}
 			// if command is quit, stop execution
