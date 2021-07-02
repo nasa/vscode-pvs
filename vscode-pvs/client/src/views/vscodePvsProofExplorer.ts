@@ -1030,9 +1030,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	// 	}
 	// 	return actionConfirmed;
 	// }
-	async queryQuitProof (): Promise<boolean> {
+	async queryQuitProof (opt?: { force?: boolean }): Promise<boolean> {
 		// ask confirmation before quitting proof
-		const actionConfirmed: boolean = await this.queryConfirmation("Quit Proof Session?");
+		const actionConfirmed: boolean = opt?.force ? true : await this.queryConfirmation("Quit Proof Session?");
 		if (actionConfirmed) {
 			const action: ProofExecQuit = { action: "quit-proof" };
 			this.client.sendRequest(serverRequest.proverCommand, action);

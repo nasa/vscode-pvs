@@ -885,6 +885,15 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.panel?.webview?.postMessage(message);
     }
     /**
+     * Utility function, shows all available commands and some brief info for each command
+     */
+    helpVSCodePlot (): void {
+        const message: XTermMessage = {
+            command: XTermCommands.helpVSCodePlot
+        };
+        this.panel?.webview?.postMessage(message);
+    }
+    /**
      * Internal function, disables prover and evaluator handlers
      */
     protected disableHandlers (): void {
@@ -966,13 +975,16 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                             this.showPrompt();
                                                         }
                                                     } else {
-                                                        const actionConfirmed: boolean = await this.proofExplorer.queryQuitProof();
+                                                        const actionConfirmed: boolean = await this.proofExplorer.queryQuitProof({ force: true });
                                                         if (!actionConfirmed) {
                                                             this.showPrompt();
                                                         }
                                                     }
                                                 } else if (utils.isHelpStarCommand(message.data)) {
                                                     this.helpStar();
+                                                    this.showPrompt();
+                                                } else if (utils.isHelpVSCodePlot(message.data)) {
+                                                    this.helpVSCodePlot();
                                                     this.showPrompt();
                                                 } else if (utils.isVSCodePlotCommand(message.data)) {
                                                     const expr: string = utils.getVSCodePlotExpression(message.data);
@@ -1098,7 +1110,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermCommands.showHelpMessage,
                         XTermCommands.running,
                         XTermCommands.autocompleteWithEnter,
-                        XTermCommands.helpStar
+                        XTermCommands.helpStar,
+                        XTermCommands.helpVSCodePlot
                     ],
                     xtermEvents: [
                         XTermEvent.sendText,

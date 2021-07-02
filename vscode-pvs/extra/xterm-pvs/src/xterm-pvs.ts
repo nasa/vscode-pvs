@@ -2109,6 +2109,19 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
+     * Internal function, returns a formatted help string for the given command descriptor
+     * @param desc 
+     */
+    protected formatHelp (cmd: string, desc: CommandDescriptor): string {
+        if (desc) {
+            return `\n${colorUtils.colorText(`(${cmd})`, colorUtils.PvsColor.green)}
+\t${desc.description}
+\tSyntax: (${desc.syntax})\n`;
+        }
+        return "";
+    }
+
+    /**
      * Shows all available commands and some brief info for each command
      */
     helpStar (): void {
@@ -2117,14 +2130,19 @@ export class XTermPvs extends Backbone.Model {
         const keys: string[] = Object.keys(cmds).sort((a: string, b: string) => { return a > b ? 1 : -1; });
         for (let i = 0; i < keys.length; i++) {
             if (cmds[keys[i]].description) {
-                ans += `\n${colorUtils.colorText(`(${keys[i]})`, colorUtils.PvsColor.green)}
-    ${cmds[keys[i]].description}
-    Syntax: (${cmds[keys[i]].syntax})\n`;
+                ans += this.formatHelp(keys[i], cmds[keys[i]]);
             }
         }
         this.write(ans);
     }
 
+    /**
+     * Shows all available commands and some brief info for each command
+     */
+    helpVSCodePlot (): void {
+        const ans: string = this.formatHelp("vscode-plot", proverCommands["vscode-plot"]);
+        this.write(ans);
+    }
     /**
      * Disables terminal input
      */

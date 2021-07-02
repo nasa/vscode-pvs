@@ -1148,7 +1148,11 @@ export function isHelpCommand (cmd: string): boolean {
 }
 export function isHelpStarCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
-    return cmd && (new RegExp(/help\s*\*/).test(cmd) || new RegExp(/\(\s*help\s*\*\s*\)/).test(cmd));
+    return cmd && (new RegExp(/\bhelp\s*\*/).test(cmd) || new RegExp(/\(\s*help\s*\*\s*\)/).test(cmd));
+}
+export function isHelpVSCodePlot (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+    return cmd && (new RegExp(/\bhelp\s*vscode\-plot\b/).test(cmd) || new RegExp(/\(\s*help\s*vscode\-plot\s*\)/).test(cmd));
 }
 
 // group 1 is the command argument
@@ -2824,10 +2828,10 @@ export const PROOF_TACTICS: { [key:string]: CommandDescriptor } = {
             would match and create the bindings %1='x+y' and %2='a*(z+1)', 
             which results in the prover command (case "x+y = a*(z+1)") being invoked.`
     },
-    "just-install-proof": { 
-        description: `Installs an edited PROOF without actually checking it, declares the subgoal as finished, and marks the proof as unfinished`,
-        syntax: "just-install-proof PROOF"
-    },
+    // "just-install-proof": { 
+    //     description: `Installs an edited PROOF without actually checking it, declares the subgoal as finished, and marks the proof as unfinished`,
+    //     syntax: "just-install-proof PROOF"
+    // },
     "let": { 
         description: `Allows variables in body to be bound to the results of Lisp computations.`,
         note: `Example: (let ((x (car *new-fmla-nums*))) (then (inst? x)(split x)))`,
@@ -2864,10 +2868,10 @@ export const PROOF_TACTICS: { [key:string]: CommandDescriptor } = {
         description: `Protects formulas FNUMS so that they are not affected by STEP`,
         syntax: `protect FNUMS STEP`
     },
-    "query*": { 
-        description: `Query the user for the next step.`,
-        syntax: `query*`
-    },
+    // "query*": { 
+    //     description: `Query the user for the next step.`,
+    //     syntax: `query*`
+    // },
     // "quote": { 
     //     description: `This command is used by the let strategy to ensure that the values for variables are not evaluated again after substitution.`
     // },
@@ -3255,8 +3259,8 @@ export function getCommands(profile: ProofMateProfile): { [key: string]: Command
 
 export const VSCODE_COMMANDS: CommandsMap = {
     "vscode-plot": {
-        description: `Plot a PVS expression in vscode, e.g., vscode-plot((: -1/2, 1, 2 :))`,
-        syntax: `vscode-plot(<expr>)`
+        description: `Plot a PVS expression in vscode, e.g., vscode-plot (: -1/2, 1, 2 :)`,
+        syntax: `vscode-plot <expr>`
     }
 };
 

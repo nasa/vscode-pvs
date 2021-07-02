@@ -29,7 +29,8 @@ export enum XTermCommands {
     showHelpMessage = "showHelpMessage",
     running = "running",
     autocompleteWithEnter = "autocompleteWithEnter",
-    helpStar = "helpStar"
+    helpStar = "helpStar",
+    helpVSCodePlot = "helpVSCodePlot"
 };
 
 export interface XTermMessage {
