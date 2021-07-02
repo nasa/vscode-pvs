@@ -543,7 +543,7 @@ export class VSCodePvsPackageManager {
             let pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
             const targetFolder: string = path.join(pvsPath, "nasalib");    
             // create terminal to show feedback during download/update operations
-            await this.createTerminal(label, { clearScreen: true });
+            await this.createTerminal("Installing NASALib...", { clearScreen: true });
             const message: string = downloader === "git" && item === this.messages.downloadNASALib ?
                 `Cloning NASALib to ${targetFolder}` 
                     : "git" && item === this.messages.updateNASALib ? `Updating NASALib installation`
