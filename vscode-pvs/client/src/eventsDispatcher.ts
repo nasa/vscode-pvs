@@ -897,26 +897,34 @@ export class EventsDispatcher {
             }
         }));
 
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-web", async (resource: string | { path: string } | { contextValue: string }) => {
-            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
-            const fname: string = activeEditor?.document?.fileName;
-            if (fname) {
-                const contextFolder: string  = fsUtils.getContextFolder(fname);
-                const fileName: string = fsUtils.getFileName(fname);
-                const fileExtension: string = fsUtils.getFileExtension(fname);
-                const line: number = window.activeTextEditor?.selection?.active?.line || 0;
-                const fileContent: string = await fsUtils.readFile(fname);
-                const theoryName: string = fsUtils.findTheoryName(fileContent, line);
-                const req: StartXTermEvaluatorRequest = {
-                    contextFolder,
-                    theoryName,
-                    fileName,
-                    fileExtension
-                };
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-web", async (resource: PvsTheory | { path: string }, opt?: { force?: boolean }) => {
+            let req: StartXTermEvaluatorRequest = resource && resource["theoryName"] ? <PvsTheory> resource : null;
+            if (!req) {
+                const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+                const fname: string = activeEditor?.document?.fileName;
+                if (fname) {
+                    const contextFolder: string  = fsUtils.getContextFolder(fname);
+                    const fileName: string = fsUtils.getFileName(fname);
+                    const fileExtension: string = fsUtils.getFileExtension(fname);
+                    const line: number = window.activeTextEditor?.selection?.active?.line || 0;
+                    const fileContent: string = await fsUtils.readFile(fname);
+                    const theoryName: string = fsUtils.findTheoryName(fileContent, line);
+                    req = {
+                        contextFolder,
+                        theoryName,
+                        fileName,
+                        fileExtension
+                    };
+                } else {
+                    // check if there's a pvsio session
+                    req = this.xterm!.getTheory();
+                }
+            }
+            if (req && req.contextFolder && req.theoryName && req.fileName && req.fileExtension) {
                 // ask the user confirmation before restarting pvs
                 const yesno: string[] = [ "Yes", "No" ];
-                const msg: string = `Start PVSio-web for theory ${theoryName}?`;
-                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
+                const msg: string = `Start PVSio-web for theory ${req.theoryName}?`;
+                const ans: string = opt?.force ? yesno[0] : await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
                 if (ans === yesno[0]) {
                     // dispose any previous instance
                     await this.pvsioweb.dispose();
@@ -935,6 +943,8 @@ export class EventsDispatcher {
                         vscodeUtils.showWarningMessage("Unable to create a new PVSio Evaluator session");
                     }
                 }
+            } else {
+                vscodeUtils.showWarningMessage("Unable to start PVSio-web, please open a PVS file first");
             }
         }));
         // pvsio-evaluator

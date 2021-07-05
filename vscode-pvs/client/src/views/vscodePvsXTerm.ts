@@ -452,6 +452,11 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             }
         }
         if (req && req.theoryName) {
+            if (this.target?.contextFolder === req.contextFolder && this.target?.fileName === req.fileName
+                && this.target?.theoryName === req.theoryName && this.target?.fileExtension === req.fileExtension) {
+                    // pvsio already started, nothing to do
+                    return true;
+            }
             vscodeUtils.minimizeIntegratedTerminal();
             const success: boolean = await this.startEvaluatorSession(req);
             return success;
@@ -943,6 +948,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                 this.sendTextToServer("quit");
                                 // reset session type
                                 this.sessionType = null;
+                                // clear target
+                                this.target = null;
                                 // reset global vscode-pvs variables so other views can be updated properly
                                 vscodeUtils.resetGlobals();
                             },
@@ -989,6 +996,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                 } else if (utils.isVSCodePlotCommand(message.data)) {
                                                     const expr: string = utils.getVSCodePlotExpression(message.data);
                                                     commands.executeCommand("vscode-pvs.plot-expression", { ...this.target, expr });
+                                                    this.showPrompt();
+                                                } else if (utils.isPVSioweb(message.data)) {
+                                                    commands.executeCommand("vscode-pvs.pvsio-web", this.target, { force: true });
                                                     this.showPrompt();
                                                 } else {
                                                     // send command to the server

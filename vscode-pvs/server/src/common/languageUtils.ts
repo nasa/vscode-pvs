@@ -3404,14 +3404,21 @@ export function balancePar (cmd: string): string {
 }
 
 /**
- * Utility function, checks if the given command is vscode-plot(...)
+ * Utility function, checks if the given command is vscode-plot
  */
 export function isVSCodePlotCommand (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
-    return cmd && /\bvscode-plot\s*\(/g.test(cmd);
+    return cmd && /\bvscode-plot\b/g.test(cmd);
 }
 /**
- * Utility function, returns the expression specified as argument of vscode-plot(...)
+ * Utility function, checks if the given command is pvsioweb
+ */
+export function isPVSioweb (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+    return cmd && /\bpvsioweb\b/g.test(cmd);
+}
+/**
+ * Utility function, returns the expression specified as argument of vscode-plot
  */
 export function getVSCodePlotExpression (cmd: string): string {
     return isVSCodePlotCommand(cmd) ? cmd?.replace("vscode-plot", "") : "";
