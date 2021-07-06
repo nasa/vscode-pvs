@@ -48,7 +48,7 @@ import {
 } from '../common/serverInterface';
 import { 
 	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, 
-	icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremRegexp, theoryRegexp 
+	icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp 
 } from './languageUtils';
 
 
@@ -841,7 +841,7 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 		let txt: string = desc.fileContent.replace(commentRegexp, "");
 		// console.log(txt);
 		const start: number = Date.now();
-		const regexp: RegExp = theoryRegexp;
+		const regexp: RegExp = new RegExp(theoryOrDatatypeRegexp);
 		// let lastIndex: number = 0;
 		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
 		let lineOffset: number = 0;

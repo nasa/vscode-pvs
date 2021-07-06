@@ -606,6 +606,9 @@ export class PvsLanguageServer {
 						// };
 						// this.sendDiagnostics("Typecheck");
 						this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} typechecks successfully!` });
+						// send a context descriptor because typechecking may generate adt files
+						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);	
 					} else {
 						this.pvsErrorManager?.handleTypecheckError({ response: <PvsError> response, taskId, request });
 						// send diagnostics
