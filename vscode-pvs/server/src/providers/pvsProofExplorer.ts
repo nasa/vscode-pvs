@@ -603,7 +603,11 @@ export class PvsProofExplorer {
 				// const channelID: string = languageUtils.desc2id(this.formula);
 				// const evt: CliGatewayProofState = { type: "pvs.event.proof-state", channelID, data: this.proofState };
 				// this.pvsLanguageServer.cliGateway.publish(evt);
-				this.pvsLanguageServer.getConnection()?.sendRequest(serverEvent.proofCommandResponse, { res: this.proofState, req: desc?.args });
+				const ans: ProofCommandResponse = {
+					res: this.proofState, 
+					req: desc?.args
+				};
+				this.pvsLanguageServer.getConnection()?.sendRequest(serverEvent.proofCommandResponse, ans);
 			}
 
 			//--- check other meta-commands: (undo), (undo undo), (postpone), (show-hidden), (comment "..."), (help xxx)

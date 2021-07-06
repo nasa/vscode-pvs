@@ -402,7 +402,7 @@ export class PvsLanguageServer {
 				}
 			} else {
 				// there was an error
-				const channelID: string = utils.desc2id(desc);
+				// const channelID: string = utils.desc2id(desc);
 				if (this.pvsErrorManager) {
 					this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId, autorun: opt.autorun });
 				} else {

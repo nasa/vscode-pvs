@@ -753,6 +753,12 @@ export class EventsDispatcher {
                 this.xterm?.sendTextToServer("(show-hidden-formulas)");
             }
         }));
+        context.subscriptions.push(commands.registerCommand("xterm-pvs.send-command", async (desc: { cmd: string }) => {
+            if (this.xterm && desc?.cmd?.trim()) {
+                this.xterm?.write(desc.cmd);
+                this.xterm?.sendTextToServer(desc.cmd);
+            }
+        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.interrupt-and-quit-prover", async () => {
             // ask the user confirmation before restarting pvs
             const action: ProofExecInterruptAndQuitProver = { action: "interrupt-and-quit-prover" };

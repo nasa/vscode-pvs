@@ -1358,8 +1358,10 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			this.running = false;
 			// execute next proof command
 			if (!this.ghostNode?.isActive()) {
-				const action: ProofExecForward = { action: "forward" };
-				this.client.sendRequest(serverRequest.proverCommand, action);
+				const cmd: string = this.activeNode?.name;
+				vscode.commands.executeCommand("xterm-pvs.send-command", { cmd });
+				// const action: ProofExecForward = { action: "forward" };
+				// this.client.sendRequest(serverRequest.proverCommand, action);
 				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", { cmd: this.activeNode.name });
 			}
 		}));

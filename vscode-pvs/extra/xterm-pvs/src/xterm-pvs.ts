@@ -1437,14 +1437,14 @@ export class Autocomplete extends Backbone.Model {
             cursor.tooltip({
                 trigger: "manual hover click",
                 title: tooltip,
-                placement: "right-end",
+                placement: "bottom-end",
                 html: true,
                 boundary: "viewport",
                 rootBoundary: "document",
                 container: "body",
                 fallbackPlacements: ['right-end', 'top-end', 'bottom-end'],
                 popperConfig: {
-                    placement: "right-end"
+                    placement: "bottom-end"
                 }
             }).tooltip('show');
             if (this.sessionType === "prover" && opt.top !== undefined && opt.left !== undefined && $(".tooltip-inner")[0]) {
@@ -1713,11 +1713,12 @@ export class Autocomplete extends Backbone.Model {
     updateHelp (opt?: { cmd?: string }): void {
         opt = opt || {};
         const currentInput: string = this.getCurrentInput({ regex: /[\w\+\@\-\*\?\!]+/ });
-        const cmd: string = opt.cmd || this.getSelectedHint() || currentInput;
-        // console.log("[xterm-autocomplete] updateHelp", { cmd });
+        let cmd: string = opt.cmd || this.getSelectedHint() || currentInput;
+        cmd = cmd?.split(" ")[0]; // this removes command parameters
         const desc: CommandDescriptor = this.sessionType === "evaluator" ?
             evaluatorCommands[cmd]
                 : proverCommands[cmd];
+        // console.log("[xterm-autocomplete] updateHelp", { cmd, desc });
         const integratedHelp: string = Handlebars.compile(terminalHelpTemplate, { noEscape: true })({
             cmd,
             ...desc,

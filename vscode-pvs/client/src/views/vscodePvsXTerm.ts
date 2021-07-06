@@ -93,18 +93,22 @@ function getHtmlTemplate (sessionType: SessionType, opt?: { integratedHelpSize?:
     .terminal-help {
         height:${lines * HELP_PANEL_LINE_HEIGHT}px;
     }
+    .spacer {
+        height:${HELP_PANEL_LINE_HEIGHT / 2}px;
+    }
     </style>
 </head>
 <body>
     <!--<div id="terminal" class="animate__animated animate__fadeIn"></div>-->
     <div id="terminal"></div>
+    <div class="spacer"></div>
     <div class="terminal-help p-0"></div>
 
     <script>
     const vscode = acquireVsCodeApi();
     const xterm = new xtermpvs.XTermPvs({
         sessionType: "{{sessionType}}",
-        paddingBottom: ${lines * HELP_PANEL_LINE_HEIGHT},
+        paddingBottom: ${1.5 * lines * HELP_PANEL_LINE_HEIGHT},
         integratedHelpSize: ${lines},
         frequentCommands: "${frequentCommands}"
     });

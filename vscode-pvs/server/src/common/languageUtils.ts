@@ -326,11 +326,12 @@ export function commentaryToString (commentary: string | string[], opt?: {
 	let res = "";
     if (commentary) {
         const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
-        const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.gray, colorTheme);
+        const gray: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.gray, colorTheme);
+        const yellow: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.yellow, colorTheme);
         if (typeof commentary === "string") {
             commentary = commentary.trim().endsWith(",") ? commentary.trim().slice(0, -1) : commentary.trim();
             res += opt.htmlEncoding ? `<br>${commentary}<br>` 
-                : opt.useColors ? `\n${colorUtils.colorText(`${commentary}`, color)}\n`
+                : opt.useColors ? `\n${colorUtils.colorText(`${commentary}`, commentary.includes("This completes the proof") ? yellow : gray)}\n`
                     : `\n${commentary}\s`;
         } else {
             res += opt.htmlEncoding ? "<br>" : "\n";
@@ -340,7 +341,7 @@ export function commentaryToString (commentary: string | string[], opt?: {
                     line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
                 }
                 res += opt.htmlEncoding ? `${line}<br>` 
-                    : opt.useColors ? `${colorUtils.colorText(`${line}`, color)}\n`
+                    : opt.useColors ? `${colorUtils.colorText(`${line}`, line.includes("This completes the proof") ? yellow : gray)}\n`
                         : `${line}\n`;
             }
         }
