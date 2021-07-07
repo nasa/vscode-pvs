@@ -1556,31 +1556,36 @@ export type WorkspaceSummary = {
 	theories: WorkspaceSummaryItem[]
 }
 export function makeWorkspaceSummary (desc: WorkspaceSummary): string {
-	const header: string = "Proof summary";
-	const workspaceName: string = getContextFolderName(desc.contextFolder);
-	let ans: string = `${header} for workspace ${workspaceName}\n`;
-	let nProved: number = 0;
-	let nMissed: number = 0;
-	let totTime: number = 0;
-	let libraries: { [name: string]: boolean } = {};
-	for (let i = 0; i < desc.theories.length; i++) {
-		const theory: WorkspaceSummaryItem = desc.theories[i];
-		libraries[theory.contextFolder] = true;
+	if (desc?.contextFolder) {
+		const header: string = "Proof summary";
+		const workspaceName: string = getContextFolderName(desc.contextFolder);
+		let ans: string = `${header} for workspace ${workspaceName}\n`;
+		let nProved: number = 0;
+		let nMissed: number = 0;
+		let totTime: number = 0;
+		let libraries: { [name: string]: boolean } = {};
+		for (let i = 0; i < desc?.theories.length; i++) {
+			const theory: WorkspaceSummaryItem = desc.theories[i];
+			if (theory?.theoryName && theory.contextFolder) {
+				libraries[theory?.contextFolder] = true;
 
-		const points: number = (64 - theory.theoryName.length) > 0 ? 64 - theory.theoryName.length : 0;
-		const overall: string = (theory.miss) ? `${icons.sparkles} partly proved [${theory.ok}/${theory.total}]`
-			: `${icons.checkmark}  fully proved [${theory.ok}/${theory.total}]`;
-		const spaces: number = (20 - overall.length) > 0 ? 20 - overall.length : 0;
-		nProved += theory.ok;
-		nMissed += theory.miss;
-		ans += `\n\t${theory.theoryName}` + ".".repeat(points) + " " + overall + " ".repeat(spaces) + `(${(+theory.ms / 1000).toFixed(3)} s)`;
-		totTime += theory.ms;
+				const points: number = (64 - theory.theoryName.length) > 0 ? 64 - theory.theoryName.length : 0;
+				const overall: string = (theory.miss) ? `${icons.sparkles} partly proved [${theory.ok}/${theory.total}]`
+					: `${icons.checkmark}  fully proved [${theory.ok}/${theory.total}]`;
+				const spaces: number = (20 - overall.length) > 0 ? 20 - overall.length : 0;
+				nProved += theory.ok;
+				nMissed += theory.miss;
+				ans += `\n\t${theory.theoryName}` + ".".repeat(points) + " " + overall + " ".repeat(spaces) + `(${(+theory.ms / 1000).toFixed(3)} s)`;
+				totTime += theory.ms;
+			}
+		}
+		ans += `\n\nWorkspace ${workspaceName} totals: ${desc.total} formulas, ${nProved + nMissed} attempted, ${nProved} succeeded (${(+totTime / 1000).toFixed(3)} s)`;
+	// 	ans += `\n
+	// *** Grand Totals: ${nProved} proofs / ${desc.total} formulas. Missed: ${nMissed} formulas.
+	// *** Number of libraries: ${Object.keys(libraries).length}`;	
+		return ans;
 	}
-	ans += `\n\nWorkspace ${workspaceName} totals: ${desc.total} formulas, ${nProved + nMissed} attempted, ${nProved} succeeded (${(+totTime / 1000).toFixed(3)} s)`;
-// 	ans += `\n
-// *** Grand Totals: ${nProved} proofs / ${desc.total} formulas. Missed: ${nMissed} formulas.
-// *** Number of libraries: ${Object.keys(libraries).length}`;	
-	return ans;
+	return null;
 }
 
 
@@ -1597,30 +1602,33 @@ export type TheorySummary = {
 	theorems: TheorySummaryItem[]
 }
 export function makeTheorySummary (desc: TheorySummary): string {
-	const header: string = desc.tccsOnly ? "TCCs summary" : "Proof summary";
-	let ans: string = `${header} for theory ${desc.theoryName}\n`;
-	let nProved: number = 0;
-	let totTime: number = 0;
-	let importChainFlag: boolean = false;
-	for (let i = 0; i < desc.theorems.length; i++) {
-		if (desc.theorems[i].theoryName !== desc.theoryName && !importChainFlag) {
-			importChainFlag = true;
-			ans += `\n\t%-- importchain`;
+	if (desc?.theoryName) {
+		const header: string = desc.tccsOnly ? "TCCs summary" : "Proof summary";
+		let ans: string = `${header} for theory ${desc.theoryName}\n`;
+		let nProved: number = 0;
+		let totTime: number = 0;
+		let importChainFlag: boolean = false;
+		for (let i = 0; i < desc.theorems.length; i++) {
+			if (desc.theorems[i].theoryName !== desc.theoryName && !importChainFlag) {
+				importChainFlag = true;
+				ans += `\n\t%-- importchain`;
+			}
+			const formulaName: string = desc.theorems[i].formulaName;
+			const status: ProofStatus = desc.theorems[i].status;
+			const ms: number = desc.theorems[i].ms;
+
+			const points: number = (64 - formulaName.length) > 0 ? 64 - formulaName.length : 0;
+			const spaces: number = (20 - status.length) > 0 ? 20 - status.length : 0;
+
+			if (isProved(status)) { nProved++; }
+			totTime += ms;
+
+			ans += `\n\t${formulaName}` + ".".repeat(points) + getIcon(status) + " " + status + " ".repeat(spaces) + `(${(+ms / 1000)} s)`;
 		}
-		const formulaName: string = desc.theorems[i].formulaName;
-		const status: ProofStatus = desc.theorems[i].status;
-		const ms: number = desc.theorems[i].ms;
-
-		const points: number = (64 - formulaName.length) > 0 ? 64 - formulaName.length : 0;
-		const spaces: number = (20 - status.length) > 0 ? 20 - status.length : 0;
-
-		if (isProved(status)) { nProved++; }
-		totTime += ms;
-
-		ans += `\n\t${formulaName}` + ".".repeat(points) + getIcon(status) + " " + status + " ".repeat(spaces) + `(${(+ms / 1000)} s)`;
+		ans += `\n\nTheory ${desc.theoryName} totals: ${desc.total} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${+(totTime / 1000).toFixed(3)} s)`;
+		return ans;
 	}
-	ans += `\n\nTheory ${desc.theoryName} totals: ${desc.total} formulas, ${desc.theorems.length} attempted, ${nProved} succeeded (${+(totTime / 1000).toFixed(3)} s)`;
-	return ans;
+	return null;
 }
 
 export function decodePvsLibraryPath (pvsLibraryPath: string): string[] {
