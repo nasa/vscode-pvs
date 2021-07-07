@@ -1,0 +1,638 @@
+{
+ "helloworld.always_positive": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "always_positive",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "always_positive",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(grind)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ],
+ "helloworld.foo": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "foo",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "foo",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(propax)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ],
+ "helloworld.sqrt2": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "sqrt2",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "sqrt2",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(eval-formula)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ],
+ "helloworld.sqrt_lb2": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "sqrt_lb2",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "sqrt_lb2",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(eval-expr \"sqrt_lb(2)\")",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(assert)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ],
+ "helloworld.sqrt_newton_TCC1": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "sqrt_newton_TCC1",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "66a99379b04e8938baa2a8d11b9e05bc446c06fa5b3544e5a3c070f0ebc7bf94"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "sqrt_newton_TCC1",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(subtype-tcc)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ],
+ "helloworld.sqrt_newton_TCC2": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "sqrt_newton_TCC2",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "66a99379b04e8938baa2a8d11b9e05bc446c06fa5b3544e5a3c070f0ebc7bf94"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "sqrt_newton_TCC2",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(termination-tcc)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   },
+   "clips": []
+  }
+ ],
+ "helloworld.newton_TCC1": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "newton_TCC1",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "a9a9431d9274267816444c162e1cc4527e5a506eb87f07c131caf59140d39d39"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "newton_TCC1",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(subtype-tcc)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(postpone)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.newton_TCC2": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "newton_TCC2",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "a9a9431d9274267816444c162e1cc4527e5a506eb87f07c131caf59140d39d39"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "newton_TCC2",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(grind)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(postpone)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.sqrt_lb2_TCC1": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "sqrt_lb2_TCC1",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "66a99379b04e8938baa2a8d11b9e05bc446c06fa5b3544e5a3c070f0ebc7bf94"
+   },
+   "proofTree": {
+    "branch": "",
+    "name": "sqrt_lb2_TCC1",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(subtype-tcc)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld1.always_positive": [
+  {
+   "info": {
+    "theory": "helloworld1",
+    "formula": "always_positive",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "1e14a6716de292ce10888a0e88f671f246648236d740bc97303bb10a5bfbe330"
+   },
+   "origin": ".prf",
+   "proofTree": {
+    "branch": "",
+    "name": "always_positive",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(expand \"abs\")",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(lift-if)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(split)",
+      "type": "proof-command",
+      "rules": [
+       {
+        "branch": "1",
+        "name": "(1)",
+        "type": "proof-branch",
+        "rules": [
+         {
+          "branch": "1",
+          "name": "(flatten)",
+          "type": "proof-command",
+          "rules": []
+         },
+         {
+          "branch": "1",
+          "name": "(grind)",
+          "type": "proof-command",
+          "rules": []
+         }
+        ]
+       },
+       {
+        "branch": "2",
+        "name": "(2)",
+        "type": "proof-branch",
+        "rules": [
+         {
+          "branch": "2",
+          "name": "(flatten)",
+          "type": "proof-command",
+          "rules": []
+         },
+         {
+          "branch": "2",
+          "name": "(grind)",
+          "type": "proof-command",
+          "rules": []
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld1.foo": [
+  {
+   "info": {
+    "theory": "helloworld1",
+    "formula": "foo",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "1e14a6716de292ce10888a0e88f671f246648236d740bc97303bb10a5bfbe330"
+   },
+   "origin": ".prf",
+   "proofTree": {
+    "branch": "",
+    "name": "foo",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(propax)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld1.always_negative": [
+  {
+   "info": {
+    "theory": "helloworld1",
+    "formula": "always_negative",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "1e14a6716de292ce10888a0e88f671f246648236d740bc97303bb10a5bfbe330"
+   },
+   "origin": ".prf",
+   "proofTree": {
+    "branch": "",
+    "name": "always_negative",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(skosimp*)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(all-typepreds)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.always_negative": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "always_negative",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+   },
+   "origin": ".prf",
+   "proofTree": {
+    "branch": "",
+    "name": "always_negative",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(grind)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.dummy": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "dummy",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+   },
+   "origin": ".prf",
+   "proofTree": {
+    "branch": "",
+    "name": "dummy",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(comment \"this lemma is false\")",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(case \"1 > 0\")",
+      "type": "proof-command",
+      "rules": [
+       {
+        "branch": "1",
+        "name": "(1)",
+        "type": "proof-branch",
+        "rules": [
+         {
+          "branch": "1",
+          "name": "(comment \"this branch is true\")",
+          "type": "proof-command",
+          "rules": []
+         },
+         {
+          "branch": "1",
+          "name": "(case \"2 > 0\")",
+          "type": "proof-command",
+          "rules": [
+           {
+            "branch": "1.1",
+            "name": "(1.1)",
+            "type": "proof-branch",
+            "rules": [
+             {
+              "branch": "1.1",
+              "name": "(comment \"this branch is true\")",
+              "type": "proof-command",
+              "rules": []
+             },
+             {
+              "branch": "1.1",
+              "name": "(assert)",
+              "type": "proof-command",
+              "rules": []
+             },
+             {
+              "branch": "1.1",
+              "name": "(postpone)",
+              "type": "proof-command",
+              "rules": []
+             }
+            ]
+           },
+           {
+            "branch": "1.2",
+            "name": "(1.2)",
+            "type": "proof-branch",
+            "rules": [
+             {
+              "branch": "1.2",
+              "name": "(postpone)",
+              "type": "proof-command",
+              "rules": []
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "branch": "2",
+        "name": "(2)",
+        "type": "proof-branch",
+        "rules": [
+         {
+          "branch": "2",
+          "name": "(postpone)",
+          "type": "proof-command",
+          "rules": []
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.always_positive_TCC1": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "always_positive_TCC1",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "144de420111aad5ef80a0264c3a4f12617d25d16dc458198fe8cbadd0286c8b3"
+   },
+   "origin": ".prf",
+   "proofTree": {
+    "branch": "",
+    "name": "always_positive_TCC1",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(subtype-tcc)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(postpone)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.newton_TCC3": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "newton_TCC3",
+    "status": "unfinished",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "a9a9431d9274267816444c162e1cc4527e5a506eb87f07c131caf59140d39d39"
+   },
+   "origin": ".prf",
+   "proofTree": {
+    "branch": "",
+    "name": "newton_TCC3",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(subtype-tcc)",
+      "type": "proof-command",
+      "rules": []
+     },
+     {
+      "branch": "",
+      "name": "(postpone)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.plot_newton_TCC1": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "plot_newton_TCC1",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "66a99379b04e8938baa2a8d11b9e05bc446c06fa5b3544e5a3c070f0ebc7bf94"
+   },
+   "origin": ".prf",
+   "proofTree": {
+    "branch": "",
+    "name": "plot_newton_TCC1",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(subtype-tcc)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ],
+ "helloworld.plot_newton_TCC2": [
+  {
+   "info": {
+    "theory": "helloworld",
+    "formula": "plot_newton_TCC2",
+    "status": "proved",
+    "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
+    "shasum": "66a99379b04e8938baa2a8d11b9e05bc446c06fa5b3544e5a3c070f0ebc7bf94"
+   },
+   "origin": ".prf",
+   "proofTree": {
+    "branch": "",
+    "name": "plot_newton_TCC2",
+    "type": "root",
+    "rules": [
+     {
+      "branch": "",
+      "name": "(termination-tcc)",
+      "type": "proof-command",
+      "rules": []
+     }
+    ]
+   }
+  }
+ ]
+}
