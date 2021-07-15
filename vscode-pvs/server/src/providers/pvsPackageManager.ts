@@ -58,7 +58,8 @@ export class PvsPackageManager {
     static readonly approvedPatches: { fname: string, description: string }[] = [
         { fname: "patch-20210511.lisp", description: "Adds support for unicode in server commands" },
         { fname: "patch-20210706.lisp", description: "Fix for 'the assertion (or (null ex) (place ex)) failed'" },
-        { fname: "patch-20210707.lisp", description: "Fix for prover not starting for judgements that are trivially true" }        
+        { fname: "patch-20210707.lisp", description: "Fix for prover not starting for judgements that are trivially true" },
+        { fname: "patch-20210715.lisp", description: "Fix for pvs-server breaking into lisp when imported library cannot be found" }        
     ];
 
 
