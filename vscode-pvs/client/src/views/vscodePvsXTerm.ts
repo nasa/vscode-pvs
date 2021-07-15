@@ -458,7 +458,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         if (req && req.theoryName) {
             if (this.target?.contextFolder === req.contextFolder && this.target?.fileName === req.fileName
                 && this.target?.theoryName === req.theoryName && this.target?.fileExtension === req.fileExtension) {
-                    // pvsio already started, nothing to do
+                    // pvsio already started, focus on the evaluator window
+                    this.focus();
                     return true;
             }
             vscodeUtils.minimizeIntegratedTerminal();

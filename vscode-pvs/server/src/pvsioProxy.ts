@@ -176,7 +176,7 @@ class PvsIoProcess {
 		return new Promise (async (resolve, reject) => {
 			if (this.pvsioProcess) {
 				// process already running, nothing to do
-				return Promise.resolve(true);
+				return resolve(true);
 			}
 			const pvsioExecutable = path.join(this.pvsPath, "pvsio");
 			const fname: string = fsUtils.desc2fname(desc);
@@ -393,29 +393,34 @@ export class PvsIoProxy {
 	/**
 	 * start pvsio programmatically
 	 */
-	async startEvaluator (desc: PvsTheory, opt?: { pvsLibraryPath?: string }): Promise<PvsResponse> {
-		const pvsioProcess: PvsIoProcess = new PvsIoProcess({ pvsPath: this.pvsPath }, opt, this.connection);		
+	async startEvaluator (desc: PvsTheory, opt?: { pvsLibraryPath?: string, reuseProcess?: boolean }): Promise<PvsResponse> {
 		const processId: string = languageUtils.desc2id(desc);
-		const success: boolean = await pvsioProcess.activate({
-			fileName: desc.fileName, 
-			fileExtension: desc.fileExtension,
-			contextFolder: desc.contextFolder,
-			theoryName: desc.theoryName
-		});
-		if (success) {
-			this.processRegistry[processId] = pvsioProcess;
-			const data: string = pvsioProcess.getData();
-			return {
-				jsonrpc: "2.0",
-				id: processId,
-				result: data
-			};	
+		if (processId) {
+			// try to re-use existing processes
+			const pvsioProcess: PvsIoProcess = opt?.reuseProcess  && this.processRegistry[processId] ?
+				this.processRegistry[processId] 
+					: new PvsIoProcess({ pvsPath: this.pvsPath }, opt, this.connection);
+			const success: boolean = await pvsioProcess.activate({
+				fileName: desc.fileName, 
+				fileExtension: desc.fileExtension,
+				contextFolder: desc.contextFolder,
+				theoryName: desc.theoryName
+			});
+			if (success) {
+				this.processRegistry[processId] = pvsioProcess;
+				const data: string = pvsioProcess.getData();
+				return {
+					jsonrpc: "2.0",
+					id: processId,
+					result: data
+				};	
+			}
 		}
 		return {
 			jsonrpc: "2.0",
 			id: processId,
 			error: "Failed to start PVSio"
-		}
+		};
 	}
 	/**
 	 * Set the initial state
@@ -526,7 +531,7 @@ export class PvsIoProxy {
 	 * @param req 
 	 */
 	async evalExpression (req: EvalExpressionRequest): Promise<PvsResponse> {
-		let response: PvsResponse = await this.startEvaluator(req);
+		let response: PvsResponse = await this.startEvaluator(req, { reuseProcess: true });
 		if (response && !response.error) {
 			response = await this.evalCommand({
 				contextFolder: req.contextFolder,
