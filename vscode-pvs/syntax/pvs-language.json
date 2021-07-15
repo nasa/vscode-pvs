@@ -55,7 +55,11 @@
 			"name": "keyword"
 		},
 		{
-			"match": "\\bo\\b|\\(\\:|\\:\\)|\\(\\#|\\#\\)|\\[\\#|\\#\\]|\\:\\=|\\<?\\=\\>",
+			"match": "\\(\\#|\\#\\)|\\[\\#|\\#\\]|\\:\\=|\\<?\\=\\>",
+			"name": "keyword"
+		},
+		{
+			"match": "∀|∃|⇒|⇔",
 			"name": "keyword"
 		},
 		{
@@ -80,6 +84,10 @@
 		},
 		{
 			"match": "\\bempty_seq\\b|\\^\\^?|\\bmap\\b|\\bappend\\b|\\bfilter\\b",
+			"name": "support.function"
+		},
+		{
+			"match": "\\bo\\b|\\(\\:|\\:\\)",
 			"name": "support.function"
 		}
 	],
