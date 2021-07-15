@@ -55,8 +55,10 @@ export class PvsPackageManager {
     protected static installProcess: ChildProcess;
     protected static downloadProcess: ChildProcess;
 
-    static readonly approvedPatches: string[] = [
-        "patch-20210511.lisp"
+    static readonly approvedPatches: { fname: string, description: string }[] = [
+        { fname: "patch-20210511.lisp", description: "Adds support for unicode in server commands" },
+        { fname: "patch-20210706.lisp", description: "Fix for 'the assertion (or (null ex) (place ex)) failed'" },
+        { fname: "patch-20210707.lisp", description: "Fix for prover not starting for judgements that are trivially true" }        
     ];
 
 
@@ -268,17 +270,21 @@ export class PvsPackageManager {
         if (desc?.pvsPath && fsUtils.folderExists(desc?.pvsPath)) {
             const targetFolder: string = path.join(desc.pvsPath, "pvs-patches");
             fsUtils.createFolder(targetFolder);
-            let success: boolean = true;
+            let successSummary: boolean = true;
             for (let i = 0; i < PvsPackageManager.approvedPatches.length; i++) {
-                const fileName: string = PvsPackageManager.approvedPatches[i];
+                const fileName: string = PvsPackageManager.approvedPatches[i].fname;
                 const fname: string = path.join(targetFolder, fileName);
                 if (!fsUtils.fileExists(fname)) {
                     const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", fileName);
                     const fileContent: string = await fsUtils.readFile(src);
-                    success = success && await fsUtils.writeFile(fname, fileContent);
+                    const success: boolean = fileContent && await fsUtils.writeFile(fname, fileContent);
+                    if (!success) {
+                        console.log(`[pvs-package-manager] Warning: could not install patch ${PvsPackageManager.approvedPatches[i]?.fname} (${PvsPackageManager.approvedPatches[i]?.description})`);
+                    }
+                    successSummary = successSummary && success;
                 }
             }
-            return success;
+            return successSummary;
         }
         return false;
     }
