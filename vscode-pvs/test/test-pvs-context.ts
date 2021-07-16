@@ -332,28 +332,6 @@ describe("pvs", () => {
 
 	}).timeout(40000);
 
-	it(`can typecheck lists defined in pillboxv7`, async () => {
-		await quitProverIfActive();
-
-		// Need to clear-theories, in case rerunning with the same server.
-		await pvsProxy.lisp("(clear-theories t)");
-
-		// remove pillboxv7 folder if present and replace it with the content of the zip file
-		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
-		execSync(`cd ${baseFolder} && unzip pillboxv7-errors-with-lists.zip`);
-
-		const response: PvsResponse = await pvsProxy.typecheckFile({
-			fileName: "firstpillchecks", 
-			fileExtension: ".pvs", 
-			contextFolder: path.join(baseFolder, "pillboxv7")
-		});
-		// console.dir(response);
-		expect(response.result).not.to.be.undefined;
-		expect(response.error).to.be.undefined;
-
-	}).timeout(20000);
-
-
 	it(`can run find-declaration without hitting breaks`, async () => {
 		await quitProverIfActive();
 
@@ -392,7 +370,28 @@ describe("pvs", () => {
 		expect(response).not.to.be.undefined;
 		expect(response.result).not.to.be.undefined;
 		expect(response.error).to.be.undefined;
-	}).timeout(16000);
+	}).timeout(20000);
+
+	it(`can typecheck lists defined in pillboxv7 and can handle corrupt prf file without breaking into lisp`, async () => {
+		await quitProverIfActive();
+
+		// Need to clear-theories, in case rerunning with the same server.
+		await pvsProxy.lisp("(clear-theories t)");
+
+		// remove pillboxv7 folder if present and replace it with the content of the zip file
+		fsUtils.deleteFolder(path.join(baseFolder, "pillboxv7"));
+		execSync(`cd ${baseFolder} && unzip pillboxv7-errors-with-lists.zip`);
+
+		const response: PvsResponse = await pvsProxy.typecheckFile({
+			fileName: "firstpillchecks", 
+			fileExtension: ".pvs", 
+			contextFolder: path.join(baseFolder, "pillboxv7")
+		});
+		// console.dir(response);
+		expect(response.result).not.to.be.undefined;
+		expect(response.error).to.be.undefined;
+
+	}).timeout(20000);
 
 });
 
