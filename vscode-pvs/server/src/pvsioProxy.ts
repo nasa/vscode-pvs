@@ -66,6 +66,11 @@ class PvsIoProcess {
 
 	protected errorFlag: boolean = false;
 
+	protected externalHandlers: {
+		onExit: () => void,
+		onError: (err?: Error) => void
+	} = null;
+
 	// pvs theory associated to this pvsio process
 	protected desc: PvsTheory;
 
@@ -168,11 +173,19 @@ class PvsIoProcess {
 	 * @param desc Descriptor indicating the pvs file and theory for this pvsio process
 	 * @returns true if the process has been created; false if the process could not be created.
 	 */
-	async activate (desc: PvsTheory, opt?: { showBanner?: boolean }): Promise<boolean> {
+	async activate (desc: PvsTheory, opt?: {
+		showBanner?: boolean,
+		onExit?: () => void, 
+		onError?: (err?: Error) => void
+	}): Promise<boolean> {
 		opt = opt || {};
 		this.desc = desc;
 		this.resetData();
 		forceLocale();
+		this.externalHandlers = {
+			onError: opt?.onError,
+			onExit: opt?.onExit
+		};
 		return new Promise (async (resolve, reject) => {
 			if (this.pvsioProcess) {
 				// process already running, nothing to do
@@ -264,6 +277,9 @@ class PvsIoProcess {
 				this.pvsioProcess.on("error", (err: Error) => {
 					console.log("[pvsio-process] Process error", err);
 					// console.dir(err, { depth: null });
+					if (this.externalHandlers.onError && typeof this.externalHandlers.onError === "function") {
+						this.externalHandlers.onError(err);
+					}		
 				});
 				this.pvsioProcess.on("exit", async (code: number, signal: string) => {
 					this.pvsioProcess = null;
@@ -283,6 +299,9 @@ class PvsIoProcess {
 						this.ready = false;
 						const success: boolean = await this.activate(this.desc, { showBanner: false });
 						console.log(success);
+						if (this.externalHandlers?.onExit && typeof this.externalHandlers.onExit === "function") {
+							this.externalHandlers.onExit();
+						}
 						return;
 					}
 					// console.dir({ code, signal });
@@ -330,6 +349,9 @@ class PvsIoProcess {
 					execSync(`kill -9 ${pvs_shell}`);
 					this.pvsioProcess.on("close", (code: number, signal: string) => {
 						console.log("[pvs-process] Process terminated");
+						if (this.externalHandlers?.onExit && typeof this.externalHandlers.onExit === "function") {
+							this.externalHandlers.onExit();
+						}
 						resolve(true);
 						// console.dir({ code, signal }, { depth: null });
 					});
@@ -405,6 +427,19 @@ export class PvsIoProxy {
 				fileExtension: desc.fileExtension,
 				contextFolder: desc.contextFolder,
 				theoryName: desc.theoryName
+			}, {
+				onExit: () => {
+					console.error("[pvsio-proxy] PVSio process exited.");
+					if (this.processRegistry[processId]) {
+						delete this.processRegistry[processId];
+					}
+				},
+				onError: (err?: Error) => {
+					console.error("[pvsio-proxy] PVSio process exited with error", err);
+					if (this.processRegistry[processId]) {
+						delete this.processRegistry[processId];
+					}
+				}
 			});
 			if (success) {
 				this.processRegistry[processId] = pvsioProcess;
