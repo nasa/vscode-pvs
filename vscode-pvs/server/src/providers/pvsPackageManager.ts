@@ -52,16 +52,22 @@ import { colorText, PvsColor } from '../common/colorUtils';
 
 export class PvsPackageManager {
 
+    /**
+     * Process workers for download and installation tasks
+     */
     protected static installProcess: ChildProcess;
     protected static downloadProcess: ChildProcess;
 
+    /**
+     * List of approved patches for pvs
+     */
     static readonly approvedPatches: { fname: string, description: string }[] = [
         { fname: "patch-20210511.lisp", description: "Adds support for unicode in server commands" },
         { fname: "patch-20210706.lisp", description: "Fix for 'the assertion (or (null ex) (place ex)) failed'" },
         { fname: "patch-20210707.lisp", description: "Fix for prover not starting for judgements that are trivially true" },
-        { fname: "patch-20210715.lisp", description: "Fix for pvs-server breaking into lisp when imported library cannot be found" }        
+        { fname: "patch-20210715.lisp", description: "Fix for pvs-server breaking into lisp when imported library cannot be found" },
+        { fname: "patch-20210715a.lisp", description: "Fix for pvs-server breaking into lisp when opening a corrupted prf file" }
     ];
-
 
     /**
      * Installs PVS
