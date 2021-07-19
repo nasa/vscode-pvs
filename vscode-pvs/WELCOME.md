@@ -3,6 +3,7 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## Documentation
+- [Walkthrough on VSCode-PVS](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/WALKTHROUGH.md)
 - [Quick reference guide](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/USER-INTERFACE.md) for the VSCode-PVS User Interface
 - [FAQs](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/FAQ.md) on VSCode-PVS, including troubleshooting techniques for basic problems.
 - Are you new to PVS? Try out our [tutorial](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/TUTORIAL.md)!
@@ -25,6 +26,12 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.56 (2021.07.xx)]()      
+  -Added syntax highlighting for math symbols representing keywords (∀ ∃ ⇒ ⇔ ¬)  
+  -Added pvs patches 20210706..20210715a (fixes for assertion errors, judgements, importings, prf files)    
+  -Improved performance of vscode-plot command (pvsio process cache)  
+  -Improved proof-explorer (enabled copy-paste across proof attempts)  
+
 - [1.0.55 (2021.07.07)]()      
   -Improved prover console (command accelerators, help *, yes-no-cancel dialog, improved feedback)  
   -Improved workspace explorer (enabled navigation of abstract datatype declarations)    
