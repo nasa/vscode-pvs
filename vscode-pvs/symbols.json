@@ -366,6 +366,11 @@
         "body": [ "∵" ]
     }, {
         "description": "logical negation",
+        "prefix": "\\not ¬",
+        "scope": "pvs",
+        "body": [ "¬" ]
+    }, {
+        "description": "logical negation",
         "prefix": "\\neg ¬",
         "scope": "pvs",
         "body": [ "¬" ]
