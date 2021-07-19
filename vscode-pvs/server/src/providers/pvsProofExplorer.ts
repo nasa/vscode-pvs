@@ -3242,7 +3242,7 @@ export class ProofItem extends TreeItem {
 		if (opt.rebase) {
 			// adjust branch id for the node being pasted
 			const targetId: string = this.children?.length ? this.children[0].branchId
-				: this.parent ? `${this.parent.branchId}.1`
+				: this.parent?.branchId ? `${this.parent.branchId}.1`
 					: ""
 			child.rebaseTree(child.branchId, targetId);
 		}

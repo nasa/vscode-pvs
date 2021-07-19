@@ -779,8 +779,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 */
 	disposeView(): void {
 		this.root = null;
-		vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', false);
-		vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', false);
+		// don't reset the clipboard flags, so the user can paste proof commands from the previous proof attempt
+		// vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-node', false);
+		// vscode.commands.executeCommand('setContext', 'proof-explorer.clipboard-contains-tree', false);
 		this.resetView();
 		this.disableView();
 	}
