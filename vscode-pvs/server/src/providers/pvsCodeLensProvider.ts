@@ -333,7 +333,7 @@ export class PvsCodeLensProvider {
     }
 
     async onCodeLens (args: CodeLensParams, txt: string): Promise<CodeLens[]> {
-        const uri: string = args.textDocument.uri;
+        const uri: string = args?.textDocument?.uri;
         if (fsUtils.isPvsFile(uri)) {
             let codelens: CodeLens[] = await this.provideCodeLens({ txt, uri });
             return codelens;

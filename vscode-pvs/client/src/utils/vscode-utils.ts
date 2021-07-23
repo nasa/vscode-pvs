@@ -88,19 +88,21 @@ export async function createDefaultPvsWorkspacesDirectory (): Promise<string> {
  * Utility function, shows a text document in the editor
  * @param content 
  */
-export function showTextDocument (desc: { 
+ export function showTextDocument (desc: { 
     contextFolder: string, 
     fileName: string, 
     fileExtension: string 
 }, opt?: { 
     viewColumn?: vscode.ViewColumn, 
-    selection?: vscode.Range 
+    selection?: vscode.Range,
+    preview?: boolean
 }): void {
     opt = opt || {};
     if (desc) {
+        const preview: boolean = opt?.preview === undefined ? true : opt.preview;
         const viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
         const uri: vscode.Uri = vscode.Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
-        vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn, selection: opt.selection });
+        vscode.window.showTextDocument(uri, { preserveFocus: true, preview, viewColumn, selection: opt.selection });
     }
 }
 
