@@ -275,8 +275,8 @@ describe("proofScript", () => {
 		let response: PvsResponse = await pvsProxy.lisp(`(change-workspace "${formula.contextFolder}")`, { externalServer: true });
 		response = await pvsProxy.lisp(`(typecheck-file "${fsUtils.desc2fname(formula)}" nil nil nil nil t)`, { externalServer: true });
 		response = await pvsProxy.lisp(`(get-default-proof-script "helloworld" "dummy")`, { externalServer: true });
-		// console.dir(response);
-		expect(response.result).to.equal(null);
+		// console.log(response);
+		expect(!!response.result).to.equal(false);
 	});
 
 	it(`can open proofs with comments`, async () => {
