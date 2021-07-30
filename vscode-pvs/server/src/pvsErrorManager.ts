@@ -47,7 +47,7 @@ export class PvsErrorManager {
         if (desc) {
             if (desc.taskId) {
                 const msg: string = `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}.\nPlease fix the typecheck errors before trying to start the evaluator on theory ${desc.request.theoryName}.`;
-                this.connection?.sendRequest(serverEvent.closeDontSaveEvent, { args: desc.request, msg });
+                // this.connection?.sendRequest(serverEvent.closeDontSaveEvent, { args: desc.request, msg });
                 this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg });
             } else {
                 const msg: string = (desc.response.error && desc.response.error.message) ? desc.response.error.message 

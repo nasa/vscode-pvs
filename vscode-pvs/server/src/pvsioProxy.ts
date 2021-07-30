@@ -44,6 +44,7 @@ import * as fsUtils from './common/fsUtils';
 import * as languageUtils from './common/languageUtils';
 import { PvsResponse } from './common/pvs-gui';
 import { forceLocale, isQuitCommand } from './common/languageUtils';
+import { WorkspaceFolder } from 'vscode-languageserver';
 
 export const pvsioResultRegExp: RegExp = /(\s*==>)?([\w\W\s]+)/g;
 
@@ -175,6 +176,7 @@ class PvsIoProcess {
 	 */
 	async activate (desc: PvsTheory, opt?: {
 		showBanner?: boolean,
+		workspaceFolders?: WorkspaceFolder[],
 		onExit?: () => void, 
 		onError?: (err?: Error) => void
 	}): Promise<boolean> {
@@ -196,7 +198,15 @@ class PvsIoProcess {
 			const args: string[] = [ `${fname}@${desc.theoryName}` ];
 			// pvsio args
 			let libraries: string[] = [];
-			const external: string[] = this.pvsLibraryPath.split(":") || [];
+			let external: string[] = this.pvsLibraryPath?.split(":") || [];
+			if (opt?.workspaceFolders?.length) {
+				external = external.concat(opt.workspaceFolders.map(folder => {
+					return fsUtils.normalizeContextFolder(folder.uri);
+				}));
+			}
+			if (process.env["PVS_LIBRARY_PATH"]) {
+				external = external.concat(process.env["PVS_LIBRARY_PATH"].split(":"));
+			}
 			for (let i = 0; i < external.length; i++) {
 				let lib: string = external[i].trim();
 				if (lib) {
@@ -210,7 +220,7 @@ class PvsIoProcess {
 				let lib: string = this.nasalibPath.endsWith("/") ? this.nasalibPath : `${this.nasalibPath}/`;
 				libraries.push(fsUtils.tildeExpansion(lib));
 			}
-			process.env["PVS_LIBRARY_PATH"] = (libraries && libraries.length) ? libraries.join(":") : "";
+			process.env["PVS_LIBRARY_PATH"] = (libraries?.length) ? libraries.join(":") : "";
 			console.log(`\nPVS_LIBRARY_PATH=${process.env["PVS_LIBRARY_PATH"]}\n`);
 			const fileExists: boolean = fsUtils.fileExists(pvsioExecutable);
 			let bootData: string = "";
@@ -415,9 +425,14 @@ export class PvsIoProxy {
 	/**
 	 * start pvsio programmatically
 	 */
-	async startEvaluator (desc: PvsTheory, opt?: { pvsLibraryPath?: string, reuseProcess?: boolean }): Promise<PvsResponse> {
+	async startEvaluator (desc: PvsTheory, opt?: { 
+		pvsLibraryPath?: string, 
+		reuseProcess?: boolean,
+		workspaceFolders?: WorkspaceFolder[]
+	}): Promise<PvsResponse> {
 		const processId: string = languageUtils.desc2id(desc);
 		if (processId) {
+			opt = opt || {};
 			// try to re-use existing processes
 			const pvsioProcess: PvsIoProcess = opt?.reuseProcess  && this.processRegistry[processId] ?
 				this.processRegistry[processId] 
@@ -439,7 +454,8 @@ export class PvsIoProxy {
 					if (this.processRegistry[processId]) {
 						delete this.processRegistry[processId];
 					}
-				}
+				},
+				...opt
 			});
 			if (success) {
 				this.processRegistry[processId] = pvsioProcess;
@@ -565,8 +581,12 @@ export class PvsIoProxy {
 	 * Evaluate a pvs expression
 	 * @param req 
 	 */
-	async evalExpression (req: EvalExpressionRequest): Promise<PvsResponse> {
-		let response: PvsResponse = await this.startEvaluator(req, { reuseProcess: true });
+	async evalExpression (req: EvalExpressionRequest, opt?: {
+		workspaceFolders?: WorkspaceFolder[],
+		pvsLibraryPath?: string
+	}): Promise<PvsResponse> {
+		opt = opt || {};
+		let response: PvsResponse = await this.startEvaluator(req, { ...opt, reuseProcess: true });
 		if (response && !response.error) {
 			response = await this.evalCommand({
 				contextFolder: req.contextFolder,

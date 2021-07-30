@@ -549,7 +549,7 @@ export const serverEvent = {
 	// saveProofEvent: "pvs.event.save-proof",
 	quitProofDontSaveEvent: "pvs.event.quit-dont-save-proof",
 	saveProofForceQuitEvent: "pvs.event.save-then-quit",
-	closeDontSaveEvent: "pvs.event.close-dont-save-proof",
+	// closeDontSaveEvent: "pvs.event.close-dont-save-proof",
 	serverModeUpdateEvent: "pvs.event.server-mode-update",
 
 	// querySaveProof: "pvs.query.save-proof?",

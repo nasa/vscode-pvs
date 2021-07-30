@@ -477,12 +477,12 @@ export class EventsDispatcher {
                     if (desc?.response?.script) {
                         const fileContent: string = `# Proof for ${desc.args.formulaName}\n`
                             + 'An error occurred while trying to save your proof in PVS.\n'
-                            + 'You might be using an obsolete version of PVS. Please try to re-install PVS with the command `M-x reinstall-pvs`.\n'
-                            + 'The command will open a dialog, select `Download PVS` to install the latest version of PVS.\n'
+                            // + 'You might be using an obsolete version of PVS. Please try to re-install PVS with the command `M-x reinstall-pvs`.\n'
+                            // + 'The command will open a dialog, select `Download PVS` to install the latest version of PVS.\n'
                             + `If the problem persists, please report an issue on [github](https://github.com/nasa/vscode-pvs/issues) or on the [PVS group](https://groups.google.com/g/pvs-group), we will look into it.\n\n`
                             + `## Your proof attempt\n`
                             + `Don't panic, your proof attempt for ${desc.args.formulaName} is not lost.<br>\n`
-                            + `VSCode-PVS saved your proof attempt, and you can restore it in Proof Explorer (**...** -> **Restore Proof**).<br>\n\n`
+                            + `VSCode-PVS saved your proof attempt, and you can restore it from the Proof Explorer menu **...** -> **Restore Proof**<br>\n\n`
                             + `If everything else fails, below you can find the complete proof script, which you can paste in the prover terminal to repeat the proof:\n`
                             + '```lisp\n'
                             + desc.response.script

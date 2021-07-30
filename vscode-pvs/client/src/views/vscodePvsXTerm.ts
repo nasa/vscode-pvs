@@ -488,15 +488,20 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         // send start-pvsio request to pvs-server
         this.client.sendRequest(serverRequest.startEvaluator, theory);
         const success: boolean = await new Promise((resolve, reject) => {
-            this.client.onRequest(serverEvent.startEvaluatorResponse, (data: { response: PvsResponse, args: PvsTheory }) => {
-                const banner: string = colorUtils.colorText(utils.pvsioBannerAlt, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
-                const hints: HintsObject = getHints(this.sessionType, {
-                    theoryContent: this.target?.fileContent
-                });
-                this.log(banner, { hints });
-                this.showPrompt();
-                this.showWelcomeMessage();
-                this.enableTerminalInput();
+            this.client.onRequest(serverEvent.startEvaluatorResponse, (data: { response: PvsResponse, args: PvsTheory, error?: string }) => {
+                if (data?.response) {
+                    const banner: string = colorUtils.colorText(utils.pvsioBannerAlt, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
+                    const hints: HintsObject = getHints(this.sessionType, {
+                        theoryContent: this.target?.fileContent
+                    });
+                    this.log(banner, { hints });
+                    this.showPrompt();
+                    this.showWelcomeMessage();
+                    this.enableTerminalInput();
+                } else {
+                    this.log(data?.error);
+                    this.onEvaluatorResponse({ res: "bye!", req: null, state: null });
+                }
                 resolve(true);
             });
         });
@@ -517,7 +522,13 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.showHelpMessage(msg);
                 // disable response handlers
                 this.disableHandlers();
+                // clear session type
                 this.sessionType = null;
+                // clear target
+                this.target = null;
+                // reset global vscode-pvs variables so other views can be updated properly
+                vscodeUtils.resetGlobals();                    
+                
             } else {
                 if (data.res) {
                     const hints: HintsObject = getHints(this.sessionType, {

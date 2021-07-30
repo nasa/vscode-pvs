@@ -40,7 +40,7 @@ import {
 	Connection, TextDocuments, TextDocument, CompletionItem, createConnection, ProposedFeatures, InitializeParams, 
 	TextDocumentPositionParams, Hover, CodeLens, CodeLensParams,
 	Diagnostic, Position, Range, DiagnosticSeverity, Definition,
-	Location, TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit
+	Location, TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit, WorkspaceFolder
 } from 'vscode-languageserver';
 import { 
 	PvsDefinition, FileList, TheoryDescriptor, PvsContextDescriptor, serverEvent, serverRequest,
@@ -423,7 +423,8 @@ export class PvsLanguageServer {
 	 */
 	async evalExpressionRequest (req: EvalExpressionRequest): Promise<void> {
 		req = fsUtils.decodeURIComponents(req);
-		const res: PvsResponse = await this.pvsioProxy?.evalExpression(req);
+		const workspaceFolders: WorkspaceFolder[] = await this.connection?.workspace?.getWorkspaceFolders();
+		const res: PvsResponse = await this.pvsioProxy?.evalExpression(req, { workspaceFolders, pvsLibraryPath: this.pvsLibraryPath });
 		this.connection?.sendNotification(serverRequest.evalExpression, { req, res });
 	}
 	/**
@@ -470,7 +471,7 @@ export class PvsLanguageServer {
 		theory = fsUtils.decodeURIComponents(theory);
 		// send feedback to the front-end
 		const taskId: string = `pvsio-${theory.fileName}@${theory.theoryName}`;
-		const channelID: string = utils.desc2id(theory);
+		// const channelID: string = utils.desc2id(theory);
 		this.notifyStartImportantTask({ id: taskId, msg: `Loading files necessary to evaluate theory ${theory.theoryName}` });
 		// make sure the theory typechecks before starting the evaluator
 		const response: PvsResponse = await this.typecheckFile(theory);
@@ -486,6 +487,7 @@ export class PvsLanguageServer {
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
 			this.notifyServerMode("pvsio");
 		} else {
+			this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { error: response?.error?.data?.error_string, args: theory });
 			this.pvsErrorManager?.handleEvaluationError({ request: theory, response: <PvsError> response, taskId });
 			// this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 		}
@@ -2034,7 +2036,7 @@ export class PvsLanguageServer {
 		this.connection?.onCodeLens(async (args: CodeLensParams): Promise<CodeLens[]> => {
 			const isEnabled: boolean = !!(await this.connection?.workspace.getConfiguration("pvs.serviceProvider.codelens"));
 			if (this.codeLensProvider && isEnabled) {
-				const uri: string = args.textDocument.uri;
+				const uri: string = args?.textDocument?.uri;
 				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
 					const document: TextDocument = this.documents?.get(args?.textDocument.uri);
 					const txt: string = document?.getText() || await this.readFile(uri);
