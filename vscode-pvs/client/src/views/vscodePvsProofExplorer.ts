@@ -1198,7 +1198,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		this.client.onNotification(serverEvent.proofNodeUpdate, (desc: { id: string, name: string, status: ProofNodeStatus }) => {
 			this.onDidUpdateNodeStatus(desc);
 		});
-		context.subscriptions.push(commands.registerCommand("proof-explorer.show-proof-tree", () => {
+		context.subscriptions.push(commands.registerCommand("proof-explorer.show-proof", () => {
             this.showWebView({ recenter: true });
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.reveal-node", (desc: { id: string, name: string }) => {

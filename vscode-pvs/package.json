@@ -273,7 +273,7 @@
 			},
 			{
 				"command": "proof-explorer.show-proof",
-				"title": "_Show Proof Tree_",
+				"title": " Show Proof Tree",
 				"enablement": "pvs-server-active == true && proof-explorer.visible",
 				"category": "pvs",
 				"icon": {
