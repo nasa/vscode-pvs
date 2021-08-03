@@ -1392,7 +1392,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 				// if (this.activeNode && this.activeNode.parent?.nodeId === resource.parent?.nodeId) {
 				
 				// target node is the next sibling of the father
-				let father: ProofItem = this.getParent(resource);
+				let father: ProofItem = resource.contextValue === "proof-branch" ? resource : this.getParent(resource);
 				while (father && (father.contextValue !== "proof-branch" && father.contextValue !== "root")) {
 					father = this.getParent(father);
 				}
@@ -1403,7 +1403,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 					// run till the end
 					commands.executeCommand("proof-explorer.run-proof");
 				}
-				
+
 				// }
 			}
 		}));
