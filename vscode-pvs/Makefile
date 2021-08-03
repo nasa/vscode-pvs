@@ -33,7 +33,7 @@
  # PRIOR RECIPIENT, TO THE EXTENT PERMITTED BY LAW.  RECIPIENT'S SOLE
  # REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  # TERMINATION OF THIS AGREEMENT.
- 
+
 all: install
 	npm run compile
 	make core
@@ -75,13 +75,23 @@ test-find-declaration:
 test-typechecker:
 	npm run test-typechecker
 test-prover:
+ifdef PVS_LIBRARY_PATH
 	npm run test-prover
+else
+	$(warning >> Warning: PVS_LIBRARY_PATH is not defined and NASALib is needed to run test-prover)
+	npm run test-prover
+endif
 test-proof-script:
 	npm run test-proof-script
 test-workspace:
 	npm run test-workspace
 test-pvs-context:
+ifdef PVS_LIBRARY_PATH
 	npm run test-pvs-context
+else
+	$(warning >> Warning: PVS_LIBRARY_PATH is not defined and NASALib is needed to run test-pvs-context)
+	npm run test-pvs-context
+endif
 test-pvs-language-server:
 	npm run test-pvs-laguage-server
 test-proof-explorer:
@@ -91,7 +101,12 @@ test-tacticals:
 test-pvsio:
 	npm run test-pvsio
 test:
+ifdef PVS_LIBRARY_PATH
 	npm run test
+else
+	$(warning >> Warning: PVS_LIBRARY_PATH is not defined and NASALib is needed to run some if the tests)
+	npm run test
+endif
 test-all: test
 
 core:
