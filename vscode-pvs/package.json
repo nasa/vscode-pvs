@@ -768,6 +768,13 @@
 				"category": "pvs"
 			},
 			{
+				"command": "proof-explorer.run-subtree",
+				"title": "️️Run subtree",
+				"icon": "$(play-circle)",
+				"enablement": "view == proof-explorer-view && in-checker == true",
+				"category": "pvs"
+			},
+			{
 				"command": "proof-explorer.fast-forward",
 				"title": "️️Fast forward here",
 				"icon": {
@@ -980,9 +987,14 @@
 					"group": "context-menu/ctrl-1.7"
 				},
 				{
+					"command": "proof-explorer.run-subtree",
+					"when": "view == proof-explorer-view",
+					"group": "context-menu/ctrl-0"
+				},
+				{
 					"command": "proof-explorer.fast-forward",
 					"when": "view == proof-explorer-view && viewItem != root",
-					"group": "context-menu/ctrl"
+					"group": "context-menu/ctrl-1"
 				},
 				{
 					"command": "proof-explorer.fast-forward",
@@ -993,7 +1005,7 @@
 				{
 					"command": "proof-explorer.rewind",
 					"when": "view == proof-explorer-view",
-					"group": "context-menu/ctrl"
+					"group": "context-menu/ctrl-1"
 				},
 				{
 					"command": "proof-explorer.rewind",
@@ -1003,12 +1015,12 @@
 				{
 					"command": "proof-explorer.run-proof",
 					"when": "view == proof-explorer-view && viewItem == root",
-					"group": "context-menu/ctrl"
+					"group": "context-menu/ctrl-0"
 				},
 				{
 					"command": "proof-explorer.show-sequent",
 					"when": "view == proof-explorer-view && viewItem != root",
-					"group": "context-menu/ctrl-1"
+					"group": "context-menu/ctrl-2"
 				},
 				{
 					"command": "proof-explorer.create-proof-branch",

@@ -1377,7 +1377,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.fast-forward", (resource?: ProofItem) => {
 			// fast forward proof to a given proof command
-			if (resource?.name && resource?.id) {
+			if (resource && resource.name && resource.id && !resource.isVisitedOrPending() && !resource.isActive()) {
 				this.fastForwardTo({ id: resource.nodeId, name: resource.name });
 				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", { cmd: "fast-forward", target: resource.name });
 			}
@@ -1385,9 +1385,31 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			// console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
 			// this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
+		context.subscriptions.push(commands.registerCommand("proof-explorer.run-subtree", (resource?: ProofItem) => {
+			// fast forward proof to a given proof command
+			if (resource?.name && resource?.id) {
+				// sanity check: run subtree only if the active node is in the indicated subtree
+				// if (this.activeNode && this.activeNode.parent?.nodeId === resource.parent?.nodeId) {
+				
+				// target node is the next sibling of the father
+				let father: ProofItem = this.getParent(resource);
+				while (father && (father.contextValue !== "proof-branch" && father.contextValue !== "root")) {
+					father = this.getParent(father);
+				}
+				const target: ProofItem = father.contextValue === "root" ? null : this.getNextSibling(father);
+				if (target) {
+					commands.executeCommand("proof-explorer.fast-forward", target);
+				} else {
+					// run till the end
+					commands.executeCommand("proof-explorer.run-proof");
+				}
+				
+				// }
+			}
+		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.rewind", (resource?: ProofItem) => {
 			// rewind to a given proof command
-			if (resource?.name && resource?.id) {
+			if (resource?.name && resource?.id && resource.isVisitedOrPending()) {
 				this.rewindTo({ id: resource.nodeId, name: resource.name });
 				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", { cmd: "rewind", target: resource.name });
 			}
@@ -1668,7 +1690,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 	 * @param item Node whose parent should be returned
 	 */
 	getParent(item: ProofItem): ProofItem {
-		if (item.contextValue === "root") {
+		if (item?.contextValue === "root") {
 			return null;
 		}
 		// ghost node needs special treatment
@@ -1677,7 +1699,19 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		// if (item === this.ghostNode && !this.ghostNode.isActive()) {
 		// 	return null;
 		// }
-		return item.parent;
+		return item?.parent;
+	}
+	/**
+	 * Returns the next sibling
+	 */
+	getNextSibling (item: ProofItem): ProofItem {
+		const candidates: ProofItem[] = item?.parent?.children || [];
+		for (let i = 0; i < candidates?.length; i++) {
+			if (candidates[i].nodeId === item?.nodeId) {
+				return (i + 1 < candidates.length) ? candidates[i + 1] : null;
+			}
+		}
+		return null;
 	}
 }
 
