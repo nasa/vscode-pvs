@@ -20,7 +20,7 @@ The `Editor panel` shows code editors
 The `Explorer panel` shows information in the form of a tree view, akin to file browsers.
 - An `activity bar` is located on the side, and each icon in the bar activates a different view.
 - The `file icon` activates File Explorer, which shows the list of files in the current workspace. Click on a file to open the file content in the editor. Right click on a file to perform rename/delete/copy/paste operations. 
-- The `magnifying glass icon` activates a Search panel, that allows to search text in all files in the current workspace.
+- The `magnifying glass icon` activates a Search panel, that allows you to search text in all files in the current workspace.
 - The `extensions icon` activates the extension manager, which shows the list of extensions currently installed in VSCode, and allows you to search and install new extensions from the VSCode marketplace.
 - The `pvs icon` opens pvs-related views.
 - The `settings icon` allows to customize VSCode, e.g., keyboard shortcuts, and color theme.
@@ -62,7 +62,7 @@ To typecheck a theory, click the `build` icon in the editor toolbar
 Alternatively, you can also use an inline actionable command 'typecheck' available next to the theory name.
 - If typecheck errors are detected, the errors will be underlined with a red squiggle in the editor, and also shown in the Problems panel
 - If the theory typechecks correctly, you can proceed to proving theorems
-s
+
 ## Proving theorems
 To prove a theorem, click the `prove` command displayed inline above the theorem name.
 - When a proof is started, three components will be opened automatically: `Prover Console`, `Proof Explorer` and `Proof Mate`
@@ -98,4 +98,8 @@ VSCode-PVS provides a simplified interface to search definitions and lemmas in N
 <br>
 
 # Emergency Exit
-In the case VSCode-PVS becomes unresponsive, use the `Reboot PVS` command located in the `...` menu of Workspace Explorer. This will reboot the back-end and likely resolve the problem.
+In the case VSCode-PVS becomes unresponsive, use the `Reboot PVS` command located in the `...` menu of Workspace Explorer. This will reboot the back-end and likely resolve the problem. 
+
+Alternatively, close and re-open Visual Studio Code. 
+
+If the problem persists, please report an issue on [github](https://github.com/nasa/vscode-pvs/issues) or leave us a message in the [PVS group on Google](https://groups.google.com/g/pvs-group), we will look into it.
