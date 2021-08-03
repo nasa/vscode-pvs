@@ -955,9 +955,21 @@ export class EventsDispatcher {
         }));
         // pvsio-evaluator
         context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-evaluator", async () => {
-            // the toolbar generates invocations with { path }
-            // await this.vscodePvsTerminal.startEvaluator(resource);
             await this.xterm.onStartEvaluatorRequest();
+        }));
+        // io requests (pvsio, pvsio-web)
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.io", async (resource?: { path: string }) => {
+            // the toolbar generates invocations with resource = { path }, where path is the path of the file opened in the active editor
+            const msg: string = "Start evaluator session?"
+            const selection: string[] = [ "Start PVSio", "Start PVSio-Web" ];
+            const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, selection[0], selection[1]);
+            switch (ans) {
+                case selection[0]: { return vscode.commands.executeCommand("vscode-pvs.pvsio-evaluator"); }
+                case selection[1]: { return vscode.commands.executeCommand("vscode-pvs.pvsio-web", resource, { force: true }); }
+                default: {
+                    break;
+                }
+            }
         }));
 
         // ignore keypress
@@ -1270,7 +1282,8 @@ export class EventsDispatcher {
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.x-show-proof", async () => {
-            this.proofExplorer?.showWebView({ recenter: true });
+            commands.executeCommand("proof-explorer.show-proof-tree");
+            // this.proofExplorer?.showWebView({ recenter: true });
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.x-prove", async () => {
             commands.executeCommand("vscode-pvs.prove-formula-at-cursor-position");

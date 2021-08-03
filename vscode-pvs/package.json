@@ -272,6 +272,16 @@
 				}
 			},
 			{
+				"command": "proof-explorer.show-proof",
+				"title": "_Show Proof Tree_",
+				"enablement": "pvs-server-active == true && proof-explorer.visible",
+				"category": "pvs",
+				"icon": {
+					"light": "icons/svg-tree-black-icon.svg",
+					"dark": "icons/svg-tree-white-icon.svg"
+				}
+			},
+			{
 				"command": "vscode-pvs.prove-theory",
 				"title": "Re-run All Proofs",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
@@ -499,6 +509,13 @@
 					"dark": "icons/svg-play-circle-icon.svg",
 					"light": "icons/svg-play-circle-icon.svg"
 				}
+			},
+			{
+				"command": "vscode-pvs.io",
+				"title": "Evaluate/Prototype",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs",
+				"icon": "$(debug-line-by-line)"
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
@@ -1098,7 +1115,7 @@
 				},
 				{
 					"command": "vscode-pvs.x-show-proof",
-					"when": "editorLangId == pvs",
+					"when": "false && editorLangId == pvs",
 					"group": "navigation@1"
 				},
 				{
@@ -1108,13 +1125,18 @@
 				},
 				{
 					"command": "vscode-pvs.pvsio-web",
-					"when": "editorLangId == pvs",
+					"when": "false && editorLangId == pvs",
 					"group": "navigation@3"
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
-					"when": "editorLangId == pvs",
+					"when": "false && editorLangId == pvs",
 					"group": "navigation@4"
+				},
+				{
+					"command": "vscode-pvs.io",
+					"when": "editorLangId == pvs",
+					"group": "navigation@3"
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",
@@ -1246,6 +1268,11 @@
 				}
 			],
 			"view/title": [
+				{
+					"command": "proof-explorer.show-proof",
+					"when": "view == proof-explorer-view",
+					"group": "navigation"
+				},
 				{
 					"command": "proof-explorer.fold-proved-branches",
 					"when": "view == proof-explorer-view",
