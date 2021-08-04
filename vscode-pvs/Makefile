@@ -140,10 +140,10 @@ resolutions:
 audit:
 	@echo "\033[0;32m** Auditing dependencies... **\033[0m"
 	npm audit
-	cd client && npm audit
-	cd server && npm audit
-	cd extra/xterm-pvs && npm audit
-	cd extra/prettify-pvs && npm audit
+	cd client && npm audit fix
+	cd server && npm audit fix
+	cd extra/xterm-pvs && npm audit fix
+	cd extra/prettify-pvs && npm audit fix
 	@echo "\033[0;32m** Done with auditing! **\033[0m"
 
 examples:

@@ -52,7 +52,7 @@ import {
 	ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, 
 	ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, 
 	ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, 
-	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, SequentDescriptor, ProofEditSliceTree, ProofEditDidUpdateDirtyFlag 
+	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, SequentDescriptor, ProofEditSliceTree, ProofEditDidUpdateDirtyFlag, ProofExecRunSubtree 
 } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
 import { TreeStructure, NodeType, isGlassboxTactic, isPostponeCommand, isUndoCommand, formatSequent } from '../common/languageUtils';
@@ -251,6 +251,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 
+	/**
+	 * Sends fast-forward command to the server
+	 */
 	fastForwardTo (resource: { id: string, name: string }): void {
 		if (resource && this.serverMode === "in-checker") {
 			this.running = true;
@@ -263,6 +266,9 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		}
 	}
 
+	/**
+	 * Sends rewind command to the server
+	 */
 	rewindTo (resource: { id: string, name: string }): void {
 		if (resource && this.serverMode === "in-checker") {
 			this.running = true;
@@ -271,6 +277,21 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 			this.fft = { id: resource.id, name: resource.name };
 			const action: ProofExecRewind = { action: "rewind", selected: this.fft };
 			console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
+			this.client.sendRequest(serverRequest.proverCommand, action);
+		}
+	}
+
+	/**
+	 * Sends run-subtree command to the server
+	 */
+	runSubtree (resource: { id: string, name: string }): void {
+		if (resource && this.serverMode === "in-checker") {
+			this.running = true;
+			vscode.commands.executeCommand('setContext', 'proof-explorer.running', true);
+			// run subtree of a given proof command
+			this.fft = { id: resource.id, name: resource.name };
+			const action: ProofExecRunSubtree = { action: "run-subtree", selected: this.fft };
+			console.log(`[vscode-proof-explorer] Running subtree ${resource.name} (${resource.id})`);
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}
 	}
@@ -1388,23 +1409,7 @@ export class VSCodePvsProofExplorer extends Backbone.Model implements TreeDataPr
 		context.subscriptions.push(commands.registerCommand("proof-explorer.run-subtree", (resource?: ProofItem) => {
 			// fast forward proof to a given proof command
 			if (resource?.name && resource?.id) {
-				// sanity check: run subtree only if the active node is in the indicated subtree
-				// if (this.activeNode && this.activeNode.parent?.nodeId === resource.parent?.nodeId) {
-				
-				// target node is the next sibling of the father
-				let father: ProofItem = resource.contextValue === "proof-branch" ? resource : this.getParent(resource);
-				while (father && (father.contextValue !== "proof-branch" && father.contextValue !== "root")) {
-					father = this.getParent(father);
-				}
-				const target: ProofItem = father.contextValue === "root" ? null : this.getNextSibling(father);
-				if (target) {
-					commands.executeCommand("proof-explorer.fast-forward", target);
-				} else {
-					// run till the end
-					commands.executeCommand("proof-explorer.run-proof");
-				}
-
-				// }
+				this.runSubtree({ id: resource.nodeId, name: resource.name });
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.rewind", (resource?: ProofItem) => {

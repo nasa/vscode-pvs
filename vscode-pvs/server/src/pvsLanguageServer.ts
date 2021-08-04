@@ -1939,6 +1939,7 @@ export class PvsLanguageServer {
 						case "back": { this.proofExplorer?.back(); break; }
 						case "fast-forward": { this.proofExplorer?.fastForwardToNodeX(desc); break; }
 						case "rewind": { this.proofExplorer?.rewindToNodeX(desc); break; }
+						case "run-subtree": { this.proofExplorer?.runSubtreeX(desc); break; }
 						case "run": { await this.proofExplorer?.run({ feedbackToTerminal: true }); break; }
 						
 						case "quit-proof": { await this.proofExplorer?.quitProof({ notifyClient: true }); break; }

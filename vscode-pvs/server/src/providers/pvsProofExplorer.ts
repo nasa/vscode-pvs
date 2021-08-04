@@ -50,7 +50,8 @@ import {
 	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, SequentDescriptor, 
 	ProveFormulaRequest, ProofEditSliceTree, ProofExecDidQuitProof, FileDescriptor, ProofEditDidUpdateDirtyFlag, 
 	serverRequest,
-	SaveProofResponse
+	SaveProofResponse,
+	ProofExecRunSubtree
 } from '../common/serverInterface';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -300,7 +301,7 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor of the selected node where the execution should stop.
 	 */
 	async fastForwardTo (desc: { selected: ProofItem }): Promise<void> {
-		if (desc && desc.selected) {
+		if (desc?.selected) {
 			// adjust selected target --- if it's a branch, stop at the first child
 			const target: ProofItem = (desc.selected && desc.selected.contextValue === "proof-branch" 
 				&& desc.selected.children && desc.selected.children.length) ? desc.selected.children[0]
@@ -310,20 +311,55 @@ export class PvsProofExplorer {
 				this.running = true;
 				await this.step({ feedbackToTerminal: true });
 			} else {
-				// TODO: rewind
+				// TODO: rewind?
 			}
 		} else {
 			console.warn(`[proof-explorer] Warning: failed to fast forward (selected node is null)`);
 		}
 	}
 	async fastForwardToNodeX (desc: ProofExecFastForward): Promise<void> {
-		if (desc && desc.selected) {
+		if (desc?.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
 				await this.fastForwardTo({ selected });
 			}
 		} else {
 			console.warn(`[proof-explorer] Warning: failed to perform proof exec/fast forward (selected node is null)`);
+		}
+	}
+	/**
+	 * Run-subtree after a selected node, 
+	 * The execution stops when the entire subtree has been executed
+	 * To handle situations where previous proof branches may have been postponed,
+	 * the command does not directly fast-forward to the next branch (this would case the execution of all previous branches)
+	 * but fast-forward-to the last node of the subtree + step
+	 * @param desc Descriptor of the selected node where the execution should stop.
+	 */
+	async runSubtree(desc: { selected: ProofItem }): Promise<void> {
+		if (desc?.selected && desc.selected.contextValue !== "ghost") {
+			// fast forward to the last node of the brannch and then execute the last node
+			const lastNode: ProofItem = desc.selected.contextValue === "proof-branch" ?
+				desc.selected.getLastChildInSubtree()
+					: desc.selected.parent?.getLastChildInSubtree();
+			if (lastNode) {
+				await this.fastForwardTo({ selected: lastNode });
+				// double check that fast forward ended up in the right place
+				if (this.activeNode?.id === lastNode.id) {
+					await this.step({ feedbackToTerminal: true });
+				}
+			}			
+		} else {
+			console.warn(`[proof-explorer] Warning: failed to run-subtree (selected node is null)`);
+		}
+	}
+	async runSubtreeX(desc: ProofExecRunSubtree): Promise<void> {
+		if (desc?.selected) {
+			const selected: ProofItem = this.findNode(desc.selected.id);
+			if (selected) {
+				await this.runSubtree({ selected });
+			}
+		} else {
+			console.warn(`[proof-explorer] Warning: failed to perform proof exec/sub-subtree (selected node is null)`);
 		}
 	}
 	
@@ -391,86 +427,88 @@ export class PvsProofExplorer {
 	 */
 	async step (opt?: { cmd?: string, feedbackToTerminal?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
+		// return new Promise (async (resolve, reject) => {
 
-		if (this.stopAt && this.activeNode && this.stopAt.id === this.activeNode.id) {
-			this.stopAt = null;
-			this.running = false;
-			if (this.connection) {
-				const evt: ProofExecDidStopRunning = {
-					action: "did-stop-running"
-				};
-				this.connection.sendNotification(serverEvent.proverEvent, evt);
+			if (this.stopAt && this.activeNode && this.stopAt.id === this.activeNode.id) {
+				this.stopAt = null;
+				this.running = false;
+				if (this.connection) {
+					const evt: ProofExecDidStopRunning = {
+						action: "did-stop-running"
+					};
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
+				}
+				return null;
 			}
-			return null;
-		}
 
-		const cmd: string = (opt.cmd) ? opt.cmd : 
-				(this.activeNode?.contextValue === "proof-command" && (this.ghostNode && !this.ghostNode.isActive())) ?
-					this.activeNode?.name 
-						: null;
-		if (cmd) {
-			if (this.running && !this.autorunFlag && isPostponeCommand(cmd)) {
-				if (this.stopAt) {
-					if (this.stopAt === this.activeNode) {
-						// stop the proof at the first postpone when running the proof in proof explorer, except if this is a re-run triggered by M-x prt or M-x pri (autorunFlag)
+			const cmd: string = (opt.cmd) ? opt.cmd : 
+					(this.activeNode?.contextValue === "proof-command" && (this.ghostNode && !this.ghostNode.isActive())) ?
+						this.activeNode?.name 
+							: null;
+			if (cmd) {
+				if (this.running && !this.autorunFlag && isPostponeCommand(cmd)) {
+					if (this.stopAt) {
+						if (this.stopAt === this.activeNode) {
+							// stop the proof at the first postpone when running the proof in proof explorer, except if this is a re-run triggered by M-x prt or M-x pri (autorunFlag)
+							this.running = false;
+							return null;
+						}
+					} else {
+						this.stopAt = this.activeNode;
+					}
+				}
+				if (opt.feedbackToTerminal && !this.autorunFlag) {
+					// const channelID: string = desc2id(this.formula);
+					// const evt: CliGatewayPrintProofCommand = { type: "pvs.event.print-proof-command", channelID, data: { cmd } };
+					// this.pvsLanguageServer.cliGateway.publish(evt);
+				}
+				const command: PvsProofCommand = {
+					fileName: this.formula.fileName,
+					fileExtension: this.formula.fileExtension,
+					theoryName: this.formula.theoryName,
+					formulaName: this.formula.formulaName,
+					contextFolder: this.formula.contextFolder,
+					cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
+				};
+				// console.dir(command, { depth: null });
+				const response: PvsResponse = await this.proofCommand(command);
+				if (this.interruptFlag) {
+					this.interruptFlag = false;
+					if (this.autorunFlag) {
 						this.running = false;
+						this.stopAt = null;			
+						await this.quitProof();
 						return null;
 					}
-				} else {
-					this.stopAt = this.activeNode;
+					// else -- keep processing the response as usual
 				}
-			}
-			if (opt.feedbackToTerminal && !this.autorunFlag) {
-				// const channelID: string = desc2id(this.formula);
-				// const evt: CliGatewayPrintProofCommand = { type: "pvs.event.print-proof-command", channelID, data: { cmd } };
-				// this.pvsLanguageServer.cliGateway.publish(evt);
-			}
-			const command: PvsProofCommand = {
-				fileName: this.formula.fileName,
-				fileExtension: this.formula.fileExtension,
-				theoryName: this.formula.theoryName,
-				formulaName: this.formula.formulaName,
-				contextFolder: this.formula.contextFolder,
-				cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
-			};
-			// console.dir(command, { depth: null });
-			const response: PvsResponse = await this.proofCommand(command);
-			if (this.interruptFlag) {
-				this.interruptFlag = false;
-				if (this.autorunFlag) {
-					this.running = false;
-					this.stopAt = null;			
-					await this.quitProof();
-					return null;
+				// console.dir(response, { depth: null });
+				if (response?.result?.length) {
+					for (let i = 0; i < response.result.length; i++) {
+						const proofState: SequentDescriptor = response.result[i]; // process proof commands
+						await this.onStepExecutedNew({ proofState, args: command, lastSequent: i === response.result.length - 1 }, opt);
+					}
+					// if a proof is running, then iterate
+					if (this.running && !this.ghostNode.isActive()) {
+						await this.step(opt);
+					}
 				}
-				// else -- keep processing the response as usual
+				return response;
 			}
-			// console.dir(response, { depth: null });
-			if (response?.result?.length) {
-				for (let i = 0; i < response.result.length; i++) {
-					const proofState: SequentDescriptor = response.result[i]; // process proof commands
-					await this.onStepExecutedNew({ proofState, args: command, lastSequent: i === response.result.length - 1 }, opt);
+			if (this.autorunFlag) {
+				this.running = false;
+				this.stopAt = null;	
+				// mark proof as unfinished
+				if (this.root.getProofStatus() !== "untried") {
+					this.root.setProofStatus("unfinished");
 				}
-				// if a proof is running, then iterate
-				if (this.running && !this.ghostNode.isActive()) {
-					this.step(opt);
-				}
+				// quit proof and update proof status in the jprf file
+				await this.quitProofAndSave({ jprfOnly: true });
+				// await this.quitProof();
+				return null;
 			}
-			return response;
-		}
-		if (this.autorunFlag) {
-			this.running = false;
-			this.stopAt = null;	
-			// mark proof as unfinished
-			if (this.root.getProofStatus() !== "untried") {
-				this.root.setProofStatus("unfinished");
-			}
-			// quit proof and update proof status in the jprf file
-			await this.quitProofAndSave({ jprfOnly: true });
-			// await this.quitProof();
 			return null;
-		}
-		return null;
+		// });
 	}
 	protected restoreTreeAttributes (): void {
 		if (this.root) {
@@ -3297,6 +3335,13 @@ export class ProofItem extends TreeItem {
 	}
 	getChildren (): ProofItem[] {
 		return this.children;
+	}
+	getLastChildInSubtree (): ProofItem {
+		if (this.children?.length) {
+			const candidate: ProofItem = this.children[this.children.length - 1];
+			return candidate.getLastChildInSubtree();
+		}
+		return this;
 	}
 	printProofCommands (): string | null {
 		let ans: string = (this.contextValue === "proof-command") ? this.name : "";

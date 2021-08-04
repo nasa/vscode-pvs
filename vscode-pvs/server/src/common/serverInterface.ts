@@ -943,7 +943,7 @@ export type ProofEditDidUpdateDirtyFlag = {
 // ProofExec
 export type ProofExecCommand = ProofExecForward | ProofExecBack | ProofExecFastForward | ProofExecRun
 	| ProofExecQuit | ProofExecOpenProof | ProofExecStartNewProof | ProofExecInterruptProver | ProofExecQuitAndSave
-	| ProofExecInterruptAndQuitProver | ProofExecImportProof | ProofExecRewind;
+	| ProofExecInterruptAndQuitProver | ProofExecImportProof | ProofExecRewind | ProofExecRunSubtree;
 export type ProofExecForward = {
 	action: "forward"
 };
@@ -956,6 +956,10 @@ export type ProofExecFastForward = {
 };
 export type ProofExecRewind = {
 	action: "rewind",
+	selected: { id: string, name: string }
+};
+export type ProofExecRunSubtree = {
+	action: "run-subtree",
 	selected: { id: string, name: string }
 };
 export type ProofExecRun = {
