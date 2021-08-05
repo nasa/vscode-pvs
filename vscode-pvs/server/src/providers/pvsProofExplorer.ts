@@ -691,9 +691,8 @@ export class PvsProofExplorer {
 						if (this.root.getProofStatus() !== "untried") {
 							this.root.setProofStatus("unfinished");
 						}
-						// save and quit proof
-						await this.quitProofAndSave();
-						// await this.quitProof();
+						// quit proof and update the proof status
+						await this.quitProofAndSave({ jprfOnly: true });
 						return;
 					}
 				}
@@ -777,9 +776,8 @@ export class PvsProofExplorer {
 						if (this.root.getProofStatus() !== "untried") {
 							this.root.setProofStatus("unfinished");
 						}
-						// save and quit proof
-						await this.quitProofAndSave();
-						// await this.quitProof();
+						// quit proof and update proof status
+						await this.quitProofAndSave({ jprfOnly: true });
 					}
 					// return;
 				} else if (isInvalidCommand(this.proofState)) {
@@ -910,9 +908,8 @@ export class PvsProofExplorer {
 					if (this.root.getProofStatus() !== "untried") {
 						this.root.setProofStatus("unfinished");
 					}
-					// save and quit proof
-					await this.quitProofAndSave();
-					// await this.quitProof();
+					// quit proof and update proof status
+					await this.quitProofAndSave({ jprfOnly: true });
 				}
 			}
 		} else {
@@ -2447,30 +2444,11 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
-	// async querySaveProof (formula: PvsFormula): Promise<void> {
-	// 	// ask if the proof needs to be saved
-	// 	if (this.connection) {
-	// 		this.connection.sendRequest(serverEvent.querySaveProof, { args: formula }); // this will trigger the confirmation dialog
-	// 		await Promise.resolve(new Promise<void>((resolve, reject) => {
-	// 			this.connection.onRequest(serverEvent.querySaveProofResponse, async (response: ProofExecQuitAndSave | ProofExecQuit) => {
-	// 				if (response && response.action && response.action === "quit-proof-and-save") {
-	// 					await this.quitProofAndSave();
-	// 				}
-	// 				resolve();
-	// 			});
-	// 		}));
-	// 	}
-	// }
 	// this handler is for commands entered by the user at the prover terminal
 	// ATTN: request.cmd must be a string surrounded by round parentheses.
 	async proofCommandRequest (request: PvsProofCommand): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		
-		// handle meta-commands for saving and quitting
-		// if (utils.isSaveCommand(request.cmd)) {
-		// 	await this.quitProofAndSave();
-		// 	return;
-		// }
 		if (isSaveThenQuitCommand(request.cmd)) {
 			await this.quitProofAndSave();
 			const ans: ProofCommandResponse = { res: "bye!", req: request };
@@ -2478,28 +2456,16 @@ export class PvsProofExplorer {
 			return;
 		}
 		if (isQuitCommand(request.cmd)) {
-			// if (this.dirtyFlag) {
-			// 	// ask if the proof needs to be saved
-			// 	await this.querySaveProof(request)
-			// }
 			await this.quitProof({ notifyClient: true });
-			// const ans: ProofCommandResponse = { res: "bye!", req: request };
-			// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 			return;
 		}
 		if (isQuitDontSaveCommand(request.cmd)) {
 			await this.quitProof({ notifyClient: true });
-			// const ans: ProofCommandResponse = { res: "bye!", req: request };
-			// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 			return;
 		}
 		if (isFailCommand(request.cmd)) {
 			if (this.activeNode.branchId === "") {
 				// fail at the root sequent is equivalent to quit
-				// if (this.dirtyFlag) {
-				// 	// ask if the proof needs to be saved
-				// 	await this.querySaveProof(request)
-				// }
 				await this.quitProof({ notifyClient: true });
 				// const ans: ProofCommandResponse = { res: "bye!", req: request };
 				// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);	
