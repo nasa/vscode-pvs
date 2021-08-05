@@ -544,8 +544,22 @@
 				"category": "pvs"
 			},
 			{
+				"command": "proof-mate.edit-proof-node",
+				"title": "Edit",
+				"enablement": "pvs-server-active == true",
+				"icon": "$(edit)",
+				"category": "pvs"
+			},
+			{
+				"command": "proof-mate.clear-sketchpad",
+				"title": "Clear sketchpad",
+				"enablement": "pvs-server-active == true",
+				"icon": "$(trash)",
+				"category": "pvs"
+			},
+			{
 				"command": "proof-mate.exec-proof-command",
-				"title": "Execute Proof Command",
+				"title": "Run proof command",
 				"enablement": "pvs-server-active == true",
 				"icon": {
 					"dark": "icons/play-icon.png",
@@ -555,7 +569,7 @@
 			},
 			{
 				"command": "proof-mate.exec-subtree",
-				"title": "Execute Subtree",
+				"title": "Run subtree",
 				"enablement": "pvs-server-active == true",
 				"icon": {
 					"dark": "icons/svg-play-circle-icon.svg",
@@ -571,13 +585,13 @@
 			},
 			{
 				"command": "proof-mate.send-proof-command",
-				"title": "Copy Command to Prover Console",
+				"title": "Send command to prover console",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.send-subtree",
-				"title": "Copy Subtree to Prover Console",
+				"title": "Send subtree to prover console",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
@@ -611,7 +625,7 @@
 			},
 			{
 				"command": "proof-explorer.trim-unused",
-				"title": "Remove Unused Commands",
+				"title": "Remove unused commands",
 				"enablement": "view == proof-explorer-view && pvs-server-active == true",
 				"category": "pvs"
 			},
@@ -1114,12 +1128,17 @@
 					"group": "context-menu/exec-2"
 				},
 				{
-					"command": "proof-mate.exec-proof-command",
+					"command": "proof-mate.edit-proof-node",
 					"when": "view == proof-mate-view && viewItem == proof-command || view == proof-mate-view && viewItem == proofmate-item",
 					"group": "inline"
 				},
 				{
-					"command": "proof-mate.run-sketchpad",
+					"command": "proof-mate.exec-proof-command",
+					"when": "view == proof-mate-view && viewItem == proofmate-suggestion",
+					"group": "inline"
+				},
+				{
+					"command": "proof-mate.clear-sketchpad",
 					"when": "view == proof-mate-view && viewItem == proofmate-sketchpad",
 					"group": "inline"
 				}

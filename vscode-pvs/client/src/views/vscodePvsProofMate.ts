@@ -43,6 +43,8 @@ import * as utils from '../common/languageUtils';
 import { ProofMateProfile, ProofNode, PvsFormula, PvsProofCommand, SequentDescriptor, SFormula } from "../common/serverInterface";
 import * as path from 'path';
 import { openSketchpad, saveSketchpad } from "../common/fsUtils";
+import * as vscodeUtils from "../utils/vscode-utils"
+import { YesCancel } from "../utils/vscode-utils";
 
 declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
 
@@ -74,9 +76,21 @@ class ProofMateItem extends vscode.TreeItem {
 	printProofCommands (): null {
 		return null;
 	}
-
-
 }
+
+/**
+ * Proof mate command suggestions/hints
+ */
+class ProofMateSuggestion extends ProofMateItem {
+    constructor (desc: ProofMateItemDescriptor) {
+		super(desc);
+		this.contextValue = "proofmate-suggestion";
+	}
+}
+
+/**
+ * Abstract proof mate group -- this is the base class for hints and sketchpad groups 
+ */
 abstract class ProofMateGroup extends vscode.TreeItem {
 	contextValue: string = "proofmate-group";
     constructor (label: string, contextValue: string, collapsibleState: vscode.TreeItemCollapsibleState, tooltip: string) {
@@ -216,13 +230,18 @@ class ProofMateHints extends ProofMateGroup {
 		super("Hints", "proofmate-hints", vscode.TreeItemCollapsibleState.Expanded, "Proof Hints");
 		// the full list of codeicos is at https://microsoft.github.io/vscode-codicons/dist/codicon.html
 		this.iconPath = new vscode.ThemeIcon("lightbulb");
+		this.command = {
+			title: this.contextValue,
+			command: "proof-mate.hints.root-selected",
+			arguments: [ this ]
+		};
 	}
 	getChildren (): vscode.TreeItem[] {
 		return this.hints;
 	}
 	addRecommendation (rec: { cmd: string, tooltip?: string }): void {
         if (rec) {
-			this.hints.push(new ProofMateItem({
+			this.hints.push(new ProofMateSuggestion({
 				name: `(${rec.cmd})`, 
 				tooltip: rec.tooltip
 			}));
@@ -266,6 +285,11 @@ class ProofMateSketchpad extends ProofMateGroup {
 		super("Sketchpad", "proofmate-sketchpad", vscode.TreeItemCollapsibleState.Expanded, "Proof Sketches");
 		// the full list of codeicos is at https://microsoft.github.io/vscode-codicons/dist/codicon.html
 		this.iconPath = new vscode.ThemeIcon("clippy");
+		this.command = {
+			title: this.contextValue,
+			command: "proof-mate.sketchpad.root-selected",
+			arguments: [ this ]
+		};
 	}
 	/**
 	 * Returns the clips in the sketchpad
@@ -333,10 +357,14 @@ class ProofMateSketchpad extends ProofMateGroup {
 	/**
 	 * Clears the sketchpad
 	 */
-	clear (): void {
-		this.clips = [];
+	async clear (opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		opt = opt || {};
+		if (!opt.queryConfirm || await vscodeUtils.showYesCancelDialog("Clear sketchpad content?") === "yes") {
+			this.clips = [];
+			return true;
+		}
+		return false;
 	}
-
 }
 
 /**
@@ -507,6 +535,12 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	activate(context: vscode.ExtensionContext) {
 		this.context = context;
 		this.selectProfile("basic");
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.clear-sketchpad", async () => {
+			const success: boolean = await this.sketchpad.clear({ queryConfirm: true });
+			if (success) {
+				this.refreshView();
+			}
+		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.run-sketchpad", (resource: ProofMateSketchpad) => {
 			const clips: ProofItem[] = resource?.getChildren();
 			if (clips?.length) {
@@ -518,7 +552,7 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 					this.sendProofCommand(seq);
 				}
 			} else {
-				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
+				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
 			}
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.exec-subtree", (resource: ProofMateItem | ProofItem) => {
@@ -527,7 +561,18 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 				this.sendProofCommand(seq);
 				this.refreshView();
 			} else {
-				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
+				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
+			}
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.edit-proof-node", async (resource: ProofMateItem | ProofItem) => {
+			if (resource) {
+				let newName: string = await vscode.window.showInputBox({ prompt: `Editing proof command ${resource.name}`, placeHolder: `${resource.name}`, value: `${resource.name}`, ignoreFocusOut: true });
+				if (newName && newName !== resource.name) {
+					resource.name = resource.label = newName;
+					this.refreshView();
+				}
+			} else {
+				console.warn(`[proof-mate] Warning: action edit-proof-node is trying to use null resource`);
 			}
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.exec-proof-command", (resource: ProofMateItem | ProofItem) => {
@@ -539,7 +584,7 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 				this.sendProofCommand(resource.name);
 				this.refreshView();
 			} else {
-				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
+				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
 			}
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.send-subtree", (resource: ProofMateItem | ProofItem) => {
@@ -555,7 +600,7 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 				}
 				vscode.commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
 		} else {
-				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
+				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
 			}
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.send-proof-command", (resource: ProofMateItem | ProofItem) => {
@@ -570,7 +615,7 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 				}
 				vscode.commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
 		} else {
-				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use a null resource`);
+				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
 			}
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.activate-basic-profile", () => {
@@ -602,6 +647,12 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 					cmd = null;
 				}
 			}
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.sketchpad.root-selected", () => {
+			// nothing to do
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.hints.root-selected", () => {
+			// nothing to do
 		}));
 	}
 
@@ -708,13 +759,13 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	 * Utility function, starts a new proof in proof mate
 	 */
 	startProof (): void {
-		this.clearSketchPath();
+		this.clearSketchPad();
 	}
 
 	/**
 	 * Utility function, clears the sketchpad
 	 */
-	clearSketchPath (): void {
+	clearSketchPad (): void {
 		this.sketchpad.clear();
 	}
 	
@@ -736,5 +787,4 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	getTreeItem(item: vscode.TreeItem): vscode.TreeItem {
 		return item;
     }
-
 }

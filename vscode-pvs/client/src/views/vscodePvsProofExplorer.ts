@@ -2180,9 +2180,9 @@ export class RootNode extends ProofItem {
 		super.pending();
 		this.updateLabel();
 		this.iconPath = {
-            light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")
-        };
+            light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"),
+            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")
+        }
 	}
 	QED (): void {
 		super.visited();

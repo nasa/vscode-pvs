@@ -52,7 +52,9 @@ import { xTermDetectColorTheme } from '../common/xtermInterface';
 export function getEditorContextFolder () : string {
     return (vscode.window.activeTextEditor) ? fsUtils.getContextFolder(vscode.window.activeTextEditor.document.fileName) : null;
 }
-
+/**
+ * Utility function, gets the default workspace folder
+ */
 export function getDefaultContextFolder (): string {
     const workspaces: string = getConfiguration("pvs.pvsWorkspaces");
     if (workspaces) {
@@ -63,7 +65,10 @@ export function getDefaultContextFolder (): string {
     }
     return null;
 }
-export async function createDefaultPvsWorkspacesDirectory (): Promise<string> {
+/**
+ * Utility function, creates a default workspace folder
+ */
+ export async function createDefaultPvsWorkspacesDirectory (): Promise<string> {
     const workspaces: string = getConfiguration("pvs.pvsWorkspaces");
     if (workspaces) {
         const pvsWorkspaces: string = path.join(fsUtils.HOME_DIR, workspaces);
@@ -84,6 +89,19 @@ export async function createDefaultPvsWorkspacesDirectory (): Promise<string> {
     return null;
 }
 
+/**
+ * Utility function, shows a yes-cancel dialog
+ */
+export async function showYesCancelDialog (msg: string): Promise<YesCancel> {
+    if (msg) {
+        const yes: string = "Yes";
+        const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yes)
+        if (ans === yes) {
+            return "yes";
+        }
+    }
+    return "cancel";
+}
 /**
  * Utility function, shows a text document in the editor
  * @param content 
@@ -1095,5 +1113,6 @@ export function openVscodePvsSettings (): void {
 /**
  * Yes-No-Cancel type
  */
-export type YesNoCancel = "yes" | "no" | "cancel";
+export type YesCancel = "yes" | "cancel";
+export type YesNoCancel = YesCancel | "no";
 
