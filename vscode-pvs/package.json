@@ -641,6 +641,7 @@
 				"command": "proof-explorer.edit-node",
 				"title": "Edit",
 				"enablement": "pvs-server-active == true",
+				"icon": "$(edit)",
 				"category": "pvs"
 			},
 			{
@@ -1010,6 +1011,11 @@
 				{
 					"command": "proof-explorer.rewind",
 					"when": "false && view == proof-explorer-view",
+					"group": "inline"
+				},
+				{
+					"command": "proof-explorer.edit-node",
+					"when": "view == proof-explorer-view && viewItem != root",
 					"group": "inline"
 				},
 				{

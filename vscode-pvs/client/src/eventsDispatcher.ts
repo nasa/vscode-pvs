@@ -298,7 +298,7 @@ export class EventsDispatcher {
         });
 
         //----------------
-        this.client.onNotification(serverEvent.proverEvent, async (desc: ProofEditEvent | ProofExecEvent) => {
+        this.client.onNotification(serverEvent.proverEvent, (desc: ProofEditEvent | ProofExecEvent) => {
 			switch (desc.action) {
 				case "did-append-node": {
                     this.proofExplorer.didAppendNode(desc);
@@ -372,7 +372,7 @@ export class EventsDispatcher {
                 case "did-start-proof": { // this event is for interactive proof sessions
                     this.proofExplorer.didStartProof();
                     this.proofMate.startProof();
-                    await this.proofMate.loadSketchpadClips(); // loads sketchpad clips from the .jprf file
+                    // await this.proofMate.loadSketchpadClips(); // loads sketchpad clips from the .jprf file
                     this.proofExplorer.focusActiveNode({ force: true }); // this will automatically open the view, in the case the view was hidden
                     this.xterm.focus();
                     break;
