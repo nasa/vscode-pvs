@@ -52,7 +52,8 @@ import {
 	ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, 
 	ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, 
 	ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, 
-	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, SequentDescriptor, ProofEditSliceTree, ProofEditDidUpdateDirtyFlag, ProofExecRunSubtree 
+	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, SequentDescriptor, ProofEditSliceTree, 
+	ProofEditDidUpdateDirtyFlag, ProofExecRunSubtree
 } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
 import { TreeStructure, NodeType, isGlassboxTactic, isPostponeCommand, isUndoCommand, formatSequent } from '../common/languageUtils';
@@ -1984,7 +1985,7 @@ export abstract class ProofItem extends TreeItem {
 	 * Utility function, returns a string containing the proof commands 
 	 * for this tree item and all the tree items included in the subtree rooted this tree item
 	 */
-	 printProofCommands (opt?: { markExecuted?: boolean }): string | null {
+	 printProofCommands (opt?: { markExecuted?: boolean, skipChildren?: boolean }): string | null {
 		opt = opt || {};
 		if (opt.markExecuted) {
 			this.iconPath = {
@@ -1993,7 +1994,7 @@ export abstract class ProofItem extends TreeItem {
 			};
 		}
 		let ans: string = (this.contextValue === "proof-command") ? this.name : "";
-		if (this.children && this.children.length) {
+		if (!opt.skipChildren && this.children?.length) {
 			for (let i = 0; i < this.children.length; i++) {
 				ans += this.children[i].printProofCommands(opt);
 			}
@@ -2029,16 +2030,17 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Utility function, serializes the tree item into an extended node structure (ProofNodeX)
 	 */
-	getNodeXStructure (): ProofNodeX {
+	getNodeXStructure (opt?: { skipChildren?: boolean }): ProofNodeX {
+		opt = opt || {};
 		const res: ProofNodeX = {
 			id: this.nodeId,
 			branch: this.branchId,
 			name: this.name,
 			type: <ProofNodeType> this.contextValue,
 			rules: [],
-			parent: this.parent.nodeId
+			parent: this.parent?.nodeId
 		};
-		if (this.children) {
+		if (!opt.skipChildren && this.children?.length) {
 			for (let i = 0; i < this.children.length; i++) {
 				const child: ProofNodeX = this.children[i].getNodeXStructure();
 				res.rules.push({

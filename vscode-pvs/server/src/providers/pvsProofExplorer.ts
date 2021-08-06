@@ -49,9 +49,7 @@ import {
 	PvsFile, ProofExecDidImportProof, ProofExecRewind, 
 	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, SequentDescriptor, 
 	ProveFormulaRequest, ProofEditSliceTree, ProofExecDidQuitProof, FileDescriptor, ProofEditDidUpdateDirtyFlag, 
-	serverRequest,
-	SaveProofResponse,
-	ProofExecRunSubtree
+	serverRequest, SaveProofResponse, ProofExecRunSubtree
 } from '../common/serverInterface';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -1298,30 +1296,44 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor of the selected node.
 	 */
 	copyNode (desc: { selected: ProofItem }): boolean {
-		if (desc && desc.selected) {
+		if (desc?.selected) {
 			this.clipboard = desc.selected.clone();
 			this.clipboardTree = null;
 			return true;
-		} else {
-			console.warn(`[proof-explorer] Warning: unable to copy selected node`);
 		}
+		console.warn(`[proof-explorer] Warning: unable to copy selected node`);
 		return false;
 	}
 	copyNodeX (desc: ProofEditCopyNode): void {
-		if (desc && desc.selected) {
-			const selected: ProofItem = this.findNode(desc.selected.id);
-			if (selected && this.copyNode({ selected })) {
-				const evt: ProofEditDidCopyNode = {
-					action: "did-copy-node",
-					selected: { id: desc.selected.id, name: desc.selected.name }
-				};
-				if (this.connection && !this.autorunFlag) {
-					this.connection.sendNotification(serverEvent.proverEvent, evt);
+		if (desc?.selected) {
+			if (desc.data) {
+				// the client provided the data to be stored in the clipboard
+				const clips: ProofItem[] = this.convertNodeX2ProofItem(desc.data.elem);
+				this.clipboard = clips?.length ? clips[0] : null;
+				this.clipboardTree = null;
+				// send back the data to the client
+				if (this.connection && this.clipboard && !this.autorunFlag) {
+					const evt: ProofEditDidCopyNode = {
+						action: "did-copy-node", 
+						selected: { id: desc.selected.id, name: desc.selected.name }
+					};
+					this.connection?.sendNotification(serverEvent.proverEvent, evt);
 				}
-				return;
+			} else {
+				// find node
+				const selected: ProofItem = this.findNode(desc.selected.id);
+				// send back the data to the client
+				if (selected && this.copyNode({ selected }) && !this.autorunFlag) {
+					const evt: ProofEditDidCopyNode = {
+						action: "did-copy-node",
+						selected: { id: desc.selected.id, name: desc.selected.name }
+					};
+					this.connection?.sendNotification(serverEvent.proverEvent, evt);
+				}
 			}
+		} else {
+			console.warn(`[proof-explorer] Warning: unable to copy selected node`);
 		}
-		console.warn(`[proof-explorer] Warning: unable to copy selected node`);
 	}
 	/**
 	 * Copies the tree rooted at the selected node to the clipboard, and all the siblings below the selected node
@@ -1354,25 +1366,79 @@ export class PvsProofExplorer {
 	}
 	copyTreeX (desc: ProofEditCopyTree): void {
 		if (desc && desc.selected) {
-			const selected: ProofItem = this.findNode(desc.selected.id);
-			if (selected) {
-				const seq: string = this.copyTree({ selected });
-				if (this.connection && seq && !this.autorunFlag) {
-					const elems: ProofNodeX[] = this.clipboardTree.map(item => {
-						return item.getNodeXStructure();
-					});
-					const evt: ProofEditDidCopyTree = {
-						action: "did-copy-tree", 
-						selected: { id: desc.selected.id, name: desc.selected.name }, 
-						elems, 
-						clipboard: seq
-					};
-					this.connection.sendNotification(serverEvent.proverEvent, evt);
+			if (desc.data) {
+				// the client provided the data to be stored in the clipboard
+				this.clipboard = null;
+				this.clipboardTree = [];
+				for (let i = 0; i < desc.data.elems?.length; i++) {
+					const items: ProofItem[] = this.convertNodeX2ProofItem(desc.data.elems[i]);
+					if (items?.length) {
+						this.clipboardTree = this.clipboardTree.concat(items);
+					}
 				}
-				return;
+				// send back the data to the client
+				const evt: ProofEditDidCopyTree = {
+					action: "did-copy-tree", 
+					selected: { id: desc.selected.id, name: desc.selected.name }, 
+					elems: desc.data.elems, 
+					clipboard: desc.data.seq
+				};
+				this.connection?.sendNotification(serverEvent.proverEvent, evt);
+			} else {
+				// find the node in the tree
+				const selected: ProofItem = this.findNode(desc.selected.id);
+				if (selected) {
+					// copy the subtree
+					const seq: string = this.copyTree({ selected });
+					if (this.connection && seq && !this.autorunFlag) {
+						const elems: ProofNodeX[] = this.clipboardTree.map(item => {
+							return item.getNodeXStructure();
+						});
+						const evt: ProofEditDidCopyTree = {
+							action: "did-copy-tree", 
+							selected: { id: desc.selected.id, name: desc.selected.name }, 
+							elems, 
+							clipboard: seq
+						};
+						this.connection.sendNotification(serverEvent.proverEvent, evt);
+					}
+				}
 			}
+		} else {
+			console.warn(`[proof-explorer] Warning: unable to copy selected node`);
 		}
-		console.warn(`[proof-explorer] Warning: unable to copy selected node`);
+	}
+	/**
+	 * Converts a nodex structure sent by the servwr to a proof item for the tree view
+	 */
+	convertNodeX2ProofItem (elem: ProofNodeX, parent?: ProofItem): ProofItem[] {
+		const fromNodeX2 = (elem: ProofNodeX, parent?: ProofItem): ProofItem => {
+			const node: ProofItem = (elem.type === "proof-command") ? 
+					new ProofCommand(elem.name, elem.branch, parent, this.connection) 
+					: new ProofBranch(elem.name, elem.branch, parent, this.connection);
+			if (parent) {
+				parent.appendChild(node);
+			}
+			if (elem.rules && elem.rules.length) {
+				elem.rules.forEach(child => {
+					fromNodeX2(child, node);
+				});
+			}
+			return node;
+		}
+		const items: ProofItem[] = []
+		if (elem.type === "root") {
+			// convert only its children
+			for (let i = 0; i < elem.rules.length; i++) {
+				const item: ProofItem = fromNodeX2(elem.rules[i], parent);
+				items.push(item);
+			}
+		} else {
+			// append elem
+			const item: ProofItem = fromNodeX2(elem, parent);
+			items.push(item);				
+		}
+		return items;
 	}
 	/**
 	 * Appends the node in the clipboard to the selected node. 
@@ -2654,6 +2720,9 @@ export class ProofItem extends TreeItem {
 		}
 		return res;
 	}
+	/**
+	 * Checks if two branch names are equivalent
+	 */
 	branchNameEquals (b: string): boolean {
 		// the following branch names should be equivalent: 1.2T.1 = 1.2.1 = 1.2.1T = 1.2T.1T 
 		const b1x = this.branchId.split(".").map((elem: string) => {

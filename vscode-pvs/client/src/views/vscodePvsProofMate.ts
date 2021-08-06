@@ -40,25 +40,30 @@ import { LanguageClient } from "vscode-languageclient";
 import * as vscode from 'vscode';
 import { ProofBranch, ProofCommand, ProofItem, RootNode } from "./vscodePvsProofExplorer";
 import * as utils from '../common/languageUtils';
-import { ProofMateProfile, ProofNode, PvsFormula, PvsProofCommand, SequentDescriptor, SFormula } from "../common/serverInterface";
+import { ProofEditCopyNode, ProofEditCopyTree, ProofEditDidCopyTree, ProofMateProfile, ProofNode, ProofNodeX, PvsFormula, PvsProofCommand, SequentDescriptor, serverRequest, SFormula } from "../common/serverInterface";
 import * as path from 'path';
 import { openSketchpad, saveSketchpad } from "../common/fsUtils";
 import * as vscodeUtils from "../utils/vscode-utils"
-import { YesCancel } from "../utils/vscode-utils";
 
 declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
 
  /**
  * Definition of tree items
  */
-class ProofMateItem extends vscode.TreeItem {
+class ProofMateItem extends ProofItem {
 	contextValue: string = "proofmate-item";
 	name: string; // prover command
 	command: vscode.Command; // vscode action
 	children: ProofItem[] = [];
 
     constructor (desc: ProofMateItemDescriptor) {
-		super(desc.name, vscode.TreeItemCollapsibleState.None);
+		super({
+			type: "proofmate-item",
+			name: desc.name,
+			branchId: null,
+			parent: null,
+			collapsibleState: vscode.TreeItemCollapsibleState.None
+		});
 		this.name = desc.name;
 		this.tooltip = desc.tooltip;
 		this.label = this.name;
@@ -587,34 +592,39 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
 			}
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.send-subtree", (resource: ProofMateItem | ProofItem) => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.copy-subtree", (resource: ProofMateItem | ProofItem) => {
 			if (resource && resource.name) {
-				const seq: string = resource.printProofCommands({ markExecuted: true });
-				const dd: PvsProofCommand = { 
-					fileName: this.formula.fileName,
-					fileExtension: this.formula.fileExtension,
-					contextFolder: this.formula.contextFolder,
-					theoryName: this.formula.theoryName, 
-					formulaName: this.formula.formulaName,
-					cmd: seq
-				}
-				vscode.commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
-		} else {
+				const elem: ProofNodeX = resource.getNodeXStructure();
+				const seq: string = resource.printProofCommands();
+				const action: ProofEditCopyTree = {
+					action: "copy-tree", 
+					selected: { id: resource.nodeId, name: resource.name },
+					data: {
+						elems: elem ? [ elem ] : [], 
+						seq: seq
+					}
+				};
+				console.log(`[proof-mate] Copy tree rooted at ${resource.name} (${resource.nodeId})`);
+				this.client.sendRequest(serverRequest.proverCommand, action);
+			} else {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
 			}
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.send-proof-command", (resource: ProofMateItem | ProofItem) => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.copy-proof-command", (resource: ProofMateItem | ProofItem) => {
 			if (resource && resource.name) {
-				const dd: PvsProofCommand = { 
-					fileName: this.formula.fileName,
-					fileExtension: this.formula.fileExtension,
-					contextFolder: this.formula.contextFolder,
-					theoryName: this.formula.theoryName, 
-					formulaName: this.formula.formulaName,
-					cmd: resource.name
-				}
-				vscode.commands.executeCommand("proof-mate.proof-command-dblclicked", dd);
-		} else {
+				const elem: ProofNodeX = resource.getNodeXStructure({ skipChildren: true });
+				const seq: string = resource.printProofCommands({ skipChildren: true });
+				const action: ProofEditCopyNode = {
+					action: "copy-node", 
+					selected: { id: resource.nodeId, name: resource.name },
+					data: {
+						elem,
+						seq
+					}
+				};
+				console.log(`[proof-mate] Copy node ${resource.name} (${resource.nodeId})`);
+				this.client.sendRequest(serverRequest.proverCommand, action);
+			} else {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
 			}
 		}));

@@ -799,6 +799,10 @@ export type ProofEditAppendNode = {
 export type ProofEditCopyNode = {
 	action: "copy-node",
 	selected: { id: string, name: string }
+	data?: {
+		elem: ProofNodeX,
+		seq: string
+	}
 };
 export type ProofEditPasteNode = {
 	action: "paste-node",
@@ -806,7 +810,11 @@ export type ProofEditPasteNode = {
 };
 export type ProofEditCopyTree = {
 	action: "copy-tree",
-	selected: { id: string, name: string }
+	selected: { id: string, name: string } | null,
+	data?: {
+		elems: ProofNodeX[],
+		seq: string
+	}
 };
 export type ProofEditPasteTree = {
 	action: "paste-tree",

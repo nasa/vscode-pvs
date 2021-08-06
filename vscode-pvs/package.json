@@ -584,14 +584,14 @@
 				"category": "pvs"
 			},
 			{
-				"command": "proof-mate.send-proof-command",
-				"title": "Send command to prover console",
+				"command": "proof-mate.copy-proof-command",
+				"title": "Copy",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
 			{
-				"command": "proof-mate.send-subtree",
-				"title": "Send subtree to prover console",
+				"command": "proof-mate.copy-subtree",
+				"title": "Copy subtree",
 				"enablement": "pvs-server-active == true",
 				"category": "pvs"
 			},
@@ -1108,12 +1108,12 @@
 					"group": "context-menu/edit-6"
 				},
 				{
-					"command": "proof-mate.send-proof-command",
+					"command": "proof-mate.copy-proof-command",
 					"when": "view == proof-mate-view && viewItem == proofmate-item || view == proof-mate-view && viewItem == proof-command",
 					"group": "context-menu/exec-1"
 				},
 				{
-					"command": "proof-mate.send-subtree",
+					"command": "proof-mate.copy-subtree",
 					"when": "view == proof-mate-view",
 					"group": "context-menu/exec-1"
 				},
