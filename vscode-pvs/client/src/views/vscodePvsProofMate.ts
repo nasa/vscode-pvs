@@ -268,7 +268,11 @@ class ProofMateSketchpadLabel extends ProofItem {
 		this.name = label;
 		this.iconPath = new vscode.ThemeIcon("pinned");
 		this.tooltip = "";
-		this.command = null;
+		this.command = {
+			title: this.name,
+			command: "proof-mate.did-click-sketchpad-label",
+			arguments: [ { cmd: this.name } ]
+		};;
 	}
 }
 
@@ -657,6 +661,9 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 					cmd = null;
 				}
 			}
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.did-click-sketchpad-label", (desc: { cmd: string }) => {
+			// register double click handler
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.sketchpad.root-selected", () => {
 			// nothing to do
