@@ -565,6 +565,8 @@ export class PvsLanguageServer {
 						}
 					}
 				}
+				// clear pvsio cache
+				this.pvsioProxy.clearCache();
 				return response;
 			} catch (ex) {
 				console.error('[pvs-language-server.typecheckFile] Error: pvsProxy has thrown an exception', ex);

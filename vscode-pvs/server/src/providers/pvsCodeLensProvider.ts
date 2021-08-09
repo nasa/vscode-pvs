@@ -259,6 +259,7 @@ export class PvsCodeLensProvider {
             // plot-expression
             if (fileExtension === ".pvs") {
                 const regexs: RegExp[] = [
+                    new RegExp(utils.linearPlotTupleTupleListRegexp),
                     new RegExp(utils.linearPlotRegexp),
                     new RegExp(utils.linearPlotSimpleRegexp),
                     new RegExp(utils.scatterPlotRegexp)

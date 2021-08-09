@@ -85,4 +85,18 @@ helloworld: THEORY
       (: 5, 1 , -2 :)  % y3 datapoints
     )
 
+    %--------------------------------------------
+    %% Fourth example, plots a tuple of pairs of lists
+    %  each tuple is a different dataseries with its x and y coordinates
+    %--------------------------------------------
+    multiseries_2: [
+      [list[real], list[real]], 
+      [list[real], list[real]], 
+      [list[real], list[real]]
+    ] = (
+      ((: 0, 1, 2 :), (: 0, 1, 1.5 :)), % x,y values for series 1
+      ((: 0, 2, 4 :), (: 0, 1, 1.5 :)), % x,y values for series 2
+      ((: 0, 3, 6 :), (: 0, 1, 1.5 :))  % x,y values for series 3
+    )
+
   END helloworld

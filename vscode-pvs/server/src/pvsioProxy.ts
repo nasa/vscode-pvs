@@ -423,6 +423,16 @@ export class PvsIoProxy {
 	}
 
 	/**
+	 * Utility function, clears the process cache
+	 */
+	clearCache (): void {
+		for (let i in this.processRegistry) {
+			this.processRegistry[i].kill();
+		}
+		this.processRegistry = {};
+	}
+
+	/**
 	 * start pvsio programmatically
 	 */
 	async startEvaluator (desc: PvsTheory, opt?: { 

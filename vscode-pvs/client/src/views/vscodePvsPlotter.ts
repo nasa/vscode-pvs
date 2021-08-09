@@ -159,9 +159,10 @@ export class VSCodePvsPlotter {
     protected getPlotData (data: string, opt?: { mode?: utils.PlotMode }): utils.PlotData[] {
         opt = opt || {};
         const plotData: utils.PlotData[] = 
-            utils.isListExpr(data) ? [ utils.list2PlotData(data) ]
-            : utils.isTupleExpr(data) ? utils.tuple2PlotData(data)
-            : [];
+            utils.isTupleTupleListExpr(data) ? utils.tupletuplelist2PlotData(data)
+                : utils.isListExpr(data) ? [ utils.list2PlotData(data) ]
+                    : utils.isTupleExpr(data) ? utils.tuple2PlotData(data)
+                        : [];
         return plotData;
     }
     /**

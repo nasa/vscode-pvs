@@ -85,11 +85,12 @@ export const simpleImportingRegexp: RegExp = /\bIMPORTING\s+((?:(?:[A-Za-z][\w\?
 export const listRegexp: RegExp = /\(:([\(\)\s\+\-\w\/\,\.]*):\)/g;
 
 // generic regular expression for recognizing tuples
-export const tupleRegExp: RegExp = /\(([\(\)\s\+\-\w\/\,\:\#\.]*)\)/g;
+export const tupleRegexp: RegExp = /\(([\(\)\s\+\-\w\/\,\:\#\.]*)\)/g;
 
 // generic regular expressions for recognizing plottable expression series
 export const linearPlotRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*\[\s*list\s*\[\s*(?:real|int|rat|nat)\s*\](?:\,\s*list\s*\[\s*(?:real|int|rat|nat)\s*\])*\s*\]\s*=/g;
 export const linearPlotSimpleRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*list\s*\[\s*(?:real|int|rat|nat)\s*\]\s*=/g;
+export const linearPlotTupleTupleListRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*\[\s*(\[\s*list\s*\[\s*(?:real|int|rat|nat)\s*\](?:\,\s*list\s*\[\s*(?:real|int|rat|nat)\s*\])*\s*\]\s*,?\s*)+\]\s*=/g;
 
 // generic regular expression for recognizing plottable expression series
 export const scatterPlotRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*list\s*\[\s*\[\s*(?:real|int|rat|nat)\s*,\s*(?:real|int|rat|nat)\s*\]\s*\]\s*=/g;
@@ -111,7 +112,16 @@ export function isListExpr (expr: string): boolean {
  */
 export function isTupleExpr (expr: string): boolean {
 	if (expr?.trim().startsWith("(")) {
-		return new RegExp(tupleRegExp).test(expr);
+		return new RegExp(tupleRegexp).test(expr);
+	}
+	return false;
+}
+/**
+ * Utility function, checks if a given pvs expression is a list
+ */
+ export function isTupleTupleListExpr (expr: string): boolean {
+	if (expr?.trim().startsWith("(((:")) {
+		return new RegExp(listRegexp).test(expr);
 	}
 	return false;
 }
@@ -141,7 +151,7 @@ const bigIntTrigger: number = 128;
 /**
  * Utility function, tries to convert a pvs list expression into plot data.
  */
-export function list2PlotData (datapoints: string, opt?: { mode?: PlotMode, x?: string[], seriesId?: number }): PlotData {
+export function list2PlotData (data: string, opt?: { mode?: PlotMode, x?: string[], seriesId?: number }): PlotData {
     const res: PlotData = {
         x: [],
         y: [],
@@ -179,7 +189,7 @@ export function list2PlotData (datapoints: string, opt?: { mode?: PlotMode, x?: 
             res.name = `series ${isNaN(+opt?.seriesId) ? 1 : +opt.seriesId}`
         }
     } 
-	const match: RegExpMatchArray = new RegExp(listRegexp).exec(datapoints);
+	const match: RegExpMatchArray = new RegExp(listRegexp).exec(data);
 	if (match && match.length > 1) {
         const dataset: string = match[1];
         let xSeries: string[] = [];
@@ -214,7 +224,7 @@ export function list2PlotData (datapoints: string, opt?: { mode?: PlotMode, x?: 
 export function tuple2PlotData (data: string, opt?: { mode?: PlotMode }): PlotData[] {
     opt = opt || {};
 	const res: PlotData[] = [];
-	const regexp: RegExp = new RegExp(tupleRegExp);
+	const regexp: RegExp = new RegExp(tupleRegexp);
     let match: RegExpMatchArray = regexp.exec(data);
     let id: number = 1;
     if (match?.length > 1 && match[1]) {
@@ -233,6 +243,37 @@ export function tuple2PlotData (data: string, opt?: { mode?: PlotMode }): PlotDa
                 const plot_i: PlotData = list2PlotData(datapoints, { ...opt, x, seriesId: id++ });
                 res.push(plot_i);
             }
+        }
+    }
+	return res;
+}
+/**
+ * Utility function, tries to convert a pvs tuple of tuple of list expression into plot data.
+ * The odd element of the tuple is treated as list of x coordinates for the different data series.
+ * The even elements are data points belonging to different series.
+ */
+export function tupletuplelist2PlotData (data: string, opt?: { mode?: PlotMode, seriesId?: number }): PlotData[] {
+    opt = opt || {};
+	const res: PlotData[] = [];
+	const regexp: RegExp = new RegExp(listRegexp);
+    // let match: RegExpMatchArray = regexp.exec(data);
+    let id: number = 1;
+    // get series
+    // const series: string = match[0];
+    const regexpSeries: RegExp = new RegExp(listRegexp);
+    let matchSeriesX: RegExpMatchArray = null;
+    let matchSeriesY: RegExpMatchArray = null;
+    while (matchSeriesX = regexpSeries.exec(data)) {
+        matchSeriesY = regexpSeries.exec(data);
+        if (matchSeriesX?.length > 1 && matchSeriesX[1]
+                && matchSeriesY?.length > 1 && matchSeriesY[1]) {
+            // get labels
+            const x: string[] = matchSeriesX[1].replace("(:", "").split(",");
+            // get datapoints
+            const datapoints: string = `(: ${matchSeriesY[1]} :)`;
+            // get plot data
+            const plot_i: PlotData = list2PlotData(datapoints, { ...opt, x, seriesId: id++ });
+            res.push(plot_i);
         }
     }
 	return res;
