@@ -379,6 +379,7 @@ export class PvsLanguageServer {
 					// this.cliGateway?.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy?.listMathObjects() });
 
 					// load initial sequent in proof explorer
+					// console.log(`[pvs-language-server] proveFormulaRequest, loading initial sequent`, result[0]);
 					this.proofExplorer?.loadInitialSequent(result[0]);
 
 					// start proof in proof explorer
@@ -749,6 +750,9 @@ export class PvsLanguageServer {
 							}
 						}
 					}
+					// tccs were generated, send a context descriptor update to the client so the tccs can be rendered in workspace explorer
+					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+					this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 				}
 				if (!opt.quiet) {
 					const msg: string = `${nTccs} tccs generated for ${shortName} (${nProved} proved, ${nTccs - nProved} to be proved)`;
@@ -1161,7 +1165,11 @@ export class PvsLanguageServer {
 					return await this.getPreludeDescriptor();
 				} // else
 				const contextFolder: string = (args.contextFolder.endsWith("pvsbin") || args.contextFolder.endsWith("pvsbin/")) ? path.join(args.contextFolder, "..") : args.contextFolder;
-				return await fsUtils.getContextDescriptor(contextFolder, { listTheorems: true, includeTccs: true });
+				const desc: PvsContextDescriptor = await fsUtils.getContextDescriptor(contextFolder, {
+					listTheorems: true, 
+					includeTccs: true
+				});
+				return desc;
 			} else {
 				console.error('[pvs-language-server.listTheories] Error: pvs proxy is null');
 			}
@@ -1956,7 +1964,7 @@ export class PvsLanguageServer {
 						case "append-branch": { this.proofExplorer?.appendBranchX(desc); break; }
 						case "cut-node": { this.proofExplorer?.cutNodeX(desc); break; }
 						case "cut-tree": { this.proofExplorer?.cutTreeX(desc); break; }
-						case "slice-tree": { this.proofExplorer?.sliceTreeX(desc); break; }
+						case "jump-here": { this.proofExplorer?.jumpHereX(desc); break; }
 						case "delete-tree": { this.proofExplorer?.deleteTreeX(desc); break; }
 						case "trim-node": { this.proofExplorer?.trimNodeX(desc); break; }
 						case "trim-unused": { this.proofExplorer?.removeNotVisitedX(desc); break; }

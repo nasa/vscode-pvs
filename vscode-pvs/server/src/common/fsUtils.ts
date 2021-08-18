@@ -1268,7 +1268,7 @@ export async function getProofLitePosition (desc: { formula: PvsFormula, proofFi
  * Utility function, returns the list of theorems defined in a given pvs file
  * @param desc Descriptor indicating filename, file extension, context folder, file content, and whether the file in question is the prelude (flag prelude)
  */
- export async function listTheorems (desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean, cache?: { theories?: TheoryDescriptor[] } }): Promise<FormulaDescriptor[]> {
+export async function listTheorems (desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean, cache?: { theories?: TheoryDescriptor[] } }): Promise<FormulaDescriptor[]> {
 	if (desc && desc.fileContent) {
 		const theories: TheoryDescriptor[] = (desc.cache && desc.cache.theories) ? desc.cache.theories : listTheories(desc);
 		const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories

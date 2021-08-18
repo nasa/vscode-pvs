@@ -48,8 +48,8 @@ import {
 	ProofEditDidStartNewProof, ProofExecDidOpenProof,
 	PvsFile, ProofExecDidImportProof, ProofExecRewind, 
 	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, SequentDescriptor, 
-	ProveFormulaRequest, ProofEditSliceTree, ProofExecDidQuitProof, FileDescriptor, ProofEditDidUpdateDirtyFlag, 
-	serverRequest, SaveProofResponse, ProofExecRunSubtree
+	ProveFormulaRequest, ProofExecDidQuitProof, FileDescriptor, ProofEditDidUpdateDirtyFlag, 
+	serverRequest, SaveProofResponse, ProofExecRunSubtree, ProofEditJumpHere
 } from '../common/serverInterface';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -121,7 +121,7 @@ export class PvsProofExplorer {
 	protected autorunFlag: boolean = false; // whether proof explorer is re-running a proof
 	protected autorunCallback: (status: ProofStatus) => void; // autorun callback function
 
-	protected runningFlag: boolean = false; // status flag, indicates whether we are running all proof commands, as opposed to stepping through the proof commands
+	protected runningFlag: boolean = false; // running flag, indicates whether we are running all proof commands, as opposed to stepping through the proof commands
 	protected stopAt: ProofItem = null; // indicates which node we are fast-forwarding to
 
 	protected rewindingFlag: boolean = false; // status flag, indicates whether we are iteratively running undo
@@ -339,7 +339,7 @@ export class PvsProofExplorer {
 				if (this.activeNode?.id === lastNode.id) {
 					await this.step({ feedbackToTerminal: true });
 				}
-			}			
+			}
 		} else {
 			console.warn(`[proof-explorer] Warning: failed to run-subtree (selected node is null)`);
 		}
@@ -858,11 +858,17 @@ export class PvsProofExplorer {
 
 					// if the branch has changed, move to the new branch
 					if (languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
-						// trim node if the number of subgoals has changed
+						// trim the proof tree if the number of subgoals has changed
 						// children.length === 0 means this branch does not have sub-goals
 						// this.proofState["num-subgoals"] === 1 when branch does not have subgoals
 						if (activeNode.children?.length === 0 && this.proofState["num-subgoals"] > 1 && !this.autorunFlag) {
-							this.trimNode({ selected: activeNode });
+							// this.trimNode({ selected: activeNode });
+							activeNode.getNextSibling() ?
+								// cut the tree and keep the node if the node has siblings, trim the node otherwise
+								// the two operations are equivalent from the standpoint of the proof tree
+								// this strategy is useful for the clipboard -- the clipboard will show up the node being cut (if the node is not a singleton)
+								this.cutTreeX({ action: "cut-tree", selected: activeNode, keepRoot: true })
+									: this.trimNode({ selected: activeNode });
 						}
 						// find target branch
 						const targetBranch: ProofItem = this.findProofBranch(currentBranchName) || this.createBranchRecursive({ id: currentBranchName }, { internalAction: this.autorunFlag });
@@ -885,8 +891,9 @@ export class PvsProofExplorer {
 					} else {
 						// if branch has not changed and the active node has subgoals, then the structure of the proof tree has changed -- we need to trim
 						// NOTE: we don't want to prune in the case of autorun, otherwise part of the proof will be discarded permanently
-						if (!this.autorunFlag && activeNode.children && activeNode.children.length) {
-							this.trimNode({ selected: activeNode });
+						if (!this.autorunFlag && activeNode?.children?.length) {
+							// this.trimNode({ selected: activeNode });
+							this.cutTreeX({ action: "cut-tree", selected: activeNode, keepRoot: true });
 						}
 					}
 
@@ -1129,16 +1136,13 @@ export class PvsProofExplorer {
 	}
 	/**
 	 * Appends a new node to the proof tree.
-	 * If the new node is not provided as argument, then a dialogue is used to ask the user to enter the proof command to be appended.
-	 * The behavior of appendNode is as follows:
-	 * - selected node === proof command or endNode --> place the content of the clipboard as sibling after the selected node (or before, when beforeSelected is true)
-	 * - selected node === branch or root --> place the content of the clipboard as first child 
+	 * - selected node === proof command --> place the new node as sibling after the selected node (or before, when beforeSelected is true)
+	 * - selected node === branch or root --> place the new node as first child 
 	 * @param desc Descriptor indicating the selected node and the new element to be appended in the proof tree.
-	 * 				If the new element is not specified, the function automatically queries the user to enter a proof command
 	 * @param opt Options: beforeSelected (boolean) allows to append the new element before the selected node (rather than after)
 	 */
-	appendNode (desc: { selected: ProofItem, elem?: ProofItem | string, sequent: SequentDescriptor }, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): ProofItem {
-		if (desc && desc.selected) {
+	appendNode (desc: { selected: ProofItem, elem: ProofItem | string, sequent: SequentDescriptor }, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): ProofItem {
+		if (desc && desc.selected && desc.elem) {
 			this.updateDirtyFlag(true);
 			opt = opt || {};
 			const selectedNode: ProofItem = (desc.selected.contextValue === "ghost") ? (<GhostNode> desc.selected).realNode : desc.selected;
@@ -1147,17 +1151,24 @@ export class PvsProofExplorer {
 				new ProofCommand(desc.elem, branchId, selectedNode.parent, this.connection)
 					: desc.elem;
 			if (newNode) {
-				newNode.parent = selectedNode.parent;
 				switch (selectedNode.contextValue) {
 					case "root":
 					case "proof-branch": {
+						// newNode.parent = selectedNode; -- done within appendChildAtBeginning
 						selectedNode.appendChildAtBeginning(newNode, opt);
 						newNode.updateSequent(desc.sequent, { internalAction: this.autorunFlag });
 						break;
 					}
 					case "ghost":
 					case "proof-command": {
-						selectedNode.appendSibling(newNode, opt);
+						if (newNode.getType() === "proof-branch") {
+							// proof branches are pasted as children of proof-commands
+							// newNode.parent = selectedNode; -- done within appendChildAtBeginning
+							selectedNode.appendChildAtBeginning(newNode, opt);
+						} else {
+							// newNode.parent = selectedNode.parent; -- done within appendSibling
+							selectedNode.appendSibling(newNode, opt);
+						}
 						newNode.updateSequent(desc.sequent, { internalAction: this.autorunFlag });
 						break;
 					}
@@ -1340,21 +1351,28 @@ export class PvsProofExplorer {
 	 * (i.e., the clipboard will store a copy of the tree rooted at the selected node)
 	 * @param desc Descriptor of the selected node.
 	 */
-	copyTree (desc: { selected: ProofItem }): string {
+	copyTree (desc: { selected: ProofItem }, opt?: { updateClipboard?: boolean }): string {
+		opt = opt || {};
+		opt.updateClipboard = opt.updateClipboard === undefined ? true : false; // default is true
 		if (desc && desc.selected) {
-			if (desc.selected.contextValue !== "proof-command") {
+			if (desc.selected.getType() === "root") {
 				if (desc.selected && desc.selected.children && desc.selected.children.length) {
 					desc.selected = desc.selected.children[0];
 				}
 			}
 			const parent: ProofItem = desc.selected.parent;
-			this.clipboard = null;
-			this.clipboardTree = [];
+			if (opt.updateClipboard) {
+				this.clipboard = null;
+				this.clipboardTree = [];
+			}
 			let seq: string = "";
-			for (let i = parent.children.indexOf(desc.selected); i < parent.children.length; i++) {
+			const n: number = desc.selected.getType() === "proof-branch" ?
+				parent.children.indexOf(desc.selected) + 1 // copy only the proof branch
+					: parent.children.length; // copy everything below the proof command
+			for (let i = parent.children.indexOf(desc.selected); i >= 0 && i < n; i++) {
 				const item: ProofItem = parent.children[i];
 				if (item) {
-					this.clipboardTree.push(item.cloneTree());
+					if (opt.updateClipboard) { this.clipboardTree.push(item.cloneTree()); }
 					seq += item.printProofCommands();
 				}
 			}
@@ -1517,7 +1535,7 @@ export class PvsProofExplorer {
 	}
 	pasteTreeX (desc: ProofEditPasteTree, opt?: { beforeSelected?: boolean, rebase?: boolean }): void {
 		if (desc && desc.selected) {
-			let selected: ProofItem = this.findNode(desc.selected.id) || this.ghostNode?.realNode;
+			const selected: ProofItem = this.findNode(desc.selected.id) || this.ghostNode?.realNode;
 			if (selected) {
 				this.pasteTree({ selected }, opt);
 				if (this.ghostNodeIsActive() && this.ghostNode.realNode.id === selected.id) {
@@ -1618,11 +1636,12 @@ export class PvsProofExplorer {
 		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
 	}
 	/**
-	 * Trims the tree between active node (not included) and the selected node (not included). 
+	 * Jumps from the active node to the selected node
+	 * and trims the tree between active node (not included) and the selected node (not included). 
 	 * Equivalent to cutTree(selected) + trim(activeNode) + paste(activeNode). 
 	 * @param desc Descriptor indicating the selected node and the active node.
 	 */
-	sliceTree (desc: { selected: ProofItem, active: ProofItem }): boolean {
+	jumpHere (desc: { active: ProofItem, selected: ProofItem }): boolean {
 		if (desc && desc.selected) {
 			// cut tree rooted at selected
 			this.cutTree({ selected: desc.selected });
@@ -1638,12 +1657,12 @@ export class PvsProofExplorer {
 		}
 		return false;
 	}
-	sliceTreeX (desc: ProofEditSliceTree): boolean {
-		if (desc && desc.selected) {
-			const selected: ProofItem = this.findNode(desc.selected.id);
+	jumpHereX (desc: ProofEditJumpHere): boolean {
+		if (desc?.selected) {
 			const active: ProofItem = this.activeNode;
+			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected && active && active.id !== selected.id && !selected.isVisited()) {
-				const success: boolean = this.sliceTree({ selected, active });
+				const success: boolean = this.jumpHere({ active, selected });
 				return success;
 			}
 		}
@@ -1810,7 +1829,7 @@ export class PvsProofExplorer {
 			}
 			return items;
 		} else {
-			console.warn(`[proof-explorer] Warning: unable to delete selected node`);
+			console.warn(`[proof-explorer] Warning: unable to trim selected node`);
 		}
 		return null;
 	}
@@ -1974,6 +1993,7 @@ export class PvsProofExplorer {
 		if (this.connection && !this.autorunFlag) {
 			this.connection.sendNotification(serverEvent.proverEvent, evt);
 		}
+		// console.log(`[proof-explorer] Initial sequent for ${this.formula.formulaName}`, this.initialProofState);
 	}
 
 	/**
@@ -2022,6 +2042,9 @@ export class PvsProofExplorer {
 				const evt: ProofExecDidStartProof = { action: "did-start-proof" };
 				this.connection?.sendNotification(serverEvent.proverEvent, evt);
 			}
+
+			// console.log(`[proof-explorer] Starting proof for ${this.formula.formulaName}`,
+			// 	{ currentSequent: this.root.sequentDescriptor, initialSequent: this.initialProofState });
 		} else {
 			console.warn(`[proof-explorer] Warning: unable to activate selected proof (root node is null)`);
 		}
@@ -2372,7 +2395,7 @@ export class PvsProofExplorer {
 		this.proofDescriptor = this.makeProofDescriptor(this.origin);
 		await saveProofDescriptor(this.formula, this.proofDescriptor, { saveProofTree: true });
 		// save proof backup file -- just to be save in the case pvs hungs up and is unable to save
-		const script: string = this.copyTree({ selected: this.root });
+		const script: string = this.copyTree({ selected: this.root }, { updateClipboard: false });
 		let success: boolean = true;
 		let msg: string = null;
 		// quit proof
@@ -2587,7 +2610,7 @@ export class PvsProofExplorer {
 				// console.dir(response, { depth: null });
 				if (response) {
 					if (response.result) {
-						const channelID: string = languageUtils.desc2id(req);
+						// const channelID: string = languageUtils.desc2id(req);
 						const result: SequentDescriptor[] = response.result;
 						if (result.length) {
 							const sequent: SequentDescriptor = result[result.length - 1];
@@ -2619,6 +2642,7 @@ export class PvsProofExplorer {
 								if (languageUtils.QED(sequent)) {
 									if (this.connection) {
 										this.connection.sendRequest(serverEvent.QED, { response: { result: sequent }, args: req });
+										// this.connection.sendRequest(serverEvent.proofCommandResponse, { res: null, req: request });
 										// trigger a context update, so proof status will be updated on the front-end
 										const cdesc: PvsContextDescriptor = await this.pvsLanguageServer.getContextDescriptor({ contextFolder: req.contextFolder });
 										this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
@@ -2631,7 +2655,7 @@ export class PvsProofExplorer {
 								// show feedback in CLI only after executing the last command in the sequence
 								if (i === cmdArray.length - 1) {
 									// this.pvsLanguageServer.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: sequent, cmd });
-									this.pvsLanguageServer.getConnection()?.sendRequest(serverEvent.proofCommandResponse, { res: sequent, req: request });
+									this.connection?.sendRequest(serverEvent.proofCommandResponse, { res: sequent, req: request });
 								}
 							}
 						}	
@@ -2649,8 +2673,8 @@ export const QED: ProofStatus = "proved";
 /**
  * Definition of tree items
  */
-export class ProofItem extends TreeItem {
-	contextValue: "proof-branch" | "proof-command" | "root" | "ghost" = null;
+export abstract class ProofItem extends TreeItem {
+	contextValue: ProofNodeType | "ghost" = null;
 	name: string; // prover command or branch id
 	branchId: string = ""; // branch in the proof tree where this command is located (branchId for root is "").
 	protected previousState: {
@@ -2674,8 +2698,6 @@ export class ProofItem extends TreeItem {
 		pendingFlag: false
 	};
 	sequentDescriptor: SequentDescriptor = null; // sequent *before* the execution of the node
-
-	isComplete(): boolean { return this.completeFlag; }
 
 	/**
 	 * Constructor
@@ -2733,18 +2755,25 @@ export class ProofItem extends TreeItem {
 		}).join(".");
 		return b1x === b2x;
 	}
-	clone (opt?: { parent?: ProofItem, internalAction?: boolean }): ProofItem {
-		opt = opt || {};
-		switch (this.contextValue) {
-			case "root": { return <RootNode> this.clone(opt); }
-			case "proof-branch": { return <ProofBranch> this.clone(opt); }
-			case "proof-command": { return <ProofCommand> this.clone(opt); }
-			default: {
-				console.warn(`[proof-explorer] Warning: trying to clone node type ${this.contextValue}`);
-			}
-		}
-		return new ProofItem(this.contextValue, this.name, this.branchId, opt.parent, this.connection);
-	}
+	/**
+	 * Returns a clone of the current node
+	 */
+	abstract clone (opt?: { parent?: ProofItem, internalAction?: boolean }): ProofItem 
+	// {
+	// 	opt = opt || {};
+	// 	switch (this.contextValue) {
+	// 		case "root": { return <RootNode> this.clone(opt); }
+	// 		case "proof-branch": { return <ProofBranch> this.clone(opt); }
+	// 		case "proof-command": { return <ProofCommand> this.clone(opt); }
+	// 		default: {
+	// 			console.warn(`[proof-explorer] Warning: trying to clone node type ${this.contextValue}`);
+	// 		}
+	// 	}
+	// 	return new ProofItem(this.contextValue, this.name, this.branchId, opt.parent, this.connection);
+	// }
+	/**
+	 * Returns a clone of the current node.
+	 */
 	cloneTree (opt?: { parent?: ProofItem }): ProofItem {
 		opt = opt || {};
 		opt.parent = opt.parent || this.parent || null;
@@ -2769,17 +2798,22 @@ export class ProofItem extends TreeItem {
 		if (this.prevFlags.visitedFlag) { return this.visited(); }
 		if (this.prevFlags.pendingFlag) { return this.pending(); }
 	}
+	/**
+	 * Updates the sequent descriptor
+	 */
 	updateSequent (sequent: SequentDescriptor, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
-		this.sequentDescriptor = sequent;
-		// this.tooltip = (this.sequentDescriptor) ? languageUtils.formatSequent(this.sequentDescriptor) : " ";
-		if (!opt.internalAction && this.connection) {
-			const evt: ProofExecDidUpdateSequent = {
-				action: "did-update-sequent", 
-				sequent: this.sequentDescriptor, 
-				selected: { id: this.id, name: this.name } 
-			};
-			this.connection.sendNotification(serverEvent.proverEvent, evt);
+		if (sequent) {
+			this.sequentDescriptor = sequent;
+			// this.tooltip = (this.sequentDescriptor) ? languageUtils.formatSequent(this.sequentDescriptor) : " ";
+			if (!opt.internalAction && this.connection) {
+				const evt: ProofExecDidUpdateSequent = {
+					action: "did-update-sequent", 
+					sequent: this.sequentDescriptor, 
+					selected: { id: this.id, name: this.name } 
+				};
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
+			}
 		}
 	}
 	/**
@@ -2792,11 +2826,11 @@ export class ProofItem extends TreeItem {
 		this.name = newName;
 		// update also branch id if this is a proof branch
 		if (this.contextValue === "proof-branch") {
-			const oldBranchId: string = this.branchId;
+			// const oldBranchId: string = this.branchId;
 			this.branchId = this.name.replace(/[\(\)]/g, "");
 			// propagate branchId to all nodes in the subtree rooted at the current node
 			for (let i = 0; i < this.children?.length; i++) {
-				this.children[i].rebaseTree(oldBranchId, this.branchId, { internalAction: false });
+				this.children[i].rebaseTree(this.branchId, { internalAction: false });
 			}
 		}
 		if (!opt.internalAction && this.connection) {
@@ -2921,7 +2955,7 @@ export class ProofItem extends TreeItem {
 	/**
 	 * Mark subtree as visited
 	 */
-	 treeVisited (): void {
+	treeVisited (): void {
 		this.visited();
 		if (this.children) {
 			for (let i = 0; i < this.children.length; i++) {
@@ -2964,13 +2998,13 @@ export class ProofItem extends TreeItem {
 		}
 	}
 	/**
-	 * Checks if the current node is active
+	 * Returns true if the current node is active
 	 */
 	isActive (): boolean {
 		return this.activeFlag;
 	}
 	/**
-	 * Checks if the current node or any node in the subtree rooted at the current node is active
+	 * Returns true if the current node or any node in the subtree rooted at the current node is active
 	 */
 	isActiveTree (opt?: { activeNode?: ProofItem }): boolean {
 		opt = opt || {};
@@ -2985,17 +3019,29 @@ export class ProofItem extends TreeItem {
 		}
 		return active;
 	}
+	/**
+	 * Returns true if this node has been visited or is pending execution
+	 */
 	isVisitedOrPending (): boolean {
 		return this.visitedFlag || this.pendingFlag;
 	}
+	/**
+	 * Returns true if this node is pending execution
+	 */
 	isPending (): boolean {
 		return this.pendingFlag;
 	}
+	/**
+	 * Returns true if this node has been visited
+	 */
 	isVisited (): boolean {
 		return this.visitedFlag;
 	}
+	/**
+	 * Returns true if this node is complete
+	 */
+	isComplete(): boolean { return this.completeFlag; }
 	restore (): void {
-
 		// this.label = `${this.previousState.icon}${this.name}`;
 		// this.tooltip = this.previousState.tooltip;
 	}
@@ -3018,6 +3064,9 @@ export class ProofItem extends TreeItem {
 	setChildren (children: ProofItem[]): void {
 		this.children = children;
 	}
+	/**
+	 * Inserts a given child node at the given position in the list of children of the current node
+	 */
 	insertChild (child: ProofItem, position: number, opt?: { internalAction?: boolean }): void {
 		if (this.children && position < this.children.length - 1) {
 			const children1: ProofItem[] = this.children.slice(0, position);
@@ -3041,6 +3090,9 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
+	/**
+	 * Deletes a given child node
+	 */
 	deleteChild (child: ProofItem, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
 		this.children = this.children.filter((ch: ProofItem) => {
@@ -3057,6 +3109,9 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
+	/**
+	 * Deletes the tree rooted at the given child
+	 */
 	deleteTree (child: ProofItem): void {
 		const children: ProofItem[] = [];
 		for (let i in this.children) {
@@ -3068,6 +3123,9 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
+	/**
+	 * Returns a sequence representing the execution order of the commands rooted at the current node
+	 */
 	getProofCommands (): ProofItem[] {
 		let ans: ProofItem[] = [ this ];
 		if (this.children) {
@@ -3077,6 +3135,9 @@ export class ProofItem extends TreeItem {
 		}
 		return ans;
 	}
+	/**
+	 * Utility function, moves the active node indicator forward
+	 */
 	moveIndicatorForward (opt?: { lastVisitedChild?: ProofItem, keepSameBranch?: boolean, proofState?: SequentDescriptor }): ProofItem | null {
 		opt = opt || {};
 		if (this.contextValue === "proof-command") {
@@ -3089,9 +3150,13 @@ export class ProofItem extends TreeItem {
 		const proofState: SequentDescriptor = opt.proofState || this.sequentDescriptor;
 		if (this.children && this.children.length) {
 			if (!proofState) {
-				console.error(`[pvs-explorer] Error: proofstate is null. Please restart the proof and report this error to the vscode-pvs developers.`);
+				console.error(`[pvs-explorer] Error: proofstate is null. Please restart the proof and report this error to the vscode-pvs developers.`, {
+					opt,
+					contextValue: this.contextValue,
+					name: this.name
+				});
 			}
-			const activeBranchId: string = languageUtils.getBranchId(proofState.label);
+			const activeBranchId: string = languageUtils.getBranchId(proofState?.label);
 			if (opt.keepSameBranch && !this.children[0].branchNameEquals(activeBranchId)) {
 				return null;
 			}
@@ -3119,14 +3184,23 @@ export class ProofItem extends TreeItem {
 		}
 		return null;
 	}
-	selectLastVisitedChild (): ProofItem {
+	/**
+	 * Returns the node type, one of "proof-command", "proof-branch", "root"
+	 */
+	getType (): ProofNodeType {
+		return this.contextValue === "ghost" ? null : this.contextValue;
+	}
+	/**
+	 * Returns the last visited child
+	 */
+	getLastVisitedChild (): ProofItem {
 		if (this.children) {
 			const children: ProofItem[] = this.children.filter(item => {
 				return item.isVisitedOrPending();
 			});
 			if (children && children.length) {
 				this.pending();
-				return children[children.length - 1].selectLastVisitedChild();
+				return children[children.length - 1].getLastVisitedChild();
 			}
 		}
 		return this;
@@ -3142,7 +3216,7 @@ export class ProofItem extends TreeItem {
 					this.notVisited();
 					const candidate: ProofItem = children[children.length - 1];
 					if (candidate.children && candidate.children.length) {
-						return candidate.selectLastVisitedChild();
+						return candidate.getLastVisitedChild();
 					}
 					return candidate;
 				}
@@ -3180,7 +3254,7 @@ export class ProofItem extends TreeItem {
 		}
 		return null;
 	}
-	getNextSibling (): ProofItem | null {
+	getNextSibling (): ProofItem {
 		if (this.parent) {
 			const children: ProofItem[] = this.parent.children;
 			if (children && children.length > 1) {
@@ -3193,7 +3267,7 @@ export class ProofItem extends TreeItem {
 		}
 		return null;
 	}
-	getPreviousSibling (): ProofItem | null {
+	getPreviousSibling (): ProofItem {
 		if (this.parent) {
 			const children: ProofItem[] = this.parent.children;
 			if (children && children.length > 1) {
@@ -3212,7 +3286,7 @@ export class ProofItem extends TreeItem {
 	 * - proof-node: old branchId = baseId, new branchId = targetId
 	 * - root: old branchId = "", new branchId = targetId
 	 */
-	rebaseTree (baseId: string, targetId: string, opt?: { internalAction?: boolean }): void {
+	rebaseTree (targetId: string, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
 		opt.internalAction = opt.internalAction === undefined ? true : false;
 		switch (this.contextValue) {
@@ -3222,8 +3296,12 @@ export class ProofItem extends TreeItem {
 			}
 			case "proof-branch": {
 				// the last component of the branch id represents the branch name relative to the base
-				const branchName: string = this.branchId.split(".").slice(-1)[0];
-				this.branchId = targetId ? `${targetId}.${branchName}` : branchName;
+				// if (opt.forceName) {
+				// 	this.branchId = targetId;
+				// } else {
+					const branchName: string = this.branchId.split(".").slice(-1)[0];
+					this.branchId = targetId ? `${targetId}.${branchName}` : branchName;
+				// }
 				const oldName: string = this.name;
 				this.name = `(${this.branchId})`;
 				if (!opt.internalAction && this.connection) {
@@ -3247,78 +3325,108 @@ export class ProofItem extends TreeItem {
 		// update targetId to propagate branch name to the children
 		targetId = this.branchId;
 		for (let i = 0; i < this.children?.length; i++) {
-			this.children[i].rebaseTree(baseId, targetId, opt);
+			this.children[i].rebaseTree(targetId, opt);
 		}
 	}
+	/**
+	 * Appends the given node as a sibling of the current node
+	 */
 	appendSibling (sib: ProofItem, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): void {
-		let children: ProofItem[] = [];
-		const n: number = this.parent.children.length;
-
-		opt = opt || {};
-		for (let i = 0; i < n; i++) {
-			if (!opt.beforeSelected) {
-				children.push(this.parent.children[i]);
-			}
-			if (this.parent.children[i].id === this.id) {
-				if (opt.rebase) {
-					// adjust branch id for the node being pasted
-					sib.rebaseTree(sib.branchId, this.parent.children[i].branchId);
+		if (sib) {
+			sib.parent = this.parent; // make sure the sibling and the current node have the same parent
+			opt = opt || {};
+			let children: ProofItem[] = [];
+			const n: number = this.parent.children.length;
+			for (let i = 0; i < n; i++) {
+				if (!opt.beforeSelected) {
+					children.push(this.parent.children[i]);
 				}
-				if (sib.contextValue === "root") { // if the node to be appended is a root node, we append its children
-					children = children.concat(sib.children);
-				} else {
-					children.push(sib);
+				if (this.parent.children[i].id === this.id) {
+					if (opt.rebase) {
+						// adjust branch id for the node being pasted so it's identical to the id of the other siblings
+						// use the previous child as reference
+						sib.rebaseTree(this.parent.children[i].branchId);
+					}
+					if (sib.contextValue === "root") { // if the node to be appended is a root node, we append its children
+						children = children.concat(sib.children);
+					} else {
+						children.push(sib);
+					}
+				}
+				if (opt.beforeSelected) {
+					children.push(this.parent.children[i]);
 				}
 			}
-			if (opt.beforeSelected) {
-				children.push(this.parent.children[i]);
-			}
-		}
-		this.parent.children = children;
+			this.parent.children = children;
 
-		if (!opt.internalAction && this.connection) {
-			const elem: ProofNodeX = sib.getNodeXStructure();
-			this.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
-			const evt: ProofEditDidAppendNode = {
-				action: "did-append-node",
-				elem,
-				position: this.parent.children.indexOf(sib)
-			};
-			if (this.connection) {
-				this.connection.sendNotification(serverEvent.proverEvent, evt);
+			if (!opt.internalAction && this.connection) {
+				const elem: ProofNodeX = sib.getNodeXStructure();
+				this.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
+				const evt: ProofEditDidAppendNode = {
+					action: "did-append-node",
+					elem,
+					position: this.parent.children.indexOf(sib)
+				};
+				if (this.connection) {
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
+				}
 			}
 		}
 	}
+	/**
+	 * Appends the given child as first child of the current node
+	 */
 	appendChildAtBeginning (child: ProofItem, opt?: { internalAction?: boolean, rebase?: boolean }): void {
-		opt = opt || {};
-		this.children = this.children || [];
-		child.parent = this;
-		if (opt.rebase) {
-			// adjust branch id for the node being pasted
-			const targetId: string = this.children?.length ? this.children[0].branchId
-				: this.parent?.branchId ? `${this.parent.branchId}.1`
-					: ""
-			child.rebaseTree(child.branchId, targetId);
-		}
-		if (child.contextValue === "root") {
-			this.children = child.children.concat(this.children);
-		} else {
-			this.children = [ child ].concat(this.children);
-		}
+		if (child) {
+			child.parent = this; // this makes sure the child is pointing to the right parent
+			opt = opt || {};
+			this.children = this.children || [];
+			if (opt.rebase) {
+				// count the number of proof branches under this node -- this will be used in the case we are pasteing a proof branch
+				const n: number = this?.children?.filter(elem => {
+					return elem.getType() === "proof-branch";
+				})?.length || 0;
+				// adjust branch id for the node being pasted
+				let targetId: string = 
+					// if the child is a proof branch
+					// rename the child as the currentBranchID.x, where x is n + 1
+					child.getType() === "proof-branch" ? `${this.branchId}.${n + 1}`
+					// otherwise use currentProofBranchID
+						: this.branchId;
 
-		if (!opt.internalAction && this.connection) {
-			const elem: ProofNodeX = child.getNodeXStructure();
-			this.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
-			const evt: ProofEditDidAppendNode = {
-				action: "did-append-node",
-				elem,
-				position: this.children.indexOf(child) // this should be 0
-			};
-			if (this.connection) {
-				this.connection.sendNotification(serverEvent.proverEvent, evt);
+				// targetId =
+				// 	// if the child is a proof branch, then rename it as the currentBranchID.x, where x is n + 1
+				// 	child.getType() === "proof-branch" ? `${this.branchId}.${n + 1}`
+				// 	// if the child is a proof command, then use the same branch id of the first child of this node, if the first child is a proof branch
+				// 	: this.children?.length ?
+				// 		this.children[0].getType() === "proof-command" ? this.children[0].branchId
+				// 	: `${this.parent.branchId}.${n + 1}`;
+				targetId = targetId.startsWith(".") ? targetId.substring(1) : targetId;
+				child.rebaseTree(targetId);
+			}
+			if (child.contextValue === "root") {
+				this.children = child.children.concat(this.children);
+			} else {
+				this.children = [ child ].concat(this.children);
+			}
+
+			if (!opt.internalAction && this.connection) {
+				const elem: ProofNodeX = child.getNodeXStructure();
+				this.log(`[proof-explorer] Appending node ${elem.name} (${elem.id})`);
+				const evt: ProofEditDidAppendNode = {
+					action: "did-append-node",
+					elem,
+					position: this.children.indexOf(child) // this should be 0
+				};
+				if (this.connection) {
+					this.connection.sendNotification(serverEvent.proverEvent, evt);
+				}
 			}
 		}
 	}
+	/**
+	 * Appends the given child as last child of the current node
+	 */
 	appendChild (child: ProofItem, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
 		this.children = this.children || [];
@@ -3349,9 +3457,15 @@ export class ProofItem extends TreeItem {
 			}
 		}
 	}
+	/**
+	 * Returns all branches of the node
+	 */
 	getChildren (): ProofItem[] {
 		return this.children;
 	}
+	/**
+	 * Returns the last proof command in the subtree rooted at the node
+	 */
 	getLastChildInSubtree (): ProofItem {
 		if (this.children?.length) {
 			const candidate: ProofItem = this.children[this.children.length - 1];
@@ -3359,6 +3473,9 @@ export class ProofItem extends TreeItem {
 		}
 		return this;
 	}
+	/**
+	 * Prints a string representing the sequence proof commands for the tree rooted at the node
+	 */
 	printProofCommands (): string | null {
 		let ans: string = (this.contextValue === "proof-command") ? this.name : "";
 		if (this.children && this.children.length) {
@@ -3371,6 +3488,9 @@ export class ProofItem extends TreeItem {
 	
 }
 
+/**
+ * Proof commands
+ */
 class ProofCommand extends ProofItem {
 	constructor (cmd: string, branchId: string, parent: ProofItem, connection: Connection) {
 		super("proof-command", cmd, branchId, parent, connection);
@@ -3378,7 +3498,6 @@ class ProofCommand extends ProofItem {
 		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || isUndoCommand(cmd) ? cmd : `(${cmd})`;
 		this.notVisited({ internalAction: true });
 	}
-	// @override
 	clone (opt?: { parent?: ProofItem }): ProofCommand {
 		opt = opt || {};
 		const parent: ProofCommand =  opt.parent || this.parent;
@@ -3386,13 +3505,15 @@ class ProofCommand extends ProofItem {
 		return c;
 	}
 }
+/**
+ * Proof branches
+ */
 class ProofBranch extends ProofItem {
 	constructor (cmd: string, branchId: string, parent: ProofItem, connection: Connection) {
 		super("proof-branch", cmd, branchId, parent, connection);
 		this.name = `(${branchId})`;
 		this.notVisited({ internalAction: true });
 	}
-	// @override
 	clone (opt?: { parent?: ProofCommand }): ProofBranch {
 		opt = opt || {};
 		const parent: ProofCommand =  opt.parent || this.parent;
@@ -3408,6 +3529,9 @@ class WelcomeScreen extends TreeItem {
 class RootNode extends ProofItem {
 	protected proofStatus: ProofStatus; // this is updated while running the proof
 	initialProofStatus: ProofStatus; // this is set at the beginning (and at the end of the proof attempt if the proof succeeds)
+	/**
+	 * Constructor
+	 */
 	constructor (desc: { name: string, connection: Connection, proofStatus?: ProofStatus }) {
 		super("root", desc.name, "", null, desc.connection);
 		this.parent = this; // the parent of the root is the root itself
@@ -3415,7 +3539,6 @@ class RootNode extends ProofItem {
 		this.initialProofStatus = this.proofStatus;
 		this.notVisited({ internalAction: true });
 	}
-	// @overrides
 	clone (): RootNode {
 		const c: RootNode = new RootNode({ name: this.name, proofStatus: this.proofStatus, connection: this.connection });
 		c.pending();
@@ -3474,6 +3597,10 @@ class GhostNode extends ProofItem {
 	constructor (desc: { parent: ProofItem, node: ProofItem, connection: Connection }) {
 		super("ghost", "ghost", "", desc.parent, desc.connection);
 		this.realNode = desc.node;
+	}
+	clone (): GhostNode {
+		const c: GhostNode = new GhostNode({ parent: this.parent, node: this.realNode, connection: this.connection });
+		return c;
 	}
 	// @overrides
 	active (): void {

@@ -356,7 +356,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.xterm = new VSCodePvsXTerm(this.client, this.proofExplorer);
 			this.xterm.activate(this.context);
 
-			this.proofMate = new VSCodePvsProofMate(this.client, 'proof-mate-view');
+			this.proofMate = new VSCodePvsProofMate(this.client, this.xterm, 'proof-mate-view');
 			this.proofMate.activate(this.context);
 			this.packageManager = new VSCodePvsPackageManager(this.client, this.statusBar);
 			this.packageManager.activate(this.context);

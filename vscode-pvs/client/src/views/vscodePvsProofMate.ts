@@ -38,85 +38,458 @@
 
 import { LanguageClient } from "vscode-languageclient";
 import * as vscode from 'vscode';
-import { ProofBranch, ProofCommand, ProofItem, RootNode } from "./vscodePvsProofExplorer";
-import * as utils from '../common/languageUtils';
-import { ProofEditCopyNode, ProofEditCopyTree, ProofEditDidCopyTree, ProofMateProfile, ProofNode, ProofNodeX, PvsFormula, PvsProofCommand, SequentDescriptor, serverRequest, SFormula } from "../common/serverInterface";
+import * as vscodeUtils from "../utils/vscode-utils";
 import * as path from 'path';
+import { Explorer, ProofBranch, ProofCommand, ProofItem, RootNode } from "./vscodePvsProofExplorer";
+import { ProofEditCopyNode, ProofEditCopyTree, ProofMateProfile, ProofNode, ProofNodeType, ProofNodeX, PvsFormula, PvsProofCommand, SequentDescriptor, serverEvent, serverRequest, SFormula } from "../common/serverInterface";
 import { openSketchpad, saveSketchpad } from "../common/fsUtils";
-import * as vscodeUtils from "../utils/vscode-utils"
+import { proverCommands } from "../common/languageUtils";
+import { TreeItem, TreeItemCollapsibleState } from "vscode";
+import { VSCodePvsXTerm } from "./vscodePvsXTerm";
+import * as fsUtils from "../common/fsUtils";
 
-declare type ProofMateItemDescriptor = { name: string, tooltip?: string };
+declare type ProofMateItemDescriptor = {
+	name: string, 
+	tooltip?: string, 
+	branchId?: string, 
+	parent?: ProofItem, 
+	sketchpadLabel?: SketchpadLabel,
+	collapsibleState?: TreeItemCollapsibleState,
+	type?: ProofNodeType
+};
 
- /**
- * Definition of tree items
+// abstract types
+const PROOFMATE_ITEM: string = "proofmate-item";
+const PROOFMATE_GROUP: string = "proofmate-group";
+// group types
+const PROOFMATE_HINTS: string = "proofmate-hints";
+const PROOFMATE_SKETCHPAD: string = "proofmate-sketchpad";
+// concrete types
+const PROOFMATE_HINT: string = "proofmate-hint";
+const PROOFMATE_CLIP: string = "proofmate-clip";
+const PROOFMATE_LABEL: string = "proofmate-label";
+
+/**
+ * Abstract proofmate item -- this is the base class for hints and sketchpad items
  */
-class ProofMateItem extends ProofItem {
-	contextValue: string = "proofmate-item";
-	name: string; // prover command
-	command: vscode.Command; // vscode action
-	children: ProofItem[] = [];
+abstract class ProofMateItem extends ProofItem {
+	// @override
+	contextValue: string = PROOFMATE_ITEM;
+	// @override
+	children: ProofMateItem[] = [];
+	// @override
+	parent: ProofMateItem;
 
+	// additional fields added by ProofMateItem
+	sketchpadLabel?: SketchpadLabel; // pointer to the sketchpad label
+	type?: ProofNodeType; // stored information abour the original proof item contextValue, indicating whether this node is a proof-command or a proof-branch
+
+	/**
+	 * Constructor
+	 */
     constructor (desc: ProofMateItemDescriptor) {
 		super({
-			type: "proofmate-item",
-			name: desc.name,
-			branchId: null,
-			parent: null,
-			collapsibleState: vscode.TreeItemCollapsibleState.None
+			type: PROOFMATE_ITEM,
+			name: desc?.name,
+			branchId: desc?.branchId,
+			parent: desc?.parent,
+			collapsibleState: desc?.collapsibleState !== undefined && desc?.collapsibleState !== null ?
+				desc.collapsibleState 
+					: TreeItemCollapsibleState.None
 		});
-		this.name = desc.name;
-		this.tooltip = desc.tooltip;
+		this.name = desc?.name;
+		this.tooltip = desc?.tooltip || "";
 		this.label = this.name;
+		this.type = desc?.type;
+		this.sketchpadLabel = desc?.sketchpadLabel;
 		this.command = {
 			title: this.name,
-			command: "proof-mate.did-click-hint",
+			command: "proof-mate.did-click-item",
 			arguments: [ { cmd: this.name } ]
 		};
-		this.iconPath = {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")			
-		};
+		this.iconPath = new vscode.ThemeIcon("debug-stackframe-dot");
+		// this.iconPath = {
+		// 	light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
+		// 	dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")			
+		// };
 	}
 
-	printProofCommands (): null {
+	/**
+	 * @override
+	 */
+	getType(): ProofNodeType {
+		switch (this.type) {
+			case "root": { return "root"; }
+			case "proof-branch": { return "proof-branch"; }
+			case "proof-command": { return "proof-command"; }
+			default: {
+				return null;
+			}
+		}
+	}
+	/**
+	 * Returns true if this is a proof command
+	 */
+	isProofCommand (): boolean {
+		return this.type === "proof-command";
+	}
+	/**
+	 * Returns true if this is a proof command
+	 */
+	isProofBranch (): boolean {
+		return this.type === "proof-branch";
+	}
+	/**
+	 * Returns true if this is a proof command
+	 */
+	isClip (): boolean {
+		return this.isProofBranch() || this.isProofCommand();
+	}
+	/**
+	 * Internal function, rebases tree branches
+	 */
+	rebaseTree (targetId: string): void {
+		switch (this.type) {
+			case "proof-command": {
+				this.branchId = targetId;
+				break;
+			}
+			case "proof-branch": {
+				// if (opt?.forceName) {
+				// 	this.branchId = targetId;
+				// } else {
+					const branchName: string = this.branchId.split(".").slice(-1)[0];
+					this.branchId = targetId ? `${targetId}.${branchName}` : branchName;
+				// }
+				// const oldName: string = this.name;
+				this.label = this.name = `(${this.branchId})`;
+				break;
+			}
+			case "root": {
+				this.branchId = targetId;
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+		// update targetId to propagate branch name to the children
+		targetId = this.branchId;
+		for (let i = 0; i < this.children?.length; i++) {
+			this.children[i].rebaseTree(targetId);
+		}
+	}
+	/**
+	 * Returns the parent node -- the signature of this function is imposed by the APIs of vscode
+	 */
+	getParent (): ProofMateItem {
+		return this.parent || this.sketchpadLabel;
+	}
+	/**
+	 * Returns the first child
+	 */
+	getFirstChild (): ProofMateItem {
+		return this.children?.length ? this.children[0] : null; 
+	}
+	/**
+	 * Returns the next node in the sketchpad
+	 */
+	getNext (): ProofMateItem {
+		return this.getFirstChild() || this.getNextSibling() || this.parent?.getNextSibling();
+	}
+	/**
+	 * Returns the next sibling
+	 */
+	getNextSibling (): ProofMateItem {
+		const parent: ProofMateItem = this.getParent();
+		if (parent) {
+			const children: ProofMateItem[] = parent.children;
+			if (children && children.length > 1) {
+				const index: number = children.indexOf(this);
+				const next: number = index + 1;
+				if (next < children.length) {
+					return children[next];
+				}
+			}
+		}
 		return null;
 	}
+	// /**
+	//  * Returns the previous node in the sketchpad
+	//  */
+	// getPrevious (): ProofMateItem {
+	// 	return this.getPreviousSibling() || this.parent?.getLastSibling();
+	// }
+	// /**
+	//  * Returns the previous sibling
+	//  */
+	// getPreviousSibling (): ProofMateItem {
+	// 	if (this.parent) {
+	// 		const children: ProofMateItem[] = this.parent.children;
+	// 		if (children && children.length > 1) {
+	// 			const index: number = children.indexOf(this);
+	// 			const prev: number = index - 1;
+	// 			if (prev >= 0) {
+	// 				return children[prev];
+	// 			}
+	// 		}
+	// 	}
+	// 	return null;
+	// }
+	/**
+	 * Returns the last proof command in the subtree rooted at the node
+	 */
+	getLastChildInSubtree (): ProofMateItem {
+		if (this.children?.length) {
+			const candidate: ProofMateItem = this.children[this.children.length - 1];
+			return candidate.getLastChildInSubtree();
+		}
+		return this;
+	}
+	/**
+	 * Appends children to the given node
+	 */
+	appendChildren (children: ProofMateItem[], opt?: { prepend?: boolean }): void {
+		if (children) {
+			this.children = this.children ?
+				opt?.prepend ? children.concat(this.children) : this.children.concat(children)
+				 	: children;
+		}
+	}
+	/**
+	 * Appends child as first child
+	 */
+	appendChildAtBeginning (child: ProofMateItem, opt?: { rebase?: boolean }): void {
+		if (child) {
+			child.parent = this; // this makes sure the child is pointing to the right parent
+			opt = opt || {};
+			this.children = this.children || [];
+			if (opt.rebase) {
+				// count the number of proof branches under this node -- this will be used in the case we are pasteing a proof branch
+				const n: number = this?.children?.filter(elem => {
+					return elem.getType() === "proof-branch";
+				})?.length || 0;
+				// adjust branch id for the node being pasted
+				let targetId: string = 
+					// if the child is a proof branch
+					// rename the child as the currentBranchID.x, where x is n + 1
+					child.getType() === "proof-branch" ? `${this.branchId}.${n + 1}`
+					// otherwise use currentProofBranchID
+						: this.branchId;
+
+				// targetId =
+				// 	// if the child is a proof branch, then rename it as the currentBranchID.x, where x is n + 1
+				// 	child.getType() === "proof-branch" ? `${this.branchId}.${n + 1}`
+				// 	// if the child is a proof command, then use the same branch id of the first child of this node, if the first child is a proof branch
+				// 	: this.children?.length ?
+				// 		this.children[0].getType() === "proof-command" ? this.children[0].branchId
+				// 	: `${this.parent.branchId}.${n + 1}`;
+				targetId = targetId.startsWith(".") ? targetId.substring(1) : targetId;
+				child.rebaseTree(targetId);
+			}
+			if (child.getType() === "root") {
+				this.children = child.children.concat(this.children);
+			} else {
+				this.children = [ child ].concat(this.children);
+			}
+		}
+	}
+	/**
+	 * Appends the given node as a sibling of the current node
+	 * TODO: this function is nearly identical to pvsProofExplorer.appendSibling, create a base class so we can reuse code
+	 */
+	appendSibling (sib: ProofMateItem, opt?: { beforeSelected?: boolean, rebase?: boolean }): void {
+		if (sib) {
+			sib.parent = this.parent; // make sure the sibling and the current node have the same parent
+			opt = opt || {};
+			let children: ProofMateItem[] = [];
+			const parent: ProofMateItem = this.getParent();
+			if (parent) {
+				const n: number = parent.children?.length || 0;
+				for (let i = 0; i < n; i++) {
+					if (!opt.beforeSelected) {
+						children.push(parent.children[i]);
+					}
+					if (parent.children[i].id === this.id) {
+						if (opt.rebase) {
+							// adjust branch id for the node being pasted so it's identical to the id of the other siblings
+							// use the previous child as reference
+							sib.rebaseTree(parent.children[i].branchId);
+						}
+						if (sib.contextValue === "root") { // if the node to be appended is a root node, we append its children
+							children = children.concat(sib.children);
+						} else {
+							children.push(sib);
+						}
+					}
+					if (opt.beforeSelected) {
+						children.push(parent.children[i]);
+					}
+				}
+				parent.children = children;
+			} else {
+				console.warn("[proof-mate] Warning: trying to append sibling to a node without parent", this, sib);
+			}
+		}
+	}
+	/**
+	 * Appends siblings after the current node (this)
+	 */
+	// appendSiblings (sibs: ProofMateItem[], opt?: { rebase?: boolean }): boolean {
+	// 	if (sibs?.length) {
+	// 		// append after the selected node
+	// 		const parent: ProofMateItem = this.getParent();
+	// 		if (opt?.rebase) {
+	// 			const targetId: string = this.branchId || "";
+	// 			for (let i = 0; i < sibs.length; i++) {
+	// 				sibs[i].rebaseTree(targetId);
+	// 			}
+	// 		}
+	// 		if (parent?.children?.length) {
+	// 			const idx: number = parent.children.indexOf(this);
+	// 			if (idx >= 0) {
+	// 				const pre: ProofMateItem[] = parent.children.slice(0, idx + 1);
+	// 				const post: ProofMateItem[] = parent.children.slice(idx + 1);
+	// 				const newChildren: ProofMateItem[] = pre.concat(sibs).concat(post);
+	// 				parent.children = newChildren;
+	// 				return true;
+	// 			}
+	// 		} else {
+	// 			parent.children = sibs;
+	// 		}
+	// 	}
+	// 	return false;
+	// }
+	/**
+	 * Clones the current node
+	 * TODO: this function is nearly identical to pvsProofExplorer.clone -- defined a based class so we can reuse code
+	 */
+	clone (opt?: { parent?: ProofMateItem }): ProofMateItem {
+		opt = opt || {};
+		if (this.getType()) {
+			return new ProofMateClip({
+				name: this.name,
+				branchId: this.branchId,
+				parent: opt?.parent || this.parent,
+				sketchpadLabel: this.sketchpadLabel,
+				type: this.getType(),
+				collapsibleState: this.collapsibleState
+			});
+		}
+		return null;
+	}
+	/**
+	 * Clones the subtree rooted at the current node
+	 * TODO: this function is nearly identical to pvsProofExplorer.cloneTree -- defined a based class so we can reuse code
+	 */
+	cloneTree (opt?: { parent?: ProofMateItem }): ProofMateItem {
+		opt = opt || {};
+		opt.parent = opt.parent || this.parent || null;
+		const clonedRoot: ProofMateItem = this.clone(opt);
+		if (this.children) {
+			for (let i: number = 0; i < this.children.length; i++) {
+				const child: ProofMateItem = this.children[i].cloneTree({ parent: clonedRoot });
+				clonedRoot.insertChild(child, i);
+			}
+		}
+		return clonedRoot;
+	}
+	/**
+	 * Inserts a given child node at the given position in the list of children of the current node
+	 * TODO: this function is nearly identical to pvsProofExplorer.insertChild -- defined a based class so we can reuse code
+	 */
+	insertChild (child: ProofMateItem, position: number): void {
+		if (this.children && position < this.children.length - 1) {
+			const children1: ProofMateItem[] = this.children.slice(0, position);
+			const children2: ProofMateItem[] = this.children.slice(position);
+			this.children = children1.concat([ child ]).concat(children2);
+		} else {
+			// append at the end
+			position = this.children.length;
+			this.children = this.children.concat([ child ]);
+		}
+	}
+	/**
+	 * Deletes a given child node
+	 * TODO: this function is nearly identical to pvsProofExplorer.deleteChild -- defined a based class so we can reuse code
+	 */
+	deleteChild (child: ProofMateItem, opt?: { internalAction?: boolean }): void {
+		opt = opt || {};
+		this.children = this.children.filter((ch: ProofItem) => {
+			return ch.id !== child.id;
+		});
+	}
+	/**
+	 * Deletes the proof commands after the selected node.
+	 * - If the node has children, deletes all children; 
+	 * - If the node has lower siblings, deletes all lower siblings
+	 * TODO: this function is nearly identical to pvsProofExplorer.trimNode -- defined a based class so we can reuse code
+	 */
+	 trimNode (desc: { selected: ProofMateItem }): ProofMateItem[] {
+		if (desc?.selected?.getParent()) {
+			const selected: ProofMateItem = desc.selected;
+			let items: ProofMateItem[] = null;
+			switch (selected.getType()) {
+				case "root": {
+					items = selected.children;
+					selected.children = [];
+					break;
+				}
+				case "proof-branch": {
+					// remove all children in this branch
+					items = selected.children;
+					selected.children = [];
+					break;
+				}
+				case "proof-command": {	
+					// remove children if any
+					items = selected.children;
+					selected.children = [];
+					// remove also lower siblings
+					const parent: ProofMateItem = selected.getParent();
+					if (parent) {
+						const idx: number = parent.children.indexOf(selected);
+						items = items.concat(parent.children.slice(idx + 1, parent.children.length + 1));
+						parent.children = parent.children.slice(0, idx + 1);
+					}
+					break;
+				}
+				default: {
+					console.warn(`[proof-mate] Warning: unrecognized node type ${selected.getType()} detected while trimming ${selected.name}`);
+				}
+			}
+			return items;
+		} else {
+			console.warn(`[proof-mate] Warning: unable to trim selected node`);
+		}
+		return null;
+	}
+	/**
+	 * @override
+	 * Utility function, updates the icon of the tree item based on the value of the status flags of the item
+	 */
+	protected updateIcon (): void {
+		super.updateIcon();
+		if (this.visitedFlag) {
+			this.iconPath = new vscode.ThemeIcon("star-full");//, new vscode.ThemeColor("pvs.orange"));
+		} else if (this.activeFlag) {
+			this.iconPath = {
+				light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
+				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")
+			};	
+		}
+	}
 }
 
-/**
- * Proof mate command suggestions/hints
- */
-class ProofMateSuggestion extends ProofMateItem {
-    constructor (desc: ProofMateItemDescriptor) {
-		super(desc);
-		this.contextValue = "proofmate-suggestion";
-	}
-}
-
-/**
- * Abstract proof mate group -- this is the base class for hints and sketchpad groups 
- */
-abstract class ProofMateGroup extends vscode.TreeItem {
-	contextValue: string = "proofmate-group";
-    constructor (label: string, contextValue: string, collapsibleState: vscode.TreeItemCollapsibleState, tooltip: string) {
-		super(label, collapsibleState);
-		this.contextValue = contextValue;
-		this.tooltip = tooltip;
-	}
-	getChildren (): vscode.TreeItem[] {
-		return [];
-	}
-}
+//--------------------------------------------------------
+// Recommendation Rules
+//--------------------------------------------------------
 export type RecommendationRule = {
 	name: string, 
 	description: string, 
 	commands: string[],
 	test: (sequent: { succedents?: SFormula[], antecedents?: SFormula[] }) => boolean
 };
-
-//--------------------------------------------------------
-// Recommendation Rules
-//--------------------------------------------------------
 /**
  * R1: succedent starts with `FORALL` or antecedent starts with `EXISTS` --> [ skosimp*, skeep ]
  */
@@ -229,50 +602,97 @@ const r5: TestFunction = (sequent: { succedents?: SFormula[], antecedents?: SFor
 /**
  * Utility class for rendering proof mate hints
  */
+export class ProofMateHint extends ProofMateItem {
+	contextValue: string = PROOFMATE_HINT;
+}
+/**
+ * Utility class for rendering proof mate clips
+ */
+export class ProofMateClip extends ProofMateItem {
+	contextValue: string = PROOFMATE_CLIP;
+}
+
+/**
+ * Abstract proof mate group -- this is the base class for hints and sketchpad groups
+ */
+abstract class ProofMateGroup extends ProofMateItem {
+	contextValue: string = PROOFMATE_GROUP;
+}
+
+/**
+ * Utility class for rendering proof mate hints
+ */
 class ProofMateHints extends ProofMateGroup {
-	hints: ProofMateItem[] = [];
+	// @override
+	contextValue = PROOFMATE_HINTS;
+	/**
+	 * Constructor
+	 */
 	constructor () {
-		super("Hints", "proofmate-hints", vscode.TreeItemCollapsibleState.Expanded, "Proof Hints");
+		super({
+			name: "Hints",
+			collapsibleState: TreeItemCollapsibleState.Expanded,
+			tooltip: "Proof Hints"
+		});
 		// the full list of codeicos is at https://microsoft.github.io/vscode-codicons/dist/codicon.html
-		this.iconPath = new vscode.ThemeIcon("lightbulb");
+		this.iconPath = new vscode.ThemeIcon("lightbulb", new vscode.ThemeColor("pvs.yellow"));
 		this.command = {
 			title: this.contextValue,
 			command: "proof-mate.hints.root-selected",
 			arguments: [ this ]
 		};
+		this.parent = this;
 	}
-	getChildren (): vscode.TreeItem[] {
-		return this.hints;
-	}
+	/**
+	 * Adds a recommendation to the hints
+	 */
 	addRecommendation (rec: { cmd: string, tooltip?: string }): void {
         if (rec) {
-			this.hints.push(new ProofMateSuggestion({
+			const item: ProofMateHint = new ProofMateHint({
 				name: `(${rec.cmd})`, 
 				tooltip: rec.tooltip
-			}));
+			});
+			this.children.push(item);
         }
 	}
+	/**
+	 * Clears the recommendations
+	 */
 	clearRecommendations (): void {
-		this.hints = [];
+		this.children = [];
 	}
 }
 
 /**
  * Utility class, creates a sketchpad label
  */
-class ProofMateSketchpadLabel extends ProofItem {
-	contextValue: string = "sketchpad-label";
-	name: string;
-	constructor (label: string) {
-		super({ type: "sketchpad-label", name: label, branchId: '', parent: null, collapsibleState: vscode.TreeItemCollapsibleState.Expanded });
-		this.name = label;
+class SketchpadLabel extends ProofMateItem {
+	contextValue: string = PROOFMATE_LABEL;
+	// @override
+	children: ProofMateClip[] = [];
+	// sequence indicating the execution order of nodes in the sketchpad clip (first depth visit)
+	// seq: ProofMateClip[] = [];
+	/**
+	 * Constructor
+	 * The sketchpad name is typically given the form of a date/time string indicating when the sketchpad has been created
+	 */
+	constructor (desc: { name: string, group: ProofMateGroup }) {
+		super({
+			name: desc?.name || new Date().toLocaleString(), 
+			branchId: '', 
+			parent: null, 
+			collapsibleState: TreeItemCollapsibleState.Expanded
+		});
 		this.iconPath = new vscode.ThemeIcon("pinned");
 		this.tooltip = "";
-		this.command = {
-			title: this.name,
-			command: "proof-mate.did-click-sketchpad-label",
-			arguments: [ { cmd: this.name } ]
-		};;
+		this.command = null; 
+		// = {
+		// 	title: this.name,
+		// 	command: "proof-mate.did-click-sketchpad-label",
+		// 	arguments: [ { cmd: this.name } ]
+		// };
+		this.parent = desc?.group;
+		this.sketchpadLabel = this;
 	}
 }
 
@@ -283,74 +703,192 @@ class ProofMateSketchpadLabel extends ProofItem {
  * This tipically happens when the proof structure changes 
  * after a spec change or editing of proof commands
  */
-class ProofMateSketchpad extends ProofMateGroup {
-	// clips stored in the sketchpad
-	protected clips: ProofItem[] = [];
-	
+class Sketchpad extends ProofMateGroup {
+	// @override
+	contextValue: string = PROOFMATE_SKETCHPAD;
+	// @override
+	children: SketchpadLabel[] = [];
 	/**
 	 * Constructor
 	 */
 	constructor () {
-		super("Sketchpad", "proofmate-sketchpad", vscode.TreeItemCollapsibleState.Expanded, "Proof Sketches");
-		// the full list of codeicos is at https://microsoft.github.io/vscode-codicons/dist/codicon.html
+		super({
+			name: "Sketchpad",
+			collapsibleState: TreeItemCollapsibleState.Expanded,
+			tooltip: "Proof Sketches"
+		});
+		// the full list of codeicons is at https://microsoft.github.io/vscode-codicons/dist/codicon.html
 		this.iconPath = new vscode.ThemeIcon("clippy");
 		this.command = {
 			title: this.contextValue,
 			command: "proof-mate.sketchpad.root-selected",
 			arguments: [ this ]
 		};
-	}
-	/**
-	 * Returns the clips in the sketchpad
-	 */
-	getChildren (): ProofItem[] {
-		return this.clips;
+		this.parent = this;
 	}
 	/**
 	 * Adds a node to the sketchpad
 	 */
-	add (items: ProofItem[], opt?: { label?: string }): void {
-		const updateCommands = (items: ProofItem[]): boolean => {
-			let hasContent: boolean = false;
-			if (items) {
-				for (let i = 0; i < items.length; i++) {
-					items[i].iconPath = {
-						light: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-gray.svg"),
-						dark: path.join(__dirname, "..", "..", "..", "icons", "svg-dot-white.svg")			
-					};
-					items[i].command = {
-						title: items[i].name,
-						command: "proof-mate.did-click-hint",
-						arguments: [ { cmd: items[i].name } ]
-					};
-					items[i].label = items[i].name;
-					if (!hasContent && items[i].contextValue === "proof-command") {
-						hasContent = true;
-					}
-					hasContent = hasContent || updateCommands(items[i].children);
-				}
+	add (desc: {
+		selected: ProofMateItem, 
+		items: ProofItem[]
+	}, opt?: {
+		label?: string,
+		prepend?: boolean, // false by default
+		force?: boolean // false by default
+	}): ProofMateItem[] {
+		if (desc && desc.items?.length && desc.selected) {
+			const label: SketchpadLabel = 
+				// if the selected item is the sketchpad root, then create a new sketchpad label
+				desc.selected?.contextValue === PROOFMATE_SKETCHPAD ? new SketchpadLabel({ name: opt?.label, group: this })
+				// if the selected item is a sketchpad label, then use the item
+				: desc.selected?.contextValue === PROOFMATE_LABEL ? <SketchpadLabel> desc.selected
+				// otherwise it's a clip -- get the sketchpad label from the clip
+				: desc.selected?.sketchpadLabel;
+			if (desc.selected?.contextValue === PROOFMATE_SKETCHPAD) {
+				// append new label to the sketchpad
+				this.children = [ label ].concat(this.children);
 			}
-			return hasContent;
-		}
-		if (items && items.length) {
-			if (updateCommands(items)) {
-				if (opt?.label) {
-					const label: ProofMateSketchpadLabel = new ProofMateSketchpadLabel(opt.label);
-					label.children = items;
-					items = [ label ];
+			const parent: ProofMateItem = 
+				desc.selected?.contextValue === PROOFMATE_CLIP ?
+					desc.selected.isProofCommand() ? desc.selected.getParent() : desc.selected
+					: undefined;
+			let newClips: ProofMateItem[] = this.createClips(desc.items, label, {
+				parent, force: opt?.force
+			});
+			if (newClips?.length) {
+				// decide where to append
+				if (desc.selected.isClip()) {
+					// append after the selected clip
+					for (let i = 0; i < newClips.length; i++) {
+						this.appendNode({ selected: desc.selected, elem: newClips[i] });
+					}
+				} else {
+					// this is a label --- append newClips to the label
+					label.appendChildren(newClips, opt);
 				}
-				this.clips = items.concat(this.clips);
+				vscode.commands.executeCommand('setContext', "proof-mate.sketchpad-empty", false);
+			}
+			return newClips;
+		}
+		return null;
+	}
+	/**
+	 * Appends a new node to the proof tree.
+	 * - selected node === proof command --> place the new node as sibling after the selected node (or before, when beforeSelected is true)
+	 * - selected node === branch or root --> place the new node as first child 
+	 * TODO: this function is nearly identical to pvsProofExplorer.appendNode, create a base class so we can reuse code
+	 */
+	appendNode (desc: { selected: ProofMateItem, elem: ProofMateItem }): void {
+		if (desc?.selected && desc.elem) {
+			const selectedNode: ProofMateItem = desc.selected;
+			const newNode: ProofMateItem = desc.elem;
+			switch (selectedNode.getType()) {
+				case "root":
+				case "proof-branch": {
+					// newNode.parent = selectedNode; -- done within appendChildAtBeginning
+					selectedNode.appendChildAtBeginning(newNode, { rebase: true });
+					// force expanded state
+					selectedNode.collapsibleState = TreeItemCollapsibleState.Expanded;
+					selectedNode.id = fsUtils.get_fresh_id();
+					break;
+				}
+				case "proof-command": {
+					if (newNode.getType() === "proof-branch") {
+						// proof branches are pasted as children of proof-commands
+						// newNode.parent = selectedNode; -- done within appendChildAtBeginning
+						selectedNode.appendChildAtBeginning(newNode, { rebase: true });
+						// force expanded state
+						selectedNode.collapsibleState = TreeItemCollapsibleState.Expanded;
+						selectedNode.id = fsUtils.get_fresh_id();
+					} else {
+						// newNode.parent = selectedNode.parent; -- done within appendSibling
+						selectedNode.appendSibling(newNode, { rebase: true });
+					}
+					break;
+				}
+				default: {
+					// do nothing
+				}
 			}
 		}
 	}
 	/**
+	 * Returns a pointer to the first (ie., most recent) clip in the sketchpad
+	 */
+	getRecentClip (): ProofMateItem {
+		if (this.children?.length && this.children[0].children?.length) {
+			return this.children[0].children[0];
+		}
+		return null;
+	}
+	/**
+	 * Internal function, converts proof items into clips
+	 */
+	protected createClips (items: ProofItem[], sketchpadLabel: SketchpadLabel, opt?: {
+		parent?: ProofMateItem, 
+		rebase?: {
+			targetId: string,
+			forceName: boolean
+		},
+		force?: boolean
+	}): ProofMateItem[] {
+		opt = opt || {};
+		opt.force = opt.force || false;
+		// rec = rec || {};
+		// rec.hasContent = opt?.force || rec.hasContent || false;
+		const ans: ProofMateItem[] = [];
+		if (items) {
+			for (let i = 0; i < items.length; i++) {
+				const type: ProofNodeType | "ghost" = items[i].getType();
+				if (type !== "ghost") {
+					const pitem: ProofMateItem = new ProofMateClip({
+						name: items[i].name,
+						parent: opt.parent,
+						branchId: items[i].branchId,
+						sketchpadLabel,
+						type
+					});
+					ans.push(pitem);
+					if (items[i].contextValue === "proof-command") {
+						opt.force = true;
+					}
+
+
+					// //-- renaming logic
+					// // the renaming logic is equivalent to that adopted in pvsProofExplorer.appendNode
+					// // count the number of proof branches under this node -- this will be used in the case we are pasteing a proof branch
+					// const n: number = pitem?.children?.filter(elem => {
+					// 	return elem.getType() === "proof-branch";
+					// })?.length || 0;
+					// let targetId: string = 
+					// 	// if the child is a proof branch
+					// 	// rename the child as the currentBranchID.x, where x is n + 1
+					// 	items[i].getType() === "proof-branch" ? `${pitem.branchId}.${n + 1}`
+					// 	// otherwise use currentProofBranchID
+					// 		: pitem.branchId || "";
+					// targetId = targetId.startsWith(".") ? targetId.substring(1) : targetId;
+					// //---
+
+					// opt.rebase = { targetId, forceName: true };
+					const children: ProofMateItem[] = items[i].children?.length ?
+						this.createClips(items[i].children, sketchpadLabel, { ...opt, parent: pitem })
+							: [];
+					pitem.setChildren(children);
+					// pitem.rebaseTree(opt.rebase.targetId, { forceName: opt.rebase.forceName });
+				}
+			}
+		}
+		return opt.force ? ans : null;
+	}
+	/**
 	 * Retuns the list of clips in the sketchpad
 	 */
-	getClips (): ProofNode[] {
+	protected getClips (): ProofNode[] {
 		const nodes: ProofNode[] = [];
-		if (this.clips && this.clips.length) {
-			for (let i = 0; i < this.clips.length; i++) {
-				const elem: ProofMateSketchpadLabel = this.clips[i];
+		if (this.children && this.children.length) {
+			for (let i = 0; i < this.children.length; i++) {
+				const elem: ProofItem = this.children[i];
 				if (elem.children) {
 					for (let j = 0; j < elem.children.length; j++) {
 						const node: ProofNode = elem.children[j].getNodeStructure();
@@ -364,44 +902,165 @@ class ProofMateSketchpad extends ProofMateGroup {
 		return nodes;
 	}
 	/**
-	 * Clears the sketchpad
+	 * Utility function, saves the sketchpad to a file
 	 */
-	async clear (opt?: { queryConfirm?: boolean }): Promise<boolean> {
-		opt = opt || {};
-		if (!opt.queryConfirm || await vscodeUtils.showYesCancelDialog("Clear sketchpad content?") === "yes") {
-			this.clips = [];
+	async saveSketchpad (formula: PvsFormula): Promise<boolean> {
+		return await saveSketchpad(formula, this.getClips());
+	}
+	/**
+	 * Utility function, loads the sketchpad from a file
+	 */
+	async loadSketchpad (formula: PvsFormula): Promise<boolean> {
+		const clips: ProofNode[] = await openSketchpad(formula);
+		if (clips?.length) {
+			let items: ProofItem[] = [];
+			for (let i = 0; i < clips.length; i++) {
+				const item: ProofItem = this.proofNode2proofItem(clips[i]);
+				if (item) {
+					items.push(item);
+				}
+			}
+			if (items.length) {
+				this.add({ selected: this, items }, { label: "Clips from previous proof attempt", prepend: true });
+			}
 			return true;
 		}
 		return false;
 	}
+	/**
+	 * Utility function, converts a proof node to a proof item that can be rendered in the view
+	 */
+	proofNode2proofItem (node: ProofNode): ProofItem {
+		// utility function for building the proof tree -- see also pvsProofExplorer.loadProofDescriptor
+		const createTree = (elem: ProofNode, parent: ProofItem): void => {
+			const node: ProofItem = 
+				(elem.type === "proof-command") ? new ProofCommand({ cmd: elem.name, branchId: elem.branch, parent }) 
+				: new ProofBranch({ branchId: elem.branch, parent });
+			parent.appendChild(node);
+			if (elem.rules && elem.rules.length) {
+				elem.rules.forEach(child => {
+					createTree(child, node);
+				});
+			}
+		}
+		// initialise
+		const item: ProofItem = 
+			(node.type === "proof-branch") ? new ProofBranch({ branchId: node.branch, parent: null }) 
+			: (node.type === "proof-command") ? new ProofCommand({ cmd: node.name, branchId: node.branch, parent: null })
+			: (node.type === "root") ? new RootNode({ name: node.name }) : null;
+		if (item && node.rules && node.rules.length) {
+			node.rules.forEach((child: ProofNode) => {
+				createTree(child, item);
+			});
+		}
+		return item;
+	}
+	/**
+	 * Clears the sketchpad
+	 */
+	async queryClear (opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		opt = opt || {};
+		const queryConfirm: boolean = opt?.queryConfirm === false ? false : true;
+		if (queryConfirm) {
+			const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog("Clear sketchpad content?");
+			if (ans !== "yes") {
+				return false;
+			}
+		}
+		this.children = [];
+		vscode.commands.executeCommand('setContext', "proof-mate.sketchpad-empty", true);
+		return true;
+	}
+	/**
+	 * Clears a given sketchpad label
+	 */
+	async queryDeleteLabel (selected: ProofMateItem, opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		if (selected) {
+			if (opt?.queryConfirm) {
+				const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog(`Delete sketchpad ${selected.label}?`);
+				if (ans !== "yes") {
+					return false;
+				}
+			} 
+			// all labels are stored under sketchpad.children
+			this.children = this.children.filter((elem: TreeItem) => {
+				return elem.id !== selected.id;
+			});
+			if (this.children.length === 0) {
+				vscode.commands.executeCommand('setContext', "proof-mate.sketchpad-empty", true);
+			}
+			return true;
+		}
+		return false;
+	}
+	/**
+	 * Deletes a given sketchpad node
+	 */
+	async queryDeleteNode (selected: ProofMateItem, opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		if (selected) {
+			if (opt?.queryConfirm) {
+				const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog(`Delete ${selected.label}?`);
+				if (ans !== "yes") {
+					return false;
+				}
+			}
+			const parent: ProofMateItem = selected.getParent();
+			parent?.deleteChild(selected);
+			return true;
+		}
+		return false;
+	}
+	/**
+	 * Trims a given proof node
+	 */
+	async queryTrimNode (selected: ProofMateItem, opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		if (selected) {
+			const msg: string = 
+				selected.getType() === "proof-branch" ? `Delete proof commands in branch ${selected.name}?`
+					: `Delete proof commands after ${selected.name}?`;
+			if (opt?.queryConfirm) {
+				const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog(msg);
+				if (ans !== "yes") {
+					return false;
+				}
+			}
+			selected.trimNode({ selected });
+			return true;
+		}
+		return false;
+	}
+
 }
 
 /**
  * Data provider for PVS Proof Mate view
  */
-export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeItem> {
-	/**
-	 * Events for updating the tree structure
-	 */
-	protected _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
-    readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
-
+export class VSCodePvsProofMate extends Explorer {
 	protected profile: ProofMateProfile;
-
 	protected context: vscode.ExtensionContext;	
 	protected client: LanguageClient;
 	protected providerView: string;
-	protected view: vscode.TreeView<vscode.TreeItem>;
 
-	protected enabled: boolean = false;
+	// indicates which node we are fast-forwarding to
+	protected stopAt: TreeItem;
+	// running flag, indicates whether we are running all proof commands, as opposed to stepping through the proof commands
+	protected runningFlag: boolean = false;
+
+	// xterm for sending proof commands to the server
+	protected xterm: VSCodePvsXTerm;
+
+	// lock flag, indicating whether the sketchpad will accept clips
+	protected lock: boolean = false;
 
 	// proof descriptor
 	protected formula: PvsFormula;
 
-	// elements in the view
+	// elements in the view: hints and sketchpad
 	protected hints: ProofMateHints;
-	protected sketchpad: ProofMateSketchpad;
+	protected sketchpad: Sketchpad;
 
+	// active node in the sketchpad
+	protected activeNode: ProofMateItem;
 	// protected autorunFlag: boolean = false;
 
 	// rules for computing hints
@@ -420,12 +1079,14 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	 * @param client Language client for exchanging data and command with the language server
 	 * @param providerView Name of the VSCode view associated to this data provider
 	 */
-	 constructor(client: LanguageClient, providerView: string) {
+	constructor(client: LanguageClient, xterm: VSCodePvsXTerm, providerView: string) {
+		super();
 		this.client = client;
 		this.providerView = providerView;
+		this.xterm = xterm;
 
 		this.hints = new ProofMateHints();
-		this.sketchpad = new ProofMateSketchpad();
+		this.sketchpad = new Sketchpad();
 
 		// enable basic profile by default
 		this.profile = "basic";
@@ -457,63 +1118,28 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	/**
 	 * Saves the sketchpad as a .jprf file
 	 */
-	async saveSketchpadClips (): Promise<void> {
-		await saveSketchpad(this.formula, this.sketchpad?.getClips());
+	async saveSketchpadClips (): Promise<boolean> {
+		return await this.sketchpad?.saveSketchpad(this.formula);
 	}
 	/**
 	 * Loads sketchpad clips from a .jprf file
 	 */
-	async loadSketchpadClips (): Promise<void> {
-		// const clips: ProofNode[] = await openSketchpad(this.formula);
-		// if (clips && clips.length) {
-		// 	let items: ProofItem[] = [];
-		// 	for (let i = 0; i < clips.length; i++) {
-		// 		const item: ProofItem = this.proofNode2proofItem(clips[i]);
-		// 		if (item) {
-		// 			items.push(item);
-		// 		}
-		// 	}
-		// 	if (items.length) {
-		// 		this.sketchpad.add(items, { label: "Clips from previous proof attempt" });
-		// 	}
-		// }
+	async loadSketchpadClips (): Promise<boolean> {
+		return await this.sketchpad?.loadSketchpad(this.formula);
 	}
 	/**
-	 * Internal function, converts a proof node to a proof item that can be rendered in the view
+	 * Utility function, marks the provided item as active.
 	 */
-	protected proofNode2proofItem (node: ProofNode): ProofItem {
-		// utility function for building the proof tree -- see also pvsProofExplorer.loadProofDescriptor
-		const createTree = (elem: ProofNode, parent: ProofItem): void => {
-			const node: ProofItem = 
-				(elem.type === "proof-command") ? new ProofCommand({ cmd: elem.name, branchId: elem.branch, parent }) 
-				: new ProofBranch({ cmd: elem.name, branchId: elem.branch, parent });
-			parent.appendChild(node);
-			if (elem.rules && elem.rules.length) {
-				elem.rules.forEach(child => {
-					createTree(child, node);
-				});
-			}
+	protected markAsActive (item: ProofMateItem): boolean {
+		// sanity check -- only proofmate clips can be marked as active
+		if (item?.contextValue === PROOFMATE_CLIP) {
+			this.activeNode?.updateStatus("not-visited");
+			this.activeNode = item;
+			this.activeNode?.updateStatus("active");
+			this.refreshView();
+			return true;
 		}
-		// initialise
-		const item: ProofItem = 
-			(node.type === "proof-branch") ? new ProofBranch({ cmd: node.name, branchId: node.branch, parent: null }) 
-			: (node.type === "proof-command") ? new ProofCommand({ cmd: node.name, branchId: node.branch, parent: null })
-			: (node.type === "root") ? new RootNode({ name: node.name }) : null;
-		if (item && node.rules && node.rules.length) {
-			node.rules.forEach((child: ProofNode) => {
-				createTree(child, item);
-			});
-		}
-		return item;
-	}
-
-	/**
-	 * Refresh tree view
-	 */
-	protected refreshView(): void {
-		if (this.enabled) {
-			this._onDidChangeTreeData.fire(null);
-		}
+		return false;
 	}
 	/**
 	 * Reset tree view
@@ -523,20 +1149,89 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 		this.refreshView();
 	}
 	/**
-	 * Internal function, reveals a node in the view.
+	 * Utility function, places the focus on the most recent sketchpad label
 	 */
-	protected revealNode (selected: vscode.TreeItem): void {
-		if (selected) {
-			// there is something I don't understand in the APIs of TreeItem 
-			// because I'm getting exceptions (node not found / element already registered)
-			// when option 'select' is set to true.
-			// Sometimes the exception occurs also with option 'expand'
-			this.view.reveal(selected, { expand: 2, select: true, focus: true }).then(() => {
-			}, (error: any) => {
-				// console.error(desc);
-				// console.error(error);
-			});
+	// focusSketchpad (opt?: { markSelectedAsActive?: boolean, focusActive?: boolean }): void {
+	// 	const elem: TreeItem = this.sketchpad;
+	// 	this.focusNode(elem);
+	// 	this.refreshView();
+	// 	const clip: ProofMateItem = this.sketchpad.getRecentClip();
+	// 	const success: boolean = opt?.markSelectedAsActive ? this.markAsActive(clip) : false;
+	// 	if (success && opt?.focusActive) {
+	// 		setTimeout(() => {
+	// 			this.focusNode(clip);
+	// 		}, this.maxTimer * 1.2);
+	// 	}
+	// }
+	/**
+	 * Locks the sketchpad, i.e., clips will not be added
+	 */
+	lockSketchpad (): void {
+		this.lock = true;
+	}
+	/**
+	 * Unlocks the sketchpad, i.e., clips can be added
+	 */
+	unlockSketchpad (): void {
+		this.lock = false;
+	}
+	/**
+	 * Executes the active node and moves indicator forward
+	 */
+	async forward (): Promise<boolean> {
+		if (this.activeNode?.name) {
+			// sanity check
+			let visited: boolean = true;
+			if (this.activeNode.isProofCommand()) {
+				this.lockSketchpad();
+				this.activeNode.executing();
+				// this.refreshView();
+				visited = await this.sendProverCommand(this.activeNode?.name);
+				this.unlockSketchpad();
+			}
+			this.moveIndicatorForward(visited, { selectNode: true });
+			return true;
 		}
+		return false;
+	}
+	/**
+	 * Copies the tree rooted at the selected node to the clipboard, and all the siblings below the selected node
+	 * (i.e., the clipboard will store a copy of the tree rooted at the selected node)
+	 * @param desc Descriptor of the selected node.
+	 * TODO: this function is nearly identical to pvsProofExplorer.copyTree -- defined a based class so we can reuse code
+	 */
+	copyTree (desc: { selected: ProofMateItem }): {
+		clipboard: ProofMateItem[],
+		seq: string
+	 } {
+		if (desc?.selected) {
+			if (desc.selected.getType() === "root") {
+				if (desc.selected && desc.selected.children && desc.selected.children.length) {
+					desc.selected = desc.selected.children[0];
+				}
+			}
+			const parent: ProofMateItem = desc.selected.getParent();
+			if (parent) {
+				const clipboard: ProofMateItem[] = [];
+				let seq: string = "";
+				const n: number = desc.selected.getType() === "proof-branch" ?
+					parent.children.indexOf(desc.selected) + 1 // copy only the proof branch
+						: parent.children.length; // copy everything below the proof command
+				for (let i = parent.children.indexOf(desc.selected); i >= 0 && i < n; i++) {
+					const item: ProofMateItem = parent.children[i];
+					if (item) {
+						clipboard.push(item.cloneTree());
+						seq += item.printProofCommands();
+					}
+				}
+				return { clipboard, seq };
+			} else {
+				console.warn(`[proof-mate] Warning: unable to identify parent of ${desc.selected.name}`);
+			}
+		} else {
+			console.warn(`[proof-mate] Warning: unable to copy selected subtree`);
+		}
+		return null;
 	}
     /**
 	 * Activation function -- install relevant handlers
@@ -544,37 +1239,65 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	activate(context: vscode.ExtensionContext) {
 		this.context = context;
 		this.selectProfile("basic");
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.forward", async () => {
+			this.forward(); // async
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.fast-forward", async (resource: ProofMateItem) => {
+			this.fastForwardTo(resource); // async
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.jump-here", async (resource: ProofMateItem) => {
+			this.markAsActive(resource);
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.back", async () => {
+			// not implemented
+			// this.moveIndicatorBack({ selectNode: true });
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.run-subtree", async (resource: ProofMateItem) => {
+			this.runSubtree(resource); // async
+		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.clear-sketchpad", async () => {
-			const success: boolean = await this.sketchpad.clear({ queryConfirm: true });
-			if (success) {
-				this.refreshView();
-			}
+			this.clearSketchPad(); // async
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.run-sketchpad", (resource: ProofMateSketchpad) => {
-			const clips: ProofItem[] = resource?.getChildren();
-			if (clips?.length) {
-				let seq: string = "";
-				for (let i = 0; i < clips.length; i++) {
-					seq += clips[i].printProofCommands();
-				}
-				if (seq) {
-					this.sendProofCommand(seq);
-				}
-			} else {
-				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
-			}
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.delete-sketch", async (resource: ProofMateItem) => {
+			this.queryDeleteSketchPadLabel(resource, { queryConfirm: true }); // async
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.exec-subtree", (resource: ProofMateItem | ProofItem) => {
-			if (resource && resource.name) {
-				const seq: string = resource.printProofCommands({ markExecuted: true });
-				this.sendProofCommand(seq);
-				this.refreshView();
-			} else {
-				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
-			}
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.delete-node", async (resource: ProofMateItem) => {
+			this.queryDeleteNode(resource, { queryConfirm: true }); // async
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.edit-proof-node", async (resource: ProofMateItem | ProofItem) => {
-			if (resource) {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.new-proof-command", async (resource?: ProofMateItem) => {
+			this.queryNewProofCommand(resource);
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.new-proof-branch", async (resource?: ProofMateItem) => {
+			this.queryAddNewProofBranch(resource);
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.trim-node", async (resource?: ProofMateItem) => {
+			this.queryTrimNode(resource, { queryConfirm: true });
+		}));
+		// context.subscriptions.push(vscode.commands.registerCommand("proof-mate.run-sketchpad", (resource: Sketchpad) => {
+		// 	const clips: ProofItem[] = resource?.getChildren();
+		// 	if (clips?.length) {
+		// 		let seq: string = "";
+		// 		for (let i = 0; i < clips.length; i++) {
+		// 			seq += clips[i].printProofCommands();
+		// 		}
+		// 		if (seq) {
+		// 			this.sendProverCommand(seq);
+		// 		}
+		// 	} else {
+		// 		console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
+		// 	}
+		// }));
+		// context.subscriptions.push(vscode.commands.registerCommand("proof-mate.exec-subtree", (resource: ProofMateItem | ProofItem) => {
+		// 	if (resource && resource.name) {
+		// 		const seq: string = resource.printProofCommands({ markExecuted: true });
+		// 		this.sendProverCommand(seq);
+		// 		this.refreshView();
+		// 	} else {
+		// 		console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
+		// 	}
+		// }));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.edit-node", async (resource: ProofMateItem) => {
+			if (resource?.name) {
 				let newName: string = await vscode.window.showInputBox({ prompt: `Editing proof command ${resource.name}`, placeHolder: `${resource.name}`, value: `${resource.name}`, ignoreFocusOut: true });
 				if (newName && newName !== resource.name) {
 					resource.name = resource.label = newName;
@@ -584,37 +1307,42 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 				console.warn(`[proof-mate] Warning: action edit-proof-node is trying to use null resource`);
 			}
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.exec-proof-command", (resource: ProofMateItem | ProofItem) => {
-			if (resource && resource.name) {
-				resource.iconPath = {
-					light: path.join(__dirname, "..", "..", "..", "icons", "star-gray.png"),
-					dark: path.join(__dirname, "..", "..", "..", "icons", "star.png")
-				};
-				this.sendProofCommand(resource.name);
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.exec-hint", (resource: ProofMateHint) => {
+			if (resource?.name) {
+				resource.iconPath = new vscode.ThemeIcon("star-half");
+				this.sendProverCommand(resource.name);
 				this.refreshView();
 			} else {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
 			}
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.copy-subtree", (resource: ProofMateItem | ProofItem) => {
-			if (resource && resource.name) {
-				const elem: ProofNodeX = resource.getNodeXStructure();
-				const seq: string = resource.printProofCommands();
-				const action: ProofEditCopyTree = {
-					action: "copy-tree", 
-					selected: { id: resource.nodeId, name: resource.name },
-					data: {
-						elems: elem ? [ elem ] : [], 
-						seq: seq
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.copy-subtree", (resource: ProofMateItem) => {
+			if (resource?.name) {
+				const res: { clipboard: ProofMateItem[], seq: string } = this.copyTree({ selected: resource });
+				if (res?.seq && res.clipboard?.length) {
+					const elems: ProofNodeX[] = [];
+					for (let i = 0; i < res.clipboard.length; i++) {
+						const elem: ProofNodeX = res.clipboard[i].getNodeXStructure();
+						if (elem) {
+							elems.push(elem);
+						}
 					}
-				};
-				console.log(`[proof-mate] Copy tree rooted at ${resource.name} (${resource.nodeId})`);
-				this.client.sendRequest(serverRequest.proverCommand, action);
+					const action: ProofEditCopyTree = {
+						action: "copy-tree", 
+						selected: { id: resource.nodeId, name: resource.name },
+						data: {
+							elems, 
+							seq: res.seq
+						}
+					};
+					console.log(`[proof-mate] Copy tree rooted at ${resource.name} (${resource.nodeId})`);
+					this.client.sendRequest(serverRequest.proverCommand, action);
+				}
 			} else {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
 			}
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.copy-proof-command", (resource: ProofMateItem | ProofItem) => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.copy-node", (resource: ProofMateItem) => {
 			if (resource && resource.name) {
 				const elem: ProofNodeX = resource.getNodeXStructure({ skipChildren: true });
 				const seq: string = resource.printProofCommands({ skipChildren: true });
@@ -632,6 +1360,18 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
 			}
 		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.paste-subtree", async (resource: ProofMateItem) => {
+			const clips: ProofItem[] = this.xterm?.getProofExplorer()?.getClipboard();
+			if (clips?.length) {
+				this.add({ selected: resource, items: clips }, { prepend: true });
+			}
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.paste-node", async (resource: ProofMateItem) => {
+			const clips: ProofItem[] = this.xterm?.getProofExplorer()?.getClipboard();
+			if (clips?.length) {
+				this.add({ selected: resource, items: clips }, { prepend: true });
+			}
+		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.activate-basic-profile", () => {
 			this.selectProfile("basic");
         }));
@@ -640,7 +1380,7 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 		}));
 
 		let cmd: string = null; // local variable for handling the detection of double-clicks, which are not directly supported by the APIs of vscode trees
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.did-click-hint", (desc: { cmd: string }) => {
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.did-click-item", (desc: { cmd: string }) => {
 			// register double click handler
 			if (desc) {
 				if (!cmd || cmd !== desc.cmd) {
@@ -689,19 +1429,25 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 	/**
 	 * Sends a proof command to the terminal
 	 */
-	sendProofCommand (cmd: string): void {
+	async sendProverCommand (cmd: string): Promise<boolean> {
 		if (this.formula) {
-			vscode.commands.executeCommand("vscode-pvs.send-proof-command", {
-				fileName: this.formula.fileName,
-				fileExtension: this.formula.fileExtension,
-				theoryName: this.formula.theoryName,
-				formulaName: this.formula.formulaName,
-				contextFolder: this.formula.contextFolder,
-				cmd: cmd.startsWith("(") ? cmd : `(${cmd.trim()})`
-			});
+			if (cmd) {
+				const req: PvsProofCommand = {
+					fileName: this.formula.fileName,
+					fileExtension: this.formula.fileExtension,
+					theoryName: this.formula.theoryName,
+					formulaName: this.formula.formulaName,
+					contextFolder: this.formula.contextFolder,
+					cmd: cmd.startsWith("(") ? cmd : `(${cmd.trim()})`
+				};
+				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", req);
+				const success: boolean = await this.xterm.sendProverCommand(req);
+				return success;
+			}
 		} else {
 			console.warn(`[proof-mate] Warning: could not send proof command (please set proof descriptor before trying to send any command)`)
 		}
+		return false;
 	}
 
 	/**
@@ -731,6 +1477,7 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 						this.hints.addRecommendation(recs[i]);
 					}
 				}
+				// this.expandHints();
 				this.refreshView();
 				// this.addRecommendations([ { cmd: "skosimp*", tooltip: "Removes universal quantifier" } ]);
 			}
@@ -747,9 +1494,10 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 			for (let i in this.recommendationRules) {
 				if (this.recommendationRules[i].test(proofState.sequent)) {
 					for (let j in this.recommendationRules[i].commands) {
+						const cmd: string = this.recommendationRules[i].commands[j];
 						ans.push({
-							cmd: this.recommendationRules[i].commands[j]//, 
-							// tooltip: this.recommendationRules[i].description
+							cmd, 
+							tooltip: proverCommands[cmd]?.description//this.recommendationRules[i].description
 						});
 					}
 				}	
@@ -762,46 +1510,296 @@ export class VSCodePvsProofMate implements vscode.TreeDataProvider<vscode.TreeIt
 		return ans;
 	}
 	/**
-	 * Utility function, updates adds a new item to the sketchpad
+	 * Utility function, collapses the hints
 	 */
-	updateSketchpad (desc: { items: ProofItem[] }): void {
-		// TODO: remove duplicate entries, e.g., if the user cuts the same tree many times, we want to show just one instance of the tree
-		if (desc && desc.items && desc.items.length) {
-			this.sketchpad.add(desc.items, { label: new Date().toLocaleString()});
-			this.revealNode(desc.items[0]);
-			this.refreshView();
+	collapseHints (): void {
+		if (this.hints?.getChildren()?.length) {
+			this.collapseNode(this.hints);
+		}
+	}
+	/**
+	 * Utility function, expands the hints
+	 */
+	expandHints (): void {
+		if (this.hints?.getChildren()?.length) {
+			this.expandNode(this.hints);
+		}
+	}
+	/**
+	 * Utility function, adds a new item to the sketchpad
+	 */
+	add (desc: { 
+		selected?: ProofMateItem, 
+		items: ProofItem[]
+	}, opt?: { 
+		label?: string,
+		select?: boolean,
+		focusSelected?: boolean,
+		markSelectedAsActive?: boolean,
+		prepend?: boolean,
+		force?: boolean
+	}): void {
+		const selected: ProofMateItem = desc?.selected || this.sketchpad;
+		if (selected && desc?.items?.length && !this.lock) {
+			const newClips: ProofMateItem[] = this.sketchpad.add({ selected, items: desc.items }, opt);
+			if (newClips?.length) {
+				// expand the selected node
+				this.expandNode(selected);
+				// refresh the view
+				this.refreshView();
+				if (opt.markSelectedAsActive) {
+					this.markAsActive(newClips[0]);
+				}
+				if (opt.select) {
+					// this is a workaround to give time to the view to render the elements
+					// this.selectNode(this.sketchpad);
+					setTimeout(() => {
+						this.selectNode(newClips[0]);
+					}, this.maxTimer * 1.2);
+				}
+				if (opt?.focusSelected) {
+					this.collapseHints();
+					// this is a workaround to give time to the view to render the elements
+					this.focusNode(this.sketchpad);
+					setTimeout(() => {
+						this.focusNode(newClips[0]);
+					}, this.maxTimer * 1.2);		
+				}
+			}
 		}
 	}
 	/**
 	 * Utility function, starts a new proof in proof mate
 	 */
 	startProof (): void {
-		this.clearSketchPad();
+		// keep sketchpad
+		// this.clearSketchPad({ queryConfirm: false });
+		this.unlockSketchpad();
+		// this.expandHints();
 	}
 
 	/**
 	 * Utility function, clears the sketchpad
 	 */
-	clearSketchPad (): void {
-		this.sketchpad.clear();
+	async clearSketchPad (opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		const success: boolean = await this.sketchpad.queryClear(opt);
+		if (success) { this.refreshView(); }
+		return success;
 	}
 	
 	/**
-	 * Returns the list of theories defined in the active pvs file
+	 * Utility function, clears a given sketchpad label
+	 */
+	async queryDeleteSketchPadLabel (item: ProofMateItem, opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		const success = await this.sketchpad.queryDeleteLabel(item, opt);
+		if (success) { this.refreshView(); }
+		return success;
+	}
+
+	/**
+	 * Utility function, clears a given sketchpad label
+	 */
+	async queryDeleteNode (item: ProofMateItem, opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		const success = await this.sketchpad.queryDeleteNode(item, opt);
+		if (success) { this.refreshView(); }
+		return success;
+	}
+
+	/**
+	 * Utility function, trims a given sketchpad label
+	 */
+	async queryTrimNode (item: ProofMateItem, opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		const success = await this.sketchpad.queryTrimNode(item, opt);
+		if (success) { this.refreshView(); }
+		return success;
+	}
+
+	/**
+	 * Queries the user to enter a new proof command
+	 */
+	async queryNewProofCommand (selected: ProofMateItem): Promise<boolean> {
+		if (selected) {
+			const name: string = await vscode.window.showInputBox({
+				prompt: `Please enter proof command to be appended after ${selected.name}`,
+				placeHolder: ``,
+				value: ``,
+				ignoreFocusOut: true 
+			});
+			if (name) {
+				const elem: ProofCommand = new ProofCommand({
+					cmd: name, 
+					branchId: selected.branchId,
+					parent: selected.isProofCommand() ? selected.getParent() : selected
+				});
+				this.add({ selected, items: [ elem ] }, {
+					select: true, 
+					prepend: !selected.isClip() 
+				});
+				return true;
+			}
+		}
+		return false;
+	}
+	/**
+	 * Queries the user to enter a new proof command
+	 */
+	async queryAddNewProofBranch (selected: ProofMateItem): Promise<boolean> {
+		if (selected) {
+			const parent: ProofMateItem = selected.getParent();
+			const n: number = parent?.children?.filter(elem => {
+				return elem.getType() === "proof-branch";
+			})?.length || 0;
+			const name: string = await vscode.window.showInputBox({
+				prompt: `Please enter proof command to be appended after ${selected.name}`,
+				placeHolder: `(${n + 1})`,
+				value: `(${n + 1})`,
+				ignoreFocusOut: true 
+			});
+			if (name) {
+				const match: RegExpMatchArray = /\d+/g.exec(name);
+				if (match?.length && match[0]) {
+					const elem: ProofCommand = new ProofBranch({
+						branchId: match[0],
+						parent: selected
+					});
+					this.add({ selected, items: [ elem ] }, {
+						select: true, 
+						prepend: !selected.isClip(),
+						force: true
+					});
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Returns hints and sketchpad clips
 	 * @param item Element clicked by the user 
 	 */
-	getChildren(item: vscode.TreeItem): Thenable<vscode.TreeItem[]> {
+	getChildren(item: TreeItem): TreeItem[] {
 		if (item) {
-			const group: ProofMateGroup = <ProofMateGroup> item;
-			return Promise.resolve(group.getChildren());
+			const pitem: ProofMateItem = <ProofMateItem> item;
+			return pitem?.getChildren();
 		}
 		// root node
-		return Promise.resolve([ this.hints, this.sketchpad ]);
+		return [ this.hints, this.sketchpad ];
+	}
+	/**
+	 * Returns the parent of a node
+	 * @param item Element clicked by the user 
+	 */
+	getParent (item: TreeItem): TreeItem {
+		if (item) {
+			const pitem: ProofMateItem = <ProofMateItem> item;
+			return pitem?.getParent();
+		}
+		return null;
+	}
+	/**
+	 * Moves active node indicator forward
+	 */
+	async step (): Promise<boolean> {
+		if (this.stopAt && this.runningFlag) {
+			if (this.activeNode && this.stopAt.id === this.activeNode.id) {
+				this.stopAt = null;
+				this.runningFlag = false;
+				return true;
+			}
+			let success: boolean = await this.forward();
+			success = success && await this.step();
+			return success;
+		}
+		// else
+		return await this.forward();
+	}
+	/**
+	 * Moves active node indicator forward
+	 */
+	moveIndicatorForward (visited: boolean, opt?: { selectNode?: boolean }): boolean {
+		this.activeNode?.visited(visited);
+		this.activeNode = this.activeNode?.getNext();
+		if (this.activeNode) {
+			// skip anything that is not a proof command
+			while (this.activeNode && !this.activeNode.isProofCommand()) {
+				this.activeNode?.visited(visited);
+				this.activeNode = this.activeNode?.getNext();
+			}
+			this.activeNode?.active();
+			if (opt?.selectNode && this.activeNode) { this.selectNode(this.activeNode); }
+			this.refreshView();
+			return true;
+		}
+		this.activeNode = null;
+		this.refreshView();
+		return false;
+	}
+	/**
+	 * Moves active node indicator back
+	 */
+	// moveIndicatorBack (opt?: { selectNode?: boolean }): boolean {
+	// 	const activeLabel: SketchpadLabel = this.activeNode?.sketchpadLabel;
+	// 	this.activeNode?.notVisited();
+	// 	this.activeNode = this.activeNode?.getPreviousSibling();
+	// 	if (this.activeNode) {
+	// 		// skip anything that is not a proof command
+	// 		while (!this.activeNode.isProofCommand()) {
+	// 			this.activeNode?.notVisited();
+	// 			this.activeNode = this.activeNode?.getPreviousSibling();
+	// 		}
+	// 		this.activeNode.active();
+	// 		if (opt?.selectNode && this.activeNode) { this.selectNode(this.activeNode); }
+	// 		this.refreshView();
+	// 		return true;
+	// 	}
+	// 	this.activeNode = null;
+	// 	this.refreshView();
+	// 	return false;
+	// }
+	/**
+	 * Runs all nodes in a subtree
+	 */
+	async runSubtree (item: ProofMateItem): Promise<boolean> {
+		item = item?.contextValue === PROOFMATE_LABEL ?
+			item.children?.length ? item.children[0] : null
+				: item;
+		// sanity check
+		if (item?.contextValue === PROOFMATE_CLIP || item?.contextValue === PROOFMATE_LABEL) {
+			// fast forward to the last node of the brannch and then execute the last node
+			const lastNode: ProofMateItem = item.isProofBranch() ?
+				item.getLastChildInSubtree()
+					: (<ProofMateItem> item.getParent())?.getLastChildInSubtree();
+			if (lastNode) {
+				const success: boolean = await this.fastForwardTo(lastNode);
+				// double check that fast forward ended up in the right place
+				if (this.activeNode?.id === lastNode.id) {
+					return await this.step();
+				}
+				return success;
+			}
+		}
+		return false;
+	}
+	/**
+	 * Fast-forwards to the selected node
+	 */
+	async fastForwardTo (item: ProofMateItem): Promise<boolean> {
+		if (item) {
+			// adjust selected target --- if it's a branch, stop at the first child
+			const target: ProofMateItem = (item.isProofBranch() && item.children.length) ? 
+				item.children[0]
+					: item;
+			this.stopAt = target;
+			this.runningFlag = true;
+			return await this.step();
+		}
+		return false;
 	}
 	/**
 	 * Returns a given tree item
 	 */
-	getTreeItem(item: vscode.TreeItem): vscode.TreeItem {
+	getTreeItem(item: TreeItem): TreeItem {
 		return item;
     }
 }

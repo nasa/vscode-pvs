@@ -43,7 +43,7 @@ import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus,
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
-import { VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
+import { Explorer, VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
 import * as vscodeUtils from '../utils/vscode-utils';
 
 //-- files
@@ -149,6 +149,10 @@ export class TheoryItem extends TreeItem {
 		this.label = `${this.theoryName}  (${this.fileName}${this.fileExtension}, Ln ${this.position.line})`;
 		this.tooltip = `theory ${this.theoryName}`;
 		// update collapsible state
+		if (n > 0 && this.collapsibleState !== TreeItemCollapsibleState.Expanded) {
+			// this will force refresh
+			this.id = fsUtils.get_fresh_id();
+		}
 		this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
 	}
 	getFormula (formulaName: string): FormulaItem {
@@ -661,12 +665,12 @@ export class WorkspaceItem extends OverviewItem {
 /**
  * Data provider for PVS Explorer view
  */
-export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
+export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeDataProvider<TreeItem> {
 	/**
 	 * Events for updating the tree structure
 	 */
-	protected _onDidChangeTreeData: EventEmitter<TreeItem> = new EventEmitter<TreeItem>();
-	readonly onDidChangeTreeData: Event<TreeItem> = this._onDidChangeTreeData.event;
+	// protected _onDidChangeTreeData: EventEmitter<TreeItem> = new EventEmitter<TreeItem>();
+	// readonly onDidChangeTreeData: Event<TreeItem> = this._onDidChangeTreeData.event;
 
 	/**
 	 * Language client for communicating with the server
@@ -677,14 +681,31 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	/**
 	 * Name of the view associated with the data provider
 	 */
-	protected providerView: string;
+	// protected providerView: string;
 	
-	protected view: TreeView<TreeItem>;
+	// protected view: TreeView<TreeItem>;
 	protected root: WorkspaceItem;
 	protected loading: LoadingItem = new LoadingItem();
 
 	protected filterOnTypeActive: boolean = false;
 
+	/**
+	 * @constructor
+	 * @param client Language client 
+	 * @param providerView VSCode view served by the data provider
+	 */
+	constructor(client: LanguageClient, proofExplorer: VSCodePvsProofExplorer, providerView: string) {
+		super();
+		this.client = client;
+		this.providerView = providerView;
+		this.proofExplorer = proofExplorer;
+		this.enabled = true; // workspace explorer is always enabled
+		// register tree view.
+		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
+		// window.registerTreeDataProvider(this.providerView, this);
+		this.view = window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
+	}
+	
 	/**
 	 * Returns the full path of the pvs executable
 	 */
@@ -793,39 +814,19 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 			return await vscodeUtils.cleanPvsWorkspace();
 		}
 	}
+
 	/**
-	 * @constructor
-	 * @param client Language client 
-	 * @param providerView VSCode view served by the data provider
+	 * Updates information about a given formula
 	 */
-	constructor(client: LanguageClient, proofExplorer: VSCodePvsProofExplorer, providerView: string) {
-		this.client = client;
-		this.providerView = providerView;
-		this.proofExplorer = proofExplorer;
-		// register tree view.
-		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
-		// window.registerTreeDataProvider(this.providerView, this);
-		this.view = window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
-	}
-
-	getClient (): LanguageClient {
-		return this.client;
-	}
-
-	// setContextFolder (context: string): void {
-	// 	if (this.root) {
-	// 		this.root.setContextFolder(context);
-	// 	} else {
-	// 		console.error(`[workspace-explorer] Error: root node is null`);
-	// 	}
-	// }
-
 	updateFormula (desc: FormulaDescriptor): void {
 		if (desc) {
 			this.root.updateFormula(desc);
 		}
 	}
 
+	/**
+	 * Updates information about a given pvs context
+	 */
 	updateContextFolder (desc: PvsContextDescriptor, opt?: { tccDescriptor?: boolean }): void {
 		if (desc) {
 			if (this.root) {
@@ -838,24 +839,11 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		}
 		this.refreshView();
 	}
+
 	/**
-	 * Force refresh of the tree view
+	 * Prove all theorems within a theory with progress
+	 * This function is used by vscode-pvs.prove-theory
 	 */
-	refreshView(): void {
-		this._onDidChangeTreeData.fire(null);
-	}
-
-	getProvedTheorems (desc: PvsTheory): FormulaItem[] {
-		const provedTheorems: FormulaItem[] = this.root?.getTheoryItem(desc)?.getTheorems()?.filter(item => {
-			return item.getStatus() === "proved";
-		}) || [];
-		const provedTCCs: FormulaItem[] = this.root?.getTheoryItem(desc)?.getTCCs()?.filter(item => {
-			return item.getStatus() === "proved";
-		}) || [];
-		return provedTheorems.concat(provedTCCs);
-	}
-
-	// event dispatcher invokes this function with the command vscode-pvs.prove-theory
 	async proveTheoryWithProgress (desc: PvsTheory, opt?: {
 		tccsOnly?: boolean,
 		useJprf?: boolean,
@@ -968,7 +956,10 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
-	// event dispatcher invokes this function with the command vscode-pvs.prove-theory
+	/**
+	 * Prove all theorems within a workspace with progress
+	 * This function is used by vscode-pvs.prove-workspace
+	 */
 	async proveWorkspaceWithProgress (desc: ContextFolder, opt?: {
 		useJprf?: boolean,
 		unprovedOnly?: boolean
@@ -1116,6 +1107,22 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		}
 	}
 
+	/**
+	 * Returns the list of proved theorems
+	 */
+	getProvedTheorems (desc: PvsTheory): FormulaItem[] {
+		const provedTheorems: FormulaItem[] = this.root?.getTheoryItem(desc)?.getTheorems()?.filter(item => {
+			return item.getStatus() === "proved";
+		}) || [];
+		const provedTCCs: FormulaItem[] = this.root?.getTheoryItem(desc)?.getTCCs()?.filter(item => {
+			return item.getStatus() === "proved";
+		}) || [];
+		return provedTheorems.concat(provedTCCs);
+	}
+
+	/**
+	 * Returns the list of theorems defined in this workspace
+	 */
 	async getTheorems (desc: PvsTheory): Promise<PvsFormula[]> {
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getTheorems, desc);
@@ -1129,6 +1136,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		});
 	}
 
+	/**
+	 * Returns the list of tccs defined in this workspace
+	 */
 	async getTccs (desc: PvsTheory): Promise<PvsFormula[]> {
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getTccs, desc);
@@ -1142,6 +1152,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		});
 	}
 
+	/**
+	 * Typechecks the workspace
+	 */
 	async typecheckWorkspace (desc: ContextFolder): Promise<boolean> {
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.typecheckWorkspace, desc);
@@ -1151,6 +1164,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		});
 	}
 
+	/**
+	 * Returns the importchain
+	 */
 	async getImportChainTheorems (desc: PvsTheory): Promise<PvsFormula[]> {
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getImportChainTheorems, desc);
@@ -1160,6 +1176,9 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 		});
 	}
 
+	/**
+	 * Proves the importchain with progress
+	 */
 	async proveImportChainWithProgress (desc: PvsTheory, opt?: { useJprf?: boolean }): Promise<void> {
 		if (desc && desc.theoryName) {
 			opt = opt || {};
@@ -1439,7 +1458,7 @@ export class VSCodePvsWorkspaceExplorer implements TreeDataProvider<TreeItem> {
 	 * Returns the list of theories defined in the active pvs file
 	 * @param element Element clicked by the user 
 	 */
-	 getChildren(element: TreeItem): Thenable<TreeItem[] | null> {
+	getChildren(element: TreeItem): Thenable<TreeItem[] | null> {
 		if (element) {
 			let children: TreeItem[] = null;
 			if (element.contextValue === "workspace-overview") {

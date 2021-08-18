@@ -40,7 +40,8 @@ import * as language from './languageKeywords';
 import { ProofNode, PvsVersionDescriptor, ProofDescriptor, 
 	ProofStatus, Position, Range, ProofTree, PvsFormula, SFormula, 
     SequentDescriptor, CommandDescriptor, CommandsMap, ProofMateProfile, 
-    HintsObject
+    HintsObject,
+    ProofNodeType
 } from '../common/serverInterface';
 import * as colorUtils from "./colorUtils";
 import { SessionType } from './xtermInterface';
@@ -1437,11 +1438,10 @@ ${theoryName}: THEORY
 /**
  * Structure representing a proof tree
  */
-export type NodeType = "root" | "proof-branch" | "proof-node" | "ghost";
 export interface TreeStructure {
     id?: string,
 	name?: string,
-	type?: NodeType,
+	type?: ProofNodeType | "ghost",
     status?: {
         visited: boolean,
         pending: boolean,

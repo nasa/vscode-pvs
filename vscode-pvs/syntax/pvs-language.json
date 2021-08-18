@@ -23,7 +23,7 @@
 			"name": "constant.numeric"
 		},
 		{
-			"match": "\\b[Aa][Nn][Dd]\\b|\\b[Aa][Nn][Dd][Tt][Hh][Ee][Nn]\\b|\\b[Aa][Rr][Rr][Aa][Yy]\\b|\\b[Aa][Ss]\\b|\\b[Aa][Ss][Ss][Uu][Mm][Ii][Nn][Gg]\\b|\\b[Aa][Ss][Ss][Uu][Mm][Pp][Tt][Ii][Oo][Nn]\\b|\\b(?![Aa][Uu][Tt][Oo]_[Rr][Ee][Ww][Rr][Ii][Tt][Ee][\\+\\-])[Aa][Uu][Tt][Oo]_[Rr][Ee][Ww][Rr][Ii][Tt][Ee]\\b|\\b[Aa][Uu][Tt][Oo]_[Rr][Ee][Ww][Rr][Ii][Tt][Ee][\\+\\-]|\\b[Aa][Xx][Ii][Oo][Mm]\\b",
+			"match": "\\b[Aa][Nn][Dd]\\b|\\b[Aa][Nn][Dd][Tt][Hh][Ee][Nn]\\b|\\b[Aa][Rr][Rr][Aa][Yy]\\b|\\b[Aa][Ss]\\b|\\b[Aa][Ss][Ss][Uu][Mm][Ii][Nn][Gg]\\b|\\b[Aa][Ss][Ss][Uu][Mm][Pp][Tt][Ii][Oo][Nn]\\b|\\b[Aa][Uu][Tt][Oo]_[Rr][Ee][Ww][Rr][Ii][Tt][Ee](?:\\+|\\-|\\s)|\\b[Aa][Xx][Ii][Oo][Mm]\\b",
 			"name": "keyword"
 		},
 		{
@@ -51,7 +51,7 @@
 			"name": "keyword"
 		},
 		{
-			"match": "\\b[Tt][Aa][Bb][Ll][Ee]\\b|\\b[Tt][Hh][Ee][Nn]\\b|\\b[Tt][Hh][Ee][Oo][Rr][Ee][Mm]\\b|\\b[Tt][Hh][Ee][Oo][Rr][Yy]\\b|\\b(?![Tt][Yy][Pp][Ee]\\+)[Tt][Yy][Pp][Ee]\\b|\\[Tt][Yy][Pp][Ee]\\+|\\b[Vv][Aa][Rr]\\b|\\b[Ww][Hh][Ee][Nn]\\b|\\b[Ww][Hh][Ee][Rr][Ee]\\b|\\b[Ww][Ii][Tt][Hh]\\b|\\b[Xx][Oo][Rr]\\b",
+			"match": "\\b[Tt][Aa][Bb][Ll][Ee]\\b|\\b[Tt][Hh][Ee][Nn]\\b|\\b[Tt][Hh][Ee][Oo][Rr][Ee][Mm]\\b|\\b[Tt][Hh][Ee][Oo][Rr][Yy]\\b|\\b[Tt][Yy][Pp][Ee](?:\\+|\\b)|\\b[Vv][Aa][Rr]\\b|\\b[Ww][Hh][Ee][Nn]\\b|\\b[Ww][Hh][Ee][Rr][Ee]\\b|\\b[Ww][Ii][Tt][Hh]\\b|\\b[Xx][Oo][Rr]\\b",
 			"name": "keyword"
 		},
 		{

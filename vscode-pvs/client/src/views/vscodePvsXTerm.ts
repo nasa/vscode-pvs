@@ -57,7 +57,7 @@ import * as colorUtils from '../common/colorUtils';
 import {
     XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData, XTermMessage
 } from '../common/xtermInterface';
-import { balancePar, getHints, isInvalidCommand } from '../common/languageUtils';
+import { balancePar, getHints, isInvalidCommand, isQEDCommand, noChange } from '../common/languageUtils';
 import { VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
 import { YesNoCancel } from '../utils/vscode-utils';
 
@@ -591,14 +591,15 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Sends a command to pvs-server
      */
-    async sendTextToServer (text: string, addNewLine?: boolean): Promise<EvaluatorCommandResponse | ProofCommandResponse | null> {
+    async sendTextToServer (text: string, addNewLine?: boolean): Promise<boolean> {
         // return new Promise((resolve, reject) => {
             if (this.sessionType === "evaluator") {
                 const command: PvsioEvaluatorCommand = {
                     cmd: text,
                     ...this.target
                 };
-                return await this.sendEvaluatorCommand(command);
+                await this.sendEvaluatorCommand(command);
+                return true;
                 // this.client.sendRequest(serverRequest.evaluatorCommand, command);
                 // this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: EvaluatorCommandResponse) => {
                 //     this.onEvaluatorResponse(data);
@@ -611,14 +612,15 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     ...<PvsFormula> this.target,
                     origin: "xterm-pvs"
                 };
-                return await this.sendProverCommand(command);
+                const success: boolean = await this.sendProverCommand(command);
+                return success;
                 // this.client.sendRequest(serverRequest.proofCommand, command);
                 // this.client.onRequest(serverEvent.proofCommandResponse, (data: ProofCommandResponse) => {
                 //     this.onProverResponse(data);
                 //     resolve(data);
                 // });
             } //else {
-                return null;
+                return false;
             //}
         // });
     }
@@ -641,18 +643,29 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Sends a prover command to the server
      */
-    async sendProverCommand (req: PvsProofCommand): Promise<ProofCommandResponse> {
+    async sendProverCommand (req: PvsProofCommand): Promise<boolean> {
         return new Promise((resolve, reject) => {
             if (this.sessionType === "prover") {
                 this.client.sendRequest(serverRequest.proofCommand, req);
                 this.client.onRequest(serverEvent.proofCommandResponse, (data: ProofCommandResponse) => {
                     this.onProverResponse(data);
-                    resolve(data);
+                    const success: boolean = data ? 
+                        typeof data.res === "string" ? isQEDCommand(data.res)
+                            : !isInvalidCommand(data.res) && !noChange(data.res)
+                                : false;
+                    resolve(success);
+                    // resolve(data);
                 });
             } else {
                 resolve(null);
             }
         });
+    }
+    /**
+     * Returns the clipboard
+     */
+    getProofExplorer (): VSCodePvsProofExplorer {
+        return this.proofExplorer;
     }
     /**
      * Places focus on the terminal

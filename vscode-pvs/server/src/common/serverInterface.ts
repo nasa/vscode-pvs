@@ -790,7 +790,7 @@ export const NASALibGithubFile: string = `https://github.com/nasa/pvslib/archive
 export type ProofEditCommand = ProofEditAppendNode | ProofEditCopyNode | ProofEditPasteNode | ProofEditCopyTree
 	| ProofEditPasteTree | ProofEditDeleteNode | ProofEditAppendBranch | ProofEditCutNode | ProofEditCutTree
 	| ProofEditDeleteTree | ProofEditTrimNode | ProofEditRenameNode | ProofEditTrimUnused
-	| ProofEditExportProof | ProofEditSliceTree;
+	| ProofEditExportProof | ProofEditJumpHere;
 export type ProofEditAppendNode = {
 	action: "append-node",
 	name: string,
@@ -837,8 +837,8 @@ export type ProofEditCutTree = {
 	selected: { id: string, name: string },
 	keepRoot?: boolean
 };
-export type ProofEditSliceTree = {
-	action: "slice-tree",
+export type ProofEditJumpHere = {
+	action: "jump-here",
 	selected: { id: string, name: string }
 };
 export type ProofEditDeleteTree = {

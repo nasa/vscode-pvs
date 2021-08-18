@@ -802,7 +802,10 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("proof-mate.update-sketchpad", (desc: { items: ProofItem[] }) => {
             if (desc) {
                 // this.proofMate.clearSketchPath();
-                this.proofMate.updateSketchpad(desc);
+                this.proofMate.add({ items: desc.items }, {
+                    focusSelected: true,
+                    markSelectedAsActive: true
+                });
             }
         }));
 
@@ -1282,7 +1285,7 @@ export class EventsDispatcher {
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.x-show-proof", async () => {
-            commands.executeCommand("proof-explorer.show-proof-tree");
+            commands.executeCommand("proof-explorer.show-proof");
             // this.proofExplorer?.showWebView({ recenter: true });
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.x-prove", async () => {
