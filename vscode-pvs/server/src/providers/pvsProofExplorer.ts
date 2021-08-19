@@ -915,15 +915,18 @@ export class PvsProofExplorer {
 					}
 					// quit proof and update proof status
 					await this.quitProofAndSave({ jprfOnly: true });
+				} else {
+					if (this.connection) {
+						const evt: ProofExecDidStopRunning = { action: "did-stop-running" };
+						this.connection.sendNotification(serverEvent.proverEvent, evt);
+					}
 				}
 			}
 		} else {
 			this.runningFlag = false;
 			console.error("[proof-explorer] Error: could not read proof state information returned by pvs-server.");
 			if (this.connection) {
-				const evt: ProofExecDidStopRunning = {
-					action: "did-stop-running"
-				};
+				const evt: ProofExecDidStopRunning = { action: "did-stop-running" };
 				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}

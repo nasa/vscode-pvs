@@ -799,11 +799,9 @@ export class EventsDispatcher {
 
         context.subscriptions.push(commands.registerCommand("proof-mate.update-sketchpad", (desc: { items: ProofItem[] }) => {
             if (desc) {
-                // this.proofMate.clearSketchPath();
                 const formulaName: string = this.proofExplorer.getFormulaName();
                 const label: string = formulaName ? `${new Date().toLocaleString()} ${formulaName}` : `${new Date().toLocaleString()}`;
-                this.proofMate.add({ items: desc.items }, {
-                    focusSelected: false,
+                const success: boolean = this.proofMate.add({ items: desc.items }, {
                     select: true,
                     markSelectedAsActive: true,
                     label

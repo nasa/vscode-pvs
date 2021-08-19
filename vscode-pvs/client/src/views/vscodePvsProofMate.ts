@@ -1588,39 +1588,28 @@ export class VSCodePvsProofMate extends Explorer {
 	}, opt?: { 
 		label?: string,
 		select?: boolean,
-		focusSelected?: boolean,
 		markSelectedAsActive?: boolean,
-		prepend?: boolean,
-		force?: boolean
-	}): void {
+		prepend?: boolean
+	}): boolean {
 		const selected: ProofMateItem = desc?.selected || this.sketchpad;
 		if (selected && desc?.items?.length && !this.lock) {
 			const newClips: ProofMateItem[] = this.sketchpad.add({ selected, items: desc.items }, opt);
 			if (newClips?.length) {
-				// expand the selected node
+				// expand && selected the selected node
 				this.expandNode(selected);
+				this.selectNode(selected);
 				// refresh the view
-				this.refreshView();
-				if (opt.markSelectedAsActive) {
+				// this.refreshView();
+				if (opt?.markSelectedAsActive) {
 					this.markAsActive(newClips[0]);
 				}
-				if (opt.select) {
-					// this is a workaround to give time to the view to render the elements
-					// this.selectNode(this.sketchpad);
-					setTimeout(() => {
-						this.selectNode(newClips[0]);
-					}, this.maxTimer * 1.2);
+				if (opt?.select) {
+					this.selectNode(newClips[0]);
 				}
-				if (opt?.focusSelected) {
-					this.collapseHints();
-					// this is a workaround to give time to the view to render the elements
-					this.focusNode(this.sketchpad);
-					setTimeout(() => {
-						this.focusNode(newClips[0]);
-					}, this.maxTimer * 1.2);		
-				}
+				return true;
 			}
 		}
+		return false;
 	}
 	/**
 	 * Marks the first clips as active
@@ -1742,8 +1731,7 @@ export class VSCodePvsProofMate extends Explorer {
 					});
 					this.add({ selected, items: [ elem ] }, {
 						select: true, 
-						prepend: !selected.isClip(),
-						force: true
+						prepend: !selected.isClip()
 					});
 					return true;
 				}

@@ -159,7 +159,12 @@ export abstract class Explorer extends Backbone.Model implements TreeDataProvide
 	 * Expands a node in the view.
 	 */
 	expandNode (selected: TreeItem): void {
-		this.selectNode(selected, { force: true });
+		// this.selectNode(selected, { force: true });
+		if (selected && this.isVisible()) {
+			selected.id = fsUtils.get_fresh_id(); // this is a workaround -- treeview updates the collapsible state only if the node has a new ID
+			selected.collapsibleState = TreeItemCollapsibleState.Expanded;
+			this.refreshView();
+		}
 	}
 	/**
 	 * Collapses a node in the view.
@@ -190,8 +195,8 @@ export abstract class Explorer extends Backbone.Model implements TreeDataProvide
 	/**
 	 * Refresh tree view
 	 */
-	protected refresh (opt?: { force?: boolean, source?: string }): void {
-		if (this.enabled && (this.isVisible() || opt?.force)) {
+	protected refresh (opt?: { source?: string }): void {
+		if (this.enabled) {
 			this._onDidChangeTreeData.fire(null);
 		}
 	}
