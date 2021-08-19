@@ -841,6 +841,14 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	}
 
 	/**
+	 * @override
+	 * Refresh tree view
+	 */
+	protected refresh (opt?: { force?: boolean, source?: string }): void {
+		this._onDidChangeTreeData.fire(null);
+	}
+
+	/**
 	 * Prove all theorems within a theory with progress
 	 * This function is used by vscode-pvs.prove-theory
 	 */

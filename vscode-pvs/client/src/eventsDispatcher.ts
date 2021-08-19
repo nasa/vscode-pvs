@@ -206,7 +206,7 @@ export class EventsDispatcher {
             }
         }) => {
             // request tccs for the files that typecheck correctly
-            if (desc && desc.response && !desc.response.error && desc.args) {
+            if (desc && desc.response && desc.args) {
                 this.client.sendRequest(serverRequest.generateTccs, {
                     fileName: desc.args.fileName,
                     fileExtension: desc.args.fileExtension,
@@ -223,7 +223,7 @@ export class EventsDispatcher {
                 contextFolder: string 
             }
         }) => {
-            if (this.workspaceExplorer && desc.response) {
+            if (this.workspaceExplorer && desc?.response) {
                 this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
             }
         });
@@ -235,17 +235,15 @@ export class EventsDispatcher {
                 contextFolder: string 
             }
         }) => {
-            if (this.workspaceExplorer && desc.response) {
+            if (this.workspaceExplorer && desc?.response) {
                 this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
             }
-            if (desc && desc.args) {
-                if (desc && desc.response) {
-                    // open tcc file in the editor
-                    const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
-                    const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
-                    const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
-                    vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
-                }
+            if (desc?.args && desc.response) {
+                // open tcc file in the editor
+                const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
+                const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
+                const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
+                vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
             }
         });
 		this.client.onRequest(serverEvent.parseFileResponse, (res: PvsResponse) => {

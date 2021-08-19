@@ -301,6 +301,8 @@ export class VSCodePvsProofExplorer extends Explorer {
 		this.treeviz = new VSCodePvsVizTree();
 
 		// install view handlers
+		// ATTN: this handler fires only when the tree view was not present in vscode and then becomes present
+		//       The name is potentially misleading: this handles **does not** fire if the view is present but collapsed (i.e., not visible) and then becomes expanded
 		this.view.onDidChangeVisibility((evt: vscode.TreeViewVisibilityChangeEvent) => {
 			if (evt?.visible) {
 				// refresh the tree view
