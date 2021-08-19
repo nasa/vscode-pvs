@@ -45,7 +45,7 @@ loc-server:
 loc-client:
 	find . -name '*.ts' ! -name '*.d.ts' -path '*client/src/*' | xargs wc -l
 
-release: all install-vsce
+release: all install-vsce audit
 	node_modules/vsce/out/vsce package
 	#make resolutions
 	#make resolutions

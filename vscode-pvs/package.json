@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.56-eta",
+	"version": "1.0.56-theta",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -544,10 +544,17 @@
 				"category": "pvs"
 			},
 			{
-				"command": "proof-mate.clear-sketchpad",
+				"command": "proof-mate.delete-sketchpad",
 				"title": "Clear sketchpad",
 				"enablement": "pvs-server-active == true",
 				"icon": "$(trash)",
+				"category": "pvs"
+			},
+			{
+				"command": "proof-mate.clear-sketchpad",
+				"title": "o Clear sketchpad marks",
+				"enablement": "pvs-server-active == true",
+				"icon": "$(activate-breakpoints)",
 				"category": "pvs"
 			},
 			{
@@ -560,10 +567,20 @@
 			{
 				"command": "proof-mate.exec-hint",
 				"title": "Run hint",
-				"enablement": "pvs-server-active == true",
+				"enablement": "in-checker == true",
 				"icon": {
 					"dark": "icons/play-icon.png",
 					"light": "icons/play-icon.png"
+				},
+				"category": "pvs"
+			},
+			{
+				"command": "proof-mate.exec-clip",
+				"title": "Step proof command",
+				"enablement": "in-checker == true",
+				"icon": {
+					"dark": "icons/svg-next-orange-icon.svg",
+					"light": "icons/svg-next-orange-icon.svg"
 				},
 				"category": "pvs"
 			},
@@ -583,7 +600,6 @@
 					"light": "icons/svg-fold-proved-icon.svg"
 				}
 			},
-
 			{
 				"command": "proof-explorer.delete-node",
 				"title": "Delete",
@@ -596,7 +612,6 @@
 				"enablement": "view == proof-explorer-view && pvs-server-active == true",
 				"category": "pvs"
 			},
-
 			{
 				"command": "proof-mate.delete-node",
 				"title": " Delete",
@@ -610,7 +625,6 @@
 				"enablement": "view == proof-mate-view && viewItem == proofmate-clip",
 				"category": "pvs"
 			},
-
 			{
 				"command": "proof-explorer.jump-here",
 				"title": "Jump here",
@@ -621,9 +635,9 @@
 				"command": "proof-mate.jump-here",
 				"title": "Jump here",
 				"enablement": "view == proof-mate-view && viewItem == proofmate-clip",
+				"icon": "$(debug-stackframe-active)",
 				"category": "pvs"
 			},
-
 			{
 				"command": "proof-explorer.trim-unused",
 				"title": "Remove unused commands",
@@ -665,7 +679,6 @@
 				},
 				"category": "pvs"
 			},
-
 			{
 				"command": "proof-explorer.edit-node",
 				"title": "Edit",
@@ -680,7 +693,6 @@
 				"icon": "$(edit)",
 				"category": "pvs"
 			},
-
 			{
 				"command": "proof-explorer.copy-node",
 				"title": "Copy",
@@ -699,7 +711,6 @@
 				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node && pvs-server-active == true",
 				"category": "pvs"
 			},
-
 			{
 				"command": "proof-mate.copy-node",
 				"title": "Copy",
@@ -718,7 +729,6 @@
 				"enablement": "viewItem != proofmate-hint && viewItem != proofmate-hints && proof-explorer.clipboard-contains-node",
 				"category": "pvs"
 			},
-
 			{
 				"command": "proof-explorer.cut-subtree",
 				"title": "Cut subtree",
@@ -737,7 +747,6 @@
 				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-tree && pvs-server-active == true",
 				"category": "pvs"
 			},
-
 			{
 				"command": "proof-mate.cut-subtree",
 				"title": "Cut subtree",
@@ -756,7 +765,6 @@
 				"enablement": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints && proof-explorer.clipboard-contains-tree",
 				"category": "pvs"
 			},
-
 			{
 				"command": "proof-explorer.export-prooflite",
 				"title": "Export ProofLite (.prl)",
@@ -1157,7 +1165,6 @@
 					"when": "false && view == proof-explorer-view",
 					"group": "inline"
 				},
-
 				{
 					"command": "proof-explorer.jump-here",
 					"when": "view == proof-explorer-view",
@@ -1165,10 +1172,9 @@
 				},
 				{
 					"command": "proof-mate.jump-here",
-					"when": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints",
+					"when": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints && viewItem != proofmate-sketchpad",
 					"group": "context-menu/ctrl-1.1"
 				},
-
 				{
 					"command": "proof-explorer.edit-node",
 					"when": "view == proof-explorer-view && viewItem != root",
@@ -1224,7 +1230,6 @@
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-1"
 				},
-
 				{
 					"command": "proof-mate.copy-node",
 					"when": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints",
@@ -1240,7 +1245,6 @@
 					"when": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints",
 					"group": "context-menu/edit-1"
 				},
-
 				{
 					"command": "proof-explorer.copy-subtree",
 					"when": "view == proof-explorer-view",
@@ -1256,7 +1260,6 @@
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-2"
 				},
-
 				{
 					"command": "proof-mate.copy-subtree",
 					"when": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints",
@@ -1272,7 +1275,6 @@
 					"when": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints",
 					"group": "context-menu/edit-2"
 				},
-
 				{
 					"command": "proof-explorer.edit-node",
 					"when": "view == proof-explorer-view",
@@ -1283,7 +1285,6 @@
 					"when": "view == proof-mate-view && viewItem == proofmate-clip && viewItem !== proofmate-sketchpad",
 					"group": "context-menu/edit-3"
 				},
-
 				{
 					"command": "proof-explorer.delete-node",
 					"when": "view == proof-explorer-view",
@@ -1294,28 +1295,29 @@
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-4"
 				},
-
 				{
 					"command": "proof-mate.delete-node",
 					"when": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints",
 					"group": "context-menu/edit-4"
 				},
-	
 				{
 					"command": "proof-mate.trim-node",
 					"when": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints",
 					"group": "context-menu/edit-4"
 				},
-
 				{
 					"command": "proof-explorer.trim-unused",
 					"when": "view == proof-explorer-view",
 					"group": "context-menu/edit-6"
 				},
-
 				{
 					"command": "proof-mate.delete-node",
 					"when": "view == proof-mate-view && viewItem == proofmate-clip",
+					"group": "inline"
+				},
+				{
+					"command": "proof-mate.exec-clip",
+					"when": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints && viewItem != proofmate-sketchpad && viewItem != proofmate-label",
 					"group": "inline"
 				},
 				{
@@ -1329,8 +1331,13 @@
 					"group": "inline"
 				},
 				{
-					"command": "proof-mate.clear-sketchpad",
+					"command": "proof-mate.delete-sketchpad",
 					"when": "false && view == proof-mate-view && viewItem == proofmate-sketchpad",
+					"group": "inline"
+				},
+				{
+					"command": "proof-mate.clear-sketchpad",
+					"when": "view == proof-mate-view && viewItem == proofmate-sketchpad || view == proof-mate-view && viewItem == proofmate-label",
 					"group": "inline"
 				},
 				{
@@ -1625,6 +1632,11 @@
 					"command": "proof-mate.clear-sketchpad",
 					"when": "view == proof-mate-view",
 					"group": "ctrl-0"
+				},
+				{
+					"command": "proof-mate.delete-sketchpad",
+					"when": "view == proof-mate-view",
+					"group": "ctrl-1"
 				},
 				{
 					"command": "proof-mate.activate-basic-profile",

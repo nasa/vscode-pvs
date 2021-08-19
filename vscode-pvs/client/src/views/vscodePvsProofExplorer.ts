@@ -310,7 +310,13 @@ export class VSCodePvsProofExplorer extends Explorer {
 				this.selectActiveNode();
 			}
 		});
-	
+	}
+
+	/**
+	 * Returns the name of the formula being proved
+	 */
+	getFormulaName (): string {
+		return this.formula?.formulaName;
 	}
 
 	/**
@@ -2071,6 +2077,17 @@ export abstract class ProofItem extends TreeItem {
 		// 	light: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg"),
 		// 	dark: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg")
 		// };
+	}
+	/**
+	 * Marks all nodes as visited (not visited if the flag is false)
+	 */
+	treeVisited (flag?: boolean): void {
+		this.visited(flag);
+		if (this.children) {
+			for (let i = 0; i < this.children.length; i++) {
+				this.children[i].treeVisited(flag);
+			}
+		}
 	}
 	/**
 	 * Returns true if a tree item is complete

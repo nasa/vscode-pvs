@@ -118,14 +118,7 @@ abstract class ProofMateItem extends ProofItem {
 	 * @override
 	 */
 	getType(): ProofNodeType {
-		switch (this.type) {
-			case "root": { return "root"; }
-			case "proof-branch": { return "proof-branch"; }
-			case "proof-command": { return "proof-command"; }
-			default: {
-				return null;
-			}
-		}
+		return (this.contextValue === PROOFMATE_CLIP) ? this.type : "root";
 	}
 	/**
 	 * Returns true if this is a proof command
@@ -147,20 +140,25 @@ abstract class ProofMateItem extends ProofItem {
 	}
 	/**
 	 * Internal function, rebases tree branches
+	 * TODO: this function is almost identical to pvsProofExplorer.rebaseTree -- create base class so code can be reused
 	 */
-	rebaseTree (targetId: string): void {
+	rebaseTree (targetId: string, opt?: { forceTargetId?: boolean }): void {
+		opt = opt || {};
 		switch (this.type) {
 			case "proof-command": {
 				this.branchId = targetId;
 				break;
 			}
 			case "proof-branch": {
-				// if (opt?.forceName) {
-				// 	this.branchId = targetId;
-				// } else {
+				if (opt.forceTargetId) {
+					// targetId should be forced only once, at the beginning
+					// this corner case is used to handle pasteing of a proof branch under a proof command
+					opt.forceTargetId = false;
+					this.branchId = targetId;
+				} else {
 					const branchName: string = this.branchId.split(".").slice(-1)[0];
 					this.branchId = targetId ? `${targetId}.${branchName}` : branchName;
-				// }
+				}
 				// const oldName: string = this.name;
 				this.label = this.name = `(${this.branchId})`;
 				break;
@@ -249,13 +247,13 @@ abstract class ProofMateItem extends ProofItem {
 	/**
 	 * Appends children to the given node
 	 */
-	appendChildren (children: ProofMateItem[], opt?: { prepend?: boolean }): void {
-		if (children) {
-			this.children = this.children ?
-				opt?.prepend ? children.concat(this.children) : this.children.concat(children)
-				 	: children;
-		}
-	}
+	// appendChildren (children: ProofMateItem[], opt?: { prepend?: boolean }): void {
+	// 	if (children) {
+	// 		this.children = this.children ?
+	// 			opt?.prepend ? children.concat(this.children) : this.children.concat(children)
+	// 			 	: children;
+	// 	}
+	// }
 	/**
 	 * Appends child as first child
 	 */
@@ -276,16 +274,8 @@ abstract class ProofMateItem extends ProofItem {
 					child.getType() === "proof-branch" ? `${this.branchId}.${n + 1}`
 					// otherwise use currentProofBranchID
 						: this.branchId;
-
-				// targetId =
-				// 	// if the child is a proof branch, then rename it as the currentBranchID.x, where x is n + 1
-				// 	child.getType() === "proof-branch" ? `${this.branchId}.${n + 1}`
-				// 	// if the child is a proof command, then use the same branch id of the first child of this node, if the first child is a proof branch
-				// 	: this.children?.length ?
-				// 		this.children[0].getType() === "proof-command" ? this.children[0].branchId
-				// 	: `${this.parent.branchId}.${n + 1}`;
 				targetId = targetId.startsWith(".") ? targetId.substring(1) : targetId;
-				child.rebaseTree(targetId);
+				child.rebaseTree(targetId, { forceTargetId: child.getType() === "proof-branch" });
 			}
 			if (child.getType() === "root") {
 				this.children = child.children.concat(this.children);
@@ -471,7 +461,7 @@ abstract class ProofMateItem extends ProofItem {
 	protected updateIcon (): void {
 		super.updateIcon();
 		if (this.visitedFlag) {
-			this.iconPath = new vscode.ThemeIcon("star-full");//, new vscode.ThemeColor("pvs.orange"));
+			this.iconPath = new vscode.ThemeIcon("circle-filled");// star-full, new vscode.ThemeColor("pvs.orange"));
 		} else if (this.activeFlag) {
 			this.iconPath = {
 				light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
@@ -694,6 +684,10 @@ class SketchpadLabel extends ProofMateItem {
 		this.parent = desc?.group;
 		this.sketchpadLabel = this;
 	}
+	// @override
+	updateIcon (): void {
+		// do nothing
+	}
 }
 
 /**
@@ -757,21 +751,21 @@ class Sketchpad extends ProofMateGroup {
 				parent, force: opt?.force
 			});
 			if (newClips?.length) {
-				// decide where to append
-				if (desc.selected.isClip()) {
-					// append after the selected clip
-					for (let i = 0; i < newClips.length; i++) {
-						this.appendNode({ selected: desc.selected, elem: newClips[i] });
-					}
-				} else {
-					// this is a label --- append newClips to the label
-					label.appendChildren(newClips, opt);
+				const parent: ProofMateItem = desc.selected.isClip() ? desc.selected : label;
+				for (let i = 0; i < newClips.length; i++) {
+					this.appendNode({ selected: parent, elem: newClips[newClips.length - 1 - i] });
 				}
 				vscode.commands.executeCommand('setContext', "proof-mate.sketchpad-empty", false);
 			}
 			return newClips;
 		}
 		return null;
+	}
+	/**
+	 * Returns true if the sketchpad is empty
+	 */
+	isEmpty (): boolean {
+		return this.getFirstChild() === null;
 	}
 	/**
 	 * Appends a new node to the proof tree.
@@ -956,19 +950,46 @@ class Sketchpad extends ProofMateGroup {
 		return item;
 	}
 	/**
-	 * Clears the sketchpad
+	 * Deletes the sketchpad content
 	 */
-	async queryClear (opt?: { queryConfirm?: boolean }): Promise<boolean> {
+	async queryDeleteSketchpad (opt?: { queryConfirm?: boolean }): Promise<boolean> {
 		opt = opt || {};
 		const queryConfirm: boolean = opt?.queryConfirm === false ? false : true;
 		if (queryConfirm) {
-			const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog("Clear sketchpad content?");
+			const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog("Delete sketchpad content?");
 			if (ans !== "yes") {
 				return false;
 			}
 		}
 		this.children = [];
 		vscode.commands.executeCommand('setContext', "proof-mate.sketchpad-empty", true);
+		return true;
+	}
+	/**
+	 * Clears the visited flags in the sketchpad
+	 */
+	async queryClearMarks (selected?: ProofMateItem, opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		opt = opt || {};
+		const queryConfirm: boolean = opt?.queryConfirm === false ? false : true;
+		if (queryConfirm && this.children?.length) {
+			const msg: string = selected ? 
+				selected.isClip() ? `Clear visited mark for ${selected.name}?`
+					: `Clear visited marks in sketchpad ${selected.name}?`
+				: "Clear all sketchpad marks?" 
+			const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog(msg);
+			if (ans !== "yes") {
+				return false;
+			}
+		}
+		if (selected) {
+			selected.isClip() ?
+				selected.treeVisited(false) 
+					: selected.treeVisited(false);
+		} else {
+			for (let i = 0; i < this.children?.length; i++) {
+				this.children[i].treeVisited(false);
+			}
+		}
 		return true;
 	}
 	/**
@@ -1130,12 +1151,15 @@ export class VSCodePvsProofMate extends Explorer {
 	/**
 	 * Utility function, marks the provided item as active.
 	 */
-	protected markAsActive (item: ProofMateItem): boolean {
+	protected markAsActive (item: ProofMateItem, opt?: { markSelectedAsActive?: boolean }): boolean {
 		// sanity check -- only proofmate clips can be marked as active
 		if (item?.contextValue === PROOFMATE_CLIP) {
 			this.activeNode?.updateStatus("not-visited");
 			this.activeNode = item;
 			this.activeNode?.updateStatus("active");
+			if (opt?.markSelectedAsActive) {
+				this.selectNode(this.activeNode);
+			}
 			this.refreshView();
 			return true;
 		}
@@ -1179,6 +1203,10 @@ export class VSCodePvsProofMate extends Explorer {
 	 * Executes the active node and moves indicator forward
 	 */
 	async forward (): Promise<boolean> {
+		const alternate: ProofMateItem = this.sketchpad.getFirstChild()?.children?.length ?
+			this.sketchpad.getFirstChild().children[0]
+				: null;
+		this.activeNode = this.activeNode || alternate;
 		if (this.activeNode?.name) {
 			// sanity check
 			let visited: boolean = true;
@@ -1239,6 +1267,12 @@ export class VSCodePvsProofMate extends Explorer {
 	activate(context: vscode.ExtensionContext) {
 		this.context = context;
 		this.selectProfile("basic");
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.run-proof", async () => {
+			this.run(); // async
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.pause-proof", async () => {
+            vscode.commands.executeCommand("proof-explorer.pause-proof");
+        }));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.forward", async () => {
 			this.forward(); // async
 		}));
@@ -1246,7 +1280,15 @@ export class VSCodePvsProofMate extends Explorer {
 			this.fastForwardTo(resource); // async
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.jump-here", async (resource: ProofMateItem) => {
-			this.markAsActive(resource);
+			this.markAsActive(resource, { markSelectedAsActive: true });
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.exec-clip", async (resource: ProofMateItem) => {
+			if (resource?.contextValue === PROOFMATE_CLIP) {
+				const success: boolean = this.markAsActive(resource);
+				if (success) {
+					await this.step();
+				}
+			}
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.back", async () => {
 			// not implemented
@@ -1255,8 +1297,12 @@ export class VSCodePvsProofMate extends Explorer {
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.run-subtree", async (resource: ProofMateItem) => {
 			this.runSubtree(resource); // async
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.clear-sketchpad", async () => {
-			this.clearSketchPad(); // async
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.delete-sketchpad", async () => {
+			this.queryDeleteSketchPad(); // async
+		}));
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.clear-sketchpad", async (resource: ProofMateItem) => {
+			await this.queryClearMarks(resource, { queryConfirm: !resource?.isClip() });
+			this.activeNode.active();
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.delete-sketch", async (resource: ProofMateItem) => {
 			this.queryDeleteSketchPadLabel(resource, { queryConfirm: true }); // async
@@ -1363,13 +1409,21 @@ export class VSCodePvsProofMate extends Explorer {
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.paste-subtree", async (resource: ProofMateItem) => {
 			const clips: ProofItem[] = this.xterm?.getProofExplorer()?.getClipboard();
 			if (clips?.length) {
-				this.add({ selected: resource, items: clips }, { prepend: true });
+				this.add({ selected: resource, items: clips }, {
+					prepend: true, 
+					markSelectedAsActive: this.sketchpad?.isEmpty(),
+					select: this.sketchpad?.isEmpty()
+				});
 			}
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.paste-node", async (resource: ProofMateItem) => {
 			const clips: ProofItem[] = this.xterm?.getProofExplorer()?.getClipboard();
 			if (clips?.length) {
-				this.add({ selected: resource, items: clips }, { prepend: true });
+				this.add({ selected: resource, items: clips }, {
+					prepend: true, 
+					markSelectedAsActive: this.sketchpad?.isEmpty(),
+					select: this.sketchpad?.isEmpty()
+				});
 			}
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.activate-basic-profile", () => {
@@ -1569,24 +1623,48 @@ export class VSCodePvsProofMate extends Explorer {
 		}
 	}
 	/**
+	 * Marks the first clips as active
+	 */
+	markFirstAsActive (): void {
+		// mark first node as visited
+		const first: ProofMateItem = this.sketchpad?.getFirstChild()?.getChildren().length ?
+		<ProofMateItem> this.sketchpad?.getFirstChild()?.getChildren()[0] 
+			: null;
+		this.markAsActive(first);
+	}
+	/**
 	 * Utility function, starts a new proof in proof mate
 	 */
 	startProof (): void {
-		// keep sketchpad
-		// this.clearSketchPad({ queryConfirm: false });
+		// keep sketchpad content
+		// - this.clearSketchPad({ queryConfirm: false });
+		// clear sketchpad flags
+		this.sketchpad.queryClearMarks(null, { queryConfirm: false });
+		// mark first node as visited
+		this.markFirstAsActive();
+		// unlock sketchpad
 		this.unlockSketchpad();
-		// this.expandHints();
+		// - this.expandHints();
 	}
 
 	/**
-	 * Utility function, clears the sketchpad
+	 * Utility function, deletes the sketchpad content
 	 */
-	async clearSketchPad (opt?: { queryConfirm?: boolean }): Promise<boolean> {
-		const success: boolean = await this.sketchpad.queryClear(opt);
+	async queryDeleteSketchPad (opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		const success: boolean = await this.sketchpad.queryDeleteSketchpad(opt);
 		if (success) { this.refreshView(); }
 		return success;
 	}
 	
+	/**
+	 * Utility function, clears the visited flags in the sketchpad
+	 */
+	async queryClearMarks (selected?: ProofMateItem, opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		const success: boolean = await this.sketchpad.queryClearMarks(selected, opt);
+		if (success) { this.refreshView(); }
+		return success;
+	}
+
 	/**
 	 * Utility function, clears a given sketchpad label
 	 */
@@ -1793,6 +1871,24 @@ export class VSCodePvsProofMate extends Explorer {
 			this.stopAt = target;
 			this.runningFlag = true;
 			return await this.step();
+		}
+		return false;
+	}
+	/**
+	 * Run the entire content of the active sketchpad
+	 */
+	async run (opt?: { queryConfirm?: boolean }): Promise<boolean> {
+		opt = opt || {};
+		const root: ProofMateItem = this.sketchpad?.getFirstChild();
+		if (root?.children?.length) {
+			const queryConfirm: boolean = opt?.queryConfirm === false ? false : true;
+			if (queryConfirm) {
+				const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog(`Run sketchpad ${root.name}?`);
+				if (ans !== "yes") {
+					return false;
+				}
+			}
+			this.runSubtree(root.children[0]);
 		}
 		return false;
 	}

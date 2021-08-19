@@ -3286,7 +3286,7 @@ export abstract class ProofItem extends TreeItem {
 	 * - proof-node: old branchId = baseId, new branchId = targetId
 	 * - root: old branchId = "", new branchId = targetId
 	 */
-	rebaseTree (targetId: string, opt?: { internalAction?: boolean }): void {
+	rebaseTree (targetId: string, opt?: { internalAction?: boolean, forceTargetId?: boolean }): void {
 		opt = opt || {};
 		opt.internalAction = opt.internalAction === undefined ? true : false;
 		switch (this.contextValue) {
@@ -3295,13 +3295,15 @@ export abstract class ProofItem extends TreeItem {
 				break;
 			}
 			case "proof-branch": {
-				// the last component of the branch id represents the branch name relative to the base
-				// if (opt.forceName) {
-				// 	this.branchId = targetId;
-				// } else {
+				if (opt.forceTargetId) {
+					// targetId should be forced only once, at the beginning
+					// this corner case is used to handle pasteing of a proof branch under a proof command
+					opt.forceTargetId = false;
+					this.branchId = targetId;
+				} else {
 					const branchName: string = this.branchId.split(".").slice(-1)[0];
 					this.branchId = targetId ? `${targetId}.${branchName}` : branchName;
-				// }
+				}
 				const oldName: string = this.name;
 				this.name = `(${this.branchId})`;
 				if (!opt.internalAction && this.connection) {
@@ -3393,16 +3395,8 @@ export abstract class ProofItem extends TreeItem {
 					child.getType() === "proof-branch" ? `${this.branchId}.${n + 1}`
 					// otherwise use currentProofBranchID
 						: this.branchId;
-
-				// targetId =
-				// 	// if the child is a proof branch, then rename it as the currentBranchID.x, where x is n + 1
-				// 	child.getType() === "proof-branch" ? `${this.branchId}.${n + 1}`
-				// 	// if the child is a proof command, then use the same branch id of the first child of this node, if the first child is a proof branch
-				// 	: this.children?.length ?
-				// 		this.children[0].getType() === "proof-command" ? this.children[0].branchId
-				// 	: `${this.parent.branchId}.${n + 1}`;
 				targetId = targetId.startsWith(".") ? targetId.substring(1) : targetId;
-				child.rebaseTree(targetId);
+				child.rebaseTree(targetId, { forceTargetId: child.getType() === "proof-branch" });
 			}
 			if (child.contextValue === "root") {
 				this.children = child.children.concat(this.children);
