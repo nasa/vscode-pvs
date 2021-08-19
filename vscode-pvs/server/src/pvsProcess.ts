@@ -44,6 +44,8 @@ import * as fsUtils from './common/fsUtils';
 import { PvsErrorManager } from './pvsErrorManager';
 import { forceLocale } from './common/languageUtils';
 
+const MAX_LOG_CHUNK: number = 600;
+
 export enum ProcessCode { SUCCESS = 0, PVSNOTFOUND = -1, ADDRINUSE = -2, COMMFAILURE = -3, PVSSTARTFAIL = -4, PVSERROR = -5, UNSUPPORTEDPLATFORM = -6 };
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
@@ -70,6 +72,8 @@ export class PvsProcess {
 	protected verbose: boolean = false;
 	
 	protected progressInfoEnabled: boolean = false;
+
+	protected verboseLog: boolean = false;
 
 	/**
 	 * utility function for sending error messages over the connection (if any connection is available)
@@ -129,6 +133,13 @@ export class PvsProcess {
 		this.pvsLibraryPath = path.join(this.pvsPath, "lib");
 		this.connection = opt.connection;
 		this.pvsErrorManager = opt.pvsErrorManager;
+	}
+
+	/**
+	 * Utility function, sets the log level
+	 */
+	logLevel (l: "verbose" | "standard"): void {
+		this.verboseLog = l === "verbose";
 	}
 
 	/**
@@ -214,7 +225,7 @@ export class PvsProcess {
 
 					this.ready = false;
 					this.data += data;
-					this.log(data);
+					this.log(data?.length > MAX_LOG_CHUNK && !this.verboseLog ? data.substr(0, MAX_LOG_CHUNK) + "\n\n...\n\n" : data);
 
 					const matchSocketAddressInUse: RegExpMatchArray = /(errno 48)/g.exec(data);
 					if (matchSocketAddressInUse) {
