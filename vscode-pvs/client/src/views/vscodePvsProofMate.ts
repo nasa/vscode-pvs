@@ -192,8 +192,13 @@ abstract class ProofMateItem extends ProofItem {
 	/**
 	 * Returns the next node in the sketchpad
 	 */
-	getNext (): ProofMateItem {
-		return this.getFirstChild() || this.getNextSibling() || this.parent?.getNextSibling();
+	getNext (opt?: { siblingOnly?: boolean }): ProofMateItem {
+		let candidate: ProofMateItem = opt?.siblingOnly ? this.getNextSibling()
+			: this.getFirstChild() || this.getNextSibling();
+		if (!candidate && this.parent && this.parent !== this) {
+			return this.parent?.getNext({ siblingOnly: true })
+		}
+		return candidate;
 	}
 	/**
 	 * Returns the next sibling
@@ -1202,11 +1207,13 @@ export class VSCodePvsProofMate extends Explorer {
 	/**
 	 * Executes the active node and moves indicator forward
 	 */
-	async forward (): Promise<boolean> {
-		const alternate: ProofMateItem = this.sketchpad.getFirstChild()?.children?.length ?
-			this.sketchpad.getFirstChild().children[0]
-				: null;
-		this.activeNode = this.activeNode || alternate;
+	async forward (opt?: { useFirstIfNull?: boolean }): Promise<boolean> {
+		if (opt?.useFirstIfNull) {
+			const alternate: ProofMateItem = this.sketchpad.getFirstChild()?.children?.length ?
+				this.sketchpad.getFirstChild().children[0]
+					: null;
+			this.activeNode = this.activeNode || alternate;
+		}
 		if (this.activeNode?.name) {
 			// sanity check
 			let visited: boolean = true;
@@ -1268,13 +1275,15 @@ export class VSCodePvsProofMate extends Explorer {
 		this.context = context;
 		this.selectProfile("basic");
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.run-proof", async () => {
+			this.collapseHints();
 			this.run(); // async
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.pause-proof", async () => {
             vscode.commands.executeCommand("proof-explorer.pause-proof");
         }));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.forward", async () => {
-			this.forward(); // async
+			this.collapseHints();
+			this.forward({ useFirstIfNull: true }); // async
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.fast-forward", async (resource: ProofMateItem) => {
 			this.fastForwardTo(resource); // async
