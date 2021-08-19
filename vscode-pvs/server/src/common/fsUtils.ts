@@ -266,7 +266,10 @@ export async function createFolder(path: string): Promise<void> {
 		fs.mkdirSync(path, { recursive: true });
 	}
 }
-export async function writeFile(fname: string, content: string, opt?: { append?: boolean, encoding?: BufferEncoding }): Promise<boolean> {
+export async function writeFile(fname: string, content: string, opt?: {
+	append?: boolean, 
+	encoding?: BufferEncoding
+}): Promise<boolean> {
 	opt = opt || {};
 	opt.encoding = opt.encoding || "utf8";
 	if (fname) {
@@ -280,7 +283,11 @@ export async function writeFile(fname: string, content: string, opt?: { append?:
 				content = previousContent + "\n\n" + content;
 				content = content.trim();
 			}
+			// writeFileSync does not synchronously write to the file system -- use open/write/fdatasync instead?
 			fs.writeFileSync(fname, content, { encoding: opt.encoding });
+			// const fd: number = fs.openSync(fname, "w+");
+			// fs.writeSync(fd, content, null, opt.encoding);
+			// fs.fdatasyncSync(fd)
 		} catch (error) {
 			console.error(`[fs-utils] Error while writing file ${fname}`, error);
 			return false;
