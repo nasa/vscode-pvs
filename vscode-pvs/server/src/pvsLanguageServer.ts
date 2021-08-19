@@ -752,13 +752,15 @@ export class PvsLanguageServer {
 					}
 					// tccs were generated, send a context descriptor update to the client so the tccs can be rendered in workspace explorer
 					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
-					this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
+					this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);					
+				} else {
+					console.warn("[pvs-language-server] Warning: generate-tccs-request returned error", response);
 				}
 				if (!opt.quiet) {
 					const msg: string = `${nTccs} tccs generated for ${shortName} (${nProved} proved, ${nTccs - nProved} to be proved)`;
 					this.notifyEndImportantTask({ id: taskId, msg });
 				}
-			} else {
+		} else {
 				console.error("[pvs-language-server] Warning: pvs.generate-tccs is unable to identify filename for ", request);
 			}
 		} else {

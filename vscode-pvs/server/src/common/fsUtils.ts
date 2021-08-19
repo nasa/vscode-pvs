@@ -1294,7 +1294,7 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 			for (let i = 0; i < boundaries.length; i++) {
 				const content: string = slices.slice(boundaries[i].from - 1, boundaries[i].to - 1).join("\n");
 				if (content && content.trim()) {
-					const regex: RegExp = theoremRegexp;
+					const regex: RegExp = new RegExp(theoremRegexp);
 					let match: RegExpMatchArray = null;
 					while (match = regex.exec(content)) {
 						if (match.length > 1 && match[1]) {
