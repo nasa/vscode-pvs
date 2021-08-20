@@ -182,6 +182,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     // pointer to proof explorer
     protected proofExplorer: VSCodePvsProofExplorer;
 
+    // running flag, prevents this.showWelcomeScreen
+    protected runningFlag: boolean = false;
+
     name: string;
     processId: Thenable<number>;
     creationOptions: Readonly<TerminalOptions | ExtensionTerminalOptions>;
@@ -820,11 +823,14 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      * Sets the running flag in xterm, which indicates that the prover is running a command
      */
     running (flag: boolean): void {
-        const message: XTermMessage = {
-            command: XTermCommands.running,
-            data: !!flag
-        };
-        this.panel?.webview?.postMessage(message);
+        if (this.runningFlag !== !!flag) {
+            this.runningFlag = !!flag
+            const message: XTermMessage = {
+                command: XTermCommands.running,
+                data: this.runningFlag
+            };
+            this.panel?.webview?.postMessage(message);
+        }
     }
     /**
      * Shows feedback while executing a proof command
@@ -854,12 +860,14 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      * Shows welcome message in the prover terminal
      */
     showWelcomeMessage (): void {
-        const message: XTermMessage = {
-            command: XTermCommands.showWelcomeMessage,
-            data: this.prompt
-        };
-        this.panel?.webview?.postMessage(message);
-        commands.executeCommand("vscode-pvs.progress-info");
+        if (!this.runningFlag) {
+            const message: XTermMessage = {
+                command: XTermCommands.showWelcomeMessage,
+                data: this.prompt
+            };
+            this.panel?.webview?.postMessage(message);
+            commands.executeCommand("vscode-pvs.progress-info");
+        }
     }
     /**
      * Shows a help message in the integrated help panel

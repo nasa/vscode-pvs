@@ -1271,6 +1271,9 @@ export class Autocomplete extends Backbone.Model {
     // selection mode
     protected triggerMode: "standard" | "single-click" = "standard";
 
+    // current help message
+    protected currHelp: string = "";
+
     // command history
     history: History;
 
@@ -1740,7 +1743,11 @@ export class Autocomplete extends Backbone.Model {
      * Shows message in the integrated help
      */
     showHelp (msg: string): void {
-        $(".terminal-help").html(msg);
+        if (this.currHelp !== msg) {
+            // console.log(`[xterm-pvs] showHelp`, { currHelp: this.currHelp, newHelp: msg });
+            this.currHelp = msg;
+            $(".terminal-help").html(this.currHelp);
+        }
     }
     /**
      * Clears the integrated help
@@ -3303,7 +3310,6 @@ export class XTermPvs extends Backbone.Model {
      * Shows a welcome message in the integrated help panel
      */
     showWelcomeMessage (): void {
-        this.runningFlag = false;
         this.xterm.setOption("cursorBlink", false);
         this.autocomplete.showHelp(welcomeMessage(this.sessionType, this.autocomplete.getIntegratedHelpSize()));
     }
@@ -3312,7 +3318,7 @@ export class XTermPvs extends Backbone.Model {
      * Sets/Resets the running flag, which indicates that the prover is running a command
      */
     running (flag: boolean): void {
-        this.runningFlag = true;
+        this.runningFlag = !!flag;
         this.xterm.setOption("cursorBlink", true);
         this.autocomplete.showHelp(welcomeMessage(this.sessionType, this.autocomplete.getIntegratedHelpSize()));
     }

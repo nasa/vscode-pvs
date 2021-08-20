@@ -97,6 +97,9 @@ export class VSCodePvsStatusBar {
     protected interruptProver: VSCodePvsStatusBarItem;
     protected downloadNasalib: VSCodePvsStatusBarItem;
 
+    // running flag, disables this.ready()
+    protected runningFlag: boolean = false;
+
     protected client: LanguageClient;
 
     /**
@@ -157,13 +160,22 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     showProgress (msg: string): void {
-        if (msg) {
-            this.pvsStatus.icon(`$(loading~spin)`);
-            this.pvsStatus.text(msg);
-            this.pvsStatus.show();
-        } else {
-            this.ready();
+        if (!this.runningFlag) {
+            if (msg) {
+                this.pvsStatus.icon(`$(loading~spin)`);
+                this.pvsStatus.text(msg);
+                this.pvsStatus.show();
+            } else {
+                this.ready();
+            }
         }
+    }
+
+    /**
+     * Sets/resets running flag
+     */
+    running (flag: boolean): void {
+        this.runningFlag = !!flag;
     }
 
     /**

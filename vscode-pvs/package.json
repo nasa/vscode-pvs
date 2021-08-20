@@ -545,15 +545,15 @@
 			},
 			{
 				"command": "proof-mate.delete-sketchpad",
-				"title": "Clear sketchpad",
-				"enablement": "pvs-server-active == true",
+				"title": " x Delete sketchpad content",
+				"enablement": "pvs-server-active == true && proof-mate.sketchpad-empty == false",
 				"icon": "$(trash)",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.clear-sketchpad",
 				"title": "o Clear sketchpad marks",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active == true && proof-mate.sketchpad-empty == false",
 				"icon": "$(activate-breakpoints)",
 				"category": "pvs"
 			},
@@ -1212,7 +1212,7 @@
 				},
 				{
 					"command": "proof-mate.new-proof-command",
-					"when": "view == proof-mate-view && viewItem == proofmate-sketchpad && proof-mate.sketchpad-empty || view == proof-mate-view && viewItem != proofmate-sketchpad && proof-mate.sketchpad-empty == false",
+					"when": "view == proof-mate-view && viewItem != proofmate-hint && viewItem != proofmate-hints",
 					"group": "inline"
 				},
 				{
@@ -1338,6 +1338,11 @@
 				{
 					"command": "proof-mate.clear-sketchpad",
 					"when": "view == proof-mate-view && viewItem == proofmate-sketchpad || view == proof-mate-view && viewItem == proofmate-label",
+					"group": "inline"
+				},
+				{
+					"command": "proof-mate.delete-sketchpad",
+					"when": "view == proof-mate-view && viewItem == proofmate-sketchpad",
 					"group": "inline"
 				},
 				{

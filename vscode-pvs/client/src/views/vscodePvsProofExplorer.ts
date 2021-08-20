@@ -983,9 +983,12 @@ export class VSCodePvsProofExplorer extends Explorer {
 	 * Handler for start proof events
 	 */
 	didStartProof (): void {
+		// reset flags
 		this.running = false;
 		vscode.commands.executeCommand('setContext', 'proof-explorer.running', false);
+		// reset cache
 		this.searchCache = {};
+		// refresh view
 		this.refreshView({ force: true, source: "did-start-proof", selectActiveNode: true });
 		if (this.root && this.root.children && this.root.children.length) {
 			if (isGlassboxTactic(this.root.children[0].name)) {
@@ -1309,13 +1312,16 @@ export class VSCodePvsProofExplorer extends Explorer {
 		}
 		return null;
 	}
-	async queryPauseProof (): Promise<boolean> {
+	async queryPauseProof (opt?: { force?: boolean }): Promise<boolean> {
+		opt = opt || {};
 		// ask the user confirmation before pausing
 		const yesno: string[] = [ "Yes", "No" ];
 		const msg: string = `Pause the execution of the current proof?`;
-		const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+		const ans: string = opt.force ? yesno[0]
+			: await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
 		if (ans === yesno[0]) {
 			this.pauseProof();
+			vscode.commands.executeCommand("proof-mate.pause-proof", { force: true, source: "proof-explorer" })
 			return true;
 		}
 		return false;
@@ -1581,8 +1587,8 @@ export class VSCodePvsProofExplorer extends Explorer {
 			// 	commands.executeCommand("vscode-pvs.prove-formula", this.formula);
 			// }
 		}));
-		context.subscriptions.push(commands.registerCommand("proof-explorer.pause-proof", async () => {
-            this.queryPauseProof();
+		context.subscriptions.push(commands.registerCommand("proof-explorer.pause-proof", async (opt?: { force?: boolean }) => {
+            this.queryPauseProof(opt); // async
         }));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.copy-node", (resource?: ProofItem) => {
 			// copy selected node

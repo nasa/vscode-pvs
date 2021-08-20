@@ -1216,15 +1216,13 @@ export class VSCodePvsProofMate extends Explorer {
 		}
 		if (this.activeNode?.name) {
 			// sanity check
-			let visited: boolean = true;
 			if (this.activeNode.isProofCommand()) {
 				this.lockSketchpad();
-				this.activeNode.executing();
-				// this.refreshView();
-				visited = await this.sendProverCommand(this.activeNode?.name);
+				// this.activeNode.executing();
+				await this.sendProverCommand(this.activeNode?.name);
 				this.unlockSketchpad();
 			}
-			this.moveIndicatorForward(visited, { selectNode: true });
+			this.moveIndicatorForward({ selectNode: true });
 			return true;
 		}
 		return false;
@@ -1275,15 +1273,19 @@ export class VSCodePvsProofMate extends Explorer {
 		this.context = context;
 		this.selectProfile("basic");
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.run-proof", async () => {
-			this.collapseHints();
-			this.run(); // async
+			const success: boolean = await this.queryRunProof();
+			if (success) {
+				this.collapseHints();
+			}
 		}));
-		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.pause-proof", async () => {
-            vscode.commands.executeCommand("proof-explorer.pause-proof");
+		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.pause-proof", async (opt?: { source?: string, force?: boolean }) => {
+			this.pauseProof(opt);
         }));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.forward", async () => {
-			this.collapseHints();
-			this.forward({ useFirstIfNull: true }); // async
+			const success: boolean = await this.forward({ useFirstIfNull: true });
+			if (success) {
+				this.collapseHints();
+			}
 		}));
 		context.subscriptions.push(vscode.commands.registerCommand("proof-mate.fast-forward", async (resource: ProofMateItem) => {
 			this.fastForwardTo(resource); // async
@@ -1503,14 +1505,24 @@ export class VSCodePvsProofMate extends Explorer {
 					contextFolder: this.formula.contextFolder,
 					cmd: cmd.startsWith("(") ? cmd : `(${cmd.trim()})`
 				};
-				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", req);
-				const success: boolean = await this.xterm.sendProverCommand(req);
+				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", {
+					...req,
+					cmd: this.runningFlag ? "run-proof" : req.cmd
+				});
+				const success: boolean = await this.xterm?.sendProverCommand(req);
 				return success;
 			}
 		} else {
 			console.warn(`[proof-mate] Warning: could not send proof command (please set proof descriptor before trying to send any command)`)
 		}
 		return false;
+	}
+
+	/**
+	 * Returns running flag
+	 */
+	isRunning (): boolean {
+		return this.runningFlag;
 	}
 
 	/**
@@ -1640,6 +1652,10 @@ export class VSCodePvsProofMate extends Explorer {
 		this.sketchpad.queryClearMarks(null, { queryConfirm: false });
 		// mark first node as visited
 		this.markFirstAsActive();
+		// reset globals
+		if (this.sketchpad.isEmpty()) {
+			vscode.commands.executeCommand('setContext', "proof-mate.sketchpad-empty", true);
+		}
 		// unlock sketchpad
 		this.unlockSketchpad();
 		// - this.expandHints();
@@ -1693,8 +1709,9 @@ export class VSCodePvsProofMate extends Explorer {
 	/**
 	 * Queries the user to enter a new proof command
 	 */
-	async queryNewProofCommand (selected: ProofMateItem): Promise<boolean> {
+	async queryNewProofCommand (selected: ProofMateItem, opt?: { label?: string }): Promise<boolean> {
 		if (selected) {
+			opt = opt || {};
 			const name: string = await vscode.window.showInputBox({
 				prompt: `Please enter proof command to be appended after ${selected.name}`,
 				placeHolder: ``,
@@ -1709,7 +1726,8 @@ export class VSCodePvsProofMate extends Explorer {
 				});
 				this.add({ selected, items: [ elem ] }, {
 					select: true, 
-					prepend: !selected.isClip() 
+					prepend: !selected.isClip(),
+					label: opt?.label
 				});
 				return true;
 			}
@@ -1773,6 +1791,23 @@ export class VSCodePvsProofMate extends Explorer {
 		return null;
 	}
 	/**
+	 * Pauses a proof
+	 */
+	async pauseProof (opt?: { force?: boolean, source?: string | "proof-explorer" }): Promise<void> {
+		// ask the user confirmation before pausing
+		opt = opt || {};
+		const yesno: string[] = [ "Yes", "No" ];
+		const msg: string = `Pause the execution of the current proof?`;
+		const ans: string = opt?.force ? yesno[0] : await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
+		if (ans === yesno[0]) {
+			this.runningFlag = false;
+			this.stopAt = null;
+			if (opt?.source !== "proof-explorer") {
+				vscode.commands.executeCommand("proof-explorer.pause-proof", { force: true });
+			}
+		}
+	}
+	/**
 	 * Moves active node indicator forward
 	 */
 	async step (): Promise<boolean> {
@@ -1792,13 +1827,13 @@ export class VSCodePvsProofMate extends Explorer {
 	/**
 	 * Moves active node indicator forward
 	 */
-	moveIndicatorForward (visited: boolean, opt?: { selectNode?: boolean }): boolean {
-		this.activeNode?.visited(visited);
+	moveIndicatorForward (opt?: { visited?: boolean, selectNode?: boolean }): boolean {
+		this.activeNode?.visited(opt?.visited);
 		this.activeNode = this.activeNode?.getNext();
 		if (this.activeNode) {
 			// skip anything that is not a proof command
 			while (this.activeNode && !this.activeNode.isProofCommand()) {
-				this.activeNode?.visited(visited);
+				this.activeNode?.visited(opt?.visited);
 				this.activeNode = this.activeNode?.getNext();
 			}
 			this.activeNode?.active();
@@ -1874,7 +1909,7 @@ export class VSCodePvsProofMate extends Explorer {
 	/**
 	 * Run the entire content of the active sketchpad
 	 */
-	async run (opt?: { queryConfirm?: boolean }): Promise<boolean> {
+	async queryRunProof (opt?: { queryConfirm?: boolean }): Promise<boolean> {
 		opt = opt || {};
 		const root: ProofMateItem = this.sketchpad?.getFirstChild();
 		if (root?.children?.length) {

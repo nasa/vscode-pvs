@@ -114,10 +114,13 @@ export class EventsDispatcher {
         this.proofExplorer = handlers.proofExplorer;
 
         this.proofExplorer.on(ProofExplorerEvent.didStopExecution, () => {
-            setTimeout(() => {
-                this.xterm.focus(); // use a timeout so that proof-explorer does not steal the focus
-                this.xterm.showWelcomeMessage();
-            }, 250);
+            if (!this.proofMate.isRunning()) {
+                this.proofMate.pauseProof({ force: true, source: "proof-explorer" });
+                setTimeout(() => {
+                    this.xterm.focus(); // use a timeout so that proof-explorer does not steal the focus
+                    this.xterm.showWelcomeMessage();
+                }, 250);
+            }
         });
 
         // this.vscodePvsTerminal = handlers.vscodePvsTerminal;
@@ -683,9 +686,14 @@ export class EventsDispatcher {
             this.xterm.showFeedbackWhileExecuting(desc?.cmd, desc?.target);
         }));
         context.subscriptions.push(commands.registerCommand("xterm.did-execute-command", (desc: { cmd: string, target?: string }) => {
-            if (!this.proofExplorer.isRunning()) {
+            if (!this.proofExplorer.isRunning() && !this.proofMate.isRunning()) {
+                this.xterm.running(false);
                 this.xterm.showWelcomeMessage();
+                this.statusBar.running(false);
                 this.statusBar.ready();
+            } else {
+                this.xterm.running(true);
+                this.statusBar.running(true);
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.select-profile", (desc: { profile: ProofMateProfile }) => {
