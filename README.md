@@ -30,25 +30,29 @@ The environment redefines the way developers interact with PVS, and better align
 ## Installation instructions
 VSCode-PVS can be installed from the Visual Studio Code Marketplace or from GitHub.
 
+>Note: When installing VSCode-PVS for the first time, the extension will check if PVS Allegro v7.1.0 is present on your system. If PVS Allegro is not present, VSCode-PVS will show a dialog and try to download and install PVS Allegro. Should the extension fail to download and install PVS Allegro, try to download and install PVS Allegro manually from https://pvs.csl.sri.com/. Should everything else fail, please report the problem on the [PVS group on Google](https://groups.google.com/g/pvs-group), we will help you out.
 
-**Automatic installation from Visual Studio Code Marketplace**
+**Automatic installation of VSCode-PVS from the Marketplace (recommended)**
 - Search `pvs` in https://marketplace.visualstudio.com and select `install`
 <br><br><img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/how-to-install-vscode-pvs-from-marketplace.gif" width="600">
 
-**Manual installation from GitHub**
+**Manual installation of VSCode-PVS from GitHub**
 1. Download the .vsix file of VSCode-PVS from [github](https://github.com/nasa/vscode-pvs/raw/master/releases).
 2. Click on the Extensions icon in the Activity Bar 
 3. Click on the `...` menu in the title bar, and use `Install from VSIX` to select the downloaded .vsix file
 <br><br><img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/how-to-install-vscode-pvs.gif" width="600">
 
->Note: When installing VSCode-PVS for the first time, it will check if PVS Allegro v7.1.0 is present on your system. If not, VSCode-PVS will show a dialog that allows you to download PVS.
+<br>
 
->Note: If you have used earlier releases of VSCode-PVS (`< 1.0.26`), you will need to download and install the latest version of PVS and NASALib. You can do this in VSCode-PVS, with the commands `M-x install-pvs` and `M-x install-nasalib`. 
+**Installation of PVS Allegro**
 
-**Manual installation of PVS**
+If PVS Allegro is not already installed on your machine, VSCode-PVS will automatically download and install it. Should VSCode-PVS fail to download and install PVS Allegro, please try the following two steps:
+1. Download PVS Allegro v7.1.0 for [MacOS](https://pvs.csl.sri.com/license.html?tgzfile=pvs7.1.0-ix86_64-Linux-allegro.tgz) or [Linux](https://pvs.csl.sri.com/license.html?tgzfile=pvs-6.0-ix86_64-Linux-allegro.tgz)
+2. Follow the installation instructions reported in the `INSTALL` file included in the downloaded PVS package. 
 
-Should VSCode-PVS fail to install PVS, please install PVS manually: Download PVS Allegro v7.1.0 for [MacOS](https://pvs.csl.sri.com/license.html?tgzfile=pvs7.1.0-ix86_64-Linux-allegro.tgz) or [Linux](https://pvs.csl.sri.com/license.html?tgzfile=pvs-6.0-ix86_64-Linux-allegro.tgz) and follow the installation instructions reported in the `INSTALL` file included in the downloaded package. Once PVS is installed on your machine, you can link up PVS and VSCode-PVS by indicating the location of the PVS executables in the VSCode-PVS settings.
+Once PVS Allegro is installed on your machine, you can link up PVS and VSCode-PVS by indicating the location of the PVS executables in the VSCode-PVS settings.
 
+<br>
 
 ## Updating VSCode-PVS
 VSCode-PVS will be automatically updated every time we publish a new release in the marketplace.

@@ -1,14 +1,14 @@
 # **VSCode-PVS FAQ**
 This document contains answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.
 
-If you don't find an answer to your question here, please check on [github](https://github.com/nasa/vscode-pvs/issues) and the [PVS group on Google](https://groups.google.com/g/pvs-group).
+If you don't find an answer to your question here, please check on the [PVS group on Google](https://groups.google.com/g/pvs-group) and [github](https://github.com/nasa/vscode-pvs/issues).
 
 <br>
 
 ## General questions
 
 ### **Q1: Which OS is supported?**
-VSCode-PVS currently runs on Linux and MacOS. For Windows systems, you will need to install the extension in a virtual machine with Linux.
+VSCode-PVS currently runs on Linux and Intel MacOS. For other operating systems, you will need to install the extension in a virtual machine with Linux.
 
 
 
@@ -23,7 +23,7 @@ If this is not happening, please go through the following checklist, to make sur
 
 
 ### **Q3: I'm new to PVS, is there a tutorial I can use to get started?**
-Yes, you we have a [tutorial](TUTORIAL.md) on VSCode-PVS, that introduces the basics functions of PVS, and a [NASA PVS Class](https://shemesh.larc.nasa.gov/PVSClass2012/) that covers a broader range of topics.
+Yes, you we have a [tutorial](TUTORIAL.md) on VSCode-PVS, that introduces the basics functions of PVS, and a [NASA PVS Class](https://shemesh.larc.nasa.gov/PVSClass2012/) and a [PVS Tutorial@CADE-18](http://precisa.nianet.org/pvs-cade-2021/), which cover a broader range of topics.
 
 
 
@@ -32,7 +32,7 @@ Yes, you can find tutorials on the Visual Studio Code website, see https://code.
 
 
 
-### **Q6: What is NASALib and how do I install it?**
+### **Q5: What is NASALib and how do I install it?**
 NASALib is an extensive PVS library developed and maintained by the NASA Langley Formal Methods Team.
 
 To install NASALib in VSCode-PVS, click the `Download NASALib` button in the status bar.
@@ -44,7 +44,7 @@ To install NASALib in VSCode-PVS, click the `Download NASALib` button in the sta
 
 ## Troubleshooting
 
-### **Q7: VSCode-PVS is not responding and reports PVS errors, what can I do?**
+### **Q6: VSCode-PVS is not responding and reports PVS errors, what can I do?**
 An unexpected error has occurred in PVS. 
 
 If the system is not responding, please try to reboot PVS:
@@ -62,24 +62,24 @@ If the problem persists, please report an issue on [github](https://github.com/n
 
 
 
-### **Q8: A proof because a pop-up message "Typechecking files necessary to prove formula" does not go away, what can I do?**
+### **Q7: A proof because a pop-up message "Typechecking files necessary to prove formula" does not go away, what can I do?**
 An unexpected error might have occurred while processing one of the pvs files. Please try to reboot PVS (see also Q6).
 
 
 
-### **Q9: The terminal reports an error "node does not exist", what does it mean?**
+### **Q8: The terminal reports an error "node does not exist", what does it mean?**
 The error indicates that one of the required software packages is not installed on your system: you need to install [NodeJS](https://nodejs.org/en/download).
 
 
 
-### **Q10: Can I use Emacs plugins for Visual Studio Code together with VSCode-PVS?**
+### **Q9: Can I use Emacs plugins for Visual Studio Code together with VSCode-PVS?**
 No, we do not recommend installing Emacs plugins in Visual Studio Code, as they may interfere with the VSCode-PVS hot-keys (see also Q14).
 
 <br>
 
 ## Functionalities
 
-### **Q11: How do I open PVS files and workspaces that are not shown in Visual Studio Code?**
+### **Q10: How do I open PVS files and workspaces that are not shown in Visual Studio Code?**
 The easiest way to open PVS files and workspaces is through PVS Workspace Explorer:
 - Click on the `open folder` icon in the title bar of PVS Workspace Explorer
 - Select the folder you want to use as workspace.
@@ -88,12 +88,12 @@ The easiest way to open PVS files and workspaces is through PVS Workspace Explor
 
 <br>
 
-### **Q12: Can I develop my pvs theories on my `Desktop`, or in a sub-folder of my pvs installation folder?**
+### **Q11: Can I develop my pvs theories on my `Desktop`, or in a sub-folder of my pvs installation folder?**
 **No, that's a bad idea.** The recommended way to proceed is to create a folder `workspaces` in your home directory, and use a sub-folder of workspaces to store all the pvs files of your PVS projects.
 
 
 
-### **Q13: Can I use the classic PVS Emacs hot-keys combinations?**
+### **Q12: Can I use the classic PVS Emacs hot-keys combinations?**
 Yes, you can use most of the PVS hot-keys combinations in VSCode-PVS.
 
 Command shortcuts are initiated with the `M-x` sequence, which is obtained by pressing the `META` key and the `x` letter simultaneously. The `META` key on Linux is the `Alt` key. On MacOS, it's usually the `option` (`⌥`) key.
@@ -126,18 +126,18 @@ Additional hot-keys provided by VSCode-PVS:
 - `M-x release-notes` *(shows vscode-pvs release notes)*
 
 
-### **Q14: What is `M-x`, and how do I use it?**
+### **Q13: What is `M-x`, and how do I use it?**
 `M-x` is a key combination obtained by pressing the `META` key and the `x` letter simultaneously.
 The `META` key on Linux `Alt`. On MacOS, it's usually the `option` key.
 
 
 
-### **Q15: Can I add external pvs libraries so that the typechecker finds them?**
+### **Q14: Can I add external pvs libraries so that the typechecker finds them?**
 Yes, you can add external libraries with the hot-key combination `M-x add-pvs-library`. This command will open a file browser that allows you to select the folder to be included. The full list of external libraries can be viewed with the command `M-x pvs-library-path`.
 
 
 
-### **Q16: In the prover session, can I move the cursor with the mouse using point-click actions?**
+### **Q15: In the prover session, can I move the cursor with the mouse using point-click actions?**
 Yes, point-click actions are enabled in the prover session when pressing the `META` key, where the `META` key is `Alt` on Linux, and `option` on MacOS.
 
 
