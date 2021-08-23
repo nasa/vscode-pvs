@@ -55,7 +55,7 @@ VSCode-PVS will be automatically updated every time we publish a new release in 
 
 All settings and preferences will be maintained when installing a new release.
 
-If you would like to perform manual updates or try out nightly builds, you can download the .vsix file from [github](https://github.com/nasa/vscode-pvs/raw/master/releases).
+If you would like to perform manual updates, e.g., to try out pre-releases, you can download and install the .vsix files posted on the [PVS google group](https://groups.google.com/g/pvs-group).
 
 
 ## Publications

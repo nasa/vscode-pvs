@@ -56,7 +56,7 @@ Once PVS is installed on your machine, you can link up PVS and VSCode-PVS by ind
 ## Updating VSCode-PVS
 VSCode-PVS is automatically updated every time we publish a new release in the marketplace.
 - All settings and preferences will be maintained when installing a new release.
-- If you would like to perform manual updates, use a previous version, or try out nightly builds, you can download and install the .vsix files from [github](https://github.com/nasa/vscode-pvs/raw/master/releases).
+- If you would like to perform manual updates, e.g., to try out pre-releases, you can download and install the .vsix files posted on the [PVS google group](https://groups.google.com/g/pvs-group).
 
 
 ## Publications

@@ -31,8 +31,10 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
   -Added pvs patches 20210706..20210715a (fixes for assertion errors, judgements, importings, prf files)    
   -Improved performance of vscode-plot command (pvsio process cache)  
   -Improved proof-explorer (enabled copy-paste across proof attempts, run-subtree) 
+  -Improved proof-mate (copy/cut/paste from-to proof-explorer, compose proof sketches, run proof sketches)  
   -Improved toolbars (simpler editor toolbar, show-proof icon moved to proof-explorer)  
-  -Fix for pvsio importing (pvs_library_path)  
+  -Fix for pvsio importing (added pvs_library_path to importing list)  
+  -Fix for workspace explorer sometimes not refreshing TCCs   
 
 - [1.0.55 (2021.07.07)]()      
   -Improved prover console (command accelerators, help *, yes-no-cancel dialog, improved feedback)  
