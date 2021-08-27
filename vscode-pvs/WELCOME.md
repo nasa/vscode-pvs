@@ -26,7 +26,7 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
-- [1.0.56 (2021.08.xx)]()      
+- [1.0.56 (2021.08.27)]()      
   -Added syntax highlighting for math symbols representing keywords (∀ ∃ ⇒ ⇔ ¬)  
   -Added pvs patches 20210706..20210715a (fixes for assertion errors, judgements, importings, prf files)    
   -Improved performance of vscode-plot command (pvsio process cache)  
