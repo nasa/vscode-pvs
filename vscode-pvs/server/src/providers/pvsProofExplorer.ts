@@ -220,8 +220,6 @@ export class PvsProofExplorer {
 		};
 		this.connection.sendNotification(serverEvent.proverEvent, evt);
 	}
-
-
 	/**
 	 * Internal function, moves the active node one position back in the proof tree.
 	 */

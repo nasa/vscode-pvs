@@ -3505,6 +3505,16 @@ export function isQuitDontSaveCommand (cmd: string): boolean {
 		;
 }
 
+/**
+ * Utility function, checks if the given command is a 'lisp' command given to the prover
+ */
+export function isLispCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+	return cmd && 
+		/^\(?\s*lisp\s/gi.test(cmd)
+		;
+}
+
 export function isEmptyCommand (cmd: string): boolean {
 	return !cmd
 		|| cmd.trim() === "" 

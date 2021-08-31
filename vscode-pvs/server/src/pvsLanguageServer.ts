@@ -361,7 +361,7 @@ export class PvsLanguageServer {
 					return;
 				}
 			}
-			// load proof -- this needs to be done before starting the prover session
+			// load proof: this needs to be done before starting the prover session, because it requires pvs-server to respond to a 'proof-script' request -- this function is disabled when in-checker
 			await this.proofExplorer?.loadProofRequest(desc, opt);
 
 			const response: PvsResponse = await this.proveFormula(desc);
