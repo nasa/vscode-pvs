@@ -26,11 +26,14 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.57 (2021.08.31)]()      
+ -Minor fixes (feedback on status bar and integrated help, lisp expressions in pvsio)   
+
 - [1.0.56 (2021.08.27)]()      
   -Added syntax highlighting for math symbols representing keywords (∀ ∃ ⇒ ⇔ ¬)  
   -Added pvs patches 20210706..20210715a (fixes for assertion errors, judgements, importings, prf files)    
   -Improved performance of vscode-plot command (pvsio process cache)  
-  -Improved proof-explorer (enabled copy-paste across proof attempts, run-subtree) 
+  -Improved proof-explorer (enabled copy-paste across proof attempts, run-subtree)   
   -Improved proof-mate (copy/cut/paste from-to proof-explorer, compose proof sketches, run proof sketches)  
   -Improved toolbars (simpler editor toolbar, show-proof icon moved to proof-explorer)  
   -Fix for pvsio importing (added pvs_library_path to importing list)  
@@ -44,7 +47,7 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 - [1.0.54 (2021.06.30)]()      
   -Added new console command 'vscode-plot'   
   -Added new command shortcut 'M-x insert-prooflite-script'   
-  -Bug fixes (autocompletion, integrated help, rename proof-branch. plot)   
+  -Bug fixes (autocompletion, integrated help, rename proof-branch, plot)   
 
 - [1.0.53 (2021.06.22)]()      
   -Improved prover console (auto-completion)   

@@ -991,6 +991,9 @@ export class PvsProxy {
 		return null;
 	}
 
+	/**
+	 * Clears the list of theories and theorems known to pvs
+	 */
 	async clearTheories (): Promise<void> {
 		console.log(`[pvs-proxy] Resetting cache of theory names`);
 		await this.lisp("(clear-theories t)");
