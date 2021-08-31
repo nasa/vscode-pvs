@@ -2385,7 +2385,7 @@ export class XTermPvs extends Backbone.Model {
         if (cmd) {
             switch (this.sessionType) {
                 case "evaluator": {
-                    if (cmd.trim().endsWith(";") || cmd?.trim() === "quit") {
+                    if (this.readyToSend(cmd)) {
                         // send command
                         this.trigger(XTermEvent.sendText, { data: cmd });
                         // push command in the history
@@ -2398,7 +2398,7 @@ export class XTermPvs extends Backbone.Model {
                     break;
                 }
                 case "prover": {
-                    if (checkPar(cmd)?.success || cmd?.trim() === "quit") {
+                    if (this.readyToSend(cmd)) {
                         // send command
                         this.trigger(XTermEvent.sendText, { data: cmd });
                         // push command in the history
@@ -2419,18 +2419,18 @@ export class XTermPvs extends Backbone.Model {
     /**
      * Internal function, checks if the input is ready to be sent
      */
-     protected readyToSend (): boolean {
-        const cmd: string = this.content.command().trim();
-        if (cmd) {
+    protected readyToSend (cmd?: string): boolean {
+        const cmdline: string = cmd !== undefined ? cmd : this.content.command().trim();
+        if (cmdline) {
             switch (this.sessionType) {
                 case "evaluator": {
-                    if (cmd.trim().endsWith(";") || cmd?.trim() === "quit") {
+                    if (cmdline.trim().endsWith(";") || cmdline.trim().endsWith("!") || cmdline?.trim() === "quit") {
                         return true;
                     }
                     break;
                 }
                 case "prover": {
-                    if (checkPar(cmd)?.success || cmd?.trim() === "quit") {
+                    if (checkPar(cmdline)?.success || cmdline?.trim() === "quit") {
                         return true;
                     }
                     break;
