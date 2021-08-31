@@ -409,6 +409,10 @@ export class EventsDispatcher {
                 }
                 case "did-stop-running": {
                     this.proofExplorer?.didStopRunning();
+                    this.xterm.running(false);
+                    this.xterm.showWelcomeMessage();
+                    this.statusBar.running(false);
+                    this.statusBar.ready();
                     break;
                 }
                 case "did-open-proof": {
