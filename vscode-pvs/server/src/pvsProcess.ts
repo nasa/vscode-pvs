@@ -211,7 +211,7 @@ export class PvsProcess {
 			return await new Promise((resolve, reject) => {
 				if (this.pvsProcess) {
 					// process already running, nothing to do
-					return Promise.resolve(true);
+					return resolve(ProcessCode.SUCCESS);
 				}
 				this.pvsProcess = spawn(pvs, args);
 				// console.dir(this.pvsProcess, { depth: null });
@@ -387,7 +387,7 @@ export class PvsProcess {
 			return new Promise((resolve, reject) => {
 				this.cb = (data: string) => {
 					resolve(data);
-				}
+				};
 				this.data = "";
 				if (this.pvsProcess && this.pvsProcess.stdin && !this.pvsProcess.stdin.destroyed) {
 					this.progressInfoEnabled = cmd.includes("typecheck-file");
