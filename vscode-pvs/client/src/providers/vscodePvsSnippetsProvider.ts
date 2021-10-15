@@ -51,7 +51,7 @@ const snippetMap: {[key: string]: SnippetMap } = {
             "prefix": "datatype-template",
             "scope": "pvs",
             "body": [
-                "${1:datatypeName}: THEORY",
+                "${1:datatypeName}: DATATYPE",
                 "  BEGIN $0",
                 "    $2",
                 "  END $1"
