@@ -93,7 +93,8 @@ Interactive prototypes can be created based on executable pvs specifications.
 
 ## Search NASALib
 VSCode-PVS provides a simplified interface to search definitions and lemmas in NASALib, an extensive library created and maintained by the Formal Methods Team at NASA Langley.
-- To search NASALib, use the `magnifying glass icon` in the editor toolbar.
+- To search NASALib, click the `NASA meatball logo` in the editor toolbar. A side window will be opened with a search panel. Enter a search string in the search panel and press enter to search. Results will be displayed in the search panel.
+- To filter NASALib search results, enter a string in the `filter` input.
 
 <br>
 
