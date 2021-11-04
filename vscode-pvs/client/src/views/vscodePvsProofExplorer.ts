@@ -707,7 +707,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 			for (let i = 0; i < items?.length; i++) {
 				delete this.searchCache[items[i].nodeId];
 			}
-			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems });
+			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems, running: this.running });
 		}
 	}
 	/**
@@ -729,7 +729,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				const items: ProofItem[] = this.convertNodeX2ProofItem(desc.elems[i]);
 				sketchpadItems = sketchpadItems.concat(items);
 			}
-			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems });
+			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems, running: this.running });
 		}
 	}
 	/**
@@ -852,7 +852,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				delete this.searchCache[desc.elems[i].id];
 			}
 			this.refreshView({ source: "did-trim-node" });
-			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems });
+			commands.executeCommand("proof-mate.update-sketchpad", { items: sketchpadItems, running: this.running });
 		} else {
 			console.warn(`[vscode-proof-explorer] Warning: unable to complete proofEdit/trimNode`);
 		}
@@ -1781,6 +1781,8 @@ export class VSCodePvsProofExplorer extends Explorer {
 				}
 				commands.executeCommand("proof-explorer.proof-command-dblclicked", dd);
 				cmd = null;
+				// expand node, because vscode toggles collapsible state when double clicking
+				this.expandNode({ id: resource.nodeId, name: resource.name });
 			}
 		}));
 		

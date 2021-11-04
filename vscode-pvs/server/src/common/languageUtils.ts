@@ -3733,7 +3733,9 @@ export function isInvalidCommand (result: { commentary: string | string[] }): bo
  */
  export function forceLocale (): void {
 	process.env["ACL_LOCALE"] = "en_US.UTF-8";
-	process.env["LANG"] = "LC_ALL";
+	process.env["LC_ALL"] = "en_US.UTF-8";
+	process.env["LANG"] = "en_US.UTF-8";
 	console.log(`\nACL_LOCALE=${process.env["ACL_LOCALE"]}`);
+	console.log(`LC_ALL=${process.env["LC_ALL"]}`);
 	console.log(`LANG=${process.env["LANG"]}\n`);
 }

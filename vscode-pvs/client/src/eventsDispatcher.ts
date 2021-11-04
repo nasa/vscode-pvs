@@ -809,15 +809,17 @@ export class EventsDispatcher {
             this.xterm.focus();
         }));
 
-        context.subscriptions.push(commands.registerCommand("proof-mate.update-sketchpad", (desc: { items: ProofItem[] }) => {
+        context.subscriptions.push(commands.registerCommand("proof-mate.update-sketchpad", (desc: { items: ProofItem[], running?: boolean }) => {
             if (desc) {
                 const formulaName: string = this.proofExplorer.getFormulaName();
                 const label: string = formulaName ? `${new Date().toLocaleString()} ${formulaName}` : `${new Date().toLocaleString()}`;
                 const success: boolean = this.proofMate.add({ items: desc.items }, {
                     select: true,
                     markSelectedAsActive: true,
-                    label
+                    label,
+                    focus: desc.running
                 });
+                return success;
             }
         }));
 

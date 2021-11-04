@@ -750,7 +750,9 @@ class Sketchpad extends ProofMateGroup {
 			}
 			const parent: ProofMateItem = 
 				desc.selected?.contextValue === PROOFMATE_CLIP ?
-					desc.selected.isProofCommand() ? desc.selected.getParent() : desc.selected
+					desc.selected.isProofCommand() && desc.items[0].contextValue === "proof-command" ?
+						desc.selected.getParent() 
+							: desc.selected
 					: undefined;
 			let newClips: ProofMateItem[] = this.createClips(desc.items, label, {
 				parent, force: opt?.force
@@ -1610,23 +1612,23 @@ export class VSCodePvsProofMate extends Explorer {
 		label?: string,
 		select?: boolean,
 		markSelectedAsActive?: boolean,
-		prepend?: boolean
+		prepend?: boolean,
+		focus?: boolean
 	}): boolean {
 		const selected: ProofMateItem = desc?.selected || this.sketchpad;
 		if (selected && desc?.items?.length && !this.lock) {
-			const newClips: ProofMateItem[] = this.sketchpad.add({ selected, items: desc.items }, opt);
+			const newClips: ProofMateItem[] = this.sketchpad.add({ selected, items: desc.items }, { ...opt, force: true });
 			if (newClips?.length) {
-				// expand && selected the selected node
-				this.expandNode(selected);
 				this.selectNode(selected);
-				// refresh the view
-				// this.refreshView();
-				if (opt?.markSelectedAsActive) {
-					this.markAsActive(newClips[0]);
-				}
-				if (opt?.select) {
-					this.selectNode(newClips[0]);
-				}
+				// expand parent node so clips are visible
+				if (newClips[0].parent) { this.expandNode(newClips[0].parent);}
+				// apply view options
+				if (opt?.markSelectedAsActive) { this.markAsActive(newClips[0]); }
+				if (opt?.select) { this.selectNode(newClips[0]); }
+				// disabling focus for now
+				// there is something wrong with the APIs provided by vscode
+				// because if the view has never been expanded, then focusNode hangs forever
+				// if (opt?.focus) { this.focusNode(newClips[0]); }
 				return true;
 			}
 		}
@@ -1724,12 +1726,13 @@ export class VSCodePvsProofMate extends Explorer {
 					branchId: selected.branchId,
 					parent: selected.isProofCommand() ? selected.getParent() : selected
 				});
-				this.add({ selected, items: [ elem ] }, {
+				const success: boolean = this.add({ selected, items: [ elem ] }, {
 					select: true, 
 					prepend: !selected.isClip(),
-					label: opt?.label
+					label: opt?.label,
+					focus: true
 				});
-				return true;
+				return success;
 			}
 		}
 		return false;
@@ -1739,28 +1742,34 @@ export class VSCodePvsProofMate extends Explorer {
 	 */
 	async queryAddNewProofBranch (selected: ProofMateItem): Promise<boolean> {
 		if (selected) {
-			const parent: ProofMateItem = selected.getParent();
+			const parent: ProofMateItem = (selected.getType() === "proof-branch") ? 
+				selected.getParent() 
+					: selected;
 			const n: number = parent?.children?.filter(elem => {
 				return elem.getType() === "proof-branch";
 			})?.length || 0;
-			const name: string = await vscode.window.showInputBox({
-				prompt: `Please enter proof command to be appended after ${selected.name}`,
-				placeHolder: `(${n + 1})`,
-				value: `(${n + 1})`,
-				ignoreFocusOut: true 
-			});
+			// const name: string = await vscode.window.showInputBox({
+			// 	prompt: `Please enter name of proof branch, e.g., (${n + 1})`,
+			// 	placeHolder: `(${n + 1})`,
+			// 	value: `(${n + 1})`,
+			// 	ignoreFocusOut: true 
+			// });
+			const name: string = `(${n + 1})`;
 			if (name) {
-				const match: RegExpMatchArray = /\d+/g.exec(name);
+				const match: RegExpMatchArray = /[\d\.]+/g.exec(name);
 				if (match?.length && match[0]) {
 					const elem: ProofCommand = new ProofBranch({
 						branchId: match[0],
 						parent: selected
 					});
-					this.add({ selected, items: [ elem ] }, {
+					const success: boolean = this.add({ selected, items: [ elem ] }, {
 						select: true, 
-						prepend: !selected.isClip()
+						prepend: !selected.isClip(),
+						focus: true
 					});
-					return true;
+					return success;
+				} else {
+					vscodeUtils.showInformationMessage(`Warning: ${name} is an invalid branch name. Branch names are in the form (1.2.3)`);
 				}
 			}
 		}
