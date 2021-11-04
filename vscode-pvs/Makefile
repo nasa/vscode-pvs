@@ -46,12 +46,10 @@ loc-client:
 	find . -name '*.ts' ! -name '*.d.ts' -path '*client/src/*' | xargs wc -l
 
 release: all install-vsce audit
-	node_modules/vsce/out/vsce package
-	#make resolutions
-	#make resolutions
+	node_modules/vsce/vsce package
 
 package:
-	node_modules/vsce/out/vsce package
+	node_modules/vsce/vsce package
 
 install-tsc:
 	cd server && npm install typescript
@@ -139,11 +137,11 @@ resolutions:
 
 audit:
 	@echo "\033[0;32m** Auditing dependencies... **\033[0m"
-	npm audit
-	cd client && npm audit fix
-	cd server && npm audit fix
-	cd extra/xterm-pvs && npm audit fix
-	cd extra/prettify-pvs && npm audit fix
+	-npm audit fix
+	-cd client && npm audit fix
+	-cd server && npm audit fix
+	-cd extra/xterm-pvs && npm audit fix
+	-cd extra/prettify-pvs && npm audit fix
 	@echo "\033[0;32m** Done with auditing! **\033[0m"
 
 examples:

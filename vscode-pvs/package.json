@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.57",
+	"version": "1.0.58-alpha",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -249,7 +249,11 @@
 				"title": "Typecheck File",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
-				"icon": "$(tools)"
+				"icon": {
+					"light": "icons/svg-typecheck-file-black-icon.svg",
+					"dark": "icons/svg-typecheck-file-white-icon.svg"
+				},
+				"vscode-icon": "$(tools)"
 			},
 			{
 				"command": "vscode-pvs.search-nasalib",
@@ -512,10 +516,14 @@
 			},
 			{
 				"command": "vscode-pvs.io",
-				"title": "Evaluate/Prototype",
+				"title": "Evaluate Theory",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
-				"icon": "$(debug-line-by-line)"
+				"icon": {
+					"light": "icons/debug-line-by-line-black.svg",
+					"dark": "icons/debug-line-by-line-white.svg"
+				},
+				"new-icon": "$(debug-line-by-line)"
 			},
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
@@ -646,7 +654,7 @@
 			},
 			{
 				"command": "proof-explorer.new-proof-branch",
-				"title": "Add new proof branch",
+				"title": "Append new proof branch",
 				"enablement": "view == proof-explorer-view && viewItem != proof-branch && pvs-server-active == true",
 				"category": "pvs"
 			},
@@ -665,7 +673,7 @@
 			},
 			{
 				"command": "proof-mate.new-proof-branch",
-				"title": "Add new proof branch",
+				"title": "Append new proof branch",
 				"enablement": "view == proof-mate-view",
 				"category": "pvs"
 			},
@@ -1909,7 +1917,7 @@
 	},
 	"dependencies": {
 		"typescript": "^4.3.2",
-		"vsce": "^1.95.0"
+		"vsce": "^1.103.1"
 	},
 	"devDependencies": {
 		"@types/chai": "^4.2.19",
