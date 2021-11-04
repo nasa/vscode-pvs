@@ -11,8 +11,9 @@ import { expect } from 'chai';
 //----------------------------
 //   Test cases for typechecker
 //----------------------------
-describe("pvs-typechecker", () => {
+describe("pvs-typechecker", function () {
 	let pvsProxy: PvsProxy = null;
+	this.timeout(10000);
 	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
 		const content: { pvsPath: string } = JSON.parse(config);
