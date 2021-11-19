@@ -2197,14 +2197,16 @@ export class PvsProxy {
 		}) : [];
 		if (libs && libs.length) {
 			const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
+			let res: PvsResponse = null;
 			for (let i = 0; i < libs.length; i++) {
 				let path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
 				path = fsUtils.tildeExpansion(path);
 				if (!pvsLibraries.includes(path)) {
-					return (opt.useLisp) ? await this.legacy?.lisp(`(push "${path}" *pvs-library-path*)`)
+					res = (opt.useLisp) ? await this.legacy?.lisp(`(push "${path}" *pvs-library-path*)`)
 						: await this.pvsRequest('add-pvs-library', [ path ]);
 				}
 			}
+			return res;
 		}
 		return null;
 	}
