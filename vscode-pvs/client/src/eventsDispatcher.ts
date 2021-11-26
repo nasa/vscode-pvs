@@ -48,7 +48,7 @@ import {
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
     PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
-    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse
+    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
@@ -710,6 +710,9 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.open-pvs-file", async () => {
             this.workspaceExplorer.openPvsFile(); // async method
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.goto-pvs-file", async (desc: GotoFileDescriptor) => {
+            this.workspaceExplorer.openPvsFile(desc, { preserveFocus: false}); // async method
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.open-pvs-file-or-folder", async () => {
             await this.workspaceExplorer.openPvsFileOrFolder();

@@ -39,7 +39,7 @@ import { ExtensionContext, TreeItemCollapsibleState, commands, window,
 			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
 			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, ConfigurationTarget, Progress } from 'vscode';
 import { CancellationToken, LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, ContextFolder, FileDescriptor, StatusProofChain } from '../common/serverInterface';
+import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, ContextFolder, FileDescriptor, StatusProofChain, GotoFileDescriptor } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -726,8 +726,8 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	/**
 	 * Opens a pvs file in the editor and adds the containing folder in file explorer
 	 */
-	async openPvsFile (): Promise<void> {
-		return await vscodeUtils.openPvsFile();
+	async openPvsFile (desc?: GotoFileDescriptor, opt?: { preserveFocus?: boolean }): Promise<void> {
+		return await vscodeUtils.openPvsFile(desc, opt);
 	}
 	/**
 	 * Opens a context folder and adds it to file explorer

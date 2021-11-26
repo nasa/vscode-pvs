@@ -1415,7 +1415,9 @@ export function findProofObligation(formulaName: string, txt: string): number {
 	// console.log("[language-utils] Done");
 	return response;
 }
-
+/**
+ * Lists all theorems in a given file
+ */
 export async function getFileDescriptor (fname: string, opt?: { listTheorems?: boolean, includeTccs?: boolean, prelude?: boolean }): Promise<PvsFileDescriptor> {
 	opt = opt || {};
 	opt.listTheorems = (opt.listTheorems !== undefined) ? opt.listTheorems : true;

@@ -37,10 +37,10 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { CancellationToken, CodeLens, CodeLensRequest, Range, CodeLensParams } from 'vscode-languageserver';
+import { CancellationToken, CodeLens, CodeLensRequest, Range, CodeLensParams, Position } from 'vscode-languageserver';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
-import { CopyProofliteRequest, ProveFormulaRequest, PvsFormula, PvsTheory } from '../common/serverInterface';
+import { CopyProofliteRequest, GotoFileDescriptor, ProveFormulaRequest, PvsFormula, PvsTheory } from '../common/serverInterface';
 import { PvsLanguageServer } from '../pvsLanguageServer';
 
 export class PvsCodeLensProvider {
@@ -177,6 +177,62 @@ export class PvsCodeLensProvider {
                             });
                         }
                     }
+                }
+            }
+
+            // goto-pvs-file
+            if (fileExtension === ".tccs") {
+                // group 1 is the line-column information
+                // group 2 is the line (1-based)
+                // group 3 is the column (1-based)
+                // const regex: RegExp = new RegExp(/\(at (line (\d+), column (\d+))\)/g);
+                // group 4 is optional, and corresponds to the expression that generated the tcc -- this grop is captured only if the expression is on one line
+                const regex: RegExp = new RegExp(/\(at (line (\d+), column (\d+))\)(?:[\s%]+for[\s%]+(.*)[\s%]+expected\b)?/g);
+                while (match = regex.exec(document.txt)) {
+                    // find position of the codelens
+                    const lines: string[] = document.txt.slice(0, match.index).split("\n");
+                    let line: number = lines.length - 1;
+                    const character: number = lines[line].length;
+
+                    // try to pull the codelens down to the level of the corresponding obligation
+                    const docDown: string = document.txt.slice(match.index);
+                    const regexObligation: RegExp = new RegExp(utils.tccRegexp);
+                    const matchObligation: RegExpMatchArray = regexObligation.exec(docDown);
+                    if (matchObligation?.length && matchObligation[1]) {
+                        line += docDown.slice(0, matchObligation.index)?.split("\n")?.length - 1;
+                    }
+
+                    // set the codelens
+                    const range: Range = {
+                        start: { line, character }, 
+                        end: { line, character: character + match[0].length }
+                    };
+                    const gotoPosition: Position = {
+                        line: +match[2] - 1, // lines are 0-based
+                        character: +match[3]
+                    };
+                    const gotoRange: Range = {
+                        start: gotoPosition,
+                        end: {
+                            line: gotoPosition.line,
+                            character: gotoPosition.character // + match[4]?.length // highlighting the offending expression seems to be confusing in vscode, because all other similar expressions are also highlighted and the cursor ends up at the end of the expression not at the beginning
+                        }
+                    }
+                    const gotoDesc: GotoFileDescriptor = {
+                        contextFolder,
+                        fileName,
+                        fileExtension: ".pvs",
+                        pos: gotoPosition,
+                        range: gotoRange
+                    }
+                    codeLens.push({
+                        range,
+                        command: {
+                            title: `(goto ${match[1]})`,
+                            command: "vscode-pvs.goto-pvs-file",
+                            arguments: [ gotoDesc ]
+                        }
+                    });
                 }
             }
 

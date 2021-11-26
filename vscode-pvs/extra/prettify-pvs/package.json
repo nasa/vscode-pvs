@@ -17,8 +17,8 @@
 		"url": "https://github.com/nasa/xxx"
 	},
 	"dependencies": {
-		"jsdoc": "^0.0.0",
-		"typescript": "^3.7.3"
+		"jsdoc": "^3.6.7",
+		"typescript": "^4.4.4"
 	},
 	"devDependencies": {
 		"@types/node": "12.12.2"

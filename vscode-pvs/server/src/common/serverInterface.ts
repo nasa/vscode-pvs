@@ -376,6 +376,10 @@ export declare interface FileDescriptor extends ContextFolder {
 	fileExtension: string;
 	fileContent?: string;
 }
+export declare interface GotoFileDescriptor extends FileDescriptor {
+	pos: Position,
+	range?: Range
+}
 export declare type PvsFile = FileDescriptor;
 export declare interface PvsTheory extends PvsFile {
 	theoryName: string;

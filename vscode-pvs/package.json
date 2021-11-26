@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.58-alpha",
+	"version": "1.0.58-gamma",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -1394,17 +1394,20 @@
 				{
 					"command": "vscode-pvs.prove-formula-at-cursor-position",
 					"when": "false && editorLangId == pvs",
-					"group": "navigation@2"
+					"group": "navigation@2",
+					"note": "disabled"
 				},
 				{
 					"command": "vscode-pvs.pvsio-web",
 					"when": "false && editorLangId == pvs",
-					"group": "navigation@3"
+					"group": "navigation@3",
+					"note": "disabled"
 				},
 				{
 					"command": "vscode-pvs.pvsio-evaluator",
 					"when": "false && editorLangId == pvs",
-					"group": "navigation@4"
+					"group": "navigation@4",
+					"note": "disabled"
 				},
 				{
 					"command": "vscode-pvs.io",
@@ -1414,7 +1417,7 @@
 				{
 					"command": "vscode-pvs.typecheck-file",
 					"when": "editorLangId == pvs",
-					"group": "navigation@5"
+					"group": "navigation@4"
 				},
 				{
 					"command": "vscode-pvs.open-pvs-workspace",
@@ -1916,12 +1919,12 @@
 		}
 	},
 	"dependencies": {
-		"typescript": "^4.3.2",
+		"typescript": "^4.4.4",
 		"vsce": "^1.103.1"
 	},
 	"devDependencies": {
-		"@types/chai": "^4.2.19",
-		"@types/mocha": "^8.2.2",
+		"@types/chai": "^4.2.22",
+		"@types/mocha": "^9.0.0",
 		"@types/node": "^14.14.22",
 		"@types/vscode": "^1.48.0",
 		"@typescript-eslint/eslint-plugin": "^4.28.1",
@@ -1930,7 +1933,7 @@
 		"chai": "^4.3.4",
 		"eslint": "^7.29.0",
 		"mocha": "^9.0.1",
-		"ts-node": "^9.1.1"
+		"ts-node": "^10.4.0"
 	},
 	"resolutions": {
 		"mem": "^6.1.0",

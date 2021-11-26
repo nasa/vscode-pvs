@@ -41,7 +41,7 @@ import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem, WorkspaceItem } from "../views/vscodePvsWorkspaceExplorer";
-import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent } from '../common/serverInterface';
+import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent, GotoFileDescriptor, Position, Range } from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 import { XTermColorTheme } from '../common/colorUtils';
 import { xTermDetectColorTheme } from '../common/xtermInterface';
@@ -506,7 +506,12 @@ export async function openFile (fname: string, opt?: { selection?: vscode.Range 
 /**
  * Opens a pvs file in the editor and adds the containing folder in file explorer
  */
-export async function openPvsFile (file?: FileDescriptor | string): Promise<void> {
+export async function openPvsFile (
+    file?: GotoFileDescriptor | FileDescriptor | string, 
+    opt?: { preserveFocus?: boolean }
+): Promise<void> {
+    opt = opt || {};
+    const preserveFocus: boolean = opt.preserveFocus === false ? opt.preserveFocus : true; // if option is not specified, focus is preserved
     const fname: string = typeof file === "string" ? file : fsUtils.desc2fname(file);
     const selectedFiles: vscode.Uri[] = (file) ? [ vscode.Uri.file(fname) ] : await vscode.window.showOpenDialog({
         canSelectFiles: true,
@@ -520,6 +525,18 @@ export async function openPvsFile (file?: FileDescriptor | string): Promise<void
     if (selectedFiles && selectedFiles.length === 1) {
         const fname: string = selectedFiles[0].path;
         const fileUri: vscode.Uri = vscode.Uri.file(fname);
+        const pos: Position = (<GotoFileDescriptor> file)?.pos;
+        const range: Range = (<GotoFileDescriptor> file)?.range;
+        const selection: vscode.Range = 
+            range?.start && range?.end ? new vscode.Range(
+                new vscode.Position(range.start.line, range.start.character),
+                new vscode.Position(range.end.line, range.end.character)
+            ) 
+            : pos ? new vscode.Range(
+            new vscode.Position(pos.line, pos.character),
+            new vscode.Position(pos.line, pos.character)
+            )
+            : null;
         // const contextFolder: string = fsUtils.getContextFolder(fname);
         // const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
 
@@ -534,7 +551,7 @@ export async function openPvsFile (file?: FileDescriptor | string): Promise<void
         //     const nOpenFolders: number = vscode.workspace?.workspaceFolders?.length || 0;
         //     await updateWorkspaceFolders(0, nOpenFolders, { uri: contextFolderUri });
         // }
-        await vscode.window.showTextDocument(fileUri, { preserveFocus: true });
+        await vscode.window.showTextDocument(fileUri, { preserveFocus, selection });
     }
 }
 /**

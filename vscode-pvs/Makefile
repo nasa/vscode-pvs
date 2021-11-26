@@ -47,6 +47,7 @@ loc-client:
 
 release: all install-vsce audit
 	node_modules/vsce/vsce package
+	@echo "\033[0;32m** Release ready! To publish the release, type 'vsce publish' **\033[0m"
 
 package:
 	node_modules/vsce/vsce package
