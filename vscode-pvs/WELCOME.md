@@ -9,6 +9,9 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 - Are you new to PVS? Try out our [tutorial](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/TUTORIAL.md)!
 - Join the new [PVS group on Google](https://groups.google.com/g/pvs-group)
 
+## Publications
+Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)][[BibTeX](https://dblp.org/rec/journals/corr/abs-1912-10632.html?view=bibtex)]
+
 
 ## Functionalities
 - [Syntax highlighting](): PVS keywords and library functions are automatically highlighted.
@@ -26,6 +29,11 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 
 
 ## ChangeLog
+- [1.0.58 (2021.12.xx)]()       
+ -Added goto functionality in tcc files     
+ -Minor fixes (importing of pvs-library-path)   
+ -Improved icons    
+
 - [1.0.57 (2021.08.31)]()      
  -Minor fixes (feedback on status bar and integrated help, lisp expressions in pvsio)   
 

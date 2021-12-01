@@ -48,7 +48,7 @@ import {
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
     PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
-    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor
+    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor, FormulaDescriptor
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
@@ -579,10 +579,18 @@ export class EventsDispatcher {
         //     }
         // });
 
-		this.client.onRequest(serverEvent.QED, (request: {
-            args: PvsProofCommand
+		this.client.onRequest(serverEvent.QED, async (desc: {
+            response: { result: "Q.E.D." },
+            request: PvsProofCommand
 		}) => {
-            // console.log(request);
+            // annotate pvs file with @QED at the formula location
+            console.log(desc);
+            const formula: PvsFormula = desc?.request;
+            if (formula && formula.line && formula.fileName && formula.fileExtension 
+                    && formula.contextFolder && formula.formulaName) {
+                await vscodeUtils.annotateFormula(formula, "@QED");
+            }
+            // these are commented out because we want to keep sketchpad and clips across prover sessions
             // this.proofMate.clearSketchPath();
             // this.proofMate.saveSketchpadClips();
         });
@@ -1049,7 +1057,7 @@ export class EventsDispatcher {
             }
         }));
 
-        // vscode-pvs.prove-formula
+        // vscode-pvs.jprove-formula
         context.subscriptions.push(commands.registerCommand("vscode-pvs.jprove-formula", async (desc: {
             contextFolder: string,
             fileName: string,

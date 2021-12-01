@@ -45,11 +45,17 @@ export class VSCodePvsFileOutlineProvider implements vscode.DocumentSymbolProvid
     protected client: LanguageClient;
     protected context: vscode.ExtensionContext;
 
+    /**
+     * Common data structure, maintains information about the kind of objects recognized by the outline provider 
+     */
     static readonly kind: { [key: string]: vscode.SymbolKind } = {
         theory: vscode.SymbolKind.Class,
         formula: vscode.SymbolKind.Method
     }
 
+    /**
+     * Constructor
+     */
 	constructor (client: LanguageClient) {
 		this.client = client;
     }
@@ -63,6 +69,9 @@ export class VSCodePvsFileOutlineProvider implements vscode.DocumentSymbolProvid
         vscode.languages.registerDocumentSymbolProvider({ scheme: 'file', language: 'pvs' }, this);//, metaData?: DocumentSymbolProviderMetadata);
     }
 
+    /**
+     * main API of the outline provider
+     */
     provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.SymbolInformation[] | vscode.DocumentSymbol[]> {
         return new Promise ((resolve, reject) => {
             const contextFolder: string = fsUtils.getContextFolder(document.fileName);
@@ -133,5 +142,4 @@ export class VSCodePvsFileOutlineProvider implements vscode.DocumentSymbolProvid
             });
         });
     }
-
 }

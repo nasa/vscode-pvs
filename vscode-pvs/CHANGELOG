@@ -1,8 +1,8 @@
 ## ChangeLog
 ### 1.0.58 (2021.12.xx)    
 - Added goto functionality in tcc files     
-- Minor fixes (importing of pvs-library-path)
-- Improved icons
+- Minor fixes (importing of pvs-library-path)    
+- Improved icons   
 
 ### 1.0.57 (2021.08.31)      
 - Minor fixes (feedback on status bar and integrated help, lisp expressions in pvsio)   

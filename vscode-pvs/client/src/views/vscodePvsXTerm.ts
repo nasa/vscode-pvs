@@ -236,7 +236,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     fileName,
                     fileExtension,
                     theoryName,
-                    formulaName
+                    formulaName,
+                    line
                 };
                 this.matchTccTheory(req);
             }

@@ -88,6 +88,7 @@ export class PvsProofExplorer {
 	protected tmpLogFileName: string;
 
 	protected dirtyFlag: boolean = false; // indicates whether the proof has changed since the last time it was saved
+	protected qedNotificationSent: boolean = false; // whether the QED notification has been send to the client
 
 	protected connection: Connection; // connection to the client
 	protected pvsProxy: PvsProxy;
@@ -1973,6 +1974,7 @@ export class PvsProofExplorer {
 			theoryName: this.formula.theoryName,
 			formulaName: this.formula.formulaName,
 			contextFolder: this.formula.contextFolder,
+			line: this.formula.line,
 			cmd: "Q.E.D."
 		});
 
@@ -2011,6 +2013,7 @@ export class PvsProofExplorer {
 					this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
 				}
 			};
+			this.qedNotificationSent = false;
 
 			this.root.updateSequent(this.initialProofState, { internalAction: this.autorunFlag });
 			this.root.pending();
@@ -2579,7 +2582,10 @@ export class PvsProofExplorer {
 			// this.pvsLanguageServer.cliGateway.publish(evt);
 			
 			if (this.connection) {
-				this.connection.sendRequest(serverEvent.QED, { response: { result: request.cmd }, args: request });
+				if (!this.qedNotificationSent) {
+					this.connection.sendRequest(serverEvent.QED, { response: { result: "Q.E.D." }, request });
+					this.qedNotificationSent = true;
+				}
 				this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
 			}
 			// trigger a context update, so proof status will be updated on the front-end
@@ -2605,6 +2611,7 @@ export class PvsProofExplorer {
 					contextFolder: request.contextFolder,
 					theoryName: request.theoryName,
 					formulaName: request.formulaName,
+					line: request.line,
 					cmd
 				};
 				const response: PvsResponse = await this.step({ cmd }); // await this.proofCommand(req); //
@@ -2642,7 +2649,10 @@ export class PvsProofExplorer {
 								// check if the proof is complete
 								if (languageUtils.QED(sequent)) {
 									if (this.connection) {
-										this.connection.sendRequest(serverEvent.QED, { response: { result: sequent }, args: req });
+										if (!this.qedNotificationSent) {
+											this.connection.sendRequest(serverEvent.QED, { response: { result: sequent }, request: req });
+											this.qedNotificationSent = true;
+										}
 										// this.connection.sendRequest(serverEvent.proofCommandResponse, { res: null, req: request });
 										// trigger a context update, so proof status will be updated on the front-end
 										const cdesc: PvsContextDescriptor = await this.pvsLanguageServer.getContextDescriptor({ contextFolder: req.contextFolder });
@@ -3560,14 +3570,29 @@ class RootNode extends ProofItem {
 			super.pending();
 		}
 	}
+	/**
+	 * Sets the root status to QED
+	 */
 	QED (): void {
 		super.treeVisited();
 		super.treeComplete();
 		this.setProofStatus(QED);
 	}
+	/**
+	 * Returns true if the root is QED
+	 */
+	isQED (): boolean {
+		return this.proofStatus === QED;
+	}
+	/**
+	 * Returns true if the proof status has changed
+	 */
 	proofStatusChanged (): boolean {
 		return this.initialProofStatus !== this.proofStatus;
 	}
+	/**
+	 * Sets the proof status of the root
+	 */
 	setProofStatus (proofStatus: ProofStatus): void {
 		if (proofStatus) {
 			this.proofStatus = proofStatus;

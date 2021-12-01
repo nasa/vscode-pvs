@@ -41,7 +41,7 @@ import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem, WorkspaceItem } from "../views/vscodePvsWorkspaceExplorer";
-import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent, GotoFileDescriptor, Position, Range } from '../common/serverInterface';
+import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent, GotoFileDescriptor, Position, Range, FormulaDescriptor } from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 import { XTermColorTheme } from '../common/colorUtils';
 import { xTermDetectColorTheme } from '../common/xtermInterface';
@@ -1133,3 +1133,51 @@ export function openVscodePvsSettings (): void {
 export type YesCancel = "yes" | "cancel";
 export type YesNoCancel = YesCancel | "no";
 
+/**
+ * Annotate a given formula
+ * For now, only @QED annotations are supported
+ */
+export type Tag = "@QED";
+export interface TagOptions {};
+export async function annotateFormula (desc: PvsFormula, tag: Tag, opt?: TagOptions): Promise<boolean> {
+    if (!desc || !tag) { return false; }
+    opt = opt || {};
+    return new Promise(async (resolve, reject) => {
+        const edit = new vscode.WorkspaceEdit();
+        const uri: vscode.Uri = vscode.Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
+        const document: vscode.TextDocument = await vscode.workspace.openTextDocument(uri);
+
+        const formulaProved: string = `% ${tag} ${desc.formulaName} proved`;
+        const bywho: string = process?.env?.USER ? ` by ${process.env.USER}` : "";
+        const when: string = ` on ${new Date().toUTCString()}`;
+        let text: string = `${formulaProved}${bywho}${when}\n`;
+
+        // check if the annotation is already present
+        const docUp: string = document.getText(new vscode.Range(
+            new vscode.Position(0, 0),
+            new vscode.Position(desc.line, 0)
+        ));
+        const index: number = docUp.indexOf(formulaProved);
+        // add annotation if it's not already present
+        if (index < 0) {
+            // try to match indentation
+            const docDown: string = document.getText(new vscode.Range(
+                new vscode.Position(desc.line, 0),
+                new vscode.Position(desc.line + 1, 0)
+            ));
+            const matchSpaces: RegExpMatchArray = /^\s*/g.exec(docDown);
+            const spaces: string = matchSpaces[0] || "";
+            text = spaces + text;
+            // add annotations
+            const position: vscode.Position = new vscode.Position(desc.line, 0);
+            edit.insert(uri, position, text);
+            vscode.workspace.applyEdit(edit).then(async (success: boolean) => {
+                success = await document.save();
+                resolve(success);
+            }, (error) => {
+                console.log("[vscode-utils] Warning: unable to annotate pvs file", error, desc);
+                resolve(false);
+            });
+        }
+    })
+}
