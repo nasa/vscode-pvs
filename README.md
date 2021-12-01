@@ -22,6 +22,10 @@ The environment redefines the way developers interact with PVS, and better align
 - Join the new [PVS group on Google](https://groups.google.com/g/pvs-group)
 
 
+## Publications
+Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)][[BibTeX](https://dblp.org/rec/journals/corr/abs-1912-10632.html?view=bibtex)]
+
+
 ## Requirements
 - Linux or Intel Mac
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
@@ -60,10 +64,6 @@ VSCode-PVS will be automatically updated every time we publish a new release in 
 All settings and preferences will be maintained when installing a new release.
 
 If you would like to perform manual updates, e.g., to try out pre-releases, you can download and install the .vsix files posted on the [PVS google group](https://groups.google.com/g/pvs-group).
-
-
-## Publications
-Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)][[BibTeX](https://dblp.org/rec/journals/corr/abs-1912-10632.html?view=bibtex)]
 
 
 ## Functionalities

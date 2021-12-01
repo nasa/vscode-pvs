@@ -38,6 +38,7 @@ all: install
 	npm run compile
 	make core
 	make xterm-pvs
+	-cp CHANGELOG ../
 
 loc-server:
 	find . -name '*.ts' ! -name '*.d.ts' -path '*server/src/*' | xargs wc -l
