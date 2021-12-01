@@ -36,45 +36,44 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { TextDocument, Diagnostic, DiagnosticSeverity, Range, Position } from 'vscode-languageserver';
-import * as language from "../common/languageKeywords";
+import { Diagnostic, DiagnosticSeverity, Range, Position } from 'vscode-languageserver';
+import * as utils from '../common/languageUtils';
 
+/**
+ * Linter heuristics
+ */
 const linter = [
-    { regexp: /(\%+\s*.+\s+)?(\w+\s*:\s*(?:\bTYPE\b|\bDATATYPE\b))/gi, msg: "Type definitions should be preceeded by proper documentation" }
+    { 
+        regexp: /(\%+\s*.+\s+)?(\w+\s*:\s*(?:\bTYPE\b|\bDATATYPE\b))/gi, 
+        msg: "Type definitions should be preceeded by proper documentation"
+    }
 ];
 
+/**
+ * PVS linter class, identifies anti-patterns, i.e., pieces of code that should be amended
+ */
 export class PvsLinter {
-    provideDiagnostics(document: TextDocument): Diagnostic[] {
+    provideDiagnostics(document: { txt: string, uri: string }): Diagnostic[] {
         let diag: Diagnostic[] = [];
         let match: RegExpMatchArray = null;
-        const text: string = document.getText();
-        let commentedSections: Position[] = [];
-        const comments: RegExp = new RegExp(language.PVS_COMMENT_REGEXP_SOURCE);
-        while (match = comments.exec(text)) {
-            const startPos: Position = document.positionAt(match.index);
-            commentedSections.push(startPos);
-        }
-        for (let i in linter) {
-            while (match = linter[i].regexp.exec(text)) {
+        const content: string = document.txt.replace(utils.commentRegexp, "");
+        for (let i = 0; i < linter.length; i++) {
+            while (match = linter[i].regexp.exec(content)) {
                 if (!match[1] || match[1] === "") {
-                    let position: Position = document.positionAt(match.index);
-                    let isComment: boolean = commentedSections.some((pos: Position) => {
-                        return pos.line === position.line && pos.character <= position.character;
+                    const lines: string[] = content.substring(0,match.index).split("\n");
+                    const line: number = lines.length - 1; // 0-based
+                    const character: number = lines[line].length - 1; // 0-based
+                    let position: Position = { line, character };
+                    let range: Range = {
+                        start: position,
+                        end: { line: position.line, character: position.character + match[2].length }
+                    };
+                    diag.push({
+                        severity: DiagnosticSeverity.Warning,
+                        range: range,
+                        message: linter[i].msg,
+                        source: "PVS Linter"
                     });
-                    if (!isComment) {
-                        let range: Range = {
-                            start: position,
-                            end: { line: position.line, character: position.character + match[2].length }
-                        };
-                        if (range) {
-                            diag.push({
-                                severity: DiagnosticSeverity.Warning,
-                                range: range,
-                                message: linter[i].msg,
-                                source: "PVS Linter"
-                            });
-                        }
-                    }
                 }
             }
         }

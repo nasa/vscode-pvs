@@ -1338,8 +1338,7 @@ export class PvsLanguageServer {
 		this.codeLensProvider = new PvsCodeLensProvider(this);
 		this.renameProvider = new PvsRenameProvider(this.connection);
 		this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
-		this.linter = new PvsLinter();
-		// this.cliGateway = new PvsCliGateway(this);
+		this.linter = new PvsLinter(); // not used for the moment
 		this.proofExplorer = new PvsProofExplorer(this.connection, this.pvsProxy, this);
 		this.pvsSearchEngine = new PvsSearchEngine(this.connection, this);
 	}

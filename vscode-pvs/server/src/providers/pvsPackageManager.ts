@@ -50,6 +50,9 @@ import { Connection } from 'vscode-languageserver';
 import { shellCommandToString } from '../common/fsUtils';
 import { colorText, PvsColor } from '../common/colorUtils';
 
+/**
+ * Server-side implementation of package manager class for downloding/installing PVS
+ */
 export class PvsPackageManager {
 
     /**
@@ -70,7 +73,8 @@ export class PvsPackageManager {
     ];
 
     /**
-     * Installs PVS
+     * Installs PVS and provides progress feedback to the front-end.
+     * The installation will be located in the target folder indicated in req
      */
     static async installWithProgress (connection: Connection, req: InstallWithProgressRequest): Promise<InstallWithProgressResponse> {
         let success: boolean = false;
@@ -85,7 +89,7 @@ export class PvsPackageManager {
             const tmpFolder: string = req?.saveAndRestore ? path.join(os.tmpdir(), "iwp") : null;
             let restoreFolder: boolean = false;
 
-            // check if the request indicated there's a folder to be saved and restored after install
+            // check if there's a sub-folder of targetFolder to be saved and restored after install (e.g., nasalib)
             if (req?.saveAndRestore && fsUtils.folderExists(req.saveAndRestore)) {
                 const res: InstallWithProgressResponse = {
                     progressInfo: true,
@@ -95,10 +99,12 @@ export class PvsPackageManager {
                 fsUtils.deleteFolder(tmpFolder);
                 restoreFolder = fsUtils.moveFolder(req.saveAndRestore, tmpFolder);
             }
+            // check if the client has requested a clean install
             if (req.cleanTarget) {
                 fsUtils.deleteFolder(req.targetFolder);
             }
             
+            // exec the shell command with progress
             const cmd: InstallWithProgressResponse = {
                 progressInfo: true,
                 stdOut: shellCommandToString(req.shellCommand) + "\n"
@@ -129,6 +135,7 @@ export class PvsPackageManager {
                     }
                 })
             });
+            // if the installation is successful, run post-installation scripts provided by the client
             if (success && req.installScript) {
                 const cmd: InstallWithProgressResponse = {
                     progressInfo: true,
@@ -172,6 +179,7 @@ export class PvsPackageManager {
                     connection?.sendNotification(serverRequest.installWithProgress, { req, res });
                 }
             }
+            // all done when we get to this point!
             if (success) {
                 const res: InstallWithProgressResponse = {
                     progressInfo: true,
@@ -221,7 +229,7 @@ export class PvsPackageManager {
 
     /**
      * Downloads PVS installation files and provides progress feedback to the front-end.
-     * The file will be downloaded in the pvs base folder
+     * The file will be downloaded in the pvs base folder indicated in req
      */
     static async downloadWithProgress (connection: Connection, req: DownloadWithProgressRequest): Promise<DownloadWithProgressResponse> {
         // if the request contains a cancellation token, then kill the download task
