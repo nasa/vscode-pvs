@@ -43,7 +43,8 @@ import * as utils from '../common/languageUtils';
  * Linter heuristics
  */
 const linter = [
-    { 
+    {
+        note: "group 1 is the annotation, group 2 is the type/datatype definition",
         regexp: /(\%+\s*.+\s+)?(\w+\s*:\s*(?:\bTYPE\b|\bDATATYPE\b))/gi, 
         msg: "Type definitions should be preceeded by proper documentation"
     }
@@ -59,7 +60,7 @@ export class PvsLinter {
         const content: string = document.txt.replace(utils.commentRegexp, "");
         for (let i = 0; i < linter.length; i++) {
             while (match = linter[i].regexp.exec(content)) {
-                if (!match[1] || match[1] === "") {
+                if (match.length > 2 && (!match[1] || match[1] === "")) {
                     const lines: string[] = content.substring(0,match.index).split("\n");
                     const line: number = lines.length - 1; // 0-based
                     const character: number = lines[line].length - 1; // 0-based

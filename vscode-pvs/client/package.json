@@ -27,8 +27,8 @@
 		"font-awesome": "^4.7.0",
 		"handlebars": "^4.7.7",
 		"jquery": "^3.6.0",
-		"pvsioweb.prototype-builder.min": "^0.0.20",
-		"typescript": "^4.5.2",
+		"pvsioweb.prototype-builder.min": "^0.0.21",
+		"typescript": "^4.5.4",
 		"underscore": "^1.13.1",
 		"vscode-languageclient": "^5.2.1",
 		"xterm": "^4.13.0"

@@ -114,6 +114,11 @@ export class PvsSearchEngine {
 							});
 						}
 					}
+					// add also last fragment, from FOUND to the end of the text
+					boundaries.push({
+						from: boundaries.length ? boundaries[boundaries.length - 1].to : 0,
+						to: txt.length
+					});
 					for (let i = 0; i < boundaries.length; i++) {
 						const info: string = txt.substring(boundaries[i].from, boundaries[i].to);
 						const match: RegExpMatchArray = /(.*)\s+Finding\.\.\.\s*\[FOUND\]\s([\w\W\s]+)/g.exec(info);
@@ -134,14 +139,17 @@ export class PvsSearchEngine {
 									content = matchLine[2];
 									line = +matchLine[1];
 								}
-								const searchResult: SearchResult = {
-									fileName: fsUtils.getFileName(fname),
-									fileExtension: fsUtils.getFileExtension(fname),
-									contextFolder: path.join(nasalibPath, subfolder),
-									fileContent: content,
-									line
-								};
-								res.push(searchResult);
+								// sanity check
+								if (content && line && fsUtils.fileExists(path.join(nasalibPath, subfolder, fname))) {
+									const searchResult: SearchResult = {
+										fileName: fsUtils.getFileName(fname),
+										fileExtension: fsUtils.getFileExtension(fname),
+										contextFolder: path.join(nasalibPath, subfolder),
+										fileContent: content,
+										line
+									};
+									res.push(searchResult);
+								}
 							}
 						}
 					}

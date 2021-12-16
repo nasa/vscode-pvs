@@ -104,7 +104,7 @@ test:
 ifdef PVS_LIBRARY_PATH
 	npm run test
 else
-	$(warning >> Warning: PVS_LIBRARY_PATH is not defined and NASALib is needed to run some if the tests)
+	$(warning >> Warning: PVS_LIBRARY_PATH is not defined and NASALib is needed to run some of the test cases)
 	npm run test
 endif
 test-all: test
