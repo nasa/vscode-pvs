@@ -110,7 +110,7 @@ Actions provided in the title bar include:
 
 **Proof Mate**
 
-Proof Mate provides a sketchpad that automatically collects proof fragments that become detatched from the proof tree, e.g., as a consequence of cut/trim operations on the proof tree, or because a specification change broke the saved proof. These clips facilitate proof editing and proof repair, and they can be accessed and re-used throughout the entire duration of the proof session.
+Proof Mate provides a sketchpad that automatically collects proof fragments that become detatched from the proof tree, e.g., as a consequence of cut/trim operations on the proof tree, or because a breaking change introduced in the specification. These clips facilitate proof editing and proof repair, and they can be accessed and re-used across proof sessions.
 
 <br> <img src="../screenshots/vscode-pvs-proof-mate.gif" width="600">
 

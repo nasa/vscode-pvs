@@ -81,13 +81,16 @@ The main functionalities provided by the environment are as follows:
 - **Proof Explorer + Integrated Terminal**: Interactive tree view for viewing and editing the current proof. An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
-- **Plot Executable Functions**: Executable functions that return a list of real numbers can be rendered in a plot diagram.
+- **Proof Mate**: Interactive proof helper for suggesting proof commands, sketching proof attempts, and repairing broken proofs. Proof Mate provides playground for copying, editing, and writing of proof sections without restriction, and during a live proof session.
+<br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-proof-mate.gif" width="600">
+
+- **Plot Executable Functions**: Executable functions that return a list of real numbers can be rendered in a plot diagram (see examples in [helloworld.pvs](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/examples/helloworld/helloworld.pvs))
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-plot-expression.gif" width="600">
 
 - **Search NASALib**: Search definitions and theorems in [NASALib](https://github.com/nasa/pvslib), an extensive PVS library developed and maintained by the NASA Langley Formal Methods Team.
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-search-nasalib.gif" width="600">
 
-- **Prototype Builder**: Build interactive visual prototypes to demonstrate the behavior of executable PVS specifications.
+- **Prototype Builder**: Build interactive visual prototypes to demonstrate the behavior of executable PVS specifications (see also [pvsio-web prototype examples](https://github.com/pvsioweb/examples/tree/5ac4fdb40bcd489b8a28b0e42c6bf32fa94577ee))
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-rapid-prototyping.gif" width="600">
 
 <br>
