@@ -1035,7 +1035,8 @@ export type ProofExecDidUpdateSequent = {
 	sequent: SequentDescriptor
 };
 export type ProofExecDidStopRunning = {
-	action: "did-stop-running"
+	action: "did-stop-running",
+	sequent: SequentDescriptor
 };
 export type ProofExecDidLoadProof = {
 	action: "did-load-proof",

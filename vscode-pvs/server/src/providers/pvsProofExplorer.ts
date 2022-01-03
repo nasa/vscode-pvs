@@ -425,7 +425,8 @@ export class PvsProofExplorer {
 				this.runningFlag = false;
 				if (this.connection) {
 					const evt: ProofExecDidStopRunning = {
-						action: "did-stop-running"
+						action: "did-stop-running",
+						sequent: this.proofState
 					};
 					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
@@ -548,7 +549,8 @@ export class PvsProofExplorer {
 		this.rewindingFlag = false;
 		if (this.connection) {
 			const evt: ProofExecDidStopRunning = {
-				action: "did-stop-running"
+				action: "did-stop-running",
+				sequent: this.proofState
 			};
 			this.connection.sendNotification(serverEvent.proverEvent, evt);
 		}
@@ -916,7 +918,10 @@ export class PvsProofExplorer {
 					await this.quitProofAndSave({ jprfOnly: true });
 				} else {
 					if (this.connection) {
-						const evt: ProofExecDidStopRunning = { action: "did-stop-running" };
+						const evt: ProofExecDidStopRunning = {
+							action: "did-stop-running",
+							sequent: this.proofState
+						};
 						this.connection.sendNotification(serverEvent.proverEvent, evt);
 					}
 				}
@@ -925,7 +930,10 @@ export class PvsProofExplorer {
 			this.runningFlag = false;
 			console.error("[proof-explorer] Error: could not read proof state information returned by pvs-server.");
 			if (this.connection) {
-				const evt: ProofExecDidStopRunning = { action: "did-stop-running" };
+				const evt: ProofExecDidStopRunning = {
+					action: "did-stop-running",
+					sequent: this.proofState
+				};
 				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 		}

@@ -409,6 +409,7 @@ export class EventsDispatcher {
                 }
                 case "did-stop-running": {
                     this.proofExplorer?.didStopRunning();
+                    this.proofMate?.updateRecommendations(desc?.sequent);
                     this.xterm.running(false);
                     this.xterm.showWelcomeMessage();
                     this.statusBar.running(false);
