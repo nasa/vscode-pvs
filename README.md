@@ -11,7 +11,7 @@ The environment redefines the way developers interact with PVS, and better align
 <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png" width="800">
 
 ## Latest version
-[vscode-pvs-1.0.57](releases/vscode-pvs-1.0.57.vsix)
+[vscode-pvs-1.0.58](releases/vscode-pvs-1.0.58.vsix)
 
 
 ## Documentation
@@ -87,7 +87,7 @@ The main functionalities provided by the environment are as follows:
 - **Proof Explorer + Prover Console**: Interactive tree view for viewing and editing the current proof. A prover console allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
-- **Proof Mate**: Interactive proof helper for suggesting proof commands, sketching proof attempts, and repairing broken proofs. Proof Mate provides playground for copying, editing, and writing of proof sections without restriction, and during a live proof session.
+- **Proof Mate**: Interactive proof helper for suggesting proof commands, sketching proof attempts, and repairing broken proofs. Proof Mate provides a playground for copying, editing, and writing of proof sections without restriction, and during a live proof session.
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-proof-mate.gif" width="600">
 
 - **Plot Executable Functions**: Executable functions that return a list of real numbers can be rendered in a plot diagram (see examples in [helloworld.pvs](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/examples/helloworld/helloworld.pvs))

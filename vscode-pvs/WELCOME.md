@@ -29,9 +29,10 @@ Paolo Masci and César Muñoz, [An Integrated Development Environment for the Pr
 
 
 ## ChangeLog
-- [1.0.58 (2021.12.xx)]()       
+- [1.0.58 (2022.01.06)]()       
  -Added goto functionality in tcc files     
  -Minor fixes (importing of pvs-library-path)   
+ -Annotation `@QED` automatically added above a theorem after a successful proof attempt      
  -Improved icons    
 
 - [1.0.57 (2021.08.31)]()      

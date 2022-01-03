@@ -81,7 +81,7 @@ The main functionalities provided by the environment are as follows:
 - **Proof Explorer + Integrated Terminal**: Interactive tree view for viewing and editing the current proof. An integrated terminal allows interaction with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-proof-explorer.gif" width="600">
 
-- **Proof Mate**: Interactive proof helper for suggesting proof commands, sketching proof attempts, and repairing broken proofs. Proof Mate provides playground for copying, editing, and writing of proof sections without restriction, and during a live proof session.
+- **Proof Mate**: Interactive proof helper for suggesting proof commands, sketching proof attempts, and repairing broken proofs. Proof Mate provides a playground for copying, editing, and writing of proof sections without restriction, and during a live proof session.
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-proof-mate.gif" width="600">
 
 - **Plot Executable Functions**: Executable functions that return a list of real numbers can be rendered in a plot diagram (see examples in [helloworld.pvs](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/examples/helloworld/helloworld.pvs))
