@@ -251,7 +251,7 @@ export class PvsProxyLegacy {
 
                     let id: string = "";
                     const matchId: RegExpMatchArray = /(.+): OBLIGATION/g.exec(info);
-                    if (matchId) {
+                    if (matchId?.length > 1 && /^[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*/g.test(matchId[1]?.trim())) {
                         id = matchId[1];            
                     }
 
