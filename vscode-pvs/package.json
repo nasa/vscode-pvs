@@ -1920,7 +1920,7 @@
 	},
 	"dependencies": {
 		"typescript": "^4.5.4",
-		"vsce": "^2.5.1"
+		"vsce": "^2.6.3"
 	},
 	"devDependencies": {
 		"@types/chai": "^4.2.22",
