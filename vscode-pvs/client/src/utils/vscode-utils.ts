@@ -1059,6 +1059,11 @@ export function getVisiblePvsEditors (): vscode.TextEditor[] {
  * Utility function, returns the active document file in the editor
  */
 export function getActivePvsEditor (): vscode.TextEditor {
+    const activePvsEditor: vscode.TextEditor = vscode.window.activeTextEditor;
+    if (activePvsEditor?.document?.languageId === "pvs") {
+        return activePvsEditor;
+    }
+    // else, return the first visible pvs editor
     const visiblePvsEditors: vscode.TextEditor[] = getVisiblePvsEditors();
     return visiblePvsEditors?.length ? visiblePvsEditors[0] : null;
 }
