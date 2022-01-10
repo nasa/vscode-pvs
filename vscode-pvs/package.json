@@ -113,6 +113,11 @@
 						"default": true,
 						"description": "Support for renaming of theories & formulas (default: true)"
 					},
+					"pvs.settings.prover.@QED": {
+						"type": "boolean",
+						"default": true,
+						"description": "Annotation @QED automatically added above a theorem after a successful proof attempt (default: true)"
+					},
 					"pvs.settings.proverConsole.autocompleteWithEnter": {
 						"type": "boolean",
 						"default": true,
@@ -136,7 +141,7 @@
 					"pvs.xtras.pvsioweb.widgetLibs": {
 						"type": "string",
 						"default": "",
-						"description": "PVSio-Web Widget library files (colon-separated list of paths to pvsio-web widget library files). NOTE: library files must be located in a folder within the current vscode workspace."
+						"description": "PVSio-Web Widget library files (colon-separated list of paths to pvsio-web widget library files)."
 					}
 				}
 			}
@@ -1387,11 +1392,6 @@
 					"group": "navigation@0"
 				},
 				{
-					"command": "vscode-pvs.x-show-proof",
-					"when": "editorLangId == pvs",
-					"group": "navigation@1"
-				},
-				{
 					"command": "vscode-pvs.prove-formula-at-cursor-position",
 					"when": "false && editorLangId == pvs",
 					"group": "navigation@2",
@@ -1412,16 +1412,21 @@
 				{
 					"command": "vscode-pvs.io",
 					"when": "editorLangId == pvs",
-					"group": "navigation@3"
+					"group": "navigation@5"
+				},
+				{
+					"command": "vscode-pvs.x-show-proof",
+					"when": "editorLangId == pvs",
+					"group": "navigation@6"
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",
 					"when": "editorLangId == pvs",
-					"group": "navigation@4"
+					"group": "navigation@7"
 				},
 				{
 					"command": "vscode-pvs.open-pvs-workspace",
-					"group": "navigation@6"
+					"group": "navigation@8"
 				}
 			],
 			"editor/title/context": [

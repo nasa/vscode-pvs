@@ -586,10 +586,13 @@ export class EventsDispatcher {
 		}) => {
             // annotate pvs file with @QED at the formula location
             console.log(desc);
-            const formula: PvsFormula = desc?.request;
-            if (formula && formula.line && formula.fileName && formula.fileExtension 
-                    && formula.contextFolder && formula.formulaName) {
-                await vscodeUtils.annotateFormula(formula, "@QED");
+            const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.prover.@QED");
+            if (flag) {
+                const formula: PvsFormula = desc?.request;
+                if (formula && formula.line && formula.fileName && formula.fileExtension 
+                        && formula.contextFolder && formula.formulaName) {
+                    await vscodeUtils.annotateFormula(formula, "@QED");
+                }
             }
             // these are commented out because we want to keep sketchpad and clips across prover sessions
             // this.proofMate.clearSketchPath();
