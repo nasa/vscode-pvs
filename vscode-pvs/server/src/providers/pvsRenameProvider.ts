@@ -43,9 +43,15 @@ import * as fsUtils from '../common/fsUtils';
 
 export class PvsRenameProvider {
     protected connection: Connection;
+    /**
+     * Constructor
+     */
     constructor (connection: Connection) {
 		this.connection = connection;
     }
+    /**
+     * Main API of the remane provider
+     */
     async provideRename (desc: { txt: string, uri: string, position: Position, newName: string }): Promise<WorkspaceEdit> {
         // TODO: handle renaming of theories
         const changes: { [uri: string]: TextEdit[] } = {};

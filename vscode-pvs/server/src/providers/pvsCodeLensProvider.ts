@@ -59,7 +59,6 @@ export class PvsCodeLensProvider {
 	 * Standard API of the language server, provides a completion list while typing a pvs expression
      * TODO: improve performance of this function
 	 * @param document Text document requiring codelens
-	 * @param position Current position of the cursor
 	 * @param token Cancellation token
 	 */
 	provideCodeLens(document: { txt: string, uri: string }, token?: CancellationToken): Thenable<CodeLens[]> {
