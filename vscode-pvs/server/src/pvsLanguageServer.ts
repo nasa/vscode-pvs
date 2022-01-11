@@ -40,7 +40,7 @@ import {
 	Connection, TextDocuments, TextDocument, CompletionItem, createConnection, ProposedFeatures, InitializeParams, 
 	TextDocumentPositionParams, Hover, CodeLens, CodeLensParams,
 	Diagnostic, Position, Range, DiagnosticSeverity, Definition,
-	Location, TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit, WorkspaceFolder
+	Location, TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit, WorkspaceFolder, ServerCapabilities, CodeActionParams, Command, CodeAction
 } from 'vscode-languageserver';
 import { 
 	PvsDefinition, FileList, TheoryDescriptor, PvsContextDescriptor, serverEvent, serverRequest,
@@ -74,6 +74,7 @@ import { PvsProofExplorer } from './providers/pvsProofExplorer';
 import { PvsRenameProvider } from './providers/pvsRenameProvider';
 import { PvsSearchEngine } from './providers/pvsSearchEngine';
 import { getOs } from './common/fsUtils';
+import { PvsCodeActionProvider } from './providers/pvsCodeActionProvider';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -136,6 +137,7 @@ export class PvsLanguageServer {
 	protected linter: PvsLinter;
 	protected proofExplorer: PvsProofExplorer;
 	protected pvsSearchEngine: PvsSearchEngine;
+	protected pvsCodeActionProvider: PvsCodeActionProvider;
 
 	// cliGateway: PvsCliGateway;
 	pvsErrorManager: PvsErrorManager;
@@ -1341,6 +1343,7 @@ export class PvsLanguageServer {
 		this.linter = new PvsLinter(); // not used for the moment
 		this.proofExplorer = new PvsProofExplorer(this.connection, this.pvsProxy, this);
 		this.pvsSearchEngine = new PvsSearchEngine(this.connection, this);
+		this.pvsCodeActionProvider = new PvsCodeActionProvider(this.connection);
 	}
 
 	/**
@@ -1694,7 +1697,7 @@ export class PvsLanguageServer {
 	 * Internal function, used to setup LSP event listeners
 	 */
 	protected setupConnectionManager () {
-		this.connection?.onInitialize((params: InitializeParams) => {
+		this.connection?.onInitialize((params: InitializeParams): { capabilities: ServerCapabilities } => {
 			// console.log(`--------- Client capabilities ---------\n`, params.capabilities);
 			const capabilities = params.capabilities;
 			this.clientCapabilities = {
@@ -1730,6 +1733,7 @@ export class PvsLanguageServer {
 					// 	firstTriggerCharacter: "}",
 					// 	moreTriggerCharacter: [";", ","]
 					// }
+					codeActionProvider: true // used for quickfix actions
 				}
 			};
 		});
@@ -2092,6 +2096,18 @@ export class PvsLanguageServer {
 						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);	
 					}
 					return {};
+				}
+			}
+			return null;
+		});
+		this.connection?.onCodeAction(async (args: CodeActionParams): Promise<(Command | CodeAction)[]> => {
+			if (this.pvsCodeActionProvider) {
+				const uri: string = args.textDocument.uri;
+				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
+					const document: TextDocument = this.documents?.get(args?.textDocument.uri);
+					const txt: string = document?.getText() || await this.readFile(uri);
+					const actions: (Command | CodeAction)[] = this.pvsCodeActionProvider.provideCodeAction({ txt, uri }, args.range, args.context);
+					return actions;
 				}
 			}
 			return null;
