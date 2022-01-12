@@ -409,7 +409,7 @@ export class Content extends Backbone.Model {
         if (data) {
             // remove ansi codes before saving the content
             const plainText: string = colorUtils.getPlainText(data);
-            const newText: string = plainText.replace(/\r?\n/g, "\n").replace(/\r\n?/g, "\n");
+            const newText: string = plainText.replace(/\r?\n/g, "\n").replace(/\r\n?/g, "\n").replace(/\t/g, "  ");
             const textBeforeCursor: string = this.textBefore(this.pos) + newText;
             const textAfterCursor: string = this.textAfter(this.pos);
             this.lines = (textBeforeCursor + textAfterCursor).split("\n");
