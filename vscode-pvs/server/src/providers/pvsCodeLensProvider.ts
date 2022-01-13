@@ -125,7 +125,7 @@ export class PvsCodeLensProvider {
                         const formulaName: string = match[1];
 
                         // the following can be done in the resolve if necessary for performance reasons
-                        const docUp: string = content.slice(0, match.index + formulaName.length);
+                        const docUp: string = content.replace(/\r\n/g, "\n").slice(0, match.index + formulaName.length);
                         const lines: string[] = docUp.split("\n");
                         const line: number = lines.length - 1;
                         const character: number = lines[lines.length - 1].indexOf(match[1]);
