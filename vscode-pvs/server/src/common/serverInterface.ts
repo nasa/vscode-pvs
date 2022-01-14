@@ -473,7 +473,7 @@ export const serverRequest = {
 	startEvaluator: "pvs.start-evaluator",
 	quitProof: "pvs.quit-proof",
 	quitEvaluator: "pvs.quit-evaluator",
-	clearTheories: "pvs.clear-theories",
+	clearWorkspace: "pvs.clear-workspace",
 	findSymbolDeclaration: "pvs.find-symbol-declaration",
 
 	saveProof: "pvs.save-proof",

@@ -1650,6 +1650,14 @@ export class PvsLanguageServer {
 	}
 
 	/**
+	 * Utility function, clears information about the current workspace
+	 */
+	async clearWorkspace (): Promise<void> {
+		// clear list of theories known to the typechecker
+		await this.pvsProxy?.clearTheories();
+	}
+
+	/**
 	 * Utility function, quits the prover
 	 */
 	async quitProof (): Promise<void> {
@@ -1811,10 +1819,10 @@ export class PvsLanguageServer {
 				}
 			});
 			this.connection?.onRequest(serverRequest.rebootPvsServer, async (req?: RebootPvsServerRequest) => {
-				this.rebootPvsServer(req);
+				this.rebootPvsServer(req); // async call
 			});
-			this.connection?.onRequest(serverRequest.clearTheories, async () => {
-				await this.pvsProxy?.clearTheories();
+			this.connection?.onRequest(serverRequest.clearWorkspace, async () => {
+				this.clearWorkspace(); // async call
 			});
 			this.connection?.onRequest(serverRequest.parseFile, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.parseFileRequest(request); // async call
@@ -1868,25 +1876,25 @@ export class PvsLanguageServer {
 				await this.proveFormulaRequest(req);
 			});
 			this.connection?.onRequest(serverRequest.getImportChainTheorems, async (args: PvsTheory) => {
-				await this.getImportChainTheoremsRequest(args); // async call
+				await this.getImportChainTheoremsRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.getTheorems, async (args: PvsTheory) => {
-				await this.getTheoremsRequest(args); // async call
+				await this.getTheoremsRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.getTccs, async (args: PvsTheory) => {
-				await this.getTccsRequest(args); // async call
+				await this.getTccsRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.autorunFormula, async (req: PvsFormula) => {
-				await this.proveFormulaRequest(req, { autorun: true, quiet: true }); // async call
+				await this.proveFormulaRequest(req, { autorun: true, quiet: true });
 			});
 			this.connection?.onRequest(serverRequest.autorunFormulaFromJprf, async (req: PvsFormula) => {
-				await this.proveFormulaRequest(req, { autorun: true, useJprf: true, quiet: true }); // async call
+				await this.proveFormulaRequest(req, { autorun: true, useJprf: true, quiet: true });
 			});
 			this.connection?.onRequest(serverRequest.showProofLite, async (args: PvsFormula) => {
 				await this.showProofLiteRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.proofCommand, async (args: PvsProofCommand) => {
-				await this.proofExplorer?.proofCommandRequest(args); // async call
+				await this.proofExplorer?.proofCommandRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.getGatewayConfig, async () => {
 				// const port: number = this.getGatewayPort();

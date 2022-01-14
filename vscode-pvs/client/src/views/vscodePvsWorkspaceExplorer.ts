@@ -733,8 +733,8 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	 * Opens a context folder and adds it to file explorer
 	 */
 	async openWorkspace (): Promise<void> {
-		// we need to clear theories otherwise pvs may indicate parse errors if theories with the same name have been defined in the previous workspace
-		this.client?.sendRequest(serverRequest.clearTheories);
+		// we need to send a clearWorkspace command to the server otherwise pvs may indicate parse errors if theories with the same name have been defined in the previous workspace
+		this.client?.sendRequest(serverRequest.clearWorkspace);
 		await vscodeUtils.openWorkspace();
 	}
 	/**

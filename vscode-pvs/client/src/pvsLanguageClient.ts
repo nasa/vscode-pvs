@@ -268,8 +268,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				|| (window.activeTextEditor && 
 						(fsUtils.isPvsFile(window.activeTextEditor?.document?.fileName)
 							|| window.activeTextEditor?.document?.languageId === "Log"))) {
-				// send clear theory command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
-				this.client.sendRequest(serverRequest.clearTheories);
+				// send clearWorkspace command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
+				this.client.sendRequest(serverRequest.clearWorkspace);
 				// remove tccs file for the renamed file, if the file exists
                 if (workspace?.workspaceFolders?.length) {
 					for (let i in pvsFiles) {

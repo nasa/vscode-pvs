@@ -145,6 +145,9 @@ export class PvsCodeActionProvider {
                         }
                     }
                     // quickfix action for type definition not found
+                    // - fix 1: add folder containing typeName to pvs library path
+                    // - fix 2: Open VSCode-PVS settings and edit PVS library path
+                    // - fix 3: check if nasalib defines typeName in some theory, and if a match is found suggest IMPORTING nasalibFolder@libName
                     let expectingType: RegExp = new RegExp(expectingTypeRegExp);
                     match = expectingType.exec(message);
                     if (diag && match?.length > 1 && match[1] && /Typecheck error/gi.test(source)) {
