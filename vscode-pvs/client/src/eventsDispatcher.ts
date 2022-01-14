@@ -48,7 +48,7 @@ import {
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
     PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
-    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor, FormulaDescriptor, quickFixReplaceCommand, QuickFixReplace
+    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor, FormulaDescriptor, quickFixReplaceCommand, QuickFixReplace, QuickFixAddImporting, quickFixAddImportingCommand
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
@@ -65,7 +65,7 @@ import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
 import { StartXTermEvaluatorRequest, VSCodePvsXTerm } from "./views/vscodePvsXTerm";
 import { colorText, PvsColor } from "./common/colorUtils";
 import path = require("path");
-import { YesNoCancel, quickFixReplace } from "./utils/vscode-utils";
+import { YesNoCancel, quickFixReplace, quickFixAddImporting } from "./utils/vscode-utils";
 
 // FIXME: use Backbone.Model
 export class EventsDispatcher {
@@ -621,8 +621,14 @@ export class EventsDispatcher {
         // commands invoked using code lens, emacs bindings, explorer, etc
         //---------------------------------------------------------
 
+        context.subscriptions.push(commands.registerCommand(quickFixAddImportingCommand, async (desc: QuickFixAddImporting): Promise<boolean> => {
+            if (desc?.newImporting && desc?.position && desc?.fileName && desc?.fileExtension) {
+                return await quickFixAddImporting(desc);
+            }
+            return false;
+        }));
         context.subscriptions.push(commands.registerCommand(quickFixReplaceCommand, async (desc: QuickFixReplace): Promise<boolean> => {
-            if (desc?.fix && desc?.range && desc?.fileName && desc?.fileExtension) {
+            if (desc?.newText && desc?.range && desc?.fileName && desc?.fileExtension) {
                 return await quickFixReplace(desc);
             }
             return false;

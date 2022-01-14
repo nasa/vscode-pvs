@@ -783,6 +783,7 @@ export const proverPrompt: string = ">>";
 // ║       If that happens, please close the evaluator terminal and start a new session.
 
 export const errorCannotFindTheoryRegExp: RegExp = /Cannot find theory\s+(.+)/gi;
+export const expectingTypeRegExp: RegExp = /Expecting a type\s+No resolution for\s+(.+)/gi;
 /**
  * @function getErrorRange
  * @description Utility function, identifies the range of a syntax error at the cursor position.
@@ -795,10 +796,16 @@ export function getErrorRange(txt: string, start: Position, end: Position, messa
         if (end.line === start.line && end.character === start.character && message) {
             // try to use the message to adjust the diagnostics
             const cannotFindTheory: RegExp = new RegExp(errorCannotFindTheoryRegExp);
-            const match: RegExpMatchArray = cannotFindTheory.exec(message);
+            let match: RegExpMatchArray = cannotFindTheory.exec(message);
             if (match?.length > 1 && match[1]) {
                 const theoryName: string = match[1];
                 end.character += theoryName.length;
+            }
+            const expectingType: RegExp = new RegExp(expectingTypeRegExp);
+            match = expectingType.exec(message);
+            if (match?.length > 1 && match[1]) {
+                const typeName: string = match[1];
+                end.character += typeName.length;
             }
         }
 		return {

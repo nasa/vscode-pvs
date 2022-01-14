@@ -41,7 +41,7 @@ import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem, WorkspaceItem } from "../views/vscodePvsWorkspaceExplorer";
-import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent, GotoFileDescriptor, Position, Range, FormulaDescriptor, QuickFixReplace } from '../common/serverInterface';
+import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent, GotoFileDescriptor, Position, Range, FormulaDescriptor, QuickFixReplace, QuickFixAddImporting } from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 import { XTermColorTheme } from '../common/colorUtils';
 import { xTermDetectColorTheme } from '../common/xtermInterface';
@@ -732,13 +732,32 @@ export async function quickFixReplace (quickfix: QuickFixReplace): Promise<boole
             const start: vscode.Position = new vscode.Position(quickfix.range.start.line, quickfix.range.start.character);
             const end: vscode.Position = new vscode.Position(quickfix.range.end.line, quickfix.range.end.character);
             const range: vscode.Range = new vscode.Range(start, end);
-            edit.replace(activeDocument.uri, range, quickfix.fix, { 
-                needsConfirmation: false,
-                label: "quickfix",
-                description: "quickfix"
-            });
+            edit.replace(activeDocument.uri, range, quickfix.newText);
             let success: boolean = await vscode.workspace.applyEdit(edit);
             if (success) { success = await activeDocument.save(); }
+            return success;
+        }
+    }
+    return false;
+}
+/**
+ * Utility function, performs a quick-fix add importing in the active document in the editor
+ * Lines are 0-based, cols and 1-based
+ */
+export async function quickFixAddImporting (quickfix: QuickFixAddImporting): Promise<boolean> {
+    const activeTextEditor: vscode.TextEditor = vscode.window?.activeTextEditor;
+    if (activeTextEditor) {
+        const document: vscode.TextDocument = activeTextEditor?.document;
+        // sanity check
+        const activeFileName: string = fsUtils.getFileName(document?.fileName, { keepExtension: true });
+        if (activeFileName === `${quickfix.fileName}${quickfix.fileExtension}`) {
+            const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
+            // cols are 0-based in vscode
+            const position: vscode.Position = new vscode.Position(quickfix.position.line, quickfix.position.character);
+            const spaces: string = "    ";
+            edit.insert(document.uri, position, `\n${spaces}${quickfix.newImporting}\n`);
+            let success: boolean = await vscode.workspace.applyEdit(edit);
+            if (success) { success = await document.save(); }
             return success;
         }
     }

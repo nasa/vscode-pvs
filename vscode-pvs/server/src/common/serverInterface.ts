@@ -1102,8 +1102,12 @@ export interface LookUpTable {
 export const quickFixReplaceCommand: string = "vscode-pvs.quick-fix-replace-command";
 export interface QuickFixReplace extends PvsFile {
 	range: Range,
-	fix: string
+	newText: string
 }
-
+export const quickFixAddImportingCommand: string = "vscode-pvs.quick-fix-add-importing-command";
+export interface QuickFixAddImporting extends PvsFile {
+	position: Position, // position of the new importing
+	newImporting: string
+}
 // WorkspaceExec
 // export type WorkspaceExecCommand = TypecheckFileCommand | ParseFileCommand;
