@@ -39,15 +39,17 @@ public class ParserUtils {
     public static class DeclDescriptor {
         int line;
         int character;
-        String declaration;
+        String theoryName;
         String identifier;
+        String declaration;
         Range scope;
         String fname;
         ParserRuleContext ctx; // this is a pointer to the original token created by the lexer
-        DeclDescriptor (String identifier, int line, int character, String declaration, Range scope, String fname, ParserRuleContext ctx) {
+        DeclDescriptor (String identifier, String theoryName, int line, int character, String declaration, Range scope, String fname, ParserRuleContext ctx) {
             this.line = line;
             this.character = character;
             this.identifier = identifier;
+            this.theoryName = theoryName;
             this.declaration = declaration;
             this.scope = scope;
             this.fname = fname;
@@ -57,6 +59,7 @@ public class ParserUtils {
             return "{ \"line\": " + this.line
                 + ", \"character\": " + this.character
                 + ", \"identifier\": \"" + this.identifier + "\""
+                + ", \"theoryName\": \"" + this.theoryName + "\""
                 + ", \"declaration\": \"" + this.declaration + "\""
                 + ", \"scope\": " + this.scope
                 + " }";
@@ -65,6 +68,7 @@ public class ParserUtils {
             return "{ \"line\": " + this.line
                 + ", \"character\": " + this.character
                 + ", \"identifier\": \"" + this.identifier + "\""
+                + ", \"theoryName\": \"" + this.theoryName + "\""
                 + " }";
         }
     }

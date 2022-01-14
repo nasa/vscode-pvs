@@ -1375,17 +1375,23 @@ export class PvsLanguageServer {
 						const errorEnd: Position = (info.error.data.place.length > 3) ? { 
 							line: info.error.data.place[2], 
 							character: info.error.data.place[3]
-						} : errorStart;
+						} : {
+							...errorStart
+						};
 						const txt: string = await fsUtils.readFile(fname);
 						if (txt) {
-							const errorRange: Range = getErrorRange(txt, errorStart, errorEnd);
+							// error message
+							const message: string = info.error.data.error_string;
+							// error range
+							const errorRange: Range = getErrorRange(txt, errorStart, errorEnd, message);
+							// diagnostics
 							const diag: Diagnostic = {
 								severity: DiagnosticSeverity.Error,
 								range: {
 									start: { line: errorRange.start.line - 1, character: errorRange.start.character },
 									end: { line: errorRange.end.line - 1, character: errorRange.end.character },
 								},
-								message: info.error.data.error_string,
+								message,
 								source: `\n${source} error`
 							};
 							this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ diag ] });

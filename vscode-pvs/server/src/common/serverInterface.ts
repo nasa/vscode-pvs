@@ -384,6 +384,7 @@ export declare type PvsFile = FileDescriptor;
 export declare interface PvsTheory extends PvsFile {
 	theoryName: string;
 	line?: number;
+	character?: number;
 }
 export declare interface PvsFormula extends PvsTheory {
 	formulaName: string;
@@ -394,7 +395,6 @@ export declare interface PvsProofCommand extends PvsFormula {
 }
 export declare interface PvsioEvaluatorCommand extends PvsTheory {
 	cmd?: string,
-	
 	mode?: PvsIoMode,
 	initialState?: string,
 	sendResponse?: boolean,
@@ -1086,6 +1086,24 @@ export type SequentDescriptor = {
 		"hidden-antecedents"?: SFormula[]
 	}
 };
+
+// the lookup table provides different view on the library content (folders, theories, etc)
+// it is designed to optimize search speed
+export interface LookUpTable {
+    stats:    { [name: string]: number | string },
+    folders:  { [name: string]: PvsTheory[] },
+    theories: { [name: string]: PvsTheory[] },
+    types:    { [name: string]: PvsTheory[] },
+    functions:{ [name: string]: PvsTheory[] },
+    formulas: { [name: string]: PvsTheory[] }
+};
+
+// quick-fix interface
+export const quickFixReplaceCommand: string = "vscode-pvs.quick-fix-replace-command";
+export interface QuickFixReplace extends PvsFile {
+	range: Range,
+	fix: string
+}
 
 // WorkspaceExec
 // export type WorkspaceExecCommand = TypecheckFileCommand | ParseFileCommand;

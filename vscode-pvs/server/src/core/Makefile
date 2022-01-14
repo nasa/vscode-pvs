@@ -1,7 +1,7 @@
 all:
 	make pvs-parser
-	make ddl-parser
-	make pvs-typechecker
+	# make ddl-parser
+	# make pvs-typechecker
 
 test-pvs-parser: download
 	# java
@@ -11,6 +11,16 @@ test-pvs-parser: download
 	cd pvs-parser/javaTarget/out && java -classpath ../../../lib/antlr-4.9.3-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage theory ../../../examples/helloworld.pvs -gui
 	# cd pvs-parser/javaTarget/out && java -classpath ../../../lib/antlr-4.9.3-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ../../../examples/test.pvs -gui
 	# cd pvs-parser/javaTarget/out && java -classpath ../../../lib/antlr-4.9.3-complete.jar:./ org.antlr.v4.gui.TestRig PvsLanguage parse ../../../../../test/alaris/alaris2lnewmodes.pvs -gui
+
+ls-pvs-files:
+	# prints the absolute path of all pvs files in the current folder and all subfolders
+	find "$(pwd)" . -type f \( -name "*.pvs" \) | grep "^/" > pvs-files.txt
+
+build-nasalib-decls:
+	cd nasalib-utils && make build-nasalib-decls
+
+nasalib-decls:
+	cd nasalib-utils && make nasalib-decls
 
 pvs-parser: download
 	# generating java target

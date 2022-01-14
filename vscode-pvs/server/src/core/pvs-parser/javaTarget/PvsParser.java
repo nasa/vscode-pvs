@@ -6,13 +6,23 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.*;
 import org.antlr.v4.runtime.misc.Interval;
 
+/**
+ * PvsParser class
+ */
 public class PvsParser {
+    // flags used for debugging purposes
     protected boolean test = false;
-    protected String ifname = null;
     protected boolean outlineRequest = false;
 
+    // current input file
+    protected String ifname = null;
+    // input file list
+    protected ArrayList<String> iflist = new ArrayList<String>();
+
+    // tree created by the parser
     protected ParserRuleContext tree = null;
 
+    // lexer, tokens, parser, listener, handlers/listeners, walker
     protected PvsLanguageLexer lexer = null;
     protected CommonTokenStream tokens = null;
     protected PvsLanguageParser parser = null;
@@ -20,6 +30,8 @@ public class PvsParser {
     protected ErrorHandler errorHandler = null;
     protected ParseTreeWalker walker = null;
     protected PvsParserListener listener = null;
+
+    // stats
     protected double parseTime = 0; // ms
 
 
@@ -29,12 +41,18 @@ public class PvsParser {
     // public String getInputFileName () {
     //     return ifname;
     // }
+    /**
+     * Diagnostic levels
+     */
     public interface DiagnosticSeverity {
         int Error = 1;
         int Warning = 2;
         int Information = 3;
         int Hint = 4;
     }
+    /**
+     * antlr error listener, stores all detected syntax errors
+     */
     public class ErrorListener extends BaseErrorListener {
         ArrayList<String> errors = new ArrayList<String>(); // array of JSON strings in the form { range: { start: { line: number, character: number }, stop: { line: number, character: number } }, message: string } 
 
@@ -55,9 +73,15 @@ public class PvsParser {
         }
 
     }
+    /**
+     * Utility function, returns parse/typecheck errors
+     */
     public ArrayList<String> getErrors () {
         return this.errorListener.errors;
     }
+    /**
+     * antlr error handler strategy
+     */
     protected class ErrorHandler extends DefaultErrorStrategy {
         // @Override public void reportNoViableAlternative(Parser parser, NoViableAltException e) {
         //     parser.notifyErrorListeners(e.getOffendingToken(), "Syntax error", e);
@@ -65,12 +89,21 @@ public class PvsParser {
     }
     
     /**
-     * parse a given input file
+     * Utility function, loads an input file to be parsed by PvsParser
+     */
+    public void loadInputFile (String ifname) {
+        this.ifname = ifname;
+    }
+    /**
+     * Utility function, parses a given input file
      */
     public void parseFile (String ifname) throws java.io.IOException {
         this.ifname = ifname;
         parse();
     }
+    /**
+     * Utility function, parses the input file already loaded by PvsParser
+     */
     public void parse () throws java.io.IOException {
         double parseStart = System.currentTimeMillis();
 
@@ -90,20 +123,42 @@ public class PvsParser {
         // parser.setBuildParseTree(false); // disable tree creation? This doesn't seem to have any effect on parsing speed
         tree = parser.parse();
         walker = new ParseTreeWalker();
-        listener = new PvsParserListener(tokens, ifname);
+        listener = new PvsParserListener(tokens, ifname, false);
         walker.walk(listener, tree);
 
         parseTime = System.currentTimeMillis() - parseStart;
     }
-
+    /**
+     * Utility function, returns a string representing a JSON object with brief stats for the parsed pvs files
+     * An example is { "types": 1, "definitions": 15, "lemmas": 0 }
+     */
     public String getStats () {
         return this.listener.getStats();
     }
-
+    /**
+     * Utility function, returns the total parsing time, in millis
+     */
     public double getParseTime () {
         return this.parseTime;
     }
-
+    /**
+     * Utility function, returns a string representing a JSON object outlining the content of the parsed file
+     * An example is:
+        {
+            "contextFolder": "....",
+            "fileName": "pvsio_checker",
+            "fileExtension": ".pvs",
+            "math-objects": { "types": 1, "definitions": 15, "lemmas": 0 },
+            "declarations": {
+                    "types": [ { "line": 0, "character": 0, "identifier": "nat" }, { "line": 0, "character": 0, "identifier": "rat" }, { "line": 0, "character": 0, "identifier": "bool" }, { "line": 0, "character": 0, "identifier": "string" }, { "line": 9, "character": 2, "identifier": "RoundingMode" }, { "line": 0, "character": 0, "identifier": "int" } ],
+                    "functions": [ { "line": 31, "character": 2, "identifier": "real2str" }, { "line": 33, "character": 2, "identifier": "to_str" } ],
+                    "formulas": [  ],
+                    "locals": [  ]
+            },
+            "parse-time": { "ms": 714.0 },
+            "errors": [{ "range": { "start": { "line": 47, "character": 36 }, "end": { "line": 47, "character": 37}}, "message": "mismatched input ',' expecting K_END", "severity": 1 }]
+        }
+     */
     public String getOutline () {
         String outline = "{" 
             + "\n \"contextFolder\": \"" + ParserUtils.getContextFolder(ifname) + "\""
@@ -111,7 +166,8 @@ public class PvsParser {
             + ",\n \"fileExtension\": \"" + ParserUtils.getFileExtension(ifname) + "\""
             + ",\n \"math-objects\": " + getStats()
             + ",\n \"declarations\": {"
-                + "\n\t \"types\": [ " + listener.printTypes() + " ]"
+                + "\n\t \"theories\": [ " + listener.printTheories() + " ]"
+                + ",\n\t \"types\": [ " + listener.printTypes() + " ]"
                 + ",\n\t \"functions\": [ " + listener.printFunctions() + " ]"
                 + ",\n\t \"formulas\": [ " + listener.printFormulas() + " ]"
                 + ",\n\t \"locals\": [ " + listener.printLocals() + " ]"
@@ -124,24 +180,37 @@ public class PvsParser {
         return outline;
     }
 
+    /**
+     * Utility class PvsContext for storing context information necessary for typechecking
+     * This is a preliminary implementation, the code needs to be completed
+     */
     public class PvsContext {
         // TODO: load information from JSON file
         String[] builtinTypes = { "int", "nat", "rat", "bool", "string" };
 
+        HashMap<String, ParserUtils.DeclDescriptor> theoryDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
         HashMap<String, ParserUtils.DeclDescriptor> typeDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
         HashMap<String, ParserUtils.DeclDescriptor> formulaDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
         HashMap<String, ParserUtils.DeclDescriptor> functionDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
         HashMap<String, ParserUtils.DeclDescriptor> localBindingDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
         HashMap<String, ParserUtils.DeclDescriptor> constantDeclarations = new HashMap<String, ParserUtils.DeclDescriptor>();
 
+        // current theory
+        // a LIFO stack (elem in position 0 is the current theory) is used to keep track of nested theories
+        ArrayList<PvsLanguageParser.TheoryContext> currentTheory = new ArrayList<PvsLanguageParser.TheoryContext>();
+
+        /**
+         * Utility function, stores information about the given built-in type
+         */
         protected void addBuiltInTypes () {
             for (int i = 0; i < builtinTypes.length; i++) {
                 typeDeclarations.put(builtinTypes[i], 
                     new ParserUtils.DeclDescriptor(
                         builtinTypes[i],
+                        "", // FIXME: indicate the actual theory name in the prelude
                         0, // FIXME: indicate the actual line in the prelude
                         0, // FIXME: indicate the actual col in the prelude
-                        "", // FIXME: indicate the actual declaration
+                        "", // FIXME: indicate the actual declaration in the prelude
                         null,
                         "prelude.pvs",
                         null
@@ -152,15 +221,29 @@ public class PvsParser {
         /**
          * constructor
          */
-        PvsContext () {
-            // add built-in types to the prelude
-            addBuiltInTypes();
+        PvsContext (boolean include_builtin) {
+            // add built-in types
+            if (include_builtin) { addBuiltInTypes(); }
+        }
+
+        /**
+         * Utility function, returns the name of the current theory
+         */
+        String getCurrentTheoryName () {
+            if (currentTheory.size() > 0) {
+                PvsLanguageParser.TheoryContext ctx = currentTheory.get(0);
+                Token start = ctx.getStart();
+                Token stop = ctx.getStop();
+                String id = ctx.theoryBegin().identifier().getText();
+                return id;
+            }
+            return "";
         }
 
         /**
         * utility functions to get information from the current pvs context
         */
-        public ParserUtils.DeclDescriptor getTerm (String id) {
+        ParserUtils.DeclDescriptor getTerm (String id) {
             if (constantDeclarations != null) {
                 ParserUtils.DeclDescriptor desc = constantDeclarations.get(id);
                 if (desc != null) { return desc; }
@@ -185,6 +268,9 @@ public class PvsParser {
         }
     }
 
+    /**
+     * Utility class PvsParserListener for storing the outline of the parsed pvs file
+     */
     public class PvsParserListener extends PvsLanguageBaseListener {
         protected BufferedTokenStream tokens = null;
         protected TokenStreamRewriter rewriter = null;
@@ -196,16 +282,23 @@ public class PvsParser {
         protected int nFormulas = 0;
         
         // pvs context
-        PvsContext context = new PvsContext();
+        PvsContext context;
 
-        PvsParserListener (BufferedTokenStream tokens, String ifname) {
+        /**
+         * Constructor
+         */
+        PvsParserListener (BufferedTokenStream tokens, String ifname, boolean include_builtin) {
             super();
             this.tokens = tokens;
             rewriter = new TokenStreamRewriter(tokens);
             this.ifname = ifname;
+            this.context = new PvsContext(include_builtin);
         }
 
-        protected String printHashMap (HashMap<String, ParserUtils.DeclDescriptor> hs) {
+        /**
+         * Utility function, prints the content of a hashmap table in JSON format
+         */
+        String printHashMap (HashMap<String, ParserUtils.DeclDescriptor> hs) {
             String ans = "";
             Set<String> elems = hs.keySet();
             Iterator<String> it = elems.iterator();
@@ -219,12 +312,30 @@ public class PvsParser {
             return ans;
         }
 
+        /**
+         * Utility function, prints the name of the parsed theories in JSON format
+         */
+        String printTheories () { return this.printHashMap(this.context.theoryDeclarations); }
+        /**
+         * Utility function, prints the name of the parsed types in JSON format
+         */
         String printTypes () { return this.printHashMap(this.context.typeDeclarations); }
+        /**
+         * Utility function, prints the name of the parsed formulas in JSON format
+         */
         String printFormulas () { return this.printHashMap(this.context.formulaDeclarations); }
+        /**
+         * Utility function, prints the name of the parsed functions in JSON format
+         */
         String printFunctions () { return this.printHashMap(this.context.functionDeclarations); }
+        /**
+         * Utility function, prints the name of the parsed local bindings in JSON format
+         */
         String printLocals () { return this.printHashMap(this.context.localBindingDeclarations); }
-
-        public ParserUtils.DeclDescriptor findDeclaration (String name) {//, int line, int character) {
+        /**
+         * Utility function, finds a declaration in the parsed file
+         */
+        ParserUtils.DeclDescriptor findDeclaration (String name) {//, int line, int character) {
             System.out.println("Finding declaration for " + name);
             ParserUtils.DeclDescriptor candidate = context.typeDeclarations.get(name);
             if (candidate != null) {
@@ -244,7 +355,9 @@ public class PvsParser {
             }
             return null;
         }
-
+        /**
+         * Utility function, stores information about a type declaration
+         */
         void saveTypeDeclaration (PvsLanguageParser.TypeDeclarationContext ctx, PvsLanguageParser.TypeNameContext ictx) {
             Token start = ictx.getStart();
             Token stop = ictx.getStop();
@@ -253,6 +366,7 @@ public class PvsParser {
             this.context.typeDeclarations.put(id, 
                 new ParserUtils.DeclDescriptor(
                     id,
+                    context.getCurrentTheoryName(),
                     start.getLine(),
                     start.getCharPositionInLine(),
                     ParserUtils.getSource(ctx),
@@ -262,6 +376,9 @@ public class PvsParser {
                 )
             );
         }
+        /**
+         * Utility function, stores information about a formula declaration
+         */
         void saveFormulaDeclaration (PvsLanguageParser.FormulaDeclarationContext ctx) {
             Token start = ctx.getStart();
             Token stop = ctx.getStop();
@@ -270,6 +387,7 @@ public class PvsParser {
             this.context.formulaDeclarations.put(id, 
                 new ParserUtils.DeclDescriptor(
                     id,
+                    context.getCurrentTheoryName(),
                     start.getLine(), 
                     start.getCharPositionInLine(),
                     ParserUtils.getSource(ctx),
@@ -279,6 +397,9 @@ public class PvsParser {
                 )
             );
         }
+        /**
+         * Utility function, stores information about a constant declaration
+         */
         void saveConstantDeclaration (PvsLanguageParser.ConstantDeclarationContext ctx, PvsLanguageParser.ConstantNameContext ictx) {
             Token start = ictx.getStart();
             Token stop = ictx.getStop();
@@ -287,6 +408,7 @@ public class PvsParser {
             this.context.constantDeclarations.put(id, 
                 new ParserUtils.DeclDescriptor(
                     id,
+                    context.getCurrentTheoryName(),
                     start.getLine(), 
                     start.getCharPositionInLine(),
                     ParserUtils.getSource(ictx),
@@ -296,6 +418,9 @@ public class PvsParser {
                 )
             );
         }
+        /**
+         * Utility function, stores information about a function declaration
+         */
         void saveFunctionDeclaration (PvsLanguageParser.FunctionDeclarationContext ctx) {
             Token start = ctx.getStart();
             Token stop = ctx.getStop();
@@ -304,6 +429,7 @@ public class PvsParser {
             this.context.functionDeclarations.put(id, 
                 new ParserUtils.DeclDescriptor(
                     id,
+                    context.getCurrentTheoryName(),
                     start.getLine(), 
                     start.getCharPositionInLine(),
                     ParserUtils.getSource(ctx),
@@ -313,13 +439,17 @@ public class PvsParser {
                 )
             );
         }
-        void saveLocalBinding (PvsLanguageParser.TypeIdContext ctx) {
+        /**
+         * Utility function, stores information about a theory declaration
+         */
+        void saveTheoryDeclaration (PvsLanguageParser.TheoryContext ctx) {
             Token start = ctx.getStart();
             Token stop = ctx.getStop();
-            String id = ctx.localName().getText();
+            String id = ctx.theoryBegin().identifier().getText();
             ParserUtils.Range scope = ParserUtils.findScope(id, ctx);
-            this.context.localBindingDeclarations.put(id, 
+            this.context.theoryDeclarations.put(id, 
                 new ParserUtils.DeclDescriptor(
+                    id,
                     id,
                     start.getLine(), 
                     start.getCharPositionInLine(),
@@ -329,6 +459,76 @@ public class PvsParser {
                     ctx
                 )
             );
+            // update current theory, the most recent theory is in position 0
+            this.context.currentTheory.add(0,ctx);
+        }
+        /**
+         * Utility function, stores information about a local binding
+         */
+        void saveLocalBinding (PvsLanguageParser.TypeIdContext ctx) {
+            Token start = ctx.getStart();
+            Token stop = ctx.getStop();
+            String id = ctx.localName().getText();
+            ParserUtils.Range scope = ParserUtils.findScope(id, ctx);
+            this.context.localBindingDeclarations.put(id, 
+                new ParserUtils.DeclDescriptor(
+                    id,
+                    context.getCurrentTheoryName(),
+                    start.getLine(), 
+                    start.getCharPositionInLine(),
+                    ParserUtils.getSource(ctx),
+                    scope,
+                    this.ifname,
+                    ctx
+                )
+            );
+        }
+        /**
+         * antlr handlers
+         */
+        @Override public void enterTheory(PvsLanguageParser.TheoryContext ctx) {
+            saveTheoryDeclaration(ctx);
+        }
+        @Override public void exitTheory(PvsLanguageParser.TheoryContext ctx) {
+            this.context.currentTheory.remove(0);
+            if (test) {
+                if (context.typeDeclarations != null) {
+                    int n = context.typeDeclarations.size();
+                    System.out.println("------------------------------");
+                    System.out.println(n + " type declarations");
+                    System.out.println("------------------------------");
+                    for (String id: context.typeDeclarations.keySet()){
+                        System.out.println(id + " " + context.typeDeclarations.get(id));
+                    }
+                }
+                if (context.formulaDeclarations != null) {
+                    int n = context.formulaDeclarations.size();
+                    System.out.println("------------------------------");
+                    System.out.println(n + " formula declarations");
+                    System.out.println("------------------------------");
+                    for (String id: context.formulaDeclarations.keySet()){
+                        System.out.println(id + " " + context.formulaDeclarations.get(id));
+                    }
+                }
+                if (context.functionDeclarations != null) {
+                    int n = context.functionDeclarations.size();
+                    System.out.println("------------------------------");
+                    System.out.println(n + " function declarations");
+                    System.out.println("------------------------------");
+                    for (String id: context.functionDeclarations.keySet()){
+                        System.out.println(id + " " + context.functionDeclarations.get(id));
+                    }
+                }
+                if (context.localBindingDeclarations != null) {
+                    int n = context.localBindingDeclarations.size();
+                    System.out.println("------------------------------");
+                    System.out.println(n + " local bindings");
+                    System.out.println("------------------------------");
+                    for (String id: context.localBindingDeclarations.keySet()){
+                        System.out.println(id + " " + context.localBindingDeclarations.get(id));
+                    }
+                }
+            }
         }
         @Override public void enterTypeDeclaration(PvsLanguageParser.TypeDeclarationContext ctx) {
             ListIterator<PvsLanguageParser.TypeNameContext> it = ctx.typeName().listIterator();
@@ -372,67 +572,33 @@ public class PvsParser {
         @Override public void enterTypeId(PvsLanguageParser.TypeIdContext ctx) {
             saveLocalBinding(ctx);
         }
-
-        public String getStats () {
+        /**
+         * Utility function, prints brief stats for the parsed file
+         */
+        String getStats () {
             return "{"
                     + " \"types\": " + this.nTypes + ","
                     + " \"definitions\": " + this.nDefinitions + ","
                     + " \"lemmas\": " + this.nFormulas
                     + " }";
         }
-
-        @Override public void exitTheory(PvsLanguageParser.TheoryContext ctx) {
-            if (test) {
-                if (context.typeDeclarations != null) {
-                    int n = context.typeDeclarations.size();
-                    System.out.println("------------------------------");
-                    System.out.println(n + " type declarations");
-                    System.out.println("------------------------------");
-                    for (String id: context.typeDeclarations.keySet()){
-                        System.out.println(id + " " + context.typeDeclarations.get(id));
-                    }
-                }
-                if (context.formulaDeclarations != null) {
-                    int n = context.formulaDeclarations.size();
-                    System.out.println("------------------------------");
-                    System.out.println(n + " formula declarations");
-                    System.out.println("------------------------------");
-                    for (String id: context.formulaDeclarations.keySet()){
-                        System.out.println(id + " " + context.formulaDeclarations.get(id));
-                    }
-                }
-                if (context.functionDeclarations != null) {
-                    int n = context.functionDeclarations.size();
-                    System.out.println("------------------------------");
-                    System.out.println(n + " function declarations");
-                    System.out.println("------------------------------");
-                    for (String id: context.functionDeclarations.keySet()){
-                        System.out.println(id + " " + context.functionDeclarations.get(id));
-                    }
-                }
-                if (context.localBindingDeclarations != null) {
-                    int n = context.localBindingDeclarations.size();
-                    System.out.println("------------------------------");
-                    System.out.println(n + " local bindings");
-                    System.out.println("------------------------------");
-                    for (String id: context.localBindingDeclarations.keySet()){
-                        System.out.println(id + " " + context.localBindingDeclarations.get(id));
-                    }
-                }
-            }
-        }
     }
 
-
+    /**
+     * Utility function, parses command line arguments
+     */
     protected void parseCliArgs (String[] args) {
         // System.out.println(args.toString());
         for (int a = 0; a < args.length; a++) {
             if (args[a].equals("--test") || args[a].equals("-test")) {
                 test = true;
-            } else if (args[a].equals("--outline") || args[a].equals("-outline") || args[a].equals("-decls")) {
-                outlineRequest = true;
-            } else {
+            }
+            // else if (args[a].equals("--outline") || args[a].equals("-outline") || args[a].equals("-decls")) {
+            //     outlineRequest = true;
+            // } 
+            else {
                 ifname = args[a];
+                iflist.add(args[a]);
             }
         }
     }
@@ -445,10 +611,21 @@ public class PvsParser {
         if (args != null && args.length > 0) {
             PvsParser parser = new PvsParser();
             parser.parseCliArgs(args);
-            if (parser.ifname != null) {
-                if (parser.test) { System.out.println("Parsing file " + parser.ifname); }
-                parser.parse();
-                System.out.println(parser.getOutline());
+            int nFiles = parser.iflist.size();
+            if (nFiles > 0) {
+                System.err.println("Parsing " + nFiles + " files");
+                System.out.println("[");
+                for (int i = 0; i < nFiles; i++) {
+                    String fname = parser.iflist.get(i);
+                    if (parser.test) { System.err.println("Parsing file " + parser.ifname); }
+                    parser.parseFile(fname);
+                    System.out.println(parser.getOutline());
+                    if (i < nFiles - 1) {
+                        System.out.println(",");
+                    }
+                }
+                System.out.println("]");
+                System.err.println("Done with parsing " + nFiles + " files!");
             } else {
                 System.out.println("Please specify file name to be parsed");
             }
