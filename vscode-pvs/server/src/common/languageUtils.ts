@@ -72,6 +72,7 @@ export const declarationRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇
 export const formulaRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([^=]+)\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT|AXIOM)\b/gim;
 // same as formulaRegExp, but does not include JUDGEMENT and AXIOM
 export const theoremRegexp: RegExp = /^\s*([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([^=]+)\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)\b/gim;
+export const theoremParamsRegexp: RegExp = /\s*(?:\[([^=]+)\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)\b/gim;
 // /(\w+)\s*(?:\%.*\s)*(?:\[([^\]]+)\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
 export const tccRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*:\s*OBLIGATION\b/gi;
 export const tccStatusRegExp: RegExp = /%\s(proved|subsumed|simplified|unproved|unfinished|unchecked|untried)\b/g;
@@ -781,6 +782,7 @@ export const proverPrompt: string = ">>";
 // ║       and result in the evaluator becoming unresponsive or breaking into Lisp. 
 // ║       If that happens, please close the evaluator terminal and start a new session.
 
+export const errorCannotFindTheoryRegExp: RegExp = /Cannot find theory\s+(.+)/gi;
 /**
  * @function getErrorRange
  * @description Utility function, identifies the range of a syntax error at the cursor position.
@@ -788,8 +790,17 @@ export const proverPrompt: string = ">>";
  * @param start Position in the document where the error starts
  * @param end Position in the document where the error ends
  */
-export function getErrorRange(txt: string, start: Position, end: Position): Range {
-	if (end) {
+export function getErrorRange(txt: string, start: Position, end: Position, message?: string): Range {
+	if (start && end) {
+        if (end.line === start.line && end.character === start.character && message) {
+            // try to use the message to adjust the diagnostics
+            const cannotFindTheory: RegExp = new RegExp(errorCannotFindTheoryRegExp);
+            const match: RegExpMatchArray = cannotFindTheory.exec(message);
+            if (match?.length > 1 && match[1]) {
+                const theoryName: string = match[1];
+                end.character += theoryName.length;
+            }
+        }
 		return {
 			start,
 			end: {
