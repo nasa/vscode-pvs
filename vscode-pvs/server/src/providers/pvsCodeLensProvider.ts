@@ -123,9 +123,10 @@ export class PvsCodeLensProvider {
                 while (match = regex.exec(content)) {
                     if (match.length > 1 && match[1]) {
                         const formulaName: string = match[1];
-
+                        const matchParams: RegExpMatchArray = new RegExp(utils.theoremParamsRegexp).exec(match[0]);
+                        const blanks: number = match[0].replace(matchParams[0], "").replace(formulaName, "").length;
                         // the following can be done in the resolve if necessary for performance reasons
-                        const docUp: string = content.replace(/\r\n/g, "\n").slice(0, match.index + formulaName.length);
+                        const docUp: string = content.slice(0, match.index + formulaName.length + blanks);
                         const lines: string[] = docUp.split("\n");
                         const line: number = lines.length - 1;
                         const character: number = lines[lines.length - 1].indexOf(match[1]);
@@ -137,7 +138,7 @@ export class PvsCodeLensProvider {
                                 fileExtension,
                                 contextFolder,
                                 theoryName: (fileExtension === ".tccs") ? 
-                                    theoryName.substr(0, theoryName.length - 5) // the theory name in the .tccs file ends with _TCCS
+                                    theoryName.substring(0, theoryName.length - 5) // the theory name in the .tccs file ends with _TCCS
                                     : theoryName, 
                                 formulaName,
                                 line: fileExtension === ".tccs" ? line - 3 : line // -3 is necessary to take into account the header of the tcc file created by vscode-pvs
