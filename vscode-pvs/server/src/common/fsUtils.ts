@@ -44,11 +44,11 @@ import {
 	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor, 
 	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsDownloadDescriptor, 
 	pvsDownloadUrl, PvsFileDescriptor, 
-	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand
+	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable
 } from '../common/serverInterface';
 import { 
 	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, 
-	icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp 
+	icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp 
 } from './languageUtils';
 
 
@@ -1299,8 +1299,10 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 					while (match = regex.exec(content)) {
 						if (match.length > 1 && match[1]) {
 							const formulaName: string = match[1];
-							const slice: string = content.slice(0, match.index);
-							const offset: number = (slice) ? slice.split("\n").length : 0;
+							const matchParams: RegExpMatchArray = new RegExp(theoremParamsRegexp).exec(match[0]);
+							const blanks: number = match[0].replace(matchParams[0], "").replace(formulaName, "").length;
+	                        const docUp: string = content.slice(0, match.index + formulaName.length + blanks);
+							const offset: number = (docUp) ? docUp.split("\n").length : 0;
 							const line: number = boundaries[i].from + offset - 1;
 							const isTcc: boolean = desc.fileExtension === ".tccs";
 							let status: ProofStatus = "untried";
@@ -1461,11 +1463,80 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 			response.theories.push(theoryDescriptor);
 		}
 	}
+	// timing stats, collected for debugging purposes
 	const stats: number = Date.now() - start;
 	// console.log(`[languageUtils.getFileDescriptor] File descriptor for ${fname} created in ${stats}ms`);
 	return response;
 }
 
+/**
+ * Utility function, converts a PvsContextDescriptor into a LookUpTable
+ */
+export function contextDescriptor2LookUpTable (ctx: PvsContextDescriptor): LookUpTable {
+	if (ctx?.contextFolder) {
+		const table: LookUpTable = {
+			stats: {
+				folders: 1,
+				theories: 0,
+				types: 0,
+				functions: 0,
+				formulas: 0
+			},
+			folders:  { },
+			theories: { },
+			types:    { }, // PvsContextDescriptor does not contain types info for now
+			functions:{ }, // PvsContextDescriptor does not contain functions info for now
+			formulas: { }		
+		};
+		table.folders[ctx.contextFolder] = [];
+		if (ctx.fileDescriptors) {
+			const keys: string[] = Object.keys(ctx.fileDescriptors);
+			for (let i = 0; i < keys.length; i++) {
+				const key: string = keys[i];
+				const tdescs: TheoryDescriptor[] = ctx.fileDescriptors[key]?.theories || [];
+				for (let t = 0; t < tdescs.length; t++) {
+					const tdesc: TheoryDescriptor = tdescs[t];
+					// compile folders and theories
+					const theory: PvsTheory = {
+						contextFolder: tdesc.contextFolder,
+						fileName: tdesc.fileName,
+						fileExtension: tdesc.fileExtension,
+						theoryName: tdesc.theoryName,
+						line: tdesc.line,
+						character: tdesc.character
+					};
+					if(!table[ctx.contextFolder]) { table[ctx.contextFolder] = []; }
+					table[ctx.contextFolder].push(theory);
+					table.theories[theory.theoryName] = [ theory ];
+					// compile formulas
+					const fdescs: FormulaDescriptor[] = tdesc.theorems || [];
+					for (let f = 0; f < fdescs.length; f++) {
+						const fdesc: FormulaDescriptor = fdescs[f];
+						const formula: PvsFormula = {
+							contextFolder: fdesc.contextFolder,
+							fileName: fdesc.fileName,
+							fileExtension: fdesc.fileExtension,
+							theoryName: fdesc.theoryName,
+							formulaName: fdesc.formulaName,
+							line: fdesc.line,
+							character: fdesc.character	
+						};
+						if (!table.formulas[formula.formulaName]) {
+							table.formulas[formula.formulaName] = [];
+						}
+						table.formulas[formula.formulaName].push(formula);
+					}
+				}
+			}
+		}
+		return table;
+	}
+	return null;
+}
+
+/**
+ * Utility function, renames a formula in a .jprf proof file
+ */
 export async function renameFormulaInProofFile (formula: PvsFormula, newInfo: { newFormulaName: string, newShasum?: string }): Promise<boolean> {
 	if (formula && newInfo && newInfo.newFormulaName) {
 		const fname: string = desc2fname({
@@ -1505,6 +1576,9 @@ export async function renameFormulaInProofFile (formula: PvsFormula, newInfo: { 
 	}
 	return false;
 }
+/**
+ * Utility function, renames a theory in a .jprf proof file
+ */
 export async function renameTheoryInProofFile (theory: PvsTheory, newInfo: { newTheoryName: string, newShasum?: string }): Promise<boolean> {
 	if (theory && newInfo && newInfo.newTheoryName) {
 		const fname: string = desc2fname({
