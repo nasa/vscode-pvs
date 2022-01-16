@@ -5,7 +5,7 @@
 			"path": "../client/node_modules/font-awesome/fonts/fontawesome-webfont.woff",
 			"format": "woff"
 		}],
-		"weight": "normal",
+		"weight": "bold",
 		"style": "normal",
 		"size": "100%"
 	}],
@@ -22,7 +22,7 @@
 			"iconPath": "./summary-file-icon.png",
 			"description": "summary file"
 		},
-		"internal-pvs-file-icon": {
+		"binary-file": {
 			"iconPath": "./internal-pvs-file-icon.png",
 			"description": "pvs proof file"
 		},
@@ -93,8 +93,8 @@
 	"folder": "fa-folder",
 	"folderExpanded": "fa-folder-open-o",
 	"folderNames": {
-		"pvsbin": "internal-pvs-file-icon",
-		"pvsioweb": "internal-pvs-file-icon"
+		"pvsbin": "binary-file",
+		"pvsioweb": "binary-file"
 	},
 	"fileNames": {
 		".gitignore": "fa-github",
@@ -112,7 +112,12 @@
 		"pvs": "pvs-file-icon",
 		"tccs": "tccs-file-icon",
 		"summary": "summary-file-icon",
-		"prf": "internal-pvs-file",
+		"prf": "binary-file",
+
+		"dylib": "binary-file",
+		"a": "binary-file",
+		"bin": "binary-file",
+		"o": "binary-file",
 
 		"pdf": "fa-file-pdf-o",
 		"gif": "fa-file-image",
@@ -129,19 +134,21 @@
 		"ppt": "fa-file-powerpoint-o",
 		"pptx": "fa-file-powerpoint-o",
 		"txt": "fa-file-text-o",
-		"dylib": "fa-file-o",
-		"a": "fa-file-o",
 		"cpp": "fa-file-o",
+		"hpp": "fa-file-o",
 		"c": "fa-file-o",
 		"h": "fa-file-o",
-		"o": "fa-file-o",
+		"java": "fa-file-o",
 		"py": "fa-file-o",
 		"pl": "fa-file-o",
 		"daa": "fa-file-text-o",
+		"conf": "fa-file-text-o",
 		"html": "fa-html5",
-		"htm": "fa-html5"
+		"htm": "fa-html5",
+		"make": "makefile-icon",
+		"cmake": "makefile-icon"
 	},
 	"languageIds": {
-		"pvs": "internal-pvs-file-icon"
+		"pvs": "binary-file"
 	}
 }
