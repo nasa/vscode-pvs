@@ -502,11 +502,14 @@ class TheoriesOverviewItem extends TreeItem {
 		});
 	}
 }
-class PvsFilesOverviewItem extends OverviewItem {
-	contextValue = "pvs-files-overview";
+/**
+ * Folder containing PVS files
+ */
+class FolderOverviewItem extends OverviewItem {
+	contextValue = "folder-overview";
 	files: PvsFileItem[] = [];
 	constructor(desc: PvsContextDescriptor) {
-		super("pvs-files-overview", desc, TreeItemCollapsibleState.Expanded);
+		super("folder-overview", desc, TreeItemCollapsibleState.Expanded);
 		this.files = [];
 		this.updateContextFolder(desc);
 		if (this.files.length) {
@@ -586,19 +589,26 @@ class PvsFilesOverviewItem extends OverviewItem {
 		}
 	}
 }
-export class WorkspaceItem extends OverviewItem {
+/**
+ * PVS Workspace
+ */
+export class WorkspaceOverviewItem extends OverviewItem {
 	contextValue: string = "workspace-overview";
 
 	protected path: string; // full path of the workspace
-	protected pvsFilesOverview: PvsFilesOverviewItem;
+	protected folder: FolderOverviewItem;
 
 	constructor(desc: PvsContextDescriptor) {
 		super("workspace-overview", desc, TreeItemCollapsibleState.Expanded);
-		this.pvsFilesOverview = new PvsFilesOverviewItem(desc);
+		this.folder = new FolderOverviewItem(desc);
 		this.command = {
 			title: "Workspace selected",
 			command: "explorer.didSelectWorkspaceOverview",
 			arguments: [ desc ]
+		};
+		this.iconPath = {
+			light: path.join(__dirname, "..", "..", "..", "icons", "svg-workspace-folder.svg"),
+			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-workspace-folder.svg")
 		};
 		this.refreshLabel();
 	}
@@ -616,11 +626,11 @@ export class WorkspaceItem extends OverviewItem {
 	// 	}
 	// }
 	collapseAllTheories (): void {
-		this.pvsFilesOverview?.collapseAllTheories();
+		this.folder?.collapseAllTheories();
 	}
 	getFileItem (desc: { contextFolder: string, fileName: string, fileExtension: string }): PvsFileItem {
-		if (this.pvsFilesOverview) {
-			return this.pvsFilesOverview.getFileItem(desc);
+		if (this.folder) {
+			return this.folder.getFileItem(desc);
 		}
 		return null;
 	}
@@ -632,20 +642,20 @@ export class WorkspaceItem extends OverviewItem {
 		return null;
 	}
 	getChildren (): TreeItem[] {
-		return this.pvsFilesOverview.getChildren();
+		return this.folder.getChildren();
 	}
 	updateFormula (desc: FormulaDescriptor): void {
-		this.pvsFilesOverview.updateFormula(desc);
+		this.folder.updateFormula(desc);
 	}
 	sort (): void {
-		this.pvsFilesOverview.sort();
+		this.folder.sort();
 	}
 	updateContextFolder (desc: PvsContextDescriptor, opt?: { tccDescriptor?: boolean, force?: boolean }): void {
 		opt = opt || {};
 		// if (desc && (desc.contextFolder !== this.contextFolder || opt.force)) {
 			this.contextFolder = desc.contextFolder;
 			this.refreshLabel();
-			this.pvsFilesOverview.updateContextFolder(desc, opt);
+			this.folder.updateContextFolder(desc, opt);
 		// }
 	}
 }
@@ -684,7 +694,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	// protected providerView: string;
 	
 	// protected view: TreeView<TreeItem>;
-	protected root: WorkspaceItem;
+	protected root: WorkspaceOverviewItem;
 	protected loading: LoadingItem = new LoadingItem();
 
 	protected filterOnTypeActive: boolean = false;
@@ -832,7 +842,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 			if (this.root) {
 				this.root.updateContextFolder(desc, opt);
 			} else {
-				this.root = new WorkspaceItem(desc);
+				this.root = new WorkspaceOverviewItem(desc);
 			}
 		} else {
 			this.root = null;
@@ -1471,8 +1481,8 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 			let children: TreeItem[] = null;
 			if (element.contextValue === "workspace-overview") {
 				children = this.root.getChildren();
-			} else if (element.contextValue === "pvs-files-overview") {
-				children = (<PvsFilesOverviewItem> element).getChildren();
+			} else if (element.contextValue === "folder-overview") {
+				children = (<FolderOverviewItem> element).getChildren();
 			} else if (element.contextValue === "pvs-file") {
 				children = (<PvsFileItem> element).getChildren();
 			} else if (element.contextValue === "theory") {

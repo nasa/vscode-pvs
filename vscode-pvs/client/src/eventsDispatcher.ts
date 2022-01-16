@@ -39,7 +39,7 @@
 import { LanguageClient } from "vscode-languageclient";
 import { VSCodePvsStatusBar } from "./views/vscodePvsStatusBar";
 import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindingsProvider";
-import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem, WorkspaceItem } from "./views/vscodePvsWorkspaceExplorer";
+import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem, WorkspaceOverviewItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem, ProofExplorerEvent } from "./views/vscodePvsProofExplorer";
 // import { TerminalSession, VSCodePvsTerminal } from "./views/vscodePvsTerminal";
 import { 
@@ -1254,13 +1254,13 @@ export class EventsDispatcher {
             commands.executeCommand("vscode-pvs.discharge-tccs", resource);
         }));
 
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-workspace-inline", async (resource: WorkspaceItem | { path: string }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-workspace-inline", async (resource: WorkspaceOverviewItem | { path: string }) => {
             commands.executeCommand("vscode-pvs.prove-workspace", resource);
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.jprove-workspace", async (resource: WorkspaceItem | { path: string }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.jprove-workspace", async (resource: WorkspaceOverviewItem | { path: string }) => {
             commands.executeCommand("vscode-pvs.prove-workspace", resource, { useJprf: true });
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-workspace", async (resource: WorkspaceItem | { path: string }, opt?: { useJprf?: boolean, unprovedOnly?: boolean }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-workspace", async (resource: WorkspaceOverviewItem | { path: string }, opt?: { useJprf?: boolean, unprovedOnly?: boolean }) => {
             if (window.activeTextEditor && window.activeTextEditor.document) {
                 // if the file is currently open in the editor, save file first
                 await window.activeTextEditor.document.save();

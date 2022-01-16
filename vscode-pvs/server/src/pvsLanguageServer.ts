@@ -95,7 +95,7 @@ interface Settings {
 	maxNumberOfProblems: number;
 }
 
-export class PvsLanguageServer {
+export class PvsLanguageServer extends fsUtils.PostTask {
 	protected MAX_PARALLEL_PROCESSES: number = 1; // pvs 7.1 currently does not support parallel processes
 	readonly MIN_PVS_VERSION: number = 7.1;
 
@@ -151,6 +151,7 @@ export class PvsLanguageServer {
 	 * @constructor
 	 */
 	constructor () {
+		super();
 		this.settings = {
 			global: { maxNumberOfProblems: 1000 },
 			documents: new Map()
@@ -178,18 +179,10 @@ export class PvsLanguageServer {
 			this.pvsErrorManager = new PvsErrorManager(this.connection);
 		}
 	}
-
-	getPvsProxy (): PvsProxy {
-		return this.pvsProxy;
-	}
-	getPvsPath (): string {
-		return this.pvsPath ? `${this.pvsPath}` : "";
-	}
-	getNasalibPath (): string {
-		return this.pvsPath ? path.join(this.pvsPath, "nasalib") : "";
-	}
 	
-	//-- utility functions for notifiying the client
+	/**
+	 * utility functions for sending notifications to the client
+	 */
 	protected notifyStartExecution (desc: { msg: string }): void {
 		this.connection?.sendNotification("server.status.progress", desc);
 	}
@@ -228,17 +221,46 @@ export class PvsLanguageServer {
 	//--------------------------------------------------------------------
 	//                                APIs
 	//--------------------------------------------------------------------
+
+	/**
+	 * Returns the pvs proxy
+	 */
+	 getPvsProxy (): PvsProxy {
+		return this.pvsProxy;
+	}
+	/**
+	 * Returns the pvs path
+	 */
+	getPvsPath (): string {
+		return this.pvsPath ? `${this.pvsPath}` : "";
+	}
+	/**
+	 * Returns the nasalib path
+	 */
+	getNasalibPath (): string {
+		return this.pvsPath ? path.join(this.pvsPath, "nasalib") : "";
+	}
+	/**
+	 * Returns the connection
+	 */
 	getConnection (): Connection {
 		return this.connection;
 	}
-
 	/**
-	 * Prove formula
-	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
+	 * Returns the current server mode
+	 */
+	async getMode (): Promise<ServerMode | null> {
+		return await this.pvsProxy?.getMode();
+	}
+	/**
+	 * Start an interactive prover session -- alias of proveFormula
 	 */
 	async startProof (args: PvsFormula): Promise<PvsResponse | null> {
 		return await this.proveFormula(args);
 	}
+	/**
+	 * Prove formula
+	 */
 	async proveFormula (formula: PvsFormula): Promise<PvsResponse | null> {
 		if (formula && formula.fileName && formula.formulaName && formula.fileExtension && formula.contextFolder && formula.theoryName) {
 			const mode: string = await this.getMode();
@@ -258,9 +280,9 @@ export class PvsLanguageServer {
 		}
 		return null;
 	}
-	async getMode (): Promise<ServerMode | null> {
-		return await this.pvsProxy?.getMode();
-	}
+	/**
+	 * Handler for importchain request
+	 */
 	async getImportChainTheoremsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
 			const res: PvsResponse = await this.typecheckFile(theory);
@@ -273,6 +295,9 @@ export class PvsLanguageServer {
 			}
 		}
 	}
+	/**
+	 * Handler for getTheorem request
+	 */
 	async getTheoremsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
 			const res: PvsResponse = await this.typecheckFile(theory);
@@ -288,6 +313,9 @@ export class PvsLanguageServer {
 			}
 		}
 	}
+	/**
+	 * Handler for getTccs request
+	 */
 	async getTccsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
 			const res: PvsResponse = await this.typecheckFile(theory);
@@ -304,7 +332,7 @@ export class PvsLanguageServer {
 		}
 	}
 	/**
-	 * Handler for prove formula requests
+	 * Handler for proveFormula request
 	 */
 	async proveFormulaRequest (desc: ProveFormulaRequest, opt?: { 
 		autorun?: boolean, 
@@ -1161,26 +1189,43 @@ export class PvsLanguageServer {
 	/**
 	 * Returns a descriptor with information on all theories in a given context folder
 	 */
-	async getContextDescriptor (args: { contextFolder: string }): Promise<PvsContextDescriptor> {
-		if (args && args.contextFolder) {
-			args = fsUtils.decodeURIComponents(args);
+	async getContextDescriptor (folder: ContextFolder): Promise<PvsContextDescriptor> {
+		if (folder && folder.contextFolder) {
+			folder = fsUtils.decodeURIComponents(folder);
 			if (this.pvsProxy) {
-				if (this.pvsProxy?.isProtectedFolder(args.contextFolder)) {
+				if (this.pvsProxy?.isProtectedFolder(folder.contextFolder)) {
 					return await this.getPreludeDescriptor();
 				} // else
-				const contextFolder: string = (args.contextFolder.endsWith("pvsbin") || args.contextFolder.endsWith("pvsbin/")) ? path.join(args.contextFolder, "..") : args.contextFolder;
+				const contextFolder: string = (folder.contextFolder.endsWith("pvsbin") || folder.contextFolder.endsWith("pvsbin/")) ? path.join(folder.contextFolder, "..") : folder.contextFolder;
 				const desc: PvsContextDescriptor = await fsUtils.getContextDescriptor(contextFolder, {
 					listTheorems: true, 
 					includeTccs: true
 				});
+				// communicate context descriptor to pvsCodeActionProvider
+				this.pvsCodeActionProvider?.updateWorkspaceDescriptor(desc);
 				return desc;
 			} else {
-				console.error('[pvs-language-server.listTheories] Error: pvs proxy is null');
+				console.error('[pvs-language-server.getContextDescriptor] Error: pvs proxy is null');
 			}
 		} else {
-			console.warn('[pvs-language-server.listTheories] Warning: getContextDescriptor invoked with null descriptor');
+			console.warn('[pvs-language-server.getContextDescriptor] Warning: getContextDescriptor invoked with null descriptor');
 		}
 		return null;
+	}
+	/**
+	 * Alias of getContextDescriptor
+	 */
+	async getWorkspaceDescriptor (folder: ContextFolder): Promise<PvsContextDescriptor> {
+		return await this.getContextDescriptor(folder);
+	}
+	/**
+	 * Utility function, clears information about the current workspace
+	 */
+	async clearWorkspace (): Promise<void> {
+		// clear list of theories known to the typechecker
+		await this.pvsProxy?.clearTheories();
+		// forward request to pvsCodeActionProvider
+		this.pvsCodeActionProvider.clearWorkspaceDescriptor();
 	}
 
 	/**
@@ -1650,14 +1695,6 @@ export class PvsLanguageServer {
 	}
 
 	/**
-	 * Utility function, clears information about the current workspace
-	 */
-	async clearWorkspace (): Promise<void> {
-		// clear list of theories known to the typechecker
-		await this.pvsProxy?.clearTheories();
-	}
-
-	/**
 	 * Utility function, quits the prover
 	 */
 	async quitProof (): Promise<void> {
@@ -1777,9 +1814,11 @@ export class PvsLanguageServer {
 			this.connection?.onRequest(serverRequest.getContextDescriptor, (request: { contextFolder: string }) => {
 				if (request && request.contextFolder) {
 					// send information to the client, to populate theory explorer on the front-end
-					this.getContextDescriptor(request).then((cdesc: PvsContextDescriptor) => {
-						this.connection?.sendRequest(serverEvent.getContextDescriptorResponse, cdesc);
-					});
+					this.postTask(() => {
+						this.getContextDescriptor(request).then((cdesc: PvsContextDescriptor) => {
+							this.connection?.sendRequest(serverEvent.getContextDescriptorResponse, cdesc);
+						});	
+					})
 				}
 			});
 			this.connection?.onRequest(serverRequest.getFileDescriptor, (request: { contextFolder: string, fileName: string, fileExtension: string }) => {

@@ -82,6 +82,16 @@ export function isTccFormula (desc: PvsFormula): boolean {
 }
 // group 1 is a list of comma-separated list of imported theories. This regexp works only for theory names without parameters
 export const simpleImportingRegexp: RegExp = /\bIMPORTING\s+((?:(?:[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)+)(?:\s*,\s*(?:[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)+)*)/gi;
+// group 0 is the term name
+export const validTermRegExp: RegExp = /[A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*/g;
+/**
+ *  group 1 is a list of type names
+ *  this is a fast regex capturing types declared on a "clean line" in the following form
+ * - t1: TYPE
+ * - t1[params]: TYPE
+ * - t1,t2,..., t3[params],..: TYPE
+ */
+export const typesRegexp: RegExp = /^\s*([A-Za-z].+):\s*(?:TYPE\+?)\b/gim;
 
 // group 1 is the list of comma-separated values contained in the expression 
 export const listRegexp: RegExp = /\(:([\(\)\s\+\-\w\/\,\.]*):\)/g;

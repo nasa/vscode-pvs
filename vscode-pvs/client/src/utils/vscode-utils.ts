@@ -40,7 +40,7 @@ import * as fsUtils from '../common/fsUtils';
 import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
-import { TheoryItem, WorkspaceItem } from "../views/vscodePvsWorkspaceExplorer";
+import { TheoryItem, WorkspaceOverviewItem } from "../views/vscodePvsWorkspaceExplorer";
 import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent, GotoFileDescriptor, Position, Range, FormulaDescriptor, QuickFixReplace, QuickFixAddImporting } from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 import { XTermColorTheme } from '../common/colorUtils';
@@ -754,8 +754,7 @@ export async function quickFixAddImporting (quickfix: QuickFixAddImporting): Pro
             const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
             // cols are 0-based in vscode
             const position: vscode.Position = new vscode.Position(quickfix.position.line, quickfix.position.character);
-            const spaces: string = "    ";
-            edit.insert(document.uri, position, `\n${spaces}${quickfix.newImporting}\n`);
+            edit.insert(document.uri, position, ` ${quickfix.newImporting} `);
             let success: boolean = await vscode.workspace.applyEdit(edit);
             if (success) { success = await document.save(); }
             return success;
@@ -815,7 +814,7 @@ export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: s
 /**
  * Utility function, extracts context folder information from a resource
  */
-export async function getPvsWorkspace (resource: ContextFolder | WorkspaceItem | { path: string }): Promise<ContextFolder | null> {
+export async function getPvsWorkspace (resource: ContextFolder | WorkspaceOverviewItem | { path: string }): Promise<ContextFolder | null> {
 	if (resource) {
         if (resource["contextValue"]) {
             return {

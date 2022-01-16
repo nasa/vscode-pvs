@@ -1,4 +1,4 @@
-import { LookUpTable, PvsTheory } from '../../common/serverInterface';
+import { LookUpTable, LookUpTableStats, PvsTheory } from '../../common/serverInterface';
 import * as fsUtils from '../../common/fsUtils';
 import * as fs from 'fs';
 
@@ -39,8 +39,13 @@ async function run () {
     const types: { [typeName: string]: PvsTheory[] } = {};
     const functions: { [typeName: string]: PvsTheory[] } = {};
     const formulas: { [typeName: string]: PvsTheory[] } = {};
-    const stats: { [key: string]: number | string } = {
-        version: NASALIB_VERSION
+    const stats: LookUpTableStats = {
+        version: NASALIB_VERSION,
+        folders: 0,
+        theories: 0,
+        formulas: 0,
+        functions: 0,
+        types: 0
     };
     for (let i = 0; i < declsOverview?.length; i++) {
         // overview reflects the content of a pvs file

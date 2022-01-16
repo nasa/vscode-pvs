@@ -364,21 +364,16 @@ export const cliSessionType = {
 	proveFormula: "pvs.prove-formula"
 };
 
+/**
+ * Interface declarations for folders, files, theories, formulas
+ */
 export declare interface ContextFolder {
 	contextFolder: string;
-}
-export declare interface PvsContextDescriptor extends ContextFolder {
-	contextFolder: string,
-	fileDescriptors: { [fname: string]: PvsFileDescriptor }
 }
 export declare interface FileDescriptor extends ContextFolder {
 	fileName: string;
 	fileExtension: string;
 	fileContent?: string;
-}
-export declare interface GotoFileDescriptor extends FileDescriptor {
-	pos: Position,
-	range?: Range
 }
 export declare type PvsFile = FileDescriptor;
 export declare interface PvsTheory extends PvsFile {
@@ -389,6 +384,37 @@ export declare interface PvsTheory extends PvsFile {
 export declare interface PvsFormula extends PvsTheory {
 	formulaName: string;
 }
+export declare interface PvsTypeDecl extends PvsTheory {
+	typeName: string;
+}
+/**
+ * Interface declarations for descriptors (folders, files, theories, formulas)
+ */
+export declare interface PvsContextDescriptor extends ContextFolder {
+	contextFolder: string,
+	fileDescriptors: { [fname: string]: PvsFileDescriptor }
+}
+export declare type PvsWorkspaceDescriptor = PvsContextDescriptor;
+export declare interface PvsFileDescriptor extends PvsFile {
+	theories: TheoryDescriptor[];
+}
+export declare interface FormulaDescriptor extends PvsFormula {
+	position: Position;
+	status: ProofStatus; // proof status
+	isTcc: boolean;
+}
+export declare interface TheoryDescriptor extends PvsTheory {
+	position: Position; // position of the theory declaration
+	theorems?: FormulaDescriptor[];
+}
+export declare interface GotoFileDescriptor extends FileDescriptor {
+	pos: Position,
+	range?: Range
+}
+
+/**
+ * Interface declarations for commands
+ */
 export declare interface PvsProofCommand extends PvsFormula {
 	cmd?: string, // the command must be surrounded by round parentheses
 	origin?: string // the component that has originated this request
@@ -405,18 +431,6 @@ export declare interface StatusProofChain {
 }
 export declare interface EvalExpressionRequest extends PvsTheory {
 	expr: string;
-}
-export declare interface FormulaDescriptor extends PvsFormula {
-	position: Position;
-	status: ProofStatus; // proof status
-	isTcc: boolean;
-}
-export declare interface TheoryDescriptor extends PvsTheory {
-	position: Position; // position of the theory declaration
-	theorems?: FormulaDescriptor[];
-}
-export declare interface PvsFileDescriptor extends PvsFile {
-	theories: TheoryDescriptor[];
 }
 export declare interface SearchRequest {
 	searchString: string
@@ -1089,13 +1103,21 @@ export type SequentDescriptor = {
 
 // the lookup table provides different view on the library content (folders, theories, etc)
 // it is designed to optimize search speed
+export interface LookUpTableStats {
+	version?: string,
+	folders: number,
+	theories: number,
+	types: number,
+	functions: number,
+	formulas: number
+}
 export interface LookUpTable {
-    stats:    { [name: string]: number | string },
-    folders:  { [name: string]: PvsTheory[] },
-    theories: { [name: string]: PvsTheory[] },
-    types:    { [name: string]: PvsTheory[] },
-    functions:{ [name: string]: PvsTheory[] },
-    formulas: { [name: string]: PvsTheory[] }
+    stats: LookUpTableStats,
+    folders:  { [folderName: string]: PvsTheory[] }, // each folder can contain multiple theories 
+    theories: { [theoryName: string]: PvsTheory[] }, // the length of this vector is 1 for typechecked folders
+    types:    { [typeName: string]: PvsTheory[] }, // using a vector because the same type can be declared in multiple theories
+    functions:{ [functionName: string]: PvsTheory[] }, // using a vector because the same function can be declared in multiple theories
+    formulas: { [formulaName: string]: PvsTheory[] } // using a vector because the same formula can be declared in multiple theories
 };
 
 // quick-fix interface

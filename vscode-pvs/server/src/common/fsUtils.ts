@@ -44,11 +44,11 @@ import {
 	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor, 
 	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsDownloadDescriptor, 
 	pvsDownloadUrl, PvsFileDescriptor, 
-	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable
+	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile
 } from '../common/serverInterface';
 import { 
 	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, 
-	icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp 
+	icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp, typesRegexp, validTermRegExp 
 } from './languageUtils';
 
 
@@ -411,50 +411,36 @@ export function pathExists(path: string): boolean {
 	}
 	return false;
 }
+
 /**
- * Utility function, returns the list of pvs files contained in a given folder
- * @param contextFolder Path to a folder containing pvs files.
- * @returs List of pvs files, as a structure FileList. Null if the folder does not exist.
+ * Utility function, normalizes the structure of a path -- expands ~ and terminates the path with /
  */
-export async function listPvsFiles (contextFolder: string): Promise<FileList> {
-	if (contextFolder) {
-		const children: string[] = await readDir(contextFolder);
-		const fileList: FileList = {
-			fileNames: children.filter((fileName) => {
-				return (fileName.endsWith(".pvs") || fileName.endsWith(".hpvs"))
-						&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
-			}),
-			contextFolder: contextFolder
-		};
-		return fileList;
-	}
-	return null;
-}
-
-
 export function normalizePath(p: string) {
 	if (p) {
 		p = path.normalize(p);
-		p = (p.endsWith("/")) ? p.substr(0, p.length - 1) : p;
+		p = (p.endsWith("/")) ? p.substring(0, p.length - 1) : p;
 		p = tildeExpansion(p);
 	}
 	return p;
 }
 
+/**
+ * Utility function, returns the fragment between range.start (included) and range.end (excluded)
+ */
 export function getText(txt: string, range: { start: { line: number, character?: number }, end: { line: number, character?: number } }): string {
 	if (txt && range) {
 		const lines: string[] = txt.split("\n");
 		let ans: string[] = lines.slice(range.start.line, range.end.line + 1);
 		if (ans && ans.length > 0) {
 			if (!isNaN(range.start.character)) {
-				ans[0] = ans[0].substr(range.start.character);
+				ans[0] = ans[0].substring(range.start.character);
 			}
 			if (!isNaN(range.end.character)) {
 				let endCharacter: number = range.end.character;
 				if (!isNaN(range.start.character) && range.start.line === range.end.line) {
 					endCharacter -= range.start.character;
 				}
-				ans[ans.length - 1] = ans[ans.length - 1].substr(0, endCharacter);
+				ans[ans.length - 1] = ans[ans.length - 1].substring(0, endCharacter);
 			}
 			return ans.join("\n");
 		}
@@ -462,11 +448,15 @@ export function getText(txt: string, range: { start: { line: number, character?:
 	return txt;
 }
 
-
+/**
+ * Utility function, returns a fresh identifier
+ */
 export function get_fresh_id(): string {
 	return shasum(Math.random().toString(36));
 }
-
+/**
+ * Utility function, computes the shasum of a given text
+ */
 export function shasum (txt: string): string {
 	if (txt) {
 		const spaceless: string = txt.replace(/%.*/g, "").replace(/\s+/g, ""); // removes comments and white spaces in the pvs file
@@ -474,7 +464,9 @@ export function shasum (txt: string): string {
 	}
 	return "";
 }
-
+/**
+ * Utility function, computes the shasum of a given file
+ */
 export async function shasumFile (desc: FileDescriptor): Promise<string> {
 	const content: string = await readFile(desc2fname(desc));
 	if (content) {
@@ -482,7 +474,9 @@ export async function shasumFile (desc: FileDescriptor): Promise<string> {
 	}
 	return "";
 }
-
+/**
+ * Utility function, converts a file path into a file descriptor
+ */
 export function fname2desc (fname: string): FileDescriptor | null {
 	if (fname) {
 		const fileName: string = getFileName(fname);
@@ -492,11 +486,15 @@ export function fname2desc (fname: string): FileDescriptor | null {
 	}
 	return null;
 }
-
+/**
+ * Utility function, converts a file descriptor into a file path
+ */
 export function desc2fname (desc: FileDescriptor): string {
 	return path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 }
-
+/**
+ * Utility function, returns a list of all subfolders contained in the given folder
+ */
 export function listSubFolders (folder: string): string[] {
 	if (folder) {
 		return fs.readdirSync(folder, { withFileTypes: true })
@@ -757,91 +755,30 @@ export function execShellCommand (req: ShellCommand, opt?: {
 	return null;
 };
 
-
 /**
- * @function listTheoryNames
- * @description Utility function, returns a list of all theories in the given file
- * @param fileContent The text where the theory should be searched 
- * @returns string[] the list of theories in the given text
+ * Utility function, returns the list of pvs files contained in a given folder
+ * @param contextFolder Path to a folder containing pvs files.
+ * @returs List of pvs files, as a structure FileList. Null if the folder does not exist.
  */
-export function listTheoryNames (fileContent: string): string[] {
-	const ans: string[] = [];
-	if (fileContent) {
-		let txt = fileContent.replace(commentRegexp, "");
-		const regexp: RegExp = theoryRegexp;
-		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
-		while (match) {
-			if (match.length > 1 && match[1]) {
-				const theoryName: string = match[1];
-
-				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
-				if (matchEnd && matchEnd.length) {
-					const endIndex: number = matchEnd.index + matchEnd[0].length;
-					txt = txt.slice(endIndex);
-					// need to create a new regexp when txt is updated
-					match = new RegExp(regexp).exec(txt);
-					ans.push(theoryName);
-				} else {
-					match = regexp.exec(txt);
-				}
-			} else {
-				match = regexp.exec(txt);
-			}
-		}
-	}
-	return ans;
-};
-
-/**
- * Utility function, returns the list of theories defined in a given pvs file
- * @param fname Path to a pvs file
- */
-export async function listTheoriesInFile (fname: string, opt?: { content?: string }): Promise<TheoryDescriptor[]> {
-	// console.log(`listing theories in file ${fname}`);
-	opt = opt || {};
-	if (fname) {
-		const fileName: string = getFileName(fname);
-		const fileExtension: string = getFileExtension(fname);
-		const contextFolder: string = getContextFolder(fname);
-		const fileContent: string = (opt.content) ? opt.content : await readFile(fname);
-		if (fileContent) {
-			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
-			// console.dir(response);
-			return response;
-		}
+ export async function listPvsFiles (contextFolder: string): Promise<FileList> {
+	if (contextFolder) {
+		const children: string[] = await readDir(contextFolder);
+		const fileList: FileList = {
+			fileNames: children.filter((fileName) => {
+				return (fileName.endsWith(".pvs") || fileName.endsWith(".hpvs"))
+						&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
+			}),
+			contextFolder: contextFolder
+		};
+		return fileList;
 	}
 	return null;
 }
-
-
-/**
- * Utility function, returns the list of theories defined in a given pvs file
- * @param fname Path to a pvs file
- */
-export async function mapTheoriesInFile (fname: string): Promise<{ [ key: string ]: TheoryDescriptor }> {
-	if (fname) {
-		const fileName: string = getFileName(fname);
-		const fileExtension: string = getFileExtension(fname);
-		const contextFolder: string = getContextFolder(fname);
-		const fileContent: string = await readFile(fname);
-		if (fileContent) {
-			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
-			const theoryMap: { [ key: string ]: TheoryDescriptor } = {};
-			for (const i in response) {
-				theoryMap[ response[i].theoryName ] = response[i];
-			}
-			return theoryMap;
-		}
-	}
-	return null;
-}
-
-
 /**
  * Utility function, finds all theories in a given file
  * @param desc Descriptor indicating filename, file extension, context folder, and file content
  */
-export function listTheories(desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean }): TheoryDescriptor[] {
+ export function listTheories(desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean }): TheoryDescriptor[] {
 	// console.log(`[language-utils] Listing theorems in file ${desc.fileName}${desc.fileExtension}`);
 	let ans: TheoryDescriptor[] = [];
 	if (desc && desc.fileContent) {
@@ -895,7 +832,80 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 	}
 	return ans;
 }
+/**
+ * @function listTheoryNames
+ * @description Utility function, returns a list of all theories in the given file
+ * @param fileContent The text where the theory should be searched 
+ * @returns string[] the list of theories in the given text
+ */
+export function listTheoryNames (fileContent: string): string[] {
+	const ans: string[] = [];
+	if (fileContent) {
+		let txt = fileContent.replace(commentRegexp, "");
+		const regexp: RegExp = theoryRegexp;
+		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
+		while (match) {
+			if (match.length > 1 && match[1]) {
+				const theoryName: string = match[1];
 
+				const matchEnd: RegExpMatchArray = endTheoryOrDatatypeRegexp(theoryName).exec(txt);
+				if (matchEnd && matchEnd.length) {
+					const endIndex: number = matchEnd.index + matchEnd[0].length;
+					txt = txt.slice(endIndex);
+					// need to create a new regexp when txt is updated
+					match = new RegExp(regexp).exec(txt);
+					ans.push(theoryName);
+				} else {
+					match = regexp.exec(txt);
+				}
+			} else {
+				match = regexp.exec(txt);
+			}
+		}
+	}
+	return ans;
+};
+/**
+ * Utility function, returns the list of theories defined in a given pvs file
+ * @param fname Path to a pvs file
+ */
+export async function listTheoriesInFile (fname: string, opt?: { content?: string }): Promise<TheoryDescriptor[]> {
+	// console.log(`listing theories in file ${fname}`);
+	opt = opt || {};
+	if (fname) {
+		const fileName: string = getFileName(fname);
+		const fileExtension: string = getFileExtension(fname);
+		const contextFolder: string = getContextFolder(fname);
+		const fileContent: string = (opt.content) ? opt.content : await readFile(fname);
+		if (fileContent) {
+			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
+			// console.dir(response);
+			return response;
+		}
+	}
+	return null;
+}
+/**
+ * Utility function, returns the list of theories defined in a given pvs file
+ * @param fname Path to a pvs file
+ */
+export async function mapTheoriesInFile (fname: string): Promise<{ [ key: string ]: TheoryDescriptor }> {
+	if (fname) {
+		const fileName: string = getFileName(fname);
+		const fileExtension: string = getFileExtension(fname);
+		const contextFolder: string = getContextFolder(fname);
+		const fileContent: string = await readFile(fname);
+		if (fileContent) {
+			const response: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent });
+			const theoryMap: { [ key: string ]: TheoryDescriptor } = {};
+			for (const i in response) {
+				theoryMap[ response[i].theoryName ] = response[i];
+			}
+			return theoryMap;
+		}
+	}
+	return null;
+}
 /**
  * Utility function, returns the list of theories defined in a given pvs file
  * @param fname Path to a pvs file
@@ -908,14 +918,105 @@ export async function listTheoremsInFile (fname: string, opt?: { content?: strin
 		const contextFolder: string = getContextFolder(fname);
 		const fileContent: string = (opt.content) ? opt.content : await readFile(fname);
 		if (fileContent) {
-			const response: FormulaDescriptor[] = await listTheorems({ fileName, fileExtension, contextFolder, fileContent });
-			return response;
+			const ans: FormulaDescriptor[] = await listTheorems({ fileName, fileExtension, contextFolder, fileContent });
+			return ans;
 		}
 	}
 	return null;
 };
+/**
+ * Utility function, returns the list of all type declarations in a given pvs file
+ * This function is optimized for performance, and finds type declarations only if they are in the following forms:
+ * - t1: TYPE
+ * - t1[params]: TYPE
+ * - t1,t2,..., t3[params],..: TYPE
+ */
+export async function listTypesInFile (fdesc: FileDescriptor): Promise<PvsTypeDecl[]> {
+	if (isPvsFile(fdesc)) {
+		const fname: string = desc2fname(fdesc);
+		const fileContent: string = fdesc.fileContent || await readFile(fname);
+		const content: string = fileContent.replace(commentRegexp, ""); // remove all comments
+		const types: PvsTypeDecl[] = [];
+		if (content) {
+			const regex: RegExp = new RegExp(typesRegexp);
+			let match: RegExpMatchArray = null;
+			while (match = regex.exec(content)) {
+				// group 0 is the list of type names
+				if (match[0]) {
+					const line: number = content.slice(0, match.index)?.split("\n")?.length;
+					if (line > 0) {
+						// candidates is raw information, names are split brutally at the commas
+						const candidates: string[] = match[0].split(",");
+						// names is the list of valid names
+						const names: string[] = candidates.filter(elem => {
+							const vrex: RegExp = new RegExp(validTermRegExp);
+							const matchName: RegExpMatchArray = vrex.exec(elem);
+							return matchName && matchName[0].length === elem.replace(/:\s*TYPE/gi, "").trim().length;
+						}).map(elem => {
+							const vrex: RegExp = new RegExp(validTermRegExp);
+							const matchName: RegExpMatchArray = vrex.exec(elem);
+							return matchName[0];
+						});
+						for (let i = 0; i < names.length; i++) {
+							const typeName: string = names[i];
+							const theoryName: string = findTheoryName(content, line);
+							types.push({
+								contextFolder: fdesc.contextFolder,
+								fileName: fdesc.fileName,
+								fileExtension: fdesc.fileExtension,
+								theoryName,
+								typeName,
+								line, 
+								character: 0
+							});
+						}
+					}
+				}
+			}
+		}
+		return types;
+	}
+	return null;
+}
 
-
+/**
+ * Utility function, returns the lookup table of types for a given folder
+ */
+export async function typesLookUpTable (cdesc: PvsContextDescriptor): Promise<{ [typeName: string]: PvsTheory[] }> {
+	// compile types
+	if (cdesc) {
+		const lookupTable: { [typeName: string]: PvsTheory[] } = {};
+		const files: FileList = await listPvsFiles(cdesc.contextFolder);
+		if (files?.fileNames?.length) {
+			for (let i = 0; i < files.fileNames.length; i++) {
+				const fname: string = files.fileNames[i];
+				const fileName: string = getFileName(fname);
+				const fileExtension: string = getFileExtension(fname);
+				const cdesc: PvsFile = {
+					contextFolder: files.contextFolder,
+					fileName,
+					fileExtension
+				};
+				const types: PvsTypeDecl[] = await listTypesInFile(cdesc);
+				for (let t = 0; t < types?.length; t++) {
+					const tp: PvsTypeDecl = types[t];
+					lookupTable[tp.typeName] = lookupTable[tp.typeName] || [];
+					lookupTable[tp.typeName].push({
+						contextFolder: tp.contextFolder,
+						fileName: tp.fileName,
+						fileExtension: tp.fileExtension,
+						theoryName: tp.theoryName,
+						line: tp.line,
+						character: tp.character
+					});
+				}
+			}
+		}
+		console.log(lookupTable);
+		return lookupTable;
+	}
+	return null;
+}
 
 /**
  * Utility function, changes the proof status from 'proved' ro 'unchecked' if the file content has changed
@@ -1847,4 +1948,25 @@ export function lsPvsVersions (): string {
 		return versions;
 	}
 	return null;
+}
+
+/**
+ * Base class capable of posting long-running tasks
+ */
+export abstract class PostTask {
+	// timer used for delayed execution of tasks
+	protected timer: NodeJS.Timer = null;
+	// task start delay
+	protected TASK_START_DELAY: number = 250; //ms
+
+	/**
+     * Utility function for posting the execution of a potentially long tasks
+	 * that do not require immediate completion
+     */
+	postTask (task: () => void): void {
+		clearTimeout(this.timer);
+		this.timer = setTimeout(() => {
+			task();
+		}, this.TASK_START_DELAY);
+	}
 }
