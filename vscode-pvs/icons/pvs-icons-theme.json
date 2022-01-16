@@ -38,8 +38,24 @@
 			"fontCharacter": "\\f09b",
 			"fontId": "font-awesome"
 		},
+		"fa-file-o": {
+			"fontCharacter": "\\f016",
+			"fontId": "font-awesome"
+		},
 		"fa-file-pdf-o": {
 			"fontCharacter": "\\f1c1",
+			"fontId": "font-awesome"
+		},
+		"fa-file-word-o": {
+			"fontCharacter": "\\f1c2",
+			"fontId": "font-awesome"
+		},
+		"fa-file-powerpoint-o": {
+			"fontCharacter": "\\f1c4",
+			"fontId": "font-awesome"
+		},
+		"fa-file-text-o": {
+			"fontCharacter": "\\f0f6",
 			"fontId": "font-awesome"
 		},
 		"fa-file-image": {
@@ -52,8 +68,7 @@
 		},
 		"fa-key": {
 			"fontCharacter": "\\f084",
-			"fontId": "font-awesome",
-			"fontColor": "#FFFF66"
+			"fontId": "font-awesome"
 		},
 		"fa-clock-o": {
 			"fontCharacter": "\\f017",
@@ -61,8 +76,18 @@
 		},
 		"fa-info-circle": {
 			"fontCharacter": "\\f05a",
-			"fontId": "font-awesome",
-			"fontColor": "deepskyblue"
+			"fontId": "font-awesome"
+		},
+		"fa-html5": {
+			"fontCharacter": "\\f13b",
+			"fontId": "font-awesome"
+		},
+		"json-file": {
+			"fontCharacter": "{}"
+		},
+		"makefile-icon": {
+			"fontCharacter": "M",
+			"fontColor": "coral"
 		}
 	},
 	"folder": "fa-folder",
@@ -78,7 +103,10 @@
 		"changelog": "fa-clock-o",
 		"changelog.md": "fa-clock-o",
 		"readme": "fa-info-circle",
-		"readme.md": "fa-info-circle"
+		"readme.md": "fa-info-circle",
+		"makefile": "makefile-icon",
+		"all-theories": "fa-file-text-o",
+		"all-theories.grandtotals": "fa-file-text-o"
 	},
 	"fileExtensions": {
 		"pvs": "pvs-file-icon",
@@ -91,7 +119,27 @@
 		"jpg": "fa-file-image",
 		"jpeg": "fa-file-image",
 		"png": "fa-file-image",
-		"zip": "fa-file-archive-o"
+		"zip": "fa-file-archive-o",
+		"json": "json-file",
+		"ts": "fa-file-o",
+		"js": "fa-file-o",
+		"map": "fa-file-o",
+		"doc": "fa-file-word-o",
+		"docx": "fa-file-word-o",
+		"ppt": "fa-file-powerpoint-o",
+		"pptx": "fa-file-powerpoint-o",
+		"txt": "fa-file-text-o",
+		"dylib": "fa-file-o",
+		"a": "fa-file-o",
+		"cpp": "fa-file-o",
+		"c": "fa-file-o",
+		"h": "fa-file-o",
+		"o": "fa-file-o",
+		"py": "fa-file-o",
+		"pl": "fa-file-o",
+		"daa": "fa-file-text-o",
+		"html": "fa-html5",
+		"htm": "fa-html5"
 	},
 	"languageIds": {
 		"pvs": "internal-pvs-file-icon"
