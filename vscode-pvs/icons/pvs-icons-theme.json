@@ -1,4 +1,14 @@
 {
+	"fonts": [{
+		"id": "font-awesome",
+		"src": [{
+			"path": "../client/node_modules/font-awesome/fonts/fontawesome-webfont.woff",
+			"format": "woff"
+		}],
+		"weight": "normal",
+		"style": "normal",
+		"size": "100%"
+	}],
 	"iconDefinitions": {
 		"pvs-file-icon": {
 			"iconPath": "./pvs-file-icon.png",
@@ -15,17 +25,73 @@
 		"internal-pvs-file-icon": {
 			"iconPath": "./internal-pvs-file-icon.png",
 			"description": "pvs proof file"
+		},
+		"fa-folder": {
+			"fontCharacter": "\\f114",
+			"fontId": "font-awesome"
+		},
+		"fa-folder-open-o": {
+			"fontCharacter": "\\f115",
+			"fontId": "font-awesome"
+		},
+		"fa-github": {
+			"fontCharacter": "\\f09b",
+			"fontId": "font-awesome"
+		},
+		"fa-file-pdf-o": {
+			"fontCharacter": "\\f1c1",
+			"fontId": "font-awesome"
+		},
+		"fa-file-image": {
+			"fontCharacter": "\\f1c5",
+			"fontId": "font-awesome"
+		},
+		"fa-file-archive-o": {
+			"fontCharacter": "\\f1c6",
+			"fontId": "font-awesome"
+		},
+		"fa-key": {
+			"fontCharacter": "\\f084",
+			"fontId": "font-awesome",
+			"fontColor": "#FFFF66"
+		},
+		"fa-clock-o": {
+			"fontCharacter": "\\f017",
+			"fontId": "font-awesome"
+		},
+		"fa-info-circle": {
+			"fontCharacter": "\\f05a",
+			"fontId": "font-awesome",
+			"fontColor": "deepskyblue"
 		}
 	},
+	"folder": "fa-folder",
+	"folderExpanded": "fa-folder-open-o",
 	"folderNames": {
 		"pvsbin": "internal-pvs-file-icon",
 		"pvsioweb": "internal-pvs-file-icon"
+	},
+	"fileNames": {
+		".gitignore": "fa-github",
+		"license": "fa-key",
+		"license.md": "fa-key",
+		"changelog": "fa-clock-o",
+		"changelog.md": "fa-clock-o",
+		"readme": "fa-info-circle",
+		"readme.md": "fa-info-circle"
 	},
 	"fileExtensions": {
 		"pvs": "pvs-file-icon",
 		"tccs": "tccs-file-icon",
 		"summary": "summary-file-icon",
-		"prf": "internal-pvs-file"
+		"prf": "internal-pvs-file",
+
+		"pdf": "fa-file-pdf-o",
+		"gif": "fa-file-image",
+		"jpg": "fa-file-image",
+		"jpeg": "fa-file-image",
+		"png": "fa-file-image",
+		"zip": "fa-file-archive-o"
 	},
 	"languageIds": {
 		"pvs": "internal-pvs-file-icon"
