@@ -42,11 +42,40 @@ import { nasalib_lookup_table } from "../core/nasalib-utils/nasalib-lookup-table
 import * as fsUtils from '../common/fsUtils';
 import { errorCannotFindTheoryRegExp, expectingTypeRegExp, theoryRegexp } from "../common/languageUtils";
 import { contextDescriptor2LookUpTable } from "../common/fsUtils";
+import { PVS_BUILTIN_TYPES } from "../common/languageKeywords";
 
 // list of all nasalib theories
 const nasalib_theories: string[] = nasalib_lookup_table?.theories ? Object.keys(nasalib_lookup_table.theories) : [];
 // list of all nasalib types
 const nasalib_types: string[] = nasalib_lookup_table?.types ? Object.keys(nasalib_lookup_table.types) : [];
+// list of the builtin types
+const builtin_types: string[] = [...PVS_BUILTIN_TYPES];
+/**
+ * Utility function, checks if two strings are similar based on a simplified version of the N-gram algorithm (N=3)
+ * The original N-gram algorithm is presented in Esko Ukkonen, "Approximate string-matching with q-grams and maximal matches", 
+ * Theoretical Computer Science, Volume 92, Issue 1, 6 January 1992, Pages 191-211
+ */
+export function similar (str1: string, str2: string): boolean {
+    const N: number = 3;
+    // base cases
+    if (str1 === str2) { return true; }
+    if (str1.length < N || str2.length < N || Math.abs(str1.length - str2.length) > N) { return false; }
+
+    const st1: string = str1.toLocaleLowerCase();
+    let st2: string = str2.toLocaleLowerCase();
+
+    // create ngrams for st1
+    const ngrams: string[] = [];
+    for (let i = 0; i < st1.length - 1; i++) {
+        ngrams.push(st1.substring(i, i + N));
+    }
+    // remove the ngrams from a copy of st2 
+    for (let i = 0; i < ngrams.length; i++) {
+        st2 = st2.replace(ngrams[i], "");
+    }
+    // the strings are similar if the difference is less than N characters
+    return st2.length < N;
+}
 
 /**
  * PvsCodeAction class, used for implementing quick-fix actions
@@ -118,7 +147,8 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
      * quickfix action for typecheck error "Cannot find theory"
      * - fix 1: add libName to pvs library path
      * - fix 2: view/edit pvs library path
-     * - fix 3: check nasalib: if match is found suggest changing to IMPORTING folder@libName 
+     * - fix 3: check theories defined in the current context: if match is found suggest changing to IMPORTING libName 
+     * - fix 4: check nasalib: if match is found suggest changing to IMPORTING folder@libName 
      */
     fixCannotFindTheory (file: FileDescriptor, diag: Diagnostic): CodeAction[] {
         let actions: CodeAction[] = [];
@@ -136,9 +166,9 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                 // fix 2: view/edit pvs library path
                 const fix2: CodeAction = this.getCodeActionEditLibraryPath();
                 actions.push(fix2);
-                // fix 3: check theories defined in the current context: if match is found suggest IMPORTING libName
+                // fix 4: check theories defined in the current context: if match is found suggest IMPORTING folder@libName                
                 let candidates: string[] = nasalib_theories.filter(elem => {
-                    return elem.toLocaleLowerCase() === libName.toLocaleLowerCase();
+                    return similar(elem, libName);
                 });
                 if (candidates?.length) {
                     for (let i = 0; i < candidates.length; i++) {
@@ -147,7 +177,7 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                             const folder: string = theories[t].contextFolder;
                             const nasalibTheory: string = `${folder}@${candidates[i]}`;
                             const title: string = `Change "${libName}" to "${nasalibTheory}"`;
-                            const fix3: CodeAction = this.getCodeActionReplace({
+                            const fix: CodeAction = this.getCodeActionReplace({
                                 fdesc:  {
                                     contextFolder: file.contextFolder,
                                     fileName: file.fileName,
@@ -157,9 +187,37 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                                 range: diag.range, 
                                 newText: nasalibTheory
                             });
-                            if (fix3) {
+                            if (fix) {
                                 // place this action at the front
-                                actions = [ fix3 ].concat(actions);
+                                actions = [ fix ].concat(actions);
+                            }
+                        }
+                    }
+                }
+                // fix 3: check theories defined in the current context: if match is found suggest changing to IMPORTING libName 
+                const contextTheories: string[] = this.ctx?.theories ? Object.keys(this.ctx.theories) : []
+                candidates = contextTheories.filter(elem => {
+                    return similar(elem, libName);
+                });
+                if (candidates?.length) {
+                    for (let i = 0; i < candidates.length; i++) {
+                        const theories: PvsTheory[] = this.ctx.theories[candidates[i]];
+                        for (let t = 0; t < theories?.length; t++) {
+                            const ctxTheory: string = candidates[i];
+                            const title: string = `Change "${libName}" to "${ctxTheory}"`;
+                            const fix: CodeAction = this.getCodeActionReplace({
+                                fdesc:  {
+                                    contextFolder: file.contextFolder,
+                                    fileName: file.fileName,
+                                    fileExtension: file.fileExtension
+                                },
+                                title, 
+                                range: diag.range, 
+                                newText: ctxTheory
+                            });
+                            if (fix) {
+                                // place this action at the front
+                                actions = [ fix ].concat(actions);
                             }
                         }
                     }
@@ -175,6 +233,7 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
      * - fix 2: Open VSCode-PVS settings and edit PVS library path
      * - fix 3: check if current context defines typeName in some theory: if match is found suggest changing to IMPORTING libName 
      * - fix 4: check if nasalib defines typeName in some theory: if a match is found suggest IMPORTING nasalibFolder@libName
+     * - fix 5: check if the type is mispelled and suggest correct spelling
      */
     fixNoResolutionForType (file: FileDescriptor, diag: Diagnostic): CodeAction[] {
         let actions: CodeAction[] = [];
@@ -193,7 +252,9 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                 const fix2: CodeAction = this.getCodeActionEditLibraryPath();
                 actions.push(fix2);
                 // fix 3: check types defined in the current context: if match is found suggest IMPORTING libName
-                let candidates: string[] = this.ctx?.types ? Object.keys(this.ctx?.types) : null;
+                let candidates: string[] = this.ctx?.types ? Object.keys(this.ctx?.types).filter(elem => {
+                    return elem === typeName;
+                }) : null;
                 if (candidates?.length) {
                     for (let i = 0; i < candidates.length; i++) {
                         const types: PvsTheory[] = this.ctx?.types[candidates[i]];
@@ -247,7 +308,7 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                     }
                 }
                 // fix 4: check if nasalib defines the type in some theory: if a match is found suggest IMPORTING nasalibFolder@libName 
-                candidates = nasalib_types.filter(elem => {
+                candidates = nasalib_types?.filter(elem => {
                     return elem.toLocaleLowerCase() === typeName.toLocaleLowerCase();
                 });
                 if (candidates?.length) {
@@ -300,6 +361,35 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                             } else {
                                 console.warn(`[pvs-code-action-provider] Warning: could not determine current theory name`);
                             }
+                        }
+                    }
+                }
+                // fix 5: check if the type is mispelled and suggest correct spelling
+                candidates = this.ctx?.types ? Object.keys(this.ctx?.types).filter(elem => {
+                    return elem !== typeName // type mispelled
+                            && similar(elem, typeName); // but similar
+                }) : [];
+                // check also builtin types
+                candidates = candidates.concat(builtin_types.filter(elem => {
+                    return elem.toLocaleLowerCase() === typeName.toLowerCase(); // wrong capitalization
+                }));
+                if (candidates?.length) {
+                    for (let i = 0; i < candidates.length; i++) {
+                        const type: string = candidates[i];
+                        const title: string = `Change "${typeName}" to "${type}"`;
+                        const fix: CodeAction = this.getCodeActionReplace({
+                            fdesc:  {
+                                contextFolder: file.contextFolder,
+                                fileName: file.fileName,
+                                fileExtension: file.fileExtension
+                            },
+                            title, 
+                            range: diag.range, 
+                            newText: type
+                        });
+                        if (fix) {
+                            // place this action at the front
+                            actions = [ fix ].concat(actions);
                         }
                     }
                 }
