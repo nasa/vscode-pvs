@@ -51,8 +51,8 @@ const nasalib_types: string[] = nasalib_lookup_table?.types ? Object.keys(nasali
 // list of the builtin types
 const builtin_types: string[] = [...PVS_BUILTIN_TYPES];
 /**
- * Utility function, checks if two strings are similar based on a simplified version of the N-gram algorithm (N=3)
- * The original N-gram algorithm is presented in Esko Ukkonen, "Approximate string-matching with q-grams and maximal matches", 
+ * Utility function, checks if two strings are similar. String similarity is defined based on a q-gram distance
+ * An example algorithm based on q-gram distance is presented in Esko Ukkonen, "Approximate string-matching with q-grams and maximal matches", 
  * Theoretical Computer Science, Volume 92, Issue 1, 6 January 1992, Pages 191-211
  */
 export function similar (str1: string, str2: string): boolean {
@@ -81,6 +81,9 @@ export function similar (str1: string, str2: string): boolean {
  * PvsCodeAction class, used for implementing quick-fix actions
  */
 export class PvsCodeActionProvider extends fsUtils.PostTask {
+    /**
+     * Connection with the client
+     */
     protected connection: Connection;
 
     /**
@@ -96,11 +99,10 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
         super();
 		this.connection = connection;
     }
-
     /**
-     * Returns a code action for adding a folder to the PVS library path
+     * Internal function, creates a code action for adding a folder to the PVS library path
      */
-    getCodeActionAddFolder (opt?: { msg?: string, declNotFound?: string }): CodeAction {
+    protected getCodeActionAddFolder (opt?: { msg?: string, declNotFound?: string }): CodeAction {
         opt = opt || {};
         const title: string = opt.msg ? opt.msg
             : opt.declNotFound ? `Add folder with the definition of "${opt.declNotFound}" to PVS library path`
@@ -110,9 +112,9 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
         return action;        
     }
     /**
-     * Returns a code action for viewing/editing pvs library path in vscode-pvs settings
+     * Internal function, creates a code action for viewing/editing pvs library path in vscode-pvs settings
      */
-    getCodeActionEditLibraryPath (opt?: { msg?: string }): CodeAction {
+    protected getCodeActionEditLibraryPath (opt?: { msg?: string }): CodeAction {
         opt = opt || {};
         const title: string = `Open VSCode-PVS settings and edit the list of libraries in PVS library path`;
         const command: Command = { title, command: "vscode-pvs.view-pvs-library-path" };
@@ -120,10 +122,10 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
         return action;
     }
     /**
-     * Returns a code action for replacing text
+     * Internal function, creates a code action for replacing text
      */
-    getCodeActionReplace (desc: { fdesc: FileDescriptor, title: string, range: Range, newText: string }): CodeAction {
-        if (desc?.fdesc && desc?.range && desc.newText) {
+    protected getCodeActionReplace (desc: { fdesc: FileDescriptor, title: string, range: Range, newText: string }): CodeAction {
+        if (desc?.fdesc && desc?.range && desc.newText && desc?.title) {
             const params: QuickFixReplace = {
                 ...desc.fdesc,
                 range: desc.range,
@@ -144,11 +146,67 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
         return null;
     }
     /**
-     * quickfix action for typecheck error "Cannot find theory"
-     * - fix 1: add libName to pvs library path
-     * - fix 2: view/edit pvs library path
-     * - fix 3: check theories defined in the current context: if match is found suggest changing to IMPORTING libName 
-     * - fix 4: check nasalib: if match is found suggest changing to IMPORTING folder@libName 
+     * Internal function, creates a code action for importing a theory
+     */
+    protected getCodeActionImportTheory (desc: { fdesc: FileDescriptor, title: string, range: Range, newText: string }): CodeAction {
+        if (desc?.fdesc && desc?.range && desc.newText && desc?.title) {
+            const currentTheory: string = fsUtils.findTheoryName(desc.fdesc.fileContent, desc.range.start.line);
+            if (currentTheory) {
+                // find location where to place the IMPORTING
+                // group 1 is the theory name
+                const regexp: RegExp = new RegExp(theoryRegexp);
+                let matchTheory: RegExpMatchArray = null;
+                let importingLine: number = -1;
+                let importingCharacter: number = -1;
+                while (matchTheory = regexp.exec(desc.fdesc.fileContent)) {
+                    if (matchTheory?.length > 1 && matchTheory[1] === currentTheory) {
+                        const frag: string = desc.fdesc.fileContent.substring(0, matchTheory.index + matchTheory[0].length);
+                        const lines: string[] = frag.split("\n");
+                        importingLine = lines.length - 1; // line is 0-based
+                        importingCharacter = lines[importingLine].indexOf("BEGIN") + 6; // place the importing after BEGIN
+                        break;
+                    }
+                }
+                if (importingLine !== -1 && importingCharacter !== -1) {
+                    const params: QuickFixAddImporting = {
+                        contextFolder: desc.fdesc.contextFolder,
+                        fileName: desc.fdesc.fileName,
+                        fileExtension: desc.fdesc.fileExtension,
+                        position: { line: importingLine, character: importingCharacter },
+                        newImporting: desc.newText
+                    };
+                    const cmd: Command = {
+                        title: desc.title,
+                        command: quickFixAddImportingCommand,
+                        arguments: [ params ]
+                    };
+                    const action: CodeAction = {
+                        title: desc.title,
+                        kind: CodeActionKind.QuickFix,
+                        command: cmd
+                    };
+                    return action;
+                } else {
+                    console.warn(`[pvs-code-action-provider] Warning: could not determine location of IMPORTING`);
+                }
+            } else {
+                console.warn(`[pvs-code-action-provider] Warning: could not determine current theory name`);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Quickfix action for typecheck error "Cannot find theory"
+     * This typecheck error occurs when the typechecker cannot find the declaration 
+     * of a theory theoryName used in the IMPORTING statement
+     * - Case 1: Check if theoryName, or a name similar to theoryName, is defined in nasalib
+     *           if match is found, suggest changing theoryName to nasalibFolder@theoryName
+     * - Case 2: Check if theoryName is mispelled
+     *           if similar theory names are defined in the current context
+     *           for each similar theory name thName, suggest changing theoryName to thName
+     * - Case 3: theoryName is defined in an external library, but the library is not in the PVS_LIBRARY_PATH
+     *           suggest adding a folder to the PVS_LIBRARY_PATH, or viewing/editing PVS_LIBRARY_PATH
      */
     fixCannotFindTheory (file: FileDescriptor, diag: Diagnostic): CodeAction[] {
         let actions: CodeAction[] = [];
@@ -159,24 +217,20 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
             const match: RegExpMatchArray = cannotFindTheory.exec(message);
             if (match?.length > 1 && match[1]) { // && /Typecheck error/gi.test(source)) {
                 // group 1 is the imported theory that cannot be found
-                const libName: string = match[1];
-                // fix 1: add libName to pvs library path
-                const fix1: CodeAction = this.getCodeActionAddFolder({ declNotFound: libName });
-                actions.push(fix1);
-                // fix 2: view/edit pvs library path
-                const fix2: CodeAction = this.getCodeActionEditLibraryPath();
-                actions.push(fix2);
-                // fix 4: check theories defined in the current context: if match is found suggest IMPORTING folder@libName                
+                const theoryName: string = match[1];
+
+                // Case 1: Check if theoryName, or a name similar to theoryName, is defined in nasalib
+                //         if match is found, suggest IMPORTING nasalibFolder@theoryName
                 let candidates: string[] = nasalib_theories.filter(elem => {
-                    return similar(elem, libName);
+                    return similar(elem, theoryName);
                 });
                 if (candidates?.length) {
                     for (let i = 0; i < candidates.length; i++) {
                         const theories: PvsTheory[] = nasalib_lookup_table?.theories[candidates[i]];
                         for (let t = 0; t < theories?.length; t++) {
-                            const folder: string = theories[t].contextFolder;
-                            const nasalibTheory: string = `${folder}@${candidates[i]}`;
-                            const title: string = `Change "${libName}" to "${nasalibTheory}"`;
+                            const nasalibFolder: string = theories[t].contextFolder;
+                            const theoryName: string = candidates[i];
+                            const title: string = `Change "${theoryName}" to "${nasalibFolder}@${theoryName}" (NASALib)`;
                             const fix: CodeAction = this.getCodeActionReplace({
                                 fdesc:  {
                                     contextFolder: file.contextFolder,
@@ -185,7 +239,7 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                                 },
                                 title, 
                                 range: diag.range, 
-                                newText: nasalibTheory
+                                newText: theoryName
                             });
                             if (fix) {
                                 // place this action at the front
@@ -194,17 +248,19 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                         }
                     }
                 }
-                // fix 3: check theories defined in the current context: if match is found suggest changing to IMPORTING libName 
-                const contextTheories: string[] = this.ctx?.theories ? Object.keys(this.ctx.theories) : []
-                candidates = contextTheories.filter(elem => {
-                    return similar(elem, libName);
+
+                // Check if theoryName is mispelled
+                // if similar theory names are defined in the current context
+                // for each similar theory name thName, suggest changing theoryName to thName
+                candidates = Object.keys(this.ctx?.theories || {}).concat(nasalib_theories).filter(elem => {
+                    return similar(elem, theoryName);
                 });
                 if (candidates?.length) {
                     for (let i = 0; i < candidates.length; i++) {
                         const theories: PvsTheory[] = this.ctx.theories[candidates[i]];
                         for (let t = 0; t < theories?.length; t++) {
-                            const ctxTheory: string = candidates[i];
-                            const title: string = `Change "${libName}" to "${ctxTheory}"`;
+                            const thName: string = candidates[i];
+                            const title: string = `Change "${theoryName}" to "${thName}"`;
                             const fix: CodeAction = this.getCodeActionReplace({
                                 fdesc:  {
                                     contextFolder: file.contextFolder,
@@ -213,27 +269,40 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                                 },
                                 title, 
                                 range: diag.range, 
-                                newText: ctxTheory
+                                newText: thName
                             });
-                            if (fix) {
-                                // place this action at the front
-                                actions = [ fix ].concat(actions);
-                            }
+                            if (fix) { actions.push(fix); }
                         }
                     }
                 }
+
+                // Case 3: theoryName is defined in an external library, but the library is not in the PVS_LIBRARY_PATH
+                //         suggest adding a folder to the PVS_LIBRARY_PATH, or viewing/editing PVS_LIBRARY_PATH
+                actions = actions.concat([
+                    this.getCodeActionAddFolder({ declNotFound: theoryName }),
+                    this.getCodeActionEditLibraryPath()
+                ]);                
             }
         }
         return actions;
     }
 
     /**
-     * quickfix action for typecheck error "No resolution for type"
-     * - fix 1: add folder containing typeName to pvs library path
-     * - fix 2: Open VSCode-PVS settings and edit PVS library path
-     * - fix 3: check if current context defines typeName in some theory: if match is found suggest changing to IMPORTING libName 
-     * - fix 4: check if nasalib defines typeName in some theory: if a match is found suggest IMPORTING nasalibFolder@libName
-     * - fix 5: check if the type is mispelled and suggest correct spelling
+     * Quickfix action for typecheck error "No resolution for type"
+     * This typecheck error occurs when the typechecker cannot find the declaration of a type typeName used in the theory
+     * - Case 1: Check if typeName is defined in the current context
+     *           if match is found, suggest IMPORTING theoryName
+     * - Case 2: Check if typeName is defined in nasalib
+     *           if match is found, suggest IMPORTING nasalibFolder@theoryName
+     * - Case 3: Check if typeName is mispelled
+     *           if a similar typeName is found in the current context or among builtin types, suggest replacing typeName with the correct spelling
+     *           Name similarity is based on a q-gram distance measure (e.g., "Vect3" is similar to "Vect3D")
+     *           For builtin types, the similar name must be of the same length (this is done to avoid too many spurious suggestions)
+     *           An example algorithm based on q-gram distance is presented in Esko Ukkonen, 
+     *           "Approximate string-matching with q-grams and maximal matches", 
+     *           Theoretical Computer Science, Volume 92, Issue 1, 6 January 1992, Pages 191-211
+     * - Case 4: typeName is defined in an external library, but the library is not in the PVS_LIBRARY_PATH
+     *           suggest adding a folder to the PVS_LIBRARY_PATH, or viewing/editing PVS_LIBRARY_PATH
      */
     fixNoResolutionForType (file: FileDescriptor, diag: Diagnostic): CodeAction[] {
         let actions: CodeAction[] = [];
@@ -245,69 +314,29 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
             if (diag && match?.length > 1 && match[1]) { // && /Typecheck error/gi.test(source)) {
                 // group 1 is the type that cannot be found
                 const typeName: string = match[1];
-                // fix 1: add libName to pvs library path
-                const fix1: CodeAction = this.getCodeActionAddFolder({ declNotFound: typeName });
-                actions.push(fix1);
-                // fix 2: view/edit pvs library path
-                const fix2: CodeAction = this.getCodeActionEditLibraryPath();
-                actions.push(fix2);
-                // fix 3: check types defined in the current context: if match is found suggest IMPORTING libName
-                let candidates: string[] = this.ctx?.types ? Object.keys(this.ctx?.types).filter(elem => {
-                    return elem === typeName;
-                }) : null;
+
+                // Case 1: check if typeName is defined in the current context
+                //         if match is found, suggest IMPORTING theoryName
+                let candidates: string[] = Object.keys(this.ctx?.types || {}).filter(elem => {
+                    return elem.toLocaleLowerCase() === typeName.toLocaleLowerCase();
+                });
                 if (candidates?.length) {
                     for (let i = 0; i < candidates.length; i++) {
                         const types: PvsTheory[] = this.ctx?.types[candidates[i]];
                         for (let t = 0; t < types?.length; t++) {
-                            const theory: string = types[t].theoryName;
-                            const fix: string = `IMPORTING ${theory}`;
-                            const currentTheory: string = fsUtils.findTheoryName(file.fileContent, diag.range.start.line);
-                            if (currentTheory) {
-                                // find location where to place the IMPORTING
-                                // group 1 is the theory name
-                                const regexp: RegExp = new RegExp(theoryRegexp);
-                                let matchTheory: RegExpMatchArray = null;
-                                let importingLine: number = -1;
-                                let importingCharacter: number = -1;
-                                while (matchTheory = regexp.exec(file.fileContent)) {
-                                    if (matchTheory?.length > 1 && matchTheory[1] === currentTheory) {
-                                        const frag: string = file.fileContent.substring(0, matchTheory.index + matchTheory[0].length);
-                                        const lines: string[] = frag.split("\n");
-                                        importingLine = lines.length - 1; // line is 0-based
-                                        importingCharacter = lines[importingLine].indexOf("BEGIN") + 6;
-                                        break;
-                                    }
-                                }
-                                if (importingLine !== -1 && importingCharacter !== -1) {
-                                    const msg: string = `Import "${candidates[i]}" from theory "${theory}"`;
-                                    const params: QuickFixAddImporting = {
-                                        contextFolder: file.contextFolder,
-                                        fileName: file.fileName,
-                                        fileExtension: file.fileExtension,
-                                        position: { line: importingLine, character: importingCharacter },
-                                        newImporting: fix
-                                    };
-                                    const cmd3: Command = {
-                                        title: msg,
-                                        command: quickFixAddImportingCommand,
-                                        arguments: [ params ]
-                                    };
-                                    const action3: CodeAction = {
-                                        title: msg,
-                                        kind: CodeActionKind.QuickFix,
-                                        command: cmd3
-                                    };
-                                    actions = [ action3 ].concat(actions);
-                                } else {
-                                    console.warn(`[pvs-code-action-provider] Warning: could not determine location of IMPORTING`);
-                                }
-                            } else {
-                                console.warn(`[pvs-code-action-provider] Warning: could not determine current theory name`);
-                            }
+                            const theoryName: string = types[t].theoryName;
+                            const fix: CodeAction = this.getCodeActionImportTheory({
+                                fdesc: file,
+                                title: `Import "${candidates[i]}" from theory "${theoryName}"`,
+                                newText: `IMPORTING ${theoryName}`,
+                                range: diag.range
+                            });
+                            if (fix) { actions.push(fix); }
                         }
                     }
                 }
-                // fix 4: check if nasalib defines the type in some theory: if a match is found suggest IMPORTING nasalibFolder@libName 
+                // Case 2: check if typeName is defined in nasalib
+                //         if match is found, suggest IMPORTING nasalibFolder@theoryName
                 candidates = nasalib_types?.filter(elem => {
                     return elem.toLocaleLowerCase() === typeName.toLocaleLowerCase();
                 });
@@ -315,63 +344,33 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                     for (let i = 0; i < candidates.length; i++) {
                         const types: PvsTheory[] = nasalib_lookup_table?.types[candidates[i]];
                         for (let t = 0; t < types?.length; t++) {
-                            const folder: string = types[t].contextFolder;
-                            const theory: string = types[t].theoryName;
-                            const fix: string = `IMPORTING ${folder}@${theory}`;
-                            const currentTheory: string = fsUtils.findTheoryName(file.fileContent, diag.range.start.line);
-                            if (currentTheory) {
-                                // find location where to place the IMPORTING
-                                // group 1 is the theory name
-                                const regexp: RegExp = new RegExp(theoryRegexp);
-                                let matchTheory: RegExpMatchArray = null;
-                                let importingLine: number = -1;
-                                let importingCharacter: number = -1;
-                                while (matchTheory = regexp.exec(file.fileContent)) {
-                                    if (matchTheory?.length > 1 && matchTheory[1] === currentTheory) {
-                                        const frag: string = file.fileContent.substring(0, matchTheory.index + matchTheory[0].length);
-                                        const lines: string[] = frag.split("\n");
-                                        importingLine = lines.length;
-                                        importingCharacter = lines[importingLine - 1].indexOf("BEGIN") + 6;
-                                        break;
-                                    }
-                                }
-                                if (importingLine !== -1 && importingCharacter !== -1) {
-                                    const msg: string = `Import "${candidates[i]}" from theory "${theory}" (NASALib)`;
-                                    const params: QuickFixAddImporting = {
-                                        contextFolder: file.contextFolder,
-                                        fileName: file.fileName,
-                                        fileExtension: file.fileExtension,
-                                        position: { line: importingLine, character: importingCharacter },
-                                        newImporting: fix
-                                    };
-                                    const cmd3: Command = {
-                                        title: msg,
-                                        command: quickFixAddImportingCommand,
-                                        arguments: [ params ]
-                                    };
-                                    const action3: CodeAction = {
-                                        title: msg,
-                                        kind: CodeActionKind.QuickFix,
-                                        command: cmd3
-                                    };
-                                    actions = [ action3 ].concat(actions);
-                                } else {
-                                    console.warn(`[pvs-code-action-provider] Warning: could not determine location of IMPORTING`);
-                                }
-                            } else {
-                                console.warn(`[pvs-code-action-provider] Warning: could not determine current theory name`);
-                            }
+                            const nasalibFolder: string = types[t].contextFolder;
+                            const theoryName: string = types[t].theoryName;
+                            const fix: CodeAction = this.getCodeActionImportTheory({
+                                fdesc: file,
+                                title: `Import "${candidates[i]}" from theory "${nasalibFolder}@${theoryName}" (NASALib)`,
+                                newText: `IMPORTING ${nasalibFolder}@${theoryName}`,
+                                range: diag.range
+                            });
+                            if (fix) { actions.push(fix); }
                         }
                     }
                 }
-                // fix 5: check if the type is mispelled and suggest correct spelling
-                candidates = this.ctx?.types ? Object.keys(this.ctx?.types).filter(elem => {
+
+                // Case 3: check if typeName is mispelled
+                //         if a similar typeName is found in the current context or among builtin types, suggest replacing typeName with the correct spelling
+                //         Name similarity is based on a q-gram distance measure (e.g., "Vect3" is similar to "Vect3D")
+                //         For builtin types, the similar name must be of the same length (this is done to avoid too many spurious suggestions)
+                //         An example algorithm based on q-gram distance is presented in Esko Ukkonen, 
+                //         "Approximate string-matching with q-grams and maximal matches", 
+                //         Theoretical Computer Science, Volume 92, Issue 1, 6 January 1992, Pages 191-211
+                candidates = Object.keys(this.ctx?.types || {}).filter(elem => {
                     return elem !== typeName // type mispelled
                             && similar(elem, typeName); // but similar
-                }) : [];
-                // check also builtin types
-                candidates = candidates.concat(builtin_types.filter(elem => {
-                    return elem.toLocaleLowerCase() === typeName.toLowerCase(); // wrong capitalization
+                }).concat(builtin_types.filter(elem => {
+                    return elem !== typeName // type mispelled
+                            && elem.length === typeName.length // same length
+                            && similar(elem, typeName); // and similar
                 }));
                 if (candidates?.length) {
                     for (let i = 0; i < candidates.length; i++) {
@@ -393,6 +392,13 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                         }
                     }
                 }
+
+                // Case 4: typeName is defined in an external library, but the library is not in the PVS_LIBRARY_PATH
+                //         suggest adding a folder to the PVS_LIBRARY_PATH, or viewing/editing PVS_LIBRARY_PATH
+                actions = actions.concat([
+                    this.getCodeActionAddFolder({ declNotFound: typeName }),
+                    this.getCodeActionEditLibraryPath()
+                ]);
             }
         }
         return actions;
@@ -402,8 +408,9 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
 	 * Standard API of the language server, provides a code action
 	 * @param document Text document requiring codeaction
 	 * @param range Current range selected with the cursor, lines are 0-based, cols and 1-based
+     * @param context Code action context, contains the diagnostics of the error to be fixed
 	 */
-    provideCodeAction(document: { txt: string, uri: string }, range: Range, context: CodeActionContext): (Command | CodeAction)[] {
+    provideCodeAction (document: { txt: string, uri: string }, range: Range, context: CodeActionContext): (Command | CodeAction)[] {
         if (document?.txt && document?.uri && range && context) {
             let actions: CodeAction[] = [];
             if (context.diagnostics?.length) {
