@@ -57,16 +57,19 @@ const builtin_types: string[] = [...PVS_BUILTIN_TYPES];
  */
 export function similar (str1: string, str2: string): boolean {
     const N: number = 3;
-    // base cases
-    if (str1 === str2) { return true; }
-    if (str1.length < N || str2.length < N || Math.abs(str1.length - str2.length) > N) { return false; }
 
-    const st1: string = str1.toLocaleLowerCase();
-    let st2: string = str2.toLocaleLowerCase();
+    // st1 is the shortest string
+    const st1: string = str1.length < str2.length ? str1.toLocaleLowerCase() : str2.toLocaleLowerCase();
+    let st2: string = str1.length < str2.length ? str2.toLocaleLowerCase() : str1.toLocaleLowerCase();
 
+    // base case 1: strings are identical, case insensitive -> strings are similar
+    if (st1 === st2) { return true; }
+    // base case 2: strings are shorter than N, or their length is way too different -> strings are not similar
+    if (st1.length < N || st2.length < N || st2.length - st1.length > 2 * N) { return false; }
+    
     // create ngrams for st1
     const ngrams: string[] = [];
-    for (let i = 0; i < st1.length - 1; i++) {
+    for (let i = 0; i < st1.length - N; i++) {
         ngrams.push(st1.substring(i, i + N));
     }
     // remove the ngrams from a copy of st2 
@@ -230,7 +233,7 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                         for (let t = 0; t < theories?.length; t++) {
                             const nasalibFolder: string = theories[t].contextFolder;
                             const theoryName: string = candidates[i];
-                            const title: string = `Change "${theoryName}" to "${nasalibFolder}@${theoryName}" (NASALib)`;
+                            const title: string = `Change "${theoryName}" to "${nasalibFolder}@${theoryName}"`;
                             const fix: CodeAction = this.getCodeActionReplace({
                                 fdesc:  {
                                     contextFolder: file.contextFolder,
@@ -294,10 +297,11 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
      *           if match is found, suggest IMPORTING theoryName
      * - Case 2: Check if typeName is defined in nasalib
      *           if match is found, suggest IMPORTING nasalibFolder@theoryName
-     * - Case 3: Check if typeName is mispelled
-     *           if a similar typeName is found in the current context or among builtin types, suggest replacing typeName with the correct spelling
-     *           Name similarity is based on a q-gram distance measure (e.g., "Vect3" is similar to "Vect3D")
-     *           For builtin types, the similar name must be of the same length (this is done to avoid too many spurious suggestions)
+     * - Case 3: Check if typeName is mispelled, when IMPORTING fixes cannot be found
+     *           A similar typeName might be found in the current context, in nasalib, or among builtin types
+     *           Name similarity is based on a q-gram distance measure (e.g., "Vect3" is similar to "Vect3D" and "vect")
+     *           If matches are found, suggest replacing typeName with the identified matches
+     *           For builtin types, the matched name must be of the same length of typeName (this is done to avoid too many spurious suggestions)
      *           An example algorithm based on q-gram distance is presented in Esko Ukkonen, 
      *           "Approximate string-matching with q-grams and maximal matches", 
      *           Theoretical Computer Science, Volume 92, Issue 1, 6 January 1992, Pages 191-211
@@ -308,6 +312,7 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
         let actions: CodeAction[] = [];
         if (diag?.message && file.fileContent) {
             const message: string = diag.message;
+            let suggestedNames: { [name: string]: string } = {}; // this hashmap is used to avoid suggesting the same name multiple times
             // const source: string = diag.source;
             const expectingType: RegExp = new RegExp(expectingTypeRegExp);
             const match: RegExpMatchArray = expectingType.exec(message);
@@ -318,27 +323,32 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                 // Case 1: check if typeName is defined in the current context
                 //         if match is found, suggest IMPORTING theoryName
                 let candidates: string[] = Object.keys(this.ctx?.types || {}).filter(elem => {
-                    return elem.toLocaleLowerCase() === typeName.toLocaleLowerCase();
+                    return elem === typeName;
                 });
                 if (candidates?.length) {
                     for (let i = 0; i < candidates.length; i++) {
                         const types: PvsTheory[] = this.ctx?.types[candidates[i]];
                         for (let t = 0; t < types?.length; t++) {
                             const theoryName: string = types[t].theoryName;
-                            const fix: CodeAction = this.getCodeActionImportTheory({
-                                fdesc: file,
-                                title: `Import "${candidates[i]}" from theory "${theoryName}"`,
-                                newText: `IMPORTING ${theoryName}`,
-                                range: diag.range
-                            });
-                            if (fix) { actions.push(fix); }
+                            if (!suggestedNames[theoryName]) {
+                                const fix: CodeAction = this.getCodeActionImportTheory({
+                                    fdesc: file,
+                                    title: `Import theory "${theoryName}"`,
+                                    newText: `IMPORTING ${theoryName}`,
+                                    range: diag.range
+                                });
+                                if (fix) {
+                                    actions.push(fix);
+                                    suggestedNames[theoryName] = theoryName;
+                                }
+                            }
                         }
                     }
                 }
                 // Case 2: check if typeName is defined in nasalib
                 //         if match is found, suggest IMPORTING nasalibFolder@theoryName
-                candidates = nasalib_types?.filter(elem => {
-                    return elem.toLocaleLowerCase() === typeName.toLocaleLowerCase();
+                candidates = nasalib_types.filter(elem => {
+                    return elem === typeName;
                 });
                 if (candidates?.length) {
                     for (let i = 0; i < candidates.length; i++) {
@@ -346,49 +356,59 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                         for (let t = 0; t < types?.length; t++) {
                             const nasalibFolder: string = types[t].contextFolder;
                             const theoryName: string = types[t].theoryName;
-                            const fix: CodeAction = this.getCodeActionImportTheory({
-                                fdesc: file,
-                                title: `Import "${candidates[i]}" from theory "${nasalibFolder}@${theoryName}" (NASALib)`,
-                                newText: `IMPORTING ${nasalibFolder}@${theoryName}`,
-                                range: diag.range
-                            });
-                            if (fix) { actions.push(fix); }
+                            const fullTheoryName: string = `${nasalibFolder}@${theoryName}`;
+                            if (!suggestedNames[theoryName]) {
+                                const fix: CodeAction = this.getCodeActionImportTheory({
+                                    fdesc: file,
+                                    title: `Import theory "${fullTheoryName}"`,
+                                    newText: `IMPORTING ${fullTheoryName}`,
+                                    range: diag.range
+                                });
+                                if (fix) {
+                                    actions.push(fix);
+                                    suggestedNames[fullTheoryName] = fullTheoryName;
+                                }
+                            }
                         }
                     }
                 }
 
-                // Case 3: check if typeName is mispelled
-                //         if a similar typeName is found in the current context or among builtin types, suggest replacing typeName with the correct spelling
-                //         Name similarity is based on a q-gram distance measure (e.g., "Vect3" is similar to "Vect3D")
-                //         For builtin types, the similar name must be of the same length (this is done to avoid too many spurious suggestions)
-                //         An example algorithm based on q-gram distance is presented in Esko Ukkonen, 
-                //         "Approximate string-matching with q-grams and maximal matches", 
-                //         Theoretical Computer Science, Volume 92, Issue 1, 6 January 1992, Pages 191-211
-                candidates = Object.keys(this.ctx?.types || {}).filter(elem => {
-                    return elem !== typeName // type mispelled
-                            && similar(elem, typeName); // but similar
-                }).concat(builtin_types.filter(elem => {
-                    return elem !== typeName // type mispelled
-                            && elem.length === typeName.length // same length
-                            && similar(elem, typeName); // and similar
-                }));
-                if (candidates?.length) {
-                    for (let i = 0; i < candidates.length; i++) {
-                        const type: string = candidates[i];
-                        const title: string = `Change "${typeName}" to "${type}"`;
-                        const fix: CodeAction = this.getCodeActionReplace({
-                            fdesc:  {
-                                contextFolder: file.contextFolder,
-                                fileName: file.fileName,
-                                fileExtension: file.fileExtension
-                            },
-                            title, 
-                            range: diag.range, 
-                            newText: type
-                        });
-                        if (fix) {
-                            // place this action at the front
-                            actions = [ fix ].concat(actions);
+                if (candidates.length === 0) {
+                    // Case 3: Check if typeName is mispelled, when IMPORTING fixes cannot be found
+                    //         A similar typeName might be found among builtin types, in the current context, or in nasalib
+                    //         Name similarity is based on a q-gram distance measure (e.g., "Vect3" is similar to "Vect3D" and "vect")
+                    //         If matches are found, suggest replacing typeName with the identified matches
+                    //         For builtin types, the matched name must be of the same length of typeName (this is done to avoid too many spurious suggestions)
+                    //         An example algorithm based on q-gram distance is presented in Esko Ukkonen, 
+                    //         "Approximate string-matching with q-grams and maximal matches", 
+                    //         Theoretical Computer Science, Volume 92, Issue 1, 6 January 1992, Pages 191-211
+                    candidates = nasalib_types.concat(Object.keys(this.ctx?.types || {})).concat(nasalib_types).concat(builtin_types.filter(elem => {
+                        return elem.length === typeName.length; // builtin type should be of the same length
+                    })).filter(elem => {
+                        return elem !== typeName // type mispelled
+                                && similar(elem, typeName); // and similar
+                    });
+                    if (candidates?.length) {
+                        for (let i = 0; i < candidates.length; i++) {
+                            const newText: string = candidates[i];
+                            const origin: string = nasalib_types[newText] ? "(NASALib)" : "";
+                            const title: string = `Change "${typeName}" to "${newText}" ${origin}`;
+                            if (!suggestedNames[newText]) {
+                                const fix: CodeAction = this.getCodeActionReplace({
+                                    fdesc:  {
+                                        contextFolder: file.contextFolder,
+                                        fileName: file.fileName,
+                                        fileExtension: file.fileExtension
+                                    },
+                                    title, 
+                                    range: diag.range, 
+                                    newText
+                                });
+                                if (fix) {
+                                    actions.push(fix);
+                                    suggestedNames[newText] = newText;
+                                }
+                            }
                         }
                     }
                 }
