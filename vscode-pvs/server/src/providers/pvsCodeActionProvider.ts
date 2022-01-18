@@ -233,7 +233,8 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                         for (let t = 0; t < theories?.length; t++) {
                             const nasalibFolder: string = theories[t].contextFolder;
                             const theoryName: string = candidates[i];
-                            const title: string = `Change "${theoryName}" to "${nasalibFolder}@${theoryName}"`;
+                            const fullTheoryName: string = `${nasalibFolder}@${theoryName}`;
+                            const title: string = `Change "${theoryName}" to "${fullTheoryName}"`;
                             const fix: CodeAction = this.getCodeActionReplace({
                                 fdesc:  {
                                     contextFolder: file.contextFolder,
@@ -242,7 +243,7 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                                 },
                                 title, 
                                 range: diag.range, 
-                                newText: theoryName
+                                newText: fullTheoryName
                             });
                             if (fix) {
                                 // place this action at the front
