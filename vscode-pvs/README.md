@@ -113,6 +113,7 @@ The main functionalities provided by the environment are as follows:
     └── src
         ├── providers                          // Server-side service providers
         │     ├── pvsCodeLensProvider.ts       // In-line actionable commands
+        │     ├── pvsCodeActionProvider.ts     // Quick-fix actions
         │     ├── pvsCompletionProvider.ts     // Auto-completion
         │     ├── pvsDefinitionProvider.ts     // Find definitions
         │     ├── pvsHoverProvider.ts          // Hover information 

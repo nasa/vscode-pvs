@@ -10,6 +10,9 @@
 **/*.pdf
 **/*.pptx
 **/*.n64fasl
+**/package-lock.json
+**/client/package-lock.json
+**/server/package-lock.json
 
 **/tsconfig.json
 **/@types/
@@ -126,8 +129,10 @@ server/src/
 
 **/client/node_modules/d3-hierarchy/src/
 **/client/node_modules/d3-hierarchy/dist/d3-hierarchy.min.js
+**/client/node_modules/d3-hierarchy/README.md
 
 **/node_modules/handlebars/release-notes.md
+**/client/node_modules/handlebars/bin/.eslintrc.js
 
 **/node_modules/minimist/
 **/node_modules/uglify-js/
@@ -160,6 +165,15 @@ server/src/
 **/node_modules/object-inspect/example/
 **/node_modules/object-inspect/test-core-js.js
 **/client/node_modules/animate.css/source/
+**/client/node_modules/animate.css/animate.compat.css
+**/client/node_modules/animate.css/animate.css
 **/client/node_modules/backbone/backbone-min.map
+**/client/node_modules/backbone/backbone-min.js
 **/client/node_modules/bootstrap/scss/
+**/client/node_modules/bootstrap/dist/js/bootstrap.bundle.js
+**/client/node_modules/bootstrap/dist/js/bootstrap.min.js
+**/client/node_modules/bootstrap/dist/js/bootstrap.js
+**/client/node_modules/bootstrap/dist/css/bootstrap.css
+**/client/node_modules/bootstrap/dist/css/bootstrap-reboot.css
+**/client/node_modules/bootstrap/js/
 **/client/node_modules/jquery/AUTHORS.txt
