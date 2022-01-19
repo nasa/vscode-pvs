@@ -38,7 +38,7 @@
 
 import { CodeAction, CodeActionContext, CodeActionKind, Command, Connection, Diagnostic, Position, Range } from "vscode-languageserver";
 import { PvsTheory, quickFixReplaceCommand, QuickFixReplace, QuickFixAddImporting, quickFixAddImportingCommand, PvsContextDescriptor, LookUpTable, FileDescriptor, PvsFileDescriptor, FileList, PvsFile, PvsTypeDecl } from "../common/serverInterface";
-import { nasalib_lookup_table } from "../core/nasalib-utils/nasalib-lookup-table";
+import { nasalib_lookup_table } from "../common/nasalib-lookup-table";
 import * as fsUtils from '../common/fsUtils';
 import { errorCannotFindTheoryRegExp, expectingTypeRegExp, theoryRegexp } from "../common/languageUtils";
 import { contextDescriptor2LookUpTable } from "../common/fsUtils";
@@ -204,7 +204,8 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
      * This typecheck error occurs when the typechecker cannot find the declaration 
      * of a theory theoryName used in the IMPORTING statement
      * - Case 1: Check if theoryName, or a name similar to theoryName, is defined in nasalib
-     *           if match is found, suggest changing theoryName to nasalibFolder@theoryName
+     *           Name similarity is based on a q-gram distance measure (e.g., "Vect3" is similar to "Vect3D" and "vect")
+     *           if a match is found, suggest changing theoryName to nasalibFolder@theoryName
      * - Case 2: Check if theoryName is mispelled
      *           if similar theory names are defined in the current context
      *           for each similar theory name thName, suggest changing theoryName to thName
@@ -223,7 +224,7 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                 const theoryName: string = match[1];
 
                 // Case 1: Check if theoryName, or a name similar to theoryName, is defined in nasalib
-                //         if match is found, suggest IMPORTING nasalibFolder@theoryName
+                //         if a match is found, suggest IMPORTING nasalibFolder@theoryName
                 let candidates: string[] = nasalib_theories.filter(elem => {
                     return similar(elem, theoryName);
                 });
