@@ -60,24 +60,31 @@ export function similar (str1: string, str2: string): boolean {
 
     // st1 is the shortest string
     const st1: string = str1.length < str2.length ? str1.toLocaleLowerCase() : str2.toLocaleLowerCase();
-    let st2: string = str1.length < str2.length ? str2.toLocaleLowerCase() : str1.toLocaleLowerCase();
+    const st2: string = str1.length < str2.length ? str2.toLocaleLowerCase() : str1.toLocaleLowerCase();
 
     // base case 1: strings are identical, case insensitive -> strings are similar
     if (st1 === st2) { return true; }
     // base case 2: strings are shorter than N, or their length is way too different -> strings are not similar
     if (st1.length < N || st2.length < N || st2.length - st1.length > 2 * N) { return false; }
     
-    // create ngrams for st1
-    const ngrams: string[] = [];
-    for (let i = 0; i < st1.length - N; i++) {
-        ngrams.push(st1.substring(i, i + N));
+    // create ngrams for st1 and st2
+    const ngrams_st1: string[] = [];
+    for (let i = 0; i <= st1.length - N; i++) {
+        ngrams_st1.push(st1.substring(i, i + N));
     }
-    // remove the ngrams from a copy of st2 
-    for (let i = 0; i < ngrams.length; i++) {
-        st2 = st2.replace(ngrams[i], "");
+    const ngrams_st2: string[] = [];
+    for (let i = 0; i <= st2.length - N; i++) {
+        ngrams_st2.push(st2.substring(i, i + N));
     }
-    // the strings are similar if the difference is less than N characters
-    return st2.length < N;
+    // compute similarity level by checking the number of matches between ngrams_st1 and ngram_st2
+    let sim_level: number = 0;
+    for (let i = 0; i < ngrams_st1.length; i++) {
+        if (ngrams_st2.includes(ngrams_st1[i])) {
+            sim_level++;
+        }
+    }
+    // the strings are similar if more than half of the ngrams match
+    return sim_level >= (ngrams_st2.length / 2);
 }
 
 /**
@@ -226,6 +233,18 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                 // Case 1: Check if theoryName, or a name similar to theoryName, is defined in nasalib
                 //         if a match is found, suggest IMPORTING nasalibFolder@theoryName
                 let candidates: string[] = nasalib_theories.filter(elem => {
+                    // try to split theoryName in the two parts (libName@theoryName)
+                    if (theoryName.includes("@")) {
+                        const originals: string[] = theoryName.split("@");
+                        const theories: PvsTheory[] = nasalib_lookup_table.theories[elem];
+                        // nasalib theories have unique names (there are possibly only few isolated exceptions)
+                        // it's sufficient to check the first entry 
+                        const folder: string = theories?.length ? theories[0]?.contextFolder : null;
+                        if (folder) {
+                            return similar(originals[1], elem) && similar(originals[0], folder);
+                        }
+                        return similar(originals[1], elem);
+                    }
                     return similar(elem, theoryName);
                 });
                 if (candidates?.length) {
@@ -233,8 +252,8 @@ export class PvsCodeActionProvider extends fsUtils.PostTask {
                         const theories: PvsTheory[] = nasalib_lookup_table?.theories[candidates[i]];
                         for (let t = 0; t < theories?.length; t++) {
                             const nasalibFolder: string = theories[t].contextFolder;
-                            const theoryName: string = candidates[i];
-                            const fullTheoryName: string = `${nasalibFolder}@${theoryName}`;
+                            const nasalibTheoryName: string = candidates[i];
+                            const fullTheoryName: string = `${nasalibFolder}@${nasalibTheoryName}`;
                             const title: string = `Change "${theoryName}" to "${fullTheoryName}"`;
                             const fix: CodeAction = this.getCodeActionReplace({
                                 fdesc:  {
