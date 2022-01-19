@@ -123,6 +123,7 @@ export function deleteFile (fname: string): boolean {
 	if (fname) {
 		try {
 			fname = fname.replace("file://", "");
+			fname = tildeExpansion(fname);
 			fs.unlinkSync(fname);
 		} catch (deleteError) {
 			return false;

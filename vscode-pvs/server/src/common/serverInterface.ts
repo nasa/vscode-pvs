@@ -1110,7 +1110,7 @@ export interface LookUpTableStats {
 	types: number,
 	functions: number,
 	formulas: number
-}
+};
 export interface LookUpTable {
     stats: LookUpTableStats,
     folders:  { [folderName: string]: PvsTheory[] }, // each folder can contain multiple theories 

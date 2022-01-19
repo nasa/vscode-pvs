@@ -22,6 +22,9 @@ build-nasalib-decls:
 nasalib-decls:
 	cd nasalib-utils && make nasalib-decls
 
+nasalib-theories-by-folder:
+	cd nasalib-utils && make nasalib-theories-by-folder
+
 pvs-parser: download
 	# generating java target
 	@java -jar lib/antlr-4.9.3-complete.jar -Dlanguage=Java PvsLanguage.g4 -o ./pvs-parser/javaTarget/out

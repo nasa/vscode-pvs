@@ -66,6 +66,12 @@ vsce:
 install: install-tsc
 	npm install
 
+build-nasalib-decls:
+	cd server/src/common/nasalib-utils && make build-nasalib-decls
+
+nasalib-decls:
+	cd server/src/common/nasalib-utils && make nasalib-decls
+
 test-proxy:
 	npm run test-proxy
 test-parser:
