@@ -180,12 +180,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// don't highlight the active file in the explorer -- doing so will put the focus on the file explorer
 				// and the user might be looking at the pvs workspace explorer instead, which would become hidden
 				// commands.executeCommand("workbench.files.action.showActiveFileInExplorer");
-			} else {
-				const pvsFiles: Uri[] = await workspace.findFiles("**/*.pvs", null, 1);
-				if (!pvsFiles.length) {
-					vscodeUtils.unloadPvsFileIcons();
-				}
-			}
+			} 
+			// the following is commented out because workspace.findFiles can take a lot of CPU
+			// else {
+			// 	const pvsFiles: Uri[] = await workspace.findFiles("**/*.pvs", null, 1);
+			// 	if (!pvsFiles.length) {
+			// 		vscodeUtils.unloadPvsFileIcons();
+			// 	}
+			// }
 		});
 
 		// onDidChangeActiveTextEditor is emitted when the active editor focuses on a new document
