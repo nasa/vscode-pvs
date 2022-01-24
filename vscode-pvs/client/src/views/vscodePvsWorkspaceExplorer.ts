@@ -35,11 +35,19 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-import { ExtensionContext, TreeItemCollapsibleState, commands, window,
-			Uri, Range, Position, TreeItem, Command, EventEmitter, Event,
-			TreeDataProvider, workspace, TreeView, ViewColumn, WorkspaceEdit, TextEditor, FileStat, ProgressLocation, ConfigurationTarget, Progress } from 'vscode';
+import { 
+	ExtensionContext, TreeItemCollapsibleState, commands, window,
+	Uri, Range, Position, TreeItem, Command, workspace, ViewColumn, 
+	WorkspaceEdit, TextEditor, FileStat, ProgressLocation, 
+	Progress, ThemeIcon, ThemeColor 
+} from 'vscode';
 import { CancellationToken, LanguageClient } from 'vscode-languageclient';
-import { FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, PvsFormula, PvsTheory, ContextFolder, FileDescriptor, StatusProofChain, GotoFileDescriptor } from '../common/serverInterface';
+import { 
+	FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, 
+	ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, 
+	PvsFormula, PvsTheory, ContextFolder, FileDescriptor, 
+	StatusProofChain, GotoFileDescriptor 
+} from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
@@ -131,6 +139,7 @@ export class TheoryItem extends TreeItem {
 			command: "explorer.didSelectTheory",
 			arguments: [ desc ]
 		};
+		this.iconPath = new ThemeIcon("symbol-class", new ThemeColor("pvs.gray"));
 		this.theoremsOverview = new TheoremsOverviewItem(desc);
 		this.tccsOverview = new TccsOverviewItem(desc);
 		this.refreshLabel();
@@ -606,10 +615,11 @@ export class WorkspaceOverviewItem extends OverviewItem {
 			command: "explorer.didSelectWorkspaceOverview",
 			arguments: [ desc ]
 		};
-		this.iconPath = {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-workspace-folder.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-workspace-folder.svg")
-		};
+		this.iconPath = new ThemeIcon("folder");
+		// {
+		// 	light: path.join(__dirname, "..", "..", "..", "icons", "svg-workspace-folder.svg"),
+		// 	dark: path.join(__dirname, "..", "..", "..", "icons", "svg-workspace-folder.svg")
+		// };
 		this.refreshLabel();
 	}
 	protected refreshLabel (): void {
@@ -1404,9 +1414,10 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	 */
 	async generateProofliteFileWithProgress (desc: PvsFormula, opt?: { showFileInEditor?: boolean }): Promise<FileDescriptor> {
 		if (desc) {
-			if (window.activeTextEditor?.document?.fileName) {
+			const activeEditor: TextEditor = vscodeUtils.getActivePvsEditor();
+			if (activeEditor?.document?.fileName) {
 				// if the file is currently open in the editor, save file first
-				await window.activeTextEditor.document.save();
+				await activeEditor.document.save();
 			}
 
 			// try to fill any missing field in the descriptor
@@ -1414,8 +1425,8 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 				const info: { content: string, line: number } = {
 					content: desc.fileContent !== undefined && desc.fileContent !== null ? desc.fileContent
 						: desc.fileName && desc.fileExtension && desc.contextFolder ? await fsUtils.readFile(fsUtils.desc2fname(desc))
-							: window.activeTextEditor.document.getText(),
-					line: desc.line !== undefined && desc.line !== null ? desc.line : window.activeTextEditor?.selection?.active?.line
+							: activeEditor?.document?.getText(),
+					line: desc.line !== undefined && desc.line !== null ? desc.line : activeEditor?.selection?.active?.line
 				};
 				desc.theoryName = !desc.theoryName ? fsUtils.findTheoryName(info.content, info.line) : desc.theoryName;
 				desc.formulaName = desc.theoryName && !desc.formulaName ? fsUtils.findFormulaName(info.content, info.line) : desc.formulaName;
