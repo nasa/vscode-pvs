@@ -88,6 +88,14 @@
 		"makefile-icon": {
 			"fontCharacter": "M",
 			"fontColor": "coral"
+		},
+		"texfile-icon": {
+			"fontCharacter": "TeX",
+			"fontSize": "8px"
+		},
+		"bibfile-icon": {
+			"fontCharacter": "BiB",
+			"fontSize": "8px"
 		}
 	},
 	"folder": "fa-folder",
@@ -125,6 +133,8 @@
 		"jpeg": "fa-file-image",
 		"png": "fa-file-image",
 		"zip": "fa-file-archive-o",
+		"tgz": "fa-file-archive-o",
+		"gz": "fa-file-archive-o",
 		"json": "json-file",
 		"ts": "fa-file-o",
 		"js": "fa-file-o",
@@ -146,7 +156,18 @@
 		"html": "fa-html5",
 		"htm": "fa-html5",
 		"make": "makefile-icon",
-		"cmake": "makefile-icon"
+		"cmake": "makefile-icon",
+		"tex": "texfile-icon",
+		"bib": "bibfile-icon",
+		"bbl": "fa-file-o",
+		"blg": "fa-file-o",
+		"bst": "fa-file-o",
+		"aux": "fa-file-o",
+		"cls": "fa-file-o",
+		"sty": "fa-file-o",
+		"fls": "fa-file-o",
+		"fdb_latexmk": "fa-file-o",
+		"out": "fa-file-o"
 	},
 	"languageIds": {
 		"pvs": "binary-file"
