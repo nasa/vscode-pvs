@@ -96,6 +96,19 @@
 		"bibfile-icon": {
 			"fontCharacter": "BiB",
 			"fontSize": "8px"
+		},
+		"tsfile-icon": {
+			"fontCharacter": "TS",
+			"fontSize": "10px",
+			"fontColor": "steelblue"
+		},
+		"fa-terminal": {
+			"fontCharacter": "\\f120",
+			"fontId": "font-awesome"
+		},
+		"fa-lock": {
+			"fontCharacter": "\\f023",
+			"fontId": "font-awesome"
 		}
 	},
 	"folder": "fa-folder",
@@ -114,7 +127,8 @@
 		"readme.md": "fa-info-circle",
 		"makefile": "makefile-icon",
 		"all-theories": "fa-file-text-o",
-		"all-theories.grandtotals": "fa-file-text-o"
+		"all-theories.grandtotals": "fa-file-text-o",
+		"package-lock.json": "fa-lock"
 	},
 	"fileExtensions": {
 		"pvs": "pvs-file-icon",
@@ -136,8 +150,7 @@
 		"tgz": "fa-file-archive-o",
 		"gz": "fa-file-archive-o",
 		"json": "json-file",
-		"ts": "fa-file-o",
-		"js": "fa-file-o",
+		"ts": "tsfile-icon",
 		"map": "fa-file-o",
 		"doc": "fa-file-word-o",
 		"docx": "fa-file-word-o",
@@ -155,6 +168,8 @@
 		"conf": "fa-file-text-o",
 		"html": "fa-html5",
 		"htm": "fa-html5",
+		"css": "fa-html5",
+		"js": "fa-html5",
 		"make": "makefile-icon",
 		"cmake": "makefile-icon",
 		"tex": "texfile-icon",
@@ -167,7 +182,8 @@
 		"sty": "fa-file-o",
 		"fls": "fa-file-o",
 		"fdb_latexmk": "fa-file-o",
-		"out": "fa-file-o"
+		"out": "fa-file-o",
+		"sh": "fa-terminal"
 	},
 	"languageIds": {
 		"pvs": "binary-file"
