@@ -135,6 +135,7 @@
 		"tccs": "tccs-file-icon",
 		"summary": "summary-file-icon",
 		"prf": "binary-file",
+		"n64fasl": "binary-file",
 
 		"dylib": "binary-file",
 		"a": "binary-file",
@@ -146,6 +147,7 @@
 		"jpg": "fa-file-image",
 		"jpeg": "fa-file-image",
 		"png": "fa-file-image",
+		"svg": "fa-file-image",
 		"zip": "fa-file-archive-o",
 		"tgz": "fa-file-archive-o",
 		"gz": "fa-file-archive-o",

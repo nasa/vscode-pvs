@@ -45,7 +45,7 @@
  * - pvsio: M-x pvsio
  * - view prelude: M-x view-prelude-file
  */
-import { ExtensionContext, commands, window, TextDocument, InputBox, env } from 'vscode';
+import { ExtensionContext, commands, window, TextDocument, InputBox, env, TextEditor } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import * as fsUtils from '../common/fsUtils';
 import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
@@ -73,6 +73,9 @@ const cmds: string[] = [
 	"jpri", "jprove-importchain",
 
 	"vpf", "view-prelude-file",
+
+	"nf", // new pvs file
+	"nt", // new pvs theory
 
 	"add-pvs-library",
 	"pvs-library-path",
@@ -133,8 +136,9 @@ export class VSCodePvsEmacsBindingsProvider {
 	protected onDidAccept(userInput: string) {
 		if (userInput) {
 			userInput = userInput.toLowerCase();
-			const document: TextDocument = (window.activeTextEditor) ? window.activeTextEditor.document : null;
-			const line: number = (window.activeTextEditor && window.activeTextEditor.selection && window.activeTextEditor.selection.active) ? window.activeTextEditor.selection.active.line : 0;
+			const activeEditor: TextEditor = vscodeUtils.getActivePvsEditor();
+			const document: TextDocument = activeEditor?.document;
+			const line: number = (activeEditor?.selection?.active) ? activeEditor.selection.active.line : 0;
 			const desc: PvsFormula = { 
 				fileName: (document) ? fsUtils.getFileName(document.fileName) : null,
 				fileExtension: (document) ? fsUtils.getFileExtension(document.fileName) : null,
@@ -309,6 +313,14 @@ export class VSCodePvsEmacsBindingsProvider {
 				}
 				case "show-hidden-formulas": {
 					commands.executeCommand('vscode-pvs.show-hidden-formulas');
+					break;
+				}
+				case "nf": {
+					commands.executeCommand('vscode-pvs.new-pvs-file');
+					break;
+				}
+				case "nt": {
+					commands.executeCommand('vscode-pvs.new-pvs-theory');
 					break;
 				}
 				default: {

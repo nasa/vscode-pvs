@@ -50,7 +50,8 @@ import { xTermDetectColorTheme } from '../common/xtermInterface';
  * Returns the context folder of the editor
  */
 export function getEditorContextFolder () : string {
-    return (vscode.window.activeTextEditor) ? fsUtils.getContextFolder(vscode.window.activeTextEditor.document.fileName) : null;
+    const activeEditor: vscode.TextEditor = getActivePvsEditor();
+    return (activeEditor?.document) ? fsUtils.getContextFolder(activeEditor.document.fileName) : null;
 }
 /**
  * Utility function, gets the default workspace folder
@@ -118,7 +119,8 @@ export async function showYesCancelDialog (msg: string): Promise<YesCancel> {
     opt = opt || {};
     if (desc) {
         const preview: boolean = opt?.preview === undefined ? true : opt.preview;
-        const viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
+        const activeEditor: vscode.TextEditor = getActivePvsEditor();
+        const viewColumn: vscode.ViewColumn = opt.viewColumn || ((activeEditor) ? activeEditor.viewColumn : vscode.ViewColumn.Active);
         const uri: vscode.Uri = vscode.Uri.file(path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`));
         vscode.window.showTextDocument(uri, { preserveFocus: true, preview, viewColumn, selection: opt.selection });
     }
@@ -129,7 +131,8 @@ export async function showYesCancelDialog (msg: string): Promise<YesCancel> {
  */
 export async function previewTextDocument (name: string, content: string, opt?: { contextFolder?: string, viewColumn?: vscode.ViewColumn }): Promise<void> {
     opt = opt || {};
-    let viewColumn: vscode.ViewColumn = opt.viewColumn || ((vscode.window.activeTextEditor) ? vscode.window.activeTextEditor.viewColumn : vscode.ViewColumn.Active);
+    const activeEditor: vscode.TextEditor = getActivePvsEditor();
+    let viewColumn: vscode.ViewColumn = opt.viewColumn || ((activeEditor) ? activeEditor.viewColumn : vscode.ViewColumn.Active);
 
     // vscode.workspace.openTextDocument({ language: 'pvs', content: content }).then((document: vscode.TextDocument) => {
     //     // vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);
@@ -162,9 +165,11 @@ export async function previewTextDocument (name: string, content: string, opt?: 
  * Utility function, insert text at the cursor position
  */
 export async function insertTextAtCursorPosition (content: string): Promise<boolean> {
-    if (vscode.window.activeTextEditor?.document) {
-        const cursorPos: vscode.Position = vscode.window.activeTextEditor.selection.active;
-        const docUri: vscode.Uri = vscode.window.activeTextEditor.document.uri;
+    const activeEditor: vscode.TextEditor = getActivePvsEditor();
+    if (activeEditor?.document) {
+        const cursorPos: vscode.Position = activeEditor.selection?.active;
+        if (!cursorPos) { return false; }
+        const docUri: vscode.Uri = activeEditor.document.uri;
         const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
         edit.insert(docUri, cursorPos, content);
         let success: boolean = await vscode.workspace.applyEdit(edit);
@@ -777,9 +782,9 @@ export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: s
         } else if (resource["path"]) {
             const content: string = await fsUtils.readFile(resource["path"]);
             if (content) {
-                // const document: vscode.TextDocument = window.activeTextEditor.document;
-                const line: number = (vscode.window.activeTextEditor && vscode.window.activeTextEditor.selection && vscode.window.activeTextEditor.selection.active) ?
-                    vscode.window.activeTextEditor.selection.active.line : 0;
+                const activeEditor: vscode.TextEditor = getActivePvsEditor();
+                const line: number = (activeEditor?.selection?.active) ?
+                    activeEditor.selection.active.line : 0;
                 const theoryName: string = fsUtils.findTheoryName(content, line);
                 return {
                     contextFolder: fsUtils.getContextFolder(resource["path"]),
@@ -794,8 +799,9 @@ export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: s
                 resource.fileExtension = (resource.fileExtension === ".summary") ? ".pvs" : resource.fileExtension;
                 const content: string = await fsUtils.readFile(fsUtils.desc2fname(resource));
                 if (content) {
-                    const line: number = (vscode.window.activeTextEditor && vscode.window.activeTextEditor.selection && vscode.window.activeTextEditor.selection.active) ?
-                        vscode.window.activeTextEditor.selection.active.line : 0;
+                    const activeEditor: vscode.TextEditor = getActivePvsEditor();
+                    const line: number = (activeEditor?.selection?.active) ?
+                        activeEditor.selection.active.line : 0;
                     const theoryName: string = fsUtils.findTheoryName(content, line);
                     return {
                         contextFolder: resource.contextFolder,
@@ -1102,16 +1108,17 @@ export function getVisiblePvsEditors (): vscode.TextEditor[] {
 }
 
 /**
- * Utility function, returns the active document file in the editor
+ * Utility function, returns the active pvs file editor
  */
 export function getActivePvsEditor (): vscode.TextEditor {
-    const activePvsEditor: vscode.TextEditor = vscode.window.activeTextEditor;
+    const activePvsEditor: vscode.TextEditor = vscode.window?.activeTextEditor;
     if (activePvsEditor?.document?.languageId === "pvs") {
         return activePvsEditor;
     }
     // else, return the first visible pvs editor
     const visiblePvsEditors: vscode.TextEditor[] = getVisiblePvsEditors();
-    return visiblePvsEditors?.length ? visiblePvsEditors[0] : null;
+    const visible: vscode.TextEditor = visiblePvsEditors?.length ? visiblePvsEditors[0] : null;
+    return visible?.document?.languageId === "pvs" ? visible : null;
 }
 
 /**
@@ -1129,8 +1136,8 @@ export function getVisiblePvsFiles (): vscode.TextDocument[] {
  * Utility function, returns the active document file in the editor
  */
 export function getActivePvsFile (): vscode.TextDocument {
-    const visiblePvsFiles: vscode.TextDocument[] = getVisiblePvsFiles();
-    return visiblePvsFiles?.length ? visiblePvsFiles[0] : null;
+    const activePvsFile: vscode.TextDocument = getActivePvsEditor()?.document;
+    return activePvsFile;
 }
 
 /**
@@ -1185,6 +1192,14 @@ export type YesCancel = "yes" | "cancel";
 export type YesNoCancel = YesCancel | "no";
 
 /**
+ * Returns the user name, which is either the author key or process.env.USER
+ */
+export function getAuthorKey (): string {
+    const customAuthorKey: string = getConfiguration("pvs.settings.authorKey");
+    return customAuthorKey || process?.env?.USER;
+}
+
+/**
  * Annotate a given formula
  * For now, only @QED annotations are supported
  */
@@ -1199,7 +1214,8 @@ export async function annotateFormula (desc: PvsFormula, tag: Tag, opt?: TagOpti
         const document: vscode.TextDocument = await vscode.workspace.openTextDocument(uri);
 
         const formulaProved: string = `% ${tag} ${desc.formulaName} proved`;
-        const bywho: string = process?.env?.USER ? ` by ${process.env.USER}` : "";
+        const author: string = getAuthorKey();
+        const bywho: string = author ? ` by ${author}` : "";
         const when: string = ` on ${new Date().toUTCString()}`;
         let text: string = `${formulaProved}${bywho}${when}\n`;
 

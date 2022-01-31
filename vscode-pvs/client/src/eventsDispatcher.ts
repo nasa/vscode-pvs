@@ -283,8 +283,9 @@ export class EventsDispatcher {
         this.client.onNotification(serverEvent.workspaceEvent, (desc: WorkspaceEvent) => {
             switch (desc.action) {
                 case "did-rename-file": {
-                    if (vscode.window && vscode.window.activeTextEditor && vscode.window.activeTextEditor.document
-                            && fsUtils.isSameFile(vscode.window.activeTextEditor.document.fileName, desc.old_fname)) {
+                    const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor()
+                    if (activeEditor && activeEditor.document
+                            && fsUtils.isSameFile(activeEditor.document.fileName, desc.old_fname)) {
                         setTimeout(() => {
                             vscode.window.showTextDocument(vscode.Uri.file(desc.new_fname), { preserveFocus: false });
                         }, 250);
@@ -635,8 +636,9 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.insert-prooflite-script", async (desc: PvsFormula) => {
             if (!(desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName && desc.formulaName)) {
-                const document: vscode.TextDocument = (window.activeTextEditor) ? window.activeTextEditor.document : null;
-                const line: number = window?.activeTextEditor?.selection?.active ? window.activeTextEditor.selection.active.line : 0;
+                const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+                const document: vscode.TextDocument = activeEditor?.document;
+                const line: number = window?.activeTextEditor?.selection?.active ? activeEditor?.selection?.active?.line : 0;
                 desc = document ? { 
                     fileName: fsUtils.getFileName(document.fileName),
                     fileExtension: fsUtils.getFileExtension(document.fileName),
@@ -728,9 +730,13 @@ export class EventsDispatcher {
             // this.vscodePvsTerminal.selectProfile(desc);
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.new-pvs-file", async (resource: { path: string }) => {
-            console.log(resource);
-            const contextFolder: string = (resource && resource.path) ? resource.path : vscodeUtils.getRootPath();
-            this.workspaceExplorer.newPvsFile(contextFolder); // async method
+            const activeFolder: string = fsUtils.getContextFolder(vscodeUtils.getActivePvsFile()?.fileName) || vscodeUtils.getRootPath();
+            const contextFolder: string = resource?.path || activeFolder;
+            console.log(contextFolder);
+            this.workspaceExplorer.newPvsFileDialog(contextFolder); // async method
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.new-pvs-theory", async () => {
+            this.workspaceExplorer.newPvsTheoryDialog(); // async method
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.open-pvs-file", async () => {
             this.workspaceExplorer.openPvsFile(); // async method
@@ -860,23 +866,23 @@ export class EventsDispatcher {
             this.emacsBindings.metaxPrompt();
         }));
 
-
-                //         // if the file is currently open in the editor, save file first
-                //         await vscode.window.activeTextEditor.document.save();
-                //         let formula: PvsFormula = resource2desc(vscode.window.activeTextEditor.document.fileName);
-                
-                // // const document: vscode.TextDocument = window.activeTextEditor.document;
-                // const info: { content: string, line: number } = {
-                //     content: vscode.window.activeTextEditor.document.getText(),
-                //     line: vscode.window.activeTextEditor.selection.active.line
-                // };
-                // desc.theoryName = info.content ? fsUtils.findTheoryName(info.content, info.line) : null;
-                // desc.formulaName = desc.theoryName ? fsUtils.findFormulaName(info.content, info.line) : null;
+        //         // if the file is currently open in the editor, save file first
+        //         await vscode.window.activeTextEditor.document.save();
+        //         let formula: PvsFormula = resource2desc(vscode.window.activeTextEditor.document.fileName);
+        
+        // // const document: vscode.TextDocument = window.activeTextEditor.document;
+        // const info: { content: string, line: number } = {
+        //     content: vscode.window.activeTextEditor.document.getText(),
+        //     line: vscode.window.activeTextEditor.selection.active.line
+        // };
+        // desc.theoryName = info.content ? fsUtils.findTheoryName(info.content, info.line) : null;
+        // desc.formulaName = desc.theoryName ? fsUtils.findFormulaName(info.content, info.line) : null;
         
         // vscode-pvs.show-proflite
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-prooflite", async (resource: string | { path: string } | { contextValue: string }) => {
-            if (!resource && window.activeTextEditor?.document?.fileName) {
-                resource = { path: window.activeTextEditor.document.fileName };
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (!resource && activeEditor?.document?.fileName) {
+                resource = { path: activeEditor.document.fileName };
             }
             if (resource) {
                 const desc: PvsFormula = vscodeUtils.resource2desc(resource);
@@ -956,7 +962,7 @@ export class EventsDispatcher {
                     const contextFolder: string  = fsUtils.getContextFolder(fname);
                     const fileName: string = fsUtils.getFileName(fname);
                     const fileExtension: string = fsUtils.getFileExtension(fname);
-                    const line: number = window.activeTextEditor?.selection?.active?.line || 0;
+                    const line: number = activeEditor?.selection?.active?.line || 0;
                     const fileContent: string = await fsUtils.readFile(fname);
                     const theoryName: string = fsUtils.findTheoryName(fileContent, line);
                     req = {
@@ -1020,38 +1026,37 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.ignore-keypress", () => {}));
 
         // pvsio-plot
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.plot-expression", async (
-            resource: string | {
-                path: string, expr?: string 
-            } | { 
-                contextValue: string 
-            } | { 
-                fileName?: string, 
-                fileExtension?: string, 
-                contextFolder?: string, 
-                theoryName?: string, 
-                expr?: string
-            }) => {
-            if (window.activeTextEditor && window.activeTextEditor.document) {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.plot-expression", async (resource: string | {
+            path: string, expr?: string 
+        } | { 
+            contextValue: string 
+        } | { 
+            fileName?: string, 
+            fileExtension?: string, 
+            contextFolder?: string, 
+            theoryName?: string, 
+            expr?: string
+        }) => {
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (activeEditor?.document) {
                 // if the file is currently open in the editor, save file first
-                await window.activeTextEditor.document.save();
+                await activeEditor.document.save();
                 if (!resource) {
-                    resource = { path: window.activeTextEditor.document.fileName };
+                    resource = { path: activeEditor.document.fileName };
                 }
             }
             if (resource) {
                 let desc: PvsTheory = vscodeUtils.resource2desc(resource);
                 if (desc) {
                     if (!desc.theoryName) {
-                        // const document: vscode.TextDocument = window.activeTextEditor.document;
                         const info: { content: string, line: number } = (resource && resource["path"]) ? { content: await fsUtils.readFile(resource["path"]), line: 0 }
-                            : { content: window.activeTextEditor.document.getText(), line: window.activeTextEditor.selection.active.line };
+                            : { content: activeEditor?.document?.getText(), line: activeEditor?.selection?.active?.line };
                         const theoryName: string = fsUtils.findTheoryName(info.content, info.line);
                         desc.theoryName = theoryName;
                     }
                     if (desc.theoryName) {
-                        const selection: Selection = window?.activeTextEditor?.selection;
-                        const expr: string = resource["expr"] || window?.activeTextEditor.document.getText(selection);
+                        const selection: Selection = activeEditor?.selection;
+                        const expr: string = resource["expr"] || activeEditor?.document?.getText(selection);
                         if (expr) {
                             const request: EvalExpressionRequest = {
                                 contextFolder: desc.contextFolder,
@@ -1210,16 +1215,17 @@ export class EventsDispatcher {
         }));
         // this request comes from the context menu displayed by the editor
         context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: TheoryItem | { path: string }, opt?: { useJprf?: boolean, unprovedOnly?: boolean }) => {
-            if (window.activeTextEditor && window.activeTextEditor.document) {
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (activeEditor?.document) {
                 // if the file is currently open in the editor, save file first
-                await window.activeTextEditor.document.save();
+                await activeEditor.document.save();
                 if (!resource) {
-                    resource = { path: window.activeTextEditor.document.fileName };
+                    resource = { path: activeEditor.document.fileName };
                 }
             }
 
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
-            if (desc && desc.theoryName) {
+            if (desc?.theoryName) {
                 opt = opt || {};
                 // ask the user confirmation before discharging
                 const yesno: string[] = [ "Yes", "Unproved Only", "No" ];
@@ -1261,11 +1267,12 @@ export class EventsDispatcher {
             commands.executeCommand("vscode-pvs.prove-workspace", resource, { useJprf: true });
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.prove-workspace", async (resource: WorkspaceOverviewItem | { path: string }, opt?: { useJprf?: boolean, unprovedOnly?: boolean }) => {
-            if (window.activeTextEditor && window.activeTextEditor.document) {
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (activeEditor?.document) {
                 // if the file is currently open in the editor, save file first
-                await window.activeTextEditor.document.save();
+                await activeEditor.document.save();
                 if (!resource) {
-                    resource = { path: window.activeTextEditor.document.fileName };
+                    resource = { path: activeEditor.document.fileName };
                 }
             }
 
@@ -1319,7 +1326,8 @@ export class EventsDispatcher {
                     if (currentContext) {
                         await fsUtils.cleanTccs(currentContext, { recursive: fsUtils.MAX_RECURSION });
                         // request context descriptor, so pvs explorer can refresh the view
-                        const desc: FileDescriptor = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
+                        const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+                        const desc: FileDescriptor = fsUtils.fname2desc(activeEditor?.document?.fileName);
                         this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
                     }
                 }
@@ -1349,11 +1357,12 @@ export class EventsDispatcher {
         }));
         // vscode-pvs.typecheck-file
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-file", async (resource: string | { path: string } | { contextValue: string } | PvsFile) => {
-            if (window.activeTextEditor && window.activeTextEditor.document) {
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (activeEditor?.document) {
                 // if the file is currently open in the editor, save file first
-                await window.activeTextEditor.document.save();
+                await activeEditor.document.save();
                 if (!resource) {
-                    resource = { path: window.activeTextEditor.document.fileName };
+                    resource = { path: activeEditor.document.fileName };
                 }
             }
 			if (resource) {
@@ -1376,8 +1385,9 @@ export class EventsDispatcher {
         
         // vscode-pvs.show-tccs
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.show-tccs", async (resource: string | { path: string } | { contextValue: string }) => {
-            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
-                resource = { path: window.activeTextEditor.document.fileName };
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (!resource && activeEditor?.document) {
+                resource = { path: activeEditor.document.fileName };
             }
 			if (resource) {
                 const desc: FileDescriptor = vscodeUtils.resource2desc(resource);
@@ -1395,8 +1405,9 @@ export class EventsDispatcher {
         }));
         // vscode-pvs.generate-tccs
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.generate-tccs", async (resource: string | { path: string } | { contextValue: string }) => {
-            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
-                resource = { path: window.activeTextEditor.document.fileName };
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (!resource && activeEditor?.document) {
+                resource = { path: activeEditor.document.fileName };
             }
 			if (resource) {
                 const desc: FileDescriptor = vscodeUtils.resource2desc(resource);
@@ -1424,8 +1435,9 @@ export class EventsDispatcher {
 
         // vscode-pvs.parse-file
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.parse-file", async (resource: string | { path: string } | { contextValue: string }) => {
-            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
-                resource = { path: window.activeTextEditor.document.fileName };
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (!resource && activeEditor?.document) {
+                resource = { path: activeEditor.document.fileName };
             }
 			if (resource) {
                 const desc: FileDescriptor = vscodeUtils.resource2desc(resource);
@@ -1440,8 +1452,9 @@ export class EventsDispatcher {
         
         // vscode-pvs.parse-workspace
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.parse-workspace", async (resource: string | { path: string } | { contextValue: string }) => {
-            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
-                resource = { path: window.activeTextEditor.document.fileName };
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (!resource && activeEditor?.document) {
+                resource = { path: activeEditor.document.fileName };
             }
 			if (resource) {
                 let desc = vscodeUtils.resource2desc(resource);
@@ -1459,8 +1472,9 @@ export class EventsDispatcher {
             commands.executeCommand("vscode-pvs.typecheck-workspace", resource);
         }));
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.typecheck-workspace", async (resource: string | { path: string } | { contextValue: string }) => {
-            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
-                resource = { path: window.activeTextEditor.document.fileName };
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (!resource && activeEditor?.document) {
+                resource = { path: activeEditor.document.fileName };
             }
 			if (resource) {
                 let desc = vscodeUtils.resource2desc(resource);
@@ -1475,8 +1489,9 @@ export class EventsDispatcher {
         
         // vscode-pvs.hp2pvs
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.hp2pvs", async (resource: string | { path: string } | { contextValue: string }) => {
-            if (!resource && window.activeTextEditor && window.activeTextEditor.document) {
-                resource = { path: window.activeTextEditor.document.fileName };
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (!resource && activeEditor?.document) {
+                resource = { path: activeEditor.document.fileName };
             }
 			if (resource) {
                 let desc = vscodeUtils.resource2desc(resource);

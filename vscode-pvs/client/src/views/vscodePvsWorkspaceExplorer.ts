@@ -768,60 +768,102 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		return null;
 	}
 	/**
-	 * Creates a new pvs file in the current workspace folder
+	 * Creates a new pvs file in the active workspace folder
 	 */
-	async newPvsFile (contextFolder: string): Promise<void> {
-		const fileName: string = await window.showInputBox({
-			prompt: `Please enter PVS file name`,
-			placeHolder: ``,
-			value: ``,
-			ignoreFocusOut: true 
-		});
-		if (fileName) {
-			const theoryName = fsUtils.getFileName(fileName); // this will remove the extension, if any has been specified in the dialog
-			contextFolder = contextFolder || this.getCurrentWorkspace() || vscodeUtils.getRootPath();
-			const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
-			const uri: Uri = Uri.parse(`file://${fname}`, true);
+	async newPvsFileDialog (activeFolder: string): Promise<void> {
+		if (activeFolder) {
+			const fileName: string = await window.showInputBox({
+				prompt: `Please enter PVS file name to be created under ${fsUtils.getContextFolderName(activeFolder)}`,
+				placeHolder: ``,
+				value: ``,
+				ignoreFocusOut: true 
+			});
+			if (fileName) {
+				const theoryName = fsUtils.getFileName(fileName); // this will remove the extension, if any has been specified in the dialog
+				const contextFolder: string = activeFolder || this.getCurrentWorkspace() || vscodeUtils.getRootPath();
+				const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
+				const uri: Uri = Uri.parse(`file://${fname}`, true);
 
-			let stats: FileStat = null;
-			try {
-				stats = await workspace.fs.stat(uri);
-			} catch (fileNotFound) {
-				// this error should occur: it means the file does not exist and we can create it
-			} finally {
-				if (stats) {
-					window.showWarningMessage(`Could not create ${theoryName}.pvs (file already exists in current workspace). Please choose a different file name.`);
-				} else {
-					const content: string = utils.makeEmptyTheory(theoryName);
-					const edit: WorkspaceEdit = new WorkspaceEdit();
-
-					edit.createFile(uri, { overwrite: false, ignoreIfExists: true });
-
-					edit.insert(uri, new Position(0, 0), content);
-					await workspace.applyEdit(edit);	
+				let stats: FileStat = null;
+				try {
+					stats = await workspace.fs.stat(uri);
+				} catch (fileNotFound) {
+					// this error should occur: it means the file does not exist and we can create it
+				} finally {
+					if (stats) {
+						window.showWarningMessage(`Could not create ${theoryName}.pvs (file already exists in current workspace). Please choose a different file name.`);
+					} else {
+						const authorKey: string = vscodeUtils.getAuthorKey();
+						const content: string = utils.makeEmptyTheory(theoryName, { authorKey });
+						const edit: WorkspaceEdit = new WorkspaceEdit();
+						edit.createFile(uri, { overwrite: false, ignoreIfExists: true });
+						edit.insert(uri, new Position(0, 0), content);
+						await workspace.applyEdit(edit);
+					}
+					const editors: TextEditor[] = window.visibleTextEditors.filter((editor: TextEditor) => {
+						return editor.document.fileName === fname;
+					});
+					const fileAlreadyOpen: boolean = (editors && editors.length > 0);
+					const viewColumn: number = fileAlreadyOpen ? editors[0].viewColumn : ViewColumn.One;
+					const activeEditor: TextEditor = await window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
+					if (activeEditor) {
+						await activeEditor?.document?.save();
+					}
 				}
-				const editors: TextEditor[] = window.visibleTextEditors.filter((editor: TextEditor) => {
-					return editor.document.fileName === fname;
-				});
-				const fileAlreadyOpen: boolean = (editors && editors.length > 0);
-				const viewColumn: number = fileAlreadyOpen ? editors[0].viewColumn : ViewColumn.One;
-				await window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
+				// const theoryName = fsUtils.getFileName(fileName); // this will remove the extension
+				// const contextFolder: string = this.getCurrentWorkspace() || vscodeUtils.getRootPath();
+				// const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
+				// const file: Uri = Uri.parse(`untitled:${theoryName}.pvs`);
+				// const edit = new WorkspaceEdit();
+				// const content: string = utils.makeEmptyTheory(theoryName);
+				// edit.insert(file, new Position(0, 0), content);
+				// const success: boolean = await workspace.applyEdit(edit);
+				// if (success) {
+				// 	const document: TextDocument = await workspace.openTextDocument(file);
+				// 	window.showTextDocument(document, ViewColumn.Beside, true);
+				// } else {
+				// 	window.showInformationMessage(`Error: Unable to create file ${fname}`);
+				// }
 			}
-			// const theoryName = fsUtils.getFileName(fileName); // this will remove the extension
-			// const contextFolder: string = this.getCurrentWorkspace() || vscodeUtils.getRootPath();
-			// const fname: string = path.join(contextFolder, `${theoryName}.pvs`);
-			// const file: Uri = Uri.parse(`untitled:${theoryName}.pvs`);
-			// const edit = new WorkspaceEdit();
-			// const content: string = utils.makeEmptyTheory(theoryName);
-			// edit.insert(file, new Position(0, 0), content);
-			// const success: boolean = await workspace.applyEdit(edit);
-			// if (success) {
-			// 	const document: TextDocument = await workspace.openTextDocument(file);
-			// 	window.showTextDocument(document, ViewColumn.Beside, true);
-			// } else {
-			// 	window.showInformationMessage(`Error: Unable to create file ${fname}`);
-			// }
 		}
+	}
+	/**
+	 * Creates a new pvs theory in the active file at the cursor position
+	 */
+	async newPvsTheoryDialog (): Promise<string> {
+		const activeEditor: TextEditor = vscodeUtils.getActivePvsEditor();
+		const position: Position = activeEditor?.selection?.active || new Position(0, 0);
+		if (fsUtils.isPvsFile(activeEditor?.document?.fileName)) {
+			const activeFile: string = activeEditor.document.fileName;
+			const theoryName: string = await window.showInputBox({
+				prompt: `Please enter theory name to be created in ${fsUtils.getFileName(activeFile, { keepExtension: true })} at line ${position.line + 1}`,
+				placeHolder: ``,
+				value: ``,
+				ignoreFocusOut: true 
+			});
+			if (theoryName) {
+				const uri: Uri = Uri.parse(`file://${activeFile}`, true);
+
+				let stats: FileStat = null;
+				try {
+					stats = await workspace.fs.stat(uri);
+				} catch (fileNotFound) {
+					// this error should occur: it means the file does not exist and we can create it
+				} finally {
+					if (stats) {
+						const authorKey: string = vscodeUtils.getAuthorKey();
+						const content: string = utils.makeEmptyTheory(theoryName, { authorKey });
+						const edit: WorkspaceEdit = new WorkspaceEdit();
+						edit.insert(activeEditor.document.uri, position, content);
+						await workspace.applyEdit(edit);
+						return theoryName;
+					}
+					// else
+					window.showWarningMessage(`Warning: Could not create ${theoryName} (could not find active file ${activeFile}).`);					
+				}
+			}
+		}
+		return null;
 	}
 	/**
 	 * Removes .prlite files, .pvscontext, pvsbin in all folders open in explorer

@@ -1806,7 +1806,7 @@ export class VSCodePvsProofMate extends Explorer {
 		// ask the user confirmation before pausing
 		opt = opt || {};
 		const yesno: string[] = [ "Yes", "No" ];
-		const msg: string = `Pause the execution of the current proof?`;
+		const msg: string = `Interrupt the execution of the current proof?`;
 		const ans: string = opt?.force ? yesno[0] : await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
 		if (ans === yesno[0]) {
 			this.runningFlag = false;

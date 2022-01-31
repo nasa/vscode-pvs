@@ -1411,7 +1411,9 @@ export const icons: {
 	sparkles: "✨",
 	whitecircle: "⚪"
 };
-
+/**
+ * Utility function, returns the icon associated to the given proof status
+ */
 export function getIcon (proofStatus: ProofStatus): string {
 	switch (proofStatus) {
 		case "subsumed":
@@ -1430,7 +1432,9 @@ export function getIcon (proofStatus: ProofStatus): string {
 			return icons.sparkles;
 	}
 }
-
+/**
+ * Utility function, checkes if the proof status is 'proved'
+ */
 export function isProved (proofStatus: ProofStatus): boolean {
 	switch (proofStatus) {
 		case "subsumed":
@@ -1444,15 +1448,22 @@ export function isProved (proofStatus: ProofStatus): boolean {
 			return false;
 	}
 }
-
+/**
+ * Utility function, checkes if the proof status is 'unchecked'
+ */
 export function isUnchecked (proofStatus: ProofStatus): boolean {
 	return proofStatus === "unchecked";
 }
 
-export function makeEmptyTheory (theoryName: string): string {
+/**
+ * Utility function, creates an empty pvs theory
+ */
+export function makeEmptyTheory (theoryName: string, opt?: { authorKey?: string }): string {
+    opt = opt || {};
+    const author: string = opt?.authorKey || process?.env?.USER || "..."
 	return `%%
 % @theory: ${theoryName}
-% @author: ${(process && process.env && process.env.USER) ? process.env.USER : "xxx"}
+% @author: ${author}
 % @date: ${new Date().toUTCString()}
 %%
 ${theoryName}: THEORY

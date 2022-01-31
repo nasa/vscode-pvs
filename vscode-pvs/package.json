@@ -113,6 +113,11 @@
 						"default": true,
 						"description": "Support for renaming of theories & formulas (default: true)"
 					},
+					"pvs.settings.authorKey": {
+						"type": "string",
+						"default": "",
+						"description": "Personalized author key to be used in automatic annotations. Leave blank to use process.env.USER as author key."
+					},
 					"pvs.settings.prover.@QED": {
 						"type": "boolean",
 						"default": true,
@@ -1933,7 +1938,6 @@
 	},
 	"dependencies": {
 		"typescript": "^4.5.4",
-		"vsce": "^2.6.3",
 		"xmlrpc": "^1.3.2"
 	},
 	"devDependencies": {
@@ -1947,7 +1951,8 @@
 		"chai": "^4.3.4",
 		"eslint": "^8.7.0",
 		"mocha": "^9.1.4",
-		"ts-node": "^10.4.0"
+		"ts-node": "^10.4.0",
+		"vsce": "^2.6.5"
 	},
 	"resolutions": {
 		"mem": "^6.1.0",

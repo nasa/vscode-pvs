@@ -227,7 +227,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 const contextFolder: string  = fsUtils.getContextFolder(fname);
                 const fileName: string = fsUtils.getFileName(fname);
                 const fileExtension: string = fsUtils.getFileExtension(fname);
-                const line: number = window.activeTextEditor?.selection?.active?.line || 0;
+                const activeEditor: TextEditor = vscodeUtils.getActivePvsEditor();
+                const line: number = activeEditor?.selection?.active?.line || 0;
                 const content: string = await fsUtils.readFile(fname);
                 const theoryName: string = fsUtils.findTheoryName(content, line);
                 const formulaName: string = fsUtils.findFormulaName(content, line);
@@ -446,7 +447,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 const contextFolder: string  = fsUtils.getContextFolder(fname);
                 const fileName: string = fsUtils.getFileName(fname);
                 const fileExtension: string = fsUtils.getFileExtension(fname);
-                const line: number = window.activeTextEditor?.selection?.active?.line || 0;
+                const activeEditor: TextEditor = vscodeUtils.getActivePvsEditor();
+                const line: number = activeEditor?.selection?.active?.line || 0;
                 const fileContent: string = await fsUtils.readFile(fname);
                 const theoryName: string = fsUtils.findTheoryName(fileContent, line);
                 req = {

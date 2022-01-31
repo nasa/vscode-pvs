@@ -60,6 +60,7 @@ import { VSCodePvsSearch } from './views/vscodePvsSearch';
 import { VSCodePvsioWeb } from './views/vscodePvsioWeb';
 import { VSCodePvsXTerm } from './views/vscodePvsXTerm';
 import { XTermColorTheme } from './common/colorUtils';
+import { getActivePvsEditor } from './utils/vscode-utils';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -152,7 +153,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		
 		// onDidOpenTextDocument is emitted when a text file is opened in the editor or when the language id of a text document has changed.
 		workspace.onDidOpenTextDocument(async (event: TextDocument) => {
-			const editor: TextEditor = window.activeTextEditor;
+			const editor: TextEditor = getActivePvsEditor();
 			if (event?.languageId === "pvs" || fsUtils.isPvsFile(editor?.document?.fileName)) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
@@ -192,15 +193,15 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 		// onDidChangeActiveTextEditor is emitted when the active editor focuses on a new document
 		window.onDidChangeActiveTextEditor(async (event: TextEditor) => {
-			const editor: TextEditor = window.activeTextEditor; //event || window.activeTextEditor;
-			const fname: string =  editor?.document?.fileName;
+			const activeEditor: TextEditor = getActivePvsEditor();//window.activeTextEditor; //event || window.activeTextEditor;
+			const fname: string =  activeEditor?.document?.fileName;
 			const state: WindowState = window.state;
-			if (event?.document?.languageId === "pvs" || fsUtils.isPvsFile(editor?.document?.fileName)) {
+			if (event?.document?.languageId === "pvs" || fsUtils.isPvsFile(activeEditor?.document?.fileName)) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
 				this.statusBar.show();
 				// update decorations
-				this.decorationProvider.updateDecorations(editor);
+				this.decorationProvider.updateDecorations(activeEditor);
 				// trigger file parsing to get syntax diagnostics
 				const contextFolder: string = fsUtils.getContextFolder(fname);
 				// update workspace-explorer if needed
@@ -225,7 +226,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// onDidChangeTextDocument is emitted when the content of a document changes
 		workspace.onDidChangeTextDocument((event: TextDocumentChangeEvent) => {
 			if (fsUtils.isPvsFile(event?.document?.fileName)) {
-				this.decorationProvider.updateDecorations(window.activeTextEditor);
+				const activeEditor: TextEditor = getActivePvsEditor();
+				if (activeEditor) {
+					this.decorationProvider.updateDecorations(activeEditor);
+				}
 				// autosave will trigger parsing, which in turn triggers diagnostics
 				this.autosave(event.document);
 			}
@@ -266,10 +270,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			const pvsFiles: { oldUri: Uri, newUri: Uri }[] = event?.files?.filter((value: { oldUri: Uri, newUri: Uri }) => {
 				return value?.oldUri?.path?.endsWith(".pvs");
 			}) || [];
+			const activeEditor: TextEditor = getActivePvsEditor();
 			if (pvsFiles.length > 0
-				|| (window.activeTextEditor && 
-						(fsUtils.isPvsFile(window.activeTextEditor?.document?.fileName)
-							|| window.activeTextEditor?.document?.languageId === "Log"))) {
+				|| (activeEditor && 
+						(fsUtils.isPvsFile(activeEditor?.document?.fileName)
+							|| activeEditor?.document?.languageId === "Log"))) {
 				// send clearWorkspace command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
 				this.client.sendRequest(serverRequest.clearWorkspace);
 				// remove tccs file for the renamed file, if the file exists
@@ -374,7 +379,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	
 			// enable decorations for pvs syntax
 			this.decorationProvider = new VSCodePvsDecorationProvider();
-			this.decorationProvider.updateDecorations(window.activeTextEditor);
+			this.decorationProvider.updateDecorations(getActivePvsEditor());
 	
 			// register handlers for document events
 			this.registerTextEditorHandlers();
@@ -428,9 +433,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// update status bar
 				this.statusBar.ready();
 
-				if (window.activeTextEditor?.document) {
+				const activeEditor: TextEditor = getActivePvsEditor();
+				if (activeEditor?.document) {
 					// parse file opened in the editor
-					const desc: PvsFile = fsUtils.fname2desc(window.activeTextEditor?.document?.fileName);
+					const desc: PvsFile = fsUtils.fname2desc(activeEditor.document?.fileName);
 					if (desc.contextFolder) {
 						this.client.sendRequest(serverRequest.parseFile, desc);
 						this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });

@@ -1278,20 +1278,30 @@ export class VSCodePvsProofExplorer extends Explorer {
 			}
 		}
 	}
+	/**
+	 * Utility function, shows a yes/cancel dialog
+	 * Note: the dialog is yes/cancel because in vscode the 'cancel' button is always presented in the dialog
+	 *       and a simple yes/no dialog cannot be created (it would be yes/no/cancel)
+	 * TODO: implement a yes/no dialog with a webview
+	 */
 	async queryConfirmation (msg: string): Promise<boolean> {
 		const yesno: string[] = [ "Yes", "No" ];
 		const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
 		return ans === yesno[0];
 	}
+	/**
+	 * Utility function, starts a proof for the formula at the current cursor position
+	 */
 	async proveFormulaAtCursorPosition (): Promise<PvsFormula> {
-		if (window.activeTextEditor && window.activeTextEditor.document) {
+		const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+		if (activeEditor?.document) {
 			// if the file is currently open in the editor, save file first
-			await window.activeTextEditor.document.save();
+			await activeEditor.document.save();
 			// get information necessary to start the proof
-			const fname: string = window.activeTextEditor.document.fileName;
-			const cursorPosition: vscode.Position = window.activeTextEditor.selection?.active;
+			const fname: string = activeEditor.document.fileName;
+			const cursorPosition: vscode.Position = activeEditor.selection?.active;
 			// const range: vscode.Range = new vscode.Range(new vscode.Position(0, 0), cursorPosition);
-			const text: string = window.activeTextEditor.document.getText();
+			const text: string = activeEditor.document.getText();
 			const desc: PvsFormula = {
 				theoryName: findTheoryName(text, cursorPosition.line),
 				formulaName: findFormulaName(text, cursorPosition.line),
@@ -1316,7 +1326,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 		opt = opt || {};
 		// ask the user confirmation before pausing
 		const yesno: string[] = [ "Yes", "No" ];
-		const msg: string = `Pause the execution of the current proof?`;
+		const msg: string = `Interrupt the execution of the current proof?`;
 		const ans: string = opt.force ? yesno[0]
 			: await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
 		if (ans === yesno[0]) {
