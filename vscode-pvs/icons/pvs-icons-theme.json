@@ -185,7 +185,8 @@
 		"fls": "fa-file-o",
 		"fdb_latexmk": "fa-file-o",
 		"out": "fa-file-o",
-		"sh": "fa-terminal"
+		"sh": "fa-terminal",
+		"md": "fa-info-circle"
 	},
 	"languageIds": {
 		"pvs": "binary-file"
