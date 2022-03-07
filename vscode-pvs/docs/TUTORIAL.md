@@ -195,5 +195,5 @@ Based on these diagnostics, one can deduce that PVS was unable to complete the p
 <br>
 
 ## Further reading
-- For more information on the PVS language and theorem proving system, please refer to the [PVS documentation](http://pvs.cls.sri.com)
+- For more information on the PVS language and theorem proving system, please refer to the [PVS documentation](http://pvs.csl.sri.com)
 - Additional examples can be found in the [NASA PVS Class](https://shemesh.larc.nasa.gov/PVSClass2012/)
