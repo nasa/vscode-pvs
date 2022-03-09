@@ -1013,7 +1013,7 @@ export async function typesLookUpTable (cdesc: PvsContextDescriptor): Promise<{ 
 				}
 			}
 		}
-		console.log(lookupTable);
+		// console.log(lookupTable);
 		return lookupTable;
 	}
 	return null;
