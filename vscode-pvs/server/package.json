@@ -20,7 +20,7 @@
 		"url": "https://github.com/nasa/vscode-pvs"
 	},
 	"dependencies": {
-		"typescript": "^4.5.5",
+		"typescript": "^4.6.2",
 		"vscode-languageserver": "^5.2.1"
 	},
 	"dependencies-from-root": {

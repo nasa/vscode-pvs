@@ -942,7 +942,7 @@ export function declutterVscode (): void {
     if (getRootFolder()) {
         const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
         // remove indent lines in explorer
-        config.update("editor.renderIndentGuides", false);
+        config.update("workbench.tree.renderIndentGuides", false);
         // config.update("workbench.tree.indent", 8);
 
         const filesExclude: { [key:string]: boolean } = config.get("files.exclude") || {};

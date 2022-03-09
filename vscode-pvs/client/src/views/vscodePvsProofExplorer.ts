@@ -142,8 +142,8 @@ export abstract class Explorer extends Backbone.Model implements TreeDataProvide
 			// Sometimes the exception occurs also with option 'expand'
 			this.view.reveal(selected, { expand: 2, select: true, focus: true }).then(() => {
 			}, (error: any) => {
-				console.error(selected);
-				console.error(error);
+				// console.error(selected);
+				// console.error(error);
 			});
 		}
 	}
@@ -187,8 +187,8 @@ export abstract class Explorer extends Backbone.Model implements TreeDataProvide
 			// Sometimes the exception occurs also with option 'expand'
 			this.view.reveal(selected, { expand: 2, select: true, focus: false }).then(() => {
 			}, (error: any) => {
-				console.error(selected);
-				console.error(error);
+				// console.error(selected);
+				// console.error(error);
 			});
 		}
 	}

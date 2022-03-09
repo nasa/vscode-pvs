@@ -1,5 +1,5 @@
 ## ChangeLog
-### 1.0.59 (2022.01.xx)    
+### 1.0.59 (2022.03.09)    
 - Added quick-fix actions for typecheck errors related to missing importings and mispelled types   
 - Added shortcuts for typing greek letters (e.g., `\alpha`, `\beta`, `\tau`, etc.)     
 - Added new command shortcuts 'M-x nf' (new pvs file) and 'M-x nt' (new pvs theory)   

@@ -167,7 +167,6 @@ server/src/
 **/client/node_modules/animate.css/animate.compat.css
 **/client/node_modules/animate.css/animate.css
 **/client/node_modules/backbone/backbone-min.map
-**/client/node_modules/backbone/backbone-min.js
 **/client/node_modules/bootstrap/scss/
 **/client/node_modules/bootstrap/dist/js/bootstrap.bundle.js
 **/client/node_modules/bootstrap/dist/js/bootstrap.min.js
