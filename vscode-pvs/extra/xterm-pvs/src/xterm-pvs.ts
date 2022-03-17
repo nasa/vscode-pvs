@@ -28,7 +28,7 @@ interface RebaseEvent {
 
 export function welcomeMessage (session: SessionType, integratedHelpSize: number ): string {
     const msg: string = session === "prover" ? `
-        - Please enter proof command at the prover prompt
+        - Please enter proof command at the prover prompt / Use <b>(help rules)</b> to view the list of available commands
         - Double click expands definitions${integratedHelpSize > 2 ? "\n- " : ". "}Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}C / ${isLinux() ? "Ctrl+" : "Command+"}V
         `
         : `
@@ -1090,9 +1090,12 @@ const terminalHelpTemplate: string = `
     color:transparent;
     user-select: none;
 }
+.info {
+    color: cornflowerblue;
+}
 </style>
-<div class="syntax">Syntax: {{syntax}}</div>
-<div class="description">Description: {{description}}</div>
+<div class="syntax"><span class="info">Syntax:</span> {{syntax}}</div>
+<div class="description"><span class="info">Description:</span> {{description}}</div>
 {{#each optionals}}
 {{#if @first}}<div><span class="optionals">Optionals: </span><span class="key">{{@key}}</span> {{this}}</div>
 {{else}}<div><span class="optionals hidden">Optionals: </span><span class="key">{{@key}}</span> {{this}}</div>{{/if}}
