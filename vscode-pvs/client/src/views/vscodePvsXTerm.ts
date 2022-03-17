@@ -680,12 +680,11 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         let success: boolean = await this.reveal();
         if (success) {
             // Use a timeout so that the webview has time to render its content
-            // clearTimeout(this.tfocus);
-            // await new Promise ((resolve, reject) => {
-            //     this.tfocus = setTimeout(() => {
-                        this.focusxterm();
-            //     }, 250);
-            // });
+            // this is a workaround because xterm does not seem to be able to gain focus if the content is not fully rendered
+            clearTimeout(this.tfocus);
+            this.tfocus = setTimeout(() => {
+                this.focusxterm();
+            }, 250);
         }
         return success;
     }
