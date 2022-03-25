@@ -217,14 +217,14 @@ export class PvsCodeLensProvider {
                             line: gotoPosition.line,
                             character: gotoPosition.character // + match[4]?.length // highlighting the offending expression seems to be confusing in vscode, because all other similar expressions are also highlighted and the cursor ends up at the end of the expression not at the beginning
                         }
-                    }
+                    };
                     const gotoDesc: GotoFileDescriptor = {
                         contextFolder,
                         fileName,
                         fileExtension: ".pvs",
                         pos: gotoPosition,
                         range: gotoRange
-                    }
+                    };
                     codeLens.push({
                         range,
                         command: {

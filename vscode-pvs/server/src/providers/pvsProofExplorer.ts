@@ -1236,7 +1236,7 @@ export class PvsProofExplorer {
 						let found: boolean = false;
 						for (let i = 0; i < selectedNode.children.length && !found; i++) {
 							if (selectedNode.children[i].branchId !== branchId) {
-								found = true
+								found = true;
 							} else {
 								branchId = languageUtils.makeBranchId({ branchId: selectedNode.branchId, goalId: firstGoal + i + 1 });
 							}
@@ -2325,7 +2325,7 @@ export class PvsProofExplorer {
 				fileName: this.formula.fileName,
 				fileExtension: desc.fileExtension,
 				contextFolder: this.formula.contextFolder
-			}
+			};
 			let success: boolean = false;
 			let msg: string = null;
 			switch (desc.fileExtension) {
@@ -2402,7 +2402,7 @@ export class PvsProofExplorer {
 			fileName: this.formula.fileName,
 			fileExtension: ".prf",
 			contextFolder: this.formula.contextFolder,
-		}
+		};
 		// update proof descriptor so it reflects the current proof structure
 		this.proofDescriptor = this.makeProofDescriptor(this.origin);
 		await saveProofDescriptor(this.formula, this.proofDescriptor, { saveProofTree: true });

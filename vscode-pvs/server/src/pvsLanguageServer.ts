@@ -427,7 +427,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 						const ans: ProveFormulaResponse = { res: result[0], req: desc, mathObjects: this.pvsProxy?.listMathObjects() };
 						this.connection?.sendRequest(serverEvent.proveFormulaResponse, ans);
 					} else {
-						const msg: string = opt.useJprf ? `Re-running J-PRF proof for ${desc.formulaName}` : `Re-running proof for ${desc.formulaName}`
+						const msg: string = opt.useJprf ? `Re-running J-PRF proof for ${desc.formulaName}` : `Re-running proof for ${desc.formulaName}`;
 						this.connection?.sendNotification("pvs.progress-info", msg);
 					}
 				}
@@ -845,9 +845,11 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					// only .pvs files should be parsed
 					request.fileExtension = ".pvs";
 					// send information to the client, to populate theory explorer on the front-end
-					this.lastParsedContext = request.contextFolder;
-					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
-					this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
+					if (this.lastParsedContext !== request.contextFolder) {
+						this.lastParsedContext = request.contextFolder;
+						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
+					}
 					
 					// we should only parse .pvs files
 					const fname: string = fsUtils.desc2fname(request);
@@ -998,7 +1000,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 							// update feedback every time a file has been processed
 							if (response) {
 								if (opt.generateTCCs) {
-									await this.pvsProxy.generateTccs(desc)
+									await this.pvsProxy.generateTccs(desc);
 								}
 								completed++;
 								if (opt.withFeedback) {
@@ -1073,7 +1075,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 									await workspaceActionAux(actionName, { fileName, fileExtension, contextFolder });
 								}
 							}
-						}
+						};
 						if (contextFiles.fileNames.length) {
 							for (let i = 0; i < this.MAX_PARALLEL_PROCESSES && i < contextFiles.fileNames.length; i++) {
 								const fname: string = path.join(contextFolder, contextFiles.fileNames[i]);
@@ -1813,12 +1815,14 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			});
 			this.connection?.onRequest(serverRequest.getContextDescriptor, (request: { contextFolder: string }) => {
 				if (request && request.contextFolder) {
-					// send information to the client, to populate theory explorer on the front-end
-					this.postTask(() => {
-						this.getContextDescriptor(request).then((cdesc: PvsContextDescriptor) => {
-							this.connection?.sendRequest(serverEvent.getContextDescriptorResponse, cdesc);
-						});	
-					})
+					if (!this.isSameWorkspace(request.contextFolder)) {
+						// send information to the client, to populate theory explorer on the front-end
+						this.postTask(() => {
+							this.getContextDescriptor(request).then((cdesc: PvsContextDescriptor) => {
+								this.connection?.sendRequest(serverEvent.getContextDescriptorResponse, cdesc);
+							});	
+						})
+					}
 				}
 			});
 			this.connection?.onRequest(serverRequest.getFileDescriptor, (request: { contextFolder: string, fileName: string, fileExtension: string }) => {
@@ -1849,6 +1853,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 						if (!this.isSameWorkspace(contextFolder)) {
 							this.lastParsedContext = contextFolder;
 						}
+						// TODO: send loading message to workspace explorer
+						// ...
 						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
 						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 					}

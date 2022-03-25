@@ -976,7 +976,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 							const theoryName: string = formula.theoryName;
 							const formulaName: string = formula.formulaName;
 							const message: string = (opt.tccsOnly) ? `Discharging proof obligations in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
-								: `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
+								: `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`;
 							if (formulas.length > 1) {
 								progress.report({
 									increment: 1 / formulas.length * 100, // all increments must add up to 100
@@ -1160,7 +1160,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 							fileName: fsUtils.getContextFolderName(desc.contextFolder),
 							fileExtension: ".workspace.summary",
 							fileContent: fsUtils.makeWorkspaceSummary(summary)
-						}
+						};
 						this.client.sendRequest(serverRequest.showWorkspaceSummary, req);
 						this.client.onNotification(serverRequest.showWorkspaceSummary, (ans: { res: FileDescriptor, req: FileDescriptor }) => {
 							vscodeUtils.showTextDocument(ans?.res);
@@ -1383,7 +1383,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 				vscodeUtils.showTextDocument(summaryFile);
 			} else {
 				const yesno: string[] = [ "Yes", "No" ];
-				const msg: string = `Summary file has not been generated yet. Re-run all proofs in theory ${desc.theoryName}?`
+				const msg: string = `Summary file has not been generated yet. Re-run all proofs in theory ${desc.theoryName}?`;
 				const ans: string = await window.showInformationMessage(msg, { modal: true }, yesno[0]);
 				if (ans === yesno[0]) {
 					commands.executeCommand("vscode-pvs.prove-theory", desc);

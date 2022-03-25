@@ -63,7 +63,7 @@ export class DdlParser {
         let cmd: string = `cd ${libFolder} && java -jar DdlParser.jar ${ifname}`; // this command will produce a JSON object of type Diagnostic[] on stdout
         if (ofname) {
             console.log(`[ddl-parser] Writing file ${ofname}`);
-            cmd += ` -out ${ofname};`
+            cmd += ` -out ${ofname};`;
         }
         try {
             const ans: Buffer = execSync(cmd);

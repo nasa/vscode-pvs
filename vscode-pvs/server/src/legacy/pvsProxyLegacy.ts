@@ -227,7 +227,7 @@ export class PvsProxyLegacy {
             id: "pvs-process-legacy"
         };
         if (this.pvsProcess && fsUtils.getFileExtension(fname) === ".pvs") {
-            const fullName: string = path.join(fname + "#" + theoryName)
+            const fullName: string = path.join(fname + "#" + theoryName);
             const response: PvsResponse = await this.lisp(`(show-tccs "${fullName}")`);
             const result: ShowTCCsResult = [];
             if (response && response.result) { 
@@ -318,7 +318,7 @@ export class PvsProxyLegacy {
                         error_string,
                         file_name
                     }
-                }
+                };
             } else {                
                 pvsResponse.result = [];
             }

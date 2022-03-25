@@ -162,7 +162,7 @@ export const PVS_PRELUDE_OBSOLETE_THEORIES_REGEXP_SOURCE: string = regExpSource(
 
 export const PVS_STRING_REGEXP_SOURCE: string = '\"[^\"]*\"';
 
-export const PVS_IDENTIFIER_REGEXP_SOURCE: string = "\\w+|^|<|>|<=|=>"
+export const PVS_IDENTIFIER_REGEXP_SOURCE: string = "\\w+|^|<|>|<=|=>";
 
 export interface SnippetType {
 	description: string,

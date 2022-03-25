@@ -64,7 +64,6 @@ import { VSCodePvsSearch } from "./views/vscodePvsSearch";
 import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
 import { StartXTermEvaluatorRequest, VSCodePvsXTerm } from "./views/vscodePvsXTerm";
 import { colorText, PvsColor } from "./common/colorUtils";
-import path = require("path");
 import { YesNoCancel, quickFixReplace, quickFixAddImporting } from "./utils/vscode-utils";
 
 // FIXME: use Backbone.Model
@@ -361,7 +360,7 @@ export class EventsDispatcher {
                     this.proofExplorer.disableView();
                     this.proofMate.disableView();
                     this.proofExplorer.resetView();
-                    let msg: string = desc.msg || "could not start prover session."
+                    let msg: string = desc.msg || "could not start prover session.";
                     msg += "\nAdditional details on the error can be inspected in the Output panel, on channel pvs-server.";
                     this.xterm.log(colorText("\nError: " + msg, PvsColor.red));
                     break;
@@ -1283,7 +1282,7 @@ export class EventsDispatcher {
                 const yesno: string[] = [ "Yes", "Unproved Only", "No" ];
                 const contextFolderName: string = fsUtils.getContextFolderName(desc.contextFolder);
                 const msg: string = opt.useJprf ? `Re-run J-PRF proofs in workspace ${contextFolderName}?` : `Re-run all proofs in workspace ${contextFolderName}?`;
-                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0], yesno[1])
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0], yesno[1]);
                 if (ans === yesno[0] || ans === yesno[1]) {
                     opt.unprovedOnly = ans === yesno[1];
                     this.quietMode = true;

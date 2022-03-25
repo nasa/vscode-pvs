@@ -97,6 +97,9 @@ export class PvsProcess {
 			}
 		}
 	}
+	/**
+	 * Internal function, logs debug messages in vscode-pvs output or in the console if a connection to the front-end is not available
+	 */
 	protected log (msg: string, opt?: { force?: boolean}): void {
 		opt = opt || {};
 		if (msg && (this.verbose || opt.force)) {
@@ -218,6 +221,14 @@ export class PvsProcess {
 				this.pvsProcess.stdout.setEncoding("utf8");
 				this.pvsProcess.stderr.setEncoding("utf8");
 				
+				// data logged for the command sent to PVS, this is used to limit the amount of data shown in the vscode-pvs output panel
+				let logData: string = "";
+				let maxLogLimitReached: boolean = false;
+				const resetLocalLog = () => {
+					logData = "";
+					maxLogLimitReached = false;
+				};
+
 				this.pvsProcess.stdout.on("data", async (data: string) => {
 					if (addressInUse) {
 						return; // the promise has already been resolved at this point -- don't resolve the promise again, otherwise the caller will erroneously see another resolve
@@ -225,18 +236,26 @@ export class PvsProcess {
 
 					this.ready = false;
 					this.data += data;
-					this.log(data?.length > MAX_LOG_CHUNK && !this.verboseLog ? data.substr(0, MAX_LOG_CHUNK) + "\n\n...\n\n" : data);
+
+					logData += data;
+					if (!maxLogLimitReached) {
+						// log data in vscode-pvs output
+						this.log(data?.length > MAX_LOG_CHUNK && !this.verboseLog ? data.substring(0, MAX_LOG_CHUNK) + "\n\n(...additional output suppressed)\n\n" : data);
+					}
+					maxLogLimitReached = logData?.length > MAX_LOG_CHUNK && !this.verboseLog;
 
 					const matchSocketAddressInUse: RegExpMatchArray = /(errno 48)/g.exec(data);
 					if (matchSocketAddressInUse) {
 						this.pvsProcess = null;
 						addressInUse = true;
+						resetLocalLog();
 						resolve(ProcessCode.ADDRINUSE);
 						return;
 					}
 					const matchNoExecutable: RegExpMatchArray = /No executable available in (.+)/gi.exec(data);
 					if (matchNoExecutable) {
 						this.pvsProcess = null;
+						resetLocalLog();
 						resolve(ProcessCode.UNSUPPORTEDPLATFORM);
 						return;
 					}
@@ -267,6 +286,14 @@ export class PvsProcess {
 					if (matchPvsPrompt || matchProverPrompt) {
 						if (!this.ready) {
 							this.ready = true;
+							if (maxLogLimitReached) {
+								// log pvs prompt to provide better feedback
+								const logPrompt: string = matchPvsPrompt?.length ? matchPvsPrompt[0]
+									: matchProverPrompt?.length ? matchProverPrompt[0]
+									: "";
+								this.log(logPrompt);
+							}
+							resetLocalLog();
 							resolve(ProcessCode.SUCCESS);
 						}
 						if (this.cb && typeof this.cb === "function") {
@@ -286,10 +313,12 @@ export class PvsProcess {
 					console.dir(err, { depth: null });
 				});
 				this.pvsProcess.on("exit", (code: number, signal: string) => {
+					resetLocalLog();
 					this.log("[pvs-process] Process exited");
 					console.dir({ code, signal });
 				});
 				this.pvsProcess.on("message", (message: any) => {
+					resetLocalLog();
 					this.log("[pvs-process] Process message");
 					console.dir(message, { depth: null });
 				});

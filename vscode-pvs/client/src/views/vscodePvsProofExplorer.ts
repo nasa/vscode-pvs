@@ -898,7 +898,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				this.refreshView({ source: "did-append-node" });
 				console.log(`[vscode-proof-explorer] Did append ${desc.elem.name} (${desc.elem.id})`);
 			} else {
-				console.warn(`[vscode-proof-explorer] Warning: could not find parent ${desc.elem.parent} necessary for proofEdit/appendNode (${desc.elem.name})`)
+				console.warn(`[vscode-proof-explorer] Warning: could not find parent ${desc.elem.parent} necessary for proofEdit/appendNode (${desc.elem.name})`);
 			}
 		} else {
 			console.warn(`[vscode-proof-explorer] Warning: unable to complete proofEdit/appendNode`);
@@ -1131,7 +1131,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 			} else {
 				node.collapsibleState = TreeItemCollapsibleState.None;
 			}
-		}
+		};
 		// initialise
 		this.root = null;
 		this.refreshView({ source: "did-load-descriptor", selectActiveNode: true });
@@ -1309,7 +1309,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				fileExtension: fsUtils.getFileExtension(fname),
 				contextFolder: fsUtils.getContextFolder(fname)
 			};
-			if (desc && desc.theoryName && desc.formulaName && desc.fileName && desc.fileExtension && desc.contextFolder) {
+			if (desc.theoryName && desc.formulaName && desc.fileName && desc.fileExtension && desc.contextFolder) {
 								// ask the user confirmation before restarting pvs
 				const yesno: string[] = [ "Yes", "No" ];
 				const msg: string = `Prove formula ${desc.formulaName}?`;
@@ -1420,7 +1420,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 					fileName: this.formula.fileName,
 					fileExtension: ".prf"
 				};	
-				if (desc && desc.contextFolder && desc.fileName && desc.fileExtension) {
+				if (desc.contextFolder && desc.fileName && desc.fileExtension) {
 					// const formulaName: string = await vscode.window.showQuickPick(["a", "b", "c"]);
 					// if (formulaName) {
 					// 	const action: ProofExecImportProof = {

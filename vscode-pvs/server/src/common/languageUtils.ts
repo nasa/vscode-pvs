@@ -56,7 +56,7 @@ export const RECORD: { [key: string]: RegExp } = {
 	isType: /\[#.+#\]/g,
 	accessors: /[\(\[]#(.+)#[\]\)]/g, // comma-separated list of accessors
 	typeName: /\w+\s*:\s*(\w+)/g
-}
+};
 
 export const commentRegexp: RegExp = /%.*/g;
 export const stringRegexp: RegExp = /\"[^\"]+\"/g;
@@ -102,7 +102,7 @@ export const tupleRegexp: RegExp = /\(([\(\)\s\+\-\w\/\,\:\#\.]*)\)/g;
 // generic regular expressions for recognizing plottable expression series
 export const linearPlotRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*\[\s*list\s*\[\s*(?:real|int|rat|nat)\s*\](?:\,\s*list\s*\[\s*(?:real|int|rat|nat)\s*\])*\s*\]\s*=/g;
 export const linearPlotSimpleRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*list\s*\[\s*(?:real|int|rat|nat)\s*\]\s*=/g;
-export const linearPlotTupleTupleListRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*\[\s*(\[\s*list\s*\[\s*(?:real|int|rat|nat)\s*\](?:\,\s*list\s*\[\s*(?:real|int|rat|nat)\s*\])*\s*\]\s*,?\s*)+\]\s*=/g;
+export const linearPlotTupleTupleListRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*\[\s*(\[\s*list\s*\[\s*(?:real|int|rat|nat)\s*\](?:\,\s*list\s*\[\s*(?:real|int|rat|nat)\s*\])*\s*\])+\]\s*=/g;
 
 // generic regular expression for recognizing plottable expression series
 export const scatterPlotRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*list\s*\[\s*\[\s*(?:real|int|rat|nat)\s*,\s*(?:real|int|rat|nat)\s*\]\s*\]\s*=/g;
@@ -198,7 +198,7 @@ export function list2PlotData (data: string, opt?: { mode?: PlotMode, x?: string
 
             res.x.push(x);
             res.y.push(y);
-            res.name = `series ${isNaN(+opt?.seriesId) ? 1 : +opt.seriesId}`
+            res.name = `series ${isNaN(+opt?.seriesId) ? 1 : +opt.seriesId}`;
         }
     } 
 	const match: RegExpMatchArray = new RegExp(listRegexp).exec(data);
@@ -692,7 +692,7 @@ export function getWordRange(txt: string, position: Position): Range {
 			return { token, character: needle };
 		}
 		return null;
-	}
+	};
 
 	let character: number = position.character;
 	let len: number = 0;

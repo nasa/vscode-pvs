@@ -540,7 +540,7 @@ export class PvsProxy {
 									if (antlrdiags && antlrdiags.errors) {
 										diags.errors = diags.errors.concat(antlrdiags.errors);
 										if (antlrdiags["parse-time"]) {
-											console.log(`[pvs-parser] antlr completed parsing in ${antlrdiags["parse-time"].ms}ms`)
+											console.log(`[pvs-parser] antlr completed parsing in ${antlrdiags["parse-time"].ms}ms`);
 										}
 									}
 								}
@@ -794,7 +794,7 @@ export class PvsProxy {
 									};
 									line += (tcc.definition) ? tcc.definition.split("\n").length + 2 : 2;
 									return res;
-								}): null
+								}): null;
 								res.fileDescriptors[fname].theories.push({
 									fileName: desc.fileName,
 									fileExtension: ".pvs",
@@ -1259,7 +1259,7 @@ export class PvsProxy {
 								result.sequent = {
 									antecedents: result.sequent ? result.sequent['hidden-antecedents'] : null,
 									succedents: result.sequent ? result.sequent['hidden-succedents'] : null
-								}
+								};
 								// if (result.commentary) {
 								// 	const hiddenFormulas: string[] = [ languageUtils.formatHiddenFormulas(result) ];					
 								// 	result.commentary = hiddenFormulas.concat([ "No change on: (show-hidden-formulas)" ]);
@@ -1908,7 +1908,7 @@ export class PvsProxy {
 			console.log(`[pvs-proxy] +-- EXTERNAL SERVER CONFIGURATION --`);
 			console.log(`[pvs-proxy] |  Address: ${this.serverAddress}`);
 			console.log(`[pvs-proxy] |  Port: ${this.serverPort}`);
-			console.log(`[pvs-proxy] +-----------------------------------`)
+			console.log(`[pvs-proxy] +-----------------------------------`);
 			return ProcessCode.SUCCESS;
 		}
 
@@ -2231,7 +2231,7 @@ export class PvsProxy {
 	 */
 	async activate(opt?: { debugMode?: boolean, showBanner?: boolean, verbose?: boolean, pvsErrorManager?: PvsErrorManager }): Promise<boolean> {
 		opt = opt || {};
-		console.log(`[pvs-proxy] Starting pvs-proxy...`)
+		console.log(`[pvs-proxy] Starting pvs-proxy...`);
 		this.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
 		this.debugMode = !!opt.debugMode;
 		this.verbose = !!opt.verbose;
@@ -2263,7 +2263,7 @@ export class PvsProxy {
 			}
 			if (portIsAvailable) {
 				this.banner = `GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
-				console.log(`[pvs-proxy] Starting GUI Server on http://${this.clientAddress}:${this.clientPort}`)
+				console.log(`[pvs-proxy] Starting GUI Server on http://${this.clientAddress}:${this.clientPort}`);
 				this.client = xmlrpc.createClient({
 					host: this.serverAddress, port: this.serverPort, path: "/RPC2"
 				});

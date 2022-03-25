@@ -285,7 +285,7 @@ export class PvsDefinitionProvider {
 			} else if (isTrueFalse) {
 				response.comment = `Builtin constant ${symbolName}`;
 			} else if (!response.comment) {
-				response.comment = `User-defined symbol ${symbolName}`
+				response.comment = `User-defined symbol ${symbolName}`;
 			}
 			return [ response ];
 		} else {

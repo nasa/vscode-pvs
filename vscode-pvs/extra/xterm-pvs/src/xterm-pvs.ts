@@ -924,7 +924,7 @@ export class Content extends Backbone.Model {
             const pos2: Position = {
                 character: this.pos.character - 1,
                 line: this.pos.line
-            }
+            };
             const idx1: number = this.findMatchingOpenBracketIndex(inputBeforeCursor);
             if (idx1 >= 0) {
                 const textBeforeIdx1: string = inputBeforeCursor.substring(0, idx1);
@@ -1625,7 +1625,7 @@ export class Autocomplete extends Backbone.Model {
                 Object.keys(this.hintsObject.commands).filter((c: string) => {
                     return c//.toLocaleLowerCase()
                             .startsWith(currentInput);
-                }) : []
+                }) : [];
             hints = hints.concat(cmds);
             return hints;
         }
@@ -2287,7 +2287,7 @@ export class XTermPvs extends Backbone.Model {
 
         // erase current command line
         this.moveCursorTo(base, { src: "refreshCommandLine "});
-        this.clearTextFrom(base)
+        this.clearTextFrom(base);
         // re-render command line
         const cmd: string = this.content.command().replace(/\n/g, "\r\n");
         

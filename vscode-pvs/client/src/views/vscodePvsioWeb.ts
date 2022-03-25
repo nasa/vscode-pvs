@@ -905,7 +905,7 @@ export class VSCodePvsioWeb {
             ...builderUtils.defaultIoSettings,
             mainModule: { label: defaultLabels.mainModule, value: theoryName },
             mainFile: { label: defaultLabels.mainFile, value: mainFile }
-        }
+        };
         const settings: builderUtils.SettingsOptions = {
             contextFolder,
             io: ioSettings

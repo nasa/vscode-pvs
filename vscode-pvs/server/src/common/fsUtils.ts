@@ -708,7 +708,7 @@ export function execShellCommand (req: ShellCommand, opt?: {
 		let candidates: string[] = [];
 
 		// check that line number is not before keyword begin -- if so adjust line number otherwise regexp won't find theory name
-		const matchFirstTheory: RegExpMatchArray = regexp.exec(txt)
+		const matchFirstTheory: RegExpMatchArray = regexp.exec(txt);
 		if (matchFirstTheory && matchFirstTheory.length > 1) {
 			const theoryName: string = matchFirstTheory[1];
 
@@ -1436,7 +1436,7 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 								position: { line, character: 0 },
 								status,
 								isTcc
-							}
+							};
 							formulaDescriptors.push(fdesc);
 						}
 					}
@@ -1508,13 +1508,11 @@ export function findProofObligation(formulaName: string, txt: string): number {
 		contextFolder
 	};
 	const fileList: FileList = await listPvsFiles(contextFolder);
-	if (fileList) {
-		for (let i in fileList.fileNames) {
-			const fname: string = path.join(contextFolder, fileList.fileNames[i]);
-			// console.log(`[language-utils] Processing file ${fname}`);
-			const desc: PvsFileDescriptor = await getFileDescriptor(fname, opt);
-			response.fileDescriptors[fname] = desc;
-		}
+	for (let i = 0; i < fileList?.fileNames?.length; i++) {
+		const fname: string = path.join(contextFolder, fileList.fileNames[i]);
+		// console.log(`[language-utils] Processing file ${fname}`);
+		const desc: PvsFileDescriptor = await getFileDescriptor(fname, opt);
+		response.fileDescriptors[fname] = desc;
 	}
 	// console.log("[language-utils] Done");
 	return response;
@@ -1560,7 +1558,7 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 				theorems: (descriptors && descriptors.length) ? descriptors.filter((desc: FormulaDescriptor) => {
 					return desc.theoryName === theoryName;
 				}) : []
-			}
+			};
 			// console.log(`[language-utils] Done`);
 			response.theories.push(theoryDescriptor);
 		}

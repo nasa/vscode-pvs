@@ -618,7 +618,7 @@ export async function openPvsFileOrWorkspace (): Promise<string> {
         const contextFolderUri: vscode.Uri = vscode.Uri.file(contextFolder);
         // add folder to workspace
         if (!vscode.workspace.getWorkspaceFolder(contextFolderUri)) {
-            const start: number = 0
+            const start: number = 0;
             const end: number = (vscode.workspace.workspaceFolders) ? vscode.workspace.workspaceFolders.length - 1 : 0;
             // save and close all open files in the editor
             await vscode.commands.executeCommand("workbench.action.files.saveAll");

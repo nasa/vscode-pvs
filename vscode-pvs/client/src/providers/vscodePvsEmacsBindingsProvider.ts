@@ -255,7 +255,7 @@ export class VSCodePvsEmacsBindingsProvider {
 					break;
 				}
 				case "step-proof": {
-					commands.executeCommand('vscode-pvs.prove-formula', desc)
+					commands.executeCommand('vscode-pvs.prove-formula', desc);
 					break;
 				}
 				case "restart-pvs":

@@ -328,7 +328,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     protected async startProverSession (formula: StartXTermProverRequest): Promise<boolean> {
         this.target = formula;
-        this.sessionType = "prover"
+        this.sessionType = "prover";
         this.clearScreen();
         this.setPrompt(utils.proverPrompt);
         this.configureAutocomplete();
@@ -524,7 +524,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.log("\n" + colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme)), {
                     sessionEnd: true
                 });
-                const msg: string = "Evaluator session terminated.\nYou can now close the evaluator console."
+                const msg: string = "Evaluator session terminated.\nYou can now close the evaluator console.";
                 this.showHelpMessage(msg);
                 // disable response handlers
                 this.disableHandlers();
@@ -767,7 +767,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 message.data = " Evaluator session terminated.";
                 this.panel?.webview?.postMessage(message);
             } else if (this.sessionType === "prover" && data.includes("bye!")) {
-                message.data = " Prover session terminated."
+                message.data = " Prover session terminated.";
                 this.panel?.webview?.postMessage(message);
             }
             this.disableTerminalInput();
@@ -852,7 +852,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.showHelpMessage(`Rewinding to ${target}..${DOT_BLINK}<br>To interrupt the execution, press Ctrl+C`);
                 commands.executeCommand("vscode-pvs.progress-info", `Rewinding to ${target}.`);
             } else {
-                this.running(true)
+                this.running(true);
                 this.showHelpMessage(`Executing ${cmd}..${DOT_BLINK}<br>To interrupt the execution, press Ctrl+C`);
                 commands.executeCommand("vscode-pvs.progress-info", `Executing ${cmd}.`);
             }
@@ -977,7 +977,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         this.panel.iconPath = {
                             light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png")),
                             dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png"))
-                        }
+                        };
                         // clean up data structures when webview is disposed
                         this.panel.onDidDispose(
                             () => {

@@ -72,7 +72,7 @@ export class VSCodePvsTerminalLinkProvider implements TerminalLinkProvider {
      */
     protected createLinks (txt: string, theory: PvsTheory): TerminalLink[] {
         if (txt && theory) {
-            const ans: TerminalLink[] = []
+            const ans: TerminalLink[] = [];
             const regexp: RegExp = new RegExp(symbolRegexp);
             let match: RegExpMatchArray = regexp.exec(txt);
             const maxIterations: number = 100;

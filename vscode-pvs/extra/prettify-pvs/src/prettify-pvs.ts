@@ -80,7 +80,7 @@ Options:
         const inputFolder: string = path.join(this.contextFolder, this.inputFolder);
         const outputFolder: string = path.join(this.contextFolder, this.outputFolder);
         const jsdoc: string = 
-            `node node_modules/jsdoc/jsdoc.js -d ${outputFolder} -R ${path.join(inputFolder, this.readmeFile)} ${path.join(inputFolder, "temp", "*.js")}`
+            `node node_modules/jsdoc/jsdoc.js -d ${outputFolder} -R ${path.join(inputFolder, this.readmeFile)} ${path.join(inputFolder, "temp", "*.js")}`;
         console.log("------------------------");
         console.log(`[prettify-pvs] Executing script \n${jsdoc}`);
         execSync(jsdoc);
@@ -150,7 +150,7 @@ Options:
         const fileName: string = fsUtils.getFileName(ifname);
         const contextFolder: string = fsUtils.getContextFolder(ifname);
         const tempFolder: string = path.join(contextFolder, "temp");
-        const ofname: string = path.join(tempFolder, `${fileName}.js`)
+        const ofname: string = path.join(tempFolder, `${fileName}.js`);
         console.log(`[prettify-pvs] Writing file ${ofname}`);
         await fsUtils.createFolder(tempFolder);
         await fsUtils.writeFile(ofname, dummyContent);

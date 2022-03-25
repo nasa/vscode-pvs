@@ -247,7 +247,7 @@ export class VSCodePvsStatusBar {
                 msg += opt.trailingNote;
             }
             if (opt.downloadButtons) {
-                const options: string[] = [ "Reboot PVS", "Show Welcome Screen"]
+                const options: string[] = [ "Reboot PVS", "Show Welcome Screen"];
                 window.showInformationMessage(msg, options[0], options[1]).then((sel: string) => {
                     switch (sel) {
                         case options[0]: {
