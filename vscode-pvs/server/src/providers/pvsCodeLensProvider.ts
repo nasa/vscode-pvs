@@ -68,7 +68,7 @@ export class PvsCodeLensProvider {
             const contextFolder: string = fsUtils.getContextFolder(document.uri);
             
             let match: RegExpMatchArray = null;
-            const codeLens: CodeLens[] = [];
+            let codeLens: CodeLens[] = [];
             const content: string = document.txt.replace(utils.commentRegexp, "");
 
             // typecheck-file | evaluate-in-pvsio
@@ -182,6 +182,7 @@ export class PvsCodeLensProvider {
 
             // goto-pvs-file
             if (fileExtension === ".tccs") {
+                let gotoCodeLensMap: { [key:string]: CodeLens } = {}; // using a map to avoid duplicate gotos
                 // group 1 is the line-column information
                 // group 2 is the line (1-based)
                 // group 3 is the column (1-based)
@@ -211,6 +212,7 @@ export class PvsCodeLensProvider {
                         line: +match[2] - 1, // lines are 0-based
                         character: +match[3]
                     };
+                    // check if the goto link has already been provided for the given line
                     const gotoRange: Range = {
                         start: gotoPosition,
                         end: {
@@ -225,15 +227,24 @@ export class PvsCodeLensProvider {
                         pos: gotoPosition,
                         range: gotoRange
                     };
-                    codeLens.push({
+                    gotoCodeLensMap[`${range.start.line}`] = {
                         range,
                         command: {
                             title: `(goto ${match[1]})`,
                             command: "vscode-pvs.goto-pvs-file",
                             arguments: [ gotoDesc ]
                         }
-                    });
+                    };
+                    // codeLens.push({
+                    //     range,
+                    //     command: {
+                    //         title: `(goto ${match[1]})`,
+                    //         command: "vscode-pvs.goto-pvs-file",
+                    //         arguments: [ gotoDesc ]
+                    //     }
+                    // });
                 }
+                codeLens = codeLens.concat(Object.values(gotoCodeLensMap));
             }
 
             // prove-formula

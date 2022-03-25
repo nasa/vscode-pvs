@@ -1382,7 +1382,7 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 		const theories: TheoryDescriptor[] = (desc.cache && desc.cache.theories) ? desc.cache.theories : listTheories(desc);
 		const boundaries: { theoryName: string, from: number, to: number }[] = []; // slices txt to the boundaries of the theories
 		if (theories) {
-			const start: number = Date.now();
+			// const start: number = Date.now();
 			const fileContent: string = desc.fileContent.replace(commentRegexp, ""); // first, remove all comments
 			const slices: string[] = fileContent.split("\n");
 			for (let i = 0; i < theories.length; i++) {
@@ -1399,9 +1399,10 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 					const regex: RegExp = new RegExp(theoremRegexp);
 					let match: RegExpMatchArray = null;
 					while (match = regex.exec(content)) {
+						// const startMatch: number = Date.now();
 						if (match.length > 1 && match[1]) {
 							const formulaName: string = match[1];
-							const matchParams: RegExpMatchArray = new RegExp(theoremParamsRegexp).exec(match[0]);
+							const matchParams: RegExpMatchArray = new RegExp(theoremParamsRegexp).exec(match[0].trim());
 							const blanks: number = match[0].replace(matchParams[0], "").replace(formulaName, "").length;
 	                        const docUp: string = content.slice(0, match.index + formulaName.length + blanks);
 							const offset: number = (docUp) ? docUp.split("\n").length : 0;
@@ -1439,13 +1440,15 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 							};
 							formulaDescriptors.push(fdesc);
 						}
+						// const matchTime: number = Date.now() - startMatch;
+						// console.log(`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}.${match[0]?.trim()}) completed in ${matchTime}ms`);			
 					}
 				} else {
 					console.error("Error while finding theory names :/");
 				}
 			}
-			const stats: number = Date.now() - start;
-			// console.log(`[languageUtils] listTheorems(${desc.fileName}) completed in ${stats}ms`);
+			// const time: number = Date.now() - start;
+			// console.log(`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}) completed in ${time}ms`);
 			return formulaDescriptors;
 		}
 	}

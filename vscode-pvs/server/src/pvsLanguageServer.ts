@@ -956,9 +956,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					// send information to the client, to populate theory explorer on the front-end
 					if (!this.isSameWorkspace(contextFolder)) {
 						this.lastParsedContext = contextFolder;
+						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
+						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 					}
-					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
-					this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 
 					// parse/typecheck files, as requested
 					const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
@@ -1852,11 +1852,11 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					if (contextFolder) {
 						if (!this.isSameWorkspace(contextFolder)) {
 							this.lastParsedContext = contextFolder;
+							// TODO: send loading message to workspace explorer
+							// ...
+							const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
+							this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 						}
-						// TODO: send loading message to workspace explorer
-						// ...
-						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
-						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 					}
 				} else {
 					console.error(`[pvs-server] Error: failed to start pvs-server`);
