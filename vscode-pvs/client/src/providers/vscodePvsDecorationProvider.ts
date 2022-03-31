@@ -36,16 +36,18 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { TextEditorDecorationType } from "vscode";
-import * as language from "../common/languageKeywords";
-import * as fs from '../common/fsUtils';
-import { window, TextEditor, TextDocument, DecorationOptions, Position, Range } from 'vscode';
+import { TextEditor } from "vscode";
 
-const keywordsDecorator: TextEditorDecorationType = window.createTextEditorDecorationType({
-	cursor: 'text',
-	color: { id: 'pvs.keywords.color' }, // See package.json for declaration and default values.
-	fontWeight: "500" // 100 is thin, 400 is normal, 700 is bold
-});
+// import { TextEditorDecorationType } from "vscode";
+// import * as language from "../common/languageKeywords";
+// import * as fs from '../common/fsUtils';
+// import { window, TextEditor, TextDocument, DecorationOptions, Position, Range } from 'vscode';
+
+// const keywordsDecorator: TextEditorDecorationType = window.createTextEditorDecorationType({
+// 	cursor: 'text',
+// 	color: { id: 'pvs.keywords.color' }, // See package.json for declaration and default values.
+// 	fontWeight: "500" // 100 is thin, 400 is normal, 700 is bold
+// });
 
 export class VSCodePvsDecorationProvider {
 	// this code is obsolete -- syntax highlighting is performed by vscode -- see pvs-language.json

@@ -45,13 +45,12 @@
  * - pvsio: M-x pvsio
  * - view prelude: M-x view-prelude-file
  */
-import { ExtensionContext, commands, window, TextDocument, InputBox, env, TextEditor } from 'vscode';
+import { ExtensionContext, commands, window, TextDocument, InputBox, TextEditor } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient';
 import * as fsUtils from '../common/fsUtils';
 import { VSCodePvsStatusBar } from '../views/vscodePvsStatusBar';
 import { PvsFormula } from '../common/serverInterface';
 import * as vscodeUtils from '../utils/vscode-utils';
-import { VSCodePvsWorkspaceExplorer } from '../views/vscodePvsWorkspaceExplorer';
 /**
  * cmds is the list of commands that are supported by the emacs binding defined in this module
  * NB: The order of the commands in the array affects the behavior of autocompletion
