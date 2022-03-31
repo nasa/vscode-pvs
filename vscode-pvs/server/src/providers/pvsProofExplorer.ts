@@ -1246,9 +1246,9 @@ export class PvsProofExplorer {
 							newBranch.updateSequent(opt.proofState, { internalAction: this.autorunFlag });
 						}
 					}
-					if (newBranch) {
-						selectedNode.appendChild(newBranch);
-					}
+					// if (newBranch) {
+					selectedNode.appendChild(newBranch);
+					// }
 					break;
 				}
 				case "root":
@@ -1259,37 +1259,37 @@ export class PvsProofExplorer {
 							const branchName: string = (opt.beforeSelected) ? `` : `${branchId}.${parent.children.length}`;
 							newBranch = new ProofBranch(branchName, branchId, parent, this.connection);
 						}
-						if (newBranch) {
-							newBranch.parent = parent;
-							const children: ProofItem[] = [];
-							const n: number = parent.children.length;
-							let position: number = 0;
-							for (let i = 0; i < n; i++) {
-								if (!opt.beforeSelected) {
-									children.push(parent.children[i]);
-								}
-								if (parent.children[i].id === selectedNode.id) {
-									children.push(newBranch);
-									position = i;
-								}
-								if (opt.beforeSelected) {
-									children.push(parent.children[i]);
-								}
+						// if (newBranch) {
+						newBranch.parent = parent;
+						const children: ProofItem[] = [];
+						const n: number = parent.children.length;
+						let position: number = 0;
+						for (let i = 0; i < n; i++) {
+							if (!opt.beforeSelected) {
+								children.push(parent.children[i]);
 							}
-							parent.children = children;
-							if (!opt.internalAction && this.connection) {
-								const elem: ProofNodeX = newBranch.getNodeXStructure();
-								this.log(`[proof-explorer] Appending branch ${elem.name} (${elem.id})`);
-								const evt: ProofEditDidAppendNode = {
-									action: "did-append-node",
-									elem,
-									position
-								};
-								if (this.connection) {
-									this.connection.sendNotification(serverEvent.proverEvent, evt);
-								}
-							}					
+							if (parent.children[i].id === selectedNode.id) {
+								children.push(newBranch);
+								position = i;
+							}
+							if (opt.beforeSelected) {
+								children.push(parent.children[i]);
+							}
 						}
+						parent.children = children;
+						if (!opt.internalAction && this.connection) {
+							const elem: ProofNodeX = newBranch.getNodeXStructure();
+							this.log(`[proof-explorer] Appending branch ${elem.name} (${elem.id})`);
+							const evt: ProofEditDidAppendNode = {
+								action: "did-append-node",
+								elem,
+								position
+							};
+							if (this.connection) {
+								this.connection.sendNotification(serverEvent.proverEvent, evt);
+							}
+						}					
+						// }
 					}
 				}
 				default: {
@@ -2450,7 +2450,7 @@ export class PvsProofExplorer {
 	 * Quit the current proof
 	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
 	 */
-	async quitProof (opt?: { notifyClient?: boolean }): Promise<void> {
+	async quitProof (opt?: { notifyClient?: boolean }): Promise<PvsResponse> {
 		opt = opt || {};
 		this.runningFlag = false;
 
@@ -2492,6 +2492,7 @@ export class PvsProofExplorer {
 			// this.pvsLanguageServer.cliGateway.publish(evt);
 		}
 		this.connection?.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
+		return res;
 	}
 
 	/**

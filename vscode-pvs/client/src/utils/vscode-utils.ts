@@ -198,7 +198,7 @@ export async function createTextDocument (desc: FileDescriptor): Promise<vscode.
     let success: boolean = await vscode.workspace.applyEdit(edit);
     // FIXME: applyEdit fails if the document is already open and active in the editor, understand why this is the case.
     if (!success) {
-        success = await vscode.workspace.applyEdit(edit);
+        await vscode.workspace.applyEdit(edit);
     }
     return preview;
 }

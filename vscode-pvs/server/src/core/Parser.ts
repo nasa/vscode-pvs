@@ -59,11 +59,12 @@ export class Parser {
             opt = opt || {};
             switch (desc.fileExtension) {
                 case ".pvs": {
-                    return //opt.useTarget === "js" ? await this.pvsParserJS.parseFile(desc)
-                        //: 
-                        await this.pvsParser.parseFile(desc);
-                } // requires Java
-                case ".hpvs": { return await this.ddlParser.parseFile(desc); } // requires Java
+                    // return opt.useTarget === "js" ? await this.pvsParserJS.parseFile(desc) : 
+                    return await this.pvsParser.parseFile(desc); // requires Java
+                }
+                case ".hpvs": {
+                    return await this.ddlParser.parseFile(desc); // requires Java
+                }
                 default: {
                     console.error(`[parser.parseFile] Error: unrecognized extension ${desc.fileExtension}`);
                 }

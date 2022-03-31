@@ -363,7 +363,7 @@ export function getContextFolderName(contextFolder: string): string {
 }
 export function isPvsFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
 	if (desc) {
-		const ext: string = (typeof desc === "string") ? desc : (desc) ? desc.fileExtension : null;
+		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
 		if (ext) {
 			return ext.endsWith('.pvs') || ext.endsWith('.tccs') || ext.endsWith('.ppe') || ext.endsWith('.pr')
 					|| ext.endsWith('.hpvs') || ext.endsWith(".summary") || ext.endsWith(".prl");
@@ -373,7 +373,7 @@ export function isPvsFile(desc: string | { fileName: string, fileExtension: stri
 }
 export function isSummaryFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
 	if (desc) {
-		const ext: string = (typeof desc === "string") ? desc : (desc) ? desc.fileExtension : null;
+		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
 		if (ext) {
 			return ext.endsWith(".summary");
 		}
@@ -382,7 +382,7 @@ export function isSummaryFile(desc: string | { fileName: string, fileExtension: 
 }
 export function isProofliteFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
 	if (desc) {
-		const ext: string = (typeof desc === "string") ? desc : (desc) ? desc.fileExtension : null;
+		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
 		if (ext) {
 			return ext.endsWith(".prl") || ext.endsWith(".prlite") || ext.endsWith('.pr');
 		}
@@ -600,10 +600,9 @@ export function shellCommandToString (shellCommand: ShellCommand): string {
 	if (shellCommand) {
 		const cmd: string = shellCommand.args ? `${shellCommand.cmd} ${shellCommand.args?.join(" ")}`
 			: shellCommand.cmd;
-		return shellCommand.cwd ? `cd ${shellCommand.cwd} && ${cmd}`
-			: cmd;
+		return shellCommand.cwd ? `cd ${shellCommand.cwd} && ${cmd}` : cmd;
 	}
-	"";
+	return "";
 }
 
 /**

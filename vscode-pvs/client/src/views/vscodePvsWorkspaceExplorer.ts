@@ -1097,7 +1097,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 								const theory: TheoryDescriptor = theories[k];
 								if (theory.theorems) {
 									const formulas: FormulaDescriptor[] = theory.theorems;
-									for (let i = 0; !stop && i < formulas.length && !stop; i++) {
+									for (let i = 0; !stop && i < formulas.length; i++) {
 										const formula: FormulaDescriptor = formulas[i];
 										const theoryName: string = formula.theoryName;
 										const formulaName: string = formula.formulaName;

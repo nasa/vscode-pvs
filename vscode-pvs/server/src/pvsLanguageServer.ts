@@ -790,7 +790,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					const msg: string = `${nTccs} tccs generated for ${shortName} (${nProved} proved, ${nTccs - nProved} to be proved)`;
 					this.notifyEndImportantTask({ id: taskId, msg });
 				}
-		} else {
+			} else {
 				console.error("[pvs-language-server] Warning: pvs.generate-tccs is unable to identify filename for ", request);
 			}
 		} else {
@@ -836,7 +836,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		request = fsUtils.decodeURIComponents(request);
 		if (request) {
 			opt = opt || {};
-			if (request) {
+			if (request?.fileName) {
 				if (fsUtils.isPvsFile(request) && !fsUtils.isSummaryFile(request) && !fsUtils.isProofliteFile(request) && !this.isPreludeFile(request)) {
 					if (request.contextFolder === path.join(this.lastParsedContext, "pvsbin")) {
 						// nothing to do
@@ -1474,7 +1474,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	protected async readFile (fileName: string): Promise<string> {
 		if (fileName) {
 			fileName = decodeURIComponent(fileName);
-			fileName = fileName.startsWith("file://") ? fileName = fileName.replace("file://", "") : fileName;
+			fileName = fileName.startsWith("file://") ? fileName.replace("file://", "") : fileName;
 			const doc: TextDocument = this.documents.get("file://" + fileName);
 			if (doc) {
 				return doc.getText();

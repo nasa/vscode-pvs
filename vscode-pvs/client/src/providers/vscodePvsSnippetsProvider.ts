@@ -121,10 +121,10 @@ export class VSCodePvsSnippetsProvider implements vscode.CompletionItemProvider 
         const lines: string[] = txt.split("\n");
         if (lines && lines.length > position.line) {
             const lineText: string = lines[position.line];
-            const currentInput: string = lineText.substr(0, position.character).trim();
-            let lastWord: string = currentInput.substr(currentInput.lastIndexOf(" ") + 1);
-            lastWord = (lastWord.includes(":")) ? lastWord.substr(lastWord.lastIndexOf(":") + 1).trim() : lastWord;
-            lastWord = (lastWord.includes("`")) ? lastWord.substr(lastWord.lastIndexOf("`") + 1).trim() : lastWord;
+            const currentInput: string = lineText.substring(0, position.character).trim();
+            // let lastWord: string = currentInput.substring(currentInput.lastIndexOf(" ") + 1);
+            // lastWord = (lastWord.includes(":")) ? lastWord.substring(lastWord.lastIndexOf(":") + 1).trim() : lastWord;
+            // lastWord = (lastWord.includes("`")) ? lastWord.substring(lastWord.lastIndexOf("`") + 1).trim() : lastWord;
 
             const theoryDeclared: boolean = new RegExp(utils.isense.theoryDeclaration).test(txt);
             const declaration: boolean = new RegExp(utils.isense.declaration).test(currentInput);

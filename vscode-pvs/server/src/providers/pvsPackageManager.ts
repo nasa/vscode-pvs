@@ -142,7 +142,7 @@ export class PvsPackageManager {
                     stdOut: req.installScript + "\n"
                 };
                 connection?.sendNotification(serverRequest.installWithProgress, { req, res: cmd });    
-                success = success && await new Promise ((resolve, reject) => {
+                success = await new Promise ((resolve, reject) => {
                     PvsPackageManager.installProcess = fsUtils.execShellCommand({ cmd: req.installScript }, {
                         stdOut: (out: string) => {
                             // if (!req.installScript.quiet) {
