@@ -2379,14 +2379,15 @@ export class PvsProofExplorer {
 				}
 			}
 			const script: string = this.copyTree({ selected: this.root });
-			this.connection.sendRequest(serverRequest.saveProof, { 
-				response: { 
-					success,
-					proofFile,
-					msg,
-					formula: this.formula,
-					script
-				}, 
+			const response: SaveProofResponse = { 
+				success,
+				proofFile,
+				msg,
+				formula: this.formula,
+				script
+			};
+			this.connection.sendNotification(serverRequest.saveProof, { 
+				response, 
 				args: this.formula 
 			});
 		} else {
