@@ -2,6 +2,7 @@
 
 [![version](https://vsmarketplacebadge.apphb.com/version/paolomasci.vscode-pvs.svg)](https://marketplace.visualstudio.com/items?itemName=paolomasci.vscode-pvs)
 [![installs](https://vsmarketplacebadge.apphb.com/installs-short/paolomasci.vscode-pvs.svg)](https://marketplace.visualstudio.com/items?itemName=paolomasci.vscode-pvs)
+[![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/nasa/vscode-pvs.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/nasa/vscode-pvs/context:javascript)
 [![license](https://img.shields.io/badge/license-NASA-blue.svg)](https://opensource.org/licenses/NASA-1.3)
 [![chat](https://img.shields.io/badge/Chat%20on-PVS%20Google%20Group-blue.svg)](https://groups.google.com/g/pvs-group)
 
