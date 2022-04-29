@@ -51,9 +51,11 @@ import {
 	icons, isProved, proofliteDeclRegexp, proofliteRegexp, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp, typesRegexp, validTermRegExp 
 } from './languageUtils';
 
-
+// home dir of the current installation
 export const HOME_DIR: string = require('os').homedir();
 export const MAX_RECURSION: number = 4;
+// dump file extension
+export const DUMP_FILE_EXTENSION: string = ".dmp";
 // nodeJS does not support tilde expansion for the home folder
 export function tildeExpansion(pathName: string): string {
 	if (pathName) {

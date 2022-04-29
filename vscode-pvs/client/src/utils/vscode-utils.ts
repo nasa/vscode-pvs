@@ -41,10 +41,34 @@ import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem, WorkspaceOverviewItem } from "../views/vscodePvsWorkspaceExplorer";
-import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent, GotoFileDescriptor, Position, Range, FormulaDescriptor, QuickFixReplace, QuickFixAddImporting } from '../common/serverInterface';
+import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent, GotoFileDescriptor, Position, Range, FormulaDescriptor, QuickFixReplace, QuickFixAddImporting, VSCodePvsVersionDescriptor } from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 import { XTermColorTheme } from '../common/colorUtils';
 import { xTermDetectColorTheme } from '../common/xtermInterface';
+import { Extension, Progress } from 'vscode';
+import { PvsLanguageClient } from '../pvsLanguageClient';
+
+// vscode task
+export type ProgressTask = (progress: Progress<{ message?: string; increment?: number }>, token: CancellationToken) => Thenable<void>;
+// task resolution function
+export type RunningTask = { resolve: () => void };
+
+/**
+ * Returns vscode-pvs extension info
+ */
+export function getVSCodePvsExtensionInfo (): VSCodePvsVersionDescriptor {
+    const info: Extension<PvsLanguageClient> = vscode.extensions.getExtension("paolomasci.vscode-pvs");
+    if (info?.packageJSON) {
+        return {
+            name: info.packageJSON.name,
+            version: info.packageJSON.version,
+            description: info.packageJSON.description,
+            publisher: info.packageJSON.publisher,
+            license: info.packageJSON.license
+        };
+    }
+    return null;
+}
 
 /**
  * Returns the context folder of the editor
@@ -288,6 +312,29 @@ export function showProblemsPanel (): void {
 }
 
 /**
+ * Utility function, shows a temporary dialog reporting information about an ongoing task.
+ */
+export function runningTask (message: string): RunningTask {
+    if (message) {
+        let taskResolutionFunction: RunningTask = { resolve: null };
+        const task: ProgressTask = (progress: Progress<{ message: string, increment?: number }>, token: CancellationToken): Promise<void> => {
+            progress.report({ increment: -1, message });
+            return new Promise((resolve, reject) => {
+                taskResolutionFunction = { resolve };
+                token.onCancellationRequested(() => {
+                    resolve();
+                });
+            });
+        };
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            cancellable: true
+        }, task);
+        return taskResolutionFunction;
+    }
+    return null;
+}
+/**
  * Utility function, shows a temporary dialog with an information message.
  * The default timeout for the dialog is 3.2 seconds.
  */
@@ -296,14 +343,14 @@ export function showInformationMessage (message: string, opt?: { timeout?: numbe
         opt = opt || {};
         const timeout: number = opt.timeout || 3200;
         const cancellable: boolean = !!opt.cancellable;
-        const task = (progress: vscode.Progress<{ message: string, increment?: number }>, token: CancellationToken): Promise<void> => {
+        const task: ProgressTask = (progress: Progress<{ message: string, increment?: number }>, token: CancellationToken): Promise<void> => {
             progress.report({ increment: 100, message });
             return new Promise((resolve, reject) => {
                 setTimeout(() => {
                     resolve();
                 }, timeout);
             });
-        }
+        };
         vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             cancellable

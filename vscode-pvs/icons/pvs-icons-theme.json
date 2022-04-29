@@ -136,6 +136,7 @@
 		"summary": "summary-file-icon",
 		"prf": "binary-file",
 		"n64fasl": "binary-file",
+		"dmp": "fa-file-archive-o",
 
 		"dylib": "binary-file",
 		"a": "binary-file",

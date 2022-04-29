@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.61-alpha",
+	"version": "1.0.61-gamma",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -389,7 +389,7 @@
 			},
 			{
 				"command": "vscode-pvs.open-pvs-workspace",
-				"title": "Open PVS Workspace...",
+				"title": "Open Workspace...",
 				"enablement": "pvs-server-active == true && !in-checker",
 				"category": "pvs",
 				"icon": {
@@ -1827,17 +1827,7 @@
 					".pvs",
 					".tccs",
 					".ppe",
-					".prf",
-					".prf~",
-					".jprf",
-					".pr",
-					".prl",
-					".hpvs",
-					".summary",
-					".pvstest",
-					".io",
-					".web",
-					".log"
+					".dmp"
 				],
 				"firstLine": "\\s*((%+\\w+)|((\\w+)\\s*(?:\\[([\\w\\W\\s]*)\\])?\\s*\\:\\s*(THEORY|theory|Theory)\\b))",
 				"filenames": [

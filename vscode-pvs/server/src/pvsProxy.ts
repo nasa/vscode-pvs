@@ -59,7 +59,7 @@ import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode, TheoryDescriptor, PvsTheory, FormulaDescriptor, PvsFile, PvsContextDescriptor, FileDescriptor, SequentDescriptor, MathObjects, ProofOrigin } from './common/serverInterface';
+import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode, TheoryDescriptor, PvsTheory, FormulaDescriptor, PvsFile, PvsContextDescriptor, FileDescriptor, SequentDescriptor, MathObjects, ProofOrigin, VSCodePvsVersionDescriptor, PvsFileDescriptor, DumpFileDescriptor } from './common/serverInterface';
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
@@ -67,6 +67,8 @@ import { checkPar, CheckParResult, getErrorRange, isQuitCommand, isQuitDontSaveC
 import * as languageUtils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import { PvsErrorManager } from './pvsErrorManager';
+import * as os from 'os';
+import { DUMP_FILE_EXTENSION } from './common/fsUtils';
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -83,8 +85,6 @@ export declare interface FileList {
   contextFolder: string;
   fileNames: string[]; // TODO: FileDescriptor[]
 }
-
-
 
 export class PvsProxy {
 	// protected parserCache: { [ filename: string ]: { hash: string, diags: ParserDiagnostics, isTypecheckError?: boolean } } = {};
@@ -644,28 +644,188 @@ export class PvsProxy {
 	// }
 
 	/**
+	 * Creates a new file that contains all the specifications and associated proofs for the import chain of the specified PVS file (M-x dump-pvs-files).
+	 * This function reflects the behavior of the emacs function dump-pvs-files-to-current-buffer
+	 */
+	async dumpPvsFiles (desc: PvsFile): Promise<DumpFileDescriptor> {
+		if (desc?.fileName) {
+			const contextFolder: string = fsUtils.tildeExpansion(desc.contextFolder);
+			const pvsFiles: PvsFile[] = await this.getPvsFileDependencies(desc);
+			if (pvsFiles?.length) {
+				const dependencies: { fname: string, tag: string }[] = [];
+				// create a list that associates filenames to tags that will be used in the .dump file
+				for (let i = 0; i < pvsFiles?.length; i++) {
+					const fileName: string = `${pvsFiles[i].fileName}${pvsFiles[i].fileExtension}`;
+					const fname: string = path.join(pvsFiles[i].contextFolder, fileName);
+					dependencies.push({
+						fname,
+						tag: `$$$${fileName}`
+					});
+					const prf_fileName: string = `${pvsFiles[i].fileName}.prf`;
+					const prf_fname: string = path.join(pvsFiles[i].contextFolder, prf_fileName);
+					dependencies.push({
+						fname: prf_fname, 
+						tag: `$$$${prf_fileName}`
+					});
+				}
+				// predefined files included in the dump file
+				const predefined: { fname: string, tag: string }[] = [
+					{ fname: path.join(contextFolder, "pvs-strategies"), tag: "$$$pvs-strategies" },
+					{ fname: path.join("~", "pvs-strategies"), tag: "$$$PVSHOME/pvs-strategies" },
+					{ fname: path.join("~", ".pvs.lisp"), tag: "$$$PVSHOME/.pvs.lisp" },
+					{ fname: path.join("~", ".pvsemacs"), tag: "$$$PVSHOME/.pvsemacs" },
+				];
+				// generated the content of the dump file
+				// for each file in dumpFiles, writing the tag followed by the file content
+				let dumpFileContent: string = "";
+				for (let i = 0; i < predefined.length; i++) {
+					if (fsUtils.fileExists(predefined[i].fname)) {
+						const fileContent: string = await fsUtils.readFile(predefined[i].fname);
+						dumpFileContent += `\n${predefined[i].tag}\n${fileContent}`;
+					}
+				}
+				const files: FileDescriptor[] = [];
+				for (let i = 0; i < dependencies.length; i++) {
+					if (fsUtils.fileExists(dependencies[i].fname)) {
+						const fileContent: string = await fsUtils.readFile(dependencies[i].fname);
+						files.push({
+							fileContent,
+							fileName: fsUtils.getFileName(dependencies[i].fname),
+							fileExtension: fsUtils.getFileExtension(dependencies[i].fname),
+							contextFolder: fsUtils.getContextFolder(dependencies[i].fname)
+						});
+						dumpFileContent += `\n${dependencies[i].tag}\n${fileContent}`;
+					}
+				}
+				// get pvs version
+				const pvsVersion: PvsVersionDescriptor = this.getPvsVersionInfo();
+				dumpFileContent = `
+%% PVS Version ${this.pvsVersionInfo?.version}${this.pvsVersionInfo?.['nasalib-version'] ? " + NASALib" : ""}
+%% ${os.version()}
+` + dumpFileContent;
+				// write dump file
+				const dumpFileName: string = `${desc.fileName}`;
+				const dumpFile: string = path.join(contextFolder, `${dumpFileName}${DUMP_FILE_EXTENSION}`);
+				const success: boolean = await fsUtils.writeFile(dumpFile, dumpFileContent);
+				if (success) {
+					return {
+						dmpFile: {
+							contextFolder,
+							fileName: dumpFileName,
+							fileExtension: DUMP_FILE_EXTENSION,
+							fileContent: dumpFileContent
+						},
+						files,
+						folder: contextFolder
+					};
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Utility function, undumps .dmp files
+	 * TODO: add support for libraries
+	 */
+	async undumpPvsFiles (desc: FileDescriptor): Promise<DumpFileDescriptor> {
+		if (desc?.fileName && desc?.contextFolder) {
+			const dmpFile: string = fsUtils.desc2fname(desc);
+			if (fsUtils.fileExists(dmpFile)) {
+				const undump_folder: string = path.join(desc.contextFolder, `undumped_${desc.fileName}`);
+				const dmpFileContent: string = await fsUtils.readFile(dmpFile);
+				// group 1 is the file name
+				// group 2 is the file content
+				const regex: RegExp = new RegExp(/\$\$\$(.+\.pvs)\s*\n([^\$]+)/g);
+				let match: RegExpMatchArray = null;
+				const undumpedFiles: PvsFile[] = [];
+				while (match = regex.exec(dmpFileContent)) {
+					const fileName: string = match[1]?.trim();
+					const fileContent: string = match[2]?.trim();
+					if (fileName && fileContent) {
+						undumpedFiles.push({
+							fileName,
+							fileContent,
+							fileExtension: ".pvs",
+							contextFolder: undump_folder
+						});
+					}
+				}
+				if (undumpedFiles.length) {
+					// create subdir and write files to disk
+					await fsUtils.createFolder(undump_folder);
+					for (let i = 0; i < undumpedFiles.length; i++) {
+						const fname: string = fsUtils.desc2fname(undumpedFiles[i]);
+						await fsUtils.writeFile(fname, undumpedFiles[i].fileContent);
+					}
+				}
+				return {
+					dmpFile: desc,
+					files: undumpedFiles,
+					folder: undump_folder
+				};
+			}
+		}
+		return null;
+	}
+
+
+	/**
+	 * Returns pvs file dependencies
+	 * TODO: add support for libraries
+	 */
+	async getPvsFileDependencies (desc: PvsFile): Promise<PvsFile[]> {
+		if (desc?.fileName) {
+			// make sure the file is typechecked first
+			let res: PvsResponse = await this.typecheckFile(desc);
+			if (res?.result) {
+				const contextFolder: string = fsUtils.tildeExpansion(desc.contextFolder);
+				const lispCmd: string = `(get-pvs-file-dependencies \"${path.join(contextFolder, `${desc.fileName}${desc.fileExtension}`)}\")`;
+				res = await this.legacy?.lisp(lispCmd);
+				if (res?.result) {
+					const fileNames: string[] = res.result.substring(1, res.result.length - 1 ).replace(/\n/g, "").split(/\s+/g);
+					const pvsFiles: PvsFile[] = [];
+					for (let i = 0; i < fileNames?.length; i++) {
+						// filenames are reported between double quotes -- remove the double quotes and trim spaces
+						const fileName: string = fileNames[i].replace(/\"/g, "").trim();
+						if (fileName) {
+							pvsFiles.push({
+								contextFolder,
+								fileName,
+								fileExtension: ".pvs"
+							});
+						}
+					}
+					return pvsFiles;
+				}		
+			}
+		}
+		return [];
+	}
+
+	/**
 	 * Returns the import chain for a given theory
 	 * @param desc theory descriptor: context folder, file name, file extension, theory name
 	 */
 	async getImportChain (desc: PvsTheory): Promise<PvsTheory[]> {
-		let importChain: PvsTheory[] = [];
-		if (desc && desc.theoryName) {
+		const importChain: PvsTheory[] = [];
+		if (desc?.theoryName) {
 			// change context
 			await this.changeContext(desc);
 
 			// const res: PvsResponse = await this.legacy?.lisp(`(prog2 (show-tccs "${fullName}")
 			// new lisp command for importing proof chain
-			const res: PvsResponse = await this.legacy?.lisp(`
-		(let ((theoryname "${desc.theoryName}"))
-				(let ((usings (remove-if #'(lambda (th)
-				(or (from-prelude? th)
-					(lib-datatype-or-theory? th)))
-			(collect-theory-usings theoryname nil))))
-				(mapcar (lambda (theory) (cons (format nil "|~a|" (id theory)) (shortname (make-specpath (filename theory))))) (reverse usings))))
-			`);
+			const lispCmd: string = `
+(let ((theoryname "${desc.theoryName}"))
+		(let ((usings (remove-if #'(lambda (th)
+		(or (from-prelude? th)
+			(lib-datatype-or-theory? th)))
+	(collect-theory-usings theoryname nil))))
+		(mapcar (lambda (theory) (cons (format nil "|~a|" (id theory)) (shortname (make-specpath (filename theory))))) (reverse usings))))`
+			const res: PvsResponse = await this.legacy?.lisp(lispCmd);
 			// )`);
-			console.log(res.result);
-			if (res && res.result) {
+			console.log(res?.result);
+			if (res?.result) {
 				const regex: RegExp = /\"\|(\w+)\|\"\s*\.\s*\"([^\|]+)\"\)/g;
 				let match: RegExpMatchArray = null;
 				while (match = regex.exec(res.result)) {
@@ -822,6 +982,8 @@ export class PvsProxy {
 	/**
 	 * Typechecks a given pvs file
 	 * @param desc pvs file descriptor: context folder, file name, file extension
+	 * @returns response.result !== null indicates file typechecks successfully
+	 *          response.error !== null or response == null indicates error
 	 */
   	async typecheckFile (desc: PvsFile, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
 		opt = opt || {};
@@ -885,7 +1047,6 @@ export class PvsProxy {
 					};
 				}
 			}
-
 			return res;
 		}
 		return null;
@@ -1739,12 +1900,15 @@ export class PvsProxy {
 	// }
 
 	/**
-	 * Returns pvs version information
+	 * Utility function, returns pvs version information
 	 */
 	getPvsVersionInfo(): PvsVersionDescriptor {
 		return this.pvsVersionInfo;
 	}
 
+	/**
+	 * Utility function, loads library paths and patches
+	 */
 	async loadPvsLibraryPathAndPatches(): Promise<void> {
 		await this.setNasalibPath();
 		await this.pushPvsLibraryPath({ useLisp: true });
@@ -1764,15 +1928,18 @@ export class PvsProxy {
 			res = await this.legacy?.lisp(`(get-pvs-version-information)`);
 		}
 		const nasalib: string = await this.getNasalibVersionInfo();
-		if (res && res.result) {
+		if (res?.result) {
 			const regexp: RegExp = /\(\"?(\d+(?:.?\d+)*)\"?[\s|nil]*\"?([\w\s\d\.]*)\"?/g; // group 1 is pvs version, group 2 is lisp version
 			const info: RegExpMatchArray = regexp.exec(res.result);
-			if (info && info.length > 2) {
+			// clean up version info
+			const version: string = res.result.replace(/\bnil\b/g, "").replace(/\n*/g, "").replace(/\"/g, "").replace(/\s+/g, " ");
+			if (info?.length > 2) {
 				this.pvsVersionInfo = {
 					"pvs-version": info[1].trim(),
 					"lisp-version": info[2].replace("International", "").trim(),
-					"nasalib-version": nasalib ? "NASALib" : null
-				}
+					"nasalib-version": nasalib ? "NASALib" : null,
+					version: version.substring(1, version.length - 1)
+				};
 				return this.pvsVersionInfo;
 			}
 		}
@@ -1782,7 +1949,7 @@ export class PvsProxy {
 	/**
 	 * Returns pvs version information
 	 */
-	async getNasalibVersionInfo(): Promise<string | null> {
+	async getNasalibVersionInfo (): Promise<string | null> {
 		const nasalibPresent: boolean = await this.NasalibPresent();
 		if (nasalibPresent) {
 			const nasalibVersion: PvsResponse = this.externalServer ? await this.lisp(`*nasalib-version*`)
@@ -2211,11 +2378,19 @@ export class PvsProxy {
 		return null;
 	}
 
+	/**
+	 * Utility function, returns true if any pvs patch has been loaded
+	 */
 	async patchesLoaded (): Promise<boolean> {
 		const response: PvsResponse = await this.legacy?.lisp(`(boundp '*pvs-patches*)`);
 		return response && response.result === "t";
 	}
 
+	/**
+	 * Utility function, loads pvs patches stored in the default location (folder 'pvs-patches')
+	 * @param opt 
+	 * @returns 
+	 */
 	async loadPvsPatches (opt?: { externalServer?: boolean }): Promise<PvsResponse> {
 		const alreadyLoaded: boolean = await this.patchesLoaded();
 		if (!alreadyLoaded) {
@@ -2223,7 +2398,6 @@ export class PvsProxy {
 		}
 		return null;
 	}
-
 
 	/**
 	 * pvs-proxy activation function

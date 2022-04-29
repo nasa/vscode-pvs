@@ -76,6 +76,9 @@ const cmds: string[] = [
 	"nf", // new pvs file
 	"nt", // new pvs theory
 
+	"dump-pvs-files", // creates a .dmp file
+	"undump-pvs-files", // undumps a .dmp file
+
 	"add-pvs-library",
 	"pvs-library-path",
 	"view-pvs-library-path",
@@ -149,6 +152,14 @@ export class VSCodePvsEmacsBindingsProvider {
 			switch (userInput) {
 				case "add-pvs-library": {
 					commands.executeCommand('vscode-pvs.add-pvs-library');
+					break;
+				}
+				case "dump-pvs-files": {
+					commands.executeCommand('vscode-pvs.dump-pvs-files', desc);
+					break;
+				}
+				case "undump-pvs-files": {
+					commands.executeCommand('vscode-pvs.undump-pvs-files', desc);
 					break;
 				}
 				case "pvs-library-path":

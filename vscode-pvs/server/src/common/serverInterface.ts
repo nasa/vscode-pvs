@@ -77,7 +77,16 @@ export declare interface PeekDefinitionCommand {
 export declare interface PvsVersionDescriptor {
 	"pvs-version": string,
 	"lisp-version": string,
-	"nasalib-version": string
+	"nasalib-version": string,
+	version: string // this is the original version string returned by pvs
+};
+
+export declare interface VSCodePvsVersionDescriptor {
+	name: string,
+	version: string,
+	description?: string,
+	publisher: string,
+	license: string
 };
 
 export declare interface ErrorType {
@@ -457,7 +466,27 @@ export declare interface SaveProofResponse {
 	formula: PvsFormula,
 	script: string
 };
-
+export declare interface DumpPvsFilesRequest {
+	pvsFile: PvsFile
+};
+export declare interface DumpPvsFilesResponse {
+	req: DumpPvsFilesRequest,
+	res: DumpFileDescriptor,
+	error?: string
+};
+export declare interface UndumpPvsFilesRequest {
+	dmpFile: FileDescriptor
+};
+export declare interface UndumpPvsFilesResponse {
+	req: UndumpPvsFilesRequest,
+	res: DumpFileDescriptor,
+	error?: string
+};
+export declare interface DumpFileDescriptor {
+	dmpFile: FileDescriptor,
+	files:  FileDescriptor[],
+	folder: string
+};
 export const serverRequest = {
 	typecheckFile: "pvs.typecheck-file",
 	proveFormula: "pvs.prove-formula",
@@ -475,6 +504,8 @@ export const serverRequest = {
 	typecheckWorkspaceWithFeedback: "pvs.typecheck-workspace.with-feedback",
 	listContext: "pvs.list-context",
 	generateTccs: "pvs.generate-tccs",
+	dumpPvsFiles: "pvs.dump-pvs-files",
+	undumpPvsFiles: "pvs.undump-pvs-files",
 	showTccs: "pvs.show-tccs",
 	generateTheorySummary: "pvs.generate-theory-summary",
 	showTheorySummary: "pvs.show-theory-summary",

@@ -48,7 +48,7 @@ import {
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
     PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
-    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor, FormulaDescriptor, quickFixReplaceCommand, QuickFixReplace, QuickFixAddImporting, quickFixAddImportingCommand
+    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor, FormulaDescriptor, quickFixReplaceCommand, QuickFixReplace, QuickFixAddImporting, quickFixAddImportingCommand, VSCodePvsVersionDescriptor, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, UndumpPvsFilesResponse
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
@@ -64,7 +64,8 @@ import { VSCodePvsSearch } from "./views/vscodePvsSearch";
 import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
 import { StartXTermEvaluatorRequest, VSCodePvsXTerm } from "./views/vscodePvsXTerm";
 import { colorText, PvsColor } from "./common/colorUtils";
-import { YesNoCancel, quickFixReplace, quickFixAddImporting } from "./utils/vscode-utils";
+import { YesNoCancel, quickFixReplace, quickFixAddImporting, getVSCodePvsExtensionInfo, RunningTask } from "./utils/vscode-utils";
+import { isPvsFile } from "./common/fsUtils";
 
 // FIXME: use Backbone.Model
 export class EventsDispatcher {
@@ -1381,7 +1382,59 @@ export class EventsDispatcher {
             commands.executeCommand("vscode-pvs.typecheck-file", resource);
         }));
         
-        
+        // vscode-pvs.dump-pvs-files
+		context.subscriptions.push(commands.registerCommand("vscode-pvs.dump-pvs-files", async (resource: string | { path: string } | { contextValue: string }) => {
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (!resource && activeEditor?.document) {
+                resource = { path: activeEditor.document.fileName };
+            }
+			if (resource) {
+                const pvsFile: FileDescriptor = vscodeUtils.resource2desc(resource);
+                if (isPvsFile(pvsFile)) {
+                    const req: DumpPvsFilesRequest = { pvsFile };
+                    // send dump-pvs-files request to pvs-server
+                    const task: RunningTask = vscodeUtils.runningTask(`Creating dump file for ${pvsFile.fileName}${pvsFile.fileExtension}, please wait...`);
+                    this.client.sendRequest(serverRequest.dumpPvsFiles, req);
+                    this.client.onNotification(serverRequest.dumpPvsFiles, (ans: DumpPvsFilesResponse) => {
+                        task?.resolve();
+                        if (ans?.res) {
+                            vscodeUtils.showInformationMessage(`Done! ${ans.res.files.length} files stored in ${fsUtils.desc2fname(ans.res.dmpFile)}`);
+                        } else {
+                            vscodeUtils.showWarningMessage(`Unable to dump file (${ans?.error})`);
+                        }
+                    });    
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
+            }
+        }));
+        // vscode-pvs.undump-pvs-files
+		context.subscriptions.push(commands.registerCommand("vscode-pvs.undump-pvs-files", async (resource: string | { path: string } | { contextValue: string }) => {
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (!resource && activeEditor?.document) {
+                resource = { path: activeEditor.document.fileName };
+            }
+			if (resource) {
+                const dmpFile: FileDescriptor = vscodeUtils.resource2desc(resource);
+                if (dmpFile) {
+                    const req: UndumpPvsFilesRequest = { dmpFile };
+                    // send dump-pvs-files request to pvs-server
+                    const task: RunningTask = vscodeUtils.runningTask(`Restoring PVS files from ${dmpFile.fileName}${dmpFile.fileExtension}, please wait...`);
+                    this.client.sendRequest(serverRequest.undumpPvsFiles, req);
+                    this.client.onNotification(serverRequest.undumpPvsFiles, (ans: UndumpPvsFilesResponse) => {
+                        task?.resolve();
+                        if (ans?.res?.folder) {
+                            vscodeUtils.showInformationMessage(`Done! ${ans.res.files.length} files restored to ${ans.res.folder}`);
+                        } else {
+                            vscodeUtils.showWarningMessage(`Unable to restore files (${ans?.error})`);
+                        }
+                    });    
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
+            }
+        }));
+
         // vscode-pvs.show-tccs
 		context.subscriptions.push(commands.registerCommand("vscode-pvs.show-tccs", async (resource: string | { path: string } | { contextValue: string }) => {
             const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();

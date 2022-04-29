@@ -49,7 +49,7 @@ import {
 	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, 
 	SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, 
 	ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, SequentDescriptor, 
-	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, StatusProofChain
+	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, StatusProofChain, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, UndumpPvsFilesResponse, DumpFileDescriptor
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -735,17 +735,35 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		}
 	}
 	/**
+	 * Generate a .dump file request handler
+	 */
+	async dumpPvsFilesRequest (req: DumpPvsFilesRequest): Promise<void> {
+		if (req?.pvsFile && this.pvsProxy) {
+			const pvsFile: PvsFile = fsUtils.decodeURIComponents(req.pvsFile);
+			const desc: DumpFileDescriptor = await this.pvsProxy.dumpPvsFiles(pvsFile);
+			const ans: DumpPvsFilesResponse = { req, res: desc };
+			this.connection?.sendNotification(serverRequest.dumpPvsFiles, ans);
+		}
+	}
+	/**
+	 * Undump file request handler
+	 */
+	async undumpPvsFilesRequest (req: UndumpPvsFilesRequest): Promise<void> {
+		if (req?.dmpFile && this.pvsProxy) {
+			const dmpFile: PvsFile = fsUtils.decodeURIComponents(req.dmpFile);
+			const res: DumpFileDescriptor = await this.pvsProxy.undumpPvsFiles(dmpFile);
+			const ans: UndumpPvsFilesResponse = { req, res, error: res?.folder ? undefined : `Unable to read dump file ${req.dmpFile}` };
+			this.connection?.sendNotification(serverRequest.undumpPvsFiles, ans);
+		}
+	}
+	/**
 	 * Generate tccs file request handler
 	 */
 	async generateTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { quiet?: boolean, showTccsRequest?: boolean }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		if (request && this.pvsProxy) {
 			opt = opt || {};
-			const desc: {
-				fileName: string, 
-				fileExtension: string, 
-				contextFolder: string 
-			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
+			const desc: FileDescriptor = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
 			if (desc) {
 				const fname: string = fsUtils.desc2fname({
 					contextFolder: desc.contextFolder,
@@ -760,7 +778,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				// parse files first, so front-end is updated with stats
 				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking, pvs-server is not able to do this tho.
 				// then generate tccs
-				const response: PvsContextDescriptor = await this.pvsProxy?.generateTccs(desc);
+				const response: PvsContextDescriptor = await this.pvsProxy.generateTccs(desc);
 				this.connection?.sendRequest((opt.showTccsRequest) ? serverEvent.showTccsResponse : serverEvent.generateTccsResponse, { response, args: request });
 
 				let nTccs: number = 0;
@@ -1895,6 +1913,12 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			});
 			this.connection?.onRequest(serverRequest.typecheckFile, async (request: PvsFile) => {
 				this.typecheckFileRequest(request); // async call
+			});
+			this.connection?.onRequest(serverRequest.dumpPvsFiles, async (request: DumpPvsFilesRequest) => {
+				this.dumpPvsFilesRequest(request); // async call
+			});
+			this.connection?.onRequest(serverRequest.undumpPvsFiles, async (request: UndumpPvsFilesRequest) => {
+				this.undumpPvsFilesRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.showTccs, async (request: { fileName: string, fileExtension: string, contextFolder: string, quiet?: boolean }) => {
 				this.generateTccsRequest(request, { quiet: request && request.quiet, showTccsRequest: true }); // async call
