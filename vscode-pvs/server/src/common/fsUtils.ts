@@ -363,6 +363,9 @@ export function getContextFolderName(contextFolder: string): string {
 	}
 	return null;
 }
+/**
+ * Utility function, returns true if the file extension indicates this is a pvs file
+ */
 export function isPvsFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
 	if (desc) {
 		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
@@ -373,6 +376,21 @@ export function isPvsFile(desc: string | { fileName: string, fileExtension: stri
 	}
 	return false;
 }
+/**
+ * Utility function, returns true if the file extension indicates this is a dump file
+ */
+export function isDumpFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
+	if (desc) {
+		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
+		if (ext) {
+			return ext.endsWith(".dmp");
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, returns true if the file extension indicates this is a summary file
+ */
 export function isSummaryFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
 	if (desc) {
 		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;

@@ -744,10 +744,14 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Undump file request handler
 	 */
 	async undumpPvsFilesRequest (req: UndumpPvsFilesRequest): Promise<void> {
-		if (req?.dmpFile && this.pvsProxy) {
+		if (req?.dmpFile?.fileName && this.pvsProxy) {
 			const dmpFile: PvsFile = fsUtils.decodeURIComponents(req.dmpFile);
 			const res: DumpFileDescriptor = await this.pvsProxy.undumpPvsFiles(dmpFile);
-			const ans: UndumpPvsFilesResponse = { req, res, error: res?.folder ? undefined : `Unable to read dump file ${req.dmpFile}` };
+			const ans: UndumpPvsFilesResponse = {
+				req, 
+				res, 
+				error: res?.folder ? undefined : `Unable to extract files from ${req.dmpFile.fileName}${req.dmpFile.fileExtension ? req.dmpFile.fileExtension : ""}`
+			};
 			this.connection?.sendNotification(serverRequest.undumpPvsFiles, ans);
 		}
 	}

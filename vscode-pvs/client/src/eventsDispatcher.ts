@@ -65,7 +65,7 @@ import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
 import { StartXTermEvaluatorRequest, VSCodePvsXTerm } from "./views/vscodePvsXTerm";
 import { colorText, PvsColor } from "./common/colorUtils";
 import { YesNoCancel, quickFixReplace, quickFixAddImporting, getVSCodePvsExtensionInfo, RunningTask, showWarningMessage } from "./utils/vscode-utils";
-import { getUndumpFolderName, isPvsFile } from "./common/fsUtils";
+import { getUndumpFolderName, isDumpFile, isPvsFile } from "./common/fsUtils";
 
 // FIXME: use Backbone.Model
 export class EventsDispatcher {
@@ -1419,6 +1419,7 @@ export class EventsDispatcher {
                         if (ans?.res) {
                             const dmpFile: string = `${ans.res.dmpFile.fileName}${ans.res.dmpFile.fileExtension}`;
                             const msg: string = `Done! ${ans.res.files.length} pvs files stored in ${dmpFile}`;
+                            vscodeUtils.showStatusBarMessage(msg);
                             vscodeUtils.showInformationMessageWithOpenFile(msg, ans.res.dmpFile, {
                                 openFileButton: `Open ${dmpFile}`
                             });
@@ -1439,7 +1440,7 @@ export class EventsDispatcher {
             }
 			if (resource) {
                 const dmpFile: FileDescriptor = vscodeUtils.resource2desc(resource);
-                if (dmpFile) {
+                if (isDumpFile(dmpFile)) {
                     // ask the user confirmation before undumping
                     const yesno: string[] = [ "Yes", "No" ];
                     const folder: string = getUndumpFolderName(dmpFile);
@@ -1453,7 +1454,8 @@ export class EventsDispatcher {
                         this.client.onNotification(serverRequest.undumpPvsFiles, (ans: UndumpPvsFilesResponse) => {
                             task?.resolve();
                             if (ans?.res?.folder && ans?.res?.files?.length) {
-                                const msg: string = `Done! ${ans.res.files.length} files restored to ${ans.res.folder}`;
+                                const msg: string = `${ans.res.files.length} files undumped successfully!`;
+                                vscodeUtils.showStatusBarMessage(msg);
                                 vscodeUtils.showInformationMessageWithOpenFile(msg, ans.res.files[ans.res.files.length - 1], {
                                     openFileButton: `Open folder ${folder}`
                                 });
@@ -1462,6 +1464,8 @@ export class EventsDispatcher {
                             }
                         });
                     }
+                } else {
+                    vscodeUtils.showWarningMessage(`Undump can only be performed on .dmp files`);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);

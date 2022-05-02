@@ -758,12 +758,12 @@ export class PvsProxy {
 						const fname: string = fsUtils.desc2fname(undumpedFiles[i]);
 						await fsUtils.writeFile(fname, undumpedFiles[i].fileContent);
 					}
+					return {
+						dmpFile: desc,
+						files: undumpedFiles,
+						folder: undump_folder
+					};	
 				}
-				return {
-					dmpFile: desc,
-					files: undumpedFiles,
-					folder: undump_folder
-				};
 			}
 		}
 		return null;
