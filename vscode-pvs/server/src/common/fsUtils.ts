@@ -1938,7 +1938,7 @@ export function lsPvsVersions (): string {
 /**
  * Utility function, parses the result of lsPvsVersions
  */
- export function parseLsPvsVersions (str: string): PvsDownloadDescriptor[] {
+export function parseLsPvsVersions (str: string): PvsDownloadDescriptor[] {
 	 if (str) {
 		const res: string = str?.toLocaleString().trim();
 		const elems: string[] = res?.split("\n");
@@ -1951,6 +1951,14 @@ export function lsPvsVersions (): string {
 		return versions;
 	}
 	return null;
+}
+
+/**
+ * Utility function, returns the name of the default undump folder
+ */
+export function getUndumpFolderName (dmpFile: FileDescriptor): string {
+	const folder: string = `undumped_${dmpFile.fileName}`;
+	return folder;
 }
 
 /**

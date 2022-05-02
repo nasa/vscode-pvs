@@ -732,7 +732,7 @@ export class PvsProxy {
 		if (desc?.fileName && desc?.contextFolder) {
 			const dmpFile: string = fsUtils.desc2fname(desc);
 			if (fsUtils.fileExists(dmpFile)) {
-				const undump_folder: string = path.join(desc.contextFolder, `undumped_${desc.fileName}`);
+				const undump_folder: string = path.join(desc.contextFolder, fsUtils.getUndumpFolderName(desc));
 				const dmpFileContent: string = await fsUtils.readFile(dmpFile);
 				// group 1 is the file name
 				// group 2 is the file content
@@ -740,13 +740,13 @@ export class PvsProxy {
 				let match: RegExpMatchArray = null;
 				const undumpedFiles: PvsFile[] = [];
 				while (match = regex.exec(dmpFileContent)) {
-					const fileName: string = match[1]?.trim();
+					const fname: string = match[1]?.trim();
 					const fileContent: string = match[2]?.trim();
-					if (fileName && fileContent) {
+					if (fname && fileContent) {
 						undumpedFiles.push({
-							fileName,
+							fileName: fsUtils.getFileName(fname),
 							fileContent,
-							fileExtension: ".pvs",
+							fileExtension: fsUtils.getFileExtension(fname),
 							contextFolder: undump_folder
 						});
 					}

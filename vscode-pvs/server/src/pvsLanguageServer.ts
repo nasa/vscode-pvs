@@ -73,7 +73,7 @@ import { ProcessCode } from './pvsProcess';
 import { PvsProofExplorer } from './providers/pvsProofExplorer';
 import { PvsRenameProvider } from './providers/pvsRenameProvider';
 import { PvsSearchEngine } from './providers/pvsSearchEngine';
-import { getOs } from './common/fsUtils';
+import { getOs, isPvsFile } from './common/fsUtils';
 import { PvsCodeActionProvider } from './providers/pvsCodeActionProvider';
 
 export declare interface PvsTheoryDescriptor {
@@ -614,55 +614,50 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		if (mode !== "lisp") {
 			return;
 		}
-		if (request) {
+		if (isPvsFile(request)) { // only .pvs files should be typechecked
 			request = fsUtils.decodeURIComponents(request);
-			if (request) {
-				request.fileExtension = ".pvs"; // only .pvs files should be typechecked
-				const fname: string = fsUtils.desc2fname(request);
-				// make sure file exists
-				if (!fsUtils.fileExists(fname)) {
-					this.notifyMessage({ msg: `Warning: file ${fname} does not exist. (source: Typechecker)` });
-					return;
+			const fname: string = fsUtils.desc2fname(request);
+			// make sure file exists
+			if (!fsUtils.fileExists(fname)) {
+				this.notifyMessage({ msg: `Warning: file ${fname} does not exist. (source: Typechecker)` });
+				return;
+			}
+			const taskId: string = `typecheck-${fname}`;
+			// send feedback to the front-end
+			this.notifyStartImportantTask({ id: taskId, msg: `Typechecking ${fname}` });
+			// parse workspace first, so the front-end is updated with statistics
+			// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
+			// proceed with typechecking
+			const response: PvsResponse = await this.typecheckFile(request);
+			this.connection?.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
+			// // send diagnostics
+			if (response) {
+				if (response.result) {
+					// this.diags[fname] = {
+					// 	pvsResponse: response,
+					// 	isTypecheckError: true
+					// };
+					// this.sendDiagnostics("Typecheck");
+					this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} typechecks successfully!` });
+					// send a context descriptor because typechecking may generate adt files
+					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+					this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);	
+				} else {
+					this.pvsErrorManager?.handleTypecheckError({ response: <PvsError> response, taskId, request });
+					// send diagnostics
+					// if (response.error.data) {
+					// 	const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
+					// 	const msg: string = response.error.data.error_string || "";
+					// 	this.diags[fname] = {
+					// 		pvsResponse: response,
+					// 		isTypecheckError: true
+					// 	};
+					// 	this.sendDiagnostics("Typecheck");
+					// }
 				}
-				const taskId: string = `typecheck-${fname}`;
-				// send feedback to the front-end
-				this.notifyStartImportantTask({ id: taskId, msg: `Typechecking ${fname}` });
-				// parse workspace first, so the front-end is updated with statistics
-				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
-				// proceed with typechecking
-				const response: PvsResponse = await this.typecheckFile(request);
-				this.connection?.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
-				// // send diagnostics
-				if (response) {
-					if (response.result) {
-						// this.diags[fname] = {
-						// 	pvsResponse: response,
-						// 	isTypecheckError: true
-						// };
-						// this.sendDiagnostics("Typecheck");
-						this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} typechecks successfully!` });
-						// send a context descriptor because typechecking may generate adt files
-						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
-						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);	
-					} else {
-						this.pvsErrorManager?.handleTypecheckError({ response: <PvsError> response, taskId, request });
-						// send diagnostics
-						// if (response.error.data) {
-						// 	const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
-						// 	const msg: string = response.error.data.error_string || "";
-						// 	this.diags[fname] = {
-						// 		pvsResponse: response,
-						// 		isTypecheckError: true
-						// 	};
-						// 	this.sendDiagnostics("Typecheck");
-						// }
-					}
-				}
-			} else {
-				console.error("[pvs-language-server] Warning: pvs.typecheck-file is unable to identify filename for ", request);
 			}
 		} else {
-			console.error("[pvs-language-server] Warning: pvs.typecheck-file invoked with null request");
+			console.error("[pvs-language-server] Warning: pvs.typecheck-file invoked with null request or with a file extension different than .pvs", request);
 		}
 	}
 	/**

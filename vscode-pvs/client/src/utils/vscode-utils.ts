@@ -120,7 +120,7 @@ export function getDefaultContextFolder (): string {
 export async function showYesCancelDialog (msg: string): Promise<YesCancel> {
     if (msg) {
         const yes: string = "Yes";
-        const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yes)
+        const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yes);
         if (ans === yes) {
             return "yes";
         }
@@ -129,7 +129,6 @@ export async function showYesCancelDialog (msg: string): Promise<YesCancel> {
 }
 /**
  * Utility function, shows a text document in the editor
- * @param content 
  */
  export function showTextDocument (desc: { 
     contextFolder: string, 
@@ -356,6 +355,24 @@ export function showInformationMessage (message: string, opt?: { timeout?: numbe
             cancellable
         }, task);
     }
+}
+/**
+ * Utility function, shows an information message in a dialog that provides also an open-file button
+ */
+export async function showInformationMessageWithOpenFile (msg: string, desc: FileDescriptor, opt?: {
+    modal?: boolean,
+    openFileButton?: string
+}): Promise<boolean> {
+    if (desc?.fileName && desc?.contextFolder) {
+        const openFile: string = opt?.openFileButton || "Open File";
+        const ans: string = await vscode.window.showInformationMessage(msg, { modal: !!opt?.modal }, openFile);
+        if (ans === openFile) {
+            const fileUri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname(desc));
+            await vscode.window.showTextDocument(fileUri, { preserveFocus: false });
+            return true;
+        }
+    }
+    return false;
 }
 /**
  * Utility function, shows a temporary message in the status bar.

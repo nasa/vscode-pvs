@@ -64,8 +64,8 @@ import { VSCodePvsSearch } from "./views/vscodePvsSearch";
 import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
 import { StartXTermEvaluatorRequest, VSCodePvsXTerm } from "./views/vscodePvsXTerm";
 import { colorText, PvsColor } from "./common/colorUtils";
-import { YesNoCancel, quickFixReplace, quickFixAddImporting, getVSCodePvsExtensionInfo, RunningTask } from "./utils/vscode-utils";
-import { isPvsFile } from "./common/fsUtils";
+import { YesNoCancel, quickFixReplace, quickFixAddImporting, getVSCodePvsExtensionInfo, RunningTask, showWarningMessage } from "./utils/vscode-utils";
+import { getUndumpFolderName, isPvsFile } from "./common/fsUtils";
 
 // FIXME: use Backbone.Model
 export class EventsDispatcher {
@@ -1010,15 +1010,32 @@ export class EventsDispatcher {
         // io requests (pvsio, pvsio-web)
         context.subscriptions.push(commands.registerCommand("vscode-pvs.io", async (resource?: { path: string }) => {
             // the toolbar generates invocations with resource = { path }, where path is the path of the file opened in the active editor
-            const msg: string = "Start evaluator session?"
-            const selection: string[] = [ "Start PVSio", "Start PVSio-Web" ];
-            const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, selection[0], selection[1]);
-            switch (ans) {
-                case selection[0]: { return vscode.commands.executeCommand("vscode-pvs.pvsio-evaluator"); }
-                case selection[1]: { return vscode.commands.executeCommand("vscode-pvs.pvsio-web", resource, { force: true }); }
-                default: {
-                    break;
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (activeEditor?.document) {
+                // if the file is currently open in the editor, save file first
+                await activeEditor.document.save();
+                if (!resource) {
+                    resource = { path: activeEditor.document.fileName };
                 }
+            }
+			if (resource) {
+                const desc: FileDescriptor = vscodeUtils.resource2desc(resource);
+                if (isPvsFile(desc)) {
+                    const msg: string = "Start evaluator session?"
+                    const selection: string[] = [ "Start PVSio", "Start PVSio-Web" ];
+                    const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, selection[0], selection[1]);
+                    switch (ans) {
+                        case selection[0]: { return vscode.commands.executeCommand("vscode-pvs.pvsio-evaluator"); }
+                        case selection[1]: { return vscode.commands.executeCommand("vscode-pvs.pvsio-web", resource, { force: true }); }
+                        default: {
+                            break;
+                        }
+                    }
+                } else {
+                    showWarningMessage (`The pvs evaluator can only be used on .pvs files.`);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
             }
         }));
 
@@ -1367,11 +1384,13 @@ export class EventsDispatcher {
             }
 			if (resource) {
                 const desc: FileDescriptor = vscodeUtils.resource2desc(resource);
-                if (desc) {
+                if (isPvsFile(desc)) {
                     // show output panel for feedback
                     // commands.executeCommand("workbench.action.output.toggleOutput", true);
                     // send typecheck request to pvs-server
                     this.client.sendRequest(serverRequest.typecheckFile, desc);
+                } else {
+                    showWarningMessage (`Typechecking can only be performed on .pvs files.`);
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
@@ -1398,7 +1417,11 @@ export class EventsDispatcher {
                     this.client.onNotification(serverRequest.dumpPvsFiles, (ans: DumpPvsFilesResponse) => {
                         task?.resolve();
                         if (ans?.res) {
-                            vscodeUtils.showInformationMessage(`Done! ${ans.res.files.length} files stored in ${fsUtils.desc2fname(ans.res.dmpFile)}`);
+                            const dmpFile: string = `${ans.res.dmpFile.fileName}${ans.res.dmpFile.fileExtension}`;
+                            const msg: string = `Done! ${ans.res.files.length} pvs files stored in ${dmpFile}`;
+                            vscodeUtils.showInformationMessageWithOpenFile(msg, ans.res.dmpFile, {
+                                openFileButton: `Open ${dmpFile}`
+                            });
                         } else {
                             vscodeUtils.showWarningMessage(`Unable to dump file (${ans?.error})`);
                         }
@@ -1417,18 +1440,28 @@ export class EventsDispatcher {
 			if (resource) {
                 const dmpFile: FileDescriptor = vscodeUtils.resource2desc(resource);
                 if (dmpFile) {
-                    const req: UndumpPvsFilesRequest = { dmpFile };
-                    // send dump-pvs-files request to pvs-server
-                    const task: RunningTask = vscodeUtils.runningTask(`Restoring PVS files from ${dmpFile.fileName}${dmpFile.fileExtension}, please wait...`);
-                    this.client.sendRequest(serverRequest.undumpPvsFiles, req);
-                    this.client.onNotification(serverRequest.undumpPvsFiles, (ans: UndumpPvsFilesResponse) => {
-                        task?.resolve();
-                        if (ans?.res?.folder) {
-                            vscodeUtils.showInformationMessage(`Done! ${ans.res.files.length} files restored to ${ans.res.folder}`);
-                        } else {
-                            vscodeUtils.showWarningMessage(`Unable to restore files (${ans?.error})`);
-                        }
-                    });    
+                    // ask the user confirmation before undumping
+                    const yesno: string[] = [ "Yes", "No" ];
+                    const folder: string = getUndumpFolderName(dmpFile);
+                    const msg: string = `Undump pvs files to folder '${folder}'?`;
+                    const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+                    if (ans === yesno[0]) {
+                        const req: UndumpPvsFilesRequest = { dmpFile };
+                        // send dump-pvs-files request to pvs-server
+                        const task: RunningTask = vscodeUtils.runningTask(`Restoring PVS files from ${dmpFile.fileName}${dmpFile.fileExtension}, please wait...`);
+                        this.client.sendRequest(serverRequest.undumpPvsFiles, req);
+                        this.client.onNotification(serverRequest.undumpPvsFiles, (ans: UndumpPvsFilesResponse) => {
+                            task?.resolve();
+                            if (ans?.res?.folder && ans?.res?.files?.length) {
+                                const msg: string = `Done! ${ans.res.files.length} files restored to ${ans.res.folder}`;
+                                vscodeUtils.showInformationMessageWithOpenFile(msg, ans.res.files[ans.res.files.length - 1], {
+                                    openFileButton: `Open folder ${folder}`
+                                });
+                            } else {
+                                vscodeUtils.showWarningMessage(`Unable to restore files (${ans?.error})`);
+                            }
+                        });
+                    }
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
