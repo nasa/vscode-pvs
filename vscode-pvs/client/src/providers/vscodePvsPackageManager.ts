@@ -129,7 +129,7 @@ export class VSCodePvsPackageManager {
     /**
      * Chooses PVS path with a dialog and then sets pvs.path in vscode settings
      */
-     async choosePvsPath (): Promise <void> {
+    async choosePvsPath (): Promise <void> {
         // choose installation folder
         const pvsPath: string = await this.choosePvsInstallationFolder();
         if (pvsPath) {

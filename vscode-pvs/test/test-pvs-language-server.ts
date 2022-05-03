@@ -2,7 +2,7 @@ import * as fsUtils from "../server/src/common/fsUtils";
 import { configFile } from './test-utils';
 import * as path from 'path';
 import { PvsLanguageServer } from '../server/src/pvsLanguageServer'
-import { ProofDescriptor, PvsFormula } from "../server/src/common/serverInterface";
+import { ProofDescriptor, PvsFormula, SearchRequest, SearchResult } from "../server/src/common/serverInterface";
 import { execSync } from "child_process";
 import { PvsResult } from "../server/src/common/pvs-gui";
 import { expect } from 'chai';
@@ -15,13 +15,16 @@ describe("pvs-language-server", () => {
 	let server: PvsLanguageServer = new PvsLanguageServer();
 	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
-		const content: { pvsPath: string } = JSON.parse(config);
+		const configuration: { pvsPath: string } = JSON.parse(config);
 		// console.log(content);
-		const pvsPath: string = content.pvsPath;
-		await server.startPvsServer({ pvsPath });
+		const pvsPath: string = configuration.pvsPath;
+		const pvsLibraryPath: string = path.join(configuration.pvsPath, "nasalib");
+		await server.startPvsServer({ pvsPath, pvsLibraryPath });
 
 		console.log("\n----------------------");
 		console.log("test-pvs-language-server");
+		console.log(` $PVS_DIR = ${server.getPvsPath()}`);
+		console.log(` $NASALIB_PATH = ${server.getNasalibPath()}`);
 		console.log("----------------------");
 	});
 	after(async () => {
@@ -68,5 +71,38 @@ describe("pvs-language-server", () => {
 
 	}).timeout(20000);
 
+	let nasalibSearchResults: number = 0;
+
+	// test search nasalib function
+	it(`can search nasalib`, async () => {
+		const req: SearchRequest = { searchString: "vector" };
+		const res: SearchResult[] = await server.searchNasalib(req, { quiet: true });
+		// console.log(res);
+		nasalibSearchResults = res?.length;
+		expect(res?.length > 0);
+		expect(res.includes({
+			fileName: 'circles_and_lines',
+			fileExtension: '.pvs',
+			contextFolder: '~/Work/pvs-snapshots/pvs-7.1.0/nasalib/reals',
+			fileContent: '%  See related theorems in vectors@closest_approach_2D',
+			line: 6
+		}));
+	});
+
+	// test search external lib function
+	it(`can search external libraries`, async () => {
+		const req: SearchRequest = { searchString: "vector" };
+		const res: SearchResult[] = await server.searchPvsLibraryPath(req, { quiet: true, libraryPath: "~/Work/pvs-snapshots/pvs-7.1.0/nasalib" });
+		// console.log(res);
+		expect(res?.length > 0);
+		expect(res.includes({
+			fileName: 'circles_and_lines',
+			fileExtension: '.pvs',
+			contextFolder: '~/Work/pvs-snapshots/pvs-7.1.0/nasalib/reals',
+			fileContent: '%  See related theorems in vectors@closest_approach_2D',
+			line: 6
+		}));
+		expect(res.length === nasalibSearchResults);
+	});
 });
 

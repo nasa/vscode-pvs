@@ -517,7 +517,7 @@ export function desc2fname (desc: FileDescriptor): string {
  * Utility function, returns a list of all subfolders contained in the given folder
  */
 export function listSubFolders (folder: string): string[] {
-	if (folder) {
+	if (folder && folderExists(folder)) {
 		return fs.readdirSync(folder, { withFileTypes: true })
 			.filter((dir: fs.Dirent) => { return dir.isDirectory(); })
 			.map((dir: fs.Dirent) => { return dir.name; });
@@ -1598,6 +1598,7 @@ export function contextDescriptor2LookUpTable (ctx: PvsContextDescriptor): LookU
 	if (ctx?.contextFolder) {
 		const table: LookUpTable = {
 			stats: {
+				version: "",
 				folders: 1,
 				theories: 0,
 				types: 0,

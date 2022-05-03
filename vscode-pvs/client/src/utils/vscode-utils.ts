@@ -660,7 +660,9 @@ export async function previewPvsFile (fname?: string, opt?: { selection?: vscode
     opt = opt || {};
     if (fname) {
         const fileUri: vscode.Uri = vscode.Uri.file(fname);
-        vscode.window.showTextDocument(fileUri, { viewColumn: vscode.ViewColumn.One, preserveFocus: true, selection: opt?.selection, preview: true });
+        vscode.window.showTextDocument(fileUri, { viewColumn: vscode.ViewColumn.One, preserveFocus: true, selection: opt?.selection, preview: true }).then(null, (err) => {
+            console.warn(err);
+        });
     }
 }
 /**

@@ -49,7 +49,11 @@ import {
 	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, 
 	SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, 
 	ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, SequentDescriptor, 
-	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, StatusProofChain, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, UndumpPvsFilesResponse, DumpFileDescriptor
+	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, 
+	InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, 
+	NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, 
+	StatusProofChain, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, 
+	UndumpPvsFilesResponse, DumpFileDescriptor
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -225,7 +229,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	/**
 	 * Returns the pvs proxy
 	 */
-	 getPvsProxy (): PvsProxy {
+	getPvsProxy (): PvsProxy {
 		return this.pvsProxy;
 	}
 	/**
@@ -239,6 +243,17 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	getNasalibPath (): string {
 		return this.pvsPath ? path.join(this.pvsPath, "nasalib") : "";
+	}
+	/**
+	 * Returns the list of external library paths
+	 */
+	getExternalLibraryPaths (): string[] {
+		let external: string[] = this.pvsLibraryPath?.split(":").map(elem => {
+			return elem.trim();
+		}).filter(elem => {
+			return elem && elem !== "";
+		}) || [];
+		return external;
 	}
 	/**
 	 * Returns the connection
@@ -1246,7 +1261,20 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		// forward request to pvsCodeActionProvider
 		this.pvsCodeActionProvider.clearWorkspaceDescriptor();
 	}
-
+	/**
+	 * search nasalib
+	 */
+	async searchNasalib (req: SearchRequest, opt?: { quiet?: boolean }): Promise<SearchResult[]> {
+		const ans: SearchResult[] = await this.pvsSearchEngine?.searchNasalib(req?.searchString, opt);
+		return ans;
+	}
+	/**
+	 * search external library
+	 */
+	async searchPvsLibraryPath (req: SearchRequest, opt?: { quiet?: boolean, libraryPath?: string }): Promise<SearchResult[]> {
+		const ans: SearchResult[] = await this.pvsSearchEngine?.searchPvsLibraryPath(req?.searchString, opt);
+		return ans;
+	}
 	/**
 	 * Returns a descriptor with information on all theories in a given file
 	 */
@@ -2016,9 +2044,11 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 
 			// search request
 			this.connection?.onRequest(serverRequest.search, async (req: SearchRequest) => {
-				const ans: SearchResult[] = await this.pvsSearchEngine?.searchNasalib(req.searchString);
+				const ans: SearchResult[] = req?.library !== "nasalib" ? 
+					await this.searchPvsLibraryPath(req)
+						: await this.searchNasalib(req);
 				const res: SearchResponse = { req, ans };
-				this.connection?.sendNotification(serverEvent.searchResponse, res);
+				this.connection?.sendNotification(serverRequest.search, res);
 			});
 
 			// find declaration request

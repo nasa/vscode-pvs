@@ -39,28 +39,38 @@
 import { execSync } from "child_process";
 import { Connection } from "vscode-languageserver";
 import { PvsLanguageServer } from "../pvsLanguageServer";
-import { SearchResult } from "../common/serverInterface";
+import { PvsContextDescriptor, SearchResult } from "../common/serverInterface";
 import * as fsUtils from "../common/fsUtils";
 import * as path from 'path';
 import * as colorUtils from '../common/colorUtils';
 
+/**
+ * Search functions and lemmas in nasalib
+ */
 export class PvsSearchEngine {
     protected connection: Connection;
     protected pvsLanguageServer: PvsLanguageServer;
+	protected pvsLibraryDescriptors: PvsContextDescriptor[] = [];
 
+	/**
+	 * Constructor
+	 */
     constructor (connection: Connection, pvsLanguageServer: PvsLanguageServer) {
         this.connection = connection;
         this.pvsLanguageServer = pvsLanguageServer;
     }
-    
-    async searchNasalib (searchString: string): Promise<SearchResult[]> {
+
+	/**
+	 * Search a given string in nasalib
+	 */
+    async searchNasalib (searchString: string, opt?: { quiet?: boolean }): Promise<SearchResult[]> {
 		if (searchString) {
 			const nasalibPath: string = this.pvsLanguageServer.getNasalibPath();
 			const normalizedSearchString: string = searchString.replace(/\|/g, "\\|");
 			const findAll: string = `cd ${nasalibPath} && ./find-all "${normalizedSearchString}"`;
-			console.log(`[pvs-search-engine] ${findAll}`);
-			process.env["PVS_DIR"] = this.pvsLanguageServer.getPvsPath();
-			process.env["PVS_LIBRARY_PATH"] = nasalibPath;
+			if (!opt?.quiet) { console.log(`[pvs-search-engine] ${findAll}`); }
+			process.env["PVS_DIR"] = fsUtils.tildeExpansion(this.pvsLanguageServer.getPvsPath());
+			process.env["PVS_LIBRARY_PATH"] = fsUtils.tildeExpansion(nasalibPath);
 			const search: Buffer = execSync(findAll);
 			if (search) {
 				const res: SearchResult[] = [];
@@ -161,4 +171,42 @@ export class PvsSearchEngine {
 		}
 		return null;
 	}
- }
+	/**
+	 * Utility function, searches a given string in libraries imported with PVS_LIBRARY_PATH
+	 */
+	async searchPvsLibraryPath (searchString: string, opt?: { quiet?: boolean, libraryPath?: string }): Promise<SearchResult[]> {
+		const libraryPaths: string[] = opt?.libraryPath?.split(":") || this.pvsLanguageServer.getExternalLibraryPaths();
+		const res: SearchResult[] = [];
+		for (let i = 0; i < libraryPaths?.length; i++) {
+			const cmd: string = `grep --include '*.pvs' -Hrn "${searchString}" ${libraryPaths[i]}`;
+			if (!opt?.quiet) { console.log(`[searchExternalLib] ${cmd}`); }
+			try {
+				const search: Buffer = execSync(cmd);
+				if (search) {
+					const resultLines: string[] = search.toLocaleString().split("\n");
+					for (let l = 0; l < resultLines?.length; l++) {
+						// results are in the form path:line:content
+						// group 1 is fname
+						// group 2 is line #
+						// gorup 3 is content
+						const regexp: RegExp = new RegExp(/(.+)\:(\d+):(.+)/g);
+						const match: RegExpMatchArray = regexp.exec(resultLines[l]);
+						if (match?.length > 2 && match[1] && match[2] && !isNaN(+match[2]) && match[3]) {
+							const data: SearchResult = {
+								contextFolder: fsUtils.getContextFolder(match[1]),
+								fileName: fsUtils.getFileName(match[1]),
+								fileExtension: fsUtils.getFileExtension(match[1]),
+								line: +match[2],
+								fileContent: match[3]
+							};
+							res.push(data);
+						}
+					}
+				}
+			} catch (err) {
+				// grep returns an error if there are no results, do nothing
+			}
+		}
+		return res;
+	}
+}

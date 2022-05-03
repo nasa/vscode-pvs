@@ -99,7 +99,7 @@ else
 	npm run test-pvs-context
 endif
 test-pvs-language-server:
-	npm run test-pvs-laguage-server
+	npm run test-pvs-language-server
 test-proof-explorer:
 	npm run test-proof-explorer
 test-tacticals:

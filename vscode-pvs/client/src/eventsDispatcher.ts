@@ -667,7 +667,7 @@ export class EventsDispatcher {
             vscodeUtils.commentProofliteInActiveEditor();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.search-nasalib", () => {
-            this.search.reveal();
+            this.search.reveal(); // async call
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.view-prelude-file", () => {
             this.client.sendRequest(serverRequest.viewPreludeFile);

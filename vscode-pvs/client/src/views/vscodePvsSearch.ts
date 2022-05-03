@@ -40,18 +40,21 @@ import {
     ExtensionContext, Position, Range, Uri, ViewColumn, WebviewPanel, window 
 } from "vscode";
 import { 
-    LookUpTableStats,
-    PvsTheory,
-    SearchRequest, SearchResponse, SearchResult, serverEvent, serverRequest 
+    LookUpTableStats, PvsContextDescriptor, PvsTheory, SearchLibrary,
+    SearchRequest, SearchResponse, SearchResult, serverRequest 
 } from "../common/serverInterface";
 import * as path from 'path';
 import { LanguageClient } from "vscode-languageclient";
 import * as Handlebars from "handlebars";
 
+// button labels
+const SEARCH_PVSLIB: string = "Search User Libraries";
+const SEARCH_NASALIB: string = "Search NASAlib";
+
 /**
  * Handlebars template for the html content of the view
  */
-const htmlTemplate: string = `
+const htmlContent: string = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,14 +86,20 @@ $(document).ready(function() {
         const value = $(this).val();
         $(".clear-btn").css("display", value ? "block" : "none");
         if (value === "") {
+            // remove results and show welcome screen
+            $("#search-results").remove();
+            $("#results-summary").css("display", "none");
+            $(".filter").css("display", "none");
             $("#welcome-screen").css("display", "block");
         }
     });
     $(".filter-results").on("keyup", function() {
+        $("#results-summary").css("display", "block");
         const value = $(this).val().toLowerCase();
-        $(".result-item").filter(function() {
-            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+        const visible = $("#search-results .result-item").filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
         });
+        $("#filter").text(value ? $("#search-results .result-item :visible").length + " of " : "");
     });
     // init interactive tree
     const toggler = document.getElementsByClassName("caret");
@@ -111,6 +120,10 @@ $(document).ready(function() {
 .bg-white {
     background: white;
 }
+.btn-outline-secondary:hover {
+    background: white;
+    color: black;
+}
 </style>
 <body style="overflow:auto; background:whitesmoke; font-size:small;" class="p-1">
     <div class="container-fluid mb-1" style="position:sticky; top:0px; padding:4px; z-index:1;">
@@ -118,10 +131,10 @@ $(document).ready(function() {
             <div class="input-group-prepend">
                 <span class="input-group-text"><i class="fa fa-search" aria-hidden="true"></i></span>
             </div>
-            <input type="text" class="form-control search-input" placeholder="Search NASALib..." aria-label="Search NASALib" value="{{searchString}}">
+            <input type="text" class="form-control search-input" placeholder="Search..." aria-label="Search" value="{{searchString}}">
             <div class="input-group-append">
                 <button class="btn btn-outline-secondary btn-sm clear-btn" type="button" style="display:{{#if res}}block{{else}}none{{/if}}"><i class="fa fa-times" aria-hidden="true"></i></button>
-                <button class="btn btn-secondary btn-sm search-btn" type="button">Search</button>
+                <button class="btn btn-secondary btn-sm search-btn" type="button">${SEARCH_NASALIB}</button>
             </div>
         </div>
         <div class="filter" style="display:{{#if res}}block{{else}}none{{/if}};">
@@ -138,21 +151,37 @@ $(document).ready(function() {
             <div class="card-body p-0">
                 <ul class="results list-group list-group-flush" style="overflow:auto;">
                     <a href="#" class="spinner list-group-item list-group-item-action" style="white-space:nowrap; display:{{#if showSpinner}}block{{else}}none{{/if}};"><span class='spinner-border spinner-border-sm' role='status' aria-hidden='true'></span> Loading...</a>
-                    <div id="welcome-screen" class="card" style="display:{{#if res}}none{{else}}block{{/if}};">
+                    <a href="#" id="results-summary" class="list-group-item list-group-item-action" style="white-space:nowrap; display:{{#if showResults}}block{{else}}none{{/if}};"><span id="filter"></span><span id="matches">{{res.length}}</span> matches</a>
+                    <div id="welcome-screen" class="card" style="display:{{#if res}}none{{else}}block{{/if}};">                    
                         <div class="card-header p-1">
-                            {{#if logo}}
-                            <img src="{{logo}}" style="margin-top:-2px; padding:4px;">
-                            {{/if}}
-                            <span> NASALib Libraries </span>
+                            <div class="libraries btn-group btn-group-sm" role="group" aria-label="Basic example">
+                                <button type="button" class="btn btn-outline-secondary active" id="nasalib-btn" name="nasalib">
+                                    {{#if logo}}
+                                    <img src="{{logo}}" style="margin-top:-2px; padding:4px;">
+                                    {{/if}}
+                                    <span> NASALib Libraries </span>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="pvslib-btn" name="pvslib">
+                                    <span> User-Defined Libraries </span>
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
                         {{welcomeScreen}}
                         </div>
                         <div class="card-footer text-muted" style="white-space:nowrap; font-size:x-small;">
-                            {{#each stats}}
+                            <div class="lib-footer" id="nasalib-footer">
+                            {{#each nasalibStats}}
                                 {{#if @first}} {{this}} <br> ({{else}} {{@key}}: {{this}} {{/if}}
                                 {{#if @first}} {{else}} {{#if @last}} {{else}} - {{/if}}{{/if}}
                             {{/each}})
+                            </div>
+                            <div class="lib-footer" id="pvslib-footer" style="display:none;">
+                            {{#each pvslibStats}}
+                                {{#if @first}} {{this}} <br> ({{else}} {{@key}}: {{this}} {{/if}}
+                                {{#if @first}} {{else}} {{#if @last}} {{else}} - {{/if}}{{/if}}
+                            {{/each}})
+                            </div>
                         </div>
                     </div>
                     <div id="search-results">
@@ -166,13 +195,15 @@ $(document).ready(function() {
     </div>
 
     <script>
+    // active view
+    let activeView = "{{activeView}}";
     // utility functions to send messages to vscode-pvs from the webview
     (function() {
         const vscode = acquireVsCodeApi();
         function search () {
             const searchString = $(".search-input")?.val()?.trim();
             if (searchString) {
-                vscode.postMessage({ command: 'search', searchString });
+                vscode.postMessage({ command: 'search', searchString, activeView });
             }
         }
         function clear () {
@@ -181,11 +212,36 @@ $(document).ready(function() {
             $(".filter").css("display", "none")
             $(".clear-btn").css("display", "none");
             $("#search-results").remove();
+            $("#results-summary").css("display", "none");
             $("#welcome-screen").css("display", "block");
+            selectActiveView();
             focus();
         }
         function focus () {
             $(".search-input").focus();
+        }
+        function selectActiveView () {
+            activeView === "nasalib" ? nasalibView() : pvslibView();
+        }
+        function nasalibView () {
+            activeView = "nasalib";
+            $(".lib-tree").css("display", "none");
+            $(".lib-footer").css("display", "none");
+            $("#nasalib-tree").css("display", "block");
+            $("#nasalib-footer").css("display", "block");
+            $("#pvslib-btn").removeClass("active");
+            $("#nasalib-btn").addClass("active");
+            $(".search-btn").text("${SEARCH_NASALIB}"); 
+        }
+        function pvslibView () {
+            activeView = "pvslib";
+            $(".lib-tree").css("display", "none");
+            $(".lib-footer").css("display", "none");
+            $("#pvslib-tree").css("display", "block");
+            $("#pvslib-footer").css("display", "block");
+            $("#nasalib-btn").removeClass("active");
+            $("#pvslib-btn").addClass("active");
+            $(".search-btn").text("${SEARCH_PVSLIB}"); 
         }
         $(".search-btn").on("click", (evt) => {
             search();
@@ -208,6 +264,14 @@ $(document).ready(function() {
                 line
             });
         });
+        $(".libraries .btn").on("click", (evt) => {
+            const isActive = $(evt?.currentTarget).hasClass("active");
+            if (!isActive) {
+                const btn_name = $(evt?.currentTarget).attr("name");
+                btn_name === "nasalib" ? nasalibView() : pvslibView();
+            }
+        });
+        selectActiveView ();
     }());
     // Handle the message inside the webview
     window.addEventListener('message', event => {
@@ -237,7 +301,7 @@ $(document).ready(function() {
  * Handlebars template for the welcome screen (shows folders and files in nasalib)
  * template based on https://www.w3schools.com/howto/howto_js_treeview.asp
  */
-const welcomeScreenTemplate: string = `
+const libraryListTemplate: string = `
 <style>
 /* Remove default bullets */
 ul, #myUL {
@@ -279,8 +343,8 @@ ul, #myUL {
   display: block;
 }
 </style>
-<ul id="nasalib-tree">
-    {{#each folders}}
+<ul id="nasalib-tree" class="lib-tree"">
+    {{#each nasalibFolders}}
     <li><span class="caret">{{@key}}</span>
         <ul class="nested">
         {{#each this}}
@@ -291,27 +355,50 @@ ul, #myUL {
         </ul>
     </li>
     {{/each}}
+</ul>
+<ul id="pvslib-tree" class="lib-tree">
+    {{#each pvslibFolders}}
+    <li><span class="caret">{{@key}}</span>
+        <ul class="nested">
+        {{#each this}}
+        <li>
+            <a class="result-item" href="{{contextFolder}}/{{fileName}}{{fileExtension}}" {{#if line}}line="{{line}}"{{/if}} style="white-space:nowrap;">{{theoryName}}</a>
+        </li>
+        {{/each}}
+        </ul>
+    </li>
+    {{/each}}
 </ul>`;
-
-interface ViewData {
+interface LibraryList {
+    nasalibFolders: LibraryMap,
+    nasalibPath: string,
+    pvslibFolders: LibraryMap
+}
+interface SearchResultsOrSpinner {
     res?: SearchResult[],
     searchString?: string, 
-    showSpinner?: boolean
+    nasalib?: boolean,
+    showSpinner?: boolean,
+    showResults?: boolean
 };
 interface ViewOptions { 
     css?: Uri[], 
     js?: Uri[], 
     style?: string 
 };
-interface HtmlContent extends ViewData, ViewOptions {
+interface HtmlContent extends SearchResultsOrSpinner, ViewOptions {
     title: string,
     welcomeScreen: string,
+    activeView: SearchLibrary,
     logo?: Uri,
-    stats?: LookUpTableStats
+    nasalibStats?: LookUpTableStats,
+    pvslibStats?: LookUpTableStats
 };
+interface LibraryMap { [folderName: string]: PvsTheory[] };
 
 import * as vscodeUtils from '../utils/vscode-utils';
 import { nasalib_lookup_table } from '../common/nasalib-lookup-table';
+import * as fsUtils from '../common/fsUtils';
 
 /**
  * NASALib search class
@@ -326,12 +413,18 @@ export class VSCodePvsSearch {
 
     // nasalib path
     protected nasalibPath: string;
+    // nasalib data, cached in advance to speed up rendering
+    readonly nasalibLibraries: LibraryMap = nasalib_lookup_table.folders;
 
-    // nasalib data
-    readonly nasalibLibraries: { [folderName: string]: PvsTheory[] } = nasalib_lookup_table.folders;
+    // pvs library data
+    protected pvsLibraries: LibraryMap = {};
+    protected pvslibStats: LookUpTableStats;
 
     // webview title
-    readonly title: string = "NASALib Search";
+    readonly title: string = "Search NASALib";
+
+    // active view, either nasalib or pvslib
+    protected activeView: SearchLibrary = "nasalib";
     
     /**
      * Constructor
@@ -350,8 +443,9 @@ export class VSCodePvsSearch {
     /**
      * Reveals the view
      */
-    reveal (): void {
+    async reveal (): Promise<void> {
         if (!this.panel) {
+            await this.loadPvsLibraryDescriptors();
             this.renderView();
         }
         this.panel.reveal()
@@ -363,72 +457,71 @@ export class VSCodePvsSearch {
         this.panel.dispose();
     }
     /**
-     * Internal function, creates the view
+     * Internal function, creates the view or simply updates the title if the view exists
      */
     protected createWebView () {
-        if (this.panel) {
-            this.panel.title = this.title;
-        } else {
-            // create welcome screen
-            this.welcomeScreen = Handlebars.compile(welcomeScreenTemplate, { noEscape: true })({
-                folders: this.nasalibLibraries,
-                nasalibPath: this.nasalibPath
-            });            
-            // create panel
-            this.panel = window.createWebviewPanel(
-                'vscode-pvs.nasalib-search', // Identifies the type of the webview. Used internally
-                this.title, // Title of the panel displayed to the user
-                ViewColumn.Beside, // Editor column to show the new webview panel in.
-                {
-                    enableScripts: true
-                }
-            );
-            // set panel icon
-            this.panel.iconPath = {
-                light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png")),
-                dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png"))
-            };
-            // Clean up data structures when webview is disposed
-            this.panel.onDidDispose(
-                () => {
-                    this.panel = null;
-                },
-                null,
-                this.context.subscriptions
-            );
-            // Handle messages from the webview
-            this.panel.webview.onDidReceiveMessage(
-                async message => {
-                    switch (message.command) {
-                        case 'search': {
-                            if (message.searchString) {
-                                this.showSearching({ searchString: message.searchString });
-                                const res: SearchResult[] = await this.search(message.searchString);
-                                this.showResults({ res, searchString: message.searchString });
-                            }
-                            break;
+        // create welcome screen
+        const data: LibraryList = {
+            nasalibFolders: this.nasalibLibraries,
+            nasalibPath: this.nasalibPath,
+            pvslibFolders: this.pvsLibraries
+        };
+        this.welcomeScreen = Handlebars.compile(libraryListTemplate, { noEscape: true })(data);            
+        // create panel
+        this.panel = window.createWebviewPanel(
+            'vscode-pvs.nasalib-search', // Identifies the type of the webview. Used internally
+            this.title, // Title of the panel displayed to the user
+            ViewColumn.Beside, // Editor column to show the new webview panel in.
+            {
+                enableScripts: true
+            }
+        );
+        // set panel icon
+        this.panel.iconPath = {
+            light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png")),
+            dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png"))
+        };
+        // Clean up data structures when webview is disposed
+        this.panel.onDidDispose(
+            () => {
+                this.panel = null;
+            },
+            null,
+            this.context.subscriptions
+        );
+        // Handle messages from the webview
+        this.panel.webview.onDidReceiveMessage(
+            async message => {
+                switch (message.command) {
+                    case 'search': {
+                        if (message.searchString) {
+                            this.activeView = message.activeView === "nasalib" ? "nasalib": "pvslib";
+                            this.showSearching({ searchString: message.searchString });
+                            const res: SearchResult[] = await this.search(message.searchString);
+                            this.showResults({ res, searchString: message.searchString });
                         }
-                        case "open-file": {
-                            if (message.fname) {
-                                const selection: Range = new Range(
-                                    new Position(+message.line - 1, 0), // line number and column number in vscode start from 0
-                                    new Position(+message.line, 0)
-                                );
-                                vscodeUtils.previewPvsFile(message.fname, { selection });
-                            }
-                            break;
-                        }
-                        default: {
-                            break;
-                        }
+                        break;
                     }
-                },
-                undefined,
-                this.context.subscriptions
-            );
-        }
-        // auto-focus search field
-        this.focus();
+                    case "open-file": {
+                        if (message.fname) {
+                            const selection: Range = new Range(
+                                new Position(+message.line - 1, 0), // line number and column number in vscode start from 0
+                                new Position(+message.line, 0)
+                            );
+                            vscodeUtils.previewPvsFile(message.fname, { selection });
+                        }
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+            },
+            undefined,
+            this.context.subscriptions
+        );
+        // set language to pvs
+        vscodeUtils.setEditorLanguagetoPVS();
     }
     /**
      * Utility function, show spinning wheel in the view to indicate search in progress
@@ -440,11 +533,7 @@ export class VSCodePvsSearch {
      * Utility function, show search results in the view
      */
     showResults (data: { res: SearchResult[], searchString: string }): void {
-        this.refreshView(data);
-        // this.panel?.webview?.postMessage({
-        //     command: "show-results",
-        //     res
-        // });
+        this.refreshView({ ...data, showResults: true });
     }
     /**
      * Utility function, places the focus on the search input field of the view
@@ -460,10 +549,11 @@ export class VSCodePvsSearch {
     async search (searchString: string): Promise<SearchResult[]> {
         return new Promise ((resolve, reject) => {
             const req: SearchRequest = {
-                searchString
+                searchString,
+                library: this.activeView
             };
             this.client.sendRequest(serverRequest.search, req);
-            this.client.onNotification(serverEvent.searchResponse, (res: SearchResponse) => {
+            this.client.onNotification(serverRequest.search, (res: SearchResponse) => {
                 return resolve(res?.ans);
             });
         });
@@ -471,7 +561,7 @@ export class VSCodePvsSearch {
     /**
      * Internal function, creates the html content of the view
      */
-    protected createContent (data?: ViewData): void {
+    protected renderSearchResultOrSpinner (data?: SearchResultsOrSpinner): void {
         // set webview content
         const bootstrapJsOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js'));
         const bootstrapCssOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/css/bootstrap.min.css'));
@@ -485,7 +575,21 @@ export class VSCodePvsSearch {
             this.panel.webview.asWebviewUri(jqueryOnDisk), // jquery needs to be loaded before bootstrap
             this.panel.webview.asWebviewUri(bootstrapJsOnDisk)
         ];
-        this.panel.webview.html = this.createHtmlContent(data, { css, js });
+        const logoOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'icons/svg-nasa-meatball-icon.svg'));
+        const logo: Uri = this.panel.webview.asWebviewUri(logoOnDisk);
+        const htmlData: HtmlContent = {
+            ...data,
+            title: this.title,
+            welcomeScreen: this.welcomeScreen,
+            logo,
+            nasalibStats: nasalib_lookup_table.stats,
+            pvslibStats: this.pvslibStats,
+            activeView: this.activeView,
+            css,
+            js
+        };
+        const html: string = Handlebars.compile(htmlContent, { noEscape: true })(htmlData);
+        this.panel.webview.html = html;
     }
     /**
      * Renders the content of the webview
@@ -496,30 +600,13 @@ export class VSCodePvsSearch {
     /**
      * Refreshed the content of the webview
      */
-    refreshView (data?: ViewData): void {
+    refreshView (data?: SearchResultsOrSpinner): void {
         // create webview
-        this.createWebView();
+        if (!this.panel) { this.createWebView(); }
         // create webview content
-        this.createContent(data);
-        // set language to pvs
-        vscodeUtils.setEditorLanguagetoPVS();
-    }
-    /**
-     * Creates the html rendered in the webview
-     */
-    protected createHtmlContent (data: ViewData, opt?: ViewOptions): string {
-        const logoOnDisk: Uri = Uri.file(path.join(this.context.extensionPath, 'icons/svg-nasa-meatball-icon.svg'));
-        const logo: Uri = this.panel.webview.asWebviewUri(logoOnDisk);
-        const htmlContent: HtmlContent = {
-            title: this.title,
-            welcomeScreen: this.welcomeScreen,
-            logo,
-            stats: nasalib_lookup_table.stats,
-            ...data,
-            ...opt
-        };
-        const html: string = Handlebars.compile(htmlTemplate, { noEscape: true })(htmlContent);
-        return html;
+        this.renderSearchResultOrSpinner(data);
+        // auto-focus search field
+        this.focus();
     }
 	/**
 	 * Internal function, returns nasalib path
@@ -531,4 +618,51 @@ export class VSCodePvsSearch {
 		}
 		return null;
 	}
+	/**
+	 * Internal function, returns nasalib path
+	 */
+    protected async loadPvsLibraryDescriptors (): Promise<void> {
+        this.pvsLibraries = {};
+        const libraryFolders: string[] = vscodeUtils.getConfiguration("pvs.pvsLibraryPath")?.split(":").map(elem => {
+            return elem.trim();
+        }).filter(elem => {
+            return elem && elem !== "";
+        });
+        let nTheories: number = 0;
+		for (let i = 0; i < libraryFolders?.length; i++) {
+			const contextFolders: string[] = fsUtils.listSubFolders(libraryFolders[i])?.map(elem => {
+                return path.join(libraryFolders[i], elem);
+            });
+			for (let k = 0; k < contextFolders?.length; k++) {
+				const desc: PvsContextDescriptor = await fsUtils.getContextDescriptor(contextFolders[k], {
+					listTheorems: false, 
+					includeTccs: false
+				});
+                const files: string[] = Object.keys(desc?.fileDescriptors);
+                for (let f = 0; f < files?.length; f++) {
+                    const contextFolder: string = desc.fileDescriptors[files[f]].contextFolder;
+                    const contextFolderName: string = fsUtils.getContextFolderName(contextFolder);
+                    if (desc.fileDescriptors[files[f]]?.theories?.length) {
+        				this.pvsLibraries[contextFolderName] = this.pvsLibraries[contextFolderName] || [];
+                        this.pvsLibraries[contextFolderName] = this.pvsLibraries[contextFolderName].concat(desc.fileDescriptors[files[f]]?.theories?.map(elem => {
+                            return {
+                                theoryName: elem.theoryName,
+                                line: elem.position.line,
+                                contextFolder: elem.contextFolder,
+                                fileName: elem.fileName,
+                                fileExtension: elem.fileExtension
+                            };
+                        }));
+                        nTheories += desc.fileDescriptors[files[f]]?.theories?.length;
+                    }
+                }
+                // TODO: sort theory names?
+			}
+		}
+        this.pvslibStats = {
+            version: "User-defined libraries",
+            folders: this.pvsLibraries ? Object.keys(this.pvsLibraries).length : 0,
+            theories: nTheories               
+        }
+    }
 }

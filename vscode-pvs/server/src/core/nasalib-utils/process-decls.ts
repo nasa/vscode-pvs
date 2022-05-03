@@ -66,6 +66,9 @@ const fname_input: string = "nasalib-decls.json";
 const fname_ts_output: string = "../../common/nasalib-lookup-table.ts";
 const fname_json_output: string = "../../common/nasalib-lookup-table.json";
 
+// this function generates a json file (nasalib-decls.json) containing info on nasalib theories. 
+// The function is executed manually before distributing a vscode-pvs release.
+// see Makefile target 'build-nasalib-decls'
 async function run () {
     const content: string = await fsUtils.readFile(fname_input);
     const declsOverview: DeclsOverview[] = JSON.parse(content);

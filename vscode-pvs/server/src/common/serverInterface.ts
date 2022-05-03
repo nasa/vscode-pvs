@@ -441,8 +441,10 @@ export declare interface StatusProofChain {
 export declare interface EvalExpressionRequest extends PvsTheory {
 	expr: string;
 }
+export type SearchLibrary = "nasalib" | "pvslib";
 export declare interface SearchRequest {
-	searchString: string
+	searchString: string,
+	library?: SearchLibrary // whether the search is in nasalib or in the pvs library path
 }
 export declare interface FindSymbolDeclarationRequest {
 	theory: PvsTheory,
@@ -570,7 +572,6 @@ export const serverEvent = {
 	hp2pvsResponse: "pvs.response.hp-to-pvs-file",
 	quitEvaluatorResponse: "pvs.response.quit-evaluator",
 	quitProofResponse: "pvs.response.quit-proof",
-	searchResponse: "pvs.response.search",
 	findSymbolDeclarationResponse: "pvs.response.find-symbol-declaration",
 
 	viewPreludeFileResponse: "pvs.response.view-prelude-file",
@@ -1107,9 +1108,6 @@ export type ProofExecDidImportProof = {
 	desc: ProofDescriptor,
 	proof?: ProofNodeX
 };
-
-
-
 export interface SFormula {
 	labels: string[];
 	changed: 'true' | 'false';
@@ -1135,12 +1133,12 @@ export type SequentDescriptor = {
 // the lookup table provides different view on the library content (folders, theories, etc)
 // it is designed to optimize search speed
 export interface LookUpTableStats {
-	version?: string,
+	version: string,
 	folders: number,
 	theories: number,
-	types: number,
-	functions: number,
-	formulas: number
+	types?: number,
+	functions?: number,
+	formulas?: number
 };
 export interface LookUpTable {
     stats: LookUpTableStats,
