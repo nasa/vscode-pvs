@@ -516,7 +516,8 @@ export function desc2fname (desc: FileDescriptor): string {
 /**
  * Utility function, returns a list of all subfolders contained in the given folder
  */
-export function listSubFolders (folder: string): string[] {
+export function listSubFolders (contextFolder: string): string[] {
+	const folder: string = tildeExpansion(contextFolder);
 	if (folder && folderExists(folder)) {
 		return fs.readdirSync(folder, { withFileTypes: true })
 			.filter((dir: fs.Dirent) => { return dir.isDirectory(); })
@@ -781,14 +782,15 @@ export function execShellCommand (req: ShellCommand, opt?: {
  * @returs List of pvs files, as a structure FileList. Null if the folder does not exist.
  */
  export async function listPvsFiles (contextFolder: string): Promise<FileList> {
-	if (contextFolder) {
-		const children: string[] = await readDir(contextFolder);
+	const folder: string = tildeExpansion(contextFolder)
+	if (folder) {
+		const children: string[] = await readDir(folder);
 		const fileList: FileList = {
 			fileNames: children.filter((fileName) => {
 				return (fileName.endsWith(".pvs") || fileName.endsWith(".hpvs"))
 						&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
 			}),
-			contextFolder: contextFolder
+			contextFolder: folder
 		};
 		return fileList;
 	}
