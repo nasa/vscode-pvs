@@ -1362,6 +1362,23 @@ export async function saveProoflite (fname: string, formulaName: string, script:
 	}
 	return false;
 }
+/**
+ * Utility function, returns the default prooflite file name and path
+ */
+export function getProofliteFileName (formula: PvsFormula, opt?: { usePvsBinFolder?: boolean }): FileDescriptor {
+	if (formula?.contextFolder && formula?.theoryName) {
+		// by default, save under pvsbin
+		opt = opt || {};
+		const usePvsBinFolder: boolean = opt.usePvsBinFolder === undefined ? true : !!opt.usePvsBinFolder;
+		return {
+			contextFolder: usePvsBinFolder ? path.join(formula.contextFolder, "pvsbin") : formula.contextFolder,
+			fileName: formula.theoryName,
+			fileExtension: ".prl"
+		};
+	}
+	console.warn("[fsUtils] Warning: getProofliteFileName received a malformed request", formula);
+	return null;
+}
 
 /**
  * Utility function, returns the prooflite script for a given formula

@@ -1735,16 +1735,17 @@ export class PvsProxy {
 	}, opt?: { 
 		usePvsBinFolder?: boolean
 	}): Promise<FileDescriptor> {
-		opt = opt || {};
-		// by default, save under pvsbin
-		opt.usePvsBinFolder = opt.usePvsBinFolder === undefined ? true : !!opt.usePvsBinFolder;
-		const contextFolder: string = opt.usePvsBinFolder ? path.join(desc.contextFolder, "pvsbin") : desc.contextFolder;
-		// save prooflite
-		const prlFile: FileDescriptor = {
-			contextFolder,
-			fileName: desc.theoryName,
-			fileExtension: ".prl"
-		};
+		const prlFile: FileDescriptor = fsUtils.getProofliteFileName(desc, opt);
+		// opt = opt || {};
+		// // by default, save under pvsbin
+		// opt.usePvsBinFolder = opt.usePvsBinFolder === undefined ? true : !!opt.usePvsBinFolder;
+		// const contextFolder: string = opt.usePvsBinFolder ? path.join(desc.contextFolder, "pvsbin") : desc.contextFolder;
+		// // save prooflite
+		// const prlFile: FileDescriptor = {
+		// 	contextFolder,
+		// 	fileName: desc.theoryName,
+		// 	fileExtension: ".prl"
+		// };
 		const content: string[] = languageUtils.proofDescriptor2ProofLite(desc.proofDescriptor);
 		if (content && content.length) {
 			const header: string = languageUtils.makeProofliteHeader(

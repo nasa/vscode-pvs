@@ -886,7 +886,17 @@ export class EventsDispatcher {
             }
             if (resource) {
                 const desc: PvsFormula = vscodeUtils.resource2desc(resource);
-                this.workspaceExplorer.generateProofliteFileWithProgress(desc, { showFileInEditor: true });
+                // ask the user confirmation of what needs to be done: view existing prooflite, generate prooflite
+                const viewOrGenerate: string[] = [ "View Existing Prooflite", "Generate Prooflite" ];
+                const msg: string = `Show Prooflite for formula ${desc.formulaName}?`;
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, viewOrGenerate[0], viewOrGenerate[1]);
+                if (ans === viewOrGenerate[0]) {
+                    // view existing prooflite
+                    await this.workspaceExplorer.viewProofliteFile(desc, { showFileInEditor: true });
+                } else if (ans === viewOrGenerate[1]) {
+                    // (re-)generate prooflite file
+                    await this.workspaceExplorer.generateProofliteFileWithProgress(desc, { showFileInEditor: true });
+                } // else do nothing, the user cancelled the request
 
                 // if (!desc.theoryName) {
                 //     // const document: vscode.TextDocument = window.activeTextEditor.document;

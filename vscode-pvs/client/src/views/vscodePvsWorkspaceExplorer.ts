@@ -1452,6 +1452,33 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	}
 
 	/**
+	 * Utility function, tries to open the prooflite for a given formula. The prooflite file is generated if the file does not exist
+	 */
+	async viewProofliteFile (desc: PvsFormula, opt?: { showFileInEditor?: boolean }): Promise<FileDescriptor> {
+		if (desc) {
+			const prlFile: FileDescriptor = fsUtils.getProofliteFileName(desc);
+			const fname: string = fsUtils.desc2fname(prlFile);
+			const prl: string = await fsUtils.readProoflite(fname, desc.formulaName);
+			if (prl) {
+				if (opt?.showFileInEditor) {
+					const line: number = await fsUtils.getProofLitePosition({ formula: desc, proofFile: prlFile });
+					vscodeUtils.showTextDocument(prlFile, {
+						viewColumn: ViewColumn.Beside,
+						selection: new Range( new Position(line - 1, 0), new Position(line, 0))
+					});
+				}
+				return {
+					...prlFile,
+					fileContent: prl
+				};
+			} else {
+				return await this.generateProofliteFileWithProgress(desc, opt);
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Utility function, generates a prooflite file for the given formula
 	 */
 	async generateProofliteFileWithProgress (desc: PvsFormula, opt?: { showFileInEditor?: boolean }): Promise<FileDescriptor> {

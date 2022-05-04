@@ -1,6 +1,9 @@
 ## ChangeLog
-### 1.0.61 (2022.04.xx)   
+### 1.0.61 (2022.05.xx)   
+- Extended NASALib Search functionality to search user-defined libraries available through pvsLibraryPath
+- Added new command shortcuts 'M-x dump-pvs-files' (dump pvs files), 'M-x undump-pvs-files' (undump pvs files)
 - Improved performance   
+- Improved show-prooflite   
 - Minor bug fixes (duplicated codelens in .tccs files)   
 
 ### 1.0.60 (2022.03.17)    
