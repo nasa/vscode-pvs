@@ -29,6 +29,24 @@ Paolo Masci and César Muñoz, [An Integrated Development Environment for the Pr
 
 
 ## ChangeLog
+- [1.0.61 (2022.05.10)]()   
+ -Extended NASALib Search functionality to search user-defined libraries available through pvsLibraryPath
+ -Added new command shortcuts 'M-x dump-pvs-files' (dump pvs files), 'M-x undump-pvs-files' (undump pvs files)
+ -Improved performance   
+ -Improved show-prooflite   
+ -Minor bug fixes (duplicated codelens in .tccs files) 
+
+- [1.0.60 (2022.03.17)]()     
+ -Fix for prover terminal focus   
+
+- [1.0.59 (2022.03.09)]()      
+ -Added quick-fix actions for typecheck errors related to missing importings and mispelled types   
+ -Added shortcuts for typing greek letters (e.g., `\alpha`, `\beta`, `\tau`, etc.)     
+ -Added new command shortcuts 'M-x nf' (new pvs file) and 'M-x nt' (new pvs theory)   
+ -Added setting for custom author key    
+ -Improved NASALib search interface     
+ -Improved file icon theme  
+
 - [1.0.58 (2022.01.06)]()       
  -Added goto functionality in tcc files     
  -Minor fixes (importing of pvs-library-path)   
