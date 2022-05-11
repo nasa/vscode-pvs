@@ -75,7 +75,7 @@ export class PvsCodeLensProvider {
             let codeLens: CodeLens[] = [];
             const content: string = document.txt.replace(utils.commentRegexp, "");
 
-            // typecheck-file | evaluate-in-pvsio
+            // typecheck-file | evaluate-in-pvsio | view-as-markdown
             // use a simple match on the theory declaration, so the commands show up even if the theory does not parse (e.g., because of missing END theoryname)
             if (fileExtension === ".pvs") {
                 const regex: RegExp = new RegExp(utils.theoryOrDatatypeRegexp);
@@ -114,6 +114,14 @@ export class PvsCodeLensProvider {
                             command: {
                                 title: "evaluate-in-pvsio",
                                 command: "vscode-pvs.pvsio-evaluator",
+                                arguments: [ theory ]
+                            }
+                        });
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: "view-as-markdown",
+                                command: "vscode-pvs.view-as-markdown",
                                 arguments: [ theory ]
                             }
                         });

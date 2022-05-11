@@ -1063,6 +1063,13 @@ export class EventsDispatcher {
                 // vscode.commands.executeCommand("workbench.action.quickOpen", desc.fname);
             }
         }));
+        // view-as-markdown
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.view-as-markdown", (desc: PvsTheory) => {
+            if (desc?.fileName) {
+                this.fileViewer.openAsMarkdownPreview(desc);
+                // vscode.commands.executeCommand("workbench.action.quickOpen", desc.fname);
+            }
+        }));
 
         // pvsio-plot
         context.subscriptions.push(commands.registerCommand("vscode-pvs.plot-expression", async (resource: string | {

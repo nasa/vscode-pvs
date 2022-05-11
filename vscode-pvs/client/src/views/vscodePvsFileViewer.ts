@@ -124,9 +124,7 @@ export class VSCodePvsFileViewer {
         return new Promise(async (resolve, reject) => {
             if (desc?.fileName && desc?.contextFolder) {
                 if (fsUtils.isMarkdownFile(desc)) {
-                    const fname: string = fsUtils.desc2fname(desc);
-                    const fileOnDisk: Uri = Uri.file(fname);
-                    commands.executeCommand("markdown.showPreviewToSide", fileOnDisk);
+                    this.openAsMarkdownPreview(desc);
                 } else if (fsUtils.isPvsFile(desc)) {
                     vscodeUtils.openPvsFile(desc);
                 } else if (fsUtils.isAdobePdfFile(desc)) {
@@ -158,6 +156,18 @@ export class VSCodePvsFileViewer {
                 resolve(false);
             }
         });
+    }
+    /**
+     * Open a file as markdown preview
+     */
+    async openAsMarkdownPreview (desc: FileDescriptor): Promise<boolean> {
+        if (desc?.fileName) {
+            const fname: string = fsUtils.desc2fname(desc);
+            const fileOnDisk: Uri = Uri.file(fname);
+            commands.executeCommand("markdown.showPreviewToSide", fileOnDisk);
+            return true;
+        }
+        return false;
     }
     /**
      * Internal function, creates the html content of the webview
