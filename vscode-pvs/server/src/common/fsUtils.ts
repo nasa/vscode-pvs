@@ -337,9 +337,15 @@ export function moveFolder(contextFolder: string, toFolder: string): boolean {
 	}
 	return false;
 }
+/**
+ * Utility function, returns the file extension
+ */
 export function getFileExtension(fname: string): string {
 	if (fname) {
-		return `.${fname.split(".").slice(-1).join(".")}`;
+		const parts: string[] = fname.split("/");
+		return parts?.length && parts[parts.length - 1].includes(".") ? 
+			`.${parts[parts.length - 1].split(".").slice(-1).join(".")}`
+				: "";
 	}
 	return null;
 }
@@ -409,15 +415,75 @@ export function isProofliteFile(desc: string | { fileName: string, fileExtension
 	}
 	return false;
 }
+/**
+ * Utility function, returns true if the file extension indicates this is an image file (.jpg, .)
+ */
+export function isImageFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
+	if (desc) {
+		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
+		if (ext) {
+			return ext.endsWith(".jpg") || ext.endsWith(".jpeg") || ext.endsWith(".png") || ext.endsWith(".bmp") || ext.endsWith(".gif");
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, returns true if the file extension indicates this is a pdf file (.pdf)
+ */
+export function isAdobePdfFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
+	if (desc) {
+		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
+		if (ext) {
+			return ext.endsWith(".pdf");
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, returns true if the file extension indicates this is a markdown file
+ */
+export function isMarkdownFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
+	if (desc) {
+		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
+		if (ext) {
+			return ext.endsWith(".md");
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, returns true if the file extension indicates this is an svg file
+ */
+export function isSvgFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
+	if (desc) {
+		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
+		if (ext) {
+			return ext.endsWith(".svg");
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, returns true if a file exists
+ */
 export function fileExists(fname: string): boolean {
 	return pathExists(fname);
 }
+/**
+ * Utility function, returns true if a folder exists
+ */
 export function dirExists(contextFolder: string): boolean {
 	return pathExists(contextFolder);
 }
+/**
+ * Utility function, returns true if a folder exists (alias of dirExists)
+ */
 export function folderExists(contextFolder: string): boolean {
 	return dirExists(contextFolder);
 }
+/**
+ * Utility function, returns true if a path exists
+ */
 export function pathExists(path: string): boolean {
 	if (path) {
 		let ans: boolean = false;
@@ -432,7 +498,6 @@ export function pathExists(path: string): boolean {
 	}
 	return false;
 }
-
 /**
  * Utility function, normalizes the structure of a path -- expands ~ and terminates the path with /
  */
@@ -444,7 +509,6 @@ export function normalizePath(p: string) {
 	}
 	return p;
 }
-
 /**
  * Utility function, returns the fragment between range.start (included) and range.end (excluded)
  */
@@ -468,7 +532,6 @@ export function getText(txt: string, range: { start: { line: number, character?:
 	}
 	return txt;
 }
-
 /**
  * Utility function, returns a fresh identifier
  */
@@ -512,6 +575,16 @@ export function fname2desc (fname: string): FileDescriptor | null {
  */
 export function desc2fname (desc: FileDescriptor): string {
 	return path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+}
+/**
+ * Utility function, returns the command for opening a file with an external application
+ */
+export function getCommandOpenWithExternalApp (desc: FileDescriptor): string {
+	const os: OsVersion = getOs();
+	const fname: string = desc2fname(desc);
+	return os?.version === "Linux" ? `xdg-open ${fname}`
+		: os?.version === "MacOSX" ? `open ${fname}`
+		: "";
 }
 /**
  * Utility function, returns a list of all subfolders contained in the given folder
@@ -581,10 +654,12 @@ export function getSourceControl (): "git" | null {
 	return null;
 }
 
+export type OsName = "Linux" | "MacOSX" | string;
+export type OsVersion = { version?: OsName, error?: string };
 /**
  * Utility function, detects the OS platform
  */
-export function getOs (): { version?: "Linux" | "MacOSX" | string, error?: string } {
+export function getOs (): OsVersion {
 	try {
 		if (process.platform === 'linux' || process.platform === 'freebsd' || process.platform === 'openbsd' || process.platform === 'sunos' || process.platform === 'aix') {
 			return { version: 'Linux' };

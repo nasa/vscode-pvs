@@ -36,7 +36,7 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { EvalExpressionRequest, PvsioEvaluatorCommand, serverEvent, serverRequest } from "../common/serverInterface";
+import { EvalExpressionRequest, PvsioEvaluatorCommand, serverRequest } from "../common/serverInterface";
 import * as vscode from 'vscode';
 import { PvsResponse } from "../common/pvs-gui";
 import { LanguageClient } from "vscode-languageclient";

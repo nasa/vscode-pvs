@@ -58,7 +58,9 @@ export const RECORD: { [key: string]: RegExp } = {
 	typeName: /\w+\s*:\s*(\w+)/g
 };
 
-export const commentRegexp: RegExp = /%.*/g;
+// markdown link regexp, group 1 is the human-readable name, group 2 is the url
+export const markdownRegexp: RegExp = /\s*%\s*\!\[(.+)\]\((.+)\)/g;
+export const commentRegexp: RegExp = /%.*/g; // pvs comment line
 export const stringRegexp: RegExp = /\"[^\"]+\"/g;
 // group 1 is theoryName, group 2 is comma-separated list of theory parameters -- NB: this regexp is fast but not accurate, because it does not check the end of the theory. See example use in codelense.
 export const theoryRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*THEORY\s+BEGIN\b/gi;

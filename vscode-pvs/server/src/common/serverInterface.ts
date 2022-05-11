@@ -549,6 +549,8 @@ export const serverRequest = {
 	downloadWithProgress: "pvs.download-with-progress",
 	installWithProgress: "pvs.install-with-progress",
 
+	openFileWithExternalApp: "pvs.open-file-with-external-app",
+
 	getNasalibDownloader: "pvs.get-nasalib-downloader",
 	downloadNasalib: "pvs.download-nasalib",
 };
@@ -1162,3 +1164,9 @@ export interface QuickFixAddImporting extends PvsFile {
 }
 // WorkspaceExec
 // export type WorkspaceExecCommand = TypecheckFileCommand | ParseFileCommand;
+
+// follow link interface
+export interface FollowLink {
+	name: string,
+	fname: string
+};

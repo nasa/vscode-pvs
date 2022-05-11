@@ -61,6 +61,7 @@ import { VSCodePvsioWeb } from './views/vscodePvsioWeb';
 import { VSCodePvsXTerm } from './views/vscodePvsXTerm';
 import { XTermColorTheme } from './common/colorUtils';
 import { getActivePvsEditor } from './utils/vscode-utils';
+import { VSCodePvsFileViewer } from './views/vscodePvsFileViewer';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
 const AUTOSAVE_INTERVAL: number = 10000; //ms Note: small autosave intervals (e.g., 1sec) create an unwanted scroll effect in the editor (the current line is scrolled to the top)
@@ -117,6 +118,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 	// search
 	protected search: VSCodePvsSearch;
+
+	// file viewer
+	protected fileViewer: VSCodePvsFileViewer;
 
 	// pvsioweb
 	protected pvsioweb: VSCodePvsioWeb;
@@ -373,6 +377,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.plotter.activate(this.context);
 			this.search = new VSCodePvsSearch(this.client);
 			this.search.activate(this.context);
+			this.fileViewer = new VSCodePvsFileViewer(this.client);
+			this.fileViewer.activate(this.context);
 			
 			this.pvsioweb = new VSCodePvsioWeb(this.client);
 			this.pvsioweb.activate(this.context);
@@ -399,7 +405,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				packageManager: this.packageManager,
 				plotter: this.plotter,
 				search: this.search,
-				pvsioweb: this.pvsioweb
+				pvsioweb: this.pvsioweb,
+				fileViewer: this.fileViewer
 			});
 			this.eventsDispatcher.activate(context);
 			

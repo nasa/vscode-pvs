@@ -79,6 +79,7 @@ import { PvsRenameProvider } from './providers/pvsRenameProvider';
 import { PvsSearchEngine } from './providers/pvsSearchEngine';
 import { getOs, isPvsFile } from './common/fsUtils';
 import { PvsCodeActionProvider } from './providers/pvsCodeActionProvider';
+import { execSync } from 'child_process';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -1235,6 +1236,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					listTheorems: true, 
 					includeTccs: true
 				});
+				this.lastParsedContext = contextFolder;
 				// communicate context descriptor to pvsCodeActionProvider
 				this.pvsCodeActionProvider?.updateWorkspaceDescriptor(desc);
 				return desc;
@@ -1853,6 +1855,14 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// 		// this.connection?.console.info('Workspace folder change event received.');
 			// 	});
 			// }
+			this.connection?.onRequest(serverRequest.openFileWithExternalApp, (desc: FileDescriptor) => {
+				if (desc?.fileName) {
+					const cmd: string = fsUtils.getCommandOpenWithExternalApp(desc);
+					console.log(`[pvs-server] ${cmd}`);
+					const res: string = execSync(cmd, { encoding: "utf-8" });
+					this.connection?.sendNotification(serverRequest.openFileWithExternalApp, { res });
+				}
+			});
 			this.connection?.onRequest(serverRequest.cancelOperation, () => {
 				console.log(`[pvs-server] Operation cancelled by the user`);
 				this.proofExplorer?.interruptProofCommand();

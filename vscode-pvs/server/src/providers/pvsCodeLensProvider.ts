@@ -37,12 +37,16 @@
  * TERMINATION OF THIS AGREEMENT.
  **/
 
-import { CancellationToken, CodeLens, CodeLensRequest, Range, CodeLensParams, Position } from 'vscode-languageserver';
+import { CancellationToken, CodeLens, Range, CodeLensParams, Position } from 'vscode-languageserver';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
-import { CopyProofliteRequest, GotoFileDescriptor, ProveFormulaRequest, PvsFormula, PvsTheory } from '../common/serverInterface';
+import { CopyProofliteRequest, FollowLink, GotoFileDescriptor, ProveFormulaRequest, PvsFormula, PvsTheory } from '../common/serverInterface';
 import { PvsLanguageServer } from '../pvsLanguageServer';
+import * as path from 'path';
 
+/**
+ * codelens provider, renders inline actions in the editor
+ */
 export class PvsCodeLensProvider {
     protected pvsLanguageServer: PvsLanguageServer;
 
@@ -361,6 +365,37 @@ export class PvsCodeLensProvider {
                                 });
                             }
                         }
+                    }
+                }
+            }
+
+            // quick-open
+            if (fileExtension === ".pvs") {
+                const regexp: RegExp = new RegExp(utils.markdownRegexp);
+                while (match = regexp.exec(document.txt)) {
+                    if (match.length > 2 && match[0].length && match[2].length) {
+                        const docUp: string = document.txt.slice(0, match.index + match[0].length);
+                        const lines: string[] = docUp.split("\n");
+                        const line: number = lines.length - 1;
+                        const character: number = 1;
+                        const range: Range = {
+                            start: { line, character }, 
+                            end: { line, character }
+                        };
+                        const fname: string = fsUtils.normalizePath(path.join(contextFolder, match[2]));
+                        const name: string = match[1] || fname;
+                        const args: FollowLink = {
+                            name,
+                            fname
+                        };
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: `open(${name})`,
+                                command: "vscode-pvs.quick-open",
+                                arguments: [ args ]
+                            }
+                        });
                     }
                 }
             }

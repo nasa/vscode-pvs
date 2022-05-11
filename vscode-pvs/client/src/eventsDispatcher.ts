@@ -48,7 +48,7 @@ import {
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
     PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
-    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor, FormulaDescriptor, quickFixReplaceCommand, QuickFixReplace, QuickFixAddImporting, quickFixAddImportingCommand, VSCodePvsVersionDescriptor, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, UndumpPvsFilesResponse
+    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor, FormulaDescriptor, quickFixReplaceCommand, QuickFixReplace, QuickFixAddImporting, quickFixAddImportingCommand, VSCodePvsVersionDescriptor, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, UndumpPvsFilesResponse, FollowLink
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
@@ -66,6 +66,7 @@ import { StartXTermEvaluatorRequest, VSCodePvsXTerm } from "./views/vscodePvsXTe
 import { colorText, PvsColor } from "./common/colorUtils";
 import { YesNoCancel, quickFixReplace, quickFixAddImporting, getVSCodePvsExtensionInfo, RunningTask, showWarningMessage } from "./utils/vscode-utils";
 import { getUndumpFolderName, isDumpFile, isPvsFile } from "./common/fsUtils";
+import { VSCodePvsFileViewer } from "./views/vscodePvsFileViewer";
 
 // FIXME: use Backbone.Model
 export class EventsDispatcher {
@@ -84,6 +85,7 @@ export class EventsDispatcher {
     protected plotter: VSCodePvsPlotter;
     protected search: VSCodePvsSearch;
     protected pvsioweb: VSCodePvsioWeb;
+    protected fileViewer: VSCodePvsFileViewer;
 
     protected inChecker: boolean = false;
     protected inEvaluator: boolean = false;
@@ -105,7 +107,8 @@ export class EventsDispatcher {
         packageManager: VSCodePvsPackageManager,
         plotter: VSCodePvsPlotter,
         search: VSCodePvsSearch,
-        pvsioweb: VSCodePvsioWeb
+        pvsioweb: VSCodePvsioWeb,
+        fileViewer: VSCodePvsFileViewer
     }) {
         this.client = client;
         this.statusBar = handlers.statusBar;
@@ -132,6 +135,7 @@ export class EventsDispatcher {
         this.plotter = handlers.plotter;
         this.search = handlers.search;
         this.pvsioweb = handlers.pvsioweb;
+        this.fileViewer = handlers.fileViewer;
     }
 	activate (context: ExtensionContext): void {
         // -- handlers for server responses
@@ -1051,6 +1055,14 @@ export class EventsDispatcher {
 
         // ignore keypress
         context.subscriptions.push(commands.registerCommand("vscode-pvs.ignore-keypress", () => {}));
+
+        // quick-open
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.quick-open", (desc: FollowLink) => {
+            if (desc?.fname) {
+                this.fileViewer.open(fsUtils.fname2desc(desc.fname));
+                // vscode.commands.executeCommand("workbench.action.quickOpen", desc.fname);
+            }
+        }));
 
         // pvsio-plot
         context.subscriptions.push(commands.registerCommand("vscode-pvs.plot-expression", async (resource: string | {
