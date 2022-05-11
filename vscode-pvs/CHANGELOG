@@ -1,6 +1,7 @@
 ## ChangeLog
 ### 1.0.61 (2022.05.10)   
 - Extended NASALib Search functionality to search user-defined libraries available through pvsLibraryPath
+- Added new inline command 'view-as-markdown' to view pvs files that include comments in markdown syntax    
 - Added new command shortcuts 'M-x dump-pvs-files' (dump pvs files), 'M-x undump-pvs-files' (undump pvs files)
 - Improved performance   
 - Improved show-prooflite   

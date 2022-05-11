@@ -63,6 +63,9 @@
 				"contents": "You have not yet opened a PVS Workspace.\n[Open PVS Workspace](command:vscode-pvs.open-pvs-workspace)"
 			}
 		],
+		"markdown.previewStyles": [
+			"./markdown/style.css"
+		],
 		"configuration": [
 			{
 				"type": "object",
