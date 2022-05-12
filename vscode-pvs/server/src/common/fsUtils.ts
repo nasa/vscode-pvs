@@ -1472,6 +1472,9 @@ export async function getProofliteScript (desc: {
 	const matchProoflite: RegExpMatchArray = proofliteRegexp(desc).exec(txt);
 	return matchProoflite ? matchProoflite[0] : null;
 }
+/**
+ * Utility function, returns the line number (1-based) of a given prooflite script in the file
+ */
 export async function getProofLitePosition (desc: { formula: PvsFormula, proofFile: FileDescriptor }): Promise<number> {
 	if (desc && desc.formula && desc.proofFile) {
 		const fname: string = desc2fname(desc.proofFile);
@@ -1483,7 +1486,7 @@ export async function getProofLitePosition (desc: { formula: PvsFormula, proofFi
 			return lines.length;
 		}
 	}
-	return 0;
+	return 1;
 }
 
 /**
