@@ -1010,6 +1010,8 @@ export function declutterVscode (): void {
         // remove indent lines in explorer
         config.update("workbench.tree.renderIndentGuides", false);
         // config.update("workbench.tree.indent", 8);
+        // update word separator, used the standard separators but remove ? as word boundary
+        config.update("[pvs]", { "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\|;:'\",.<>/" });
 
         const filesExclude: { [key:string]: boolean } = config.get("files.exclude") || {};
         // do not display temporary files created by pvs, e.g., .prf~
