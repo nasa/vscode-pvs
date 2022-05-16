@@ -40,7 +40,7 @@
 import { CancellationToken, CodeLens, Range, CodeLensParams, Position } from 'vscode-languageserver';
 import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
-import { CopyProofliteRequest, FollowLink, GotoFileDescriptor, ProveFormulaRequest, PvsFormula, PvsTheory } from '../common/serverInterface';
+import { CopyProofliteRequest, FileDescriptor, FollowLink, GotoFileDescriptor, ProveFormulaRequest, PvsFormula, PvsTheory } from '../common/serverInterface';
 import { PvsLanguageServer } from '../pvsLanguageServer';
 import * as path from 'path';
 
@@ -88,10 +88,13 @@ export class PvsCodeLensProvider {
                         const line: number = lines.length - 1;
                         const character: number = lines[lines.length - 1].indexOf(theoryName);
                         
-                        const theory: PvsTheory = {
+                        const pvsFile: FileDescriptor = {
                             fileName,
                             fileExtension,
-                            contextFolder,
+                            contextFolder
+                        };
+                        const theory: PvsTheory = {
+                            ...pvsFile,
                             theoryName, 
                             // line
                         };
@@ -122,7 +125,7 @@ export class PvsCodeLensProvider {
                             command: {
                                 title: "view-as-markdown",
                                 command: "vscode-pvs.view-as-markdown",
-                                arguments: [ theory ]
+                                arguments: [ pvsFile ]
                             }
                         });
                     }
@@ -377,7 +380,7 @@ export class PvsCodeLensProvider {
                 }
             }
 
-            // quick-open
+            // quick-open | preview-theory-as-markdown
             if (fileExtension === ".pvs") {
                 const regexp: RegExp = new RegExp(utils.markdownRegexp);
                 while (match = regexp.exec(document.txt)) {
@@ -402,6 +405,19 @@ export class PvsCodeLensProvider {
                                 title: `open(${name})`,
                                 command: "vscode-pvs.quick-open",
                                 arguments: [ args ]
+                            }
+                        });
+                        const pvsFile: FileDescriptor = {
+                            fileName,
+                            fileExtension,
+                            contextFolder
+                        };
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: "view-as-markdown",
+                                command: "vscode-pvs.view-as-markdown",
+                                arguments: [ pvsFile ]
                             }
                         });
                     }
