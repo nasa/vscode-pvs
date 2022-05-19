@@ -104,7 +104,7 @@ export const tupleRegexp: RegExp = /\(([\(\)\s\+\-\w\/\,\:\#\.]*)\)/g;
 // generic regular expressions for recognizing plottable expression series
 export const linearPlotRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*\[\s*list\s*\[\s*(?:real|int|rat|nat)\s*\](?:\,\s*list\s*\[\s*(?:real|int|rat|nat)\s*\])*\s*\]\s*=/g;
 export const linearPlotSimpleRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*list\s*\[\s*(?:real|int|rat|nat)\s*\]\s*=/g;
-export const linearPlotTupleTupleListRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*\[\s*(\[\s*list\s*\[\s*(?:real|int|rat|nat)\s*\](?:\,\s*list\s*\[\s*(?:real|int|rat|nat)\s*\])*\s*\])+\]\s*=/g;
+export const linearPlotTupleTupleListRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*\[(?:\s*\,?\s*(?:\[\s*list\s*\[\s*(?:real|int|rat|nat)\s*\]\s*(?:\,\s*list\s*\[\s*(?:real|int|rat|nat)\])*\s*\]))+\s*\]\s*=/g;
 
 // generic regular expression for recognizing plottable expression series
 export const scatterPlotRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*list\s*\[\s*\[\s*(?:real|int|rat|nat)\s*,\s*(?:real|int|rat|nat)\s*\]\s*\]\s*=/g;
