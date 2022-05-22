@@ -49,7 +49,7 @@ import * as Handlebars from "handlebars";
 
 // button labels
 const SEARCH_PVSLIB: string = "Search User Libraries";
-const SEARCH_NASALIB: string = "Search NASAlib";
+const SEARCH_NASALIB: string = "Search NASALib";
 
 /**
  * Handlebars template for the html content of the view

@@ -154,19 +154,19 @@ Frequent commands:
 - `M-x vpf` *(view prelude file)*
 
 Additional commands:
-- `M-x add-pvs-library` *(adds a folder to the vscode-pvs library path)*
-- `M-x pvs-library-path` *(shows the pvs library path specified in vscode-pvs settings)*
-- `M-x reset-pvs-library-path` *(resets the vscode-pvs library path to empty)*
-- `M-x reboot-pvs` *(reboots pvs-server)*
-- `M-x clean-bin` *(removes pvsbin files created by pvs)*
-- `M-x clean-tccs` *(removes .tccs files created by pvs)*
-- `M-x clean-all` *(removes all temporary files (including .tccs and pvsbin) created by pvs)*
-- `M-x install-pvs` *(starts as interactive wizard that allows to install or update PVS)*
-- `M-x install-nasalib` *(starts an interactive wizard that allows to install NASALib)*
-- `M-x update-nasalib` *(updates the installed version of NASALib)*
-- `M-x set-pvs-path` *(sets the path to the PVS executables)*
-- `M-x settings` *(shows vscode-pvs settings)*
-- `M-x welcome` *(shows vscode-pvs welcome screen)*
+- `M-x add-pvs-library` *(add a folder to the vscode-pvs library path)*
+- `M-x pvs-library-path` *(show the pvs library path specified in vscode-pvs settings)*
+- `M-x reset-pvs-library-path` *(reset the vscode-pvs library path to empty)*
+- `M-x reboot-pvs` *(reboot pvs-server)*
+- `M-x clean-bin` *(remove pvsbin files created by pvs)*
+- `M-x clean-tccs` *(remove .tccs files created by pvs)*
+- `M-x clean-all` *(remove all temporary files (including .tccs and pvsbin) created by pvs)*
+- `M-x install-pvs` *(install or update PVS)*
+- `M-x install-nasalib` *(install NASALib)*
+- `M-x update-nasalib` *(update the installed version of NASALib)*
+- `M-x set-pvs-path` *(set the path to the PVS executables)*
+- `M-x settings` *(show vscode-pvs settings)*
+- `M-x welcome` *(show vscode-pvs welcome screen)*
 
 <br>
 
