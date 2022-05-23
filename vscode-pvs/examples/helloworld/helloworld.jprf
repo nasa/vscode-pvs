@@ -6,7 +6,7 @@
     "formula": "always_positive",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+    "shasum": "f25d4bf15f49025b59a5b80f53b05a2b951a58be7918e8045a48745005eb42ec"
    },
    "proofTree": {
     "branch": "",
@@ -37,7 +37,7 @@
     "formula": "foo",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+    "shasum": "f25d4bf15f49025b59a5b80f53b05a2b951a58be7918e8045a48745005eb42ec"
    },
    "proofTree": {
     "branch": "",
@@ -62,7 +62,7 @@
     "formula": "sqrt2",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+    "shasum": "0dac1ef78ea8be92b78af4ec5fe383be355d7b8033c391a8290e99b8f16eedd3"
    },
    "proofTree": {
     "branch": "",
@@ -87,7 +87,7 @@
     "formula": "sqrt_lb2",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+    "shasum": "0dac1ef78ea8be92b78af4ec5fe383be355d7b8033c391a8290e99b8f16eedd3"
    },
    "proofTree": {
     "branch": "",
@@ -118,7 +118,7 @@
     "formula": "sqrt_newton_TCC1",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "66a99379b04e8938baa2a8d11b9e05bc446c06fa5b3544e5a3c070f0ebc7bf94"
+    "shasum": "f25d4bf15f49025b59a5b80f53b05a2b951a58be7918e8045a48745005eb42ec"
    },
    "proofTree": {
     "branch": "",
@@ -149,7 +149,7 @@
     "formula": "sqrt_newton_TCC2",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "66a99379b04e8938baa2a8d11b9e05bc446c06fa5b3544e5a3c070f0ebc7bf94"
+    "shasum": "f25d4bf15f49025b59a5b80f53b05a2b951a58be7918e8045a48745005eb42ec"
    },
    "proofTree": {
     "branch": "",
@@ -240,7 +240,7 @@
     "formula": "sqrt_lb2_TCC1",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "66a99379b04e8938baa2a8d11b9e05bc446c06fa5b3544e5a3c070f0ebc7bf94"
+    "shasum": "0dac1ef78ea8be92b78af4ec5fe383be355d7b8033c391a8290e99b8f16eedd3"
    },
    "proofTree": {
     "branch": "",
@@ -402,7 +402,7 @@
     "formula": "always_negative",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+    "shasum": "f25d4bf15f49025b59a5b80f53b05a2b951a58be7918e8045a48745005eb42ec"
    },
    "origin": ".prf",
    "proofTree": {
@@ -427,7 +427,7 @@
     "formula": "dummy",
     "status": "unfinished",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "1a9132f16b828178f1b1162655d0d80829f337ca81891efe8a8fb65c44348c92"
+    "shasum": "0dac1ef78ea8be92b78af4ec5fe383be355d7b8033c391a8290e99b8f16eedd3"
    },
    "origin": ".prf",
    "proofTree": {
@@ -592,7 +592,7 @@
     "formula": "plot_newton_TCC1",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "66a99379b04e8938baa2a8d11b9e05bc446c06fa5b3544e5a3c070f0ebc7bf94"
+    "shasum": "f25d4bf15f49025b59a5b80f53b05a2b951a58be7918e8045a48745005eb42ec"
    },
    "origin": ".prf",
    "proofTree": {
@@ -617,7 +617,7 @@
     "formula": "plot_newton_TCC2",
     "status": "proved",
     "prover": "PVS 7.1.0 (Allegro CL Enterprise Edition)",
-    "shasum": "66a99379b04e8938baa2a8d11b9e05bc446c06fa5b3544e5a3c070f0ebc7bf94"
+    "shasum": "f25d4bf15f49025b59a5b80f53b05a2b951a58be7918e8045a48745005eb42ec"
    },
    "origin": ".prf",
    "proofTree": {
