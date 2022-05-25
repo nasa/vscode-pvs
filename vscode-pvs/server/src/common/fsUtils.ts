@@ -1448,7 +1448,7 @@ export async function updateProoflite (fname: string, formulaName: string, newPr
 
 		// group 1 is the header (this group can be null)
 		// group 2 is the prooflite script
-		const formula: string = formulaName.replace(/\?/g, "\\?");
+		const formula: string = formulaName.replace(/\?/g, "\\\?");
 		const regex: RegExp = new RegExp(`(%-*\\s%\\s*@formula\\s*:\\s*${formula}\\s[\\w\\W\\s]+%-*)?\\s*\\b(${formula}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
 		if (regex.test(content)) {
 			let newContent: string =  newProoflite + "\n\n\n" + content.replace(regex, "").trim();
@@ -1475,7 +1475,7 @@ export async function containsProoflite (fname: string, formulaName: string): Pr
 			if (content) {
 				// group 1 is the header (this group can be null)
 				// group 2 is the prooflite script
-				const formula: string = formulaName.replace(/\?/g, "\\?");
+				const formula: string = formulaName.replace(/\?/g, "\\\?");
 				const regex: RegExp = new RegExp(`\\b(${formula}\\s*:\\s*PROOF\\b[\\s\\w\\W]+\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
 				return regex.test(content);
 			}
@@ -1498,7 +1498,7 @@ export async function readProoflite (fname: string, formulaName: string): Promis
 				// group 1 is the header (this group can be null)
 				// group 2 is the prooflite script (with tags)
 				// group 3 is the prooflite script (without tags)
-				const formula: string = formulaName.replace(/\?/g, "\\?");
+				const formula: string = formulaName.replace(/\?/g, "\\\?");
 				const regex: RegExp = new RegExp(`\\s*\\b(${formula}\\s*:\\s*PROOF\\b([\\s\\w\\W]+)\\bQED\\b\\s*${formula}\\b\\s*)`, "g");
 				const match: RegExpMatchArray = regex.exec(content);
 				if (match && match.length > 2) {
