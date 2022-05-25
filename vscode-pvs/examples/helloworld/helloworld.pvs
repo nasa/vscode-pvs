@@ -13,9 +13,12 @@ BEGIN
   always_positive: THEOREM
     FORALL (x: real): abs(x) >= 0
 
+  % this theorem can be proved by expanding the definition (negreal is a subtype representing negative reals)
+  % @QED always_negative proved by pmasci on Wed, 25 May 2022 13:32:13 GMT
   always_negative: THEOREM
     FORALL (x: negreal): x < 0
 
+  % this theorem is trivially true
   foo: LEMMA
     true
 
@@ -48,22 +51,22 @@ BEGIN
   scatterplot: list[[real, real]] = (: (1/2, 2), (2, -1), (3, -2/3) :)
 
   %--------------------------------------------
-  %% Second example plots a data series
+  %% Second example: plotting a data series
   %  as a linear plot
   %--------------------------------------------
   series1: list[real] = (: 1, -1 , -2/3 :)
 
   %--------------------------------------------
-  %% Third example of wanting to plot a tuple of
-  %  two lists: the first one represents the
+  %% Third example: plotting a tuple of
+  %  two lists, the first one represents the
   %  horizontal coordinates, the second list
   %  represents the vertical coordinates
   %--------------------------------------------
   series2: [ list[real], list[real] ] = ((: 1/2, 2, 3 :), (: 1, -1, -2/3 :))
 
   %--------------------------------------------
-  %% Fourth example, plots a tuple of
-  %  four lists: the first one represents the
+  %% Fourth example: plotting a tuple of
+  %  four lists, the first one represents the
   %  horizontal coordinates, the second and third
   %  represent the vertical coordinates of two
   %  different series
@@ -76,7 +79,7 @@ BEGIN
   )
 
   %--------------------------------------------
-  %% Fourth example, plots a tuple of pairs of lists
+  %% Fourth example: plotting a tuple of pairs of lists
   %  each tuple is a different dataseries with its x and y coordinates
   %--------------------------------------------
   multiseries_2: [
@@ -89,8 +92,8 @@ BEGIN
     ((: 0, 3, 6 :), (: 0, 1, 1.5 :))  % x,y values for series 3
   )
 
-  % Example math expressions written in markdown syntax
-  % click the inline 'view-as-markdown' show at the beginning of the file
+  % Example math expressions written in markdown syntax that can be rendered in vscode-pvs
+  % click the inline 'view-as-markdown' shown at the beginning of the file
   % to view the rendered version of the markdown expressions
   % $\sum_{i=1}^n X_i$
   % $\to$
