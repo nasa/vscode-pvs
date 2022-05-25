@@ -663,6 +663,6 @@ export class VSCodePvsSearch {
             version: "User-defined libraries",
             folders: this.pvsLibraries ? Object.keys(this.pvsLibraries).length : 0,
             theories: nTheories               
-        }
+        };
     }
 }

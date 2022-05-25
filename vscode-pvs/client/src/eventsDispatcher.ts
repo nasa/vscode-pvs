@@ -1035,7 +1035,7 @@ export class EventsDispatcher {
 			if (resource) {
                 const desc: FileDescriptor = vscodeUtils.resource2desc(resource);
                 if (isPvsFile(desc)) {
-                    const msg: string = "Start evaluator session?"
+                    const msg: string = "Start evaluator session?";
                     const selection: string[] = [ "Start PVSio", "Start PVSio-Web" ];
                     const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, selection[0], selection[1]);
                     switch (ans) {
@@ -1474,7 +1474,7 @@ export class EventsDispatcher {
                     const yesno: string[] = [ "Yes", "No" ];
                     const folder: string = getUndumpFolderName(dmpFile);
                     const msg: string = `Undump pvs files to folder '${folder}'?`;
-                    const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
+                    const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
                     if (ans === yesno[0]) {
                         const req: UndumpPvsFilesRequest = { dmpFile };
                         // send dump-pvs-files request to pvs-server

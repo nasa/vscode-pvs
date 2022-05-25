@@ -1958,11 +1958,11 @@ export class PvsProofExplorer {
 		// set QED
 		this.root.QED();
 		// save proof if status has changed
-		const fname: string = fsUtils.desc2fname({
-			fileName: this.formula.theoryName,
-			fileExtension: ".prf",
-			contextFolder: this.formula.contextFolder
-		});
+		// const fname: string = fsUtils.desc2fname({
+		// 	fileName: this.formula.theoryName,
+		// 	fileExtension: ".prf",
+		// 	contextFolder: this.formula.contextFolder
+		// });
 		// const proofliteExists: boolean = await utils.containsProoflite(fname, this.formula.formulaName);
 		if (this.root.proofStatusChanged() || this.dirtyFlag || this.origin !== ".prf") { // || !proofliteExists) {
 			await this.quitProofAndSave(); // proof descriptor is automatically updated by saveproof

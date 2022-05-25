@@ -269,8 +269,6 @@ export function tuple2PlotData (data: string, opt?: { mode?: PlotMode }): PlotDa
 export function tupletuplelist2PlotData (data: string, opt?: { mode?: PlotMode, seriesId?: number }): PlotData[] {
     opt = opt || {};
 	const res: PlotData[] = [];
-	const regexp: RegExp = new RegExp(listRegexp);
-    // let match: RegExpMatchArray = regexp.exec(data);
     let id: number = 1;
     // get series
     // const series: string = match[0];
