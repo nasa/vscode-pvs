@@ -35,7 +35,7 @@ BEGIN
   MEASURE n + 1
 
   % utility function, returns a list with the output of sqrt_newton
-  % the i-th element of the list is the output produced by sqrt_newton at iteration i
+  % the n-th element of the list is the output produced by sqrt_newton at iteration n
   plot_newton(a: nnreal, n: posnat): RECURSIVE list[real] =
     IF n <= 1 THEN (: sqrt_newton(a, n) :)
     ELSE plot_newton(a, n - 1) o (: sqrt_newton(a, n) :) ENDIF
@@ -92,7 +92,7 @@ BEGIN
     ((: 0, 3, 6 :), (: 0, 1, 1.5 :))  % x,y values for series 3
   )
 
-  % Example math expressions written in markdown syntax that can be rendered in vscode-pvs
+  % Example markdown expressions that can be rendered in vscode-pvs
   % click the inline 'view-as-markdown' shown at the beginning of the file
   % to view the rendered version of the markdown expressions
   % $\sum_{i=1}^n X_i$
