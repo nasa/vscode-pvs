@@ -1095,7 +1095,7 @@ export class EventsDispatcher {
                 let desc: PvsTheory = vscodeUtils.resource2desc(resource);
                 if (desc) {
                     if (!desc.theoryName) {
-                        const info: { content: string, line: number } = (resource && resource["path"]) ? { content: await fsUtils.readFile(resource["path"]), line: 0 }
+                        const info: { content: string, line: number } = (resource["path"]) ? { content: await fsUtils.readFile(resource["path"]), line: 0 }
                             : { content: activeEditor?.document?.getText(), line: activeEditor?.selection?.active?.line };
                         const theoryName: string = fsUtils.findTheoryName(info.content, info.line);
                         desc.theoryName = theoryName;

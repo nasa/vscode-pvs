@@ -157,7 +157,6 @@ export class PvsDefinitionProvider {
 		}
 		const isKeyword: boolean = new RegExp(language.PVS_RESERVED_WORDS_REGEXP_SOURCE, "gi").test(symbolName);
 		if (isKeyword) {
-			symbolName = symbolName;
 			this.printInfo(`Keyword ${symbolName}`);
 			response.comment = symbolName === 'o' ? `Keyword ${symbolName}` : `Keyword ${symbolName.toUpperCase()}`;
 			return [ response ];

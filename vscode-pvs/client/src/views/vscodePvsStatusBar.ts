@@ -213,7 +213,7 @@ export class VSCodePvsStatusBar {
      */
     showError (msg: string): void {
         if (msg) {
-            const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
+            const shortmsg: string = msg.split("\n")[0];
             this.pvsStatus.icon("");
             this.pvsStatus.text(`$(pinned-dirty)  ${shortmsg}`); // messages in the status bar should always be on one line
             this.pvsStatus.show();
