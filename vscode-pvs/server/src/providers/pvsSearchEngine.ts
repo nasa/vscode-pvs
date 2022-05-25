@@ -66,7 +66,7 @@ export class PvsSearchEngine {
     async searchNasalib (searchString: string, opt?: { quiet?: boolean }): Promise<SearchResult[]> {
 		if (searchString) {
 			const nasalibPath: string = this.pvsLanguageServer.getNasalibPath();
-			const normalizedSearchString: string = searchString.replace(/\|/g, "\\|");
+			const normalizedSearchString: string = searchString.replace(/\|/g, "\\\|");
 			const findAll: string = `cd ${nasalibPath} && ./find-all "${normalizedSearchString}"`;
 			if (!opt?.quiet) { console.log(`[pvs-search-engine] ${findAll}`); }
 			process.env["PVS_DIR"] = fsUtils.tildeExpansion(this.pvsLanguageServer.getPvsPath());

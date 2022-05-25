@@ -627,7 +627,7 @@ export function proofliteRegexp(desc: { theoryName: string, formulaName: string 
 	return new RegExp(`(?:(?:%--*.*)\\s*(?:%\\s*@formula\\s*:\\s*(${formulaName}))?\\s*(?:%\\s*@theory\\s*:\\s*(${theoryName}))?\\s*(?:%\\s*@status\\s*:\\s*(.*))?\\s*(?:%--*.*))?\\s*(${desc.formulaName}\\s*:\\s*PROOF[\\w\\W\\s]*QED\\s*${desc.formulaName})`, "g");
 }
 export function proofliteDeclRegexp(desc: { theoryName: string, formulaName: string }): RegExp {
-	const formulaName: string = desc.formulaName.replace(/\?/g, "\\?");
+	const formulaName: string = desc.formulaName.replace(/\?/g, "\\\?");
 	return new RegExp(`\\b${formulaName}\\s*:\\s*PROOF\\b`, "g");
 }
 /**
@@ -1022,7 +1022,7 @@ export function proofDescriptor2ProofLite (proofDescriptor: ProofDescriptor, opt
 		script = script || "(then (postpone))";
 		if (opt.omitTags) {
 			if (opt.escape) {
-				script = script.replace(/[\n\r]/g, " ").replace(/\"/g, `\\"`)
+				script = script.replace(/[\n\r]/g, " ").replace(/\"/g, `\\\"`);
 			}
 			return script.split("\n");
 		} else {
