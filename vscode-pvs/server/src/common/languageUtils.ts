@@ -73,7 +73,7 @@ export const declarationRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇
 // group 1 is the formula name
 export const formulaRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([^=]+)\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT|AXIOM)\b/gim;
 // same as formulaRegExp, but does not include JUDGEMENT and AXIOM
-export const theoremRegexp: RegExp = /^\s*([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([^=]+)\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)\b/gim;
+export const theoremRegexp: RegExp = /^\s*\n\s*([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([^=]+)\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)\b/gim;
 export const theoremParamsRegexp: RegExp = /\s*(?:\[([^=]+)\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)\b/gim;
 // /(\w+)\s*(?:\%.*\s)*(?:\[([^\]]+)\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
 export const tccRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*:\s*OBLIGATION\b/gi;
