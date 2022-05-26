@@ -821,7 +821,7 @@ export class PvsProxy {
 		(or (from-prelude? th)
 			(lib-datatype-or-theory? th)))
 	(collect-theory-usings theoryname nil))))
-		(mapcar (lambda (theory) (cons (format nil "|~a|" (id theory)) (shortname (make-specpath (filename theory))))) (reverse usings))))`
+		(mapcar (lambda (theory) (cons (format nil "|~a|" (id theory)) (shortname (make-specpath (filename theory))))) (reverse usings))))`;
 			const res: PvsResponse = await this.legacy?.lisp(lispCmd);
 			// )`);
 			console.log(res?.result);
@@ -1920,7 +1920,7 @@ export class PvsProxy {
 	 * Loads pvs version information
 	 */
 	async loadPvsVersionInfo(): Promise<PvsVersionDescriptor | null> {
-		let res: PvsResponse = null
+		let res: PvsResponse = null;
 		if (this.externalServer) {
 			res = await this.lisp(`(get-pvs-version-information)`);
 		} else {
