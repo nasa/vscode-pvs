@@ -1596,56 +1596,51 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 				const content: string = slices.slice(boundaries[i].from - 1, boundaries[i].to - 1).join("\n");
 				if (content && content.trim()) {
 					const regex: RegExp = new RegExp(theoremRegexp);
-					const lemmaBlocks: string[] = content.split(/LEMMA/gi);
-					let prevBlockSize: number = 0; // number of characters in the previous LEMMA block
-					for (let b = 0; b < lemmaBlocks.length; b++) {
-						if (b > 0) { prevBlockSize += lemmaBlocks[b - 1].length + "LEMMA".length; }
-						let match: RegExpMatchArray = null;
-						while (match = regex.exec(lemmaBlocks[b] + "LEMMA")) {
-							// const startMatch: number = Date.now();
-							if (match.length > 1 && match[1]) {
-								const formulaName: string = match[1];
-								const matchParams: RegExpMatchArray = new RegExp(theoremParamsRegexp).exec(match[0].trim());
-								const blanks: number = match[0].replace(matchParams[0], "").replace(formulaName, "").length;
-								const docUp: string = content.slice(0, match.index + formulaName.length + blanks + prevBlockSize);
-								const offset: number = (docUp) ? docUp.split("\n").length : 0;
-								const line: number = boundaries[i].from + offset - 1;
-								const isTcc: boolean = desc.fileExtension === ".tccs";
-								let status: ProofStatus = "untried";
-								// if (isTcc) {
-								// 	const matchStatus: RegExpMatchArray = tccStatusRegExp.exec(slice);
-								// 	if (matchStatus && matchStatus.length > 1 && matchStatus[1]) {
-								// 		status = <ProofStatus> matchStatus[1];
-								// 	}
-								// } else {
-								if (desc.prelude) {
-									status = "proved";
-								} else {
-									// check if the .jprf file contains the proof status
-									const theoryName: string = boundaries[i].theoryName;
-									status = await getProofStatus({
-										fileName: desc.fileName, 
-										fileExtension: desc.fileExtension, 
-										contextFolder: desc.contextFolder,
-										formulaName,
-										theoryName
-									});
-								}
-								const fdesc: FormulaDescriptor = {
-									fileName: desc.fileName,
-									fileExtension: desc.fileExtension,
+					let match: RegExpMatchArray = null;
+					while (match = regex.exec(content)) {
+						// const startMatch: number = Date.now();
+						if (match.length > 1 && match[1]) {
+							const formulaName: string = match[1];
+							const matchParams: RegExpMatchArray = new RegExp(theoremParamsRegexp).exec(match[0].trim());
+							const blanks: number = match[0].replace(matchParams[0], "").replace(formulaName, "").length;
+							const docUp: string = content.slice(0, match.index + formulaName.length + blanks);
+							const offset: number = (docUp) ? docUp.split("\n").length : 0;
+							const line: number = boundaries[i].from + offset - 1;
+							const isTcc: boolean = desc.fileExtension === ".tccs";
+							let status: ProofStatus = "untried";
+							// if (isTcc) {
+							// 	const matchStatus: RegExpMatchArray = tccStatusRegExp.exec(slice);
+							// 	if (matchStatus && matchStatus.length > 1 && matchStatus[1]) {
+							// 		status = <ProofStatus> matchStatus[1];
+							// 	}
+							// } else {
+							if (desc.prelude) {
+								status = "proved";
+							} else {
+								// check if the .jprf file contains the proof status
+								const theoryName: string = boundaries[i].theoryName;
+								status = await getProofStatus({
+									fileName: desc.fileName, 
+									fileExtension: desc.fileExtension, 
 									contextFolder: desc.contextFolder,
-									theoryName: boundaries[i].theoryName,
 									formulaName,
-									position: { line, character: 0 },
-									status,
-									isTcc
-								};
-								formulaDescriptors.push(fdesc);
+									theoryName
+								});
 							}
-							// const matchTime: number = Date.now() - startMatch;
-							// console.log(`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}.${match[0]?.trim()}) completed in ${matchTime}ms`);			
+							const fdesc: FormulaDescriptor = {
+								fileName: desc.fileName,
+								fileExtension: desc.fileExtension,
+								contextFolder: desc.contextFolder,
+								theoryName: boundaries[i].theoryName,
+								formulaName,
+								position: { line, character: 0 },
+								status,
+								isTcc
+							};
+							formulaDescriptors.push(fdesc);
 						}
+						// const matchTime: number = Date.now() - startMatch;
+						// console.log(`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}.${match[0]?.trim()}) completed in ${matchTime}ms`);			
 					}
 				} else {
 					console.error("Error while finding theory names :/");

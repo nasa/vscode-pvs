@@ -135,66 +135,61 @@ export class PvsCodeLensProvider {
             // show-prooflite | prove-formula
             if (fileExtension === ".pvs" || fileExtension === ".tccs") {
                 const regex: RegExp = new RegExp(utils.theoremRegexp);
-                const lemmaBlocks: string[] = content.split(/LEMMA/gi);
-                let prevBlockSize: number = 0; // number of characters in the previous LEMMA block
-                for (let b = 0; b < lemmaBlocks.length; b++) {
-                    if (b > 0) { prevBlockSize += lemmaBlocks[b - 1].length + "LEMMA".length; }
-                    while (match = regex.exec(lemmaBlocks[b] + "LEMMA")) {
-                        if (match.length > 1 && match[1]) {
-                            const formulaName: string = match[1];
-                            const matchParams: RegExpMatchArray = new RegExp(utils.theoremParamsRegexp).exec(match[0]);
-                            const blanks: number = match[0].replace(matchParams[0], "").replace(formulaName, "").length;
-                            // the following can be done in the resolve if necessary for performance reasons
-                            const docUp: string = content.slice(0, match.index + formulaName.length + blanks + prevBlockSize);
-                            const lines: string[] = docUp.split("\n");
-                            const line: number = lines.length - 1;
-                            const character: number = lines[lines.length - 1].indexOf(match[1]);
-                            
-                            let theoryName: string = fsUtils.findTheoryName(content, line);
-                            if (theoryName && character >= 0) {
-                                const formula: PvsFormula = {
-                                    fileName,
-                                    fileExtension,
-                                    contextFolder,
-                                    theoryName: (fileExtension === ".tccs") ? 
-                                        theoryName.substring(0, theoryName.length - 5) // the theory name in the .tccs file ends with _TCCS
-                                        : theoryName, 
-                                    formulaName,
-                                    line: fileExtension === ".tccs" ? line - 3 : line // -3 is necessary to take into account the header of the tcc file created by vscode-pvs
-                                };
-                                const range: Range = {
-                                    start: { line, character }, 
-                                    end: { line, character: character + formulaName.length }
-                                };
-                                codeLens.push({
-                                    range,
-                                    command: {
-                                        title: "prove",
-                                        command: "vscode-pvs.prove-formula",
-                                        arguments: [ formula ]
-                                    }
-                                    // ,
-                                    // data: {
-                                    //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
-                                    // }
-                                });
-                                codeLens.push({
-                                    range,
-                                    command: {
-                                        title: "status-proofchain",
-                                        command: "vscode-pvs.status-proofchain",
-                                        arguments: [ formula ]
-                                    }
-                                });
-                                codeLens.push({
-                                    range,
-                                    command: {
-                                        title: "show-prooflite",
-                                        command: "vscode-pvs.show-prooflite",
-                                        arguments: [ formula ]
-                                    }
-                                });
-                            }
+                while (match = regex.exec(content)) {
+                    if (match.length > 1 && match[1]) {
+                        const formulaName: string = match[1];
+                        const matchParams: RegExpMatchArray = new RegExp(utils.theoremParamsRegexp).exec(match[0].trim());
+                        const blanks: number = match[0].replace(matchParams[0], "").replace(formulaName, "").length;
+                        // the following can be done in the resolve if necessary for performance reasons
+                        const docUp: string = content.slice(0, match.index + formulaName.length + blanks);
+                        const lines: string[] = docUp.split("\n");
+                        const line: number = lines.length - 1;
+                        const character: number = lines[lines.length - 1].indexOf(match[1]);
+                        
+                        let theoryName: string = fsUtils.findTheoryName(content, line);
+                        if (theoryName && character >= 0) {
+                            const formula: PvsFormula = {
+                                fileName,
+                                fileExtension,
+                                contextFolder,
+                                theoryName: (fileExtension === ".tccs") ? 
+                                    theoryName.substring(0, theoryName.length - 5) // the theory name in the .tccs file ends with _TCCS
+                                    : theoryName, 
+                                formulaName,
+                                line: fileExtension === ".tccs" ? line - 3 : line // -3 is necessary to take into account the header of the tcc file created by vscode-pvs
+                            };
+                            const range: Range = {
+                                start: { line, character }, 
+                                end: { line, character: character + formulaName.length }
+                            };
+                            codeLens.push({
+                                range,
+                                command: {
+                                    title: "prove",
+                                    command: "vscode-pvs.prove-formula",
+                                    arguments: [ formula ]
+                                }
+                                // ,
+                                // data: {
+                                //     line, character, doc: docUp, formulaName, fileName, fileExtension, contextFolder
+                                // }
+                            });
+                            codeLens.push({
+                                range,
+                                command: {
+                                    title: "status-proofchain",
+                                    command: "vscode-pvs.status-proofchain",
+                                    arguments: [ formula ]
+                                }
+                            });
+                            codeLens.push({
+                                range,
+                                command: {
+                                    title: "show-prooflite",
+                                    command: "vscode-pvs.show-prooflite",
+                                    arguments: [ formula ]
+                                }
+                            });
                         }
                     }
                 }

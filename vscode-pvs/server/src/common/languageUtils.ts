@@ -71,10 +71,11 @@ export const datatypeRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈
 export const theoryOrDatatypeRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*(?:THEORY|DATATYPE)\b/gi;
 export const declarationRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:/gi;
 // group 1 is the formula name
-export const formulaRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([^=]+)\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT|AXIOM)\b/gim;
-// same as formulaRegExp, but does not include JUDGEMENT and AXIOM
-export const theoremRegexp: RegExp = /^\s*\n\s*([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([^=]+)\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)\b/gim;
-export const theoremParamsRegexp: RegExp = /\s*(?:\[([^=]+)\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)\b/gim;
+export const formulaRegexp: RegExp = /^\s*\n\s*([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[\s*\w+(?:\s*,\s*\w+)*\s*\:\s*(?:NONEMPTY_)?TYPE\+?\s*\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT|AXIOM)\b/gim;
+// same as formulaRegExp, but does not include AXIOM
+export const theoremRegexp: RegExp = /^\s*\n\s*([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[\s*\w+(?:\s*,\s*\w+)*\s*\:\s*(?:NONEMPTY_)?TYPE\+?\s*\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)\b/gim;
+export const theoremParamsRegexp: RegExp = /\s*(?:\[\s*\w+(?:\s*,\s*\w+)*\s*\:\s*(?:NONEMPTY_)?TYPE\+?\s*\])?\s*:\s*(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)\b/gim;
+export const theoremKeywordRegexp: RegExp = /(?:CHALLENGE|CLAIM|CONJECTURE|COROLLARY|FACT|FORMULA|LAW|LEMMA|PROPOSITION|SUBLEMMA|THEOREM|OBLIGATION|JUDGEMENT)/gi;
 // /(\w+)\s*(?:\%.*\s)*(?:\[([^\]]+)\])?\s*:\s*(?:\%.*\s)*\s*THEORY\b/gi;
 export const tccRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*:\s*OBLIGATION\b/gi;
 export const tccStatusRegExp: RegExp = /%\s(proved|subsumed|simplified|unproved|unfinished|unchecked|untried)\b/g;
