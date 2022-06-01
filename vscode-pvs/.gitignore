@@ -2,6 +2,7 @@
 node_modules
 client/out
 server/out
+*/.vscode/
 .DS_Store
 client/.DS_Store
 server/.DS_Store
