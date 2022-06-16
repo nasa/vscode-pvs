@@ -1267,7 +1267,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * search nasalib
 	 */
 	async searchNasalib (req: SearchRequest, opt?: { quiet?: boolean }): Promise<SearchResult[]> {
-		const ans: SearchResult[] = await this.pvsSearchEngine?.searchNasalib(req?.searchString, opt);
+		const libraryPath: string = this.getNasalibPath();
+		const ans: SearchResult[] = await this.searchPvsLibraryPath(req, { ...opt, libraryPath });
+		// const ans: SearchResult[] = await this.pvsSearchEngine?.searchNasalib(req?.searchString, opt);
 		return ans;
 	}
 	/**
