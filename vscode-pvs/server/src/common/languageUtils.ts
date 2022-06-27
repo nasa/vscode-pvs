@@ -63,11 +63,11 @@ export const markdownRegexp: RegExp = /\s*%\s*\!\[(.+)\]\((.+)\)/g;
 export const commentRegexp: RegExp = /%.*/g; // pvs comment line
 export const stringRegexp: RegExp = /\"[^\"]+\"/g;
 // group 1 is theoryName, group 2 is comma-separated list of theory parameters -- NB: this regexp is fast but not accurate, because it does not check the end of the theory. See example use in codelense.
-export const theoryRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*THEORY\s+BEGIN\b/gi;
+export const theoryRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*THEORY\b/gi;//\s+BEGIN\b/gi;
 export function endTheoryOrDatatypeRegexp(theoryName: string): RegExp {
 	return new RegExp(`(\\bEND\\s*)(${theoryName})(\\b)`, "gi");
 }
-export const datatypeRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*DATATYPE\s+(?:BEGIN|WITH)\b/gi;
+export const datatypeRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*DATATYPE\b/gi;//\s+(?:BEGIN|WITH)\b/gi;
 export const theoryOrDatatypeRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:\s*(?:THEORY|DATATYPE)\b/gi;
 export const declarationRegexp: RegExp = /([A-Za-z][\w\?₀₁₂₃₄₅₆₇₈₉]*)\s*(?:\[([\w\W\s]+)\])?\s*\:/gi;
 // group 1 is the formula name
