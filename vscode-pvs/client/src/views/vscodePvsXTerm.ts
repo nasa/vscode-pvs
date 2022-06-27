@@ -524,7 +524,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.log("\n" + colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme)), {
                     sessionEnd: true
                 });
-                const msg: string = "Evaluator session terminated.\nYou can now close the evaluator console.";
+                const msg: string = `Evaluator session terminated.\nYou can now <span class="btn btn-sm btn-primary btn-help close-action m-0 p-0">close</span> the evaluator console.`;
                 this.showHelpMessage(msg);
                 // disable response handlers
                 this.disableHandlers();
