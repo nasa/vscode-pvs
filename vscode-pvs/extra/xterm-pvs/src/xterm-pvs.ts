@@ -1724,7 +1724,7 @@ export class Autocomplete extends Backbone.Model {
         const desc: CommandDescriptor = this.sessionType === "evaluator" ?
             evaluatorCommands[cmd]
                 : proverCommands[cmd];
-        // console.log("[xterm-autocomplete] updateHelp", { cmd, desc });
+        console.log("[xterm-autocomplete] updateHelp", { cmd, desc });
         const integratedHelp: string = Handlebars.compile(terminalHelpTemplate, { noEscape: true })({
             cmd,
             ...desc,

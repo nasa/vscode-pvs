@@ -207,7 +207,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     protected matchTccTheory (theory: PvsTheory): void {
         if (theory.fileExtension === ".tccs") {//} && theory.theoryName.endsWith("_TCCS")) {
-            theory.theoryName = theory.theoryName.substr(0, theory.theoryName.length - 5);
+            theory.theoryName = theory.theoryName.substring(0, theory.theoryName.length - 5);
         }
     }
 

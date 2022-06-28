@@ -1211,7 +1211,6 @@ export function prf2jprf (desc: {
 	return null;
 }
 
-
 // group 1 is the command argument
 export const helpCommandRegexp: RegExp = /^\s*\(?\s*help\s*\"?([^\)]+)/g;
 export function isHelpCommand (cmd: string): boolean {
@@ -2505,6 +2504,13 @@ export const PROOF_COMMANDS: { [key:string]: CommandDescriptor } = {
     //     description: `Save current proof`,
     //     syntax: `save`
     // },
+    "show-expanded-sequent": {
+        description: `Displays expanded form of the current sequent. Use (show-expanded-sequent t) to show fully expanded names.`,
+        syntax: `show-expanded-sequent`,
+        optionals: {
+            "t": `Show fully expanded names.`
+        }
+    },
     // "show-hidden": {
     //     description: `Show the list of hidden sequent formulas.`,
     //     syntax: `show-hidden`
@@ -3363,7 +3369,7 @@ export const evaluatorCommands: CommandsMap = {
     ...VSCODE_COMMANDS,
     ...EVALUATOR_COMMANDS
 };
-// list of prover commands
+// list of prover commands -- this is used to update the integrated help in the prover/evaluator console
 export const proverCommands: CommandsMap = {
     "undo": {
         description: `Undo last prover command`,
@@ -3651,6 +3657,17 @@ export function isGrindCommand (cmd: string): boolean {
 export function isProofliteGlassbox (cmd: string): boolean {
 	return cmd && cmd.trim().startsWith("(then ");
 }
+
+// recognizes (show-expanded-sequent) command
+export function isShowExpandedSequentCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+    return cmd && /^\(?\s*show\-expanded\-sequent\s*t?/g.test(cmd);
+}
+export function isShowFullyExpandedSequentCommand (cmd: string): boolean {
+	cmd = (cmd) ? cmd.trim() : cmd;
+    return cmd && /^\(?\s*show\-expanded\-sequent\s*t\b/g.test(cmd);
+}
+
 
 /**
  * Utility function, splits a prover command into multiple commads based on the round parentheses

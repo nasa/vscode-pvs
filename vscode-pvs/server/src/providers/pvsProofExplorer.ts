@@ -57,6 +57,7 @@ import { PvsResponse } from '../common/pvs-gui';
 import { 
 	isEmptyCommand, isFailCommand, isInvalidCommand, isPostponeCommand, isProofliteGlassbox, 
 	isQEDCommand, isQuitCommand, isQuitDontSaveCommand, isSameCommand, isSaveThenQuitCommand, 
+	isShowExpandedSequentCommand, 
 	isShowHiddenFormulas, isUndoCommand, isUndoUndoCommand, isUndoUndoPlusCommand, splitCommands
 } from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
@@ -751,9 +752,14 @@ export class PvsProofExplorer {
 					return;
 				}
 
-				// handle (show-hidden) and (comment "xxx")
+				// handle (show-hidden) and other similar commands that are not directly supported by the server and need to be by-passed
 				if (isShowHiddenFormulas(userCmd)) {
 					// nothing to do, the prover will simply show the hidden formulas
+					return;
+				}
+
+				if (isShowExpandedSequentCommand(userCmd)) {
+					// nothing to do, the prover will simply show the expanded sequent
 					return;
 				}
 

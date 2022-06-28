@@ -63,7 +63,7 @@ import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, Proof
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
-import { checkPar, CheckParResult, getErrorRange, isQuitCommand, isQuitDontSaveCommand, isSaveThenQuitCommand, isShowHiddenFormulas } from './common/languageUtils';
+import { checkPar, CheckParResult, getErrorRange, isQuitCommand, isQuitDontSaveCommand, isSaveThenQuitCommand, isShowExpandedSequentCommand, isShowFullyExpandedSequentCommand, isShowHiddenFormulas } from './common/languageUtils';
 import * as languageUtils from './common/languageUtils';
 import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import { PvsErrorManager } from './pvsErrorManager';
@@ -1401,10 +1401,11 @@ export class PvsProxy {
 			if (test.success) {
 				// console.dir(desc, { depth: null });
 				const showHidden: boolean = isShowHiddenFormulas(desc.cmd);
+				const showExpandedSequent: boolean = isShowExpandedSequentCommand(desc.cmd);
 				// const isGrind: boolean = utils.isGrindCommand(desc.cmd);
 				// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
 				// the front-end will handle the command, and reveal the hidden sequents.
-				const cmd: string = showHidden ? "(skip)" : desc.cmd;
+				const cmd: string = (showHidden || showExpandedSequent) ? "(skip)" : desc.cmd;
 				if (!this.externalServer) { console.log(cmd); }
 				res = languageUtils.isHelpBangCommand(cmd) ? await this.showHelpBang(cmd) :
 					await this.pvsRequest('proof-command', [ cmd ]);
@@ -1427,6 +1428,19 @@ export class PvsProxy {
 								// }
 							}
 						}
+					} else if (showExpandedSequent) {
+						const expanded: PvsResponse = await this.lisp(`(show-expanded-sequent${isShowFullyExpandedSequentCommand(desc.cmd) ? " t" : ""})`);
+						if (expanded?.result) {
+							for (let i = 0; i < proofStates.length; i++) {
+								const result: SequentDescriptor = proofStates[i];
+								if (result) {
+									result.commentary = isShowFullyExpandedSequentCommand(desc.cmd) ?
+										`;;; Fully expanded sequent\n${expanded.result}`
+										: expanded.result.replace("; C-u M-x show-expanded-sequent fully expands", "");
+								}
+							}
+						}
+						// console.log(res);
 					}
 					// if (isGrind) {
 					// 	for (let i = 0; i < proofStates.length; i++) {

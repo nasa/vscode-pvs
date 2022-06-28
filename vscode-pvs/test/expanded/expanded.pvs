@@ -1,0 +1,52 @@
+%%
+% @theory: expanded
+% @author: pmasci
+% @date: Tue, 28 Jun 2022 12:36:36 GMT
+%%
+expanded: THEORY
+  BEGIN IMPORTING reals@sqrt
+  
+  %Let's see... 
+  sq_alt(r:real): nnreal = r*r
+
+  sqrt_lem2: LEMMA
+  FORALL (x:nnreal):
+  sqrt(x) = 2*x
+
+  sqrt(x:real): real = x*x
+  
+
+  sqrt_lem: LEMMA
+  FORALL (x:real):
+  sqrt(x)  = 2*x 
+
+  sqrt_lem3: LEMMA
+  FORALL (r:real, n : {m: nat | EXISTS (k:nat): m = k*k}):
+  r=n
+  IMPLIES sqrt(n) = sqrt(r)
+  % (skeep)(lemma "sqrt_lem")(inst -1 "r")(lemma "sqrt_lem2")(inst -1 "n")
+  % then M-x show-expanded-sequent.
+  % the first sqrt should show reals. 
+
+
+
+
+
+  % @QED metit_lem proved by adutle on Fri, 17 Jun 2022 18:31:51 GMT
+  metit_lem: LEMMA
+  FORALL (x,y: real): 
+  x>2 and y>2 IMPLIES
+  x^2 +y^2 > 3
+
+  % @QED lauren_metit proved by adutle on Fri, 17 Jun 2022 18:39:39 GMT
+  lauren_metit: LEMMA 
+  FORALL (x,y:real):
+  y>1 and x<2 and y<2 and x>= -1/4 and (x^2+y^2-1)^2 <=1/30 
+  IMPLIES
+  4*y+(12*x)/5+y^2 - 4*x -2*(x*y)>=-314/25
+
+  List_ind: LEMMA
+  FORALL (L: list[real]):
+  null?(L) OR cons?(L)
+    
+  END expanded
