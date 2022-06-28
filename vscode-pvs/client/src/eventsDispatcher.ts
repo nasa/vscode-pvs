@@ -1018,8 +1018,8 @@ export class EventsDispatcher {
             }
         }));
         // pvsio-evaluator
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-evaluator", async () => {
-            await this.xterm.onStartEvaluatorRequest();
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-evaluator", async (theory?: PvsTheory) => {
+            await this.xterm.onStartEvaluatorRequest(theory);
         }));
         // io requests (pvsio, pvsio-web)
         context.subscriptions.push(commands.registerCommand("vscode-pvs.io", async (resource?: { path: string }) => {
