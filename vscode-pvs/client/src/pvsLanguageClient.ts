@@ -245,6 +245,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			const colorTheme: XTermColorTheme = vscodeUtils.detectColorTheme();
 			this.xterm.updateColorTheme(colorTheme);
 
+			// get brackets colorization flag
+			const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.proverConsole.colorizeBracketPairs");
+			this.xterm.enableBracketColors(flag);
+
 			// re-initialise pvs if the executable is different
 			const pvsPath: string = vscodeUtils.getConfiguration("pvs.path").trim();
 			const pvsLibraryPath: string = vscodeUtils.getPvsLibraryPath();

@@ -321,7 +321,8 @@ export const isense: IntellisenseTriggers = {
 function sequentToString(sequents: SFormula[], opt?: {
     useColors?: boolean, 
     colorTheme?: colorUtils.XTermColorTheme,
-    htmlEncoding?: boolean 
+    htmlEncoding?: boolean,
+    colorizeParens?: boolean
 }): string {
 	let res: string = "";
 	opt = opt || {};
@@ -407,7 +408,8 @@ export function commentaryToString (commentary: string | string[], opt?: {
  */
 export function pvsSyntaxHighlighting(text: string, opt?: {
     colorTheme?: colorUtils.XTermColorTheme,
-    htmlEncoding?: boolean
+    htmlEncoding?: boolean,
+    colorizeParens?: boolean
 }): string {
 	if (text) {
 		opt = opt || {};
@@ -417,6 +419,16 @@ export function pvsSyntaxHighlighting(text: string, opt?: {
 		text = text.replace(number_regexp, (number: string) => {
 			return colorUtils.colorText(number, colorUtils.getColor(colorUtils.PvsColor.yellow, colorTheme));
 		});
+        if (opt.colorizeParens) {
+            let colorIndex: number = -1;
+            const paren_regexp: RegExp = new RegExp(/[\(\)]/, "g");
+            text = text.replace(paren_regexp, (paren: string) => {
+                if (paren === "(") { colorIndex++; }
+                const res: string = colorUtils.colorText(paren, colorUtils.getParenColor(colorIndex));
+                if (paren === ")") { colorIndex--; }
+                return res;
+            });
+        }
 		const operators_regexp: RegExp = new RegExp(language.PVS_LANGUAGE_OPERATORS_REGEXP_SOURCE, "g");
 		text = text.replace(operators_regexp, (op: string) => {
 			return colorUtils.colorText(op, colorUtils.getColor(colorUtils.PvsColor.blue, colorTheme));
@@ -451,7 +463,8 @@ export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolea
 
 export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: { 
     useColors?: boolean, 
-    showAction?: boolean
+    showAction?: boolean,
+    colorizeParens?: boolean
 }): string {
 	if (proofState) {
 		opt = opt || {};
@@ -514,7 +527,8 @@ export function sformulas2string (desc: SequentDescriptor): string {
  * Prettyprints sequents. Syntax highlighting is introduced as ansi codes when option useColors is true.
  */
 export function formatSequent (desc: SequentDescriptor, opt?: {
-	useColors?: boolean, 
+	useColors?: boolean,
+    colorizeParens?: boolean,
     colorTheme?: colorUtils.XTermColorTheme,
 	showAction?: boolean,
 	htmlEncoding?: boolean,

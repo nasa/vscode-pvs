@@ -48,7 +48,7 @@ import * as utils from '../common/languageUtils';
 import { LanguageClient } from 'vscode-languageclient';
 import {
     EvaluatorCommandResponse, HintsObject, MathObjects, ProofCommandResponse, ProveFormulaRequest, ProveFormulaResponse, 
-    PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, SequentDescriptor, serverEvent, serverRequest 
+    PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, serverEvent, serverRequest 
 } from '../common/serverInterface';
 import { PvsResponse } from '../common/pvs-gui';
 import * as vscodeUtils from '../utils/vscode-utils';
@@ -168,7 +168,11 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     protected target: PvsTheory | PvsFormula;
     protected panel: WebviewPanel = null;
 
+    // color theme
     protected colorTheme: "dark" | "light";
+
+    // whether matching parens should be colorized
+    protected colorizeParens: boolean = false;
 
     // lemmas, types, and definitions provided by the typechecker, used by the autocompletion engine
     protected mathObjects: MathObjects = {};
@@ -264,6 +268,20 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             };
             this.panel?.webview?.postMessage(message);
         }
+    }
+
+    /**
+     * Utility function, disables colorize matching parens option
+     */
+    disableBracketColors (): void {
+        this.colorizeParens = false;
+    }
+    /**
+     * Utility function, disables colorize matching parens option
+     */
+    enableBracketColors (flag?: boolean): void {
+        this.colorizeParens = flag !== undefined ? !!flag : true;
+        console.log("[xterm-pvs] Bracket colors: ", this.colorizeParens);
     }
 
     /**
@@ -399,9 +417,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 if (data.req?.cmd && !isInvalidCommand(data.res)) {
                     this.updateCommandHistory(data.req.cmd);
                 }
-
+                // format sequent
                 const sequent: string = utils.formatSequent(data?.res, { 
                     colorTheme: this.colorTheme, 
+                    colorizeParens: this.colorizeParens,
                     useColors: true, 
                     ...opt 
                 });
@@ -730,6 +749,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.focus-xterm", () => {
             this.focus();
         }));
+        // set brackets colorization based on current settings
+        const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.proverConsole.colorizeBracketPairs");
+        this.enableBracketColors(flag);
     }
     /**
      * Writes a command in the terminal
