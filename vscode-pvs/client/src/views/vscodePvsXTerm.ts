@@ -281,7 +281,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     enableBracketColors (flag?: boolean): void {
         this.colorizeParens = flag !== undefined ? !!flag : true;
-        console.log("[xterm-pvs] Bracket colors: ", this.colorizeParens);
+        // console.log("[xterm-pvs] Bracket colors: ", this.colorizeParens);
     }
 
     /**
