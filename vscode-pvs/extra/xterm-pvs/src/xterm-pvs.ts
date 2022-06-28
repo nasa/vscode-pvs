@@ -281,7 +281,7 @@ export class Content extends Backbone.Model {
         const colIndex: number = pos?.character - 1;
         const textLine: string = this.textLineAt(pos);
         if (colIndex >= 0) {
-            return textLine.substr(0, colIndex);
+            return textLine.substring(0, colIndex);
         }
         console.warn("[xterm-content] Warning, textLineBefore position column out of range", { pos, textLine, lines: this.lines, colIndex });
         return "";
@@ -1724,7 +1724,7 @@ export class Autocomplete extends Backbone.Model {
         const desc: CommandDescriptor = this.sessionType === "evaluator" ?
             evaluatorCommands[cmd]
                 : proverCommands[cmd];
-        console.log("[xterm-autocomplete] updateHelp", { cmd, desc });
+        // console.log("[xterm-autocomplete] updateHelp", { cmd, desc });
         const integratedHelp: string = Handlebars.compile(terminalHelpTemplate, { noEscape: true })({
             cmd,
             ...desc,
@@ -2365,7 +2365,7 @@ export class XTermPvs extends Backbone.Model {
                     foreground: colorUtils.PvsColor.black,
                     bold: true
                 });
-                this.renderData(par)
+                this.renderData(par);
             }
             if (match?.pos2) {
                 this.moveCursorTo(match.pos2, { src: "matchBrackets" });
@@ -2373,7 +2373,7 @@ export class XTermPvs extends Backbone.Model {
                     { background: colorUtils.PvsColor.gold, foreground: colorUtils.PvsColor.black, bold: true }
                         : { background: colorUtils.PvsColor.red, foreground: colorUtils.PvsColor.white };
                 const par: string = colorUtils.ansiColorText(this.content.charAt(match.pos2), opt);
-                this.renderData(par)
+                this.renderData(par);
             }
             this.brackets = match;
             this.moveCursorTo(this.content.cursorPosition(), { src: "matchBrackets" });
@@ -3294,7 +3294,7 @@ export class XTermPvs extends Backbone.Model {
                 const color: colorUtils.PvsColor = pvsColorTheme[i][theme];
                 const regexp: RegExp = new RegExp(pvsColorTheme[i].regex, pvsColorTheme[i].flags);
                 htext = htext.replace(regexp, (txt: string) => {
-                    return colorUtils.colorText(txt, color );
+                    return colorUtils.colorText(txt, color);
                 });
             }
             // highlight prompt
