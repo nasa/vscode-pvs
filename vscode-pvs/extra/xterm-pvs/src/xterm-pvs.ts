@@ -2050,7 +2050,7 @@ export class XTermPvs extends Backbone.Model {
         // get the focus
         this.xterm.focus();
 
-        this.xterm.setOption("cursorBlink", true);
+        this.xterm.options.cursorBlink = true;
 
         // @ts-ignore
         // this.xterm.buffer.active._buffer.lines.onTrim((n: number) => {
@@ -2092,8 +2092,8 @@ export class XTermPvs extends Backbone.Model {
      */
     darkMode (): void {
         // console.log("[xterm-pvs] darkMode");
-        this.xterm.setOption("theme", xtermjsColorThemes.dark);
-        this.xterm.setOption("cursorStyle", "block");
+        this.xterm.options.theme = xtermjsColorThemes.dark;
+        this.xterm.options.cursorStyle = "block";
         $("body").css({
             color: xtermjsColorThemes.dark.foreground,
             background: xtermjsColorThemes.dark.background
@@ -2108,8 +2108,8 @@ export class XTermPvs extends Backbone.Model {
      */
     lightMode (): void {
         // console.log("[xterm-pvs] lightMode");
-        this.xterm.setOption("theme", xtermjsColorThemes.light);
-        this.xterm.setOption("cursorStyle", "bar");
+        this.xterm.options.theme = xtermjsColorThemes.light;
+        this.xterm.options.cursorStyle = "bar";
         $("body").css({
             color: xtermjsColorThemes.light.foreground,
             background: xtermjsColorThemes.light.background
@@ -2586,7 +2586,7 @@ export class XTermPvs extends Backbone.Model {
                 // move cursor to next line, to provide feedback that the command has been accepted
                 this.content.updateContent(evt);
                 this.updateView(evt, { disableParMatch: true });
-                this.xterm.setOption("cursorBlink", true);
+                this.xterm.options.cursorBlink = true;
                 // send command
                 this.sendWhenReady();
                 return;
@@ -3313,7 +3313,7 @@ export class XTermPvs extends Backbone.Model {
      * Shows a welcome message in the integrated help panel
      */
     showWelcomeMessage (): void {
-        this.xterm.setOption("cursorBlink", false);
+        this.xterm.options.cursorBlink = false;
         this.autocomplete.showHelp(welcomeMessage(this.sessionType, this.autocomplete.getIntegratedHelpSize()));
     }
 
@@ -3322,7 +3322,7 @@ export class XTermPvs extends Backbone.Model {
      */
     running (flag: boolean): void {
         this.runningFlag = !!flag;
-        this.xterm.setOption("cursorBlink", true);
+        this.xterm.options.cursorBlink = true;
         this.autocomplete.showHelp(welcomeMessage(this.sessionType, this.autocomplete.getIntegratedHelpSize()));
     }
 
@@ -3352,10 +3352,10 @@ export class XTermPvs extends Backbone.Model {
         this.log(cprompt);
         this.content.rebase({ prompt: this.prompt });
         this.enableInput();
-        this.xterm.setOption("cursorBlink", false);
+        this.xterm.options.cursorBlink = false;
         // this.autocomplete.clearHelp();
         // console.log("[xterm-pvs] showPrompt", { prompt: this.prompt, cprompt, content: this.content, xtermPos: this.pos });
-        // this.focus({ src: "showPrompt" });
+        this.focus(); // autofocus when showing prompt
         // this.showWelcomeMessage();
     }
 
