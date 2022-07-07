@@ -62,6 +62,7 @@ export class PvsSearchEngine {
 
 	/**
 	 * Search a given string in nasalib
+	 * @deprecated, use searchPvsLibraryPath instead
 	 */
     async searchNasalib (searchString: string, opt?: { quiet?: boolean }): Promise<SearchResult[]> {
 		if (searchString) {
@@ -171,6 +172,16 @@ export class PvsSearchEngine {
 		}
 		return null;
 	}
+
+	/**
+	 * Utility function, returns a sorted array (descending order) of SearchResults
+	 */
+	sort (res: SearchResult[]): SearchResult[] {
+		return res?.sort((a,b) => {
+			return a.fileName < b.fileName ? -1 : 1;
+		});
+	}
+
 	/**
 	 * Utility function, searches a given string in libraries imported with PVS_LIBRARY_PATH
 	 */
@@ -207,6 +218,12 @@ export class PvsSearchEngine {
 				// grep returns an error if there are no results, do nothing
 			}
 		}
-		return res;
+		// re-order array: match folderName, fileName, and then fileContent
+		const resMatchFolderName: SearchResult[] = this.sort(res.filter((elem) => { return elem?.contextFolder?.toLocaleLowerCase().startsWith(searchString.toLocaleLowerCase()); })) || [];
+		const resMatchFileName: SearchResult[] = this.sort(res.filter((elem) => { return elem?.fileName?.toLocaleLowerCase().startsWith(searchString.toLocaleLowerCase()); })) || [];
+		const resMatchRest: SearchResult[] = this.sort(res.filter((elem) => {
+			return !elem?.contextFolder?.toLocaleLowerCase().startsWith(searchString.toLocaleLowerCase()) 
+				&& !elem?.fileName?.toLocaleLowerCase().startsWith(searchString.toLocaleLowerCase()); })) || [];
+		return resMatchFolderName.concat(resMatchFileName).concat(resMatchRest);
 	}
 }
