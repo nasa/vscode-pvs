@@ -178,7 +178,7 @@ export class PvsSearchEngine {
 	 */
 	sort (res: SearchResult[]): SearchResult[] {
 		return res?.sort((a,b) => {
-			return a.fileName < b.fileName ? -1 : 1;
+			return a.libName < b.libName || a.fileName < b.fileName ? -1 : 1;
 		});
 	}
 
@@ -203,12 +203,17 @@ export class PvsSearchEngine {
 						const regexp: RegExp = new RegExp(/(.+)\:(\d+):(.+)/g);
 						const match: RegExpMatchArray = regexp.exec(resultLines[l]);
 						if (match?.length > 2 && match[1] && match[2] && !isNaN(+match[2]) && match[3]) {
+							const contextFolder: string = fsUtils.getContextFolder(match[1]);
+							const fileName: string = fsUtils.getFileName(match[1]);
+							const fileExtension: string = fsUtils.getFileExtension(match[1]);
+							const libName: string = fsUtils.getContextFolderName(contextFolder);
 							const data: SearchResult = {
-								contextFolder: fsUtils.getContextFolder(match[1]),
-								fileName: fsUtils.getFileName(match[1]),
-								fileExtension: fsUtils.getFileExtension(match[1]),
+								contextFolder,
+								fileName,
+								fileExtension,
 								line: +match[2],
-								fileContent: match[3]
+								fileContent: match[3],
+								libName
 							};
 							res.push(data);
 						}
@@ -219,10 +224,10 @@ export class PvsSearchEngine {
 			}
 		}
 		// re-order array: match folderName, fileName, and then fileContent
-		const resMatchFolderName: SearchResult[] = this.sort(res.filter((elem) => { return elem?.contextFolder?.toLocaleLowerCase().startsWith(searchString.toLocaleLowerCase()); })) || [];
+		const resMatchFolderName: SearchResult[] = this.sort(res.filter((elem) => { return elem?.libName?.toLocaleLowerCase().startsWith(searchString.toLocaleLowerCase()); })) || [];
 		const resMatchFileName: SearchResult[] = this.sort(res.filter((elem) => { return elem?.fileName?.toLocaleLowerCase().startsWith(searchString.toLocaleLowerCase()); })) || [];
 		const resMatchRest: SearchResult[] = this.sort(res.filter((elem) => {
-			return !elem?.contextFolder?.toLocaleLowerCase().startsWith(searchString.toLocaleLowerCase()) 
+			return !elem?.libName?.toLocaleLowerCase().startsWith(searchString.toLocaleLowerCase()) 
 				&& !elem?.fileName?.toLocaleLowerCase().startsWith(searchString.toLocaleLowerCase()); })) || [];
 		return resMatchFolderName.concat(resMatchFileName).concat(resMatchRest);
 	}

@@ -455,7 +455,8 @@ export declare interface FindSymbolDeclarationResponse {
 	ans: PvsDefinition[]
 }
 export interface SearchResult extends PvsFile {
-	line: number
+	line: number,
+	libName?: string
 }
 export declare interface SearchResponse {
 	req: SearchRequest,

@@ -186,7 +186,7 @@ $(document).ready(function() {
                     </div>
                     <div id="search-results">
                     {{#each res}}
-                    <a href="{{contextFolder}}/{{fileName}}{{fileExtension}}" {{#if line}}line="{{line}}"{{/if}} class="result-item list-group-item list-group-item-action py-2" style="white-space:nowrap;"><b>{{fileName}}{{fileExtension}}{{#if line}} (Ln {{line}}){{/if}}</b>: {{fileContent}}</a>
+                    <a href="{{contextFolder}}/{{fileName}}{{fileExtension}}" {{#if line}}line="{{line}}"{{/if}} class="result-item list-group-item list-group-item-action py-2" style="white-space:nowrap;"><b>{{#if libName}}{{libName}}/{{/if}}{{fileName}}{{fileExtension}}{{#if line}} (Ln {{line}}){{/if}}</b>: {{fileContent}}</a>
                     {{/each}}
                     </div>
                 </ul>
@@ -219,6 +219,9 @@ $(document).ready(function() {
         }
         function focus () {
             $(".search-input").focus();
+            // Move the cursor to the end of the input
+            const len = $(".search-input").val().length;
+            $(".search-input")[0].setSelectionRange(len, len);
         }
         function selectActiveView () {
             activeView === "nasalib" ? nasalibView() : pvslibView();
@@ -231,7 +234,8 @@ $(document).ready(function() {
             $("#nasalib-footer").css("display", "block");
             $("#pvslib-btn").removeClass("active");
             $("#nasalib-btn").addClass("active");
-            $(".search-btn").text("${SEARCH_NASALIB}"); 
+            $(".search-btn").text("${SEARCH_NASALIB}");
+            focus();
         }
         function pvslibView () {
             activeView = "pvslib";
@@ -241,7 +245,8 @@ $(document).ready(function() {
             $("#pvslib-footer").css("display", "block");
             $("#nasalib-btn").removeClass("active");
             $("#pvslib-btn").addClass("active");
-            $(".search-btn").text("${SEARCH_PVSLIB}"); 
+            $(".search-btn").text("${SEARCH_PVSLIB}");
+            focus();
         }
         $(".search-btn").on("click", (evt) => {
             search();
@@ -495,7 +500,7 @@ export class VSCodePvsSearch {
                 switch (message.command) {
                     case 'search': {
                         if (message.searchString) {
-                            this.activeView = message.activeView === "nasalib" ? "nasalib": "pvslib";
+                            this.activeView = message.activeView === "nasalib" ? "nasalib" : "pvslib";
                             this.showSearching({ searchString: message.searchString });
                             const res: SearchResult[] = await this.search(message.searchString);
                             this.showResults({ res, searchString: message.searchString });
