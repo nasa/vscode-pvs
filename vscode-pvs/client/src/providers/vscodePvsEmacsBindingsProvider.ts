@@ -108,7 +108,9 @@ const cmds: string[] = [
 	"step-proof",
 	"show-tccs",
 	"show-proof-summary",
-	"show-prooflite"
+	"show-prooflite",
+
+	"view-as-markdown"
 ];
 
 export class VSCodePvsEmacsBindingsProvider {
@@ -165,6 +167,10 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "pvs-library-path":
 				case "view-pvs-library-path": {
 					commands.executeCommand('vscode-pvs.view-pvs-library-path');
+					break;
+				}
+				case "view-as-markdown": {
+					commands.executeCommand('vscode-pvs.view-as-markdown', desc);
 					break;
 				}
 				case "reset-pvs-library-path": {
