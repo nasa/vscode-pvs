@@ -168,122 +168,127 @@ export class PvsCompletionProvider {
 					// 	insertText: "⇔"
 					// }]);
 				}
-			} else if (this.definitionProvider && lastCharacter.trim()) { // lastCharacter.trim() makes autocompletion more gentle, as it disables tooltips when the user presses the space bar
+			} else if (this.definitionProvider) {// && lastCharacter.trim()) { // lastCharacter.trim() makes autocompletion more gentle, as it disables tooltips when the user presses the space bar
 				const lines: string[] = document.txt.split("\n");
 				if (lines && lines.length > position.line) {
 					let ans: CompletionItem[] = [];
 					const lineText: string = lines[position.line];
-					const currentLine: string = lineText.substr(0, position.character).trim();
-					let currentInput: string = currentLine.substr(currentLine.lastIndexOf(" ") + 1);
-					currentInput = (currentInput.includes(":")) ? currentInput.substr(currentInput.lastIndexOf(":") + 1).trim() : currentInput;
-					currentInput = (currentInput.includes("`")) ? currentInput.substr(currentInput.lastIndexOf("`") + 1).trim() : currentInput;
-					currentInput = (currentInput.includes("(")) ? currentInput.substr(currentInput.lastIndexOf("(") + 1).trim() : currentInput;
-					currentInput = (currentInput.includes(")")) ? currentInput.substr(currentInput.lastIndexOf(")") + 1).trim() : currentInput;
-					currentInput = (currentInput.includes("[")) ? currentInput.substr(currentInput.lastIndexOf("[") + 1).trim() : currentInput;
-					currentInput = (currentInput.includes("]")) ? currentInput.substr(currentInput.lastIndexOf("]") + 1).trim() : currentInput;
+					const currentLine: string = lineText.substring(0, position.character).trim();
+					let currentInput: string = currentLine.substring(currentLine.lastIndexOf(" ") + 1);
+					currentInput = (currentInput.includes(":")) ? currentInput.substring(currentInput.lastIndexOf(":") + 1).trim() : currentInput;
+					currentInput = (currentInput.includes("`")) ? currentInput.substring(currentInput.lastIndexOf("`") + 1).trim() : currentInput;
+					currentInput = (currentInput.includes("(")) ? currentInput.substring(currentInput.lastIndexOf("(") + 1).trim() : currentInput;
+					currentInput = (currentInput.includes(")")) ? currentInput.substring(currentInput.lastIndexOf(")") + 1).trim() : currentInput;
+					currentInput = (currentInput.includes("[")) ? currentInput.substring(currentInput.lastIndexOf("[") + 1).trim() : currentInput;
+					currentInput = (currentInput.includes("]")) ? currentInput.substring(currentInput.lastIndexOf("]") + 1).trim() : currentInput;
 
-					// add relevant local symbols
-					const start: number = (position.line - 20) > 0 ? position.line - 20 : 0;
-					let chunk: string = lines.slice(start, position.line).join("\n").replace(utils.commentRegexp, ""); // this removes all commented text
-					chunk += " " + currentLine.replace(currentInput, "");
-					const localSymbols: string[] = utils.listSymbols(chunk);
-					for (let i = 0; i < localSymbols.length; i++) {
-						const term: string = localSymbols[i];
-						if (term.startsWith(currentInput)) {
-							ans.push({
-								label: term,
-								insertText: term,
-								commitCharacters: ['\n'],
-								kind: CompletionItemKind.Variable
-							});
+					if (currentInput) {
+						// add relevant local symbols
+						const start: number = (position.line - 20) > 0 ? position.line - 20 : 0;
+						let chunk: string = lines.slice(start, position.line).join("\n").replace(utils.commentRegexp, ""); // this removes all commented text
+						chunk += " " + currentLine.replace(currentInput, "");
+						const localSymbols: string[] = utils.listSymbols(chunk);
+						for (let i = 0; i < localSymbols.length; i++) {
+							const term: string = localSymbols[i];
+							if (term.startsWith(currentInput)) {
+								ans.push({
+									label: term,
+									insertText: term,
+									commitCharacters: ['\n'],
+									kind: CompletionItemKind.Variable
+								});
+							}
+						}
+
+						// if theories or datatypes have not been declared, include the THEORY keyword
+						const theoryDeclared: boolean = new RegExp(utils.isense.theoryDeclaration).test(document.txt);
+						if (!theoryDeclared) {
+							//--- the user is declaring a theory
+							if("THEORY".startsWith(currentInput.toUpperCase())) {
+								return Promise.resolve([{
+									label: "THEORY",
+									insertText: "THEORY",
+									commitCharacters: ['\n'],
+									kind: CompletionItemKind.Keyword
+								}]);
+							}
+						}
+						const datatypeDeclared: boolean = new RegExp(utils.isense.datatypeDeclaration).test(document.txt);
+						if (!datatypeDeclared) {
+							//--- the user is declaring a theory
+							if("DATATYPE".startsWith(currentInput.toUpperCase())) {
+								return Promise.resolve([{
+									label: "DATATYPE",
+									insertText: "DATATYPE",
+									commitCharacters: ['\n'],
+									kind: CompletionItemKind.Keyword
+								}]);
+							}
 						}
 					}
 
-					// if theories or datatypes have not been declared, include the THEORY keyword
-					const theoryDeclared: boolean = new RegExp(utils.isense.theoryDeclaration).test(document.txt);
-					if (!theoryDeclared) {
-						//--- the user is declaring a theory
-						if("THEORY".startsWith(currentInput.toUpperCase())) {
-							return Promise.resolve([{
-								label: "THEORY",
-								insertText: "THEORY",
-								commitCharacters: ['\n'],
-								kind: CompletionItemKind.Keyword
-							}]);
+					if (currentLine) {
+						//--- the user is entering theory declarations or theory parameters
+						// check if we are declaring a formula
+						const declarationLine: boolean = new RegExp(utils.isense.declaration).test(currentLine);
+						const formulaDeclared: boolean = new RegExp(utils.isense.formulaDeclaration).test(currentLine);
+						if (declarationLine && !formulaDeclared) {
+							if (this.declarationCompletionItems) {
+								ans = ans.concat(this.declarationCompletionItems.filter((item: CompletionItem) => {
+									return item.label.toUpperCase().startsWith(currentInput.toUpperCase());
+								}));
+							}
+							// if (ans && ans.length) {
+							// 	return ans;
+							// }
 						}
-					}
-					const datatypeDeclared: boolean = new RegExp(utils.isense.datatypeDeclaration).test(document.txt);
-					if (!datatypeDeclared) {
-						//--- the user is declaring a theory
-						if("DATATYPE".startsWith(currentInput.toUpperCase())) {
-							return Promise.resolve([{
-								label: "DATATYPE",
-								insertText: "DATATYPE",
-								commitCharacters: ['\n'],
-								kind: CompletionItemKind.Keyword
-							}]);
-						}
-					}
 
-					//--- the user is entering theory declarations or theory parameters
-					// check if we are declaring a formula
-					const declarationLine: boolean = new RegExp(utils.isense.declaration).test(currentLine);
-					const formulaDeclared: boolean = new RegExp(utils.isense.formulaDeclaration).test(currentLine);
-					if (declarationLine && !formulaDeclared) {
-						if (this.declarationCompletionItems) {
-							ans = ans.concat(this.declarationCompletionItems.filter((item: CompletionItem) => {
-								return item.label.toUpperCase().startsWith(currentInput.toUpperCase());
-							}));
-						}
-						// if (ans && ans.length) {
-						// 	return ans;
-						// }
-					}
-
-					let match: RegExpMatchArray = null;
-					// add records
-					if (match = (new RegExp(utils.isense.recordExpression).exec(currentLine) || new RegExp(utils.isense.recordAccessor).exec(currentLine))) {
-						// RegExp objects are stateful, we need to reset them every time
-						// utils.isense.recordExpression.lastIndex = utils.isense.recordAccessor.lastIndex = 0;
-						if (!currentLine.endsWith(":=")) {
-							// resolve accessor
-							const symbolName: string = match[1];
-							let declarations: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.fname, symbolName, position);
-							if (declarations && declarations.length === 1 && declarations[0].symbolDeclaration) {
-								let decl: PvsDefinition = declarations[0];
-								let tmp: RegExpExecArray = utils.RECORD.declaration.exec(decl.symbolDeclaration);
-								utils.RECORD.declaration.lastIndex = 0;
-								// const id: string = tmp[1];
-								const isTypeDeclaration: boolean = tmp[2].toUpperCase() === "TYPE";
-								// const isUninterpreted: boolean = !tmp[3];
-								if (!isTypeDeclaration) {
-									const typeName: string = tmp[2];
-									let definitions: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.fname, typeName, position);
-									decl = (definitions && definitions.length === 1) ? definitions[0] : null;
-								}
-								if (decl) {
-									tmp = utils.RECORD.accessors.exec(decl.symbolDeclaration);
-									utils.RECORD.accessors.lastIndex = 0;
-									if (tmp && tmp.length > 1) {
-										const recordFields: string = tmp[1];
-										if (recordFields) {
-											const fields: string[] = recordFields.split(",");
-											if (fields) {
-												const fieldNames: CompletionItem[] = fields.map((decl) => {
-													const insertText: string = decl.split(":")[0].trim();
-													return {
-														label: decl.trim(),
-														insertText: insertText,
-														kind: CompletionItemKind.Field
-													};
-												});
-												return Promise.resolve(fieldNames);
+						let match: RegExpMatchArray = null;
+						// add records
+						if (match = (new RegExp(utils.isense.recordExpression).exec(currentLine) || new RegExp(utils.isense.recordAccessor).exec(currentLine))) {
+							// RegExp objects are stateful, we need to reset them every time
+							// utils.isense.recordExpression.lastIndex = utils.isense.recordAccessor.lastIndex = 0;
+							if (currentLine.trim().endsWith("(#") || currentLine.trim().endsWith(",")) {
+								console.log("[pvs-completion-provider] provideCompletionItems, currentLine: ", currentLine);
+								// resolve accessor
+								const symbolName: string = match[1];
+								let declarations: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.fname, symbolName, position);
+								if (declarations && declarations.length === 1 && declarations[0].symbolDeclaration) {
+									let decl: PvsDefinition = declarations[0];
+									let tmp: RegExpExecArray = utils.RECORD.declaration.exec(decl.symbolDeclaration);
+									utils.RECORD.declaration.lastIndex = 0;
+									// const id: string = tmp[1];
+									const isTypeDeclaration: boolean = tmp[2].toUpperCase() === "TYPE";
+									// const isUninterpreted: boolean = !tmp[3];
+									if (!isTypeDeclaration) {
+										const typeName: string = tmp[2];
+										let definitions: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.fname, typeName, position);
+										decl = (definitions && definitions.length === 1) ? definitions[0] : null;
+									}
+									if (decl) {
+										tmp = utils.RECORD.accessors.exec(decl.symbolDeclaration);
+										utils.RECORD.accessors.lastIndex = 0;
+										if (tmp && tmp.length > 1) {
+											const recordFields: string = tmp[1];
+											if (recordFields) {
+												const fields: string[] = recordFields.split(",");
+												if (fields) {
+													const fieldNames: CompletionItem[] = fields.map((decl) => {
+														const insertText: string = decl.split(":")[0].trim() + " := ";
+														return {
+															label: insertText, //decl.trim(),
+															insertText: insertText,
+															kind: CompletionItemKind.Field
+														};
+													});
+													return Promise.resolve(fieldNames);
+												}
 											}
 										}
 									}
 								}
+								return Promise.resolve([]);
 							}
-							return Promise.resolve([]);
 						} else {
 							// resolve accessor type
 							// TODO

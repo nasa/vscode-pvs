@@ -113,7 +113,9 @@ export class VSCodePvsSnippetsProvider implements vscode.CompletionItemProvider 
             }
         }
     }
-
+    /**
+     * Standard LSP method of the snippets provider
+     */
     provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext): vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList> {
         let ans: vscode.CompletionItem[] = [];
         const txt: string = document.getText();
