@@ -67,6 +67,12 @@ const comments = {
     class: "hljs-comment" // HTML class
 }
 
+// regex for markdown headings
+const markdownHeadingRegex = [
+    /\<span class\=\"hljs\-comment\"\>\%\s*\#\s+(.+)\<\/span\>/g,
+    /\<span class\=\"hljs\-comment\"\>\%\s*\#\#\s+(.+)\<\/span\>/g,
+    /\<span class\=\"hljs\-comment\"\>\%\s*\#\#\#\s+(.+)\<\/span\>/g
+];
 
 /**
  * Utility function, applies syntax highlighting by replacing pvs language keywords with <span class="hljs-keyword">keyword</span>
@@ -82,8 +88,9 @@ function applySyntaxHighlighing (innerHTML) {
             let commentRegex = new RegExp(comments.pattern.match, "g");
             // preserve images and svgs
             if (lines[i].includes("<img src=") || lines[i].includes("<svg ")) {
+                // keep track of whether this is an svg block
                 svgBlock = lines[i].includes("<svg ");
-                // skip syntax highlighting
+                // and skip syntax highlighting in both cases
             } else if (svgBlock) {
                 // skip syntax highlighting and find end of svg block
                 if (lines[i].includes("</svg>")) {
@@ -91,19 +98,27 @@ function applySyntaxHighlighing (innerHTML) {
                 }
             } else if (commentRegex.test(lines[i])) {
                 // syntax highlighting for comments
-                lines[i] = lines[i].replace(commentRegex, function (match) { return `<span class="${comments.class}">${match}</span>`; });
+                lines[i] = lines[i].replace(commentRegex, (match) => { return `<span class="${comments.class}">${match}</span>`; });
             } else {
                 // syntax highlighting for numbers
                 let numbersRegex = new RegExp(numbers.pattern.match, "g");
                 if (numbersRegex.test(lines[i])) {
-                    lines[i] = lines[i].replace(numbersRegex, function (match) { return `<span class="${numbers.class}">${match}</span>`; });
+                    lines[i] = lines[i].replace(numbersRegex, (match) => { return `<span class="${numbers.class}">${match}</span>`; });
                 }
                 // syntax highlighting for keywords
                 for (let k = 0; k < keywords.patterns.length; k++) {
                     let regex = new RegExp(keywords.patterns[k].match, "g");
                     if (regex.test(lines[i])) {
-                        lines[i] = lines[i].replace(regex, function (match) { return `<span class="${keywords.class}">${match}</span>`; });
+                        lines[i] = lines[i].replace(regex, (match) => { return `<span class="${keywords.class}">${match}</span>`; });
                     }
+                }
+            }
+
+            // append heading tags
+            for (let h = 0; h < markdownHeadingRegex.length; h++) {
+                let headingRegex = new RegExp(markdownHeadingRegex[h], "g");
+                if (headingRegex.test(lines[i])) {
+                    lines[i] = lines[i].replace(headingRegex, `<h${h+1} class="${comments.class}">$1</h${h+1}>`);
                 }
             }
         }
@@ -123,6 +138,7 @@ function getThemeKind () {
 function appendStyles () {
     const css = window.document.styleSheets[0];
     css.insertRule(`.markdown-body { border:1px solid; border-radius:4px; }`);
+    css.insertRule(`h1 { padding-top:0.3em !important; margin-bottom:0.1em !important;}`);
     css.insertRule(`body { padding-left:0 !important; padding-right:0 !important; }`);
     css.insertRule(`pre { background-color:transparent !important; margin:0 !important; padding:0.2em !important; font-family: Menlo, Monaco, "Courier New", monospace; font-size: 12px; line-height: 18px; letter-spacing: 0px; }`);
 }
