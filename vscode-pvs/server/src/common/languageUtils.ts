@@ -47,6 +47,15 @@ import * as colorUtils from "./colorUtils";
 import { SessionType } from './xtermInterface';
 import { PVS_KEYWORDS, PVS_LIBRARY_FUNCTIONS } from "./languageKeywords";
 
+/**
+ * Utility function sanitizes formula name so it can be used in a regex
+ */
+export function sanitizeForRegEx (str: string): string {
+	if (str) {
+		return str.replace(/\?/g, "\\\?"); // lgtm [js/incomplete-sanitization]
+	}
+	return str;
+}
 
 // records literals are in the form id: ID = (# ac1: Ac1, ac2: Ac2 #)
 // record types are in the form Rec: TYPE = [# x: nat, y: real #]
@@ -635,12 +644,12 @@ export function makeProofliteHeader (pvsfile: string, formulaName: string, theor
  * @param desc 
  */
 export function proofliteRegexp(desc: { theoryName: string, formulaName: string }): RegExp {
-	const formulaName: string = desc.formulaName.replace(/\?/g, "\\\\?");
-	const theoryName: string = desc.theoryName.replace(/\?/g, "\\\\?");
+	const formulaName: string = sanitizeForRegEx(desc.formulaName); 
+	const theoryName: string = sanitizeForRegEx(desc.theoryName);
 	return new RegExp(`(?:(?:%--*.*)\\s*(?:%\\s*@formula\\s*:\\s*(${formulaName}))?\\s*(?:%\\s*@theory\\s*:\\s*(${theoryName}))?\\s*(?:%\\s*@status\\s*:\\s*(.*))?\\s*(?:%--*.*))?\\s*(${desc.formulaName}\\s*:\\s*PROOF[\\w\\W\\s]*QED\\s*${desc.formulaName})`, "g");
 }
 export function proofliteDeclRegexp(desc: { theoryName: string, formulaName: string }): RegExp {
-	const formulaName: string = desc.formulaName.replace(/\?/g, "\\\?");
+	const formulaName: string = desc.formulaName.replace(/\?/g, "\\\?"); // lgtm [js/incomplete-sanitization]
 	return new RegExp(`\\b${formulaName}\\s*:\\s*PROOF\\b`, "g");
 }
 /**
@@ -3748,8 +3757,8 @@ export function isQEDCommand (cmd: string): boolean {
 
 export function isSameCommand (cmd1: string, cmd2: string): boolean {
 	if (cmd1 && cmd2) {
-		const c1: string = cmd1.replace(/[\s+\"\(\)]/g, ""); // remove all spaces, round parens, and double quotes
-		const c2: string = cmd2.replace(/[\s+\"\(\)]/g, "");
+		const c1: string = cmd1.replace(/\s+/g, "").replace(/[\s+\"\(\)]/g, ""); // remove all spaces, round parens, and double quotes
+		const c2: string = cmd2.replace(/\s+/g, "").replace(/[\s+\"\(\)]/g, "");
 		return c1 === c2;
 	}
 	return false;
@@ -3797,6 +3806,28 @@ export function isInvalidCommand (result: { commentary: string | string[] }): bo
 		}
 	}
 	return false;
+}
+
+/**
+ * Utility function, returns the invalid command communicated by PVS through the commentary field
+ */
+export function getInvalidCommandName (result: { commentary: string | string[] }): string | null {
+    if (result && result.commentary) {
+        // group 1 is the invalid command name
+        const invalidCommandRegex: RegExp = /Error:\s+(.+)\s+is\s+not\s+a\s+valid\s+prover\s+command\b/g;
+		if (typeof result.commentary === "string") {
+            const match: RegExpMatchArray = invalidCommandRegex.exec(result.commentary);
+            return (match && match.length > 1 && match[1]) ? match[1] : null;
+		} else if (typeof result.commentary === "object" && result.commentary.length) {
+			for (let i = 0; i < result.commentary.length; i++) {
+                const match: RegExpMatchArray = invalidCommandRegex.exec(result.commentary[i]);
+                if (match && match.length > 1 && match[1]) {
+                    return match[1];
+                }
+            }
+		}
+	}
+    return null;
 }
 
 /**

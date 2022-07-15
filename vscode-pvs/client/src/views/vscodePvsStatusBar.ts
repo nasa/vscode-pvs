@@ -240,7 +240,7 @@ export class VSCodePvsStatusBar {
             if (this.pvsVersionInfo["nasalib-version"]) {
                 extras.push(this.pvsVersionInfo["nasalib-version"]);
             }
-            if (extras && extras.length) {
+            if (extras.length) {
                 msg += ` (${extras.join(" + ")})`;
             }
             if (opt.trailingNote) {

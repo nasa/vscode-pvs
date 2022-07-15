@@ -400,7 +400,8 @@ abstract class ProofMateItem extends ProofItem {
 			this.children = children1.concat([ child ]).concat(children2);
 		} else {
 			// append at the end
-			position = this.children.length;
+			// position = this.children.length;
+			this.children = this.children || [];
 			this.children = this.children.concat([ child ]);
 		}
 	}

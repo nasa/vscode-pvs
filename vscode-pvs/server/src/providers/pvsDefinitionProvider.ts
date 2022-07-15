@@ -305,8 +305,7 @@ export class PvsDefinitionProvider {
 
 	/**
 	 * Standard API of the language server for requesting a symbol definition
-	 * @param document Current document
-	 * @param position Current cursor position
+	 * @param document Current document, including document URI, text content, and cursor position
 	 * @param token Cancellation token (optional)
 	 */
 	async getDefinition(document: { uri: string, txt: string, position: Position }, token?: CancellationToken): Promise<{ symbolName: string, definitions: PvsDefinition[] }> {
@@ -314,7 +313,7 @@ export class PvsDefinitionProvider {
 			const symbolRange: Range = getWordRange(document.txt, document.position);
 			// console.log(`Provide definition`, symbolRange);
 			// sanity check
-			if (symbolRange && symbolRange.end && symbolRange.start && symbolRange.end.character > document.position.character) {
+			if (symbolRange?.end && symbolRange?.start && symbolRange.end.character > document.position.character) {
 				const symbolName: string = fsUtils.getText(document.txt, symbolRange);
 				if (symbolName) {
 					const line: number = symbolRange.start.line + 1; // vscode starts lines from 0, we want to start from 1 (as in pvs)
