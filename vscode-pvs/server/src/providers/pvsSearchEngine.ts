@@ -189,7 +189,8 @@ export class PvsSearchEngine {
 		const libraryPaths: string[] = opt?.libraryPath?.split(":") || this.pvsLanguageServer.getExternalLibraryPaths();
 		const res: SearchResult[] = [];
 		for (let i = 0; i < libraryPaths?.length; i++) {
-			const cmd: string = `grep --include '*.pvs' -Hrn "${searchString}" ${libraryPaths[i]}`;
+			const lib: string = path.join(libraryPaths[i], "*");
+			const cmd: string = `grep --include '*.pvs' -HRn "${searchString}" ${lib}`;
 			if (!opt?.quiet) { console.log(`[searchExternalLib] ${cmd}`); }
 			try {
 				const search: Buffer = execSync(cmd);
