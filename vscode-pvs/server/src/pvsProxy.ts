@@ -1134,6 +1134,7 @@ export class PvsProxy {
 			opt = opt || {};
 			await this.changeContext(formula.contextFolder);
 			const fullName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
+			if (this.verbose) { console.log(`[pvs-proxy] prove-formula [${formula.formulaName}, ${fullName}]`); }
 			let ans: PvsResponse = await this.pvsRequest("prove-formula", [ formula.formulaName, fullName ]);
 			// if pvs reports that the prover was still open, try to force exit and retry prove-formula
 			if (ans?.error?.data?.error_string === "Must exit the prover first") {
@@ -2383,7 +2384,9 @@ export class PvsProxy {
 			for (let i = 0; i < libs.length; i++) {
 				let path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
 				path = fsUtils.tildeExpansion(path);
+				// console.log({ path, pvsLibraries });
 				if (!pvsLibraries.includes(path)) {
+					// console.log(`[pvs-proxy] Adding library path ${path}`);
 					res = (opt.useLisp) ? await this.legacy?.lisp(`(push "${path}" *pvs-library-path*)`)
 						: await this.pvsRequest('add-pvs-library', [ path ]);
 				}
