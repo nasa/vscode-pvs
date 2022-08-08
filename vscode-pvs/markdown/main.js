@@ -74,6 +74,14 @@ const markdownHeadingRegex = [
     /\<span class\=\"hljs\-comment\"\>\%\s*\#\#\#\s+(.+)\<\/span\>/g
 ];
 
+// this regex is used for restoring pvs functions in the form f[a,b](id) which are incorrectly treated as links
+// there's no easy way to distinguish pvs functions f[a,b](id) from hyperlinks, so hyperlinks need to be restored afterwards, by looking at the content of spans representing comments
+// in the example f[a,b](id), group 1 is (id), group 2 is [a,b]
+const hrefRegex = /\<a href\=(?:.+)data\-href=\"(.+)\"\s*title=\"(?:.+)\"(?:\>|&gt;)(.+)\<\/a\>/g;
+// the following regex expressions are used to re-create real hyperlinks removed with hrefRegex
+const spanRegex = /\<span class="hljs-comment">(.+)<\/span>/g;
+const markdownLinkRegex = /\[(.+)\]\((.+)\)/g;
+
 /**
  * Utility function, applies syntax highlighting by replacing pvs language keywords with <span class="hljs-keyword">keyword</span>
 */
@@ -85,6 +93,13 @@ function applySyntaxHighlighing (innerHTML) {
         // process all lines to apply syntax highlighting
         const lines = innerHTML.split("\n");
         for (let i = 0; i < lines.length; i++) {
+            // fix mis-recognized href, this happens for parametric functions, e.g., f[a,b](id) is transformed into a f<a href="id" data-href="id" title="id">a,b</a>
+            let hrefs = new RegExp(hrefRegex, "g");
+            if (hrefs.test(lines[i])) {
+                // console.log(lines[i]);
+                lines[i] = lines[i].replace(hrefRegex, `[$2]($1)`).replace(/\%5B/g,"[").replace(/\%5D/g,"]");
+            }
+
             let commentRegex = new RegExp(comments.pattern.match, "g");
             // preserve images and svgs
             if (lines[i].includes("<img src=") || lines[i].includes("<svg ")) {
@@ -121,6 +136,17 @@ function applySyntaxHighlighing (innerHTML) {
                     lines[i] = lines[i].replace(headingRegex, `<h${h+1} class="${comments.class}">$1</h${h+1}>`);
                 }
             }
+
+            // restore hyperlinks
+            let span = new RegExp(spanRegex, "g");
+            let match = span.exec(lines[i]);
+            if (match) {
+                let href = new RegExp(markdownLinkRegex, "g");
+                if (href.test(match[0])) {
+                    lines[i] = lines[i].replace(href, `<a href=\"$2\">$1</a>`);
+                }
+            }
+
         }
         innerHTML = lines.join("\n");
     }
@@ -138,6 +164,7 @@ function getThemeKind () {
 function appendStyles () {
     const css = window.document.styleSheets[0];
     css.insertRule(`.markdown-body { border:1px solid; border-radius:4px; }`);
+    css.insertRule(`.katex { color:#57A64A; }`);
     css.insertRule(`h1 { padding-top:0.3em !important; margin-bottom:0.1em !important;}`);
     css.insertRule(`body { padding-left:0 !important; padding-right:0 !important; }`);
     css.insertRule(`pre { background-color:transparent !important; margin:0 !important; padding:0.2em !important; font-family: Menlo, Monaco, "Courier New", monospace; font-size: 12px; line-height: 18px; letter-spacing: 0px; }`);
