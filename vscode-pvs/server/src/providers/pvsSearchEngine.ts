@@ -190,7 +190,12 @@ export class PvsSearchEngine {
 		const res: SearchResult[] = [];
 		for (let i = 0; i < libraryPaths?.length; i++) {
 			const lib: string = path.join(libraryPaths[i], "*");
-			const cmd: string = `grep --include '*.pvs' -HRn "${searchString}" ${lib}`;
+			// spaces in the search string are treated as an AND
+			let normalizedSearchString: string = searchString.replace(/\bAND\b/gi, " ").split(/\s+/g).map((word: string, index: number) => {
+				return index === 0 ? `"${word}" ${lib}`
+					: ` | grep "${word}"`;
+			}).join(" ");
+			const cmd: string = `grep --include '*.pvs' -HRn ${normalizedSearchString}`;
 			if (!opt?.quiet) { console.log(`[searchExternalLib] ${cmd}`); }
 			try {
 				const search: Buffer = execSync(cmd);
