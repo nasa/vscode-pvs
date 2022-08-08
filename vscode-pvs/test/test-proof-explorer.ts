@@ -1,8 +1,8 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import { configFile, sandboxExamples } from './test-utils';
+import { configFile, graphtheory, libraryaddons, sandboxExamples } from './test-utils';
 import * as path from 'path';
 import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
-import { ProofNodeX, PvsFormula, PvsProofCommand, SequentDescriptor } from "../server/src/common/serverInterface";
+import { ProofDescriptor, ProofNodeX, PvsFormula, PvsProofCommand, SequentDescriptor } from "../server/src/common/serverInterface";
 import { PvsLanguageServer } from "../server/src/pvsLanguageServer";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { expect } from 'chai';
@@ -398,6 +398,43 @@ describe("proof-explorer", () => {
 		}, request5);
 		expect(success).to.equal(true);
 	});
+
+	it(`proof explorer is robust to commands to unbalanced parens`, async () => {
+		const desc: PvsFormula = {
+			contextFolder: libraryaddons,
+			fileExtension: ".tccs",
+			fileName: "c_digraph_ops",
+			formulaName: "remove_v_adjs_TCC1",
+			theoryName: "c_digraph_ops"
+		};
+		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
+		proofExplorer.loadProofRequest(desc);
+		let ans: PvsResponse | null = await server.getPvsProxy().proveFormula(desc);
+		// console.dir({ initialSequent: ans.result[0] });
+		proofExplorer.loadInitialSequent(ans.result[0]);
+		proofExplorer.startProof();
+		const cmds: string[] = [
+			`(skeep)`,
+			`(lemma "map_unc_eq_cur[list[nat],list[nat]]")`,
+			`(inst -1 "LAMBDA (x: list[nat]): remove_sl[nat](v_idx, x)" "adjs(cd)")`,
+			`(undo)`,
+			`(inst -1 "(LAMBDA (x: list[nat]): remove_sl[nat](v_idx, x)" "adjs(cd)")`
+		    //         ^---- unbalanced parens, pvs does not report the error and this confuses proof-explorer. The case has been handled by adding a check in proof explorer for balanced parens
+		];
+		let response: PvsResponse = await proofExplorer.step({ cmd: cmds[0] });
+		response = await proofExplorer.step({ cmd: cmds[1] });
+		response = await proofExplorer.step({ cmd: cmds[2] });
+		response = await proofExplorer.step({ cmd: cmds[3] });
+		response = await proofExplorer.step({ cmd: cmds[4] });
+		expect(response.result[0].commentary.includes("Unbalanced parentheses"));
+		let root: ProofNodeX = proofExplorer.getProofX();
+		// console.dir(root);
+		expect(root.rules.length).to.equal(3);
+		expect(root.rules[0].name).to.equal(cmds[0]);
+		expect(root.rules[1].name).to.equal(cmds[1]);
+		expect(root.rules[2].name).to.equal(cmds[2]);
+		proofExplorer.quitProof();
+	}).timeout(60000);
 
 	// fit(`can prove omega_2D_continuous without triggering stack overflow`, async () => {
 	// 	let proverStatus: PvsResult = await server.getPvsProxy().pvsRequest('prover-status'); // await pvsProxy.getProverStatus();		

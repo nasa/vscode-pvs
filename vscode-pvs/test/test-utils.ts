@@ -14,6 +14,8 @@ export const pvsioExamples: string = path.join(__dirname, "pvsio");
 export const mValueExamples: string = path.join(__dirname, "m-value");
 export const mValue2Examples: string = path.join(__dirname, "m-value2");
 export const pigeonhole: string = path.join(__dirname, "shankar", "pigeonhole");
+export const graphtheory: string = path.join(__dirname, "esther", "graph-theory");
+export const libraryaddons: string = path.join(graphtheory, "library_add_ons");
 
 export const stever: string = path.join(__dirname, "stever"); // examples courtesy of steve reeves (waikato university)
 export const steverFiles: string[] = [
