@@ -14,7 +14,7 @@ The environment redefines the way developers interact with PVS, and better align
 
 ## Publications
 - Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)][[BibTeX](https://dblp.org/rec/journals/corr/abs-1912-10632.html?view=bibtex)]
-- Paolo Masci and Aaron Dutle, [Proof Mate: an Interactive Proof Helper for PVS](), NASA Formal Methods Symposium (NFM2022), Lecture Notes in Computer Science, Springer, 2022 (to appear)
+- Paolo Masci and Aaron Dutle, [Proof Mate: an Interactive Proof Helper for PVS](https://doi.org/10.1007/978-3-031-06773-0_44), NASA Formal Methods Symposium (NFM2022), Lecture Notes in Computer Science, Springer, 2022 [[PDF](https://doi.org/10.1007/978-3-031-06773-0_44)][[BibTex](https://citation-needed.springer.com/v2/references/10.1007/978-3-031-06773-0_44?format=bibtex&flavour=citation)]
 
 ## Documentation
 - [Quick reference guide](https://github.com/nasa/vscode-pvs/blob/master/vscode-pvs/docs/USER-INTERFACE.md) for the VSCode-PVS User Interface

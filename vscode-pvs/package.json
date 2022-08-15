@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.63-iota",
+	"version": "1.0.63",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -143,8 +143,8 @@
 					},
 					"pvs.settings.proverConsole.colorizeBracketPairs": {
 						"type": "boolean",
-						"default": false,
-						"description": "Enable colorization of matching parentheses pairs in the prover console (default: false)"
+						"default": true,
+						"description": "Enable colorization of matching parentheses pairs in sequent formulas (default: true)"
 					},
 					"pvs.xtras.enableAntlrParser": {
 						"type": "boolean",
@@ -861,7 +861,7 @@
 			},
 			{
 				"command": "proof-explorer.run-proof",
-				"title": "️️Run proof",
+				"title": "Run proof",
 				"icon": {
 					"dark": "icons/svg-play-circle-1-icon.svg",
 					"light": "icons/svg-play-circle-1-icon.svg"
@@ -871,7 +871,7 @@
 			},
 			{
 				"command": "proof-explorer.pause-proof",
-				"title": "️️Pause proof",
+				"title": "Pause proof",
 				"enablement": "in-checker == true",
 				"icon": {
 					"dark": "icons/svg-pause-icon.svg",
@@ -881,21 +881,21 @@
 			},
 			{
 				"command": "proof-explorer.run-subtree",
-				"title": "️️Run subtree",
+				"title": "Run subtree",
 				"icon": "$(play-circle)",
 				"enablement": "view == proof-explorer-view && in-checker == true",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.run-subtree",
-				"title": "️️Run subtree",
+				"title": "Run subtree",
 				"icon": "$(play-circle)",
 				"enablement": "view == proof-mate-view && in-checker == true && viewItem == proofmate-clip",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.fast-forward",
-				"title": "️️Fast forward here",
+				"title": "Fast forward here",
 				"icon": {
 					"dark": "icons/fast-forward-icon-alt-2.png",
 					"light": "icons/fast-forward-icon-alt-2.png"
@@ -905,13 +905,13 @@
 			},
 			{
 				"command": "proof-explorer.rewind",
-				"title": "️️Rewind here",
+				"title": "Rewind here",
 				"enablement": "view == proof-explorer-view && in-checker == true",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.fast-forward",
-				"title": "️️Fast forward here",
+				"title": "Fast forward here",
 				"icon": {
 					"dark": "icons/fast-forward-icon-alt-2.png",
 					"light": "icons/fast-forward-icon-alt-2.png"
@@ -943,7 +943,7 @@
 			},
 			{
 				"command": "proof-mate.pause-proof",
-				"title": "️️Pause sketchpad",
+				"title": "Pause sketchpad",
 				"enablement": "in-checker == true && proof-mate.sketchpad-empty == false",
 				"icon": {
 					"dark": "icons/svg-pause-orange-icon.svg",
@@ -963,7 +963,7 @@
 			},
 			{
 				"command": "proof-mate.run-proof",
-				"title": "️️Run sketchpad",
+				"title": "Run sketchpad",
 				"icon": {
 					"dark": "icons/svg-play-circle-1-orange-icon.svg",
 					"light": "icons/svg-play-circle-1-orange-icon.svg"
@@ -1961,7 +1961,7 @@
 		"eslint": "^8.7.0",
 		"mocha": "^9.1.4",
 		"ts-node": "^10.4.0",
-		"vsce": "^2.9.2"
+		"vsce": "^2.10.0"
 	},
 	"resolutions": {
 		"mem": "^6.1.0",

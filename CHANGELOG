@@ -1,7 +1,11 @@
 ## ChangeLog
-### 1.0.63 (2022.08.xx)
-- Added support for prover command (show-expanded-sequent)
-- Fixed minor bugs (markdown style, close button for evaluator console)
+### 1.0.63 (2022.08.15)    
+- Improved NASALib Search (best matching search results are shown first, library name shown in the search results, search multiple words)   
+- Improved markdown preview (added support for heading sections, added shortcut M-x view-as-markdown) 
+- Improved autocompletion (record field names)  
+- Added matching brackets colorization for sequent formulas (can be enabled/disabled from settings)   
+- Added support for prover command `(show-expanded-sequent)`    
+- Fixed minor bugs (autofocus of prover console, markdown preview, close button in evaluator console, handling of symbolic links in NASALib search, error handling in Proof Explorer)   
 
 ### 1.0.62 (2022.05.22)   
 - Improved markdown preview   
