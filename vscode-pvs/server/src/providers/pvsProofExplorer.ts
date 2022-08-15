@@ -55,6 +55,7 @@ import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
 import { PvsResponse } from '../common/pvs-gui';
 import { 
+	CheckParResult,
 	isEmptyCommand, isFailCommand, isInvalidCommand, isPostponeCommand, isProofliteGlassbox, 
 	isQEDCommand, isQuitCommand, isQuitDontSaveCommand, isSameCommand, isSaveThenQuitCommand, 
 	isShowExpandedSequentCommand, 
@@ -415,9 +416,9 @@ export class PvsProofExplorer {
 	 * The function is activated when the user clicks forward/back/play on the front-end.
 	 * The command is taken from the proof tree.
 	 * The command can also be specified as function argument -- this is useful for handling commands entered by the used at the prover prompt. 
-	 * @param cmd Optional parameter, specifying the command to be executed.
+	 * @param opt.cmd Optional parameter, specifies the command to be executed.
 	 */
-	async step (opt?: { cmd?: string, feedbackToTerminal?: boolean }): Promise<PvsResponse | null> {
+	async step (opt?: { cmd?: string, feedbackToTerminal?: boolean }): Promise<PvsResponse> {
 		opt = opt || {};
 		// return new Promise (async (resolve, reject) => {
 
@@ -765,7 +766,15 @@ export class PvsProofExplorer {
 
 				if (languageUtils.isHelpCommand(userCmd) || languageUtils.isHelpBangCommand(userCmd)) {
 					// do nothing, CLI will show the help message
-					// return;
+				}
+
+				// sanity check for parens, pvs sometimes does not report problems and this confuses proof explorer
+				// this condition should never be triggered because the same sanity check is also in vscodePvsXTerm that
+				// prevents the submission of commands with unbalanced parens to the prover
+				const parens: CheckParResult = languageUtils.checkPar(userCmd, { includeStringContent: true });
+				if (!parens?.success) {
+					// report unbalanced parens to the user
+					this.proofState.commentary = parens.msg;
 				}
 
 				//--- check special conditions: empty/null command, invalid command, no change before proceeding

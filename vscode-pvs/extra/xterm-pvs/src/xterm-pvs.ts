@@ -2777,13 +2777,17 @@ export class XTermPvs extends Backbone.Model {
                         this.showCommands();
                         break;
                     }
+                    case "a":
+                    case "A":
                     case "Home": {
-                        // ctrl+Home moves cursor to command prompt home position
+                        // ctrl+Home / ctrl+a moves cursor to command prompt home position
                         this.moveCursorToHome();
                         break;
                     }
+                    case "e":
+                    case "E":
                     case "End": {
-                        // ctrl+End moves cursor to the end of the command line
+                        // ctrl+End / ctrl+e moves cursor to the end of the command line
                         this.moveCursorToEnd();
                         break;
                     }

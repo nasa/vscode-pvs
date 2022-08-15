@@ -48,7 +48,7 @@ import * as utils from '../common/languageUtils';
 import { LanguageClient } from 'vscode-languageclient';
 import {
     EvaluatorCommandResponse, HintsObject, MathObjects, ProofCommandResponse, ProveFormulaRequest, ProveFormulaResponse, 
-    PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, serverEvent, serverRequest 
+    PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, SequentDescriptor, serverEvent, serverRequest 
 } from '../common/serverInterface';
 import { PvsResponse } from '../common/pvs-gui';
 import * as vscodeUtils from '../utils/vscode-utils';
@@ -57,7 +57,7 @@ import * as colorUtils from '../common/colorUtils';
 import {
     XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData, XTermMessage
 } from '../common/xtermInterface';
-import { balancePar, getHints, isInvalidCommand, isQEDCommand, noChange } from '../common/languageUtils';
+import { balancePar, checkPar, CheckParResult, getHints, isInvalidCommand, isQEDCommand, noChange } from '../common/languageUtils';
 import { VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
 import { YesNoCancel } from '../utils/vscode-utils';
 
@@ -671,16 +671,32 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     async sendProverCommand (req: PvsProofCommand): Promise<boolean> {
         return new Promise((resolve, reject) => {
             if (this.sessionType === "prover") {
-                this.client.sendRequest(serverRequest.proofCommand, req);
-                this.client.onRequest(serverEvent.proofCommandResponse, (data: ProofCommandResponse) => {
-                    this.onProverResponse(data);
-                    const success: boolean = data ? 
-                        typeof data.res === "string" ? isQEDCommand(data.res)
-                            : !isInvalidCommand(data.res) && !noChange(data.res)
-                                : false;
-                    resolve(success);
-                    // resolve(data);
-                });
+                // sanity check for parens, pvs sometimes does not report problems and this confuses proof explorer
+                const parens: CheckParResult = checkPar(req?.cmd, { includeStringContent: true });
+				if (parens?.success) {
+                    this.client.sendRequest(serverRequest.proofCommand, req);
+                    this.client.onRequest(serverEvent.proofCommandResponse, (data: ProofCommandResponse) => {
+                        this.onProverResponse(data);
+                        const success: boolean = data ? 
+                            typeof data.res === "string" ? isQEDCommand(data.res)
+                                : !isInvalidCommand(data.res) && !noChange(data.res)
+                                    : false;
+                        resolve(success);
+                        // resolve(data);
+                    });
+                } else {
+                    // report unbalanced parens to the user
+                    const err: SequentDescriptor = {
+                        label: parens.msg,
+                        commentary: parens.msg
+                    };
+                    const res: ProofCommandResponse = {
+                        res: err,
+                        req
+                    };
+					this.onProverResponse(res);
+                    resolve(true);
+                }
             } else {
                 resolve(null);
             }
