@@ -1,0 +1,38 @@
+even_more_list_props[T:TYPE]: THEORY
+  BEGIN 
+        IMPORTING structures@set_as_list[T],
+              structures@more_list_props[T]
+
+% @QED remove_sl_cons proved by reconrad on Thu, 14 Jul 2022 16:20:44 GMT
+remove_sl_cons: LEMMA
+FORALL(l:list[T],x,y:T): 
+    (y = x IMPLIES remove_sl(y,cons(x,l))= remove_sl(y,l))  
+    AND  (y/=x IMPLIES remove_sl(y,cons(x,l))= cons(x,remove_sl(y,l)))
+
+
+% @QED remove_sl_not_member proved by reconrad on Thu, 14 Jul 2022 16:22:07 GMT
+remove_sl_not_member: LEMMA
+FORALL(l:list[T],x:{y:T|NOT member(y,l)}): remove_sl(x,l) = l
+
+
+% @QED remove_sl_no_rep_length proved by reconrad on Thu, 14 Jul 2022 16:23:29 GMT
+remove_sl_no_rep_length: LEMMA
+FORALL (l:list[T], x: {y: T| member(y, l)}): no_repetitions?(l) IMPLIES length(remove_sl(x, l)) = length(l) - 1
+
+% @QED remove_sl_member proved by reconrad on Thu, 14 Jul 2022 16:24:36 GMT
+remove_sl_member: LEMMA
+FORALL(l:list[T], x: T): 
+  NOT member(x, remove_sl(x, l))
+
+
+% @QED remove_sl_is_filter proved by reconrad on Thu, 14 Jul 2022 16:26:04 GMT
+remove_sl_is_filter: LEMMA
+FORALL (l:list[T], x: T): remove_sl(x,l) = filter(l, LAMBDA(y:T): y /= x)
+
+% @QED remove_sl_no_rep proved by reconrad on Thu, 14 Jul 2022 16:27:21 GMT
+remove_sl_no_rep: LEMMA 
+  FORALL (l:{x: list[T]| no_repetitions?(x)}, x: T): no_repetitions?(remove_sl(x, l))
+
+
+
+END even_more_list_props

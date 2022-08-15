@@ -1,0 +1,13 @@
+%%
+% @theory: adjacency_matrix
+% @author: reconrad
+% @date: Wed, 15 Jun 2022 16:05:24 GMT
+%%
+adjacency_matrix_nat: THEORY
+  BEGIN 
+    IMPORTING graphs@graphs[nat], linear_algebra@matrices
+
+    
+   
+    
+  END adjacency_matrix_nat

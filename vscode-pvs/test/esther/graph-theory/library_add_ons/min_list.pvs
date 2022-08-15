@@ -1,0 +1,16 @@
+min_list[T: TYPE, <= : (total_order?[T]) ]: THEORY 
+
+BEGIN
+
+% @QED cons_length proved by jaslam on Fri, 01 Jul 2022 19:39:18 GMT
+cons_length: LEMMA FORALL (l: list[T] | cons?[T](l)): length(l) >= 1
+
+min_list(l:list[T] | cons?[T](l)): RECURSIVE {t:T | (FORALL(i:below(length(l))): t <= nth(l,i)) AND member(t, l)} =
+IF length[T](l)=1 THEN car(l)
+ELSE  IF car(l) <= min_list(cdr(l)) THEN car(l) ELSE min_list(cdr(l)) ENDIF
+ENDIF
+MEASURE length(l)
+
+
+
+END min_list

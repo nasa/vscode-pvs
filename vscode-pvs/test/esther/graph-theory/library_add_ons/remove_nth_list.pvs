@@ -1,0 +1,26 @@
+%%
+% @theory: remove_nth_list
+% @author: jaslam
+% @date: Wed, 29 Jun 2022 19:00:22 GMT
+%%
+remove_nth_list[T: TYPE]: THEORY
+  BEGIN 
+    IMPORTING 
+            structures@more_list_props[T]
+
+    remove_nth(l: list[T], n: below(length(l))): list[T] =
+
+     IF null?(l) THEN null 
+     ELSE IF n = 0 THEN cdr(l) 
+          ELSE append(^(l, (0, n-1)), ^(l, (n+1, length(l) - 1))) 
+          ENDIF 
+     ENDIF
+    
+    % @QED remove_nth_length proved by jaslam on Wed, 13 Jul 2022 15:35:01 GMT
+    remove_nth_length: LEMMA
+      FORALL (l: {x: list[T] | cons?(x)}, n: below(length(l))): length(remove_nth(l, n)) = length(l) - 1
+
+    remove_nth_no_rep: LEMMA
+      FORALL (l: list[T], n: below(length(l))): no_repetitions?(l) IMPLIES no_repetitions?(remove_nth(l, n))
+
+  END remove_nth_list

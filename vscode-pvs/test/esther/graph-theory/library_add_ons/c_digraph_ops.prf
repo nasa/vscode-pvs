@@ -1,0 +1,2273 @@
+(c_digraph_ops
+ (adjacent_verts_TCC1 0
+  (adjacent_verts_TCC2-1 nil 3865522350
+   ("" (skeep)
+    (("" (typepred "v") (("" (assert) (("" (grind) nil nil)) nil))
+      nil))
+    nil)
+   ((vert type-eq-decl nil digraphs_ digraphs)
+    (c_digraph type-eq-decl nil c_digraphs_def digraphs)
+    (vert? const-decl "bool" digraphs_ digraphs)
+    (digraph_make const-decl "[v: (is_finite[T]),
+ {e: (is_finite[[T, T]]) |
+    FORALL (x, y: T): e(x, y) IMPLIES v(x) AND v(y)} ->
+   digraph_type]" c_digraphs_imp digraphs)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (digraph_size const-decl "[digraph_type -> nat]" c_digraphs_imp
+     digraphs)
+    (digraph_edges const-decl "[digraph_type -> [T, T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_verts const-decl "[digraph_type -> [T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_type type-eq-decl nil c_digraphs_imp digraphs)
+    (cdigraph const-decl "bool" c_digraphs_def digraphs)
+    (ComputableDigraph type-eq-decl nil c_digraphs_def digraphs)
+    (T formal-type-decl nil c_digraph_ops nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (list type-decl nil list_adt nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
+    (vert const-decl "bool" c_digraphs_def digraphs))
+   nil
+   (adjacent_verts subtype "c_digraph_ops.v"
+    "{a: c_digraph_ops.T | list_props[c_digraph_ops.T].member(a, data(c_digraph_ops.cd))}")))
+ (adjacent_verts_TCC2 0
+  (adjacent_verts_TCC3-1 nil 3865522350 ("" (subtype-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (T formal-type-decl nil c_digraph_ops nil)
+    (ComputableDigraph type-eq-decl nil c_digraphs_def digraphs)
+    (cdigraph const-decl "bool" c_digraphs_def digraphs)
+    (c_digraph type-eq-decl nil c_digraphs_def digraphs)
+    (digraph_type type-eq-decl nil c_digraphs_imp digraphs)
+    (digraph_verts const-decl "[digraph_type -> [T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_edges const-decl "[digraph_type -> [T, T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_size const-decl "[digraph_type -> nat]" c_digraphs_imp
+     digraphs)
+    (set type-eq-decl nil sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (digraph_make const-decl "[v: (is_finite[T]),
+ {e: (is_finite[[T, T]]) |
+    FORALL (x, y: T): e(x, y) IMPLIES v(x) AND v(y)} ->
+   digraph_type]" c_digraphs_imp digraphs)
+    (vert? const-decl "bool" digraphs_ digraphs)
+    (vert type-eq-decl nil digraphs_ digraphs)
+    (size const-decl "nat" c_digraphs_def digraphs)
+    (list_of_idxs const-decl "bool" c_digraphs_def digraphs)
+    (/= const-decl "boolean" notequal nil)
+    (no_repetitions? const-decl "bool" more_list_props structures)
+    (vert const-decl "bool" c_digraphs_def digraphs)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil))
+   nil
+   (adjacent_verts subtype
+    "more_list_props[c_digraph_ops.T].idx(data(c_digraph_ops.cd), c_digraph_ops.v)"
+    "below[length[list[nat]](adjs(cd))]")))
+ (adjacent_verts_TCC3 0
+  (adjacent_verts_TCC1-1 nil 3865522350
+   ("" (skeep)
+    (("" (typepred "(nth[list[nat]](adjs(cd), idx[T](data(cd), v)))")
+      (("" (lemma "every_nth[number]")
+        ((""
+          (inst -1 "(LAMBDA (x: number):
+                  number_field_pred(x) AND real_pred(x) AND rational_pred(x)
+              AND
+ integer_pred(x) AND (x >= 0)
+              AND (x < length[T](data(cd))))"
+           "(nth[list[nat]](adjs(cd), idx[T](data(cd), v)))")
+          (("" (assert)
+            (("" (hide 2)
+              (("" (lemma "every_nth[number]")
+                ((""
+                  (inst -1 "(LAMBDA (x: number):
+                   number_field_pred(x) AND real_pred(x)
+               AND rational_pred(x) AND
+ integer_pred(x) AND (x >= 0))"
+                   "((nth[list[nat]](adjs(cd), idx[T](data(cd), v))))")
+                  (("" (assert)
+                    (("" (hide -2)
+                      (("" (skeep)
+                        (("" (inst -1 "i")
+                          (("" (flatten)
+                            (("" (assert)
+                              ((""
+                                (hide (-1 -2 -3 -4-5))
+                                ((""
+                                  (typepred "cd")
+                                  ((""
+                                    (expand "cdigraph")
+                                    ((""
+                                      (flatten)
+                                      ((""
+                                        (hide -5)
+                                        ((""
+                                          (hide -5)
+                                          ((""
+                                            (expand "list_of_idxs")
+                                            ((""
+                                              (inst
+                                               -2
+                                               "idx[T](data(cd), v)")
+                                              ((""
+                                                (inst -2 "i")
+                                                ((""
+                                                  (expand "size")
+                                                  ((""
+                                                    (propax)
+                                                    nil
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((vert type-eq-decl nil digraphs_ digraphs)
+    (vert? const-decl "bool" digraphs_ digraphs)
+    (digraph_make const-decl "[v: (is_finite[T]),
+ {e: (is_finite[[T, T]]) |
+    FORALL (x, y: T): e(x, y) IMPLIES v(x) AND v(y)} ->
+   digraph_type]" c_digraphs_imp digraphs)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (digraph_size const-decl "[digraph_type -> nat]" c_digraphs_imp
+     digraphs)
+    (digraph_edges const-decl "[digraph_type -> [T, T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_verts const-decl "[digraph_type -> [T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_type type-eq-decl nil c_digraphs_imp digraphs)
+    (idx def-decl "{i: below(length(l)) | nth(l, i) = a}"
+     more_list_props structures)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (member def-decl "bool" list_props nil)
+    (c_digraph type-eq-decl nil c_digraphs_def digraphs)
+    (cdigraph const-decl "bool" c_digraphs_def digraphs)
+    (ComputableDigraph type-eq-decl nil c_digraphs_def digraphs)
+    (T formal-type-decl nil c_digraph_ops nil)
+    (nth def-decl "T" list_props nil)
+    (below type-eq-decl nil nat_types nil)
+    (length def-decl "nat" list_props nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (size const-decl "nat" c_digraphs_def digraphs)
+    (list_of_idxs const-decl "bool" c_digraphs_def digraphs)
+    (every_nth formula-decl nil list_props nil))
+   nil
+   (adjacent_verts subtype
+    "list_props[list[nat]].nth(adjs(c_digraph_ops.cd), more_list_props[c_digraph_ops.T].idx(data(c_digraph_ops.cd), c_digraph_ops.v))"
+    "list[below(length[T](data(cd)))]")))
+ (adjacent_verts_TCC4 0
+  (adjacent_verts_TCC4-1 nil 3865522350
+   ("" (skeep)
+    (("" (lemma "every_nth[T]")
+      ((""
+        (inst -1 "_"
+         "(map[below(length(data(cd))), T] (LAMBDA (x: below(length[T](data(cd)))): nth[T](data(cd), x) , nth[list[nat]](adjs(cd), idx[T](data(cd), v))))")
+        ((""
+          (inst -1
+           "(vert?[T, digraph_type[T], digraph_verts, digraph_edges, digraph_size, digraph_make] (cd))")
+          (("" (assert)
+            (("" (hide 2)
+              (("" (skeep)
+                (("" (lemma "map_nth_rw[below(length(data(cd))),T]")
+                  ((""
+                    (lemma
+                     "map_unc_eq_cur[below(length(data(cd))), T]")
+                    ((""
+                      (inst -1 "LAMBDA (x: below(length[T](data(cd)))):
+                       nth[T](data(cd), x)"
+                       "nth[list[nat]](adjs(cd), idx[T](data(cd), v))")
+                      (("" (replace -1)
+                        (("" (hide -1)
+                          ((""
+                            (inst -1
+                             "(LAMBDA (x: below(length[T](data(cd)))): nth[T](data(cd), x))"
+                             "(nth[list[nat]](adjs(cd), idx[T](data(cd), v)))"
+                             "i")
+                            (("1" (replace -1)
+                              (("1"
+                                (hide -1)
+                                (("1"
+                                  (expand "vert?")
+                                  (("1"
+                                    (expand "digraph_verts")
+                                    (("1"
+                                      (expand "vert")
+                                      (("1"
+                                        (lemma "member_iff_nth[T]")
+                                        (("1"
+                                          (inst
+                                           -1
+                                           "data(cd)"
+                                           "nth[T]
+                 (data(cd),
+                  nth((nth[list[nat]](adjs(cd), idx[T](data(cd), v))), i))")
+                                          (("1"
+                                            (assert)
+                                            (("1"
+                                              (hide 2)
+                                              (("1"
+                                                (inst
+                                                 1
+                                                 "nth((nth[list[nat]](adjs(cd), idx[T](data(cd), v))), i)")
+                                                (("1"
+                                                  (typepred "i")
+                                                  (("1"
+                                                    (lemma
+                                                     "map_length[below(length(data(cd))), T]")
+                                                    (("1"
+                                                      (lemma
+                                                       "map_unc_eq_cur[below(length(data(cd))), T]")
+                                                      (("1"
+                                                        (inst
+                                                         -1
+                                                         "(LAMBDA (x: below(length[T](data(cd)))): nth[T](data(cd), x))"
+                                                         "(nth[list[nat]](adjs(cd), idx[T](data(cd), v)))")
+                                                        (("1"
+                                                          (replace -1)
+                                                          (("1"
+                                                            (hide -1)
+                                                            (("1"
+                                                              (inst
+                                                               -1
+                                                               "(LAMBDA (x: below(length[T](data(cd)))): nth[T](data(cd), x))"
+                                                               "(nth[list[nat]](adjs(cd), idx[T](data(cd), v)))")
+                                                              (("1"
+                                                                (assert)
+                                                                nil
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil)
+                                                 ("2"
+                                                  (typepred "cd")
+                                                  (("2"
+                                                    (expand "cdigraph")
+                                                    (("2"
+                                                      (flatten)
+                                                      (("2"
+                                                        (hide
+                                                         (-2 -3 -4))
+                                                        (("2"
+                                                          (typepred
+                                                           "idx[T](data(cd), v)")
+                                                          (("2"
+                                                            (assert)
+                                                            nil
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil)
+                                                 ("3"
+                                                  (typepred "v")
+                                                  (("3"
+                                                    (expand "vert?")
+                                                    (("3"
+                                                      (expand
+                                                       "digraph_verts")
+                                                      (("3"
+                                                        (expand "vert")
+                                                        (("3"
+                                                          (propax)
+                                                          nil
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil)
+                                           ("2"
+                                            (hide 2)
+                                            (("2"
+                                              (typepred "cd")
+                                              (("2"
+                                                (expand "cdigraph")
+                                                (("2"
+                                                  (flatten)
+                                                  (("2"
+                                                    (hide (-1 -3 -4))
+                                                    (("2"
+                                                      (inst
+                                                       -1
+                                                       "idx[T](data(cd), v)")
+                                                      (("2"
+                                                        (expand
+                                                         "list_of_idxs")
+                                                        (("2"
+                                                          (inst -1 "i")
+                                                          (("2"
+                                                            (expand
+                                                             "size")
+                                                            (("2"
+                                                              (propax)
+                                                              nil
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil)
+                             ("2" (hide 2)
+                              (("2"
+                                (typepred "i")
+                                (("2"
+                                  (lemma
+                                   "map_unc_eq_cur[below(length(data(cd))), T]")
+                                  (("2"
+                                    (inst
+                                     -1
+                                     "(LAMBDA (x: below(length[T](data(cd)))): nth[T](data(cd), x))"
+                                     "(nth[list[nat]](adjs(cd), idx[T](data(cd), v)))")
+                                    (("2"
+                                      (replace -1)
+                                      (("2"
+                                        (hide -1)
+                                        (("2"
+                                          (lemma
+                                           "map_length[below(length(data(cd))), T]")
+                                          (("2"
+                                            (inst
+                                             -1
+                                             "(LAMBDA (x: below(length[T](data(cd)))): nth[T](data(cd), x))"
+                                             "(nth[list[nat]](adjs(cd), idx[T](data(cd), v)))")
+                                            (("2" (assert) nil nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((T formal-type-decl nil c_digraph_ops nil)
+    (every_nth formula-decl nil list_props nil)
+    (map_nth_rw formula-decl nil more_map_props nil)
+    (vert const-decl "bool" c_digraphs_def digraphs)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (map_length formula-decl nil more_map_props nil)
+    (size const-decl "nat" c_digraphs_def digraphs)
+    (list_of_idxs const-decl "bool" c_digraphs_def digraphs)
+    (member_iff_nth formula-decl nil more_list_props structures)
+    (i skolem-const-decl "below(length[T]
+          ((map[below(length(data(cd))), T]
+                (LAMBDA (x: below(length[T](data(cd)))):
+                   nth[T](data(cd), x),
+                 nth[list[nat]](adjs(cd), idx[T](data(cd), v))))))"
+       c_digraph_ops nil)
+    (v skolem-const-decl
+     "vert[T, digraph_type[T], digraph_verts, digraph_edges, digraph_size,
+     digraph_make](cd)" c_digraph_ops nil)
+    (cd skolem-const-decl "c_digraph[T]" c_digraph_ops nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (map_unc_eq_cur formula-decl nil more_map_props nil)
+    (vert type-eq-decl nil digraphs_ digraphs)
+    (vert? const-decl "bool" digraphs_ digraphs)
+    (digraph_make const-decl "[v: (is_finite[T]),
+ {e: (is_finite[[T, T]]) |
+    FORALL (x, y: T): e(x, y) IMPLIES v(x) AND v(y)} ->
+   digraph_type]" c_digraphs_imp digraphs)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (digraph_size const-decl "[digraph_type -> nat]" c_digraphs_imp
+     digraphs)
+    (digraph_edges const-decl "[digraph_type -> [T, T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_verts const-decl "[digraph_type -> [T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_type type-eq-decl nil c_digraphs_imp digraphs)
+    (idx def-decl "{i: below(length(l)) | nth(l, i) = a}"
+     more_list_props structures)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (member def-decl "bool" list_props nil)
+    (nth def-decl "T" list_props nil)
+    (below type-eq-decl nil nat_types nil)
+    (map adt-def-decl "list[T1]" list_adt_map nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (c_digraph type-eq-decl nil c_digraphs_def digraphs)
+    (cdigraph const-decl "bool" c_digraphs_def digraphs)
+    (ComputableDigraph type-eq-decl nil c_digraphs_def digraphs)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (length def-decl "nat" list_props nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (list type-decl nil list_adt nil))
+   nil
+   (adjacent_verts subtype
+    "list_adt_map[naturalnumbers.below(list_props[c_digraph_ops.T].length(data(c_digraph_ops.cd))), c_digraph_ops.T].map(LAMBDA (x: naturalnumbers.below(list_props[c_digraph_ops.T].length(data(c_digraph_ops.cd)))): list_props[c_digraph_ops.T].nth(data(c_digraph_ops.cd), x), list_props[list[nat]].nth(adjs(c_digraph_ops.cd), more_list_props[c_digraph_ops.T].idx(data(c_digraph_ops.cd), c_digraph_ops.v)))"
+    "list[vert[T, digraph_type[T], digraph_verts[T], digraph_edges[T], digraph_size[T], digraph_make[T]](cd)]")))
+ (remove_v_adjs_TCC1 0
+  (remove_v_adjs_TCC1-1 nil 3866106675
+   ("" (skeep)
+    (("" (lemma "map_unc_eq_cur[list[nat],list[nat]]")
+      ((""
+        (inst -1 "LAMBDA (x: list[nat]): remove_sl[nat](v_idx, x)"
+         "adjs(cd)")
+        (("" (replace -1)
+          (("" (hide -1)
+            (("" (lemma "map_length[list[nat],list[nat]]")
+              ((""
+                (inst -1
+                 "LAMBDA (x: list[nat]): remove_sl[nat](v_idx, x)"
+                 "adjs(cd)")
+                (("" (replace -1)
+                  (("" (hide -1)
+                    (("" (typepred "cd")
+                      (("" (expand "cdigraph")
+                        (("" (flatten) (("" (assert) nil nil)) nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (every adt-def-decl "boolean" list_adt nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (list type-decl nil list_adt nil)
+    (number nonempty-type-decl nil numbers nil)
+    (map_unc_eq_cur formula-decl nil more_map_props nil)
+    (map_length formula-decl nil more_map_props nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (c_digraph type-eq-decl nil c_digraphs_def digraphs)
+    (cdigraph const-decl "bool" c_digraphs_def digraphs)
+    (ComputableDigraph type-eq-decl nil c_digraphs_def digraphs)
+    (T formal-type-decl nil c_digraph_ops nil)
+    (remove_sl def-decl
+     "{ll: list[T] | FORALL y: member(y, ll) IFF (x /= y AND member(y, l))}"
+     set_as_list structures)
+    (/= const-decl "boolean" notequal nil)
+    (member def-decl "bool" list_props nil)
+    (IFF const-decl "[bool, bool -> bool]" booleans nil))
+   nil
+   (remove_v_adjs subtype "c_digraph_ops.v_idx"
+    "naturalnumbers.below(list_props[list[nat]].length(list_adt_map[list[nat], list[nat]].map(LAMBDA (x: list_adt[nat].list): set_as_list[nat].remove_sl(c_digraph_ops.v_idx, x), adjs(c_digraph_ops.cd))))")))
+ (sub_one_greater_n_TCC1 0
+  (sub_one_greater_n_TCC1-1 nil 3865522350
+   ("" (skeep) (("" (typepred "n") (("" (assert) nil nil)) nil)) nil)
+   ((nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (>= const-decl "bool" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (int_minus_int_is_int application-judgement "int" integers nil))
+   nil
+   (sub_one_greater_n subtype "(number_fields.-)(c_digraph_ops.x, 1)"
+    "nat")))
+ (sub_one_greater_n_no_rep 0
+  (sub_one_greater_n_no_rep-1 nil 3866734290
+   ("" (skeep)
+    (("" (expand "no_repetitions?")
+      (("" (skeep)
+        (("" (expand "sub_one_greater_n_list")
+          (("" (lemma "map_unc_eq_cur[nat,nat]")
+            (("" (inst -1 "sub_one_greater_n(n)" "l")
+              (("" (replace -1)
+                (("" (hide -1)
+                  (("" (lemma "map_nth_rw[nat,nat]")
+                    (("" (copy -1)
+                      (("" (inst -1 "sub_one_greater_n(n)" "l" "i")
+                        (("1" (replace -1)
+                          (("1" (hide -1)
+                            (("1"
+                              (inst -1 "sub_one_greater_n(n)" "l" "j")
+                              (("1"
+                                (replace -1)
+                                (("1"
+                                  (hide -1)
+                                  (("1"
+                                    (expand "sub_one_greater_n")
+                                    (("1"
+                                      (case "nth(l, i) > n")
+                                      (("1"
+                                        (assert)
+                                        (("1"
+                                          (case "nth(l, j) > n")
+                                          (("1"
+                                            (assert)
+                                            (("1"
+                                              (typepred "l")
+                                              (("1"
+                                                (hide -1)
+                                                (("1"
+                                                  (expand
+                                                   "no_repetitions?")
+                                                  (("1"
+                                                    (inst -1 "i" "j")
+                                                    (("1"
+                                                      (assert)
+                                                      nil
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil)
+                                           ("2"
+                                            (assert)
+                                            (("2"
+                                              (lemma
+                                               "member_iff_nth[nat]")
+                                              (("2"
+                                                (inst -1 "l" "n")
+                                                (("2"
+                                                  (assert)
+                                                  (("2"
+                                                    (hide 3)
+                                                    (("2"
+                                                      (inst 1 "j")
+                                                      (("2"
+                                                        (assert)
+                                                        nil
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil)
+                                           ("3"
+                                            (assert)
+                                            (("3"
+                                              (typepred "j")
+                                              (("3"
+                                                (expand
+                                                 "sub_one_greater_n_list")
+                                                (("3"
+                                                  (lemma
+                                                   "map_length[nat,nat]")
+                                                  (("3"
+                                                    (inst
+                                                     -1
+                                                     "sub_one_greater_n(n)"
+                                                     "l")
+                                                    (("3"
+                                                      (reveal -5)
+                                                      (("3"
+                                                        (assert)
+                                                        nil
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil)
+                                       ("2"
+                                        (assert)
+                                        (("2"
+                                          (case "nth(l, j) > n")
+                                          (("1"
+                                            (assert)
+                                            (("1"
+                                              (lemma
+                                               "member_iff_nth[nat]")
+                                              (("1"
+                                                (inst -1 "l" "n")
+                                                (("1"
+                                                  (assert)
+                                                  (("1"
+                                                    (inst 1 "i")
+                                                    (("1"
+                                                      (assert)
+                                                      nil
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil)
+                                           ("2"
+                                            (assert)
+                                            (("2"
+                                              (typepred "l")
+                                              (("2"
+                                                (hide -1)
+                                                (("2"
+                                                  (expand
+                                                   "no_repetitions?")
+                                                  (("2"
+                                                    (inst -1 "i" "j")
+                                                    (("2"
+                                                      (assert)
+                                                      nil
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil)
+                                           ("3"
+                                            (lemma
+                                             "map_length[nat,nat]")
+                                            (("3"
+                                              (typepred "j")
+                                              (("3"
+                                                (expand
+                                                 "sub_one_greater_n_list")
+                                                (("3"
+                                                  (inst
+                                                   -2
+                                                   "sub_one_greater_n(n)"
+                                                   "l")
+                                                  (("3"
+                                                    (assert)
+                                                    (("3"
+                                                      (lemma
+                                                       "map_unc_eq_cur[nat,nat]")
+                                                      (("3"
+                                                        (inst
+                                                         -1
+                                                         "sub_one_greater_n(n)"
+                                                         "l")
+                                                        (("3"
+                                                          (assert)
+                                                          nil
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil)
+                                       ("3"
+                                        (lemma "map_length[nat,nat]")
+                                        (("3"
+                                          (typepred "i")
+                                          (("3"
+                                            (expand
+                                             "sub_one_greater_n_list")
+                                            (("3"
+                                              (inst
+                                               -2
+                                               "sub_one_greater_n(n)"
+                                               "l")
+                                              (("3"
+                                                (lemma
+                                                 "map_unc_eq_cur[nat,nat]")
+                                                (("3"
+                                                  (inst
+                                                   -1
+                                                   "sub_one_greater_n(n)"
+                                                   "l")
+                                                  (("3"
+                                                    (assert)
+                                                    nil
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil)
+                               ("2"
+                                (lemma "map_length[nat,nat]")
+                                (("2"
+                                  (typepred "j")
+                                  (("2"
+                                    (expand "sub_one_greater_n_list")
+                                    (("2"
+                                      (inst
+                                       -2
+                                       "sub_one_greater_n(n)"
+                                       "l")
+                                      (("2"
+                                        (lemma
+                                         "map_unc_eq_cur[nat,nat]")
+                                        (("2"
+                                          (inst
+                                           -1
+                                           "sub_one_greater_n(n)"
+                                           "l")
+                                          (("2" (assert) nil nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (lemma "map_length[nat,nat]")
+                          (("2" (typepred "i")
+                            (("2" (expand "sub_one_greater_n_list")
+                              (("2"
+                                (inst -2 "sub_one_greater_n(n)" "l")
+                                (("2"
+                                  (lemma "map_unc_eq_cur[nat,nat]")
+                                  (("2"
+                                    (inst
+                                     -1
+                                     "sub_one_greater_n(n)"
+                                     "l")
+                                    (("2" (assert) nil nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((no_repetitions? const-decl "bool" more_list_props structures)
+    (sub_one_greater_n_list const-decl "list[nat]" c_digraph_ops nil)
+    (sub_one_greater_n const-decl "nat" c_digraph_ops nil)
+    (list type-decl nil list_adt nil)
+    (PRED type-eq-decl nil defined_types nil) nil
+    (AND const-decl "[bool, bool -> bool]" booleans nil) nil
+    (> const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
+    (nth def-decl "T" list_props nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (member_iff_nth formula-decl nil more_list_props structures)
+    (map_length formula-decl nil more_map_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (< const-decl "bool" reals nil)
+    (length def-decl "nat" list_props nil) nil nil
+    (below type-eq-decl nil naturalnumbers nil) nil
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (map_nth_rw formula-decl nil more_map_props nil)
+    (map_unc_eq_cur formula-decl nil more_map_props nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil))
+   shostak))
+ (adj_verts_have_edge 0
+  (adj_verts_have_edge-1 nil 3866216357
+   ("" (skeep)
+    (("" (typepred "x")
+      (("" (split)
+        (("1" (flatten)
+          (("1" (lemma "member_iff_nth[nat]")
+            (("1" (expand "edges")
+              (("1" (typepred "v")
+                (("1" (assert)
+                  (("1" (expand "vert?")
+                    (("1" (expand "digraph_verts")
+                      (("1" (assert)
+                        (("1" (expand "adjacent_verts")
+                          (("1"
+                            (inst -2 "nth(adjs(cd), idx(data(cd), v))"
+                             "idx(data(cd),x)")
+                            (("1" (assert)
+                              (("1"
+                                (hide 2)
+                                (("1"
+                                  (lemma "member_iff_nth[T]")
+                                  (("1"
+                                    (inst
+                                     -1
+                                     "map(LAMBDA (x: below(length(data(cd)))): nth(data(cd), x), nth(adjs(cd), idx(data(cd), v)) )"
+                                     "x")
+                                    (("1"
+                                      (assert)
+                                      (("1"
+                                        (hide -3)
+                                        (("1"
+                                          (skeep)
+                                          (("1"
+                                            (lemma
+                                             "map_nth_rw[below(length(data(cd))),T]")
+                                            (("1"
+                                              (inst
+                                               -1
+                                               "LAMBDA (x: below(length(data(cd)))): nth(data(cd), x)"
+                                               "nth(adjs(cd), idx(data(cd), v))"
+                                               "i")
+                                              (("1"
+                                                (inst 1 "i")
+                                                (("1"
+                                                  (case
+                                                   "nth[nat](nth[list[nat]](adjs(cd), idx(data(cd), v)) , i) = nth[below(length(data(cd)))] (nth[list[nat]](adjs(cd), idx(data(cd), v)), i)")
+                                                  (("1"
+                                                    (typepred "cd")
+                                                    (("1"
+                                                      (expand
+                                                       "cdigraph")
+                                                      (("1"
+                                                        (flatten)
+                                                        (("1"
+                                                          (hide -1)
+                                                          (("1"
+                                                            (hide -1)
+                                                            (("1"
+                                                              (hide -2)
+                                                              (("1"
+                                                                (expand
+                                                                 "no_repetitions?"
+                                                                 -1)
+                                                                (("1"
+                                                                  (inst
+                                                                   -1
+                                                                   "nth(nth(adjs(cd), idx(data(cd), v)), i)"
+                                                                   "idx(data(cd), x)")
+                                                                  (("1"
+                                                                    (assert)
+                                                                    (("1"
+                                                                      (typepred
+                                                                       "idx(data(cd),x)")
+                                                                      (("1"
+                                                                        (hide
+                                                                         -1)
+                                                                        (("1"
+                                                                          (hide
+                                                                           -6
+                                                                           -7)
+                                                                          (("1"
+                                                                            (case
+                                                                             "nth(data(cd), nth(nth(adjs(cd), idx(data(cd), v)), i)) = nth(data(cd), idx(data(cd), x))")
+                                                                            (("1"
+                                                                              (assert)
+                                                                              nil
+                                                                              nil)
+                                                                             ("2"
+                                                                              (hide
+                                                                               -2)
+                                                                              (("2"
+                                                                                (replace
+                                                                                 -2)
+                                                                                (("2"
+                                                                                  (hide
+                                                                                   -2)
+                                                                                  (("2"
+                                                                                    (replace
+                                                                                     -1)
+                                                                                    (("2"
+                                                                                      (hide
+                                                                                       -1)
+                                                                                      (("2"
+                                                                                        (hide
+                                                                                         2)
+                                                                                        (("2"
+                                                                                          (lemma
+                                                                                           "map_unc_eq_cur[below(length(data(cd))),T]")
+                                                                                          (("2"
+                                                                                            (inst
+                                                                                             -1
+                                                                                             "LAMBDA (x: below(length(data(cd)))): nth(data(cd), x)"
+                                                                                             "nth(adjs(cd), idx(data(cd), v))")
+                                                                                            (("2"
+                                                                                              (assert)
+                                                                                              nil
+                                                                                              nil))
+                                                                                            nil))
+                                                                                          nil))
+                                                                                        nil))
+                                                                                      nil))
+                                                                                    nil))
+                                                                                  nil))
+                                                                                nil))
+                                                                              nil))
+                                                                            nil))
+                                                                          nil))
+                                                                        nil))
+                                                                      nil))
+                                                                    nil)
+                                                                   ("2"
+                                                                    (lemma
+                                                                     "map_unc_eq_cur[below(length(data(cd))),T]")
+                                                                    (("2"
+                                                                      (inst
+                                                                       -1
+                                                                       "LAMBDA (x: below(length(data(cd)))): nth(data(cd), x)"
+                                                                       "nth(adjs(cd), idx(data(cd), v))")
+                                                                      (("2"
+                                                                        (replace
+                                                                         -1)
+                                                                        (("2"
+                                                                          (typepred
+                                                                           "cd")
+                                                                          (("2"
+                                                                            (expand
+                                                                             "cdigraph")
+                                                                            (("2"
+                                                                              (flatten)
+                                                                              (("2"
+                                                                                (hide
+                                                                                 (-3
+                                                                                  -4))
+                                                                                (("2"
+                                                                                  (inst
+                                                                                   -2
+                                                                                   " idx[T](data(cd), v)")
+                                                                                  (("2"
+                                                                                    (hide
+                                                                                     -3)
+                                                                                    (("2"
+                                                                                      (expand
+                                                                                       "list_of_idxs"
+                                                                                       -2)
+                                                                                      (("2"
+                                                                                        (inst
+                                                                                         -2
+                                                                                         "i")
+                                                                                        (("2"
+                                                                                          (expand
+                                                                                           "size")
+                                                                                          (("2"
+                                                                                            (propax)
+                                                                                            nil
+                                                                                            nil))
+                                                                                          nil))
+                                                                                        nil))
+                                                                                      nil))
+                                                                                    nil))
+                                                                                  nil))
+                                                                                nil))
+                                                                              nil))
+                                                                            nil))
+                                                                          nil))
+                                                                        nil))
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil)
+                                                   ("2"
+                                                    (propax)
+                                                    nil
+                                                    nil))
+                                                  nil))
+                                                nil)
+                                               ("2"
+                                                (typepred "i")
+                                                (("2"
+                                                  (hide 2)
+                                                  (("2"
+                                                    (lemma
+                                                     "map_length[below(length(data(cd))),T]")
+                                                    (("2"
+                                                      (inst
+                                                       -1
+                                                       "LAMBDA (x: below(length(data(cd)))): nth(data(cd), x)"
+                                                       "nth(adjs(cd), idx(data(cd), v))")
+                                                      (("2"
+                                                        (lemma
+                                                         "map_unc_eq_cur[below(length(data(cd))),T]")
+                                                        (("2"
+                                                          (inst
+                                                           -1
+                                                           "LAMBDA (x: below(length(data(cd)))): nth(data(cd), x)"
+                                                           "nth(adjs(cd), idx(data(cd), v))")
+                                                          (("2"
+                                                            (assert)
+                                                            nil
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil)
+         ("2" (flatten)
+          (("2" (expand "adjacent_verts")
+            (("2" (lemma "member_iff_nth[T]")
+              (("2"
+                (inst -1
+                 " map(LAMBDA (x: below(length(data(cd)))): nth(data(cd), x), nth(adjs(cd), idx(data(cd), v)))"
+                 "x")
+                (("2" (assert)
+                  (("2" (hide 2)
+                    (("2" (flatten)
+                      (("2" (hide -4)
+                        (("2" (lemma "member_iff_nth[nat]")
+                          (("2"
+                            (inst -1 "nth(adjs(cd), idx(data(cd), v))"
+                             "idx(data(cd), x)")
+                            (("2" (assert)
+                              (("2"
+                                (hide -4)
+                                (("2"
+                                  (skeep)
+                                  (("2"
+                                    (inst 1 "i")
+                                    (("1"
+                                      (lemma
+                                       "map_unc_eq_cur[below(length(data(cd))),T]")
+                                      (("1"
+                                        (inst
+                                         -1
+                                         "LAMBDA (x: below(length(data(cd)))): nth(data(cd), x)"
+                                         "nth(adjs(cd), idx(data(cd), v))")
+                                        (("1"
+                                          (assert)
+                                          (("1"
+                                            (replace -1)
+                                            (("1"
+                                              (hide -1)
+                                              (("1"
+                                                (lemma
+                                                 "map_nth_rw[below(length(data(cd))),T]")
+                                                (("1"
+                                                  (inst
+                                                   -1
+                                                   "LAMBDA (x: below(length(data(cd)))): nth(data(cd), x)"
+                                                   "_"
+                                                   "_")
+                                                  (("1"
+                                                    (inst
+                                                     -1
+                                                     " nth(adjs(cd), idx(data(cd), v))"
+                                                     "i")
+                                                    (("1"
+                                                      (replace -1)
+                                                      (("1"
+                                                        (hide -1)
+                                                        (("1"
+                                                          (replace -1)
+                                                          (("1"
+                                                            (hide -1)
+                                                            (("1"
+                                                              (typepred
+                                                               "idx(data(cd),x)")
+                                                              (("1"
+                                                                (propax)
+                                                                nil
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil)
+                                     ("2"
+                                      (lemma
+                                       "map_length[below(length(data(cd))),T]")
+                                      (("2"
+                                        (inst
+                                         -1
+                                         "LAMBDA (x: below(length[T](data(cd)))): nth[T](data(cd), x)"
+                                         "nth(adjs(cd), idx(data(cd), v))")
+                                        (("2"
+                                          (assert)
+                                          (("2"
+                                            (typepred "i")
+                                            (("2"
+                                              (assert)
+                                              (("2"
+                                                (lemma
+                                                 "map_unc_eq_cur[below(length(data(cd))),T]")
+                                                (("2"
+                                                  (inst
+                                                   -1
+                                                   "LAMBDA (x: below(length[T](data(cd)))): nth[T](data(cd), x)"
+                                                   "nth[list[nat]](adjs(cd), idx[T](data(cd), v))")
+                                                  (("2"
+                                                    (assert)
+                                                    nil
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((vert type-eq-decl nil digraphs_ digraphs)
+    (c_digraph type-eq-decl nil c_digraphs_def digraphs)
+    (vert? const-decl "bool" digraphs_ digraphs)
+    (digraph_make const-decl "[v: (is_finite[T]),
+ {e: (is_finite[[T, T]]) |
+    FORALL (x, y: T): e(x, y) IMPLIES v(x) AND v(y)} ->
+   digraph_type]" c_digraphs_imp digraphs)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (digraph_size const-decl "[digraph_type -> nat]" c_digraphs_imp
+     digraphs)
+    (digraph_edges const-decl "[digraph_type -> [T, T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_verts const-decl "[digraph_type -> [T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_type type-eq-decl nil c_digraphs_imp digraphs)
+    (cdigraph const-decl "bool" c_digraphs_def digraphs)
+    (ComputableDigraph type-eq-decl nil c_digraphs_def digraphs)
+    (T formal-type-decl nil c_digraph_ops nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (list type-decl nil list_adt nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (edges const-decl "bool" c_digraphs_def digraphs)
+    (adjacent_verts const-decl
+     "list[vert[T, digraph_type[T], digraph_verts, digraph_edges, digraph_size,
+          digraph_make](cd)]" c_digraph_ops nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (map_unc_eq_cur formula-decl nil more_map_props nil)
+    (list_of_idxs const-decl "bool" c_digraphs_def digraphs)
+    (size const-decl "nat" c_digraphs_def digraphs)
+    (no_repetitions? const-decl "bool" more_list_props structures)
+    (map_length formula-decl nil more_map_props nil)
+    (map_nth_rw formula-decl nil more_map_props nil)
+    (idx def-decl "{i: below(length(l)) | nth(l, i) = a}"
+     more_list_props structures)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (member def-decl "bool" list_props nil)
+    (nth def-decl "T" list_props nil)
+    (below type-eq-decl nil nat_types nil)
+    (length def-decl "nat" list_props nil)
+    (< const-decl "bool" reals nil)
+    (member_iff_nth formula-decl nil more_list_props structures))
+   shostak))
+ (adj_verts_in_simple 0
+  (adj_verts_in_simple-1 nil 3866718500
+   ("" (skeep)
+    (("" (lemma "member_nth[T]")
+      (("" (inst -1 "adjacent_verts(cd)(v)" "v")
+        (("" (assert)
+          (("" (hide -3)
+            (("" (skeep)
+              (("" (expand "adjacent_verts")
+                ((""
+                  (lemma "map_unc_eq_cur[below(length(data(cd))),T]")
+                  ((""
+                    (inst -1
+                     "LAMBDA (x: below(length(data(cd)))): nth(data(cd), x)"
+                     "nth(adjs(cd), idx(data(cd), v))")
+                    (("" (replace -1)
+                      (("" (hide -1)
+                        ((""
+                          (lemma
+                           "map_nth_rw[below(length(data(cd))),T]")
+                          ((""
+                            (inst -1
+                             "LAMBDA (x: below(length(data(cd)))): nth(data(cd), x)"
+                             "nth(adjs(cd), idx(data(cd), v))" "i")
+                            (("1" (replace -1)
+                              (("1"
+                                (hide -1)
+                                (("1"
+                                  (expand "simple?" -2)
+                                  (("1"
+                                    (inst -2 "(v,v)")
+                                    (("1"
+                                      (split -2)
+                                      (("1" (assert) nil nil)
+                                       ("2"
+                                        (expand "edges")
+                                        (("2"
+                                          (typepred "v")
+                                          (("2"
+                                            (expand "vert?")
+                                            (("2"
+                                              (expand
+                                               "digraph_verts"
+                                               -1)
+                                              (("2"
+                                                (assert)
+                                                (("2"
+                                                  (lemma
+                                                   "member_iff_nth[nat]")
+                                                  (("2"
+                                                    (inst
+                                                     -1
+                                                     "nth(adjs(cd), idx(data(cd), v))"
+                                                     "idx(data(cd), v)")
+                                                    (("2"
+                                                      (assert)
+                                                      (("2"
+                                                        (hide 2)
+                                                        (("2"
+                                                          (inst 1 "i")
+                                                          (("2"
+                                                            (typepred
+                                                             "cd")
+                                                            (("2"
+                                                              (expand
+                                                               "cdigraph")
+                                                              (("2"
+                                                                (flatten)
+                                                                (("2"
+                                                                  (hide
+                                                                   (-1
+                                                                    -2
+                                                                    -4))
+                                                                  (("2"
+                                                                    (expand
+                                                                     "no_repetitions?")
+                                                                    (("2"
+                                                                      (inst
+                                                                       -1
+                                                                       "idx(data(cd), v)"
+                                                                       " nth(nth(adjs(cd), idx(data(cd), v)), i)")
+                                                                      (("2"
+                                                                        (assert)
+                                                                        nil
+                                                                        nil))
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil)
+                             ("2" (typepred "i")
+                              (("2"
+                                (typepred "cd")
+                                (("2"
+                                  (lemma
+                                   "map_length[below(length(data(cd))),T]")
+                                  (("2"
+                                    (inst
+                                     -1
+                                     "LAMBDA (x: below(length(data(cd)))): nth(data(cd), x)"
+                                     "nth(adjs(cd), idx(data(cd), v))")
+                                    (("2"
+                                      (assert)
+                                      (("2"
+                                        (expand "adjacent_verts")
+                                        (("2"
+                                          (assert)
+                                          (("2"
+                                            (reveal -3)
+                                            (("2" (assert) nil nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((T formal-type-decl nil c_digraph_ops nil)
+    (member_nth formula-decl nil more_list_props structures)
+    (map_unc_eq_cur formula-decl nil more_map_props nil)
+    (< const-decl "bool" reals nil)
+    (length def-decl "nat" list_props nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (map_nth_rw formula-decl nil more_map_props nil)
+    (map_length formula-decl nil more_map_props nil)
+    (simple? const-decl "bool" c_digraph_ops nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (member_iff_nth formula-decl nil more_list_props structures)
+    (no_repetitions? const-decl "bool" more_list_props structures)
+    (edges const-decl "bool" c_digraphs_def digraphs)
+    (edgetype type-eq-decl nil digraphs_utils digraphs)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (idx def-decl "{i: below(length(l)) | nth(l, i) = a}"
+     more_list_props structures)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (member def-decl "bool" list_props nil)
+    (nth def-decl "T" list_props nil)
+    (below type-eq-decl nil nat_types nil)
+    (adjacent_verts const-decl
+     "list[vert[T, digraph_type[T], digraph_verts, digraph_edges, digraph_size,
+          digraph_make](cd)]" c_digraph_ops nil)
+    (vert type-eq-decl nil digraphs_ digraphs)
+    (vert? const-decl "bool" digraphs_ digraphs)
+    (digraph_make const-decl "[v: (is_finite[T]),
+ {e: (is_finite[[T, T]]) |
+    FORALL (x, y: T): e(x, y) IMPLIES v(x) AND v(y)} ->
+   digraph_type]" c_digraphs_imp digraphs)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (digraph_size const-decl "[digraph_type -> nat]" c_digraphs_imp
+     digraphs)
+    (digraph_edges const-decl "[digraph_type -> [T, T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_verts const-decl "[digraph_type -> [T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_type type-eq-decl nil c_digraphs_imp digraphs)
+    (cdigraph const-decl "bool" c_digraphs_def digraphs)
+    (ComputableDigraph type-eq-decl nil c_digraphs_def digraphs)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (c_digraph type-eq-decl nil c_digraphs_def digraphs)
+    (list type-decl nil list_adt nil))
+   shostak))
+ (vert_imp_cons_adjs 0
+  (vert_imp_cons_adjs-1 nil 3866670338
+   ("" (skeep)
+    (("" (typepred "cd")
+      (("" (expand cdigraph)
+        (("" (flatten)
+          (("" (hide -2 -3 -4)
+            (("" (expand vert)
+              (("" (case "null?(data(cd))")
+                (("1" (grind) nil nil) ("2" (grind) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((c_digraph type-eq-decl nil c_digraphs_def digraphs)
+    (cdigraph const-decl "bool" c_digraphs_def digraphs)
+    (ComputableDigraph type-eq-decl nil c_digraphs_def digraphs)
+    (T formal-type-decl nil c_digraph_ops nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (list type-decl nil list_adt nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (vert const-decl "bool" c_digraphs_def digraphs)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (length def-decl "nat" list_props nil)
+    (member def-decl "bool" list_props nil)
+    (null? adt-recognizer-decl "[list -> boolean]" list_adt nil))
+   shostak))
+ (del_vert_TCC1 0
+  (del_vert_TCC1-1 nil 3865522421
+   ("" (lemma "remove_nth_length")
+    (("" (skeep)
+      (("" (split)
+        (("1" (expand cdigraph)
+          (("1" (split)
+            (("1" (lemma "remove_sl_no_rep_length[T]")
+              (("1" (inst -1 "data(cd)" "v")
+                (("1" (typepred "cd")
+                  (("1" (expand "cdigraph" -1)
+                    (("1" (flatten)
+                      (("1" (hide -1 -2)
+                        (("1" (hide -2)
+                          (("1" (assert)
+                            (("1" (replace -2 1 lr)
+                              (("1"
+                                (expand relabel_adjs_aft_del)
+                                (("1"
+                                  (hide -2)
+                                  (("1"
+                                    (hide -1)
+                                    (("1"
+                                      (lemma
+                                       "map_length[list[nat], list[nat]]")
+                                      (("1"
+                                        (inst
+                                         -1
+                                         "sub_one_greater_n_list(idx(data(cd), v))"
+                                         "remove_v_adjs(cd)(v)")
+                                        (("1"
+                                          (lemma
+                                           "map_unc_eq_cur"
+                                           ("f"
+                                            "sub_one_greater_n_list(idx(data(cd), v))"
+                                            "l"
+                                            "remove_v_adjs(cd)(v)"))
+                                          (("1"
+                                            (replace -1 -2 rl)
+                                            (("1"
+                                              (hide -1)
+                                              (("1"
+                                                (hide -2)
+                                                (("1"
+                                                  (replace -2 1 lr)
+                                                  (("1"
+                                                    (hide -2)
+                                                    (("1"
+                                                      (replace -1 1 lr)
+                                                      (("1"
+                                                        (hide -1)
+                                                        (("1"
+                                                          (expand
+                                                           "remove_v_adjs")
+                                                          (("1"
+                                                            (lemma
+                                                             "remove_nth_length")
+                                                            (("1"
+                                                              (inst
+                                                               -1
+                                                               "map(LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v), x), adjs(cd))"
+                                                               "idx(data(cd), v)")
+                                                              (("1"
+                                                                (replace
+                                                                 -1
+                                                                 1
+                                                                 lr)
+                                                                (("1"
+                                                                  (hide
+                                                                   -1)
+                                                                  (("1"
+                                                                    (lemma
+                                                                     "map_length[list[nat], list[nat]]")
+                                                                    (("1"
+                                                                      (inst
+                                                                       -1
+                                                                       "LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v
+), x)"
+                                                                       "_")
+                                                                      (("1"
+                                                                        (inst
+                                                                         -1
+                                                                         "adjs(cd)")
+                                                                        (("1"
+                                                                          (lemma
+                                                                           "map_unc_eq_cur[list[nat], list[nat]]")
+                                                                          (("1"
+                                                                            (inst
+                                                                             -1
+                                                                             "LAMBDA (x: list[nat]):
+ remove_sl(idx(data(cd), v), x)"
+                                                                             "adjs(cd)")
+                                                                            (("1"
+                                                                              (replace
+                                                                               -1
+                                                                               -2
+                                                                               rl)
+                                                                              (("1"
+                                                                                (replace
+                                                                                 -2
+                                                                                 1
+                                                                                 lr)
+                                                                                (("1"
+                                                                                  (hide
+                                                                                   -1
+                                                                                   -2)
+                                                                                  (("1"
+                                                                                    (typepred
+                                                                                     "cd")
+                                                                                    (("1"
+                                                                                      (expand
+                                                                                       cdigraph)
+                                                                                      (("1"
+                                                                                        (flatten)
+                                                                                        (("1"
+                                                                                          (replace
+                                                                                           -1
+                                                                                           1
+                                                                                           lr)
+                                                                                          (("1"
+                                                                                            (propax)
+                                                                                            nil
+                                                                                            nil))
+                                                                                          nil))
+                                                                                        nil))
+                                                                                      nil))
+                                                                                    nil))
+                                                                                  nil))
+                                                                                nil))
+                                                                              nil)
+                                                                             ("2"
+                                                                              (typepred
+                                                                               "v")
+                                                                              (("2"
+                                                                                (grind)
+                                                                                nil
+                                                                                nil))
+                                                                              nil))
+                                                                            nil))
+                                                                          nil))
+                                                                        nil)
+                                                                       ("2"
+                                                                        (typepred
+                                                                         "v")
+                                                                        (("2"
+                                                                          (grind)
+                                                                          nil
+                                                                          nil))
+                                                                        nil))
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil)
+                                                               ("2"
+                                                                (typepred
+                                                                 "v")
+                                                                (("2"
+                                                                  (expand
+                                                                   vert?)
+                                                                  (("2"
+                                                                    (expand
+                                                                     digraph_verts)
+                                                                    (("2"
+                                                                      (expand
+                                                                       vert
+                                                                       -1)
+                                                                      (("2"
+                                                                        (lemma
+                                                                         "vert_imp_cons_adjs")
+                                                                        (("2"
+                                                                          (inst
+                                                                           -1
+                                                                           "cd"
+                                                                           "v")
+                                                                          (("2"
+                                                                            (expand
+                                                                             vert
+                                                                             -1)
+                                                                            (("2"
+                                                                              (assert)
+                                                                              (("2"
+                                                                                (hide
+                                                                                 2)
+                                                                                (("2"
+                                                                                  (grind)
+                                                                                  nil
+                                                                                  nil))
+                                                                                nil))
+                                                                              nil))
+                                                                            nil))
+                                                                          nil))
+                                                                        nil))
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil)
+                 ("2" (typepred "v")
+                  (("2" (expand vert?)
+                    (("2" (expand digraph_verts)
+                      (("2" (expand vert -1) (("2" (propax) nil nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil)
+             ("2" (hide -1) (("2" (postpone) nil nil)) nil)
+             ("3" (hide -1 -2)
+              (("3" (typepred "cd")
+                (("3" (expand cdigraph)
+                  (("3" (flatten)
+                    (("3" (hide -1 -2 -4)
+                      (("3" (lemma "remove_sl_no_rep[T]")
+                        (("3" (inst -1 "data(cd)" "v") nil nil)) nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil)
+             ("4" (hide -1)
+              (("4" (skeep)
+                (("4" (replace -1 1 lr)
+                  (("4" (hide -1)
+                    (("4" (expand relabel_adjs_aft_del)
+                      (("4" (typepred "remove_v_adjs(cd)(v)")
+                        (("4" (hide -1)
+                          (("4" (expand remove_v_adjs)
+                            (("4" (typepred "cd")
+                              (("4"
+                                (expand cdigraph)
+                                (("4"
+                                  (flatten)
+                                  (("4"
+                                    (hide -1 -2 -3)
+                                    (("4"
+                                      (assert)
+                                      (("4"
+                                        (case
+                                         "FORALL (i:
+ below(length[list[nat]](map(LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v), x), adjs(cd))))): no_repetitions?[nat 
+](nth(map(LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v), x), adjs(cd)), i) )")
+                                        (("1"
+                                          (case
+                                           "FORALL (i: below(length[list[nat]]
+ (map(LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v), x), adjs(cd))))): NOT member(idx(data(cd), v), nth(map(LAMBDA (x:
+ list[nat]): remove_sl(idx(data(cd), v), x), adjs(cd)), i))")
+                                          (("1"
+                                            (lemma
+                                             "map_nth_rw[list[nat], list[nat]]")
+                                            (("1"
+                                              (inst
+                                               -1
+                                               "sub_one_greater_n_list(idx(data(cd), v))"
+                                               "remove_nth(map(LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v), x), adjs(cd)),
+ idx(data(cd), v))"
+                                               "_")
+                                              (("1"
+                                                (inst -1 "i")
+                                                (("1"
+                                                  (hide -2 -3 -4)
+                                                  (("1"
+                                                    (lemma
+                                                     "map_unc_eq_cur[list[nat], list[nat]]")
+                                                    (("1"
+                                                      (inst
+                                                       -1
+                                                       "sub_one_greater_n_list(idx(data(cd), v))"
+                                                       "remove_nth(map(LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v), x), adjs(cd)),
+ idx(data(cd), v))")
+                                                      (("1"
+                                                        (replace
+                                                         -1
+                                                         -2
+                                                         rl)
+                                                        (("1"
+                                                          (replace
+                                                           -2
+                                                           1
+                                                           lr)
+                                                          (("1"
+                                                            (hide
+                                                             -1
+                                                             -2)
+                                                            (("1"
+                                                              (postpone)
+                                                              nil
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil)
+                                                 ("2"
+                                                  (postpone)
+                                                  nil
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil)
+                                           ("2"
+                                            (hide -1 -2)
+                                            (("2"
+                                              (hide 2)
+                                              (("2"
+                                                (skeep)
+                                                (("2"
+                                                  (typepred
+                                                   "
+ nth(map(LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v), x), adjs(cd)), i!1)")
+                                                  (("2"
+                                                    (hide -1)
+                                                    (("2"
+                                                      (lemma
+                                                       "map_nth_rw[list[nat],
+ list[nat]]")
+                                                      (("2"
+                                                        (inst
+                                                         -1
+                                                         "LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v), x)"
+                                                         "adjs(cd)"
+                                                         "i!1")
+                                                        (("1"
+                                                          (lemma
+                                                           "map_unc_eq_cur[list[nat]
+, list[nat]]")
+                                                          (("1"
+                                                            (inst
+                                                             -1
+                                                             "LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v), x)"
+                                                             "adjs(cd)")
+                                                            (("1"
+                                                              (replace
+                                                               -1
+                                                               -2
+                                                               rl)
+                                                              (("1"
+                                                                (replace
+                                                                 -2
+                                                                 -3
+                                                                 lr)
+                                                                (("1"
+                                                                  (hide
+                                                                   -1
+                                                                   -2)
+                                                                  (("1"
+                                                                    (typepred
+                                                                     "remove_sl(idx(data(cd), v), nth(adjs(cd), i!1))")
+                                                                    (("1"
+                                                                      (hide
+                                                                       -1)
+                                                                      (("1"
+                                                                        (inst
+                                                                         -1
+                                                                         "idx(data(cd), v)")
+                                                                        (("1"
+                                                                          (assert)
+                                                                          nil
+                                                                          nil))
+                                                                        nil))
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil)
+                                                         ("2"
+                                                          (typepred
+                                                           i!1)
+                                                          (("2"
+                                                            (lemma
+                                                             "map_length[list[nat], list[nat]]")
+                                                            (("2"
+                                                              (inst
+                                                               -1
+                                                               "LAMBDA (x: list[nat]): remove_sl(idx(data(cd), v), x)"
+                                                               "adjs(cd)")
+                                                              (("2"
+                                                                (grind)
+                                                                (("2"
+                                                                  (replace
+                                                                   -1
+                                                                   1
+                                                                   rl)
+                                                                  (("2"
+                                                                    (hide
+                                                                     -1)
+                                                                    (("2"
+                                                                      (hide
+                                                                       -2)
+                                                                      (("2"
+                                                                        (grind)
+                                                                        (("2"
+                                                                          (lemma
+                                                                           "map_unc_eq_cur[list[nat], list[nat]]")
+                                                                          (("2"
+                                                                            (inst
+                                                                             -1
+                                                                             "LAMBDA (x: list[nat]
+): remove_sl(idx(data(cd), v), x)"
+                                                                             "adjs(cd)")
+                                                                            (("1"
+                                                                              (replace
+                                                                               -1
+                                                                               1
+                                                                               rl)
+                                                                              (("1"
+                                                                                (propax)
+                                                                                nil
+                                                                                nil))
+                                                                              nil)
+                                                                             ("2"
+                                                                              (typepred
+                                                                               "v")
+                                                                              (("2"
+                                                                                (expand
+                                                                                 vert?)
+                                                                                (("2"
+                                                                                  (expand
+                                                                                   digraph_verts)
+                                                                                  (("2"
+                                                                                    (expand
+                                                                                     vert)
+                                                                                    (("2"
+                                                                                      (propax)
+                                                                                      nil
+                                                                                      nil))
+                                                                                    nil))
+                                                                                  nil))
+                                                                                nil))
+                                                                              nil))
+                                                                            nil))
+                                                                          nil))
+                                                                        nil))
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil)
+                                         ("2"
+                                          (hide 2)
+                                          (("2"
+                                            (skeep)
+                                            (("2"
+                                              (lemma
+                                               "map_nth_rw[list[nat], list[nat]]")
+                                              (("2"
+                                                (inst
+                                                 -1
+                                                 "LAMBDA (x: list[nat]):
+ remove_sl(idx(data(cd), v), x)"
+                                                 "adjs(cd)"
+                                                 "_")
+                                                (("1"
+                                                  (inst -1 "i!1")
+                                                  (("1"
+                                                    (lemma
+                                                     "map_unc_eq_cur[list[nat], list[nat]]")
+                                                    (("1"
+                                                      (inst
+                                                       -1
+                                                       "LAMBDA
+ (x: list[nat]): remove_sl(idx(data(cd), v), x)"
+                                                       "adjs(cd)")
+                                                      (("1"
+                                                        (replace
+                                                         -1
+                                                         -2
+                                                         rl)
+                                                        (("1"
+                                                          (replace
+                                                           -2
+                                                           1
+                                                           lr)
+                                                          (("1"
+                                                            (hide
+                                                             -1
+                                                             -2)
+                                                            (("1"
+                                                              (lemma
+                                                               "remove_sl_no_rep[nat]")
+                                                              (("1"
+                                                                (inst
+                                                                 -2
+                                                                 "i!1")
+                                                                (("1"
+                                                                  (postpone)
+                                                                  nil
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil)
+                                                   ("2"
+                                                    (postpone)
+                                                    nil
+                                                    nil))
+                                                  nil)
+                                                 ("2"
+                                                  (postpone)
+                                                  nil
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil)
+         ("2" (postpone) nil nil))
+        nil))
+      nil))
+    nil)
+   nil nil
+   (del_vert subtype
+    "(# data := set_as_list[c_digraph_ops.T].remove_sl(c_digraph_ops.v, data(c_digraph_ops.cd)), adjs := c_digraph_ops.nonadj_edges_to_v #)"
+    "di_subgraphs_[c_digraph_ops.T, digraph_type[T], c_digraphs_imp[c_digraph_ops.T].digraph_verts, c_digraphs_imp[c_digraph_ops.T].digraph_edges, c_digraphs_imp[c_digraph_ops.T].digraph_size, c_digraphs_imp[c_digraph_ops.T].digraph_make].di_subgraph(c_digraph_ops.cd)")))
+ (vertices_of_del_vert 0
+  (vertices_of_del_vert-1 nil 3866119257
+   ("" (skeep)
+    (("" (split)
+      (("1" (flatten)
+        (("1" (expand "del_vert")
+          (("1" (assert)
+            (("1" (expand "vert")
+              (("1" (typepred "remove_sl(x, data(cd))")
+                (("1" (inst -1 "v1") (("1" (assert) nil nil)) nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("2" (flatten)
+        (("2" (expand "del_vert")
+          (("2" (expand "vert")
+            (("2" (typepred "remove_sl(x, data(cd))")
+              (("2" (inst -1 "v1")
+                (("2" (assert)
+                  (("2" (flatten) (("2" (assert) nil nil)) nil)) nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((del_vert const-decl "di_subgraph(cd)" c_digraph_ops nil)
+    (vert const-decl "bool" c_digraphs_def digraphs)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil c_digraph_ops nil)
+    (IFF const-decl "[bool, bool -> bool]" booleans nil)
+    (list type-decl nil list_adt nil)
+    (member def-decl "bool" list_props nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (/= const-decl "boolean" notequal nil)
+    (remove_sl def-decl
+     "{ll: list[T] | FORALL y: member(y, ll) IFF (x /= y AND member(y, l))}"
+     set_as_list structures)
+    (number nonempty-type-decl nil numbers nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (ComputableDigraph type-eq-decl nil c_digraphs_def digraphs)
+    (cdigraph const-decl "bool" c_digraphs_def digraphs)
+    (digraph_type type-eq-decl nil c_digraphs_imp digraphs)
+    (digraph_verts const-decl "[digraph_type -> [T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_edges const-decl "[digraph_type -> [T, T -> bool]]"
+     c_digraphs_imp digraphs)
+    (digraph_size const-decl "[digraph_type -> nat]" c_digraphs_imp
+     digraphs)
+    (set type-eq-decl nil sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (digraph_make const-decl "[v: (is_finite[T]),
+ {e: (is_finite[[T, T]]) |
+    FORALL (x, y: T): e(x, y) IMPLIES v(x) AND v(y)} ->
+   digraph_type]" c_digraphs_imp digraphs)
+    (vert? const-decl "bool" digraphs_ digraphs)
+    (c_digraph type-eq-decl nil c_digraphs_def digraphs)
+    (vert type-eq-decl nil digraphs_ digraphs))
+   shostak))
+ (del_edge_TCC1 0
+  (del_edge_TCC1-1 nil 3866109163 ("" (existence-tcc) nil nil) nil nil
+   (del_edge existence ""
+    "[c_digraph[T] -> [edgetype[T] -> c_digraph[T]]]"))))
+

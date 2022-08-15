@@ -1,0 +1,33 @@
+%%
+% @theory: more_digraph_ops
+% @author: reconrad
+% @date: Wed, 15 Jun 2022 16:08:07 GMT
+%%
+more_digraph_ops[T:TYPE]: THEORY
+  BEGIN 
+    IMPORTING digraphs@digraphs[T],
+              graphs@graphs[T],
+                graphs@graph_connected[T],
+                digraphs@digraph_conn_defs[T],
+                sets_aux@set_of_functions[T,T],
+                graphs@graphs[doubleton[T]]
+                
+
+    
+    underlying_graph?(D:digraph[T])(G:graph[T]) : bool = 
+            vert(G) = vert(D) AND 
+            (FORALL(a,b:T): (edge?(D)(a,b) OR edge?(D)(b,a)) IFF edge?(G)(a,b) )
+
+    
+    weakly_connected?(D:digraph[T]): bool = 
+           ( FORALL(G:graph[T]): underlying_graph?(D)(G) IMPLIES connected?(G) )
+
+% @QED connected_implies_weakly_connected proved by reconrad on Thu, 16 Jun 2022 20:10:44 GMT
+connected_implies_weakly_connected: THEOREM
+     FORALL(D:digraph[T]): empty?(D) OR (connected?(D) IMPLIES weakly_connected?(D))
+
+add_edge(D:digraph[T],e:edgetype): digraph[T] = 
+ (#vert := vert(D), edges := union(edges(D),{edg:edgetype| edg = e } ) #)
+
+     
+  END more_digraph_ops

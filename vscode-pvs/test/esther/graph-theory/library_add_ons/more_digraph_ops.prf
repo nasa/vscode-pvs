@@ -1,0 +1,281 @@
+(more_digraph_ops
+ (exists_underlying 0
+  (exists_underlying-1 nil 3864378979
+   ("" (skeep) (("" (postpone) nil nil)) nil) nil shostak))
+ (connected_implies_weakly_connected 0
+  (connected_implies_weakly_connected-1 nil 3864379282
+   ("" (skeep)
+    (("" (expand "weakly_connected?")
+      (("" (skeep)
+        (("" (lemma "conn_eq_path ")
+          (("" (inst -1 "G")
+            (("" (replace -1)
+              (("" (hide -1)
+                (("" (expand "path_connected?")
+                  (("" (assert)
+                    (("" (expand "underlying_graph?")
+                      (("" (flatten)
+                        (("" (expand "empty?")
+                          (("" (expand "digraph_verts")
+                            (("" (replace -2)
+                              ((""
+                                (assert)
+                                ((""
+                                  (skeep)
+                                  ((""
+                                    (expand "connected?" -1)
+                                    ((""
+                                      (typepred "x")
+                                      ((""
+                                        (typepred "y")
+                                        ((""
+                                          (replace -4)
+                                          ((""
+                                            (assert)
+                                            ((""
+                                              (inst? -3)
+                                              ((""
+                                                (inst -3 "x")
+                                                ((""
+                                                  (expand "reachable?")
+                                                  ((""
+                                                    (split)
+                                                    (("1"
+                                                      (inst
+                                                       2
+                                                       "(# length:= 1, seq:= LAMBDA(i:below[1]): x #)")
+                                                      (("1"
+                                                        (assert)
+                                                        nil
+                                                        nil)
+                                                       ("2"
+                                                        (expand
+                                                         "walk?")
+                                                        (("2"
+                                                          (expand
+                                                           "verts_in?")
+                                                          (("2"
+                                                            (propax)
+                                                            nil
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil)
+                                                     ("2"
+                                                      (skeep)
+                                                      (("2"
+                                                        (case
+                                                         "walk_from?(G,w,y,x)")
+                                                        (("1"
+                                                          (lemma
+                                                           "walk?_reverse")
+                                                          (("1"
+                                                            (inst?)
+                                                            (("1"
+                                                              (assert)
+                                                              (("1"
+                                                                (skeep)
+                                                                (("1"
+                                                                  (inst
+                                                                   2
+                                                                   "w!1")
+                                                                  (("1"
+                                                                    (expand
+                                                                     "walk_from?"
+                                                                     -1)
+                                                                    (("1"
+                                                                      (propax)
+                                                                      nil
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil)
+                                                         ("2"
+                                                          (hide 3)
+                                                          (("2"
+                                                            (expand
+                                                             "walk_from?")
+                                                            (("2"
+                                                              (flatten)
+                                                              (("2"
+                                                                (expand
+                                                                 "from?"
+                                                                 -1)
+                                                                (("2"
+                                                                  (assert)
+                                                                  (("2"
+                                                                    (flatten)
+                                                                    (("2"
+                                                                      (assert)
+                                                                      (("2"
+                                                                        (expand
+                                                                         "walk?")
+                                                                        (("2"
+                                                                          (flatten)
+                                                                          (("2"
+                                                                            (expand
+                                                                             "verts_in?")
+                                                                            (("2"
+                                                                              (expand
+                                                                               "digraph_verts")
+                                                                              (("2"
+                                                                                (assert)
+                                                                                (("2"
+                                                                                  (replace
+                                                                                   -7)
+                                                                                  (("2"
+                                                                                    (split
+                                                                                     1)
+                                                                                    (("1"
+                                                                                      (propax)
+                                                                                      nil
+                                                                                      nil)
+                                                                                     ("2"
+                                                                                      (skeep)
+                                                                                      (("2"
+                                                                                        (inst
+                                                                                         -5
+                                                                                         "n")
+                                                                                        (("2"
+                                                                                          (assert)
+                                                                                          (("2"
+                                                                                            (hide
+                                                                                             (-1
+                                                                                              -2
+                                                                                              -3
+                                                                                              -4
+                                                                                              -6
+                                                                                              -7
+                                                                                              2))
+                                                                                            (("2"
+                                                                                              (inst?)
+                                                                                              (("2"
+                                                                                                (assert)
+                                                                                                nil
+                                                                                                nil))
+                                                                                              nil))
+                                                                                            nil))
+                                                                                          nil))
+                                                                                        nil))
+                                                                                      nil))
+                                                                                    nil))
+                                                                                  nil))
+                                                                                nil))
+                                                                              nil))
+                                                                            nil))
+                                                                          nil))
+                                                                        nil))
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((weakly_connected? const-decl "bool" more_digraph_ops nil)
+    (T formal-type-decl nil more_digraph_ops nil)
+    (conn_eq_path formula-decl nil graph_connected graphs)
+    (path_connected? const-decl "bool" graph_conn_defs graphs)
+    (underlying_graph? const-decl "bool" more_digraph_ops nil)
+    (empty? const-decl "bool" graphs graphs)
+    (empty? const-decl "bool" digraphs_ digraphs)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (digraph type-eq-decl nil digraph_def digraphs)
+    (predigraph type-eq-decl nil digraph_def digraphs)
+    (reachable? const-decl "bool" walks_ digraphs)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (nil application-judgement "finite_set[T]" graph_conn_piece graphs)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (finseq_appl const-decl "[below[length(fs)] -> T]" finite_sequences
+     nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (verts_in? const-decl "bool" walks_ digraphs)
+    (walk? const-decl "bool" walks_ digraphs)
+    (from? const-decl "bool" walks_ digraphs)
+    (walk_from? const-decl "bool" walks_ digraphs)
+    (walk?_reverse formula-decl nil walks graphs)
+    (walk_from? const-decl "bool" walks graphs)
+    (digraph_type type-eq-decl nil digraphs_imp digraphs)
+    (digraph_edges const-decl "[digraph -> [T, T -> bool]]"
+     digraphs_imp digraphs)
+    (digraph_size const-decl "[digraph -> nat]" digraphs_imp digraphs)
+    (is_finite const-decl "bool" finite_sets nil)
+    (digraph_make const-decl "[v: (is_finite[T]),
+ {e: (is_finite[[T, T]]) |
+    FORALL (x, y: T): e(x, y) IMPLIES v(x) AND v(y)} ->
+   digraph]" digraphs_imp digraphs)
+    (prewalk type-eq-decl nil walks_ digraphs)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (x skolem-const-decl "(vert(G))" more_digraph_ops nil)
+    (< const-decl "bool" reals nil) (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (G skolem-const-decl "graph[T]" more_digraph_ops nil)
+    (walk? const-decl "bool" walks graphs)
+    (prewalk type-eq-decl nil walks graphs)
+    (> const-decl "bool" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (finseq type-eq-decl nil finite_sequences nil)
+    (below type-eq-decl nil nat_types nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (Walk type-eq-decl nil walks graphs)
+    (verts_in? const-decl "bool" walks graphs)
+    (connected? const-decl "bool" digraph_conn_defs digraphs)
+    (digraph_verts const-decl "[digraph -> [T -> bool]]" digraphs_imp
+     digraphs)
+    (graph type-eq-decl nil graphs graphs)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (pregraph type-eq-decl nil graphs graphs)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (doubleton type-eq-decl nil doubletons structures)
+    (dbl const-decl "set[T]" doubletons structures)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (/= const-decl "boolean" notequal nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   shostak)))
+

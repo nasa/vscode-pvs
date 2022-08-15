@@ -1,0 +1,20 @@
+%%
+% @theory: Gallery
+% @author: reconrad
+% @date: Wed, 15 Jun 2022 16:03:05 GMT
+%%
+gallery[T:TYPE]: THEORY
+  BEGIN 
+  IMPORTING graphs@graphs[T],
+            graphs@graphs[posnat],
+            digraphs@digraphs[T]
+
+
+
+  
+
+
+
+
+
+  END gallery

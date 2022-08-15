@@ -1,0 +1,50 @@
+%%
+% @theory: more_graph_ops
+% @author: reconrad
+% @date: Wed, 15 Jun 2022 16:08:07 GMT
+%%
+graph_isomorphisms[T1,T2:TYPE]: THEORY
+  BEGIN 
+    IMPORTING 
+              graphs@graphs[T1], graphs@graphs[T2], graphs@graphs[nat]
+
+
+graph_homomorphism?(G1:graph[T1],G2:graph[T2])(f:[T1->T2]): bool = 
+    FORALL(x,y:T1): (edge?(G1)(x,y) AND f(x) /= f(y)) IMPLIES edge?(G2)(f(x),f(y)) 
+
+graph_injective?(G1:graph[T1],G2:graph[T2])(f:[T1->T2]): bool = 
+    FORALL(x,y:T1): (vert(G1)(x) AND  vert(G1)(y) AND f(x) = f(y)) IMPLIES x = y
+
+graph_surjective?(G1:graph[T1],G2:graph[T2])(f:[T1->T2]): bool = 
+    FORALL(y:T2): vert(G2)(y) IMPLIES EXISTS(x:T1): (vert(G1)(x) AND f(x) = y) 
+
+graph_bijective?(G1:graph[T1],G2:graph[T2])(f:[T1->T2]): bool = 
+    graph_injective?(G1,G2)(f) AND graph_surjective?(G1,G2)(f)
+
+graph_isomorphism?(G1:graph[T1],G2:graph[T2])(f:[T1->T2]): bool = 
+    graph_bijective?(G1,G2)(f) AND graph_homomorphism?(G1,G2)(f)
+
+graph_homomorphic?(G1:graph[T1],G2:graph[T2]):bool = EXISTS(f:[T1->T2]): graph_homomorphism?(G1,G2)(f)
+
+graph_isomorphic?(G1:graph[T1],G2:graph[T2]):bool = EXISTS(f:[T1->T2]): graph_isomorphism?(G1,G2)(f)
+
+
+edge_map(f:[T1 -> T2])(e:doubleton[T1]): finite_set[T2]= image(f,e)
+
+hom_graph_from_function( G:graph[T1],f:[T1  -> T2]):graph[T2] = 
+    (# vert:= image(f,vert(G)), 
+    edges:= intersection[set[T2]](
+        image[doubleton[T1],finite_set[T2]](edge_map(f),edges(G)), 
+        {t:doubleton[T2]|TRUE })  
+    #)
+
+% @QED hom_graph_from_function_is_homomorphism proved by reconrad on Wed, 22 Jun 2022 21:08:35 GMT
+hom_graph_from_function_is_homomorphism: THEOREM 
+    FORALL(G:graph[T1],f:[T1 -> T2]): graph_homomorphism?(G,hom_graph_from_function(G,f))(f)
+
+% @QED hom_graph_from_function_is_homomorphic proved by reconrad on Wed, 22 Jun 2022 21:21:06 GMT
+hom_graph_from_function_is_homomorphic: THEOREM 
+    FORALL(G:graph[T1],f:[T1 -> T2]): graph_homomorphic?(G,hom_graph_from_function(G,f))
+
+
+END graph_isomorphisms

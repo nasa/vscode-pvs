@@ -1,0 +1,86 @@
+%%
+% @theory: c_digraph_ops
+% @author: jaslam
+% @date: Tue, 28 Jun 2022 16:08:07 GMT
+%%
+c_digraph_ops[T:TYPE]: THEORY
+  BEGIN 
+    IMPORTING 
+              digraphs@c_digraphs[T],
+              even_more_list_props,
+              digraphs@c_digraphs_def[T],
+              structures@set_as_list[T],
+              structures@more_list_props[T],
+              remove_nth_list[list[nat]],
+              digraphs@c_di_subgraphs[T]
+
+cd: VAR c_digraph[T]
+v1: VAR T
+e: VAR edgetype
+
+% Returns a list of all vertices that have are connected to the input vertex by an edge.
+adjacent_verts(cd)(v: vert(cd)): list[vert(cd)] = map(lambda(x: below(length(data(cd)))): nth(data(cd), x), nth(adjs(cd), idx(data(cd), v)))
+
+% Removes any adjacencies to a given vertex and all adjacencies of the given vertex.  
+remove_v_adjs(cd)(v: vert(cd)): list[list[nat]] = LET v_idx: nat = idx(data(cd), v) IN remove_nth(map(lambda(x: list[nat]): remove_sl(v_idx, x), adjs(cd)), v_idx)
+
+% Helper function for sub_one_greater_n_list. Makes TCC easier to prove. 
+sub_one_greater_n(n: nat)(x:nat): nat = IF x > n THEN x - 1 ELSE x ENDIF 
+
+% Given a list of naturals and a natural number, subtracts one from every element that is greater than it. 
+sub_one_greater_n_list(n: nat)(l: list[nat]): list[nat] = map(sub_one_greater_n(n) , l)
+
+% @QED sub_one_greater_n_no_rep proved by reconrad on Wed, 13 Jul 2022 21:55:55 GMT
+sub_one_greater_n_no_rep: LEMMA
+FORALL (l: {x: list[nat]| no_repetitions?(x)}, n: nat): 
+  NOT member(n, l) IMPLIES no_repetitions?(sub_one_greater_n_list(n)(l)) 
+
+% Returns the list of adjacencies in a graph after deleting a vertex. Note: Because edges are specified by a list of
+% lists of adjacencies it's necessary to reduce the indices of all vertices by one. 
+relabel_adjs_aft_del(cd)(v: vert(cd)): list[list[nat]] = LET v_idx: nat = idx(data(cd), v),
+                                               new_adjs: list[list[nat]] = remove_v_adjs(cd)(v) IN
+                                               map(sub_one_greater_n_list(v_idx), new_adjs)
+
+% Checks if a digraph is a looped complete digraph. This means that it has all possible edges (x, y) including
+% loops where x = y. 
+digr_looped_compl?(cd): bool =
+                      FORALL (x:T | (vert(cd)(x)), y:T | (vert(cd)(y))):
+                         bidirected?(cd)(x,y)   
+                         
+% Checks if a digraph is simple (no loops i.e. edges (x, x)).
+simple?(cd): bool = FORALL e: edges(cd)(e) IMPLIES LET (x,y) = e IN x /= y
+
+%%%%%%%%%%%%%%%%%%%% Some Lemmas for proving TCCs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% @QED adj_verts_have_edge proved by reconrad on Thu, 14 Jul 2022 16:28:21 GMT
+adj_verts_have_edge: LEMMA
+FORALL (v: vert(cd), x:vert(cd)): member(x, adjacent_verts(cd)(v)) IFF edges(cd)(v, x)
+
+% @QED adj_verts_in_simple proved by reconrad on Thu, 14 Jul 2022 16:27:56 GMT
+adj_verts_in_simple: LEMMA
+FORALL(v: vert(cd)): simple?(cd) IMPLIES NOT member(v, adjacent_verts(cd)(v))
+
+
+% @QED vert_imp_cons_adjs proved by jaslam on Wed, 13 Jul 2022 03:05:57 GMT
+vert_imp_cons_adjs: LEMMA
+FORALL (v: T): vert(cd)(v) IMPLIES cons?(adjs(cd))
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Deletes the given vertex and all edges connected to it from the digraph.
+del_vert(cd)(v: vert(cd)): di_subgraph(cd) = 
+LET nonadj_edges_to_v: list[list[nat]] = relabel_adjs_aft_del(cd)(v) IN
+(# data:= remove_sl(v, data(cd)), adjs:= nonadj_edges_to_v #) 
+
+% @QED vertices_of_del_vert proved by reconrad on Wed, 06 Jul 2022 18:12:46 GMT
+vertices_of_del_vert: LEMMA 
+FORALL(x:vert(cd)): vert(cd)(v1) AND NOT x = v1 IFF (vert(del_vert(cd)(x))(v1))
+
+% Deletes the given edge from the digraph. 
+% del_edge(cd)(e): c_digraph[T]
+
+
+END c_digraph_ops
+
+  

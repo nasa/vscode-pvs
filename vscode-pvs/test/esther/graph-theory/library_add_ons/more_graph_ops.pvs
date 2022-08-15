@@ -1,0 +1,25 @@
+%%
+% @theory: more_graph_ops
+% @author: reconrad
+% @date: Wed, 15 Jun 2022 16:08:07 GMT
+%%
+more_graph_ops[T:TYPE]: THEORY
+  BEGIN 
+    IMPORTING 
+              graphs@graphs[T],
+              graphs@graphs[doubleton[T]],
+              graph_isomorphisms[T,doubleton[T]]
+
+
+incident?(G:graph[T])(e1,e2:doubleton[T]): bool = 
+edges(G)(e1) AND edges(G)(e2) AND (EXISTS(x:T): e1(x) AND e2(x) )
+
+line_graph(G:graph[T]): graph[doubleton[T]] = 
+(# vert := edges(G), 
+edges := {e:doubleton[doubleton[T]]| FORALL(e1,e2:doubleton[T]): e(e1) AND e(e2) IMPLIES incident?(G)(e1,e2)} #)
+  
+
+
+  END more_graph_ops
+
+  

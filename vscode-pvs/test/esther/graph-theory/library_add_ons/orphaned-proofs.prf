@@ -1,0 +1,1 @@
+("c_digraph_ops" c_digraph_ops del_edge_TCC1 0 (del_edge_TCC1-1 nil 3866109163 ("" (existence-tcc) nil nil) nil nil (del_edge existence "" "[c_digraph[T] -> [edgetype[T] -> c_digraph[T]]]")))

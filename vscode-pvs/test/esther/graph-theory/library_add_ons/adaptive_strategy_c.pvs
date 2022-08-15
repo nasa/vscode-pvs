@@ -1,0 +1,90 @@
+%%
+% @theory: adaptive_strategy
+% @author: reconrad
+% @date: Wed, 15 Jun 2022 16:08:07 GMT
+%%
+adaptive_strategy_c: THEORY
+  BEGIN 
+    IMPORTING digraphs@c_digraphs[nat],
+            structures@more_list_props, 
+            min_list[posreal, <=], 
+            digraphs@c_digraphs_def[nat],
+            library_add_ons@c_digraph_ops[nat], 
+            structures@set_as_list[nat],
+            digraphs@c_di_subgraphs[nat]
+
+        dist(K:{g: c_digraph[nat] | digr_looped_compl?(g)}, v1:vert(K))(v2:vert(K)): posreal
+        out_deg(d:c_digraph[nat])(v:vert(d)): nat = length(edges_list_vert(d)(v))
+
+        % @QED subset_vert_subgraph_complete proved by jaslam on Thu, 07 Jul 2022 17:07:40 GMT
+        subset_vert_subgraph_complete: LEMMA
+        FORALL(cd: c_digraph[nat], K: {g: c_digraph[nat] | digr_looped_compl?(g)}): subset?(vert(cd), vert(K)) IMPLIES di_subgraph?(cd, K) 
+
+        same_vert_subgraph_complete: LEMMA
+        FORALL(cd: c_digraph[nat], K: {g: c_digraph[nat] | digr_looped_compl?(g)}): vert(cd) = vert(K) IMPLIES di_subgraph?(cd, K)
+
+        % @QED add_edge_same_verts proved by jaslam on Thu, 07 Jul 2022 16:49:55 GMT
+        add_edge_same_verts: LEMMA
+        FORALL(cd: c_digraph[nat], (u: (vert(cd))), (v: (vert(cd))|NOT edges(cd)(u,v))): vert(add_edge(cd, u, v)) = vert(cd)
+        
+        %%%%%%%% ALGORITHM %%%%%%%
+
+        % Capacity of given node is p percent of its current degree.
+        capacity(orig:c_digraph[nat], v:(vert(orig)), p: nnreal): nnreal = 
+        out_deg(orig)(v) * p
+
+        % Checks if the total capacity of the node has been used up.
+        has_capacity?(orig:c_digraph[nat], curr:c_digraph[nat], v:(vert(curr)), p: nnreal): bool = 
+        vert(orig)(v) AND capacity(orig, v, p) - out_deg(curr)(v) >= 1
+
+        % Returns a list of all nodes with excess capacity. 
+        list_of_capable_nodes(orig:c_digraph[nat], curr:c_digraph[nat], p: nnreal): list[(vert(curr))] =  
+          filter(data(curr), lambda(x: vert(curr)): has_capacity?(orig, curr, x, p))
+
+        % Returns a list of capable nodes that are not the given vertex. 
+        % The use case being that we do not want self-loops to appear in the graph.
+        usable_nodes(orig: c_digraph[nat], curr:c_digraph[nat], p: nnreal, v: vert(curr)): list[(vert(curr))] =
+          LET cap_nodes: list[vert(curr)] = list_of_capable_nodes(orig, curr, p) IN
+          remove_sl(v, cap_nodes)
+
+        % @QED no_v_usable_nodes proved by jaslam on Mon, 11 Jul 2022 17:03:42 GMT
+        no_v_usable_nodes: LEMMA
+        FORALL(orig: c_digraph[nat], curr: c_digraph[nat], p: nnreal, v: vert(curr)): 
+          NOT member(v, usable_nodes(orig, curr, p, v))
+
+        % Returns the next closest usable node. 
+        next_closest_node(K:{g: c_digraph[nat] | digr_looped_compl?(g)}, v:(vert(K)), us_nodes:list[vert(K)]): (vert(K)) = 
+          IF cons?(us_nodes)
+            THEN 
+            LET dist_list: list[posreal] = map(dist(K, v), us_nodes), 
+                min_dist: posreal = min_list(dist_list) IN
+                nth(us_nodes, idx[posreal](dist_list, min_dist))
+            ELSE v 
+          ENDIF
+
+        % @QED next_closest_not_v proved by jaslam on Mon, 11 Jul 2022 18:16:51 GMT
+        next_closest_not_v: LEMMA
+        FORALL(K:{g: c_digraph[nat] | digr_looped_compl?(g)}, v:(vert(K)), us_nodes: {l: list[vert(K)] | NOT member(v, l)}): 
+           next_closest_node(K, v, us_nodes) /= v IMPLIES member(next_closest_node(K, v, us_nodes), us_nodes)
+
+        adaptive_rec(K:{g: c_digraph[nat] | digr_looped_compl?(g)}, orig:{D:di_subgraph(K)|vert(D)= vert(K)}, v:(vert(orig)), curr:{D:di_subgraph(K)|vert(del_vert(orig)(v)) = vert(D)}, adj_verts: list[vert(curr)], p: nnreal): RECURSIVE c_digraph[nat] =
+          % No more flight routes to reroute
+          IF null?(adj_verts) THEN curr 
+          ELSE LET us_nodes: list[vert(curr)] = usable_nodes(orig, curr, p, car(adj_verts)), 
+              closest_node: vert(K) = next_closest_node(K, v, us_nodes) IN
+              % No way to reroute this flight without creating a self-loop
+              IF null?(us_nodes) OR closest_node = v OR edges[nat](curr)(car[nat](adj_verts), closest_node) THEN adaptive_rec(K, orig, v, curr, cdr(adj_verts), p)
+              % Reroute flight route to the closest airport to the closed airport v
+              ELSE adaptive_rec(K, orig, v, add_edge(curr, car(adj_verts), closest_node), cdr(adj_verts), p) ENDIF
+          ENDIF
+        MEASURE length(adj_verts)
+
+        % Implementation of the adaptive strategy for rerouting flights in "Increasing the resilience of air traffic 
+        % networks using a network graph theory approach" by Dunn and Wilkinson. Given a closed airport and distances
+        % between airports, reroutes flights from the closed airport to the nearest open airport.
+        adaptive_algorithm(K:{g: c_digraph[nat] | digr_looped_compl?(g)}, orig:{D:di_subgraph(K)|vert(D)= vert(K) AND simple?(D)}, v:(vert(orig)), p: nnreal): c_digraph[nat] = 
+           LET curr: c_digraph[nat] = del_vert(orig)(v),
+               adj_verts: list[vert(curr)] = adjacent_verts(orig)(v) IN 
+           adaptive_rec(K, orig, v, curr, adj_verts, p)
+
+ END adaptive_strategy_c

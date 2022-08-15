@@ -1,0 +1,181 @@
+(graph_isomorphisms
+ (edge_map_TCC1 0
+  (edge_map_TCC1-1 nil 3864923429
+   ("" (skeep)
+    (("" (lemma "finite_image[T1,T2]") (("" (inst -1 "e" "f") nil nil))
+      nil))
+    nil)
+   ((T2 formal-type-decl nil graph_isomorphisms nil)
+    (T1 formal-type-decl nil graph_isomorphisms nil)
+    (finite_image judgement-tcc nil function_image_aux nil)
+    (doubleton type-eq-decl nil doubletons structures)
+    (dbl const-decl "set[T]" doubletons structures)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (/= const-decl "boolean" notequal nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (finite_doubleton formula-decl nil doubletons structures))
+   nil
+   (edge_map subtype
+    "function_image[graph_isomorphisms.T1, graph_isomorphisms.T2].image(graph_isomorphisms.f, graph_isomorphisms.e)"
+    "finite_set[T2]")))
+ (hom_graph_from_function_TCC1 0
+  (hom_graph_from_function_TCC1-1 nil 3864834320
+   ("" (grind)
+    (("1" (postpone) nil nil) ("2" (postpone) nil nil)
+     ("3" (postpone) nil nil))
+    nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (set type-eq-decl nil sets nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (dbl const-decl "set[T]" doubletons structures)
+    (doubleton type-eq-decl nil doubletons structures)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (pregraph type-eq-decl nil graphs graphs)
+    (graph type-eq-decl nil graphs graphs)
+    (T2 formal-type-decl nil graph_isomorphisms nil)
+    (/= const-decl "boolean" notequal nil)
+    (T1 formal-type-decl nil graph_isomorphisms nil)
+    (edge? const-decl "bool" graphs graphs))
+   nil
+   (hom_graph_from_function subtype
+    "(# vert := function_image[graph_isomorphisms.T1, graph_isomorphisms.T2].image(graph_isomorphisms.f, vert(graph_isomorphisms.G)), edges := restrict[set[T2], doubleton[T2], booleans.bool].restrict(sets[set[T2]].intersection(extend[set[T2], finite_set[T2], booleans.bool, booleans.FALSE].extend(function_image[doubleton[T1], finite_set[T2]].image(graph_isomorphisms.edge_map(graph_isomorphisms.f), edges(graph_isomorphisms.G))), extend[set[T2], doubleton[T2], booleans.bool, booleans.FALSE].extend({t: doubletons[graph_isomorphisms.T2].doubleton | booleans.TRUE}))) #)"
+    "graph[T2]")))
+ (hom_graph_from_function_is_homomorphism 0
+  (hom_graph_from_function_is_homomorphism-1 nil 3864833165
+   ("" (skeep)
+    (("" (expand "graph_homomorphism?")
+      (("" (skeep)
+        (("" (expand "hom_graph_from_function" 2)
+          (("" (expand "edge?")
+            (("" (assert)
+              (("" (skeep)
+                (("" (case "f(x) = x_2")
+                  (("1" (inst 3 "x" "y")
+                    (("1" (assert) (("1" (grind) nil nil)) nil)) nil)
+                   ("2" (inst 4 "y" "x")
+                    (("2" (assert)
+                      (("2" (grind)
+                        (("2" (expand "dbl")
+                          (("2" (assert)
+                            (("2" (grind)
+                              (("2"
+                                (hide (-2 -3 1 2))
+                                (("2"
+                                  (case
+                                   "{t: T1 | t = x OR t = y} ={t: T1 | t = y OR t = x}")
+                                  (("1"
+                                    (replace -1)
+                                    (("1" (propax) nil nil))
+                                    nil)
+                                   ("2"
+                                    (hide -1 2)
+                                    (("2"
+                                      (lemma
+                                       "subset_antisymmetric[T1]")
+                                      (("2"
+                                        (inst
+                                         -1
+                                         "{t: T1 | t = x OR t = y}"
+                                         "{t: T1 | t = y OR t = x}")
+                                        (("2"
+                                          (assert)
+                                          (("2"
+                                            (expand "subset?" 1)
+                                            (("2"
+                                              (split 1)
+                                              (("1"
+                                                (skeep)
+                                                (("1" (grind) nil nil))
+                                                nil)
+                                               ("2" (grind) nil nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((graph_homomorphism? const-decl "bool" graph_isomorphisms nil)
+    (hom_graph_from_function const-decl "graph[T2]" graph_isomorphisms
+     nil)
+    (graph type-eq-decl nil graphs graphs)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (pregraph type-eq-decl nil graphs graphs)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (doubleton type-eq-decl nil doubletons structures)
+    (dbl const-decl "set[T]" doubletons structures)
+    (/= const-decl "boolean" notequal nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (T1 formal-type-decl nil graph_isomorphisms nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (T2 formal-type-decl nil graph_isomorphisms nil)
+    (OR const-decl "[bool, bool -> bool]" booleans nil)
+    (subset_antisymmetric formula-decl nil sets_lemmas nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
+    (member const-decl "bool" sets nil)
+    (subset? const-decl "bool" sets nil)
+    (edge? const-decl "bool" graphs graphs))
+   shostak))
+ (hom_graph_from_function_is_homomorphic 0
+  (hom_graph_from_function_is_homomorphic-1 nil 3864921622
+   ("" (skeep)
+    (("" (lemma "hom_graph_from_function_is_homomorphism")
+      (("" (inst -1 "G" "f") (("" (grind) nil nil)) nil)) nil))
+    nil)
+   ((hom_graph_from_function_is_homomorphism formula-decl nil
+     graph_isomorphisms nil)
+    (restrict const-decl "R" restrict nil)
+    (finite_restrict application-judgement "finite_set[S]"
+     restrict_set_props nil)
+    (finite_image application-judgement "finite_set[R]"
+     function_image_aux nil)
+    (edge? const-decl "bool" graphs graphs)
+    (hom_graph_from_function const-decl "graph[T2]" graph_isomorphisms
+     nil)
+    (graph_homomorphism? const-decl "bool" graph_isomorphisms nil)
+    (graph_homomorphic? const-decl "bool" graph_isomorphisms nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T2 formal-type-decl nil graph_isomorphisms nil)
+    (graph type-eq-decl nil graphs graphs)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (pregraph type-eq-decl nil graphs graphs)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (doubleton type-eq-decl nil doubletons structures)
+    (dbl const-decl "set[T]" doubletons structures)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (/= const-decl "boolean" notequal nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (T1 formal-type-decl nil graph_isomorphisms nil))
+   shostak)))
+
