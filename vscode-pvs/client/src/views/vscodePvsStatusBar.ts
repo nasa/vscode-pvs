@@ -149,7 +149,7 @@ export class VSCodePvsStatusBar {
     }
 
     /**
-     * Shows "ready" in the status bar for 2 secs
+     * Clears the status bar and makes it visible
      */
     ready (): void {
         this.pvsStatus.clear();
