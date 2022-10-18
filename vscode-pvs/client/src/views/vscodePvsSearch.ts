@@ -117,6 +117,9 @@ $(document).ready(function() {
 .clear-btn {
     opacity: 0.6;
 }
+.search-btn {
+    cursor: pointer;
+}
 .bg-white {
     background: white;
 }
@@ -124,18 +127,22 @@ $(document).ready(function() {
     background: white;
     color: black;
 }
+.toggle-btn {
+    opacity:0.8;
+    transform:scale(0.8);
+    border-radius:8px !important;
+}
 </style>
 <body style="overflow:auto; background:whitesmoke; font-size:small;" class="p-1">
     <div class="container-fluid mb-1" style="position:sticky; top:0px; padding:4px; z-index:1;">
         <div class="input-group input-group-sm mb-1 bg-white">
-            <div class="input-group-prepend">
+            <div class="input-group-prepend search-btn">
                 <span class="input-group-text"><i class="fa fa-search" aria-hidden="true"></i></span>
             </div>
             <input type="text" class="form-control search-input" placeholder="Search..." aria-label="Search" value="{{searchString}}">
-            <div class="input-group-append">
-                <button class="btn btn-outline-secondary btn-sm clear-btn" type="button" style="display:{{#if res}}block{{else}}none{{/if}}"><i class="fa fa-times" aria-hidden="true"></i></button>
-                <button class="btn btn-secondary btn-sm search-btn" type="button">${SEARCH_NASALIB}</button>
-            </div>
+            <button class="btn btn-outline-secondary btn-sm clear-btn" type="button" style="display:{{#if res}}block{{else}}none{{/if}}"><i class="fa fa-times" aria-hidden="true"></i></button>
+            <button class="btn btn-outline-secondary btn-sm case-sensitive-option-btn toggle-btn" type="button" data-toggle="tooltip" data-placement="bottom"  title="Toggle case sensitive search">Aa</i></button>
+            <button class="btn btn-outline-primary btn-sm search-btn" id="search-btn" type="button">${SEARCH_NASALIB}</button>
         </div>
         <div class="filter" style="display:{{#if res}}block{{else}}none{{/if}};">
             <div class="input-group input-group-sm mb-1">
@@ -197,13 +204,16 @@ $(document).ready(function() {
     <script>
     // active view
     let activeView = "{{activeView}}";
+    // case sensitive search flag
+    let caseSensitive = {{caseSensitive}};
     // utility functions to send messages to vscode-pvs from the webview
     (function() {
         const vscode = acquireVsCodeApi();
         function search () {
             const searchString = $(".search-input")?.val()?.trim();
+            caseSensitive = $(".case-sensitive-option-btn").hasClass("active");
             if (searchString) {
-                vscode.postMessage({ command: 'search', searchString, activeView });
+                vscode.postMessage({ command: 'search', searchString, activeView, caseSensitive });
             }
         }
         function clear () {
@@ -214,6 +224,7 @@ $(document).ready(function() {
             $("#search-results").remove();
             $("#results-summary").css("display", "none");
             $("#welcome-screen").css("display", "block");
+            refreshSearchOptions();
             selectActiveView();
             focus();
         }
@@ -226,6 +237,9 @@ $(document).ready(function() {
         function selectActiveView () {
             activeView === "nasalib" ? nasalibView() : pvslibView();
         }
+        function refreshSearchOptions () {
+            caseSensitive ? enableCaseSensitiveSearch() : disableCaseSensitiveSearch();
+        }
         function nasalibView () {
             activeView = "nasalib";
             $(".lib-tree").css("display", "none");
@@ -234,7 +248,7 @@ $(document).ready(function() {
             $("#nasalib-footer").css("display", "block");
             $("#pvslib-btn").removeClass("active");
             $("#nasalib-btn").addClass("active");
-            $(".search-btn").text("${SEARCH_NASALIB}");
+            $("#search-btn").text("${SEARCH_NASALIB}");
             focus();
         }
         function pvslibView () {
@@ -245,9 +259,22 @@ $(document).ready(function() {
             $("#pvslib-footer").css("display", "block");
             $("#nasalib-btn").removeClass("active");
             $("#pvslib-btn").addClass("active");
-            $(".search-btn").text("${SEARCH_PVSLIB}");
+            $("#search-btn").text("${SEARCH_PVSLIB}");
             focus();
         }
+        function enableCaseSensitiveSearch () {
+            $(".case-sensitive-option-btn").addClass("active").removeClass("btn-outline-secondary").addClass("btn-secondary");
+        }
+        function disableCaseSensitiveSearch () {
+            $(".case-sensitive-option-btn").removeClass("active").addClass("btn-outline-secondary").removeClass("btn-secondary");
+        }
+        function toggleCaseSensitiveSearch () {
+            const $btn = $(".case-sensitive-option-btn");
+            $btn.hasClass("active") ? disableCaseSensitiveSearch() : enableCaseSensitiveSearch();
+        }
+        $(".toggle-btn").on("click", (evt) => {
+            toggleCaseSensitiveSearch();
+        });
         $(".search-btn").on("click", (evt) => {
             search();
         });
@@ -276,6 +303,34 @@ $(document).ready(function() {
                 btn_name === "nasalib" ? nasalibView() : pvslibView();
             }
         });
+        // initialize all tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+        // clear tooltips on mouse down and focus search input field
+        $('[data-toggle="tooltip"]').on("mousedown", (evt) => {
+            $('[data-toggle="tooltip"]').tooltip('hide');
+            console.log(evt);
+            evt.stopPropagation();
+            focus();
+        });
+        // 'Enter' key on this button as a search request
+        $('[data-toggle="tooltip"]').on("keypress", (evt) => {
+            console.log(evt);
+            evt.stopPropagation();
+            refreshSearchOptions();
+            switch (evt.key) {
+                case "Enter": {
+                    search();
+                    break;
+                }
+                default: {
+                    // do nothing
+                }
+            }
+            focus();
+        });
+        // refresh search options
+        refreshSearchOptions();
+        // select the view
         selectActiveView ();
     }());
     // Handle the message inside the webview
@@ -381,7 +436,8 @@ interface LibraryList {
 }
 interface SearchResultsOrSpinner {
     res?: SearchResult[],
-    searchString?: string, 
+    searchString?: string, // string to be searched
+    caseSensitive?: boolean, // whether the search is case sensitive
     nasalib?: boolean,
     showSpinner?: boolean,
     showResults?: boolean
@@ -430,6 +486,9 @@ export class VSCodePvsSearch {
 
     // active view, either nasalib or pvslib
     protected activeView: SearchLibrary = "nasalib";
+
+    // whether the search is case sensitive
+    protected caseSensitive: boolean = false;
     
     /**
      * Constructor
@@ -501,8 +560,9 @@ export class VSCodePvsSearch {
                     case 'search': {
                         if (message.searchString) {
                             this.activeView = message.activeView === "nasalib" ? "nasalib" : "pvslib";
+                            this.caseSensitive = message.caseSensitive === true;
                             this.showSearching({ searchString: message.searchString });
-                            const res: SearchResult[] = await this.search(message.searchString);
+                            const res: SearchResult[] = await this.search(message.searchString, { caseSensitive: this.caseSensitive });
                             this.showResults({ res, searchString: message.searchString });
                         }
                         break;
@@ -551,10 +611,11 @@ export class VSCodePvsSearch {
     /**
      * Utility function, sends a search request to the server
      */
-    async search (searchString: string): Promise<SearchResult[]> {
+    async search (searchString: string, opt?: { caseSensitive?: boolean }): Promise<SearchResult[]> {
         return new Promise ((resolve, reject) => {
             const req: SearchRequest = {
                 searchString,
+                caseSensitive: !!opt?.caseSensitive,
                 library: this.activeView
             };
             this.client.sendRequest(serverRequest.search, req);
@@ -590,6 +651,7 @@ export class VSCodePvsSearch {
             nasalibStats: nasalib_lookup_table.stats,
             pvslibStats: this.pvslibStats,
             activeView: this.activeView,
+            caseSensitive: this.caseSensitive,
             css,
             js
         };

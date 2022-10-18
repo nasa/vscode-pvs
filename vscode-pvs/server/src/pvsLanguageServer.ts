@@ -1293,7 +1293,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * search external library
 	 */
 	async searchPvsLibraryPath (req: SearchRequest, opt?: { quiet?: boolean, libraryPath?: string }): Promise<SearchResult[]> {
-		const ans: SearchResult[] = await this.pvsSearchEngine?.searchPvsLibraryPath(req?.searchString, opt);
+		const ans: SearchResult[] = await this.pvsSearchEngine?.searchPvsLibraryPath(req?.searchString, {
+			...opt,
+			caseSensitive: req?.caseSensitive
+		});
 		return ans;
 	}
 	/**

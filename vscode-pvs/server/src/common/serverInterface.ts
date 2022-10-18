@@ -445,6 +445,7 @@ export declare interface EvalExpressionRequest extends PvsTheory {
 export type SearchLibrary = "nasalib" | "pvslib";
 export declare interface SearchRequest {
 	searchString: string,
+	caseSensitive?: boolean,
 	library?: SearchLibrary // whether the search is in nasalib or in the pvs library path
 }
 export declare interface FindSymbolDeclarationRequest {

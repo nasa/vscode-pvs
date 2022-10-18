@@ -185,7 +185,7 @@ export class PvsSearchEngine {
 	/**
 	 * Utility function, searches a given string in libraries imported with PVS_LIBRARY_PATH
 	 */
-	async searchPvsLibraryPath (searchString: string, opt?: { quiet?: boolean, libraryPath?: string }): Promise<SearchResult[]> {
+	async searchPvsLibraryPath (searchString: string, opt?: { caseSensitive?: boolean, quiet?: boolean, libraryPath?: string }): Promise<SearchResult[]> {
 		const libraryPaths: string[] = opt?.libraryPath?.split(":") || this.pvsLanguageServer.getExternalLibraryPaths();
 		const res: SearchResult[] = [];
 		for (let i = 0; i < libraryPaths?.length; i++) {
@@ -195,7 +195,8 @@ export class PvsSearchEngine {
 				return index === 0 ? `"${word}" ${lib}`
 					: ` | grep "${word}"`;
 			}).join(" ");
-			const cmd: string = `grep --include '*.pvs' -HRn ${normalizedSearchString}`;
+			// by default grep is case sensitive
+			const cmd: string = `grep --include '*.pvs' -HRn ${opt?.caseSensitive ? "" : "-i"} ${normalizedSearchString}`;
 			if (!opt?.quiet) { console.log(`[searchExternalLib] ${cmd}`); }
 			try {
 				const search: Buffer = execSync(cmd);
