@@ -41,7 +41,10 @@ import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
 import { TheoryItem, WorkspaceOverviewItem } from "../views/vscodePvsWorkspaceExplorer";
-import { PvsTheory, FileDescriptor, ContextFolder, PvsFormula, serverRequest, serverEvent, GotoFileDescriptor, Position, Range, FormulaDescriptor, QuickFixReplace, QuickFixAddImporting, VSCodePvsVersionDescriptor } from '../common/serverInterface';
+import { 
+    PvsTheory, FileDescriptor, ContextFolder, PvsFormula, GotoFileDescriptor, Position, Range, 
+    QuickFixReplace, QuickFixAddImporting, VSCodePvsVersionDescriptor
+} from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 import { XTermColorTheme } from '../common/colorUtils';
 import { xTermDetectColorTheme } from '../common/xtermInterface';
@@ -788,6 +791,34 @@ export async function commentProofliteInActiveEditor (): Promise<boolean> {
 }
 
 /**
+ * Utility function, documents a given theory with a standard header
+ * %%
+    % @theory: ${theoryName}
+    % @author: ${author}
+    %
+ */
+export async function documentTheoryInActiveEditor (theory: PvsTheory): Promise<boolean> {
+    if (theory?.line >= 0 && theory?.theoryName) {
+        const activeTextEditor: vscode.TextEditor = vscode.window?.activeTextEditor;
+        if (activeTextEditor) {
+            const activeDocument: vscode.TextDocument = activeTextEditor?.document;
+            if (activeDocument) {
+                const includesDoc: boolean = utils.includesTheoryHeader(theory.theoryName, activeDocument.getText());
+                if (!includesDoc) {
+                    const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
+                    const headerDoc: string = utils.makeTheoryHeader(theory.theoryName);
+                    edit.insert(activeDocument.uri, new vscode.Position(theory.line, 0), headerDoc);
+                    const success: boolean = await vscode.workspace.applyEdit(edit);
+                    return success;
+                }
+            }
+        }
+    }
+    return false;
+}
+    
+
+/**
  * Utility function, performs a quick-fix replace on the active document in the editor
  * Lines are 0-based, cols and 1-based
  */
@@ -1008,7 +1039,7 @@ export function declutterVscode (): void {
     if (getRootFolder()) {
         const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
         // remove indent lines in explorer
-        config.update("workbench.tree.renderIndentGuides", false);
+        config.update("workbench.tree.renderIndentGuides", "none");
         // config.update("workbench.tree.indent", 8);
         // update word separator, used the standard separators but remove ? as word boundary
         config.update("[pvs]", { "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\|;:'\",.<>/" });

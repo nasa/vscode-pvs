@@ -56,7 +56,8 @@ import {
 	ProofEditDidUpdateDirtyFlag, ProofExecRunSubtree
 } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
-import { TreeStructure, isGlassboxTactic, isPostponeCommand, isUndoCommand, formatSequent } from '../common/languageUtils';
+import { formatSequent } from '../common/fsUtils';
+import { TreeStructure, isGlassboxTactic, isPostponeCommand, isUndoCommand } from '../common/languageUtils';
 import { findTheoryName, findFormulaName } from '../common/fsUtils';
 import * as vscode from 'vscode';
 import * as vscodeUtils from '../utils/vscode-utils';
