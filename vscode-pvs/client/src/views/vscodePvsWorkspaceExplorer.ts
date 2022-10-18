@@ -53,6 +53,7 @@ import * as fsUtils from '../common/fsUtils';
 import * as utils from '../common/languageUtils';
 import { Explorer, VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
 import * as vscodeUtils from '../utils/vscode-utils';
+import { resolve } from 'path';
 
 //-- files
 class PvsFileItem extends TreeItem {
@@ -917,7 +918,8 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	async proveTheoryWithProgress (desc: PvsTheory, opt?: {
 		tccsOnly?: boolean,
 		useJprf?: boolean,
-		unprovedOnly?: boolean
+		unprovedOnly?: boolean,
+		match?: RegExp // for now this is used when tccsOnly is true, to specify a subset of TCCs associated with a specific formula
 	}): Promise<void> {
 		if (desc && desc.theoryName) {
 			opt = opt || {};
@@ -927,10 +929,22 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 				cancellable: true
 			}, async (progress, token) => {
 				// show initial dialog with spinning progress
-				const message: string = (opt.tccsOnly) ? `Preparing to prove TCCs in theory ${desc.theoryName}` : `Preparing to prove theorems in theory ${desc.theoryName}`;
+				const matchingFormula: string = opt.match?.source?.replace("_TCC", "");
+				const message: string = (opt.tccsOnly) ? 
+					matchingFormula ? `Preparing to discharge TCCs for ${matchingFormula}` : `Preparing to prove TCCs in theory ${desc.theoryName}` 
+						: `Preparing to prove theorems in theory ${desc.theoryName}`;
 				progress.report({ increment: -1, message });
 
-				const formulas: PvsFormula[] = (opt.tccsOnly) ? await this.getTccs(desc) : await this.getTheorems(desc);
+				const candidates: PvsFormula[] = (opt.tccsOnly) ? await this.getTccs(desc) : await this.getTheorems(desc);
+				// filter formulas if options specify a matching regex
+				const formulas: PvsFormula[] = (opt?.match) ? candidates.filter((formula: PvsFormula) => {
+						return new RegExp(opt.match).test(formula.formulaName);
+				}) : candidates;
+				if (opt.tccsOnly && matchingFormula && formulas?.length === 0) {
+					vscodeUtils.showInformationMessage(`Done! (No TCCs were generated for ${matchingFormula})`);
+					return resolve();
+				}
+				// keep track of which formulas were skipped (e.g., because they were already proved)
 				let skip: PvsFormula[] = [];
 				
 				if (opt.unprovedOnly) {

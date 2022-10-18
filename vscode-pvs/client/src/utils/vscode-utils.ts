@@ -40,7 +40,7 @@ import * as fsUtils from '../common/fsUtils';
 import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
-import { TheoryItem, WorkspaceOverviewItem } from "../views/vscodePvsWorkspaceExplorer";
+import { FormulaItem, TheoryItem, WorkspaceOverviewItem } from "../views/vscodePvsWorkspaceExplorer";
 import { 
     PvsTheory, FileDescriptor, ContextFolder, PvsFormula, GotoFileDescriptor, Position, Range, 
     QuickFixReplace, QuickFixAddImporting, VSCodePvsVersionDescriptor
@@ -867,7 +867,7 @@ export async function quickFixAddImporting (quickfix: QuickFixAddImporting): Pro
 /**
  * Utility function, extracts theory information from a resource
  */
-export async function getPvsTheory (resource: PvsTheory | TheoryItem | { path: string }): Promise<PvsTheory | null> {
+export async function getPvsTheory (resource: PvsFormula | PvsTheory | FormulaItem | TheoryItem | { path: string }): Promise<PvsTheory | null> {
 	if (resource) {
         if (resource["contextValue"]) {
             return {

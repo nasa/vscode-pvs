@@ -106,12 +106,15 @@ const cmds: string[] = [
 	"x-pr", "x-prove",
 
 	"step-proof",
+	"tccs",
 	"show-tccs",
 	"show-proof-summary",
 	"show-prooflite",
 
 	"view-as-markdown",
-	"document-theory"
+	"document-theory",
+
+	"discharge-matching-tccs"
 ];
 
 export class VSCodePvsEmacsBindingsProvider {
@@ -182,6 +185,7 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.reset-pvs-library-path');
 					break;
 				}
+				case "tccs":
 				case "show-tccs": {
 					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.show-tccs', desc);
@@ -342,6 +346,10 @@ export class VSCodePvsEmacsBindingsProvider {
 				}
 				case "nt": {
 					commands.executeCommand('vscode-pvs.new-pvs-theory');
+					break;
+				}
+				case "discharge-matching-tccs": {
+					commands.executeCommand('vscode-pvs.discharge-matching-tccs', desc);
 					break;
 				}
 				default: {

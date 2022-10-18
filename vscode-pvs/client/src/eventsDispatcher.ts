@@ -39,7 +39,7 @@
 import { LanguageClient } from "vscode-languageclient";
 import { VSCodePvsStatusBar } from "./views/vscodePvsStatusBar";
 import { VSCodePvsEmacsBindingsProvider } from "./providers/vscodePvsEmacsBindingsProvider";
-import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem, WorkspaceOverviewItem } from "./views/vscodePvsWorkspaceExplorer";
+import { VSCodePvsWorkspaceExplorer, TheoryItem, TccsOverviewItem, WorkspaceOverviewItem, FormulaItem } from "./views/vscodePvsWorkspaceExplorer";
 import { VSCodePvsProofExplorer, ProofItem, ProofExplorerEvent } from "./views/vscodePvsProofExplorer";
 // import { TerminalSession, VSCodePvsTerminal } from "./views/vscodePvsTerminal";
 import { 
@@ -1188,7 +1188,6 @@ export class EventsDispatcher {
                 await this.workspaceExplorer.statusProofChain(req);
             }
         }));
-
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-proof-summary", async (resource: TheoryItem | { path: string }) => {
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
             if (desc && desc.theoryName) {
@@ -1268,7 +1267,10 @@ export class EventsDispatcher {
             }
         }));
         // this request comes from the context menu displayed by the editor
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (resource: TheoryItem | { path: string }, opt?: { useJprf?: boolean, unprovedOnly?: boolean }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-tccs", async (
+            resource: FormulaItem | TheoryItem | { path: string },
+            opt?: { useJprf?: boolean, unprovedOnly?: boolean }
+        ) => {
             const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
             if (activeEditor?.document) {
                 // if the file is currently open in the editor, save file first
@@ -1282,8 +1284,8 @@ export class EventsDispatcher {
             if (desc?.theoryName) {
                 opt = opt || {};
                 // ask the user confirmation before discharging
-                const yesno: string[] = [ "Yes", "Unproved Only", "No" ];
                 const msg: string = opt.useJprf ? `Discharge TCCs using J-PRF?` : `Discharge all TCCs?`;
+                const yesno: string[] = [ "Yes", "Unproved Only", "No" ];
                 const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0], yesno[1]);
                 if (ans === yesno[0] || ans === yesno[1]) {
                     opt.unprovedOnly = ans === yesno[1];
@@ -1291,19 +1293,70 @@ export class EventsDispatcher {
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
                     this.xterm.bye();
-
+                    // compose feedback message
                     const msg: string = (opt.unprovedOnly) ? 
                         opt.useJprf ? `Running unproved J-PRF TCCs (theory ${desc.theoryName})` : `Running unproved TCCs in theory ${desc.theoryName}`
                             : opt.useJprf ? `Re-running J-PRF TCCs (theory ${desc.theoryName})` : `Re-running TCCs in theory ${desc.theoryName}`;
                     this.statusBar.showProgress(msg);
-
-                    await this.workspaceExplorer.proveTheoryWithProgress(desc, { tccsOnly: true, useJprf: opt.useJprf, unprovedOnly: opt.unprovedOnly });
-
+                    // prove with progress
+                    await this.workspaceExplorer.proveTheoryWithProgress(desc, {
+                        tccsOnly: true, 
+                        useJprf: opt.useJprf, 
+                        unprovedOnly: opt.unprovedOnly
+                    });
+                    // clear status bar
                     this.statusBar.ready();
                     this.quietMode = false;
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-tccs invoked with null resource", resource);
+            }
+        }));
+        // this request comes from the codelens in the .tccs file
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.discharge-matching-tccs", async (
+            resource: PvsFormula | { path: string },
+            opt?: { useJprf?: boolean, unprovedOnly?: boolean }
+        ) => {
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (activeEditor?.document) {
+                // if the file is currently open in the editor, save file first
+                await activeEditor.document.save();
+                if (!resource) {
+                    resource = { path: activeEditor.document.fileName };
+                }
+            }
+            const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
+            const formulaName: string = resource["formulaName"]?.split("_TCC")[0];
+            if (desc?.theoryName && formulaName) {
+                opt = opt || {};
+                // ask the user confirmation before discharging
+                const yesno: string[] = [ `Match ${formulaName}`, "All TTCs", "No" ];
+                const msg: string = opt.useJprf ? `Discharge TCCs using J-PRF?` : `Discharge TCCs?`;
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0], yesno[1]);
+                if (ans === yesno[0] || ans === yesno[1]) {
+                    const allTccs: boolean = ans === yesno[1];
+                    this.quietMode = true;
+                    this.proofMate.disableView();
+                    this.proofExplorer.disableView();
+                    this.xterm.bye();
+                    // compose feedback message
+                    const msg: string = (opt.unprovedOnly) ? 
+                        opt.useJprf ? `Running unproved ${allTccs ? "" : formulaName + " "}J-PRF TCCs (theory ${desc.theoryName})` : `Running unproved ${allTccs ? "" : formulaName + " "} TCCs in theory ${desc.theoryName}`
+                            : opt.useJprf ? `Re-running ${allTccs ? "" : formulaName + " "}J-PRF TCCs (theory ${desc.theoryName})` : `Re-running ${allTccs ? "" : formulaName + " "}TCCs in theory ${desc.theoryName}`;
+                    this.statusBar.showProgress(msg);
+                    // prove with progress
+                    await this.workspaceExplorer.proveTheoryWithProgress(desc, {
+                        tccsOnly: true, 
+                        useJprf: opt.useJprf, 
+                        unprovedOnly: opt.unprovedOnly,
+                        match: formulaName && !allTccs ? new RegExp(`${formulaName}_TCC`, "g") : null
+                    });
+                    // clear status bar
+                    this.statusBar.ready();
+                    this.quietMode = false;
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-matching-tccs invoked with null resource", resource);
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.jdischarge-tccs", async (resource: TheoryItem | { path: string }) => {

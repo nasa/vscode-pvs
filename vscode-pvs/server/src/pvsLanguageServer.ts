@@ -634,8 +634,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		if (mode !== "lisp") {
 			return;
 		}
-		if (isPvsFile(request)) { // only .pvs files should be typechecked
+		if (isPvsFile(request)) { // can be .pvs .tccs .summary .ppe ... files
 			request = fsUtils.decodeURIComponents(request);
+			// only .pvs files should be typechecked
+			request.fileExtension = ".pvs";
 			const fname: string = fsUtils.desc2fname(request);
 			// make sure file exists
 			if (!fsUtils.fileExists(fname)) {

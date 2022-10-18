@@ -189,6 +189,14 @@ export class PvsCodeLensProvider {
                             codeLens.push({
                                 range,
                                 command: {
+                                    title: (fileExtension === ".pvs") ? "discharge-tccs" : "discharge-matching-tccs",
+                                    command: "vscode-pvs.discharge-matching-tccs",
+                                    arguments: [ formula ]
+                                }
+                            });    
+                            codeLens.push({
+                                range,
+                                command: {
                                     title: "status-proofchain",
                                     command: "vscode-pvs.status-proofchain",
                                     arguments: [ formula ]
