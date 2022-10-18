@@ -271,13 +271,13 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	/**
 	 * Start an interactive prover session -- alias of proveFormula
 	 */
-	async startProof (args: PvsFormula): Promise<PvsResponse | null> {
+	async startProof (args: PvsFormula): Promise<PvsResponse> {
 		return await this.proveFormula(args);
 	}
 	/**
 	 * Prove formula
 	 */
-	async proveFormula (formula: PvsFormula): Promise<PvsResponse | null> {
+	async proveFormula (formula: PvsFormula): Promise<PvsResponse> {
 		if (formula && formula.fileName && formula.formulaName && formula.fileExtension && formula.contextFolder && formula.theoryName) {
 			const mode: string = await this.getMode();
 			if (mode !== "lisp") {

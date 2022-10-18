@@ -1128,20 +1128,21 @@ export class PvsProxy {
 	 * @param formula 
 	 */
 	async proveFormula(formula: PvsFormula, opt?: {
-		useLispInterface?: boolean
+		useLispInterface?: boolean,
+		verbose?: boolean
 	}): Promise<PvsResponse> {
 		if (formula && formula.fileName && formula.fileExtension && formula.contextFolder && formula.theoryName && formula.formulaName) {
 			opt = opt || {};
 			await this.changeContext(formula.contextFolder);
 			const fullName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
-			if (this.verbose) { console.log(`[pvs-proxy] prove-formula [${formula.formulaName}, ${fullName}]`); }
+			if (this.verbose || opt?.verbose) { console.log(`[pvs-proxy] prove-formula [${formula.formulaName}, ${fullName}]`); }
 			let ans: PvsResponse = await this.pvsRequest("prove-formula", [ formula.formulaName, fullName ]);
 			// if pvs reports that the prover was still open, try to force exit and retry prove-formula
 			if (ans?.error?.data?.error_string === "Must exit the prover first") {
 				await this.quitProof({ force: true });
 				ans = await this.pvsRequest("prove-formula", [ formula.formulaName, fullName ]);
 			}
-			// if (this.verbose) { console.dir(ans); }
+			if (this.verbose || opt?.verbose) { console.dir(ans); }
 			if (ans && ans.result && ans.result["length"] === undefined) {
 				ans.result = [ ans.result ]; // the prover should return an array of proof states
 			}
