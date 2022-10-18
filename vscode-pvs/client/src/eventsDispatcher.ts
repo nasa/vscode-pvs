@@ -64,7 +64,7 @@ import { VSCodePvsSearch } from "./views/vscodePvsSearch";
 import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
 import { StartXTermEvaluatorRequest, VSCodePvsXTerm } from "./views/vscodePvsXTerm";
 import { colorText, PvsColor } from "./common/colorUtils";
-import { YesNoCancel, quickFixReplace, quickFixAddImporting, getVSCodePvsExtensionInfo, RunningTask, showWarningMessage } from "./utils/vscode-utils";
+import { YesNoCancel, quickFixReplace, quickFixAddImporting, RunningTask, showWarningMessage } from "./utils/vscode-utils";
 import { getUndumpFolderName, isDumpFile, isPvsFile } from "./common/fsUtils";
 import { VSCodePvsFileViewer } from "./views/vscodePvsFileViewer";
 
@@ -1066,10 +1066,18 @@ export class EventsDispatcher {
         // view-as-markdown
         context.subscriptions.push(commands.registerCommand("vscode-pvs.view-as-markdown", (desc: PvsTheory) => {
             if (desc?.fileName) {
-                this.fileViewer.openAsMarkdownPreview(desc);
+                this.fileViewer.openAsMarkdownPreview(desc); // async call
                 // vscode.commands.executeCommand("workbench.action.quickOpen", desc.fname);
             }
         }));
+
+        // document-theory
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.document-theory", async (desc: PvsTheory) => {
+            if (desc?.theoryName) {
+                await vscodeUtils.documentTheoryInActiveEditor(desc);
+            }
+        }));
+
 
         // pvsio-plot
         context.subscriptions.push(commands.registerCommand("vscode-pvs.plot-expression", async (resource: string | {

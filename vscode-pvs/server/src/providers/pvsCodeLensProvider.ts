@@ -96,7 +96,7 @@ export class PvsCodeLensProvider {
                         const theory: PvsTheory = {
                             ...pvsFile,
                             theoryName, 
-                            // line
+                            line
                         };
 
                         // codelens
@@ -128,6 +128,18 @@ export class PvsCodeLensProvider {
                                 arguments: [ pvsFile ]
                             }
                         });
+                        // add codelens for theory documentation if the theory does not include any doc header
+                        const includesDoc: boolean = utils.includesTheoryHeader(theoryName, docUp);
+                        if (!includesDoc) {
+                            codeLens.push({
+                                range,
+                                command: {
+                                    title: "document-theory",
+                                    command: "vscode-pvs.document-theory",
+                                    arguments: [ theory ]
+                                }
+                            });    
+                        }
                     }
                 }
             }

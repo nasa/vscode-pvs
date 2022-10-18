@@ -44,12 +44,16 @@ import {
 	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor, 
 	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsDownloadDescriptor, 
 	pvsDownloadUrl, PvsFileDescriptor, 
-	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile
+	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile, SequentDescriptor, SFormula
 } from '../common/serverInterface';
 import { 
 	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, 
-	icons, isProved, proofliteDeclRegexp, proofliteRegexp, sanitizeForRegEx, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp, typesRegexp, validTermRegExp 
+	icons, isInvalidCommand, isProved, proofliteDeclRegexp, proofliteRegexp, pvsSyntaxHighlighting, sanitizeForRegEx, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp, typesRegexp, validTermRegExp 
 } from './languageUtils';
+import { execFileSync } from 'child_process';
+import { PrettyPrinter } from './xtermInterface';
+import { colorText, getColor, PvsColor, XTermColorTheme } from './colorUtils';
+
 
 // home dir of the current installation
 export const HOME_DIR: string = require('os').homedir();
@@ -2203,4 +2207,241 @@ export abstract class PostTask {
 			task();
 		}, this.TASK_START_DELAY);
 	}
+}
+
+// TODO: move the following functions to a new file "prettyPrinterUtils.ts"
+
+/**
+ * Utility function, prettyprints the sequent label
+ */
+ function sequentToString(sequents: SFormula[], opt?: {
+    useColors?: boolean, 
+    colorTheme?: XTermColorTheme,
+    htmlEncoding?: boolean,
+    colorizeParens?: boolean,
+    prettyPrinter?: PrettyPrinter
+}): string {
+	let res: string = "";
+	opt = opt || {};
+    const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
+    const color: PvsColor = getColor(PvsColor.green, colorTheme);
+	for (let i = 0; i < sequents.length; i++) {
+		const sequent: SFormula = sequents[i];
+		let label: string = sequent.labels.join(" ");
+		label = (sequent.changed === 'true') ? `{${label}}` : `[${label}]` ;
+		label = (sequent.changed === 'true' && opt.useColors) ? `${colorText(label, color)}` : `${label}` ;
+        let fmla: string = tryPrettyPrintFormula(sequent.formula, opt?.prettyPrinter);
+        const formula: string = (opt.useColors) ? `${pvsSyntaxHighlighting(fmla, opt)}` : fmla;
+        res += `${label}   ${formula}`;
+        res += opt.htmlEncoding ? "<br>" : "\n";
+	}
+	return res;
+}
+/**
+ * Utility function, tries to pretty-print a sequent formula
+ */
+function tryPrettyPrintFormula (formula: string, pp: PrettyPrinter): string {
+    if (pp && formula) {
+        let fmla: string = formula;
+        const opts: string[] = pp?.options || [];
+        const args: string[] = [ ...opts, formula ];
+        try {
+            fmla = pp?.cmd ? 
+                execFileSync(pp.cmd, args, { encoding: "utf-8" })
+                : formula;
+            if (fmla?.trim()?.startsWith("[{")) {
+                const diags: {
+                    range: {
+                        start: { line: number, character: number },
+                        end: { line: number, character: number }
+                    }, 
+                    message: string, 
+                    severity: string
+                }[] = JSON.parse(fmla);
+                console.dir("[language-utils] External prettyprinter returned an error");
+                console.dir(diags);
+                // restore original output
+                fmla = formula;
+            }
+        } catch (err) {
+            console.log(`[language-utils] Error while trying to use external prettyprinter (${pp.cmd} ${args.join(" ")})`, err);
+            // restore original output
+            fmla = formula;
+        }
+        return fmla;
+    }
+    return formula;
+}
+/**
+ * Utility function, prettyprints the sequent label
+ */
+function labelToString (label: string, opt?: {
+    useColors?: boolean, 
+    colorTheme?: XTermColorTheme,
+    htmlEncoding?: boolean
+}): string {
+	opt = opt || {};
+    const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
+    const color: PvsColor = getColor(PvsColor.green, colorTheme);
+	return (opt && opt.useColors)?
+		`\n${colorText(`${label} :`, color)}\n`
+			: `\n${label} :\n`;
+}
+/**
+ * Utility function, prettyprints user comments included in the sequent returned by the prover
+ */
+function commentToString (txt: string, opt?: {
+     useColors?: boolean,
+     colorTheme?: XTermColorTheme,
+     htmlEncoding?: boolean
+}): string {
+	opt = opt || {};
+    const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
+    const color: PvsColor = getColor(PvsColor.yellow, colorTheme);
+	const content: string = (opt && opt.useColors)? 
+		`${colorText(`${txt}`, color)}`
+			: `${txt}`;
+	return opt.htmlEncoding ? `<br>${content}<br>` : `\n${content}\n`;
+}
+/**
+ * Utility function, prettyprints the commentary string included in the sequent returned by the prover
+ */
+export function commentaryToString (commentary: string | string[], opt?: {
+    useColors?: boolean,
+    colorTheme?: XTermColorTheme,
+    htmlEncoding?: boolean
+}): string {
+	let res = "";
+    if (commentary) {
+        const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
+        const gray: PvsColor = getColor(PvsColor.gray, colorTheme);
+        const yellow: PvsColor = getColor(PvsColor.yellow, colorTheme);
+        if (typeof commentary === "string") {
+            commentary = commentary.trim().endsWith(",") ? commentary.trim().slice(0, -1) : commentary.trim();
+            res += opt.htmlEncoding ? `<br>${commentary}<br>` 
+                : opt.useColors ? `\n${colorText(`${commentary}`, commentary.includes("This completes the proof") ? yellow : gray)}\n`
+                    : `\n${commentary}\s`;
+        } else {
+            res += opt.htmlEncoding ? "<br>" : "\n";
+            for (let i = 0; i < commentary.length; i++) {
+                let line: string = commentary[i];
+                if (i === commentary.length - 1) {
+                    line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
+                }
+                res += opt.htmlEncoding ? `${line}<br>` 
+                    : opt.useColors ? `${colorText(`${line}`, line.includes("This completes the proof") ? yellow : gray)}\n`
+                        : `${line}\n`;
+            }
+        }
+    }
+    return res;
+}
+
+export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolean, showAction?: boolean }): string {
+	if (pvsioState) {
+		opt = opt || {};
+		return (opt.useColors) ? pvsSyntaxHighlighting(pvsioState) : pvsioState;
+	}
+	return pvsioState;
+}
+
+export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: { 
+    useColors?: boolean, 
+    showAction?: boolean,
+    colorizeParens?: boolean
+}): string {
+	if (proofState) {
+		opt = opt || {};
+		let res: string = "";
+		if (proofState.sequent) {
+			if (proofState.sequent["hidden-antecedents"] || proofState.sequent["hidden-succedents"]) {
+				res += "\n%-- Hidden formulas --\n\n";
+				if (proofState.sequent["hidden-antecedents"]) {
+					res += sequentToString(proofState.sequent["hidden-antecedents"], opt);
+				}
+				// res += "  |-------\n";
+				res += "  ├───────\n";
+				if (proofState.sequent["hidden-succedents"]) {
+					res += sequentToString(proofState.sequent["hidden-succedents"], opt);
+				}
+				res += "\n\n";
+			} else {
+				res += "The current sequent does not have any hidden formula.\n";
+			}
+		}
+		return res;
+	} else {
+		console.error("[language-utils.show-hidden-formulas] Error: proof state is null :/");
+	}
+	return null;
+}
+
+/**
+ * Utility function, converts sequent formulas into a string
+ */
+export function sformulas2string (desc: SequentDescriptor): string {
+	let res: string = "";
+	if (desc?.sequent) { // print label and comment only if the sequent is non-empty (sequent empty means proof completed)
+		if (desc.sequent.antecedents) {
+			res += sequentToString(desc.sequent.antecedents);
+		}
+		// res += "  |-------\n";
+		res += "  ├─────── \n";
+		if (desc.sequent.succedents) {
+			res += sequentToString(desc.sequent.succedents);
+		}
+	}
+	return res;
+}
+
+/**
+ * Prettyprints sequents. Syntax highlighting is introduced as ansi codes when option useColors is true.
+ */
+export function formatSequent (desc: SequentDescriptor, opt?: {
+	useColors?: boolean,
+    colorizeParens?: boolean,
+    colorTheme?: XTermColorTheme,
+	showAction?: boolean,
+	htmlEncoding?: boolean,
+	formulasOnly?: boolean,
+    ignoreCommentary?: boolean,
+    prettyPrinter?: PrettyPrinter
+}): string {
+	if (desc) {
+		opt = opt || {};
+		let res: string = "";
+		if (!opt.formulasOnly) {
+			if (desc.action && opt.showAction) {
+				const action: string = desc.action.endsWith(",") ? desc.action.substring(0, desc.action.length - 1) : desc.action;
+				res += opt.htmlEncoding ? `<br>${action}.<br>` : `\n${action}.\n`;
+			}
+			if (desc.commentary && !opt.ignoreCommentary) {
+				res += commentaryToString(desc.commentary, opt);
+			}
+		}
+        // print label and comment only if 
+        // - the sequent is non-empty (sequent empty means proof completed)
+        // - the commentary string does not indicate error
+		if (desc.sequent && (opt.ignoreCommentary || !isInvalidCommand(desc))) {
+			if (desc.label) {
+				res += labelToString(desc.label, opt);
+			}
+			if (desc.comment) {
+				res += commentToString(desc.comment, opt);
+			}
+			res += opt.htmlEncoding ? "<br>" : "\n";
+			if (desc.sequent.antecedents) {
+				res += sequentToString(desc.sequent.antecedents, opt);
+			}
+			// res += "  |-------\n";
+			res += opt.htmlEncoding ? "  ├─────── <br>" : "  ├─────── \n";
+			if (desc.sequent.succedents) {
+				res += sequentToString(desc.sequent.succedents, opt);
+			}
+		}
+		return (opt.htmlEncoding ? "<br>" : "\n") + res.trimRight();
+	} else {
+		console.error("[language-utils.format-proof-state] Error: proof state is null :/");
+	}
+	return null;
 }

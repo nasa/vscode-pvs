@@ -38,10 +38,9 @@
 
 import * as language from './languageKeywords';
 import { ProofNode, PvsVersionDescriptor, ProofDescriptor, 
-	ProofStatus, Position, Range, ProofTree, PvsFormula, SFormula, 
-    SequentDescriptor, CommandDescriptor, CommandsMap, ProofMateProfile, 
-    HintsObject,
-    ProofNodeType
+	ProofStatus, Position, Range, ProofTree, PvsFormula, 
+    CommandDescriptor, CommandsMap, ProofMateProfile, 
+    HintsObject, ProofNodeType
 } from '../common/serverInterface';
 import * as colorUtils from "./colorUtils";
 import { SessionType } from './xtermInterface';
@@ -325,94 +324,6 @@ export const isense: IntellisenseTriggers = {
 };
 
 /**
- * Utility function, prettyprints the sequent label
- */
-function sequentToString(sequents: SFormula[], opt?: {
-    useColors?: boolean, 
-    colorTheme?: colorUtils.XTermColorTheme,
-    htmlEncoding?: boolean,
-    colorizeParens?: boolean
-}): string {
-	let res: string = "";
-	opt = opt || {};
-    const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
-    const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.green, colorTheme);
-	for (let i = 0; i < sequents.length; i++) {
-		const sequent: SFormula = sequents[i];
-		let label: string = sequent.labels.join(" ");
-		label = (sequent.changed === 'true') ? `{${label}}` : `[${label}]` ;
-		label = (sequent.changed === 'true' && opt.useColors) ? `${colorUtils.colorText(label, color)}` : `${label}` ;
-		const formula: string = (opt.useColors) ? `${pvsSyntaxHighlighting(sequent.formula, opt)}` : sequent.formula;
-		res += `${label}   ${formula}`;
-		res += opt.htmlEncoding ? "<br>" : "\n";
-	}
-	return res;
-}
-/**
- * Utility function, prettyprints the sequent label
- */
-function labelToString (label: string, opt?: {
-    useColors?: boolean, 
-    colorTheme?: colorUtils.XTermColorTheme,
-    htmlEncoding?: boolean
-}): string {
-	opt = opt || {};
-    const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
-    const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.green, colorTheme);
-	return (opt && opt.useColors)?
-		`\n${colorUtils.colorText(`${label} :`, color)}\n`
-			: `\n${label} :\n`;
-}
-/**
- * Utility function, prettyprints user comments included in the sequent returned by the prover
- */
-function commentToString (txt: string, opt?: {
-     useColors?: boolean,
-     colorTheme?: colorUtils.XTermColorTheme,
-     htmlEncoding?: boolean
-}): string {
-	opt = opt || {};
-    const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
-    const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.yellow, colorTheme);
-	const content: string = (opt && opt.useColors)? 
-		`${colorUtils.colorText(`${txt}`, color)}`
-			: `${txt}`;
-	return opt.htmlEncoding ? `<br>${content}<br>` : `\n${content}\n`;
-}
-/**
- * Utility function, prettyprints the commentary string included in the sequent returned by the prover
- */
-export function commentaryToString (commentary: string | string[], opt?: {
-    useColors?: boolean,
-    colorTheme?: colorUtils.XTermColorTheme,
-    htmlEncoding?: boolean
-}): string {
-	let res = "";
-    if (commentary) {
-        const colorTheme: colorUtils.XTermColorTheme = opt.colorTheme || "dark";
-        const gray: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.gray, colorTheme);
-        const yellow: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.yellow, colorTheme);
-        if (typeof commentary === "string") {
-            commentary = commentary.trim().endsWith(",") ? commentary.trim().slice(0, -1) : commentary.trim();
-            res += opt.htmlEncoding ? `<br>${commentary}<br>` 
-                : opt.useColors ? `\n${colorUtils.colorText(`${commentary}`, commentary.includes("This completes the proof") ? yellow : gray)}\n`
-                    : `\n${commentary}\s`;
-        } else {
-            res += opt.htmlEncoding ? "<br>" : "\n";
-            for (let i = 0; i < commentary.length; i++) {
-                let line: string = commentary[i];
-                if (i === commentary.length - 1) {
-                    line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
-                }
-                res += opt.htmlEncoding ? `${line}<br>` 
-                    : opt.useColors ? `${colorUtils.colorText(`${line}`, line.includes("This completes the proof") ? yellow : gray)}\n`
-                        : `${line}\n`;
-            }
-        }
-    }
-    return res;
-}
-/**
  * Utility function, applies pvs syntax highlighting to the provided text
  */
 export function pvsSyntaxHighlighting(text: string, opt?: {
@@ -462,45 +373,6 @@ export function pvsSyntaxHighlighting(text: string, opt?: {
 	return text;
 }
 
-export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolean, showAction?: boolean }): string {
-	if (pvsioState) {
-		opt = opt || {};
-		return (opt.useColors) ? pvsSyntaxHighlighting(pvsioState) : pvsioState;
-	}
-	return pvsioState;
-}
-
-export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: { 
-    useColors?: boolean, 
-    showAction?: boolean,
-    colorizeParens?: boolean
-}): string {
-	if (proofState) {
-		opt = opt || {};
-		let res: string = "";
-		if (proofState.sequent) {
-			if (proofState.sequent["hidden-antecedents"] || proofState.sequent["hidden-succedents"]) {
-				res += "\n%-- Hidden formulas --\n\n";
-				if (proofState.sequent["hidden-antecedents"]) {
-					res += sequentToString(proofState.sequent["hidden-antecedents"], opt);
-				}
-				// res += "  |-------\n";
-				res += "  ├───────\n";
-				if (proofState.sequent["hidden-succedents"]) {
-					res += sequentToString(proofState.sequent["hidden-succedents"], opt);
-				}
-				res += "\n\n";
-			} else {
-				res += "The current sequent does not have any hidden formula.\n";
-			}
-		}
-		return res;
-	} else {
-		console.error("[language-utils.show-hidden-formulas] Error: proof state is null :/");
-	}
-	return null;
-}
-
 export function desc2id (desc: { fileName: string, formulaName?: string, theoryName?: string }): string {
 	if (desc) {
 		if (desc.formulaName) {
@@ -513,76 +385,6 @@ export function desc2id (desc: { fileName: string, formulaName?: string, theoryN
 	console.error("[languageUtils.desc2id] Warning: trying to generate ID from null descriptor");
 	return null;
 }
-
-/**
- * Utility function, converts sequent formulas into a string
- */
-export function sformulas2string (desc: SequentDescriptor): string {
-	let res: string = "";
-	if (desc?.sequent) { // print label and comment only if the sequent is non-empty (sequent empty means proof completed)
-		if (desc.sequent.antecedents) {
-			res += sequentToString(desc.sequent.antecedents);
-		}
-		// res += "  |-------\n";
-		res += "  ├─────── \n";
-		if (desc.sequent.succedents) {
-			res += sequentToString(desc.sequent.succedents);
-		}
-	}
-	return res;
-}
-
-/**
- * Prettyprints sequents. Syntax highlighting is introduced as ansi codes when option useColors is true.
- */
-export function formatSequent (desc: SequentDescriptor, opt?: {
-	useColors?: boolean,
-    colorizeParens?: boolean,
-    colorTheme?: colorUtils.XTermColorTheme,
-	showAction?: boolean,
-	htmlEncoding?: boolean,
-	formulasOnly?: boolean,
-    ignoreCommentary?: boolean
-}): string {
-	if (desc) {
-		opt = opt || {};
-		let res: string = "";
-		if (!opt.formulasOnly) {
-			if (desc.action && opt.showAction) {
-				const action: string = desc.action.endsWith(",") ? desc.action.substr(0, desc.action.length - 1) : desc.action;
-				res += opt.htmlEncoding ? `<br>${action}.<br>` : `\n${action}.\n`;
-			}
-			if (desc.commentary && !opt.ignoreCommentary) {
-				res += commentaryToString(desc.commentary, opt);
-			}
-		}
-        // print label and comment only if 
-        // - the sequent is non-empty (sequent empty means proof completed)
-        // - the commentary string does not indicate error
-		if (desc.sequent && (opt.ignoreCommentary || !isInvalidCommand(desc))) {
-			if (desc.label) {
-				res += labelToString(desc.label, opt);
-			}
-			if (desc.comment) {
-				res += commentToString(desc.comment, opt);
-			}
-			res += opt.htmlEncoding ? "<br>" : "\n";
-			if (desc.sequent.antecedents) {
-				res += sequentToString(desc.sequent.antecedents, opt);
-			}
-			// res += "  |-------\n";
-			res += opt.htmlEncoding ? "  ├─────── <br>" : "  ├─────── \n";
-			if (desc.sequent.succedents) {
-				res += sequentToString(desc.sequent.succedents, opt);
-			}
-		}
-		return (opt.htmlEncoding ? "<br>" : "\n") + res.trimRight();
-	} else {
-		console.error("[language-utils.format-proof-state] Error: proof state is null :/");
-	}
-	return null;
-}
-
 
 /**
  * Utility function, returns the header for a prooflite script
@@ -1482,20 +1284,37 @@ export function isUnchecked (proofStatus: ProofStatus): boolean {
  * Utility function, creates an empty pvs theory
  */
 export function makeEmptyTheory (theoryName: string, opt?: { authorKey?: string }): string {
-    opt = opt || {};
-    const author: string = opt?.authorKey || process?.env?.USER || "..."
-	return `%%
-% @theory: ${theoryName}
-% @author: ${author}
-% @date: ${new Date().toUTCString()}
-%%
-${theoryName}: THEORY
+    const header: string = makeTheoryHeader(theoryName, opt);
+	return `${header}${theoryName}: THEORY
   BEGIN 
     
   END ${theoryName}
 `;
 }
 
+/**
+ * Utility function, creates the documentation header for a theory
+ */
+export function makeTheoryHeader (theoryName: string, opt?: { authorKey?: string }): string {
+    opt = opt || {};
+    const author: string = opt?.authorKey || process?.env?.USER || "...";
+    return `%%
+% @theory: ${theoryName}
+% @author: ${author}
+% @date: ${new Date().toUTCString()}
+%%
+`;
+}
+
+/**
+ * Utility function, checks if the theory includes the header documentation
+ */
+export function includesTheoryHeader (theoryName: string, fileContent: string): boolean {
+    if (theoryName && fileContent) {
+        return fileContent.replace(/\s+/g, "").includes(`%@theory:${theoryName}`);
+    }
+    return false;
+}
 
 /**
  * Structure representing a proof tree

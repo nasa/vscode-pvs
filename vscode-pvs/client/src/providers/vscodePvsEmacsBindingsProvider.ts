@@ -110,7 +110,8 @@ const cmds: string[] = [
 	"show-proof-summary",
 	"show-prooflite",
 
-	"view-as-markdown"
+	"view-as-markdown",
+	"document-theory"
 ];
 
 export class VSCodePvsEmacsBindingsProvider {
@@ -171,6 +172,10 @@ export class VSCodePvsEmacsBindingsProvider {
 				}
 				case "view-as-markdown": {
 					commands.executeCommand('vscode-pvs.view-as-markdown', desc);
+					break;
+				}
+				case "document-theory": {
+					commands.executeCommand('vscode-pvs.document-theory', desc);
 					break;
 				}
 				case "reset-pvs-library-path": {
