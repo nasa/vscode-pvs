@@ -83,32 +83,58 @@
 			"fontId": "font-awesome"
 		},
 		"json-file": {
-			"fontCharacter": "{}"
+			"fontCharacter": "{}",
+			"fontId": "monaco"
 		},
 		"makefile-icon": {
 			"fontCharacter": "M",
-			"fontColor": "coral"
+			"fontColor": "coral",
+			"fontId": "monaco"
 		},
 		"texfile-icon": {
 			"fontCharacter": "TeX",
-			"fontSize": "8px"
+			"fontSize": "8px",
+			"fontId": "monaco"
 		},
 		"bibfile-icon": {
 			"fontCharacter": "BiB",
-			"fontSize": "8px"
+			"fontSize": "8px",
+			"fontId": "monaco"
 		},
 		"tsfile-icon": {
 			"fontCharacter": "TS",
-			"fontSize": "10px",
-			"fontColor": "steelblue"
+			"fontSize": "75%",
+			"fontColor": "steelblue",
+			"fontId": "monaco"
 		},
 		"fa-terminal": {
-			"fontCharacter": "\\f120",
+			"fontCharacter": "\\f155",
+			"fontColor": "yellowgreen",
 			"fontId": "font-awesome"
 		},
 		"fa-lock": {
 			"fontCharacter": "\\f023",
 			"fontId": "font-awesome"
+		},
+		"ddl-file-icon": {
+			"fontCharacter": "ddL",
+			"fontSize": "75%",
+			"description": "PVS Differential Dynamic Logic (DDL) file",
+			"fontId": "monaco",
+			"fontColor": "lime"
+		},
+		"ddl-file-icon-light": {
+			"fontCharacter": "ddL",
+			"fontSize": "75%",
+			"description": "PVS Differential Dynamic Logic (DDL) file",
+			"fontId": "monaco",
+			"fontColor": "green"
+		},
+		"lisp-file-icon": {
+			"fontCharacter": "LISP",
+			"fontSize": "55%",
+			"description": "Lisp file",
+			"fontId": "monaco"
 		}
 	},
 	"folder": "fa-folder",
@@ -128,7 +154,8 @@
 		"makefile": "makefile-icon",
 		"all-theories": "fa-file-text-o",
 		"all-theories.grandtotals": "fa-file-text-o",
-		"package-lock.json": "fa-lock"
+		"package-lock.json": "fa-lock",
+		"pvs-strategies": "binary-file"
 	},
 	"fileExtensions": {
 		"pvs": "pvs-file-icon",
@@ -187,7 +214,14 @@
 		"fdb_latexmk": "fa-file-o",
 		"out": "fa-file-o",
 		"sh": "fa-terminal",
-		"md": "fa-info-circle"
+		"md": "fa-info-circle",
+		"lisp": "lisp-file-icon",
+		"err": "fa-file-text-o",
+		"msg": "fa-file-text-o",
+		"new": "fa-file-text-o",
+		"old": "fa-file-text-o",
+
+		"ddl": "ddl-file-icon"
 	},
 	"languageIds": {
 		"pvs": "binary-file"
