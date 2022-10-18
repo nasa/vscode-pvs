@@ -37,6 +37,7 @@
  **/
 
 import { PvsResponse } from "./pvs-gui";
+import { PrettyPrinterInfo } from "./xtermInterface";
 
 export type ProofOrigin = ".prf" | ".prl" | ".jprf";
 export declare type ProofMateProfile = "basic" | "advanced";
@@ -698,7 +699,8 @@ export interface ProveFormulaResponse extends ProofCommandResponse {
 
 export interface ProveFormulaRequest extends PvsFormula {
 	origin?: string,
-	proofFile?: FileDescriptor
+	proofFile?: FileDescriptor,
+	prettyPrinter?: PrettyPrinterInfo
 }
 
 export interface CopyProofliteRequest extends PvsFormula {

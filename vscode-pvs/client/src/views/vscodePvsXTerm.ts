@@ -55,7 +55,7 @@ import * as vscodeUtils from '../utils/vscode-utils';
 import * as fsUtils from '../common/fsUtils';
 import * as colorUtils from '../common/colorUtils';
 import {
-    XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData, XTermMessage
+    XTermEvent, SessionType, interruptCommand, XTermCommands, UpdateCommandHistoryData, XTermMessage, PrettyPrinter, PrettyPrinterInfo
 } from '../common/xtermInterface';
 import { balancePar, checkPar, CheckParResult, getHints, isInvalidCommand, isQEDCommand, noChange } from '../common/languageUtils';
 import { VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
@@ -188,6 +188,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
 
     // running flag, prevents this.showWelcomeScreen
     protected runningFlag: boolean = false;
+
+    // pretty printer for prover console, useful for domain-specific languages, e.g., DDL
+    protected prettyPrinter: PrettyPrinterInfo;
 
     name: string;
     processId: Thenable<number>;
@@ -347,6 +350,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     protected async startProverSession (formula: StartXTermProverRequest): Promise<boolean> {
         this.target = formula;
         this.sessionType = "prover";
+        this.prettyPrinter = formula?.prettyPrinter;
         this.clearScreen();
         this.setPrompt(utils.proverPrompt);
         this.configureAutocomplete();
@@ -364,6 +368,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         const success: boolean = await new Promise((resolve, reject) => {
             this.client.onRequest(serverEvent.proveFormulaResponse, (data: ProveFormulaResponse) => {
                 if (this.sessionType) {
+                    if (this.prettyPrinter) {
+                        const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme);
+                        this.log(`${colorUtils.colorText(`Using ${this.prettyPrinter.language} syntax`, color)}`);
+                    }
                     // if session type is not defined, then the proof has already ended -- this may happen for trivial proofs
                     this.mathObjects = data?.mathObjects || {};
                     this.onProverResponse(data, { ignoreCommentary: true });
@@ -417,14 +425,18 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 if (data.req?.cmd && !isInvalidCommand(data.res)) {
                     this.updateCommandHistory(data.req.cmd);
                 }
+                // load prettyprinter from vscode configuration
+                const pp: string = this.prettyPrinter?.file; //vscodeUtils.getPrettyPrinter();
+                console.log({ pp });
                 // format sequent
-                const sequent: string = utils.formatSequent(data?.res, { 
+                const sequent: string = fsUtils.formatSequent(data?.res, { 
                     colorTheme: this.colorTheme, 
                     colorizeParens: this.colorizeParens,
-                    useColors: true, 
+                    useColors: true,
+                    prettyPrinter: pp?.endsWith(".jar") ? { cmd: "java", options: [ "-jar", pp ] } : null, // only prettyprinters written in java are supported for now
                     ...opt 
                 });
-                const lastState: string = utils.sformulas2string(data.res);
+                const lastState: string = fsUtils.sformulas2string(data.res);
                 const theoryContent: string = this.target?.fileContent;
                 const hints: HintsObject = getHints(this.sessionType, {
                     lastState, 

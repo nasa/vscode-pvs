@@ -51,3 +51,7 @@ export function xTermDetectColorTheme (themeClass: string): XTermColorTheme {
     const theme: XTermColorTheme = /light/gi.test(themeClass) ? "light" : "dark";
     return theme;
 }
+
+// domain-specific prettyprinter for the prover console
+export type PrettyPrinter = { cmd: string, options: string[] };
+export type PrettyPrinterInfo = { file: string, language: string };

@@ -40,11 +40,11 @@ import {
 	Connection, TextDocuments, TextDocument, CompletionItem, createConnection, ProposedFeatures, InitializeParams, 
 	TextDocumentPositionParams, Hover, CodeLens, CodeLensParams,
 	Diagnostic, Position, Range, DiagnosticSeverity, Definition,
-	Location, TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit, WorkspaceFolder, ServerCapabilities, CodeActionParams, Command, CodeAction
+	TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit, WorkspaceFolder, ServerCapabilities, CodeActionParams, Command, CodeAction
 } from 'vscode-languageserver';
 import { 
 	PvsDefinition, FileList, TheoryDescriptor, PvsContextDescriptor, serverEvent, serverRequest,
-	PvsDownloadDescriptor, PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ServerMode,
+	PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ServerMode,
 	PvsFormula, ProofEditCommand, ProofExecCommand, PvsFile, ContextFolder, PvsTheory,
 	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, 
 	SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, 
@@ -60,16 +60,12 @@ import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
 import { PvsHoverProvider } from './providers/pvsHoverProvider';
 import { PvsCodeLensProvider } from './providers/pvsCodeLensProvider';
 import { PvsLinter } from './providers/pvsLinter';
-// import { PvsCliGateway } from './pvsCliGateway';
 import { getErrorRange } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import { PvsProxy } from './pvsProxy';
-import { 
-	PvsResponse, PvsError, ImportingDecl, TypedDecl, 
-	FormulaDecl, PvsResult
-} from './common/pvs-gui';
+import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl } from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
 import { PvsIoProxy } from './pvsioProxy';
 import { PvsErrorManager } from './pvsErrorManager';
@@ -90,7 +86,11 @@ export declare interface PvsTheoryDescriptor {
 }
 
 export declare interface ContextDiagnostics {
-	[fileName: string]: { pvsResponse: PvsResponse, isTypecheckError: boolean }
+	[fileName: string]: {
+		pvsResponse: PvsResponse, 
+		isTypecheckError: boolean,
+		needsTheoryDoc?: boolean
+	}
 };
   
   
@@ -395,10 +395,12 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				}, opt);
 				if (response && response.error) {
 					const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(desc);
-					this.diags[fname] = {
-						pvsResponse: response,
-						isTypecheckError: true
-					};
+					// update diags
+					this.updateDiags(fname, { pvsResponse: response, isTypecheckError: true });
+					// this.diags[fname] = {
+					// 	pvsResponse: response,
+					// 	isTypecheckError: true
+					// };
 					this.sendDiagnostics("Typecheck");
 					if (this.pvsErrorManager) {
 						this.pvsErrorManager?.handleTypecheckError({ request: desc, response: <PvsError> response, taskId });
@@ -594,20 +596,22 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				if (response) {
 					if (response.result) {
 						const fname: string = fsUtils.desc2fname(args);
-						this.diags[fname] = {
-							pvsResponse: response,
-							isTypecheckError: true
-						};
+						this.updateDiags(fname, { pvsResponse: response, isTypecheckError: true });
+						// this.diags[fname] = {
+						// 	pvsResponse: response,
+						// 	isTypecheckError: true
+						// };
 						if (!opt?.quiet) {
 							this.sendDiagnostics("Typecheck");
 						}
 					} else {
 						if (response.error?.data) {
 							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(args);
-							this.diags[fname] = {
-								pvsResponse: response,
-								isTypecheckError: true
-							};
+							this.updateDiags(fname, { pvsResponse: response, isTypecheckError: true });
+							// this.diags[fname] = {
+							// 	pvsResponse: response,
+							// 	isTypecheckError: true
+							// };
 							this.sendDiagnostics("Typecheck");
 						}
 					}
@@ -915,10 +919,11 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 							// keep typecheck diags
 							source = "Typecheck";
 						} else {
-							this.diags[fname] = {
-								pvsResponse: response,
-								isTypecheckError: false
-							};
+							this.updateDiags(fname, { pvsResponse: response, isTypecheckError: false });
+							// this.diags[fname] = {
+							// 	pvsResponse: response,
+							// 	isTypecheckError: false
+							// };
 						}
 						// send feedback to the front-end
 						if (opt.withFeedback) {
@@ -937,6 +942,16 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			}
 		} else {
 			console.error("[pvs-language-server] Warning: pvs.parse-file invoked with null request");
+		}
+	}
+	/**
+	 * Internal function, updates file diagnostics for a given file name
+	 */
+	protected updateDiags (fname: string, diag: { pvsResponse: PvsResponse, isTypecheckError: boolean }): void {
+		if (fname && diag?.pvsResponse) {
+			this.diags[fname] = {
+				...diag
+			};
 		}
 	}
 	/**
@@ -1347,10 +1362,11 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					// send parser response
 					this.connection?.sendRequest(serverEvent.parseFileResponse, response);
 					// collect diagnostics
-					this.diags[fname] = {
-						pvsResponse: response,
-						isTypecheckError: false
-					};
+					this.updateDiags(fname, { pvsResponse: response, isTypecheckError: false })
+					// this.diags[fname] = {
+					// 	pvsResponse: response,
+					// 	isTypecheckError: false
+					// };
 				} 
 				// else {
 				// 	// clear diagnostics, as the parse error may have gone and we don't know because pvs-server failed to execute parseFile
