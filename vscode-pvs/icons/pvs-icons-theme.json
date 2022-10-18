@@ -155,7 +155,17 @@
 		"all-theories": "fa-file-text-o",
 		"all-theories.grandtotals": "fa-file-text-o",
 		"package-lock.json": "fa-lock",
-		"pvs-strategies": "binary-file"
+		"pvs-strategies": "binary-file",
+		"cleanbin-all": "fa-terminal",
+		"find-all": "fa-terminal",
+		"dependency-all": "fa-terminal",
+		"dependencygraph": "fa-terminal",
+		"install-scripts": "fa-terminal",
+		"nasalib-version": "fa-terminal",
+		"prove-all": "fa-terminal",
+		"typecheck-all": "fa-terminal",
+		"nasalib.all": "fa-file-text-o",
+		"nasalib.grandtotals": "fa-file-text-o"
 	},
 	"fileExtensions": {
 		"pvs": "pvs-file-icon",
