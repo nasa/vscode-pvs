@@ -399,7 +399,7 @@ describe("proof-explorer", () => {
 		expect(success).to.equal(true);
 	});
 
-	it(`proof explorer is robust to commands to unbalanced parens`, async () => {
+	it(`proof explorer is robust to commands with unbalanced parens`, async () => {
 		const desc: PvsFormula = {
 			contextFolder: libraryaddons,
 			fileExtension: ".tccs",
@@ -409,8 +409,8 @@ describe("proof-explorer", () => {
 		};
 		const proofExplorer: PvsProofExplorer = server.getProofExplorer();
 		proofExplorer.loadProofRequest(desc);
-		let ans: PvsResponse | null = await server.getPvsProxy().proveFormula(desc);
-		// console.dir({ initialSequent: ans.result[0] });
+		let ans: PvsResponse = await server.getPvsProxy().proveFormula(desc);
+		// console.dir({ desc, initialSequent: ans.result[0] });
 		proofExplorer.loadInitialSequent(ans.result[0]);
 		proofExplorer.startProof();
 		const cmds: string[] = [
@@ -426,6 +426,7 @@ describe("proof-explorer", () => {
 		response = await proofExplorer.step({ cmd: cmds[2] });
 		response = await proofExplorer.step({ cmd: cmds[3] });
 		response = await proofExplorer.step({ cmd: cmds[4] });
+		// console.dir(response.result);
 		expect(response.result[0].commentary.includes("Unbalanced parentheses"));
 		let root: ProofNodeX = proofExplorer.getProofX();
 		// console.dir(root);
