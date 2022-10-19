@@ -84,7 +84,7 @@ const htmlContent: string = `
 $(document).ready(function() {
     $(".search-input").on("input", function() {
         const value = $(this).val();
-        $(".clear-btn").css("display", value ? "block" : "none");
+        // $(".clear-btn").css("display", value ? "block" : "none");
         if (value === "") {
             // remove results and show welcome screen
             $("#search-results").remove();
@@ -140,7 +140,7 @@ $(document).ready(function() {
                 <span class="input-group-text"><i class="fa fa-search" aria-hidden="true"></i></span>
             </div>
             <input type="text" class="form-control search-input" placeholder="Search..." aria-label="Search" value="{{searchString}}">
-            <button class="btn btn-outline-secondary btn-sm clear-btn" type="button" style="display:{{#if res}}block{{else}}none{{/if}}"><i class="fa fa-times" aria-hidden="true"></i></button>
+            <!-- <button class="btn btn-outline-secondary btn-sm clear-btn" type="button" style="display:{{#if res}}block{{else}}none{{/if}}"><i class="fa fa-times" aria-hidden="true"></i></button> -->
             <button class="btn btn-outline-secondary btn-sm case-sensitive-option-btn toggle-btn" type="button" data-toggle="tooltip" data-placement="bottom"  title="Toggle case sensitive search">Aa</i></button>
             <button class="btn btn-outline-primary btn-sm search-btn" id="search-btn" type="button">${SEARCH_NASALIB}</button>
         </div>
@@ -211,7 +211,6 @@ $(document).ready(function() {
         const vscode = acquireVsCodeApi();
         function search () {
             const searchString = $(".search-input")?.val()?.trim();
-            caseSensitive = $(".case-sensitive-option-btn").hasClass("active");
             if (searchString) {
                 vscode.postMessage({ command: 'search', searchString, activeView, caseSensitive });
             }
@@ -220,7 +219,7 @@ $(document).ready(function() {
             $(".search-input").val("");
             $(".filter-results").val("");
             $(".filter").css("display", "none")
-            $(".clear-btn").css("display", "none");
+            // $(".clear-btn").css("display", "none");
             $("#search-results").remove();
             $("#results-summary").css("display", "none");
             $("#welcome-screen").css("display", "block");
@@ -238,6 +237,7 @@ $(document).ready(function() {
             activeView === "nasalib" ? nasalibView() : pvslibView();
         }
         function refreshSearchOptions () {
+            console.log("[refresh-search-options]", { caseSensitive });
             caseSensitive ? enableCaseSensitiveSearch() : disableCaseSensitiveSearch();
         }
         function nasalibView () {
@@ -263,9 +263,11 @@ $(document).ready(function() {
             focus();
         }
         function enableCaseSensitiveSearch () {
+            caseSensitive = true;
             $(".case-sensitive-option-btn").addClass("active").removeClass("btn-outline-secondary").addClass("btn-secondary");
         }
         function disableCaseSensitiveSearch () {
+            caseSensitive = false;
             $(".case-sensitive-option-btn").removeClass("active").addClass("btn-outline-secondary").removeClass("btn-secondary");
         }
         function toggleCaseSensitiveSearch () {
@@ -308,25 +310,25 @@ $(document).ready(function() {
         // clear tooltips on mouse down and focus search input field
         $('[data-toggle="tooltip"]').on("mousedown", (evt) => {
             $('[data-toggle="tooltip"]').tooltip('hide');
-            console.log(evt);
-            evt.stopPropagation();
+            // console.log("[mousedown]", evt, { caseSensitive });
             focus();
         });
         // 'Enter' key on this button as a search request
         $('[data-toggle="tooltip"]').on("keypress", (evt) => {
-            console.log(evt);
-            evt.stopPropagation();
-            refreshSearchOptions();
+            // console.log("[keypress]", evt, { caseSensitive });
             switch (evt.key) {
                 case "Enter": {
                     search();
+                    break;
+                }
+                case "Space": {
+                    toggleCaseSensitiveSearch();
                     break;
                 }
                 default: {
                     // do nothing
                 }
             }
-            focus();
         });
         // refresh search options
         refreshSearchOptions();
