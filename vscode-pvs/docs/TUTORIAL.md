@@ -8,7 +8,7 @@ This tutorial provides a series of simple examples suitable to demonstrate the f
 ## Pre-requisites
 
 - Familiarity with [Visual Studio Code](https://code.visualstudio.com/docs/getstarted/userinterface)
-- [VSCode-PVS](https://github.com/nasa/vscode-pvs) extension is installed and enabled in Visual Studio Code (see installation instructions in [README.md](README.md))
+- [VSCode-PVS](https://github.com/nasa/vscode-pvs) extension is installed and enabled in Visual Studio Code (see installation instructions in [README.md](../README.md))
 
 > Note: If your have troubles with the VSCode-PVS functionalities illustrated in this tutorial, please check our [FAQs](FAQ.md) document, where you can find answers to common questions on VSCode-PVS, including troubleshooting techniques for basic problems.  
 
@@ -21,7 +21,7 @@ This first example demonstrates the following functionalities of VSCode-PVS:
 
 Perform the following steps in Visual Studio Code:
 
-1. Open `~\Workspaces` in Visual Studio Code, using the `File -> Open Folder` command located in the main menu of Visual Studio Code
+1. Open `~/Workspaces` in Visual Studio Code, using the `File -> Open Folder` command located in the main menu of Visual Studio Code
 
 2. Use File Explorer to create a new folder `helloworld`. This folder will be the `PVS workspace` for this tutorial, i.e., all PVS files created in this tutorial will be stored in this folder.
 
