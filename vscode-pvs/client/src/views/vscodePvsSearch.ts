@@ -84,7 +84,7 @@ const htmlContent: string = `
 $(document).ready(function() {
     $(".search-input").on("input", function() {
         const value = $(this).val();
-        // $(".clear-btn").css("display", value ? "block" : "none");
+        $(".clear-btn").css("display", value ? "block" : "none");
         if (value === "") {
             // remove results and show welcome screen
             $("#search-results").remove();
@@ -140,8 +140,8 @@ $(document).ready(function() {
                 <span class="input-group-text"><i class="fa fa-search" aria-hidden="true"></i></span>
             </div>
             <input type="text" class="form-control search-input" placeholder="Search..." aria-label="Search" value="{{searchString}}">
-            <!-- <button class="btn btn-outline-secondary btn-sm clear-btn" type="button" style="display:{{#if res}}block{{else}}none{{/if}}"><i class="fa fa-times" aria-hidden="true"></i></button> -->
-            <button class="btn btn-outline-secondary btn-sm case-sensitive-option-btn toggle-btn" type="button" data-toggle="tooltip" data-placement="bottom"  title="Toggle case sensitive search">Aa</i></button>
+            <button class="btn btn-outline-warning btn-sm clear-btn" type="button" style="display:{{#if res}}block{{else}}none{{/if}}" data-toggle="tooltip" data-placement="bottom"  title="Clear Search Query and Results"><i class="fa fa-times" aria-hidden="true"></i></button>
+            <button class="btn btn-outline-secondary btn-sm case-sensitive-option-btn toggle-btn" type="button" data-toggle="tooltip" data-placement="bottom" title="Match Case">Aa</i></button>
             <button class="btn btn-outline-primary btn-sm search-btn" id="search-btn" type="button">${SEARCH_NASALIB}</button>
         </div>
         <div class="filter" style="display:{{#if res}}block{{else}}none{{/if}};">
@@ -219,7 +219,7 @@ $(document).ready(function() {
             $(".search-input").val("");
             $(".filter-results").val("");
             $(".filter").css("display", "none")
-            // $(".clear-btn").css("display", "none");
+            $(".clear-btn").css("display", "none");
             $("#search-results").remove();
             $("#results-summary").css("display", "none");
             $("#welcome-screen").css("display", "block");
@@ -444,12 +444,12 @@ interface SearchResultsOrSpinner {
     showSpinner?: boolean,
     showResults?: boolean
 };
-interface ViewOptions { 
+export interface WebViewStyles { 
     css?: Uri[], 
     js?: Uri[], 
     style?: string 
 };
-interface HtmlContent extends SearchResultsOrSpinner, ViewOptions {
+interface HtmlContent extends SearchResultsOrSpinner, WebViewStyles {
     title: string,
     welcomeScreen: string,
     activeView: SearchLibrary,

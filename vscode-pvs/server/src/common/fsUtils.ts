@@ -147,6 +147,24 @@ export function isSameFile (fname1: string, fname2: string): boolean {
 	return false;
 }
 /**
+ * Copies a file to a target location
+ */
+export function copyFile (fname: string, target_fname: string): boolean {
+	if (fname) {
+		try {
+			fname = fname.replace("file://", "");
+			fname = tildeExpansion(fname);
+			target_fname = tildeExpansion(target_fname);
+			fs.copyFileSync(fname, target_fname);
+			return true;
+		} catch (error) {
+			console.warn(`[fs-utils] Error: could not copy file`, { fname, target_fname, error });
+			return false;
+		}
+	}
+	return false;
+}
+/**
  * Utility function, deletes a given file
  */
 export function deleteFile (fname: string): boolean {
@@ -368,14 +386,16 @@ export async function renameFile(old_fname: string, new_fname: string): Promise<
 }
 /**
  * Utility function, returns the last portion of a path fname
+ * The file extension is removed by default
  * TODO: use path.posix.basename(fname), see https://nodejs.org/api/path.html
  */
-export function getFileName(fname: string, opt?: { keepExtension?: boolean }): string {
+export function getFileName(fname: string, opt?: { keepExtension?: boolean, extension?: string }): string {
 	if (fname) {
 		fname = fname.replace("file://", "");
 		fname = fname.includes("/") ? fname.split("/").slice(-1)[0] : fname;
 		if (!opt?.keepExtension) {
-			fname = fname.includes(".") ? fname.split(".").slice(0, -1).join(".") : fname;
+			const index: number = opt?.extension ? fname.lastIndexOf(opt.extension) : fname.lastIndexOf(".");
+			fname = index > 0 ? fname.substring(0, index) : fname;
 		}
 		return fname;
 	}

@@ -53,7 +53,7 @@ import {
 	InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, 
 	NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, 
 	StatusProofChain, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, 
-	UndumpPvsFilesResponse, DumpFileDescriptor
+	UndumpPvsFilesResponse, DumpFileDescriptor, PvsDocRequest, PvsDocKind, PvsDocDescriptor, PvsDocResponse
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -76,6 +76,8 @@ import { PvsSearchEngine } from './providers/pvsSearchEngine';
 import { getOs, isPvsFile } from './common/fsUtils';
 import { PvsCodeActionProvider } from './providers/pvsCodeActionProvider';
 import { execSync } from 'child_process';
+import { Pvs2Html, Pvs2HtmlSettings } from './extra/pvs2html/pvs2html';
+import { Pvs2Latex } from './extra/pvs2latex/pvs2latex';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -92,8 +94,6 @@ export declare interface ContextDiagnostics {
 		needsTheoryDoc?: boolean
 	}
 };
-  
-  
 
 // Example server settings, this is not used at the moment
 interface Settings {
@@ -237,7 +237,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Returns the pvs path
 	 */
 	getPvsPath (): string {
-		return this.pvsPath ? `${this.pvsPath}` : "";
+		return this.pvsPath ? this.pvsPath : "";
 	}
 	/**
 	 * Returns the nasalib path
@@ -541,6 +541,62 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 		}
 	}
+	/**
+	 * Runs pvsDoc
+	 */
+	async pvsDocRequest (req: PvsDocRequest): Promise<void> {
+		if (req?.theory?.fileName && req?.theory?.fileExtension && req?.theory?.contextFolder) {
+			const kind: PvsDocKind = req?.docKind || PvsDocKind.html;
+			switch (kind) {
+				case PvsDocKind.html: {
+					// send feedback to the front-end
+					const taskId: string = `pvsdoc-${req.theory.fileName}@${req.theory.theoryName}`;
+					// const channelID: string = utils.desc2id(theory);
+					this.notifyStartImportantTask({ id: taskId, msg: `Generating HTML files for theory ${req.theory.theoryName}` });
+
+					// generate the documentation
+					const inputFile: string = fsUtils.desc2fname(req.theory);
+					const settings: Pvs2HtmlSettings = {
+						...req,
+						inputFile
+					};
+					const engine: Pvs2Html = new Pvs2Html();
+					const res: PvsDocDescriptor = await engine.run(settings);
+					const ans: PvsDocResponse = { req, res };
+
+					// send response back to the front-end
+					this.connection?.sendNotification(serverRequest.pvsDoc, ans);
+					this.notifyEndImportantTask({ id: taskId, msg: "HTML files ready!" });
+					break;
+				}
+				case PvsDocKind.latex: {
+					// send feedback to the front-end
+					const taskId: string = `pvsdoc-${req.theory.fileName}@${req.theory.theoryName}`;
+					// const channelID: string = utils.desc2id(theory);
+					this.notifyStartImportantTask({ id: taskId, msg: `Generating LaTex files for theory ${req.theory.theoryName}` });
+
+					// generate the documentation
+					const inputFile: string = fsUtils.desc2fname(req.theory);
+					const settings: Pvs2HtmlSettings = {
+						...req,
+						inputFile
+					};
+					const engine: Pvs2Latex = new Pvs2Latex();
+					const res: PvsDocDescriptor = await engine.run(settings);
+					const ans: PvsDocResponse = { req, res };
+
+					// send response back to the front-end
+					this.connection?.sendNotification(serverRequest.pvsDoc, ans);
+					this.notifyEndImportantTask({ id: taskId, msg: "LaTex files ready!" });
+					break;
+				}
+				default: {
+					break;
+				}
+			}
+		}
+	}
+
 
 	/**
 	 * Sends to the client the prooflite script associated with the formula indicated in the request
@@ -2073,6 +2129,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			});
 			this.connection?.onRequest(serverRequest.evalExpression, async (args: EvalExpressionRequest) => {
 				await this.evalExpressionRequest(args);
+			});
+			this.connection?.onRequest(serverRequest.pvsDoc, async (req: PvsDocRequest) => {
+				await this.pvsDocRequest(req);
 			});
 
 			// search request

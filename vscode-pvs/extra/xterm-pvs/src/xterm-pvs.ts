@@ -26,15 +26,19 @@ interface RebaseEvent {
     pos: Position
 };
 
+/**
+ * Utility function, returns the welcome message for a prover/evaluator session
+ */
 export function welcomeMessage (session: SessionType, integratedHelpSize: number ): string {
     const msg: string = session === "prover" ? `
         - Please enter proof command at the prover prompt / Use <b>(help rules)</b> to view the list of available commands
         - Double click expands definitions${integratedHelpSize > 2 ? "\n- " : ". "}Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}C / ${isLinux() ? "Ctrl+" : "Command+"}V
         `
-        : `
+        : session === "evaluator" ? `
         - Please enter a PVS expression followed by ';'
         - or a Lisp expression followed by '!'
         `
+        : "";
     return msg.trim().replace(/\n/g, "<br>");
 }
 
@@ -1262,6 +1266,11 @@ export class Autocomplete extends Backbone.Model {
 
     // session type
     protected sessionType: SessionType;
+
+    // flag indicating whether input is enabled
+    protected inputEnabled: boolean = true;
+
+    // vertical size (in number of rows) of the integrated help
     protected integratedHelpSize: number = 2;
 
     // hints data
@@ -1272,7 +1281,7 @@ export class Autocomplete extends Backbone.Model {
     protected frequentCommands: string[] = [];
 
     // selection mode
-    protected triggerMode: "standard" | "single-click" = "standard";
+    // protected triggerMode: "standard" | "single-click" = "standard";
 
     // current help message
     protected currHelp: string = "";
@@ -1303,23 +1312,37 @@ export class Autocomplete extends Backbone.Model {
     protected installHandlers (): void {
         // the keydown handler on document is necessary to capture keypresses when the tooltip is selected
         $(document).on("keydown", (evt: JQuery.KeyDownEvent) => {
-            // console.log("[xterm-autocomplete] keydown", { target: evt.target });
-            switch (evt.key) {
-                case "ArrowUp":
-                case "ArrowDown":
-                    evt.preventDefault(); // this is necessary to avoid unintended scrolling of the tooltip content
-                case "ArrowLeft":
-                case "ArrowRight":
-                case "Enter": 
-                case "Escape": {
-                    this.autocompleteOnKeyPress(evt);
-                    break;
-                }
-                default: {
-                    break;
+            if (this.inputEnabled) {
+                // console.log("[xterm-autocomplete] keydown", { target: evt.target });
+                switch (evt.key) {
+                    case "ArrowUp":
+                    case "ArrowDown":
+                        evt.preventDefault(); // this is necessary to avoid unintended scrolling of the tooltip content
+                    case "ArrowLeft":
+                    case "ArrowRight":
+                    case "Enter": 
+                    case "Escape": {
+                        this.autocompleteOnKeyPress(evt);
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
                 }
             }
         });
+    }
+    /**
+     * Utility function, enables input for autocomplete
+     */
+    enableInput (): void {
+        this.inputEnabled = true;
+    }
+    /**
+     * Utility function, disables input for autocomplete
+     */
+    disableInput (): void {
+        this.inputEnabled = false;
     }
     /**
      * Returns math symbols used for autocomplete
@@ -1399,7 +1422,7 @@ export class Autocomplete extends Backbone.Model {
             }
             return "";
         }
-        if (opt.removeLeadingBracket) {
+        if (opt.removeLeadingBracket && currentInput?.length > 1) {
             const bless: string = currentInput.startsWith("(") ? currentInput.substring(1) : currentInput;
             return bless;
         }
@@ -1465,9 +1488,9 @@ export class Autocomplete extends Backbone.Model {
                 // update integrated help
                 this.updateHelp({ cmd: "expand" });
                 // enable single-click triggers for the tooltip
-                this.triggerMode = "single-click";
+                // this.triggerMode = "single-click";
             } else {
-                this.triggerMode = "standard";
+                // this.triggerMode = "standard";
             }
             // install mouse and keypress handlers for the autocompletion items
             $(".autocompletion-item").on("mouseover", (evt: JQuery.MouseOverEvent) => {
@@ -1478,10 +1501,10 @@ export class Autocomplete extends Backbone.Model {
                 // console.log("[xterm-autocomplete] click", { target: evt.target });
                 const index: number = this.getIndex(evt.target);
                 this.select(index);
-                if (this.triggerMode === "single-click") {
-                    this.triggerAutocomplete();
-                    this.triggerMode = "standard";
-                }
+                this.triggerAutocomplete();
+                // if (this.triggerMode === "single-click") {
+                //     this.triggerMode = "standard";
+                // }
             }).on("dblclick", (evt: JQuery.DoubleClickEvent) => {
                 // console.log("[xterm-autocomplete] dblclick", { target: evt.target });
                 const index: number = this.getIndex(evt.target);
@@ -1566,8 +1589,10 @@ export class Autocomplete extends Backbone.Model {
                     }
                 }
             } else if (currentInput.startsWith("help")) {
-                const cmds: string[] = this.sessionType === "prover" ? Object.keys({ ...PROOF_COMMANDS, ...PROOF_TACTICS }) 
-                    : Object.keys(EVALUATOR_COMMANDS);
+                const cmds: string[] = 
+                    this.sessionType === "prover" ? Object.keys({ ...PROOF_COMMANDS, ...PROOF_TACTICS }) 
+                    : this.sessionType === "evaluator" ? Object.keys(EVALUATOR_COMMANDS)
+                    : [];
                 for (let i = 0; i < cmds?.length; i++) {
                     const hint: string = `help ${cmds[i]}`;
                     if (hint//.toLocaleLowerCase()
@@ -1641,9 +1666,10 @@ export class Autocomplete extends Backbone.Model {
         // update current input
         const currentInput: string = this.getCurrentInput({ removeLeadingBracket: true });
         // get command hints
-        let hints: string[] = this.sessionType === "evaluator" ?
-            this.autocompleteEvaluatorCommand(currentInput, opt)
-                : this.autocompleteProverCommand(currentInput, opt);
+        let hints: string[] = 
+            this.sessionType === "evaluator" ? this.autocompleteEvaluatorCommand(currentInput, opt)
+            : this.sessionType === "prover" ? this.autocompleteProverCommand(currentInput, opt)
+            : [];
         // console.log("[xterm-pvs] getHints", { opt, currentInput, hints });
         if (opt.includeHistory) {
             // get list of commands previously accepted by the prover
@@ -1721,19 +1747,22 @@ export class Autocomplete extends Backbone.Model {
         const currentInput: string = this.getCurrentInput({ regex: /[\w\+\@\-\*\?\!]+/ });
         let cmd: string = opt.cmd || this.getSelectedHint() || currentInput;
         cmd = cmd?.split(" ")[0]; // this removes command parameters
-        const desc: CommandDescriptor = this.sessionType === "evaluator" ?
-            evaluatorCommands[cmd]
-                : proverCommands[cmd];
+        const desc: CommandDescriptor = 
+            this.sessionType === "evaluator" ? evaluatorCommands[cmd]
+            : this.sessionType === "prover" ? proverCommands[cmd]
+            : null;
         // console.log("[xterm-autocomplete] updateHelp", { cmd, desc });
-        const integratedHelp: string = Handlebars.compile(terminalHelpTemplate, { noEscape: true })({
-            cmd,
-            ...desc,
-            syntax: this.sessionType === "prover" ? `(${desc?.syntax})` : `${desc?.syntax};`,
-            footnote: this.sessionType === "prover" && !VSCODE_COMMANDS[cmd] ? `Use (help ${cmd}) to display additional help information.` : ""
-        });
-        this.showHelp(integratedHelp);
-        if (!currentInput && integratedHelp) {
-            this.showHelp(welcomeMessage(this.sessionType, this.integratedHelpSize ));
+        if (desc) {
+            const integratedHelp: string = Handlebars.compile(terminalHelpTemplate, { noEscape: true })({
+                cmd,
+                ...desc,
+                syntax: this.sessionType === "prover" ? `(${desc?.syntax})` : `${desc?.syntax};`,
+                footnote: this.sessionType === "prover" && !VSCODE_COMMANDS[cmd] ? `Use (help ${cmd}) to display additional help information.` : ""
+            });
+            this.showHelp(integratedHelp);
+            if (!currentInput && integratedHelp) {
+                this.showHelp(welcomeMessage(this.sessionType, this.integratedHelpSize ));
+            }
         }
     }
     /**
@@ -1838,23 +1867,25 @@ export class Autocomplete extends Backbone.Model {
     protected triggerAutocomplete (): void {
         let substitution: string = this.getSelectedHint();
         let match: string = this.getCurrentInput({ removeLeadingBracket: true });
-        // handle substitution of math symbols
-        if (substitution?.startsWith("\\") && match.includes("\\")) {
-            const info: string[] = substitution?.split(" "); // the last part of the string is the symbol, the first part of the string is the symbol code
-            const symCode: { symbol: string, code: string } = this.matchSymCode(match);
-            if (info?.length > 1 && symCode?.code) {
-                match = symCode.code; // this is the fragment of math symbol code that matches the hint
-                substitution = info[1];
-            }
-        }
         const currentInput: string = this.getCurrentInput();
-        // console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput, match, substitution });
-        const evt: DidAutocompleteEvent = {
-            substitution,
-            currentInput,
-            match
-        };
-        this.trigger(AutocompleteEvent.didAutocomplete, evt);
+        if (currentInput !== substitution) {
+            // handle substitution of math symbols
+            if (substitution?.startsWith("\\") && match.includes("\\")) {
+                const info: string[] = substitution?.split(" "); // the last part of the string is the symbol, the first part of the string is the symbol code
+                const symCode: { symbol: string, code: string } = this.matchSymCode(match);
+                if (info?.length > 1 && symCode?.code) {
+                    match = symCode.code; // this is the fragment of math symbol code that matches the hint
+                    substitution = info[1];
+                }
+            }
+            // console.log("[xterm-autocomplete] triggerAutocomplete", { currentInput, match, substitution });
+            const evt: DidAutocompleteEvent = {
+                substitution,
+                currentInput,
+                match
+            };
+            this.trigger(AutocompleteEvent.didAutocomplete, evt);
+        }
         this.deleteTooltips();
     }
     /**
@@ -1946,6 +1977,9 @@ export class XTermPvs extends Backbone.Model {
     // session type (default: evaluator)
     protected sessionType: SessionType;
 
+    // whether input is enabled
+    protected inputEnabled: boolean = true;
+
     // id of the DOM element where the terminal is attached
     protected parent: string;
 
@@ -1968,9 +2002,6 @@ export class XTermPvs extends Backbone.Model {
     // scroll timer
     protected timer: NodeJS.Timer = null;
     readonly timerTimeout: number = 50; //ms
-
-    // flag indicating whether input is enabled
-    protected inputEnabled: boolean = true;
 
     // list of commands
     protected commands: CommandsMap = null;
@@ -2080,12 +2111,12 @@ export class XTermPvs extends Backbone.Model {
     /**
      * Detects the color theme
      */
-     getColorTheme (): colorUtils.XTermColorTheme {
-         const themeClass: string = $("body").attr("data-vscode-theme-kind");
-         const theme: colorUtils.XTermColorTheme = xTermDetectColorTheme(themeClass);
-        //  console.log("[xterm-pvs] getColorTheme", { theme, themeClass });
-         return theme;
-     }
+    getColorTheme (): colorUtils.XTermColorTheme {
+        const themeClass: string = $("body").attr("data-vscode-theme-kind");
+        const theme: colorUtils.XTermColorTheme = xTermDetectColorTheme(themeClass);
+    //  console.log("[xterm-pvs] getColorTheme", { theme, themeClass });
+        return theme;
+    }
 
     /**
      * Sets dark color theme
@@ -2136,7 +2167,10 @@ export class XTermPvs extends Backbone.Model {
      * Shows all available commands and some brief info for each command
      */
     helpStar (): void {
-        const cmds: CommandsMap = this.sessionType === "evaluator" ? evaluatorCommands : proverCommands;
+        const cmds: CommandsMap = 
+            this.sessionType === "evaluator" ? evaluatorCommands 
+            : this.sessionType === "prover" ? proverCommands
+            : {};
         let ans: string = "";
         const keys: string[] = Object.keys(cmds).sort((a: string, b: string) => { return a > b ? 1 : -1; });
         for (let i = 0; i < keys.length; i++) {
@@ -2159,6 +2193,7 @@ export class XTermPvs extends Backbone.Model {
      */
     disableInput (): void {
         this.inputEnabled = false;
+        this.autocomplete.disableInput();
     }
 
     /**
@@ -2166,6 +2201,7 @@ export class XTermPvs extends Backbone.Model {
      */
     enableInput (): void {
         this.inputEnabled = true;
+        this.autocomplete.enableInput();
     }
 
     /**
@@ -2449,7 +2485,7 @@ export class XTermPvs extends Backbone.Model {
      * Internal function, updates the terminal view based on the information given by this.content
      */
     protected updateView (keyEvent: KeyEvent, opt?: { disableParMatch?: boolean }): void {
-        // console.log("[xterm-pvs] onKeyPress", { evt });
+        // console.log("[xterm-pvs] updateView", { evt });
         const domEvent: KeyboardEvent = keyEvent.domEvent;
         const key: string = keyEvent.key;        
         switch (domEvent.key) {
@@ -2502,7 +2538,7 @@ export class XTermPvs extends Backbone.Model {
         this.moveCursorTo(pos, { src: "updateView" });
         // scroll cursor into view -- not sure why xterm.scrollToLine(...) is not working
         this.scrollCursorIntoView();
-        // console.log("[xterm-pvs] onKeyPress", { textLine, pos });
+        // console.log("[xterm-pvs] updateView", { textLine, pos });
     }
 
     /**
@@ -2722,13 +2758,17 @@ export class XTermPvs extends Backbone.Model {
     protected installHandlers (): void {
         // a key is pressed
         this.xterm.onKey((evt: KeyEvent) => {
-            this.onKeyPress(evt);
+            if (this.inputEnabled) {
+                this.onKeyPress(evt);
+            }
         });
         this.xterm.onData((data: string) => {
-            this.onData(data);
+            if (this.inputEnabled) {
+                this.onData(data);
+            }
         });
         this.xterm.attachCustomKeyEventHandler ((evt: KeyboardEvent): boolean => {
-            // console.log("[xterm-pvs] attachCustomKeyEventHandler", { evt });
+            console.log("[xterm-pvs] attachCustomKeyEventHandler", { evt, sessionType: this.sessionType, inputEnabled: this.inputEnabled });
             this.modKeys = {
                 alt: !!evt?.altKey,
                 ctrl: !!evt?.ctrlKey,
@@ -2767,6 +2807,12 @@ export class XTermPvs extends Backbone.Model {
             }
             if (evt.key === "PageDown") {
                 this.xterm.scrollLines(4);
+                return false;
+            }
+            // Escape closes the window when the session is terminated
+            if (evt.key === "Escape") {
+                // console.log("[xterm-pvs] attachCustomKeyEventHandler : escapeKeyPressed")
+                this.trigger(XTermEvent.escapeKeyPressed);
                 return false;
             }
             // ctrl+key / alt+key
@@ -2865,19 +2911,21 @@ export class XTermPvs extends Backbone.Model {
             this.resizeLines(rows);
         });
         $(document).on("dblclick", (evt: JQuery.DoubleClickEvent) => {
-            // this give the raw position of the cursor, in px, how do we convert this into lines/cols?
-            // const pos: ISelectionPosition = this.xterm.getSelectionPosition();
-            const sel = this.xterm.getSelection();
-            if (sel && this.autocomplete.validSymbol(sel)) {
-                this.autocomplete.showTooltip([
-                    `(expand "${sel}")`,
-                    `(expand "${sel}" +)`,
-                    `(expand "${sel}" -)`
-                ], { top: evt.pageY, left: evt.pageX });
-            } else {
-                this.autocomplete.deleteTooltips();
+            if (this.sessionType === "prover") {
+                // this give the raw position of the cursor, in px, how do we convert this into lines/cols?
+                // const pos: ISelectionPosition = this.xterm.getSelectionPosition();
+                const sel = this.xterm.getSelection();
+                if (sel && this.autocomplete.validSymbol(sel)) {
+                    this.autocomplete.showTooltip([
+                        `(expand "${sel}")`,
+                        `(expand "${sel}" +)`,
+                        `(expand "${sel}" -)`
+                    ], { top: evt.pageY, left: evt.pageX });
+                } else {
+                    this.autocomplete.deleteTooltips();
+                }
+                // console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
             }
-            // console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
         });
         $(document).on("click", (evt: JQuery.ClickEvent) => {
             // console.log("[xterm-pvs] click");

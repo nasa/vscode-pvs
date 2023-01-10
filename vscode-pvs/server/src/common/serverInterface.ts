@@ -492,6 +492,16 @@ export declare interface DumpFileDescriptor {
 	files:  FileDescriptor[],
 	folder: string
 };
+export declare interface PvsDocRequest {
+	theory: PvsTheory,
+	docKind?: PvsDocKind,
+	docEngine?: string,
+	docEngineLibs?: string
+};
+export declare interface PvsDocResponse {
+	req: PvsDocRequest,
+	res: PvsDocDescriptor
+};
 export const serverRequest = {
 	typecheckFile: "pvs.typecheck-file",
 	proveFormula: "pvs.prove-formula",
@@ -525,6 +535,7 @@ export const serverRequest = {
 	quitEvaluator: "pvs.quit-evaluator",
 	clearWorkspace: "pvs.clear-workspace",
 	findSymbolDeclaration: "pvs.find-symbol-declaration",
+	pvsDoc: "pvs.pvs-doc",
 
 	saveProof: "pvs.save-proof",
 
@@ -1173,4 +1184,21 @@ export interface QuickFixAddImporting extends PvsFile {
 export interface FollowLink {
 	name: string,
 	fname: string
+};
+
+/**
+ * Kinds of documentation that can be exported with vscode-pvs
+ */
+export enum PvsDocKind {
+	embedded = "Embedded in the pvs file",
+	html = "HTML",
+	latex = "LaTex"
+};
+
+/**
+ * Documentation files Descriptor
+ */
+export interface PvsDocDescriptor {
+    outputFolder: string,
+    mainFile: string
 };

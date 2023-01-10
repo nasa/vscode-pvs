@@ -4,6 +4,7 @@ export enum XTermEvent {
     ready = "ready",
     sendText = "sendText",
     closeConsole = "closeConsole",
+    escapeKeyPressed = "escapeKeyPressed",
     didCopyText = "didCopyText",
     proofExplorerBack = "proof-explorer.back", // F4
     proofExplorerForward = "proof-explorer.forward", //F6

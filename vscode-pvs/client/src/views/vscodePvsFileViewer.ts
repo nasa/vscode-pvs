@@ -38,12 +38,12 @@
 
 import { commands, ExtensionContext, Uri, ViewColumn, WebviewPanel, window } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
-import { FileDescriptor, serverRequest } from "../common/serverInterface";
+import { FileDescriptor, PvsDocKind, PvsDocRequest, PvsDocResponse, PvsTheory, serverRequest } from "../common/serverInterface";
 import * as fsUtils from '../common/fsUtils';
 import * as path from 'path';
 import * as Handlebars from "handlebars";
 import * as vscodeUtils from '../utils/vscode-utils';
-import { Terminal } from "xterm";
+import { WebViewStyles } from "./vscodePvsSearch";
 
 const htmlTemplate: string = `
 <!DOCTYPE html>
@@ -128,10 +128,7 @@ export class VSCodePvsFileViewer {
                 } else if (fsUtils.isPvsFile(desc)) {
                     vscodeUtils.openPvsFile(desc);
                 } else if (fsUtils.isAdobePdfFile(desc)) {
-                    this.client?.sendRequest(serverRequest.openFileWithExternalApp, desc);
-                    this.client?.onNotification(serverRequest.openFileWithExternalApp, (ans: { res: string } ) => {
-                        console.log("[vscodePvsFileViewer] onNotification(serverRequest.openFileWithExternalApp)", ans);
-                    });
+                    this.openWithExternalApp(desc); // async call
                 } else {
                     // create webview
                     this.panel = window.createWebviewPanel(
@@ -201,6 +198,149 @@ export class VSCodePvsFileViewer {
             footer: otherFile ? `${otherFile.split("\n")?.length} lines` : undefined
         });
         return html;
+    }
+    /**
+     * Utility function, documents a pvs theory (interactive version)
+     */
+    async pvsDocInteractive (theory: PvsTheory): Promise<boolean> {
+        const kind: PvsDocKind = await vscodeUtils.queryDocumentTheory(theory);
+        if (kind) {
+            let success: boolean = true;
+            switch (kind) {
+                case PvsDocKind.embedded: {
+                    success = await this.pvs2tags(theory);
+                    break;
+                }
+                case PvsDocKind.html: {
+                    success = await this.pvs2html(theory, { interactive: true });
+                    break;
+                }
+                case PvsDocKind.latex: {
+                    success = await this.pvs2latex(theory, { interactive: true });
+                    break;
+                }
+                default: {
+                    // do nothing
+                }
+            }
+            return success;
+        }
+        return false;
+    }
+    /**
+     * Utility function, opens a document with an external app
+     */
+    async openWithExternalApp (fdesc: FileDescriptor, opt?: { message?: string }): Promise<boolean> {
+        const message: string = opt?.message || `Opening with default system app`;
+        vscodeUtils.showInformationMessage(message);
+        this.client?.sendRequest(serverRequest.openFileWithExternalApp, fdesc);
+        const success: boolean = await new Promise((resolve, reject) => {
+            this.client?.onNotification(serverRequest.openFileWithExternalApp, (ans: { res: string } ) => {
+                console.log("[vscodePvsFileViewer] onNotification(serverRequest.openFileWithExternalApp)", ans);
+                resolve(true);
+            });
+        });
+        return success;
+    }
+    /**
+     * Utility function, asks the user if they want to open a given file with an external app
+     */
+    async openWithExternalAppDialog (fdesc: FileDescriptor, opt?: { query?: string, opening?: string }): Promise<boolean> {
+        const file: string = fsUtils.getFileName(fsUtils.desc2fname(fdesc), { keepExtension: true })
+        const message: string = opt?.query || `Open ${file}?`;
+        const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog(message);
+        if (ans === "yes") {
+            return await this.openWithExternalApp(fdesc);
+        }
+        return false;
+    }
+    /**
+     * Utility function, asks the user if they want to open a given file in vscode
+     */
+    async openWithVscode (fdesc: FileDescriptor, opt?: { message?: string }): Promise<boolean> {
+        const file: string = fsUtils.getFileName(fsUtils.desc2fname(fdesc), { keepExtension: true })
+        const message: string = opt?.message || `Open ${file}?`;
+        const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog(message);
+        if (ans === "yes") {
+            return await vscodeUtils.openFile(fsUtils.desc2fname(fdesc));
+        }
+        return false;
+    }
+    /**
+     * Utility function, documents a pvs theory in html format
+     */
+    async pvs2html (theory: PvsTheory, opt?: { interactive?: boolean }): Promise<boolean> {
+        if (this.client) {
+            const docEngine: string = path.resolve(this.context.extensionPath, "server", "node_modules", "jsdoc", "jsdoc.js");
+            const docEngineLibs: string = path.resolve(this.context.extensionPath, "extra", "pvs-doc", "pvs2html", "lib");
+            const req: PvsDocRequest = { theory, docEngine, docEngineLibs, docKind: PvsDocKind.html };
+            this.client.sendRequest(serverRequest.pvsDoc, req);
+            const success: boolean = await new Promise ((resolve, reject) => {
+                this.client.onNotification(serverRequest.pvsDoc, async (desc: PvsDocResponse) => {
+                    if (desc?.res?.mainFile && desc?.res?.outputFolder) {
+                        const fdesc: FileDescriptor = {
+                            contextFolder: desc.res.outputFolder,
+                            fileName: fsUtils.getFileName(desc.res.mainFile), 
+                            fileExtension: fsUtils.getFileExtension(desc.res.mainFile)
+                        };
+                        if (opt?.interactive) {
+                            // async call
+                            this.openWithExternalAppDialog(fdesc, {
+                                query: `HTML files generated successfully!\nWould you like to view the files?`,
+                                opening: `Opening HTML files in the browser...`
+                            });
+                        }
+                        return resolve(true);
+                    }
+                    return resolve(false);
+                });
+            });
+            return success;
+        }
+        // else
+        console.warn(`[vscode-pvs-file-viewer] Warning: unable to send request to the server (client is null)`);
+        return false;
+    }
+    /**
+     * Utility function, documents a pvs theory in latex format
+     */
+    async pvs2latex (theory: PvsTheory, opt?: { interactive?: boolean }): Promise<boolean> {
+        if (this.client) {
+            const req: PvsDocRequest = { theory, docKind: PvsDocKind.latex };
+            this.client.sendRequest(serverRequest.pvsDoc, req);
+            const success: boolean = await new Promise ((resolve, reject) => {
+                this.client.onNotification(serverRequest.pvsDoc, async (desc: PvsDocResponse) => {
+                    if (desc?.res?.mainFile && desc?.res?.outputFolder) {
+                        const fdesc: FileDescriptor = {
+                            contextFolder: desc.res.outputFolder,
+                            fileName: fsUtils.getFileName(desc.res.mainFile), 
+                            fileExtension: fsUtils.getFileExtension(desc.res.mainFile)
+                        };
+                        if (opt?.interactive) {
+                            // async call
+                            this.openWithVscode(fdesc, {
+                                message: `LaTex files generated successfully!\nWould you like to view the files?`
+                            });
+                        }
+                        return resolve(true);
+                    }
+                    return resolve(false);
+                });
+            });
+            return success;
+        }
+        // else
+        console.warn(`[vscode-pvs-file-viewer] Warning: unable to send request to the server (client is null)`);
+        return false;
+    }
+    /**
+     * Utility function, adds the theory/author tags to the pvs file
+     */
+    async pvs2tags (theory: PvsTheory, opt?: { interactive?: boolean }): Promise<boolean> {
+        const success: boolean = await vscodeUtils.embedTheoryAuthorTags(theory);
+        const msg: string = success ? `Theory tags added successfully!` : `Theory tags already present, nothing to do`;
+        vscodeUtils.showInformationMessage(msg);
+        return success;
     }
 
 }

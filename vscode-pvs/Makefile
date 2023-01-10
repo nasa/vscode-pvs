@@ -152,7 +152,7 @@ audit:
 	-cd client && npm audit fix
 	-cd server && npm audit fix
 	-cd extra/xterm-pvs && npm audit fix
-	-cd extra/prettify-pvs && npm audit fix
+	-cd extra/pvs-doc && npm audit fix
 	@echo "\033[0;32m** Done with auditing! **\033[0m"
 
 examples:

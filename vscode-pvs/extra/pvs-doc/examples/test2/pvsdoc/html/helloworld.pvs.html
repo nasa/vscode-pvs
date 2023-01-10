@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Source: helloworld.pvs</title>
+
+    <script src="scripts/prettify/prettify-pvs-code.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/prettify-pvs-code.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: helloworld.pvs</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>%%
+% @theory: helloworld
+% @author: pmasci
+% @date: Wed, 07 Dec 2022 15:42:33 GMT
+%%
+helloworld: THEORY
+BEGIN
+
+  % utility function, computes the absolute value of a number
+  abs (x: real): real = IF x > 0 THEN x ELSE -x ENDIF
+
+  % @QED always_positive proved by pmasci on Sun, 22 May 2022 20:30:53 GMT
+  always_positive: THEOREM
+    FORALL (x: real): abs(x) >= 0
+
+  % this theorem can be proved by expanding the definition (negreal is a subtype representing negative reals)
+  % @QED always_negative proved by pmasci on Wed, 25 May 2022 13:32:13 GMT
+  always_negative: THEOREM
+    FORALL (x: negreal): x < 0
+
+  % this theorem is trivially true
+  foo: LEMMA
+    true
+
+  % Computes the square root of a non-negative real number
+  % by recursively applying Newton's method n times
+  % The algorithm starts with some guess $x_1 > 0$ and
+  % computes the sequence of improved guesses
+  % $x_{n+1} = \frac{1}{2} \times (x_n + a / x_n)$
+  sqrt_newton(a: nnreal, n: nat): RECURSIVE posreal =
+    IF n = 0 THEN a + 1
+    ELSE LET r = sqrt_newton(a, n - 1) 
+          IN (1/2) * (r + a/r)
+    ENDIF
+  MEASURE n + 1
+
+  % utility function, returns a list with the output of sqrt_newton
+  % the n-th element of the list is the output produced by sqrt_newton at iteration n
+  plot_newton(a: nnreal, n: posnat): RECURSIVE list[real] =
+    IF n <= 1 THEN (: sqrt_newton(a, n) :)
+    ELSE plot_newton(a, n - 1) o (: sqrt_newton(a, n) :) ENDIF
+  MEASURE n
+
+  % this expression can be rendered using the plot functionality provided by vscode-pvs
+  plot_sqrt2: list[real] = plot_newton(2, 5)
+
+  %--------------------------------------------
+  %% First example plots a list of ordered pairs
+  %  as a scatter plot
+  %--------------------------------------------
+  scatterplot: list[[real, real]] = (: (1/2, 2), (2, -1), (3, -2/3) :)
+
+  %--------------------------------------------
+  %% Second example: plotting a data series
+  %  as a linear plot
+  %--------------------------------------------
+  series1: list[real] = (: 1, -1 , -2/3 :)
+
+  %--------------------------------------------
+  %% Third example: plotting a tuple of
+  %  two lists, the first one represents the
+  %  horizontal coordinates, the second list
+  %  represents the vertical coordinates
+  %--------------------------------------------
+  series2: [ list[real], list[real] ] = ((: 1/2, 2, 3 :), (: 1, -1, -2/3 :))
+
+  %--------------------------------------------
+  %% Fourth example: plotting a tuple of
+  %  four lists, the first one represents the
+  %  horizontal coordinates, the second and third
+  %  represent the vertical coordinates of two
+  %  different series
+  %--------------------------------------------
+  multiseries: [ list[real], list[real], list[real], list[real] ] = (
+    (: 1/2 , 2 , 3 :),  % x datapoints
+    (: 1, -1 , -2/3 :), % y1 datapoints
+    (: 0, -4.1 , -3 :), % y2 datapoints
+    (: 5, 1 , -2 :)  % y3 datapoints
+  )
+
+  %--------------------------------------------
+  %% Fourth example: plotting a tuple of pairs of lists
+  %  each tuple is a different dataseries with its x and y coordinates
+  %--------------------------------------------
+  multiseries_2: [
+    [list[real], list[real]], 
+    [list[real], list[real]], 
+    [list[real], list[real]]
+  ] = (
+    ((: 0, 1, 2 :), (: 0, 1, 1.5 :)), % x,y values for series 1
+    ((: 0, 2, 4 :), (: 0, 1, 1.5 :)), % x,y values for series 2
+    ((: 0, 3, 6 :), (: 0, 1, 1.5 :))  % x,y values for series 3
+  )
+
+  % Example markdown expressions that can be rendered in vscode-pvs
+  % click the inline 'view-as-markdown' shown at the beginning of the file
+  % to view the rendered version of the markdown expressions
+  % $\sum_{i=1}^n X_i$
+  % $\to$
+  % $k_{n+1}$
+  % $n^2$
+  % $k_n^2$
+  % $\frac{4z^3}{16}$
+  % $\frac{n!}{k!(n-k)!}$
+  % $\binom{n}{k}$
+  % $\frac{\frac{x}{1}}{x - y}$
+  % $^3/_7$
+  % $\sqrt{k}$
+  % $\sqrt[n]{k}$
+  % $\sum_{i=1}^{10} t_i$
+  % $\int_0^\infty \mathrm{e}^{-x}\,\mathrm{d}x$
+  % $\hat{a}$
+  % $\bar{a}$
+  % $\dot{a}$
+  % $\ddot{a}$
+  % $\overrightarrow{AB}$
+  % [vscode-pvs repository](https://github.com/nasa/vscode-pvs)
+  % ![sqrt_newton_plot](sqrt_newton_n.png)
+
+END helloworld</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Theory helloworld</a></h2><h3>Theorems</h3><ul><li><a href="global.html#event:always_positive">always_positive</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/nasa/vscode-pvs">VSCode-PVS</a> through <a href="https://github.com/jsdoc/jsdoc">JSDoc4.0.0</a> on Thu Jan 05 2023 11:36:32 GMT-0500 (Eastern Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

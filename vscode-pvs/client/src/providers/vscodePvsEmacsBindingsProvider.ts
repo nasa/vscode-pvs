@@ -113,6 +113,7 @@ const cmds: string[] = [
 
 	"view-as-markdown",
 	"document-theory",
+	"pvs-doc", // equivalent to document-theory
 
 	"discharge-matching-tccs"
 ];
@@ -177,8 +178,9 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.view-as-markdown', desc);
 					break;
 				}
-				case "document-theory": {
-					commands.executeCommand('vscode-pvs.document-theory', desc);
+				case "document-theory":
+				case "pvs-doc": {
+						commands.executeCommand('vscode-pvs.pvs-doc', desc);
 					break;
 				}
 				case "reset-pvs-library-path": {

@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.63",
+	"version": "1.0.64-epsilon",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -524,7 +524,17 @@
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs",
-				"title": "Discharge TCCs",
+				"title": "Discharge All TCCs",
+				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"category": "pvs",
+				"icon": {
+					"dark": "icons/svg-play-circle-icon.svg",
+					"light": "icons/svg-play-circle-icon.svg"
+				}
+			},
+			{
+				"command": "vscode-pvs.discharge-matching-tccs",
+				"title": "Discharge Matching TCCs",
 				"enablement": "pvs-server-active == true && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
@@ -1079,6 +1089,11 @@
 					"command": "vscode-pvs.prove-importchain",
 					"when": "view == workspace-explorer-view && viewItem != workspace-overview",
 					"group": "context-menu/ctrl-common-2"
+				},
+				{
+					"command": "vscode-pvs.discharge-matching-tccs",
+					"when": "view == workspace-explorer-view && viewItem == tcc",
+					"group": "context-menu/ctrl-common-3"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs",
@@ -1961,7 +1976,7 @@
 		"eslint": "^8.7.0",
 		"mocha": "^9.1.4",
 		"ts-node": "^10.4.0",
-		"vsce": "^2.10.0"
+		"vsce": "^2.13.0"
 	},
 	"resolutions": {
 		"mem": "^6.1.0",

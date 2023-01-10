@@ -1309,11 +1309,52 @@ export function makeTheoryHeader (theoryName: string, opt?: { authorKey?: string
 /**
  * Utility function, checks if the theory includes the header documentation
  */
-export function includesTheoryHeader (theoryName: string, fileContent: string): boolean {
+export function includesTheoryTag (theoryName: string, fileContent: string): boolean {
     if (theoryName && fileContent) {
         return fileContent.replace(/\s+/g, "").includes(`%@theory:${theoryName}`);
     }
     return false;
+}
+
+/**
+ * tags that can be used in a pvs theory
+ */
+export enum PvsTag {
+    author = "@author", // author of the theory/library
+    authors = "@authors", // authors of the theory/library
+    contributors = "@contributors", // contributors to the theory/library
+
+    theory = "@theory", // theory declaration
+    theorem = "@theorem", // theorem declaration
+    majortheorem = "@majortheorem", // major theorem declaration
+    lemma = "@lemma", // lemma declaration
+
+    function = "@function", // function declaration
+    returns = "@returns", // function return type
+    datatype = "@datatype", // datatype declaration
+    param = "@param", // theory, function, or datatype parameter
+    const = "@const", // constant declaration
+    
+    description = "@description", // description of the theory/library
+    desc = "@desc", // shortcut for @description
+    date = "@date", // date of creation of the theory/library
+    QED = "@QED", // theorem proved
+    yields = "@yields", // theorem yields a verification result, e.g., unfinished, failed, QED
+    stats = "@stats" // stats for a proof, e.g., run time
+};
+
+/**
+ * Utility function, returns the value of a given tag in the theory
+ */
+export function getPvsTag (tag: PvsTag, fileContent: string): string {
+    if (tag && fileContent) {
+        const regex: RegExp = new RegExp(`%\\s*${tag}\[\\s+\|:\]\\s*(.*)`, "gi");
+        const match: RegExpMatchArray = regex.exec(fileContent);
+        const val: string = match?.length > 1 ? match[1].trim() : "";
+        // console.log(`[language-utils] getPvsTag`, { tag, val, regex: regex.source });
+        return val;
+    }
+    return null;
 }
 
 /**

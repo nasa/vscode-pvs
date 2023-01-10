@@ -1073,11 +1073,13 @@ export class EventsDispatcher {
 
         // document-theory
         context.subscriptions.push(commands.registerCommand("vscode-pvs.document-theory", async (desc: PvsTheory) => {
+            commands.executeCommand('vscode-pvs.pvs-doc', desc);
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.pvs-doc", async (desc: PvsTheory) => {
             if (desc?.theoryName) {
-                await vscodeUtils.documentTheoryInActiveEditor(desc);
+                this.fileViewer.pvsDocInteractive(desc); // async call
             }
         }));
-
 
         // pvsio-plot
         context.subscriptions.push(commands.registerCommand("vscode-pvs.plot-expression", async (resource: string | {

@@ -409,8 +409,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         this.showHelpMessage(msg);
                     }, 500);
                     // disable response handlers
-                    this.disableHandlers();
-                    this.sessionType = null;
+                    this.terminateSession();
                 } else {
                     console.log(data.res);
                 }
@@ -558,14 +557,11 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 const msg: string = `Evaluator session terminated.\nYou can now <span class="btn btn-sm btn-primary btn-help close-action m-0 p-0">close</span> the evaluator console.`;
                 this.showHelpMessage(msg);
                 // disable response handlers
-                this.disableHandlers();
-                // clear session type
-                this.sessionType = null;
+                this.terminateSession();
                 // clear target
                 this.target = null;
                 // reset global vscode-pvs variables so other views can be updated properly
-                vscodeUtils.resetGlobals();                    
-                
+                vscodeUtils.resetGlobals();
             } else {
                 if (data.res) {
                     const hints: HintsObject = getHints(this.sessionType, {
@@ -614,7 +610,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.log("\n" + xtermMsg, {
             sessionEnd: true
         });
-        this.disableHandlers();
+        this.terminateSession();
         return true;
     }
 
@@ -988,15 +984,24 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.panel?.webview?.postMessage(message);
     }
     /**
-     * Internal function, disables prover and evaluator handlers
+     * Internal function, disabled handlers and marks the session as terminated
      */
-    protected disableHandlers (): void {
+    protected terminateSession (): void {
+        // disable handlers
         this.client.onRequest(serverEvent.proofCommandResponse,() => {
             
         });
         this.client.onRequest(serverEvent.evaluatorCommandResponse, () => {
 
         });
+        // clear session type -- this is equivalent to marking the session as terminated
+        this.sessionType = null;
+    }
+    /**
+     * Utility function, returns true if the session is terminated
+     */
+    sessionTerminated (): boolean {
+        return this.sessionType === null || this.sessionType === undefined;
     }
     /**
      * Internal function, creates the webview
@@ -1116,6 +1121,13 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                             this.dispose();
                                             break;
                                         }
+                                        case XTermEvent.escapeKeyPressed: {
+                                            // close the console if this is a prover session
+                                            if (this.sessionTerminated()) {
+                                                this.dispose();
+                                            }
+                                            break;
+                                        }
                                         case XTermEvent.proofExplorerBack:
                                         case XTermEvent.proofExplorerForward:
                                         case XTermEvent.proofExplorerRun: 
@@ -1220,6 +1232,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermEvent.proofExplorerRun,
                         XTermEvent.proofExplorerEdit,
                         XTermEvent.didCopyText,
+                        XTermEvent.escapeKeyPressed,
                         XTermEvent.click
                     ],
                     sessionType: this.sessionType

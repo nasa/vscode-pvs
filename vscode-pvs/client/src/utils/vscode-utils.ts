@@ -43,7 +43,7 @@ import * as os from 'os';
 import { FormulaItem, TheoryItem, WorkspaceOverviewItem } from "../views/vscodePvsWorkspaceExplorer";
 import { 
     PvsTheory, FileDescriptor, ContextFolder, PvsFormula, GotoFileDescriptor, Position, Range, 
-    QuickFixReplace, QuickFixAddImporting, VSCodePvsVersionDescriptor
+    QuickFixReplace, QuickFixAddImporting, VSCodePvsVersionDescriptor, PvsDocKind
 } from '../common/serverInterface';
 import { CancellationToken } from 'vscode-languageclient';
 import { XTermColorTheme } from '../common/colorUtils';
@@ -568,12 +568,14 @@ export async function openWorkspace (): Promise<void> {
 /**
  * Opens a file in the editor
  */
-export async function openFile (fname: string, opt?: { selection?: vscode.Range }): Promise<void> {
+export async function openFile (fname: string, opt?: { selection?: vscode.Range }): Promise<boolean> {
     opt = opt || {};
     if (fname) {
         const fileUri: vscode.Uri = vscode.Uri.file(fname);
         vscode.window.showTextDocument(fileUri, { preserveFocus: true, ...opt });
+        return true;
     }
+    return false;
 }
 /**
  * Opens a pvs file in the editor and adds the containing folder in file explorer
@@ -791,26 +793,53 @@ export async function commentProofliteInActiveEditor (): Promise<boolean> {
 }
 
 /**
- * Utility function, documents a given theory with a standard header
- * %%
-    % @theory: ${theoryName}
-    % @author: ${author}
-    %
+ * Utility function, queries the user on which kind of documentation they would like to generate
+ * @param theory 
  */
-export async function documentTheoryInActiveEditor (theory: PvsTheory): Promise<boolean> {
+export async function queryDocumentTheory (theory: PvsTheory): Promise<PvsDocKind> {
+    if (theory?.theoryName) {
+        const hasEmbeddedDoc: boolean = theoryInActiveEditorHasDocumentHeader(theory);
+        const msg: string = `Which kind of documentation would you like to generate for theory ${theory}?`;
+        const docKinds: string[] = (hasEmbeddedDoc ? [] : [ PvsDocKind.embedded ]).concat([ PvsDocKind.html, PvsDocKind.latex ]);
+		const ans: PvsDocKind = <PvsDocKind> await vscode.window.showInformationMessage(msg, { modal: true }, ...docKinds);
+        return ans;
+    }
+    return null;
+}
+
+/**
+ * Utility function, documents a given theory in the pvs file (tags @theory and @author)
+ */
+export async function embedTheoryAuthorTags (theory: PvsTheory): Promise<boolean> {
+    const includesDoc: boolean = theoryInActiveEditorHasDocumentHeader(theory);
+    if (!includesDoc && theory?.line >= 0 && theory?.theoryName) {
+        const activeTextEditor: vscode.TextEditor = getActivePvsEditor();
+        if (activeTextEditor) {
+            const activeDocument: vscode.TextDocument = activeTextEditor?.document;
+            // sanity check
+            if (fsUtils.normalizePath(activeDocument?.fileName) === fsUtils.normalizePath(fsUtils.desc2fname(theory))) {
+                const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
+                const headerDoc: string = utils.makeTheoryHeader(theory.theoryName);
+                edit.insert(activeDocument.uri, new vscode.Position(theory.line, 0), headerDoc);
+                const success: boolean = await vscode.workspace.applyEdit(edit);
+                return success;
+            }
+        }
+    }
+    return false;
+}
+
+/**
+ * Utility function, checks if the theory in the active editor embeds already a documentation header
+ */
+export function theoryInActiveEditorHasDocumentHeader (theory: PvsTheory): boolean {
     if (theory?.line >= 0 && theory?.theoryName) {
         const activeTextEditor: vscode.TextEditor = vscode.window?.activeTextEditor;
         if (activeTextEditor) {
             const activeDocument: vscode.TextDocument = activeTextEditor?.document;
             if (activeDocument) {
-                const includesDoc: boolean = utils.includesTheoryHeader(theory.theoryName, activeDocument.getText());
-                if (!includesDoc) {
-                    const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
-                    const headerDoc: string = utils.makeTheoryHeader(theory.theoryName);
-                    edit.insert(activeDocument.uri, new vscode.Position(theory.line, 0), headerDoc);
-                    const success: boolean = await vscode.workspace.applyEdit(edit);
-                    return success;
-                }
+                const includesDoc: boolean = utils.includesTheoryTag(theory.theoryName, activeDocument.getText());
+                return includesDoc;
             }
         }
     }
