@@ -350,8 +350,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		this.client.start();
 		this.client.onReady().then(() => {
 			// select pvs-server output channel (there's no such API, a workaround is to show and then hide the channel)
-			this.client.outputChannel.show(true);
-			this.client.outputChannel.hide();
+			// this.client.outputChannel.show(true);
+			// this.client.outputChannel.hide();
 
 			// initialise service providers defined on the client-side
 			this.statusBar.showProgress("Starting vscode-pvs...");
