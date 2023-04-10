@@ -373,6 +373,11 @@ export const symbols: Symbol[] = [
         "body": [ "∵" ]
     }, {
         "description": "logical negation",
+        "prefix": "\\not ¬",
+        "scope": "pvs",
+        "body": [ "¬" ]
+    }, {
+        "description": "logical negation",
         "prefix": "\\neg ¬",
         "scope": "pvs",
         "body": [ "¬" ]
@@ -927,6 +932,16 @@ export const symbols: Symbol[] = [
         "scope": "pvs",
         "body": [ "⊥" ]
     }, {
+        "description": "top",
+        "prefix": "\\top ⊤",
+        "scope": "pvs",
+        "body": [ "⊤" ]
+    }, {
+        "description": "tee",
+        "prefix": "\\tee ⊤",
+        "scope": "pvs",
+        "body": [ "⊤" ]
+    }, {
         "description": "bar turnstile",
         "prefix": "\\barturnstile ⊩",
         "scope": "pvs",
@@ -1061,6 +1076,141 @@ export const symbols: Symbol[] = [
         "prefix": "\\wr ≀",
         "scope": "pvs",
         "body": [ "≀" ]
+    }, {
+        "description": "alpha",
+        "prefix": "\\alpha α",
+        "scope": "pvs",
+        "body": [ "α" ]
+    }, {
+        "description": "beta",
+        "prefix": "\\beta β",
+        "scope": "pvs",
+        "body": [ "β" ]
+    }, {
+        "description": "gamma",
+        "prefix": "\\gamma γ",
+        "scope": "pvs",
+        "body": [ "γ" ]
+    }, {
+        "description": "Gamma",
+        "prefix": "\\Gamma Γ",
+        "scope": "pvs",
+        "body": [ "Γ" ]
+    }, {
+        "description": "delta",
+        "prefix": "\\delta δ",
+        "scope": "pvs",
+        "body": [ "δ" ]
+    }, {
+        "description": "Delta",
+        "prefix": "\\Delta Δ",
+        "scope": "pvs",
+        "body": [ "Δ" ]
+    }, {
+        "description": "epsilon",
+        "prefix": "\\epsilon ε",
+        "scope": "pvs",
+        "body": [ "ε" ]
+    }, {
+        "description": "zeta",
+        "prefix": "\\zeta ζ",
+        "scope": "pvs",
+        "body": [ "ζ" ]
+    }, {
+        "description": "eta",
+        "prefix": "\\eta η",
+        "scope": "pvs",
+        "body": [ "η" ]
+    }, {
+        "description": "theta",
+        "prefix": "\\theta θ",
+        "scope": "pvs",
+        "body": [ "θ" ]
+    }, {
+        "description": "iota",
+        "prefix": "\\iota ι",
+        "scope": "pvs",
+        "body": [ "ι" ]
+    }, {
+        "description": "lambda",
+        "prefix": "\\lambda λ",
+        "scope": "pvs",
+        "body": [ "λ" ]
+    }, {
+        "description": "mu",
+        "prefix": "\\mu μ",
+        "scope": "pvs",
+        "body": [ "μ" ]
+    }, {
+        "description": "nu",
+        "prefix": "\\nu ν",
+        "scope": "pvs",
+        "body": [ "ν" ]
+    }, {
+        "description": "xi",
+        "prefix": "\\xi ξ",
+        "scope": "pvs",
+        "body": [ "ξ" ]
+    }, {
+        "description": "pi",
+        "prefix": "\\pi π",
+        "scope": "pvs",
+        "body": [ "π" ]
+    }, {
+        "description": "ro",
+        "prefix": "\\ro ρ",
+        "scope": "pvs",
+        "body": [ "ρ" ]
+    }, {
+        "description": "ro",
+        "prefix": "\\ro ρ",
+        "scope": "pvs",
+        "body": [ "ρ" ]
+    }, {
+        "description": "sigma",
+        "prefix": "\\sigma σ",
+        "scope": "pvs",
+        "body": [ "σ" ]
+    }, {
+        "description": "Sigma",
+        "prefix": "\\Sigma Σ",
+        "scope": "pvs",
+        "body": [ "Σ" ]
+    }, {
+        "description": "tau",
+        "prefix": "\\tau τ",
+        "scope": "pvs",
+        "body": [ "τ" ]
+    }, {
+        "description": "phi",
+        "prefix": "\\phi φ",
+        "scope": "pvs",
+        "body": [ "φ" ]
+    }, {
+        "description": "chi",
+        "prefix": "\\chi χ",
+        "scope": "pvs",
+        "body": [ "χ" ]
+    }, {
+        "description": "psi",
+        "prefix": "\\psi ψ",
+        "scope": "pvs",
+        "body": [ "ψ" ]
+    }, {
+        "description": "omega",
+        "prefix": "\\omega ω",
+        "scope": "pvs",
+        "body": [ "ω" ]
+    }, {
+        "description": "Omega",
+        "prefix": "\\Omega Ω",
+        "scope": "pvs",
+        "body": [ "Ω" ]
+    }, {
+        "description": "infinity",
+        "prefix": "\\infty ∞",
+        "scope": "pvs",
+        "body": [ "∞" ]
     }
 ];
 /**

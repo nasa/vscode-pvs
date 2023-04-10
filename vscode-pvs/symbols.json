@@ -925,6 +925,16 @@
         "scope": "pvs",
         "body": [ "⊥" ]
     }, {
+        "description": "top",
+        "prefix": "\\top ⊤",
+        "scope": "pvs",
+        "body": [ "⊤" ]
+    }, {
+        "description": "tee",
+        "prefix": "\\tee ⊤",
+        "scope": "pvs",
+        "body": [ "⊤" ]
+    }, {
         "description": "bar turnstile",
         "prefix": "\\barturnstile ⊩",
         "scope": "pvs",
@@ -1189,5 +1199,10 @@
         "prefix": "\\Omega Ω",
         "scope": "pvs",
         "body": [ "Ω" ]
+    }, {
+        "description": "infinity",
+        "prefix": "\\infty ∞",
+        "scope": "pvs",
+        "body": [ "∞" ]
     }
 ]
