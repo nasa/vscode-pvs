@@ -470,7 +470,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         const activeEditor: TextEditor = vscodeUtils.getActivePvsEditor();
         // if the file is currently open in the editor, save file first
         await activeEditor?.document?.save();
-        if (!req) {
+        if (!req || !req.theoryName) {
             // this happens when using the toolbar to start the evaluator
             const fname: string = activeEditor?.document?.fileName;
             if (fname) {
@@ -1154,8 +1154,6 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
                         // set language to pvs
                         vscodeUtils.setEditorLanguagetoPVS();
-                        // set terminal visible to true
-                        commands.executeCommand('setContext', 'terminal.visible', true);
                     } catch (err) {
                         console.error(err);
                         resolve(false);
