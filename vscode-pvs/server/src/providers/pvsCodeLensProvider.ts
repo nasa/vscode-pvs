@@ -129,17 +129,17 @@ export class PvsCodeLensProvider {
                             }
                         });
                         // add codelens for theory documentation if the theory does not include any doc header
-                        const includesDoc: boolean = utils.includesTheoryTag(theoryName, docUp);
-                        if (!includesDoc) {
-                            codeLens.push({
-                                range,
-                                command: {
-                                    title: "document-theory",
-                                    command: "vscode-pvs.document-theory",
-                                    arguments: [ theory ]
-                                }
-                            });    
-                        }
+                        // const includesDoc: boolean = utils.includesTheoryTag(theoryName, docUp);
+                        // if (!includesDoc) {
+                        //     codeLens.push({
+                        //         range,
+                        //         command: {
+                        //             title: "document-theory",
+                        //             command: "vscode-pvs.document-theory",
+                        //             arguments: [ theory ]
+                        //         }
+                        //     });    
+                        // }
                     }
                 }
             }
