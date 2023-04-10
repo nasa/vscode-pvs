@@ -1278,7 +1278,7 @@ export function resetGlobals (): void {
     vscode.commands.executeCommand('setContext', 'proof-mate.visible', false);
     vscode.commands.executeCommand('setContext', 'proof-explorer.visible', false);
     vscode.commands.executeCommand('setContext', 'autorun', false);
-    vscode.commands.executeCommand('setContext', 'terminal.visible', false);
+    // vscode.commands.executeCommand('setContext', 'terminal.visible', false);
 }
 
 /**
