@@ -592,7 +592,7 @@ export const serverEvent = {
 
 	viewPreludeFileResponse: "pvs.response.view-prelude-file",
 
-	getContextDescriptorResponse: "pvs.response.get-context-descriptor",
+	// getContextDescriptorResponse: "pvs.response.get-context-descriptor",
 	getFileDescriptorResponse: "pvs.response.get-file-descriptor",
 	getGatewayConfigResponse: "pvs.response.get-cli-descriptor",
 	getImportChainTheoremsResponse: "pvs.response.get-importchain-theorems",

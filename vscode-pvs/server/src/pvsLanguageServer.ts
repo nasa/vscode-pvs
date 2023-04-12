@@ -1947,13 +1947,14 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				this.proofExplorer?.interruptProofCommand();
 				// which pvs-server command should I invoke to stop the operation??
 			});
-			this.connection?.onRequest(serverRequest.getContextDescriptor, (request: { contextFolder: string }) => {
+			this.connection?.onRequest(serverRequest.getContextDescriptor, async (request: { contextFolder: string, force?: boolean }) => {
 				if (request && request.contextFolder) {
-					if (!this.isSameWorkspace(request.contextFolder)) {
+					const theoriesFromSelectedFile: boolean = !!(await this.connection?.workspace.getConfiguration("pvs.pvsWorkspaceTheoriesFromActiveFile"));
+					if (!this.isSameWorkspace(request.contextFolder) || theoriesFromSelectedFile || request.force) {
 						// send information to the client, to populate theory explorer on the front-end
 						this.postTask(() => {
 							this.getContextDescriptor(request).then((cdesc: PvsContextDescriptor) => {
-								this.connection?.sendRequest(serverEvent.getContextDescriptorResponse, cdesc);
+								this.connection?.sendNotification(serverRequest.getContextDescriptor, cdesc);
 							});	
 						})
 					}

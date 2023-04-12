@@ -39,14 +39,14 @@ import {
 	ExtensionContext, TreeItemCollapsibleState, commands, window,
 	Uri, Range, Position, TreeItem, Command, workspace, ViewColumn, 
 	WorkspaceEdit, TextEditor, FileStat, ProgressLocation, 
-	Progress, ThemeIcon, ThemeColor 
+	Progress, ThemeIcon, ThemeColor, TextDocument 
 } from 'vscode';
 import { CancellationToken, LanguageClient } from 'vscode-languageclient';
 import { 
 	FormulaDescriptor, TheoryDescriptor, PvsContextDescriptor, 
 	ProofStatus, PvsFileDescriptor, serverRequest, serverEvent, 
 	PvsFormula, PvsTheory, ContextFolder, FileDescriptor, 
-	StatusProofChain, GotoFileDescriptor 
+	StatusProofChain, GotoFileDescriptor, PvsFile 
 } from '../common/serverInterface';
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
@@ -54,6 +54,7 @@ import * as utils from '../common/languageUtils';
 import { Explorer, VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
 import * as vscodeUtils from '../utils/vscode-utils';
 import { resolve } from 'path';
+import { getActivePvsFile } from '../utils/vscode-utils';
 
 //-- files
 class PvsFileItem extends TreeItem {
@@ -608,6 +609,9 @@ export class WorkspaceOverviewItem extends OverviewItem {
 	protected path: string; // full path of the workspace
 	protected folder: FolderOverviewItem;
 
+	/**
+	 * Constructor
+	 */
 	constructor(desc: PvsContextDescriptor) {
 		super("workspace-overview", desc, TreeItemCollapsibleState.Expanded);
 		this.folder = new FolderOverviewItem(desc);
@@ -636,6 +640,9 @@ export class WorkspaceOverviewItem extends OverviewItem {
 	// 		this.updateLabel();
 	// 	}
 	// }
+	/**
+	 * Get the current mode of operation (theoriesFromActiveFile | theoriesFromActiveContext)
+	 */
 	collapseAllTheories (): void {
 		this.folder?.collapseAllTheories();
 	}
@@ -684,6 +691,14 @@ export class WorkspaceOverviewItem extends OverviewItem {
 
 
 /**
+ * PVS Workspace rendering modes
+ */
+export enum WorkspaceMode {
+	theoriesFromActiveFile = "theoriesFromActiveFile",
+	theoriesFromActiveContext = "theoriesFromActiveContext"
+};
+
+/**
  * Data provider for PVS Explorer view
  */
 export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeDataProvider<TreeItem> {
@@ -710,6 +725,9 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 
 	protected filterOnTypeActive: boolean = false;
 
+	protected activeFile: string; // last active pvs file
+	protected mode: WorkspaceMode;
+
 	/**
 	 * @constructor
 	 * @param client Language client 
@@ -721,6 +739,9 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		this.providerView = providerView;
 		this.proofExplorer = proofExplorer;
 		this.enabled = true; // workspace explorer is always enabled
+		this.mode = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile") ? 
+			WorkspaceMode.theoriesFromActiveFile 
+				: WorkspaceMode.theoriesFromActiveContext;
 		// register tree view.
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
@@ -732,6 +753,42 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	 */
 	protected getPvsPath (): string {
 		return vscodeUtils.getConfiguration("pvs.path");
+	}
+
+	/**
+	 * Update active pvs file
+	 */
+	setActivePvsFile (fname: string): boolean {
+		this.activeFile = fname;
+		return true;
+	}
+	/**
+	 * Get active pvs file
+	 */
+	getActivePvsFile (): string {
+		return this.activeFile;
+	}
+	/**
+	 * Get mode
+	 */
+	getMode (): WorkspaceMode {
+		return this.mode;
+	}
+	/**
+	 * Set mode
+	 */
+	setMode (mode: WorkspaceMode): boolean {
+		if (mode !== null && mode !== undefined) {
+			this.mode = mode;
+			return true;
+		}
+		return false;
+	}
+	/**
+	 * Returns true if the current mode is WorkspaceMode.theoriesFromActiveFile
+	 */
+	theoriesFromActiveFile (): boolean {
+		return this.mode === WorkspaceMode.theoriesFromActiveFile;
 	}
 
 	/**
@@ -892,6 +949,23 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	 */
 	updateContextFolder (desc: PvsContextDescriptor, opt?: { tccDescriptor?: boolean }): void {
 		if (desc) {
+			const theoriesFromSelectedFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
+			if (theoriesFromSelectedFile) {
+				const activePvsFile: TextDocument = getActivePvsFile();
+				const activeDesc: PvsFile = fsUtils.fname2desc(activePvsFile?.fileName || this.activeFile);
+				// sanity check
+				if (activeDesc?.contextFolder === desc.contextFolder) {
+					activeDesc.fileExtension = ".pvs"; // we force the .pvs extension because the editor could be open on a .summary file
+					// remove all file descriptors except the one related to the selected file
+					// TODO: do we need to do search for ADT files associated to the current file?
+					this.activeFile = fsUtils.desc2fname(activeDesc);
+					const allDesc: { [fname: string]: PvsFileDescriptor } = desc.fileDescriptors;
+					desc.fileDescriptors = {};
+					desc.fileDescriptors[this.activeFile] = allDesc[this.activeFile];
+				} else {
+					console.warn("[vscode-pvs-explorer] Warning: updateContextFolder has received a mismatching context folder update", { desc, activePvsFile})
+				}
+			}
 			if (this.root) {
 				this.root.updateContextFolder(desc, opt);
 			} else {
@@ -1418,7 +1492,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	 * Handler activation function
 	 * @param context Client context 
 	 */
-	activate(context: ExtensionContext) {
+	activate (context: ExtensionContext) {
 		// all commands in the form vscode-pvs.xxxx are handled by VSCodeEventsDispatcher
 
 		context.subscriptions.push(commands.registerCommand('workspace-explorer.collapse-all-theories', () => {

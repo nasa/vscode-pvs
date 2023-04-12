@@ -571,7 +571,7 @@ export class EventsDispatcher {
             }
         });
 
-		this.client.onRequest(serverEvent.getContextDescriptorResponse, (desc: PvsContextDescriptor) => {
+		this.client.onNotification(serverRequest.getContextDescriptor, (desc: PvsContextDescriptor) => {
             this.workspaceExplorer.updateContextFolder(desc);
         });
 

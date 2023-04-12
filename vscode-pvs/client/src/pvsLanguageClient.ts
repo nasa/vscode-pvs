@@ -42,7 +42,7 @@ import {
 } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, CancellationToken } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
-import { VSCodePvsWorkspaceExplorer } from './views/vscodePvsWorkspaceExplorer';
+import { VSCodePvsWorkspaceExplorer, WorkspaceMode } from './views/vscodePvsWorkspaceExplorer';
 import { VSCodePvsEmacsBindingsProvider } from './providers/vscodePvsEmacsBindingsProvider';
 import { VSCodePvsProofExplorer } from './views/vscodePvsProofExplorer';
 import * as fsUtils from './common/fsUtils';
@@ -167,9 +167,12 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				if (fsUtils.isPvsFile(fname) && fname === editor?.document?.fileName) {
 					vscodeUtils.loadPvsFileIcons();
 					const contextFolder: string = fsUtils.getContextFolder(fname);
-					const explorerWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
-					if (contextFolder !== explorerWorkspace) {
+					const currentWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
+					const theoriesFromActiveFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
+					if (contextFolder !== currentWorkspace || theoriesFromActiveFile || theoriesFromActiveFile !== this.workspaceExplorer?.theoriesFromActiveFile()) {
 						this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder });
+						this.workspaceExplorer.setMode(theoriesFromActiveFile ? WorkspaceMode.theoriesFromActiveFile : WorkspaceMode.theoriesFromActiveContext);
+						this.workspaceExplorer.setActivePvsFile(fname);
 						// don't update file explorer, as any modification will create an Untitled workspace, which might be problematic for vscode-pvs users
 						// because users will be asked to save the workspace on exit, and if they choose to save the workspace, 
 						// they will also be asked whether they want to open the workspace configuration next time they will work on that folder
@@ -199,7 +202,6 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		window.onDidChangeActiveTextEditor(async (event: TextEditor) => {
 			const activeEditor: TextEditor = getActivePvsEditor();//window.activeTextEditor; //event || window.activeTextEditor;
 			const fname: string =  activeEditor?.document?.fileName;
-			const state: WindowState = window.state;
 			if (event?.document?.languageId === "pvs" || fsUtils.isPvsFile(activeEditor?.document?.fileName)) {
 				commands.executeCommand('setContext', 'pvs-server-active', true);
 				// show status bar
@@ -209,9 +211,12 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				// trigger file parsing to get syntax diagnostics
 				const contextFolder: string = fsUtils.getContextFolder(fname);
 				// update workspace-explorer if needed
-				const explorerWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
-				if (contextFolder !== explorerWorkspace) {
-					this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder });
+				const currentWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
+				const theoriesFromActiveFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
+				if (contextFolder !== currentWorkspace || theoriesFromActiveFile || theoriesFromActiveFile !== this.workspaceExplorer?.theoriesFromActiveFile()) {
+					this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder, force: theoriesFromActiveFile !== this.workspaceExplorer?.theoriesFromActiveFile() });
+					this.workspaceExplorer.setMode(theoriesFromActiveFile ? WorkspaceMode.theoriesFromActiveFile : WorkspaceMode.theoriesFromActiveContext);
+					this.workspaceExplorer.setActivePvsFile(fname);
 					// don't update file explorer, see comments in onDidOpenTextDocument
 					// const contextFolderUri: Uri = Uri.file(contextFolder);
 					// if (!workspace.getWorkspaceFolder(contextFolderUri)) {
@@ -270,6 +275,17 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			if (this.xterm.isActive()) {
 				const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.proverConsole.autocompleteWithEnter");
 				this.xterm.autocompleteWithEnter(flag);
+			}
+
+			// update workspace explorer if needed
+			const theoriesFromActiveFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
+			if (theoriesFromActiveFile !== this.workspaceExplorer.theoriesFromActiveFile()) {
+				const activeEditor: TextEditor = getActivePvsEditor();//window.activeTextEditor; //event || window.activeTextEditor;
+				const fname: string =  activeEditor?.document?.fileName || this.workspaceExplorer.getActivePvsFile();
+				const contextFolder: string = fsUtils.getContextFolder(fname);
+				this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder, force: theoriesFromActiveFile !== this.workspaceExplorer?.theoriesFromActiveFile() });
+				this.workspaceExplorer.setMode(theoriesFromActiveFile ? WorkspaceMode.theoriesFromActiveFile : WorkspaceMode.theoriesFromActiveContext);
+				this.workspaceExplorer.setActivePvsFile(fname);
 			}
 		}, null, this.context.subscriptions);
 
@@ -455,8 +471,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				} else {
 					// or get the descriptor of the current folder
 					const workspaceFolder: Uri = (workspace.workspaceFolders && workspace.workspaceFolders.length) ? workspace.workspaceFolders[0].uri : null;
-					const folder: string = (workspaceFolder) ? workspaceFolder.path : 
-						contextFolder ? contextFolder : vscodeUtils.getDefaultContextFolder();
+					const folder: string = (workspaceFolder) ? workspaceFolder.path : contextFolder ? contextFolder : vscodeUtils.getDefaultContextFolder();
 					if (folder) {
 						this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: folder });
 					}
