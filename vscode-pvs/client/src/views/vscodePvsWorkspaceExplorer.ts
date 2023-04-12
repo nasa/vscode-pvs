@@ -95,7 +95,9 @@ class PvsFileItem extends TreeItem {
 		this.tooltip = this.path;
 		// update collapsible state
 		const n: number = this.theoriesOverview.theories ? this.theoriesOverview.theories.length : 0;
-		this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
+		this.collapsibleState = (n > 0) ?
+			this.collapsibleState === TreeItemCollapsibleState.None ? TreeItemCollapsibleState.Expanded : this.collapsibleState
+				: TreeItemCollapsibleState.None;
 	}
 	updateFormula (desc: FormulaDescriptor): void {
 		this.theoriesOverview.updateFormula(desc);
@@ -164,7 +166,9 @@ export class TheoryItem extends TreeItem {
 			// this will force refresh
 			this.id = fsUtils.get_fresh_id();
 		}
-		this.collapsibleState = (n > 0) ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
+		this.collapsibleState = (n > 0) ? 
+			this.collapsibleState === TreeItemCollapsibleState.None ? TreeItemCollapsibleState.Expanded : this.collapsibleState
+			: TreeItemCollapsibleState.None;
 	}
 	getFormula (formulaName: string): FormulaItem {
 		return this.theoremsOverview.getFormula(formulaName);
@@ -285,7 +289,8 @@ export class FormulaOverviewItem extends OverviewItem {
 			};
 		}
 		this.collapsibleState = (this.theorems.length > 0) ?
-			(nProved === nTheorems) ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.Expanded
+			this.collapsibleState === TreeItemCollapsibleState.None ? TreeItemCollapsibleState.Expanded : this.collapsibleState
+			// (nProved === nTheorems) ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.Expanded
 				: TreeItemCollapsibleState.None;
 	}
 	updateStatus (desc: FormulaDescriptor): void {
