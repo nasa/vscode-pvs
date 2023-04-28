@@ -222,7 +222,7 @@ export class EventsDispatcher {
                 });
             }
         });
-        this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
+        this.client.onNotification(serverRequest.generateTccs, (desc: {
             response: PvsContextDescriptor, 
             args: { 
                 fileName: string, 
@@ -234,7 +234,7 @@ export class EventsDispatcher {
                 this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
             }
         });
-        this.client.onRequest(serverEvent.showTccsResponse, (desc: { 
+        this.client.onRequest(serverRequest.showTccs, (desc: { 
             response: PvsContextDescriptor, 
             args: { 
                 fileName: string, 
@@ -245,7 +245,7 @@ export class EventsDispatcher {
             if (this.workspaceExplorer && desc?.response) {
                 this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
             }
-            if (desc?.args && desc.response) {
+            if (desc?.args?.fileName && desc?.args?.contextFolder && desc?.response) {
                 // open tcc file in the editor
                 const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
                 const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
@@ -1596,7 +1596,7 @@ export class EventsDispatcher {
                     // send generate-tccs request to pvs-server
                     this.client.sendRequest(serverRequest.generateTccs, desc);
                     // register handler for response
-                    this.client.onRequest(serverEvent.generateTccsResponse, (desc: {
+                    this.client.onNotification(serverRequest.generateTccs, (desc: {
                         response: PvsContextDescriptor, 
                         args: { 
                             fileName: string, 
@@ -1604,7 +1604,7 @@ export class EventsDispatcher {
                             contextFolder: string 
                         }
                     }) => {
-                        if (this.workspaceExplorer && desc.response) {
+                        if (this.workspaceExplorer && desc?.response) {
                             this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
                         }
                     });            

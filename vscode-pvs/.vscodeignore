@@ -175,3 +175,5 @@ server/src/
 **/client/node_modules/bootstrap/dist/css/bootstrap-reboot.css
 **/client/node_modules/bootstrap/js/
 **/client/node_modules/jquery/AUTHORS.txt
+
+**/extra/pvs-doc/

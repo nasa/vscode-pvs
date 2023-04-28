@@ -50,6 +50,9 @@ release: all install-vsce audit
 	node_modules/vsce/vsce package
 	@echo "\033[0;32m** Release ready! To publish the release, type 'make publish' **\033[0m"
 
+vsix:
+	make release
+
 publish:
 	node_modules/vsce/vsce publish
 

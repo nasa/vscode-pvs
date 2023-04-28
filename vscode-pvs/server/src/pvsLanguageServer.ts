@@ -856,7 +856,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking, pvs-server is not able to do this tho.
 				// then generate tccs
 				const response: PvsContextDescriptor = await this.pvsProxy.generateTccs(desc);
-				this.connection?.sendRequest((opt.showTccsRequest) ? serverEvent.showTccsResponse : serverEvent.generateTccsResponse, { response, args: request });
+				this.connection?.sendNotification((opt.showTccsRequest) ? serverRequest.showTccs : serverRequest.generateTccs, { response, args: request });
 
 				let nTccs: number = 0;
 				let nProved: number = 0;

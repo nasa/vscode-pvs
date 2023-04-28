@@ -1,8 +1,8 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import { configFile, graphtheory, libraryaddons, sandboxExamples } from './test-utils';
+import { configFile, libraryaddons, sandboxExamples } from './test-utils';
 import * as path from 'path';
 import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
-import { ProofDescriptor, ProofNodeX, PvsFormula, PvsProofCommand, SequentDescriptor } from "../server/src/common/serverInterface";
+import { ProofNodeX, PvsFormula, PvsProofCommand, SequentDescriptor } from "../server/src/common/serverInterface";
 import { PvsLanguageServer } from "../server/src/pvsLanguageServer";
 import { PvsResponse, PvsResult } from "../server/src/common/pvs-gui";
 import { expect } from 'chai';
