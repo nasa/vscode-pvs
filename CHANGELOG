@@ -1,4 +1,8 @@
 ## ChangeLog
+### 1.0.64 (2023.04.12)
+- Added more math symbols (\top ⊤, \infty ∞, see also [symbols.json](symbols.json))
+- Improved Workspace Explorer (introduced setting pvs.pvsWorkspaceTheoriesFromActiveFile to show theories from the active PVS file; disabled auto-expansion of theory items)
+
 ### 1.0.63 (2022.08.15)    
 - Improved NASALib Search (best matching search results are shown first, library name shown in the search results, search multiple words)   
 - Improved markdown preview (added support for heading sections, added shortcut M-x view-as-markdown) 
