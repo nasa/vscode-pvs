@@ -284,20 +284,23 @@ export class PvsPackageManager {
     static async installPvsPatches (desc: { pvsPath: string }): Promise<boolean> {
         if (desc?.pvsPath && fsUtils.folderExists(desc?.pvsPath)) {
             const targetFolder: string = path.join(desc.pvsPath, "pvs-patches");
-            fsUtils.createFolder(targetFolder);
-            let successSummary: boolean = true;
-            for (let i = 0; i < PvsPackageManager.approvedPatches.length; i++) {
-                const fileName: string = PvsPackageManager.approvedPatches[i].fname;
-                const fname: string = path.join(targetFolder, fileName);
-                if (!fsUtils.fileExists(fname)) {
-                    const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", fileName);
-                    const fileContent: string = await fsUtils.readFile(src);
-                    const success: boolean = fileContent && await fsUtils.writeFile(fname, fileContent);
-                    if (!success) {
-                        console.log(`[pvs-package-manager] Warning: could not install patch ${PvsPackageManager.approvedPatches[i]?.fname} (${PvsPackageManager.approvedPatches[i]?.description})`);
+            let successSummary: boolean = await fsUtils.createFolder(targetFolder);
+            if (successSummary) {
+                for (let i = 0; i < PvsPackageManager.approvedPatches.length; i++) {
+                    const fileName: string = PvsPackageManager.approvedPatches[i].fname;
+                    const fname: string = path.join(targetFolder, fileName);
+                    if (!fsUtils.fileExists(fname)) {
+                        const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", fileName);
+                        const fileContent: string = await fsUtils.readFile(src);
+                        const success: boolean = fileContent && await fsUtils.writeFile(fname, fileContent);
+                        if (!success) {
+                            console.warn(`[pvs-package-manager] Warning: could not install patch ${PvsPackageManager.approvedPatches[i]?.fname} (${PvsPackageManager.approvedPatches[i]?.description})`);
+                        }
+                        successSummary = successSummary && success;
                     }
-                    successSummary = successSummary && success;
                 }
+            } else {
+                console.warn(`[pvs-package-manager] Warning: could not install patches (folder ${targetFolder} could not be created)`);
             }
             return successSummary;
         }

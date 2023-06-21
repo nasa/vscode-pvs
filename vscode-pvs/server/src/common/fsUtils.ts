@@ -327,10 +327,11 @@ export async function cleanBin(contextFolder: string, opt?: {
 /**
  * Creates a folder, if the folder does not exist already.
  */
-export async function createFolder(path: string): Promise<void> {
+export async function createFolder(path: string): Promise<boolean> {
 	if (!fs.existsSync(path)){
 		fs.mkdirSync(path, { recursive: true });
 	}
+	return fs.existsSync(path);
 }
 /**
  * Utility function, write a file to disk.
@@ -815,7 +816,7 @@ export function getDownloadCommand (url: string, opt?: { out?: string }): ShellC
 	const cmd: string = getDownloader();
 	if (cmd) {
 		let args: string[] = (cmd === "curl") ? [ "-L" ] // -L allows curl to follow URL redirect.
-			: [ "--progress=bar:force" ,"--show-progress" ]; // wget automatically follows up to 20 URL redirect.
+			: [ "--progress=bar:force" ]; // wget automatically follows up to 20 URL redirect. ,"--show-progress"
 		args.push(url);
 		if (opt?.out) {
 			if (cmd === "curl") {
@@ -830,7 +831,7 @@ export function getDownloadCommand (url: string, opt?: { out?: string }): ShellC
 }
 
 /**
- * Default folder name for the installationn of pvs
+ * Default folder name for the installation of pvs
  */
 export const pvsFolderName: string = "pvs-7.1.0";
 
@@ -1728,20 +1729,23 @@ export function findProofObligation(formulaName: string, txt: string): number {
  * Lists all theorems in a given context folder
  */
  export async function getContextDescriptor (contextFolder: string, opt?: { listTheorems?: boolean, includeTccs?: boolean, prelude?: boolean }): Promise<PvsContextDescriptor> {
-	// console.log(`[language-utils] Generating context descriptor for ${contextFolder}...`);
-	const response: PvsContextDescriptor = {
-		fileDescriptors: {},
-		contextFolder
-	};
-	const fileList: FileList = await listPvsFiles(contextFolder);
-	for (let i = 0; i < fileList?.fileNames?.length; i++) {
-		const fname: string = path.join(contextFolder, fileList.fileNames[i]);
-		// console.log(`[language-utils] Processing file ${fname}`);
-		const desc: PvsFileDescriptor = await getFileDescriptor(fname, opt);
-		response.fileDescriptors[fname] = desc;
+	if (contextFolder) {
+		// console.log(`[language-utils] Generating context descriptor for ${contextFolder}...`);
+		const response: PvsContextDescriptor = {
+			fileDescriptors: {},
+			contextFolder
+		};
+		const fileList: FileList = await listPvsFiles(contextFolder);
+		for (let i = 0; i < fileList?.fileNames?.length; i++) {
+			const fname: string = path.join(contextFolder, fileList.fileNames[i]);
+			// console.log(`[language-utils] Processing file ${fname}`);
+			const desc: PvsFileDescriptor = await getFileDescriptor(fname, opt);
+			response.fileDescriptors[fname] = desc;
+		}
+		// console.log("[language-utils] Done");
+		return response;
 	}
-	// console.log("[language-utils] Done");
-	return response;
+	return null;
 }
 /**
  * Lists all theorems in a given file

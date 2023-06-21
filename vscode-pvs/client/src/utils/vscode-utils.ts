@@ -1036,6 +1036,22 @@ export async function setToolbarVisibility (viz: boolean): Promise<void> {
 }
 
 /**
+ * Sets the given file extensions as read-only
+ */
+export async function setReadonlyFiles (extensions: string[]): Promise<boolean> {
+    if (extensions?.length && getRootFolder()) {
+        const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+        let readonlyInclude: { [key: string]: boolean } = {};
+        for (let i = 0; i < extensions.length; i++) {
+            readonlyInclude[`**/*${extensions[i]}`] = true;
+        }
+        config.update("files.readonlyInclude", readonlyInclude);
+        return true;
+    }
+    return false;
+}
+
+/**
  * Detects if the color theme is light or dark, based on the theme name
  */
 export function detectColorTheme (): XTermColorTheme {

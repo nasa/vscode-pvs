@@ -572,7 +572,7 @@ export class EventsDispatcher {
         });
 
 		this.client.onNotification(serverRequest.getContextDescriptor, (desc: PvsContextDescriptor) => {
-            this.workspaceExplorer.updateContextFolder(desc);
+            this.workspaceExplorer?.updateContextFolder(desc);
         });
 
 		// this.client.onRequest(serverEvent.querySaveProof, async (request: {

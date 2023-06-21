@@ -215,8 +215,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				const theoriesFromActiveFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
 				if (contextFolder !== currentWorkspace || theoriesFromActiveFile || theoriesFromActiveFile !== this.workspaceExplorer?.theoriesFromActiveFile()) {
 					this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder, force: theoriesFromActiveFile !== this.workspaceExplorer?.theoriesFromActiveFile() });
-					this.workspaceExplorer.setMode(theoriesFromActiveFile ? WorkspaceMode.theoriesFromActiveFile : WorkspaceMode.theoriesFromActiveContext);
-					this.workspaceExplorer.setActivePvsFile(fname);
+					this.workspaceExplorer?.setMode(theoriesFromActiveFile ? WorkspaceMode.theoriesFromActiveFile : WorkspaceMode.theoriesFromActiveContext);
+					this.workspaceExplorer?.setActivePvsFile(fname);
 					// don't update file explorer, see comments in onDidOpenTextDocument
 					// const contextFolderUri: Uri = Uri.file(contextFolder);
 					// if (!workspace.getWorkspaceFolder(contextFolderUri)) {
@@ -456,6 +456,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 				// declutter vscode
 				vscodeUtils.declutterVscode();
+
+				// set readonly files (e.g., tccs)
+				vscodeUtils.setReadonlyFiles([ ".tccs", ".summary" ]);
 
 				// update status bar
 				this.statusBar.ready();
