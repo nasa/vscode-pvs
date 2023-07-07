@@ -60,7 +60,7 @@ import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
 import { PvsHoverProvider } from './providers/pvsHoverProvider';
 import { PvsCodeLensProvider } from './providers/pvsCodeLensProvider';
 import { PvsLinter } from './providers/pvsLinter';
-import { getErrorRange } from './common/languageUtils';
+import { getErrorRange, tccSourceMessage } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
@@ -401,7 +401,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					// 	pvsResponse: response,
 					// 	isTypecheckError: true
 					// };
-					this.sendDiagnostics("Typecheck");
+					this.sendDiags("Typecheck");
 					if (this.pvsErrorManager) {
 						this.pvsErrorManager?.handleTypecheckError({ request: desc, response: <PvsError> response, taskId });
 						this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId });
@@ -640,35 +640,111 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	}
 
 	/**
+	 * Utility function, sends diagnostics in the PVS file to highlight which expressions generate TCCs
+	 */
+	protected sendTccsDiags (file: PvsFile): void {
+		const TCC_TIMEOUT: number = 500; // ms
+		// send diags after a short timeout so pvs has time to write the tccs files
+		setTimeout (async () => {
+			let diagnostics: Diagnostic[] = [];
+			// check for .tccs files
+			const pvsFile: string = fsUtils.desc2fname(file);
+			const tccFile: string = fsUtils.desc2fname({ ...file, fileExtension: ".tccs" });
+			if (fsUtils.fileExists(tccFile)) {
+				const txt: string = await fsUtils.readFile(tccFile);
+				// group 1 is the line-column information
+				// group 2 is the line (1-based)
+				// group 3 is the column (1-based)
+				// const regex: RegExp = new RegExp(/\(at (line (\d+), column (\d+))\)/g);
+				// group 4 is optional, and corresponds to the expression that generated the tcc -- this group is captured only if the expression is on one line
+				// group 5 is optional, indicates if the tcc is unfinished, unproved or untried
+				// group 6 is the formula name
+				const regex: RegExp = new RegExp(/%\s+.+\(at (line (\d+), column (\d+))\)(?:[\s%]+for[\s%]+(.*)[\s%]+expected\b.+[\s%]*(unfinished|unproved|untried)?)?\s*(.+)\s*:\s*OBLIGATION\b/gm);
+				let match: RegExpMatchArray = null;
+				while (match = regex.exec(txt)) {
+					if (match[5] && match[6]) {
+						// find position of the codelens
+						const lines: string[] = txt.slice(0, match.index).split("\n");
+						let line: number = lines.length - 1;
+						// const character: number = lines[line].length;
+
+						// get formula name
+						const formulaName: string = match[6];
+
+						// find theory name
+						let theoryName: string = fsUtils.findTheoryName(txt, line);
+						theoryName = theoryName?.substring(0, theoryName.length - 5)// it's a .tcc file, so theory name ends with _TCCS
+
+						// try to pull the codelens down to the level of the corresponding obligation
+						const docDown: string = txt.slice(match.index);
+						const regexObligation: RegExp = new RegExp(utils.tccRegexp);
+						const matchObligation: RegExpMatchArray = regexObligation.exec(docDown);
+						if (matchObligation?.length && matchObligation[1]) {
+							line += docDown.slice(0, matchObligation.index)?.split("\n")?.length - 1;
+						}
+						const diagPosition: Position = {
+							line: +match[2] - 1, // lines are 0-based
+							character: +match[3]
+						};
+						// check if the goto link has already been provided for the given line
+						const diagRange: Range = {
+							start: diagPosition,
+							end: {
+								line: diagPosition.line,
+								character: diagPosition.character + (match[4]?.length > 1 ? match[4]?.length : 1)
+							}
+						};
+						const message: string =  match[0];//.replace(/[%\t\r\n]+/g, " ");
+						// diagnostics, highlights the code that triggered the tcc
+						// the source field indicates the fullName of the theory and the formula name
+						const fullName: string = `${tccFile}#${theoryName}@${formulaName}`;
+						const diag: Diagnostic = {
+							severity: DiagnosticSeverity.Warning,
+							range: diagRange,
+							message,
+							source: `\n${tccSourceMessage}\n${fullName}`
+						};
+						diagnostics.push(diag);
+					}
+				}
+			}
+			// always send diagnostics -- this is needed to clear up diags for the pvs file if no tccs were generated
+			this?.connection?.sendDiagnostics({ uri: `file://${pvsFile}`, diagnostics });
+		}, TCC_TIMEOUT);
+	}
+
+	/**
 	 * Typecheck file
 	 */
-	async typecheckFile (args: PvsFile, opt?: { externalServer?: boolean, quiet?: boolean }): Promise<PvsResponse | null> {
+	async typecheckFile (file: PvsFile, opt?: { externalServer?: boolean, quiet?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
-		if (args && args.fileName && args.fileExtension && args.contextFolder) {
+		if (file && file.fileName && file.fileExtension && file.contextFolder) {
 			try {
-				args = fsUtils.decodeURIComponents(args);
-				const response: PvsResponse = await this.pvsProxy?.typecheckFile(args, opt);
+				file = fsUtils.decodeURIComponents(file);
+				const response: PvsResponse = await this.pvsProxy?.typecheckFile(file, opt);
 				// send diagnostics
 				if (response) {
 					if (response.result) {
-						const fname: string = fsUtils.desc2fname(args);
+						const fname: string = fsUtils.desc2fname(file);
 						this.updateDiags(fname, { pvsResponse: response, isTypecheckError: true });
 						// this.diags[fname] = {
 						// 	pvsResponse: response,
 						// 	isTypecheckError: true
 						// };
 						if (!opt?.quiet) {
-							this.sendDiagnostics("Typecheck");
+							// async call
+							this.sendDiags("Typecheck");
 						}
+						this.sendTccsDiags (file);
 					} else {
 						if (response.error?.data) {
-							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(args);
+							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(file);
 							this.updateDiags(fname, { pvsResponse: response, isTypecheckError: true });
 							// this.diags[fname] = {
 							// 	pvsResponse: response,
 							// 	isTypecheckError: true
 							// };
-							this.sendDiagnostics("Typecheck");
+							this.sendDiags("Typecheck");
 						}
 					}
 				}
@@ -993,7 +1069,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 						}
 					} 
 					// send diagnostics
-					this.sendDiagnostics(source);
+					this.sendDiags(source);
 				}
 			} else {
 				console.error("[pvs-language-server] Warning: pvs.parse-file is unable to identify filename for ", request);
@@ -1149,7 +1225,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 									};	
 								}
 							}
-							this.sendDiagnostics(source);
+							this.sendDiags(source);
 
 							// check if there are more files that need to be parsed
 							if (completed_tasks >= contextFiles.fileNames.length) {
@@ -1434,7 +1510,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				// 	this.diags[fname] = null;
 				// }
 				// send diagnostics
-				this.sendDiagnostics("Parse");
+				this.sendDiags("Parse");
 				if (response && response.error) {
 					this.pvsErrorManager?.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Error: ${desc.fileName}.pvs could not be generated -- please check pvs-server output to view errors.` });
 				} else {
@@ -1527,9 +1603,20 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	}
 
 	/**
+	 * Utility function, sends diagnostics to the client
+	 */
+	sendDiagnostics (fname: string, diag: Diagnostic): boolean {
+		if (this.connection) {
+			this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ diag ] });
+			return true;
+		}
+		return false;
+	}
+
+	/**
 	 * Internal function, sends diagnostics to the client
 	 */
-	protected async sendDiagnostics (source?: string): Promise<void> {
+	protected async sendDiags (source?: string): Promise<void> {
 		source = source || "";
 		const fnames: string[] = Object.keys(this.diags);
 		if (fnames && fnames.length > 0) {
@@ -1539,7 +1626,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				if (response && response["error"]) {
 					const info: PvsError = <PvsError> response;
 
-					// old parser
+					// old pvs parser (legacy code)
 					if (info.error && info.error.data && info.error.data.place && info.error.data.place.length >= 2) {
 						const errorStart: Position = {
 							line: info.error.data.place[0], 
@@ -1573,7 +1660,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 						}
 					}
 
-					// new parser
+					// new pvs parser
 					else if (info.error && info.error.data && info.error.data.length > 0) {
 						const diagnostics: Diagnostic[] = <Diagnostic[]> info.error.data.map(diag => {
 							return {
@@ -2311,7 +2398,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
 					const document: TextDocument = this.documents?.get(args?.textDocument.uri);
 					const txt: string = document?.getText() || await this.readFile(uri);
-					const actions: (Command | CodeAction)[] = this.pvsCodeActionProvider.provideCodeAction({ txt, uri }, args.range, args.context);
+					const actions: (Command | CodeAction)[] = await this.pvsCodeActionProvider.provideCodeAction({ txt, uri }, args.range, args.context);
 					return actions;
 				}
 			}
