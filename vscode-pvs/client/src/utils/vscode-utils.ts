@@ -213,8 +213,7 @@ export async function insertTextAtCursorPosition (content: string): Promise<bool
  * @param content 
  */
 export async function createTextDocument (desc: FileDescriptor): Promise<vscode.Uri> {
-    const folder: string = desc.contextFolder || getPreviewFolder();
-    const fname: string = path.join(folder, fsUtils.desc2fname(desc));
+    const fname: string = fsUtils.desc2fname(desc);
     const preview: vscode.Uri = vscode.Uri.file(fname);
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${fname}`);
 
@@ -1099,8 +1098,8 @@ export function declutterVscode (): void {
         filesExclude["**/*.prf"] = true;
         filesExclude["**/orphaned-proofs.prf"] = true;
         filesExclude["**/*_adt.pvs"] = false;
-        // hide log files
-        filesExclude["**/*.log"] = true;
+        // show log files
+        filesExclude["**/*.log"] = false;
         // hide .vscode folder
         filesExclude["**/.vscode"] = true;
         // save workspace settings

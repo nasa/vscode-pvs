@@ -109,14 +109,14 @@ export function readDir(contextFolder: string): Promise<string[]> {
  * Utility function, reads the content of a file
  * default encoding is utf8, a different encoding can be specified with the optional parameter
  */
-export async function readFile(fname: string, opt?: { encoding?: BufferEncoding }): Promise<string> {
+export function readFile(fname: string, opt?: { encoding?: BufferEncoding }): string {
 	if (fname) {
 		opt = opt || {};
 		opt.encoding = opt.encoding || "utf8";
 		fname = fname.replace("file://", "");
 		fname = tildeExpansion(fname);
 		try {
-			const exists: boolean = await fileExists(fname);
+			const exists: boolean = fileExists(fname);
 			if (exists) {
 				const data: string = fs.readFileSync(fname, { encoding: opt.encoding });
 				// if (data) {
@@ -327,7 +327,7 @@ export async function cleanBin(contextFolder: string, opt?: {
 /**
  * Creates a folder, if the folder does not exist already.
  */
-export async function createFolder(path: string): Promise<boolean> {
+export function createFolder(path: string): boolean {
 	if (!fs.existsSync(path)){
 		fs.mkdirSync(path, { recursive: true });
 	}
@@ -341,10 +341,10 @@ export async function createFolder(path: string): Promise<boolean> {
  * If the file exists, the file is overwritten by default
  * The content can be appended to an existing file with the optional parameter append
  */
-export async function writeFile(fname: string, content: string, opt?: {
+export function writeFile(fname: string, content: string, opt?: {
 	append?: boolean, 
 	encoding?: BufferEncoding
-}): Promise<boolean> {
+}): boolean {
 	opt = opt || {};
 	opt.encoding = opt.encoding || "utf8";
 	if (fname) {
@@ -352,9 +352,9 @@ export async function writeFile(fname: string, content: string, opt?: {
 			fname = fname.replace("file://", "");
 			fname = tildeExpansion(fname);
 			const contextFolder: string = getContextFolder(fname);
-			await createFolder(contextFolder);
+			createFolder(contextFolder);
 			if (opt.append) {
-				const previousContent: string = await readFile(fname);
+				const previousContent: string = readFile(fname);
 				content = previousContent + "\n\n" + content;
 				content = content.trim();
 			}

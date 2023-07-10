@@ -1436,8 +1436,10 @@ export class EventsDispatcher {
                         await fsUtils.cleanTccs(currentContext, { recursive: fsUtils.MAX_RECURSION });
                         // request context descriptor, so pvs explorer can refresh the view
                         const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
-                        const desc: FileDescriptor = fsUtils.fname2desc(activeEditor?.document?.fileName);
-                        this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
+                        if (activeEditor?.document?.fileName) {
+                            const desc: FileDescriptor = fsUtils.fname2desc(activeEditor.document.fileName);
+                            this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: desc.contextFolder });
+                        }
                     }
                 }
             }
