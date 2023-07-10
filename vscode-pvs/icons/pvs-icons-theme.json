@@ -179,6 +179,7 @@
 		"a": "binary-file",
 		"bin": "binary-file",
 		"o": "binary-file",
+		"exe": "binary-file",
 
 		"pdf": "fa-file-pdf-o",
 		"gif": "fa-file-image",
