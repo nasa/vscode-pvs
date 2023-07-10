@@ -48,6 +48,7 @@ import * as utils from '../common/languageUtils';
 import { LanguageClient } from 'vscode-languageclient';
 import {
     EvaluatorCommandResponse, HintsObject, MathObjects, ProofCommandResponse, ProveFormulaRequest, ProveFormulaResponse, 
+    PvsFile, 
     PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, SequentDescriptor, serverEvent, serverRequest 
 } from '../common/serverInterface';
 import { PvsResponse } from '../common/pvs-gui';
@@ -192,6 +193,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     // pretty printer for prover console, useful for domain-specific languages, e.g., DDL
     protected prettyPrinter: PrettyPrinterInfo;
 
+    // request being server
+    protected req: StartXTermEvaluatorRequest | StartXTermProverRequest;
+
     name: string;
     processId: Thenable<number>;
     creationOptions: Readonly<TerminalOptions | ExtensionTerminalOptions>;
@@ -252,6 +256,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         }
         if (req && req.theoryName && req.formulaName && req.fileName && req.fileExtension && req.contextFolder) {
             vscodeUtils.minimizeIntegratedTerminal();
+            this.req = req;
             const success: boolean = await this.startProverSession(req);
             return success;
         }
@@ -500,6 +505,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             }
             vscodeUtils.minimizeIntegratedTerminal();
             const success: boolean = await this.startEvaluatorSession(req);
+            this.req = req;
             return success;
         }
         vscodeUtils.showErrorMessage(`Error: could not start Evaluator session. Please check that the file typechecks correctly.`);
@@ -625,6 +631,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      * Sends a command to pvs-server
      */
     async sendTextToServer (text: string, addNewLine?: boolean): Promise<boolean> {
+        this.mirror(`${this.prompt} ${text}`);
         // return new Promise((resolve, reject) => {
             if (this.sessionType === "evaluator") {
                 const command: PvsioEvaluatorCommand = {
@@ -794,6 +801,30 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         }
     }
     /**
+     * Internal function, mirrors data to file
+     */
+    protected mirror (data: string): boolean {
+        if (data) {
+            const mirroring: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.proverConsole.mirrorConsoleToFile");
+            if (mirroring && this.req?.fileName) {
+                const fname: string = fsUtils.desc2fname({
+                    contextFolder: this.req.contextFolder,
+                    fileName: this.req.fileName,
+                    fileExtension: (this.sessionType === "evaluator") ? ".evaluator.log" : ".prover.log"
+                });
+                const txt: string = colorUtils.getPlainText("\n" + data.trim());
+                try {
+                    fsUtils.writeFile(fname, txt, { append: true });
+                } catch (error) {
+                    console.error(`[vscodePvsXTerm] Error while trying to mirror console to file ${fname}`, error);
+                    return false;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
      * Logs data in the terminal
      */
     log (data: string, opt?: { 
@@ -833,6 +864,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             };
             this.panel?.webview?.postMessage(message);
         }
+        // mirror data to file if the option is selected
+        this.mirror(data);
     }
     /**
      * Renders the webview
