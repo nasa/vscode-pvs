@@ -40,32 +40,32 @@ import {
 	Connection, TextDocuments, TextDocument, CompletionItem, createConnection, ProposedFeatures, InitializeParams, 
 	TextDocumentPositionParams, Hover, CodeLens, CodeLensParams,
 	Diagnostic, Position, Range, DiagnosticSeverity, Definition,
-	TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit, WorkspaceFolder, ServerCapabilities, CodeActionParams, Command, CodeAction
+	Location, TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit, WorkspaceFolder
 } from 'vscode-languageserver';
 import { 
 	PvsDefinition, FileList, TheoryDescriptor, PvsContextDescriptor, serverEvent, serverRequest,
-	PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ServerMode,
+	PvsDownloadDescriptor, PvsFileDescriptor, PvsVersionDescriptor, ProofDescriptor, ServerMode,
 	PvsFormula, ProofEditCommand, ProofExecCommand, PvsFile, ContextFolder, PvsTheory,
 	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, 
 	SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, 
 	ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, SequentDescriptor, 
-	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, 
-	InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, 
-	NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, 
-	StatusProofChain, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, 
-	UndumpPvsFilesResponse, DumpFileDescriptor, PvsDocRequest, PvsDocKind, PvsDocDescriptor, PvsDocResponse
+	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, StatusProofChain
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
 import { PvsHoverProvider } from './providers/pvsHoverProvider';
 import { PvsCodeLensProvider } from './providers/pvsCodeLensProvider';
 import { PvsLinter } from './providers/pvsLinter';
+// import { PvsCliGateway } from './pvsCliGateway';
 import { getErrorRange, tccSourceMessage } from './common/languageUtils';
 import * as utils from './common/languageUtils';
 import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import { PvsProxy } from './pvsProxy';
-import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl } from './common/pvs-gui';
+import { 
+	PvsResponse, PvsError, ImportingDecl, TypedDecl, 
+	FormulaDecl, PvsResult
+} from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
 import { PvsIoProxy } from './pvsioProxy';
 import { PvsErrorManager } from './pvsErrorManager';
@@ -73,11 +73,7 @@ import { ProcessCode } from './pvsProcess';
 import { PvsProofExplorer } from './providers/pvsProofExplorer';
 import { PvsRenameProvider } from './providers/pvsRenameProvider';
 import { PvsSearchEngine } from './providers/pvsSearchEngine';
-import { getOs, isPvsFile } from './common/fsUtils';
-import { PvsCodeActionProvider } from './providers/pvsCodeActionProvider';
-import { execSync } from 'child_process';
-import { Pvs2Html, Pvs2HtmlSettings } from './extra/pvs2html/pvs2html';
-import { Pvs2Latex } from './extra/pvs2latex/pvs2latex';
+import { getOs } from './common/fsUtils';
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -88,19 +84,17 @@ export declare interface PvsTheoryDescriptor {
 }
 
 export declare interface ContextDiagnostics {
-	[fileName: string]: {
-		pvsResponse: PvsResponse, 
-		isTypecheckError: boolean,
-		needsTheoryDoc?: boolean
-	}
+	[fileName: string]: { pvsResponse: PvsResponse, isTypecheckError: boolean }
 };
+  
+  
 
 // Example server settings, this is not used at the moment
 interface Settings {
 	maxNumberOfProblems: number;
 }
 
-export class PvsLanguageServer extends fsUtils.PostTask {
+export class PvsLanguageServer {
 	protected MAX_PARALLEL_PROCESSES: number = 1; // pvs 7.1 currently does not support parallel processes
 	readonly MIN_PVS_VERSION: number = 7.1;
 
@@ -142,7 +136,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	protected linter: PvsLinter;
 	protected proofExplorer: PvsProofExplorer;
 	protected pvsSearchEngine: PvsSearchEngine;
-	protected pvsCodeActionProvider: PvsCodeActionProvider;
 
 	// cliGateway: PvsCliGateway;
 	pvsErrorManager: PvsErrorManager;
@@ -156,7 +149,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * @constructor
 	 */
 	constructor () {
-		super();
 		this.settings = {
 			global: { maxNumberOfProblems: 1000 },
 			documents: new Map()
@@ -184,10 +176,37 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			this.pvsErrorManager = new PvsErrorManager(this.connection);
 		}
 	}
-	
+
 	/**
-	 * utility functions for sending notifications to the client
+	 * Returns the pvs proxy
 	 */
+	getPvsProxy (): PvsProxy {
+		return this.pvsProxy;
+	}
+	/**
+	 * Returns the pvs path
+	 */
+	getPvsPath (): string {
+		return this.pvsPath ? `${this.pvsPath}` : "";
+	}
+	/**
+	 * Returns the nasalib path
+	 */
+	getNasalibPath (): string {
+		return this.pvsPath ? path.join(this.pvsPath, "nasalib") : "";
+	}
+	/**
+	 * Returns the list of external library paths
+	 */
+	getExternalLibraryPaths (): string[] {
+		let external: string[] = this.pvsLibraryPath?.split(":").map(elem => {
+			return elem.trim();
+		}).filter(elem => {
+			return elem && elem !== "";
+		}) || [];
+		return external;
+	}
+	//-- utility functions for notifying the client
 	protected notifyStartExecution (desc: { msg: string }): void {
 		this.connection?.sendNotification("server.status.progress", desc);
 	}
@@ -226,79 +245,40 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	//--------------------------------------------------------------------
 	//                                APIs
 	//--------------------------------------------------------------------
-
-	/**
-	 * Returns the pvs proxy
-	 */
-	getPvsProxy (): PvsProxy {
-		return this.pvsProxy;
-	}
-	/**
-	 * Returns the pvs path
-	 */
-	getPvsPath (): string {
-		return this.pvsPath ? this.pvsPath : "";
-	}
-	/**
-	 * Returns the nasalib path
-	 */
-	getNasalibPath (): string {
-		return this.pvsPath ? path.join(this.pvsPath, "nasalib") : "";
-	}
-	/**
-	 * Returns the list of external library paths
-	 */
-	getExternalLibraryPaths (): string[] {
-		let external: string[] = this.pvsLibraryPath?.split(":").map(elem => {
-			return elem.trim();
-		}).filter(elem => {
-			return elem && elem !== "";
-		}) || [];
-		return external;
-	}
 	/**
 	 * Returns the connection
 	 */
 	getConnection (): Connection {
 		return this.connection;
 	}
+
 	/**
-	 * Returns the current server mode
+	 * Prove formula
+	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name
 	 */
+	async startProof (args: PvsFormula): Promise<PvsResponse | null> {
+		return await this.proveFormula(args);
+	}
+    async proveFormula (formula: PvsFormula): Promise<PvsResponse | null> {
+	if (formula && formula.fileName && formula.formulaName && formula.fileExtension && formula.contextFolder && formula.theoryName) {
+	    const mode: string = await this.getMode();
+	    try {
+		formula = fsUtils.decodeURIComponents(formula);
+		// const useLispInterface: boolean = true;//!!(this.connection && await this.connection?.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
+		const response: PvsResponse = await this.pvsProxy?.proveFormula(formula);
+		let prfid: string = response.result.id;
+		this.connection?.sendNotification(serverEvent.profilerData, `(prove-formula "${path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName)}")`);
+		return response;
+	    } catch (ex) {
+		console.error('[pvs-language-server.proveFormula] Error: pvsProxy has thrown an exception', ex);
+		return null;
+	    }
+	}
+	return null;
+    }
 	async getMode (): Promise<ServerMode | null> {
 		return await this.pvsProxy?.getMode();
 	}
-	/**
-	 * Start an interactive prover session -- alias of proveFormula
-	 */
-	async startProof (args: PvsFormula): Promise<PvsResponse> {
-		return await this.proveFormula(args);
-	}
-	/**
-	 * Prove formula
-	 */
-	async proveFormula (formula: PvsFormula): Promise<PvsResponse> {
-		if (formula && formula.fileName && formula.formulaName && formula.fileExtension && formula.contextFolder && formula.theoryName) {
-			const mode: string = await this.getMode();
-			if (mode !== "lisp") {
-				await this.quitProof();
-			}
-			try {
-				formula = fsUtils.decodeURIComponents(formula);
-				const useLispInterface: boolean = true;//!!(this.connection && await this.connection?.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
-				const response: PvsResponse = await this.pvsProxy?.proveFormula(formula, { useLispInterface });
-				this.connection?.sendNotification(serverEvent.profilerData, `(prove-formula "${path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName)}")`);
-				return response;
-			} catch (ex) {
-				console.error('[pvs-language-server.proveFormula] Error: pvsProxy has thrown an exception', ex);
-				return null;
-			}
-		}
-		return null;
-	}
-	/**
-	 * Handler for importchain request
-	 */
 	async getImportChainTheoremsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
 			const res: PvsResponse = await this.typecheckFile(theory);
@@ -311,9 +291,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			}
 		}
 	}
-	/**
-	 * Handler for getTheorem request
-	 */
 	async getTheoremsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
 			const res: PvsResponse = await this.typecheckFile(theory);
@@ -329,9 +306,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			}
 		}
 	}
-	/**
-	 * Handler for getTccs request
-	 */
 	async getTccsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
 			const res: PvsResponse = await this.typecheckFile(theory);
@@ -348,125 +322,123 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		}
 	}
 	/**
-	 * Handler for proveFormula request
+	 * Handler for prove formula requests
 	 */
-	async proveFormulaRequest (desc: ProveFormulaRequest, opt?: { 
-		autorun?: boolean, 
-		newProof?: boolean, 
-		useJprf?: boolean, 
-		skipSave?: boolean,
-		externalServer?: boolean,
-		quiet?: boolean
-	}): Promise<void> {
-		opt = opt || {};
-		if (desc && desc.formulaName && desc.theoryName && desc.fileName && desc.contextFolder) {
-			desc = fsUtils.decodeURIComponents(desc);
-			const mode: string = await this.getMode();
-			if (mode !== "lisp") {
-				// quit proof and save if the proof is dirty
-				if (this.proofExplorer?.proofIsDirty() && !opt.autorun && !opt.skipSave) {
-					await this.proofExplorer?.quitProofAndSave();
-				} else {
-					await this.quitProof();
-				}
-			}
+    async proveFormulaRequest (desc: ProveFormulaRequest, opt?: { 
+	autorun?: boolean, 
+	newProof?: boolean, 
+	useJprf?: boolean, 
+	skipSave?: boolean,
+	externalServer?: boolean,
+	quiet?: boolean
+    }): Promise<void> {
+	opt = opt || {};
+	if (desc && desc.formulaName && desc.theoryName && desc.fileName && desc.contextFolder) {
+	    desc = fsUtils.decodeURIComponents(desc);
+	    const mode: string = await this.getMode();
+	    // if (mode !== "lisp") {
+	    // 	// quit proof and save if the proof is dirty
+	    // 	if (this.proofExplorer?.proofIsDirty() && !opt.autorun && !opt.skipSave) {
+	    // 	    await this.proofExplorer?.quitProofAndSave();
+	    // 	} else {
+	    // 	    await this.quitProof(proofId);
+	    // 	}
+	    // }
 
-			// make sure file exists
-			const fname: string = fsUtils.desc2fname(desc);
-			if (desc.fileExtension === ".pvs" && desc.origin !== "prooflite" && !fsUtils.fileExists(fname)) {
-				this.notifyMessage({ msg: `Warning: file ${fname} does not exist. (source: Prover)` });
-				return;
-			}
-			
-			// make sure the file typechecks correctly before starting a proof attempt
-			// send feedback to the front-end
-			const taskId: string = `typecheck-${desc.formulaName}`;
-			if (!opt.autorun) {
-				this.proofExplorer?.resetFlags();
-				this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${desc.formulaName}'` });
-			}
+	    // make sure file exists
+	    const fname: string = fsUtils.desc2fname(desc);
+	    if (desc.fileExtension === ".pvs" && desc.origin !== "prooflite" && !fsUtils.fileExists(fname)) {
+		this.notifyMessage({ msg: `Warning: file ${fname} does not exist. (source: Prover)` });
+		return;
+	    }
+	    
+	    // make sure the file typechecks correctly before starting a proof attempt
+	    // send feedback to the front-end
+	    const taskId: string = `typecheck-${desc.formulaName}`;
+	    if (!opt.autorun) {
+		this.proofExplorer?.resetFlags();
+		this.notifyStartImportantTask({ id: taskId, msg: `Starting prover session for formula '${desc.formulaName}'` });
+	    }
 
-			// make sure pvs files are typechecked before starting a proof attempt
-			if (desc.fileExtension) {
-				const response: PvsResponse = await this.typecheckFile({
-					contextFolder: desc.contextFolder,
-					fileName: desc.fileName,
-					fileExtension: ".pvs" // this allows to check the pvs file for .tccs
-				}, opt);
-				if (response && response.error) {
-					const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(desc);
-					// update diags
-					this.updateDiags(fname, { pvsResponse: response, isTypecheckError: true });
-					// this.diags[fname] = {
-					// 	pvsResponse: response,
-					// 	isTypecheckError: true
-					// };
-					this.sendDiags("Typecheck");
-					if (this.pvsErrorManager) {
-						this.pvsErrorManager?.handleTypecheckError({ request: desc, response: <PvsError> response, taskId });
-						this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId });
-					}
-					return;
-				}
-			}
-			// load proof: this needs to be done before starting the prover session, because it requires pvs-server to respond to a 'proof-script' request -- this function is disabled when in-checker
-			await this.proofExplorer?.loadProofRequest(desc, opt);
-
-			const response: PvsResponse = await this.proveFormula(desc);
-			if (response?.result) {
-				// const channelID: string = utils.desc2id(desc);
-				// the initial response should include only one sequent descriptor
-				const result: SequentDescriptor[] = response.result;
-				if (result && result.length) {
-					// notify the client that the server is in prover mode
-					this.notifyServerMode("in-checker");
-
-					// publish the sequent on the cligateway, so it is visible in the prover terminal
-					// this.cliGateway?.publish({ type: "pvs.event.proof-state", channelID, data: result[0] });
-					// this.cliGateway?.publish({ type: "pvs.event.prover-ready", channelID });
-					// this.cliGateway?.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy?.listMathObjects() });
-
-					// load initial sequent in proof explorer
-					// console.log(`[pvs-language-server] proveFormulaRequest, loading initial sequent`, result[0]);
-					this.proofExplorer?.loadInitialSequent(result[0]);
-
-					// start proof in proof explorer
-					this.proofExplorer?.startProof({ autorun: !!opt.autorun });
-
-					if (result.length > 1) {
-						for (let i = 1; i < response.result.length; i++) {
-							const proofState: SequentDescriptor = response.result[i]; // process proof commands
-							await this.proofExplorer?.onStepExecutedNew({ proofState, lastSequent: i === response.result.length - 1 }, { feedbackToTerminal: true });
-						}
-					}
-
-					if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
-						this.notifyEndImportantTask({ id: taskId });
-						const ans: ProveFormulaResponse = { res: result[0], req: desc, mathObjects: this.pvsProxy?.listMathObjects() };
-						this.connection?.sendRequest(serverEvent.proveFormulaResponse, ans);
-					} else {
-						const msg: string = opt.useJprf ? `Re-running J-PRF proof for ${desc.formulaName}` : `Re-running proof for ${desc.formulaName}`;
-						this.connection?.sendNotification("pvs.progress-info", msg);
-					}
-				}
-			} else {
-				// there was an error
-				// const channelID: string = utils.desc2id(desc);
-				if (this.pvsErrorManager) {
-					this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId, autorun: opt.autorun });
-				} else {
-					console.error(response);
-				}
-				// this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
-			}
-		} else {
-			if (this.pvsErrorManager) {
-				this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: null, taskId: null, autorun: opt.autorun });
-			} else {
-				console.error(`[pvs-language-server] Warning: Unable to prove formula`, desc);
-			}
+	    // make sure pvs files are typechecked before starting a proof attempt
+	    if (desc.fileExtension) {
+		const response: PvsResponse = await this.typecheckFile({
+		    contextFolder: desc.contextFolder,
+		    fileName: desc.fileName,
+		    fileExtension: ".pvs" // this allows to check the pvs file for .tccs
+		}, opt);
+		if (response && response.error) {
+		    const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(desc);
+		    this.diags[fname] = {
+			pvsResponse: response,
+			isTypecheckError: true
+		    };
+		    this.sendDiags("Typecheck");
+		    if (this.pvsErrorManager) {
+			this.pvsErrorManager?.handleTypecheckError({ request: desc, response: <PvsError> response, taskId });
+			this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId });
+		    }
+		    return;
 		}
+	    }
+	    // load proof -- this needs to be done before starting the prover session
+	    await this.proofExplorer?.loadProofRequest(desc, opt);
+
+	    const response: PvsResponse = await this.proveFormula(desc);
+	    if (response?.result) {
+		// const channelID: string = utils.desc2id(desc);
+		// the initial response should include only one sequent descriptor
+		const result: SequentDescriptor[] = response.result;
+		if (result && result.length) {
+		    // notify the client that the server is in prover mode
+		    this.notifyServerMode("in-checker");
+
+		    // publish the sequent on the cligateway, so it is visible in the prover terminal
+		    // this.cliGateway?.publish({ type: "pvs.event.proof-state", channelID, data: result[0] });
+		    // this.cliGateway?.publish({ type: "pvs.event.prover-ready", channelID });
+		    // this.cliGateway?.publish({ type: "gateway.publish.math-objects", channelID, data: this.pvsProxy?.listMathObjects() });
+
+		    // load initial sequent in proof explorer
+		    // console.log(`[pvs-language-server] proveFormulaRequest, loading initial sequent`, result[0]);
+		    this.proofExplorer?.loadInitialSequent(result[0]);
+
+		    // start proof in proof explorer
+		    this.proofExplorer?.startProof({ autorun: !!opt.autorun });
+
+		    if (result.length > 1) {
+			for (let i = 1; i < response.result.length; i++) {
+			    const proofState: SequentDescriptor = response.result[i]; // process proof commands
+			    await this.proofExplorer?.onStepExecutedNew({ proofState, lastSequent: i === response.result.length - 1 }, { feedbackToTerminal: true });
+			}
+		    }
+
+		    if (!opt.autorun) { // TODO: always send notifications to the client, and let the client decide whether they should be displayed
+			this.notifyEndImportantTask({ id: taskId });
+			const ans: ProveFormulaResponse = { res: result[0], req: desc, mathObjects: this.pvsProxy?.listMathObjects() };
+			this.connection?.sendRequest(serverEvent.proveFormulaResponse, ans);
+		    } else {
+			const msg: string = opt.useJprf ? `Re-running J-PRF proof for ${desc.formulaName}` : `Re-running proof for ${desc.formulaName}`
+			this.connection?.sendNotification("pvs.progress-info", msg);
+		    }
+		}
+	    } else {
+		// there was an error
+		// const channelID: string = utils.desc2id(desc);
+		if (this.pvsErrorManager) {
+		    this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: <PvsError> response, taskId, autorun: opt.autorun });
+		} else {
+		    console.error(response);
+		}
+		// this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
+	    }
+	} else {
+	    if (this.pvsErrorManager) {
+		this.pvsErrorManager?.handleProveFormulaError({ request: desc, response: null, taskId: null, autorun: opt.autorun });
+	    } else {
+		console.error(`[pvs-language-server] Warning: Unable to prove formula`, desc);
+	    }
 	}
+    }
 	/**
 	 * Eval expression request handler -- this is used for one-shot evaluation requests in pvsio
 	 */
@@ -541,62 +513,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 		}
 	}
-	/**
-	 * Runs pvsDoc
-	 */
-	async pvsDocRequest (req: PvsDocRequest): Promise<void> {
-		if (req?.theory?.fileName && req?.theory?.fileExtension && req?.theory?.contextFolder) {
-			const kind: PvsDocKind = req?.docKind || PvsDocKind.html;
-			switch (kind) {
-				case PvsDocKind.html: {
-					// send feedback to the front-end
-					const taskId: string = `pvsdoc-${req.theory.fileName}@${req.theory.theoryName}`;
-					// const channelID: string = utils.desc2id(theory);
-					this.notifyStartImportantTask({ id: taskId, msg: `Generating HTML files for theory ${req.theory.theoryName}` });
-
-					// generate the documentation
-					const inputFile: string = fsUtils.desc2fname(req.theory);
-					const settings: Pvs2HtmlSettings = {
-						...req,
-						inputFile
-					};
-					const engine: Pvs2Html = new Pvs2Html();
-					const res: PvsDocDescriptor = await engine.run(settings);
-					const ans: PvsDocResponse = { req, res };
-
-					// send response back to the front-end
-					this.connection?.sendNotification(serverRequest.pvsDoc, ans);
-					this.notifyEndImportantTask({ id: taskId, msg: "HTML files ready!" });
-					break;
-				}
-				case PvsDocKind.latex: {
-					// send feedback to the front-end
-					const taskId: string = `pvsdoc-${req.theory.fileName}@${req.theory.theoryName}`;
-					// const channelID: string = utils.desc2id(theory);
-					this.notifyStartImportantTask({ id: taskId, msg: `Generating LaTex files for theory ${req.theory.theoryName}` });
-
-					// generate the documentation
-					const inputFile: string = fsUtils.desc2fname(req.theory);
-					const settings: Pvs2HtmlSettings = {
-						...req,
-						inputFile
-					};
-					const engine: Pvs2Latex = new Pvs2Latex();
-					const res: PvsDocDescriptor = await engine.run(settings);
-					const ans: PvsDocResponse = { req, res };
-
-					// send response back to the front-end
-					this.connection?.sendNotification(serverRequest.pvsDoc, ans);
-					this.notifyEndImportantTask({ id: taskId, msg: "LaTex files ready!" });
-					break;
-				}
-				default: {
-					break;
-				}
-			}
-		}
-	}
-
 
 	/**
 	 * Sends to the client the prooflite script associated with the formula indicated in the request
@@ -726,24 +642,21 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				if (response) {
 					if (response.result) {
 						const fname: string = fsUtils.desc2fname(file);
-						this.updateDiags(fname, { pvsResponse: response, isTypecheckError: true });
-						// this.diags[fname] = {
-						// 	pvsResponse: response,
-						// 	isTypecheckError: true
-						// };
+						this.diags[fname] = {
+							pvsResponse: response,
+							isTypecheckError: true
+						};
 						if (!opt?.quiet) {
-							// async call
-							this.sendDiags("Typecheck");
+							this.sendDiags("Typecheck");	
 						}
 						this.sendTccsDiags (file);
 					} else {
 						if (response.error?.data) {
 							const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(file);
-							this.updateDiags(fname, { pvsResponse: response, isTypecheckError: true });
-							// this.diags[fname] = {
-							// 	pvsResponse: response,
-							// 	isTypecheckError: true
-							// };
+							this.diags[fname] = {
+								pvsResponse: response,
+								isTypecheckError: true
+							};
 							this.sendDiags("Typecheck");
 						}
 					}
@@ -766,52 +679,55 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		if (mode !== "lisp") {
 			return;
 		}
-		if (isPvsFile(request)) { // can be .pvs .tccs .summary .ppe ... files
+		if (request) {
 			request = fsUtils.decodeURIComponents(request);
-			// only .pvs files should be typechecked
-			request.fileExtension = ".pvs";
-			const fname: string = fsUtils.desc2fname(request);
-			// make sure file exists
-			if (!fsUtils.fileExists(fname)) {
-				this.notifyMessage({ msg: `Warning: file ${fname} does not exist. (source: Typechecker)` });
-				return;
-			}
-			const taskId: string = `typecheck-${fname}`;
-			// send feedback to the front-end
-			this.notifyStartImportantTask({ id: taskId, msg: `Typechecking ${fname}` });
-			// parse workspace first, so the front-end is updated with statistics
-			// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
-			// proceed with typechecking
-			const response: PvsResponse = await this.typecheckFile(request);
-			this.connection?.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
-			// // send diagnostics
-			if (response) {
-				if (response.result) {
-					// this.diags[fname] = {
-					// 	pvsResponse: response,
-					// 	isTypecheckError: true
-					// };
-					// this.sendDiagnostics("Typecheck");
-					this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} typechecks successfully!` });
-					// send a context descriptor because typechecking may generate adt files
-					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
-					this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);	
-				} else {
-					this.pvsErrorManager?.handleTypecheckError({ response: <PvsError> response, taskId, request });
-					// send diagnostics
-					// if (response.error.data) {
-					// 	const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
-					// 	const msg: string = response.error.data.error_string || "";
-					// 	this.diags[fname] = {
-					// 		pvsResponse: response,
-					// 		isTypecheckError: true
-					// 	};
-					// 	this.sendDiagnostics("Typecheck");
-					// }
+			if (request) {
+				request.fileExtension = ".pvs"; // only .pvs files should be typechecked
+				const fname: string = fsUtils.desc2fname(request);
+				// make sure file exists
+				if (!fsUtils.fileExists(fname)) {
+					this.notifyMessage({ msg: `Warning: file ${fname} does not exist. (source: Typechecker)` });
+					return;
 				}
+				const taskId: string = `typecheck-${fname}`;
+				// send feedback to the front-end
+				this.notifyStartImportantTask({ id: taskId, msg: `Typechecking ${fname}` });
+				// parse workspace first, so the front-end is updated with statistics
+				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
+				// proceed with typechecking
+				const response: PvsResponse = await this.typecheckFile(request);
+				this.connection?.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
+				// // send diagnostics
+				if (response) {
+					if (response.result) {
+						// this.diags[fname] = {
+						// 	pvsResponse: response,
+						// 	isTypecheckError: true
+						// };
+						// this.sendDiagnostics("Typecheck");
+						this.notifyEndImportantTask({ id: taskId, msg: `${request.fileName}${request.fileExtension} typechecks successfully!` });
+						// send a context descriptor because typechecking may generate adt files
+						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);	
+					} else {
+						this.pvsErrorManager?.handleTypecheckError({ response: <PvsError> response, taskId, request });
+						// send diagnostics
+						// if (response.error.data) {
+						// 	const fname: string = (response.error.data.file_name) ? response.error.data.file_name : fsUtils.desc2fname(request);
+						// 	const msg: string = response.error.data.error_string || "";
+						// 	this.diags[fname] = {
+						// 		pvsResponse: response,
+						// 		isTypecheckError: true
+						// 	};
+						// 	this.sendDiagnostics("Typecheck");
+						// }
+					}
+				}
+			} else {
+				console.error("[pvs-language-server] Warning: pvs.typecheck-file is unable to identify filename for ", request);
 			}
 		} else {
-			console.error("[pvs-language-server] Warning: pvs.typecheck-file invoked with null request or with a file extension different than .pvs", request);
+			console.error("[pvs-language-server] Warning: pvs.typecheck-file invoked with null request");
 		}
 	}
 	/**
@@ -884,39 +800,17 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		}
 	}
 	/**
-	 * Generate a .dump file request handler
-	 */
-	async dumpPvsFilesRequest (req: DumpPvsFilesRequest): Promise<void> {
-		if (req?.pvsFile && this.pvsProxy) {
-			const pvsFile: PvsFile = fsUtils.decodeURIComponents(req.pvsFile);
-			const desc: DumpFileDescriptor = await this.pvsProxy.dumpPvsFiles(pvsFile);
-			const ans: DumpPvsFilesResponse = { req, res: desc };
-			this.connection?.sendNotification(serverRequest.dumpPvsFiles, ans);
-		}
-	}
-	/**
-	 * Undump file request handler
-	 */
-	async undumpPvsFilesRequest (req: UndumpPvsFilesRequest): Promise<void> {
-		if (req?.dmpFile?.fileName && this.pvsProxy) {
-			const dmpFile: PvsFile = fsUtils.decodeURIComponents(req.dmpFile);
-			const res: DumpFileDescriptor = await this.pvsProxy.undumpPvsFiles(dmpFile);
-			const ans: UndumpPvsFilesResponse = {
-				req, 
-				res, 
-				error: res?.folder ? undefined : `Unable to extract files from ${req.dmpFile.fileName}${req.dmpFile.fileExtension ? req.dmpFile.fileExtension : ""}`
-			};
-			this.connection?.sendNotification(serverRequest.undumpPvsFiles, ans);
-		}
-	}
-	/**
 	 * Generate tccs file request handler
 	 */
 	async generateTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { quiet?: boolean, showTccsRequest?: boolean }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
 		if (request && this.pvsProxy) {
 			opt = opt || {};
-			const desc: FileDescriptor = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
+			const desc: {
+				fileName: string, 
+				fileExtension: string, 
+				contextFolder: string 
+			} = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
 			if (desc) {
 				const fname: string = fsUtils.desc2fname({
 					contextFolder: desc.contextFolder,
@@ -931,8 +825,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				// parse files first, so front-end is updated with stats
 				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking, pvs-server is not able to do this tho.
 				// then generate tccs
-				const response: PvsContextDescriptor = await this.pvsProxy.generateTccs(desc);
-				this.connection?.sendNotification((opt.showTccsRequest) ? serverRequest.showTccs : serverRequest.generateTccs, { response, args: request });
+				const response: PvsContextDescriptor = await this.pvsProxy?.generateTccs(desc);
+				this.connection?.sendRequest((opt.showTccsRequest) ? serverRequest.showTccs : serverRequest.generateTccs, { response, args: request });
 
 				let nTccs: number = 0;
 				let nProved: number = 0;
@@ -961,7 +855,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					const msg: string = `${nTccs} tccs generated for ${shortName} (${nProved} proved, ${nTccs - nProved} to be proved)`;
 					this.notifyEndImportantTask({ id: taskId, msg });
 				}
-			} else {
+		} else {
 				console.error("[pvs-language-server] Warning: pvs.generate-tccs is unable to identify filename for ", request);
 			}
 		} else {
@@ -1007,7 +901,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		request = fsUtils.decodeURIComponents(request);
 		if (request) {
 			opt = opt || {};
-			if (request?.fileName) {
+			if (request) {
 				if (fsUtils.isPvsFile(request) && !fsUtils.isSummaryFile(request) && !fsUtils.isProofliteFile(request) && !this.isPreludeFile(request)) {
 					if (request.contextFolder === path.join(this.lastParsedContext, "pvsbin")) {
 						// nothing to do
@@ -1016,11 +910,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					// only .pvs files should be parsed
 					request.fileExtension = ".pvs";
 					// send information to the client, to populate theory explorer on the front-end
-					if (this.lastParsedContext !== request.contextFolder) {
-						this.lastParsedContext = request.contextFolder;
-						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
-						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
-					}
+					this.lastParsedContext = request.contextFolder;
+					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+					this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 					
 					// we should only parse .pvs files
 					const fname: string = fsUtils.desc2fname(request);
@@ -1053,11 +945,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 							// keep typecheck diags
 							source = "Typecheck";
 						} else {
-							this.updateDiags(fname, { pvsResponse: response, isTypecheckError: false });
-							// this.diags[fname] = {
-							// 	pvsResponse: response,
-							// 	isTypecheckError: false
-							// };
+							this.diags[fname] = {
+								pvsResponse: response,
+								isTypecheckError: false
+							};
 						}
 						// send feedback to the front-end
 						if (opt.withFeedback) {
@@ -1076,16 +967,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			}
 		} else {
 			console.error("[pvs-language-server] Warning: pvs.parse-file invoked with null request");
-		}
-	}
-	/**
-	 * Internal function, updates file diagnostics for a given file name
-	 */
-	protected updateDiags (fname: string, diag: { pvsResponse: PvsResponse, isTypecheckError: boolean }): void {
-		if (fname && diag?.pvsResponse) {
-			this.diags[fname] = {
-				...diag
-			};
 		}
 	}
 	/**
@@ -1138,9 +1019,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					// send information to the client, to populate theory explorer on the front-end
 					if (!this.isSameWorkspace(contextFolder)) {
 						this.lastParsedContext = contextFolder;
-						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
-						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 					}
+					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
+					this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 
 					// parse/typecheck files, as requested
 					const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
@@ -1182,7 +1063,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 							// update feedback every time a file has been processed
 							if (response) {
 								if (opt.generateTCCs) {
-									await this.pvsProxy.generateTccs(desc);
+									await this.pvsProxy.generateTccs(desc)
 								}
 								completed++;
 								if (opt.withFeedback) {
@@ -1257,7 +1138,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 									await workspaceActionAux(actionName, { fileName, fileExtension, contextFolder });
 								}
 							}
-						};
+						}
 						if (contextFiles.fileNames.length) {
 							for (let i = 0; i < this.MAX_PARALLEL_PROCESSES && i < contextFiles.fileNames.length; i++) {
 								const fname: string = path.join(contextFolder, contextFiles.fileNames[i]);
@@ -1373,64 +1254,28 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	/**
 	 * Returns a descriptor with information on all theories in a given context folder
 	 */
-	async getContextDescriptor (folder: ContextFolder): Promise<PvsContextDescriptor> {
-		if (folder && folder.contextFolder) {
-			folder = fsUtils.decodeURIComponents(folder);
+	async getContextDescriptor (args: { contextFolder: string }): Promise<PvsContextDescriptor> {
+		if (args && args.contextFolder) {
+			args = fsUtils.decodeURIComponents(args);
 			if (this.pvsProxy) {
-				if (this.pvsProxy?.isProtectedFolder(folder.contextFolder)) {
+				if (this.pvsProxy?.isProtectedFolder(args.contextFolder)) {
 					return await this.getPreludeDescriptor();
 				} // else
-				const contextFolder: string = (folder.contextFolder.endsWith("pvsbin") || folder.contextFolder.endsWith("pvsbin/")) ? path.join(folder.contextFolder, "..") : folder.contextFolder;
+				const contextFolder: string = (args.contextFolder.endsWith("pvsbin") || args.contextFolder.endsWith("pvsbin/")) ? path.join(args.contextFolder, "..") : args.contextFolder;
 				const desc: PvsContextDescriptor = await fsUtils.getContextDescriptor(contextFolder, {
 					listTheorems: true, 
 					includeTccs: true
 				});
-				this.lastParsedContext = contextFolder;
-				// communicate context descriptor to pvsCodeActionProvider
-				this.pvsCodeActionProvider?.updateWorkspaceDescriptor(desc);
 				return desc;
 			} else {
-				console.error('[pvs-language-server.getContextDescriptor] Error: pvs proxy is null');
+				console.error('[pvs-language-server.listTheories] Error: pvs proxy is null');
 			}
 		} else {
-			console.warn('[pvs-language-server.getContextDescriptor] Warning: getContextDescriptor invoked with null descriptor');
+			console.warn('[pvs-language-server.listTheories] Warning: getContextDescriptor invoked with null descriptor');
 		}
 		return null;
 	}
-	/**
-	 * Alias of getContextDescriptor
-	 */
-	async getWorkspaceDescriptor (folder: ContextFolder): Promise<PvsContextDescriptor> {
-		return await this.getContextDescriptor(folder);
-	}
-	/**
-	 * Utility function, clears information about the current workspace
-	 */
-	async clearWorkspace (): Promise<void> {
-		// clear list of theories known to the typechecker
-		await this.pvsProxy?.clearTheories();
-		// forward request to pvsCodeActionProvider
-		this.pvsCodeActionProvider.clearWorkspaceDescriptor();
-	}
-	/**
-	 * search nasalib
-	 */
-	async searchNasalib (req: SearchRequest, opt?: { quiet?: boolean }): Promise<SearchResult[]> {
-		const libraryPath: string = this.getNasalibPath();
-		const ans: SearchResult[] = await this.searchPvsLibraryPath(req, { ...opt, libraryPath });
-		// const ans: SearchResult[] = await this.pvsSearchEngine?.searchNasalib(req?.searchString, opt);
-		return ans;
-	}
-	/**
-	 * search external library
-	 */
-	async searchPvsLibraryPath (req: SearchRequest, opt?: { quiet?: boolean, libraryPath?: string }): Promise<SearchResult[]> {
-		const ans: SearchResult[] = await this.pvsSearchEngine?.searchPvsLibraryPath(req?.searchString, {
-			...opt,
-			caseSensitive: req?.caseSensitive
-		});
-		return ans;
-	}
+
 	/**
 	 * Returns a descriptor with information on all theories in a given file
 	 */
@@ -1499,11 +1344,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					// send parser response
 					this.connection?.sendRequest(serverEvent.parseFileResponse, response);
 					// collect diagnostics
-					this.updateDiags(fname, { pvsResponse: response, isTypecheckError: false })
-					// this.diags[fname] = {
-					// 	pvsResponse: response,
-					// 	isTypecheckError: false
-					// };
+					this.diags[fname] = {
+						pvsResponse: response,
+						isTypecheckError: false
+					};
 				} 
 				// else {
 				// 	// clear diagnostics, as the parse error may have gone and we don't know because pvs-server failed to execute parseFile
@@ -1589,10 +1433,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		this.codeLensProvider = new PvsCodeLensProvider(this);
 		this.renameProvider = new PvsRenameProvider(this.connection);
 		this.hoverProvider = new PvsHoverProvider(this.definitionProvider);
-		this.linter = new PvsLinter(); // not used for the moment
+		this.linter = new PvsLinter();
+		// this.cliGateway = new PvsCliGateway(this);
 		this.proofExplorer = new PvsProofExplorer(this.connection, this.pvsProxy, this);
 		this.pvsSearchEngine = new PvsSearchEngine(this.connection, this);
-		this.pvsCodeActionProvider = new PvsCodeActionProvider(this.connection);
 	}
 
 	/**
@@ -1635,23 +1479,17 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 						const errorEnd: Position = (info.error.data.place.length > 3) ? { 
 							line: info.error.data.place[2], 
 							character: info.error.data.place[3]
-						} : {
-							...errorStart
-						};
+						} : errorStart;
 						const txt: string = await fsUtils.readFile(fname);
 						if (txt) {
-							// error message
-							const message: string = info.error.data.error_string;
-							// error range
-							const errorRange: Range = getErrorRange(txt, errorStart, errorEnd, message);
-							// diagnostics
+							const errorRange: Range = getErrorRange(txt, errorStart, errorEnd);
 							const diag: Diagnostic = {
 								severity: DiagnosticSeverity.Error,
 								range: {
 									start: { line: errorRange.start.line - 1, character: errorRange.start.character },
 									end: { line: errorRange.end.line - 1, character: errorRange.end.character },
 								},
-								message,
+								message: info.error.data.error_string,
 								source: `\n${source} error`
 							};
 							this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ diag ] });
@@ -1687,7 +1525,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	protected async readFile (fileName: string): Promise<string> {
 		if (fileName) {
 			fileName = decodeURIComponent(fileName);
-			fileName = fileName.startsWith("file://") ? fileName.replace("file://", "") : fileName;
+			fileName = fileName.startsWith("file://") ? fileName = fileName.replace("file://", "") : fileName;
 			const doc: TextDocument = this.documents.get("file://" + fileName);
 			if (doc) {
 				return doc.getText();
@@ -1912,11 +1750,11 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	/**
 	 * Utility function, quits the prover
 	 */
-	async quitProof (): Promise<void> {
-		if (this.pvsProxy) {
-			await this.pvsProxy?.quitProof();
-		}
+    async quitProof (proofId: string): Promise<void> {
+	if (this.pvsProxy) {
+	    await this.pvsProxy?.quitProof(proofId);
 	}
+    }
 
 	/**
 	 * Utility function, notifies the server mode (lisp, in-checker, pvsio) to the client 
@@ -1929,10 +1767,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	/**
 	 * Handler for quit proof requests
 	 */
-	async quitProofRequest (): Promise<void> {
-		await this.quitProof();
-		this.connection?.sendRequest(serverEvent.quitProofResponse);
-	}
+    async quitProofRequest (proofId: string): Promise<void> {
+	await this.quitProof(proofId);
+	this.connection?.sendRequest(serverEvent.quitProofResponse);
+    }
 
 	/**
 	 * Utility function, return the file name of the prelude
@@ -1963,7 +1801,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Internal function, used to setup LSP event listeners
 	 */
 	protected setupConnectionManager () {
-		this.connection?.onInitialize((params: InitializeParams): { capabilities: ServerCapabilities } => {
+		this.connection?.onInitialize((params: InitializeParams) => {
 			// console.log(`--------- Client capabilities ---------\n`, params.capabilities);
 			const capabilities = params.capabilities;
 			this.clientCapabilities = {
@@ -1999,7 +1837,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					// 	firstTriggerCharacter: "}",
 					// 	moreTriggerCharacter: [";", ","]
 					// }
-					codeActionProvider: true // used for quickfix actions
 				}
 			};
 		});
@@ -2021,30 +1858,17 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// 		// this.connection?.console.info('Workspace folder change event received.');
 			// 	});
 			// }
-			this.connection?.onRequest(serverRequest.openFileWithExternalApp, (desc: FileDescriptor) => {
-				if (desc?.fileName) {
-					const cmd: string = fsUtils.getCommandOpenWithExternalApp(desc);
-					console.log(`[pvs-server] ${cmd}`);
-					const res: string = execSync(cmd, { encoding: "utf-8" });
-					this.connection?.sendNotification(serverRequest.openFileWithExternalApp, { res });
-				}
-			});
 			this.connection?.onRequest(serverRequest.cancelOperation, () => {
 				console.log(`[pvs-server] Operation cancelled by the user`);
 				this.proofExplorer?.interruptProofCommand();
 				// which pvs-server command should I invoke to stop the operation??
 			});
-			this.connection?.onRequest(serverRequest.getContextDescriptor, async (request: { contextFolder: string, force?: boolean }) => {
+			this.connection?.onRequest(serverRequest.getContextDescriptor, (request: { contextFolder: string }) => {
 				if (request && request.contextFolder) {
-					const theoriesFromSelectedFile: boolean = !!(await this.connection?.workspace.getConfiguration("pvs.pvsWorkspaceTheoriesFromActiveFile"));
-					if (!this.isSameWorkspace(request.contextFolder) || theoriesFromSelectedFile || request.force) {
-						// send information to the client, to populate theory explorer on the front-end
-						this.postTask(() => {
-							this.getContextDescriptor(request).then((cdesc: PvsContextDescriptor) => {
-								this.connection?.sendNotification(serverRequest.getContextDescriptor, cdesc);
-							});	
-						})
-					}
+					// send information to the client, to populate theory explorer on the front-end
+					this.getContextDescriptor(request).then((cdesc: PvsContextDescriptor) => {
+						this.connection?.sendRequest(serverRequest.getContextDescriptor, cdesc);
+					});
 				}
 			});
 			this.connection?.onRequest(serverRequest.getFileDescriptor, (request: { contextFolder: string, fileName: string, fileExtension: string }) => {
@@ -2074,11 +1898,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					if (contextFolder) {
 						if (!this.isSameWorkspace(contextFolder)) {
 							this.lastParsedContext = contextFolder;
-							// TODO: send loading message to workspace explorer
-							// ...
-							const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
-							this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 						}
+						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
+						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 					}
 				} else {
 					console.error(`[pvs-server] Error: failed to start pvs-server`);
@@ -2086,10 +1908,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				}
 			});
 			this.connection?.onRequest(serverRequest.rebootPvsServer, async (req?: RebootPvsServerRequest) => {
-				this.rebootPvsServer(req); // async call
+				this.rebootPvsServer(req);
 			});
 			this.connection?.onRequest(serverRequest.clearWorkspace, async () => {
-				this.clearWorkspace(); // async call
+				await this.pvsProxy?.clearWorkspace();
 			});
 			this.connection?.onRequest(serverRequest.parseFile, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
 				this.parseFileRequest(request); // async call
@@ -2118,12 +1940,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			this.connection?.onRequest(serverRequest.typecheckFile, async (request: PvsFile) => {
 				this.typecheckFileRequest(request); // async call
 			});
-			this.connection?.onRequest(serverRequest.dumpPvsFiles, async (request: DumpPvsFilesRequest) => {
-				this.dumpPvsFilesRequest(request); // async call
-			});
-			this.connection?.onRequest(serverRequest.undumpPvsFiles, async (request: UndumpPvsFilesRequest) => {
-				this.undumpPvsFilesRequest(request); // async call
-			});
 			this.connection?.onRequest(serverRequest.showTccs, async (request: { fileName: string, fileExtension: string, contextFolder: string, quiet?: boolean }) => {
 				this.generateTccsRequest(request, { quiet: request && request.quiet, showTccsRequest: true }); // async call
 			});
@@ -2149,25 +1965,25 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				await this.proveFormulaRequest(req);
 			});
 			this.connection?.onRequest(serverRequest.getImportChainTheorems, async (args: PvsTheory) => {
-				await this.getImportChainTheoremsRequest(args);
+				await this.getImportChainTheoremsRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.getTheorems, async (args: PvsTheory) => {
-				await this.getTheoremsRequest(args);
+				await this.getTheoremsRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.getTccs, async (args: PvsTheory) => {
-				await this.getTccsRequest(args);
+				await this.getTccsRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.autorunFormula, async (req: PvsFormula) => {
-				await this.proveFormulaRequest(req, { autorun: true, quiet: true });
+				await this.proveFormulaRequest(req, { autorun: true, quiet: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.autorunFormulaFromJprf, async (req: PvsFormula) => {
-				await this.proveFormulaRequest(req, { autorun: true, useJprf: true, quiet: true });
+				await this.proveFormulaRequest(req, { autorun: true, useJprf: true, quiet: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.showProofLite, async (args: PvsFormula) => {
 				await this.showProofLiteRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.proofCommand, async (args: PvsProofCommand) => {
-				await this.proofExplorer?.proofCommandRequest(args);
+				await this.proofExplorer?.proofCommandRequest(args); // async call
 			});
 			this.connection?.onRequest(serverRequest.getGatewayConfig, async () => {
 				// const port: number = this.getGatewayPort();
@@ -2177,7 +1993,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				this.connection?.sendRequest(serverEvent.viewPreludeFileResponse, this.getPreludeFileName());
 			});
 			this.connection?.onRequest(serverRequest.quitProof, async () => {
-				this.quitProofRequest(); // this method will send a quitProofResponse to the client
+				this.pvsProxy?.quitAllProofs(); // this method will send a quitProofResponse to the client
 			});
 
 			this.connection?.onRequest(serverRequest.getNasalibDownloader, async (req: NASALibDownloaderRequest) => {
@@ -2218,15 +2034,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			this.connection?.onRequest(serverRequest.evalExpression, async (args: EvalExpressionRequest) => {
 				await this.evalExpressionRequest(args);
 			});
-			this.connection?.onRequest(serverRequest.pvsDoc, async (req: PvsDocRequest) => {
-				await this.pvsDocRequest(req);
-			});
 
 			// search request
 			this.connection?.onRequest(serverRequest.search, async (req: SearchRequest) => {
-				const ans: SearchResult[] = req?.library !== "nasalib" ? 
-					await this.searchPvsLibraryPath(req)
-						: await this.searchNasalib(req);
+				const ans: SearchResult[] = await this.pvsSearchEngine?.searchNasalib(req.searchString);
 				const res: SearchResponse = { req, ans };
 				this.connection?.sendNotification(serverRequest.search, res);
 			});
@@ -2392,18 +2203,20 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			}
 			return null;
 		});
-		this.connection?.onCodeAction(async (args: CodeActionParams): Promise<(Command | CodeAction)[]> => {
-			if (this.pvsCodeActionProvider) {
-				const uri: string = args.textDocument.uri;
-				if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
-					const document: TextDocument = this.documents?.get(args?.textDocument.uri);
-					const txt: string = document?.getText() || await this.readFile(uri);
-					const actions: (Command | CodeAction)[] = await this.pvsCodeActionProvider.provideCodeAction({ txt, uri }, args.range, args.context);
-					return actions;
-				}
-			}
-			return null;
-		});
+		// @M3 (20240124): This snippet seems to have been removed by Sam, I wonder why...
+		// this.connection?.onCodeAction(async (args: CodeActionParams): Promise<(Command | CodeAction)[]> => {
+		// 	if (this.pvsCodeActionProvider) {
+		// 		const uri: string = args.textDocument.uri;
+		// 		if (fsUtils.isPvsFile(uri) && this.codeLensProvider) {
+		// 			const document: TextDocument = this.documents?.get(args?.textDocument.uri);
+		// 			const txt: string = document?.getText() || await this.readFile(uri);
+		// 			const actions: (Command | CodeAction)[] = await this.pvsCodeActionProvider.provideCodeAction({ txt, uri }, args.range, args.context);
+		// 			return actions;
+		// 		}
+		// 	}
+		// 	return null;
+		// });
+
 	}
 }
 

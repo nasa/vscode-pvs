@@ -35,10 +35,10 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-import { 
-	ProofNode, ProofNodeType, ProofDescriptor, ProofStatus, serverEvent, 
-	ProofTree, PvsFormula, ProofNodeX, PvsProofCommand, ProofEditCopyNode, ProofEditAppendNode, 
-	ProofEditDidCopyNode, ProofEditPasteNode, ProofExecFastForward, ProofEditCopyTree, ProofEditDidCopyTree, 
+import {
+	ProofNode, ProofNodeType, ProofDescriptor, ProofStatus, serverEvent,
+	ProofTree, PvsFormula, ProofNodeX, PvsProofCommand, ProofEditCopyNode, ProofEditAppendNode,
+	ProofEditDidCopyNode, ProofEditPasteNode, ProofExecFastForward, ProofEditCopyTree, ProofEditDidCopyTree,
 	ProofEditPasteTree, ProofEditDeleteNode, ProofEditDidDeleteNode, ProofEditAppendBranch,
 	ProofEditCutNode, ProofEditDidCutNode, ProofEditCutTree, ProofEditDidCutTree,
 	ProofEditDeleteTree, ProofEditTrimNode, ProofEditDidTrimNode, ProofEditRenameNode,
@@ -46,19 +46,17 @@ import {
 	ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidLoadProof,
 	ProofExecDidLoadSequent, ProofExecDidStartProof, ProofExecDidUpdateSequent, ProofEditTrimUnused,
 	ProofEditDidStartNewProof, ProofExecDidOpenProof,
-	PvsFile, ProofExecDidImportProof, ProofExecRewind, 
-	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, SequentDescriptor, 
-	ProveFormulaRequest, ProofExecDidQuitProof, FileDescriptor, ProofEditDidUpdateDirtyFlag, 
+	PvsFile, ProofExecDidImportProof, ProofExecRewind,
+	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, SequentDescriptor,
+	ProveFormulaRequest, ProofExecDidQuitProof, FileDescriptor, ProofEditDidUpdateDirtyFlag,
 	serverRequest, SaveProofResponse, ProofExecRunSubtree, ProofEditJumpHere
 } from '../common/serverInterface';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
 import { PvsResponse } from '../common/pvs-gui';
-import { 
-	CheckParResult,
-	isEmptyCommand, isFailCommand, isInvalidCommand, isPostponeCommand, isProofliteGlassbox, 
-	isQEDCommand, isQuitCommand, isQuitDontSaveCommand, isSameCommand, isSaveThenQuitCommand, 
-	isShowExpandedSequentCommand, 
+import {
+	isEmptyCommand, isFailCommand, isInvalidCommand, isPostponeCommand, isProofliteGlassbox,
+	isQEDCommand, isQuitCommand, isQuitDontSaveCommand, isSameCommand, isSaveThenQuitCommand,
 	isShowHiddenFormulas, isUndoCommand, isUndoUndoCommand, isUndoUndoPlusCommand, splitCommands
 } from '../common/languageUtils';
 import { Connection } from 'vscode-languageserver';
@@ -90,14 +88,13 @@ export class PvsProofExplorer {
 	protected tmpLogFileName: string;
 
 	protected dirtyFlag: boolean = false; // indicates whether the proof has changed since the last time it was saved
-	protected qedNotificationSent: boolean = false; // whether the QED notification has been send to the client
 
 	protected connection: Connection; // connection to the client
 	protected pvsProxy: PvsProxy;
 	protected pvsLanguageServer: PvsLanguageServer;
 
 	readonly DEBUG_LOG: boolean = false;
-	protected log (...args): void {
+	protected log(...args): void {
 		if (this.DEBUG_LOG) {
 			console.log(args);
 		}
@@ -149,21 +146,21 @@ export class PvsProofExplorer {
 	protected proofState: SequentDescriptor;
 
 
-	constructor (connection: Connection, pvsProxy: PvsProxy, pvsLanguageServer: PvsLanguageServer) {
+	constructor(connection: Connection, pvsProxy: PvsProxy, pvsLanguageServer: PvsLanguageServer) {
 		this.connection = connection;
 		this.pvsProxy = pvsProxy;
 		this.pvsLanguageServer = pvsLanguageServer;
-    }
+	}
 
 	// utility accessor functions, useful for testing purposes
-	getProofX (): ProofNodeX {
+	getProofX(): ProofNodeX {
 		if (this.root) {
 			const structure: ProofNodeX = this.root.getNodeXStructure();
 			return structure;
 		}
 		return null;
 	}
-	getActiveNode (): ProofNodeX {
+	getActiveNode(): ProofNodeX {
 		if (this.activeNode) {
 			return this.activeNode.getNodeXStructure();
 		}
@@ -178,16 +175,16 @@ export class PvsProofExplorer {
 	// 	}
 	// 	return null;
 	// }
-	getGhostNode (): ProofNodeX {
+	getGhostNode(): ProofNodeX {
 		if (this.ghostNode) {
 			return this.ghostNode.getNodeXStructure();
 		}
 		return null;
 	}
-	ghostNodeIsActive (): boolean {
+	ghostNodeIsActive(): boolean {
 		return this.ghostNode && this.ghostNode.isActive();
 	}
-	isVisited (desc: { id: string, name: string }): boolean {
+	isVisited(desc: { id: string, name: string }): boolean {
 		if (desc) {
 			const item: ProofItem = this.findNode(desc.id);
 			if (item) {
@@ -197,7 +194,7 @@ export class PvsProofExplorer {
 		console.warn(`[proof-explorer] Warning: failed to check visited flag`);
 		return false;
 	}
-	isPending (desc: { id: string, name: string }): boolean {
+	isPending(desc: { id: string, name: string }): boolean {
 		if (desc) {
 			const item: ProofItem = this.findNode(desc.id);
 			if (item) {
@@ -207,7 +204,7 @@ export class PvsProofExplorer {
 		console.warn(`[proof-explorer] Warning: failed to check pending flag`);
 		return false;
 	}
-	isActive (desc: { id: string, name: string }): boolean {
+	isActive(desc: { id: string, name: string }): boolean {
 		if (desc) {
 			const item: ProofItem = this.findNode(desc.id);
 			if (item) {
@@ -217,16 +214,18 @@ export class PvsProofExplorer {
 		console.warn(`[proof-explorer] Warning: failed to check active flag`);
 		return false;
 	}
-	newProof (): void {
+	newProof(): void {
 		const evt: ProofEditDidStartNewProof = {
-			action: "did-start-new-proof" 
+			action: "did-start-new-proof"
 		};
 		this.connection.sendNotification(serverEvent.proverEvent, evt);
 	}
+
+
 	/**
 	 * Internal function, moves the active node one position back in the proof tree.
 	 */
-	protected moveIndicatorBack (opt?: { keepSameBranch?: boolean }): void {
+	protected moveIndicatorBack(opt?: { keepSameBranch?: boolean }): void {
 		if (this.activeNode) {
 			opt = opt || {};
 			const prev: ProofItem = this.activeNode.moveIndicatorBack(opt);
@@ -241,7 +240,7 @@ export class PvsProofExplorer {
 	/**
 	 * Internal function, moves the active node one position forward in the proof tree.
 	 */
-	protected moveIndicatorForward (opt?: { keepSameBranch?: boolean, proofState?: SequentDescriptor, branchComplete?: boolean }): ProofItem {
+	protected moveIndicatorForward(opt?: { keepSameBranch?: boolean, proofState?: SequentDescriptor, branchComplete?: boolean }): ProofItem {
 		if (this.activeNode) {
 			opt = opt || {};
 			if (this.activeNode.contextValue !== "ghost") {
@@ -278,7 +277,7 @@ export class PvsProofExplorer {
 	 * is detected in the proof tree (e.g,. the prover generates more goals than those 
 	 * indicated in the proof tree)
 	 */
-	async run (opt?: { feedbackToTerminal?: boolean }): Promise<void> {
+	async run(opt?: { feedbackToTerminal?: boolean }): Promise<void> {
 		opt = opt || {};
 		if (!this.runningFlag) {
 			this.runningFlag = true;
@@ -293,12 +292,12 @@ export class PvsProofExplorer {
 	 * indicated in the proof tree)
 	 * @param desc Descriptor of the selected node where the execution should stop.
 	 */
-	async fastForwardTo (desc: { selected: ProofItem }): Promise<void> {
+	async fastForwardTo(desc: { selected: ProofItem }): Promise<void> {
 		if (desc?.selected) {
 			// adjust selected target --- if it's a branch, stop at the first child
-			const target: ProofItem = (desc.selected && desc.selected.contextValue === "proof-branch" 
+			const target: ProofItem = (desc.selected && desc.selected.contextValue === "proof-branch"
 				&& desc.selected.children && desc.selected.children.length) ? desc.selected.children[0]
-					: desc.selected;
+				: desc.selected;
 			if (!target?.isVisited() && this.activeNode && !this.ghostNode?.isActive()) {
 				this.stopAt = target;
 				this.runningFlag = true;
@@ -310,7 +309,7 @@ export class PvsProofExplorer {
 			console.warn(`[proof-explorer] Warning: failed to fast forward (selected node is null)`);
 		}
 	}
-	async fastForwardToNodeX (desc: ProofExecFastForward): Promise<void> {
+	async fastForwardToNodeX(desc: ProofExecFastForward): Promise<void> {
 		if (desc?.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
@@ -333,7 +332,7 @@ export class PvsProofExplorer {
 			// fast forward to the last node of the brannch and then execute the last node
 			const lastNode: ProofItem = desc.selected.contextValue === "proof-branch" ?
 				desc.selected.getLastChildInSubtree()
-					: desc.selected.parent?.getLastChildInSubtree();
+				: desc.selected.parent?.getLastChildInSubtree();
 			if (lastNode) {
 				await this.fastForwardTo({ selected: lastNode });
 				// double check that fast forward ended up in the right place
@@ -355,17 +354,17 @@ export class PvsProofExplorer {
 			console.warn(`[proof-explorer] Warning: failed to perform proof exec/sub-subtree (selected node is null)`);
 		}
 	}
-	
+
 	/**
 	 * Rewinds to the selected node, i.e., executed undo until the selected node is either not visited.
 	 * @param desc 
 	 */
-	async rewindTo (desc: { selected: ProofItem }): Promise<void> {
+	async rewindTo(desc: { selected: ProofItem }): Promise<void> {
 		if (desc && desc.selected) {
 			// adjust selected --- if it's a branch node, select the first children
-			const target: ProofItem = (desc.selected && desc.selected.contextValue === "proof-branch" 
+			const target: ProofItem = (desc.selected && desc.selected.contextValue === "proof-branch"
 				&& this.activeNode.children && this.activeNode.children.length) ? desc.selected.children[0]
-					: desc.selected;
+				: desc.selected;
 			if (target?.isVisited() && this.activeNode) {
 				this.rewindTarget = target;
 				this.rewindingFlag = true;
@@ -375,7 +374,7 @@ export class PvsProofExplorer {
 			console.warn(`[proof-explorer] Warning: failed to rewind (selected node is null)`);
 		}
 	}
-	async rewindToNodeX (desc: ProofExecRewind): Promise<void> {
+	async rewindToNodeX(desc: ProofExecRewind): Promise<void> {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
@@ -389,25 +388,25 @@ export class PvsProofExplorer {
 	/**
 	 * repeats the last command
 	 */
-	async redo (): Promise<PvsResponse | null> {
+	async redo(): Promise<PvsResponse | null> {
 		return await this.forward();
 	}
 	/**
 	 * executes the next step
 	 */
-	async forward (): Promise<PvsResponse | null> {
+	async forward(): Promise<PvsResponse | null> {
 		return await this.step({ feedbackToTerminal: true });
 	}
 	/**
 	 *  goes one step back (undo)
 	 */
-	async back (): Promise<PvsResponse | null> {
+	async back(): Promise<PvsResponse | null> {
 		return await this.undo();
 	}
 	/**
 	 * goes one step back
 	 */
-	async undo (): Promise<PvsResponse | null> {
+	async undo(): Promise<PvsResponse | null> {
 		// this.root.pending();
 		return await this.step({ cmd: "undo", feedbackToTerminal: true });
 	}
@@ -416,100 +415,101 @@ export class PvsProofExplorer {
 	 * The function is activated when the user clicks forward/back/play on the front-end.
 	 * The command is taken from the proof tree.
 	 * The command can also be specified as function argument -- this is useful for handling commands entered by the used at the prover prompt. 
-	 * @param opt.cmd Optional parameter, specifies the command to be executed.
+	 * @param cmd Optional parameter, specifying the command to be executed.
 	 */
-	async step (opt?: { cmd?: string, feedbackToTerminal?: boolean }): Promise<PvsResponse> {
+	async step(opt?: { proofId?: string, cmd?: string, feedbackToTerminal?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
 		// return new Promise (async (resolve, reject) => {
-
-			if (this.stopAt && this.activeNode && this.stopAt.id === this.activeNode.id) {
-				this.stopAt = null;
-				this.runningFlag = false;
-				if (this.connection) {
-					const evt: ProofExecDidStopRunning = {
-						action: "did-stop-running",
-						sequent: this.proofState
-					};
-					this.connection.sendNotification(serverEvent.proverEvent, evt);
-				}
-				return null;
-			}
-
-			const cmd: string = (opt.cmd) ? opt.cmd : 
-					(this.activeNode?.contextValue === "proof-command" && (this.ghostNode && !this.ghostNode.isActive())) ?
-						this.activeNode?.name 
-							: null;
-			if (cmd) {
-				if (this.runningFlag && !this.autorunFlag && isPostponeCommand(cmd)) {
-					if (this.stopAt) {
-						if (this.stopAt === this.activeNode) {
-							// stop the proof at the first postpone when running the proof in proof explorer, except if this is a re-run triggered by M-x prt or M-x pri (autorunFlag)
-							this.runningFlag = false;
-							return null;
-						}
-					} else {
-						this.stopAt = this.activeNode;
-					}
-				}
-				if (opt.feedbackToTerminal && !this.autorunFlag) {
-					// const channelID: string = desc2id(this.formula);
-					// const evt: CliGatewayPrintProofCommand = { type: "pvs.event.print-proof-command", channelID, data: { cmd } };
-					// this.pvsLanguageServer.cliGateway.publish(evt);
-				}
-				const command: PvsProofCommand = {
-					fileName: this.formula.fileName,
-					fileExtension: this.formula.fileExtension,
-					theoryName: this.formula.theoryName,
-					formulaName: this.formula.formulaName,
-					contextFolder: this.formula.contextFolder,
-					cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
+		if (this.stopAt && this.activeNode && this.stopAt.id === this.activeNode.id) {
+			this.stopAt = null;
+			this.runningFlag = false;
+			if (this.connection) {
+				const evt: ProofExecDidStopRunning = {
+					action: "did-stop-running",
+					sequent: this.proofState
 				};
-				// console.dir(command, { depth: null });
-				const response: PvsResponse = await this.proofCommand(command);
-				if (this.interruptFlag) {
-					this.interruptFlag = false;
-					if (this.autorunFlag) {
-						this.runningFlag = false;
-						this.stopAt = null;			
-						await this.quitProof();
-						return null;
-					}
-					// else -- keep processing the response as usual
-				}
-				// console.dir(response, { depth: null });
-				if (response?.result?.length) {
-					for (let i = 0; i < response.result.length; i++) {
-						const proofState: SequentDescriptor = response.result[i]; // process proof commands
-						await this.onStepExecutedNew({ proofState, args: command, lastSequent: i === response.result.length - 1 }, opt);
-					}
-					// if a proof is running, then iterate
-					if (this.runningFlag && !this.ghostNode.isActive()) {
-						await this.step(opt);
-					}
-				}
-				return response;
-			}
-			if (this.autorunFlag) {
-				this.runningFlag = false;
-				this.stopAt = null;	
-				// mark proof as unfinished
-				if (this.root.getProofStatus() !== "untried") {
-					this.root.setProofStatus("unfinished");
-				}
-				// quit proof and update proof status in the jprf file
-				await this.quitProofAndSave({ jprfOnly: true });
-				// await this.quitProof();
-				return null;
+				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
 			return null;
+		}
+
+		const cmd: string = (opt.cmd) ? opt.cmd :
+			(this.activeNode?.contextValue === "proof-command" && (this.ghostNode && !this.ghostNode.isActive())) ?
+				this.activeNode?.name
+				: null;
+		const proofId: string = (opt.proofId) ? opt.proofId : null;
+		if (cmd) {
+			if (this.runningFlag && !this.autorunFlag && isPostponeCommand(cmd)) {
+				if (this.stopAt) {
+					if (this.stopAt === this.activeNode) {
+						// stop the proof at the first postpone when running the proof in proof explorer, except if this is a re-run triggered by M-x prt or M-x pri (autorunFlag)
+						this.runningFlag = false;
+						return null;
+					}
+				} else {
+					this.stopAt = this.activeNode;
+				}
+			}
+			if (opt.feedbackToTerminal && !this.autorunFlag) {
+				// const channelID: string = desc2id(this.formula);
+				// const evt: CliGatewayPrintProofCommand = { type: "pvs.event.print-proof-command", channelID, data: { cmd } };
+				// this.pvsLanguageServer.cliGateway.publish(evt);
+			}
+			const command: PvsProofCommand = {
+				fileName: this.formula.fileName,
+				fileExtension: this.formula.fileExtension,
+				theoryName: this.formula.theoryName,
+				formulaName: this.formula.formulaName,
+				contextFolder: this.formula.contextFolder,
+				cmd: cmd.startsWith("(") ? cmd : `(${cmd})`
+			};
+			// console.dir(command, { depth: null });
+			const response: PvsResponse =
+				await this.pvsProxy.proofCommand({ proofId: proofId, cmd: cmd });
+			if (this.interruptFlag) {
+				this.interruptFlag = false;
+				if (this.autorunFlag) {
+					this.runningFlag = false;
+					this.stopAt = null;
+					await this.quitProof();
+					return null;
+				}
+				// else -- keep processing the response as usual
+			}
+			// console.dir(response, { depth: null });
+			if (response?.result?.length) {
+				for (let i = 0; i < response.result.length; i++) {
+					const proofState: SequentDescriptor = response.result[i]; // process proof commands
+					await this.onStepExecutedNew({ proofState, args: command, lastSequent: i === response.result.length - 1 }, opt);
+				}
+				// if a proof is running, then iterate
+				if (this.runningFlag && !this.ghostNode.isActive()) {
+					await this.step(opt);
+				}
+			}
+			return response;
+		}
+		if (this.autorunFlag) {
+			this.runningFlag = false;
+			this.stopAt = null;
+			// mark proof as unfinished
+			if (this.root.getProofStatus() !== "untried") {
+				this.root.setProofStatus("unfinished");
+			}
+			// quit proof and update proof status in the jprf file
+			await this.quitProofAndSave({ jprfOnly: true });
+			// await this.quitProof();
+			return null;
+		}
+		return null;
 		// });
 	}
-	protected restoreTreeAttributes (): void {
+	protected restoreTreeAttributes(): void {
 		if (this.root) {
 			this.root.restoreTreeAttributes();
 		}
 	}
-	protected saveTreeAttributes (): void {
+	protected saveTreeAttributes(): void {
 		if (this.root) {
 			this.root.saveTreeAttributes();
 		}
@@ -520,7 +520,7 @@ export class PvsProofExplorer {
 	 * the prover advances to a new branch that is not one of the children of the active node
 	 * @param desc 
 	 */
-	protected proofStructureHasChanged (desc: { activeNode: ProofItem, targetBranch: ProofBranch }): boolean {
+	protected proofStructureHasChanged(desc: { activeNode: ProofItem, targetBranch: ProofBranch }): boolean {
 		if (desc) {
 			return !desc.targetBranch || !desc.activeNode.children || desc.activeNode.children.filter((item) => {
 				return item.name === desc.targetBranch.name;
@@ -544,7 +544,7 @@ export class PvsProofExplorer {
 	/**
 	 * Utility function, stops running / rewinding a proof
 	 */
-	stopRun (): void {
+	stopRun(): void {
 		this.runningFlag = false;
 		this.stopAt = null;
 		this.rewindTarget = null;
@@ -561,13 +561,13 @@ export class PvsProofExplorer {
 	 * Utility function invoked after step(). Updates the data structures of proof-explorer and sends messages to the front-end.
 	 * @param desc Descriptor specifying the reponse of the prover, as well as the actual values of the arguments used to invoke the step function.
 	 */
-	async onStepExecutedNew (desc: { proofState: SequentDescriptor, args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
+	async onStepExecutedNew(desc: { proofState: SequentDescriptor, args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
 		if (desc && desc.proofState) {
 			// get command and proof state
 			let userCmd: string = desc.args ? desc.args.cmd : null; // command entered by the user
 			const cmd: string = (typeof desc.proofState["prev-cmd"] === "string") ? desc.proofState["prev-cmd"] : userCmd;
 			this.proofState = desc.proofState;
-			
+
 			// identify active node in the proof tree
 			let activeNode: ProofItem = this.ghostNode.isActive() ? this.ghostNode.realNode : this.activeNode;
 
@@ -587,7 +587,7 @@ export class PvsProofExplorer {
 						this.appendNode({ selected: activeNode, elem, sequent: activeNode.sequentDescriptor }, { beforeSelected: true, internalAction: this.autorunFlag });
 					} else {
 						const tooltip: SequentDescriptor = (this.ghostNode.isActive()) ? this.ghostNode.sequentDescriptor : activeNode.sequentDescriptor;
-						this.appendNode({ selected: activeNode, elem, sequent: tooltip }, { internalAction: this.autorunFlag });						
+						this.appendNode({ selected: activeNode, elem, sequent: tooltip }, { internalAction: this.autorunFlag });
 					}
 					this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
 					activeNode = this.activeNode; // update local variable because the following instructions are using it
@@ -616,7 +616,7 @@ export class PvsProofExplorer {
 			if (isQuitCommand(cmd)) {
 				this.runningFlag = false;
 				this.stopAt = null;
-				return;	
+				return;
 			}
 
 			// identify previous and current (new) branch
@@ -625,7 +625,7 @@ export class PvsProofExplorer {
 			const previousBranch: ProofBranch = this.findProofBranch(previousBranchName);
 			const currentBranch: ProofBranch = this.findProofBranch(currentBranchName);
 			const branchCompleted: boolean = (previousBranch && !previousBranch.isComplete() && languageUtils.branchComplete(this.proofState, this.formula.formulaName, previousBranchName))
-					|| (currentBranch && !currentBranch.isComplete() && languageUtils.branchComplete(this.proofState, this.formula.formulaName, currentBranchName));
+				|| (currentBranch && !currentBranch.isComplete() && languageUtils.branchComplete(this.proofState, this.formula.formulaName, currentBranchName));
 
 			// const currentPath: string = this.proofState.path;
 			// const pathHasChanged: boolean = utils.pathHasChanged({ newBranch: currentPath, previousBranch: this.previousPath });
@@ -637,7 +637,7 @@ export class PvsProofExplorer {
 				// const evt: CliGatewayProofState = { type: "pvs.event.proof-state", channelID, data: this.proofState };
 				// this.pvsLanguageServer.cliGateway.publish(evt);
 				const ans: ProofCommandResponse = {
-					res: this.proofState, 
+					res: this.proofState,
 					req: desc?.args
 				};
 				this.pvsLanguageServer.getConnection()?.sendRequest(serverEvent.proofCommandResponse, ans);
@@ -687,7 +687,7 @@ export class PvsProofExplorer {
 				if (this.runningFlag && isPostponeCommand(userCmd, this.proofState)) {
 					if (this.autorunFlag) {
 						this.runningFlag = false;
-						this.stopAt = null;	
+						this.stopAt = null;
 						// mark proof as unfinished
 						if (this.root.getProofStatus() !== "untried") {
 							this.root.setProofStatus("unfinished");
@@ -745,7 +745,7 @@ export class PvsProofExplorer {
 							target = this.ghostNode;
 						}
 						this.restoreTreeAttributes();
-						this.markAsActive({ selected: target});
+						this.markAsActive({ selected: target });
 						this.undoundoTarget = null;
 					} else {
 						console.error(`[proof-explorer] Warning: unable to execute ${userCmd}`);
@@ -753,28 +753,15 @@ export class PvsProofExplorer {
 					return;
 				}
 
-				// handle (show-hidden) and other similar commands that are not directly supported by the server and need to be by-passed
+				// handle (show-hidden) and (comment "xxx")
 				if (isShowHiddenFormulas(userCmd)) {
 					// nothing to do, the prover will simply show the hidden formulas
 					return;
 				}
 
-				if (isShowExpandedSequentCommand(userCmd)) {
-					// nothing to do, the prover will simply show the expanded sequent
-					return;
-				}
-
 				if (languageUtils.isHelpCommand(userCmd) || languageUtils.isHelpBangCommand(userCmd)) {
 					// do nothing, CLI will show the help message
-				}
-
-				// sanity check for parens, pvs sometimes does not report problems and this confuses proof explorer
-				// this condition should never be triggered because the same sanity check is also in vscodePvsXTerm that
-				// prevents the submission of commands with unbalanced parens to the prover
-				const parens: CheckParResult = languageUtils.checkPar(userCmd, { includeStringContent: true });
-				if (!parens?.success) {
-					// report unbalanced parens to the user
-					this.proofState.commentary = parens.msg;
+					// return;
 				}
 
 				//--- check special conditions: empty/null command, invalid command, no change before proceeding
@@ -815,8 +802,8 @@ export class PvsProofExplorer {
 					// check if the command that produced no change comes from the proof tree -- if so advance indicator
 					// here we need to check both command and userCmd, as pvs may clean up the command, eg., (hide 01) is returned as (hide 1)
 					if ((isSameCommand(activeNode.name, command) || isSameCommand(activeNode.name, userCmd) || isSameCommand(activeNode.name, cmd))
-							&& !this.ghostNode.isActive()) {
-						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });						
+						&& !this.ghostNode.isActive()) {
+						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 						// mark the sub tree of the invalid node as not visited
 						activeNode.treeNotVisited();
 						// remove children of this node only if we are not re-running the proof,
@@ -884,13 +871,13 @@ export class PvsProofExplorer {
 								// the two operations are equivalent from the standpoint of the proof tree
 								// this strategy is useful for the clipboard -- the clipboard will show up the node being cut (if the node is not a singleton)
 								this.cutTreeX({ action: "cut-tree", selected: activeNode, keepRoot: true })
-									: this.trimNode({ selected: activeNode });
+								: this.trimNode({ selected: activeNode });
 						}
 						// find target branch
 						const targetBranch: ProofItem = this.findProofBranch(currentBranchName) || this.createBranchRecursive({ id: currentBranchName }, { internalAction: this.autorunFlag });
 						if (targetBranch) {
 							// update tooltip in target branch
-							targetBranch.updateSequent(this.proofState, { internalAction: this.autorunFlag });					
+							targetBranch.updateSequent(this.proofState, { internalAction: this.autorunFlag });
 							// go to the new branch
 							activeNode.visited();
 							// find the last visited child in the new branch
@@ -933,9 +920,9 @@ export class PvsProofExplorer {
 					await this.quitProofAndSave({ jprfOnly: true });
 				} else {
 					if (this.connection) {
-						const evt: ProofExecDidStopRunning = {
+						const evt: ProofExecDidStopRunning = { 
 							action: "did-stop-running",
-							sequent: this.proofState
+							sequent: this.proofState 
 						};
 						this.connection.sendNotification(serverEvent.proverEvent, evt);
 					}
@@ -945,9 +932,9 @@ export class PvsProofExplorer {
 			this.runningFlag = false;
 			console.error("[proof-explorer] Error: could not read proof state information returned by pvs-server.");
 			if (this.connection) {
-				const evt: ProofExecDidStopRunning = {
+				const evt: ProofExecDidStopRunning = { 
 					action: "did-stop-running",
-					sequent: this.proofState
+					sequent: this.proofState 
 				};
 				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
@@ -958,7 +945,7 @@ export class PvsProofExplorer {
 	 * Internal function, finds a given proof branch in the tree
 	 * @param id Name of the proof branch. Branch names are specified using a dot notation (e.g., 1.3.2)
 	 */
-	protected findProofBranch (id: string): ProofBranch {
+	protected findProofBranch(id: string): ProofBranch {
 		if (id === "") {
 			return this.root;
 		}
@@ -966,7 +953,7 @@ export class PvsProofExplorer {
 		const findNodeAux = (id: string, node: ProofItem): ProofBranch | null => {
 			if (node) {
 				if (node.contextValue === "proof-branch" && node.branchNameEquals(id)) {
-					return <ProofBranch> node;
+					return <ProofBranch>node;
 				}
 				for (let i = 0; i < node.children.length; i++) {
 					const res: ProofItem = findNodeAux(id, node.children[i]);
@@ -979,7 +966,7 @@ export class PvsProofExplorer {
 		}
 		return findNodeAux(id, this.root);
 	}
-	protected findNode (id: string): ProofBranch {
+	protected findNode(id: string): ProofBranch {
 		const findNodeAux = (id: string, node: ProofItem): ProofBranch | null => {
 			if (node && node.id === id) {
 				return node;
@@ -998,7 +985,7 @@ export class PvsProofExplorer {
 	 * Internal function, finds first node not visited, starting to check from the given node
 	 * @param id Name of the proof branch. Branch names are specified using a dot notation (e.g., 1.3.2)
 	 */
-	protected findFirstNotVisited (node: ProofItem): ProofItem {
+	protected findFirstNotVisited(node: ProofItem): ProofItem {
 		if (node && !node.isVisited() && !node.isPending()) {
 			return node;
 		}
@@ -1010,7 +997,7 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
-	protected findLastVisitedOrActive (branch: ProofBranch): ProofItem {
+	protected findLastVisitedOrActive(branch: ProofBranch): ProofItem {
 		if (branch) {
 			if (branch.children && branch.children.length) {
 				const candidates: ProofItem[] = branch.children.filter(elem => {
@@ -1027,7 +1014,7 @@ export class PvsProofExplorer {
 	 * Internal function, creates a proof branch
 	 * @param id Name of the proof branch. Branch names are specified using a dot notation (e.g., 1.3.2)
 	 */
-	protected createBranchRecursive (desc: { id: string }, opt?: { internalAction?: boolean }): ProofBranch | null {
+	protected createBranchRecursive(desc: { id: string }, opt?: { internalAction?: boolean }): ProofBranch | null {
 		opt = opt || {};
 		let branch: ProofBranch = null;
 		if (desc && desc.id) {
@@ -1056,7 +1043,7 @@ export class PvsProofExplorer {
 	 * Utility function, marks the selected node as pending
 	 * @param desc Descriptor of the selected node
 	 */
-	markAsPending (desc: { selected: ProofItem }): void {
+	markAsPending(desc: { selected: ProofItem }): void {
 		if (desc && desc.selected && desc.selected.id !== this.activeNode.id) {
 			if (desc.selected.contextValue === "proof-branch") {
 				desc.selected.treeNotVisited();
@@ -1072,7 +1059,7 @@ export class PvsProofExplorer {
 	 * Utility function, marks the selected node as visited
 	 * @param desc Descriptor of the selected node
 	 */
-	markAsVisited (desc: { selected: ProofItem }): void {
+	markAsVisited(desc: { selected: ProofItem }): void {
 		if (desc && desc.selected && desc.selected.id !== this.activeNode.id) {
 			if (desc.selected.contextValue === "proof-branch") {
 				desc.selected.treeVisited();
@@ -1087,7 +1074,7 @@ export class PvsProofExplorer {
 	 * Utility function, marks the selected node as not-visited
 	 * @param desc Descriptor of the selected node
 	 */
-	markAsNotVisited (desc: { selected: ProofItem }): void {
+	markAsNotVisited(desc: { selected: ProofItem }): void {
 		if (desc && desc.selected && desc.selected.id !== this.activeNode.id) {
 			if (desc.selected.contextValue === "proof-branch") {
 				desc.selected.treeNotVisited();
@@ -1102,7 +1089,7 @@ export class PvsProofExplorer {
 	 * Utility function, jumps to the selected node without executing it.
 	 * @param desc Descriptor of the selected node
 	 */
-	jumpTo (desc: { selected: ProofItem }, opt?: { force?: boolean, restore?: boolean }): ProofItem {
+	jumpTo(desc: { selected: ProofItem }, opt?: { force?: boolean, restore?: boolean }): ProofItem {
 		// if this is a branch, try to jump to the first child
 		if (desc.selected.contextValue === "proof-branch" && desc.selected.children && desc.selected.children.length) {
 			desc.selected = desc.selected.children[0];
@@ -1113,7 +1100,7 @@ export class PvsProofExplorer {
 	 * Utility function, marks the selected node as active.
 	 * @param desc Descriptor of the selected node
 	 */
-	protected markAsActive (desc: { selected: ProofItem }, opt?: { force?: boolean }): ProofItem {
+	protected markAsActive(desc: { selected: ProofItem }, opt?: { force?: boolean }): ProofItem {
 		if (desc && desc.selected) {
 			opt = opt || {};
 			if (opt.force || desc.selected !== this.activeNode) {
@@ -1140,7 +1127,7 @@ export class PvsProofExplorer {
 	/**
 	 * Internal function, marks a proof as dirty, indicating that the proof structure has changed and the proof needs re-saving and re-checking
 	 */
-	protected updateDirtyFlag (flag: boolean): void {
+	protected updateDirtyFlag(flag: boolean): void {
 		// set dirty flag
 		this.dirtyFlag = !!flag;
 		// update proof status
@@ -1156,7 +1143,7 @@ export class PvsProofExplorer {
 	/**
 	 * Reveals a node in the view.
 	 */
-	protected revealNode (desc: { selected: ProofItem }): void {
+	protected revealNode(desc: { selected: ProofItem }): void {
 		// TODO: send request to the client
 	}
 	/**
@@ -1166,15 +1153,15 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor indicating the selected node and the new element to be appended in the proof tree.
 	 * @param opt Options: beforeSelected (boolean) allows to append the new element before the selected node (rather than after)
 	 */
-	appendNode (desc: { selected: ProofItem, elem: ProofItem | string, sequent: SequentDescriptor }, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): ProofItem {
+	appendNode(desc: { selected: ProofItem, elem: ProofItem | string, sequent: SequentDescriptor }, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): ProofItem {
 		if (desc && desc.selected && desc.elem) {
 			this.updateDirtyFlag(true);
 			opt = opt || {};
-			const selectedNode: ProofItem = (desc.selected.contextValue === "ghost") ? (<GhostNode> desc.selected).realNode : desc.selected;
+			const selectedNode: ProofItem = (desc.selected.contextValue === "ghost") ? (<GhostNode>desc.selected).realNode : desc.selected;
 			const branchId: string = selectedNode.branchId;
-			let newNode: ProofItem = (typeof desc.elem === "string") ? 
+			let newNode: ProofItem = (typeof desc.elem === "string") ?
 				new ProofCommand(desc.elem, branchId, selectedNode.parent, this.connection)
-					: desc.elem;
+				: desc.elem;
 			if (newNode) {
 				switch (selectedNode.contextValue) {
 					case "root":
@@ -1211,7 +1198,7 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
-	appendNodeX (desc: ProofEditAppendNode, opt?: { beforeSelected?: boolean }): ProofItem {
+	appendNodeX(desc: ProofEditAppendNode, opt?: { beforeSelected?: boolean }): ProofItem {
 		if (desc) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
@@ -1229,7 +1216,7 @@ export class PvsProofExplorer {
 	 * 			   If the selected node is a branch, then the branch will be appended to the parent of the selected branch.
 	 * @param opt Optionals: beforeSelected (boolean) flag used when the selected node is a branch, indicates whether the branch should be appended before the selected branch. 
 	 */
-	appendBranch (desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: SequentDescriptor, internalAction?: boolean }): boolean {
+	appendBranch(desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: SequentDescriptor, internalAction?: boolean }): boolean {
 		if (desc && desc.selected) {
 			this.updateDirtyFlag(true);
 			opt = opt || {};
@@ -1251,7 +1238,7 @@ export class PvsProofExplorer {
 						let found: boolean = false;
 						for (let i = 0; i < selectedNode.children.length && !found; i++) {
 							if (selectedNode.children[i].branchId !== branchId) {
-								found = true;
+								found = true
 							} else {
 								branchId = languageUtils.makeBranchId({ branchId: selectedNode.branchId, goalId: firstGoal + i + 1 });
 							}
@@ -1261,9 +1248,9 @@ export class PvsProofExplorer {
 							newBranch.updateSequent(opt.proofState, { internalAction: this.autorunFlag });
 						}
 					}
-					// if (newBranch) {
-					selectedNode.appendChild(newBranch);
-					// }
+					if (newBranch) {
+						selectedNode.appendChild(newBranch);
+					}
 					break;
 				}
 				case "root":
@@ -1274,37 +1261,37 @@ export class PvsProofExplorer {
 							const branchName: string = (opt.beforeSelected) ? `` : `${branchId}.${parent.children.length}`;
 							newBranch = new ProofBranch(branchName, branchId, parent, this.connection);
 						}
-						// if (newBranch) {
-						newBranch.parent = parent;
-						const children: ProofItem[] = [];
-						const n: number = parent.children.length;
-						let position: number = 0;
-						for (let i = 0; i < n; i++) {
-							if (!opt.beforeSelected) {
-								children.push(parent.children[i]);
+						if (newBranch) {
+							newBranch.parent = parent;
+							const children: ProofItem[] = [];
+							const n: number = parent.children.length;
+							let position: number = 0;
+							for (let i = 0; i < n; i++) {
+								if (!opt.beforeSelected) {
+									children.push(parent.children[i]);
+								}
+								if (parent.children[i].id === selectedNode.id) {
+									children.push(newBranch);
+									position = i;
+								}
+								if (opt.beforeSelected) {
+									children.push(parent.children[i]);
+								}
 							}
-							if (parent.children[i].id === selectedNode.id) {
-								children.push(newBranch);
-								position = i;
-							}
-							if (opt.beforeSelected) {
-								children.push(parent.children[i]);
+							parent.children = children;
+							if (!opt.internalAction && this.connection) {
+								const elem: ProofNodeX = newBranch.getNodeXStructure();
+								this.log(`[proof-explorer] Appending branch ${elem.name} (${elem.id})`);
+								const evt: ProofEditDidAppendNode = {
+									action: "did-append-node",
+									elem,
+									position
+								};
+								if (this.connection) {
+									this.connection.sendNotification(serverEvent.proverEvent, evt);
+								}
 							}
 						}
-						parent.children = children;
-						if (!opt.internalAction && this.connection) {
-							const elem: ProofNodeX = newBranch.getNodeXStructure();
-							this.log(`[proof-explorer] Appending branch ${elem.name} (${elem.id})`);
-							const evt: ProofEditDidAppendNode = {
-								action: "did-append-node",
-								elem,
-								position
-							};
-							if (this.connection) {
-								this.connection.sendNotification(serverEvent.proverEvent, evt);
-							}
-						}					
-						// }
 					}
 				}
 				default: {
@@ -1317,7 +1304,7 @@ export class PvsProofExplorer {
 		}
 		return false;
 	}
-	appendBranchX (desc: ProofEditAppendBranch, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: SequentDescriptor }): void {
+	appendBranchX(desc: ProofEditAppendBranch, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: SequentDescriptor }): void {
 		if (desc) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) { // the branch name is created automatically
@@ -1331,7 +1318,7 @@ export class PvsProofExplorer {
 	 * Copies the selected node to the clipboard (i.e., the clipboard will store a copy of the selected node)
 	 * @param desc Descriptor of the selected node.
 	 */
-	copyNode (desc: { selected: ProofItem }): boolean {
+	copyNode(desc: { selected: ProofItem }): boolean {
 		if (desc?.selected) {
 			this.clipboard = desc.selected.clone();
 			this.clipboardTree = null;
@@ -1340,7 +1327,7 @@ export class PvsProofExplorer {
 		console.warn(`[proof-explorer] Warning: unable to copy selected node`);
 		return false;
 	}
-	copyNodeX (desc: ProofEditCopyNode): void {
+	copyNodeX(desc: ProofEditCopyNode): void {
 		if (desc?.selected) {
 			if (desc.data) {
 				// the client provided the data to be stored in the clipboard
@@ -1350,7 +1337,7 @@ export class PvsProofExplorer {
 				// send back the data to the client
 				if (this.connection && this.clipboard && !this.autorunFlag) {
 					const evt: ProofEditDidCopyNode = {
-						action: "did-copy-node", 
+						action: "did-copy-node",
 						selected: { id: desc.selected.id, name: desc.selected.name }
 					};
 					this.connection?.sendNotification(serverEvent.proverEvent, evt);
@@ -1376,7 +1363,7 @@ export class PvsProofExplorer {
 	 * (i.e., the clipboard will store a copy of the tree rooted at the selected node)
 	 * @param desc Descriptor of the selected node.
 	 */
-	copyTree (desc: { selected: ProofItem }, opt?: { updateClipboard?: boolean }): string {
+	copyTree(desc: { selected: ProofItem }, opt?: { updateClipboard?: boolean }): string {
 		opt = opt || {};
 		opt.updateClipboard = opt.updateClipboard === undefined ? true : false; // default is true
 		if (desc && desc.selected) {
@@ -1393,7 +1380,7 @@ export class PvsProofExplorer {
 			let seq: string = "";
 			const n: number = desc.selected.getType() === "proof-branch" ?
 				parent.children.indexOf(desc.selected) + 1 // copy only the proof branch
-					: parent.children.length; // copy everything below the proof command
+				: parent.children.length; // copy everything below the proof command
 			for (let i = parent.children.indexOf(desc.selected); i >= 0 && i < n; i++) {
 				const item: ProofItem = parent.children[i];
 				if (item) {
@@ -1407,7 +1394,7 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
-	copyTreeX (desc: ProofEditCopyTree): void {
+	copyTreeX(desc: ProofEditCopyTree): void {
 		if (desc && desc.selected) {
 			if (desc.data) {
 				// the client provided the data to be stored in the clipboard
@@ -1421,9 +1408,9 @@ export class PvsProofExplorer {
 				}
 				// send back the data to the client
 				const evt: ProofEditDidCopyTree = {
-					action: "did-copy-tree", 
-					selected: { id: desc.selected.id, name: desc.selected.name }, 
-					elems: desc.data.elems, 
+					action: "did-copy-tree",
+					selected: { id: desc.selected.id, name: desc.selected.name },
+					elems: desc.data.elems,
 					clipboard: desc.data.seq
 				};
 				this.connection?.sendNotification(serverEvent.proverEvent, evt);
@@ -1438,9 +1425,9 @@ export class PvsProofExplorer {
 							return item.getNodeXStructure();
 						});
 						const evt: ProofEditDidCopyTree = {
-							action: "did-copy-tree", 
-							selected: { id: desc.selected.id, name: desc.selected.name }, 
-							elems, 
+							action: "did-copy-tree",
+							selected: { id: desc.selected.id, name: desc.selected.name },
+							elems,
 							clipboard: seq
 						};
 						this.connection.sendNotification(serverEvent.proverEvent, evt);
@@ -1454,11 +1441,11 @@ export class PvsProofExplorer {
 	/**
 	 * Converts a nodex structure sent by the servwr to a proof item for the tree view
 	 */
-	convertNodeX2ProofItem (elem: ProofNodeX, parent?: ProofItem): ProofItem[] {
+	convertNodeX2ProofItem(elem: ProofNodeX, parent?: ProofItem): ProofItem[] {
 		const fromNodeX2 = (elem: ProofNodeX, parent?: ProofItem): ProofItem => {
-			const node: ProofItem = (elem.type === "proof-command") ? 
-					new ProofCommand(elem.name, elem.branch, parent, this.connection) 
-					: new ProofBranch(elem.name, elem.branch, parent, this.connection);
+			const node: ProofItem = (elem.type === "proof-command") ?
+				new ProofCommand(elem.name, elem.branch, parent, this.connection)
+				: new ProofBranch(elem.name, elem.branch, parent, this.connection);
 			if (parent) {
 				parent.appendChild(node);
 			}
@@ -1479,7 +1466,7 @@ export class PvsProofExplorer {
 		} else {
 			// append elem
 			const item: ProofItem = fromNodeX2(elem, parent);
-			items.push(item);				
+			items.push(item);
 		}
 		return items;
 	}
@@ -1488,7 +1475,7 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor of the selected node where the content of the clipboard will be appended.
 	 * @param opt Optionals parameters (see appendNode)
 	 */
-	pasteNode (desc: { selected: ProofItem }, opt?: { beforeSelected?: boolean }): boolean {
+	pasteNode(desc: { selected: ProofItem }, opt?: { beforeSelected?: boolean }): boolean {
 		if (desc && desc.selected) {
 			opt = opt || {};
 			if (this.clipboard) {
@@ -1499,7 +1486,7 @@ export class PvsProofExplorer {
 				// append just the first node from clipboardtree
 				this.appendNode({ selected: desc.selected, elem: this.clipboardTree[0].cloneTree(), sequent: null });
 				return true;
-			} 
+			}
 			//else
 			console.warn(`[proof-explorer] Warning: unable to paste (clipboard is empty)`);
 		} else {
@@ -1507,7 +1494,7 @@ export class PvsProofExplorer {
 		}
 		return false;
 	}
-	pasteNodeX (desc: ProofEditPasteNode, opt?: { beforeSelected?: boolean, rebase?: boolean }): void {
+	pasteNodeX(desc: ProofEditPasteNode, opt?: { beforeSelected?: boolean, rebase?: boolean }): void {
 		if (desc && desc.selected) {
 			let selected: ProofItem = this.findNode(desc.selected.id) || this.ghostNode?.realNode;
 			if (selected) {
@@ -1516,8 +1503,8 @@ export class PvsProofExplorer {
 					// tree appended after the last node, deactivate ghost node
 					const sibling: ProofItem = selected.contextValue === "proof-command" ?
 						selected.getNextSibling()
-							: selected.children?.length ? selected.children[0]
-								: null;
+						: selected.children?.length ? selected.children[0]
+							: null;
 					if (sibling) {
 						this.ghostNode.notActive();
 						if (sibling.contextValue === "proof-command") {
@@ -1537,15 +1524,15 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor of the selected node where the content of the clipboard will be appended.
 	 * @param opt Optionals parameters (see appendNode)
 	 */
-	pasteTree (desc: { selected: ProofItem }, opt?: { beforeSelected?: boolean, rebase?: boolean }): boolean {
+	pasteTree(desc: { selected: ProofItem }, opt?: { beforeSelected?: boolean, rebase?: boolean }): boolean {
 		if (desc && desc.selected) {
 			opt = opt || {};
 			const clips: ProofItem[] = this.clipboardTree;
 			if (clips) {
 				for (let i = 0; i < clips.length; i++) {
 					this.appendNode({
-						selected: desc.selected, 
-						elem: clips[clips.length - i - 1].cloneTree(), 
+						selected: desc.selected,
+						elem: clips[clips.length - i - 1].cloneTree(),
 						sequent: null
 					}, opt);
 				}
@@ -1558,7 +1545,7 @@ export class PvsProofExplorer {
 		}
 		return false;
 	}
-	pasteTreeX (desc: ProofEditPasteTree, opt?: { beforeSelected?: boolean, rebase?: boolean }): void {
+	pasteTreeX(desc: ProofEditPasteTree, opt?: { beforeSelected?: boolean, rebase?: boolean }): void {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id) || this.ghostNode?.realNode;
 			if (selected) {
@@ -1567,8 +1554,8 @@ export class PvsProofExplorer {
 					// tree appended after the last node, deactivate ghost node
 					const sibling: ProofItem = selected.contextValue === "proof-command" ?
 						selected.getNextSibling()
-							: selected.children?.length ? selected.children[0]
-								: null;
+						: selected.children?.length ? selected.children[0]
+							: null;
 					if (sibling) {
 						this.ghostNode.notActive();
 						if (sibling.contextValue === "proof-command") {
@@ -1588,7 +1575,7 @@ export class PvsProofExplorer {
 	 * Equivalent to copyNode + deleteNode. 
 	 * @param desc Descriptor of the selected node.
 	 */
-	cutNode (desc: { selected: ProofItem }): string {
+	cutNode(desc: { selected: ProofItem }): string {
 		if (desc && desc.selected) {
 			this.copyNode(desc);
 			this.deleteNode(desc);
@@ -1598,7 +1585,7 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
-	cutNodeX (desc: ProofEditCutNode): void {
+	cutNodeX(desc: ProofEditCutNode): void {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
@@ -1606,9 +1593,9 @@ export class PvsProofExplorer {
 				if (clipboard && this.clipboard) {
 					const elem: ProofNodeX = this.clipboard.getNodeXStructure();
 					const evt: ProofEditDidCutNode = {
-						action: "did-cut-node", 
-						selected: { id: desc.selected.id, name: desc.selected.name }, 
-						clipboard, 
+						action: "did-cut-node",
+						selected: { id: desc.selected.id, name: desc.selected.name },
+						clipboard,
 						elem
 					};
 					if (this.connection && !this.autorunFlag) {
@@ -1625,7 +1612,7 @@ export class PvsProofExplorer {
 	 * Equivalent to copyTree + deleteNode. 
 	 * @param desc Descriptor of the selected node.
 	 */
-	cutTree (desc: { selected: ProofItem, keepRoot?: boolean }): string {
+	cutTree(desc: { selected: ProofItem, keepRoot?: boolean }): string {
 		if (desc && desc.selected) {
 			const seq: string = this.copyTree(desc);
 			this.deleteTree(desc);
@@ -1635,7 +1622,7 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
-	cutTreeX (desc: ProofEditCutTree): void {
+	cutTreeX(desc: ProofEditCutTree): void {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
@@ -1646,9 +1633,9 @@ export class PvsProofExplorer {
 						elems.push(this.clipboardTree[i].getNodeXStructure());
 					}
 					const evt: ProofEditDidCutTree = {
-						action: "did-cut-tree", 
-						selected: { id: desc.selected.id, name: desc.selected.name }, 
-						clipboard, 
+						action: "did-cut-tree",
+						selected: { id: desc.selected.id, name: desc.selected.name },
+						clipboard,
 						elems
 					};
 					if (this.connection && !this.autorunFlag) {
@@ -1666,7 +1653,7 @@ export class PvsProofExplorer {
 	 * Equivalent to cutTree(selected) + trim(activeNode) + paste(activeNode). 
 	 * @param desc Descriptor indicating the selected node and the active node.
 	 */
-	jumpHere (desc: { active: ProofItem, selected: ProofItem }): boolean {
+	jumpHere(desc: { active: ProofItem, selected: ProofItem }): boolean {
 		if (desc && desc.selected) {
 			// cut tree rooted at selected
 			this.cutTree({ selected: desc.selected });
@@ -1682,7 +1669,7 @@ export class PvsProofExplorer {
 		}
 		return false;
 	}
-	jumpHereX (desc: ProofEditJumpHere): boolean {
+	jumpHereX(desc: ProofEditJumpHere): boolean {
 		if (desc?.selected) {
 			const active: ProofItem = this.activeNode;
 			const selected: ProofItem = this.findNode(desc.selected.id);
@@ -1700,7 +1687,7 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor of the selected node.
 	 * @param opt Optionals parameters: confirm (boolean) indicates whether a confirmation dialog should be displayed before deleting the node.
 	 */
-	deleteTree (desc: { selected: ProofItem, keepRoot?: boolean }): void {
+	deleteTree(desc: { selected: ProofItem, keepRoot?: boolean }): void {
 		if (desc && desc.selected && desc.selected.parent) {
 			const parent: ProofItem = (desc.keepRoot) ? desc.selected : desc.selected.parent;
 			const len: number = (desc.keepRoot) ? parent.children.length
@@ -1712,7 +1699,7 @@ export class PvsProofExplorer {
 			console.warn(`[proof-explorer] Warning: unable to delete selected node`);
 		}
 	}
-	deleteTreeX (desc: ProofEditDeleteTree): void {
+	deleteTreeX(desc: ProofEditDeleteTree): void {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
@@ -1727,7 +1714,7 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor of the selected node.
 	 * @param opt Optionals parameters: confirm (boolean) indicates whether a confirmation dialog should be displayed before deleting the node.
 	 */
-	deleteNode (desc: { selected: ProofItem }): void {
+	deleteNode(desc: { selected: ProofItem }): void {
 		if (desc && desc.selected && desc.selected.parent) {
 			const selected: ProofItem = desc.selected;
 			this.updateDirtyFlag(true);
@@ -1737,7 +1724,7 @@ export class PvsProofExplorer {
 					for (let i = 0; i < selected.children.length; i++) {
 						this.log(`[proof-explorer] Deleting node ${selected.children[i].name} (${selected.children[i].id})`);
 						const evt: ProofEditDidDeleteNode = {
-							action: "did-delete-node", 
+							action: "did-delete-node",
 							selected: { id: selected.children[i].id, name: selected.children[i].name }
 						};
 						this.connection.sendNotification(serverEvent.proverEvent, evt);
@@ -1765,12 +1752,12 @@ export class PvsProofExplorer {
 			console.warn(`[proof-explorer] Warning: unable to delete selected node`);
 		}
 	}
-	deleteNodeX (desc: ProofEditDeleteNode): void {
+	deleteNodeX(desc: ProofEditDeleteNode): void {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
 				return this.deleteNode({ selected });
-			} 
+			}
 		}
 		console.warn(`[proof-explorer] Warning: unable to complete proof edit/paste (selected node is null)`);
 	}
@@ -1781,7 +1768,7 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor indicating which node is selected in the proof tree
 	 * @param opt Optionals: whether user confirmation is required
 	 */
-	trimNode (desc: { selected: ProofItem }, opt?: { willCutSelected?: boolean }): ProofItem[] | null {
+	trimNode(desc: { selected: ProofItem }, opt?: { willCutSelected?: boolean }): ProofItem[] | null {
 		if (desc && desc.selected && desc.selected.parent) {
 			opt = opt || {};
 			const selected: ProofItem = desc.selected;
@@ -1799,7 +1786,7 @@ export class PvsProofExplorer {
 					let childWasPendingOrActive: boolean = false;
 					for (let i = 0; i < selected.children.length && !childWasPendingOrActive; i++) {
 						if (selected.children[i].isPending() || selected.children[i].isActive()
-								|| (selected.children[i] === this.ghostNode.realNode && this.ghostNode.isActive()) ) {
+							|| (selected.children[i] === this.ghostNode.realNode && this.ghostNode.isActive())) {
 							childWasPendingOrActive = true;
 						}
 					}
@@ -1812,7 +1799,7 @@ export class PvsProofExplorer {
 					selected.children = [];
 					break;
 				}
-				case "proof-command": {	
+				case "proof-command": {
 					// remove children if any
 					items = selected.children;
 					selected.children = [];
@@ -1839,14 +1826,14 @@ export class PvsProofExplorer {
 					this.log(`[proof-explorer] Trimming node ${desc.selected.name} (${desc.selected.id})`);
 					for (let i = 0; i < items.length; i++) {
 						const evt: ProofEditDidDeleteNode = {
-							action: "did-delete-node", 
+							action: "did-delete-node",
 							selected: { id: items[i].id, name: items[i].name }
 						};
 						this.connection.sendNotification(serverEvent.proverEvent, evt);
 					}
-					let elems: ProofNodeX[] = opt.willCutSelected ? [ selected?.getNodeXStructure() ] : [];
+					let elems: ProofNodeX[] = opt.willCutSelected ? [selected?.getNodeXStructure()] : [];
 					elems = elems.concat(items.map(item => {
-							return item.getNodeXStructure();
+						return item.getNodeXStructure();
 					}));
 					const evt: ProofEditDidTrimNode = { action: "did-trim-node", elems };
 					this.connection.sendNotification(serverEvent.proverEvent, evt);
@@ -1858,7 +1845,7 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
-	trimNodeX (desc: ProofEditTrimNode): void {
+	trimNodeX(desc: ProofEditTrimNode): void {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
@@ -1873,13 +1860,13 @@ export class PvsProofExplorer {
 	 * Deletes proof commands that were not visited. This function is useful to clean up a proof script when a branch is closed or when the proof is QED.
 	 * @param desc Descriptor indicating which node is the root of the subtree that needs to be cleaned up.
 	 */
-	removeNotVisited (desc: { selected: ProofItem }): void {
+	removeNotVisited(desc: { selected: ProofItem }): void {
 		if (desc && desc.selected && desc.selected.parent) {
 			const node: ProofItem = desc.selected;
 			if (node.children) {
 				const n: number = node.children.length;
 				for (let i = 0; i < n; i++) {
-					this.removeNotVisited({ selected: node.children[n - 1 - i]});
+					this.removeNotVisited({ selected: node.children[n - 1 - i] });
 				}
 			}
 			if (!node.isVisited() && !node.isActive() && (!node.children || node.children.length === 0)) {
@@ -1891,7 +1878,7 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
-	removeNotVisitedX (desc: ProofEditTrimUnused): void {
+	removeNotVisitedX(desc: ProofEditTrimUnused): void {
 		if (desc) {
 			const id: string = desc?.selected?.id || this.root.id;
 			const selected: ProofItem = this.findNode(id);
@@ -1907,7 +1894,7 @@ export class PvsProofExplorer {
 	 * Renames the selected node. The new name is entered using a dialog window.
 	 * @param desc Descriptor of the selected node.
 	 */
-	renameNode (desc: { selected: ProofItem, newName: string }): boolean {
+	renameNode(desc: { selected: ProofItem, newName: string }): boolean {
 		if (desc && desc.selected) {
 			this.updateDirtyFlag(true);
 			const node: ProofItem = desc.selected;
@@ -1925,7 +1912,7 @@ export class PvsProofExplorer {
 		}
 		return false;
 	}
-	renameNodeX (desc: ProofEditRenameNode): void {
+	renameNodeX(desc: ProofEditRenameNode): void {
 		if (desc && desc.selected) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) {
@@ -1939,7 +1926,7 @@ export class PvsProofExplorer {
 	/**
 	 * Reset all flags
 	 */
-	resetFlags (): void {
+	resetFlags(): void {
 		this.autorunFlag = false;
 		this.runningFlag = false;
 		this.rewindingFlag = false;
@@ -1956,14 +1943,14 @@ export class PvsProofExplorer {
 	// 	}
 	// }
 
-	proofIsDirty (): boolean {
+	proofIsDirty(): boolean {
 		return this.dirtyFlag;
 	}
 
 	/**
 	 * Utility function, marks the current proof as proved
 	 */
-	async proved (): Promise<void> {
+	async proved(): Promise<void> {
 		// stop execution
 		this.runningFlag = false;
 		// move indicator forward so any proof branch that needs to be marked as visited will be marked
@@ -1973,11 +1960,11 @@ export class PvsProofExplorer {
 		// set QED
 		this.root.QED();
 		// save proof if status has changed
-		// const fname: string = fsUtils.desc2fname({
-		// 	fileName: this.formula.theoryName,
-		// 	fileExtension: ".prf",
-		// 	contextFolder: this.formula.contextFolder
-		// });
+		const fname: string = fsUtils.desc2fname({
+			fileName: this.formula.theoryName,
+			fileExtension: ".prf",
+			contextFolder: this.formula.contextFolder
+		});
 		// const proofliteExists: boolean = await utils.containsProoflite(fname, this.formula.formulaName);
 		if (this.root.proofStatusChanged() || this.dirtyFlag || this.origin !== ".prf") { // || !proofliteExists) {
 			await this.quitProofAndSave(); // proof descriptor is automatically updated by saveproof
@@ -1997,7 +1984,6 @@ export class PvsProofExplorer {
 			theoryName: this.formula.theoryName,
 			formulaName: this.formula.formulaName,
 			contextFolder: this.formula.contextFolder,
-			line: this.formula.line,
 			cmd: "Q.E.D."
 		});
 
@@ -2013,7 +1999,7 @@ export class PvsProofExplorer {
 	 * Utility function, used to set the initial proof state.
 	 * @param proofState 
 	 */
-	loadInitialSequent (proofState: SequentDescriptor): void {
+	loadInitialSequent(proofState: SequentDescriptor): void {
 		this.initialProofState = proofState;
 		const evt: ProofExecDidLoadSequent = { action: "did-load-sequent", sequent: proofState };
 		if (this.connection && !this.autorunFlag) {
@@ -2025,7 +2011,7 @@ export class PvsProofExplorer {
 	/**
 	 * Utility function, activates the proof loaded in the view (i.e., sets the first node as active)
 	 */
-	startProof (opt?: { autorun?: boolean }): void {
+	startProof(opt?: { autorun?: boolean }): void {
 		opt = opt || {};
 		if (this.root) {
 			this.autorunFlag = !!opt.autorun;
@@ -2036,7 +2022,6 @@ export class PvsProofExplorer {
 					this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
 				}
 			};
-			this.qedNotificationSent = false;
 
 			this.root.updateSequent(this.initialProofState, { internalAction: this.autorunFlag });
 			this.root.pending();
@@ -2044,7 +2029,7 @@ export class PvsProofExplorer {
 			// select either the first child or the root if children are not present
 			const selected: ProofItem = (this.root.children && this.root.children.length) ? this.root.children[0] : this.root;
 			// initialise this.activeNode
-			this.initActiveNode({ selected }); 
+			this.initActiveNode({ selected });
 			// update the user interface
 			this.markAsActive({ selected: this.activeNode }, { force: true });
 			if (this.activeNode.id !== this.root.id) {
@@ -2062,7 +2047,7 @@ export class PvsProofExplorer {
 				this.activeNode.sequentDescriptor = this.root.sequentDescriptor;
 				// this.activeNode.tooltip = this.root.tooltip;	
 			}
-			
+
 			if (this.autorunFlag) {
 				this.run();
 			} else {
@@ -2081,7 +2066,7 @@ export class PvsProofExplorer {
 	 * Internal function, initialises data structures necessary for handling of activeNode, including ghostNode and tooltips.
 	 * @param desc Descriptor used for the initialisation of activeNode
 	 */
-	protected initActiveNode (desc: { selected: ProofItem, tooltip?: string }): void {
+	protected initActiveNode(desc: { selected: ProofItem, tooltip?: string }): void {
 		if (desc && desc.selected) {
 			switch (desc.selected.contextValue) {
 				// root should never be the active node
@@ -2109,7 +2094,7 @@ export class PvsProofExplorer {
 	 * Internal function, used by loadProofRequest and openProofRequest
 	 * @param formula 
 	 */
-	protected async openProofFile (desc: PvsFile, formula: PvsFormula, opt?: { newProof?: boolean }): Promise<ProofDescriptor> {
+	protected async openProofFile(desc: PvsFile, formula: PvsFormula, opt?: { newProof?: boolean }): Promise<ProofDescriptor> {
 		opt = opt || {};
 		this.formula = formula;
 		if (this.pvsProxy) {
@@ -2136,7 +2121,7 @@ export class PvsProofExplorer {
 	 * Loads the proof for a given formula
 	 * @param req 
 	 */
-	async loadProofRequest (req: ProveFormulaRequest, opt?: { newProof?: boolean, useJprf?: boolean }): Promise<ProofDescriptor> {
+	async loadProofRequest(req: ProveFormulaRequest, opt?: { newProof?: boolean, useJprf?: boolean }): Promise<ProofDescriptor> {
 		opt = opt || {};
 		this.formula = req;
 		if (this.pvsProxy) {
@@ -2148,9 +2133,9 @@ export class PvsProofExplorer {
 			const pdesc: ProofDescriptor = (opt.newProof) ? await this.pvsProxy.newProof(req) : await this.openProofFile(fdesc, req, opt);
 			// send feedback to the client
 			const structure: ProofNodeX = this.root.getNodeXStructure();
-			const evt: ProofExecDidLoadProof = { 
-				action: "did-load-proof", 
-				formula: this.formula, 
+			const evt: ProofExecDidLoadProof = {
+				action: "did-load-proof",
+				formula: this.formula,
 				desc: this.proofDescriptor,
 				proof: structure
 			};
@@ -2163,7 +2148,7 @@ export class PvsProofExplorer {
 		return null;
 	}
 
-	getFormula (): PvsFormula {
+	getFormula(): PvsFormula {
 		return this.formula;
 	}
 
@@ -2171,11 +2156,11 @@ export class PvsProofExplorer {
 	 * Internal function, used by loadProof to load the proof descriptor of a given formula in proof-explorer
 	 * @param desc The proof descriptor to be loaded
 	 */
-	protected loadProofDescriptor (desc: ProofDescriptor): void {
+	protected loadProofDescriptor(desc: ProofDescriptor): void {
 		// utility function for building the proof tree
 		const createTree = (elem: ProofNode, parent: ProofItem): void => {
-			const node: ProofItem = (elem.type === "proof-command") ? 
-				new ProofCommand(elem.name, elem.branch, parent, this.connection) 
+			const node: ProofItem = (elem.type === "proof-command") ?
+				new ProofCommand(elem.name, elem.branch, parent, this.connection)
 				: new ProofBranch(elem.name, elem.branch, parent, this.connection);
 			parent.appendChild(node, { internalAction: true });
 			if (elem.rules && elem.rules.length) {
@@ -2187,15 +2172,15 @@ export class PvsProofExplorer {
 		// initialise
 		this.root = null;
 		if (desc && desc.info) {
-			this.root = new RootNode({ 
+			this.root = new RootNode({
 				name: desc.info.formula, //(desc.proof) ? desc.proof.name : desc.info.formula, 
 				proofStatus: desc.info.status,
 				connection: this.connection
 			});
 			this.ghostNode = new GhostNode({ parent: this.root, node: this.root, connection: this.connection });
 			if (desc.proofTree && desc.proofTree.rules && desc.proofTree.rules.length
-					// when proof is simply (postpone), this is an empty proof, don't append postpone
-					&& !(desc.proofTree.rules.length === 1 && isPostponeCommand(desc.proofTree.rules[0].name))) {
+				// when proof is simply (postpone), this is an empty proof, don't append postpone
+				&& !(desc.proofTree.rules.length === 1 && isPostponeCommand(desc.proofTree.rules[0].name))) {
 				desc.proofTree.rules.forEach((child: ProofNode) => {
 					createTree(child, this.root);
 				});
@@ -2209,12 +2194,12 @@ export class PvsProofExplorer {
 	/**
 	 * Internal function, builds a proof descriptor based on the structure of the current proof tree known to proof-explorer (i.e, this.root)
 	 */
-	protected makeProofDescriptor (origin: ProofOrigin): ProofDescriptor {
+	protected makeProofDescriptor(origin: ProofOrigin): ProofDescriptor {
 		const makeProofStructure = (node: ProofItem): ProofNode => {
 			const res: ProofNode = {
 				branch: node.branchId,
 				name: node.name,
-				type: <ProofNodeType> node.contextValue,
+				type: <ProofNodeType>node.contextValue,
 				rules: []
 			};
 			for (let i = 0; i < node.children.length; i++) {
@@ -2224,7 +2209,7 @@ export class PvsProofExplorer {
 			return res;
 		}
 		const proofTree: ProofTree = makeProofStructure(this.root);
-		const proofDescriptor: ProofDescriptor = new ProofDescriptor ({
+		const proofDescriptor: ProofDescriptor = new ProofDescriptor({
 			theory: this.formula.theoryName,
 			formula: this.formula.formulaName,
 			status: this.root.getProofStatus(),
@@ -2233,17 +2218,17 @@ export class PvsProofExplorer {
 		}, origin, proofTree);
 		return proofDescriptor;
 	}
-	protected isOnFirstCommand (): boolean {
-		return !this.activeNode || this.activeNode.contextValue === "root" 
+	protected isOnFirstCommand(): boolean {
+		return !this.activeNode || this.activeNode.contextValue === "root"
 			|| (this.root?.children && this.root.children.length && this.activeNode === this.root.children[0]);
 	}
 	/**
 	 * Loads a proof file in proof explorer
 	 */
-	async openProofRequest (desc: PvsFile, formula: PvsFormula): Promise<boolean> {
-		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
-				&& formula && formula.fileName && formula.fileExtension 
-				&& formula.theoryName && formula.formulaName) {
+	async openProofRequest(desc: PvsFile, formula: PvsFormula): Promise<boolean> {
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder
+			&& formula && formula.fileName && formula.fileExtension
+			&& formula.theoryName && formula.formulaName) {
 			// open proof descriptor
 			const pdesc: ProofDescriptor = await this.pvsProxy.openProofFile(desc, formula);
 			if (pdesc) {
@@ -2253,7 +2238,7 @@ export class PvsProofExplorer {
 				this.loadProofDescriptor(pdesc);
 				// send feedback to the client
 				const structure: ProofNodeX = this.root.getNodeXStructure();
-				const evt: ProofExecDidOpenProof = { 
+				const evt: ProofExecDidOpenProof = {
 					action: "did-open-proof",
 					proofFile: desc,
 					formula: this.formula,
@@ -2267,7 +2252,7 @@ export class PvsProofExplorer {
 				this.startProof();
 				return true;
 			} else {
-				const evt: ProofExecDidOpenProof = { 
+				const evt: ProofExecDidOpenProof = {
 					action: "did-open-proof",
 					proofFile: desc,
 					formula: this.formula,
@@ -2281,10 +2266,10 @@ export class PvsProofExplorer {
 	/**
 	 * Imports the proof of a given formula in proof explorer
 	 */
-	async importProofRequest (desc: PvsFile, formula: PvsFormula): Promise<boolean> {
-		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder 
-				&& formula && formula.fileName && formula.fileExtension 
-				&& formula.theoryName && formula.formulaName) {
+	async importProofRequest(desc: PvsFile, formula: PvsFormula): Promise<boolean> {
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder
+			&& formula && formula.fileName && formula.fileExtension
+			&& formula.theoryName && formula.formulaName) {
 			// open proof descriptor
 			const pdesc: ProofDescriptor = await this.pvsProxy.openProofFile(desc, formula);
 			if (pdesc) {
@@ -2303,7 +2288,7 @@ export class PvsProofExplorer {
 				// this.dirtyFlag = true;
 				// send feedback to the client
 				const structure: ProofNodeX = this.root.getNodeXStructure();
-				const evt: ProofExecDidImportProof = { 
+				const evt: ProofExecDidImportProof = {
 					action: "did-import-proof",
 					proofFile: desc,
 					formula: this.formula,
@@ -2316,7 +2301,7 @@ export class PvsProofExplorer {
 				this.startProof();
 				return true;
 			} else {
-				const evt: ProofExecDidImportProof = { 
+				const evt: ProofExecDidImportProof = {
 					action: "did-import-proof",
 					proofFile: desc,
 					formula: this.formula,
@@ -2332,7 +2317,7 @@ export class PvsProofExplorer {
 	 * Export the current proof to a given file format
 	 * Only one supported format at the moment: .prl (prooflite)
 	 */
-	async exportProof (desc: { fileExtension: string }): Promise<void> {
+	async exportProof(desc: { fileExtension: string }): Promise<void> {
 		if (desc) {
 			// update proof descriptor
 			this.proofDescriptor = this.makeProofDescriptor(this.origin);
@@ -2340,7 +2325,7 @@ export class PvsProofExplorer {
 				fileName: this.formula.fileName,
 				fileExtension: desc.fileExtension,
 				contextFolder: this.formula.contextFolder
-			};
+			}
 			let success: boolean = false;
 			let msg: string = null;
 			switch (desc.fileExtension) {
@@ -2375,7 +2360,7 @@ export class PvsProofExplorer {
 				// 	break;
 				// }
 				case ".prl": {
-					const file: FileDescriptor = await this.pvsProxy.saveProoflite({ 
+					const file: FileDescriptor = await this.pvsProxy.saveProoflite({
 						fileName: proofFile.fileName,
 						fileExtension: ".prl",
 						contextFolder: proofFile.contextFolder,
@@ -2394,16 +2379,15 @@ export class PvsProofExplorer {
 				}
 			}
 			const script: string = this.copyTree({ selected: this.root });
-			const response: SaveProofResponse = { 
-				success,
-				proofFile,
-				msg,
-				formula: this.formula,
-				script
-			};
-			this.connection.sendNotification(serverRequest.saveProof, { 
-				response, 
-				args: this.formula 
+			this.connection.sendRequest(serverRequest.saveProof, {
+				response: {
+					success,
+					proofFile,
+					msg,
+					formula: this.formula,
+					script
+				},
+				args: this.formula
 			});
 		} else {
 			this.connection.sendNotification("server.status.error", `Error: could not save proof (null descriptor)`);
@@ -2412,13 +2396,13 @@ export class PvsProofExplorer {
 	/**
 	 * Quit proof and save the current proof in a .prf format
 	 */
-	async quitProofAndSave (opt?: { jprfOnly?: boolean, notifyClient?: boolean }): Promise<{ success: boolean, msg?: string }> {
+	async quitProofAndSave(opt?: { jprfOnly?: boolean, notifyClient?: boolean }): Promise<{ success: boolean, msg?: string }> {
 		opt = opt || {};
 		const proofFile: PvsFile = {
 			fileName: this.formula.fileName,
 			fileExtension: ".prf",
 			contextFolder: this.formula.contextFolder,
-		};
+		}
 		// update proof descriptor so it reflects the current proof structure
 		this.proofDescriptor = this.makeProofDescriptor(this.origin);
 		await saveProofDescriptor(this.formula, this.proofDescriptor, { saveProofTree: true });
@@ -2440,7 +2424,7 @@ export class PvsProofExplorer {
 			}
 		}
 		// send feedback to the client
-		const response: SaveProofResponse = { 
+		const response: SaveProofResponse = {
 			success,
 			msg,
 			proofFile,
@@ -2448,8 +2432,8 @@ export class PvsProofExplorer {
 			script
 		};
 		this.connection?.sendNotification(serverRequest.saveProof, {
-			response, 
-			args: this.formula 
+			response,
+			args: this.formula
 		});
 		return { success, msg };
 	}
@@ -2465,26 +2449,19 @@ export class PvsProofExplorer {
 	 * Quit the current proof
 	 * @param opt Optionals: whether confirmation is necessary before quitting (default: confirmation is needed)  
 	 */
-	async quitProof (opt?: { notifyClient?: boolean }): Promise<PvsResponse> {
+	async quitProof(opt?: { proofId?: string, notifyClient?: boolean }): Promise<void> {
 		opt = opt || {};
 		this.runningFlag = false;
 
 		// interrupt proof commands if necessary
 		let res: PvsResponse = await this.pvsProxy.interruptProver();
 
-		const inchecker: boolean = await this.inChecker();
-		if (this.formula && inchecker) {
-			res = await this.proofCommand({
-				fileName: this.formula.fileName,
-				fileExtension: this.formula.fileExtension,
-				theoryName: this.formula.theoryName,
-				formulaName: this.formula.formulaName,
-				contextFolder: this.formula.contextFolder,
-				cmd: "quit"
-			});
-			// reset dirty flag --- the proof is over
-			this.updateDirtyFlag(false);
-		}
+		// const inchecker: boolean = await this.inChecker();
+		// if (this.formula && inchecker) {
+		res = await this.pvsProxy.proofCommand({ proofId: opt.proofId, cmd: "(quit)" });
+		// reset dirty flag --- the proof is over
+		this.updateDirtyFlag(false);
+		//}
 		if (this.autorunFlag) {
 			const status: ProofStatus = (this.root) ? this.root.getProofStatus() : "untried";
 			this.autorunFlag = false;
@@ -2507,13 +2484,12 @@ export class PvsProofExplorer {
 			// this.pvsLanguageServer.cliGateway.publish(evt);
 		}
 		this.connection?.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
-		return res;
 	}
 
 	/**
 	 * Utility function, interrupts a proof command
 	 */
-	async interruptProofCommand (): Promise<PvsResponse> {
+	async interruptProofCommand(): Promise<PvsResponse> {
 		if (this.pvsProxy && !this.interruptFlag) {
 			this.interruptFlag = true;
 			this.runningFlag = false;
@@ -2521,11 +2497,11 @@ export class PvsProofExplorer {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Utility function, interrupts the prover and quits
 	 */
-	async interruptAndQuitProof (opt?: { notifyClient?: boolean }): Promise<void> {
+	async interruptAndQuitProof(opt?: { notifyClient?: boolean }): Promise<void> {
 		await this.interruptProofCommand();
 		await this.quitProof(opt);
 	}
@@ -2533,40 +2509,40 @@ export class PvsProofExplorer {
 	/**
 	 * Utility function, shows help for a given command
 	 */
-	async helpCommand (cmd: string): Promise<void> {
-		await this.pvsProxy.showHelpBang(cmd);
+	async helpCommand(cmd: string): Promise<void> {
+		await this.pvsProxy.showHelpBang({ cmd: cmd });
 	}
 
 	/**
 	 * Send proof command
 	 * @param args Handler arguments: filename, file extension, context folder, theory name, formula name, prover command
 	 */
-	async proofCommand (args: PvsProofCommand): Promise<PvsResponse | null> {
-		if (args?.cmd) {
-			args = fsUtils.decodeURIComponents(args);
-			// const timeout: number = (this.connection) ? await this.connection.workspace.getConfiguration("pvs.pvsProver.watchdog") : 0;
-			const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
+	// async proofCommand (args: PvsProofCommand): Promise<PvsResponse | null> {
+	// 	if (args?.cmd) {
+	// 		args = fsUtils.decodeURIComponents(args);
+	// 		// const timeout: number = (this.connection) ? await this.connection.workspace.getConfiguration("pvs.pvsProver.watchdog") : 0;
+	// 		const useLispInterface: boolean = true;//!!(this.connection && await this.connection.workspace.getConfiguration("pvs.xperimental.developer.lispInterface"));
 
-			const start: number = new Date().getTime();
+	// 		const start: number = new Date().getTime();
 
-			const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: args.cmd }, { useLispInterface });
+	// 		const response: PvsResponse = await this.pvsProxy.proofCommand({ cmd: args.cmd }, { useLispInterface });
 
-			const ms: number = new Date().getTime() - start;
-			if (this.connection) {
-				this.connection.sendNotification(serverEvent.profilerData, `${ms}ms ${args.cmd}`);
-			}
+	// 		const ms: number = new Date().getTime() - start;
+	// 		if (this.connection) {
+	// 			this.connection.sendNotification(serverEvent.profilerData, `${ms}ms ${args.cmd}`);
+	// 		}
 
-			return response;
-		} else {
-			console.error('[pvs-language-server] Error: proofCommand invoked with null descriptor');
-		}
-		return null;
-	}
+	// 		return response;
+	// 	} else {
+	// 		console.error('[pvs-language-server] Error: proofCommand invoked with null descriptor');
+	// 	}
+	// 	return null;
+	// }
 	// this handler is for commands entered by the user at the prover terminal
 	// ATTN: request.cmd must be a string surrounded by round parentheses.
-	async proofCommandRequest (request: PvsProofCommand): Promise<void> {
+	async proofCommandRequest(request: PvsProofCommand): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
-		
+
 		if (isSaveThenQuitCommand(request.cmd)) {
 			await this.quitProofAndSave();
 			const ans: ProofCommandResponse = { res: "bye!", req: request };
@@ -2587,7 +2563,7 @@ export class PvsProofExplorer {
 				await this.quitProof({ notifyClient: true });
 				// const ans: ProofCommandResponse = { res: "bye!", req: request };
 				// this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);	
-				return;	
+				return;
 			} else {
 				// fail in a branch is equivalent to postpone
 				request.cmd = "(postpone)";
@@ -2605,12 +2581,9 @@ export class PvsProofExplorer {
 			const ans: ProofCommandResponse = { res: "Q.E.D.", req: request };
 			this.connection?.sendRequest(serverEvent.proofCommandResponse, ans);
 			// this.pvsLanguageServer.cliGateway.publish(evt);
-			
+
 			if (this.connection) {
-				if (!this.qedNotificationSent) {
-					this.connection.sendRequest(serverEvent.QED, { response: { result: "Q.E.D." }, request });
-					this.qedNotificationSent = true;
-				}
+				this.connection.sendRequest(serverEvent.QED, { response: { result: request.cmd }, args: request });
 				this.connection.sendRequest(serverEvent.serverModeUpdateEvent, { mode: "lisp" });
 			}
 			// trigger a context update, so proof status will be updated on the front-end
@@ -2636,7 +2609,6 @@ export class PvsProofExplorer {
 					contextFolder: request.contextFolder,
 					theoryName: request.theoryName,
 					formulaName: request.formulaName,
-					line: request.line,
 					cmd
 				};
 				const response: PvsResponse = await this.step({ cmd }); // await this.proofCommand(req); //
@@ -2653,8 +2625,8 @@ export class PvsProofExplorer {
 								console.dir(sequent);
 							} else {
 								// FIXME: pvs-server needs to provide a string representation of the command, not its structure!
-								const command: string = 
-									(sequent && sequent["last-cmd"] 
+								const command: string =
+									(sequent && sequent["last-cmd"]
 										&& !isUndoCommand(cmd)
 										&& !isUndoUndoCommand(cmd)
 										&& !isPostponeCommand(cmd)) ? sequent["last-cmd"] : cmd;
@@ -2674,10 +2646,7 @@ export class PvsProofExplorer {
 								// check if the proof is complete
 								if (languageUtils.QED(sequent)) {
 									if (this.connection) {
-										if (!this.qedNotificationSent) {
-											this.connection.sendRequest(serverEvent.QED, { response: { result: sequent }, request: req });
-											this.qedNotificationSent = true;
-										}
+										this.connection.sendRequest(serverEvent.QED, { response: { result: sequent }, args: req });
 										// this.connection.sendRequest(serverEvent.proofCommandResponse, { res: null, req: request });
 										// trigger a context update, so proof status will be updated on the front-end
 										const cdesc: PvsContextDescriptor = await this.pvsLanguageServer.getContextDescriptor({ contextFolder: req.contextFolder });
@@ -2694,14 +2663,14 @@ export class PvsProofExplorer {
 									this.connection?.sendRequest(serverEvent.proofCommandResponse, { res: sequent, req: request });
 								}
 							}
-						}	
+						}
 					} else {
 						console.warn(`[proof-explorer] Warning: Unable to execute proof command ${cmd}`, response);
 					}
 				}
 			}
 		}
-	}	
+	}
 }
 
 export const QED: ProofStatus = "proved";
@@ -2729,16 +2698,16 @@ export abstract class ProofItem extends TreeItem {
 		visitedFlag: boolean,
 		pendingFlag: boolean
 	} = {
-		activeFlag: false,
-		visitedFlag: false,
-		pendingFlag: false
-	};
+			activeFlag: false,
+			visitedFlag: false,
+			pendingFlag: false
+		};
 	sequentDescriptor: SequentDescriptor = null; // sequent *before* the execution of the node
 
 	/**
 	 * Constructor
 	 */
-	constructor (type: "proof-branch" | "proof-command" | "root" | "ghost", name: string, branchId: string, parent: ProofItem, connection: Connection) {
+	constructor(type: "proof-branch" | "proof-command" | "root" | "ghost", name: string, branchId: string, parent: ProofItem, connection: Connection) {
 		super(type, connection);
 		this.contextValue = type;
 		this.id = fsUtils.get_fresh_id();
@@ -2749,17 +2718,17 @@ export abstract class ProofItem extends TreeItem {
 		this.notVisited({ internalAction: true });
 	}
 	readonly DEBUG_LOG: boolean = false;
-	protected log (...args): void {
+	protected log(...args): void {
 		if (this.DEBUG_LOG) {
 			console.log(args);
 		}
 	}
-	getNodeXStructure (): ProofNodeX {
+	getNodeXStructure(): ProofNodeX {
 		const res: ProofNodeX = {
 			id: this.id,
 			branch: this.branchId,
 			name: this.name,
-			type: <ProofNodeType> this.contextValue,
+			type: <ProofNodeType>this.contextValue,
 			rules: [],
 			parent: this.parent.id
 		};
@@ -2781,7 +2750,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Checks if two branch names are equivalent
 	 */
-	branchNameEquals (b: string): boolean {
+	branchNameEquals(b: string): boolean {
 		// the following branch names should be equivalent: 1.2T.1 = 1.2.1 = 1.2.1T = 1.2T.1T 
 		const b1x = this.branchId.split(".").map((elem: string) => {
 			return `${parseInt(elem)}`
@@ -2794,7 +2763,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Returns a clone of the current node
 	 */
-	abstract clone (opt?: { parent?: ProofItem, internalAction?: boolean }): ProofItem 
+	abstract clone(opt?: { parent?: ProofItem, internalAction?: boolean }): ProofItem
 	// {
 	// 	opt = opt || {};
 	// 	switch (this.contextValue) {
@@ -2810,7 +2779,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Returns a clone of the current node.
 	 */
-	cloneTree (opt?: { parent?: ProofItem }): ProofItem {
+	cloneTree(opt?: { parent?: ProofItem }): ProofItem {
 		opt = opt || {};
 		opt.parent = opt.parent || this.parent || null;
 		const clonedRoot: ProofItem = this.clone(opt);
@@ -2822,14 +2791,14 @@ export abstract class ProofItem extends TreeItem {
 		}
 		return clonedRoot;
 	}
-	saveAttributes (): void {
+	saveAttributes(): void {
 		this.prevFlags = {
 			activeFlag: this.activeFlag,
 			visitedFlag: this.visitedFlag,
 			pendingFlag: this.pendingFlag
 		};
 	}
-	restoreAttributes (): void {
+	restoreAttributes(): void {
 		if (this.prevFlags.activeFlag) { return this.active(); }
 		if (this.prevFlags.visitedFlag) { return this.visited(); }
 		if (this.prevFlags.pendingFlag) { return this.pending(); }
@@ -2837,16 +2806,16 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Updates the sequent descriptor
 	 */
-	updateSequent (sequent: SequentDescriptor, opt?: { internalAction?: boolean }): void {
+	updateSequent(sequent: SequentDescriptor, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
 		if (sequent) {
 			this.sequentDescriptor = sequent;
 			// this.tooltip = (this.sequentDescriptor) ? languageUtils.formatSequent(this.sequentDescriptor) : " ";
 			if (!opt.internalAction && this.connection) {
 				const evt: ProofExecDidUpdateSequent = {
-					action: "did-update-sequent", 
-					sequent: this.sequentDescriptor, 
-					selected: { id: this.id, name: this.name } 
+					action: "did-update-sequent",
+					sequent: this.sequentDescriptor,
+					selected: { id: this.id, name: this.name }
 				};
 				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
@@ -2856,7 +2825,7 @@ export abstract class ProofItem extends TreeItem {
 	 * Rename a node
 	 * If the node is a proof-branch, the branchId is also updated for the node and the entire subtree rooted at the node
 	 */
-	rename (newName: string, opt?: { internalAction?: boolean }): void {
+	rename(newName: string, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
 		const oldName: string = this.name;
 		this.name = newName;
@@ -2871,8 +2840,8 @@ export abstract class ProofItem extends TreeItem {
 		}
 		if (!opt.internalAction && this.connection) {
 			const evt: ProofEditDidRenameNode = {
-				action: "did-rename-node", 
-				selected: { id: this.id, name: oldName }, 
+				action: "did-rename-node",
+				selected: { id: this.id, name: oldName },
 				newName: newName
 			};
 			this.connection.sendNotification(serverEvent.proverEvent, evt);
@@ -2881,7 +2850,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Mark node as pending
 	 */
-	pending (): void {
+	pending(): void {
 		const changed: boolean = !this.pendingFlag;
 		this.activeFlag = false;
 		this.visitedFlag = false;
@@ -2899,7 +2868,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Mark node as visited
 	 */
-	visited (): void {
+	visited(): void {
 		const changed: boolean = !this.visitedFlag;
 		// this.previousState.tooltip = this.tooltip;
 		this.activeFlag = false;
@@ -2917,7 +2886,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Mark node as not visited
 	 */
-	notVisited (opt?: { internalAction?: boolean }): void {
+	notVisited(opt?: { internalAction?: boolean }): void {
 		// this.previousState.tooltip = this.tooltip;
 		this.activeFlag = false;
 		this.visitedFlag = false;
@@ -2964,7 +2933,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Mark node as active
 	 */
-	active (): void {
+	active(): void {
 		this.activeFlag = true;
 		this.visitedFlag = false;
 		this.pendingFlag = false;
@@ -2980,7 +2949,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Mark subtree as not visited
 	 */
-	treeNotVisited (): void {
+	treeNotVisited(): void {
 		this.notVisited();
 		if (this.children) {
 			for (let i = 0; i < this.children.length; i++) {
@@ -2991,7 +2960,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Mark subtree as visited
 	 */
-	treeVisited (): void {
+	treeVisited(): void {
 		this.visited();
 		if (this.children) {
 			for (let i = 0; i < this.children.length; i++) {
@@ -3002,7 +2971,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Mark subtree as complete
 	 */
-	treeComplete (): void {
+	treeComplete(): void {
 		this.complete();
 		if (this.children) {
 			for (let i = 0; i < this.children.length; i++) {
@@ -3013,7 +2982,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Checks if all nodes in the subtree rooted at the current node are complete
 	 */
-	checkChildrenComplete (): boolean {
+	checkChildrenComplete(): boolean {
 		if (this.children && this.children.length) {
 			const open: ProofItem[] = this.children.filter(item => {
 				return !item.isVisited();
@@ -3025,7 +2994,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Propagates visited & complete attributes to all nodes in the subtree
 	 */
-	bubbleVisitedAndComplete (): void {
+	bubbleVisitedAndComplete(): void {
 		if (this.contextValue !== "root" && this.parent && this.parent.checkChildrenComplete()) {
 			// the parent branch is also complete
 			this.parent.visited();
@@ -3036,13 +3005,13 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Returns true if the current node is active
 	 */
-	isActive (): boolean {
+	isActive(): boolean {
 		return this.activeFlag;
 	}
 	/**
 	 * Returns true if the current node or any node in the subtree rooted at the current node is active
 	 */
-	isActiveTree (opt?: { activeNode?: ProofItem }): boolean {
+	isActiveTree(opt?: { activeNode?: ProofItem }): boolean {
 		opt = opt || {};
 		let active: boolean = this.isActive();
 		if (!active && opt && opt.activeNode) {
@@ -3058,30 +3027,30 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Returns true if this node has been visited or is pending execution
 	 */
-	isVisitedOrPending (): boolean {
+	isVisitedOrPending(): boolean {
 		return this.visitedFlag || this.pendingFlag;
 	}
 	/**
 	 * Returns true if this node is pending execution
 	 */
-	isPending (): boolean {
+	isPending(): boolean {
 		return this.pendingFlag;
 	}
 	/**
 	 * Returns true if this node has been visited
 	 */
-	isVisited (): boolean {
+	isVisited(): boolean {
 		return this.visitedFlag;
 	}
 	/**
 	 * Returns true if this node is complete
 	 */
 	isComplete(): boolean { return this.completeFlag; }
-	restore (): void {
+	restore(): void {
 		// this.label = `${this.previousState.icon}${this.name}`;
 		// this.tooltip = this.previousState.tooltip;
 	}
-	restoreTreeAttributes (): void {
+	restoreTreeAttributes(): void {
 		this.restoreAttributes();
 		if (this.children && this.children.length) {
 			for (let i = 0; i < this.children.length; i++) {
@@ -3089,7 +3058,7 @@ export abstract class ProofItem extends TreeItem {
 			}
 		}
 	}
-	saveTreeAttributes (): void {
+	saveTreeAttributes(): void {
 		this.saveAttributes();
 		if (this.children && this.children.length) {
 			for (let i = 0; i < this.children.length; i++) {
@@ -3097,21 +3066,21 @@ export abstract class ProofItem extends TreeItem {
 			}
 		}
 	}
-	setChildren (children: ProofItem[]): void {
+	setChildren(children: ProofItem[]): void {
 		this.children = children;
 	}
 	/**
 	 * Inserts a given child node at the given position in the list of children of the current node
 	 */
-	insertChild (child: ProofItem, position: number, opt?: { internalAction?: boolean }): void {
+	insertChild(child: ProofItem, position: number, opt?: { internalAction?: boolean }): void {
 		if (this.children && position < this.children.length - 1) {
 			const children1: ProofItem[] = this.children.slice(0, position);
 			const children2: ProofItem[] = this.children.slice(position);
-			this.children = children1.concat([ child ]).concat(children2);
+			this.children = children1.concat([child]).concat(children2);
 		} else {
 			// append at the end
 			position = this.children.length;
-			this.children = this.children.concat([ child ]);
+			this.children = this.children.concat([child]);
 		}
 		if (!opt.internalAction && this.connection) {
 			const elem: ProofNodeX = child.getNodeXStructure();
@@ -3129,7 +3098,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Deletes a given child node
 	 */
-	deleteChild (child: ProofItem, opt?: { internalAction?: boolean }): void {
+	deleteChild(child: ProofItem, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
 		this.children = this.children.filter((ch: ProofItem) => {
 			return ch.id !== child.id;
@@ -3148,7 +3117,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Deletes the tree rooted at the given child
 	 */
-	deleteTree (child: ProofItem): void {
+	deleteTree(child: ProofItem): void {
 		const children: ProofItem[] = [];
 		for (let i in this.children) {
 			if (this.children[i].id !== child.id) {
@@ -3162,8 +3131,8 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Returns a sequence representing the execution order of the commands rooted at the current node
 	 */
-	getProofCommands (): ProofItem[] {
-		let ans: ProofItem[] = [ this ];
+	getProofCommands(): ProofItem[] {
+		let ans: ProofItem[] = [this];
 		if (this.children) {
 			for (let i = 0; i < this.children.length; i++) {
 				ans = ans.concat(this.children[i].getProofCommands());
@@ -3174,7 +3143,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Utility function, moves the active node indicator forward
 	 */
-	moveIndicatorForward (opt?: { lastVisitedChild?: ProofItem, keepSameBranch?: boolean, proofState?: SequentDescriptor }): ProofItem | null {
+	moveIndicatorForward(opt?: { lastVisitedChild?: ProofItem, keepSameBranch?: boolean, proofState?: SequentDescriptor }): ProofItem | null {
 		opt = opt || {};
 		if (this.contextValue === "proof-command") {
 			this.visited();
@@ -3209,9 +3178,9 @@ export abstract class ProofItem extends TreeItem {
 		}
 		// else, branch completed
 		// go to next sibling, unless opt.keepSameBranch === true 
-		if (opt.keepSameBranch 
-				&& ((this.contextValue === "proof-branch" && this.children.length === 0) 
-					|| (this.contextValue === "proof-command" && this.children.length > 0))) {
+		if (opt.keepSameBranch
+			&& ((this.contextValue === "proof-branch" && this.children.length === 0)
+				|| (this.contextValue === "proof-command" && this.children.length > 0))) {
 			return null;
 		}
 		this.visited();
@@ -3223,13 +3192,13 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Returns the node type, one of "proof-command", "proof-branch", "root"
 	 */
-	getType (): ProofNodeType {
+	getType(): ProofNodeType {
 		return this.contextValue === "ghost" ? null : this.contextValue;
 	}
 	/**
 	 * Returns the last visited child
 	 */
-	getLastVisitedChild (): ProofItem {
+	getLastVisitedChild(): ProofItem {
 		if (this.children) {
 			const children: ProofItem[] = this.children.filter(item => {
 				return item.isVisitedOrPending();
@@ -3241,7 +3210,7 @@ export abstract class ProofItem extends TreeItem {
 		}
 		return this;
 	}
-	moveIndicatorBack (opt?: { keepSameBranch?: boolean }): ProofItem {
+	moveIndicatorBack(opt?: { keepSameBranch?: boolean }): ProofItem {
 		if (this.parent) {
 			if (this.parent.children && this.parent.children.length) {
 				const children: ProofItem[] = this.parent.children.filter((item: ProofItem) => {
@@ -3274,14 +3243,14 @@ export abstract class ProofItem extends TreeItem {
 		}
 		return this;
 	}
-	getSiblingOrParent (): ProofItem {
+	getSiblingOrParent(): ProofItem {
 		if (this.parent) {
 			const children: ProofItem[] = this.parent.children;
 			if (children && children.length > 1) {
 				const index: number = children.indexOf(this);
 				const next: number = index + 1;
 				const prev: number = index - 1;
-				return (next < children.length) ? children[next] : children[prev];	
+				return (next < children.length) ? children[next] : children[prev];
 			}
 			// else, this is the only child, return the parent
 			return this.parent;
@@ -3290,7 +3259,7 @@ export abstract class ProofItem extends TreeItem {
 		}
 		return null;
 	}
-	getNextSibling (): ProofItem {
+	getNextSibling(): ProofItem {
 		if (this.parent) {
 			const children: ProofItem[] = this.parent.children;
 			if (children && children.length > 1) {
@@ -3303,7 +3272,7 @@ export abstract class ProofItem extends TreeItem {
 		}
 		return null;
 	}
-	getPreviousSibling (): ProofItem {
+	getPreviousSibling(): ProofItem {
 		if (this.parent) {
 			const children: ProofItem[] = this.parent.children;
 			if (children && children.length > 1) {
@@ -3322,7 +3291,7 @@ export abstract class ProofItem extends TreeItem {
 	 * - proof-node: old branchId = baseId, new branchId = targetId
 	 * - root: old branchId = "", new branchId = targetId
 	 */
-	rebaseTree (targetId: string, opt?: { internalAction?: boolean, forceTargetId?: boolean }): void {
+	rebaseTree(targetId: string, opt?: { internalAction?: boolean, forceTargetId?: boolean }): void {
 		opt = opt || {};
 		opt.internalAction = opt.internalAction === undefined ? true : false;
 		switch (this.contextValue) {
@@ -3344,12 +3313,12 @@ export abstract class ProofItem extends TreeItem {
 				this.name = `(${this.branchId})`;
 				if (!opt.internalAction && this.connection) {
 					const evt: ProofEditDidRenameNode = {
-						action: "did-rename-node", 
-						selected: { id: this.id, name: oldName }, 
+						action: "did-rename-node",
+						selected: { id: this.id, name: oldName },
 						newName: this.name
 					};
 					this.connection.sendNotification(serverEvent.proverEvent, evt);
-				}		
+				}
 				break;
 			}
 			case "root": {
@@ -3369,7 +3338,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Appends the given node as a sibling of the current node
 	 */
-	appendSibling (sib: ProofItem, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): void {
+	appendSibling(sib: ProofItem, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): void {
 		if (sib) {
 			sib.parent = this.parent; // make sure the sibling and the current node have the same parent
 			opt = opt || {};
@@ -3414,7 +3383,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Appends the given child as first child of the current node
 	 */
-	appendChildAtBeginning (child: ProofItem, opt?: { internalAction?: boolean, rebase?: boolean }): void {
+	appendChildAtBeginning(child: ProofItem, opt?: { internalAction?: boolean, rebase?: boolean }): void {
 		if (child) {
 			child.parent = this; // this makes sure the child is pointing to the right parent
 			opt = opt || {};
@@ -3425,11 +3394,11 @@ export abstract class ProofItem extends TreeItem {
 					return elem.getType() === "proof-branch";
 				})?.length || 0;
 				// adjust branch id for the node being pasted
-				let targetId: string = 
+				let targetId: string =
 					// if the child is a proof branch
 					// rename the child as the currentBranchID.x, where x is n + 1
 					child.getType() === "proof-branch" ? `${this.branchId}.${n + 1}`
-					// otherwise use currentProofBranchID
+						// otherwise use currentProofBranchID
 						: this.branchId;
 				targetId = targetId.startsWith(".") ? targetId.substring(1) : targetId;
 				child.rebaseTree(targetId, { forceTargetId: child.getType() === "proof-branch" });
@@ -3437,7 +3406,7 @@ export abstract class ProofItem extends TreeItem {
 			if (child.contextValue === "root") {
 				this.children = child.children.concat(this.children);
 			} else {
-				this.children = [ child ].concat(this.children);
+				this.children = [child].concat(this.children);
 			}
 
 			if (!opt.internalAction && this.connection) {
@@ -3457,7 +3426,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Appends the given child as last child of the current node
 	 */
-	appendChild (child: ProofItem, opt?: { internalAction?: boolean }): void {
+	appendChild(child: ProofItem, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
 		this.children = this.children || [];
 		child.parent = this;
@@ -3469,8 +3438,8 @@ export abstract class ProofItem extends TreeItem {
 		// keep children ordered by name
 		this.children = this.children.sort((a: ProofItem, b: ProofItem): number => {
 			// we need to compare number rather than strings, otherwise the order is incorrect (e.g., "10" is < "2")
-			const aa: number = +(a.branchId.split(".").slice(-1));  
-			const bb: number = +(b.branchId.split(".").slice(-1));  
+			const aa: number = +(a.branchId.split(".").slice(-1));
+			const bb: number = +(b.branchId.split(".").slice(-1));
 			return (aa < bb) ? -1 : 1;
 		});
 
@@ -3490,13 +3459,13 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Returns all branches of the node
 	 */
-	getChildren (): ProofItem[] {
+	getChildren(): ProofItem[] {
 		return this.children;
 	}
 	/**
 	 * Returns the last proof command in the subtree rooted at the node
 	 */
-	getLastChildInSubtree (): ProofItem {
+	getLastChildInSubtree(): ProofItem {
 		if (this.children?.length) {
 			const candidate: ProofItem = this.children[this.children.length - 1];
 			return candidate.getLastChildInSubtree();
@@ -3506,7 +3475,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Prints a string representing the sequence proof commands for the tree rooted at the node
 	 */
-	printProofCommands (): string | null {
+	printProofCommands(): string | null {
 		let ans: string = (this.contextValue === "proof-command") ? this.name : "";
 		if (this.children && this.children.length) {
 			for (let i = 0; i < this.children.length; i++) {
@@ -3515,22 +3484,22 @@ export abstract class ProofItem extends TreeItem {
 		}
 		return ans;
 	}
-	
+
 }
 
 /**
  * Proof commands
  */
 class ProofCommand extends ProofItem {
-	constructor (cmd: string, branchId: string, parent: ProofItem, connection: Connection) {
+	constructor(cmd: string, branchId: string, parent: ProofItem, connection: Connection) {
 		super("proof-command", cmd, branchId, parent, connection);
 		cmd = cmd.trim();
 		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || isUndoCommand(cmd) ? cmd : `(${cmd})`;
 		this.notVisited({ internalAction: true });
 	}
-	clone (opt?: { parent?: ProofItem }): ProofCommand {
+	clone(opt?: { parent?: ProofItem }): ProofCommand {
 		opt = opt || {};
-		const parent: ProofCommand =  opt.parent || this.parent;
+		const parent: ProofCommand = opt.parent || this.parent;
 		const c: ProofCommand = new ProofCommand(this.name, this.branchId, parent, this.connection);
 		return c;
 	}
@@ -3539,20 +3508,20 @@ class ProofCommand extends ProofItem {
  * Proof branches
  */
 class ProofBranch extends ProofItem {
-	constructor (cmd: string, branchId: string, parent: ProofItem, connection: Connection) {
+	constructor(cmd: string, branchId: string, parent: ProofItem, connection: Connection) {
 		super("proof-branch", cmd, branchId, parent, connection);
 		this.name = `(${branchId})`;
 		this.notVisited({ internalAction: true });
 	}
-	clone (opt?: { parent?: ProofCommand }): ProofBranch {
+	clone(opt?: { parent?: ProofCommand }): ProofBranch {
 		opt = opt || {};
-		const parent: ProofCommand =  opt.parent || this.parent;
+		const parent: ProofCommand = opt.parent || this.parent;
 		const c: ProofBranch = new ProofBranch(this.name, this.branchId, parent, this.connection);
 		return c;
 	}
 }
 class WelcomeScreen extends TreeItem {
-	constructor (connection: Connection) {
+	constructor(connection: Connection) {
 		super("welcome-screen", connection);
 	}
 }
@@ -3562,25 +3531,25 @@ class RootNode extends ProofItem {
 	/**
 	 * Constructor
 	 */
-	constructor (desc: { name: string, connection: Connection, proofStatus?: ProofStatus }) {
+	constructor(desc: { name: string, connection: Connection, proofStatus?: ProofStatus }) {
 		super("root", desc.name, "", null, desc.connection);
 		this.parent = this; // the parent of the root is the root itself
 		this.proofStatus = desc.proofStatus || "untried"
 		this.initialProofStatus = this.proofStatus;
 		this.notVisited({ internalAction: true });
 	}
-	clone (): RootNode {
+	clone(): RootNode {
 		const c: RootNode = new RootNode({ name: this.name, proofStatus: this.proofStatus, connection: this.connection });
 		c.pending();
 		return c;
 	}
 
 	// @overrides
-	visited (): void {
+	visited(): void {
 		// do nothing
 	}
 	// @overrides
-	pending (): void {
+	pending(): void {
 		if (this.proofStatus === "untried") {
 			this.proofStatus = "unfinished";
 			const evt: ProofEditDidUpdateProofStatus = {
@@ -3595,30 +3564,15 @@ class RootNode extends ProofItem {
 			super.pending();
 		}
 	}
-	/**
-	 * Sets the root status to QED
-	 */
-	QED (): void {
+	QED(): void {
 		super.treeVisited();
 		super.treeComplete();
 		this.setProofStatus(QED);
 	}
-	/**
-	 * Returns true if the root is QED
-	 */
-	isQED (): boolean {
-		return this.proofStatus === QED;
-	}
-	/**
-	 * Returns true if the proof status has changed
-	 */
-	proofStatusChanged (): boolean {
+	proofStatusChanged(): boolean {
 		return this.initialProofStatus !== this.proofStatus;
 	}
-	/**
-	 * Sets the proof status of the root
-	 */
-	setProofStatus (proofStatus: ProofStatus): void {
+	setProofStatus(proofStatus: ProofStatus): void {
 		if (proofStatus) {
 			this.proofStatus = proofStatus;
 			const evt: ProofEditDidUpdateProofStatus = {
@@ -3630,25 +3584,25 @@ class RootNode extends ProofItem {
 			}
 		}
 	}
-	resetProofStatus (): void {
+	resetProofStatus(): void {
 		this.setProofStatus(this.initialProofStatus);
 	}
-	getProofStatus (): ProofStatus {
+	getProofStatus(): ProofStatus {
 		return this.proofStatus;
 	}
 }
 class GhostNode extends ProofItem {
 	realNode: ProofItem;
-	constructor (desc: { parent: ProofItem, node: ProofItem, connection: Connection }) {
+	constructor(desc: { parent: ProofItem, node: ProofItem, connection: Connection }) {
 		super("ghost", "ghost", "", desc.parent, desc.connection);
 		this.realNode = desc.node;
 	}
-	clone (): GhostNode {
+	clone(): GhostNode {
 		const c: GhostNode = new GhostNode({ parent: this.parent, node: this.realNode, connection: this.connection });
 		return c;
 	}
 	// @overrides
-	active (): void {
+	active(): void {
 		this.activeFlag = true;
 		if (this.connection) {
 			if (this.realNode) {
@@ -3667,7 +3621,7 @@ class GhostNode extends ProofItem {
 			}
 		}
 	}
-	notActive (): void {
+	notActive(): void {
 		this.activeFlag = false;
 		if (this.connection) {
 			if (this.realNode) {
@@ -3684,7 +3638,7 @@ class GhostNode extends ProofItem {
 		}
 	}
 	// @overrides
-	moveIndicatorBack (): ProofItem {
+	moveIndicatorBack(): ProofItem {
 		if (this.realNode.contextValue !== "root") {
 			this.notActive();
 			this.realNode.active();
@@ -3692,11 +3646,11 @@ class GhostNode extends ProofItem {
 		return this.realNode;
 	}
 	// @overrides
-	moveIndicatorForward (): ProofItem {
+	moveIndicatorForward(): ProofItem {
 		return null;
 	}
 	// @overrides
-	appendSibling (sib: ProofItem, opt?: { beforeSelected?: boolean }): void {
+	appendSibling(sib: ProofItem, opt?: { beforeSelected?: boolean }): void {
 		if (this.realNode.contextValue === "root") {
 			this.realNode.appendChild(sib);
 		} else {
@@ -3704,11 +3658,11 @@ class GhostNode extends ProofItem {
 		}
 	}
 	// @overrides
-	appendChildAtBeginning (child: ProofItem): void {
+	appendChildAtBeginning(child: ProofItem): void {
 		this.realNode.appendChildAtBeginning(child);
 	}
 	// @overrides
-	appendChild (child: ProofItem): void {
+	appendChild(child: ProofItem): void {
 		this.realNode.appendChild(child);
 	}
 }

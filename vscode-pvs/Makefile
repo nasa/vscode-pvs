@@ -63,13 +63,17 @@ install-tsc:
 	cd server && npm install typescript
 	cd client && npm install typescript
 
+install-ws:
+	cd server && npm install wc
+	cd server && npm install ws
+
 install-vsce:
 	npm install vsce
 
 vsce:
 	node_modules/vsce/out/vsce package
 
-install: install-tsc
+install: install-tsc install-ws
 	npm install
 
 build-nasalib-decls:

@@ -179,6 +179,7 @@ export class PvsProcess {
 	 */
 	async activate (opt?: { 
 		enableNotifications?: boolean, 
+		webSocketPort?: number,
 		serverPort?: number,
 		externalServer?: boolean,
 		verbose?: boolean
