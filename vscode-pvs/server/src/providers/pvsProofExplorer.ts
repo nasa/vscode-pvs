@@ -145,6 +145,13 @@ export class PvsProofExplorer {
 	 */
 	protected proofState: SequentDescriptor;
 
+	/**
+	 * Identifier for the proof associated with this ProofExplorer, as returned by PVS.
+	 */
+	protected proofId: string;
+	setProofId(proofIdentifier: string) {
+		this.proofId = proofIdentifier;
+	}
 
 	constructor(connection: Connection, pvsProxy: PvsProxy, pvsLanguageServer: PvsLanguageServer) {
 		this.connection = connection;
@@ -417,6 +424,7 @@ export class PvsProofExplorer {
 	 * The command can also be specified as function argument -- this is useful for handling commands entered by the used at the prover prompt. 
 	 * @param cmd Optional parameter, specifying the command to be executed.
 	 */
+	// @M3 #TODO proofId seems to be mandatory in pvs-8.0
 	async step(opt?: { proofId?: string, cmd?: string, feedbackToTerminal?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
 		// return new Promise (async (resolve, reject) => {
@@ -437,7 +445,7 @@ export class PvsProofExplorer {
 			(this.activeNode?.contextValue === "proof-command" && (this.ghostNode && !this.ghostNode.isActive())) ?
 				this.activeNode?.name
 				: null;
-		const proofId: string = (opt.proofId) ? opt.proofId : null;
+		const proofId: string = (opt.proofId) ? opt.proofId : this.proofId;
 		if (cmd) {
 			if (this.runningFlag && !this.autorunFlag && isPostponeCommand(cmd)) {
 				if (this.stopAt) {
@@ -477,10 +485,15 @@ export class PvsProofExplorer {
 				// else -- keep processing the response as usual
 			}
 			// console.dir(response, { depth: null });
-			if (response?.result?.length) {
-				for (let i = 0; i < response.result.length; i++) {
-					const proofState: SequentDescriptor = response.result[i]; // process proof commands
-					await this.onStepExecutedNew({ proofState, args: command, lastSequent: i === response.result.length - 1 }, opt);
+			if (response?.result) {
+				if (response.result.length) {
+					for (let i = 0; i < response.result.length; i++) {
+						const proofState: SequentDescriptor = response.result[i]; // process proof commands
+						await this.onStepExecutedNew({ proofState, args: command, lastSequent: i === response.result.length - 1 }, opt);
+					}
+				} else {
+					const proofState: SequentDescriptor = response.result; // process proof commands
+					await this.onStepExecutedNew({ proofState, args: command, lastSequent: true }, opt);
 				}
 				// if a proof is running, then iterate
 				if (this.runningFlag && !this.ghostNode.isActive()) {
@@ -559,7 +572,7 @@ export class PvsProofExplorer {
 	}
 	/**
 	 * Utility function invoked after step(). Updates the data structures of proof-explorer and sends messages to the front-end.
-	 * @param desc Descriptor specifying the reponse of the prover, as well as the actual values of the arguments used to invoke the step function.
+	 * @param desc Descriptor specifying the response of the prover, as well as the actual values of the arguments used to invoke the step function.
 	 */
 	async onStepExecutedNew(desc: { proofState: SequentDescriptor, args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
 		if (desc && desc.proofState) {
@@ -2616,9 +2629,10 @@ export class PvsProofExplorer {
 				if (response) {
 					if (response.result) {
 						// const channelID: string = languageUtils.desc2id(req);
-						const result: SequentDescriptor[] = response.result;
-						if (result.length) {
-							const sequent: SequentDescriptor = result[result.length - 1];
+						const sequent: SequentDescriptor = 
+							response.result.length ? 
+								response.result[response.result.length - 1] : 
+								response.result;							
 							if (sequent["prover-session-status"]) {
 								// FIXME: this field is provided only by json-output patch, not by the xmlrpc server -- either use it or don't, adopt a standard solution!
 								// branch closed, or proof completed
@@ -2626,10 +2640,10 @@ export class PvsProofExplorer {
 							} else {
 								// FIXME: pvs-server needs to provide a string representation of the command, not its structure!
 								const command: string =
-									(sequent && sequent["last-cmd"]
+									(sequent && sequent["prev-cmd"]
 										&& !isUndoCommand(cmd)
 										&& !isUndoUndoCommand(cmd)
-										&& !isPostponeCommand(cmd)) ? sequent["last-cmd"] : cmd;
+										&& !isPostponeCommand(cmd)) ? sequent["prev-cmd"] as string : cmd;
 								// if (this.connection) {
 								// 	this.connection.sendRequest(serverEvent.proofCommandResponse, { 
 								// 		response: { result: sequent }, 
@@ -2663,7 +2677,7 @@ export class PvsProofExplorer {
 									this.connection?.sendRequest(serverEvent.proofCommandResponse, { res: sequent, req: request });
 								}
 							}
-						}
+						
 					} else {
 						console.warn(`[proof-explorer] Warning: Unable to execute proof command ${cmd}`, response);
 					}
