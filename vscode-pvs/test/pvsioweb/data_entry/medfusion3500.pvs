@@ -127,7 +127,7 @@ medfusion3500: THEORY
 
   backspaceClicked(st: state): state =
     if strlen(display(st)) <= 0 then st
-    else st WITH [ display := substr(display(st), 0, strlen(display(st)) - 2) ] endif
+    else st WITH [ display := stdstr.substr(display(st), 0, strlen(display(st)) - 2) ] endif
   
   selectRate(st: state): state = 
     LET % if current mode is VTBI, changing the selection automatically confirms the VTBI value (if valid)
