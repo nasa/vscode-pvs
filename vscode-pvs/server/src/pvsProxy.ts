@@ -2295,7 +2295,7 @@ export class PvsProxy {
 	 * interrupts the prover
 	 */
 	async interruptProver(): Promise<PvsResponse | null> {
-		return await this.pvsRequest('interrupt');
+		return await this.pvsRequest('interrupt-proof');
 	}
 
 }
